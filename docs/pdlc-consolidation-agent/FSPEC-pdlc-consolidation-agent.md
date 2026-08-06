@@ -567,6 +567,128 @@ destination for the consuming-repo writes — a `consolidation/{passId}` branch 
 
 ## 6. FSPEC-CONS-05 — The pull-request route
 
+**Links:** REQ-CONS-03 (AC-3.1 … AC-3.8), NFR-1, NFR-4, AC-5.4.
+
+### 6.1 Where the work happens — the same-repo case is the shipping case
+
+`consolidation.pluginRepository` defaults to `null`, meaning **the current repository** (§11), and
+that is the shipping configuration today: `docs/_queue/QUEUE.md` states this queue is the pipeline's
+own queue, so "consuming repo" and "plugin repo" are one repository.
+
+| Configuration | Where the guard-set edit is made | Invoking tree |
+|---|---|---|
+| Same repository (AC-3.8, shipping) | a **separate clone under a temporary directory**, cut from the fetched default branch | untouched — **no branch operation of any kind** |
+| A different repository (BL-03) | a clone of that repository | untouched, identically |
+
+"No branch operation of any kind" is enumerated, not summarised: no `checkout`, no `switch`, no
+`stash`, no `reset`, no `rebase`, and no fetch into the invoking tree's refs. The invoking tree's
+HEAD is identical before and after the pass, which is what lets a pass run while the tree is
+mid-pipeline on a `feat-*` branch. Everything else in §6 applies unchanged in both configurations.
+
+### 6.2 Branch, commits, body
+
+| Element | Value | Source |
+|---|---|---|
+| Head branch | `consolidation/{passId}` | vocabularies §4 |
+| Branch reuse | never across passes — `passId` makes it unique | AC-3.6 |
+| Branch deletion | **not** by the pass; deletion follows the operator's merge or close | AC-3.6 — the residue of a half-failed pass stays inspectable |
+| Direct push to the default branch | **never**, on any path | AC-3.6, NFR-1 |
+| One commit per edit | required, even when several promotions share one PR | AC-3.3 |
+| Per-commit trailer | `PDLC-PROMOTION-ID: {id}:{action}` naming exactly the proposal that commit enacts | vocabularies §4 |
+| PR body trailers | `PDLC-CONSOLIDATION-PASS`, `PDLC-CONSOLIDATION-SOURCES`, `PDLC-CONSOLIDATION-PROMOTIONS` — exactly three | vocabularies §4 |
+
+One commit per edit is what makes any single edit independently revertible and makes
+commit → proposal readable without counting. A revision or retirement (§8.5) may share the PR, in
+its own commit, carrying the **retired promotion's own `failure-mode-id`** under the `revise` or
+`retire` action — no second id is minted for it (§8.1).
+
+`PDLC-CONSOLIDATION-PROMOTIONS` is **set-equal** to the proposals the PR enacts: every commit's
+`PDLC-PROMOTION-ID` pair appears there exactly once, and the trailer names no pair the PR does not
+enact. A remediation sharing the PR is enumerated there like any other, under its own action.
+
+Beyond the trailers, the body carries what AC-3.2 requires and a reviewer needs to judge the edit
+without opening the corpus: the source LEARNINGS by **feature name**, the failure mode the edit
+targets (its `symptom` line, §8.1), and the pattern evidence that cleared the AC-2.3 bar — which
+features it recurred across, or the standing-invariant argument for a single occurrence.
+
+### 6.3 When the PR cannot be opened (AC-3.5)
+
+The pass **still** writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` with the full proposed
+diff inline, so the fallback is today's behaviour rather than a lost promotion. Every failure class
+is named in both the log row and the proposal file:
+
+| Class | Reason code | Recorded alongside |
+|---|---|---|
+| Credential absent or invalid | `credential-unavailable` | `credential: absent` (§7) |
+| `consolidation.pluginRepository` unset, not found, or renamed | `repository-unresolved` | the configured value, verbatim |
+| Network / API failure, including rate limiting | `api-failure` | the API's status text |
+| Head branch `consolidation/{passId}` already exists remotely | `branch-exists` | the existing branch, and any PR found for it |
+
+The classes are decided by observation, not by inference: an authentication rejection is
+`credential-unavailable` even when it arrives as an HTTP status, and a repository that resolves but
+rejects the push for permissions is `credential-unavailable`, not `repository-unresolved` — the
+latter is reserved for a name that does not resolve to a repository at all.
+
+`duplicate-suppressed` is **not** a member of this table. It is decided per proposal *before* any PR
+is attempted (§6.4), fires no fallback, and is not a failure.
+
+A degraded promotion is surfaced in the §10 report under a `degraded` route with its reason code, and
+the pass's terminal status becomes `promoted-degraded` when it promoted anything at all, `no-op` when
+it did not — never a bare `promoted` (§7.3).
+
+### 6.4 Idempotence — the duplicate key (NFR-4)
+
+The suppression key is the **pair** `(failure-mode-id, action)`, read from the
+`PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs in the target repository.
+
+| PR state observed at poll time | In the key set? | Why |
+|---|---|---|
+| `open` | yes | the operator has not decided yet; a second PR would fragment the decision |
+| `merged` | yes | it is what survives when the invoking branch carrying the log record is abandoned (§5.5) |
+| `closed`, unmerged | **no** | the operator rejected that proposal; a later pass re-proposing it is intended behaviour |
+| reopened | yes — it is `open` | state is read at poll time with **no memory of prior states** |
+
+When a proposal's pair is already on a PR in state open or merged, the pass **opens nothing for it**,
+records `duplicate-suppressed` naming that pair and that PR's URL in the log row's `suppressed-by:`
+field and in the §10 report — one entry per suppressed proposal — and **never** extends or supersedes
+that PR: an interrupted pass's partial PR is the operator's to merge or close, not silently amended.
+`suppressed-by:` is never merged into `pr:`, which stays empty for a pass that opened nothing (§10.3).
+
+**Why the pair and not either half.** Keying on the sources trailer would miss exactly when
+suppression matters: a consumed set is time-dependent (§3.1 enumerates whatever is un-consolidated
+*now*), so two passes proposing the same promotion normally consume different sets. Keying on the id
+alone would let a merged `promote` PR suppress the `revise` and `retire` proposals §8.5 requires,
+making remediation of an `ineffective` promotion unreachable — the `Unfalsifiability` problem
+unsolved. With `action` in the key, a merged `promote` bars a second `promote` for that
+`(phase, artifact)` pair forever and bars **nothing else**.
+
+Idempotence is well-defined because the §8.3 verdicts are deterministic: two passes over the same
+inputs derive the same ids, so the same pairs, so the same suppressions.
+
+**Its limit, stated.** `failure-mode-id` cannot key a LEARNINGS predating that convention (§8.4), so
+suppression would not protect a re-consumed pre-convention corpus. That is why the §3.2 legacy region
+prevents the re-consumption rather than relying on NFR-4 to absorb it.
+
+### 6.5 Auto-merge is impossible, by this feature's own controls (AC-3.7)
+
+Three observables, asserted by the pass rather than inherited:
+
+| # | Control | Observable |
+|---|---|---|
+| (a) | the credential grants no merge rights | §7.1 — scope is `contents:write` + `pull_requests:write` only |
+| (b) | the pass never calls a merge or enable-auto-merge API on any PR — **including its own** | no such call exists on any code path |
+| (c) | the PR body carries `PDLC-CONSOLIDATION-PASS` | a repo-side control can recognise the PR as machine-opened |
+
+This **restates** `pdlc-merge-phase`'s REQ-MERGE-03 rather than inheriting it, and the distinction is
+load-bearing. `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths`
+(`:709`) is reachable only from Phase MERGE's ladder and the advisory-envelope check, both deciding
+about **that run's own** PR; and Phase MERGE ships `mergeMode: "off"`
+(`MERGE_DEFAULTS`, `orchestrate-dev.js:60-61`). Nothing there evaluates an inbound PR, so claiming
+inheritance would assert a control nothing enforces.
+
+Repository-side enforcement — branch protection or required review on the plugin repo — is BL-05, an
+operator duty, and is explicitly out of scope (REQ §5). The three controls above hold without it.
+
 ## 7. FSPEC-CONS-06 — Credential handling
 
 ## 8. FSPEC-CONS-07 — Falsifiability
