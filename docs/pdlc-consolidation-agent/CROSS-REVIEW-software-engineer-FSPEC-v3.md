@@ -39,6 +39,12 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried from v2, still open — the only one of the four the revision does not answer.)* AT-M7 requires the `ADVISORY_MODEL_FALLBACK:` line **verbatim** in the report body, and §10.4 item 2 requires it too. The resolver emits that line through `_log` (`orchestrate-dev.js:1858-1860`, the template literal at `:1859`), never in its return value, so the pass must capture its own log stream to satisfy either. §14.1 still has no row for that capture: T-04 covers "the injected seams for file IO, git and the PR API" and T-05 now covers the widening and the deadline, but nothing names `_log`. Does the same capture obligation extend to §2.6 row 4's "error's message surfaced verbatim in the report body" (AT-M6, AT-M9)? Both are report-body assertions on text the pass does not otherwise hold. |
+| Q-02 | §8.4 step 1's open-promotion filter closes an id only on a **landed** `retire`. Since `retire` targets the promotion's `artifact` and a `retire` of a guard-set artifact routes to the PR route (§5.1), landing it requires an operator to merge that PR — so on this repo the filter closes essentially nothing, and the question list still grows monotonically with every pass (v2 Q-04's concern, now sharper rather than answered). §8.4 acknowledges the recall direction is safe; it does not bound the cost. Is a recency window or a cap intended before the harvest prompt's question list dominates every Phase H, or is the growth accepted and worth an O-C row of its own? |
+| Q-03 | §15.3's new bundle row says the widened resolver's bytes "live in both artifacts as well as in the source", which is right — but `pdlc/workflows/dist/distribution-manifest.json` carries a sha1 per artifact, so the rebuild changes **three** manifest rows (both bundles plus the new consolidation bundle), not one. The manifest appears only in the older `build-runtime.mjs` row, whose Change cell reads "the new bundle's build entry and manifest row" (singular). Is that intentional shorthand, or should the row say the manifest is re-stamped for every artifact the rebuild touches? T-02 is the obligation that inherits the answer. |
+
 ## Positive Observations
 
 ## Recommendation
