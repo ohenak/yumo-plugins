@@ -37,7 +37,54 @@ a measurement.
 
 ## Questions
 
+No open questions. Neither Medium is a clarification: F-45 is a choice between three stated shapes
+that the REQ must make rather than explain, and F-46 is a measurement with a named remedy.
+
 ## Positive Observations
+
+- **F-42 was closed by narrowing the requirement, not the promise.** The round could have downgraded
+  `:371-372`'s "true rather than hoped for" — I offered that as the cheaper of two options — and
+  instead constrained `artifact` to one canonical path and rewrote the justification to carry the
+  split-direction argument (`:377-379`). That is the third consecutive round in which the weaker
+  escape hatch was available and declined. The resulting NFR-4 oracle is now fully transcribable:
+  two passes, same `phase`, differently-spelled paths normalising to one, different `symptom` text,
+  assert one id and `duplicate-suppressed`.
+- **The residual F-42 cost was given a deferral row rather than a sentence.** D-CONS-08 (`:683`)
+  names the finer key, its reason ("a finer key needs a stable sub-file location identity LEARNINGS
+  does not carry today") and its vehicle (`pdlc-engineering-loop`). An accepted cost with a row is a
+  decision; an accepted cost in a clause is a hope.
+- **AC-7.2's `pr:` field became a scoped biconditional with a second field beside it.** "The URL of
+  a PR **this pass opened**, when and only when this pass opened one … an all-suppressed `no-op`
+  leaves `pr:` empty and carries its evidence in the distinct `suppressed-by:` field instead … the
+  two fields are never merged and a row may carry both" (`:507-510`). Both new fields got §4b rows
+  (`:605-606`) with permitted-status sets consistent with the existing `duplicate-suppressed` reason
+  code, so the enumerated-vocabulary set-equality check still closes over the full table. This
+  removes an oracle overload I had not filed: under the old wording, the all-suppressed `no-op` and
+  the opened-a-PR case were distinguishable only by a URL's presence.
+- **The `.gitignore` claim is grounded and I re-verified it exhaustively rather than by grep.** AC-1.3
+  (`:170-174`) asserts the repository `.gitignore` "today carries no pattern matching it (verified at
+  HEAD: `.tokensave/`, `.claude/settings.local.json`, `.claude/.headroom_wrap_marker.json`,
+  `node_modules/`, `/.claude/workflows/`)". Read whole: those are exactly the five patterns, in that
+  order, and none matches `docs/_decisions/.consolidation-lock`. The stated consequence of omitting
+  the entry — "a committed lock reaches every fresh clone and refuses every pass with
+  `consolidation-in-progress` until `staleLockMinutes` elapses, per clone" — follows from AC-1.3's
+  own reclaim rule, and the entry was added to §5 In-scope in the same revision (`:633-634`) rather
+  than left as an implied task. That is a testable first-run assertion.
+- **The compressed AC-1.5 citations all still resolve after the round's rewrites.** `MODEL_ADVISORY`
+  at `orchestrate-dev.js:1652` and `MODEL_ADVISORY_FALLBACK` at `:1653`; `resolveAdvisoryRung`
+  exported at `:1833`; the doc comment at `:1800` reads "TSPEC §3.4's model-rung ladder, and the
+  **one** ladder the tier ships", so the REQ's shortened quotation is a faithful substring, not a
+  reconstruction; and the second-consumer claim holds at `orchestrate-queue.js:1245-1256`, where
+  `runAdvisorySeamFn` is called with a threaded `rungState` and an injected `_agent`/`_appendFile`
+  rather than copied literals. The compression this round removed sentences, not checkable facts —
+  which is the same verdict I reached in v7, and is why F-46 is filed against the *budget*, not
+  against what compression cost.
+- **The REQ-CONS-01 exempt-record clause was tightened where the round made it weaker.** Adding the
+  held marker's `passId` and ISO-8601 timestamp to the `refused` row could have broken the
+  "no field is ever a basename" property the legacy-region predicate depends on; instead the clause
+  states the property positively and discharges it for the new fields — "A passId is
+  `{YYYY-MM-DD}-{n}` and a timestamp is neither a `LEARNINGS-*.md` basename" (`:106-110`). The
+  invariant travelled with the field set instead of being left behind by it.
 
 ## Recommendation
 
