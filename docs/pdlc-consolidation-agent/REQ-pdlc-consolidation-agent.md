@@ -94,11 +94,10 @@ log:
 > anywhere in the log's **legacy region** — the text preceding the file's *first* `<!-- pdlc:consumed`
 > marker (a log with no block at all is legacy region entire).
 
-The log's shape at HEAD, and the two clauses that freeze the legacy boundary — **(a)** every pass appends its `<!-- pdlc:consumed {passId} -->` pair
-before any other record it writes, even when the pair is empty (which is what satisfies NFR-5's "exactly the consumed set" unconditionally, from the
-first pass rather than only from one with a non-empty set), and **(b)** the single exempt record, a `refused` pass's AC-7.2 row, carries no field that
-is ever a `LEARNINGS-*.md` basename, while the AC-1.3 marker is not a second exemption because it lives in its own file — are stated once in
-**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.4) and are binding here. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
+The log's shape at HEAD, and the two clauses that freeze the legacy boundary — the unconditional consumed-pair append, empty pair included, and the
+single exempt record, which is a `refused` pass's AC-7.2 row — are stated once in
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.4), are binding here and are not restated; the AC-1.3 marker is not a
+second exemption, since it lives in its own file. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
 `…-pdlc-review-loop-hardening`) are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the cadence test.
 
@@ -180,10 +179,10 @@ pass — the never-fires failure this datum prevents.
   is all its evidentiary purpose needs. It writes **no** consumed block — only marker-holding passes emit one (REQ-CONS-01) — so it never touches the
   legacy-region boundary.
 
-  **Why no lock is needed: the write-granularity obligation** (`docs/_constraints/pdlc-consolidation-vocabularies.md` §3, binding here). Every write to
-  `.consolidation-log.md`, by any pass, is a single **append of one whole record at end of file**; the whole-file read-modify-write is forbidden. That
-  is why the marker lives in `.consolidation-lock` (its take and release are in-place edits) and why the winner's `<!-- pdlc:consumed {passId} -->` pair
-  is emitted complete, in one append, its consumed set fixed at step 1 before any promotion work (NFR-5). So the loser's refused row and the winner's
+  **Why no lock is needed: the write-granularity obligation** (`docs/_constraints/pdlc-consolidation-vocabularies.md` §3 at `Version` 1.4, binding here and not
+  restated: every log write is one whole record appended at end of file, the whole-file read-modify-write forbidden). Its two consequences here: the
+  marker lives in `.consolidation-lock` (its take and release are in-place edits), and the winner's consumed pair is emitted complete in one append, its
+  set fixed at step 1 before any promotion work (NFR-5). So the loser's refused row and the winner's
   records interleave in either order without loss, which is what makes both durability claims above true.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
