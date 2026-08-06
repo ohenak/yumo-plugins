@@ -183,6 +183,137 @@ set-equality obligation.
 
 ## 3. FSPEC-CONS-02 — The consumed predicate and the LEARNINGS corpus
 
+**Links:** REQ-CONS-01 (predicate, corpus, tick step 1), AC-1.1, AC-1.2, AC-2.4, NFR-5, REQ §5
+(the three shipped-file edits).
+
+### 3.1 The corpus — what is enumerated
+
+Enumeration is **basenames only**. No step in §2.2 before step 9 opens a LEARNINGS file, and a
+`skipped-cadence` tick never opens one at all (§2.4).
+
+| Glob | In corpus | Why |
+|---|---|---|
+| `docs/*/LEARNINGS-*.md` | yes | the shipped glob (`pdlc/hooks/scripts/nudge-consolidation.sh:28`) |
+| `docs/completed/*/LEARNINGS-*.md` | yes — **added by this feature** | this repo archives delivered features one level deeper; depth-1 alone hides 3 of the 5 files present at HEAD |
+| `docs/discarded/*/LEARNINGS-*.md` | **no** | abandoned work is not evidence about a delivered pipeline (REQ-CONS-01 step 1) |
+| anything else | no | the two globs above are the whole corpus definition |
+
+The `docs/completed/*/` widening is the edit to `nudge-consolidation.sh:28` that REQ §5 puts in
+scope. It is made **in the hook and in the pass together**, so the two never enumerate different
+corpora — the same single-predicate discipline §3.2 applies to the membership test.
+
+`docs/discarded/` exclusion is not incidental at HEAD: the directory exists and holds two LEARNINGS
+files (`docs/discarded/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md`,
+`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md`), so a glob widened to
+`docs/*/*/LEARNINGS-*.md` rather than to `docs/completed/*/` would silently admit both. The
+widening is therefore specified as **exactly one added literal path segment**, not as a depth
+increase.
+
+**Measured corpus at HEAD** — 5 files, the population §2.3's first-tick assertion counts:
+
+| # | Path | Region under §3.2 |
+|---|---|---|
+| 1 | `docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md` | legacy — named in Pass 1's consumed table |
+| 2 | `docs/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md` | un-consolidated |
+| 3 | `docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` | un-consolidated |
+| 4 | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` | un-consolidated |
+| 5 | `docs/completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` | legacy — named in Pass 1's consumed table |
+
+Rows 1 and 5 are matched because Pass 1 records its consumed set as a two-column table of **full
+paths** (`docs/_decisions/.consolidation-log.md`, `## Pass 1 — 2026-07-29`), and the legacy clause of
+§3.2 is a basename **containment** test, which a full path satisfies. Row 5's archived location does
+not affect this: the predicate ranges over the basename, and the basename did not change when the
+feature directory moved under `docs/completed/`.
+
+### 3.2 The membership test — one predicate, two regions
+
+A basename is **consolidated** when either clause holds; **un-consolidated** otherwise. The two
+clauses are evaluated against the text of `docs/_decisions/.consolidation-log.md`.
+
+| Clause | Region | Test |
+|---|---|---|
+| (a) block | the text inside any `<!-- pdlc:consumed {passId} -->` … `<!-- /pdlc:consumed -->` pair | the basename appears on a line of that block |
+| (b) legacy | the text **preceding the file's first `<!-- pdlc:consumed` marker** | the basename appears anywhere in that text (the shipped bare substring test, `nudge-consolidation.sh:41`) |
+
+The block grammar, the exclusivity rule ("no other record type may appear inside one"), the
+append-only write granularity, and the two clauses that freeze the legacy boundary are stated in
+`docs/_constraints/pdlc-consolidation-vocabularies.md` §3 at `Version` 1.4 and are **binding here and
+not restated**.
+
+The predicate is **total**: a log with no `<!-- pdlc:consumed` marker at all is legacy region entire
+(the state at HEAD), and an absent log yields both regions empty, so every enumerated basename is
+un-consolidated. Neither state is an error.
+
+**The boundary is computed on the first marker only.** Text *after* the last block but outside any
+block — an effectiveness table, a failure-mode record whose `artifact` field is a LEARNINGS path, a
+terminal row's `pr:` URL — is in **neither** region and can never mark a file consolidated. That is
+the whole reason clause (b) is bounded rather than "everything outside a block": REQ-CONS-01 requires
+exactly this, because this feature writes those record types into the same file.
+
+**Two shipped files are edited to this predicate** (REQ §5, both in scope here):
+
+| File:line at HEAD | Shipped behaviour | Behaviour after this feature |
+|---|---|---|
+| `pdlc/hooks/scripts/nudge-consolidation.sh:41` | `pending = [p for p in learnings if os.path.basename(p) not in logtext]` — bare substring over the whole file (read at `:36-37`) | the same test, scoped to the two regions above |
+| `pdlc/skills/consolidate-learnings/SKILL.md:35` | "Every `docs/*/LEARNINGS-*.md` with a Date Completed after the last logged pass is in scope" — a **date** boundary | replaced by the §3.2 predicate, so the skill prose and the pass agree |
+
+The `Date Completed` boundary is not merely a second definition; it disagrees with the first in a way
+that matters — `Date Completed` is a body field an editor can change after a pass consumed the file,
+which would silently re-open a consolidated LEARNINGS, and reading it requires opening bodies the
+tick order forbids before step 9. The basename test is adopted for both reasons (REQ-CONS-01).
+
+The hook's own threshold (`THRESHOLD = 5`, `:25`) stays the hook's: it governs only whether the
+`SessionStart` advisory line prints. The pass evaluates `consolidation.volumeThreshold` itself
+(AC-1.2, §11), and the hook never starts a pass (§2.1).
+
+### 3.3 Recording consumption — the consumed pair
+
+At step 7 the pass appends **one** pair, complete, in a single append:
+
+```
+<!-- pdlc:consumed {passId} -->
+LEARNINGS-{feature}.md
+…
+<!-- /pdlc:consumed -->
+```
+
+| Property | Value | Source |
+|---|---|---|
+| Membership | **exactly** the un-consolidated set computed at step 2 — neither more nor fewer | NFR-5 |
+| Ordering | one basename per line; no other record type inside the pair | vocabularies §3 |
+| Emptiness | emitted **even when the set is empty**, as an empty pair | NFR-5, vocabularies §3(a) |
+| Position | before any other record this pass writes | vocabularies §3(a) |
+| Write shape | one append at end of file; a whole-file read-modify-write is forbidden | vocabularies §3 |
+| Written by | every marker-holding pass — never a `refused` or `skipped-cadence` tick | AC-1.3, AC-7.2 |
+
+The set is **frozen at step 2** and is not recomputed later in the pass, so a LEARNINGS file that
+appears on disk mid-pass belongs to the next pass, not this one. That freeze is what makes the pair
+emittable in one append before any promotion work.
+
+The pair's durability is the AC-3.8b commit at step 15, which carries `.consolidation-log.md` in its
+pathspec (§5.4). A pass whose commit fails records `writes-uncommitted` and leaves the pair in the
+working tree; the pair is correct on disk either way, and the next pass reads the working tree.
+
+### 3.4 Absent, malformed and truncated inputs (DC-01 receive side)
+
+Every clause below is *total*: no input state aborts enumeration, and none is silently equated with
+a different state.
+
+| Input state | Behaviour | Consequence |
+|---|---|---|
+| Log file absent | both regions empty | every enumerated basename is un-consolidated; the datum set is empty (§2.3), so the first pass runs on the `no-cadence-datum` branch |
+| Log file present, unreadable (permissions, IO error) | treated as **empty text**, mirroring the shipped hook's `except: logtext = ""` (`nudge-consolidation.sh:38-39`) | fail-open toward re-consumption, never toward silently skipping a corpus; NFR-4 suppression is what prevents a duplicate proposal |
+| Log present, no `<!-- pdlc:consumed` marker | legacy region entire | the HEAD state; Pass 1's two files are consolidated by clause (b) |
+| An opening `<!-- pdlc:consumed {passId} -->` with no closing marker (a truncated append) | the unterminated block extends to end of file and its basenames count under clause (a) | a partially-flushed pair never *loses* consumption, so a crashed pass cannot cause its corpus to be re-consumed |
+| A closing `<!-- /pdlc:consumed -->` with no opener | ignored; it opens no block and moves no boundary | a stray marker cannot make later records readable as consumption |
+| A basename appearing both in the legacy region and in a block | consolidated (the clauses are a disjunction) | no double-count: the un-consolidated set is a set of basenames |
+| Corpus glob matches nothing | the un-consolidated set is empty | the volume test cannot fire; the cadence test decides, and a pass that runs is AC-1.4's first cause (`no-op`, empty consumed set) |
+| Two files with the same basename under different directories | one basename, one set member | the predicate keys on basename, as the shipped hook does; the collision is reported in the AC-7.1 report as an operator-visible note, never silently resolved |
+
+The last row is a real possibility once `docs/completed/*/` is in the corpus: an archived feature
+directory and a live one could both hold `LEARNINGS-{feature}.md` during a move. It is reported, not
+repaired — repairing it would need a key the shipped predicate does not have (§14, O-C2).
+
 ## 4. FSPEC-CONS-03 — The in-progress marker
 
 ## 5. FSPEC-CONS-04 — Promotion routing and the consuming-repo writes
