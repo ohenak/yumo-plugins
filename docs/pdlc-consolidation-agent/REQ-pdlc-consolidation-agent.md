@@ -336,10 +336,32 @@ procedural — the agent cannot merge its own proposal even if every other contr
   decided by a deterministic rule with no model judgment — so two runs over the same inputs cannot
   disagree, which is what makes NFR-4 true:
   - `recurred` — at least one LEARNINGS in the consumed set names this `failure-mode-id`.
-  - `prevented` — no consumed LEARNINGS names the id, **and** at least one consumed LEARNINGS comes
-    from a feature that exercised the promotion's recorded `phase` (the population where the failure
-    could have appeared is non-empty).
-  - `insufficient-evidence` — otherwise: no consumed LEARNINGS exercised that phase.
+  - `prevented` — no consumed LEARNINGS names the id, **and** at least one consumed LEARNINGS is
+    decided by the phase observable below to have exercised the promotion's recorded `phase` (the
+    population where the failure could have appeared is non-empty).
+  - `insufficient-evidence` — otherwise: no consumed LEARNINGS is decided to have exercised that
+    phase. This is the arm an undecidable input falls into, so the split is total.
+
+  **The phase observable, named.** A LEARNINGS file at HEAD carries no phase field: its metadata
+  table is `Feature` / `REQ` / `Date Completed` / `Total Iterations` / `Upstream` / `Harvested from` /
+  `DoD rounds` (`pdlc/skills/harvest-learnings/SKILL.md:70-78`), and `## 6. Approval Record` (`:105`)
+  is keyed by document type, not phase. So this feature adds one, exactly as it adds
+  `failure-mode-id`: a **`Phases exercised`** row to the harvest metadata table
+  (`harvest-learnings/SKILL.md:70-78`), whose value is the set of pipeline phase ids that feature's
+  run actually executed. For a LEARNINGS predating that convention the value is derived, by a stated
+  and total mapping, from the `Harvested from` row (`:77`) — the one field that already names phase-
+  bearing artifacts:
+
+  | `Harvested from` basename class | Phases it evidences | Shipped naming |
+  |---|---|---|
+  | `CROSS-REVIEW-{role}-{docType}-v{N}.md` | the phase owning that docType (REQ→R, FSPEC→F, TSPEC→T, DECISIONS→D, PLAN→P, PROPERTIES→PR) | `orchestrate-dev.js:5799` |
+  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | `orchestrate-dev.js:6423` |
+  | `POSTMORTEM-{phase}-{feature}.md` | that `{phase}` verbatim | `orchestrate-dev.js:5429` |
+
+  Any phase the mapping cannot decide for a pre-convention file (I, CR, H, PUB, MERGE) counts as
+  **not** exercised — which routes that promotion to `insufficient-evidence`, never to a guessed
+  `prevented`. Both inputs are file text, so two runs over the same corpus cannot disagree; that is
+  what NFR-4 rests on.
 
   The table is under a **set-equality** obligation: it carries exactly one row per prior promotion
   in the log — no missing rows and no rows for promotions that were never made. A dropped row is a
@@ -350,20 +372,30 @@ procedural — the agent cannot merge its own proposal even if every other contr
   therefore evidence only for the `phase` population test, never for `recurred`.
 - **AC-5.3** — Given a promotion whose verdict was `recurred` on two consecutive **counted** passes,
   Then it is flagged `ineffective` and the pass proposes either a revision or a retirement — an
-  edit that did not work is not left in place indefinitely. The streak is counted **in passes, not
-  elapsed time**, and only passes that returned `prevented` or `recurred` for that promotion are
-  counted: an `insufficient-evidence` verdict and an AC-1.4 `no-op` pass are skipped entirely —
-  they neither advance nor reset the streak. Quiet weeks therefore cannot silently reset it.
+  edit that did not work is not left in place indefinitely — and the AC-7.1 report **names which of
+  those two closed alternatives it chose**, as a field over the set `revision` / `retirement`, so the
+  disjunction is assertable rather than implied. (Which one to choose is FSPEC's rule to state; that
+  the choice is reported is this REQ's.) The streak is counted **in passes, not elapsed time**, and
+  only passes that returned `prevented` or `recurred` for that promotion are counted: an
+  `insufficient-evidence` verdict and an AC-1.4 `no-op` pass are skipped entirely — they neither
+  advance nor reset the streak. Quiet weeks therefore cannot silently reset it. This `counted`
+  population governs the `ineffective` streak **only**; AC-5.5 counts a different population.
 - **AC-5.4** — Given a promotion flagged `ineffective`, Then retiring it follows the same
   propose-only path as making it. A promotion that landed under the AC-3.1 guard set is retired by a
   PR (AC-3.1, AC-3.6). A promotion that landed in the **consuming repo** — `DOMAIN-CONSTRAINTS.md`
   (AC-2.1) or `DECISIONS-{topic}.md` (AC-2.2) — is not a cross-repo edit; its retirement is written
   into `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` for operator approval and is **never**
   applied by the pass. Removal is as reviewable as addition on both routes.
-- **AC-5.5** — Given a promotion that has returned `insufficient-evidence` for
-  `consolidation.unmeasurablePasses` consecutive counted passes (default 3), Then it is reported as
-  `unmeasurable`, so a promotion whose effect can never be observed is visible as such rather than
-  accumulating silently.
+- **AC-5.5** — Given a promotion that has returned `insufficient-evidence` on
+  `consolidation.unmeasurablePasses` consecutive **evaluated** passes (default 3), Then it is
+  reported as `unmeasurable`, so a promotion whose effect can never be observed is visible as such
+  rather than accumulating silently. An **evaluated pass** is a pass with a **non-empty consumed
+  set** that produced any AC-5.2 verdict for this promotion — the population is deliberately *not*
+  AC-5.3's `counted` set, which excludes `insufficient-evidence` by construction and would make this
+  state unreachable. A `prevented` or `recurred` verdict resets the `unmeasurable` streak to zero; a
+  `no-op` pass (empty consumed set) and a `skipped-cadence` tick are not evaluated passes and neither
+  advance nor reset it. Once reached, `unmeasurable` is a standing state reported by every subsequent
+  pass, including a `no-op` one (AC-1.4), until a verdict resets it.
 
 ### REQ-CONS-06 — Advisory-record input
 
