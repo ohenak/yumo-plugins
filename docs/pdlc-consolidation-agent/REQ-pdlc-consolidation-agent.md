@@ -420,7 +420,8 @@ procedural — it holds even if every other control failed.
 - **AC-5.3** — Given a promotion whose verdict was `recurred` on two consecutive **counted** passes,
   Then it is flagged `ineffective` and the pass proposes either a revision or a retirement — an edit that did not work is not left in place
   indefinitely — and the AC-7.1 report **names which of those two closed alternatives it chose**, as a field over the set `revision` / `retirement`, so
-  the disjunction is assertable rather than implied. (Which one to choose is FSPEC's rule to state; that the choice is reported is this REQ's.) The
+  the disjunction is assertable rather than implied — and **absent** for an ordinary `promote`, which chose nothing. (Which one to choose is FSPEC's rule
+  to state; that the choice is reported is this REQ's.) The
   streak is counted per `failure-mode-id` **in passes, not elapsed time**, and only passes that returned `prevented` or `recurred` for that promotion are
   counted: an `insufficient-evidence` verdict is skipped entirely, as is any pass with an **empty consumed set** (which produces no verdict at all —
   AC-1.4's first cause), so quiet weeks cannot silently reset the streak. The population is keyed on consumed-set emptiness, never on the `no-op` label
