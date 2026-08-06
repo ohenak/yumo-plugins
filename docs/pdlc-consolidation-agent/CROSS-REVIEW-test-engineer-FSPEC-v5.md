@@ -34,6 +34,12 @@ re-litigated; I read every changed hunk of the six commits and nothing else.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §10.4 item 10 adds "the **number** of open promotions in the list §8.4 step 1 hands to the harvest prompt" to the report body, and AT-F19's Then asserts "The list's **length** is asserted present in the report body". Present is weaker than correct: a report emitting a constant, or the count of *all* recorded ids, satisfies "present". AT-F19 already knows the expected number on its own fixture — it is `3`, since the expected set is `{B, C, D}`. Should the row assert the literal `3` rather than mere presence, so the reported count and the computed list cannot drift apart? That would make item 10 a second, cheap oracle on the same fixture rather than a formatting obligation. |
+| Q-02 | §6.5's permitted column now names two read verbs, `read-branch` and `read-status`, and AT-Q7/AT-Q7c assert neither presence nor absence of them. That is right for the two the table lists — but the permitted set is now the union of an obliged column and a column that enumerates *specific* reads, so a pass that read something else non-mutating (`git log`, `git diff`, `gh pr list`) would be **red** under containment even though the paragraph's own justification ("reads are non-mutating in both trees, so admitting them costs the oracle nothing") applies to it equally. Is the permitted read set meant to be the closed two-member enumeration the table spells, or the open class "any non-mutating read"? The first is testable as written and I am not filing it; the second needs the table to say so, because a test author will transcribe the closed set. |
+| Q-03 | ER-5 is routed correctly and its shipping assumption is ER-2's, so no AT changes today. One consequence is not stated where a test author would look: AT-L5 compares field **names** and §15.2's free-form row now carries the exception, but if the widened §1 row lands mid-feature, `suppressed-by:`'s value grammar becomes vocabulary-owned and a value-level check becomes available. Is that a deliberate non-goal (values stay outside AT-L5's domain permanently), or an "if the erratum lands" delta like the ones ER-2 and ER-4 spell out for AT-M6 and AT-K6? The other two errata each say what changes on landing; this one says "no AT changes", which reads as the permanent answer and may not be. |
+
 ## Positive Observations
 
 ## Recommendation
