@@ -124,4 +124,50 @@ ruling on the marker) and are not re-asked.
 
 ## Recommendation
 
+**Needs revision.** 2 High, 2 Medium, 3 Low. All seven are new; all nine v2 findings are resolved.
+
+The trajectory is good and worth stating plainly: v1 → v2 closed 8 High, v2 → v3 closed 2 High and
+5 Medium, and the revision did it by finding real seams (`resolveAdvisoryRung`) and real absences
+(the missing phase field, the missing `ESCALATIONS.md`) rather than by softening claims. The bar is
+nonetheless unchanged, and two High findings are open.
+
+### The stopping rule, applied against itself
+
+§5a names four classes that must be fixed at REQ layer. Both Highs land inside that list by the
+REQ's own test, and — as in v2 — neither is an oracle question:
+
+- **F-01** is "a false or under-stated claim about code at HEAD". `commitPaths` is not the queue-row
+  commit, and the shape it actually ships (`git commit -m` with no pathspec, `:8690`) does not
+  deliver AC-3.8b's own "pathspec-scoped … never `-a`" guarantee in the one configuration AC-3.8
+  ships. The correct precedent exists two files over and is one citation away.
+- **F-02** is the same class, plus "a topology the shipped architecture cannot provide". The REQ
+  describes `.consolidation-log.md` as a status-bearing row table; at HEAD it is a one-line JSON
+  array. Neither of REQ-CONS-01's two new mechanisms — the delimited-block predicate and the cadence
+  datum — has anything to read from it, and the consequence is concrete on this repo today
+  (2 LEARNINGS, below the volume threshold, no datum, one file re-consumed with duplicate
+  suppression unable to fire).
+
+The two Mediums are contract contradictions of the same kind v2's F-03/F-05 were: F-03 is three ACs
+disagreeing about a case AC-1.4 itself introduced, F-04 is a destination the REQ commits to without
+saying where it leads. Both are one or two sentences. I would not hold the REQ for the three Lows
+alone.
+
+### What must change for approval
+
+1. **F-01** — cite `commitQueueRow` (`orchestrate-queue.js:1576`) or the advisory-record commit that
+   mirrors it (`:1605`) as AC-3.8b's precedent, and require the pathspec on **both** git calls, so
+   the AC's isolation guarantee is delivered by the mechanism it names.
+2. **F-02** — state what happens to the `.consolidation-log.md` that exists at HEAD: a seeding rule
+   for the `<!-- pdlc:consumed -->` blocks (or an explicit decision to re-consume once, with NFR-4
+   scoped accordingly), **and** a no-datum rule for step 3 of the tick order.
+3. **F-03** — qualify AC-1.4, AC-5.3 and AC-5.5 by consumed-set emptiness rather than by the `no-op`
+   label, so the duplicate-suppressed `no-op` lands in exactly one population.
+4. **F-04** — say where the AC-2.1/AC-2.2 promotions go after AC-3.8b commits them, and what happens
+   if the invoking branch is abandoned.
+5. **F-05** — add `failed` to the two corpus-state rows in §4b, or state that those codes are
+   dropped on a failed pass.
+6. **F-06, F-07** — three citation corrections and one enumeration member. Cheap.
+
 ## Verdict
+
+VERDICT: Needs revision
