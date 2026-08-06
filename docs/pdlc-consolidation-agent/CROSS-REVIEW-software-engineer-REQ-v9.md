@@ -109,4 +109,66 @@ question is left open.
 
 ## Recommendation
 
+**Needs revision.** 0 High, 1 Medium, 2 Low. All three v8 findings closed, no v8 fix regressed, the
+relocation verified lossless row-for-row, and no defect row in the code-claim table for the third
+consecutive round.
+
+The trajectory: v1→v2 closed 8H, v2→v3 2H+5M, v3→v4 2H+2M+3L, v4→v5 2 of 3, v5→v6 4 of 4, v6→v7 5 of
+5, v7→v8 5 of 5 including the High, v8→v9 **3 of 3**. Four consecutive clean sweeps, and the count
+fell 2M+1L → 1M+2L. More telling than the count: v8's two Mediums were both *state* defects — an
+unreachable remediation, an underivable id. This round's Medium is not about a state the machine can
+enter; it is about **who owns a table**. The two Lows are a wrong section number and a missing line
+in a scope list. On this repo's own harvested heuristic — "a state machine stops generating findings
+when its enumeration closes, not when its prose improves, and a reviewer can tell which regime they
+are in by whether the new findings are about *states* or about *strings*"
+(`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md:32`) — this round is
+the first in which I found **zero** state defects. That is the transition that document calls the
+only reliable convergence signal it observed in nine rounds.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream. None of mine is
+of that class, so I apply the positive test — does each belong *here*?
+
+- **F-01 (Medium)** belongs here. The set-equality obligation is stated in this REQ (§4b), and what
+  an enumeration's oracle ranges over is the contract itself, not a mechanism for testing it. An
+  FSPEC resolving it would be choosing the scope of a REQ-level obligation. It also matches §5a's
+  own "must be fixed here" list under *deferral with no bound successor* in spirit: the file names
+  successors as readers and binds none as writer.
+- **F-02, F-03 (Low)** would not hold the document alone. Take them in the same pass; they are a
+  section number, a line number and one clause.
+
+### On the TE panel's F-48, since it overlaps my F-01 region
+
+I looked at the "both alternatives spent" state independently and do **not** file it. NFR-4 reads
+state at poll time and excludes closed-unmerged explicitly — "a **closed-unmerged** PR is *not* [a
+key] — the operator rejected that proposal, and a later pass re-proposing it is intended behaviour"
+(`:525-526`). So the only way both actions are simultaneously spent is a `retire` that is open (the
+retirement is already before the operator — the AC-5.3 promise is discharged, nothing further is
+owed) or merged (the promotion is gone — AC-5.3's population is empty for it). An operator rejection
+frees the key. I could not construct a state where a promotion is both live and unremediable. Noted
+here rather than argued in the REQ, so the author is not asked to fix a hole two reviewers disagree
+about existing.
+
+### What must change for approval
+
+1. **F-01** — one sentence in §4b saying which rows the set-equality oracle ranges over. Cheapest
+   true version: "This REQ owns every row of `pdlc-consolidation-vocabularies.md` §1 and §2; a
+   successor's vocabulary belongs in its own section or its own file, and a value used here and
+   absent there is a defect" — the shipped precedent's sentence
+   (`docs/discarded/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md:223`) with the names
+   changed. If the answer to Q-01 is that `pdlc-engineering-loop` will interleave rows, use ids
+   instead and scope the obligation to the owned ids.
+2. **F-02** — REQ `:484` "baseline §3" → **§4**; vocabularies `:96` "read at `:32`" → `:36-37`.
+3. **F-03** — add the two `docs/_constraints/` paths to §5's in-scope list, and repoint §5's
+   "reporting against §4b's vocabularies" at the vocabularies file.
+
+All three fit in well under the 387 bytes of headroom **if** (1) is written as a replacement for
+§4b's current last sentence rather than an addition — which it can be, since that sentence already
+tries to say this and says it about "the table" instead of about the owned rows. If it cannot,
+Q-02's relocation question has to be answered first: do not buy these three fixes by deleting a
+reason.
+
 ## Verdict
+
+VERDICT: Needs revision
