@@ -965,7 +965,10 @@ The status text recorded is the API's, never the request.
 
 ### 8.1 The failure-mode record and the id derivation
 
-Every promotion records a four-field structured record, not prose:
+Every promotion records a **seven-field** structured record, not prose. **This table is normative for
+the record's shape** — every other section that reads a field off a failure-mode record (§6.4's
+consuming-repo carrier, §8.4 step 1, §10.2 order 2) reads it from here, and §8.2's keying tuple
+`(failure-mode-id, passId, action)` is a *key over* these fields, never a second field list:
 
 | Field | Value | Keys the id? |
 |---|---|---|
@@ -973,6 +976,14 @@ Every promotion records a four-field structured record, not prose:
 | `phase` | a member of the closed 13-member catalogue `R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE` (vocabularies §1, sourced from `PHASE_DISPATCH`, `orchestrate-dev.js:3337-3437`, and the `recordPhase` literals for I `:10020`, PT `:10250`, H `:10407`, PUB `:10462`, MERGE `:10568`) | **yes** |
 | `symptom` | one line, human-readable, explicitly **non-keying** | **no** |
 | `artifact` | **exactly one canonical repository path** — the single file the edit touches; never a glob, never a directory; root-relative, no `./`, no symlink alias | **yes** |
+| `passId` | the `passId` (§2.5) of the pass that wrote this record — the record's own identity half (§8.2) | **no** |
+| `action` | `promote` / `revise` / `retire` (§8.2), the second half of NFR-4's suppression key | **no** — never folded into the derivation |
+| `route` | the route the promotion actually took, over the vocabularies §1 route set `constraints` / `decisions` / `PR` / `degraded` — the same four values `promotions:` carries (§10.3). `degraded` means it reached **nothing but** the §5.3 proposal file | **no** |
+
+`passId`, `action` and `route` are bookkeeping, not identity: the *promotion* is keyed on the id
+alone (§8.2), and none of the three participates in the derivation below. They are in the record
+because two contracts read them off it — NFR-4's consuming-repo carrier reads `action` and `route`
+(§6.4), and §8.4 step 1's open-promotion list reads `action` and `route`.
 
 **The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs:
 
