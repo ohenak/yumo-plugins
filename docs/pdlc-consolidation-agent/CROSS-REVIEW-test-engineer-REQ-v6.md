@@ -90,4 +90,49 @@ questions, because both have to be *decided* rather than clarified.
 
 ## Recommendation
 
+**Needs revision** — 0 High, 2 Medium, 2 Low. All five v5 findings are resolved, one of them by
+correcting my own error. Both remaining blockers are in material this round introduced.
+
+I applied §5a's stopping rule as written, and I want to be explicit about why neither Medium is the
+"this cannot be tested as written" class §5a routes downstream. Neither asks for an oracle, a
+property axis, a fixture or a coverage floor. Both say a **guarantee the REQ states as achieved is
+not achieved by the mechanism the REQ states**:
+
+- **F-38** — NFR-4 promises per-promotion duplicate suppression that survives the loss of the log
+  record. AC-5.1 grounds that promise in id stability. Id stability is grounded in a `symptom` line
+  the pass's own model writes, with no closed vocabulary. That is §5a's "a topology the shipped
+  architecture cannot provide", and it decides whether `duplicate-suppressed` — a first-class member
+  of §4b's closed reason-code set, permitted with three terminal statuses — can ever fire on the case
+  NFR-4 exists for.
+- **F-39** — AC-1.3 promises that a `refused` pass's row is durable without a commit and without a
+  lock. The mechanism it cites (append-only writes) is real and I verified it at
+  `runtime-adapter.js:863`, but it does not cover the winner's marker *removal*, which AC-1.3 and
+  AC-3.8b both require and which no append can perform. That is §5a's "a false or under-stated claim
+  about code at HEAD".
+
+Re-opening: neither finding touches a settlement. F-38's key was introduced by `e75a115`, F-39's
+no-commit decision by `4e2c002` — both this round, both new evidence at `file:line`.
+
+What must change:
+
+1. **F-38** — decide what `failure-mode-id` is a function of. Either narrow the derivation to inputs
+   that are stable across passes (`phase` plus a closed symptom-class vocabulary, free text demoted
+   to a non-keying field), or state that cross-pass stability is not guaranteed and name the accepted
+   consequence, so NFR-4 stops promising a suppression it cannot perform.
+2. **F-39** — say what makes a `refused` row durable across the winner's marker removal. Either move
+   the marker out of `.consolidation-log.md` so every log write is an append and "need no lock"
+   becomes true, or state the loss window and what survives it (AC-7.1's report carries the status —
+   assert that positively rather than leaving the row's presence as the only oracle).
+
+F-40 (`failure-mode-id` uniqueness vs. determinism has no tie-break) and F-41 (8 bytes of headroom
+under `check-req-size.sh`'s ceiling; the recurrence is the signal, and REQ-CONS-05/06 is the phasing
+seam) are corrections, not blockers.
+
+No upstream defects were found this round. Every `orchestrate-dev.js`, `runtime-adapter.js`,
+`orchestrate-queue.js`, `check-req-size.sh`, `nudge-consolidation.sh` and `MERGE_GUARD_DEFAULTS`
+citation in the changed text resolves to a real authority saying what the REQ attributes to it. No
+ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Needs revision
