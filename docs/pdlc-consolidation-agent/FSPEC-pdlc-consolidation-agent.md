@@ -2224,11 +2224,15 @@ and what a defective implementation does. This register is **set-equal** to the 
 document names; a deferral added later is a row added here, and a section that names one without a
 row is a defect of this table. **The scope is PROPERTIES-owned deferrals only, and deliberately so**
 (TE v9 Q-01): the *spellings* this document defers to TSPEC under the same `DEC-LAYER-01` — §8.3's
-unavailable-path cell and §8.1's unavailable-`phase`/id arms, §10.3's `suppressed-by:` unavailable
-rendering, §6.4's — and §6.5's seam permitted-set widening are **§14.1's, collected there as T-10**,
-not this table's: they are deferrals of a *literal* to the layer that pins literals, not of a fixture
-to the layer that writes fixtures. Between the two registers, every deferral this document makes has
-exactly one home.
+unavailable-path cell and §8.1's §8.4 steps 2–3 unavailable-**half** rendering, §10.3's
+`suppressed-by:` unavailable-`passId` rendering, §6.4's — and §6.5's seam permitted-set widening are
+**§14.1's, collected there as T-10**, not this table's: they are deferrals of a *literal* to the
+layer that pins literals, not of a fixture to the layer that writes fixtures. **The `phase` and
+`failure-mode-id` arms are this table's alone** (LD-5), not both registers' (SE v10 F-01, TE v10
+M-01): neither renders an unavailable literal — the first carries the pinned §15.2 verdict
+`insufficient-evidence`, the second emits no row — so there is no spelling for T-10 to own. Between
+the two registers, every deferral this document makes has exactly one home, and the two are disjoint
+on their members as well as in their kinds.
 
 | # | Obligation deferred to PROPERTIES | Observable stated at | A defective implementation |
 |---|---|---|---|
