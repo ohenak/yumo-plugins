@@ -96,4 +96,46 @@ it ranges over.
 
 ## Recommendation
 
+**Needs revision**
+
+Both v9 findings are closed as filed and all three v9 questions are answered — the ninth consecutive
+round in which every prior item was addressed rather than argued with, and the Medium was closed by
+the more expensive of the two directions I offered. **No High finding remains, and none has since
+v3.** One **Medium** is open, and it is open on text this round added:
+
+1. **F-01 — §14.5's new disjointness paragraph (`:2225-2231`) sends an arm to a register that does
+   not carry it, and the arm has no spelling to defer.** It assigns "§8.1's unavailable-`phase`/**id**
+   arms" to §14.1 T-10; T-10 (`:2160`) enumerates four spellings and none is an id, and §8.1's id arm
+   emits nothing at all — "the record contributes **no** row and the parse notice is the whole report"
+   (`:1182`), "§8.4 asks no question for it" (`:1180`). So the paragraph's own "every deferral this
+   document makes has exactly one home" is false for that arm (zero homes as a spelling, one as
+   LD-5's fixture), and a TSPEC author who discharges it as written pins a literal for a cell §8.1
+   forbids. Two edits close it: drop `/id` at `:2227`, and anchor T-10's `phase` rendering at §8.4
+   steps 2–3's row (`:1180`), which is the row that states it, rather than at §8.3's, which renders
+   nothing and moves the verdict instead.
+
+2. **F-02 (Low) — give §8.4 step 1's cell its `failure-mode-id` arm** (`:1179`), so the only statement
+   of that case is not in a different reader's row (`:1180`) under a rule that makes the cell
+   normative (`:1155-1159`).
+
+3. **F-03 (Low) — add `action` to E-12b's field→reader parenthetical** (`:2590`), which lists seven of
+   eight fields while the same row's AT cell names the `action` arm.
+
+The Medium is two edits inside the registers; none of the three touches an arm, a rule, or an
+observable. Everything this round changed in the contract itself I would keep verbatim: the §8.4
+harvest question as a reader in its own right, the `phase` arm derived from the totality rule it
+inherits, the id arm's honest exception to "never dropped" reconciled with §8.3's set-equality, the
+cell-over-default normativity rule, and AT-F21 declining to grow while naming where the declined
+scope went.
+
+**No erratum is emitted with this review.** The only upstream defect in scope remains the
+`suppressed-by:` value grammar at `docs/_constraints/pdlc-consolidation-vocabularies.md:63`, already
+routed as §14.4 ER-5 and re-verified verbatim at HEAD this round.
+
 ## Verdict
+
+One Medium finding (F-01) and two Low (F-02, F-03) are open, all three against text added this round;
+no High finding remains. Per the approval rule — any High or Medium finding ⇒ Needs revision — this
+iteration does **not** approve `FSPEC-pdlc-consolidation-agent.md` at version 10.0.
+
+VERDICT: Needs revision
