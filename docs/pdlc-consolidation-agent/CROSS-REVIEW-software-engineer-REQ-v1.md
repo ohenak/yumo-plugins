@@ -56,11 +56,24 @@ Every assertion the REQ makes about *existing* code, checked in one pass against
 
 ## Questions
 
-_(populated below)_
+| ID | Question |
+|----|---------|
+| Q-01 | In the self-consuming configuration (F-03), is the promotion PR cut from the same clone the pipeline is running in, or from a separate clone the pass makes? The answer changes AC-4.4, NFR-4 and the branch lifecycle in F-13, and it is a scope decision, not a TSPEC detail. |
+| Q-02 | Is AC-5.2's recurrence verdict deterministic or model-made (F-11)? If model-made, does NFR-4 mean "no duplicate *promotion*" only, with the effectiveness table exempt from idempotence? |
+| Q-03 | AC-3.3 lets multiple promotions share one PR, and AC-5.4 routes retirements down the same path. May an additive promotion and a retirement of a *different* promotion share one PR, or must retirements be separately reviewable? |
+| Q-04 | AC-5.3 flags `ineffective` after recurrence "across two consecutive passes". With cadence unresolved (BL-04), two passes could be two weeks or two days apart. Is the window measured in passes or in elapsed time, and does a `no-op` pass (AC-1.4) count as one of the two? |
+| Q-05 | AC-6.3 allows proposing an envelope widening. The advisory envelope is a four-member literal in config (`advisory.envelope`, per-key independent fallback). Is a widening proposal a PR against `pdlc/workflows/**` (the shipped default) or against a consumer's `.claude/pdlc.config.json` — which is *untracked* config, not a PR-able surface? |
+| Q-06 | AC-7.2's "single notification" names no channel. Is that the run report, a `notice`, or a push notification? Unattended execution (F-04) has no session to print into. |
+| Q-07 | Does AC-1.4's `no-op` still run REQ-CONS-05's effectiveness reporting? A pass with no new LEARNINGS can still observe that a prior promotion has aged into `insufficient-evidence` (AC-5.5) — but AC-1.4 says it "exits successfully without opening anything". |
 
 ## Positive Observations
 
-_(populated below)_
+- **The problem statement is unusually honest and precise.** §1's distinction between *propose-only* and *hand-transcribed* — "the skill currently enforces the second while only intending the first" — is the correct diagnosis and it is verifiable at `pdlc/skills/consolidate-learnings/SKILL.md:49`. It names a real defect rather than a preference.
+- **REQ-CONS-02 is the right shape for a preservation requirement.** Pinning the unchanged behaviours as explicit ACs (AC-2.1 … AC-2.4) rather than as prose means a regression in the existing skill is a failed AC, not a silent loss. AC-2.3's bar is transcribed faithfully from the source (claim 9 above).
+- **AC-4.1's credential separation is stated as a structural property, not a policy.** The paragraph after REQ-CONS-04 — "the agent cannot merge its own proposal even if every other control failed" — is exactly the right justification altitude, and it is the one control in this REQ that would still hold if F-01's guard claim were removed entirely.
+- **REQ-CONS-05 is a genuinely rare requirement.** Most improvement loops are unfalsifiable by construction; requiring each promotion to name the failure mode it targets, and each later pass to grade it `prevented` / `recurred` / `insufficient-evidence` over a closed three-value set, is a real oracle design. AC-5.5's `unmeasurable` state is the part most specs omit.
+- **The deferral table binds successors properly.** D-CONS-02 and D-CONS-04 both name `pdlc-engineering-loop` as the binding surface rather than trailing off into prose intent — DC-08 compliant. D-CONS-03's rationale (effectiveness beats age as a pruning signal) is correct and worth keeping.
+- **Dependency reasoning is sound and checks out.** BL-02's claim that an undistributable promotion is not a promotion is exactly why the master plan orders this 4th (`MASTER-PLAN-engineering-loop.md:246`), and both blockers are in fact delivered (claims 16–17).
 
 ## Recommendation
 
