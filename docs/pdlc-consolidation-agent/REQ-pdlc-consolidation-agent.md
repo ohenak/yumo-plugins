@@ -119,9 +119,11 @@ The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) ap
 consolidated is re-consumed and no transcription or parse of Pass 1's prose is required. It is frozen by construction, in two clauses: **(a)** every pass
 that takes the AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when
 its consumed set is empty** (the pair is then empty, which satisfies NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by
-the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** the AC-1.3 in-progress marker is the one **exempt** record —
-it is written before the block, but it carries a passId and an ISO-8601 timestamp, never a basename, is never committed, and is removed by the pass
-that wrote it, so it cannot be read as legacy consumption. Every other record this feature introduces lands after the boundary.
+the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** exactly **two** records are exempt — both can precede the
+first block, and neither is readable as legacy consumption because neither ever carries a basename: the AC-1.3 in-progress marker (a passId and an
+ISO-8601 timestamp, never committed, removed by the pass that wrote it), and a `refused` pass's AC-7.2 row (status, trigger, `credential:` and reason
+code only — AC-1.3), which a tick losing the race between the winner's marker and its block can write there. Every other record lands after the
+boundary.
 `nudge-consolidation.sh:41` is updated to the same two-region rule, keeping hook and pass on one predicate. **On this repo
 today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
@@ -414,7 +416,7 @@ makes that structural — the agent cannot merge its own proposal even if every 
   | `Harvested from` basename class | Phases it evidences | Shipped naming |
   |---|---|---|
   | `CROSS-REVIEW-{role}-{docType}-v{N}.md` | the phase owning that docType (REQ→R, FSPEC→F, TSPEC→T, DECISIONS→D, PLAN→P, PROPERTIES→PR) | `orchestrate-dev.js:5799` |
-  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | `orchestrate-dev.js:7911` (the dod-verify dispatch, taken on every DoD round); classified at `:6423` |
+  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | both dod-verify dispatch sites — `orchestrate-dev.js:7911` (round 1, `dodVerifyPrompt`) and `:7941` (rounds ≥2, `dodReVerifyPrompt` `:7924`); classified at `:6423` |
   | `POSTMORTEM-{phase}-{feature}.md` | that `{phase}` verbatim | `orchestrate-dev.js:5429` |
 
   The split is **per file, not a fixed partition of the catalogue**, and row 3 takes precedence over every other statement here. For one
@@ -422,7 +424,7 @@ makes that structural — the agent cannot merge its own proposal even if every 
   whatever `{phase}` row 3 names verbatim; **undecidable** = the §4b catalogue minus that set. Their union is set-equal to the catalogue for every
   file — which is what makes the rule total — but neither half is fixed, because `{phase}` in a POSTMORTEM basename is **any** halting phase, not only
   a converge phase: the shared review loop builds `POSTMORTEM-${phaseId}-${feature}.md` (`orchestrate-dev.js:5429`), Phase CR runs that loop with
-  `phase: "CR"` (`:10255-10256`), and the halt path builds the same name from whatever phase halted (`:10603`). So `POSTMORTEM-CR-*` is producible and
+  `phase: "CR"` (`:10255-10257`), and the halt path builds the same name from whatever phase halted (`:10603`). So `POSTMORTEM-CR-*` is producible and
   decides CR for the file naming it; a file naming none decides no phase. Nothing here is a disjointness claim, and a set-equality test transcribed
   from this paragraph must be written per file. Any phase the mapping cannot decide for a pre-convention file counts as **not** exercised
   — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`. Both
