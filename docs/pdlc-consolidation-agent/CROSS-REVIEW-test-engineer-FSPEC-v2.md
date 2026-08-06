@@ -54,7 +54,12 @@ _(Medium)_
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | v1's Q-02 was not addressed and the changed §13.1 makes it sharper. AT-C3's Then is now four conjuncts of which three are absences ("**no** log row is appended; no LEARNINGS body was read; no `passId` minted; no git call made") and one is the terminal `skipped-cadence` — which §12.1 S-01 says is written to no log row and §10.1 does not place in a returned body. What is the **positive** artefact a test reads to know the tick ran and chose this branch rather than crashing at step 3? If it is the returned report body, §10.1 should say a `skipped-cadence` tick returns one; if a `skipped-cadence` tick returns nothing at all, AT-C3 is four absence assertions with no positive conjunct on the same path, and needs a call-count oracle over the git and IO seams to be falsifiable. |
+| Q-02 | v1's Q-03 stands: §12.1 S-03's status cell is "`promoted` / `no-op` per outcome", and AT-C1's Then (now over the constructed fixture) asserts trigger `cadence` and reason `no-cadence-datum` but still no status. For a bootstrap tick on an empty corpus — E-08 ∧ E-01 together, the state every consuming repo starts in — which of the two is it? Both rows exist individually; their conjunction is the first tick anyone will ever run. |
+| Q-03 | v1's Q-04 stands: §8.3's effectiveness table is "one row per distinct `failure-mode-id`" over *all* prior promotions and grows without bound; AT-F5 fixes N. Is there a bound, or a rule that removes `retired` ids from the table? §8.4's new step 1 introduces the notion of an **open** promotion ("a promotion is open when its most recent standing state is not `retired`") for the harvest lookup — does that same predicate filter §8.3's table, or is `retired` still reported there forever? The two sections now use the word differently and a retirement test cannot be written until they agree. |
+| Q-04 | §14.4 ER-2 asks the REQ for an `advisory-dispatch-failed` reason code, and until it exists AT-M6 discriminates row 4 by a report-body string. If the erratum lands **during** this feature, AT-M6's oracle changes shape (reason code, not body text) and §12.1 S-11b's "**none**" cell inverts. Which is the shipping assumption — that the ATs are written against the current `Version` 1.4 and revised on landing, or that implementation waits for the bumped vocabularies? A tester needs to know which of the two AT-M6s to write. |
 
 ## Positive Observations
 
