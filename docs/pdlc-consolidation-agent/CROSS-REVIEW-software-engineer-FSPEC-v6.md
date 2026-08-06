@@ -107,4 +107,43 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Recommendation
 
+**Needs revision**
+
+All six v5 findings and all three v5 questions are closed as filed — the fifth consecutive round in
+which every prior item was addressed rather than argued with, and the first in which two of the
+repairs (AT-R6b's five fixtures, §8.1's reader table) went materially past what was asked. **No High
+finding remains, and none has since v3.** What is open is three Mediums and two Lows, every one of
+them inside text this round added, and none touching scope, structure, or a settled decision.
+
+1. **F-01 — AT-F21's middle prohibited behaviour is misidentified.** `route ?? "degraded"` cannot
+   close an id under BR-33c's predicate or make a pair `enacted` under BR-25 — it produces exactly
+   the skip rule's outcome on both readers, so conjunct (3) is green on it and "each is red on
+   exactly one of these conjuncts" is false. The unsafe default is a **non-`degraded`** one on a
+   `retire` record, and the fixture must give `E` that record for the open-list conjunct to be
+   anything but vacuous. Fix the parenthetical, pin `E`'s `action`, reassign the conjunct mapping.
+2. **F-02 — the reader table is one row short of the enumeration it claims to be.** §8.6 routes a
+   remediation on `target` (the paragraph directly beneath the table says so) and has no arm. Add the
+   row, or state that it shares §5.1's arm; either way E-12b's field list should name it.
+3. **F-03 — O-C8's subject-axis compensation does not exist.** "Both are described in the merged
+   `symptom`" is obliged by no rule (§8.2 obliges both *failure modes*, not both *paths*; §8.1 pins
+   `symptom` non-keying) and asserted by no test, and §10.4 item 4 — the compensation that carries the
+   kind axis — is scoped to **mixed-kind** merges, so the common same-kind collision reports the
+   elided path nowhere. Widen item 4 to name the elided subject path whenever the tie-break ran (plus
+   one conjunct on AT-R6b fixture 2), or withdraw the claim and state the loss as unreported.
+
+F-04 and F-05 are corrections of record: a closed-set paragraph in §6.5 that is scoped to no domain
+and whose `gh pr list` example contradicts the PR seam's own obliged `read-pr`, and a tie-break whose
+key word "normalised" is §8.1's word for the transform that makes its two candidates identical.
+Neither blocks; both are one clause.
+
+**No erratum is emitted with this review.** The only upstream defect in scope this round — the
+`suppressed-by:` value grammar at `pdlc-consolidation-vocabularies.md:63` — is already routed as ER-5
+and its on-landing delta was strengthened this round; nothing new was found upstream.
+
 ## Verdict
+
+No High finding remains. Three Medium findings (F-01, F-02, F-03) are open, plus two Low (F-04,
+F-05). Per the approval rule — any High or Medium finding means the document is not approved — this
+iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision
