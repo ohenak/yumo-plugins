@@ -92,4 +92,52 @@ two are Low.
 
 ## Recommendation
 
+**Needs revision**
+
+All three v9 findings are resolved, and the Medium was resolved by the larger of the two shapes I
+offered: the reader table was completed rather than the claim scoped, the arms were carried back into
+§8.3 and §8.4 themselves, and the general skip rule was amended so the forbidden third outcome is no
+longer reachable from the default. Both v9 questions were answered by construction. Nothing in this
+revision re-opens a settled decision, and nothing in it broke a section I had previously approved — I
+re-derived the field-side set-equality over all eight fields, re-checked the eight-reader counts at
+`:1104`, `:1153-1157` and `:1191-1193`, re-verified the `phase` arm's antecedent at `:1384` and
+`:1396-1399`, confirmed AT-F21 still covers exactly the two arms BR-33a claims for it, and re-checked
+every repo path the changed text names.
+
+The verdict is **Needs revision on M-01 alone**, and the reasoning is the same shape as v8's and
+v9's, applied consistently. `DEC-LAYER-01` puts fixture construction and set-equality *domains* below
+this layer, and I have applied that: L-01 and L-02 are gaps in coverage enumerations whose rules are
+stated, and they are Low for exactly that reason; LD-1…LD-5 are not findings at all. M-01 is neither.
+This revision **made a new completeness claim** — "Between the two registers, every deferral this
+document makes has exactly one home" (`:2230-2231`) — and the table three lines below it falsifies
+the claim on two arms, while the one literal the revision actually introduced (`:1180`'s "stated as
+unavailable rather than guessed") is in neither register. It is load-bearing for testing because the
+two registers are precisely where a TSPEC author and a PROPERTIES author are told to look, and here
+they are told to look in both: T-10 sends TSPEC to invent a spelling for a `phase`-short §8.3 row
+whose verdict this document **pins** to the §15.2 value `insufficient-evidence` (`:1182`, `:1835`
+fixing what the row renders), against T-10's own criterion that "§15.2's lexicon owns no such value".
+Take that instruction literally and the row never carries `insufficient-evidence`, §8.7's streak
+(`:1543-1546`) never accumulates for that promotion, and `unmeasurable` is unreachable on the path —
+a silent drift with no oracle, which is the harm §8.4's lookup and O-C7 both exist to refuse.
+
+The repair is two clauses in the two registers, adds no BR and no AT, touches no fixture, and is
+fully inside the freeze:
+
+1. **M-01** — delete the `phase` and `failure-mode-id` arms from T-10 (`:2160`) and from §14.5's lead
+   (`:2227`); they are LD-5's, and LD-5 already states them correctly. In their place, register the
+   literal that is genuinely TSPEC's: §8.1's §8.4 steps 2–3 unavailable-half rendering (`:1180`).
+   Then "exactly one home" is true in both directions.
+2. **L-01** — widen LD-1's scope line to name the §8.4 steps 2–3 row with its own `artifact`
+   observable, or add `artifact` to LD-5, and reconcile E-12b's arm enumeration with the three
+   readers its own Given now names.
+3. **L-02** — split §8.4 step 1's cell as §8.3's was split ("an id-less record contributes no member;
+   the notice is the report"), and point LD-5's `Observable stated at` at it.
+
+Taking (1) clears the verdict. (2) and (3) are Low and may be carried as tracked deferrals per
+`DEC-LAYER-01` — though (3) is the residue of a repair this revision already made correctly one row
+away, and is a transcription rather than a decision.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 2}
