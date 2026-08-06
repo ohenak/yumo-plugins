@@ -112,6 +112,34 @@ restated only so that the two fixes are not expanded into paragraphs.
 
 ## Positive Observations
 
+- **The REQ survived a whole Phase F without needing an erratum.** Between the commit I reviewed and
+  HEAD, an FSPEC was authored, reviewed five times by two reviewers, hit a round limit, produced a
+  POSTMORTEM and was resolved. That is the process's hardest stress test of an upstream document:
+  ten cross-reviews and a root-cause analysis, all reading this REQ, none of which required a
+  versioned edit to it. `git diff e54ee26..HEAD -- .../REQ-*.md` being empty is not inertia — it is
+  the absence of an erratum channel firing across 66 commits of downstream work.
+
+- **§5a's downstream routing named the right layers a round before it mattered.** DEC-LAYER-01 was
+  recorded because the FSPEC settled decisions belonging a layer down and manufactured Mediums at the
+  rate it retired them. The rule §5a already carried routes "fixture construction and oracle
+  mechanics" to "FSPEC, TSPEC and PROPERTIES" (`:602-603`) — all three, not FSPEC alone. Had it said
+  "downstream to the FSPEC", it would have been a contributing cause of the very window exhaustion
+  the new decision addresses, and this round would have opened with a Cross-Feature finding against
+  it. Naming the full downstream set rather than the next hop is the kind of precision that only pays
+  off retroactively, and it paid off here.
+
+- **The two governed files did not drift while unattended.** `git diff e54ee26..HEAD --
+  docs/_constraints/` is empty across the whole Phase F interval. That is worth noting rather than
+  assuming: a shared reference file cited by an active FSPEC is exactly the artefact a downstream
+  author is tempted to adjust in passing, and the ownership paragraphs the REQ wrote into both files
+  (`pdlc-consolidation-vocabularies.md:18-27`, `pdlc-advisory-corpus-baseline.md:15-20`) are what
+  made that temptation legible as a violation. The mechanism was tested by a real phase and held.
+
+- **No code claim went stale, and I can prove it rather than spot-check it.** The usual risk for an
+  unchanged spec is that the tree moves beneath it. Here the exclusion diff over everything outside
+  `docs/` is empty, which converts a sampling exercise into a proof — and the five anchors I
+  re-derived anyway all match. Sixth consecutive round with no defect row.
+
 ## Recommendation
 
 ## Verdict
