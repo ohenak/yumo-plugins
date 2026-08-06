@@ -48,6 +48,12 @@ finding.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §10.4 item 4's subject-axis clause obliges the report to name "**every** canonical subject path the tie-break elided" (`:1774-1776`). §8.2's tie-break selects the lexicographically first of the candidates, and §8.2 consequence 1 already contemplates a merge "of **three** failure modes under one key" (`:1256-1257`) — so the elided set can have more than one member. AT-R6b fixture 2 asserts the two-candidate case (one elided path, named literally). Nothing in §13 exercises three, and nothing needs to at this layer — but is the three-candidate case in scope for the PROPERTIES row §8.2's third note already opens (the two-process-learning colliding merge)? If so, one clause naming it there would keep the whole tie-break surface under one downstream owner rather than two. |
+| Q-02 | E-12b now names the `artifact` arms PROPERTIES-owned (`:2507`) and §8.2's third note names the `target`-follows clause PROPERTIES-owned (`:1300-1307`). Both are the right call under DEC-LAYER-01. Is there a place in this document that collects those deferrals — the way §14.4 collects errata — so the PROPERTIES author inherits a list rather than a grep? Two are easy to carry in the head; the count rose from zero to two in one round, and §14.2's observed-constraints table is the nearest existing shape. |
+| Q-03 | AT-F21's Given has the later pass "re-derive `F`'s promotion", and conjunct (3)'s `F` arm asserts a set of negatives — not routed, no write on its behalf, no `route` guessed, no §8.6 remediation — with "re-proposed on a later pass" as the positive. That positive is not observable inside the pass under test. The pairing is nonetheless satisfied on the same path by conjunct (2)'s parse notice naming `F`, and by conjunct (1)'s terminal status, so the row is not an absence-only oracle as it stands. Is the intent that (2) is the positive for `F`'s arm? If so it is worth half a clause, because the arm currently reads as if "re-proposed on a later pass" were the assertion, and a test author may go looking for a second-pass fixture the row does not require. |
+
 ## Positive Observations
 
 ## Recommendation
