@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (pm-author) | 2.0 | 2026-08-06 |
 
-RESOLVED: no
+RESOLVED: yes
 
 > **Second halt.** Version 1.0 of this file recorded the rounds 1–5 halt and was resolved on
 > 2026-08-06. That resolution is preserved in **§ Appendix A**, and its two countermeasures — the
@@ -794,3 +794,45 @@ observable and names the pinning artefact's owner. Companion to DEC-SEV-01.
 
 **Step 4 — re-entry.** Queue row 15 back to `pending`; re-entry opens rounds 6–10 from the
 on-disk `-v5` basenames. Expectation: one short delta round confirming the closures above.
+
+## Resolution (window 2 — rounds 6–10, 2026-08-06)
+
+The Recommendation was carried out in full by the outer orchestrator.
+
+**Step 1 — verification (Opus agent, FSPEC v11.0 at HEAD, judged against file text).** Of the six
+round-10 items: SE F-02 / TE L-02 CLOSED (§8.4 step 1's two-arm cell states its own
+`failure-mode-id` arm); SE F-03 CLOSED (E-12b names all eight fields including `action`);
+TE L-01 CLOSED (LD-1 three-readers-three-arms, E-12b and BR-33a reconciled); the repair introduced
+zero line-number self-citations and the FSPEC now carries none anywhere. SE F-01 / TE M-01 was
+**PARTIAL**: the two named sub-edits landed (T-10 no longer names the `phase`/id arms; §14.5's
+lead assigns both to LD-5 alone), but the "exactly one home" sentence had been repaired again
+rather than deleted and was still falsifiable in the arm→register direction.
+
+**Completion of step 1 per steps 1–2's own rule (delete, don't repair) — FSPEC v11.1, four
+deletions, no new rule/BR/AT/register entry:** the `:2235-2237` "exactly one home / disjoint on
+their members" sentence deleted entire (this is the sentence both terminal Mediums are about);
+T-10's ", and the two sets are disjoint" deleted; BR-33a's ", so every arm has exactly one home"
+deleted; E-12b's ", per that table's cell-level set-equality" deleted. The verifier's universals
+scan confirms the remaining coverage claims (§14.5's set-equality lead, §8.1's reader-table
+paragraph) are true by inspection at HEAD and predate the repair commits.
+
+**Step 2 — register freeze, declared and in force for the confirming round.** The mechanism
+freeze continues and is extended: rounds 11–15 may add no new register entry, no new coverage
+universal, and no new "exactly one / for every / set-equal" sentence about the document's own
+bookkeeping; where one exists and is not itself a downstream observable, it is removed and the
+members kept. A finding proposing a new coverage argument is Low/deferred per DEC-SEV-02.
+
+**Step 3 — approval carry-forward recorded.** `docs/_decisions/DECISIONS-review-convergence.md`
+DEC-CONV-01: an approval stands across rounds and is re-opened only by that reviewer on a
+Scope-touching diff or a new Medium-or-higher finding; convergence is both reviewers *holding*
+an approval. Companion severity ruling DEC-SEV-02 added to
+`docs/_decisions/DECISIONS-review-severity-bars.md`: a falsified bookkeeping-completeness
+assertion whose repair is deletion is Low, not Medium.
+
+**Step 4 — DEC-LAYER-01 kept**, with this window's evidence added to its record here: the
+mechanism-class Medium disappeared and the Medium rate fell ~75%.
+
+**Step 5 — re-entry.** Queue row 15 back to `pending`; rounds 11–15 open from the on-disk `-v10`
+basenames. Expectation under the register freeze plus carry-forward: one delta round confirming
+the round-10 closures. Step 8's escalation stands: if rounds 11–15 exhaust, accept the FSPEC at
+its then-current version and route the residue to Phase T as errata — do not open a fifth window.

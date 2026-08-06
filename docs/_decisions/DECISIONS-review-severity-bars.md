@@ -34,3 +34,25 @@ an undetectable or transcription-blocking gap remains blocking.
 
 **Scope.** REQ-layer documentation findings of this exact class. This does not change the approval
 bar itself (any open High/Medium still blocks), nor the severity of code-behaviour findings.
+
+---
+
+## DEC-SEV-02: A falsified bookkeeping-completeness assertion is Low, not Medium
+
+**Context.** Recorded per `POSTMORTEM-F-pdlc-consolidation-agent.md` (rounds 6–10) Recommendation
+step 3. Both of that window's terminal Mediums were of one class: a document's *own* completeness
+universal over its *own* bookkeeping (a register's "every deferral has exactly one home") was
+falsified by the same commit that enlarged the register — while no observable, rule, arm or
+artefact was wrong, and the repair was to delete or narrow the assertion. Four of the window's
+last five Mediums were of this class.
+
+**Decision.** A finding that a document's own bookkeeping-completeness assertion is falsified —
+where no observable, rule, arm or downstream artefact is wrong, and the repair is deleting or
+narrowing the assertion rather than changing any specified behaviour — is **Low**, not Medium.
+The preferred repair is deletion: a register that lists its entries needs no theorem about the
+list. A falsified universal that *is* a downstream observable (a rule some artefact must honour)
+remains blocking.
+
+**Related.** [DEC-CONV-01](DECISIONS-review-convergence.md) (approval carry-forward) and
+[DEC-LAYER-01](DECISIONS-spec-layer-boundary.md) (layer boundary) — the three together address
+the synchronisation rule, the manufacture surface, and the manufacture rate.
