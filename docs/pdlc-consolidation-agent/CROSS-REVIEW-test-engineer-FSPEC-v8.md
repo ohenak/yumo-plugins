@@ -43,7 +43,48 @@ The other two are Low.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §8.1's record-shape lead now reads "(§5.1's routing predicate, §6.4's consuming-repo carrier, §8.4 step 1, §10.2 order 2 — e.g., not the whole set)" and then "The seven readers are enumerated once, below, in the reader table — the parenthetical here is illustrative, not the enumeration". That disarms the earlier set-equality trap and I am not filing on it. But the bookkeeping paragraph twelve lines further on (`:1152-1155`) still opens "They are in the record because **four contracts** read them off it" and then enumerates four — a *third* count of readers in one section (four bookkeeping-field readers, seven record readers, and now the illustrative parenthetical's four). The four is correct as scoped (§5.1, §6.4, §8.4 step 1, §8.6 are the readers of the *bookkeeping* fields, not of the record), but nothing in the text says that is the scoping. Is a one-clause gloss — "four contracts read the **bookkeeping** fields off it; the reader table below enumerates all seven readers of the record" — admissible under the freeze? It costs nothing and it removes the last place a counter can land on the wrong number. |
+| Q-02 | AT-F21's Given now pins every field each reader indexes on all three records — except `passId`, which after this revision §6.4 indexes and which the Given does not mention on `E`, `F` or `W`. If M-01's repair keeps the suppression alive on a record short of `passId`, the fixture is unaffected (all three records may carry a `passId` and the arm is deferred). If instead the repair keeps §8.1's stated "no suppression, re-proposed", then `W`'s `passId` becomes load-bearing for conjunct (5) — "the well-formed record is unaffected: its contracts all run" is no longer decidable without it — and it must be pinned in the Given for the same reason `F`'s `route` was. Which way the repair goes decides whether the Given needs a fourth pin; please answer it in the row rather than in a reply, as this revision did for `F`. |
+
 ## Positive Observations
+
+- **The M-01 repair was taken in the strong form, and the fixed row now explains itself.** It would
+  have satisfied the finding to pin `F`'s two fields and delete the false clauses. The row does more:
+  it states *why* each pin exists ("`route: degraded` is what makes §6.4 read the pair `absent` so
+  the re-derivation is live rather than suppressed") and replaces the deleted negative with the
+  positive behaviour it was standing in front of ("routes and writes normally; nothing about the
+  short record suppresses it"). A conjunct that says what does happen instead of only what does not
+  is the difference between an oracle and an absence-only assertion, and this one crossed that line
+  in the right direction.
+- **The expected open set is now a literal, and `W` was constructed to make it one.** The Given
+  changed `W` from an unspecified "well-formed record" to `action: retire`, `route: constraints`,
+  and says why in the same breath: "a landed retirement, so `W` is closed by BR-33c and the expected
+  open set below is a literal, not a description". That is the answer to my v7 Q-01 done properly —
+  the fixture was altered so the expected side could be **transcribed** rather than described. I
+  re-derived `{E, F}` from BR-33c and §8.4 step 1's indexed fields rather than from the prose, and
+  it holds in both directions: an implementation that closes an id on any `retire` drops `E`, one
+  that ignores the `route` conjunct drops nothing but would also have to drop `B` in AT-F19, and one
+  that returns every recorded id yields `{E, F, W}` and fails set-equality on `W`.
+- **BR-33a and BR-33b's AT columns now record their deferrals on the rule, not only in the prose.**
+  A reader who reaches the rules table without having read §8.2's third note or E-12b previously saw
+  "AT-F21" and "AT-R6b" as unqualified coverage claims. Both cells now carry the qualification and
+  the owner ("the `artifact` half only, since that fixture is kind 2 on both sides"; "PROPERTIES-owned
+  per DEC-LAYER-01"). The rules table is where an implementer checks what a rule is pinned by, so
+  moving the qualification there is the move that changes behaviour. My L-02 is that the same cell
+  did not absorb the arm this revision itself added.
+- **§6.5's ownership gloss got shorter and clearer without losing the decision.** The v7 wording
+  needed a two-clause disclaimer to explain that "made here" was about the layer that owns the
+  decision. The v8 wording drops the disclaimer and states the mechanism directly: "a widening is a
+  **recorded TSPEC decision** against this set, never a silent reading of it". Same content, one
+  fewer thing for a test author to interpret, and the falsifiable part — observed ⊆ permitted — is
+  untouched.
+- **Every citation in the changed text was checked at its target; one is wrong and it is L-01.**
+  §10.3 does pin the `pass:{passId}` spelling (`:1717`), §6.4's carrier row does enumerate three
+  fields (`:819`), BR-33c's closing predicate is as AT-F21 relies on (`:2461`), and §8.1's
+  seven-member reader set is set-equal to its table (`:1141-1147`, seven rows counted). The only
+  defect is, once again, the document citing **itself** by line number.
 
 ## Recommendation
 
