@@ -8630,6 +8630,13 @@ async function main({
 
       advisoryDispositions.push({ ...advisoryDisposition, seam });
 
+      await commitAdvisoryRecord(
+        `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
+        entry.feature,
+        gitFn,
+        emit
+      );
+
       if (seam === "A1") {
 
         const action =
@@ -8858,6 +8865,31 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
   }
 
   return uncommitted(committed, queuePath);
+}
+
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+  const added = await gitFn(["add", "--", recordPath]);
+  if (!added || added.ok !== true) {
+    emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
+    return;
+  }
+
+  const committed = await gitFn([
+    "commit",
+    "-m",
+    `chore(advisory): record ${feature} (queue)`,
+    "--",
+    recordPath,
+  ]);
+  if (committed && committed.ok === true) return;
+
+  if (
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stdout) ?? "") ||
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stderr) ?? "")
+  ) {
+    return;
+  }
+  emit(`Advisory record for "${feature}" left uncommitted: git commit failed.`);
 }
 
 function uncommitted(result, queuePath) {
