@@ -1140,17 +1140,31 @@ the open-promotion list**, and is stated in the skill in these terms:
 
 | # | Harvest-side step | Detail |
 |---|---|---|
-| 1 | Read the open-promotion list | `docs/_decisions/.consolidation-log.md` — the same tracked file the pass writes (§5.4). Each promotion record carries `failure-mode-id`, `phase`, `artifact` and `symptom` (§8.1). A promotion is **open** when its most recent standing state is not `retired`. |
+| 1 | Read the open-promotion list | `docs/_decisions/.consolidation-log.md` — the same tracked file the pass writes (§5.4). Each promotion record carries the seven fields of §8.1. **Open** is computed from the log and nothing else: an id is open when **no** record for that id carries `action: retire` with a `route` other than `degraded`. Equivalently — a landed retirement closes an id; a `retire` that reached only a proposal file does not. |
 | 2 | For each §5 Open Item being written, ask one question per open promotion | "Does this open item report the failure this promotion's `symptom` describes, on this promotion's `artifact`, in this promotion's `phase`?" |
 | 3 | On a yes, copy the id **verbatim** | append `failure-mode-id: {id}` to that open item, character-for-character from the log row. Never re-slug, never abbreviate, never mint a new id. |
 | 4 | On no matches, write no line | the absence is meaningful: `recurred` does not fire and the phase observable still yields `prevented` or `insufficient-evidence` on its own evidence (table above). |
 
-Two properties follow, and both are asserted rather than hoped for:
+**"Open" is a harvest-side filter, and it is deliberately not §8.3's population.** The two sections
+use the word compatibly because only one of them uses it at all: §8.3's effectiveness table emits one
+row per **distinct recorded id**, retired ones included, and openness never filters it — a retired
+promotion keeps a visible standing verdict, which is what makes the retirement auditable. Step 1's
+filter exists solely to bound the question list the harvest agent is asked. The bound it gives is
+weak but real, and its limit is stated rather than claimed away: an id whose `retire` proposal sits
+on an unmerged PR is **not** observable as retired from the log at all (the PR's state lives in the
+PR, §6.4), so it stays open and is still asked about. The failure direction is one extra question,
+never a missed one.
 
-- **The id is never invented.** Every `failure-mode-id` line in any LEARNINGS is a verbatim copy of a
-  line already in the log, so the set of ids appearing in the corpus is a **subset** of the set of
-  recorded ids. An id in a LEARNINGS that matches no record is a harvest defect, and the pass reports
-  it as a parse notice (§9.3's receive-side discipline, applied here) rather than counting it.
+Two properties follow. The second is asserted by a test; the first is a convention whose **violation**
+is detected, which is a weaker and more honest claim:
+
+- **The id is never invented — and the check is on the receive side.** The convention instructs the
+  harvest agent to copy an existing line verbatim, so the intended set of ids appearing in the corpus
+  is a **subset** of the set of recorded ids. That instruction is natural language in
+  `pdlc/skills/harvest-learnings/SKILL.md` and nothing at this layer can assert compliance with it;
+  what *is* asserted is that a violation is caught — an id in a LEARNINGS matching no record is
+  reported as a parse notice (§9.3's receive-side discipline, applied here) and counted toward no
+  verdict, which AT-F16 tests.
 - **Step 2 is a model judgment, and it is on the producing side by design.** It decides only whether
   to *attach evidence*; it never decides a verdict. §8.3's "no model judgment" claim is unchanged and
   scoped exactly as written — the verdict rule is a set-membership test over the ids that are
@@ -1160,9 +1174,12 @@ Two properties follow, and both are asserted rather than hoped for:
 false `prevented` (or `insufficient-evidence`), never a false `recurred` — the failure direction is
 toward "we cannot show it worked", which is the safe one for a falsifiability loop. The absent
 line is invisible to the pass, so this is a **recall** limit and is not repairable at this layer;
-it is recorded as O-C6 in §14.2. AT-F15 (§13.7) ranges over the producing side: a harvest-authored
-LEARNINGS whose open item copies a recorded id, and the pass that consumes it, must yield
-`recurred` for exactly that promotion and for no other.
+it is recorded as O-C6 in §14.2. AT-F15 (§13.7) tests the **receive** side of the convention — a
+corpus file whose open item carries an id matching exactly one of several records yields `recurred`
+for exactly that promotion and for no other. It does **not** range over the producing side, and no
+test in §13 does: the only way to obtain a genuinely harvest-authored file is to dispatch the
+`harvest-learnings` agent, whose output is not reproducible and is therefore not an acceptance-test
+input at any level. That gap is O-C6, not a coverage hole this document can close.
 
 ### 8.5 `ineffective`, and which remediation is proposed
 
@@ -1746,7 +1763,7 @@ PROPERTIES' (DC-09).
 | AT-F12 | operator | a merged revision for an id | the next passes run | that promotion's `ineffective` streak is zero — two fresh `recurred` counted passes are required to re-flag it |
 | AT-F13 | operator | a promotion at `insufficient-evidence` for `unmeasurablePasses` consecutive evaluated passes, with a duplicate-suppressed `no-op` among them | the pass reports | that `no-op` **counted** as evaluated; the promotion is `unmeasurable` |
 | AT-F14 | operator | an ordinary `promote` with no remediation | the pass reports | the `revision`/`retirement` field is **absent**, not empty-valued |
-| AT-F15 | operator | a **harvest-authored** LEARNINGS whose §5 Open Item carries a `failure-mode-id` line copied verbatim from a log record (§8.4), placed in a corpus with two other recorded promotions it does not name | a pass consumes it | the verdict is `recurred` for **exactly** that promotion and for neither of the other two. This ranges over the producing side: the id in the corpus came from the harvest convention, not from a fixture that hand-wrote the pass's own slug, so it fails if the convention cannot in fact place a matching id |
+| AT-F15 | operator | a **constructed** corpus fixture: a LEARNINGS whose §5 Open Item carries one `failure-mode-id` line byte-equal to one of three recorded promotions' ids, the other two recorded promotions being unnamed by any corpus file | a pass consumes it | the verdict is `recurred` for **exactly** the named promotion, and is decided on the other two by §8.3's remaining arms without reference to the id. This is a **receive-side** test and is stated as one: the producing side (a harvest agent placing the id) is an LLM invocation with no reproducible output, is therefore untestable here, and is carried as O-C6 rather than claimed by this row |
 | AT-F16 | operator | a LEARNINGS carrying a `failure-mode-id` that matches **no** record in the log | a pass consumes it | it is reported as a parse notice and contributes to **no** verdict; no promotion is invented for it and the pass does not abort |
 | AT-F17 | operator | an `ineffective` promotion with no spent alternative, whose `artifact` **exists** at the pass's HEAD (§8.5 row 3) | the remediation is chosen | `revision` is proposed and the report field names `revision`. Run twice over one fixture, the choice is identical — the predicate is a file-existence test, so it carries no free-text match |
 | AT-F18 | operator | an `ineffective` promotion with no spent alternative, whose `artifact` has been **deleted** since the promotion landed (§8.5 row 4) | the remediation is chosen | `retirement` is proposed — there is nothing left to revise — and the report field names `retirement` |
