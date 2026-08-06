@@ -110,12 +110,51 @@ one. This feature updates `pdlc/hooks/scripts/nudge-consolidation.sh:41` to scop
 way, so the hook and the pass keep one predicate rather than two. This is what makes NFR-5's
 "exactly the consumed set" enforceable by the predicate that consumes it.
 
+**What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md`
+**exists** and predates every convention this feature introduces. It is a markdown pass log: a
+header, then `## Pass 1 — 2026-07-29` whose consumed set is a two-column table of **full paths**
+(`| \`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md\` | 2026-06-02 |` and the
+same shape for `docs/pdlc-workflow-distribution/…`), followed by prose promotion sections. It
+carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any kind — the word "Promoted"
+appears only as a section heading. A predicate that matched blocks alone would therefore report both
+files un-consolidated on the first pass after this feature ships, re-consume a corpus a prior pass
+already promoted from, and get no help from NFR-4 (whose identity is `failure-mode-id`, which a
+pre-convention LEARNINGS does not carry, AC-5.2). The predicate is therefore stated over two
+regions, and is total over any log:
+
+> A basename is **consolidated** if it appears inside a `<!-- pdlc:consumed {passId} -->` block, **or**
+> anywhere in the log's **legacy region** — the text preceding the file's *first*
+> `<!-- pdlc:consumed` marker. A log with no block at all is legacy region in its entirety.
+
+The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) applied to exactly the
+text that predates this feature, so nothing already consolidated is re-consumed and no migration
+step, transcription or parse of Pass 1's prose is required. It is frozen by construction: the first
+pass under this feature appends its `<!-- pdlc:consumed -->` block to the log **before** any other
+record it writes that pass, so every record this feature introduces lands *after* the boundary and
+none of them can ever be read as legacy consumption. `nudge-consolidation.sh:41` is updated to the
+same two-region rule, keeping hook and pass on one predicate.
+
+**Observable consequence on this repo today** (the state a first-run test asserts against): the
+corpus enumeration of step 1 below matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
+`LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and are consolidated; the
+remaining 3 (`LEARNINGS-pdlc-advisory-tier.md`, `LEARNINGS-pdlc-merge-phase.md`,
+`LEARNINGS-pdlc-review-loop-hardening.md`) are un-consolidated — below the default
+`volumeThreshold` of 5, so the first tick reaches the cadence test.
+
 **Tick evaluation order, stated.** Every `/loop` tick evaluates in exactly this order, and no step
 reads a LEARNINGS **body**:
 
-1. **Enumerate** `docs/*/LEARNINGS-*.md` basenames and diff them against the delimited blocks above
-   — this yields the un-consolidated set. Enumeration is basenames only, which is all
-   `nudge-consolidation.sh:41` does.
+1. **Enumerate** LEARNINGS basenames and diff them against the predicate above — this yields the
+   un-consolidated set. Enumeration is basenames only, which is all `nudge-consolidation.sh:41` does.
+   The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md`: the shipped glob
+   is depth-1 only (`nudge-consolidation.sh:28`), but this repo archives completed features one level
+   deeper (`docs/completed/pdlc-merge-phase/`, `…/pdlc-review-loop-hardening/`,
+   `…/pdlc-workflow-distribution/` each hold a LEARNINGS — and BL-02 cites that convention), so a
+   depth-1 corpus would hide 3 of the 5 LEARNINGS at HEAD and bias AC-5.2's phase-population test
+   toward `insufficient-evidence`. `docs/discarded/*/` is deliberately **excluded**: that work was
+   abandoned, so its phases are not evidence about a delivered pipeline. Widening the corpus makes
+   `nudge-consolidation.sh:28` an in-scope edit of this feature (§5), keeping hook and pass on one
+   enumeration as well as one predicate.
 2. **Volume test** — if `|un-consolidated| >= consolidation.volumeThreshold`, the pass runs, trigger
    `volume` (AC-1.2).
 3. **Cadence test** — otherwise, if `consolidation.cadenceHours` has elapsed since the cadence datum
@@ -131,6 +170,16 @@ that is, the last pass that actually took the AC-1.3 marker and did work. A `ref
 datum (that pass did no work), and a `skipped-cadence` tick **writes no log row at all** (AC-7.2), so
 ticking cannot advance the datum. Without this, every tick's own row would become "the last logged
 pass" and `cadenceHours` could never elapse.
+
+**The empty-datum case, decided.** The datum set is empty in two states — no log file (a fresh repo)
+and a log with no row carrying one of those four statuses (the state at HEAD: Pass 1 predates the
+status convention). "Elapsed since ∅" is otherwise undefined, and the two readings diverge on the
+most common initial state. **An empty datum set counts as elapsed**: the cadence test fires, the pass
+runs, its trigger is `cadence` (NFR-3a needs no new member) and its log row additionally carries
+reason code `no-cadence-datum` so the bootstrap tick is distinguishable from an ordinary cadence tick.
+The pass's own row then becomes the datum for every later tick. The opposite reading — empty means
+not elapsed — is rejected because it makes cadence unreachable until someone runs a manual pass,
+which is the never-fires failure this datum exists to prevent.
 
 - **AC-1.1** — Given a `/loop` tick and `consolidation.cadenceHours` elapsed since the cadence datum
   (the most recent log row with status `promoted` / `promoted-degraded` / `no-op` / `failed`), Then a
