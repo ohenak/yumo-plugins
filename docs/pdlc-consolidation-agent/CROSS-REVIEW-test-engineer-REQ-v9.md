@@ -92,4 +92,49 @@ closes it, and in three of the four the REQ already contains the intent the clau
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 4 Low.
+
+Both v8 Mediums are resolved, and resolved on the mechanism rather than on the wording. F-45's
+undecidable second-remediation cycle is closed by a displacement rule, a terminal action and a
+streak reset on a merged revision — the exact fixture I said had two defensible expected outcomes now
+has one. F-46's size breach is cleared by relocation to two committed, versioned `docs/_constraints/`
+files, and I checked the relocation for content loss row by row rather than for byte count: the
+enumerated table came across intact and its three back-reference cells were resolved into explicit
+sets, so the set-equality obligation is stronger after the move than before it. F-47 is resolved and
+over-delivered.
+
+I want to be explicit about why this is an approval and not a fifth "Needs revision". The Challenger
+bar is any open High or Medium, and I applied it to each of the four candidates rather than to their
+count. None of them survives it:
+
+- **F-48** would be a Medium if the base case were missing; it is present ("`retire` is the
+  **terminal** remediation"), and only its justifying sentence is written about a *retired* promotion
+  where the reachable state is a *pending* retirement. The dominant reading is decidable and correct.
+- **F-49** and **F-51** are each an unstated direction of a rule whose stated direction is exact. A
+  test author can transcribe both tables today; what is at risk is drift after the fact, not the
+  fixture now.
+- **F-50** is a measurement inside the ceiling, filed `Process` because the lesson is about how much
+  margin a relocation should buy, not about this document's content.
+
+What should change, in order — all four are single clauses and together are well under 1 KB, but see
+F-50 before writing any of them inline:
+
+1. **F-48** — Restate AC-5.3's base case over the *proposal*: once a `retire` proposal for an id is on
+   a PR in state open or merged, that id's ladder has ended — a later `ineffective` tick proposes
+   nothing, records `duplicate-suppressed` against that PR, and the AC-7.1 field names `retirement`.
+2. **F-49** — Cite `pdlc-consolidation-vocabularies.md` **at its version** from §4b, and state the
+   converse defect rule in that file beside its back-reference ban, so a deleted row is a defect too.
+3. **F-51** — Give "generated path" a decidable predicate rather than one example.
+4. **F-50** — Relocate before writing 1–3, not after. REQ-CONS-01's legacy-region construction
+   (`:93-107`) is the natural next block and `pdlc-consolidation-vocabularies.md` §3 already owns that
+   log's grammar.
+
+No upstream defects were found. Every `file:line` in the changed text and in both new
+`docs/_constraints/` files resolves to a real authority saying what is attributed to it —
+`orchestrate-dev.js:48-53`/`:1652`/`:1653`/`:1833`/`:1859`/`:5429`/`:5799`/`:10020`,
+`orchestrate-queue.js:1245-1256`, `CLAUDE.md:68`, `check-req-size.sh:41-42`/`:47-48`,
+`pm-author/SKILL.md:118`. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
