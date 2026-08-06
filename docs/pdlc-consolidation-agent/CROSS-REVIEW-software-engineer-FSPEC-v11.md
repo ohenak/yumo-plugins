@@ -50,7 +50,10 @@ open.**
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | Not a finding, and offered only so the author can decline it in one line. §8.1's skip-rule paragraph gained "and §8.4 still asks its question on the fields present **where the id is present** (short of `failure-mode-id` the two §8.4 cells are normative and no question is asked — TE v10 Q-01)" (`:1157-1159`). Both halves are true — the two cells *are* normative, and steps 2–3 *do* ask no question — but the trailing clause is a statement about steps 2–3 only, while the subject is "the two §8.4 cells", and step 1's id-short behaviour is contributing no member to a list rather than asking no question. It is not wrong and it points at the normative cells, which is why I filed nothing; if you want it airtight the parenthetical could read "…the two §8.4 cells are normative: step 1's list takes no member and steps 2–3 ask no question". Under the round-11–15 register freeze, ignoring this is a legitimate answer. |
+| Q-02 | On F-01's repair only, to confirm I have the intended reading before an author spends an edit on it. Is the `phase` half of §8.4 steps 2–3's unavailable rendering meant to be T-10's (a literal TSPEC pins, alongside the `artifact` and `symptom` halves of the same arm), with §14.5's sentence simply reaching for "the `phase` arm" when it meant "§8.3's `phase` arm"? Every piece of the document I can check says yes: T-10 collects the half rendering without qualifying which field is missing, LD-1 already splits that one arm's `artifact` half into §14.5 while its `phase` and `symptom` halves sit in LD-5, and the justification §14.5 offers is written for §8.3's arm and §8.1's id arm specifically. The alternative — that the phase half of the steps 2–3 question is exempt from T-10 — would leave a rendering with no owner, which is the state T-10 exists to prevent, so I am not proposing it. |
 
 ## Positive Observations
 
