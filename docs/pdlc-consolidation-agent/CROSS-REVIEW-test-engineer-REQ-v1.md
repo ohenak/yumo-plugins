@@ -46,8 +46,35 @@
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision** — 6 High, 5 Medium.
+
+What must change before this REQ is testable:
+
+1. **F-01** — restate or delete AC-3.7. The guard it claims to inherit runs only inside a local
+   `orchestrate-dev` Phase MERGE (`orchestrate-dev.js:900`) over that run's own PR, and ships
+   `mergeMode: "off"` (`:61`). Give the "never auto-merged" claim an observable that belongs to
+   *this* feature.
+2. **F-02** — pick one definition of "un-consolidated" (the hook's substring test or the skill's
+   date boundary) and name the component that actually starts a pass; the hook cannot.
+3. **F-03** — state how the advisory rung is observed, and add the fallback and
+   total-non-resolution branches as their own ACs.
+4. **F-04** — give AC-1.3 an exact status value, a named reason code, the mutual-exclusion
+   artifact, and the fate of the refused pass.
+5. **F-05** — name the machine-readable per-seam input AC-6.1/AC-6.2 consume, or point them at
+   `docs/_queue/ESCALATIONS.md`; free prose appended by `advisoryDistilPrompt` cannot serve.
+6. **F-06** — give NFR-4 a dedup key and give the proposal artifact a same-day disambiguator.
+7. **F-07/F-08** — state the tri-state decision rule, its set-equality obligation over the full
+   prior-promotion set, and how `no-op` / `insufficient-evidence` passes affect the consecutive
+   count.
+8. **F-09/F-10/F-11** — name every config key with its default and malformed-value behavior; pair
+   each absence-only requirement with a positive conjunct on the same path; enumerate AC-3.5's
+   failure classes.
+
+F-12 and F-13 are corrections, not blockers.
+
+No upstream defects were found: every `MASTER-PLAN` and `pdlc-merge-phase` citation resolves to a
+real authority saying what the REQ attributes to it. No ERRATUM lines are emitted.
 
 ## Verdict
 
-_(filled below)_
+VERDICT: Needs revision
