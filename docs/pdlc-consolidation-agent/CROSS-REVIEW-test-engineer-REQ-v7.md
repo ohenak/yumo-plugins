@@ -101,4 +101,46 @@ make rather than explain.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 3 Low.
+
+Both v6 blockers are resolved on the mechanism. F-38's unstable key input was removed from the
+derivation rather than the promise being softened; F-39's marker was moved to its own file and the
+log's append-only obligation stated positively, with the shipped `_appendFile` seam behind it
+(`runtime-adapter.js:863`; wired at `orchestrate-dev.js:2684`/`:2809`/`:5697`,
+`orchestrate-queue.js:801`/`:874`). Both of AC-1.3's durability claims are now true rather than
+asserted, and its race fixture has a deterministic oracle instead of a flaky one. F-40 is resolved
+by scoping uniqueness per pass and splitting record-key from promotion-key arity.
+
+Applying §5a's stopping rule as written: none of the three remaining findings contests user need,
+scope, priority, phasing, or the truth of a claim about existing code, and none is blocking.
+
+- **F-42** is the only one that touches a claim rather than a clarity gap, and it is a claim about
+  *this document's own guarantee*, not about HEAD. The residual is granularity normalisation of the
+  `artifact` keying input — a rule FSPEC states, and §5a routes fixture and derivation mechanics
+  downstream. What belongs here is one narrowing clause ("canonical repository path, never a glob")
+  or a downgrade of `:371-372`'s "true rather than hoped for". Either is a sentence.
+- **F-43** is a choice between two append-shaped readings of AC-3.4, made live by AC-1.3's new
+  obligation. One clause settles it.
+- **F-44** is the standing size-budget signal, carried as `Process` for harvest.
+
+I want to be explicit that I am not withholding approval to force the F-42 clause. Under v6 the
+NFR-4 oracle could not be constructed at all — "the same failure mode" had no observable identity
+apart from the id. Under v7 it can: pin `phase` and `artifact` to literals, vary `symptom`, assert
+id equality and `duplicate-suppressed`. The test exists; the remaining question is which literal the
+pass writes, which is a derivation rule and not a requirement.
+
+Recommended (non-blocking) changes, in order of value:
+
+1. **F-42** — narrow AC-5.1's keying input to a canonical repository path (no glob), or restate
+   `:371-372` so granularity normalisation is named as FSPEC's obligation rather than claimed as
+   already achieved.
+2. **F-43** — add to AC-3.4 that the PR URL is carried in the pass's terminal row, appended once
+   (AC-7.2), so the log's record count is decidable.
+3. **F-44** — no action this round; harvest signal.
+
+No upstream defects were found. Every citation in the changed text resolves to a real authority
+saying what the REQ attributes to it. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
