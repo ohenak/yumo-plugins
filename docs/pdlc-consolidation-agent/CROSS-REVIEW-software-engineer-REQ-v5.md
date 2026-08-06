@@ -31,6 +31,26 @@ findings below are **new** and all arise in text this revision added.
 
 ## Existing-Code Claim Verification (changed sections)
 
+Every `file:line` claim this revision added or changed, checked against HEAD on
+`feat-pdlc-consolidation-agent` in a single pass. The 22 rows verified in v4 are not re-checked;
+only rows the diff touched appear here.
+
+| # | New/changed REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `CROSS-REVIEW-{role}-{docType}-v{N}.md` shipped naming at `orchestrate-dev.js:5799` (unchanged, but re-read because the row above it changed) | AC-5.2 | **Confirmed** | `:5799` `` const reviewTargetPath = (skill, round) => `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) \|\| skill}-${reviewFileType}-v${round}.md` `` |
+| 2 | `CODE_REVIEW-{feature}-v{N}.md` at `orchestrate-dev.js:7911` — "the dod-verify dispatch, taken on every DoD round" | AC-5.2 | **Line confirmed; the parenthetical is wrong** (F-04b) | `:7911` is the basename inside `dodVerifyPrompt` (`:7873`), the **round-1** prompt. Round ≥2 is `dodReVerifyPrompt` (`:7924`), basename at `:7941`. The v4 citation (`:10349`) was the A3-advisory read site, so moving off it was right; the replacement is one of two dispatch sites, not both |
+| 3 | …"classified at `:6423`" | AC-5.2 | **Confirmed** | `:6423` `if (/\/CODE_REVIEW-[^/]*$/.test(name)) return "code-review";` inside `artifactClassOf` (`:6420`) — a genuine classification site, and a better anchor than a naming string for "what the pipeline treats as a code review" |
+| 4 | `POSTMORTEM-{phase}-{feature}.md` built by the shared review loop at `orchestrate-dev.js:5429` | AC-5.2 | **Confirmed** | `:5429` `` const postmortemPath = `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md` `` — parameterised on `phaseId`, which is what makes `POSTMORTEM-CR-*` producible |
+| 5 | Phase CR runs that loop with `phase: "CR"` (`:10255-10256`) | AC-5.2 | **Claim true, range off by one** (F-04a) | `:10255` `const crResult = await reviewLoop({`, `:10256` `` doc: `docs/${featureName}/` ``, `:10257` `phase: "CR",` |
+| 6 | The halt path builds the same name from whatever phase halted (`:10603`) | AC-5.2 | **Confirmed** — v4 row 17's evidence, now cited by the REQ itself | `:10603` `` const candidate = `docs/${featureName}/POSTMORTEM-${haltPhase}-${featureName}.md` `` |
+| 7 | `PHASE_DISPATCH` range restated as `:3337-3437` — declaration `:3337`, last key `DOD:` `:3431`, close `:3437` | §4b | **Confirmed, all three** — this closes v4 row 15's noted imprecision without my having raised it as a finding | `:3337` `export const PHASE_DISPATCH = {`; `:3431` `DOD: {`; `:3437` `};` |
+| 8 | `PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}` is the PR-duplicate identity key | REQ-CONS-03 preamble, NFR-4 | **Internally consistent, and the source of F-01** — this is a REQ-internal definition, not a code claim; recorded here because F-01 turns on it | `:268` (definition), `:299` (AC-3.5 row), `:543` (NFR-4) all agree that the key is the trailer, hence the whole sorted consumed set |
+| 9 | `nudge-consolidation.sh:41` is the shipped substring test the two-region predicate re-uses | REQ-CONS-01 | **Confirmed, unchanged** | `pdlc/hooks/scripts/nudge-consolidation.sh:41` — the consumed-substring test the legacy region is defined as |
+
+No claim added or changed in this round is factually wrong about the codebase; the two defects in
+rows 2 and 5 are an over-broad parenthetical and a range that stops two lines short of its own
+quoted token.
+
 ## Questions
 
 ## Positive Observations
