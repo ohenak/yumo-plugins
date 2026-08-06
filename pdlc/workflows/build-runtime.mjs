@@ -98,6 +98,10 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "parseAdvisoryConfig",
   "defaultAppendFile",
   "ADVISORY_CONFIG_PATH",
+  "resolveAdvisoryRung",
+  "advisorySummaryRows",
+  "ADVISORY_DEFAULTS",
+  "commitPaths",
 ]);
 
 const queueModule = wrapModule(
@@ -111,7 +115,11 @@ const queueModule = wrapModule(
    "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;",
    "const parseAdvisoryConfig = __dev.parseAdvisoryConfig;",
    "const defaultAppendFile = __dev.defaultAppendFile;",
-   "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;"].join("\n")
+   "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;",
+   "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
+   "const advisorySummaryRows = __dev.advisorySummaryRows;",
+   "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;",
+   "const commitPaths = __dev.commitPaths;"].join("\n")
 );
 
 // `meta` must be a pure literal and the first statement, so each bundle carries

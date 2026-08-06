@@ -127,7 +127,7 @@ const ADVISORY_BUNDLE_NAMES = [
 // Dev export list — `const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [...])`.
 // ---------------------------------------------------------------------------
 
-describe.skip("PLAN A-32 — the dev module's export list carries the advisory surface", () => {
+describe("PLAN A-32 — the dev module's export list carries the advisory surface", () => {
   const devCall = sliceBalancedCall(BUILD_SOURCE, 'const devModule = wrapModule(');
 
   it("the devModule wrapModule() call is present and balances", () => {
@@ -150,7 +150,7 @@ describe.skip("PLAN A-32 — the dev module's export list carries the advisory s
 // One `const NAME = __dev.NAME;` binding per advisory name, per TSPEC §2.3's example.
 // ---------------------------------------------------------------------------
 
-describe.skip("PLAN A-32 — the queue module's prelude binds each advisory name", () => {
+describe("PLAN A-32 — the queue module's prelude binds each advisory name", () => {
   const queueCall = sliceBalancedCall(BUILD_SOURCE, "const queueModule = wrapModule(");
 
   it("the queueModule wrapModule() call is present and balances", () => {
@@ -177,7 +177,7 @@ describe.skip("PLAN A-32 — the queue module's prelude binds each advisory name
 
 const SHIPPED_BUNDLES = ["orchestrate-dev.bundle.js", "orchestrate-queue.bundle.js"];
 
-describe.skip("PLAN A-32 — both shipped artifacts still satisfy the runtime's structural constraints", () => {
+describe("PLAN A-32 — both shipped artifacts still satisfy the runtime's structural constraints", () => {
   test.each(SHIPPED_BUNDLES)("%s: `export const meta` is the first statement", (file) => {
     const text = readFileSync(join(DIST_DIR, file), "utf8");
     const firstCode = text.split("\n").find((line) => line.trim() && !line.trim().startsWith("//"));
@@ -203,7 +203,7 @@ describe.skip("PLAN A-32 — both shipped artifacts still satisfy the runtime's 
 // entry is caught the same way a hand-authored fourth artifact would be.
 // ---------------------------------------------------------------------------
 
-describe.skip("PLAN A-32 — the bundle-composition edit adds no new artifact", () => {
+describe("PLAN A-32 — the bundle-composition edit adds no new artifact", () => {
   it("distribution-manifest.json still carries exactly three rows, the same three ids", () => {
     const manifest = JSON.parse(readFileSync(join(DIST_DIR, "distribution-manifest.json"), "utf8"));
     expect(manifest.rows).toHaveLength(3);
