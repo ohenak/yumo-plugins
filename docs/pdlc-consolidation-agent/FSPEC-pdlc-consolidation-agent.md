@@ -422,6 +422,149 @@ runtime offers one (§14, O-C3).
 
 ## 5. FSPEC-CONS-04 — Promotion routing and the consuming-repo writes
 
+**Links:** REQ-CONS-02 (AC-2.1 … AC-2.4), AC-3.1, AC-3.8, AC-3.8b, AC-5.4, NFR-1.
+
+### 5.1 The routing decision — one predicate over the target path
+
+Every proposal has exactly one target path (AC-5.1: one canonical repository path, never a glob,
+never a directory). That path decides the route, and nothing else does:
+
+| Target path | Route | Section |
+|---|---|---|
+| under any prefix of `MERGE_GUARD_DEFAULTS` | **PR route** — a pull request against `consolidation.pluginRepository` | §6 |
+| `docs/_constraints/DOMAIN-CONSTRAINTS.md` | consuming-repo write (append) | §5.2 |
+| `docs/_decisions/DECISIONS-{topic}.md` | consuming-repo write | §5.2 |
+| any other consuming-repo path | **proposal file only** — `CONSOLIDATION-PROPOSAL-{passId}.md`, never applied | §5.3 |
+
+The guard set is **exactly** `MERGE_GUARD_DEFAULTS`
+(`pdlc/workflows/orchestrate-dev.js:48-53`) — a frozen four-member array, `pdlc/workflows/`,
+`pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/`. The predicate is set-equal to that constant, not
+a restatement of part of it: a promotion editing `pdlc/hooks/scripts/nudge-consolidation.sh` (which
+is where the hook's own threshold lives, `:25`) routes to §6 like any other.
+
+The membership test is **prefix containment on a normalised repository-root-relative path**, matching
+how the constant's members are written (each is a directory prefix ending in `/`). Normalisation is
+AC-5.1's: root-relative, no `./`, no symlink alias — so the same file cannot route two ways depending
+on how a proposal spelled it.
+
+**This is a routing predicate, not an inherited control.** The pass does **not** call `guardVerdict`
+(`pdlc/workflows/orchestrate-dev.js:732`) or `effectiveGuardPaths` (`:709`): both are reachable only
+from Phase MERGE's ladder and the advisory-envelope check, and both decide about *that run's own* PR
+(AC-3.7). The pass reads the same frozen constant and makes its own decision, so nothing here claims
+enforcement that nothing performs.
+
+NFR-1's consequence is absolute and has no exception branch: **no code path in the pass writes to a
+guard-set path in any tree.** The guard-set edit exists only as a commit in the §6 clone, pushed to a
+`consolidation/{passId}` branch and offered as a PR.
+
+### 5.2 The unchanged promotion behaviour (REQ-CONS-02)
+
+| Promotion kind | Destination | Shape |
+|---|---|---|
+| Domain invariant future REQs must respect | append to `docs/_constraints/DOMAIN-CONSTRAINTS.md` | as today (`pdlc/skills/consolidate-learnings/SKILL.md:40`) |
+| Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | as today (`:41`) |
+| Process learning about a skill prompt, checklist or workflow phase | **propose, never apply** | §6 (PR) or §5.3 (proposal file) |
+
+The pattern-vs-coincidence bar is **unchanged and still governs every promotion**: recurs across ≥2
+unrelated features, **or** a single occurrence stating a standing invariant that obviously
+generalises (`SKILL.md:38`). Running on a cadence does not lower it (NFR-3) — the trigger decides
+*whether a pass runs*, never *what clears the bar*, and the two are evaluated at different steps
+(§2.2 step 3–4 vs step 9). NFR-3a's trigger field is what makes "the bar held on both" checkable
+after the fact rather than asserted.
+
+The pass records date, consumed basenames (exactly the §3.3 pair's set), promoted items and deferred
+items in `docs/_decisions/.consolidation-log.md` (AC-2.4, `SKILL.md:43`) — under the §10 record
+grammar, which is where this feature's additions to that log live.
+
+### 5.3 The proposal file
+
+`docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` is written when, and only when, the pass has
+something to propose that it does not enact:
+
+| Cause | Contents | Section |
+|---|---|---|
+| A guard-set promotion whose PR could not be opened | the full proposed diff, inline, plus the failure class and reason code | §6.3 |
+| A retirement or revision of a promotion that landed in the consuming repo | the removal or replacement, for operator approval — **never** applied by the pass | AC-5.4 |
+| A widening a consumer must adopt in its own untracked `.claude/pdlc.config.json` | an operator action, never a PR | §9 |
+
+The artifact name is keyed on `passId`, not on a date (vocabularies §4), which is what keeps two
+same-day passes — an expected case under the volume trigger — from overwriting each other. A pass
+with nothing in any of the three rows writes **no** proposal file: a `no-op` pass opens no PR and
+writes no proposal file (AC-1.4).
+
+The file supersedes nothing about the shipped four-column proposal table
+(`pdlc/skills/consolidate-learnings/SKILL.md:54`): that shape remains the fallback's presentation,
+now carrying the concrete diff rather than a prose description of it, because the PR route is the
+primary channel and the file is what it degrades to.
+
+### 5.4 The consuming-repo writes and their single commit (AC-3.8b)
+
+Exactly these paths are the pass's consuming-repo write set:
+
+| Path | Written by |
+|---|---|
+| `docs/_constraints/DOMAIN-CONSTRAINTS.md` | AC-2.1 promotions |
+| `docs/_decisions/DECISIONS-{topic}.md` | AC-2.2 promotions |
+| `docs/_decisions/.consolidation-log.md` | the consumed pair (§3.3) and the terminal row (§10) |
+| `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` | §5.3, when written |
+
+They land **in the invoking tree, on whatever branch it is already on**. AC-3.8 forbids the pass any
+branch operation in that tree — no `checkout`, `switch`, `stash`, `reset`, `rebase`, or fetch into
+its refs — so the invoking tree's HEAD is identical before and after the pass, including when it is
+mid-pipeline on a `feat-*` branch. §6.1 states where the *guard-set* work happens instead.
+
+**The commit shape is pathspec-scoped on both calls**, once, at the terminal outcome (step 15):
+
+```
+git add    -- {paths}
+git commit -m {msg} -- {paths}
+```
+
+| Property | Value | Precedent at HEAD |
+|---|---|---|
+| Pathspec on **both** calls | required | `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1576`; add `:1577`, commit `:1579-1585`) and `commitAdvisoryRecord` (`:1615`), which mirrors its two-call shape |
+| Never `-a`, never pushed | required | both precedents above |
+| **Not** the `commitPaths` shape | required | `commitPaths` (`pdlc/workflows/orchestrate-dev.js:8669`) commits with a plain `git commit -m` and no pathspec (its doc comment at `:8660-8663` states that as deliberate) — which would sweep a staged index into the pass's commit, and AC-3.8's shipping tree may be mid-pipeline with one |
+| `index.lock` retry | required | the same transient class `gitWithLockRetry` (`:8617`) handles for `commitPaths` (`:8670`) |
+
+Consequences this FSPEC commits to:
+
+- The §4 marker is **never** committed: `docs/_decisions/.consolidation-lock` appears in no pathspec
+  of any pass, and the `.gitignore` entry (§4.1) closes the same gap against actors that are not
+  pathspec-scoped.
+- An unrelated pathspec-scoped pipeline commit in the same tree cannot pick these files up, and the
+  pass's commit cannot pick that work up.
+- A commit that still fails after the retries **leaves the writes uncommitted for the operator**,
+  records `writes-uncommitted`, and **does not change the terminal status** (§12). The writes are
+  correct on disk either way.
+- A `git add` that stages nothing is not a failure: the working tree already matched, the commit is
+  skipped, and the pass records `writes-uncommitted` only when git actually refused. This mirrors the
+  `NOTHING_TO_COMMIT_RE` treatment in `commitAdvisoryRecord` (`orchestrate-queue.js:1628-1633`),
+  where "nothing to commit" is a return, not a warning.
+- These writes **never travel through the §6 PR**, which carries only guard-set edits.
+
+### 5.5 Where those commits go, and what abandonment costs
+
+The invoking branch **is** the accepted destination. When it is a mid-pipeline `feat-*`, the AC-2.1
+and AC-2.2 promotions reach the default branch by riding that feature's own PR — raised and reviewed
+for something else — so the §10 report names the branch the commit landed on.
+
+| Route | If the invoking branch is abandoned | Why |
+|---|---|---|
+| Consuming-repo writes (§5.4) | promotions **and** the §3.3 consumed pair die together; a later pass re-enumerates the same corpus and redoes the work | they are one commit, so the loss is atomic — abandonment is closed by construction |
+| §6 PR route | inverts: a merged PR survives while the consumed pair, the AC-5.1 record and the AC-3.4 URL die with the branch | the PR is pushed from the §6.1 clone and lives independently of the invoking branch |
+
+The inversion is closed on the **PR identity, not the log**: NFR-4 keys on the
+`(failure-mode-id, action)` pair carried by the merged PR's `PDLC-CONSOLIDATION-PROMOTIONS` trailer,
+and the id is stable across passes (§8.1), so a later pass re-deriving the same `promote` from a
+*larger* consumed set records `duplicate-suppressed` rather than opening a second PR — which a
+sources-set key could not do (§6.4).
+
+What is **not** recovered is the effectiveness record: that promotion re-enters the §8.3 table as if
+first made, losing its streak. This is an accepted loss, stated here and not closed. Any other
+destination for the consuming-repo writes — a `consolidation/{passId}` branch for them too — is
+**not specified**, because it needs the branch operations AC-3.8 forbids.
+
 ## 6. FSPEC-CONS-05 — The pull-request route
 
 ## 7. FSPEC-CONS-06 — Credential handling
