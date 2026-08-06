@@ -1464,3 +1464,103 @@ delegated. This FSPEC records **no** erratum against `REQ-pdlc-consolidation-age
 `docs/_constraints/pdlc-advisory-corpus-baseline.md` at `Version` 1.0.
 
 ## 15. Traceability
+
+### 15.1 REQ criterion → FSPEC section → acceptance test
+
+Every acceptance criterion of the REQ appears exactly once as a row. No criterion is unmapped, and no
+row names a criterion the REQ does not carry.
+
+| REQ | FSPEC | AT |
+|---|---|---|
+| AC-1.1 | §2.2, §2.3, §3.2 | AT-C1, AT-C3, AT-C4, AT-C5 |
+| AC-1.2 | §2.3, §3.1 | AT-C2 |
+| AC-1.3 | §4.1, §4.2, §4.3, §4.4 | AT-M1, AT-M2, AT-M3, AT-M5 |
+| AC-1.4 | §5.3, §8.5, §8.7, §12.1 | AT-K3, AT-L2, AT-F13 |
+| AC-1.5 | §2.6, §10.3 | AT-L5 (the `rung:` field) |
+| AC-1.6 | §2.6, §12.1 S-11 | AT-M4 |
+| AC-2.1 | §5.2, §5.4 | AT-R2 |
+| AC-2.2 | §5.2, §5.4 | AT-R2 |
+| AC-2.3 | §5.2, §9.4 | AT-A4 |
+| AC-2.4 | §5.2, §10.3 | AT-L3 |
+| AC-3.1 | §5.1, §6 | AT-R1 |
+| AC-3.2 | §6.2 | AT-Q2 |
+| AC-3.3 | §6.2, §8.2 | AT-Q2, AT-F2 |
+| AC-3.4 | §10.2, §10.3 | AT-L1 |
+| AC-3.5 | §6.3, §5.3 | AT-Q6, AT-K2 |
+| AC-3.6 | §6.2 | AT-Q1 |
+| AC-3.7 | §6.5 | AT-Q7 |
+| AC-3.8 | §6.1, §12.4 | AT-Q1, AT-R3 |
+| AC-3.8b | §5.4, §5.5 | AT-R3, AT-R4, AT-R5 |
+| AC-4.1 | §7.1 | AT-K5 |
+| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5 |
+| AC-4.3 | §7.3, §6.3 | AT-K2, AT-K3 |
+| AC-4.4 | §7.2 | AT-K1 |
+| AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4 |
+| AC-5.2 | §8.3, §8.4 | AT-F5, AT-F6, AT-F7, AT-F8 |
+| AC-5.3 | §8.5 | AT-F9, AT-F10, AT-F11, AT-F12, AT-F14 |
+| AC-5.4 | §8.6, §5.3 | AT-F10, AT-Q5 |
+| AC-5.5 | §8.7 | AT-F13 |
+| AC-6.1 | §9.1, §9.2, §9.3 | AT-A1, AT-A2, AT-A7 |
+| AC-6.2 | §9.4 | AT-A4, AT-A5 |
+| AC-6.3 | §9.5 | AT-A3, AT-A6 |
+| AC-7.1 | §10.3, §10.4 | AT-L4, AT-L5 |
+| AC-7.2 | §10.1, §10.3, §4.4 | AT-C3, AT-L1, AT-L2, AT-L3 |
+| NFR-1 | §5.1, §6.5, §12.4 | AT-Q7 |
+| NFR-2 | §7.4, §10.5 | AT-K5 |
+| NFR-3 | §5.2 | AT-C2 (the bar is unchanged under a volume trigger) |
+| NFR-3a | §10.3 | AT-C1, AT-C2, AT-C4 |
+| NFR-4 | §6.4, §8.2 | AT-Q3, AT-Q4, AT-Q5, AT-F1 |
+| NFR-5 | §3.3, §12.4 | AT-P6, AT-P2 |
+| §4a config | §11 | AT-N1, AT-N2, AT-N3, AT-N4 |
+| §4b vocabularies | §15.2 | AT-L5 |
+
+### 15.2 Vocabularies §1 rows → where this FSPEC uses each
+
+REQ §4b's set-equality obligation binds this layer first: every §1 row is used here, and no value is
+used here without a §1 row. AT-L5 asserts the equality in both directions at `Version` 1.4.
+
+| §1 row | Used at |
+|---|---|
+| `promoted` | §12.1 S-02 |
+| `promoted-degraded` | §7.3, §12.1 S-07 |
+| `no-op` | §7.3, §12.1 S-05/S-06/S-08 |
+| `skipped-cadence` | §2.3, §2.4, §10.1, §12.1 S-01 |
+| `refused` | §4.3, §4.4, §12.1 S-09 |
+| `failed` | §2.6, §12.1 S-11 |
+| `consolidation-in-progress` | §4.2, §12.1 S-09 |
+| `reclaimed-stale-lock` | §4.2, §12.1 S-10 |
+| `advisory-model-unresolved` | §2.6, §12.1 S-11 |
+| `no-cadence-datum` | §2.3, §12.1 S-03 |
+| `writes-uncommitted` | §5.4, §12.1 S-12 |
+| `credential-unavailable` | §6.3, §7.2, §7.3 |
+| `repository-unresolved` | §6.3, §11.2 |
+| `api-failure` | §6.3 |
+| `branch-exists` | §6.3 |
+| `duplicate-suppressed` | §6.4, §8.5 row 1, §12.1 S-06 |
+| `no-advisory-corpus` | §9.3, §12.1 S-13 |
+| `advisory-corpus-empty` | §9.3, §12.1 S-14 |
+| `cadence` / `volume` / `manual` | §2.1, §2.3, §10.3 |
+| constraints / decisions / PR / `degraded` | §5.1, §7.3, §10.4 |
+| `prevented` / `recurred` / `insufficient-evidence` | §8.3, §12.3 V-01 |
+| `ineffective` / `unmeasurable` | §8.5, §8.7, §12.3 V-02/V-03 |
+| `promote` / `revise` / `retire` | §8.1, §8.2, §6.4 |
+| `revision` / `retirement` | §8.5, §12.3 V-02/V-04 |
+| `pr:` | §10.3, §6.4 |
+| `suppressed-by:` | §10.3, §6.4 |
+| `credential:` (`present (redacted)` / `absent` / `local-gh`) | §7.2, §10.3 |
+| the 13-member phase catalogue | §8.1, §8.3 |
+
+### 15.3 Files this feature edits or creates
+
+| Path | Change | Section |
+|---|---|---|
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | predicate at `:41` scoped to the two regions; corpus glob at `:28` widened to include `docs/completed/*/` | §3.1, §3.2 |
+| `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the §3.2 predicate | §3.2 |
+| `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row added to the metadata table (`:70-78`); a `failure-mode-id` line added to the §5 Open Items convention | §8.3, §8.4 |
+| `.gitignore` | one entry for `docs/_decisions/.consolidation-lock` | §4.1 |
+| `pdlc/workflows/build-runtime.mjs` and `pdlc/workflows/dist/distribution-manifest.json` | the new bundle's build entry and manifest row | §14.1 T-02 |
+| `docs/_constraints/pdlc-consolidation-vocabularies.md` | authored and owned by this feature (§1–§4 entire), kept at `Version` 1.4 | REQ §4b |
+| `docs/_constraints/pdlc-advisory-corpus-baseline.md` | authored and owned by this feature (§1–§4 entire), kept at `Version` 1.0 | REQ §4b |
+
+Every path above is verified present at HEAD except the new bundle artifacts, which this feature
+creates.
