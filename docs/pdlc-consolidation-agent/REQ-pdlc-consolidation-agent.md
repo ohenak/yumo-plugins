@@ -557,10 +557,16 @@ Every enumerated value this REQ uses — terminal statuses, reason codes, trigge
 per-promotion verdicts and states, `action`, the reported `revision`/`retirement` field, the `pr:`,
 `suppressed-by:` and `credential:` fields, and the closed 13-member phase catalogue — is stated once,
 with its category, its permitted statuses and its `file:line` definition site, in
-**`docs/_constraints/pdlc-consolidation-vocabularies.md` §1**, together with the two joins and the
-composition rule that decide which codes a status may carry. That table is this REQ's vocabulary:
-downstream completeness is checkable by **set-equality against it**, and adding a value here without a
-row there is a defect.
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §1** (cited at `Version` 1.2), together with
+the two joins and the composition rule that decide which codes a status may carry.
+
+**This REQ owns every row of that file's §1 and §2**, and changes none of anyone else's; a successor
+feature's vocabulary belongs in its own section of that file or in its own file, never interleaved
+into §1 or §2. So the oracle's range is stated, not "the table": downstream completeness is checkable
+by **set-equality over the rows this REQ owns — §1 and §2 entire at Version 1.2** — and the defect
+rule is symmetric, a value used here with no row there **and** a row there naming a value this REQ
+never uses being equally defects. The symmetry is what makes a *deleted* row a breach; the version
+pin is what gives a downstream test a fixed expected value to transcribe.
 
 ## 5. Scope
 
