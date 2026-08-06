@@ -1028,6 +1028,41 @@ makes `recurred` observable at all.
 A pre-convention LEARNINGS therefore cannot produce a false `recurred`, and can produce a
 `prevented` — which is correct: it exercised the phase and did not report the mode.
 
+**The producing-side obligation — a lookup, never a re-derivation.** The slug is a function of a
+*prior promotion's* recorded `phase` and canonical `artifact` (§8.1), neither of which a harvest
+agent knows from the feature it is harvesting. An id an LLM composes from the failure it is
+describing will not be byte-equal to any recorded slug, so a "derive it yourself" convention would
+make `recurred` unreachable and drift every promotion to `insufficient-evidence` and then
+`unmeasurable` (§8.7). The convention this feature adds to
+`pdlc/skills/harvest-learnings/SKILL.md` (metadata table `:70-78`) is therefore a **lookup against
+the open-promotion list**, and is stated in the skill in these terms:
+
+| # | Harvest-side step | Detail |
+|---|---|---|
+| 1 | Read the open-promotion list | `docs/_decisions/.consolidation-log.md` — the same tracked file the pass writes (§5.4). Each promotion record carries `failure-mode-id`, `phase`, `artifact` and `symptom` (§8.1). A promotion is **open** when its most recent standing state is not `retired`. |
+| 2 | For each §5 Open Item being written, ask one question per open promotion | "Does this open item report the failure this promotion's `symptom` describes, on this promotion's `artifact`, in this promotion's `phase`?" |
+| 3 | On a yes, copy the id **verbatim** | append `failure-mode-id: {id}` to that open item, character-for-character from the log row. Never re-slug, never abbreviate, never mint a new id. |
+| 4 | On no matches, write no line | the absence is meaningful: `recurred` does not fire and the phase observable still yields `prevented` or `insufficient-evidence` on its own evidence (table above). |
+
+Two properties follow, and both are asserted rather than hoped for:
+
+- **The id is never invented.** Every `failure-mode-id` line in any LEARNINGS is a verbatim copy of a
+  line already in the log, so the set of ids appearing in the corpus is a **subset** of the set of
+  recorded ids. An id in a LEARNINGS that matches no record is a harvest defect, and the pass reports
+  it as a parse notice (§9.3's receive-side discipline, applied here) rather than counting it.
+- **Step 2 is a model judgment, and it is on the producing side by design.** It decides only whether
+  to *attach evidence*; it never decides a verdict. §8.3's "no model judgment" claim is unchanged and
+  scoped exactly as written — the verdict rule is a set-membership test over the ids that are
+  present, and it cannot disagree between two runs over the same corpus.
+
+**The limit this leaves.** A harvest agent that should have attached an id and did not produces a
+false `prevented` (or `insufficient-evidence`), never a false `recurred` — the failure direction is
+toward "we cannot show it worked", which is the safe one for a falsifiability loop. The absent
+line is invisible to the pass, so this is a **recall** limit and is not repairable at this layer;
+it is recorded as O-C6 in §14.2. AT-F15 (§13.7) ranges over the producing side: a harvest-authored
+LEARNINGS whose open item copies a recorded id, and the pass that consumes it, must yield
+`recurred` for exactly that promotion and for no other.
+
 ### 8.5 `ineffective`, and which remediation is proposed
 
 **The flag.** A promotion whose verdict was `recurred` on **two consecutive counted passes** is
@@ -1051,8 +1086,20 @@ by this rule, evaluated top-down; the first matching row decides:
 |---|---|---|
 | 1 | a `retire` proposal for this id is already on a PR in state open or merged | **nothing** — the ladder has ended; record `duplicate-suppressed` against that PR and report the field as `retirement` |
 | 2 | a `revise` proposal for this id is already on a PR in state open or merged | `retirement` |
-| 3 | the promotion's `artifact` still exists and the recurrence names the same `symptom` the promotion targeted — the edit addressed the right mode and under-reached | `revision` |
-| 4 | otherwise — the recurrence indicates the edit targeted the wrong mechanism, or the `artifact` no longer exists | `retirement` |
+| 3 | the promotion's `artifact` exists at the pass's HEAD | `revision` — the edit reached a file that is still there, so it under-reached rather than mis-aimed |
+| 4 | otherwise — the `artifact` no longer exists at HEAD, so there is nothing left to revise | `retirement` |
+
+**Row 3's predicate is a file-existence test and nothing else.** An earlier draft conditioned it on
+"the recurrence names the same `symptom` the promotion targeted". That is withdrawn: §8.1 declares
+`symptom` free text written by the pass's own model under no vocabulary and explicitly non-keying,
+precisely because two passes word one mode differently — so a rule branching on it would be a
+free-text match no two runs must agree on, contradicting §8.3's determinism, and the corpus cannot
+supply the input in any case (a LEARNINGS carries a `failure-mode-id` line, §8.4, never a symptom).
+The recurrence's *identity* is already established before rows 3–4 are reached — the flag exists
+only because two counted passes returned `recurred`, which by §8.3 means a consumed LEARNINGS named
+this exact id. What remains to decide is therefore only whether a target survives, and that is
+decidable by one filesystem check on the canonical path (§8.1's `artifact`, root-relative, exactly
+one file). Both rows are deterministic functions of (the log, the pass's HEAD tree); no model runs.
 
 Rows 1–2 are the **spent-alternative** clause: NFR-4 suppresses on the pair, so each action fires at
 most once per id, and without this clause AC-5.3's promise would be merely achievable rather than
