@@ -57,7 +57,54 @@ open.**
 
 ## Positive Observations
 
-_(pending)_
+- **The Medium was closed by deletion, not by a better universal.** The repair round
+  (`ee742a3`, `c8ab0cc`) did what I asked and would have satisfied me; the operator's post-mortem
+  found the repaired universal still falsifiable and removed it instead — four deletions in
+  `4fbb696` (§14.5's "exactly one home" sentence, T-10's "the two sets are disjoint", BR-33a's "so
+  every arm has exactly one home", E-12b's "per that table's cell-level set-equality"), with no new
+  rule, BR, AT or register entry added in exchange. That is the right direction: a register that
+  lists its entries needs no theorem about the list, and every one of the last five rounds' Mediums
+  was manufactured by exactly those theorems. Both of this round's findings are Low precisely
+  because the assertions that would have made them Medium are gone.
+- **T-10's exclusion is argued from a consequence, not asserted.** `:2162` does not merely say the
+  `phase` arm is out of scope; it says why treating it as an unavailable literal would be
+  *harmful* — the §8.3 row carries `insufficient-evidence`, a §15.2 lexicon value the document
+  pins, so spelling it as unavailable "would take the row out of §8.7's `insufficient-evidence`
+  streak and make `unmeasurable` unreachable on that path". I checked both supports at HEAD: §10.4
+  item 5 fixes what that row renders (`:1837-1839`), §8.7 and its `unmeasurablePasses` threshold
+  exist (`:1545`, `:1898`), and BR-43 (`:2560`) confirms the per-promotion verdict is an
+  enumerated-class value §15.2 owns. An exclusion whose violation has a named downstream cost is
+  one a TSPEC author cannot discharge by accident.
+- **§8.4 step 1's new arm reuses §8.3's reconciliation instead of inventing one.** `:1181` reaches
+  the same shape for the same field: an id-less record contributes no member, and that is not a
+  silent drop "in AT-F19's set-equality sense: the assertion there ranges over the ids the log
+  carries". I verified AT-F19 (`:2113`) — its expected list is the literal `{B, C, D}` over ids its
+  fixture's log actually carries, and it asserts set-equality in both directions plus the literal
+  cardinality `3` in the report body, so the reconciliation is sound rather than convenient. Two
+  sections now derive the same exception from one rule, which is the third round running that a
+  new arm has been traced to an existing one.
+- **Three registers were widened to the same arity in one pass.** The §8.4 steps 2–3 `artifact` arm
+  landed simultaneously in LD-1 ("**three readers, three distinct arms**"), BR-33a ("the **three**
+  `artifact` arms") and E-12b ("three readers, three arms, per BR-33a") — I checked all three cells
+  name the same three readers in the same order. The failure mode this document keeps hitting is a
+  widening that lands in one register and not its siblings; this round it landed in all of them,
+  and F-02 is what is left over: one field, one reader, in one of the three.
+- **LD-5's defect column became a real oracle.** It previously described only the `phase` and id
+  failures; it now pairs each arm with the specific wrong behaviour — "**or reads an `action`-short
+  pair as `enacted`** (§6.4's predicate treated as decidable), so the promotion is suppressed rather
+  than re-proposed; **or drops a `symptom`-short promotion from §8.4's question list** rather than
+  asking on the fields present". Each negative is stated beside the positive that must happen
+  instead, which is the form a PROPERTIES author can transcribe without inventing the other half.
+- **Citation health, seventh consecutive round.** Every anchor added this round resolves at HEAD:
+  BR-35b (`:2545`), O-C7 (`:2183`), AT-F19 (`:2113`), §8.7 (`:1545`), §10.4 item 5 (`:1837`),
+  BR-43 (`:2560`). The one external citation the changed text still leans on is unchanged and
+  re-verified verbatim: `docs/_constraints/pdlc-consolidation-vocabularies.md:63` still reads
+  `` `{id}:{action} → PR URL` entries, or empty ``, so §14.4 ER-5 remains correctly open. No
+  line-number or file citation added this round is stale.
+- **The version number tells the truth about what happened.** `11.0` for the round that changed
+  contracts (an arm added to §8.4 step 1, two registers re-assigned owners, three cells widened to
+  three `artifact` arms), then `11.1` for the deletion-only pass. A patch bump that removes four
+  sentences and adds nothing is exactly what a patch bump should mean.
 
 ## Recommendation
 
