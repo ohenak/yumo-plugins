@@ -63,6 +63,19 @@ the load-bearing anchor in place.
 
 ## Questions
 
+Only questions arising from the changed sections. v6's Q-01 and Q-02 are answered by the revision
+(AC-5.1 took Q-02's narrow variant whole, which moots Q-01's mint-vs-look-up choice — a `phase` +
+`artifact` slug is stable by derivation, so no lookup is needed), Q-03 by AC-5.2's restated
+set-equality sentence, and Q-04 by AC-1.3's write-granularity paragraph. Q-05 was non-blocking and
+remains open but unasked; the refused-row attribution point still holds and is still fine.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: is a **revision** of an `ineffective` promotion meant to reach the guard set as a PR at all? AC-5.3 offers `revision` / `retirement` as a closed pair and AC-5.4 specifies the routing for **retirement** only (`:427-432`) — PR for guard-set, proposal file for consuming-repo. A revision's route is stated nowhere. If the intended answer is "a revision routes exactly as its retirement would", one clause in AC-5.4 says so and F-01's fix then covers both arms with one `action` discriminator. If the intended answer is "a revision is a fresh promotion with a new `artifact`", say that instead — but note it only escapes NFR-4 when the revision genuinely targets a different file, which is not the common case. |
+| Q-02 | For F-01, the design question underneath it: is `merged` in NFR-4's key set meant to be permanent, or permanent-until-retired? The REQ argues for its inclusion from one case only — surviving the AC-3.8b abandonment where the log record is lost with the branch (`:519-521`) — and that case is about a *recently* merged PR whose log record vanished. A promotion merged, measured, and flagged `ineffective` two passes later is the opposite situation: its record demonstrably survived, since AC-5.3 read it to flag it. "A promotion leaves the key set when it is flagged `ineffective`" would close F-01 without an `action` discriminator, and it is arguably the more honest rule — the key exists to suppress *accidental* duplicates, and a remediation is not accidental. |
+| Q-03 | For F-03: which channel is the duplicate PR's URL actually for? I read the relocation into the log row as serving a `/loop` operator who sees only the report body, which is the right instinct — but AC-7.2's biconditional was written to make "did this pass open a PR?" answerable from the row alone, and one URL field cannot serve both readings. If you take the `suppressed-by:` field I suggest, does it belong in §4b's vocabulary table? I think yes — every other closed-set field in the row has a row there (`credential:`, trigger, reason codes), and §4b's stated obligation is set-equality over the row's vocabularies, so a new field that is absent from it is a silent hole in that check. |
+| Q-04 | Non-blocking, arising from AC-5.1's accepted merge cost (`:374-376`): two genuinely different failure modes in the same `phase` touching the same `artifact` become one promotion with one `symptom` line. `pdlc/workflows/orchestrate-dev.js` is a ~10,600-line file that is the `artifact` for a large share of plausible promotions, and `phase` has 13 members — so the collision space is not hypothetical, it is roughly "two DOD-phase findings about `orchestrate-dev.js`". Is a path-level `artifact` the right granularity, or should the record permit a glob narrow enough to discriminate (which AC-5.1 already allows — "a path **or glob**", `:364`) and state that the pass prefers the narrowest one that covers the edit? I am not filing this as a finding because AC-5.1 names the cost and accepts it explicitly, which is the reviewable form; I am asking whether the cost was priced against this repo's actual file-size distribution. |
+
 ## Positive Observations
 
 ## Recommendation
