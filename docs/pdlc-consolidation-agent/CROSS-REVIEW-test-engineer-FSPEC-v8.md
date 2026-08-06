@@ -88,4 +88,50 @@ The other two are Low.
 
 ## Recommendation
 
+**Needs revision**
+
+All four v7 findings are resolved, two of them (M-01, L-02) in the strongest available form: the
+AT-F21 repair pinned the fields *and* replaced the false negatives with the positive behaviour, and
+the citation repair replaced a line number with a section-and-row anchor rather than with a corrected
+line number. Both v7 questions are answered inside the document. Nothing in this revision re-opens a
+settled decision, and nothing in it broke a section I had previously approved — I checked the
+sections the diff touched and re-derived AT-F21's expected open set from the rules rather than from
+the prose.
+
+The verdict is **Needs revision on M-01 alone**, and I want to be as precise about why it is not a
+Low as I was in v7. `DEC-LAYER-01` puts fixture construction and oracle strength below this layer,
+and I have applied that consistently — L-02 is a missing arm in a coverage enumeration and is Low for
+exactly that reason. M-01 is not a missing fixture. It is a **new normative rule**, stated at this
+layer in this revision, whose asserted downstream state ("no suppression, re-proposed") contradicts
+the predicate §6.4 states for the same carrier three hundred lines earlier ("`enacted` when some prior
+pass's record carries the same `(failure-mode-id, action)` and that record's `route` is not
+`degraded`" — a predicate the new clause itself concedes is decidable without `passId`). The two
+readings write differently to the consuming repo: one appends nothing, the other re-appends a
+constraint that already landed, which is the duplicate REQ NFR-4 exists to forbid and which this very
+section promises does not happen. A test author cannot write the assertion, and an implementer
+resolving the disagreement by reading whichever section they reached first ships a silent NFR-4
+regression. That is an FSPEC-layer defect in a rule this document owns, not a deferral.
+
+The repair is a decision plus two agreeing sentences, adds no new BR and — depending on which branch
+is taken — either no new AT or one extra record in an existing Given, so it is admissible under the
+freeze:
+
+1. **M-01** — decide the branch and state it once. My reading of NFR-4 is that the suppression must
+   **hold** on the pair (the key REQ names) and only the *evidence spelling* degrades, in the same
+   shape §8.1's §8.3 row already uses for a missing `artifact`: the contract runs, the unavailable
+   value is reported as an explicit unavailable statement, nothing is guessed and `pass:undefined` is
+   never written. Then reconcile §6.4's carrier row (`:819`, three fields) with §8.1's reader row
+   (`:1143`, four) so the indexed-field set is stated once, and give the arm a home — an extra short
+   record in AT-F21's Given, or a named PROPERTIES deferral with its observable.
+2. **L-01** — `(`:1712`)` → `§10.3's `suppressed-by:` row`. The line number points at `rung:`.
+3. **L-02** — add the `passId` arm to BR-33a's AT cell in whichever class (1) puts it in, so the
+   enumeration is set-equal to the reader table again.
+
+Taking (1) clears the verdict; it also subsumes most of (3). (2) and (3) are Low and, per
+`DEC-LAYER-01`, may be carried as tracked deferrals — though (2) costs one token substitution and has
+now recurred three times, so I would take it.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 2}
