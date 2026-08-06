@@ -528,6 +528,19 @@ guard-set path in any tree.** The guard-set edit exists only as a commit in the 
 | Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | as today (`:41`) |
 | Process learning about a skill prompt, checklist or workflow phase | **propose, never apply** | §6 (PR) or §5.3 (proposal file) |
 
+**`{topic}` is derived, not chosen** (AC-2.2 states the destination; the derivation is this layer's).
+It is the **promotion's own `failure-mode-id` `phase` segment plus the basename of its `artifact`**,
+under §8.1's slug normalisation — i.e. `{topic} = failure-mode-id with the artifact's directory
+segments dropped`. Worked: `phase = P`, `artifact = pdlc/skills/se-author/SKILL.md` ⇒
+`docs/_decisions/DECISIONS-p-skill-md.md`. Three properties follow, and each is why the derivation is
+stated rather than left to the model:
+
+| Property | Consequence |
+|---|---|
+| A pure function of the two keying fields (§8.1), never of `symptom` or of the consumed set | two passes recognising one decision write the **same** path, so §6.4's consuming-repo carrier can suppress the second — a model-chosen topic would not be stable enough to key on |
+| An existing file at that path is **appended to**, never replaced or re-created | the file is an append-only decision record like `DOMAIN-CONSTRAINTS.md`; §10.2's write granularity applies to it |
+| The path is always inside `docs/_decisions/` and never inside a guard-set prefix | so an AC-2.2 promotion is always the §5.1 consuming-repo route, never the PR route |
+
 The pattern-vs-coincidence bar is **unchanged and still governs every promotion**: recurs across ≥2
 unrelated features, **or** a single occurrence stating a standing invariant that obviously
 generalises (`SKILL.md:38`). Running on a cadence does not lower it (NFR-3) — the trigger decides
@@ -551,9 +564,26 @@ something to propose that it does not enact:
 | A widening a consumer must adopt in its own untracked `.claude/pdlc.config.json` | an operator action, never a PR | §9 |
 
 The artifact name is keyed on `passId`, not on a date (vocabularies §4), which is what keeps two
-same-day passes — an expected case under the volume trigger — from overwriting each other. A pass
-with nothing in any of the three rows writes **no** proposal file: a `no-op` pass opens no PR and
-writes no proposal file (AC-1.4).
+same-day passes — an expected case under the volume trigger — from overwriting each other.
+
+**The file's existence is decided by the three rows above and by nothing else** — never by the
+terminal status. A pass with nothing in any of the three rows writes **no** proposal file; a pass
+with something in any of them writes one, whatever its terminal status. Both directions are
+observable, so the rule is stated once here and not restated per status:
+
+| Pass | Proposal file | Why |
+|---|---|---|
+| `no-op` because the consumed set was empty (AC-1.4's first cause) | **none** | nothing to propose |
+| `no-op` because every promotion was duplicate-suppressed (AC-1.4's second cause) | **none** | a suppressed proposal fires no fallback (§6.4) and is not a §5.3 row |
+| `no-op` because its **only** promotion degraded on an absent credential (§7.3, §12.1 S-08) | **written** — row 1 of the table above | §6.3 requires the full diff inline; without the file that promotion would be lost, which is the very outcome AC-4.3 exists to prevent |
+| `promoted-degraded` with a degraded promotion | **written** | same row |
+
+AC-1.4's "exits successfully without opening a PR or writing a proposal file" describes its **two
+named causes**, both of which are the first two rows. The third row is AC-4.3's degraded pass, which
+reaches `no-op` by a cause AC-1.4 does not enumerate. This FSPEC reads the two criteria as
+complementary rather than contradictory and records an **erratum against the REQ** asking AC-1.4 to
+say so explicitly (§14.4); the behaviour specified here is unambiguous either way, and AT-K3 asserts
+it in both halves.
 
 The file supersedes nothing about the shipped four-column proposal table
 (`pdlc/skills/consolidate-learnings/SKILL.md:54`): that shape remains the fallback's presentation,
@@ -585,7 +615,7 @@ git commit -m {msg} -- {paths}
 
 | Property | Value | Precedent at HEAD |
 |---|---|---|
-| Pathspec on **both** calls | required | `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1576`; add `:1577`, commit `:1579-1585`) and `commitAdvisoryRecord` (`:1615`), which mirrors its two-call shape |
+| Pathspec on **both** calls | required | `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1576`; add `:1577`, commit `:1580-1586`) and `commitAdvisoryRecord` (`:1615`), which mirrors its two-call shape |
 | Never `-a`, never pushed | required | both precedents above |
 | **Not** the `commitPaths` shape | required | `commitPaths` (`pdlc/workflows/orchestrate-dev.js:8669`) commits with a plain `git commit -m` and no pathspec (its doc comment at `:8660-8663` states that as deliberate) — which would sweep a staged index into the pass's commit, and AC-3.8's shipping tree may be mid-pipeline with one |
 | `index.lock` retry | required | the same transient class `gitWithLockRetry` (`:8617`) handles for `commitPaths` (`:8670`) |
@@ -602,7 +632,7 @@ Consequences this FSPEC commits to:
   correct on disk either way.
 - A `git add` that stages nothing is not a failure: the working tree already matched, the commit is
   skipped, and the pass records `writes-uncommitted` only when git actually refused. This mirrors the
-  `NOTHING_TO_COMMIT_RE` treatment in `commitAdvisoryRecord` (`orchestrate-queue.js:1628-1633`),
+  `NOTHING_TO_COMMIT_RE` treatment in `commitAdvisoryRecord` (`orchestrate-queue.js:1631-1635`),
   where "nothing to commit" is a return, not a warning.
 - These writes **never travel through the §6 PR**, which carries only guard-set edits.
 
