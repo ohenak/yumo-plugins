@@ -49,6 +49,58 @@ FSPEC does state the observable, which is the part that stays blocking at this l
 
 ## Positive Observations
 
+- **AT-F21's Given is now a fixture a test author can type, and the expected set is derived in the
+  row rather than asserted.** The repair I asked for was one clause: give `F` and the third record an
+  `action`. What landed is the whole transcription: `F` = `action: promote`, `route: degraded`,
+  missing `target`; the third record is *named* `W` and pinned `action: retire`, `route: constraints`;
+  and the row states the expected open set as the literal `{E, F}` **with a reason per member** — `E`
+  open because §8.4 step 1 cannot index its missing `route`, `F` open because it carries no `retire`
+  record, `W` excluded because BR-33c closes on a landed retirement. I re-derived all three against
+  BR-33c (`:2461`) and BR-25 (`:2440`) and they hold. The line worth keeping is "Every field each
+  reader indexes is pinned on all three records" — that is the *rule* a fixture author needs, stated
+  once, rather than the three facts it generated.
+- **The `F` arm was re-scoped rather than annotated, which is the harder of the two available
+  repairs.** My v7 Q-03 and te-review's v7 M-01 both landed on the same clause: `F`'s arm asserted a
+  set of negatives whose stated positive ("re-proposed on a later pass") is not observable inside the
+  pass under test. The cheap fix was a parenthetical naming conjunct (2) as the positive. Instead the
+  arm now asserts only what a missing `target` blocks — §8.6 routes no remediation, no `target` is
+  guessed on the stored record — paired with a positive **on the same path**: the re-derived promotion
+  for `F` is a fresh proposal whose `target` is a function of its kind, so it routes and writes
+  normally. That is a real negative/positive pair, and it makes the `route: degraded` on `F`'s record
+  load-bearing (via BR-25) instead of decorative.
+- **The reader-table lead is now a closure, not a list.** "seven, one row each, and no reader of a
+  failure-mode record anywhere in this document outside that set" (`:1135-1137`) is a strictly
+  stronger claim than v7's "the four in the paragraph below plus §10.2 order 2, §8.3 and §8.5", and
+  the paragraph fifty lines above was demoted to "illustrative, not the enumeration" (`:1081-1085`)
+  in the same commit rather than left to contradict it. Two enumerations of one set became one
+  enumeration and one example. A document that resolves an enumeration conflict by deleting an
+  enumeration is doing the right thing with the right instrument.
+- **Two coverage narrowings propagated in full, with the wording copied rather than paraphrased.**
+  BR-33a and BR-33b now carry E-12b's split verbatim in structure — the same two `artifact` arms
+  named (§8.3's unavailable-path row, §8.5's refusal to guess a `retirement`), the same "no fixture
+  at this layer", the same DEC-LAYER-01 attribution, and each pointing at the other as the place the
+  observable is stated (`:2459`, `:2460`, `:2514`). Paraphrase is how three statements of one rule
+  drift apart; this is three statements that will fail a diff together.
+- **The §8.2 deferral states its defective implementation, not only its owner.** `:1240-1242` does
+  not stop at "PROPERTIES-owned": it gives the observable (two records under two keys, both writes
+  made, the guard-set one as a PR) *and* the two ways to get it wrong (fold the two actions into one
+  key and make one write; suppress the guard-set write as if consequence 2 bound it). A deferral that
+  names its falsifier is a deferral the downstream author can act on without re-deriving the rule.
+  F-02 is that there are now three of these and no register — a filing problem, not a quality one.
+- **Every citation added this round resolves except the one filed as F-01 — re-verified at HEAD.**
+  DEC-LAYER-01's third bullet does assign seam verb permitted-sets to TSPEC
+  (`docs/_decisions/DECISIONS-spec-layer-boundary.md:30`) and its fourth does assign fixture
+  construction and set-equality domains to PROPERTIES (`:31-33`), which is what BR-33a, BR-33b and
+  §8.2's new paragraph each lean on; the review consequence that makes a named-owner finding Low
+  rather than Medium is at `:35-39` and says so. BR-33c (`:2461`) and BR-25 (`:2440`) both read as
+  AT-F21 claims they do. The `suppressed-by:` value grammar is still verbatim
+  `` `{id}:{action} → PR URL` `` at `docs/_constraints/pdlc-consolidation-vocabularies.md:63`, so
+  §14.4 ER-5 remains correctly open and un-patched. Fourth consecutive round with no substantive
+  citation drift; F-01 is a line number, not a claim.
+- **The version bump is honest, again.** `8.0`, not `7.1`: this round changed two business-rule AT
+  columns (BR-33a, BR-33b), an acceptance test's Given and expected value (AT-F21), and added a
+  named deferral in §8.2 — contract changes, not an editorial pass.
+
 ## Recommendation
 
 ## Verdict
