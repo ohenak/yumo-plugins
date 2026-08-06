@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 7.0 | 2026-08-06 |
+| pdlc | draft | Claude | 8.0 | 2026-08-06 |
 
 ## 1. Scope and entry obligations
 
@@ -940,12 +940,10 @@ this sentence is about the **git** domains. The PR seam has its own read verb, `
 **obliged** column, because §6.4's state table cannot be evaluated without it — a `gh pr list`
 resolves there and is not an example of the class excluded here. A test author transcribes the closed
 set, so widening it silently would make the containment assertion unfalsifiable at its own boundary;
-a pass that needs a third **git** read verb (`git log`, `git diff`, a `git show`) is a change to this
-table, made here, not a reading of it. "Made here" is a statement about which layer owns the
-**decision**, not about which document a later widening is written in: under DEC-LAYER-01 the seam
-verb permitted-sets are TSPEC's to transcribe and, with a recorded reason, to widen — this table is
-the frozen statement TSPEC inherits, so a widening is a recorded TSPEC decision against this set, not
-a silent reading of it.
+a pass that needs a third **git** read verb (`git log`, `git diff`, a `git show`) is a **change** to
+this table, not a reading of it. Under DEC-LAYER-01 the seam verb permitted-sets are TSPEC's to
+transcribe and, with a recorded reason, to widen — this table is the frozen statement TSPEC inherits,
+so a widening is a **recorded TSPEC decision** against this set, never a silent reading of it.
 
 The permitted set of a domain is its obliged column ∪ its permitted-but-not-obliged column. The
 universal assertion is **observed ⊆ permitted**, which is what falsifies a merge on *any* pass,
@@ -2457,8 +2455,8 @@ falsifies it; none of them is new here.
 | # | Rule | Section | AT |
 |---|---|---|---|
 | BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically from `phase` and its **subject** `artifact`, one **`target`** path decided by its kind (§5.2) and never folded into the id, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored subject file. | §8.1, §8.2, §5.2 | AT-F1, AT-F2, AT-F3, AT-F20, AT-R6b |
-| BR-33a | Every failure-mode record carries **exactly** §8.1's eight fields — none missing, none added — on every promotion kind and on the `degraded` route. A reader that finds a record missing a field it indexes reports a parse notice and skips that record for that contract; it never halts the pass and never rewrites the record, and it is skipped only by the contracts that index the missing field (§8.1's reader table). | §8.1, §6.4, §8.4 | AT-F20 (the writer half), **AT-F21** (the reader half) |
-| BR-33b | An intra-pass merge of proposals of different §5.2 kinds keeps the **highest-precedence** kind's `target` and `route` (constraints > decisions > subject file), states both failure modes in the one `symptom`, and names the elided kind in the report body. Where the merged proposals name more than one canonical subject path, the surviving `artifact` — and, where precedence returns the process-learning kind, the `target` — is the **lexicographically first** of them; never proposal order, which is not a function of the inputs — and the report body names every elided subject path beside the survivor, on the same obligation that names an elided kind. | §8.2, §10.4 | AT-R6b (fixture 2 for the subject tie-break; fixtures 3, 4 and 5 for the three kind pairs) |
+| BR-33a | Every failure-mode record carries **exactly** §8.1's eight fields — none missing, none added — on every promotion kind and on the `degraded` route. A reader that finds a record missing a field it indexes reports a parse notice and skips that record for that contract; it never halts the pass and never rewrites the record, and it is skipped only by the contracts that index the missing field (§8.1's reader table). | §8.1, §6.4, §8.4 | AT-F20 (the writer half), **AT-F21** (the reader half, `route` and `target` arms only). The `artifact` arms of the reader rule (§8.3's row emitted with an unavailable path, §8.5's refusal to guess a `retirement`) have **no fixture at this layer** and are PROPERTIES-owned per DEC-LAYER-01, as E-12b states |
+| BR-33b | An intra-pass merge of proposals of different §5.2 kinds keeps the **highest-precedence** kind's `target` and `route` (constraints > decisions > subject file), states both failure modes in the one `symptom`, and names the elided kind in the report body. Where the merged proposals name more than one canonical subject path, the surviving `artifact` — and, where precedence returns the process-learning kind, the `target` — is the **lexicographically first** of them; never proposal order, which is not a function of the inputs — and the report body names every elided subject path beside the survivor, on the same obligation that names an elided kind. | §8.2, §10.4 | AT-R6b (fixture 2 for the subject tie-break — the `artifact` half only, since that fixture is kind 2 on both sides; fixtures 3, 4 and 5 for the three kind pairs). The `target`-follows clause of the subject tie-break (a colliding-subject merge of two **process learnings**, where precedence returns kind 3) has **no fixture at this layer** and is PROPERTIES-owned per DEC-LAYER-01, with §8.2's third note stating its observable |
 | BR-33c | The open-promotion list handed to the harvest prompt is computed **by the pass** from `.consolidation-log.md` alone: an id is open when no record for it carries `action: retire` with a `route` other than `degraded`. The computed list is exactly that set — not a superset. | §8.4 | AT-F19 |
 | BR-34 | Every prior promotion gets a verdict on every reporting pass: `prevented` / `recurred` / `insufficient-evidence` — a `no-op` pass restates them unchanged (AC-1.4). | §8.3, §12.3 | AT-F5, AT-F6, AT-F7, AT-F8 |
 | BR-35 | `recurred` on two consecutive counted passes ⇒ state `ineffective`, and a `revision` or `retirement` proposal is emitted. | §8.5 | AT-F9, AT-F10 |
