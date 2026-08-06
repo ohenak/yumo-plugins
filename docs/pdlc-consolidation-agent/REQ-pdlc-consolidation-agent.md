@@ -474,7 +474,7 @@ and is testable with the tier off. Availability is tracked as BL-01a, not assert
   defaults** in `pdlc/workflows/`, so it routes as a PR under AC-3.1. A consumer's `.claude/pdlc.config.json` is untracked and is not a PR-able
   surface; a widening a consumer must adopt locally is reported as an operator action in the AC-7.1 report, never as a PR.
 
-The honest limit (baseline §3): `ESCALATIONS.md` records escalations, not resolutions — a resolution-rate input is D-CONS-06.
+The honest limit (baseline §4): `ESCALATIONS.md` records escalations, not resolutions — a resolution-rate input is D-CONS-06.
 
 ### REQ-CONS-07 — Reporting
 
@@ -581,7 +581,11 @@ commit of the consuming-repo writes (AC-3.8b); the effectiveness/falsifiability 
 two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-5.2) and
 `Phases exercised` in the harvest metadata table (`harvest-learnings/SKILL.md:70-78`);
 `ESCALATIONS.md` consumption in all three corpus states (AC-6.1); the one-line `.gitignore` entry for
-`docs/_decisions/.consolidation-lock` (AC-1.3); reporting against §4b's vocabularies; tests.
+`docs/_decisions/.consolidation-lock` (AC-1.3); the two project-level reference files this feature
+authors and thereafter owns — `docs/_constraints/pdlc-consolidation-vocabularies.md` (§4b's owned
+rows) and `docs/_constraints/pdlc-advisory-corpus-baseline.md` (REQ-CONS-06's corpus facts), both
+kept current with this REQ under §4b's change-control rule; reporting against
+`pdlc-consolidation-vocabularies.md` §1's vocabularies; tests.
 
 The pass ships as a workflow script beside the existing `consolidate-learnings` skill (the `orchestrate-queue` shape: a skill and a bundled workflow
 sharing a name), so its bundle is a new tracked artifact of `pdlc/workflows/build-runtime.mjs` and a new row in
