@@ -41,7 +41,52 @@ what the pass guarantees, which is this document's job.
 
 ## Questions
 
+v5's Q-11 is answered in full and in the right register — NFR-4 now carries "State is read at poll
+time with no memory of prior states: a reopened PR is open, hence a key" (`:546`), which is the
+clause that tells a fixture author the oracle polls rather than reconstructs history, and closes the
+three-state set under transitions. No new questions this round; both open items are findings, not
+questions, because both have to be *decided* rather than clarified.
+
 ## Positive Observations
+
+- F-34 was decided against my suggestion and the decision is better than either option I offered. I
+  asked the REQ to soften two absolute claims or scope the commit; the revision instead removed the
+  commit, which makes both absolutes true rather than merely consistent, and shrinks the `refused`
+  status to the smallest disk effect that still carries evidence. The ripple was carried in the same
+  revision and in the right direction — §4b's `writes-uncommitted` row **lost** `refused` — which is
+  the tell that the decision was applied rather than asserted: a document that only adds is not
+  re-deriving its enumerations.
+- The v5 F-35 disposition is the more valuable one. My finding was wrong, and the revision neither
+  accepted the wrong correction nor merely rejected it — it added `first key R: :3338` so the row now
+  fixes the ambiguity that produced my error. A round that answers an incorrect finding by making the
+  document harder to misread is doing something better than converging.
+- The `no-cadence-datum` fix is stated as a **derivation from the tick order**, not as a corrected
+  cell: "decided at step 3 … the marker check that yields `refused` comes after". That is what makes
+  §4b's composition rule self-checking rather than a table someone maintains by hand — the next
+  reason code can be placed by re-running the argument instead of by pattern-matching an existing
+  row.
+- NFR-4's re-keying names *why* the old key was wrong, in falsifiable terms: "a consumed set is
+  time-dependent (REQ-CONS-01 step 1 enumerates whatever is un-consolidated *now*), so two passes
+  proposing the same promotion normally consume different sets and a set key would miss exactly when
+  suppression matters" (`:542-544`). That sentence is the fixture: same promotion, two different
+  consumed sets, assert `duplicate-suppressed`. It is the test I would have had to invent, written
+  into the requirement. (F-38 is about whether the *new* key can hold, not about this reasoning.)
+- The three-trailer split at `:265-268` separates provenance from identity explicitly —
+  `PDLC-CONSOLIDATION-SOURCES` is annotated "**not** a duplicate key" in the same breath as it is
+  defined. An enumeration that says which of its members is load-bearing prevents the most common
+  transcription error, which is keying a test on whichever field looks most specific.
+- AC-5.2's `CODE_REVIEW` row now cites **both** dod-verify construction sites — `:7911` (round 1,
+  inside `dodVerifyPrompt`, which begins at `:7873`) and `:7941` (rounds ≥2, inside
+  `dodReVerifyPrompt` `:7924`) — both verified exact at HEAD. The v5 citation was true but partial:
+  it proved the basename is produced on round 1 and left rounds ≥2 to inference, which for a
+  set-equality claim over "every `CODE_REVIEW` file the pipeline can produce" is the half that
+  matters. Widening a citation to close an inference is rarer than fixing a wrong one.
+- Compression again cost nothing checkable. ~40 lines were reflowed to hold the budget, and I
+  re-verified every `file:line` in the changed text: `:3337`/`:3338`/`:3431`/`:3437`, `:5429`,
+  `:5799`, `:6423`, `:7911`/`:7924`/`:7941`, `:10255-10257`, `:10603`. All resolve to what the REQ
+  attributes to them. The two claims removed by reflow (AC-5.2's "both inputs are file text…"
+  sentence and AC-1.4's `no-op` restatement) are both still stated elsewhere — at `:401-402` and
+  AC-1.4 respectively — so nothing checkable was dropped to buy the space.
 
 ## Recommendation
 
