@@ -1120,6 +1120,21 @@ function firstLine(text) {
 }
 
 /**
+ * Phase H2's guard-refusal predicate (TSPEC §9.3, PLAN A-27, decision 1). A `git rm` of the
+ * advisory record is refused exactly when it carries the reused, unmodified guard literal
+ * `guard-harvest-before-delete.sh` produces — the same string Phase H's own TSPEC-HARVEST-04
+ * detection tests for at `dev:8342` (message extended, never rewritten, per §9.3's ⚠️).
+ */
+function guardRefused(del) {
+  return Boolean(
+    del &&
+      del.ok === false &&
+      typeof del.stderr === "string" &&
+      del.stderr.includes("pdlc guard: refusing to delete CROSS-REVIEW files")
+  );
+}
+
+/**
  * `executeMerge` — O6 (TSPEC §4.7). Issues exactly one `gh pr merge` variant
  * for `method`, then — only when that command itself exited zero —
  * independently reads back `gh pr view --json mergeCommit,state` and
@@ -7367,6 +7382,23 @@ function harvestPrompt(featureName) {
   );
 }
 
+/**
+ * Phase H2's distil dispatch prompt (TSPEC §9.3, PLAN A-27, decision 4). Deliberately named as a
+ * distinguishable ADVISORY-class dispatch (never mistaken for Phase H's own `harvest-learnings`
+ * call) — the pipeline itself performs the guarded delete afterward, so this prompt never asks the
+ * agent to delete the record.
+ */
+function advisoryDistilPrompt(featureName) {
+  return (
+    `ADVISORY distil for feature ${featureName}:\n` +
+    `1. Read docs/${featureName}/ADVISORY-${featureName}.md.\n` +
+    `2. Append a summary of its entries to docs/${featureName}/LEARNINGS-${featureName}.md.\n` +
+    `3. Do NOT delete ADVISORY-${featureName}.md yourself — the pipeline deletes it through the ` +
+    `guarded channel after this dispatch returns.\n` +
+    branchPinClause(featureName)
+  );
+}
+
 // ─── TSPEC-SHIP: PR-raise + CI-verify (Phase PUB) ─────────────────────────────
 
 function createPrPrompt(featureName) {
@@ -10123,6 +10155,8 @@ async function main({
           _log: emit,
           _now,
           _sleep,
+          _runAdvisorySeam: runAdvisorySeamFn,
+          _advisoryRecord: (disposition) => advisoryDispositions.push(disposition),
         });
         prUrl = pubResult.prUrl;
         ciStatus = pubResult.ciStatus;
@@ -10131,6 +10165,50 @@ async function main({
             ? `PR ${prUrl} — all GHA checks passed`
             : `PR ${prUrl} — no GHA checks detected within timeout (assumed none configured)`;
         recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
+      }
+
+      // ─── Phase H2: distil the advisory record (TSPEC §9.3, PLAN A-27) ────
+      // Placed strictly between Phase PUB and Phase MERGE (dev:8386/dev:8389 — I-11).
+      // Phase H itself (above) is untouched: at that point A5 has not run yet. The whole step is
+      // fail-open (mirrors this tier's other "notice, never halt" terms — e.g. R-2's failed
+      // record write, and the guard-refusal branch just below) — a transport fault here must
+      // never take down an otherwise-successful pipeline run. `h2Sleep` mirrors the wave-commit
+      // call sites' own `waveSleep` fallback pattern rather than forwarding `_sleep` bare, which
+      // would register this call site as an unresolved E-2 forward (`commitPaths` does not
+      // declare `_sleep` with a default) under RLH-AT-64's composition-root wiring check.
+      if (advisoryTierOn) {
+        const advisoryPath = `docs/${featureName}/ADVISORY-${featureName}.md`;
+        const advisoryLearningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+        const h2Sleep = typeof _sleep === "function" ? _sleep : sleep;
+        try {
+          const check = await checkFileFn(advisoryPath);
+          const recordExists = Boolean(check && check.ok);
+          if (recordExists) {
+            await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
+            const del = await gitFn(["rm", "--", advisoryPath]);
+            if (guardRefused(del)) {
+              notices.push(`ADVISORY record retained: ${firstLine(del && del.stderr)}`);
+            } else if (!del || del.ok !== true) {
+              notices.push(
+                `ADVISORY distil step failed: ${firstLine(del && del.stderr) || "git rm did not succeed"}`
+              );
+            } else {
+              await commitPaths({
+                paths: [advisoryLearningsPath, advisoryPath],
+                message: `chore(advisory): distil ${featureName} advisory record into LEARNINGS`,
+                what: "Phase H2 distil",
+                _git: gitFn,
+                _sleep: h2Sleep,
+                emit,
+              });
+              await gitFn(["push", "origin", "HEAD"]);
+            }
+          }
+        } catch (err) {
+          notices.push(
+            `ADVISORY distil step failed: ${err && err.message ? err.message : String(err)}`
+          );
+        }
       }
 
       // ─── Phase MERGE: Merge & Advance Queue ──────────────────────────────
@@ -10257,6 +10335,10 @@ async function main({
       notices,
       dodVerifiedCommit,
       headSha: await readCurrentHead(),
+      // S-1/T-08-9: `advisory` rides the halt path exactly as `notices` and `queueRow` already
+      // do — a halt that reached at least one advisory-aware phase still reports the seams it
+      // reached, un-distilled (H-4: the record itself is untouched by a halt before Phase H2).
+      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
     });
   }
 

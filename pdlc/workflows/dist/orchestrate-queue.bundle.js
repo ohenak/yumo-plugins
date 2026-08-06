@@ -1518,6 +1518,15 @@ function firstLine(text) {
   return String(text ?? "").split("\n")[0].trim();
 }
 
+function guardRefused(del) {
+  return Boolean(
+    del &&
+      del.ok === false &&
+      typeof del.stderr === "string" &&
+      del.stderr.includes("pdlc guard: refusing to delete CROSS-REVIEW files")
+  );
+}
+
 async function executeMerge(prUrl, method, { _ghRun }) {
   const mergeResult = await _ghRun(mergeCommandFor("merge", { prUrl, method }));
   const mergeStderr = (mergeResult && mergeResult.stderr) || "";
@@ -5454,6 +5463,17 @@ function harvestPrompt(featureName) {
   );
 }
 
+function advisoryDistilPrompt(featureName) {
+  return (
+    `ADVISORY distil for feature ${featureName}:\n` +
+    `1. Read docs/${featureName}/ADVISORY-${featureName}.md.\n` +
+    `2. Append a summary of its entries to docs/${featureName}/LEARNINGS-${featureName}.md.\n` +
+    `3. Do NOT delete ADVISORY-${featureName}.md yourself — the pipeline deletes it through the ` +
+    `guarded channel after this dispatch returns.\n` +
+    branchPinClause(featureName)
+  );
+}
+
 function createPrPrompt(featureName) {
   return (
     `Raise a pull request for feature ${featureName}. ` +
@@ -7460,6 +7480,8 @@ async function main({
           _log: emit,
           _now,
           _sleep,
+          _runAdvisorySeam: runAdvisorySeamFn,
+          _advisoryRecord: (disposition) => advisoryDispositions.push(disposition),
         });
         prUrl = pubResult.prUrl;
         ciStatus = pubResult.ciStatus;
@@ -7468,6 +7490,41 @@ async function main({
             ? `PR ${prUrl} — all GHA checks passed`
             : `PR ${prUrl} — no GHA checks detected within timeout (assumed none configured)`;
         recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
+      }
+
+      if (advisoryTierOn) {
+        const advisoryPath = `docs/${featureName}/ADVISORY-${featureName}.md`;
+        const advisoryLearningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+        const h2Sleep = typeof _sleep === "function" ? _sleep : sleep;
+        try {
+          const check = await checkFileFn(advisoryPath);
+          const recordExists = Boolean(check && check.ok);
+          if (recordExists) {
+            await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
+            const del = await gitFn(["rm", "--", advisoryPath]);
+            if (guardRefused(del)) {
+              notices.push(`ADVISORY record retained: ${firstLine(del && del.stderr)}`);
+            } else if (!del || del.ok !== true) {
+              notices.push(
+                `ADVISORY distil step failed: ${firstLine(del && del.stderr) || "git rm did not succeed"}`
+              );
+            } else {
+              await commitPaths({
+                paths: [advisoryLearningsPath, advisoryPath],
+                message: `chore(advisory): distil ${featureName} advisory record into LEARNINGS`,
+                what: "Phase H2 distil",
+                _git: gitFn,
+                _sleep: h2Sleep,
+                emit,
+              });
+              await gitFn(["push", "origin", "HEAD"]);
+            }
+          }
+        } catch (err) {
+          notices.push(
+            `ADVISORY distil step failed: ${err && err.message ? err.message : String(err)}`
+          );
+        }
       }
 
       phaseFn("Phase MERGE: Merge & Advance Queue");
@@ -7572,6 +7629,8 @@ async function main({
       notices,
       dodVerifiedCommit,
       headSha: await readCurrentHead(),
+
+      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
     });
   }
 
