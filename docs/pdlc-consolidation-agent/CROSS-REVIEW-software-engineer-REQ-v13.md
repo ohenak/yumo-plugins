@@ -163,4 +163,63 @@ new one, and it is about the round rather than about the document.
 
 ## Recommendation
 
+**Approved with minor changes.** 0 High, 0 Medium, 2 Low — the same two, at the same severity, on the
+same unmoved document. Under `DEC-CONV-01` this is a **re-issue of a standing approval**, not a fresh
+one: my v11 and v12 approvals stand, the intervening diff on this document is empty, and I have no
+Medium-or-higher finding against that diff because there is no diff. The decision's re-issue clause is
+satisfied on its own terms.
+
+I want to be exact about what the verdict asserts, because "approved again with no diff" can conceal
+either of two very different situations. It is not re-approval by inertia. The two governed files were
+diffed and found unmoved; the five load-bearing code anchors were re-derived at HEAD; the version-pin
+sweep was re-run; the exclusion diff over everything outside `docs/` was checked; and the two
+project-level decisions recorded since v12 were read and applied before scoring. Any of those could
+have turned an unchanged document red — a bumped constraint file, a moved `export`, a decision the REQ
+now contradicts. None did.
+
+Nor is it a lowered bar. Any open High or Medium means Needs revision; there is neither. Both
+remaining findings are Low on grounds recorded before this round: F-02 under DEC-SEV-01, F-03 under
+DEC-SEV-01 **and** now independently under DEC-SEV-02, whose class it fits exactly. Re-scoring
+identical bytes upward purely because they went unaddressed for another round is precisely the
+re-litigation DEC-SEV-01 and DEC-CONV-01 were recorded to stop.
+
+The test I apply every round: handed this REQ today, is there a decision an FSPEC author cannot make?
+**No** — and the answer is now doubly empirical. Two FSPEC review windows, ten cross-reviews, two
+root-cause analyses. The second POSTMORTEM's primary cause is the review loop's synchronisation rule
+(RC-B, `POSTMORTEM-F:247`) and its secondary is relocated claim manufacture (RC-A, `:266`). Neither is
+an underdetermined requirement, and no erratum was routed to this document.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream. Neither finding
+here is of that shape: F-02 concerns a clause's scope over its own genesis commit, F-03 which of two
+files a sentence quantifies over. Both are single-clause edits to text this REQ owns and neither
+re-scopes anything downstream. They belong here — as minor changes, not as a gate. Seven consecutive
+clean code sweeps precede this one; an eighth Phase R round spent on two Low governance-wording fixes
+would cost more review than the fixes are worth, which is what Low means.
+
+### What should change (non-blocking, unchanged from v12)
+
+1. **F-03** (~60 bytes against 331 of headroom) — give §4b's enumerated/prose split an explicit
+   subject: "Of the vocabularies file's owned sections, §1, §2 and §4 are enumerations and §3 is owned
+   normative prose; the baseline's four sections are all owned normative prose, under no row oracle
+   (baseline `:17-19`)." DEC-SEV-02's preferred repair — deleting the universal rather than narrowing
+   it — is also available and is cheaper still.
+2. **F-02** (byte-neutral in the REQ) — narrow the baseline's change-control clause from "a **content**
+   change" to "a change to any **stated fact**", matching the vocabularies file's row-scoped wording.
+   §4b governs the two files as a pair; their change-control rules should not be asymmetrically
+   strict. Bumping the baseline to 1.1 and repinning `:202`/`:448` is the alternative, but it fixes
+   the symptom rather than the wording that produced it.
+
+Both are appropriate for a single optimizer pass. I said at v12 that I would not file either again if
+the document reached me unchanged a third time; it has, and I am filing them once more only because
+the disposition table must account for every prior finding. **I will not file them a fourth time.**
+Neither warrants a further review round on its own account, and this phase has converged as far as I
+am concerned.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:0d2b2497235209181f0599a2ef2e25fa106d1917af8f02448a027fe969ad6f17
+REVIEWED-COMMIT: 1cebcce3a4dcf50ee23fdcf9f8787cc94d8fb5e5
