@@ -212,11 +212,17 @@ These are the identity keys NFR-4 is stated against.
 
 - **AC-4.1** — Given the cross-repo credential, Then it grants `contents:write` and
   `pull_requests:write` on the configured plugin repository only, and grants **no merge rights**.
-- **AC-4.2** — Given the credential, Then it is read from a secret store at runtime and is never
-  logged, never written into a PR body, and never persisted into any artifact.
+- **AC-4.2** — Given the credential, Then it is read at runtime from the environment variable named
+  by `consolidation.credentialEnv` (default `PDLC_PLUGIN_REPO_TOKEN`) and is never logged, never
+  written into a PR body, and never persisted into any artifact. **Positive conjunct on the same
+  path:** the log row for every pass carries exactly one `credential:` field whose value is drawn
+  from the closed set `present (redacted)` / `absent` / `local-gh` — so the absence assertion is
+  made on a path that demonstrably ran, not on a path that may never have executed.
 - **AC-4.3** — Given the credential is absent or invalid, Then the pass degrades to AC-3.5's
-  proposal-file fallback and records the credential failure. It does not halt the whole pass, and
-  it does not silently skip the promotion.
+  proposal-file fallback with reason code `credential-unavailable`, records
+  `credential: absent` per AC-4.2, and surfaces the affected promotion in the AC-7.1 report under a
+  `degraded` route with its reason code. It does not halt the whole pass, and it does not silently
+  skip the promotion.
 - **AC-4.4** — Given the pass runs locally under the operator's own `gh` authentication, Then that
   is a supported configuration; the scoped credential is required only for unattended execution.
 
@@ -227,19 +233,45 @@ procedural — the agent cannot merge its own proposal even if every other contr
 
 ### REQ-CONS-05 — Falsifiability
 
-- **AC-5.1** — Given any promotion, Then it records the **failure mode it targets**, stated
-  concretely enough to be observed: which phase, which symptom, which artifact it appears in.
-- **AC-5.2** — Given a consolidation pass, Then it reports for every promotion made in prior
-  passes whether its targeted failure mode **recurred** in the LEARNINGS consumed since, as
-  `prevented`, `recurred`, or `insufficient-evidence`.
-- **AC-5.3** — Given a promotion whose failure mode recurred across two consecutive passes, Then
-  it is flagged as `ineffective` and the pass proposes either a revision or a retirement — an
-  edit that did not work is not left in place indefinitely.
+- **AC-5.1** — Given any promotion, Then it records the failure mode it targets as a **structured
+  record with four named fields**, not prose: `failure-mode-id` (a stable slug, unique within the
+  log), `phase` (a member of the pipeline's phase catalogue), `symptom` (one line), and
+  `artifact` (a path or glob the symptom appears in). The record is written into
+  `docs/_decisions/.consolidation-log.md` alongside the promotion, and the same
+  `failure-mode-id` is carried by the `PDLC-PROMOTION-ID` trailer of AC-3.3.
+- **AC-5.2** — Given a consolidation pass, Then it reports, for **every** promotion recorded in
+  prior passes, a verdict over the closed set `prevented` / `recurred` / `insufficient-evidence`,
+  decided by a deterministic rule with no model judgment — so two runs over the same inputs cannot
+  disagree, which is what makes NFR-4 true:
+  - `recurred` — at least one LEARNINGS in the consumed set names this `failure-mode-id`.
+  - `prevented` — no consumed LEARNINGS names the id, **and** at least one consumed LEARNINGS comes
+    from a feature that exercised the promotion's recorded `phase` (the population where the failure
+    could have appeared is non-empty).
+  - `insufficient-evidence` — otherwise: no consumed LEARNINGS exercised that phase.
+
+  The table is under a **set-equality** obligation: it carries exactly one row per prior promotion
+  in the log — no missing rows and no rows for promotions that were never made. A dropped row is a
+  failure, not a smaller table.
+
+  To make the id observable in the consumed corpus, this feature adds a `failure-mode-id` line to
+  the LEARNINGS §5 Open Items convention; a LEARNINGS predating the convention names no id and is
+  therefore evidence only for the `phase` population test, never for `recurred`.
+- **AC-5.3** — Given a promotion whose verdict was `recurred` on two consecutive **counted** passes,
+  Then it is flagged `ineffective` and the pass proposes either a revision or a retirement — an
+  edit that did not work is not left in place indefinitely. The streak is counted **in passes, not
+  elapsed time**, and only passes that returned `prevented` or `recurred` for that promotion are
+  counted: an `insufficient-evidence` verdict and an AC-1.4 `no-op` pass are skipped entirely —
+  they neither advance nor reset the streak. Quiet weeks therefore cannot silently reset it.
 - **AC-5.4** — Given a promotion flagged `ineffective`, Then retiring it follows the same
-  propose-only path as making it (AC-3.1, AC-3.6). Removal is as reviewable as addition.
-- **AC-5.5** — Given `insufficient-evidence` for a promotion older than a configured number of
-  passes, Then it is reported as unmeasurable, so a promotion whose effect can never be observed
-  is visible as such rather than accumulating silently.
+  propose-only path as making it. A promotion that landed under the AC-3.1 guard set is retired by a
+  PR (AC-3.1, AC-3.6). A promotion that landed in the **consuming repo** — `DOMAIN-CONSTRAINTS.md`
+  (AC-2.1) or `DECISIONS-{topic}.md` (AC-2.2) — is not a cross-repo edit; its retirement is written
+  into `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` for operator approval and is **never**
+  applied by the pass. Removal is as reviewable as addition on both routes.
+- **AC-5.5** — Given a promotion that has returned `insufficient-evidence` for
+  `consolidation.unmeasurablePasses` consecutive counted passes (default 3), Then it is reported as
+  `unmeasurable`, so a promotion whose effect can never be observed is visible as such rather than
+  accumulating silently.
 
 ### REQ-CONS-06 — Advisory-record input
 
