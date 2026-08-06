@@ -338,11 +338,23 @@ These are the identity keys NFR-4 is stated against.
   consequence said out loud: when it is a mid-pipeline `feat-*`, the AC-2.1/AC-2.2 promotions reach
   the default branch by riding that feature's own PR (pushed by Phase PUB, merged if at all by Phase
   MERGE) — a PR raised and reviewed for something else — so the AC-7.1 report names the branch the
-  commit landed on. Abandonment is closed by construction, not policy: the promotions **and** the
-  NFR-5 consumed block are one commit, so a discarded branch loses both together — nothing is marked
-  consumed on the default branch and a later pass redoes the work, making "consumed while the
-  promotion is lost" unreachable. Any other destination (a `consolidation/{passId}` branch for these
-  writes too) is **not** specified here: it needs the branch operations AC-3.8 forbids.
+  commit landed on. Abandonment is closed by construction **for the consuming-repo writes this AC
+  enumerates, and for those only**: the promotions **and** the NFR-5 consumed block are one commit,
+  so a discarded branch loses both together — nothing is marked consumed on the default branch and a
+  later pass redoes the work, making "consumed while the promotion is lost" unreachable.
+
+  **The AC-3.1 PR route under the same abandonment, stated separately**, because there the failure
+  inverts: a guard-set promotion is pushed from the AC-3.8 separate clone to `consolidation/{passId}`
+  and lives or dies independently of the invoking branch. If that PR is merged and the invoking
+  branch is then abandoned, the promotion survives on the default branch while the consumed block,
+  the AC-5.1 `failure-mode-id` record and the AC-3.4 PR URL die with the branch. The REQ closes this
+  on the PR identity rather than on the log: NFR-4's duplicate suppression keys on **any PR carrying
+  an identical sources trailer that is open or merged**, so the merged PR is itself the durable
+  suppression key and a later pass re-deriving the same promotion records `duplicate-suppressed`
+  instead of opening a second PR. What is *not* recovered is the effectiveness record — that
+  promotion re-enters the AC-5.2 table as if first made — and that loss is accepted here rather than
+  closed. Any other destination (a `consolidation/{passId}` branch for the consuming-repo writes too)
+  is **not** specified: it needs the branch operations AC-3.8 forbids.
 
 ### REQ-CONS-04 — Credential scope
 
@@ -539,10 +551,14 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
 - **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly: re-running over
   the same consumed-LEARNINGS set produces no duplicate promotion (identity: `failure-mode-id`,
   AC-5.1) and no duplicate PR (identity: the `PDLC-CONSOLIDATION-SOURCES` trailer defined in the
-  REQ-CONS-03 preamble, "Pass identity and artifact naming"). A pass
-  that finds an **open** PR carrying an identical sources trailer opens nothing, records
+  REQ-CONS-03 preamble, "Pass identity and artifact naming"). A pass that finds a PR carrying an
+  identical sources trailer in state **open or merged** opens nothing, records
   `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an
   interrupted pass's partial PR is left for the operator to merge or close, not silently amended.
+  Merged is in the key set deliberately: it is what survives when the invoking branch carrying the
+  log record is abandoned (AC-3.8b, "the AC-3.1 PR route under the same abandonment"). A
+  **closed-unmerged** PR is *not* a key — the operator rejected that promotion, and a later pass
+  re-proposing it is the intended behaviour, not a duplicate.
   Idempotence is well-defined precisely because AC-5.2's verdicts are deterministic. Its limit is
   stated: `failure-mode-id` cannot key a LEARNINGS predating that convention (AC-5.2), so duplicate
   suppression would not protect a re-consumed pre-convention corpus — which is why the REQ-CONS-01
