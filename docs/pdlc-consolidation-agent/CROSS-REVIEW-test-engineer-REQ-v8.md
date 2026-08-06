@@ -88,4 +88,43 @@ that the REQ must make rather than explain, and F-46 is a measurement with a nam
 
 ## Recommendation
 
+**Needs revision** — 0 High, 2 Medium, 1 Low.
+
+Both v7 Lows that were about the document's content are resolved, and resolved on the mechanism:
+F-42 narrowed `artifact` to one canonical path and rewrote the justification to carry the
+split-direction argument, and F-43's PR-URL write is now the `pr:` field of a single appended
+terminal row. I want to be explicit that neither Medium is a re-litigation of settled ground: F-45
+is a consequence of text this round introduced, and F-46 is a threshold this round crossed. Nothing
+in §§1–4a, REQ-CONS-02, REQ-CONS-04, REQ-CONS-06 or NFR-1/2/3/3a/5/6 is contested.
+
+What must change, in order:
+
+1. **F-45 (Medium)** — Decide what happens when a promotion whose merged `revise` PR exists is
+   flagged `ineffective` again. Three shapes are honest: scope NFR-4 suppression to `promote` only;
+   add a remediation-round member to the key; or make revision once-only, narrowing AC-5.3's
+   alternative set to `retirement` thereafter and reporting that. Any one of them is a clause, and
+   any one of them makes the second-cycle fixture assertable. As written, AC-5.3 requires a proposal
+   the NFR-4 rule suppresses, and a test author has two defensible expected outcomes.
+2. **F-46 (Medium)** — Bring the document back under 700 lines / 61,440 bytes. It is 683 / 65,492 at
+   HEAD. Per `pm-author/SKILL.md:118` this was due *before* this round's findings were addressed, so
+   it should precede the F-45 clause rather than follow it — and per that same rule the remedy is
+   relocation, not another compression pass: §4b's vocabulary tables and the 13-member phase
+   catalogue are the natural block for `docs/_constraints/`, are cross-feature by nature, and would
+   leave a citation behind. Compressing rationale a fifth time would fund one more round and breach
+   again on the next.
+3. **F-47 (Low)** — One clause fixing the id count for a remedy that spans two files.
+
+I considered approving with minor changes and holding F-45 as a Low routed to FSPEC. I decided
+against it on the ground the Challenger bar makes explicit: the gap is not a derivation rule FSPEC
+can state within the REQ's envelope, it is two ACs of this document that cannot both hold in a
+reachable state, and the state is the one §1 names as the problem the feature exists to solve. That
+is a requirement-level contradiction, not a downstream mechanic.
+
+No upstream defects were found. Every citation in the changed text resolves to a real authority
+saying what the REQ attributes to it — `.gitignore` read whole, `orchestrate-dev.js:1652`/`:1653`/
+`:1800`/`:1833`, `orchestrate-queue.js:1245-1256`, `check-req-size.sh:41-42`/`:47-48`,
+`pm-author/SKILL.md:118`/`:193`. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Needs revision
