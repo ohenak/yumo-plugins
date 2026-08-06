@@ -94,4 +94,40 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Recommendation
 
+**Needs revision**
+
+All six v3 findings are closed as filed — the third consecutive round in which every prior finding
+was addressed rather than argued with, and the High was closed by the structural repair (splitting
+`artifact` into subject and target across fourteen sections) rather than by re-wording the example
+that exposed it. **No High finding remains.** What is open is three Mediums, all of them defects
+created by this round's repairs, and none of them touching the document's scope or structure.
+
+1. **F-01 — widen §6.5's invoking-tree permitted set, or scope the domain.** The pass must observe
+   the branch it committed on (AC-3.8b, §10.4 item 9); `{add, commit}` admits no verb that can, so
+   the universal containment assertion the F-04 repair introduced is red on a conforming pass. Add
+   the read verb to the permitted-but-not-obliged column exactly as `fetch` was added to the clone's,
+   or say the git domains are mutating verbs only — and then AT-Q7c's invoking-tree cell needs to say
+   whether it asserts containment or equality (Q-02).
+2. **F-02 — route the `suppressed-by:` grammar change as an erratum.** §10.3 now declares itself
+   normative for a value grammar vocabularies §1 spells differently at `:63`, and §1 is REQ-owned.
+   Three lesser §1 gaps are routed; this one is not. Either route it or state in §10.3 and §15.2 both
+   why a grammar §1 writes out is nevertheless outside the compared set.
+3. **F-03 — decide the merged promotion's kind.** §8.2's merge keys on `(phase, subject, action)` and
+   reads no kind, yet the new paragraph asserts the merge yields one `target` — which is a function of
+   kind. Two failure modes of different kinds on one file in one phase are exactly the case §8.2 calls
+   the accepted cost, and their targets route differently. State the precedence rule and give AT-R6b a
+   mixed-kind fixture, or scope the merge to same-kind proposals and say where the odd one goes.
+
+F-04 is a correction of record, not a blocker.
+
+One erratum is emitted with this review, against the REQ-owned vocabularies file (F-02's other half):
+the `suppressed-by:` row admits only a PR URL, while NFR-4's consuming-repo carrier — a route the REQ
+itself requires to be idempotent — has no PR to name.
+
 ## Verdict
+
+No High finding remains. Three Medium findings (F-01, F-02, F-03) are open, plus one Low (F-04).
+Per the approval rule — any High or Medium finding means the document is not approved — this
+iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision
