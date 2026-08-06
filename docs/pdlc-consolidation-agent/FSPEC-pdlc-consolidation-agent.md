@@ -358,7 +358,7 @@ a different state.
 | Input state | Behaviour | Consequence |
 |---|---|---|
 | Log file absent | both regions empty | every enumerated basename is un-consolidated; the datum set is empty (§2.3), so the first pass runs on the `no-cadence-datum` branch |
-| Log file present, unreadable (permissions, IO error) | treated as **empty text**, mirroring the shipped hook's `except: logtext = ""` (`nudge-consolidation.sh:38-39`) | fail-open toward re-consumption, never toward silently skipping a corpus; NFR-4 suppression is what prevents a duplicate proposal |
+| Log file present, unreadable (permissions, IO error) | treated as **empty text**, mirroring the shipped hook's `except: logtext = ""` (`nudge-consolidation.sh:38-39`) | fail-open toward re-consumption, never toward silently skipping a corpus. NFR-4 then suppresses a duplicate **PR-route** proposal, whose carrier is the PR trailer and is unaffected; the **consuming-repo** route's carrier is the log's own failure-mode records (§6.4), which this state makes unreadable — so a duplicate append on that route is possible here and is reported as such, not claimed away |
 | Log present, no `<!-- pdlc:consumed` marker | legacy region entire | the HEAD state; Pass 1's two files are consolidated by clause (b) |
 | An opening `<!-- pdlc:consumed {passId} -->` with no closing marker (a truncated append) | the unterminated block extends to end of file and its basenames count under clause (a) | a partially-flushed pair never *loses* consumption, so a crashed pass cannot cause its corpus to be re-consumed |
 | A closing `<!-- /pdlc:consumed -->` with no opener | ignored; it opens no block and moves no boundary | a stray marker cannot make later records readable as consumption |
@@ -466,15 +466,22 @@ needs none:
 | Interleaving | Winner | Loser | Log outcome |
 |---|---|---|---|
 | Loser reads the marker after the winner wrote it | proceeds | `refused`, `consolidation-in-progress` | two appends, any order, both intact |
-| Both read "absent", both write | the later writer's line stands | the earlier writer's marker is overwritten; it releases at step 16 having done its work | both consumed pairs append; the second names an already-consolidated set, and §6.4's NFR-4 suppression prevents a duplicate proposal |
+| Both read "absent", both write | the later writer's line stands | the earlier writer's marker is overwritten; it releases at step 16 having done its work | both consumed pairs append; the second names an already-consolidated set. §6.4's NFR-4 suppression prevents a duplicate **PR-route** proposal (its carrier, the PR trailer, is written by whichever pass opened first). On the **consuming-repo** route the two passes may both read the log before either appended its failure-mode record, so a duplicate append is reachable in this race and is not claimed away — see below |
 
 The second row is the residual race the file-marker design does not close, and it is stated rather
 than claimed away: without an atomic create-exclusive primitive the take is read-then-write. Its
 blast radius is bounded by two properties that hold independently — every log write is a whole-record
-append, so no record is lost whatever the order; and NFR-4 keys suppression on
-`(failure-mode-id, action)` carried by the PR, not on the log, so the second pass opens no duplicate
-PR even though its consumed set overlaps. An atomic take primitive is TSPEC's to choose if the
-runtime offers one (§14, O-C3).
+append, so no record is lost whatever the order; and NFR-4's PR-route carrier is the PR trailer, not
+the log, so the second pass opens no duplicate PR even though its consumed set overlaps.
+
+**What that bound does *not* cover, stated rather than implied.** The consuming-repo route's NFR-4
+carrier *is* the log (§6.4), and in this interleaving both passes may read it before either appended
+its failure-mode record — so a duplicate append to `DOMAIN-CONSTRAINTS.md` or
+`DECISIONS-{topic}.md` is reachable in this race alone. It is an operator-visible duplicate line in
+an append-only file, not a lost or corrupted record, and it is bounded by the same marker that makes
+the race rare; closing it needs the atomic create-exclusive take TSPEC may choose if the runtime
+offers one (§14, O-C3). This FSPEC reports the exposure rather than asserting a suppression that
+cannot fire.
 
 ## 5. FSPEC-CONS-04 — Promotion routing and the consuming-repo writes
 
@@ -694,8 +701,34 @@ it did not — never a bare `promoted` (§7.3).
 
 ### 6.4 Idempotence — the duplicate key (NFR-4)
 
-The suppression key is the **pair** `(failure-mode-id, action)`, read from the
-`PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs in the target repository.
+The suppression key is the **pair** `(failure-mode-id, action)`. The pair is one key with **two
+carriers**, one per route, because a promotion that never becomes a PR never appears in a PR trailer:
+
+| Route | Carrier of the key set | Observed states |
+|---|---|---|
+| §6 PR route (guard-set targets) | the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs in the target repository | `open` / `merged` / `closed`-unmerged / reopened — the table below |
+| §5.2 consuming-repo route (`DOMAIN-CONSTRAINTS.md`, `DECISIONS-{topic}.md`) and the §5.3 proposal-file route | the **§8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`**, each of which carries its `failure-mode-id` and its `action` (§10.2 order 2) | `enacted` (a prior pass's record carries this pair) / `absent` (no record does) — a two-member set, read from the same log text the §3.2 predicate reads |
+
+**The consuming-repo carrier's rule.** A proposal whose pair is `enacted` — some prior pass's
+failure-mode record in the log carries the same `(failure-mode-id, action)` — is **suppressed**: the
+pass appends nothing to `DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` for it and records
+`duplicate-suppressed` naming the pair and the `passId` of the record that enacted it, in place of a
+PR URL. So re-running a pass over the same corpus does **not** append the same constraint twice.
+
+**Why that carrier is sound where a PR trailer would not be.** The AC-2.1/AC-2.2 append and the
+failure-mode record that keys it are written into the **same §5.4 commit** (§10.2 orders 2–4 and
+§5.4's single pathspec), so they land together or not at all. A record present without its append, or
+an append without its record, is therefore not a state this route can reach through the pass's own
+writes — which is exactly the atomicity §5.5 row 1 already relies on. The PR route needs a different
+carrier for the opposite reason: its edit lives in the §6.1 clone and survives its record (§5.5 row
+2), so only the PR itself can attest it.
+
+**Its limit, stated.** If the invoking branch is abandoned, the record and the append die together
+and a later pass re-derives and re-appends the promotion — correctly, because the constraint is not
+in the consuming repo either. And a record written by a pass whose §5.4 commit was refused
+(`writes-uncommitted`) is on disk but uncommitted; the next pass in that same working tree reads it
+and suppresses, a pass in a different checkout does not. Both are the same working-tree reliance
+§3.3 already states for the consumed pair, not a new one.
 
 | PR state observed at poll time | In the key set? | Why |
 |---|---|---|
