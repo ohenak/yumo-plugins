@@ -541,7 +541,7 @@ describe("A-24 — A5 SeamOps + capability probes", () => {
 // A-26 — Phase PUB wiring (batch 13)
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe.skip("A-26 — Phase PUB wiring", () => {
+describe("A-26 — Phase PUB wiring", () => {
   function shipPrScript() {
     return [`Opened the PR.\nPR_URL: ${PR_URL}`];
   }
@@ -728,7 +728,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
         "gh run view": { ok: true, stdout: "lint failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
-          stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
+          stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: DEFAULT_BRANCH }]),
           stderr: "",
         },
         "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
@@ -819,7 +819,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
       "gh run view": { ok: true, stdout: "lint failure", stderr: "" },
       "gh run list --json conclusion,workflowName,headSha": {
         ok: true,
-        stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
+        stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: DEFAULT_BRANCH }]),
         stderr: "",
       },
       "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
@@ -907,7 +907,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
         "gh run view": { ok: true, stdout: "flaky-but-slow failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
-          stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
+          stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: DEFAULT_BRANCH }]),
           stderr: "",
         },
         "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },

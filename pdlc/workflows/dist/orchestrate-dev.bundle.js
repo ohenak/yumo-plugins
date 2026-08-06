@@ -1155,7 +1155,7 @@ function classifyMergeResult(mergeRaw, readbackRaw) {
 }
 
 async function defaultGhRun(command, { execFn } = {}) {
-  const { execSync: realExecSync } = await import("child_process");
+  const { execSync: realExecSync } = await Promise.reject(new Error("Node module " + "child_process" + " is unavailable in the workflow runtime; this seam must be injected"));
   const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
 
   try {
@@ -5507,7 +5507,7 @@ function rebasePrompt(featureName) {
 }
 
 async function checkPrCi(prUrl, { execFn } = {}) {
-  const { execSync: realExecSync } = await import("child_process");
+  const { execSync: realExecSync } = await Promise.reject(new Error("Node module " + "child_process" + " is unavailable in the workflow runtime; this seam must be injected"));
   const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
 
   let raw;
@@ -5850,6 +5850,8 @@ async function raisePrAndVerifyCi({
   noChecksTimeoutMs = CI_NO_CHECKS_TIMEOUT_MS,
   pollIntervalMs = CI_POLL_INTERVAL_MS,
   completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
+  _runAdvisorySeam = async () => ({ outcome: "escalated" }),
+  _advisoryRecord = () => {},
 }) {
 
   const prResult = await _agent("ship-pr", createPrPrompt(feature));
@@ -5869,9 +5871,16 @@ async function raisePrAndVerifyCi({
 
     if (status === "passed") {
       _log(`GHA checks passed for PR ${prUrl}`);
-      return { prUrl, ciStatus: "passed" };
+      return { prUrl, ciStatus: "passed", noChecks: false };
     }
     if (status === "failed") {
+
+      const a5 = await _runAdvisorySeam({ seam: "A5", feature, prUrl });
+      _advisoryRecord(a5);
+
+      if (a5 && a5.outcome !== "escalated") {
+        continue;
+      }
       throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
     }
     if (status === "pending" && completionStart === null) {
@@ -5882,9 +5891,11 @@ async function raisePrAndVerifyCi({
     if (completionStart !== null) {
 
       if (_now() - completionStart >= completionTimeoutMs) {
+
         throw haltError(
           `Error: Phase PUB — GHA checks did not complete within ` +
-            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`
+            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`,
+          { completionCap: true }
         );
       }
     } else if (_now() - start >= noChecksTimeoutMs) {
@@ -5894,7 +5905,7 @@ async function raisePrAndVerifyCi({
           noChecksTimeoutMs / 60000
         )} minutes — assuming repo has no PR checks configured`
       );
-      return { prUrl, ciStatus: "no-checks" };
+      return { prUrl, ciStatus: "no-checks", noChecks: true };
     }
 
     await _sleep(pollIntervalMs);
@@ -6161,7 +6172,7 @@ function defaultAppendFile(path, text, { fsMod = fs } = {}) {
 }
 
 async function defaultGit(argv, { execFn } = {}) {
-  const { execFileSync: realExecFileSync } = await import("child_process");
+  const { execFileSync: realExecFileSync } = await Promise.reject(new Error("Node module " + "child_process" + " is unavailable in the workflow runtime; this seam must be injected"));
   const exec =
     execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
 
@@ -6374,6 +6385,17 @@ async function main({
 
   const phases = [];
   let haltReason;
+
+  let dodVerifiedCommit = null;
+
+  async function readCurrentHead() {
+    try {
+      const headResult = await gitFn(["rev-parse", "HEAD"]);
+      return headResult && headResult.ok ? String(headResult.stdout || "").trim() : null;
+    } catch {
+      return null;
+    }
+  }
 
   let skipPostmortem = null;
 
@@ -7383,6 +7405,14 @@ async function main({
             `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail} ${classificationSummary}`.trimEnd()
           );
         }
+
+        try {
+          const dodHeadResult = await gitFn(["rev-parse", "HEAD"]);
+          dodVerifiedCommit =
+            dodHeadResult && dodHeadResult.ok ? String(dodHeadResult.stdout || "").trim() : null;
+        } catch {
+          dodVerifiedCommit = null;
+        }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
       }
 
@@ -7558,6 +7588,8 @@ async function main({
       postmortemPath,
       queueRow,
       notices,
+      dodVerifiedCommit,
+      headSha: await readCurrentHead(),
     });
   }
 
@@ -7579,11 +7611,13 @@ async function main({
     harvestStatus,
     prUrl,
     ciStatus,
+    dodVerifiedCommit,
+    headSha: await readCurrentHead(),
   });
 }
 
 async function mergeWorktree(repoPath, worktreeBranch, targetBranch, { execFn } = {}) {
-  const { execSync: realExecSync } = await import("child_process");
+  const { execSync: realExecSync } = await Promise.reject(new Error("Node module " + "child_process" + " is unavailable in the workflow runtime; this seam must be injected"));
   const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
 
   const execOpts = { cwd: repoPath, stdio: "pipe", encoding: "utf8" };
@@ -7636,7 +7670,13 @@ function buildFinalReport({
   mergeSha = null,
   mergeMethod = null,
   notices = [],
+
+  dodVerifiedCommit = null,
+  headSha = null,
 }) {
+  const dodHeadUnverified = Boolean(
+    dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
+  );
   return {
     feature,
     outcome,
@@ -7644,6 +7684,8 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    dodVerifiedCommit,
+    dodHeadUnverified,
 
     notices,
 
@@ -8295,7 +8337,7 @@ function log(message) {
 }
 
 async function defaultReadFile(path) {
-  const { readFileSync } = await import("fs");
+  const { readFileSync } = await Promise.reject(new Error("Node module " + "fs" + " is unavailable in the workflow runtime; this seam must be injected"));
   try {
     return readFileSync(path, "utf8");
   } catch {
@@ -8304,12 +8346,12 @@ async function defaultReadFile(path) {
 }
 
 async function defaultWriteFile(path, contents) {
-  const { writeFileSync } = await import("fs");
+  const { writeFileSync } = await Promise.reject(new Error("Node module " + "fs" + " is unavailable in the workflow runtime; this seam must be injected"));
   writeFileSync(path, contents, "utf8");
 }
 
 async function defaultGit(argv, { execFn } = {}) {
-  const { execFileSync: realExecFileSync } = await import("child_process");
+  const { execFileSync: realExecFileSync } = await Promise.reject(new Error("Node module " + "child_process" + " is unavailable in the workflow runtime; this seam must be injected"));
   const exec =
     execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
 

@@ -16,7 +16,7 @@ import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
-import { stripModuleSyntax } from "../build-runtime.mjs";
+import { neutralizeDynamicImports, stripModuleSyntax } from "../build-runtime.mjs";
 
 const requireHere = createRequire(import.meta.url);
 
@@ -460,9 +460,49 @@ describe("stripModuleSyntax", () => {
     );
   });
 
-  it("leaves dynamic imports alone (they sit in overridden code paths)", () => {
+  // Dynamic imports are not this layer's job — `neutralizeDynamicImports` (below)
+  // removes them from the runtime bundles. Keeping them here means the CLI
+  // artifact, which is plain Node and needs them, is built from the same strip.
+  it("leaves dynamic imports alone (the runtime bundles neutralize them later)", () => {
     const src = 'const { execSync } = await import("child_process");';
     expect(stripModuleSyntax(src)).toBe(src);
+  });
+});
+
+// The Workflow LAUNCHER parses statically and refuses to start on any `import(`
+// token — "dead code in an overridden seam" is not a defence, because nothing has
+// been injected yet at parse time. A bundle shipped with a surviving `import(`
+// costs the whole pipeline its launch with `SyntaxError: import() is not
+// available in workflow scripts`, which is how this oracle came to exist.
+describe("neutralizeDynamicImports", () => {
+  it("replaces an awaited dynamic import with a rejecting expression", () => {
+    const out = neutralizeDynamicImports('const { execSync } = await import("child_process");');
+    expect(out).not.toMatch(/\bimport\s*\(/);
+    expect(out).toMatch(/await Promise\.reject\(new Error\(/);
+  });
+
+  it("keeps the specifier verbatim, so the site stays greppable", () => {
+    expect(neutralizeDynamicImports('await import("fs")')).toContain('"fs"');
+    expect(neutralizeDynamicImports("await import('child_process')")).toContain("'child_process'");
+  });
+
+  it("throws when a path this build believed dead is actually taken", async () => {
+    // eslint-disable-next-line no-new-func
+    const run = new Function(`return (async () => { ${neutralizeDynamicImports(
+      'const { execSync } = await import("child_process"); return execSync;'
+    )} })();`)();
+    await expect(run).rejects.toThrow(/child_process.*unavailable in the workflow runtime/);
+  });
+
+  it("leaves code with no dynamic import untouched", () => {
+    const src = "const a = 1;\nfunction f() { return important(a); }";
+    expect(neutralizeDynamicImports(src)).toBe(src);
+  });
+});
+
+describe.each(BUNDLES)("%s launcher constraint", (file) => {
+  it("carries no dynamic import — the launcher rejects the script on sight", () => {
+    expect(read(file).match(/\bimport\s*\(/g) || []).toEqual([]);
   });
 });
 

@@ -408,8 +408,33 @@ function stripJsComments(code) {
   return out.replace(/\n(?:[ \t]*\n)+/g, "\n\n");
 }
 
+/** Replace `await import("x")` with a rejecting expression carrying the same specifier.
+ *
+ * Constraint 2 in this file's header ("No `import` — static or dynamic") is a
+ * LAUNCHER constraint, not merely a runtime one: the Workflow launcher parses
+ * the script statically and refuses to start on any `import(` token, long
+ * before any injection could happen. The canonical modules' Node-only seam
+ * defaults (`defaultGit`, `defaultGhRun`, `defaultReadFile`, `defaultWriteFile`,
+ * `checkPrCi`, `mergeWorktree`) each carry one, and each is overridden by
+ * runtime-adapter.js — they are dead code inside the runtime, but a dead
+ * `import(` still costs the whole pipeline its launch.
+ *
+ * The replacement is deliberately self-contained (no helper binding to place
+ * relative to the `meta` first-statement rule), keeps the specifier verbatim so
+ * the site stays greppable, and throws if a path this build believed dead ever
+ * runs — a loud failure beats a silent fallback to a seam that isn't there.
+ */
+export function neutralizeDynamicImports(code) {
+  return code.replace(
+    /\bawait\s+import\(\s*("[^"\n]*"|'[^'\n]*')\s*\)/g,
+    (_match, specifier) =>
+      `await Promise.reject(new Error("Node module " + ${specifier} + ` +
+      `" is unavailable in the workflow runtime; this seam must be injected"))`
+  );
+}
+
 function stripCommentsForRuntime(code) {
-  return `${BANNER}\n${stripJsComments(code)}`;
+  return `${BANNER}\n${neutralizeDynamicImports(stripJsComments(code))}`;
 }
 
 const bundles = [
@@ -436,6 +461,21 @@ const bundles = [
     contents: cliArtifact,
   },
 ];
+
+// Self-enforcing gate on the constraint `neutralizeDynamicImports` exists to keep:
+// no `import(` token may survive in a runtime bundle, whatever produced it. Scoped
+// to the `.bundle.js` rows — pdlc-cli.mjs is plain Node and keeps its imports.
+for (const { file, contents } of bundles) {
+  if (!file.endsWith(".bundle.js")) continue;
+  const surviving = contents.match(/\bimport\s*\(/g) || [];
+  if (surviving.length) {
+    console.error(
+      `${file}: ${surviving.length} dynamic import(s) survived neutralization — ` +
+        `the workflow launcher rejects the script on sight. See neutralizeDynamicImports.`
+    );
+    process.exit(1);
+  }
+}
 
 const checkOnly = process.argv.includes("--check");
 let stale = false;

@@ -7812,7 +7812,15 @@ export async function dodVerifyLoop({
  * @param {number} [params.noChecksTimeoutMs]
  * @param {number} [params.pollIntervalMs]
  * @param {number} [params.completionTimeoutMs]
- * @returns {Promise<{ prUrl: string, ciStatus: "passed" | "no-checks" }>}
+ * @param {function} [params._runAdvisorySeam] - TSPEC §8.1 (PLAN A-26). Fires only on the
+ *   `status === "failed"` branch; defaults to `escalated` so every pre-existing caller/test of
+ *   this function is unaffected (PROP-A5-19) — `escalated` is the only outcome that falls
+ *   through to the byte-identical halt. A `no-action` default would NOT be a no-op: `no-action`
+ *   is loop-safe only when a real seam has just re-observed the rollup green, which a stub has
+ *   not, so a persistently red CI would re-poll forever instead of halting.
+ * @param {function} [params._advisoryRecord] - the step-7 record sink for the A5 disposition;
+ *   defaults to a no-op.
+ * @returns {Promise<{ prUrl: string, ciStatus: "passed" | "no-checks", noChecks?: boolean }>}
  */
 export async function raisePrAndVerifyCi({
   feature,
@@ -7824,6 +7832,8 @@ export async function raisePrAndVerifyCi({
   noChecksTimeoutMs = CI_NO_CHECKS_TIMEOUT_MS,
   pollIntervalMs = CI_POLL_INTERVAL_MS,
   completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
+  _runAdvisorySeam = async () => ({ outcome: "escalated" }),
+  _advisoryRecord = () => {},
 }) {
   // 1. Create (or reuse) the PR. The branch was already rebased onto the latest
   //    default branch in Phase DOD, so ship-pr does not rebase here.
@@ -7846,9 +7856,22 @@ export async function raisePrAndVerifyCi({
 
     if (status === "passed") {
       _log(`GHA checks passed for PR ${prUrl}`);
-      return { prUrl, ciStatus: "passed" };
+      return { prUrl, ciStatus: "passed", noChecks: false };
     }
     if (status === "failed") {
+      // TSPEC §8.1 (PLAN A-26) — the seam fires on exactly this branch, nowhere
+      // else. A `resolved` outcome re-polls in place (the seam's own verifyGate
+      // already observed green); anything else falls through to the byte-identical
+      // halt below.
+      const a5 = await _runAdvisorySeam({ seam: "A5", feature, prUrl });
+      _advisoryRecord(a5);
+      // §8.5 — "CI turns green mid-diagnosis" also re-polls rather than halting: the seam's own
+      // `conditionHolds` re-read already found the rollup green, so `no-action` carries the same
+      // "the re-poll already returned green" fact `resolved` does. Only `escalated` — no permitted
+      // action matched, or the seam ran out of budget — reaches the byte-identical halt below.
+      if (a5 && a5.outcome !== "escalated") {
+        continue;
+      }
       throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
     }
     if (status === "pending" && completionStart === null) {
@@ -7861,20 +7884,24 @@ export async function raisePrAndVerifyCi({
       // Checks are registered and running — wait for completion up to the overall
       // cap, measured from when checks first appeared (not from PR-raise).
       if (_now() - completionStart >= completionTimeoutMs) {
+        // A5-9: no failing check to diagnose, so the seam never fires here; the
+        // halt carries `completionCap` so the caller can name the outcome (S-3).
         throw haltError(
           `Error: Phase PUB — GHA checks did not complete within ` +
-            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`
+            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`,
+          { completionCap: true }
         );
       }
     } else if (_now() - start >= noChecksTimeoutMs) {
       // No checks ever appeared (status none/unknown) within the window —
       // assume the repo has no PR checks configured and treat the phase as a pass.
+      // A5-6: the seam never fires here either; `noChecks` names the outcome (S-3).
       _log(
         `No GHA checks detected within ${Math.round(
           noChecksTimeoutMs / 60000
         )} minutes — assuming repo has no PR checks configured`
       );
-      return { prUrl, ciStatus: "no-checks" };
+      return { prUrl, ciStatus: "no-checks", noChecks: true };
     }
 
     await _sleep(pollIntervalMs);
@@ -8616,6 +8643,24 @@ export default async function main({
 
   const phases = [];
   let haltReason;
+
+  // TSPEC §8.4 (PLAN A-26, OQ-3) — the commit `git rev-parse HEAD` reported the moment Phase
+  // DOD's verify loop passed. `buildFinalReport` reports it and derives `dodHeadUnverified` by
+  // comparing it against the branch head at report-build time — report-only, never a re-verify
+  // and never a halt (DEC-ADV-07).
+  let dodVerifiedCommit = null;
+
+  // Companion to `dodVerifiedCommit` above: the branch head at report-build time, read the same
+  // report-only way (never throws, `null` on any read failure). Called at each `buildFinalReport`
+  // call site so the comparison reflects the tree as of that report.
+  async function readCurrentHead() {
+    try {
+      const headResult = await gitFn(["rev-parse", "HEAD"]);
+      return headResult && headResult.ok ? String(headResult.stdout || "").trim() : null;
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * §5.8/§4.7: an unresolved POSTMORTEM found on a SKIP path. The state is real
@@ -9970,6 +10015,16 @@ export default async function main({
             `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail} ${classificationSummary}`.trimEnd()
           );
         }
+        // TSPEC §8.4 (PLAN A-26, OQ-3) — the verified commit sha, captured the moment
+        // `dodResult.passed` becomes true. A read failure leaves it `null` rather than halting:
+        // the field is report-only.
+        try {
+          const dodHeadResult = await gitFn(["rev-parse", "HEAD"]);
+          dodVerifiedCommit =
+            dodHeadResult && dodHeadResult.ok ? String(dodHeadResult.stdout || "").trim() : null;
+        } catch {
+          dodVerifiedCommit = null;
+        }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
       }
 
@@ -10177,6 +10232,8 @@ export default async function main({
       postmortemPath,
       queueRow,
       notices,
+      dodVerifiedCommit,
+      headSha: await readCurrentHead(),
     });
   }
 
@@ -10203,6 +10260,8 @@ export default async function main({
     harvestStatus,
     prUrl,
     ciStatus,
+    dodVerifiedCommit,
+    headSha: await readCurrentHead(),
   });
 }
 
@@ -10283,7 +10342,15 @@ function buildFinalReport({
   mergeSha = null,
   mergeMethod = null,
   notices = [],
+  // TSPEC §8.4 (PLAN A-26, OQ-3) — `dodVerifiedCommit` is the sha Phase DOD verified; `headSha`
+  // is the branch head at report-build time (not itself reported — only the derived comparison
+  // is). Report-only: no re-verify, no halt on the divergence (DEC-ADV-07).
+  dodVerifiedCommit = null,
+  headSha = null,
 }) {
+  const dodHeadUnverified = Boolean(
+    dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
+  );
   return {
     feature,
     outcome,
@@ -10291,6 +10358,8 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    dodVerifiedCommit,
+    dodHeadUnverified,
     // §4.7's non-skip report lines. Carried as their own field rather than
     // appended to a phase row's `detail`, which oracles pin verbatim.
     notices,
