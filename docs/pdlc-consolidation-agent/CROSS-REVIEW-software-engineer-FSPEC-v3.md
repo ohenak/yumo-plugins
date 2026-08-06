@@ -47,6 +47,81 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Positive Observations
 
+- **Every code citation added this round is exact, and I re-verified all of them at HEAD.**
+  `ADVISORY_RUNG_SKILL = "se-review"` is `orchestrate-dev.js:1797`; the export's signature is `:1833`;
+  the single `_agent(ADVISORY_RUNG_SKILL, prompt, { model })` inside `dispatchAt` is `:1841`; the memo
+  short-circuit begins `:1844`; the shipped call site is `:3132` with the deadline race at `:3133`.
+  `build-runtime.mjs:448-466` really is the `bundles` array, and `devModule` really is joined into
+  both bundle artifacts. `consolidate-learnings/SKILL.md:40` and `:41` are the two consuming-repo
+  route lines. 15 skill directories; 3 hand-named `DECISIONS-*.md`. Nothing was asserted about the
+  codebase that the codebase does not say.
+- **T-05 is now the model of what an obligation row should look like.** It constrains the widening
+  where it must be constrained (optional, defaulted, threaded to *both* the dispatch and the memoised
+  path, exactly one ladder) and hands TSPEC only the spelling — and it answers v2 Q-02 in the same
+  row by ruling that the pass calls the resolver **bare**, which is what makes §2.6's "rows 1–4 are
+  set-equal to the resolver's return and throw set" true rather than approximately true. Recording
+  that `{kind: "preempted"}` is the *call site's* shape and not the resolver's is the precise form of
+  the distinction.
+- **AT-Q11's byte-identity assertion is the strongest oracle added this round.** "`DOMAIN-CONSTRAINTS.md`
+  is byte-identical after the second pass to what it was after the first" fails exactly the
+  implementation that never consults the log — which no containment or presence check would catch —
+  and it is paired with AT-Q10's three-conjunct positive so that suppression cannot be confused with
+  never having derived the proposal. AT-Q12 completes the trio by mirroring AT-Q4's closed-unmerged
+  rule onto the consuming-repo carrier, so the two carriers now agree on a stated invariant rather
+  than by coincidence.
+- **Two claims were withdrawn against the document's own interest.** §8.4 withdraws AT-F15's
+  producing-side range — "the producing side … is an LLM invocation with no reproducible output, is
+  therefore untestable here, and is carried as O-C6 rather than claimed by this row" — and demotes the
+  never-invented-id property from an assertion to a convention *whose violation is detected*. §2.6
+  withdraws the `skipped-cadence` precedent outright. Both are downgrades of the document's own
+  strength, made because they were false, and both are marked as withdrawals so a later reader cannot
+  mistake the earlier claim for a live one.
+- **§2.2's "Terminates names a jump, not an exit" paragraph removes a whole class of future
+  ambiguity.** Stating once that a terminating branch goes to step 14 and that steps 15–16 still run —
+  and naming the single exception (step 4's `skipped-cadence`, which took no marker and has nothing to
+  release) — is what lets S-11c's observable table be a *diff* against S-11b rather than a restatement.
+  §17's shape-3 note carries the same rule to the flow view instead of leaving the two views to drift.
+- **§8.1's "this table is normative for the record's shape" is the durable fix, not the local one.**
+  The v2 defect was one missing field; the repair names an authority and re-points three readers at
+  it, which is what stops the next field from going missing the same way. The `passId` / `action` /
+  `route` rows are each annotated with *which contract reads them*, so a future editor deleting one
+  can see what breaks.
+
 ## Recommendation
 
+**Needs revision**
+
+All eight v2 findings are closed as filed — this is the second consecutive round where every prior
+finding was addressed rather than argued with, and the two repairs that needed to choose a harder
+path (widening the resolver signature; withdrawing the basename derivation) chose it. What remains is
+one High and three Mediums, three of which are defects *created by* this round's repairs.
+
+1. **F-01 — decide what `artifact` is before `{topic}` can be derived from it.** As written the
+   derivation is circular on the AC-2.2 route, §5.2's worked example routes to the PR route under
+   §5.1's own predicate, and AT-R6 / AT-R6b are red. Separate the failure mode's subject artifact from
+   the proposal's target path, carry both in §8.1's normative table, and state which one keys the id.
+   Check the AC-2.1 consequence while you are there: if the id keys on the destination, every domain
+   invariant in one phase shares one id and NFR-4 suppresses all but the first.
+2. **F-02 — the `credential:` biconditional is not total.** A step-13 dispatch error after a PR-route
+   attempt that resolved nothing produces a `failed` row that must and cannot carry
+   `credential-unavailable`. Name the case, move the resolution, or route a fourth erratum — but do
+   not leave AT-K6 row (iii) asserting a reading that path falsifies.
+3. **F-03 — reconcile §8.3's lead sentence with §10.2 order 3**, and give the new negative arm an
+   assertion on the same path as AT-M9's positive.
+4. **F-04 — scope BR-28's set-equality** to a PR-opening pass and state the universal rule as
+   containment in the enumerated permitted set, which is still strong enough to falsify a merge.
+
+F-05 and F-06 are corrections of record, not blockers.
+
+Nothing above contests the REQ's scope or the document's structure. §14.4's three errata are
+unchanged and remain correctly routed; ER-2's new shipping-assumption paragraph — implementation does
+not wait on the erratum, and the report-body assertion is never dropped if the row lands — is exactly
+the note a test author needed.
+
 ## Verdict
+
+One High finding (F-01) and three Medium (F-02, F-03, F-04) are open, plus two Low (F-05, F-06).
+Per the approval rule — any High or Medium finding means the document is not approved — this
+iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision
