@@ -691,6 +691,95 @@ operator duty, and is explicitly out of scope (REQ §5). The three controls abov
 
 ## 7. FSPEC-CONS-06 — Credential handling
 
+**Links:** REQ-CONS-04 (AC-4.1 … AC-4.4), NFR-2, AC-3.5, AC-3.7.
+
+### 7.1 Scope, and why it is a principle
+
+A credential used by this pass grants, on the repository named by
+`consolidation.pluginRepository` **only**:
+
+| Permission | Granted | Purpose |
+|---|---|---|
+| `contents:write` | yes | push the `consolidation/{passId}` branch |
+| `pull_requests:write` | yes | open the PR |
+| any merge right | **no** | AC-4.1 |
+| any permission on any other repository | **no** | AC-4.1 |
+
+This holds in the same-repo configuration too: AC-3.8 licenses a *location*, never a broader
+credential.
+
+Separating propose-rights from merge-rights **at the credential level** is what makes "the agent
+cannot merge its own proposal" structural rather than procedural. It holds even if §6.5's controls
+(b) and (c) both failed and even if BL-05's repo-side protection was never configured — which is the
+whole reason it is stated as a requirement rather than left to the other two.
+
+### 7.2 Resolution order and the three recorded values
+
+The pass resolves a credential once, before the §6 route is attempted, and records exactly one
+`credential:` value in its log row over the closed three-member set of vocabularies §1:
+
+| Resolution | `credential:` value | Route |
+|---|---|---|
+| The environment variable named by `consolidation.credentialEnv` (default `PDLC_PLUGIN_REPO_TOKEN`) is set and non-empty | `present (redacted)` | §6 PR route |
+| No such variable, but the invoking environment has working `gh` authentication | `local-gh` | §6 PR route — the **shipping** configuration for the same-repo case |
+| Neither | `absent` | §6.3 fallback, reason code `credential-unavailable` |
+
+`local-gh` is a supported configuration, not a degradation (AC-4.4): AC-4.1's scoped token is
+required only when `consolidation.pluginRepository` names a *different* repository (BL-03).
+
+`absent` means **no credential was in hand when the row was written**. That covers both a pass that
+looked and found none, and a pass that terminated before reading one — a `refused` tick (§4.4). The
+set needs no fourth "not reached" member, and this FSPEC introduces none: a value with no
+vocabularies §1 row would breach REQ §4b's set-equality obligation.
+
+An environment variable that is set but whose value the target repository rejects is
+`present (redacted)` on the `credential:` field — the pass **had** a credential — while the route
+still degrades with `credential-unavailable` (§6.3). The two fields answer different questions and
+are never collapsed.
+
+### 7.3 Degradation, and the status it forces (AC-4.3)
+
+An absent or invalid credential **does not halt the pass** and **is not a silent skip**:
+
+1. The affected promotion degrades to the §6.3 proposal-file fallback with reason code
+   `credential-unavailable`.
+2. The log row records `credential: absent` (or `present (redacted)`, per §7.2).
+3. The §10 report surfaces that promotion under a `degraded` route, with its reason code.
+4. The terminal status is:
+
+| The pass promoted… | Terminal status |
+|---|---|
+| anything at all (a constraint, a decision, or a PR that did open) | `promoted-degraded` |
+| nothing | `no-op` |
+| — | **never** a bare `promoted`, so a degraded run cannot read as an unqualified success |
+
+The rest of the pass proceeds normally: the consumed pair is already appended (§3.3), the §8.3
+effectiveness table is still computed and reported, and the §5.4 commit still runs.
+
+### 7.4 Non-disclosure (NFR-2, AC-4.2)
+
+The credential value is read at runtime from the environment and:
+
+| Surface | Rule |
+|---|---|
+| the log row | never — only the `credential:` field's enumerated value |
+| the PR body | never |
+| `CONSOLIDATION-PROPOSAL-{passId}.md` | never |
+| the §10 report body | never |
+| any notification | never |
+| any file the pass writes | never — it is not persisted into any artifact |
+
+The rule is stated as a **conjunction with a positive obligation**, not as a bare absence: the
+absence assertion is paired with the `credential:` field, so it is made on a path that demonstrably
+ran. A pass that wrote a row is a pass that reached the credential decision; an oracle can therefore
+assert both halves on the same artifact rather than asserting only that a secret did not appear (a
+test an empty file would pass).
+
+The value is never echoed back through a subprocess argument either: it reaches `git` and the PR API
+through the environment, so it cannot surface in a command line the pass logs on failure — which is
+the one path where the §6.3 `api-failure` class ("the API's status text") could otherwise carry it.
+The status text recorded is the API's, never the request.
+
 ## 8. FSPEC-CONS-07 — Falsifiability
 
 ## 9. FSPEC-CONS-08 — Advisory-corpus input
