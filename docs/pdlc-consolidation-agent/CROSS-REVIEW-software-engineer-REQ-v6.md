@@ -34,6 +34,28 @@ fix now rests on.
 
 ## Existing-Code Claim Verification (changed sections)
 
+Every `file:line` claim this revision added or changed, checked against HEAD on
+`feat-pdlc-consolidation-agent` in a single pass. Rows verified in v4/v5 are not re-checked; only
+rows the `d1d58c3..HEAD` diff touched appear here, plus the two anchors v5 F-04 asked to be fixed.
+
+| # | New/changed REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `phase: "CR"` now cited `:10255-10257` (v5 F-04a fix) | AC-5.2 | **Confirmed — fixed** | `:10255` `const crResult = await reviewLoop({`, `:10256` `` doc: `docs/${featureName}/` ``, `:10257` `phase: "CR",`. The quoted token is now inside the cited range |
+| 2 | `CODE_REVIEW` named at `:7911` (round 1, `dodVerifyPrompt`) **and** `:7941` (rounds ≥2, `dodReVerifyPrompt` `:7924`) (v5 F-04b fix) | AC-5.2 | **Confirmed — all three anchors** | `:7911` `` docs/${featureName}/CODE_REVIEW-${featureName}-v${version}.md `` inside the round-1 prompt; `:7941` the same basename inside the re-verify prompt; `:7924` its declaration. Both dispatch sites are now named, which is what the finding asked for |
+| 3 | `PHASE_DISPATCH` range `:3337-3437` — declaration `:3337`, **first key `R:` `:3338`**, last key `DOD:` `:3431`, close `:3437` | §4b | **Confirmed, all four** | `:3337` `export const PHASE_DISPATCH = {`; `:3338` `R: {`; `:3431` `DOD: {`; `:3437` `};`. The volunteered `:3338` is correct and pins both endpoints |
+| 4 | `recordPhase` literals for the five non-`PHASE_DISPATCH` phases: I `:10020`, PT `:10250`, H `:10407`, PUB `:10462`, MERGE `:10568` | §4b | **Confirmed, all five** | `:10020` `recordPhase("I", "Implementation", …)`; `:10250` `recordPhase("PT", "PROPERTIES Tests", …)`; `:10407` `recordPhase("H", "Harvest", …)`; `:10462` `recordPhase("PUB", "Raise PR & Verify CI", …)`; `:10568` `recordPhase("MERGE", "Merge PR", …)`. Together with row 3 the 13-member phase catalogue is now sourced entirely from code, with no member asserted from memory |
+| 5 | `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` at `orchestrate-dev.js:1652-1653` | AC-1.5, §5b, BL-01 | **Confirmed** | `:1652` `const MODEL_ADVISORY = "fable";`, `:1653` `const MODEL_ADVISORY_FALLBACK = "opus";` — adjacent, so a set-equality test over the pair has one anchor |
+| 6 | `resolveAdvisoryRung` **exported** at `orchestrate-dev.js:1833`, under a doc comment at `:1800` calling it "TSPEC §3.4's model-rung ladder" | AC-1.5, §5b, BL-01 | **Confirmed, both** | `:1833` `export function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {`; `:1800` `` * `resolveAdvisoryRung` — TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships. `` — the REQ's quotation is verbatim, and `export` makes the reuse claim true rather than aspirational |
+| 7 | `orchestrate-queue.js` dispatches the advisory seam "with the raw agent and a threaded `rungState`" (`orchestrate-queue.js:1245-1256`) | AC-1.5 | **Confirmed, and the comment corroborates the claim** | `:1245` `const advisoryDisposition = await runAdvisorySeamFn({`, `rungState,` and `_agent: rawAgentFn,` both inside `:1245-1256`; the preceding comment reads "A1/A2 dispatch through the raw agent, NOT the `MODEL_QUEUE`-pinned `agentFn` wrapper" |
+| 8 | `guardVerdict` (`orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) | AC-3.1 | **Confirmed, all three** | `:732` `export function guardVerdict(changed, guardPaths) {`; `:709` `export function effectiveGuardPaths(configured) {`; `:899-900` `const guardPaths = effectiveGuardPaths(config.guardPaths);` / `const verdict = guardVerdict(record.o5, guardPaths);` — the sole call pair, so "reachable only from" holds at HEAD |
+| 9 | Step 1: "three `docs/completed/*/` dirs each hold a LEARNINGS" and "depth-1 hides 3 of the 5 LEARNINGS at HEAD" | REQ-CONS-01 | **Both facts confirmed; the cross-reference that names them is wrong** (F-04) | On disk: `docs/completed/pdlc-merge-phase/`, `docs/completed/pdlc-review-loop-hardening/`, `docs/completed/pdlc-workflow-distribution/` each hold one LEARNINGS; depth-1 holds `docs/orchestrate-dev-workflow/` and `docs/pdlc-advisory-tier/`. 5 total, 3 hidden — the arithmetic is right. "named below" is what fails: the only three-name list is 10 lines *above* (`:128-129`) and enumerates the **un-consolidated** three, which differs from the completed three in one member |
+| 10 | `nudge-consolidation.sh:41` (predicate) and `:28` (depth-1 glob) | REQ-CONS-01, §5b | **Confirmed, unchanged from v5** | Re-read because §5b's summary line at `:639` was rewritten around them; both anchors still land on the substring test and the glob respectively |
+
+No claim added or changed in this round is factually wrong about the codebase. Row 9 is the one
+defect, and it is a cross-reference inside the REQ, not a mis-citation of code — the code facts it
+points at are both true. Notably, the two anchors v5 flagged (rows 1 and 2) are fixed exactly as
+requested, and rows 3–4 volunteer more precision than was asked for.
+
 ## Questions
 
 ## Positive Observations
