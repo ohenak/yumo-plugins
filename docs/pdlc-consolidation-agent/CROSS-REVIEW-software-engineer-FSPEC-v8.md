@@ -103,4 +103,37 @@ FSPEC does state the observable, which is the part that stays blocking at this l
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All five v7 findings are closed as filed and v7 Q-03 is answered by rewriting the clause it asked
+about — the seventh consecutive round in which every prior item was addressed rather than argued
+with. **No High finding remains, and none has since v3. No Medium finding remains, for the second
+consecutive round.** Two Lows are open, both in text this round added:
+
+1. **F-01 — fix the line number.** `:1144` cites §10.3 at `:1712` (the `rung:` row); the
+   `pass:{passId}` evidence it names is the `suppressed-by:` row at `:1717`. Repair is one number;
+   the durable repair is to cite that row by field name so it does not rot on the next insertion.
+2. **F-02 — collect the layer deferrals in one register.** Three obligations are now explicitly
+   PROPERTIES-owned (E-12b / BR-33a's `artifact` arms, BR-33b's `target`-follows clause, §8.2's
+   two-action-one-subject pass), each well-formed individually, none discoverable except by grep.
+   §14.4's erratum register is the shape to copy. Tagged `Process`: this is what applying
+   DEC-LAYER-01 honestly does to any FSPEC, not a fact about this feature.
+
+Neither changes an oracle, a rule's meaning, or a settled decision, and neither blocks a downstream
+author from deciding anything today: F-01's target is unambiguous from the quoted text beside the bad
+number, and F-02's three deferrals are all stated with owner, observable and falsifier — the register
+saves a grep, it does not supply missing content. I would take both, but I do not need to see them
+before approving.
+
+**No erratum is emitted with this review.** The only upstream defect in scope remains the
+`suppressed-by:` value grammar at `docs/_constraints/pdlc-consolidation-vocabularies.md:63`, already
+routed as §14.4 ER-5 and re-verified verbatim at HEAD this round; nothing new was found upstream, and
+the REQ traceability of every changed section (AC-5.1, AC-5.2, NFR-4) is unchanged by this diff.
+
 ## Verdict
+
+No High and no Medium finding is open. Two Low findings (F-01, F-02) remain — one wrong line number
+and one missing register. Per the approval rule — Low findings only ⇒ Approved with minor changes —
+this iteration **approves** `FSPEC-pdlc-consolidation-agent.md` at version 8.0.
+
+VERDICT: Approved with minor changes
