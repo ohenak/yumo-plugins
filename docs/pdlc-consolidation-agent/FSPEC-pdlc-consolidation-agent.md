@@ -970,7 +970,7 @@ required only when `consolidation.pluginRepository` names a *different* reposito
 `absent` means **no credential was in hand when the row was written**. That covers both a pass that
 looked and found none, and a pass that never looked — a `refused` tick (§4.4), a `failed` pass
 (§2.6 rows 3–4), or a pass with no guard-set proposal to route. §10.3 states how a reader tells the
-two apart from the row itself. The
+two apart, on which rows the row itself decides it, and the one shape where it cannot. The
 set needs no fourth "not reached" member, and this FSPEC introduces none: a value with no
 vocabularies §1 row would breach REQ §4b's set-equality obligation.
 
@@ -984,7 +984,13 @@ are never collapsed.
 An absent or invalid credential **does not halt the pass** and **is not a silent skip**:
 
 1. The affected promotion degrades to the §6.3 proposal-file fallback with reason code
-   `credential-unavailable`.
+   `credential-unavailable` — recorded on the terminal row **when the pass's terminal status admits
+   that code**. At vocabularies §1 `Version` 1.4 that is `promoted-degraded` and `no-op`; a pass that
+   subsequently terminates `failed` (§12.1 S-11c — a step-12/13 dispatch error *after* a PR-route
+   attempt) may not carry it, so on that one row the degradation is legible in the report body only.
+   The obligation is scoped this way rather than stated absolutely because an absolute form would be
+   simultaneously unsatisfiable and a breach of REQ §4b's set-equality on that path. §10.3's third
+   reading names the consequence for a reader; ER-4 (§14.4) routes the enumeration gap upstream.
 2. The log row records `credential: absent` (or `present (redacted)`, per §7.2).
 3. The §10 report surfaces that promotion under a `degraded` route, with its reason code.
 4. The terminal status is:
@@ -1566,28 +1572,36 @@ three members (§7.2) and gains no fourth: adding a
 layer does not edit.
 
 **An earlier draft keyed the reading on the row's `status:` — `refused` ⇒ not attempted, any other
-status ⇒ attempted. That is withdrawn: it is not total.** A `failed` row (§12.1 S-11, S-11b, S-11c)
-terminates at step 8, 12 or 13 and makes no promotion, so it never reaches §7.2's resolution either;
-and a `promoted` or `no-op` pass whose proposals were all consuming-repo ones never attempts the PR
-route at all. Both fell in the old table's "any other status" row, and neither can carry
-`credential-unavailable`, which vocabularies §1 permits only with `promoted-degraded` and `no-op`.
+status ⇒ attempted. That is withdrawn: it is not total.** A `failed` row that terminated at step 8
+(§12.1 S-11, S-11b) made no promotion and never reached §7.2's resolution; and a `promoted` or
+`no-op` pass whose proposals were all consuming-repo ones never attempts the PR route at all. Both
+fell in the old table's "any other status" row, and neither can carry `credential-unavailable`, which
+vocabularies §1 permits only with `promoted-degraded` and `no-op`. A step-12/13 `failed` row (S-11c)
+is the third shape, and it is the one a status key would misread in the *other* direction: it can
+have reached the resolution, and cannot record what it found.
 
 The reading is therefore keyed on the observable that actually decides it — the co-occurrence of
-`credential-unavailable` on the same row — which is a **boolean, so the split is total by
-construction** and needs no enumeration of statuses:
+`credential-unavailable` on the same row — over the rows whose status admits that code, with the one
+shape that does not named as its own reading rather than folded into the second arm:
 
 | Row observation | Reading of `credential: absent` |
 |---|---|
 | the row's `reason:` **carries** `credential-unavailable` | **attempted and found nothing** — the §6 route was attempted, §7.2 resolved neither a `credentialEnv` variable nor working local `gh` auth, and the promotion degraded. The finding AT-K2 constructs |
-| the row's `reason:` does **not** carry it | **not attempted.** §7.2's resolution never ran, because the pass never reached a §6 PR-route attempt: it was `refused` at step 6 (S-09), it terminated `failed` (S-11 / S-11b / S-11c), or it derived no guard-set proposal. `absent` is the row's null, not a finding |
+| the row's status is **not** `failed` and its `reason:` does **not** carry the code | **not attempted.** §7.2's resolution never ran, because the pass never reached a §6 PR-route attempt: it was `refused` at step 6 (S-09), or it derived no guard-set proposal. `absent` is the row's null, not a finding |
+| the row's status **is** `failed` and its `reason:` does not carry the code | **undecidable from the row's fields alone**, and this document says so rather than guessing. A `failed` pass may have terminated before any PR-route attempt (step 8 — S-11, S-11b) *or* after one that resolved nothing (step 12/13 — S-11c), and vocabularies §1 at `Version` 1.4 permits `credential-unavailable` only with `promoted-degraded` and `no-op`, so the code cannot appear on this row to tell them apart. **The report body decides it**: §10.4 item 4 renders every promotion by route, so a degraded promotion naming `credential-unavailable` as its §6.3 failure class is present there exactly when the resolution ran and found nothing |
 
-The discriminator is exact in both directions because the pairing is a **biconditional this document
-obliges**: §6.3 and §7.3 require every attempted-and-empty resolution to record
-`credential-unavailable`, and vocabularies §1's composition rule makes that code unavailable on every
-row the second arm names. `status:` corroborates the reading and never decides it — which is why no
-status is enumerated above. AT-K6 asserts the pairing over a fixture set spanning all four shapes of
-the second arm plus AT-K2's finding, so an implementation that recorded a genuine credential finding
-on a row that never resolved one, or omitted the reason code on a real one, fails.
+The first two rows are exact in both directions because the pairing is a **biconditional this
+document obliges over them**: §6.3 and §7.3 require every attempted-and-empty resolution to record
+`credential-unavailable` *where the status admits it*, and vocabularies §1's composition rule makes
+that code unavailable on every row the second arm names. The third row is where the biconditional's
+two halves cannot both hold — the code is obliged by §7.3 and barred by §1's status column — and it
+is named as a **loss of row-level decidability**, not asserted away; §14.4 ER-4 asks §1 for the
+composition that would close it, and until that row lands the report body is the discriminator. Note
+what is **not** claimed: `status:` does not decide the reading on the first two rows; it only selects
+which of the three rows applies. AT-K6 asserts the split over a fixture set spanning every shape,
+including both `failed` sub-shapes, so an implementation that recorded a genuine credential finding on
+a row that never resolved one, omitted the reason code on a real one, or recorded the code on a
+`failed` row in breach of REQ §4b, fails.
 
 ### 10.4 The report body
 
@@ -1838,7 +1852,7 @@ PROPERTIES' (DC-09).
 | AT-K3 | operator | a pass that promoted nothing else and degraded its only promotion | the pass ends | terminal `no-op` — never a bare `promoted` |
 | AT-K4 | operator | a credential present but rejected by the repository | a pass runs | `credential: present (redacted)` **and** reason `credential-unavailable` — the two fields are not collapsed |
 | AT-K5 | maintainer | any pass on any path | every artifact and the report body are searched | the credential value appears in none of them, and the row carries exactly one `credential:` value from the closed set |
-| AT-K6 | operator | **five** rows, spanning every shape §10.3's table admits: (i) a pass `refused` at step 6 (§12.1 S-09), (ii) a pass `failed` at step 8 (S-11), (iii) a pass `failed` at step 12 or 13 (S-11c), (iv) a `no-op`/`promoted` pass whose proposals were all consuming-repo ones so no PR route was attempted, and (v) AT-K2's genuine finding | the rows are read | **all five** carry `credential: absent`, and they are told apart by one observable and not by status: rows (i)–(iv) carry **no** `credential-unavailable` and are read "not attempted"; row (v) carries it and is read "attempted and found nothing". Asserted in both directions. Rows (ii)–(iv) are the rows that falsify the withdrawn status-keyed reading, under which all three would have been misread as attempted |
+| AT-K6 | operator | **six** rows, spanning every shape §10.3's three readings admit: (i) a pass `refused` at step 6 (§12.1 S-09), (ii) a `no-op`/`promoted` pass whose proposals were all consuming-repo ones so no PR route was attempted, (iii) a pass `failed` at step 8 (S-11 / S-11b) that never reached a PR-route attempt, (iv) a pass `failed` at step 12/13 (S-11c) that **did** attempt the PR route and resolved nothing, (v) a pass `failed` at step 12/13 that never attempted it, and (vi) AT-K2's genuine finding on a `promoted-degraded` row | the rows are read | **all six** carry `credential: absent`. Rows (i)–(ii) carry no `credential-unavailable` and are read "not attempted"; row (vi) carries it and is read "attempted and found nothing"; rows (iii)–(v) are `failed` and carry **no** `credential-unavailable` — asserted as an absence in its own right, since vocabularies §1 at `Version` 1.4 bars the code from a `failed` row and recording it would breach REQ §4b (AT-L5). Rows (iv) and (v) are indistinguishable **in the row** and are distinguished **in the report body**: (iv)'s §10.4 item 4 names a degraded promotion with the `credential-unavailable` failure class and (v)'s does not. Asserted in both directions, and the (iv)/(v) pair is the one this row exists for — an implementation that keyed the reading on `status:`, or that emitted the reason code on a `failed` row to make it decidable, fails on it |
 | AT-K7 | operator | a pass with **≥ 2** promotions of which exactly one hits a §6.3 failure class | the pass ends | terminal status is verbatim **`promoted-degraded`** — neither `promoted` nor `no-op` — the landed promotions carry their observables (`pr:` populated, their ids in the log), and the failed one appears under the `degraded` route naming its failure class. This is the only test asserting the partial-success status behaviourally; AT-L5 sees the string, not the behaviour |
 
 ### 13.7 Falsifiability (§8)
@@ -1944,7 +1958,7 @@ exists — the deferral that carries it.
 ### 14.4 Errata against upstream documents
 
 Every question in §14.2 and §14.3 was raised and settled by the REQ, or is a mechanism choice the REQ
-explicitly delegated. Three items are **not** of that kind: they are gaps in documents this layer
+explicitly delegated. Four items are **not** of that kind: they are gaps in documents this layer
 does not own, and each is routed as an erratum rather than patched here or folded into this
 document's own scope.
 
@@ -1953,6 +1967,7 @@ document's own scope.
 | ER-1 | REQ (vocabularies §1, pinned at `Version` 1.4 by REQ §4b) | no row for the `rung:` field, which §10.3 carries and AC-1.5 requires the row to record | §1 is an **enumeration the REQ owns** (`pdlc-consolidation-vocabularies.md`, change control: "`REQ-pdlc-consolidation-agent` owns every section of this file"). Adding a row is a REQ-side edit plus a `Version` bump; this FSPEC works around it by putting `rung:` in §10.3's free-form class, which keeps AT-L5 green on a correct implementation but leaves the field unenumerated |
 | ER-2 | REQ (vocabularies §1) | no reason code for §2.6 row 4, the resolver's `dispatch-error` return — a `failed` row with an empty reason field is legal but indistinguishable from a truncated row without opening the report body | same ownership. §2.6 states the request precisely (`advisory-dispatch-failed`, permitted with `failed`); until the row exists AT-M6 asserts the discriminator in the report body. **The shipping assumption is stated so a test author is not left guessing:** every AT in §13 is written against `Version` 1.4 as pinned in §1, and implementation does **not** wait on the erratum. If the row lands during this feature, AT-M6 and AT-M9 gain the reason-code assertion **in addition to** the report-body one (the body assertion is never dropped — it is what makes the error legible), and §12.1 S-11b/S-11c's `none` cells become that code. That is a delta the erratum's own routing carries, not a second version of the AT |
 | ER-3 | REQ | AC-1.4 states two exhaustive causes of `no-op` while AC-4.3 produces a third (a pass whose only promotion degraded). §5.3 and §7.3 are reconciled **within** this document, so the FSPEC is self-consistent; the REQ's own enumeration is not | the exhaustiveness claim is the REQ's, and correcting a REQ acceptance criterion is its author's edit, not this layer's |
+| ER-4 | REQ (vocabularies §1) | `credential-unavailable` — and, by the identical argument, `repository-unresolved`, `api-failure` and `branch-exists` — carries a `May accompany status` column of `promoted-degraded`, `no-op` only. §1's own **composition rule** ("a code is legal with every terminal status still reachable after the point at which it was recorded") derives a wider set: these codes are recorded at the step-13 PR-route attempt, and §12.1 S-11c makes `failed` reachable *after* that point. The column is therefore narrower than the rule that is said to derive it, and the gap is a behaviour this FSPEC introduced (S-11c), not a pre-existing one | same ownership: `Version` 1.4 is REQ-pinned and this layer does not edit §1. Consequence, stated rather than worked around: a step-12/13 `failed` row cannot carry the code, so §10.3's third reading is undecidable from the row alone and defers to the report body. **The shipping assumption is ER-2's:** every AT is written against `Version` 1.4, implementation does not wait, and if the widened column lands, AT-K6 rows (iv)/(v) gain the reason-code assertion **in addition to** the report-body one and §10.3's third reading collapses into the first two. Recording the code anyway at `Version` 1.4 is **not** an option — it would breach REQ §4b's set-equality and turn AT-L5 red |
 
 Nothing is recorded against `docs/_constraints/pdlc-advisory-corpus-baseline.md` at `Version` 1.0.
 Its §3 "reuse the resolver" instruction is satisfiable as written once §2.6's reading is taken — the
@@ -2262,7 +2277,7 @@ falsifies it; none of them is new here.
 | BR-39 | Every log write is an append of one whole record; no record is ever rewritten in place. | §10.2, §12.4 | AT-L3 |
 | BR-40 | A pass that takes the marker appends exactly one terminal row; a `skipped-cadence` tick appends none. | §10.1, §10.3 | AT-C3, AT-L3 |
 | BR-41 | Every terminal row carries a trigger (NFR-3a) and a `credential:` value (AC-4.2) — a `refused` row included. | §10.3 | AT-L5, AT-M1 |
-| BR-41a | `credential: absent` is read by one observable, not by status: a row carrying `credential-unavailable` means attempted-and-found-nothing; a row not carrying it means **not attempted** — the pass never reached a §6 PR-route attempt (`refused`, `failed`, or no guard-set proposal). The split is a boolean and therefore total. | §10.3, §7.2 | AT-K6 |
+| BR-41a | `credential: absent` is read by an observable, not by status. A row carrying `credential-unavailable` means attempted-and-found-nothing. A **non-`failed`** row not carrying it means **not attempted** — the pass never reached a §6 PR-route attempt (`refused`, or no guard-set proposal). A **`failed`** row not carrying it is **undecidable from the row alone** — vocabularies §1 at `Version` 1.4 bars the code from a `failed` status, so a step-12/13 pass that attempted and resolved nothing cannot record it — and the §10.4 report body is the discriminator. The reading is total over the three cases; the third is a named loss, routed as ER-4, not an assumption. | §10.3, §7.2, §7.3 | AT-K6 |
 | BR-42 | A git refusal at step 15 adds `writes-uncommitted` and never changes the pass's status. | §5.4, §12.1 S-12 | AT-R4 |
 | BR-43 | Every **enumerated-class** value written (§10.3: status, trigger, reason codes, `credential:`, route names, per-promotion verdict / state / action / phase) is a member of vocabularies §1 at `Version` 1.4, and every §1 row is used — set equality in both directions (REQ §4b). Free-form values — a URL, a date, a branch, a `passId`, a model id — are data and are outside the compared set. | §15.2, §10.3 | AT-L5 |
 | BR-44 | A configuration fallback is report content, never a reason code — no §1 row exists for one. | §11.3 | AT-N2, AT-N3 |
@@ -2312,7 +2327,8 @@ E-29) and each now names its own test.
 | E-19 | Neither model rung resolves | `failed`, reason `advisory-model-unresolved`; no promotion; consumed pair already written at step 7; marker released | §2.6 | AT-M4 |
 | E-19b | The first advisory dispatch fails for a reason that is **not** model resolution (§2.6 row 4) | `failed` with **no** reason code and the error message verbatim in the report body; otherwise identical to E-19 | §2.6 | AT-M6 |
 | E-20 | Credential absent or invalid | `credential-unavailable`, `credential: absent`, §6.3 fallback fires, pass does **not** halt | §7.3, §6.3 | AT-K2 |
-| E-20b | A pass that resolved no credential at all — `refused` at step 6, `failed` at step 8/12/13, or a pass with no guard-set proposal to route | `credential: absent` read as **not attempted** — the row carries no `credential-unavailable`, which is what separates all three from E-20; the reading is keyed on that observable and not on the status (§10.3) | §10.3, §4.4, §7.2 | AT-K6 |
+| E-20b | A pass that resolved no credential at all — `refused` at step 6, `failed` at step 8, or a pass with no guard-set proposal to route | `credential: absent` read as **not attempted** — the row carries no `credential-unavailable`, which is what separates it from E-20; the reading is keyed on that observable and not on the status (§10.3) | §10.3, §4.4, §7.2 | AT-K6 |
+| E-20c | A pass that **did** attempt the PR route, resolved nothing, and then terminated `failed` at step 12/13 (§12.1 S-11c) | the promotion degrades and the report body names it with the `credential-unavailable` failure class, but the terminal row carries **no** reason code: vocabularies §1 at `Version` 1.4 bars it from a `failed` status. `credential: absent` on that row is undecidable from the row alone and is read from the report body — a named loss (§10.3 third reading, ER-4), never a row silently read as "not attempted" | §10.3, §7.3, §2.6 | AT-K6 |
 | E-21 | Credential present but rejected by the repository | `credential: present (redacted)` **and** `credential-unavailable` — the two fields are never collapsed | §7.2, §6.3 | AT-K4 |
 | E-22 | `pluginRepository` names a repository that does not resolve | `repository-unresolved` with the configured value verbatim — never a silent fallback to the current repository | §6.3, §11.2 | AT-N4 |
 | E-23 | Network or API failure, rate limiting included | `api-failure` with the API's status text; the proposal file carries the full diff | §6.3 | **AT-Q8** |
