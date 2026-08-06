@@ -187,18 +187,18 @@ runs a manual pass — the never-fires failure this datum prevents.
 
   **A `refused` pass writes its AC-7.2 row and commits nothing.** The row is the only evidence a tick was refused, and REQ-CONS-01's cadence rule
   already presupposes it ("a `refused` row is not a datum"); AC-7.2's exemption set therefore stays a single member, `skipped-cadence`. The row carries
-  a trigger (NFR-3a — the refused tick fired one of `cadence` / `volume` / `manual`; that is how it reached the marker check) and `credential: absent`
-  (AC-4.2). It is **written, never committed**, by decision: a pathspec stages a whole file, so a refused commit would capture the winner's log at an
-  arbitrary mid-pass instant — a half-written record the loser does not own. The winner's own AC-3.8b commit covers the same path and sweeps the row up;
-  if the winner dies first the row stays in the working tree, which is all its evidentiary purpose needs. It writes **no** consumed block — only
-  marker-holding passes emit one (REQ-CONS-01) — so it never touches the legacy-region boundary.
+  a trigger (NFR-3a — the refused tick fired one of `cadence` / `volume` / `manual` to reach the marker check) and `credential: absent` (AC-4.2). It is
+  **written, never committed**, by decision: a pathspec stages a whole file, so a refused commit would capture the winner's log at an arbitrary mid-pass
+  instant. The winner's own AC-3.8b commit covers the same path and sweeps the row up; if the winner dies first the row stays in the working tree, which
+  is all its evidentiary purpose needs. It writes **no** consumed block — only marker-holding passes emit one (REQ-CONS-01) — so it never touches the
+  legacy-region boundary.
 
   **Why no lock is needed: the write-granularity obligation.** Every write to `.consolidation-log.md`, by any pass, is a single **append of one whole
   record at end of file**. A whole-file read-modify-write of the log is **forbidden**, not merely unnecessary: it is the one shape that loses a
-  concurrent append. The two writes that would have violated this are decided away rather than serialised — the marker's take and release are in-place
-  edits, so the marker lives in `.consolidation-lock` (above) and never touches the log; and the winner's `<!-- pdlc:consumed {passId} -->` pair is
-  emitted **complete, in one append**, its consumed set being fixed at step 1 of the tick order before any promotion work (NFR-5). So the loser's
-  refused row and the winner's records interleave in either order without loss, which is what makes both durability claims above true.
+  concurrent append. The two writes that would have violated it are decided away rather than serialised — the marker's take and release are in-place
+  edits, so the marker lives in `.consolidation-lock` (above); and the winner's `<!-- pdlc:consumed {passId} -->` pair is emitted **complete, in one
+  append**, its consumed set fixed at step 1 before any promotion work (NFR-5). So the loser's refused row and the winner's records interleave in either
+  order without loss, which is what makes both durability claims above true.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that dies mid-flight cannot wedge the cadence. An
@@ -214,14 +214,11 @@ runs a manual pass — the never-fires failure this datum prevents.
 - **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it actually ran on in its report and in the log row.
   The rung ladder is the one `pdlc-advisory-tier` ships: `MODEL_ADVISORY` (`pdlc/workflows/orchestrate-dev.js:1652`) first, `MODEL_ADVISORY_FALLBACK`
   (`:1653`) on non-resolution. **This feature reuses that ladder; it does not restate it.** The two constants are module-private, but the ladder is
-  not: the resolver `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833`, under a doc comment at `:1800` calling it "TSPEC §3.4's model-rung
-  ladder, and the **one** ladder the tier ships". The shipped second consumer follows that pattern rather than copying literals — `orchestrate-queue.js`
-  dispatches through an injected seam with the raw agent and a threaded `rungState` (`:1245-1256`). The consolidation pass resolves its rung the same
-  way, and AC-7.1 reports the rung it ran on.
-
-  If FSPEC/TSPEC establishes that reuse is impossible here, the fallback is a restated pair of literals **plus a named drift observable**, never a
-  named risk: a test asserting set-equality with `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`), failing when either
-  copy moves. A restatement without that observable is not an acceptable outcome.
+  not: the resolver `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833`, under a doc comment at `:1800` calling it "the **one** ladder the
+  tier ships", and the shipped second consumer takes it through an injected seam with a threaded `rungState` (`orchestrate-queue.js:1245-1256`) rather
+  than copying literals. The consolidation pass resolves the same way. If FSPEC/TSPEC establishes that reuse is impossible here, the fallback is a
+  restated pair of literals **plus a named drift observable**, never a named risk: a test asserting set-equality with `MODEL_ADVISORY` /
+  `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`), failing when either copy moves.
 - **AC-1.6** — Given the primary rung does not resolve, Then the pass runs on the fallback rung and
   reports the downgrade explicitly (mirroring `ADVISORY_MODEL_FALLBACK:`,
   `pdlc/workflows/orchestrate-dev.js:1859`) — never a silent downgrade. Given **neither** rung
@@ -295,9 +292,9 @@ it outlives the log record of the pass that opened it, and because the key is th
   naming"), so a repo-side control can recognise it.
 
   This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:732`) over
-  `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both inside a run
-  deciding about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`, refusal `:838`). Nothing there evaluates an inbound PR raised
-  by another process, so claiming inheritance would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
+  `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both deciding
+  about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`, refusal `:838`). Nothing there evaluates an inbound PR, so claiming
+  inheritance would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
 - **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
   consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
   a **separate clone under a temporary directory**, cut from the fetched default branch. In the
@@ -322,21 +319,18 @@ it outlives the log record of the pass that opened it, and because the key is th
   does not change the terminal status, and records `writes-uncommitted`. These writes never travel through the AC-3.1 PR, which carries only
   guard-set edits.
 
-  **Where those commits go, stated.** The invoking branch **is** the accepted destination, with its consequence stated: when it is a mid-pipeline
-  `feat-*`, the AC-2.1/AC-2.2 promotions reach the default branch by riding that feature's own PR (pushed by Phase PUB, merged if at all by Phase MERGE)
-  — a PR raised and reviewed for something else — so the AC-7.1 report names the branch the commit landed on. Abandonment is closed by construction
-  **for the consuming-repo writes this AC enumerates, and for those only**: the promotions **and** the NFR-5 consumed block are one commit, so a
-  discarded branch loses both together — nothing is marked consumed on the default branch and a later pass redoes the work.
+  **Where those commits go.** The invoking branch **is** the accepted destination. When it is a mid-pipeline `feat-*`, the AC-2.1/AC-2.2 promotions
+  reach the default branch by riding that feature's own PR — raised and reviewed for something else — so the AC-7.1 report names the branch the commit
+  landed on. Abandonment is closed by construction **for the consuming-repo writes this AC enumerates, and for those only**: the promotions and the
+  NFR-5 consumed block are one commit, so a discarded branch loses both together and a later pass redoes the work. Any other destination (a
+  `consolidation/{passId}` branch for these writes too) is **not** specified: it needs the branch operations AC-3.8 forbids.
 
-  **The AC-3.1 PR route under the same abandonment, stated separately**, because there the failure inverts: a guard-set promotion is pushed from the
-  AC-3.8 separate clone to `consolidation/{passId}` and lives or dies independently of the invoking branch. If that PR merges and the branch is then
-  abandoned, the promotion survives on the default branch while the consumed block, the AC-5.1 `failure-mode-id` record and the AC-3.4 PR URL die with
-  the branch. This is closed on the PR identity, not on the log: NFR-4 keys **per promotion** on the `failure-mode-id` in the merged PR's
-  `PDLC-CONSOLIDATION-PROMOTIONS` trailer, and that id is stable across passes (AC-5.1), so a later pass re-deriving the same promotion from a
-  *larger* consumed set still records `duplicate-suppressed` rather than opening a second PR — which a sources-set key could not do (NFR-4).
-  What is *not* recovered is the effectiveness record — that promotion re-enters the AC-5.2 table as if first made — a loss accepted here, not closed.
-  Any other destination (a `consolidation/{passId}` branch for the consuming-repo writes too) is **not** specified: it needs the branch operations
-  AC-3.8 forbids.
+  **The AC-3.1 PR route under the same abandonment inverts**, so it is stated separately: a guard-set promotion is pushed from the AC-3.8 clone and
+  lives or dies independently of the invoking branch, so a merged PR can survive while the consumed block, the AC-5.1 record and the AC-3.4 URL die with
+  the branch. This is closed on the PR identity, not the log: NFR-4 keys on the `(failure-mode-id, action)` pair in the merged PR's
+  `PDLC-CONSOLIDATION-PROMOTIONS` trailer, and the id is stable across passes (AC-5.1), so a later pass re-deriving the same `promote` from a *larger*
+  consumed set records `duplicate-suppressed` rather than opening a second PR — which a sources-set key could not do. What is *not* recovered is the
+  effectiveness record: that promotion re-enters the AC-5.2 table as if first made, a loss accepted here, not closed.
 
 ### REQ-CONS-04 — Credential scope
 
@@ -473,14 +467,11 @@ schema (`renderAdvisoryEntry`, `:2642`) but is **deleted** after Phase H2's dist
 appended `:2812`) is the one durable per-seam record — append-only, never distilled, never deleted — and `renderEscalationEntry` (`:2763`) gives every
 entry named `Feature` and `Seam` fields. REQ-CONS-06 consumes **that**, not an artifact that is destroyed.
 
-**Availability of that input, stated honestly.** `docs/_queue/ESCALATIONS.md` **does not exist at
-HEAD** — `docs/_queue/` holds `QUEUE.md` alone and `git log --all -- docs/_queue/ESCALATIONS.md`
-returns nothing. Its only writer is the advisory tier, which ships **disabled**: `advisoryTierOn`
-(`orchestrate-dev.js:9653`) resolves from `parseAdvisoryConfig` (`:1682`), default `enabled: false`
-(`:1663`), and this repo's `.claude/pdlc.config.json` has an `implementation` section only. So
-REQ-CONS-06 is specified **absent-first**: it ships and is testable with the tier off, and its
-proposals are gated on a corpus that could actually have carried evidence. Availability is tracked
-as BL-01a, not asserted as delivered.
+**Availability, stated honestly.** `docs/_queue/ESCALATIONS.md` **does not exist at HEAD** — `docs/_queue/` holds `QUEUE.md` alone and
+`git log --all -- docs/_queue/ESCALATIONS.md` returns nothing. Its only writer is the advisory tier, which ships **disabled**: `advisoryTierOn`
+(`orchestrate-dev.js:9653`) resolves from `parseAdvisoryConfig` (`:1682`), default `enabled: false` (`:1663`), and this repo's
+`.claude/pdlc.config.json` has an `implementation` section only. So REQ-CONS-06 is specified **absent-first**: it ships and is testable with the tier
+off. Availability is tracked as BL-01a, not asserted as delivered.
 
 - **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its machine-readable per-seam input, counting escalations per
   `Seam` per `Feature` from the entry fields `renderEscalationEntry` emits. Advisory text folded into LEARNINGS is a **corroborating, non-numeric**
