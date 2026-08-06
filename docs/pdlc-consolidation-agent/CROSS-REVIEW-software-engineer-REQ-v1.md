@@ -29,7 +29,30 @@
 
 ## Existing-Code Claim Verification
 
-_(populated below)_
+Every assertion the REQ makes about *existing* code, checked in one pass against HEAD
+(`bb99f89` lineage, branch `feat-pdlc-consolidation-agent`). Batched deliberately — not one per round.
+
+| # | REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `consolidate-learnings` promotes into project-level DOMAIN-CONSTRAINTS and DECISIONS | §1 | **Confirmed** | `pdlc/skills/consolidate-learnings/SKILL.md:10`, `:42` |
+| 2 | It writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` rather than editing skills | §1 | **Confirmed** | `pdlc/skills/consolidate-learnings/SKILL.md:49`, `:82` |
+| 3 | That file's columns are "Target skill / Proposed change / Rationale" | §1 | **Inaccurate** — four columns, first is `Source LEARNINGS` (F-15) | `pdlc/skills/consolidate-learnings/SKILL.md:54` |
+| 4 | The named skills live in `yumo-plugins/pdlc/skills/` | §1 | **Confirmed**, and note they live in *this* repo (F-03) | `pdlc/skills/` (16 skill dirs) |
+| 5 | Nothing carries the proposal across the repo boundary | §1 | **Confirmed** — no `gh pr create` / cross-repo push anywhere in `pdlc/skills/consolidate-learnings/` or `pdlc/workflows/` outside Phase PUB's own-repo `ship-pr` | grep, repo-wide |
+| 6 | The `nudge-consolidation` SessionStart hook's threshold is ≥5 un-consolidated LEARNINGS | AC-1.2 | **Confirmed** as a value; **but the hook only prints** (F-04) | `pdlc/hooks/scripts/nudge-consolidation.sh:25`, emit at `:44-49` |
+| 7 | "Un-consolidated" is decided against `.consolidation-log.md` | AC-2.4, NFR-5 | **Confirmed**; path is `docs/_decisions/.consolidation-log.md` (F-16) | `nudge-consolidation.sh:33`, `:38`; `SKILL.md:35` |
+| 8 | `.consolidation-log.md` records date, consumed files, promoted, deferred | AC-2.4 | **Confirmed** | `pdlc/skills/consolidate-learnings/SKILL.md:43`, `:83` |
+| 9 | The pattern bar is "recurs across ≥2 unrelated features, or a single standing invariant" | AC-2.3, NFR-3 | **Confirmed verbatim** | `pdlc/skills/consolidate-learnings/SKILL.md:38`, `:81` |
+| 10 | `MODEL_ADVISORY` exists as an advisory model rung | AC-1.5 | **Confirmed but incomplete** (F-10) | `pdlc/workflows/orchestrate-dev.js:1652`; fallback `:1653`; failure `:1869-1870` |
+| 11 | `pdlc-merge-phase` REQ-MERGE-03 is a self-modification guard | AC-3.7 | **Confirmed as a requirement**; its reach is the issue (F-01) | `docs/completed/pdlc-merge-phase/REQ-pdlc-merge-phase.md:163`; impl `orchestrate-dev.js:708`, `:731` |
+| 12 | The guard covers `pdlc/skills/**` and `pdlc/workflows/**` | AC-3.1, AC-3.7 | **Under-stated** — the set is four, not two (F-02) | `pdlc/workflows/orchestrate-dev.js:48-53` |
+| 13 | `pdlc-advisory-tier` harvests `ADVISORY-{feature}.md` into LEARNINGS | AC-6.1 | **Confirmed that it happens; the result is unstructured and the source is deleted** (F-07) | distil prompt `orchestrate-dev.js:7585-7592`; record writer `:2687`; delete `:10499` |
+| 14 | The advisory summary is available "by seam" | AC-6.1 | **Confirmed only as an in-memory report field**, never persisted (F-07) | `advisorySummaryRows`, `orchestrate-dev.js:2694` ff.; `ADVISORY_SEAMS` drives the five rows |
+| 15 | Consolidation should be serial "for the same reason the queue is" | AC-1.3 | **Queue mechanism confirmed; no analogue exists for consolidation** (F-05) | `pdlc/workflows/orchestrate-queue.js:630`, header `:26-27` |
+| 16 | `pdlc-advisory-tier` is delivered (BL-01) | §6 | **Confirmed** — queue row 14 `done`, merged `bb99f89` (#38) | `docs/_queue/QUEUE.md` row 14; `git log` |
+| 17 | `pdlc-workflow-distribution` is delivered (BL-02) | §6 | **Confirmed** — archived to `docs/completed/`, merged `1fb6cbe` | `docs/completed/pdlc-workflow-distribution/`; `QUEUE.md` |
+| 18 | DEC-E2 / DEC-E4 / DEC-E5 / Break 2 / OQ-E3 exist in the master plan | header, NFR-1, BL-04 | **Confirmed, all five** | `docs/design/MASTER-PLAN-engineering-loop.md:57`, `:195`, `:216`, `:228`, `:304` |
+| 19 | The master plan orders this feature 4th with those dependencies | header | **Confirmed** | `docs/design/MASTER-PLAN-engineering-loop.md:246` |
 
 ## Questions
 
