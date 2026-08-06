@@ -191,3 +191,5 @@ Both are appropriate for the optimizer to take in a single pass; neither warrant
 round on its own account.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
