@@ -925,3 +925,207 @@ describe("A-26 — Phase PUB wiring", () => {
     }
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// CR v1 remediation (H-1, M-1) — the PRODUCTION composition root, driven through `dev.default(...)`
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Every A-26 case above supplies its own `_runAdvisorySeam` closure, i.e. the test provides the
+// composition root. That proves the seam works; it cannot prove the seam is CONSTRUCTED by the
+// pipeline. These cases therefore drive `dev.default(...)` with the tier enabled and pass NO
+// `_raisePrAndVerifyCi` and NO `_runAdvisorySeam` at all — the real Phase PUB poll loop, the real
+// `runA5AdvisorySeam` binding, the real `gatherA5Context`, `buildA5SeamOps`, `probeDefaultBranchChecks`
+// and `probeWorkflowRerun` — and assert the seam actually dispatched.
+//
+// They also carry §9.4 S-3 (M-1): `noChecks` and `completionCap` reach the advisory summary, so
+// A5-6 and A5-9 are distinguishable from an A5 row that reads zero because nothing fired.
+
+describe("[H-1] A5 is constructed by the pipeline, not only by tests (dev.default end to end)", () => {
+  const REQ_PATH = "docs/test-feat/REQ-test-feat.md";
+  const PARSEABLE_PLAN =
+    "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n\n" +
+    "| Task | Files |\n|---|---|\n| T1 | `src/one.js` |\n";
+
+  const A5_LOW_CONFIDENCE = verdictFixture({ proposedAction: "E-2", confidence: "low" });
+
+  function pipelineAgent(calls) {
+    return async (skill, prompt) => {
+      const text = String(prompt ?? "");
+      calls.push({ skill, prompt: text });
+      // A5's dispatch is a `se-review` turn told apart by its own prompt (see `buildA5SeamOps`).
+      if (skill === "se-review" && /classify:\s*$|E-1 \(flaky/.test(text)) return A5_LOW_CONFIDENCE;
+      if (skill === "guard") return { ok: true };
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return 'Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (text.includes("DECISIONS_WARRANTED")) return "Finalized.\nDECISIONS_WARRANTED: false";
+        if (text.includes("Return a JSON object")) {
+          return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+        }
+        return "Document created.";
+      }
+      if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (text.includes("Rebase the feature branch")) return "Rebased.\nREBASE_STATUS: clean";
+        if (text.includes("Raise a pull request")) return `PR opened.\nPR_URL: ${PR_URL}`;
+        return "Checks.\nCI_STATUS: passed";
+      }
+      return "Success.";
+    };
+  }
+
+  /** `_git` for the whole run: enough for the branch guard AND for `gatherA5Context`. */
+  function makeMainGit() {
+    let branch = "feat-test-feat";
+    const argvs = [];
+    const _git = async (argv) => {
+      const args = Array.isArray(argv) ? argv : [];
+      argvs.push(args);
+      if (args[0] === "checkout") {
+        branch = args[args.length - 1];
+        return { ok: true, stdout: "", stderr: "" };
+      }
+      if (args[0] === "symbolic-ref") {
+        return { ok: true, stdout: `refs/remotes/origin/${DEFAULT_BRANCH}\n`, stderr: "" };
+      }
+      if (args[0] === "merge-base") return { ok: true, stdout: `${MERGE_BASE}\n`, stderr: "" };
+      if (args[0] === "rev-parse" && args.includes("--abbrev-ref")) {
+        return { ok: true, stdout: `${branch}\n`, stderr: "" };
+      }
+      if (args[0] === "rev-parse") return { ok: true, stdout: `${PRE_SEAM_HEAD}\n`, stderr: "" };
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    return { argvs, _git };
+  }
+
+  const GH_SCRIPT = {
+    "gh run view": { ok: true, stdout: "eslint: 'foo' is defined but never used", stderr: "" },
+    "gh run list --json conclusion,workflowName,headSha": {
+      ok: true,
+      // Green at a default-branch tip BEYOND the merge base ⇒ the comparison is usable and E-2 is
+      // certifiable, so `permittedActions` is non-empty and a dispatch is genuinely warranted.
+      stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: "eee5555" }]),
+      stderr: "",
+    },
+    "gh run rerun": { ok: true, stdout: "", stderr: "" },
+    "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
+  };
+
+  async function runPipeline({ advisoryConfigText, checkCi, advancingClock = false }) {
+    const agentCalls = [];
+    const appends = [];
+    const git = makeMainGit();
+    const gh = makeGhDouble(GH_SCRIPT);
+    let now = 0;
+    const result = await dev.default({
+      reqPath: REQ_PATH,
+      _readFile: (path) => (String(path).includes("/PLAN-") ? PARSEABLE_PLAN : null),
+      _agent: pipelineAgent(agentCalls),
+      _parallel: (p) => Promise.all(p),
+      _checkFile: () => ({ ok: true }),
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+      // Deliberately NOT overridden: `_raisePrAndVerifyCi` and `_runAdvisorySeam` are the two
+      // seams whose real bindings this case exists to exercise.
+      _readAdvisoryConfig: async () => advisoryConfigText,
+      _checkCi: checkCi,
+      _ghRun: gh._ghRun,
+      _git: git._git,
+      _appendFile: async (path, contents) => {
+        appends.push({ path, contents });
+      },
+      _writeFile: async () => {},
+      _log: () => {},
+      _now: () => now,
+      _sleep: async (ms) => {
+        if (advancingClock) now += typeof ms === "number" && ms > 0 ? ms : 60_000;
+      },
+    });
+    return { result, agentCalls, appends, gh, git };
+  }
+
+  const ENABLED_CONFIG_TEXT = JSON.stringify({ advisory: { enabled: true } });
+
+  test("with the tier enabled, a red rollup dispatches A5 through the real composition root and the halt is unchanged", async () => {
+    const { result, agentCalls, appends, gh } = await runPipeline({
+      advisoryConfigText: ENABLED_CONFIG_TEXT,
+      checkCi: async () => "failed",
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(`Error: Phase PUB — GHA checks failed for PR ${PR_URL}`);
+
+    // The seam DISPATCHED: an `se-review` turn carrying A5's own prompt reached the agent.
+    const a5Dispatch = agentCalls.find((c) => c.skill === "se-review" && c.prompt.includes("E-1 (flaky"));
+    expect(a5Dispatch).toBeDefined();
+    expect(a5Dispatch.prompt).toContain(PR_URL);
+    expect(a5Dispatch.prompt).toContain("eslint: 'foo' is defined but never used");
+
+    // The capability probes ran — `buildA5SeamOps` was really constructed, not short-circuited.
+    const ghCommands = gh.calls.map((c) => (typeof c === "string" ? c : c.command || String(c)));
+    expect(ghCommands.some((c) => c.includes("gh run list --branch main"))).toBe(true);
+    expect(ghCommands.some((c) => c.includes("gh run rerun"))).toBe(true);
+    expect(ghCommands.some((c) => c.includes("gh run view --log-failed"))).toBe(true);
+
+    // The disposition reached the report, and the escalation output was emitted (H-2).
+    const a5Row = result.advisory.rows.find((r) => r.seam === "A5");
+    expect(a5Row.invocations).toBe(1);
+    expect(a5Row.escalated).toBe(1);
+    expect(a5Row.model).toBeDefined();
+    expect(appends.some((a) => a.path === "docs/_queue/ESCALATIONS.md")).toBe(true);
+    expect(result.notices.some((n) => /^ADVISORY ESCALATION: seam A5 for test-feat/.test(n))).toBe(true);
+
+    // §9.4 S-3 — neither PUB carve-out applies on this path.
+    expect(result.advisory.noChecks).toBe(false);
+    expect(result.advisory.completionCap).toBe(false);
+  });
+
+  test("[negative control] the SAME run with the tier disabled dispatches no A5 turn, probes nothing and halts identically", async () => {
+    const { result, agentCalls, appends, gh } = await runPipeline({
+      advisoryConfigText: null,
+      checkCi: async () => "failed",
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(`Error: Phase PUB — GHA checks failed for PR ${PR_URL}`);
+    expect(agentCalls.some((c) => c.skill === "se-review" && c.prompt.includes("E-1 (flaky"))).toBe(false);
+    expect(gh.calls).toHaveLength(0);
+    expect(appends.some((a) => a.path === "docs/_queue/ESCALATIONS.md")).toBe(false);
+    expect(result.advisory).toBeUndefined();
+  });
+
+  test("[M-1 / S-3] A5-6 — no check ever registers: the summary says `noChecks`, distinguishing it from a seam that never fired", async () => {
+    const { result, agentCalls } = await runPipeline({
+      advisoryConfigText: ENABLED_CONFIG_TEXT,
+      checkCi: async () => "none",
+      advancingClock: true,
+    });
+
+    expect(result.ciStatus).toBe("no-checks");
+    expect(agentCalls.some((c) => c.skill === "se-review" && c.prompt.includes("E-1 (flaky"))).toBe(false);
+    const a5Row = result.advisory.rows.find((r) => r.seam === "A5");
+    expect(a5Row.invocations).toBe(0);
+    expect(result.advisory.noChecks).toBe(true);
+    expect(result.advisory.completionCap).toBe(false);
+  });
+
+  test("[M-1 / S-3] A5-9 — checks register and never complete: the summary says `completionCap`, on the halt path", async () => {
+    const { result, agentCalls } = await runPipeline({
+      advisoryConfigText: ENABLED_CONFIG_TEXT,
+      checkCi: async () => "pending",
+      advancingClock: true,
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/GHA checks did not complete/);
+    expect(agentCalls.some((c) => c.skill === "se-review" && c.prompt.includes("E-1 (flaky"))).toBe(false);
+    const a5Row = result.advisory.rows.find((r) => r.seam === "A5");
+    expect(a5Row.invocations).toBe(0);
+    expect(result.advisory.completionCap).toBe(true);
+    expect(result.advisory.noChecks).toBe(false);
+  });
+});

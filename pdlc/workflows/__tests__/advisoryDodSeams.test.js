@@ -71,7 +71,7 @@
 
 import * as dev from "../orchestrate-dev.js";
 import { execFileSync } from "child_process";
-import { mkdtempSync, rmSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -961,5 +961,432 @@ describe("A-25 — Phase DOD wiring", () => {
     expect(result.haltReason).toBe(
       "Phase DOD failed after 3 iterations — Definition of Done not met. stubs=2, mock_data=0, unwired=1, coverage_gap=true, req_gaps=3"
     );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// CR v1 remediation (M-2) — the four FSPEC acceptance cases that had no test bearing their id
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// T-05-2, T-05-3, T-05-4 (FSPEC:534-536) and T-06-2 (FSPEC:590). PROPERTIES names this file as the
+// owning suite for all four (PROP-A3-05 :711, PROP-A3-07 :713, PROP-A3-09 :715, PROP-A4-03 :725).
+// Each carries the distinguishing oracle its row demands, not merely its id:
+//
+//   - T-05-2 — the halt is byte-identical to the tier-disabled halt EXCEPT for the appended
+//     classification, and the classification is produced by the real `parseA3Classification` +
+//     `governingClass` over a scripted AGENT reply — never by a scripted disposition.
+//   - T-05-3 — "no queue row changed and no deferral row was written anywhere" needs a queue file
+//     to exist before it can fail for a queue write: the fixture repo materialises
+//     `docs/_queue/QUEUE.md` and the case compares its bytes, not only `git status`.
+//   - T-05-4 — same, for a DoD criterion file and the repo's own `.claude/pdlc.config.json`
+//     thresholds: both are asserted byte-identical.
+//   - T-06-2 — the escalation ENTRY (the operator-visible artifact, not the disposition) must
+//     summarise the conflicting hunks, so the case reads the bytes appended to
+//     `docs/_queue/ESCALATIONS.md` through the real `appendEscalationEntry` call site.
+
+/** An A3 agent reply: classification blocks and the generic verdict trailer, one dispatch. */
+function a3Reply(blocks, { confidence = "high", evidence = ["docs/x/CODE_REVIEW-x-v3.md:10"] } = {}) {
+  const trailer = verdictFixture({
+    seam: "A3",
+    diagnosis: "every remaining DoD finding is classified below",
+    proposedAction: "classify the remaining findings",
+    confidence,
+    withinEnvelope: "yes",
+    evidence,
+  });
+  return [...blocks, trailer].join("\n---\n");
+}
+
+/** Real `buildA3SeamOps` + real `runAdvisorySeam`, over a caller-supplied `_git` and file double. */
+async function invokeA3Driver({ reply, _git, fileDouble, dodStatus = "not-passed" }) {
+  const seamOps = dev.buildA3SeamOps({
+    dodResult: { lastStatus: dodStatus, iterations: 3 },
+    codeReviewText: "## Findings\n1. coverage threshold below 80% — file.js:10\n",
+    _readFile: async () => "## Findings\n1. coverage threshold below 80% — file.js:10\n",
+  });
+  const agent = makeAgentDouble({ script: [reply] });
+  const clock = makeFakeClock();
+  const disposition = await dev.runAdvisorySeam({
+    seam: "A3",
+    feature: FEATURE,
+    seamOps,
+    config: makeAdvisoryConfig({ enabled: true }).config,
+    rungState: {},
+    _agent: agent,
+    _appendFile: fileDouble._appendFile,
+    _writeFile: fileDouble._writeFile,
+    _readFile: fileDouble._readFile,
+    _git,
+    _log: () => {},
+    _now: clock._now,
+    _sleep: clock._sleep,
+    _summarise: dev.summariseA3Classification,
+  });
+  return { disposition, agent };
+}
+
+/** The one path `appendEscalationEntry` writes (TSPEC §10.1), transcribed — it is not exported. */
+const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
+
+function escalationEntriesIn(fileDouble) {
+  return fileDouble.appends.filter((a) => a.path === ESCALATIONS_PATH).map((a) => a.contents);
+}
+
+describe("T-05-2 (PROP-A3-05) — a real-defect classification halts byte-identically, carrying the class", () => {
+  const readParseablePlan = (path) =>
+    String(path).includes("/PLAN-")
+      ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n\n| Task | Files |\n|---|---|\n| T1 | `src/one.js` |\n"
+      : null;
+
+  /** An in-memory `_git` that never touches a real repo: enough for `ensureFeatureBranch`. */
+  function makeMainGit() {
+    let branch = "feat-test-feat";
+    const _git = async (argv) => {
+      const args = Array.isArray(argv) ? argv : [];
+      if (args[0] === "checkout") {
+        branch = args[args.length - 1];
+        return { ok: true, stdout: "", stderr: "" };
+      }
+      if (args[0] === "rev-parse" && args.includes("--abbrev-ref")) {
+        return { ok: true, stdout: `${branch}\n`, stderr: "" };
+      }
+      if (args[0] === "rev-parse") return { ok: true, stdout: "abc1234", stderr: "" };
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    return { _git };
+  }
+
+  function pipelineAgent(a3ReplyText) {
+    return async (skill, prompt) => {
+      const text = String(prompt ?? "");
+      // A3's own dispatch is `se-review` too, so it is told apart by its prompt, exactly as the
+      // production `buildA3SeamOps` writes it.
+      if (skill === "se-review" && text.includes("Classify every remaining finding")) return a3ReplyText;
+      if (skill === "guard") return { ok: true };
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return 'Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (text.includes("DECISIONS_WARRANTED")) return "Finalized.\nDECISIONS_WARRANTED: false";
+        if (text.includes("Return a JSON object")) {
+          return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+        }
+        return "Document created.";
+      }
+      if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (text.includes("Rebase the feature branch")) return "Rebased.\nREBASE_STATUS: clean";
+        if (text.includes("Raise a pull request")) return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        return "Checks.\nCI_STATUS: passed";
+      }
+      return "Success.";
+    };
+  }
+
+  const FAILING_DOD = async () => ({
+    passed: false,
+    iterations: 3,
+    lastStatus: { stubs: 2, mock_data: 0, unwired_integrations: 1, coverage_below_threshold: true, req_gaps: 3 },
+  });
+
+  async function runPhaseDod({ advisoryConfigText, a3ReplyText }) {
+    const appends = [];
+    const git = makeMainGit();
+    const result = await dev.default({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _readFile: readParseablePlan,
+      _agent: pipelineAgent(a3ReplyText),
+      _parallel: (p) => Promise.all(p),
+      _checkFile: () => ({ ok: true }),
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+      _raisePrAndVerifyCi: async () => ({ prUrl: "https://x/pull/1", ciStatus: "passed" }),
+      _readAdvisoryConfig: async () => advisoryConfigText,
+      _runAdvisorySeam: dev.runAdvisorySeam,
+      _dodVerifyLoop: FAILING_DOD,
+      _appendFile: async (path, contents) => {
+        appends.push({ path, contents });
+      },
+      _writeFile: async () => {},
+      _git: git._git,
+      _log: () => {},
+      _now: () => 0,
+      _sleep: async () => {},
+    });
+    return { result, appends };
+  }
+
+  const REAL_DEFECT_REPLY = a3Reply([
+    classificationBlock({
+      finding: "branch coverage sits below the configured threshold",
+      cls: "real-defect",
+      evidence: "file.js:10",
+    }),
+    classificationBlock({
+      finding: "the CLI stub returns a canned value",
+      cls: "deferral-candidate",
+      evidence: "cli.js:44",
+      successor: "D-CLI-02",
+    }),
+  ]);
+
+  test("the halt is the tier-disabled halt plus exactly the governing classification, produced from the agent reply", async () => {
+    const disabled = await runPhaseDod({ advisoryConfigText: null, a3ReplyText: REAL_DEFECT_REPLY });
+    const enabled = await runPhaseDod({
+      advisoryConfigText: JSON.stringify({ advisory: { enabled: true } }),
+      a3ReplyText: REAL_DEFECT_REPLY,
+    });
+
+    expect(disabled.result.outcome).toBe("halted");
+    expect(enabled.result.outcome).toBe("halted");
+
+    // Byte-identical up to the appended classification — one string comparison, not two regexes.
+    const classification =
+      "real-defect: branch coverage sits below the configured threshold (evidence: file.js:10)";
+    expect(enabled.result.haltReason).toBe(`${disabled.result.haltReason} ${classification}`);
+    // …and the governing class really is the ranked winner over a mixed set (A3-7), not the first
+    // block encountered: the deferral-candidate block above precedes nothing and follows the
+    // real-defect one, so a first-wins implementation would still pass — hence the second reply.
+    const deferralFirst = a3Reply([
+      classificationBlock({
+        finding: "the CLI stub returns a canned value",
+        cls: "deferral-candidate",
+        evidence: "cli.js:44",
+        successor: "D-CLI-02",
+      }),
+      classificationBlock({
+        finding: "branch coverage sits below the configured threshold",
+        cls: "real-defect",
+        evidence: "file.js:10",
+      }),
+    ]);
+    const reordered = await runPhaseDod({
+      advisoryConfigText: JSON.stringify({ advisory: { enabled: true } }),
+      a3ReplyText: deferralFirst,
+    });
+    expect(reordered.result.haltReason).toBe(enabled.result.haltReason);
+  });
+
+  test("the same run writes the escalation log entry and the ADVISORY ESCALATION notice (H-2 end to end)", async () => {
+    const { result, appends } = await runPhaseDod({
+      advisoryConfigText: JSON.stringify({ advisory: { enabled: true } }),
+      a3ReplyText: REAL_DEFECT_REPLY,
+    });
+
+    const escalations = appends.filter((a) => a.path === ESCALATIONS_PATH);
+    expect(escalations).toHaveLength(1);
+    expect(escalations[0].contents).toContain("A3");
+    expect(escalations[0].contents).toContain("DOD — halted");
+    expect(escalations[0].contents).toContain("real-defect");
+
+    expect(result.notices.some((n) => /^ADVISORY ESCALATION: seam A3 for test-feat/.test(n))).toBe(true);
+    expect(result.notices.some((n) => /docs\/_queue\/ESCALATIONS\.md/.test(n))).toBe(true);
+
+    // The A3 row on the report is a real invocation, not the zero row of a seam that never fired.
+    const a3Row = result.advisory.rows.find((r) => r.seam === "A3");
+    expect(a3Row.invocations).toBe(1);
+    expect(a3Row.escalated).toBe(1);
+  });
+
+  test("a disabled run reaches neither write nor notice (the negative twin of the case above)", async () => {
+    const { result, appends } = await runPhaseDod({
+      advisoryConfigText: null,
+      a3ReplyText: REAL_DEFECT_REPLY,
+    });
+    expect(appends.filter((a) => a.path === ESCALATIONS_PATH)).toHaveLength(0);
+    expect(result.notices.some((n) => /ADVISORY ESCALATION/.test(n))).toBe(false);
+    expect(result.advisory).toBeUndefined();
+  });
+});
+
+describe("T-05-3 / T-05-4 — an A3 invocation changes no queue row and no DoD criterion (real fs fixture)", () => {
+  const QUEUE_BYTES =
+    "| Order | Status | Feature | REQ Path | Depends-On |\n" +
+    "|---|---|---|---|---|\n" +
+    "| 1 | pending | some-feature | docs/some-feature/REQ-some-feature.md | — |\n";
+  const CRITERIA_BYTES =
+    "# DoD criteria\n\n- branch coverage >= 80%\n- zero stubs in production code\n- zero mock data\n";
+  const CONFIG_BYTES = JSON.stringify({ implementation: { testCommand: "npm test" } }, null, 2);
+
+  /** A fixture repo that actually CONTAINS the artifacts these two rows say must not change. */
+  function createTempDodRepo() {
+    const repoDir = mkdtempSync(join(tmpdir(), "pdlc-a3-dod-fixture-"));
+    const git = (...args) => execFileSync("git", args, { cwd: repoDir, encoding: "utf8" });
+    git("init", "-b", "main");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "Test");
+    mkdirSync(join(repoDir, "docs", "_queue"), { recursive: true });
+    mkdirSync(join(repoDir, "docs", "_constraints"), { recursive: true });
+    mkdirSync(join(repoDir, ".claude"), { recursive: true });
+    writeFileSync(join(repoDir, "docs", "_queue", "QUEUE.md"), QUEUE_BYTES);
+    writeFileSync(join(repoDir, "docs", "_constraints", "DOD-CRITERIA.md"), CRITERIA_BYTES);
+    writeFileSync(join(repoDir, ".claude", "pdlc.config.json"), CONFIG_BYTES);
+    git("add", "-A");
+    git("commit", "-m", "initial commit");
+
+    const read = (...parts) => readFileSync(join(repoDir, ...parts), "utf8");
+    const status = () => execFileSync("git", ["status", "--porcelain"], { cwd: repoDir, encoding: "utf8" });
+    const head = () => execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoDir, encoding: "utf8" }).trim();
+    const _git = async (argv) => {
+      try {
+        return { ok: true, stdout: execFileSync("git", argv, { cwd: repoDir, encoding: "utf8" }), stderr: "" };
+      } catch (err) {
+        return { ok: false, stdout: "", stderr: err.message };
+      }
+    };
+    const cleanup = () => {
+      try {
+        rmSync(repoDir, { recursive: true, force: true });
+      } catch {
+        // best-effort cleanup
+      }
+    };
+    return { repoDir, read, status, head, _git, cleanup };
+  }
+
+  test("T-05-3 (PROP-A3-07) — every finding a deferral-candidate: no queue row changed, no deferral row written, successors named in the escalation entry", async () => {
+    const repo = createTempDodRepo();
+    try {
+      const reply = a3Reply(
+        [
+          classificationBlock({
+            finding: "the CLI stub returns a canned value",
+            cls: "deferral-candidate",
+            evidence: "cli.js:44",
+            successor: "D-CLI-02",
+          }),
+          classificationBlock({
+            finding: "the drift reporter has no per-worktree state",
+            cls: "deferral-candidate",
+            evidence: "drift.sh:12",
+            successor: "D-DIST-07",
+          }),
+        ],
+        { evidence: ["successor D-CLI-02 for cli.js:44", "successor D-DIST-07 for drift.sh:12"] }
+      );
+      const fileDouble = makeFileDouble();
+      const { disposition } = await invokeA3Driver({ reply, _git: repo._git, fileDouble });
+
+      // A3 has no permitted action, so it can only ever escalate (A3-6).
+      expect(disposition.outcome).toBe("escalated");
+
+      // The queue file EXISTS in this fixture, so this comparison can actually fail for a queue
+      // write — unlike a `git status` check over a tree that has no queue file at all.
+      expect(repo.read("docs", "_queue", "QUEUE.md")).toBe(QUEUE_BYTES);
+      expect(repo.status()).toBe("");
+      expect(repo.head()).toBe(repo.head());
+
+      // "no deferral row was written anywhere": no queue-shaped row naming either successor
+      // appears in the tree, and nothing the seam wrote went to a queue path.
+      expect(repo.read("docs", "_queue", "QUEUE.md")).not.toContain("D-CLI-02");
+      expect(fileDouble.writes.map((w) => w.path)).toEqual([]);
+      expect(fileDouble.appends.every((a) => !/QUEUE\.md$/.test(a.path))).toBe(true);
+
+      // …and the escalation entry carries the proposed rows with their named successors.
+      const entries = escalationEntriesIn(fileDouble);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toContain("D-CLI-02");
+      expect(entries[0]).toContain("D-DIST-07");
+      expect(entries[0]).toContain("deferral-candidate");
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("T-05-4 (PROP-A3-09) — a mis-scoped-criterion finding: the DoD criterion file and the configured thresholds are byte-identical, and the seam escalated", async () => {
+    const repo = createTempDodRepo();
+    try {
+      const reply = a3Reply([
+        classificationBlock({
+          finding: "the coverage threshold was never meant to cover generated bundles",
+          cls: "mis-scoped-criterion",
+          evidence: "docs/_constraints/DOD-CRITERIA.md:3",
+        }),
+      ]);
+      const fileDouble = makeFileDouble();
+      const { disposition } = await invokeA3Driver({ reply, _git: repo._git, fileDouble });
+
+      expect(disposition.outcome).toBe("escalated");
+      expect(disposition.outcome).not.toBe("resolved");
+
+      // The two artifacts a "mis-scoped criterion" verdict would be tempted to edit — both present
+      // in the fixture, both compared by content, not merely by `git status`.
+      expect(repo.read("docs", "_constraints", "DOD-CRITERIA.md")).toBe(CRITERIA_BYTES);
+      expect(repo.read(".claude", "pdlc.config.json")).toBe(CONFIG_BYTES);
+      expect(repo.status()).toBe("");
+
+      // The class reaches the operator rather than being silently dropped.
+      expect(disposition.classificationSummary).toContain("mis-scoped-criterion");
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+describe("T-06-2 (PROP-A4-03) — a conflict in a file present at the merge base resolves nothing and the entry summarises the hunks", () => {
+  test("nothing resolved, apply never called, and the escalation entry names the conflicting file and its hunks", async () => {
+    const mergeBase = "abc1111";
+    const preRebaseHead = "feat9999";
+    const defaultTip = "def2222";
+    const sharedPath = "src/shared-file.js";
+
+    const { _git } = makeA4Git({
+      mergeBase,
+      preRebaseHead,
+      defaultTip,
+      conflictFiles: [sharedPath],
+      // Present at the merge base ⇒ NOT branch-created ⇒ A4-2 empties permittedActions.
+      branchCreatedPaths: new Set(),
+    });
+
+    const rawSeamOps = dev.buildA4SeamOps({
+      mergeBase,
+      preRebaseHead,
+      defaultTip,
+      planFiles: [],
+      implConfig: { testCommand: "npm test" },
+      _git,
+      _runCommand: async () => ({ ok: true }),
+    });
+    let applyCallCount = 0;
+    const seamOps = { ...rawSeamOps };
+    seamOps.apply = async (...args) => {
+      applyCallCount += 1;
+      return rawSeamOps.apply(...args);
+    };
+
+    // A4-5's "file by file, which side and why" is what makes the hunks legible; the reply carries
+    // it, and the assertion below is that the ENTRY carries it through to the operator.
+    const agent = makeAgentDouble({
+      script: [
+        verdictFixture({
+          seam: "A4",
+          diagnosis: `${sharedPath} conflicts at the imports hunk and the exports hunk; both sides pre-date this branch`,
+          proposedAction: "E-3",
+          confidence: "high",
+          withinEnvelope: "yes",
+          evidence: [`${sharedPath}:1-12 (imports hunk)`, `${sharedPath}:88-94 (exports hunk)`],
+        }),
+      ],
+    });
+    const fileDouble = makeFileDouble();
+    const { disposition } = await invokeA4Driver({ seamOps, agent, _git, files: fileDouble });
+
+    // Nothing resolved.
+    expect(disposition.outcome).toBe("escalated");
+    expect(applyCallCount).toBe(0);
+
+    // The escalation entry summarises the conflicting hunks and records the pipeline state the
+    // pre-existing halt leaves behind — the halt itself is byte-identical, asserted at the phase
+    // level by "A4 escalated leaves the rebase-conflict halt byte-identical" above.
+    const entries = escalationEntriesIn(fileDouble);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toContain(sharedPath);
+    expect(entries[0]).toContain("imports hunk");
+    expect(entries[0]).toContain("exports hunk");
+    expect(entries[0]).toContain("DOD — halted");
   });
 });

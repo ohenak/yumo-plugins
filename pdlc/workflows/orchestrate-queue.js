@@ -1254,6 +1254,11 @@ export default async function main({
         _readFile: readFileFn,
         _git: gitFn,
         _log: emit,
+        // TSPEC §10.2 N-4 — the queue report has no `notices` field of its own, so the advisory
+        // escalation notice (and a failed escalation-log write) reaches the operator through the
+        // queue's one operator-visible channel, `emit`. The ESCALATIONS.md entry itself is written
+        // by the driver through the same `_appendFile` seam either way.
+        _notice: emit,
       });
       // Recorded for `buildQueueReport`'s advisory summary (TSPEC §9.4 S-5) — the scripted test
       // double's dispositions do not carry `seam` themselves, so it is attached here from the

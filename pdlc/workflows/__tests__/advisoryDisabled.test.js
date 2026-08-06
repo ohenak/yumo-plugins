@@ -70,7 +70,7 @@ import { fileURLToPath } from "url";
 import mainDev, * as dev from "../orchestrate-dev.js";
 import * as queue from "../orchestrate-queue.js";
 
-import { makeAgentDouble } from "./helpers/advisoryDoubles.js";
+import { makeAgentDouble, makeGitDouble, makeGhDouble, makeFileDouble } from "./helpers/advisoryDoubles.js";
 
 /**
  * A SeamOps whose members are inert defaults, built by property assignment —
@@ -225,11 +225,75 @@ describe("A-33 — disabled-tier equivalence", () => {
       expect(result.passed).toBe(false);
     });
 
+    // ── A5's precondition has to be BOUND, not merely passed ────────────────────────────────────
+    // `raisePrAndVerifyCi` declares neither `config` nor `_readAdvisoryConfig`, so handing it
+    // either is a silent no-op: the case would then pass with `enabled: true` just as readily,
+    // proving nothing about the disabled path. The two cases below therefore go through A5's real
+    // composition-root shape — `buildA5SeamOps` + `runAdvisorySeam`, exactly what
+    // `orchestrate-dev.js`'s `runA5AdvisorySeam` builds — with `config` bound where the driver
+    // actually reads it. The two are byte-identical but for `enabled`, so the ENABLED twin is the
+    // positive control the disabled claim needs: it shows the same wiring DOES dispatch.
+    const A5_GH_SCRIPT = {
+      "gh run view": { ok: true, stdout: "eslint: 'foo' is defined but never used", stderr: "" },
+      "gh run list --json conclusion,workflowName,headSha": {
+        ok: true,
+        stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: "ddd4444" }]),
+        stderr: "",
+      },
+      "gh run rerun": { ok: true, stdout: "", stderr: "" },
+      "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
+    };
+
+    /** A5's real composition root, parameterised on the ONE field under test. */
+    function realA5Seam({ config, agent }) {
+      const gitDouble = makeGitDouble({ push: { ok: true, stdout: "", stderr: "" } });
+      const ghDouble = makeGhDouble(A5_GH_SCRIPT);
+      const files = makeFileDouble();
+      return async ({ seam, feature, prUrl }) => {
+        const seamOps = await dev.buildA5SeamOps({
+          feature,
+          prUrl,
+          preSeamHead: "aaa1111",
+          defaultBranch: "main",
+          mergeBase: "bbb2222",
+          recordWait: () => {},
+          _git: gitDouble._git,
+          _ghRun: ghDouble._ghRun,
+          _checkCi: async () => "failed",
+        });
+        return dev.runAdvisorySeam({
+          seam,
+          feature,
+          seamOps,
+          config,
+          rungState: {},
+          _agent: agent,
+          _appendFile: files._appendFile,
+          _writeFile: files._writeFile,
+          _readFile: files._readFile,
+          _git: gitDouble._git,
+          _log: () => {},
+          _now: () => 0,
+          _sleep: async () => {},
+        });
+      };
+    }
+
+    /** A well-formed A5 verdict whose LOW confidence terminates the seam without a re-poll loop. */
+    const A5_LOW_CONFIDENCE_VERDICT = [
+      "SEAM: A5",
+      "DIAGNOSIS: the lint job failed on an unused variable",
+      "PROPOSED-ACTION: E-2",
+      "CONFIDENCE: low",
+      "WITHIN-ENVELOPE: yes",
+      "EVIDENCE: pdlc/workflows/orchestrate-dev.js:12",
+    ].join("\n");
+
     test("A5 — Phase PUB: a failed check-rollup halts exactly as today, no advisory dispatch", async () => {
+      // Script length 2, not 1: an advisory dispatch would find a response waiting for it, so this
+      // case cannot pass merely because the script ran out. The count assertion below is the oracle.
       const agent = makeAgentDouble({
-        script: [
-          "PR opened.\nPR_URL: https://github.com/acme/repo/pull/7",
-        ],
+        script: ["PR opened.\nPR_URL: https://github.com/acme/repo/pull/7", A5_LOW_CONFIDENCE_VERDICT],
       });
 
       await expect(
@@ -240,14 +304,42 @@ describe("A-33 — disabled-tier equivalence", () => {
           _log: () => {},
           _now: () => 0,
           _sleep: async () => {},
-          config: disabledConfig(),
-          _readAdvisoryConfig: async () => ({ config: disabledConfig(), sectionMalformed: false, invalidKeys: [] }),
-          _runAdvisorySeam: dev.runAdvisorySeam,
+          _runAdvisorySeam: realA5Seam({ config: disabledConfig(), agent }),
           _advisoryRecord: () => {},
         })
       ).rejects.toThrow(/GHA checks failed/);
 
+      // Exactly the ship-pr call: the driver's `config.enabled === false` early return fired before
+      // any dispatch, even though a response was available and the seam was fully constructed.
       expect(agent.calls).toHaveLength(1);
+    });
+
+    test("[positive control] A5 — the SAME wiring with the tier ENABLED does dispatch, so the case above discriminates", async () => {
+      const agent = makeAgentDouble({
+        script: ["PR opened.\nPR_URL: https://github.com/acme/repo/pull/7", A5_LOW_CONFIDENCE_VERDICT],
+      });
+      const dispositions = [];
+
+      await expect(
+        dev.raisePrAndVerifyCi({
+          feature: "feat-a5",
+          _agent: agent,
+          _checkCi: async () => "failed",
+          _log: () => {},
+          _now: () => 0,
+          _sleep: async () => {},
+          _runAdvisorySeam: realA5Seam({ config: disabledConfig({ enabled: true }), agent }),
+          _advisoryRecord: (d) => dispositions.push(d),
+        })
+      ).rejects.toThrow(/GHA checks failed/);
+
+      // ship-pr, then the advisory turn the disabled twin never took.
+      expect(agent.calls).toHaveLength(2);
+      expect(dispositions).toHaveLength(1);
+      expect(dispositions[0].outcome).toBe("escalated");
+      expect(dispositions[0].reason).toBe("low-confidence");
+      // `model` is set only once a dispatch actually ran — the disabled twin's disposition has none.
+      expect(dispositions[0].model).toBeDefined();
     });
   });
 

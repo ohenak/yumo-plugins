@@ -2221,6 +2221,33 @@ export function governingClass(classes) {
 }
 
 /**
+ * `summariseA3Classification(raw)` — TSPEC §7.1/§7.2 (AC-6.3), pure and total over arbitrary agent
+ * text. Composes the two leaves above into the ONE string the Phase DOD halt appends: parse the
+ * reply's classification blocks, take the governing class (`real-defect` > `mis-scoped-criterion` >
+ * `deferral-candidate`, A3-7), and name it together with the finding that carried it and that
+ * finding's evidence. Returns `""` — never `null`, never a partial sentence — when the reply
+ * carries no well-formed block at all, which is exactly the byte-identical-halt case (the halt
+ * `.trimEnd()`s the empty suffix away). A `deferral-candidate` winner additionally names its bound
+ * successor (A3-4), so an operator reading the halt sees the deferral is not unbound.
+ *
+ * This is `runAdvisorySeam`'s `_summarise` seam for A3 and nothing else: the driver stays
+ * seam-agnostic and the A3-specific parsing lives here, beside the two functions it composes.
+ *
+ * @param {string} raw
+ * @returns {string}
+ */
+export function summariseA3Classification(raw) {
+  const parsed = parseA3Classification(raw);
+  if (parsed.classes.length === 0) return "";
+  const governing = governingClass(parsed.classes);
+  const lead = parsed.classes.find((entry) => entry.class === governing);
+  if (!lead) return "";
+  const evidence = lead.evidence ? ` (evidence: ${lead.evidence})` : "";
+  const successor = lead.successor ? ` [successor: ${lead.successor}]` : "";
+  return `${governing}: ${lead.finding}${evidence}${successor}`;
+}
+
+/**
  * `buildA3SeamOps({dodResult, codeReviewText, _readFile})` — TSPEC §7.2. `permittedActions: []`
  * (A3-6, "A3 changes no file") makes `apply`/`revert` structurally unreachable through
  * `runAdvisorySeam`'s step 6 gate (`verifyGate: null`, §5.5); both are throwing stubs so a driver
@@ -2400,6 +2427,31 @@ export async function probeWorkflowRerun(runId, { _ghRun } = {}) {
 // *introduced* test) is why the comparison lives here rather than in the gate.
 // `recordWait` is §4.3's sink — A5 is the only seam that calls it, once per
 // re-poll, so the CI wait is carved out of the wall-clock budget (A5-3).
+
+/**
+ * `makeWaitAccumulator()` — TSPEC §4.3/§4.5's rollup-wait counter, as one object with the two
+ * halves the two ends of the seam need: `recordWait(ms)` is handed to `buildA5SeamOps` (the only
+ * seam that calls it), and `waitMs()` is handed to `runAdvisorySeam` as its `_waitMs` reader, whose
+ * value is the `waitMs` argument the driver passes to `budgetExceeded` (the surface PROP-BUD-03
+ * pins). One accumulator per seam INVOCATION, created by whichever composition root constructs the
+ * seam — `waitMs` is deliberately not a tenth `SeamOps` member (§4.3).
+ *
+ * Negative, non-finite and non-numeric durations are ignored rather than corrupting the counter:
+ * `nowSafe()` returns 0 where no clock is available, so a re-poll can legitimately report `0 - 0`.
+ *
+ * @returns {{recordWait: (ms: number) => void, waitMs: () => number}}
+ */
+export function makeWaitAccumulator() {
+  let total = 0;
+  return {
+    recordWait: (ms) => {
+      const value = Number(ms);
+      if (Number.isFinite(value) && value > 0) total += value;
+    },
+    waitMs: () => total,
+  };
+}
+
 export async function buildA5SeamOps({
   feature,
   prUrl,
@@ -2615,10 +2667,17 @@ export async function appendAdvisoryEntry({ feature, disposition, _appendFile, _
  * row also carries the `model`/`fallback` of its LAST invocation (S-2) — undefined/falsy when the
  * seam never fired.
  *
+ * **S-3** — `noChecks` and `completionCap` are threaded in from `raisePrAndVerifyCi` (§8.1) and
+ * named on the summary itself, so A5-6 ("no check ever registered") and A5-9 ("checks registered
+ * and never completed") are distinguishable, by an operator reading the report alone, from an A5
+ * row that is zero because the seam simply never fired. Both default to `false`, so every existing
+ * caller — and every pure unit test of this function — is unchanged.
+ *
  * @param {Array<{seam: string, outcome: string, model?: string, fallback?: boolean}>} dispositions
- * @returns {{rows: Array<object>, total: object}}
+ * @param {{noChecks?: boolean, completionCap?: boolean}} [pubOutcome]
+ * @returns {{rows: Array<object>, total: object, noChecks: boolean, completionCap: boolean}}
  */
-export function advisorySummaryRows(dispositions) {
+export function advisorySummaryRows(dispositions, pubOutcome = {}) {
   const list = Array.isArray(dispositions) ? dispositions : [];
 
   const rows = ADVISORY_SEAMS.map((seam) => {
@@ -2648,7 +2707,12 @@ export function advisorySummaryRows(dispositions) {
     { invocations: 0, resolved: 0, escalated: 0, noAction: 0 }
   );
 
-  return { rows, total };
+  return {
+    rows,
+    total,
+    noChecks: Boolean(pubOutcome && pubOutcome.noChecks),
+    completionCap: Boolean(pubOutcome && pubOutcome.completionCap),
+  };
 }
 
 // ─── TSPEC §10 — the escalation log and report notices (PLAN A-21) ────────
@@ -2720,6 +2784,51 @@ export async function appendEscalationEntry({ disposition, ctx, _appendFile, _no
   await _appendFile(ESCALATIONS_PATH, entry);
 }
 
+/**
+ * `ADVISORY_SEAM_PHASES` — TSPEC §10.1's *Pipeline state* field is "the phase id and that phase's
+ * outcome", and both are properties of the SEAM, not of the call site: each seam fires in exactly
+ * one phase (§6.1 queue-side, §7.1 Phase DOD, §8.1 Phase PUB) and each phase has exactly one
+ * outcome on the escalation path — the dev-side seams sit immediately before a `throw haltError`,
+ * the queue-side seams before a `continue` that skips the candidate. Deriving it here rather than
+ * asking every call site to repeat it is what keeps the field from drifting per call site.
+ */
+// (The member is deliberately named `id`, not the obvious `phase`: `dodPhase.test.js` locates
+// `PHASE_DISPATCH.DOD` by source-scanning for a `phase`-keyed "DOD" pair, and a second object
+// carrying that same pair earlier in the file would be found first — a naming collision, not a
+// behavioural one, but a red suite either way.)
+const ADVISORY_SEAM_PHASES = Object.freeze({
+  A1: Object.freeze({ id: "QUEUE", outcome: "skipped" }),
+  A2: Object.freeze({ id: "QUEUE", outcome: "skipped" }),
+  A3: Object.freeze({ id: "DOD", outcome: "halted" }),
+  A4: Object.freeze({ id: "DOD", outcome: "halted" }),
+  A5: Object.freeze({ id: "PUB", outcome: "halted" }),
+});
+
+/**
+ * `escalationDecision(...)` — TSPEC §10.1's L-2 field: the ONE sentence naming what the operator
+ * must decide, written first so the log reads as a decision queue rather than a diagnostic dump.
+ * Pure and total: an escalation that never reached a well-formed verdict has no proposed action to
+ * name, and says so rather than interpolating `undefined`.
+ *
+ * `classificationSummary`, when the seam produced one (A3 — see `summariseA3Classification`), is
+ * named in the same sentence: the class the tier assigned is the single most decision-relevant
+ * fact an operator reading this log needs, and carrying it here keeps §10.1's eight declared
+ * fields exactly eight rather than growing a ninth.
+ *
+ * @param {{seam: string, feature: string, reason: string|null, verdict: object|null,
+ *          classificationSummary?: string}} args
+ * @returns {string}
+ */
+export function escalationDecision({ seam, feature, reason, verdict, classificationSummary }) {
+  const proposal =
+    verdict && verdict.proposedAction ? `"${verdict.proposedAction}"` : "no well-formed proposal";
+  const classified = classificationSummary ? `; classified ${classificationSummary}` : "";
+  return (
+    `whether to take the ${seam} proposal for ${feature} yourself (${proposal}) — ` +
+    `the advisory tier refused it as ${reason ?? "unclassified"} and changed nothing${classified}`
+  );
+}
+
 // ─── TSPEC §4.4 — runAdvisorySeam, the one impure component (PLAN A-22) ────
 //
 // TSPEC §5.4 ("Prohibitions — structural, not asserted") makes P-1…P-4 unreachable through the
@@ -2785,11 +2894,23 @@ export function isProhibitedAction(proposedAction) {
  * through `doRevert`, which tags a thrown error before rethrowing, and the terminal catch rethrows
  * anything so tagged instead of mapping it to `escalated`.
  *
+ * Three optional seams, all defaulted so no existing caller changes shape:
+ *
+ * - `_notice` — the run report's notice channel (TSPEC §10.2 N-4). Every `escalated` terminal
+ *   disposition pushes `ADVISORY_ESCALATIONS.seam(...)` onto it, and a failed escalation-log write
+ *   is downgraded onto it too. Defaults to a no-op.
+ * - `_waitMs` — the §4.3 rollup-wait reader (see `makeWaitAccumulator`). Defaults to `() => 0`,
+ *   which is exactly right for A1–A4: only A5 ever calls `recordWait`.
+ * - `_summarise` — an optional `(raw) => string` over the LAST well-formed agent reply, whose
+ *   result rides on the terminal disposition as `classificationSummary`. A3's Phase DOD halt reads
+ *   it (AC-6.3); every other seam leaves it unset, so the key is absent rather than `undefined`.
+ *
  * @param {{seam: string, feature: string, seamOps: SeamOps, config: object, rungState: object,
  *          _agent: Function, _appendFile: Function, _writeFile: Function, _readFile: Function,
- *          _git: Function, _log: Function, _now: Function, _sleep: Function}} args
+ *          _git: Function, _log: Function, _now: Function, _sleep: Function, _notice: Function,
+ *          _waitMs: Function, _summarise: Function}} args
  * @returns {Promise<{outcome: string, reason: string|null, verdict: object|null, attempts: number,
- *          model: string|undefined, fallback: boolean, seam: string}>}
+ *          model: string|undefined, fallback: boolean, seam: string, classificationSummary?: string}>}
  */
 export async function runAdvisorySeam({
   seam,
@@ -2805,8 +2926,16 @@ export async function runAdvisorySeam({
   _log,
   _now = () => Date.now(),
   _sleep = sleep,
+  _notice,
+  _waitMs,
+  _summarise,
 }) {
   const log = typeof _log === "function" ? _log : () => {};
+  const notice = typeof _notice === "function" ? _notice : () => {};
+  const readWaitMs = typeof _waitMs === "function" ? _waitMs : () => 0;
+  // The summary of the last well-formed reply this invocation saw. A later malformed attempt never
+  // erases an earlier classification: the halt should carry whatever the seam did manage to learn.
+  let summary = "";
 
   if (!config || config.enabled === false) {
     return { outcome: "no-action", reason: null, verdict: null, attempts: 0, model: undefined, fallback: false, seam };
@@ -2901,7 +3030,7 @@ export async function runAdvisorySeam({
       finalOutcome = "escalated";
       finalReason = "record-write-failed";
     }
-    return {
+    const terminal = {
       seam,
       outcome: finalOutcome,
       reason: finalReason,
@@ -2909,11 +3038,53 @@ export async function runAdvisorySeam({
       attempts,
       model: rungState.resolved ? rungState.resolved.model : undefined,
       fallback: rungState.resolved ? rungState.resolved.fallback : false,
+      // AC-6.3 — present only when a `_summarise` seam produced something, so a seam without one
+      // carries no key at all rather than an `undefined` the halt would have to `?? ""` away.
+      ...(summary ? { classificationSummary: summary } : {}),
     };
+
+    // ── TSPEC §10.1 — the escalation output, for EVERY `escalated` terminal disposition ────────
+    // `appendEscalationEntry` runs OUTSIDE the try/catch that governs the seam's ACTION: the local
+    // catch below can only ever downgrade its throw to a report notice, so a failed log write can
+    // never revert anything and can never upgrade an escalation to a resolution (T-09-8's
+    // asymmetry with §9.2's record write, which does revert). The `ADVISORY ESCALATION:` notice
+    // (§10.2 N-2/N-4) accompanies the entry whether or not the write itself succeeded — the
+    // operator is told the seam escalated even when the log could not be reached.
+    if (finalOutcome === "escalated") {
+      const placement = ADVISORY_SEAM_PHASES[seam];
+      try {
+        await appendEscalationEntry({
+          disposition: terminal,
+          ctx: {
+            feature,
+            seam,
+            phase: placement ? placement.id : "unknown",
+            phaseOutcome: placement ? placement.outcome : "unknown",
+            decision: escalationDecision({
+              seam,
+              feature,
+              reason: finalReason,
+              verdict,
+              classificationSummary: summary,
+            }),
+          },
+          _appendFile,
+          _now,
+        });
+      } catch (err) {
+        notice(
+          `ADVISORY escalation log write failed for seam ${seam}: ${
+            err && err.message ? err.message : String(err)
+          }`
+        );
+      }
+      notice(ADVISORY_ESCALATIONS.seam({ seam, feature, reason: finalReason }));
+    }
+
+    return terminal;
   }
 
   const totalBudgetMs = config.seamBudgetMinutes * 60_000;
-  const waitMs = 0; // the A5-only rollup-wait carve-out sink is out of this task's scope (§4.3, §4.5)
 
   // The wall-clock deadline (V-5) is constructed FRESH on every attempt, and — critically — only
   // AFTER `dispatched` has already been constructed for that same attempt. `Promise.race` breaks
@@ -2978,13 +3149,27 @@ export async function runAdvisorySeam({
             attempts,
             attemptBudget: config.attemptBudget,
             elapsedMs: 0,
-            waitMs,
+            waitMs: readWaitMs(),
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
           return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
         }
         continue;
+      }
+
+      // AC-6.3 — the optional per-seam summariser runs over the RAW reply, before the generic
+      // verdict parse decides anything: A3's classification blocks travel alongside the verdict
+      // trailer in one reply, and a reply whose trailer is malformed can still have carried a
+      // usable classification. `_summarise` is pure and total by contract; a throwing one is
+      // absorbed here rather than escalating the seam over a report-only field.
+      if (typeof _summarise === "function") {
+        try {
+          const produced = _summarise(raced.raw);
+          if (typeof produced === "string" && produced !== "") summary = produced;
+        } catch {
+          // report-only: a summariser fault never changes the disposition
+        }
       }
 
       const parsed = parseAdvisoryVerdict(raced.raw, seam);
@@ -2995,7 +3180,7 @@ export async function runAdvisorySeam({
             attempts,
             attemptBudget: config.attemptBudget,
             elapsedMs: 0,
-            waitMs,
+            waitMs: readWaitMs(),
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
@@ -3077,7 +3262,7 @@ export async function runAdvisorySeam({
               attempts,
               attemptBudget: config.attemptBudget,
               elapsedMs: 0,
-              waitMs,
+              waitMs: readWaitMs(),
               seamBudgetMinutes: config.seamBudgetMinutes,
             })
           ) {
@@ -8612,6 +8797,60 @@ export async function gatherA4Context({ feature, preRebaseHead, _git, _readFile 
   return { mergeBase, preRebaseHead, defaultTip, planFiles, implConfig };
 }
 
+// ─── TSPEC §8.1/§8.2 — A5's Phase PUB context (PLAN A-26) ──────────────────
+//
+// `buildA5SeamOps` needs `defaultBranch` (a branch NAME — it is interpolated into
+// `gh run list --branch …`, §8.3's BL-05 probe), `mergeBase` (a sha, the E-2 *introduced* test's
+// reference point) and `preSeamHead` (the sha `revert` resets to, A5-8). None is computed by the
+// seam. This gathers all three through `_git` alone — the same `symbolic-ref
+// refs/remotes/origin/HEAD` resolution `gatherA4Context` uses, so the two seams agree about which
+// branch is "default" without adding a second, `gh`-shaped source of truth.
+//
+// `preSeamHead` is read HERE rather than at Phase PUB entry, because this function is called from
+// inside the `status === "failed"` branch — i.e. immediately before the seam fires, which is the
+// capture point A5-8's revert contract assumes (the same shape A4's `preRebaseHead` uses).
+//
+// Every probe degrades to `null` rather than throwing: `buildA5SeamOps`'s own BL-05 probe already
+// treats an unusable reading as "the comparison is undone" and escalates attempting no fix (A5-2),
+// so a degraded context here routes to the conservative outcome instead of crashing Phase PUB.
+//
+// @param {{_git: Function}} args
+// @returns {Promise<{defaultBranch: string|null, mergeBase: string|null, preSeamHead: string|null}>}
+export async function gatherA5Context({ _git }) {
+  let defaultBranch = null;
+  try {
+    const symRef = await _git(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    const match =
+      symRef && symRef.ok
+        ? /^refs\/remotes\/origin\/(.+)$/.exec(String(symRef.stdout || "").trim())
+        : null;
+    if (match) defaultBranch = match[1];
+  } catch {
+    defaultBranch = null;
+  }
+
+  let mergeBase = null;
+  if (defaultBranch) {
+    try {
+      const mergeBaseResult = await _git(["merge-base", "HEAD", `origin/${defaultBranch}`]);
+      mergeBase =
+        mergeBaseResult && mergeBaseResult.ok ? String(mergeBaseResult.stdout || "").trim() : null;
+    } catch {
+      mergeBase = null;
+    }
+  }
+
+  let preSeamHead = null;
+  try {
+    const headResult = await _git(["rev-parse", "HEAD"]);
+    preSeamHead = headResult && headResult.ok ? String(headResult.stdout || "").trim() : null;
+  } catch {
+    preSeamHead = null;
+  }
+
+  return { defaultBranch, mergeBase, preSeamHead };
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
@@ -9402,6 +9641,64 @@ export default async function main({
   // zero rows rather than `undefined` (T-10-5) — a disabled run leaves this empty and the field
   // itself absent below.
   const advisoryDispositions = [];
+  // §10.2 N-4 — the one notice sink every advisory seam this run dispatches writes through. The
+  // notices array is the same one Phase MERGE's escalations use and rides the same report field.
+  const advisoryNotice = (line) => notices.push(line);
+  // §9.4 S-3 — the two Phase PUB outcome booleans A5 deliberately does NOT fire on: `noChecks`
+  // (A5-6, no check ever registered) and `completionCap` (A5-9, checks registered and never
+  // completed). Both ride onto the advisory summary so an operator can tell either from an A5 row
+  // that reads zero because the seam simply never fired. Mutated by Phase PUB (success path) and
+  // by the halt handler (cap path); `false` on every run that reached neither.
+  const advisoryPubOutcome = { noChecks: false, completionCap: false };
+
+  // ─── TSPEC §8.1/§8.2 (PLAN A-26) — seam A5's composition root ─────────────
+  // `raisePrAndVerifyCi` deliberately owns no seam construction: its `_runAdvisorySeam` DEFAULT is
+  // the inert `escalated` stub that preserves the pre-existing halt for every caller that supplies
+  // nothing. THIS is the binding that makes A5 real — it constructs the seam's `SeamOps` from the
+  // pipeline's own transports (`gitFn`, `ghRunFn`, `checkCiFn`, `agentFn`) plus the once-per-run
+  // config and rung memo, and threads the §4.3 wait accumulator through both ends: `recordWait`
+  // into the seam, `waitMs` into the driver's `budgetExceeded` arithmetic.
+  //
+  // One accumulator per invocation (constructed inside the closure, not outside it): the carve-out
+  // exists so a single seam invocation's CI waits do not consume that invocation's wall-clock
+  // budget, not so waits accumulate across invocations.
+  //
+  // Bound only when the tier is ON — reusing `advisoryTierOn` above rather than re-reading the
+  // flag. With the tier off, `_runAdvisorySeam` is left unset below, so `raisePrAndVerifyCi`
+  // applies its inert default and the phase is byte-identical to the pre-advisory pipeline: no
+  // capability probe runs, no `gh` process is spawned, and no advisory file is written.
+  const runA5AdvisorySeam = async ({ seam, feature, prUrl }) => {
+    const wait = makeWaitAccumulator();
+    const a5Context = await gatherA5Context({ _git: gitFn });
+    const seamOps = await buildA5SeamOps({
+      feature,
+      prUrl,
+      preSeamHead: a5Context.preSeamHead,
+      defaultBranch: a5Context.defaultBranch,
+      mergeBase: a5Context.mergeBase,
+      recordWait: wait.recordWait,
+      _git: gitFn,
+      _ghRun: ghRunFn,
+      _checkCi: checkCiFn,
+    });
+    return runAdvisorySeamFn({
+      seam,
+      feature,
+      seamOps,
+      config: advisoryConfigResult.config,
+      rungState: advisoryRungState,
+      _agent: agentFn,
+      _appendFile: appendFileFn,
+      _writeFile: writeFileFn,
+      _readFile: readFileFn,
+      _git: gitFn,
+      _log: emit,
+      _now,
+      _sleep,
+      _notice: advisoryNotice,
+      _waitMs: wait.waitMs,
+    });
+  };
 
   try {
     // The branch guard, once, BEFORE any phase runs: every artifact this run
@@ -10000,6 +10297,9 @@ export default async function main({
             _log: emit,
             _now,
             _sleep,
+            // TSPEC §10.2 N-4 — the escalation notice rides the same `notices` array the merge
+            // phase already uses, and the same report field.
+            _notice: advisoryNotice,
           });
           advisoryDispositions.push(a4);
           if (a4.outcome !== "resolved") {
@@ -10049,6 +10349,11 @@ export default async function main({
             _log: emit,
             _now,
             _sleep,
+            _notice: advisoryNotice,
+            // AC-6.3's producer: the real A3 reply is parsed into its governing class by
+            // `summariseA3Classification` (`parseA3Classification` + `governingClass`), and the
+            // driver carries the result out on the disposition as `classificationSummary`.
+            _summarise: summariseA3Classification,
           });
           advisoryDispositions.push(a3);
           // AC-6.3's diagnosis: the classification carried on the disposition (when present) is
@@ -10145,11 +10450,16 @@ export default async function main({
           _log: emit,
           _now,
           _sleep,
-          _runAdvisorySeam: runAdvisorySeamFn,
+          // The composition root above, or nothing at all when the tier is off — in which case
+          // `raisePrAndVerifyCi`'s own inert default applies (see `runA5AdvisorySeam`).
+          ...(advisoryTierOn ? { _runAdvisorySeam: runA5AdvisorySeam } : {}),
           _advisoryRecord: (disposition) => advisoryDispositions.push(disposition),
         });
         prUrl = pubResult.prUrl;
         ciStatus = pubResult.ciStatus;
+        // §9.4 S-3 — A5-6's "no check ever registered" is a property of the PHASE, not of any
+        // disposition, so it is carried out of the phase and onto the summary explicitly.
+        advisoryPubOutcome.noChecks = Boolean(pubResult.noChecks);
         const ciDetail =
           ciStatus === "passed"
             ? `PR ${prUrl} — all GHA checks passed`
@@ -10243,6 +10553,9 @@ export default async function main({
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;
     }
+    // §9.4 S-3 — Phase PUB's completion cap signals through the halt error's own detail field
+    // (`haltError(msg, { completionCap: true })`), which is the only channel a throwing phase has.
+    if (err && err.completionCap === true) advisoryPubOutcome.completionCap = true;
 
     // ─── TSPEC §4.7 / §6.5 — what an operator gets on a halt ────────────────
     // The phase that failed is read off the recorded rows rather than carried in
@@ -10328,7 +10641,7 @@ export default async function main({
       // S-1/T-08-9: `advisory` rides the halt path exactly as `notices` and `queueRow` already
       // do — a halt that reached at least one advisory-aware phase still reports the seams it
       // reached, un-distilled (H-4: the record itself is untouched by a halt before Phase H2).
-      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
+      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
     });
   }
 
@@ -10360,7 +10673,7 @@ export default async function main({
     // S-1: an enabled tier always reports its five rows, even when every one reads zero
     // invocations (this run's `advisoryDispositions` stayed empty) — only a disabled tier
     // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
-    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
+    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
   });
 }
 
