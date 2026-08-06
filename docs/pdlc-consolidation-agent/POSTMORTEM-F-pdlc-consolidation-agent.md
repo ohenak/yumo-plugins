@@ -125,6 +125,39 @@ is v11.0 and no reviewer has ever seen it.
 
 ## Reviewers
 
+| Role | Skill | Rounds | Files |
+|---|---|---|---|
+| software-engineer | `pdlc:se-review` | 6–10 | `CROSS-REVIEW-software-engineer-FSPEC-v{6..10}.md` |
+| test-engineer | `pdlc:te-review` | 6–10 | `CROSS-REVIEW-test-engineer-FSPEC-v{6..10}.md` |
+
+Nothing in this window impeaches either reviewer's conduct. The record on both:
+
+- **Delta scoping held, and tightened.** Every review names its baseline commit and its diff range
+  and states that nothing unchanged was re-litigated (round 6: baseline `7ad57c9`, *"76 insertions,
+  14 deletions across 6 FSPEC commits — only the changed sections were re-read for new issues"*;
+  rounds 9 and 10 open with *"All findings below are in text added this round"*). No round re-opened
+  a settled decision.
+- **`DEC-LAYER-01` was applied deliberately and against the reviewers' own interest.** SE's round-7
+  review is explicit that it is choosing to *lower* its own findings: *"three of the five Lows are
+  classes `DEC-LAYER-01` assigns to TSPEC or PROPERTIES; per the decision's review consequence,
+  a finding of one of those classes with a named downstream owner is Low, deferred and tracked, not
+  a blocking Medium — I applied the bar deliberately rather than by default, and say so per
+  finding."* TE's round-10 review applies the same rule to itself and then explains why its one
+  Medium is *not* of that class. The freeze was likewise honoured: TE's round-10 repair is offered
+  with *"adds no BR and no AT, touches no fixture, and is fully inside the freeze."*
+- **Claims were verified against the repository, not asserted.** Round 10 alone re-derives the
+  field-side set-equality over all eight fields, re-checks the eight-reader counts at `:1104`,
+  `:1153-1157`, `:1191-1193`, re-verifies the `phase` arm's antecedent at `:1384` and `:1396-1399`,
+  and re-checks every repo path the changed text names. The one line-number citation defect found
+  in this window (round 8) was in the FSPEC's citation of *itself*, and was found by both reviewers.
+- **The erratum channel stayed used, not bypassed.** The single upstream defect in scope — the
+  `suppressed-by:` value grammar at `docs/_constraints/pdlc-consolidation-vocabularies.md:63` —
+  remains routed as §14.4 ER-5 and was re-verified verbatim at HEAD in round 10. No reviewer edited
+  an upstream document, and no new erratum was emitted in this window.
+- **Approval was given when it was earned.** Three of five rounds contain an approval. This is the
+  strongest evidence available that the bar is not being applied as a ratchet: the same two
+  reviewers who exhausted the window were each willing, inside it, to sign the document off.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
