@@ -105,6 +105,10 @@ three of mine are already Low. No new rule in the intervening diff raises any of
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | Process, non-blocking, and a re-ask of v12's Q-01 with a concrete answer now available. Phase R has now been re-entered twice for a confirming round over a byte-identical REQ, spending four reviewer rounds (v11–v13 on my side alone) on a document whose digest has not changed. `DEC-CONV-01` was recorded in this very interval and says exactly what should happen — a standing approval carries forward and is re-issued, not re-manufactured. Should the phase gate consult the recorded approval anchor directly (`APPROVAL-HASH` still matching the bytes at HEAD is a mechanical, content-addressed check) and skip dispatch entirely, rather than dispatching two reviewers to re-derive a verdict the anchor already pins? I have written the review either way. |
+
 ## Positive Observations
 
 ## Recommendation
