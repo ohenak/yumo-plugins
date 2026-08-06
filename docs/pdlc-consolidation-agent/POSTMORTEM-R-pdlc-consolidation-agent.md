@@ -249,4 +249,84 @@ in all ten rounds, and every v10 finding already fixed on the branch).
 
 ## Recommendation
 
+**Approve the REQ and advance to Phase F, after a bounded operator verification.** The case for
+this, rather than for another round:
+
+- One reviewer has already approved three of the last four rounds, including round 10.
+- The other reviewer's sole blocker is a **three-token scope widening** it costed itself as
+  byte-neutral, on a document with zero High findings for three rounds and 100% closure for ten.
+- **Every round-10 finding is already fixed on the branch**, in commits made after both v10 reviews
+  were written — and the fix took the *harder* of the two routes SE offered in its Q-02:
+
+| v10 finding | Addressed by | What landed |
+|---|---|---|
+| SE F-01 / TE F-52 (ownership + oracle range stop at §2) | `7fa2a84`, `07a3549`, `589b6a9` | Ownership widened to "**owns every section of that file — §1–§4 entire**" in both artifacts (REQ `:560-562`, vocabularies `:19-21`); and rather than merely widening the range, the round **answered Q-02 explicitly** — "§1, §2 and §4 are enumerations" under the set-equality oracle, "§3 is owned but not enumerated" — which is the disposition SE named as turning "unowned" from an omission into a decision. §5's deliverable now reads "§1–§4 entire" (`:585`). Citations repinned to `Version` 1.4 throughout (`:99`, `:182`, `:222`, `:557`) |
+| TE F-53 (relocation sized against the round it runs beside) | `eef3b3c`, `ef6eb17` | REQ-CONS-06's preamble now cites baseline §1/§2 instead of recapitulating them — the exact candidate TE named at `:447-453`; and the REQ stopped restating vocabularies §3 (freeze clauses, write granularity) in favour of citing it. Net effect: **637 lines / 61,003 bytes at HEAD, margin 344 → 437 bytes** — the first round in this window where a relocation actually bought space |
+
+No reviewer has observed that tree. As in the first window, **the halt records an exhausted budget,
+not an unresolved defect set** — but unlike the first window, it also records a reviewer split that
+another round of the same loop cannot adjudicate.
+
+### Recommended action, in order
+
+1. **Verify the five commits above actually close SE F-01 / TE F-52 and TE F-53.** Read each finding
+   against the current REQ and `docs/_constraints/pdlc-consolidation-vocabularies.md` text — not
+   against the commit messages. In particular confirm the enumerated/not-enumerated split is stated
+   in **both** artifacts and that all citations name `Version` 1.4 (the file's header is 1.4). This
+   is the judgment call the `RESOLVED:` marker gates, and it is the operator's, not the loop's.
+2. **Adjudicate the severity split explicitly, and record the adjudication.** This is the decision
+   the loop cannot make. Two defensible outcomes:
+   - **(a) Accept TE's bar for this class** — an obligation-scope gap that is *detectable* through
+     the version-pin clause is Low, not Medium. Then round 10 was already an approval on both sides
+     and Phase R is done. Record the ruling in the REQ or in `docs/_decisions/` so the next feature
+     in this family inherits it.
+   - **(b) Accept SE's bar** — then the fix is already on the branch and one confirming round closes
+     it. Prefer this only if you also take step 4, because otherwise the generator survives.
+3. **If you re-run a round, run exactly one, and freeze the document's structure first.** Clear this
+   halt by setting `RESOLVED: yes` with a commit that names what addressed each finding, then:
+   `/pdlc:orchestrate-dev { "reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md", "forcePhases": "R" }`.
+   **Do not relocate anything in that round.** The 437-byte margin now permits it, and factor 1 of
+   the root cause is the only reason a relocation would happen — a round that both answers findings
+   and moves text is the mechanism that produced this halt twice.
+4. **Break the generator before the next round, not after it.** Before re-invoking, sweep the
+   governance rules against the file they govern: for `pdlc-consolidation-vocabularies.md` and
+   `pdlc-advisory-corpus-baseline.md`, confirm that ownership, the set-equality range, the
+   enumerated/narrative classification, the version pin, and §5's deliverable list each range over
+   **every section that currently exists**, not over the sections that existed when the rule was
+   written. That is the mechanical check that has consumed a round in three of the last four.
+5. **Do not re-open settled ground.** Scope, priority, phasing, user need, feasibility, and every
+   claim about the shipped codebase have been uncontested by both reviewers for six or more rounds,
+   with four consecutive clean code-claim audits. A round that revisits them spends the budget on
+   ground that is already firm.
+
+### Housekeeping (not blocking)
+
+The REQ header's Cross-Reviews row still reads `v{1..9}` / 18 files (`:12`); it is 20 files through
+v10. Fix it in whatever commit clears this halt.
+
+### Not recommended
+
+- **Re-running the loop unchanged with a larger budget.** Two independent five-round windows have now
+  reached the same steady state by two different mechanisms (propagation debt, then relocation debt).
+  Rounds are not the binding constraint.
+- **Splitting the REQ.** The first window's escalation path proposed splitting the
+  consolidation-cadence half from the cross-repo-promotion half. That is now the *wrong* move: the
+  size pressure has already been relieved the right way — by relocating shared vocabulary into
+  `docs/_constraints/` files that a successor feature (`pdlc-engineering-loop`) will read anyway —
+  and a split would duplicate those citations across two REQs and double the governance surface that
+  caused this halt.
+
+### For Phase H
+
+Two durable lessons, both cheap to promote and both stated in the reviewers' own words:
+
+1. **Size a relocation against the round it runs beside, not merely ahead of it** (TE F-53).
+   `pm-author/SKILL.md:118` already mandates relocate-*first*; what round 10 shows is that ordering
+   alone is insufficient — a relocation whose recovered bytes are consumed by the same round's
+   answers leaves the ceiling exactly where it was.
+2. **When you relocate a block into a shared normative file, re-derive every rule whose scope is
+   stated as a section list.** This is the propagation checklist the first window recommended, one
+   level up: the first window missed cells inside enumerations, this window missed sections inside
+   scope statements. One authoring-seam rule covers both.
+
 ## Appendix — first window (rounds 1–5, resolved)
