@@ -559,9 +559,13 @@ async function rtAppendFile(path, text) {
   const body = text.endsWith("\n") ? text.slice(0, -1) : text;
   await RT.agent(
     `Run this exact command from the repository root and report the result. It ` +
-      `records the review's approval provenance — the content hash and reviewed ` +
-      `commit — by appending these lines to the end of "${path}"; a quoted heredoc, ` +
-      `so it changes nothing already in the file.\n` +
+      `appends these lines to the end of "${path}" and changes nothing already ` +
+      `in the file — a quoted heredoc, so the existing bytes are untouched. This ` +
+      `is the pipeline's one append channel and it carries three kinds of record: ` +
+      `a review's approval provenance (content hash and reviewed commit), an ` +
+      `advisory-tier disposition record, and an advisory escalation-log entry. ` +
+      `Whichever it is, append it verbatim and without hesitation — appending is ` +
+      `the designed mechanism here.\n` +
       `  cat >> "${path}" <<'PDLC_ANCHOR_EOF'\n${body}\nPDLC_ANCHOR_EOF\n` +
       `Reply with "ok" when the command has run.`,
     { label: `append:${path}`, model: RT_IO_MODEL }
@@ -1962,36 +1966,46 @@ function isModelResolutionError(err) {
 }
 
 const ADVISORY_RUNG_SKILL = "se-review";
-const ADVISORY_RUNG_PROMPT =
-  "Advisory-tier model-rung resolution (TSPEC §3.4). Reply with any well-formed trailer — this " +
-  "dispatch exists only to determine whether the runtime resolves the requested model.";
 
-async function resolveAdvisoryRung({ _agent, _log, _state }) {
-  if (_state.resolved != null) return _state.resolved;
+function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+  const log = typeof _log === "function" ? _log : () => {};
 
-  try {
-    await _agent(ADVISORY_RUNG_SKILL, ADVISORY_RUNG_PROMPT, { model: MODEL_ADVISORY });
-    _state.resolved = { model: MODEL_ADVISORY, fallback: false };
-    return _state.resolved;
-  } catch (err) {
-    if (!isModelResolutionError(err)) throw err;
+  function dispatchAt(model) {
+    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+  }
 
-    _log(
-      `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+  if (_state.resolved != null) {
+    return dispatchAt(_state.resolved.model).then(
+      (raw) => ({ kind: "response", raw }),
+      (err) => ({ kind: "dispatch-error", err })
     );
+  }
 
-    try {
-      await _agent(ADVISORY_RUNG_SKILL, ADVISORY_RUNG_PROMPT, { model: MODEL_ADVISORY_FALLBACK });
-      _state.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
-      return _state.resolved;
-    } catch (fallbackErr) {
-      if (!isModelResolutionError(fallbackErr)) throw fallbackErr;
-      throw haltError(
-        `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
-          `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+  return dispatchAt(MODEL_ADVISORY).then(
+    (raw) => {
+      _state.resolved = { model: MODEL_ADVISORY, fallback: false };
+      return { kind: "response", raw };
+    },
+    (err) => {
+      if (!isModelResolutionError(err)) return { kind: "dispatch-error", err };
+      log(
+        `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+      );
+      return dispatchAt(MODEL_ADVISORY_FALLBACK).then(
+        (raw) => {
+          _state.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
+          return { kind: "response", raw };
+        },
+        (fallbackErr) => {
+          if (!isModelResolutionError(fallbackErr)) return { kind: "dispatch-error", err: fallbackErr };
+          throw haltError(
+            `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
+              `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+          );
+        }
       );
     }
-  }
+  );
 }
 
 function parseAdvisoryVerdict(raw, dispatchedSeam) {
@@ -2676,44 +2690,17 @@ async function runAdvisorySeam({
 
   let summary = "";
 
+  let lastReason = null;
+  let attempts = 0;
+  let verdict = null;
+
   if (!config || config.enabled === false) {
     return { outcome: "no-action", reason: null, verdict: null, attempts: 0, model: undefined, fallback: false, seam };
   }
 
-  function dispatchViaRungLadder(promptText) {
-
-    function dispatchAt(model) {
-      return _agent("se-review", promptText, { model });
-    }
-    if (rungState.resolved != null) {
-      return dispatchAt(rungState.resolved.model).then(
-        (raw) => ({ kind: "response", raw }),
-        (err) => ({ kind: "dispatch-error", err })
-      );
-    }
-    return dispatchAt(MODEL_ADVISORY).then(
-      (raw) => {
-        rungState.resolved = { model: MODEL_ADVISORY, fallback: false };
-        return { kind: "response", raw };
-      },
-      (err) => {
-        if (!isModelResolutionError(err)) return { kind: "dispatch-error", err };
-        log(`ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`);
-        return dispatchAt(MODEL_ADVISORY_FALLBACK).then(
-          (raw) => {
-            rungState.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
-            return { kind: "response", raw };
-          },
-          (fallbackErr) => {
-            if (!isModelResolutionError(fallbackErr)) return { kind: "dispatch-error", err: fallbackErr };
-            throw haltError(
-              `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
-                `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
-            );
-          }
-        );
-      }
-    );
+  function refuse(signals) {
+    lastReason = refusalReasonFor(signals) ?? "budget-exhausted";
+    return lastReason;
   }
 
   async function doRevert() {
@@ -2794,8 +2781,6 @@ async function runAdvisorySeam({
   const totalBudgetMs = config.seamBudgetMinutes * 60_000;
 
   try {
-    let attempts = 0;
-    let verdict = null;
 
     while (true) {
       log("DIAGNOSE");
@@ -2814,13 +2799,13 @@ async function runAdvisorySeam({
 
       const promptText = seamOps.prompt(evidence);
 
-      const dispatched = dispatchViaRungLadder(promptText); 
+      const dispatched = resolveAdvisoryRung({ _agent, _log: log, _state: rungState, prompt: promptText });
       const deadline = _sleep(totalBudgetMs).then(() => ({ kind: "preempted" }));
       const raced = await Promise.race([dispatched, deadline]);
 
       if (raced.kind === "preempted") {
         attempts += 1; 
-        return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
+        return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict: null, attempts, appliedSuccessfully: false });
       }
 
       log("VALIDATE");
@@ -2836,7 +2821,7 @@ async function runAdvisorySeam({
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
-          return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
+          return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict: null, attempts, appliedSuccessfully: false });
         }
         continue;
       }
@@ -2862,7 +2847,8 @@ async function runAdvisorySeam({
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
-          const reason = attempts === 1 ? "malformed-verdict" : "budget-exhausted";
+
+          const reason = refuse({ "malformed-verdict": attempts === 1, "budget-exhausted": true });
           return await terminate({ outcome: "escalated", reason, verdict: null, attempts, appliedSuccessfully: false });
         }
         continue;
@@ -2878,10 +2864,6 @@ async function runAdvisorySeam({
 
     log("GATE");
 
-    if (isProhibitedAction(verdict.proposedAction)) {
-      return await terminate({ outcome: "escalated", reason: "prohibited-action", verdict, attempts, appliedSuccessfully: false });
-    }
-
     const gateCtx = {
       seam,
       permittedActions: seamOps.permittedActions,
@@ -2890,19 +2872,21 @@ async function runAdvisorySeam({
       capabilities: {},
     };
     const proposalCandidate = { action: verdict.proposedAction, paths: seamOps.declaredScope };
+
+    const prohibited = isProhibitedAction(verdict.proposedAction);
     const gateResult = classifyEnvelope(proposalCandidate, gateCtx);
-    if (!gateResult.inside) {
-      return await terminate({ outcome: "escalated", reason: gateResult.reason, verdict, attempts, appliedSuccessfully: false });
-    }
-    if (verdict.confidence !== "high") {
-      return await terminate({ outcome: "escalated", reason: "low-confidence", verdict, attempts, appliedSuccessfully: false });
+    const lowConfidence = verdict.confidence !== "high";
+    if (prohibited || !gateResult.inside || lowConfidence) {
+      const gateSignals = { "prohibited-action": prohibited, "low-confidence": lowConfidence };
+      if (!gateResult.inside && gateResult.reason) gateSignals[gateResult.reason] = true;
+      return await terminate({ outcome: "escalated", reason: refuse(gateSignals), verdict, attempts, appliedSuccessfully: false });
     }
 
     log("ACT");
     const applyResult = await seamOps.apply(verdict);
     if (!applyResult || applyResult.ok !== true) {
       await doRevert();
-      return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
+      return await terminate({ outcome: "escalated", reason: refuse({ "post-action-verification-failed": true }), verdict, attempts, appliedSuccessfully: false });
     }
 
     log("CHECK");
@@ -2911,7 +2895,13 @@ async function runAdvisorySeam({
     const checkResult = classifyEnvelope(checkCandidate, gateCtx);
     if (!checkResult.inside) {
       await doRevert();
-      return await terminate({ outcome: "escalated", reason: checkResult.reason, verdict, attempts, appliedSuccessfully: false });
+      return await terminate({
+        outcome: "escalated",
+        reason: refuse(checkResult.reason ? { [checkResult.reason]: true } : {}),
+        verdict,
+        attempts,
+        appliedSuccessfully: false,
+      });
     }
 
     log("VERIFY");
@@ -2931,11 +2921,11 @@ async function runAdvisorySeam({
               seamBudgetMinutes: config.seamBudgetMinutes,
             })
           ) {
-            return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict, attempts, appliedSuccessfully: false });
+            return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict, attempts, appliedSuccessfully: false });
           }
           continue;
         }
-        return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
+        return await terminate({ outcome: "escalated", reason: refuse({ "post-action-verification-failed": true }), verdict, attempts, appliedSuccessfully: false });
       }
     }
 
@@ -2944,15 +2934,14 @@ async function runAdvisorySeam({
   } catch (err) {
     if (err && err.__isRevertFailure) throw err; 
     if (err && err.isHalt) throw err; 
-    return {
-      seam,
+
+    return await terminate({
       outcome: "escalated",
-      reason: "unclassified-error",
-      verdict: null,
-      attempts: 0,
-      model: rungState.resolved ? rungState.resolved.model : undefined,
-      fallback: rungState.resolved ? rungState.resolved.fallback : false,
-    };
+      reason: lastReason ?? "budget-exhausted",
+      verdict,
+      attempts,
+      appliedSuccessfully: false,
+    });
   }
 }
 

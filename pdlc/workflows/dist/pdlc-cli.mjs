@@ -1802,59 +1802,87 @@ function isModelResolutionError(err) {
   return MODEL_ERROR_RE.test(String(err?.message ?? err ?? ""));
 }
 
-// The dispatch resolveAdvisoryRung makes to determine which rung resolves. Its own output is
-// never consumed — only whether the runtime accepts (or rejects) the model — so the skill and
-// prompt are fixed, not seam-specific (TSPEC §3.4/§4.4: the seam's own DIAGNOSE dispatch is a
-// separate, later call that reuses the resolved `rung.model`).
+// The skill EVERY advisory dispatch goes out under. One constant, referenced by the one ladder
+// below — which is the only place in either module that names an advisory model rung (AC-1.5).
 const ADVISORY_RUNG_SKILL = "se-review";
-const ADVISORY_RUNG_PROMPT =
-  "Advisory-tier model-rung resolution (TSPEC §3.4). Reply with any well-formed trailer — this " +
-  "dispatch exists only to determine whether the runtime resolves the requested model.";
 
 /**
- * Resolve the advisory rung at the FIRST advisory dispatch of a run (TSPEC §3.4 — lazy, once per
- * run). `_state` is the per-run memo (`{ resolved: null }`), threaded from the caller rather than
- * held in module state (§3.5): the bundle inlines this module into both shipped artifacts and
- * jest runs every test against one imported module instance, so a module-level memo would leak
- * resolution across tests and across a queue invocation's delegated `orchestrate-dev` run.
+ * `resolveAdvisoryRung` — TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships.
+ * `runAdvisorySeam`'s DIAGNOSE step calls this directly for every attempt, so the tested semantics
+ * are the shipped semantics: there is no second, private copy of this ladder anywhere.
  *
- * Non-resolution is detected by classifying the rejection of the real dispatch
- * (`isModelResolutionError`, M-1), never by a separate probe. A matched rejection emits
+ * Rung resolution is lazy and memoised per run through `_state` (`{ resolved: null }`), threaded
+ * from the caller rather than held in module state (§3.5): the bundle inlines this module into both
+ * shipped artifacts and jest runs every test against one imported module instance, so a
+ * module-level memo would leak resolution across tests and across a queue invocation's delegated
+ * `orchestrate-dev` run. With `_state.resolved` already set, the cached rung is used directly and
+ * no ladder is entered (M-4).
+ *
+ * Non-resolution is detected by classifying the rejection of the **real** dispatch
+ * (`isModelResolutionError`, M-1), never by a separate probe — the caller's own `prompt` is what
+ * goes out, so the happy path costs exactly one `_agent` call, not two. A matched rejection emits
  * `ADVISORY_MODEL_FALLBACK`, substitutes `MODEL_ADVISORY_FALLBACK`, and re-dispatches the SAME
  * prompt once (M-2). A rejection that also matches on the fallback rung halts (M-3) — there is no
  * third rung, and no advisory agent output is ever produced. A rejection that does not match is an
- * ordinary invocation failure and is propagated unchanged, without entering the ladder (T-01-5).
+ * ordinary invocation failure, returned as `{kind:"dispatch-error"}` for the caller's attempt loop
+ * to disposition, without entering the ladder (T-01-5).
  *
- * @param {{ _agent: Function, _log: Function, _state: { resolved: {model: string, fallback: boolean}|null } }} deps
- * @returns {Promise<{ model: string, fallback: boolean }>}
- * @throws  haltError when neither rung resolves (M-3)
+ * **Deliberately NOT `async`, and deliberately `.then`-chained.** The caller races the returned
+ * promise against a wall-clock deadline built as `_sleep(...).then(...)`. `Promise.race` breaks a
+ * tie between two promises that settle at the same microtask hop-depth in favour of whichever
+ * underlying async work was invoked first, and the test doubles' `_agent`/`_sleep` both settle
+ * synchronously — so this must settle exactly ONE hop past the underlying `_agent` call, the same
+ * depth as the deadline. An `async`/`await` body here would add hops and let the deadline win a
+ * race on hop-count alone rather than on elapsed time.
+ *
+ * @param {{ _agent: Function, _log: Function, prompt: string,
+ *           _state: { resolved: {model: string, fallback: boolean}|null } }} deps
+ * @returns {Promise<{kind: "response", raw: string} | {kind: "dispatch-error", err: unknown}>}
+ * @throws  haltError (as a rejection) when neither rung resolves (M-3)
  */
-async function resolveAdvisoryRung({ _agent, _log, _state }) {
-  if (_state.resolved != null) return _state.resolved;
+function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+  const log = typeof _log === "function" ? _log : () => {};
 
-  try {
-    await _agent(ADVISORY_RUNG_SKILL, ADVISORY_RUNG_PROMPT, { model: MODEL_ADVISORY });
-    _state.resolved = { model: MODEL_ADVISORY, fallback: false };
-    return _state.resolved;
-  } catch (err) {
-    if (!isModelResolutionError(err)) throw err;
+  // `dispatchAt` exists for §8.5's returned-promise ruling: `return _agent(…);` is a classified
+  // seam call, while a `.then`-chained one is not — and the chaining below is load-bearing (see
+  // the hop-count note above), so the seam call moves into a body the ruling covers and the chain
+  // hangs off the returned promise, adding no microtask hop.
+  function dispatchAt(model) {
+    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+  }
 
-    _log(
-      `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+  if (_state.resolved != null) {
+    return dispatchAt(_state.resolved.model).then(
+      (raw) => ({ kind: "response", raw }),
+      (err) => ({ kind: "dispatch-error", err })
     );
+  }
 
-    try {
-      await _agent(ADVISORY_RUNG_SKILL, ADVISORY_RUNG_PROMPT, { model: MODEL_ADVISORY_FALLBACK });
-      _state.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
-      return _state.resolved;
-    } catch (fallbackErr) {
-      if (!isModelResolutionError(fallbackErr)) throw fallbackErr;
-      throw haltError(
-        `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
-          `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+  return dispatchAt(MODEL_ADVISORY).then(
+    (raw) => {
+      _state.resolved = { model: MODEL_ADVISORY, fallback: false };
+      return { kind: "response", raw };
+    },
+    (err) => {
+      if (!isModelResolutionError(err)) return { kind: "dispatch-error", err };
+      log(
+        `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+      );
+      return dispatchAt(MODEL_ADVISORY_FALLBACK).then(
+        (raw) => {
+          _state.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
+          return { kind: "response", raw };
+        },
+        (fallbackErr) => {
+          if (!isModelResolutionError(fallbackErr)) return { kind: "dispatch-error", err: fallbackErr };
+          throw haltError(
+            `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
+              `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+          );
+        }
       );
     }
-  }
+  );
 }
 
 /**
@@ -2946,6 +2974,12 @@ async function runAdvisorySeam({
   // The summary of the last well-formed reply this invocation saw. A later malformed attempt never
   // erases an earlier classification: the halt should carry whatever the seam did manage to learn.
   let summary = "";
+  // Hoisted out of the `try` below so the TSPEC §17.3 terminal catch can terminate with the state
+  // the invocation actually had — the last computed refusal reason, the last parsed verdict and the
+  // real attempt count — instead of discarding all three.
+  let lastReason = null;
+  let attempts = 0;
+  let verdict = null;
 
   if (!config || config.enabled === false) {
     return { outcome: "no-action", reason: null, verdict: null, attempts: 0, model: undefined, fallback: false, seam };
@@ -2954,56 +2988,22 @@ async function runAdvisorySeam({
   // Rung resolution (TSPEC §3.4/§4.4 entry row: resolved before any dispatch, once per run) is
   // deliberately NOT a discrete probe dispatch here — TSPEC §3.4's own header says non-resolution
   // is detected "by classifying the rejection of the real dispatch... never a separate probe".
-  // `dispatchViaRungLadder` below IS that real dispatch: attempt 1 of the DIAGNOSE loop carries the
-  // M-1/M-2 fallback ladder inline (so it consumes exactly one `_agent` call on the happy path, not
-  // two), and every later attempt in the same seam invocation reuses the now-cached
-  // `rungState.resolved` rung directly. `rungState` is the caller's memo, so a whole PT-phase run
-  // resolves the rung once across every seam it dispatches, per §3.4's "lazy, once per run".
-  // Returns `{kind:"response",raw}` / `{kind:"dispatch-error",err}` directly (never a bare
-  // response the caller must re-wrap) — deliberately built with `.then(onFulfilled, onRejected)`
-  // chaining, not `async`/`await`, so the settled-`kind` promise is exactly ONE microtask hop past
-  // the underlying `_agent` call on the common (cached-rung) path — the same depth as `deadline`'s
-  // `_sleep(...).then(...)` below. An extra `await`-induced hop here would let a same-tick-resolving
-  // `deadline` win `Promise.race` on hop-count alone with the doubles' synchronous `_agent`/`_sleep`,
-  // not on actual elapsed time (see the `dispatched` comment below).
-  function dispatchViaRungLadder(promptText) {
-    // `dispatchAt` exists for §8.5's returned-promise ruling: `return
-    // _agent(…);` is a classified seam call, while a `.then`-chained one is
-    // not — and the chaining below is load-bearing (see the hop-count comment
-    // above), so the seam call moves into a body the ruling covers and the
-    // chain hangs off the returned promise, adding no microtask hop.
-    function dispatchAt(model) {
-      return _agent("se-review", promptText, { model });
-    }
-    if (rungState.resolved != null) {
-      return dispatchAt(rungState.resolved.model).then(
-        (raw) => ({ kind: "response", raw }),
-        (err) => ({ kind: "dispatch-error", err })
-      );
-    }
-    return dispatchAt(MODEL_ADVISORY).then(
-      (raw) => {
-        rungState.resolved = { model: MODEL_ADVISORY, fallback: false };
-        return { kind: "response", raw };
-      },
-      (err) => {
-        if (!isModelResolutionError(err)) return { kind: "dispatch-error", err };
-        log(`ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`);
-        return dispatchAt(MODEL_ADVISORY_FALLBACK).then(
-          (raw) => {
-            rungState.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
-            return { kind: "response", raw };
-          },
-          (fallbackErr) => {
-            if (!isModelResolutionError(fallbackErr)) return { kind: "dispatch-error", err: fallbackErr };
-            throw haltError(
-              `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
-                `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
-            );
-          }
-        );
-      }
-    );
+  // `resolveAdvisoryRung` (module scope, above) IS that real dispatch, and is the ONE ladder: this
+  // driver holds no private copy of it. Attempt 1 of the DIAGNOSE loop carries the M-1/M-2 fallback
+  // ladder inline (so it consumes exactly one `_agent` call on the happy path, not two), and every
+  // later attempt in the same seam invocation reuses the now-cached `rungState.resolved` rung
+  // directly. `rungState` is the caller's memo, so a whole PT-phase run resolves the rung once
+  // across every seam it dispatches, per §3.4's "lazy, once per run".
+  //
+  // The single refusal-reason resolver (AC-3.6, TSPEC §5.3). Every escalation below states the
+  // conditions true AT TERMINATION as a signal set and lets `refusalReasonFor` pick the first match
+  // in `ADVISORY_REFUSAL_REASONS`' own order — so re-ordering that catalogue re-orders the shipped
+  // precedence, which is the whole point of declaring it ordered. `lastReason` remembers what it
+  // last resolved, for TSPEC §17.3's terminal catch (below), which reports the last computed
+  // refusal reason or `budget-exhausted` when none was computed.
+  function refuse(signals) {
+    lastReason = refusalReasonFor(signals) ?? "budget-exhausted";
+    return lastReason;
   }
 
   // Every `seamOps.revert()` call goes through here so a thrown revert failure can be
@@ -3110,9 +3110,6 @@ async function runAdvisorySeam({
   // (see its call sites) — wall-clock exhaustion is enforced solely by this per-attempt race,
   // `attemptBudget` exhaustion by the loop's own attempt counter.
   try {
-    let attempts = 0;
-    let verdict = null;
-
     // ── DIAGNOSE + VALIDATE — the attempt loop ──────────────────────────
     // The loop encloses steps 1–6, not only DIAGNOSE/VALIDATE: A5-3 defines
     // one attempt as one act → re-poll cycle, so a `verifyGate` failure that
@@ -3141,13 +3138,14 @@ async function runAdvisorySeam({
       const promptText = seamOps.prompt(evidence);
 
       // `dispatched` is constructed BEFORE `deadline` on every iteration — see the comment above.
-      const dispatched = dispatchViaRungLadder(promptText); // already {kind:...}-shaped or a halt rejection
+      // already {kind:...}-shaped or a halt rejection
+      const dispatched = resolveAdvisoryRung({ _agent, _log: log, _state: rungState, prompt: promptText });
       const deadline = _sleep(totalBudgetMs).then(() => ({ kind: "preempted" }));
       const raced = await Promise.race([dispatched, deadline]);
 
       if (raced.kind === "preempted") {
         attempts += 1; // the in-flight attempt counts as consumed by the preemption (T-02-5)
-        return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
+        return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict: null, attempts, appliedSuccessfully: false });
       }
 
       log("VALIDATE");
@@ -3163,7 +3161,7 @@ async function runAdvisorySeam({
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
-          return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
+          return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict: null, attempts, appliedSuccessfully: false });
         }
         continue;
       }
@@ -3194,7 +3192,12 @@ async function runAdvisorySeam({
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
-          const reason = attempts === 1 ? "malformed-verdict" : "budget-exhausted";
+          // BOTH signals are true here whenever the single-attempt budget is what ran out, so
+          // which one is reported is decided by `ADVISORY_REFUSAL_REASONS`' order — `malformed-
+          // verdict` precedes `budget-exhausted`, hence this file's header interpretive decision 2
+          // (a one-attempt budget whose one response is unparseable reports the malformed response,
+          // not the exhausted budget). Re-ordering the catalogue re-orders this outcome.
+          const reason = refuse({ "malformed-verdict": attempts === 1, "budget-exhausted": true });
           return await terminate({ outcome: "escalated", reason, verdict: null, attempts, appliedSuccessfully: false });
         }
         continue;
@@ -3216,10 +3219,6 @@ async function runAdvisorySeam({
     // ── step 3 GATE — prohibitions, classifyEnvelope, confidence (V-1, BR-2) ────────────────
     log("GATE");
 
-    if (isProhibitedAction(verdict.proposedAction)) {
-      return await terminate({ outcome: "escalated", reason: "prohibited-action", verdict, attempts, appliedSuccessfully: false });
-    }
-
     const gateCtx = {
       seam,
       permittedActions: seamOps.permittedActions,
@@ -3228,12 +3227,19 @@ async function runAdvisorySeam({
       capabilities: {},
     };
     const proposalCandidate = { action: verdict.proposedAction, paths: seamOps.declaredScope };
+    // All three gate conditions are computed before any of them refuses — `isProhibitedAction` and
+    // `classifyEnvelope` are both pure, so evaluating them together costs nothing and makes the
+    // signal set complete at termination. A proposal that trips two of them (a prohibited sentence
+    // whose declared scope is also a test artifact, say) is refused as whichever reason
+    // `ADVISORY_REFUSAL_REASONS` puts first — precedence lives in the catalogue, not in the order
+    // these `if`s happen to be written (AC-3.6).
+    const prohibited = isProhibitedAction(verdict.proposedAction);
     const gateResult = classifyEnvelope(proposalCandidate, gateCtx);
-    if (!gateResult.inside) {
-      return await terminate({ outcome: "escalated", reason: gateResult.reason, verdict, attempts, appliedSuccessfully: false });
-    }
-    if (verdict.confidence !== "high") {
-      return await terminate({ outcome: "escalated", reason: "low-confidence", verdict, attempts, appliedSuccessfully: false });
+    const lowConfidence = verdict.confidence !== "high";
+    if (prohibited || !gateResult.inside || lowConfidence) {
+      const gateSignals = { "prohibited-action": prohibited, "low-confidence": lowConfidence };
+      if (!gateResult.inside && gateResult.reason) gateSignals[gateResult.reason] = true;
+      return await terminate({ outcome: "escalated", reason: refuse(gateSignals), verdict, attempts, appliedSuccessfully: false });
     }
 
     // ── step 4 ACT ───────────────────────────────────────────────────────────────────────────
@@ -3241,7 +3247,7 @@ async function runAdvisorySeam({
     const applyResult = await seamOps.apply(verdict);
     if (!applyResult || applyResult.ok !== true) {
       await doRevert();
-      return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
+      return await terminate({ outcome: "escalated", reason: refuse({ "post-action-verification-failed": true }), verdict, attempts, appliedSuccessfully: false });
     }
 
     // ── step 5 CHECK — classifyEnvelope again, over the produced diff (E-R2, BR-3) ──────────
@@ -3251,7 +3257,13 @@ async function runAdvisorySeam({
     const checkResult = classifyEnvelope(checkCandidate, gateCtx);
     if (!checkResult.inside) {
       await doRevert();
-      return await terminate({ outcome: "escalated", reason: checkResult.reason, verdict, attempts, appliedSuccessfully: false });
+      return await terminate({
+        outcome: "escalated",
+        reason: refuse(checkResult.reason ? { [checkResult.reason]: true } : {}),
+        verdict,
+        attempts,
+        appliedSuccessfully: false,
+      });
     }
 
     // ── step 6 VERIFY ────────────────────────────────────────────────────────────────────────
@@ -3276,11 +3288,11 @@ async function runAdvisorySeam({
               seamBudgetMinutes: config.seamBudgetMinutes,
             })
           ) {
-            return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict, attempts, appliedSuccessfully: false });
+            return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict, attempts, appliedSuccessfully: false });
           }
           continue;
         }
-        return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
+        return await terminate({ outcome: "escalated", reason: refuse({ "post-action-verification-failed": true }), verdict, attempts, appliedSuccessfully: false });
       }
     }
 
@@ -3290,15 +3302,22 @@ async function runAdvisorySeam({
   } catch (err) {
     if (err && err.__isRevertFailure) throw err; // BR-5 — never silently swallow an unrevertable tree
     if (err && err.isHalt) throw err; // M-3 — no rung resolved; propagate, never mapped to an escalation
-    return {
-      seam,
+    // TSPEC §17.3 — an unclassified throw is an escalation like any other, and therefore goes
+    // through `terminate`: the ADVISORY record (AC-9.1) is written, the `ESCALATIONS.md` entry
+    // (AC-10.1) is appended and the `ADVISORY ESCALATION:` notice (AC-10.5) is emitted, exactly as
+    // on every other escalating path. The reason is the LAST COMPUTED refusal reason, or
+    // `budget-exhausted` when none was computed — always a member of the closed catalogue
+    // (AC-3.6), never an ad-hoc value. `verdict`/`attempts` are the invocation's real state, not
+    // discarded. `terminate` is declared outside this `try`, so calling it here cannot re-enter it;
+    // `appliedSuccessfully: false` is deliberate — an unclassified throw leaves the tree in an
+    // unknown state, and a speculative revert is not a safe response to that.
+    return await terminate({
       outcome: "escalated",
-      reason: "unclassified-error",
-      verdict: null,
-      attempts: 0,
-      model: rungState.resolved ? rungState.resolved.model : undefined,
-      fallback: rungState.resolved ? rungState.resolved.fallback : false,
-    };
+      reason: lastReason ?? "budget-exhausted",
+      verdict,
+      attempts,
+      appliedSuccessfully: false,
+    });
   }
 }
 
