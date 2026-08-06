@@ -882,7 +882,7 @@ Three observables, asserted by the pass rather than inherited:
 | # | Control | Observable |
 |---|---|---|
 | (a) | the credential grants no merge rights | §7.1 — scope is `contents:write` + `pull_requests:write` only. This is a *permission* bound, and it is **not** what bounds the verb set: `contents:write` alone permits a merge commit, so control (b) below cannot be derived from this row and does not cite it |
-| (b) | the pass never calls a merge or enable-auto-merge API on any PR — **including its own** | over the **PR seam alone** (the enumerated domain below), the pass's observed verb **set** is set-equal to `{read-pr, create-pr}`, and the PR it opened is in state `open` when the pass returns (AT-Q7). Stated positively on purpose: "no such call exists" is an absence-only oracle, satisfied vacuously by a pass that makes no calls, blind to a renamed route, and blind to a merge issued through a generic seam. A source inspection (AT-Q7b) supplements it and never replaces it |
+| (b) | the pass never calls a merge or enable-auto-merge API on any PR — **including its own** | two assertions over the enumerated domains below, and the difference between them is deliberate. **Universally, on every pass:** the observed verb set of each domain is a **subset** of that domain's permitted set — which already falsifies a merge, since every merge verb is outside every permitted set. **On a pass that opens a PR (AT-Q7's Given):** each domain's **obliged** verbs are additionally *present*, so the oracle is not satisfiable by a pass that makes no calls at all. The PR it opened is in state `open` when the pass returns. Stated positively on purpose: "no such call exists" is an absence-only oracle, satisfied vacuously, blind to a renamed route, and blind to a merge issued through a generic seam. A source inspection (AT-Q7b) supplements it and never replaces it |
 | (c) | the PR body carries `PDLC-CONSOLIDATION-PASS` | a repo-side control can recognise the PR as machine-opened |
 
 This **restates** `pdlc-merge-phase`'s REQ-MERGE-03 rather than inheriting it, and the distinction is
@@ -892,23 +892,37 @@ about **that run's own** PR; and Phase MERGE ships `mergeMode: "off"`
 (`MERGE_DEFAULTS`, `orchestrate-dev.js:60-61`). Nothing there evaluates an inbound PR, so claiming
 inheritance would assert a control nothing enforces.
 
-**The two seams and their permitted verb sets, enumerated here so the narrowing is this document's
-decision and not the implementer's.** AT-Q7 asserts a set-equality over *each* domain; neither may be
-dropped, and neither may be widened to "every seam" — a single pooled domain is what made an earlier
-draft of AT-Q7 red on a conforming pass, since the pass's own §5.4 commit and §6.1 clone are git
-verbs it is *required* to make.
+**The seam domains and their verb sets, enumerated here so the narrowing is this document's decision
+and not the implementer's.** There are **three**: the PR seam, and the git seam split **by tree**.
+Neither the pooling of the two seams nor the pooling of the two trees may be reinstated — a single
+pooled git domain is what made an earlier draft of AT-Q7 red on a conforming pass, and a git domain
+pooled across trees cannot state AC-3.8's prohibition, which is scoped to the *invoking* tree and
+says nothing about the throwaway clone.
 
-| Seam domain | Every verb the pass is permitted to issue on it | Where each is obliged |
-|---|---|---|
-| **PR seam** — every call that reads or mutates a pull request in the target repository | `read-pr` (observing the `PDLC-CONSOLIDATION-PROMOTIONS` trailer and PR state, §6.4), `create-pr` | §6.4's state table cannot be evaluated without `read-pr`; AC-3.1 obliges `create-pr` |
-| **git seam** — every call in either tree | `clone`, `fetch`, `create-branch`, `commit`, `push`, `add` | clone/fetch §6.1; create-branch/push §6.2; add/commit §5.4 (invoking tree) and §6.2 (one commit per edit in the clone) |
+Every cell below is a set of **resolved verbs**, not of function names. The classification is part of
+the contract, not the test's invention: a call is classified by the operation it performs, so
+`git checkout -b X` and `git switch -c X` in the clone both resolve to `create-branch`, and a merge
+issued through a generic entry point (a `_gh([…])` argv, a shell string, a URL built at runtime)
+resolves to `merge` however it was spelled.
 
-Absent from **both** sets, and that absence is what AT-Q7's set-equality asserts: `merge`,
-`enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr`, and every branch operation
-AC-3.8 forbids in the invoking tree (`checkout`, `switch`, `stash`, `reset`, `rebase`). Comparison is
-over the **set** of verbs, not a multiset: §6.2 obliges one commit per edit, so a multiset comparison
-would be red on any pass with more than one promotion (AT-Q2's three) while telling a reader nothing
-about merging.
+| Seam domain | **Obliged** — present on a PR-opening pass | **Permitted but not obliged** | Absent, on every pass |
+|---|---|---|---|
+| **PR seam** — every call that reads or mutates a pull request in the target repository | `read-pr` (§6.4's state table cannot be evaluated without it), `create-pr` (AC-3.1) | — | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` |
+| **git seam, invoking tree** | `add`, `commit` (§5.4's single commit) | — | every branch operation AC-3.8 forbids — `checkout`, `switch`, `stash`, `reset`, `rebase` — in **any** spelling, plus every merge verb above |
+| **git seam, §6.1 clone** | `clone` (§6.1), `create-branch` (§6.2), `add`, `commit` (one per edit, §6.2), `push` (§6.2) | `fetch` — §6.1 obliges a clone *cut from the fetched default branch*, and a `clone` already fetches, so a distinct `fetch` verb is conforming and its **absence** is equally conforming | every merge verb above. AC-3.8's branch prohibition is **not** asserted here: it is scoped to the invoking tree, and inside a throwaway clone a branch-creating spelling resolves to `create-branch` |
+
+The permitted set of a domain is its obliged column ∪ its permitted-but-not-obliged column. The
+universal assertion is **observed ⊆ permitted**, which is what falsifies a merge on *any* pass,
+including one that opens no PR; the obliged column is additionally asserted **present** only on a
+pass whose Given obliges it (AT-Q7 opens a PR and makes a §5.4 commit). A pass with no guard-set
+proposal — the common shape, since §5.1 sends `DOMAIN-CONSTRAINTS.md` and `DECISIONS-*` writes to the
+consuming-repo route — observes `∅` on the PR seam and on the clone seam, and `{add, commit}` in the
+invoking tree; every one of those is a subset of its permitted set, so the universal assertion is
+green on it and a set-equality would not be.
+
+Comparison is over the **set** of verbs, not a multiset: §6.2 obliges one commit per edit, so a
+multiset comparison would be red on any pass with more than one promotion (AT-Q2's three) while
+telling a reader nothing about merging.
 
 Repository-side enforcement — branch protection or required review on the plugin repo — is BL-05, an
 operator duty, and is explicitly out of scope (REQ §5). The three controls above hold without it.
@@ -1806,7 +1820,8 @@ PROPERTIES' (DC-09).
 | AT-Q4 | operator | the same pair on a **closed-unmerged** PR | the pass runs | the proposal is re-opened as a new PR — a rejected proposal is re-proposable |
 | AT-Q5 | operator | a merged `promote` PR for an id, and that promotion now `ineffective` | the pass proposes a remediation | the `revise` or `retire` proposal is **not** suppressed by the merged `promote` |
 | AT-Q6 | operator | the remote head branch `consolidation/{passId}` already exists | the PR is attempted | reason code `branch-exists`, the fallback proposal file carries the full diff, and the existing branch and any PR for it are named |
-| AT-Q7 | operator | a pass that opens a PR, with the **two enumerated seam domains of §6.5** — the PR seam and the git seam — each behind its own spy recording the verb of every call routed through it, including calls made through a generic entry point (a `_gh([…])` argv, a shell string, a URL built at runtime), which the spy classifies by the verb it resolves to rather than by the function name it was called under | the pass returns | **two** set-equalities, one per domain, both required: the observed verb **set** on the PR seam equals `{read-pr, create-pr}`, and on the git seam equals `{clone, fetch, create-branch, add, commit, push}` (§6.5's table); **and** the PR is in state `open` — not `merged`, not `auto-merge-enabled` — after the pass returns. Per-domain equality is what makes the oracle both passable and strong: a single pooled domain is red on a conforming pass, because §5.4, §6.1 and §6.2 all oblige git verbs, while an absence-only "no merge call exists" is satisfied vacuously by a pass that makes no calls at all, is satisfied by a renamed route, and cannot see a merge issued through a generic seam. Comparison is over **sets**, not multisets: AT-Q2's three commits are three occurrences of one verb |
+| AT-Q7 | operator | a pass that opens a PR, with the **three enumerated seam domains of §6.5** — the PR seam, the git seam in the invoking tree, and the git seam in the §6.1 clone — each behind its own spy recording the **resolved verb** of every call routed through it, including calls made through a generic entry point (a `_gh([…])` argv, a shell string, a URL built at runtime), classified by the operation performed rather than by the function name it was called under (§6.5: `checkout -b` and `switch -c` in the clone both resolve to `create-branch`) | the pass returns | three assertions per domain, all required. **(1) Containment, on every domain:** observed ⊆ that domain's permitted set (§6.5's obliged ∪ permitted columns) — which alone falsifies every merge verb. **(2) Obligation, on this PR-opening Given:** the obliged column is present — `{read-pr, create-pr}` on the PR seam, `{add, commit}` in the invoking tree, `{clone, create-branch, add, commit, push}` in the clone; `fetch` is permitted and its presence or absence is not asserted either way. **(3)** the PR is in state `open` — not `merged`, not `auto-merge-enabled` — after the pass returns. Containment plus obligation is what makes the oracle both passable and strong: a pooled domain, or a set-equality asserted universally, is red on a conforming pass (a pass with no guard-set proposal observes `∅` on two of the three domains; §5.4, §6.1 and §6.2 all oblige git verbs), while an absence-only "no merge call exists" is satisfied vacuously by a pass that makes no calls at all, is satisfied by a renamed route, and cannot see a merge issued through a generic seam. Comparison is over **sets**, not multisets: AT-Q2's three commits are three occurrences of one verb |
+| AT-Q7c | operator | a pass with **no** guard-set proposal — every promotion routes to the consuming repo (§12.1 S-02's common shape) — under the same three spies | the pass returns | the containment assertion (1) holds on all three domains with the PR seam and the clone seam observing `∅`, and the invoking tree observing `{add, commit}`; **no** obligation is asserted on the two empty domains. This is the row that pins the universal rule as containment: an implementation of AT-Q7's oracle that asserted set-equality universally is red here on correct behaviour |
 | AT-Q7b | maintainer | the pass's source at HEAD | it is inspected | no merge or enable-auto-merge call appears on any path. This is a **supplementary** check that adds a static direction to AT-Q7's runtime oracle; it is never the sole evidence for AC-3.7, and §6.5 control (b) is asserted through AT-Q7, not through this row |
 | AT-Q8 | operator | the PR API failing with a network, rate-limit or 5xx error | the PR is attempted | reason code `api-failure` with the API's status text recorded verbatim; the fallback proposal file carries the full diff; the pass does not halt. Distinct from AT-Q6's `branch-exists` Given: E-23 and E-24 are different failure classes and each names a different reason code |
 | AT-Q10 | operator | a proposal for `docs/_constraints/DOMAIN-CONSTRAINTS.md` whose `(failure-mode-id, action)` pair is already carried by a prior pass's §8.1 failure-mode record with `route: constraints` — the `enacted` arm of §6.4's consuming-repo carrier | the pass runs | **nothing** is appended to `DOMAIN-CONSTRAINTS.md` for it (the file's bytes are unchanged); `duplicate-suppressed` is recorded naming the pair **and** the enacting record's `passId`; `pr:` is **empty**, since no PR is involved on this route. All three conjuncts are required — an implementation that suppressed the append but recorded nothing is indistinguishable from one that never derived the proposal |
@@ -2215,7 +2230,7 @@ falsifies it; none of them is new here.
 | BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`. Its carrier depends on the route: on the PR route it is read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged` (a `closed`-unmerged PR is not in the key set); on the consuming-repo route it is read from the §8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`, where a pair is `enacted` only when a record carries it with a `route` other than `degraded`, and `absent` otherwise. The two carriers agree on the substantive rule: **a proposal that reached nothing is re-proposable; one that landed is not.** One key, two carriers — a route with no carrier would not be idempotent at all. | §6.4 | AT-Q3, AT-Q4 (PR carrier); AT-Q10, AT-Q11, AT-Q12 (consuming-repo carrier) |
 | BR-26 | A suppressed proposal opens nothing, fires no fallback, and populates `suppressed-by:` — never `pr:`. | §6.4, §10.3 | AT-Q3, AT-L2 |
 | BR-27 | An existing machine-opened PR is never extended, amended or superseded by a later pass. | §6.4 | AT-Q3 |
-| BR-28 | Over each of §6.5's two enumerated seam domains, the pass's observed verb **set** is set-equal to that domain's permitted set — `{read-pr, create-pr}` on the PR seam, `{clone, fetch, create-branch, add, commit, push}` on the git seam — and the PR it opened is `open` when the pass returns; so no merge or enable-auto-merge call is made on any PR, including its own, under any status or configuration. The rule is stated positively because an absence-only form is satisfied by a pass that calls nothing, and per-domain because the pass is *required* to make git calls (§5.4, §6.1, §6.2). | §6.5 | AT-Q7, AT-Q7b |
+| BR-28 | Over **each** of §6.5's three enumerated seam domains — the PR seam, the git seam in the invoking tree, the git seam in the §6.1 clone — the pass's observed verb **set** is a **subset** of that domain's permitted set, on every pass and under every status or configuration; every merge and enable-auto-merge verb is outside every permitted set, so containment alone forbids a merge on any PR including its own. On a pass that **opens a PR**, each domain's *obliged* verbs are additionally present and the PR it opened is `open` when the pass returns. Containment is the universal form because a conforming pass with no guard-set proposal observes `∅` on two domains; the obliged conjunct is what stops the rule from being satisfied by a pass that calls nothing. Verbs are compared as resolved operations, not function names. | §6.5 | AT-Q7, AT-Q7b, AT-Q7c |
 
 ### 18.6 Credential
 
