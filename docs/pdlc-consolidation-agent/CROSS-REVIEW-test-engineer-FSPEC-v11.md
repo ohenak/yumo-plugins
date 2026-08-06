@@ -27,6 +27,15 @@ another section or about this repository, against the cited target.
 
 ## Findings
 
+One finding, new, inside text this revision introduced. No unchanged section was re-litigated. It is
+**Low**, and it is Low on the merits and not only on `DEC-SEV-02`: the rule it concerns is stated
+normatively one table away, the observable is unambiguous, and the repair is four words in an index
+cell. No High and no Medium.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| L-01 | Low | Local | **E-12b's rewritten field→reader index omits one reader of `phase`, against §8.1's cell-level set-equality rule.** This revision rewrote E-12b's Given (`:2591`) into a full eight-field index — "`route` for §6.4 / §8.4 step 1, `target` for §5.1 / §8.6, `action` for §6.4 / §8.4 step 1, `artifact` for §8.3 / §8.5 and for §8.4's harvest question, `passId` for §6.4's evidence spelling, **`phase` for §8.3**, `failure-mode-id` for §8.3 / §8.4 step 1 / §8.4's harvest question, `symptom` for §8.4's harvest question — all eight of §8.1's fields". The *field* set is complete (that half of the claim holds). The **mapping** is not: §8.1's §8.4 steps 2–3 row (`:1182`) indexes "`symptom`, the subject `artifact` and **`phase`** — the three the question is composed of", so `phase` has **two** readers, and E-12b names one. §8.1's own rule makes this exactly a defect rather than a wording preference: "**The set-equality is over the table's cells, not only its rows** … A reader that indexes an unlisted field, and **a field indexed by a reader whose row omits it, are the same defect**" (`:1169-1172`). E-12b is not that table, but it is the error-catalogue row a TSPEC/PROPERTIES author reads to enumerate this error's arms, and the three sibling multi-reader fields (`route`, `action`, `artifact`, `failure-mode-id`) are all listed with every reader — so a reader transcribing E-12b builds a `phase` arm with one observable where the document states two (§8.3's row emitted at `insufficient-evidence`; §8.4 steps 2–3's question still asked with the `phase` half unavailable). Nothing is undecidable — both observables are stated, at `:1182` and `:1184`, and LD-1/LD-5 both carry the steps 2–3 arm — which is why this is Low and not a repeat of v10's M-01: no rule, arm or observable is wrong, and the repair adds no rule. **Repair, four words:** `phase` for §8.3 **and for §8.4's harvest question** | E-12b `:2591`; §8.1 `:1169-1172`, `:1182`, `:1184` |
+
 ## Questions
 
 ## Positive Observations
