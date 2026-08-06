@@ -59,6 +59,20 @@ cut only connective prose.
 
 ## Questions
 
+Only questions arising from the changed sections. v7's Q-01 is answered by AC-5.4's new sentence
+("A **revision** routes exactly as that promotion's retirement would", `:447-448`) — which is the
+answer I hoped for and is what makes F-01 above a narrow question about *repetition* rather than
+about routing. Q-02 is answered by choosing the `action` discriminator over the leaves-the-key-set
+rule, which is the more conservative of the two and needs no defence. Q-03 is answered by both §4b
+rows landing (`:605-606`). Q-04 is answered by D-CONS-08 (`:683`) — the cost was priced and
+deferred by name, which is the reviewable form.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: is a revision meant to reset AC-5.3's `recurred` streak? The REQ says the streak is "counted per `failure-mode-id` **in passes, not elapsed time**" over the promotion's records (`:438`), and AC-5.5 explicitly names what resets *its* streak ("a `prevented` or `recurred` verdict resets the `unmeasurable` streak to zero", `:454-455`) — so the asymmetry is conspicuous. If a merged revision resets the `ineffective` streak, F-01's second-revision case still arises, just two passes later; if it does not, the promotion is re-flagged `ineffective` on the very next counted pass after the revision merges, which would make the second revision the *common* case rather than the rare one. Either answer is fine, but the document should state one — it is the difference between F-01 being a corner and F-01 being the main line. |
+| Q-02 | For F-02: is a promotion intended to be atomic — one failure mode, one file, one commit? Reading AC-3.3 (`:260-265`) and AC-5.1 together I think yes, and if so the fix is to say it, because two other statements start to look like consequences rather than coincidences: "each edit is a separate commit" and "Two distinct failure modes in one `phase` touching one file therefore merge into one promotion" (`:384`). But if promotions are atomic, then the `orchestrate-dev.js` + `dist/` case is *two* promotions with two ids for one logical change, both measured separately by AC-5.2, and one of them targets a generated artifact that no human edits — which is a strange promotion to carry a standing effectiveness verdict for. That is the argument for the primary-file rule (F-02's option (b)) instead, with generated paths excluded by name. Which way you go changes what AC-5.2's table counts, so it is a REQ-layer choice. |
+| Q-03 | Non-blocking, on §4b's two overlapping vocabularies: `promote`/`revise`/`retire` (the key's action) and `revision`/`retirement` (the reported field) now both live in the table with a cross-reference in each cell (`:603-604`). That is correctly *documented*, but it is two names for one distinction, and the reported set is missing the third member — a pass that made an ordinary promotion reports no value at all from the `revision`/`retirement` field. Was keeping both deliberate (AC-5.3's field predates the action and is what an operator reads), or is the reported field now redundant with the trailer's `action`? If deliberate, one clause in AC-5.3 saying the field is absent for a `promote` would close the enumeration; if not, collapsing to one vocabulary removes a mapping every downstream layer has to carry. |
+
 ## Positive Observations
 
 ## Recommendation
