@@ -160,6 +160,83 @@ Nothing in this window impeaches either reviewer's conduct. The record on both:
 
 ## Pattern of Disagreement
 
+**There is still no disagreement between the reviewers, and none between the reviewers and the
+author.** Zero findings were argued in nine consecutive rounds. What this window adds is a *new*
+pattern that the first window could not have shown, because in the first window nobody ever
+approved.
+
+### 1. Anti-phase approval — the loop failed on synchronisation, not on quality
+
+| Round | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|
+| software-engineer | needs revision | **approved** | **approved** | needs revision | needs revision |
+| test-engineer | **approved** | needs revision | needs revision | needs revision | needs revision |
+
+The convergence rule requires both approvals **in the same round**. Approval was available in three
+of five rounds and never simultaneously. The mechanism is visible in the finding tables: the round
+that satisfies one reviewer is the round whose *repair text* gives the other one something new to
+check. Round 6 answers SE's round-5 Mediums with a reader table, a tie-break rule and a set of new
+fixtures; TE approves the fixtures and SE files three Mediums against the new normative text.
+Round 7 repairs those; SE approves and TE files a Medium against the `F`-arm the repair introduced.
+The two reviewers are not in conflict — they are **out of phase**, and each round's repair is what
+shifts the phase.
+
+This matters more than the Medium count. A rule that requires simultaneous approval over a document
+that changes between every judgement makes convergence a coincidence, not a limit. With independent,
+usually-nonempty finding streams, the probability of a simultaneous empty round does not rise as the
+document improves; it stays roughly the product of two small probabilities, and the repair between
+rounds keeps resetting both.
+
+### 2. The freeze changed the *class* of finding; it did not change the *rate*
+
+The mechanism freeze forbade new normative rules, new BRs and new ATs beyond pinning artefacts for
+rules already stated. It was honoured — no new mechanism entered the document in rounds 7–10, and
+both reviewers police the boundary explicitly. The Medium population duly fell from four-or-five per
+round to one per reviewer per round, and then **stopped falling**: rounds 9 and 10 each carry exactly
+one Medium per reviewer, and the round-9 and round-10 Mediums have the identical shape.
+
+The channel the freeze left open is the one it had to leave open: *state the observable, name the
+downstream owner*. That channel produced two registers — §14.1 T-10 (TSPEC-owned spellings) and
+§14.5 LD-1…LD-5 (PROPERTIES-owned layer deferrals) — and a set of completeness sentences over them.
+**A register is a universal quantifier over a range that the register itself keeps enlarging**, and
+every enlargement re-asserts the universal. That is exactly the shape of both terminal findings.
+
+### 3. Every Medium in the last three rounds is a falsified universal that the same round introduced
+
+| Round | The universal the revision added | Its falsifier |
+|---|---|---|
+| 8 (TE M-01) | §8.1's `passId` arm makes a bookkeeping field defeat NFR-4's suppression | contradicts §6.4's own `enacted` predicate |
+| 9 (SE F-01) | *"for every field in §8.1's eight, the readers that index it are exactly those whose `Fields indexed` cell names it"* | one field (`phase`) has no short-record arm anywhere |
+| 9 (TE M-01) | the same cell-level set-equality claim | one arm hides `phase` |
+| 10 (SE F-01 ≡ TE M-01) | *"Between the two registers, every deferral this document makes has exactly one home"* | the table three lines below names an arm with zero homes as a spelling |
+
+SE says it in round 10's own words: *"One Medium, and it is Medium for the same reason v9's F-01
+was: this round added a normative universal about where deferrals live, and the universal is
+falsified by two of the registers it ranges over."* The author is not making sloppy claims — the
+claims are made *because* the reviewers, correctly applying the completeness-by-set-equality clause
+they are dispatched with, ask for coverage arguments; and a coverage argument stated as a universal
+over a growing range is a claim that its own next amendment will falsify.
+
+### 4. The defect shape still migrates one axis over rather than recurring
+
+As in the first window, no finding is ever the same finding twice, which is why no round reads as a
+repeat. Across both windows one thread runs: the short/legacy record. Round 5 — the reader-side rule
+has no falsifier. Round 6 — the falsifier's own predicate is inverted. Round 7 — the fixture pins no
+transcribable expected set. Round 8 — the `passId` arm defeats a suppression it should not reach.
+Round 9 — the field-side set-equality omits `phase`. Round 10 — the register that was created to
+hold the deferred arms does not carry two of them. Six rounds, one subject, six genuinely different
+defects, each one living in the text written to close the previous one.
+
+### 5. The document is still growing, though far more slowly
+
+The window began at 2,513 lines / 247,750 bytes (v6.0) and ended at 2,634 lines / 277,525 bytes
+(v11.0): **+121 lines, +29,775 bytes** in five rounds, of which *new mechanism* accounts for none —
+the freeze forbade it and the commit log carries no rule-adding commit. The growth is entirely
+bookkeeping: registers, arm enumerations, back-anchors, set-equality leads,
+normativity rules about which cell wins. The freeze stopped the document acquiring behaviour and
+did not stop it acquiring surface, and the surface it acquires is the kind whose correctness is a
+completeness claim — see pattern 3.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
