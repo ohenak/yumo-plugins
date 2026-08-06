@@ -1232,6 +1232,73 @@ breach REQ §4b's set-equality obligation. They are report content, not enumerat
 
 ## 12. Observable outcomes per scenario
 
+This is the terminal-outcome table §13's acceptance tests range over (DC-05). Every row is reachable,
+every terminal status of vocabularies §1 appears, and each row names what is observable **on disk and
+in the report body** — never an internal state.
+
+### 12.1 Terminal outcomes
+
+| # | Scenario | Status | Reason code(s) | Marker | Log row | Consumed pair | Commit |
+|---|---|---|---|---|---|---|---|
+| S-01 | Tick, neither test fires | `skipped-cadence` | none | not taken | **none** | none | none |
+| S-02 | Tick, volume test fires, promotions land | `promoted` | — | taken, released | one | one, non-empty | yes |
+| S-03 | Tick, cadence test fires on an empty datum set | `promoted` / `no-op` per outcome | `no-cadence-datum` | taken, released | one | one | yes |
+| S-04 | Direct invocation, cadence not elapsed | `promoted` / `no-op` per outcome | — (trigger `manual`) | taken, released | one | one | yes |
+| S-05 | Consumed set empty | `no-op` | — | taken, released | one | one, **empty** | yes |
+| S-06 | Every promotion duplicate-suppressed | `no-op` | `duplicate-suppressed` | taken, released | one, `pr:` **empty**, `suppressed-by:` populated | one, non-empty | yes |
+| S-07 | Some promotions landed, one PR failed to open | `promoted-degraded` | one §6.3 class code | taken, released | one | one | yes |
+| S-08 | Credential absent, nothing else promoted | `no-op` | `credential-unavailable` | taken, released | one, `credential: absent` | one | yes |
+| S-09 | Marker held and fresh | `refused` | `consolidation-in-progress` | **not taken** | one, `credential: absent` | **none** | **none** |
+| S-10 | Marker held and stale | as the run's own outcome | `reclaimed-stale-lock` (+ others) | reclaimed, released | one | one | yes |
+| S-11 | Neither model rung resolves | `failed` | `advisory-model-unresolved` | taken, released | one | one (already appended at step 7) | yes |
+| S-12 | Terminal outcome reached, git refuses the commit | unchanged from the run's own outcome | + `writes-uncommitted` | taken, released | one | one | **no** — writes left in the working tree |
+| S-13 | `ESCALATIONS.md` absent | as the run's own outcome | + `no-advisory-corpus` | taken, released | one | one | yes |
+| S-14 | `ESCALATIONS.md` present, zero entries | as the run's own outcome | + `advisory-corpus-empty` | taken, released | one | one | yes |
+
+Every terminal status appears: `promoted` (S-02), `promoted-degraded` (S-07), `no-op` (S-05, S-06,
+S-08), `skipped-cadence` (S-01), `refused` (S-09), `failed` (S-11).
+
+S-10, S-12, S-13 and S-14 name reason codes that **compose** with another row's status rather than
+determining one — the composition rule of vocabularies §1. That is why their status cells say "as the
+run's own outcome" instead of naming a status: pinning one would assert a pairing the rule does not
+require.
+
+### 12.2 Per-promotion outcomes
+
+Independent of the pass's terminal status, each proposal reaches exactly one of:
+
+| # | Proposal outcome | Observable |
+|---|---|---|
+| P-01 | applied to the consuming repo | the append in `DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md`, inside the §5.4 commit |
+| P-02 | opened as a PR | the PR URL in `pr:` and in `CONSOLIDATION-PROPOSAL-{passId}.md`; one commit per edit carrying `PDLC-PROMOTION-ID` |
+| P-03 | degraded to the proposal file | the full diff inline in `CONSOLIDATION-PROPOSAL-{passId}.md`, plus its failure class in both the file and the row |
+| P-04 | suppressed as a duplicate | a `suppressed-by:` entry naming the `(id, action)` pair and the open-or-merged PR; **no** PR opened, **no** fallback fired |
+| P-05 | written as an operator action | the §9.5 consumer-config widening, in the report only — no PR, no `degraded` classification |
+
+### 12.3 Per-promotion verdicts and states
+
+| # | Emitted for | Value | Where |
+|---|---|---|---|
+| V-01 | every prior promotion, every reporting pass | `prevented` / `recurred` / `insufficient-evidence` | one §8.3 row per distinct `failure-mode-id` |
+| V-02 | a promotion `recurred` on two consecutive counted passes | state `ineffective`, plus a `revision` / `retirement` field | the same row |
+| V-03 | a promotion `insufficient-evidence` on `unmeasurablePasses` consecutive evaluated passes | state `unmeasurable` | the same row |
+| V-04 | an ordinary `promote` with no remediation | the `revision` / `retirement` field is **absent** | the same row |
+
+A `no-op` pass emits V-01 through V-04 unchanged, restating each standing verdict and state
+(AC-1.4) — the effectiveness table is not conditional on having promoted anything.
+
+### 12.4 What is invariant across every row above
+
+| Invariant | Holds because |
+|---|---|
+| The invoking tree's HEAD and branch are unchanged | AC-3.8 forbids every branch operation (§6.1) |
+| No guard-set path is written in the invoking tree | §5.1, NFR-1 |
+| No PR is merged, and no merge API is called | §6.5 |
+| No credential value appears in any artifact | §7.4 |
+| `docs/_decisions/.consolidation-lock` is never committed | §4.1, §5.4 |
+| Every log write is an append of one whole record | vocabularies §3 |
+| No consumed LEARNINGS file is modified | NFR-5 |
+
 ## 13. Acceptance tests
 
 ## 14. Obligations and open questions
