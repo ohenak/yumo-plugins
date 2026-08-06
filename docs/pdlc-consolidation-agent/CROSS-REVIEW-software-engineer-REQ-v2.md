@@ -80,7 +80,46 @@ The revision added roughly two dozen new `file:line` citations. Every one checke
 
 ## Questions
 
+Only questions arising from the changed sections. v1's Q-01…Q-07 are answered by the revision
+(Q-01 by AC-3.8, Q-02 by AC-5.2, Q-03 by AC-3.3, Q-04 by AC-5.3, Q-05 by AC-6.3, Q-06 by AC-7.2,
+Q-07 by AC-1.4) and are not re-asked.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does REQ-CONS-06 ship at all if the advisory tier stays disabled (F-01)? A precondition — "the pass reports `no-advisory-corpus` and makes no seam proposal when `ESCALATIONS.md` is absent" — would keep the requirement honest and buildable without waiting on an operator opt-in. Which is intended: gate on the file's existence, or gate on `advisory.enabled`? |
+| Q-02 | For AC-5.5 (F-02), is the intended population "consecutive passes in which this promotion was evaluated at all" (i.e. every pass with a non-empty consumed set, regardless of verdict)? If so AC-5.5 needs that phrase rather than AC-5.3's `counted`, and AC-1.4's no-op parenthetical still needs deleting or re-grounding. |
+| Q-03 | AC-3.8 puts the promotion in a temp clone but leaves AC-2.1/2.2/2.4's writes in the invocation tree (F-03). Are those writes expected to be left uncommitted for the operator, committed pathspec-scoped by the pass, or also routed through the PR? The third would be a different feature; the first two are both defensible but only one can be the contract. |
+| Q-04 | The REQ says the pass "ships as a workflow script invoked as `/pdlc:consolidate-learnings`" while `consolidate-learnings` exists today only as a skill. Is the intent the `orchestrate-queue` shape — a skill and a bundled workflow sharing a name, with the bundle added to `build-runtime.mjs` and the distribution manifest? If so, that is a new tracked artifact and BL-02's distribution machinery applies to this feature's own output, which is worth one line in §5 Scope. |
+| Q-05 | AC-1.3's marker lives in `.consolidation-log.md`, which is a tracked file. Does writing and removing the marker produce two commits per pass in the consuming repo, or is the marker expected to live only in the working tree? The answer interacts with F-03 and with the AC-1.1 predicate's substring corpus (F-05). |
+
 ## Positive Observations
+
+- **The revision did the hard thing on AC-3.7 rather than the easy thing.** It would have been
+  cheaper to soften v1's F-01 into "the guard is expected to apply". Instead the REQ states flatly
+  that no code path evaluates an inbound PR, replaces the inherited claim with three of the pass's
+  own observables, and books the repo-side belt as an operator dependency (BL-05) rather than
+  pretending it exists. That is the correct response to "you asserted a control nothing enforces",
+  and the citations behind it are all exact.
+- **AC-5.2's three-arm rule is a genuine oracle, not a restatement.** The `prevented` arm's second
+  conjunct — "at least one consumed LEARNINGS comes from a feature that exercised the promotion's
+  recorded `phase`" — is the part that makes the verdict falsifiable rather than optimistic, and
+  it is what lets NFR-4 claim determinism honestly. The pre-convention-LEARNINGS carve-out
+  ("names no id and is therefore evidence only for the `phase` population test") closes the one
+  hole that would otherwise have made every historical file look like a `prevented`.
+- **§4a is the right shape, not merely present.** Modelling it on `parseAdvisoryConfig`'s per-key
+  independent fallback — rather than inventing a new config contract — is exactly the
+  cite-and-reuse discipline DC-08 asks for, and the "Malformed / absent" column means the
+  degradation behavior is specified per key instead of left to the implementer.
+- **REQ-CONS-06's preamble explains the narrowing instead of just performing it.** It shows the
+  work: the rows exist, they are in-memory only, the durable record is deleted, the distil prompt
+  has no schema — therefore consume `ESCALATIONS.md`, and book the rest as D-CONS-06. A future
+  reader can tell why the requirement is the shape it is. The honest-limit paragraph
+  ("`ESCALATIONS.md` records escalations, not resolutions") is the same virtue.
+- **The stopping rule is written to be usable by a reviewer, not to end the argument.** §5a names
+  the four classes that must be fixed at REQ layer — false claim about HEAD, unconfigured
+  threshold, unbound deferral, unprovidable topology — which is a checkable list rather than an
+  appeal to altitude. It is worth noting that both High findings in this round fall squarely inside
+  that list, by the REQ's own test.
 
 ## Recommendation
 
