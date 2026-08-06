@@ -38,6 +38,12 @@ enumeration.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Direct input to F-01(a), asked as a question because the answer is a judgment I should not make for you: when a record is short of `phase`, should §8.3 emit the row with the verdict falling to `insufficient-evidence`? That is the direction `:1383-1384` already fixes for a phase the §2 mapping cannot decide ("Any phase the mapping cannot decide counts as **not** exercised, routing that promotion to `insufficient-evidence` and never to a guessed `prevented`"), it keeps the row (which `:1171` argues at length must never be dropped), and it needs no new concept — a missing `phase` field and an undecidable `phase` value are the same epistemic state. If that is the intent, the repair is one clause in §8.3's reader cell and the arm is stated, not deferred. |
+| Q-02 | On F-01(b): is the §8.4 harvest-side lookup (steps 1–3, `:1419-1421`) deliberately **outside** the reader table because the harvest agent is a consumer skill rather than a pass-side contract? That reading is defensible — the table's arms are all pass-side behaviours ("reports a parse notice and skips that contract"), and a `symptom` arm for an LLM prompt is not the same kind of object. If so, the closure sentence wants the qualifier ("no **pass-side** reader … outside that set"), and §8.4's step table wants a line saying what the prompt does with a record short of `symptom` or `phase` — one question with a hole in it, or one question fewer. Either answer is fine; the current text asserts the unqualified universal and then contradicts it forty lines later. |
+| Q-03 | §6.4's new short-`passId` paragraph (`:831-843`) says the entry "still names the pair, and in place of the enacting `passId` it carries an explicit unavailable statement", and §8.1's row (`:1168`) and §10.3 (`:1748`) agree. None of the three says whether the **parse notice** is still reported for that record. E-12b does (`:2567`: "a parse notice naming the record and the missing field" is the head of the row, and the `passId` case is an exception only to the *skipping*, not to the notice), so I read the answer as yes and did not file it. Is that the intent — the contract runs, the spelling degrades, **and** the notice is still emitted? One clause in §6.4 would close it, and it matters because the notice is the only thing that makes the degraded spelling attributable to a short record rather than to a writer bug. |
+
 ## Positive Observations
 
 ## Recommendation
