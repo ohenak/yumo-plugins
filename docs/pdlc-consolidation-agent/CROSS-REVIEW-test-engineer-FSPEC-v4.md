@@ -87,8 +87,28 @@ re-litigated, and I re-read every changed section listed in the ten commits.
 
 ## Recommendation
 
-<!-- filled below -->
+**Needs revision**
+
+All five v3 findings and all three v3 questions are resolved, three of them by changing a mechanism
+rather than an assertion, and every repository claim I re-checked at HEAD holds. The approval bar is
+unchanged, and one Medium finding is open — in text this revision introduced.
+
+What must change:
+
+1. **H-06** — §8.4 step 1 now declares the open-promotion computation pass-side and "testable at
+   this layer", and §13 has no row that tests it. Add one AT over a constructed log fixture covering
+   all four arms of the predicate in one run (a `retire` at a landed `route`; a `retire` at
+   `route: degraded`; a `promote`-only id; a `revise`-only id) asserting the computed list is
+   **set-equal** to the expected id set — containment is satisfied by an implementation that returns
+   every id ever recorded. List it in §15.1's AC-5.2 row and give it a business-rule home so the
+   matrix carries it.
+
+That is the whole of it. H-06 is the same shape as H-01/H-02/H-03 were in the last round — new
+mechanism arriving one step ahead of the artefact that pins it — and it is the smallest instance of
+that shape the document has produced. Nothing in this revision re-opens a decision an earlier one
+settled, and the three questions above are questions, not findings: none of them blocks.
 
 ## Verdict
 
 VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 0}
