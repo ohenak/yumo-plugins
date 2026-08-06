@@ -183,7 +183,10 @@ which is the never-fires failure this datum exists to prevent.
 
 - **AC-1.1** — Given a `/loop` tick and `consolidation.cadenceHours` elapsed since the cadence datum
   (the most recent log row with status `promoted` / `promoted-degraded` / `no-op` / `failed`), Then a
-  consolidation pass runs with no per-pass operator invocation; given neither the volume test (step 2)
+  consolidation pass runs with no per-pass operator invocation. Given **no** log row carries one of
+  those statuses — no log file, or a log like HEAD's whose rows predate the status convention — Then
+  the interval counts as elapsed, the pass runs, and its log row records trigger `cadence` plus
+  reason code `no-cadence-datum`; given neither the volume test (step 2)
   nor the cadence test (step 3) fires, Then the tick exits `skipped-cadence` having read **no
   LEARNINGS body** — only basenames were enumerated — and writes no log row. Given a direct
   `/pdlc:consolidate-learnings` invocation, Then the pass runs regardless of the interval — the
@@ -204,14 +207,14 @@ which is the never-fires failure this datum exists to prevent.
   working tree only — it is never a commit of its own (AC-3.8b). Take and release are set-equal to
   AC-7.1's terminal-status set, one stated outcome per status, so no status is unmapped:
 
-  | Terminal status | Marker taken? | Marker released by this pass? |
-  |---|---|---|
-  | `promoted` | yes | yes |
-  | `promoted-degraded` | yes | yes |
-  | `no-op` | yes | yes |
-  | `failed` | yes | yes |
-  | `refused` | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner |
-  | `skipped-cadence` | **no** — the tick terminates before the marker is written | **no** |
+  | Terminal status | Marker taken? | Marker released by this pass? | Commits (AC-3.8b)? |
+  |---|---|---|---|
+  | `promoted` | yes | yes | yes |
+  | `promoted-degraded` | yes | yes | yes |
+  | `no-op` | yes | yes | yes — the log row and consumed block are still writes |
+  | `failed` | yes | yes | yes, if it wrote anything; otherwise nothing to commit |
+  | `refused` | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner | **no** — it wrote nothing |
+  | `skipped-cadence` | **no** — the tick terminates before the marker is written | **no** | **no** — it writes no log row (AC-7.2) |
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then
   the pass reclaims it, records `reclaimed-stale-lock` with the abandoned pass id in its report,
@@ -222,19 +225,24 @@ which is the never-fires failure this datum exists to prevent.
   as a duplicate (NFR-4) — Then it records `no-op` in `docs/_decisions/.consolidation-log.md` and
   exits successfully without opening a PR or writing a proposal file. A `no-op` pass still emits the
   AC-5.2 effectiveness table, restating each prior promotion's **standing** verdict and state
-  (including an `unmeasurable` already reached), and still releases the AC-1.3 marker. It advances
-  neither AC-5.3's `recurred` streak nor AC-5.5's `insufficient-evidence` streak: with an empty
-  consumed set it is not an evaluated pass (AC-5.5), so it can report an ageing but never cause one.
+  (including an `unmeasurable` already reached), and still releases the AC-1.3 marker. **Which
+  streaks it advances is decided by consumed-set emptiness, never by the `no-op` label** — the two
+  causes above differ exactly there. A `no-op` with an **empty** consumed set is not an evaluated
+  pass (AC-5.5) and is not a counted pass (AC-5.3): it advances neither streak, so it can report an
+  ageing but never cause one. A `no-op` reached by duplicate suppression has a **non-empty** consumed
+  set, produces real AC-5.2 verdicts, and therefore counts in both populations on the ordinary rules
+  — `prevented` / `recurred` in AC-5.3's `counted` set, any verdict in AC-5.5's evaluated set.
 - **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it
   actually ran on in its report and in the log row. The rung ladder is the one
   `pdlc-advisory-tier` ships: `MODEL_ADVISORY` (`pdlc/workflows/orchestrate-dev.js:1652`) first,
   `MODEL_ADVISORY_FALLBACK` (`:1653`) on non-resolution. **This feature reuses that ladder; it does
   not restate it.** The two constants are module-private, but the ladder itself is not: the resolver
-  `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833` and documented there as "the **one**
-  ladder the tier ships". The shipped second consumer follows exactly that pattern rather than
-  copying literals — `orchestrate-queue.js` dispatches through an injected seam with the raw agent
-  and a threaded `rungState` (`orchestrate-queue.js:1244-1251`, under the comment "the advisory
-  driver resolves its own model rung", `:1243`), and the build inlines `orchestrate-dev` into the
+  `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833`, under a doc comment at `:1800`
+  calling it "TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships". The shipped
+  second consumer follows exactly that pattern rather than copying literals —
+  `orchestrate-queue.js` dispatches through an injected seam with the raw agent and a threaded
+  `rungState` (`orchestrate-queue.js:1245-1256`, under the comment "the advisory
+  driver resolves its own model rung", `:1243-1244`), and the build inlines `orchestrate-dev` into the
   queue bundle so that works (CLAUDE.md, "Workflow scripts and the runtime build"). The consolidation
   pass resolves its rung the same way, and the rung it actually ran on is what AC-7.1 reports.
 
