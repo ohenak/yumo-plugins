@@ -306,7 +306,7 @@ These are the identity keys NFR-4 is stated against.
 
   | Class | Reason code | Fallback fires? | Recorded |
   |---|---|---|---|
-  | Credential absent or invalid | `credential-unavailable` | yes | class + `credential: absent (redacted)` (AC-4.3) |
+  | Credential absent or invalid | `credential-unavailable` | yes | class + `credential: absent` (AC-4.3) |
   | `consolidation.pluginRepository` unset, not found, or renamed | `repository-unresolved` | yes | class + the configured value |
   | Network / API failure, including rate limiting | `api-failure` | yes | class + the API's status text |
   | Head branch `consolidation/{passId}` already exists remotely | `branch-exists` | yes | class + the existing branch and any PR found for it |
@@ -343,15 +343,36 @@ These are the identity keys NFR-4 is stated against.
   (AC-2.1), `DECISIONS-{topic}.md` (AC-2.2), `.consolidation-log.md` (AC-1.3, AC-2.4, AC-3.4, AC-5.1,
   AC-7.2) and `CONSOLIDATION-PROPOSAL-{passId}.md` (AC-3.5, AC-5.4) — Then those writes land in the
   **invoking tree on whatever branch it is already on** (AC-3.8 forbids changing it), and the pass
-  commits them **itself, exactly once, at its terminal outcome**, pathspec-scoped to exactly those
-  paths and never `-a`, never pushed — the same discipline `commitPaths`
-  (`pdlc/workflows/orchestrate-dev.js:8669`: `git add -- <paths>` then a plain `git commit -m`) already
-  applies to the pipeline's own queue-row commit. Consequences the REQ commits to: the AC-1.3 marker
-  is written and removed inside the pass and is therefore **never committed** (one commit per pass,
-  not two); a pass that terminates before its commit leaves the writes uncommitted for the operator
-  and records that in its report; and because the commit is pathspec-scoped, an unrelated
-  pathspec-scoped pipeline commit in the same tree cannot pick these files up and vice versa. These
-  writes never travel through the AC-3.1 PR — that PR carries only guard-set edits.
+  commits them **itself, exactly once, at its terminal outcome** (AC-1.3's Commits column), never
+  pushed, with the **pathspec on both git calls** — `git add -- {paths}` *and*
+  `git commit -m {msg} -- {paths}`. The precedent is `commitQueueRow`
+  (`pdlc/workflows/orchestrate-queue.js:1576`: add `:1577`, commit `:1580-1585`) and the advisory-record
+  commit that mirrors its exact two-call shape (`:1615`). It is explicitly **not** `commitPaths`
+  (`pdlc/workflows/orchestrate-dev.js:8669`), whose commit is a plain `git commit -m` with no pathspec
+  (`:8690`) — deliberately, because there the `git add` scopes a set the wave already verified. That
+  shape would sweep anything already staged into the pass's commit, and AC-3.8's shipping tree is
+  precisely one that may be mid-pipeline with a staged index, so it cannot deliver this AC's
+  isolation guarantee. Consequences the REQ commits to: the AC-1.3 marker is written and removed
+  inside the pass and is therefore **never committed** (one commit per pass, not two); an unrelated
+  pathspec-scoped pipeline commit in the same tree cannot pick these files up and vice versa; and
+  because a concurrent pipeline commit can hold `index.lock`, the pass retries on that class of
+  failure the way `commitPaths` does (`gitWithLockRetry`, `:8670`). A commit that still fails leaves
+  the writes uncommitted for the operator, does not change the pass's terminal status, and records
+  reason code `writes-uncommitted` in the report and log row. These writes never travel through the
+  AC-3.1 PR — that PR carries only guard-set edits.
+
+  **Where those commits go, stated.** The invoking branch **is** the accepted destination in the
+  shipping configuration, with the consequence said out loud: when that branch is a mid-pipeline
+  `feat-*`, the AC-2.1/AC-2.2 promotions reach the default branch by riding that feature's own PR
+  (pushed later by Phase PUB, merged if at all by Phase MERGE) — a PR raised and reviewed for
+  something else. The AC-7.1 report therefore names the branch the commit landed on, so the operator
+  can see it. The abandonment case is closed by construction rather than by policy: the promotions
+  **and** the NFR-5 consumed block are written in the **same single commit**, so a discarded branch
+  loses both together — the LEARNINGS are not marked consumed on the default branch, and a later pass
+  redoes the work. The failure mode "marked consumed while the promotion is lost" is therefore
+  unreachable. A destination other than the invoking branch (a `consolidation/{passId}` branch for
+  the consuming-repo writes too) is **not** specified here: it would require the branch operations
+  AC-3.8 forbids in the invoking tree.
 
 ### REQ-CONS-04 — Credential scope
 
