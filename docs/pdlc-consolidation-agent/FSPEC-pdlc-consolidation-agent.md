@@ -1235,6 +1235,12 @@ phase. **The precedence rule is scoped to one `action`, because the merge is**: 
 `action`, so a `promote` and a `revise` over one subject at one phase are two keys, no merge fires,
 precedence never runs, and both writes happen — including a guard-set one. Consequence 2 below is
 therefore an absolute about *merged* records, not about every pair of proposals over one subject.
+**No fixture in §13 covers that two-action-one-subject pass** — every §13 row is single-action over a
+subject by construction (AT-R6b's five fixtures) or partitions on PR-opening rather than on action
+multiplicity (AT-Q7, AT-Q7c) — so it is named **PROPERTIES-owned per DEC-LAYER-01**, with its
+observable stated here: two records under two keys, both writes made, and the guard-set one made as a
+PR. A defective implementation folds the two actions into one key and makes one write, or suppresses
+the guard-set write as if consequence 2 bound it.
 `target` is a function of the kind (§8.1's three-row table), so without a rule the merged
 record would have two candidate targets and the "one `target`" observable above would be
 undetermined. The rule, in this order:
