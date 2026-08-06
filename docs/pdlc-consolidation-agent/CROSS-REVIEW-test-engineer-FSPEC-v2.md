@@ -63,8 +63,62 @@ _(Medium)_
 
 ## Positive Observations
 
-_(filled below)_
+- **Every one of the sixteen prior findings was addressed at the level it was raised, not at the
+  level of its symptom.** F-04 is the clearest case: the fix was not "add ATs for rows 3 and 4", it
+  was to replace the free-text predicate with a filesystem check *and then* add AT-F17/AT-F18 *and
+  then* record BR-35a stating why `symptom` can never be the predicate. F-14 likewise produced a
+  status-keyed reading, an independent discriminator (`credential-unavailable` is illegal with
+  `refused`), a both-directions AT, a business rule and an edge row. Revisions that fix the finding
+  and leave the mechanism intact are the usual failure mode here; this one did not.
+- **The new negatives are paired, which is rarer than it should be.** AT-M8 exists only to stop
+  AT-M7 being satisfied by a pass that always reports the fallback; AT-Q7b is explicitly demoted to
+  "supplementary … never the sole evidence"; AT-P8/AT-P9/AT-P11 each state in their own row what
+  distinguishes their Given from the neighbour they were split from. The document is now defending
+  its own oracles against the way they will be weakened later.
+- **AT-C8 and AT-A6 are both differential tests, and both are the right shape.** One corpus under two
+  triggers must yield a set-equal promotion set (NFR-3); one escalation corpus with `Feature` values
+  disjoint from and matching the consumed set must yield an identical verdict (§9.2's population).
+  Neither can be satisfied by an implementation that ignores the property, and neither needed an
+  implementation echo to state its expected value.
+- **§14.1 T-09 discharges F-13 with the escape hatch closed.** Naming the four components *and* the
+  invariant each property must range over *and* the sentence "TSPEC may not discharge T-09 by citing
+  the existing ATs" is what stops the obligation being satisfied by a parameterised example table.
+- **The two `no-op` causes and the third one AC-1.4 does not enumerate are reconciled in a table
+  rather than in prose, and the discrepancy is routed as ER-3 rather than absorbed.** §5.3's
+  four-row table makes "does this pass write a proposal file?" decidable per cause, which is what
+  AT-K3 needs to assert both halves.
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision**
+
+The revision is substantial and honest: all seven High and all seven Medium findings from v1 are
+resolved, several by changing the mechanism rather than the assertion, and the two Low findings were
+folded in as well. The approval bar is nevertheless unchanged, and three High and three Medium
+findings are open in sections the revision itself introduced.
+
+What must change:
+
+1. **G-01** — bound AT-Q7's spy domain to an enumerated seam set and state the expected verb **set**
+   over that same domain. As written it is contradicted by AT-Q1, AT-Q2, AT-M5 and AT-R3, all of
+   which require git calls outside the three-verb set; the narrowing that saves it must be the
+   spec's, not the implementer's, or the generic-seam direction is lost. Drop "multiset", and drop
+   the appeal to §7.1's permissions as if they bounded a verb set.
+2. **G-02** — decide whether a `dispatch-error` after step 8 is terminal. If it is, give steps 12–13
+   a `Terminates` cell, a §12.1 row and an AT stating the observables that differ from step 8's
+   (partial routing, the step-15 commit, `writes-uncommitted`). If it is not, say what the pass does
+   instead. Today §2.6 and §2.2 disagree and neither state is testable.
+3. **G-03** — give §6.4's consuming-repo carrier its own ATs in both directions (`enacted` ⇒ nothing
+   appended, `duplicate-suppressed` names the pair and the enacting `passId`, `pr:` empty;
+   `absent` ⇒ exactly one append), plus a re-run idempotence assertion on the file's bytes. A whole
+   second suppression mechanism currently reaches implementation with zero coverage.
+4. **G-04** — state the `{topic}` collision and its report obligation as §8.1 states the slug's, or
+   narrow the derivation; then give AT-R6 a colliding-artifact Given.
+5. **G-05** — add `pdlc/workflows/orchestrate-dev.js` to §15.3 (§2.6 already claims it is there), and
+   oblige a regression test that the omitted-`skill` call site still dispatches `se-review`.
+6. **G-06** — restate AT-F15 over a fixture and drop the producing-side claim; soften §8.4's
+   "asserted rather than hoped for" to what the receive-side notice actually detects.
+
+None of the six requires re-opening a decision this revision settled. G-01, G-04, G-05 and G-06 are
+wording-and-scope repairs to text already present; G-02 and G-03 are the two places where new
+mechanism arrived without its coverage.
