@@ -36,6 +36,12 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §10.4 item 10 now reports the **number** of open promotions, and AT-F19 asserts the number is present in the report body. Is the count asserted **equal to the computed list's cardinality** on that fixture — i.e. `3` for `{B, C, D}` — or only present? Only the first form catches the failure O-C7 added it for: an implementation that computes the list correctly but reports a stale or hard-coded length is indistinguishable from a conforming one under a presence check, and the whole point of item 10 is that the growth is legible *before* it truncates a prompt. AT-F19 already has the fixture; the literal is one word. |
+| Q-02 | §8.1's reader-side rule (F-03) says a short record is "skipped **for that contract**". §8.3 is a third reader — it emits one effectiveness row per distinct `failure-mode-id` over every record — and it is not named among the four the rule enumerates (§5.1, §6.4, §8.4 step 1, §10.2 order 2 at `:1063-1064`). If a record short of `artifact` is skipped by §8.3, the promotion silently loses its row on that pass, which reads as `insufficient-evidence` rather than as a notice; if it is not skipped, §8.5's subject file-existence test (BR-35a) has no path to test. Which contract owns it? |
+| Q-03 | O-C8 says the elided kind's content survives "in the merged `symptom`", and §8.2 consequence 1 says the merged promotion's single `symptom` "states both failure modes". §8.1 pins `symptom` as **one line, human-readable, explicitly non-keying** (`:1072`). Is one line still the obligation after a mixed-kind merge, and if so, is a two-mode `symptom` bounded anywhere? This is the field an operator re-proposes the elided write from (O-C8's stated compensation), so its legibility is the compensation's whole load — and a three-way merge (two modes plus a re-proposal) is reachable under the same key. |
+
 ## Positive Observations
 
 ## Recommendation
