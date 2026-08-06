@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 10.0 | 2026-08-06 |
+| pdlc | draft | Claude | 11.0 | 2026-08-06 |
 
 ## 1. Scope and entry obligations
 
