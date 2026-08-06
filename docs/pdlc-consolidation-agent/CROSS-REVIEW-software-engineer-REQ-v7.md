@@ -78,6 +78,48 @@ remains open but unasked; the refused-row attribution point still holds and is s
 
 ## Positive Observations
 
+- **Five of five, and the fixes propagated to every dependent sentence without being asked twice.**
+  v6 Q-03 warned that whichever uniqueness resolution was chosen had to be echoed in AC-5.2's
+  set-equality wording or the fix would not survive transcription. The revision echoed it in
+  **four** places — AC-5.2's row rule (`:414-415`), AC-5.3's streak ("counted per
+  `failure-mode-id`", `:423`), AC-5.4's retirement unit (`:432`), and AC-5.1's own `(failure-mode-id,
+  passId)` record key (`:377`) — so the whole cluster now speaks one vocabulary. That is the
+  difference between a patched document and a converged one, and it is why my two new Mediums are
+  decidable at all: the contracts are finally sharp enough to collide visibly.
+
+- **F-03 was fixed by deleting the problem rather than arguing it away.** The cheap escape was to
+  assert append-granularity for the marker too. Instead the marker was moved out of the log entirely
+  into `.consolidation-lock`, with the reason stated in one clause — "taking and releasing it are
+  in-place rewrites of a whole small file and every write to the *log* must stay an append"
+  (`:168-169`). The forbidden shape is then named as forbidden, not merely unnecessary (`:191-193`),
+  and the only remaining mid-file write (the consumed pair) is discharged by observing its content is
+  fixed at step 1 (`:194-195`). Three claims that were previously in tension now hold for one
+  reason. The knock-on cleanup — one exempt legacy record instead of two (`:111-113`), NFR-5 updated
+  to the same words (`:526-527`) — was volunteered.
+
+- **The compression under TE F-41 is unusually disciplined.** 35 lines came out and I could not find
+  a checkable fact that left with them. Where a rationale was cut it was cut whole (NFR-2's "so the
+  absence is asserted on a run that demonstrably reached the credential"; AC-7.1's
+  `promoted-degraded` gloss) rather than being trimmed into ambiguity, and where a statement was
+  delegated the target actually states it — AC-1.4 now says "AC-5.3 and AC-5.5 state each population
+  in those terms" (`:208`) and both do, in the same words (`:424-425`, `:436-438`). Row 1 of my
+  verification table is the test case: the example paths were dropped and the shape description that
+  replaced them is still verifiable against the shipped file, which is the property that matters.
+
+- **AC-5.1's "Why those inputs" paragraph is the argument, not the conclusion.** It states the
+  distinction the finding rested on ("Determinism of the derivation is not stability of its inputs"),
+  identifies the property the choice must have (*file* text, not generated text), names the case it
+  must survive by AC reference, and then states the accepted cost of the choice in the same breath
+  (`:374-376`). A reader who later proposes reverting to a `symptom` key finds the counter-argument
+  already written down. Volunteering the cost is what makes Q-04 a question rather than a finding.
+
+- **F-05 was closed by a non-membership statement instead of a silent deletion.** Removing the
+  `duplicate-suppressed` row from AC-3.5's table would have left a reader wondering whether it was
+  dropped by accident. "`duplicate-suppressed` is **not** a member of this table: it is decided per
+  promotion before any PR is attempted, fires no fallback, and is stated in NFR-4" (`:274-275`) makes
+  the absence itself assertable — a set-equality test over that table now has a sentence saying
+  exactly why the fifth candidate is out. That is the shape a negative oracle needs.
+
 ## Recommendation
 
 ## Verdict
