@@ -85,27 +85,20 @@ feature updates `pdlc/hooks/scripts/nudge-consolidation.sh:41` to scope its test
 the hook and the pass keep one predicate rather than two — which is what makes NFR-5's "exactly the
 consumed set" enforceable by the predicate that consumes it.
 
-**What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md` **exists** and predates every convention this
-feature introduces: a markdown pass log whose `## Pass 1 — 2026-07-29` records its consumed set as a two-column table of **full paths** (one row per
-consumed LEARNINGS, path plus date), then prose promotion sections. It carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any
-kind — "Promoted" is only a section heading. A
-predicate matching blocks alone would report both files un-consolidated on the first pass, re-consuming a corpus a prior pass already promoted from,
-with no help from NFR-4 (keyed on `failure-mode-id`, which a pre-convention LEARNINGS does not carry, AC-5.2). The predicate is therefore stated over
-two regions, and is total over any log:
+**What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md` already **exists** and predates every convention
+this feature introduces — it carries no `<!-- pdlc:consumed -->` block and no row status of any kind — and NFR-4 gives no help with it, being keyed on
+`failure-mode-id`, which a pre-convention LEARNINGS does not carry (AC-5.2). The predicate is therefore stated over two regions, and is total over any
+log:
 
 > A basename is **consolidated** if it appears inside a `<!-- pdlc:consumed {passId} -->` block, **or**
 > anywhere in the log's **legacy region** — the text preceding the file's *first* `<!-- pdlc:consumed`
 > marker (a log with no block at all is legacy region entire).
 
-The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) applied to exactly the text predating this feature, so nothing already
-consolidated is re-consumed and no parse of Pass 1's prose is required. It is frozen by construction, in two clauses: **(a)** every pass that takes the
-AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when its consumed set
-is empty** (the pair is then empty, satisfying NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by the first pass rather
-than only by one whose consumed set happens to be non-empty; **(b)** exactly **one** record is exempt — it may precede the first
-block, and it is not readable as legacy consumption because **no field it carries is ever a basename**: a `refused` pass's AC-7.2 row — status, trigger,
-`credential:`, reason code, and the held marker's passId and ISO-8601 timestamp, which AC-1.3 requires it to name, and only those — appended by a tick
-that loses the race between the winner's marker and its block. A passId is `{YYYY-MM-DD}-{n}` and a timestamp is neither a `LEARNINGS-*.md` basename. The AC-1.3 marker is **not** a second
-exempt record: it lives in its own file, never in this log (AC-1.3). Every other record lands after it. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
+The log's shape at HEAD, and the two clauses that freeze the legacy boundary — **(a)** every pass appends its `<!-- pdlc:consumed {passId} -->` pair
+before any other record it writes, even when the pair is empty (which is what satisfies NFR-5's "exactly the consumed set" unconditionally, from the
+first pass rather than only from one with a non-empty set), and **(b)** the single exempt record, a `refused` pass's AC-7.2 row, carries no field that
+is ever a `LEARNINGS-*.md` basename, while the AC-1.3 marker is not a second exemption because it lives in its own file — are stated once in
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.2) and are binding here. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
 `…-pdlc-review-loop-hardening`) are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the cadence test.
 
