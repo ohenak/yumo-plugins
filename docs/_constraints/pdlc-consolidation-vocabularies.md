@@ -12,7 +12,7 @@ reusable by any feature that reads a LEARNINGS corpus by phase. Held here they a
 cited by section; held inline they consume the REQ's size budget (`pdlc/hooks/scripts/check-req-size.sh`)
 against the reasons the REQ exists to carry.
 
-**No cell in either table below may use a positional back-reference.** Every *May accompany status*
+**No cell in any table below may use a positional back-reference.** Every *May accompany status*
 cell names its permitted set explicitly, so inserting a row can never silently re-point a neighbour.
 
 **Change control, and who owns these rows.** `REQ-pdlc-consolidation-agent` **owns every row of §1

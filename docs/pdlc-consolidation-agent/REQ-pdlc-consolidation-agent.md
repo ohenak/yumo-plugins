@@ -266,8 +266,8 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   impossible, and the pass asserts them as its own observables rather than inheriting a mechanism:
   (a) the credential grants no merge rights (AC-4.1); (b) the pass never calls a merge or
   enable-auto-merge API on any PR — including its own; (c) the PR body carries the
-  `PDLC-CONSOLIDATION-PASS` trailer defined in the REQ-CONS-03 preamble ("Pass identity and artifact
-  naming"), so a repo-side control can recognise it.
+  `PDLC-CONSOLIDATION-PASS` trailer (vocabularies §4, cited by the REQ-CONS-03 preamble), so a
+  repo-side control can recognise it.
 
   This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:732`) over
   `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both deciding
