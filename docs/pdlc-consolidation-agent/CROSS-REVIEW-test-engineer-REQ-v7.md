@@ -37,7 +37,67 @@ the changed text resolves (see §Positive Observations).
 
 ## Questions
 
+No open questions. v6 raised none, and neither of this round's substantive items is a
+clarification — F-42 is a claim to narrow and F-43 is a choice between two readings the REQ must
+make rather than explain.
+
 ## Positive Observations
+
+- Both v6 Mediums were closed by changing the **mechanism**, not the wording. F-38 removed the
+  unstable input from the key rather than weakening NFR-4's promise; F-39 moved the marker out of
+  the log rather than accepting the loss window. In each case the option I offered as the weaker
+  alternative — "state the accepted consequence" — was available and was not taken. A document that
+  declines its own escape hatch twice in one round is converging on the requirement, not on the
+  reviewer.
+- The F-39 fix is stated as a **positive obligation with its violating shape named**, which is the
+  form a test can be written against: "Every write to `.consolidation-log.md`, by any pass, is a
+  single **append of one whole record at end of file**. A whole-file read-modify-write of the log is
+  **forbidden**, not merely unnecessary: it is the one shape that loses a concurrent append"
+  (`:191-193`). It then discharges the obligation for both writes that would have breached it
+  instead of leaving the invariant asserted. That is the difference between an invariant and a hope.
+- The obligation is redeemable at HEAD, which I checked rather than assumed. The append channel is
+  not a latent runtime capability but a **wired dependency-injection seam**: `rtAppendFile`
+  (`runtime-adapter.js:863`, `cat >> "${path}"` at `:883`, explicitly not a read-modify-write per
+  `:852-857`) reaches modules as `_appendFile`, consumed by `appendAdvisoryEntry`
+  (`orchestrate-dev.js:2684`) and `appendEscalationEntry` (`:2809`), defaulted at `:5697`, and
+  threaded through `orchestrate-queue.js:801`/`:874`. A new workflow can take the same seam on the
+  same terms.
+- AC-5.1's uniqueness paragraph fixes an ambiguity I had not filed. By keying **records** on
+  `(failure-mode-id, passId)` and **promotions** on the id alone, then restating each downstream
+  contract in promotion terms (`:377-379`), it makes AC-5.2's set-equality obligation — "exactly one
+  row per **distinct `failure-mode-id`**" (`:414`) — decidable over a corpus containing a
+  re-proposal. Without that arity split, a repeated id would have made the row count ambiguous and
+  the set-equality check unfalsifiable in exactly the case NFR-4 sanctions.
+- The REQ-CONS-01 exempt-record clause shrank from two members to one **as a consequence** of the
+  F-39 fix rather than being separately edited: with the marker in its own file, "The AC-1.3 marker
+  is **not** a second exempt record: it lives in its own file, never in this log" (`:112-113`). The
+  ripple was carried in the same revision, which is the tell that the decision was applied rather
+  than appended.
+- The first-run assertion is now inline and correct. `:113-115` names the three `docs/completed/`
+  directories and the split of the 5 LEARNINGS; I verified all of it: the corpus is exactly 5 files
+  (2 at depth 1, 3 under `docs/completed/pdlc-merge-phase/`, `…/pdlc-review-loop-hardening/`,
+  `…/pdlc-workflow-distribution/`), and `docs/_decisions/.consolidation-log.md` names
+  `LEARNINGS-orchestrate-dev-workflow.md` and `LEARNINGS-pdlc-workflow-distribution.md` in its Pass
+  1 table (`:16-17`) and none of the other three anywhere. So the legacy-region predicate yields
+  exactly the 3 the REQ claims, 3 is below the default `volumeThreshold` of 5
+  (`nudge-consolidation.sh:25`), and the first tick does reach the cadence test as stated. That is a
+  first-run fixture transcribable without touching the repo.
+- Compression again cost nothing checkable. I re-verified every citation in text this round changed
+  or introduced: `guardVerdict` (`orchestrate-dev.js:732`), `commitPaths` (`:8669`) with its
+  pathspec-less `git commit -m` (`:8690`) and `gitWithLockRetry` add (`:8670`), the POSTMORTEM name
+  builder (`:5429`), `advisorySummaryRows` (`:2708`), `commitQueueRow`
+  (`orchestrate-queue.js:1576`), `commitAdvisoryRecord` (`:1615`), `QUEUE.md:11` and `:279`,
+  `consolidate-learnings/SKILL.md:35`/`:43`/`:49`/`:54`, `harvest-learnings/SKILL.md:77`,
+  `nudge-consolidation.sh:25`/`:28`/`:32`/`:41`/`:47-48`, `check-req-size.sh:40-41`, and DC-09 at
+  `docs/_constraints/DOMAIN-CONSTRAINTS.md:245`. All resolve to what the REQ attributes to them.
+- One risk the new `.consolidation-lock` file could have carried, checked and cleared: it is an
+  untracked file under `docs/_decisions/`, and `coveredViolations` walks the whole tree skipping
+  only `.git/` and `node_modules/` (`pdlc/workflows/lib/document-oracles.mjs:77-95`) with no
+  gitignore consultation, so an untracked file there is scanned. `docs/_decisions/` has no
+  `REQ-_decisions.md` sibling, so exemption (ii) (`:105-113`) does not apply. Its content is
+  `IN-PROGRESS: {passId} {ISO-8601}`, which matches none of the five `COVERED_PATTERNS` (`:69-75`),
+  so a pass in flight cannot redden the document oracle. No finding — recorded because the
+  reasoning is not visible from the REQ and the next reader of AC-1.3 should not have to redo it.
 
 ## Recommendation
 
