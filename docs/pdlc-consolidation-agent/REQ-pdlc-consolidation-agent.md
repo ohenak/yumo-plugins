@@ -367,23 +367,48 @@ arrives first (AC-1.2). BL-04 is thereby closed at the REQ layer.
 
 ## 5. Scope
 
-**In scope:** cadence trigger, advisory-model execution, cross-repo PR promotion with scoped
-credential, the effectiveness/falsifiability loop, advisory-record consumption, reporting, tests.
+**In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass; the
+single un-consolidated predicate (including the matching edit to
+`pdlc/skills/consolidate-learnings/SKILL.md:35`); two-rung advisory-model execution with reported
+fallback; PR promotion with scoped credential, in both the same-repo (AC-3.8) and two-repo
+configurations; the effectiveness/falsifiability loop, including the LEARNINGS `failure-mode-id`
+convention; `ESCALATIONS.md` consumption; reporting; tests.
 
-**Out of scope:** merging any promotion PR; changing the promotion bar; consolidating across
-multiple consuming repos; retiring the manual `/pdlc:consolidate-learnings` entry point.
+**Out of scope:** merging any promotion PR; changing the promotion bar; session-free (no Claude Code
+session) execution; a new notification channel; consolidating across multiple consuming repos;
+persisting the advisory per-seam summary; retiring the manual `/pdlc:consolidate-learnings` entry
+point; repository-side branch protection (BL-05, operator).
+
+## 5a. Stopping rule
+
+This REQ is done when every acceptance criterion above names **what is observed and where** — a
+status value, a reason code, a config key with a default, a path, or a named constant at
+`file:line`. It is **not** this REQ's job to specify how any of that is tested, generated or
+fixtured: property axes, fault-injection vocabularies, coverage floors, fixture construction and
+oracle mechanics belong to FSPEC, TSPEC and PROPERTIES (DC-09,
+`docs/_constraints/DOMAIN-CONSTRAINTS.md:245`).
+
+Concretely, for the review loop:
+
+- A round whose blocking findings are **all** of the form "this cannot be tested as written" or
+  "this needs an oracle" — none contesting user need, scope, priority, phasing, or the truth of a
+  claim about existing code — means this REQ has met its bar. **Approve, and route those findings
+  downstream** to the document that owns them.
+- Findings that *do* belong here, and must be fixed here: a false or under-stated claim about code
+  at HEAD; an AC whose input is a configured value with no key, default and owner; a deferral with
+  no bound successor; a topology or trigger the shipped architecture cannot provide.
+- Re-opening a question settled in an earlier round is out of order unless new evidence at
+  `file:line` contradicts the settlement.
 
 ## 6. Dependencies
 
-- **BL-01** — `pdlc-advisory-tier` delivered — this pass runs on `MODEL_ADVISORY` and consumes the
-  advisory record.
-- **BL-02** — `pdlc-workflow-distribution` delivered. A promotion that lands in `yumo-plugins` and
-  never reaches a consumer's `.claude/workflows/` is not a promotion; without distribution this
-  feature's central claim is false.
-- **BL-03** — **Operator decision required:** provisioning the fine-grained token per AC-4.1, and
-  where it is stored. Local `gh` auth (AC-4.4) is sufficient to build and test this feature;
-  the scoped token is needed only when the cadence runs unattended.
-- **BL-04** — Cadence value is master plan OQ-E3 (weekly, threshold-driven, or both).
+| # | Dependency | Resolution form | Gating logic |
+|---|---|---|---|
+| BL-01 | `pdlc-advisory-tier` delivered — the two-rung advisory ladder (`MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK`) and `docs/_queue/ESCALATIONS.md` exist | PR merged | **Met** — queue row 14 `done`, merged `bb99f89` (#38) |
+| BL-02 | `pdlc-workflow-distribution` delivered. A promotion that lands in `yumo-plugins` and never reaches a consumer's `.claude/workflows/` is not a promotion | PR merged | **Met** — archived to `docs/completed/pdlc-workflow-distribution/` |
+| BL-03 | Fine-grained token per AC-4.1 provisioned, and the env var of `consolidation.credentialEnv` populated | Operator action + config value | Required only for the two-repo configuration; the same-repo shipping configuration (AC-3.8) runs on local `gh` auth (AC-4.4), so this does **not** gate FSPEC |
+| BL-04 | Cadence value (master plan OQ-E3) | Config default | **Closed** by §4a: `cadenceHours` default 168, plus the AC-1.2 volume trigger |
+| BL-05 | Repository-side enforcement that no promotion PR is auto-merged — branch protection / required review on the plugin repo | Operator action on the GitHub repo | Not a code dependency and does not gate FSPEC; AC-3.7's controls hold without it, but the repo-side belt is the operator's |
 
 ## 7. Deferrals
 
@@ -394,3 +419,5 @@ multiple consuming repos; retiring the manual `/pdlc:consolidate-learnings` entr
 | D-CONS-03 | Automatic prompt-size budgeting / pruning by age | Effectiveness-based retirement (AC-5.3) is the honest mechanism; age is a proxy | — |
 | D-CONS-04 | Running the cadence as a cloud Routine | Routines run on a fresh clone with no working tree; viable for consolidation but needs its own design | `pdlc-engineering-loop` |
 | D-CONS-05 | A/B measuring a promotion against a control | No control population exists in a serial single-pipeline setup | — |
+| D-CONS-06 | Persisting the advisory per-seam summary (`advisorySummaryRows`, `orchestrate-dev.js:2708`) in a defined LEARNINGS section, so resolution *rates* — not only escalations — are consumable | The rows exist only in memory and `ADVISORY-{feature}.md` is deleted after distil (`:10499`); adding a schema to `advisoryDistilPrompt` is an `orchestrate-dev` change, not a consolidation change. REQ-CONS-06 is narrowed to `ESCALATIONS.md` in the meantime | `pdlc-engineering-loop` |
+| D-CONS-07 | Session-free execution and a notification channel that survives without a Claude Code session | Same vehicle as D-CONS-04; AC-7.2 names the in-session report until then | `pdlc-engineering-loop` |
