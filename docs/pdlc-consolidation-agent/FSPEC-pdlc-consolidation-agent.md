@@ -1487,8 +1487,8 @@ recorded — not by the status under which the code was first introduced.
 record: it lies outside any `<!-- pdlc:consumed -->` block, so under §3.2 it is in neither region and
 can never mark a file consolidated. That is precisely why the block form exists.
 
-**`credential: absent` is read against the row's status, and the two readings are stated here rather
-than left to the reader.** The closed set has three members (§7.2) and gains no fourth: adding a
+**`credential: absent` carries two readings, and the row itself says which.** The closed set has
+three members (§7.2) and gains no fourth: adding a
 `not-attempted` member would be a vocabularies §1 change, and §1 is a REQ-owned enumeration this
 layer does not edit.
 
@@ -2055,12 +2055,12 @@ lives. Nothing here adds behaviour; §2.2 is the normative ordering and this is 
 | 5 | — (mint `passId` from the log) | none — an unparseable row contributes no `m` and is skipped | §2.5 |
 | 6 | Is the marker free, or held-and-stale? | **terminate `refused`** (`consolidation-in-progress`) when held and fresh — writes its row, no consumed pair, no commit | §4.2, §4.4 |
 | 7 | — (append the consumed pair, complete and in one append, even when empty) | none — unconditional for every marker-holding pass | §3.3 |
-| 8 | Does either model rung resolve? | **terminate `failed`** (`advisory-model-unresolved`) — consumed pair already written at step 7, marker released, row appended | §2.6 |
+| 8 | Does either model rung resolve, and does the first advisory dispatch return a response? | **terminate `failed`** — `advisory-model-unresolved` when neither rung resolves (§2.6 row 3), **no** reason code when the dispatch fails for any other reason (row 4). Either way: consumed pair already written at step 7, no effectiveness table, marker released, row appended | §2.6 |
 | 9 | — (read consumed bodies, cluster, apply the AC-2.3 bar) | none — a cluster below the bar simply produces no proposal | §5.2 |
 | 10 | Is `ESCALATIONS.md` present, and does it carry entries? | absent ⇒ `no-advisory-corpus`; present-but-empty ⇒ `advisory-corpus-empty`; both compose with the run's own status rather than terminating | §9.3 |
 | 11 | — (compute the effectiveness table over prior passes) | none — emitted even by a `no-op` pass | §8.3 |
-| 12 | Is a proposal a duplicate of an open-or-merged proposal for the same `(id, action)`? | duplicate ⇒ suppressed, `suppressed-by:` populated, no PR opened and no fallback fired | §6.4 |
-| 13 | Does the proposal's target path fall in the guard set? | in-guard-set ⇒ the PR route (§6); otherwise the direct consuming-repo write (§5.4) | §5.1 |
+| 12 | Is a proposal a duplicate — on the PR route, an open-or-merged PR for the same `(id, action)`; on the consuming-repo route, a log record for that pair whose `route` is not `degraded`? | duplicate ⇒ suppressed, `suppressed-by:` populated, no PR opened and no fallback fired. **Also terminating:** this step's remediation-authoring dispatch can return `{kind: "dispatch-error"}` ⇒ **terminate `failed`** with no reason code (§2.6, §12.1 S-11c) | §6.4, §8.5 |
+| 13 | Does the proposal's target path fall in the guard set? | in-guard-set ⇒ the PR route (§6); otherwise the direct consuming-repo write (§5.4). **Also terminating:** this step's proposal-authoring dispatch can return `{kind: "dispatch-error"}` ⇒ **terminate `failed`** with no reason code, keeping the records of whatever it had already routed (§12.1 S-11c) | §5.1, §2.6 |
 | 13a | Can the PR be opened? | cannot ⇒ degrade to the proposal file with its failure class recorded in both the file and the row | §6.3, §5.3 |
 | 14 | — (write consuming-repo artifacts, append the terminal row) | terminal status resolved here: `promoted` / `promoted-degraded` / `no-op` / `failed` | §10.2, §10.3 |
 | 15 | Does git accept the AC-3.8b pathspec commit? | refusal ⇒ reason code `writes-uncommitted` added; the status itself is **unchanged**, writes stay in the working tree | §5.4, §12.1 S-12 |
@@ -2074,10 +2074,13 @@ Read down the table above and exactly three shapes exist, distinguished by how f
    no `passId`, no marker, no log row, no git call (§2.4). This is the common shape under `/loop`.
 2. **Marker refused** — steps 1–6. Terminates `refused`, writes one log row (so the refusal is
    evidence, AC-7.2) and nothing else — no consumed pair, no commit (§4.4, §12.1 S-09).
-3. **Marker held** — steps 1–16, terminating at step 14 with one of `promoted`,
+3. **Marker held** — steps 1–16, resolving a status at step 14 over `promoted`,
    `promoted-degraded`, `no-op`, `failed`. Always: exactly one consumed pair (step 7), exactly one
    terminal log row, one release, and one commit attempt whose refusal degrades the record but not
-   the status.
+   the status. A terminating branch at step 8, 12 or 13 is **inside** this shape, not a fourth one:
+   per §2.2 it jumps to step 14 and steps 14–16 run unchanged, so what distinguishes S-11 / S-11b
+   from S-11c is only how much of orders 2–3 the log carries, never whether the pass committed or
+   released.
 
 The shape determines what a later pass can observe, which is why it — not the status alone — is what
 §12.1's table is organised around.
@@ -2235,7 +2238,7 @@ E-29) and each now names its own test.
 | E-19 | Neither model rung resolves | `failed`, reason `advisory-model-unresolved`; no promotion; consumed pair already written at step 7; marker released | §2.6 | AT-M4 |
 | E-19b | The first advisory dispatch fails for a reason that is **not** model resolution (§2.6 row 4) | `failed` with **no** reason code and the error message verbatim in the report body; otherwise identical to E-19 | §2.6 | AT-M6 |
 | E-20 | Credential absent or invalid | `credential-unavailable`, `credential: absent`, §6.3 fallback fires, pass does **not** halt | §7.3, §6.3 | AT-K2 |
-| E-20b | A pass `refused` at step 6, which resolved no credential at all | `credential: absent` read as **not attempted** — the row carries no `credential-unavailable`, which is what separates it from E-20 (§10.3) | §10.3, §4.4 | AT-K6 |
+| E-20b | A pass that resolved no credential at all — `refused` at step 6, `failed` at step 8/12/13, or a pass with no guard-set proposal to route | `credential: absent` read as **not attempted** — the row carries no `credential-unavailable`, which is what separates all three from E-20; the reading is keyed on that observable and not on the status (§10.3) | §10.3, §4.4, §7.2 | AT-K6 |
 | E-21 | Credential present but rejected by the repository | `credential: present (redacted)` **and** `credential-unavailable` — the two fields are never collapsed | §7.2, §6.3 | AT-K4 |
 | E-22 | `pluginRepository` names a repository that does not resolve | `repository-unresolved` with the configured value verbatim — never a silent fallback to the current repository | §6.3, §11.2 | AT-N4 |
 | E-23 | Network or API failure, rate limiting included | `api-failure` with the API's status text; the proposal file carries the full diff | §6.3 | **AT-Q8** |
