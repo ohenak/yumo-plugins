@@ -2193,6 +2193,28 @@ pass reuses `resolveAdvisoryRung` at a **new call site** with its own `rungState
 the exported function, not of a shipped call pattern — so the earlier reading that treated it as an
 upstream defect is withdrawn.
 
+### 14.5 Layer deferrals — the register of PROPERTIES-owned obligations
+
+`DEC-LAYER-01` (`docs/_decisions/DECISIONS-spec-layer-boundary.md`) puts fixture construction and
+set-equality domains below this layer: where this FSPEC states an observable but claims no §13
+fixture for it, the obligation is **PROPERTIES-owned**, named at the point it arises. Named at the
+point it arises, it is also discoverable only from that point — so every such deferral is collected
+here, once, in the form the downstream author needs: what is owed, where its observable is stated,
+and what a defective implementation does. This register is **set-equal** to the deferrals this
+document names; a deferral added later is a row added here, and a section that names one without a
+row is a defect of this table.
+
+| # | Obligation deferred to PROPERTIES | Observable stated at | A defective implementation |
+|---|---|---|---|
+| LD-1 | The `artifact` arms of §8.1's reader rule: §8.3 emits its row with an **unavailable** path rather than dropping it, and §8.5 refuses to guess a `retirement` when the file-existence test cannot run | §8.1's reader table (§8.3 and §8.5 rows); BR-33a, E-12b | drops the §8.3 row (which reads as `insufficient-evidence` and silently moves a verdict), or proposes a `retirement` on an `artifact` it could not test |
+| LD-2 | BR-33b's `target`-follows clause: a colliding-subject merge of two **process learnings**, where precedence returns kind 3 and the surviving `target` follows the surviving `artifact` | §8.2's third note; BR-33b's AT cell | keeps one proposal's `artifact` and the other's `target`, so the merged record's write touches a file the record is not about. **The >2-candidate case belongs to this row too** (SE v8 Q-02): §8.2 consequence 1 contemplates three failure modes under one key, so the elided set §10.4 item 4 must name can have more than one member, and AT-R6b fixture 2 pins only the two-candidate case — a report that names one elided path and stops is the defect |
+| LD-3 | The two-action-one-subject pass: a `promote` and a `revise` over one subject at one phase are two keys, so no merge fires and **both** writes happen, the guard-set one as a PR | §8.2 (the paragraph naming it) | folds the two actions into one key and makes one write, or suppresses the guard-set write as if §8.2's consequence 2 bound it |
+| LD-4 | §6.4's **`passId` arm**: a record short of `passId` still suppresses on the pair, and only the evidence spelling degrades to an explicit unavailable statement | §6.4 (the short-`passId` paragraph); §8.1's §6.4 reader row; BR-33a, E-12b | skips the contract and re-appends a constraint that already landed (an NFR-4 duplicate produced by a field outside the suppression key), or writes `pass:undefined`, or drops the `suppressed-by:` entry so the suppression is unevidenced |
+
+Each row is a deferral of the **fixture**, never of the rule: the rule and its observable are stated
+at this layer, which is what `DEC-LAYER-01` requires of an FSPEC before it may name a downstream
+owner. None is a gap in this document's own coverage of what it owns.
+
 ## 15. Traceability
 
 ### 15.1 REQ criterion → FSPEC section → acceptance test
