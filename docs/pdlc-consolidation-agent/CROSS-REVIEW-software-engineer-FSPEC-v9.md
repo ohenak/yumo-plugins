@@ -42,9 +42,64 @@ enumeration.
 |----|---------|
 | Q-01 | Direct input to F-01(a), asked as a question because the answer is a judgment I should not make for you: when a record is short of `phase`, should §8.3 emit the row with the verdict falling to `insufficient-evidence`? That is the direction `:1383-1384` already fixes for a phase the §2 mapping cannot decide ("Any phase the mapping cannot decide counts as **not** exercised, routing that promotion to `insufficient-evidence` and never to a guessed `prevented`"), it keeps the row (which `:1171` argues at length must never be dropped), and it needs no new concept — a missing `phase` field and an undecidable `phase` value are the same epistemic state. If that is the intent, the repair is one clause in §8.3's reader cell and the arm is stated, not deferred. |
 | Q-02 | On F-01(b): is the §8.4 harvest-side lookup (steps 1–3, `:1419-1421`) deliberately **outside** the reader table because the harvest agent is a consumer skill rather than a pass-side contract? That reading is defensible — the table's arms are all pass-side behaviours ("reports a parse notice and skips that contract"), and a `symptom` arm for an LLM prompt is not the same kind of object. If so, the closure sentence wants the qualifier ("no **pass-side** reader … outside that set"), and §8.4's step table wants a line saying what the prompt does with a record short of `symptom` or `phase` — one question with a hole in it, or one question fewer. Either answer is fine; the current text asserts the unqualified universal and then contradicts it forty lines later. |
-| Q-03 | §6.4's new short-`passId` paragraph (`:831-843`) says the entry "still names the pair, and in place of the enacting `passId` it carries an explicit unavailable statement", and §8.1's row (`:1168`) and §10.3 (`:1748`) agree. None of the three says whether the **parse notice** is still reported for that record. E-12b does (`:2567`: "a parse notice naming the record and the missing field" is the head of the row, and the `passId` case is an exception only to the *skipping*, not to the notice), so I read the answer as yes and did not file it. Is that the intent — the contract runs, the spelling degrades, **and** the notice is still emitted? One clause in §6.4 would close it, and it matters because the notice is the only thing that makes the degraded spelling attributable to a short record rather than to a writer bug. |
+| Q-03 | §6.4's new short-`passId` paragraph (`:831-845`) says the entry "still names the pair, and in place of the enacting `passId` it carries an explicit unavailable statement", and §8.1's row (`:1168`) and §10.3 (`:1748`) agree. None of the three says whether the **parse notice** is still reported for that record. E-12b does (`:2567`: "a parse notice naming the record and the missing field" is the head of the row, and the `passId` case is an exception only to the *skipping*, not to the notice), so I read the answer as yes and did not file it. Is that the intent — the contract runs, the spelling degrades, **and** the notice is still emitted? One clause in §6.4 would close it, and it matters because the notice is the only thing that makes the degraded spelling attributable to a short record rather than to a writer bug. |
 
 ## Positive Observations
+
+- **§14.5 is the register I asked for and then some — it has a set-equality obligation on itself.**
+  v8 F-02 asked for "a table listing id, owner, observable, and the section that states it". What
+  landed adds the column that actually gets used: *what a defective implementation does*, per row
+  (`:2210-2215`). LD-4's is the model — "skips the contract and re-appends a constraint that already
+  landed (an NFR-4 duplicate produced by a field outside the suppression key), or writes
+  `pass:undefined`, or drops the `suppressed-by:` entry so the suppression is unevidenced" — three
+  named falsifiers for one deferral, which is what a PROPERTIES author needs to write the row without
+  re-deriving §6.4. And the table binds itself: "a section that names one without a row is a defect of
+  this table" (`:2207-2208`). I checked that obligation against every `PROPERTIES-owned` site in the
+  document and it holds at five sites over four rows. A register that can be falsified mechanically is
+  worth more than a register that is merely present.
+- **The short-`passId` arm is the first place this document has said "the skip rule is not the safe
+  direction here", and it argued it rather than asserted it.** `:831-845` derives the arm from the
+  key: the predicate is a function of `(failure-mode-id, action)` and `route`, so it is decidable
+  without `passId`, so skipping would "re-append a constraint that already landed in the consuming
+  repo, which is exactly the duplicate the paragraph above promises does not happen, **produced by a
+  field outside the suppression key**". That last clause is the whole argument in eight words, and it
+  traces to NFR-4's own key rather than to a preference. The general rule at `:1145-1152` was then
+  amended to carry the distinction (predicate fields vs spelling fields) with the count of exceptions
+  stated — "Exactly one such field exists in the table below" — so the exception is bounded rather
+  than open. This is the right shape: a rule, its one exception, and the reason the exception is one.
+- **The degraded spelling was classified rather than added.** §10.3's `suppressed-by:` row already
+  said "no third spelling exists"; the obvious cheap edit was to make it three. `84fdb30` instead
+  makes the unavailable case "a **rendering** of the second spelling, not a third one" (`:1748`) and
+  BR-26 says the same thing in the same words (`:2494`), so the two-member grammar AT-L2 and §12.2
+  P-04 depend on is untouched. The `{evidence}` set still has cardinality 2 and nothing downstream
+  needs re-checking — which is the difference between a consistency edit and a contract change.
+- **AT-F21's Given now pins the field it does *not* exercise, and says why.** `:2098`: "**All three
+  records carry a `passId`**, pinned present … so pinning it keeps conjunct (5) decidable and keeps
+  this fixture on the two arms it does cover — the short-`passId` arm is deliberately **not**
+  exercised here and is PROPERTIES-owned per DEC-LAYER-01". A fixture that states which arms it does
+  not cover is how a coverage claim stays honest when the arm count grows; the alternative — silence —
+  is exactly how AT cells come to be cited for arms they never tested, which is the defect v7 F-04
+  filed against BR-33a and BR-33b.
+- **The bookkeeping-count paragraph was disambiguated instead of renumbered.** `:1179-1184` now reads
+  "four contracts read **these four bookkeeping fields** off it" and then states the scope explicitly:
+  "**Four is the count of the readers of the bookkeeping fields, not of the record**: all seven
+  readers … are enumerated once, in the reader table above, and the other three (§10.2 order 2, §8.3,
+  §8.5) index no bookkeeping field". Two numbers that looked like a contradiction (four, seven) are
+  now two numbers over two different sets, with the difference enumerated. I verified the residual
+  claim: §10.2 order 2 takes the record as written, §8.3 indexes `failure-mode-id`/`artifact`, §8.5
+  indexes `artifact` — none of the four bookkeeping fields, so the sentence is true as written.
+- **Citation health, fifth consecutive round.** Every citation added this round resolves at HEAD:
+  DEC-LAYER-01's fixture/set-equality bullet (`docs/_decisions/DECISIONS-spec-layer-boundary.md:31-33`)
+  and its review consequence (`:35-39`) say what §14.5 and BR-33a lean on; vocabularies §1's
+  `suppressed-by:` value grammar is still verbatim `` `{id}:{action} → PR URL` ``
+  (`docs/_constraints/pdlc-consolidation-vocabularies.md:63`), so §14.4 ER-5 remains correctly open;
+  REQ NFR-4 still keys suppression on the `(failure-mode-id, action)` pair, which is what makes the
+  new "`passId` is outside the key" argument a reading of the REQ rather than an extension of it. The
+  one v8 line-number defect is gone and was replaced with a field-name citation, so the citation
+  surface got smaller as well as correct.
+- **The version bump is honest, again.** `9.0`, not `8.1`: this round changed a reader row's arm
+  structure, an edge-case row, two business rules, an AT Given, and added a numbered section. Contract
+  changes, not an editorial pass.
 
 ## Recommendation
 
