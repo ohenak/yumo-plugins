@@ -117,4 +117,61 @@ deferred by name, which is the reviewable form.
 
 ## Recommendation
 
+**Needs revision.** 0 High, 2 Medium, 1 Low. Every v7 finding closed — including the High — no v7 fix
+regressed, and the verification table has no defect row for the second round running.
+
+The High is gone and nothing replaced it. That is a real state change, not a rounding: F-01 below is
+Medium precisely because the escape hatch AC-5.3 already offers (`retire`) is always available, so
+the promise "an edit that did not work is not left in place indefinitely" is *achievable* on every
+path — it is merely not *guaranteed*, because the pass may choose the spent alternative. v7's High
+had no such hatch: both alternatives derived a barred id.
+
+The trajectory: v1→v2 closed 8H, v2→v3 2H+5M, v3→v4 2H+2M+3L, v4→v5 2 of 3, v5→v6 4 of 4, v6→v7
+5 of 5, v7→v8 **5 of 5 including the High**. Three consecutive clean sweeps. The surface keeps
+narrowing and it is now narrow in a specific way worth naming: both Mediums live inside AC-5.1, and
+both are the *second-order* consequence of a first-order fix this round made correctly. F-01 is the
+`action` key meeting its own closed set; F-02 is the canonical-path rule meeting multi-file edits.
+Neither questions the choice that produced it.
+
+### The stopping rule, applied against itself
+
+§5a names what must be fixed at the REQ layer and directs everything else downstream. Neither Medium
+is a "this cannot be tested" or "this needs an oracle" finding — the class §5a routes away from here.
+
+- **F-01 (Medium)** belongs here. AC-5.1 asserts remediations reach the AC-3.1 route unimpeded and
+  NFR-4's key impedes one of them; both are requirements, and the key set is enumerated in this
+  document as closed. An FSPEC resolving it would be choosing which AC to disregard — the same test
+  that put v7 F-01 and F-02 at this layer.
+- **F-02 (Medium)** belongs here. `artifact` is an input to a derivation the REQ declares pure ("from
+  **nothing else**"), so what counts as *the* artifact of a multi-file promotion is a REQ-layer
+  contract, not a mechanism. It also changes what AC-5.2's set-equality table counts (one row or two
+  for one logical change), and that table is enumerated here.
+- **F-03 (Low)** would not hold the document alone: two cells in §4b, both mechanical. Take it in the
+  same pass.
+
+### What must change for approval
+
+1. **F-01** — make AC-5.3's promise total against a spent action. Cheapest and best: state that when
+   the pass's chosen alternative is already suppressed under NFR-4 it proposes the other, and that
+   `retire` is the terminal remediation. Alternatives, if you prefer them: exempt `revise` from
+   pair-suppression (a revision is by construction a different edit, so duplicate-suppression has no
+   work to do there), or qualify AC-5.1's "unimpeded" to "unimpeded **by the `promote` they
+   remediate**" and price the once-per-action limit as a D-CONS row. Answer Q-01 in the same edit —
+   whether a merged revision resets the `recurred` streak decides whether this is a corner or the
+   main line.
+2. **F-02** — say what `artifact` is when a promotion edits more than one file. Either declare
+   promotions single-file (and say that a multi-file change is several promotions sharing one PR, which
+   AC-3.3 already permits), or define a **primary** file by a stated total rule with generated paths
+   excluded by name. The `orchestrate-dev.js` + rebuilt `dist/` case must be decidable by whichever
+   rule you write, because it is the likeliest promotion this feature will ever make.
+3. **F-03** — replace §4b's "any status emitting a proposal" with the explicit
+   `promoted`, `promoted-degraded`, `no-op`, and replace the `revision`/`retirement` row's "as above"
+   with its intended referent, "any status emitting the AC-5.2 table", so a later row insertion cannot
+   silently re-point it again.
+
+All three are a sentence or two. F-01 and F-02 are independent and touch adjacent paragraphs of
+AC-5.1, so the round is plausibly two edits plus a table correction.
+
 ## Verdict
+
+VERDICT: Needs revision
