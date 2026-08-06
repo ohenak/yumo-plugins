@@ -42,6 +42,12 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-R6b fixtures 3, 4 and 5 all merge two proposals **over one shared subject at one `phase`**, so both proposals derive the same `failure-mode-id` and the merge fires on key identity. But §8.2's uniqueness key is the **pair** `(failure-mode-id, action)` (BR-25, `:2401`), and all three fixtures' proposals are `promote`. Is the mixed-kind merge therefore *only* defined within one `action`? Two proposals over one subject at one phase with **different** actions — a kind-1 `promote` and a kind-3 `revise` on the same file, reachable via §8.5 — are two distinct keys, so no merge fires, precedence never runs, and **both** writes happen, including the guard-set one §8.2 consequence 2 says "never takes the PR route". If that is the intended reading it is worth one sentence in §8.2 (the precedence rule is scoped to one `action`), because consequence 2's absolute is otherwise read wider than it holds. |
+| Q-02 | AT-F21's conjunct (3) cites "the open-promotion list §8.4 step 1 computes (**AT-F19's list, this fixture**)". AT-F19's list is `{B, C, D}` over its own four-id fixture; this fixture carries `E`, `F` and one well-formed record. Is the intent that AT-F21 reuses AT-F19's *computation* (asserting a set-equality over `{E, F, …}` on its own fixture), or that the two rows share one fixture that carries all six ids? The first is what the wording means to me and is the stronger row — but only if the assertion is a set-equality like AT-F19's, not "`E` is present", which is containment and is satisfied by "every id ever recorded", the degenerate list O-C7 accepts as a bound and refuses as an implementation. |
+| Q-03 | §8.1's reader table gives §8.3 the arm "the row is still emitted … the path cell **reads unavailable**". Is `unavailable` a literal the report pins, or prose? §10.4 item 5 enumerates the effectiveness row's cells and §15.2's lexicon owns the document's literals; if `unavailable` is a value an operator (or a test) will read off a report cell, it belongs in one of those two, not only in a prose cell of §8.1's table — otherwise two layers will spell it differently and no AT will notice. |
+
 ## Positive Observations
 
 ## Recommendation
