@@ -93,4 +93,46 @@ restatement of the question. One new question, non-blocking:
 
 ## Recommendation
 
+**Needs revision** — 2 High, 3 Medium, 1 Low. All nine v2 findings are resolved, and the two Highs
+are narrower than v2's four: both are the *same* omission, the state of
+`docs/_decisions/.consolidation-log.md` at HEAD, seen from two ACs.
+
+I applied §5a's stopping rule as written and it does not license approval this round. F-23 and F-24
+are both "a false or under-stated claim about code at HEAD" — the second bullet of the belongs-here
+list, not the first. The log file exists, its content is known, and the two new mechanisms this round
+introduced (the delimited consumed block and the status-keyed cadence datum) both produce a different
+answer against that content than the shipped predicate does, with no AC stating which answer is
+intended. Neither is a fixture question: an FSPEC author facing "the log at HEAD has neither a
+consumed block nor a status row" must invent a migration policy and a bootstrap rule, and inventing
+them downstream is how a REQ's claim about HEAD becomes untrue silently. F-25 is the same class one
+step milder (the corpus is smaller than the document implies, and the widening would add an
+in-scope edit §5 does not list). F-26 and F-27 are set-equality defects in the enumeration this round
+added — the discipline v2's F-19 asked for, applied to F-19's own answer.
+
+What must change:
+
+1. **F-23** — say what happens to `.consolidation-log.md`'s existing, block-less consumed record.
+   Transcribe it into a block on first run, widen the predicate to cover pre-block logs, or state
+   that re-consumption is intended and how NFR-4 covers it. The shipping repo will exhibit exactly
+   this case on the very first pass.
+2. **F-24** — give AC-1.1 its empty-datum branch: no log file, or a log with no row carrying a datum
+   status. Say whether the pass runs, and what NFR-3a's trigger field records for it. AC-6.1's
+   three-state table is the pattern to copy.
+3. **F-25** — state whether `docs/completed/{feature}/LEARNINGS-*.md` is deliberately out of corpus
+   (and why) or widen step 1's enumeration — noting that widening adds `nudge-consolidation.sh:28`
+   to §5's in-scope edits.
+4. **F-26** — write the pipeline phase catalogue into §4b and make the mapping's decidable ∪
+   undecidable partition set-equal to it. `PT` (`orchestrate-dev.js:10250`) is currently in neither.
+5. **F-27** — re-derive §4b's "May accompany status" cells by composition. `duplicate-suppressed`
+   must permit `promoted-degraded`; the two corpus codes need their `failed` case decided.
+
+F-28 is a one-word correction, not a blocker.
+
+No upstream defects were found this round. Every `MASTER-PLAN`, `pdlc-advisory-tier`,
+`pdlc-merge-phase`, `DOMAIN-CONSTRAINTS`, `harvest-learnings/SKILL.md` and `orchestrate-dev.js`
+citation resolves to a real authority saying what the REQ attributes to it. No ERRATUM lines are
+emitted.
+
 ## Verdict
+
+VERDICT: Needs revision
