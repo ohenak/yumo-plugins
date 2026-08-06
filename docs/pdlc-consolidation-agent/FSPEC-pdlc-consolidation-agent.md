@@ -795,7 +795,7 @@ Three observables, asserted by the pass rather than inherited:
 | # | Control | Observable |
 |---|---|---|
 | (a) | the credential grants no merge rights | §7.1 — scope is `contents:write` + `pull_requests:write` only |
-| (b) | the pass never calls a merge or enable-auto-merge API on any PR — **including its own** | no such call exists on any code path |
+| (b) | the pass never calls a merge or enable-auto-merge API on any PR — **including its own** | the pass's **observed** git/PR call set is set-equal to `{create-branch, push, create-pr}`, and the PR it opened is in state `open` when the pass returns (AT-Q7). Stated positively on purpose: "no such call exists" is an absence-only oracle, satisfied vacuously by a pass that makes no calls, blind to a renamed route, and blind to a merge issued through a generic seam. A source inspection (AT-Q7b) supplements it and never replaces it |
 | (c) | the PR body carries `PDLC-CONSOLIDATION-PASS` | a repo-side control can recognise the PR as machine-opened |
 
 This **restates** `pdlc-merge-phase`'s REQ-MERGE-03 rather than inheriting it, and the distinction is
@@ -1752,47 +1752,47 @@ row names a criterion the REQ does not carry.
 
 | REQ | FSPEC | AT |
 |---|---|---|
-| AC-1.1 | §2.2, §2.3, §3.2 | AT-C1, AT-C3, AT-C4, AT-C5 |
-| AC-1.2 | §2.3, §3.1 | AT-C2 |
-| AC-1.3 | §4.1, §4.2, §4.3, §4.4 | AT-M1, AT-M2, AT-M3, AT-M5 |
+| AC-1.1 | §2.2, §2.3, §3.2 | AT-C1, AT-C1b, AT-C3, AT-C4, AT-C5 |
+| AC-1.2 | §2.3, §3.1 | AT-C2, AT-C1b |
+| AC-1.3 | §4.1, §4.2, §4.3, §4.4 | AT-M1, AT-M2, AT-M3, AT-M5, AT-K6 |
 | AC-1.4 | §5.3, §8.5, §8.7, §12.1 | AT-K3, AT-L2, AT-F13 |
-| AC-1.5 | §2.6, §10.3 | AT-L5 (the `rung:` field) |
-| AC-1.6 | §2.6, §12.1 S-11 | AT-M4 |
+| AC-1.5 | §2.6, §10.3 | AT-M7, AT-M8 (the `rung:` field names the rung actually run on, asserted on both branches) |
+| AC-1.6 | §2.6, §12.1 S-11 | AT-M4 (neither resolves), AT-M6 (dispatch-error), AT-M7 (fallback resolves, no silent downgrade) |
 | AC-2.1 | §5.2, §5.4 | AT-R2 |
-| AC-2.2 | §5.2, §5.4 | AT-R2 |
+| AC-2.2 | §5.2, §5.4 | AT-R6 |
 | AC-2.3 | §5.2, §9.4 | AT-A4 |
 | AC-2.4 | §5.2, §10.3 | AT-L3 |
 | AC-3.1 | §5.1, §6 | AT-R1 |
 | AC-3.2 | §6.2 | AT-Q2 |
 | AC-3.3 | §6.2, §8.2 | AT-Q2, AT-F2 |
 | AC-3.4 | §10.2, §10.3 | AT-L1 |
-| AC-3.5 | §6.3, §5.3 | AT-Q6, AT-K2 |
+| AC-3.5 | §6.3, §5.3 | AT-Q6, AT-Q8, AT-K2, AT-K7 |
 | AC-3.6 | §6.2 | AT-Q1 |
-| AC-3.7 | §6.5 | AT-Q7 |
+| AC-3.7 | §6.5 | AT-Q7 (runtime set-equality), AT-Q7b (supplementary source check) |
 | AC-3.8 | §6.1, §12.4 | AT-Q1, AT-R3 |
 | AC-3.8b | §5.4, §5.5 | AT-R3, AT-R4, AT-R5 |
 | AC-4.1 | §7.1 | AT-K5 |
-| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5 |
-| AC-4.3 | §7.3, §6.3 | AT-K2, AT-K3 |
+| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5, AT-K6 |
+| AC-4.3 | §7.3, §6.3 | AT-K2, AT-K3, AT-K7 |
 | AC-4.4 | §7.2 | AT-K1 |
 | AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4 |
-| AC-5.2 | §8.3, §8.4 | AT-F5, AT-F6, AT-F7, AT-F8 |
-| AC-5.3 | §8.5 | AT-F9, AT-F10, AT-F11, AT-F12, AT-F14 |
+| AC-5.2 | §8.3, §8.4 | AT-F5, AT-F6, AT-F7, AT-F8, AT-F15, AT-F16 |
+| AC-5.3 | §8.5 | AT-F9, AT-F10, AT-F11, AT-F12, AT-F14, AT-F17, AT-F18 |
 | AC-5.4 | §8.6, §5.3 | AT-F10, AT-Q5 |
 | AC-5.5 | §8.7 | AT-F13 |
 | AC-6.1 | §9.1, §9.2, §9.3 | AT-A1, AT-A2, AT-A7 |
 | AC-6.2 | §9.4 | AT-A4, AT-A5 |
-| AC-6.3 | §9.5 | AT-A3, AT-A6 |
-| AC-7.1 | §10.3, §10.4 | AT-L4, AT-L5 |
+| AC-6.3 | §9.5, §9.2 | AT-A3, AT-A6 |
+| AC-7.1 | §10.3, §10.4 | AT-L4, AT-L5, AT-K7, AT-P10 |
 | AC-7.2 | §10.1, §10.3, §4.4 | AT-C3, AT-L1, AT-L2, AT-L3 |
-| NFR-1 | §5.1, §6.5, §12.4 | AT-Q7 |
+| NFR-1 | §5.1, §6.5, §12.4 | AT-Q7, AT-Q7b |
 | NFR-2 | §7.4, §10.5 | AT-K5 |
-| NFR-3 | §5.2 | AT-C2 (the bar is unchanged under a volume trigger) |
+| NFR-3 | §5.2, §2.3 | AT-C8 (comparative: one corpus yields a set-equal promotion set under `cadence` and under `volume`) |
 | NFR-3a | §10.3 | AT-C1, AT-C2, AT-C4 |
-| NFR-4 | §6.4, §8.2 | AT-Q3, AT-Q4, AT-Q5, AT-F1 |
-| NFR-5 | §3.3, §12.4 | AT-P6, AT-P2 |
+| NFR-4 | §6.4, §8.2 | AT-Q3, AT-Q4, AT-Q5, AT-Q9, AT-F1 |
+| NFR-5 | §3.3, §12.4 | AT-P6, AT-P2, AT-P8, AT-P9, AT-P11 |
 | §4a config | §11 | AT-N1, AT-N2, AT-N3, AT-N4 |
-| §4b vocabularies | §15.2 | AT-L5 |
+| §4b vocabularies | §15.2, §10.3 | AT-L5 (enumerated-class fields only; §14.4 ER-1/ER-2 route the two missing rows) |
 
 ### 15.2 Vocabularies §1 rows → where this FSPEC uses each
 
@@ -1829,6 +1829,12 @@ used here without a §1 row. AT-L5 asserts the equality in both directions at `V
 | `suppressed-by:` | §10.3, §6.4 |
 | `credential:` (`present (redacted)` / `absent` / `local-gh`) | §7.2, §10.3 |
 | the 13-member phase catalogue | §8.1, §8.3 |
+
+Two fields this FSPEC emits have **no** §1 row at `Version` 1.4 and are therefore outside the
+compared set rather than silently added to it: `rung:` (§14.4 ER-1) and the absent reason code for
+§2.6 row 4 (ER-2). Both are routed as errata against the REQ, which owns §1; neither is patched
+here, and AT-L5's domain (§13.9) excludes free-form values so the oracle stays exact in the
+meantime.
 
 ### 15.3 Files this feature edits or creates
 
@@ -2036,19 +2042,27 @@ and every failure of an external call has a named class. This section gathers th
 check totality in one pass: nothing below aborts the pass without a recorded status, and no two
 distinct input states are silently collapsed into one.
 
+**The AT column is a per-row obligation, not a family citation.** Every row below names a test whose
+**Given constructs that row's own input state**. A row is not covered by a test that constructs a
+neighbouring state and happens to exercise nearby code: an absent file and an unreadable one, a stray
+basename and a dangling closer, an `api-failure` and a `branch-exists` each differ in the arm they
+take, so a shared test proves one arm and leaves the other unwritten — exactly the collapse this
+section forbids. Six rows carried such a citation in the first draft (E-02, E-05, E-06, E-09, E-23,
+E-29) and each now names its own test.
+
 ### 19.1 Parsed-input edge cases
 
 | # | Input state | Behaviour | Section | AT |
 |---|---|---|---|---|
 | E-01 | `docs/_decisions/.consolidation-log.md` absent | both regions empty; every basename un-consolidated; datum set empty ⇒ the first pass runs on the `no-cadence-datum` branch | §3.4, §2.3 | AT-P4, AT-C1 |
-| E-02 | Log present but unreadable (permissions, IO error) | treated as **empty text**, mirroring `nudge-consolidation.sh:38-39`'s `except: logtext = ""` — fail-open toward re-consumption, never toward silently skipping a corpus; NFR-4 is what then prevents a duplicate proposal | §3.4 | AT-P4 |
+| E-02 | Log present but unreadable (permissions, IO error) | treated as **empty text**, mirroring `nudge-consolidation.sh:38-39`'s `except: logtext = ""` — fail-open toward re-consumption, never toward silently skipping a corpus. The re-consumption it permits is bounded by §6.4's carrier on the PR route and by the §5.2/§6.4 consuming-repo carrier on the other, not by the log this row could not read | §3.4, §6.4 | **AT-P8** |
 | E-03 | Log present with no `<!-- pdlc:consumed` marker | the whole file is legacy region — the HEAD state | §3.4 | AT-P3 |
 | E-04 | Opening `<!-- pdlc:consumed {passId} -->` with no closing marker (a truncated append) | the unterminated block runs to end of file and counts as consumed — a partially flushed pair never *loses* consumption | §3.4 | AT-P5 |
-| E-05 | Closing `<!-- /pdlc:consumed -->` with no opener | ignored; opens no block, moves no boundary | §3.4 | AT-P2 |
-| E-06 | A basename in both regions | consolidated once — the clauses are a disjunction over a set of basenames | §3.4 | AT-P3 |
+| E-05 | Closing `<!-- /pdlc:consumed -->` with no opener | ignored; opens no block, moves no boundary | §3.4 | **AT-P9** |
+| E-06 | A basename in both regions | consolidated once — the clauses are a disjunction over a set of basenames | §3.4 | **AT-P11** |
 | E-07 | A basename appearing in the log outside any block (e.g. in an `artifact` field) after the first marker | **un-consolidated** — the stray occurrence marks nothing | §3.2 | AT-P2 |
 | E-08 | Corpus glob matches nothing | un-consolidated set empty; volume cannot fire; a pass that runs is the AC-1.4 `no-op` with an empty consumed pair | §3.4 | AT-P6 |
-| E-09 | Two LEARNINGS sharing a basename under different directories | one set member; the collision is **reported** in the AC-7.1 report, never silently resolved (repair needs a key the shipped predicate lacks — §14 O-C2) | §3.4 | AT-P1 |
+| E-09 | Two LEARNINGS sharing a basename under different directories | one set member; the collision is **reported** in the AC-7.1 report, never silently resolved (repair needs a key the shipped predicate lacks — §14 O-C2) | §3.4 | **AT-P10** |
 | E-10 | A log row that is malformed or unparseable | contributes no `m` to the `passId` derivation and is skipped — the derivation never aborts | §2.5 | AT-C6 |
 | E-11 | Marker file truncated or unparseable | **reclaimed, not refused**; the abandoned id is reported `unknown` | §4.2 | AT-M3 |
 | E-12 | `ESCALATIONS.md` entry whose `Feature` row is missing | that entry is skipped with a parse notice; no count is attributed to a guessed key; the read does not abort | §9.2 | AT-A7 |
@@ -2064,16 +2078,18 @@ distinct input states are silently collapsed into one.
 | E-17 | Marker held and stale | reclaimed; `reclaimed-stale-lock` composes with the run's own status | §4.2 | AT-M2 |
 | E-18 | Two passes racing to mint the same `passId` | harmless: the loser is `refused` at step 6, and no contract keys on a refused row's id | §2.5, §4.5 | AT-C6, AT-M1 |
 | E-19 | Neither model rung resolves | `failed`, reason `advisory-model-unresolved`; no promotion; consumed pair already written at step 7; marker released | §2.6 | AT-M4 |
+| E-19b | The first advisory dispatch fails for a reason that is **not** model resolution (§2.6 row 4) | `failed` with **no** reason code and the error message verbatim in the report body; otherwise identical to E-19 | §2.6 | AT-M6 |
 | E-20 | Credential absent or invalid | `credential-unavailable`, `credential: absent`, §6.3 fallback fires, pass does **not** halt | §7.3, §6.3 | AT-K2 |
+| E-20b | A pass `refused` at step 6, which resolved no credential at all | `credential: absent` read as **not attempted** — the row carries no `credential-unavailable`, which is what separates it from E-20 (§10.3) | §10.3, §4.4 | AT-K6 |
 | E-21 | Credential present but rejected by the repository | `credential: present (redacted)` **and** `credential-unavailable` — the two fields are never collapsed | §7.2, §6.3 | AT-K4 |
 | E-22 | `pluginRepository` names a repository that does not resolve | `repository-unresolved` with the configured value verbatim — never a silent fallback to the current repository | §6.3, §11.2 | AT-N4 |
-| E-23 | Network or API failure, rate limiting included | `api-failure` with the API's status text; the proposal file carries the full diff | §6.3 | AT-Q6 |
+| E-23 | Network or API failure, rate limiting included | `api-failure` with the API's status text; the proposal file carries the full diff | §6.3 | **AT-Q8** |
 | E-24 | Remote head branch `consolidation/{passId}` already exists | `branch-exists`; the fallback file names the existing branch and any PR found for it | §6.3 | AT-Q6 |
 | E-25 | A proposal duplicates an open-or-merged `(id, action)` pair | **not** an error: suppressed before any PR is attempted, fires no fallback, records `duplicate-suppressed` | §6.4, §6.3 | AT-Q3 |
 | E-26 | Every promotion suppressed | `no-op` with `pr:` empty and `suppressed-by:` populated | §12.1 S-06 | AT-L2 |
 | E-27 | Git refuses the AC-3.8b commit after the lock retries | status unchanged; `writes-uncommitted` recorded; writes remain correct on disk | §5.4 | AT-R4 |
 | E-28 | Nothing to stage at commit time | no failure and no `writes-uncommitted` — an empty stage is a return, not a warning | §5.4 | AT-R5 |
-| E-29 | The invoking branch carrying the log record is later abandoned | the merged PR is what survives; §5.5 states the cost rather than compensating for it | §5.5 | AT-Q3 |
+| E-29 | The invoking branch carrying the log record is later abandoned | the merged PR is what survives; §5.5 states the cost rather than compensating for it | §5.5 | **AT-Q9** |
 | E-30 | `ESCALATIONS.md` absent (the state at HEAD) / present-but-empty | `no-advisory-corpus` / `advisory-corpus-empty`; no seam proposal of any kind; the rest of the pass proceeds | §9.3 | AT-A1, AT-A2 |
 | E-31 | Two advisory seams tied on the highest total | no over-escalation candidate; the tie is reported | §9.4 | AT-A5 |
 
