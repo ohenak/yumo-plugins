@@ -122,3 +122,7 @@ What must change:
 None of the six requires re-opening a decision this revision settled. G-01, G-04, G-05 and G-06 are
 wording-and-scope repairs to text already present; G-02 and G-03 are the two places where new
 mechanism arrived without its coverage.
+
+## Verdict
+
+VERDICT: Needs revision
