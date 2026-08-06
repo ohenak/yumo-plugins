@@ -1418,4 +1418,49 @@ PROPERTIES' (DC-09).
 
 ## 14. Obligations and open questions
 
+### 14.1 Obligations this FSPEC hands to TSPEC
+
+None of these is a behavioural question — each is a mechanism choice this layer deliberately does not
+make (DC-09, DC-10: the layer that owns the decision states it, rather than leaving it to be
+invented downstream).
+
+| # | Obligation | Constrained by |
+|---|---|---|
+| T-01 | Function names, seam signatures and module placement for the pass | §2.2's step sequence is the behavioural contract; the decomposition is TSPEC's |
+| T-02 | The bundle's row in `pdlc/workflows/dist/distribution-manifest.json`, and its entry in `build-runtime.mjs` | REQ §5: the pass ships as a workflow script beside the skill, in the `orchestrate-queue` shape |
+| T-03 | How the §6.1 temporary clone is created, located and removed | AC-3.8: no branch operation in the invoking tree; the clone is cut from the fetched default branch |
+| T-04 | The injected seams for file IO, git and the PR API | every one must be `await`ed (CLAUDE.md, runtime-adapter contract) |
+| T-05 | The `resolveAdvisoryRung` call site and its `rungState` threading | §2.6: reuse, never restate, the two constants |
+| T-06 | The parse implementation for `ESCALATIONS.md` entries | §9.2: read the metadata table rows, never the heading |
+| T-07 | The `.gitignore` pattern's exact text | §4.1: root-relative, contains a separator, never slash-free or `**/`-prefixed |
+| T-08 | Whether the corpus enumeration is shared code with `nudge-consolidation.sh` or two implementations held equal by test | §3.1 requires one corpus and one predicate; it does not require one implementation |
+
+### 14.2 Open questions — decided here, recorded for review
+
+| # | Question | Decision | Where |
+|---|---|---|---|
+| O-C1 | A pass that dies at step 8 (`advisory-model-unresolved`) has already frozen its corpus as consumed without reading a body. Those files are then permanently consolidated. | **Accepted, not repaired.** The ordering is forced by vocabularies §3(a), and no §1 field exists in which a `failed` pass could record "re-consume these". Inventing a recovery channel would add an unlisted record type and breach REQ §4b. | §2.6 |
+| O-C2 | Two files sharing a basename under different directories collapse to one set member. | **Reported, not repaired.** Repair needs a key the shipped predicate does not have. Newly reachable now that `docs/completed/*/` is in the corpus. | §3.4 |
+| O-C3 | The marker take is read-then-write, so two passes can both observe "absent". | **Stated, bounded.** Blast radius is closed by two independent properties: every log write is a whole-record append, and NFR-4 keys on the PR trailer rather than the log. An atomic create-exclusive take is TSPEC's if the runtime offers one. | §4.5 |
+| O-C4 | A promotion whose invoking branch is abandoned loses its effectiveness record and re-enters the table as if first made. | **Accepted loss**, stated in the REQ and restated here rather than closed. | §5.5 |
+| O-C5 | `ESCALATIONS.md` cannot distinguish a seam that never escalates because it never runs from one that never escalates because it always succeeds. | **Honest limit**, which is why §9.5's output is a candidate for human judgment. Resolution rates are D-CONS-06. | §9.6 |
+
+None of the five is a blocking gap: each names what is observed, what is accepted, and — where one
+exists — the deferral that carries it.
+
+### 14.3 Questions this FSPEC raises for the operator, not for a downstream layer
+
+| # | Question | Why it is the operator's |
+|---|---|---|
+| O-P1 | Whether to configure repository-side branch protection on the plugin repo | BL-05; §6.5's three controls hold without it, but the repo-side belt is not a code deliverable |
+| O-P2 | Whether to enable the advisory tier so BL-01a's corpus can exist | §9.3 ships and is testable with the tier off; enabling it is a config decision with its own cost |
+| O-P3 | Which branch a pass is invoked on, given §5.5's abandonment consequence | the pass never changes the branch (AC-3.8), so the choice is entirely the operator's |
+
+### 14.4 Nothing here is a defect of an upstream document
+
+Every question above was raised and settled by the REQ, or is a mechanism choice the REQ explicitly
+delegated. This FSPEC records **no** erratum against `REQ-pdlc-consolidation-agent` v2.0, against
+`docs/_constraints/pdlc-consolidation-vocabularies.md` at `Version` 1.4, or against
+`docs/_constraints/pdlc-advisory-corpus-baseline.md` at `Version` 1.0.
+
 ## 15. Traceability
