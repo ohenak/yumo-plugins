@@ -137,29 +137,76 @@ mechanism — and updates `consolidate-learnings/SKILL.md:35` to match. Every AC
 - **AC-2.3** — Given the pattern-vs-coincidence bar (recurs across ≥2 unrelated features, or a
   single occurrence stating a standing invariant), Then it is unchanged and still governs every
   promotion.
-- **AC-2.4** — Given the pass completes, Then `.consolidation-log.md` records date, consumed
-  files, promoted items, and deferred items, as today.
+- **AC-2.4** — Given the pass completes, Then `docs/_decisions/.consolidation-log.md` records date,
+  consumed files (by basename, exactly the set the AC-1.1 predicate selected), promoted items, and
+  deferred items, as today (`pdlc/skills/consolidate-learnings/SKILL.md:43`).
 
 ### REQ-CONS-03 — Cross-repo promotion as a pull request
 
-- **AC-3.1** — Given a promotion targets `pdlc/skills/**` or `pdlc/workflows/**`, Then the agent
-  opens a pull request against the configured plugin repository containing the **concrete edit**, not a
-  description of it.
+**Pass identity and artifact naming.** Every pass has a `passId` of the form `{YYYY-MM-DD}-{n}`,
+where `n` is the 1-based ordinal of that pass on that calendar date — so the two same-day passes
+AC-1.2 makes an expected case never collide. The proposal artifact is
+`docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` (superseding today's `{date}`-only name at
+`pdlc/skills/consolidate-learnings/SKILL.md:49`), the promotion branch is
+`consolidation/{passId}`, and the PR body carries two trailers:
+`PDLC-CONSOLIDATION-PASS: {passId}` and `PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`.
+These are the identity keys NFR-4 is stated against.
+
+- **AC-3.1** — Given a promotion targets any path under the guard set — **exactly**
+  `MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48-53`): `pdlc/workflows/`,
+  `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` — Then the agent opens a pull request against
+  the repository named by `consolidation.pluginRepository` containing the **concrete edit**, not a
+  description of it. The routing predicate is set-equal to that constant, not a restatement of part
+  of it: a promotion editing `pdlc/hooks/scripts/nudge-consolidation.sh` (which is where AC-1.2's
+  threshold lives, `:25`) routes here like any other.
 - **AC-3.2** — Given such a PR, Then its body cites the source LEARNINGS files by feature name, the
   failure mode the edit targets, and the pattern evidence that cleared AC-2.3.
 - **AC-3.3** — Given multiple promotions in one pass, Then they may share one PR, but each edit is
-  a separate commit so any single edit can be reverted independently.
+  a separate commit carrying the trailer `PDLC-PROMOTION-ID: {id}` naming exactly the promotion it
+  enacts, so any single edit can be reverted independently and a reader can map commit → promotion
+  without counting. A retirement (AC-5.4) may share a PR with additive promotions; it carries its
+  own `PDLC-PROMOTION-ID` and its own commit.
 - **AC-3.4** — Given the PR is opened, Then its URL is written back into
-  `.consolidation-log.md` and into `CONSOLIDATION-PROPOSAL-{date}.md`, so a later reader can tell
-  which promotions actually landed and which are still open.
-- **AC-3.5** — Given the PR cannot be opened for any reason, Then the pass **still** writes
-  `CONSOLIDATION-PROPOSAL-{date}.md` with the full proposed diff inline, so the fallback is
-  today's behavior rather than a lost promotion.
-- **AC-3.6** — Given any cross-repo promotion, Then it is **never** pushed directly to the default
-  branch. Pull request only.
-- **AC-3.7** — Given the PR touches `pdlc/skills/**` or `pdlc/workflows/**`, Then it inherits
-  `pdlc-merge-phase` REQ-MERGE-03's self-modification guard and is never auto-merged, regardless
-  of CI or configuration.
+  `docs/_decisions/.consolidation-log.md` and into
+  `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, so a later reader can tell which promotions
+  actually landed and which are still open.
+- **AC-3.5** — Given the PR cannot be opened, Then the pass **still** writes
+  `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` with the full proposed diff inline, so the
+  fallback is today's behavior rather than a lost promotion. The failure classes are enumerated and
+  each is recorded by name in the log row and the proposal file:
+
+  | Class | Reason code | Fallback fires? | Recorded |
+  |---|---|---|---|
+  | Credential absent or invalid | `credential-unavailable` | yes | class + `credential: absent (redacted)` (AC-4.3) |
+  | `consolidation.pluginRepository` unset, not found, or renamed | `repository-unresolved` | yes | class + the configured value |
+  | Network / API failure, including rate limiting | `api-failure` | yes | class + the API's status text |
+  | Head branch `consolidation/{passId}` already exists remotely | `branch-exists` | yes | class + the existing branch and any PR found for it |
+  | An open PR already carries this pass's `PDLC-CONSOLIDATION-SOURCES` trailer | `duplicate-suppressed` | **no** | class + the existing PR URL (NFR-4) |
+
+- **AC-3.6** — Given any promotion, Then it is **never** pushed directly to the default branch.
+  Pull request only, from branch `consolidation/{passId}`. The branch is never reused across passes
+  (the `passId` makes it unique) and is **not** deleted by the pass — deletion follows the operator's
+  merge or close of the PR, so the residue of a half-failed pass stays inspectable.
+- **AC-3.7** — Given a promotion PR, Then **this feature's own controls** make auto-merge
+  impossible, and the pass asserts them as its own observables rather than inheriting a mechanism:
+  (a) the credential grants no merge rights (AC-4.1); (b) the pass never calls a merge or
+  enable-auto-merge API on any PR — including its own; (c) the PR body carries the
+  `PDLC-CONSOLIDATION-PASS` trailer of AC-3.1, so a repo-side control can recognise it.
+
+  This restates, and does not repeat, `pdlc-merge-phase` REQ-MERGE-03. That guard is `guardVerdict`
+  (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`), reachable only
+  from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both inside an
+  `orchestrate-dev` run deciding about **that run's own** PR — and Phase MERGE ships
+  `mergeMode: "off"` (`:61`, refusal `:838`). No code path in this repository evaluates an inbound
+  PR raised by another process, so claiming inheritance would assert a control that nothing
+  enforces. Repository-side enforcement (branch protection / required review on the plugin repo) is
+  an operator responsibility, tracked as BL-05.
+- **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
+  consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
+  a **separate clone under a temporary directory**, cut from the fetched default branch. It never
+  checks out, stashes, or otherwise disturbs the working tree it was invoked from, which may be
+  mid-pipeline on a `feat-*` branch. Everything else in REQ-CONS-03 and REQ-CONS-04 applies
+  unchanged; AC-4.4's local `gh` authentication is the supported credential in this configuration.
 
 ### REQ-CONS-04 — Credential scope
 
