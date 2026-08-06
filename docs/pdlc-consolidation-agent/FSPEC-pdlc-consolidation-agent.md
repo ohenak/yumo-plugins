@@ -123,8 +123,14 @@ where `docs/_decisions/.consolidation-log.md`'s Pass 1 predates the status conve
 `no-cadence-datum` is decided at step 4, before the marker check at step 6, which is why
 vocabularies §1 permits it with `refused` as well as with the four working statuses.
 
-**Measured first-tick behaviour on this repo at HEAD** (the state an acceptance test asserts
-against, AT-C1): step 2 enumerates 5 LEARNINGS —
+**Measured first-tick behaviour on this repo at authoring time** — a worked illustration of the two
+tests, **not** the Given of any acceptance test. The corpus is a live, growing set: this feature's own
+Phase H adds `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md`, which the
+`docs/*/LEARNINGS-*.md` glob admits, so the numbers below change on the very PR that ships the pass
+and the volume test inverts a few features later. AT-C1 is therefore stated over a **constructed
+corpus fixture** parameterised on `(n corpus files, k named in the legacy region, volumeThreshold)`,
+never over the repository. With that said, at the commit this section was written: step 2 enumerates
+5 LEARNINGS —
 `docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md`,
 `docs/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md`,
 `docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md`,
@@ -238,7 +244,7 @@ that produced nothing, which is the same loss by a different route.
 
 ### 3.1 The corpus — what is enumerated
 
-Enumeration is **basenames only**. No step in §2.2 before step 9 opens a LEARNINGS file, and a
+Enumeration is **basenames only**. No step in §2.2 before step 8 opens a LEARNINGS file, and a
 `skipped-cadence` tick never opens one at all (§2.4).
 
 | Glob | In corpus | Why |
@@ -310,7 +316,7 @@ exactly this, because this feature writes those record types into the same file.
 The `Date Completed` boundary is not merely a second definition; it disagrees with the first in a way
 that matters — `Date Completed` is a body field an editor can change after a pass consumed the file,
 which would silently re-open a consolidated LEARNINGS, and reading it requires opening bodies the
-tick order forbids before step 9. The basename test is adopted for both reasons (REQ-CONS-01).
+tick order forbids before step 8. The basename test is adopted for both reasons (REQ-CONS-01).
 
 The hook's own threshold (`THRESHOLD = 5`, `:25`) stays the hook's: it governs only whether the
 `SessionStart` advisory line prints. The pass evaluates `consolidation.volumeThreshold` itself
@@ -1360,12 +1366,15 @@ PROPERTIES' (DC-09).
 
 | ID | Who | Given | When | Then |
 |---|---|---|---|---|
-| AT-C1 | operator | this repository at HEAD — 5 LEARNINGS in corpus, 2 named in the log's legacy region, default `volumeThreshold` 5, no log row carrying a datum status | a `/loop` tick runs | the un-consolidated set has 3 members; the volume test does **not** fire; the cadence test fires on the empty-datum branch; the row records trigger `cadence` and reason code `no-cadence-datum` |
+| AT-C1 | operator | a **constructed corpus fixture** parameterised on `(n, k, volumeThreshold)` — `n` LEARNINGS files under the §3.1 globs, `k` of their basenames named in the log's legacy region, no log row carrying a datum status — instantiated at `(5, 2, 5)` | a `/loop` tick runs | the un-consolidated set has `n - k` = 3 members; `n - k < volumeThreshold`, so the volume test does **not** fire; the cadence test fires on the empty-datum branch; the row records trigger `cadence` and reason code `no-cadence-datum`. The fixture is constructed, never the live repository: the corpus grows with every delivered feature (this one included), so a Given pinned to HEAD inverts on its own PR |
+| AT-C1b | operator | the same fixture at `(6, 0, 5)` — `n - k` ≥ `volumeThreshold` | a `/loop` tick runs | the **volume** test fires and the row records trigger `volume`; the same fixture family therefore exercises both sides of the threshold and the test does not depend on which side the repository happens to be on |
 | AT-C2 | operator | 5 or more un-consolidated LEARNINGS and `cadenceHours` **not** elapsed | a tick runs | the pass runs with trigger `volume` |
 | AT-C3 | operator | fewer than `volumeThreshold` un-consolidated and `cadenceHours` not elapsed | a tick runs | terminal `skipped-cadence`; **no** log row is appended; no LEARNINGS body was read; no `passId` minted; no git call made |
 | AT-C4 | operator | `cadenceHours` not elapsed by any measure | `/pdlc:consolidate-learnings` is invoked directly | the pass runs with trigger `manual` — the manual entry is never gated by cadence |
-| AT-C5 | operator | a log whose most recent datum-status row is a `refused` row followed by a `promoted` row | a tick evaluates the cadence test | the datum is the `promoted` row's date; the `refused` row is skipped |
+| AT-C5 | operator | a log whose rows in file order are: a `promoted` row dated D1, then a **later** `refused` row dated D2 (D2 > D1) — the `refused` row is the last row in the file | a tick evaluates the cadence test | the datum is **D1**, the earlier `promoted` row's date; the `refused` row is skipped even though it is the most recent row. (`refused` is not one of §2.3's four datum statuses, so the ordering is what falsifies an implementation that takes the last row unconditionally) |
 | AT-C6 | operator | a log already carrying a row with `passId` `{today}-1` | a second pass mints its id | the new `passId` is `{today}-2` |
+| AT-C7 | operator | a log whose newest rows all carry a **previous** date — e.g. `{today-1}-3` — and no row for `{today}`, one of those rows being unparseable | a pass mints its id | the new `passId` is `{today}-1`: the counter restarts per date rather than continuing the previous date's `n`, and the unparseable row contributes no `m` |
+| AT-C8 | operator | one fixed corpus and one fixed configuration, run twice — once where the volume test fires (trigger `volume`) and once where only the cadence test fires (trigger `cadence`) | both passes derive their promotions | the two promotion sets are **set-equal** by `(failure-mode-id, action)`, and the AC-2.3 bar's evidence is identical in both reports. NFR-3 is comparative: the trigger decides whether a pass runs, never what clears the bar, so a trigger-sensitive promotion set is the failure this test exists to catch |
 
 ### 13.2 The consumed predicate and the corpus (§3)
 
