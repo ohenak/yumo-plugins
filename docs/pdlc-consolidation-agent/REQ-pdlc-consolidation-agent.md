@@ -32,23 +32,19 @@ Two things do not.
 **The cross-repo dead end.** When a learning says *a skill prompt itself should change*, the skill
 writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a four-column markdown table,
 `| Source LEARNINGS | Target skill | Proposed change | Rationale |`
-(`pdlc/skills/consolidate-learnings/SKILL.md:54`) — **in the consuming repo**. The skills it names
-live in `yumo-plugins/pdlc/skills/`. Nothing carries the proposal across that boundary: no
-`gh pr create` and no cross-repo push exists outside Phase PUB's own-repo `ship-pr`. It is a note to
-a human who must read it, switch repositories, and hand-apply each row.
+(`pdlc/skills/consolidate-learnings/SKILL.md:54`) — **in the consuming repo**, while the skills it
+names live in `yumo-plugins/pdlc/skills/`. Nothing carries the proposal across that boundary: no
+`gh pr create` and no cross-repo push exists outside Phase PUB's own-repo `ship-pr`. So the pipeline
+accumulates precise evidence about its own failure modes and then hand-transcribes it, or doesn't.
+The propose-only rule behind that is correct — agents proposing changes to the prompts that govern
+agents must pass through human judgment — but *propose-only* and *hand-transcribed* are different
+requirements, and the skill enforces the second while intending only the first.
 
 **Today's only consumer is `yumo-plugins` itself.** `docs/_queue/QUEUE.md:11` states that this queue
 is the pipeline's own queue, and `:279` that every PR in it trips the self-modification guard. So the
 "consuming repo" and the "plugin repo" are, in the shipping configuration, one repository. This REQ
 therefore specifies the same-repo case as the primary configuration (AC-3.8) rather than assuming a
 two-repo topology that does not yet exist.
-
-The result is that the pipeline accumulates precise evidence about its own failure modes and then
-does nothing with it. The one loop meant to make the pipeline better is the only fully manual one.
-The propose-only rule that produces this is itself correct — "agents proposing changes to the
-prompts that govern agents must pass through human judgment" — but *propose-only* and
-*hand-transcribed* are different requirements, and the skill currently enforces the second while
-only intending the first.
 
 **Unfalsifiability.** Nothing checks whether a promotion worked. A consolidation pass promotes a
 constraint or a skill edit and never revisits it. Over enough passes this drifts toward ceremony:
@@ -111,34 +107,30 @@ way, so the hook and the pass keep one predicate rather than two. This is what m
 "exactly the consumed set" enforceable by the predicate that consumes it.
 
 **What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md`
-**exists** and predates every convention this feature introduces. It is a markdown pass log: a
-header, then `## Pass 1 — 2026-07-29` whose consumed set is a two-column table of **full paths**
-(`| \`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md\` | 2026-06-02 |` and the
-same shape for `docs/pdlc-workflow-distribution/…`), followed by prose promotion sections. It
-carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any kind — the word "Promoted"
-appears only as a section heading. A predicate that matched blocks alone would therefore report both
-files un-consolidated on the first pass after this feature ships, re-consume a corpus a prior pass
-already promoted from, and get no help from NFR-4 (whose identity is `failure-mode-id`, which a
-pre-convention LEARNINGS does not carry, AC-5.2). The predicate is therefore stated over two
-regions, and is total over any log:
+**exists** and predates every convention this feature introduces: a markdown pass log whose
+`## Pass 1 — 2026-07-29` records its consumed set as a two-column table of **full paths**
+(`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md` | 2026-06-02, and the same
+shape for `docs/pdlc-workflow-distribution/…`), followed by prose promotion sections. It carries
+**no** `<!-- pdlc:consumed -->` block and **no** row status of any kind — "Promoted" appears only as
+a section heading. A predicate matching blocks alone would therefore report both files
+un-consolidated on the first pass, re-consume a corpus a prior pass already promoted from, and get
+no help from NFR-4 (keyed on `failure-mode-id`, which a pre-convention LEARNINGS does not carry,
+AC-5.2). The predicate is therefore stated over two regions, and is total over any log:
 
 > A basename is **consolidated** if it appears inside a `<!-- pdlc:consumed {passId} -->` block, **or**
 > anywhere in the log's **legacy region** — the text preceding the file's *first*
 > `<!-- pdlc:consumed` marker. A log with no block at all is legacy region in its entirety.
 
 The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) applied to exactly the
-text that predates this feature, so nothing already consolidated is re-consumed and no migration
-step, transcription or parse of Pass 1's prose is required. It is frozen by construction: the first
-pass under this feature appends its `<!-- pdlc:consumed -->` block to the log **before** any other
-record it writes that pass, so every record this feature introduces lands *after* the boundary and
-none of them can ever be read as legacy consumption. `nudge-consolidation.sh:41` is updated to the
-same two-region rule, keeping hook and pass on one predicate.
-
-**Observable consequence on this repo today** (the state a first-run test asserts against): the
-corpus enumeration of step 1 below matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
-`LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and are consolidated; the
-remaining 3 (`LEARNINGS-pdlc-advisory-tier.md`, `LEARNINGS-pdlc-merge-phase.md`,
-`LEARNINGS-pdlc-review-loop-hardening.md`) are un-consolidated — below the default
+text predating this feature, so nothing already consolidated is re-consumed and no transcription or
+parse of Pass 1's prose is required. It is frozen by construction: the first pass appends its
+`<!-- pdlc:consumed -->` block **before** any other record it writes, so every record this feature
+introduces lands after the boundary and none can be read as legacy consumption.
+`nudge-consolidation.sh:41` is updated to the same two-region rule, keeping hook and pass on one
+predicate. **On this repo today** (the state a first-run test asserts against) step 1's enumeration
+matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and `LEARNINGS-pdlc-workflow-distribution.md`
+are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`,
+`…-pdlc-merge-phase`, `…-pdlc-review-loop-hardening`) are un-consolidated — below the default
 `volumeThreshold` of 5, so the first tick reaches the cadence test.
 
 **Tick evaluation order, stated.** Every `/loop` tick evaluates in exactly this order, and no step
@@ -146,15 +138,14 @@ reads a LEARNINGS **body**:
 
 1. **Enumerate** LEARNINGS basenames and diff them against the predicate above — this yields the
    un-consolidated set. Enumeration is basenames only, which is all `nudge-consolidation.sh:41` does.
-   The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md`: the shipped glob
+   The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md`. The shipped glob
    is depth-1 only (`nudge-consolidation.sh:28`), but this repo archives completed features one level
-   deeper (`docs/completed/pdlc-merge-phase/`, `…/pdlc-review-loop-hardening/`,
-   `…/pdlc-workflow-distribution/` each hold a LEARNINGS — and BL-02 cites that convention), so a
-   depth-1 corpus would hide 3 of the 5 LEARNINGS at HEAD and bias AC-5.2's phase-population test
-   toward `insufficient-evidence`. `docs/discarded/*/` is deliberately **excluded**: that work was
-   abandoned, so its phases are not evidence about a delivered pipeline. Widening the corpus makes
-   `nudge-consolidation.sh:28` an in-scope edit of this feature (§5), keeping hook and pass on one
-   enumeration as well as one predicate.
+   deeper (`docs/completed/{pdlc-merge-phase,pdlc-review-loop-hardening,pdlc-workflow-distribution}/`
+   each hold a LEARNINGS; BL-02 cites the convention), so depth-1 hides 3 of the 5 LEARNINGS at HEAD
+   and biases AC-5.2's phase population toward `insufficient-evidence`. `docs/discarded/*/` is
+   deliberately **excluded** — abandoned work is not evidence about a delivered pipeline. Widening
+   makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one enumeration as well as one
+   predicate.
 2. **Volume test** — if `|un-consolidated| >= consolidation.volumeThreshold`, the pass runs, trigger
    `volume` (AC-1.2).
 3. **Cadence test** — otherwise, if `consolidation.cadenceHours` has elapsed since the cadence datum
@@ -323,14 +314,12 @@ These are the identity keys NFR-4 is stated against.
   `PDLC-CONSOLIDATION-PASS` trailer defined in the REQ-CONS-03 preamble ("Pass identity and artifact
   naming"), so a repo-side control can recognise it.
 
-  This restates, and does not repeat, `pdlc-merge-phase` REQ-MERGE-03. That guard is `guardVerdict`
-  (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`), reachable only
-  from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both inside an
-  `orchestrate-dev` run deciding about **that run's own** PR — and Phase MERGE ships
-  `mergeMode: "off"` (`:61`, refusal `:838`). No code path in this repository evaluates an inbound
-  PR raised by another process, so claiming inheritance would assert a control that nothing
-  enforces. Repository-side enforcement (branch protection / required review on the plugin repo) is
-  an operator responsibility, tracked as BL-05.
+  This restates, and does not repeat, `pdlc-merge-phase` REQ-MERGE-03: that guard is `guardVerdict`
+  (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`), reachable only from
+  Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both inside a run
+  deciding about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`, refusal
+  `:838`). Nothing here evaluates an inbound PR raised by another process, so claiming inheritance
+  would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
 - **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
   consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
   a **separate clone under a temporary directory**, cut from the fetched default branch. In the
@@ -398,10 +387,9 @@ These are the identity keys NFR-4 is stated against.
   configuration for the same-repo case (AC-3.8); the scoped credential of AC-4.1 is required only
   when `consolidation.pluginRepository` names a different repository (BL-03).
 
-AC-4.1 states a general principle rather than a local convenience: an automated identity that
-proposes changes to the rules governing it must not also be able to enact them. Separating
-propose-rights from merge-rights at the credential level makes that structural rather than
-procedural — the agent cannot merge its own proposal even if every other control failed.
+AC-4.1 is a principle, not a convenience: an identity that proposes changes to the rules governing it
+must not be able to enact them. Separating propose-rights from merge-rights at the credential level
+makes that structural — the agent cannot merge its own proposal even if every other control failed.
 
 ### REQ-CONS-05 — Falsifiability
 
@@ -485,29 +473,24 @@ procedural — the agent cannot merge its own proposal even if every other contr
 
 ### REQ-CONS-06 — Advisory-record input
 
-**Why this requirement narrowed.** The structured per-seam counts do exist — `advisorySummaryRows`
-(`pdlc/workflows/orchestrate-dev.js:2708`, driven by `ADVISORY_SEAMS`) — but only as an in-memory
-field of one run's report (`:10663`, `:10695`), never persisted. The per-feature record
-`ADVISORY-{feature}.md` has a strict schema (`renderAdvisoryEntry`, `:2642`) but is **deleted**
-after Phase H2's distil (`:10499`), and that distil dispatch asks only for a prose summary with no
-schema (`advisoryDistilPrompt`, `:7585-7594`). So LEARNINGS advisory text is not parseable and
-cannot carry counts. `docs/_queue/ESCALATIONS.md` (`ESCALATIONS_PATH`, `:2750`; appended at `:2812`)
-is the one durable per-seam record — append-only, non-feature-scoped, never distilled, never
-deleted — and `renderEscalationEntry` (`:2763`) gives every entry named `Feature` and `Seam` fields.
-REQ-CONS-06 therefore consumes **that**, and does not require a structured artifact that is
-destroyed.
+**Why this requirement narrowed.** The structured per-seam counts exist only in memory:
+`advisorySummaryRows` (`pdlc/workflows/orchestrate-dev.js:2708`, driven by `ADVISORY_SEAMS`) is a
+field of one run's report (`:10663`, `:10695`), never persisted; the per-feature `ADVISORY-{feature}.md`
+has a strict schema (`renderAdvisoryEntry`, `:2642`) but is **deleted** after Phase H2's distil
+(`:10499`), whose dispatch asks only for prose with no schema (`advisoryDistilPrompt`,
+`:7585-7594`) — so LEARNINGS advisory text cannot carry counts. `docs/_queue/ESCALATIONS.md`
+(`ESCALATIONS_PATH`, `:2750`; appended `:2812`) is the one durable per-seam record — append-only,
+never distilled, never deleted — and `renderEscalationEntry` (`:2763`) gives every entry named
+`Feature` and `Seam` fields. REQ-CONS-06 consumes **that**, not an artifact that is destroyed.
 
 **Availability of that input, stated honestly.** `docs/_queue/ESCALATIONS.md` **does not exist at
-HEAD** — `docs/_queue/` holds `QUEUE.md` alone, and `git log --all -- docs/_queue/ESCALATIONS.md`
-returns nothing, so it has never existed on any branch. It is written only by the advisory tier, and
-that tier ships **disabled**: `advisoryTierOn = advisoryConfigResult.config.enabled`
-(`pdlc/workflows/orchestrate-dev.js:9653`) resolves from `parseAdvisoryConfig` (`:1682`) whose
-default is `enabled: false` (`:1663`), and this repo's `.claude/pdlc.config.json` carries an
-`implementation` section only — no `advisory` key at all. So in the shipping configuration the file
-is absent, and stays absent until an operator opts in. REQ-CONS-06 is therefore specified for an
-**absent-first** world: the requirement ships and is testable with the tier off, and its proposals
-are gated on a corpus that could actually have carried evidence. The corpus's availability is
-tracked as BL-01a, not asserted as delivered.
+HEAD** — `docs/_queue/` holds `QUEUE.md` alone and `git log --all -- docs/_queue/ESCALATIONS.md`
+returns nothing. Its only writer is the advisory tier, which ships **disabled**: `advisoryTierOn`
+(`orchestrate-dev.js:9653`) resolves from `parseAdvisoryConfig` (`:1682`), default `enabled: false`
+(`:1663`), and this repo's `.claude/pdlc.config.json` has an `implementation` section only. So
+REQ-CONS-06 is specified **absent-first**: it ships and is testable with the tier off, and its
+proposals are gated on a corpus that could actually have carried evidence. Availability is tracked
+as BL-01a, not asserted as delivered.
 
 - **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its
   machine-readable per-seam input, counting escalations per `Seam` per `Feature` from the entry
