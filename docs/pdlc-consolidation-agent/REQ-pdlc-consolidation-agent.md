@@ -303,8 +303,9 @@ duplicate-PR key NFR-4 is stated against — it rides the PR, so it outlives the
   | `consolidation.pluginRepository` unset, not found, or renamed | `repository-unresolved` | yes | class + the configured value |
   | Network / API failure, including rate limiting | `api-failure` | yes | class + the API's status text |
   | Head branch `consolidation/{passId}` already exists remotely | `branch-exists` | yes | class + the existing branch and any PR found for it |
-  | An **open or merged** PR already carries this promotion's id in its `PDLC-CONSOLIDATION-PROMOTIONS` trailer | `duplicate-suppressed` | **no** | class + the existing PR URL (NFR-4) |
 
+  `duplicate-suppressed` is **not** a member of this table: it is decided per promotion, before any PR is attempted, and fires no fallback. Its rule and
+  its recording live in NFR-4.
 - **AC-3.6** — Given any promotion, Then it is **never** pushed directly to the default branch: pull
   request only, from branch `consolidation/{passId}`, never reused across passes (`passId` makes it
   unique) and **not** deleted by the pass — deletion follows the operator's merge or close, so the
@@ -398,13 +399,26 @@ makes that structural, so the agent cannot merge its own proposal if every other
 ### REQ-CONS-05 — Falsifiability
 
 - **AC-5.1** — Given any promotion, Then it records the failure mode it targets as a **structured
-  record with four named fields**, not prose: `failure-mode-id` (a slug derived deterministically
-  from the failure mode itself — its `phase` and `symptom` — never from the pass or its consumed set,
-  so a later pass re-deriving the same failure mode yields the same id, which is what lets NFR-4 key
-  on it after a log record is lost; unique within the log), `phase` (a member of the pipeline's phase catalogue), `symptom` (one line), and
-  `artifact` (a path or glob the symptom appears in). The record is written into
-  `docs/_decisions/.consolidation-log.md` alongside the promotion, and the same
-  `failure-mode-id` is carried by the `PDLC-PROMOTION-ID` trailer of AC-3.3.
+  record with four named fields**, not prose: `failure-mode-id` (a slug derived deterministically from the promotion's `phase` and its target
+  `artifact`, and from **nothing else** — not from the pass, not from its consumed set, and **not** from `symptom`), `phase` (a member of the pipeline's
+  phase catalogue, §4b), `symptom` (one line, human-readable and explicitly **non-keying**), and `artifact` (a path or glob the symptom appears in). The
+  record is written into `docs/_decisions/.consolidation-log.md` alongside the promotion, and the same `failure-mode-id` is carried by the
+  `PDLC-PROMOTION-ID` trailer of AC-3.3.
+
+  **Why those two inputs, and not the failure mode's description.** Determinism of the derivation is not stability of its inputs. `phase` is a closed
+  13-member catalogue and `artifact` is a path in the repository — both are *file* text, the same property AC-5.2's determinism argument rests on.
+  `symptom` is a line the pass's own model writes, under no vocabulary and no template, so two passes recognising one failure mode from different
+  corpora would word it differently and slug differently — and that is exactly the case NFR-4 must survive (AC-3.8b's abandonment: a later pass with a
+  *larger* consumed set). Keying on `phase` + `artifact` is what makes "a later pass re-deriving the same failure mode yields the same id" true rather
+  than hoped for, and so is what lets NFR-4 key on the id after a log record is lost. The accepted cost is stated in the next rule.
+
+  **Uniqueness, scoped — the id repeats across passes by design.** Within **one pass** the id is unique: two promotions in one pass that derive the same
+  id name the same `phase` and the same `artifact`, are treated as **one** failure mode, and are recorded once — the pass never mints a suffixed variant,
+  because a suffix would break derivation purity and with it NFR-4. (That merge is the accepted cost of keying on `artifact` rather than on prose.)
+  **Across passes** the id deliberately repeats: NFR-4 sanctions re-proposing a promotion whose PR the operator closed unmerged, and that re-proposal
+  writes its own record. Log **records** are therefore keyed `(failure-mode-id, passId)`; a **promotion** is keyed on the id alone, and every downstream
+  contract counts promotions, not records — AC-5.2 emits one row per id, AC-5.3 counts one streak per id across all its records, and AC-5.4 retires an
+  id. So a repeated id is never an ambiguous referent.
 - **AC-5.2** — Given a consolidation pass, Then it reports, for **every** promotion recorded in
   prior passes, a verdict over the closed set `prevented` / `recurred` / `insufficient-evidence`,
   decided by a deterministic rule with no model judgment — so two runs over the same inputs cannot
@@ -440,9 +454,9 @@ makes that structural, so the agent cannot merge its own proposal if every other
   from this paragraph must be written per file. Any phase the mapping cannot decide for a pre-convention file counts as **not** exercised
   — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`.
 
-  The table is under a **set-equality** obligation: exactly one row per prior promotion in the log —
-  no missing rows, no rows for promotions never made; a dropped row is a failure, not a smaller
-  table. To make the id observable in the consumed corpus, this feature adds a `failure-mode-id`
+  The table is under a **set-equality** obligation: exactly one row per **distinct `failure-mode-id`** recorded in prior passes — records sharing an id
+  are one promotion carrying one standing verdict, not two rows (AC-5.1) — with no missing rows and no rows for promotions never made; a dropped row is
+  a failure, not a smaller table. To make the id observable in the consumed corpus, this feature adds a `failure-mode-id`
   line to the LEARNINGS §5 Open Items convention; a LEARNINGS predating that convention names no id
   and is evidence only for the `phase` population test, never for `recurred`.
 - **AC-5.3** — Given a promotion whose verdict was `recurred` on two consecutive **counted** passes,
@@ -551,7 +565,7 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
   (REQ-CONS-03 preamble). It is deliberately **not** keyed on the sources trailer: a consumed set is time-dependent (REQ-CONS-01 step 1 enumerates
   whatever is un-consolidated *now*), so two passes proposing the same promotion normally consume different sets and a set key would miss exactly
   when suppression matters. A pass whose promotion's id is already on a PR in state **open or merged** opens nothing for it, records
-  `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an interrupted pass's partial PR is the operator's to merge
+  `duplicate-suppressed` with that PR's URL in its log row and its AC-7.1 report, and never extends or supersedes it — an interrupted pass's partial PR is the operator's to merge
   or close, not silently amended. State is read at poll time with no memory of prior states: a reopened PR is open, hence a key; a
   **closed-unmerged** PR is *not* — the operator rejected that promotion, and a later pass re-proposing it is intended behaviour. Merged is in the key
   set deliberately: it is what survives when the invoking branch carrying the log record is abandoned (AC-3.8b, "the AC-3.1 PR route under the same
@@ -611,7 +625,7 @@ containment across six sections; adding a value above without a row here is a de
 | `repository-unresolved` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
 | `api-failure` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
 | `branch-exists` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
-| `duplicate-suppressed` | reason code | `promoted`, `promoted-degraded`, `no-op` | AC-3.5, NFR-4 |
+| `duplicate-suppressed` | reason code | `promoted`, `promoted-degraded`, `no-op` | NFR-4 |
 | `no-advisory-corpus` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-6.1 |
 | `advisory-corpus-empty` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-6.1 |
 | `cadence` / `volume` / `manual` | trigger | any status that writes a row | NFR-3a, REQ-CONS-01 tick order |
