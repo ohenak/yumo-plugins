@@ -34,6 +34,35 @@ added.
 
 ## Existing-Code Claim Verification (changed sections)
 
+Every `file:line` claim the revision added or changed, plus the two whose truth v3 disputed, checked
+against HEAD on `feat-pdlc-consolidation-agent` in a single pass. v2's and v3's already-confirmed
+rows are not re-checked.
+
+| # | New/changed REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `commitQueueRow` is at `orchestrate-queue.js:1576`, `git add -- {path}` at `:1577`, `git commit … -- {path}` at `:1580-1585` | AC-3.8b | **Confirmed, all three** | `:1576` `async function commitQueueRow(queuePath, feature, status, gitFn)`; `:1577` `gitFn(["add","--",queuePath])`; `:1580-1586` the commit array carrying `"--", queuePath` |
+| 2 | The advisory-record commit "mirrors its exact two-call shape" at `:1615` | AC-3.8b | **Confirmed** — better than my own v3 suggestion of `:1605` (that is the doc-comment head) | `:1615` `async function commitAdvisoryRecord(recordPath, feature, gitFn, emit)`, add `:1616`, commit `:1622-…`; the doc comment at `:1604-1606` says "Mirrors `commitQueueRow`'s exact two-call shape … so the pathspec rides the commit call itself, not only the add" |
+| 3 | `commitPaths` (`orchestrate-dev.js:8669`) commits with a plain `git commit -m` and no pathspec (`:8690`) | AC-3.8b | **Confirmed** | `:8669` signature; `:8690` `gitWithLockRetry(["commit","-m",message], …)` |
+| 4 | …and retries the lock class via `gitWithLockRetry` (`:8670`) | AC-3.8b | **Confirmed** | `:8670` `const add = await gitWithLockRetry(["add","--",...paths], {` |
+| 5 | `.consolidation-log.md` at HEAD is a markdown pass log: `## Pass 1 — 2026-07-29`, consumed set as a two-column table of **full paths**, then prose promotion sections | REQ-CONS-01 | **Confirmed** — and it corrects my v3 F-02, which called the file a JSON array | `docs/_decisions/.consolidation-log.md:1` `# Consolidation Log`, `:8` `## Pass 1 — 2026-07-29`, `:14-17` the table with `docs/orchestrate-dev-workflow/LEARNINGS-…` and `docs/pdlc-workflow-distribution/LEARNINGS-…`, `:27`ff prose |
+| 6 | It carries **no** `<!-- pdlc:consumed -->` block and no row status of any kind | REQ-CONS-01 | **Confirmed** | no `pdlc:consumed` substring in the file; the consumed table's only columns are `LEARNINGS` / `Date Completed` |
+| 7 | On this repo, step 1's enumeration (`docs/*/` ∪ `docs/completed/*/`) matches **5** LEARNINGS | REQ-CONS-01 | **Confirmed, exactly 5** | depth-1: `docs/orchestrate-dev-workflow/`, `docs/pdlc-advisory-tier/`; depth-2: `docs/completed/{pdlc-merge-phase,pdlc-review-loop-hardening,pdlc-workflow-distribution}/` |
+| 8 | `…-orchestrate-dev-workflow` and `…-pdlc-workflow-distribution` are named in the legacy region and are therefore consolidated; the other 3 are not | REQ-CONS-01 | **Confirmed by substring count** | basename occurrences in the log: orchestrate-dev-workflow **1**, pdlc-workflow-distribution **2**, advisory-tier **0**, merge-phase **0**, review-loop-hardening **0** |
+| 9 | …so 3 un-consolidated, below the default `volumeThreshold` of 5, and the first tick reaches the cadence test | REQ-CONS-01, AC-1.2 | **Confirmed** — 3 < 5, and `THRESHOLD = 5` is at `nudge-consolidation.sh:25` as claimed | `nudge-consolidation.sh:25` |
+| 10 | The shipped glob is depth-1 only (`nudge-consolidation.sh:28`) and hides 3 of the 5 | REQ-CONS-01 step 1 | **Confirmed** | `:28` `glob.glob(os.path.join(proj,"docs","*","LEARNINGS-*.md"))` |
+| 11 | `docs/discarded/*/` is deliberately excluded | REQ-CONS-01 step 1 | **Confirmed as a live decision, not a hypothetical** — 2 LEARNINGS exist there | `docs/discarded/pdlc-rcv-budget-stop/LEARNINGS-…`, `docs/discarded/pdlc-review-convergence/LEARNINGS-…`; both depth-2, so neither glob reaches them and the exclusion is consistent with the stated corpus |
+| 12 | `resolveAdvisoryRung` exported `:1833`, doc comment "the **one** ladder the tier ships" at `:1800` | AC-1.5 | **Confirmed, both** — v3 F-06a closed | `:1833`, `:1800` |
+| 13 | Queue comment `:1243-1244`, dispatch `:1245-1256` | AC-1.5 | **Confirmed, both** — v3 F-06b closed | `:1243-1244` "…the advisory driver resolves its own model rung."; `:1245` `const advisoryDisposition = await runAdvisorySeamFn({`, through `_log: emit` `:1256` |
+| 14 | `CODE_REVIEW-{feature}-v{N}.md` shipped naming at `orchestrate-dev.js:10349` | AC-5.2 | **Confirmed as a construction site** — v3 F-06c closed | `:10349` `` const codeReviewPath = `docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md` `` |
+| 15 | §4b phase catalogue: `PHASE_DISPATCH` (`:3337-3431`) covers R/F/T/D/P/PR/CR/DOD | §4b | **Confirmed** — every key's opening line is inside the range (`R:3338, F:3352, T:3365, D:3378, P:3391, PR:3405, CR:3418, DOD:3431`); the object itself closes at `:3437`, so the cited range ends at DOD's opening line rather than its end — an anchor, not an error | `:3337` `export const PHASE_DISPATCH = {` … `:3437` `};` |
+| 16 | `recordPhase` literals: I `:10020`, PT `:10250`, H `:10407`, PUB `:10462`, MERGE `:10568` | §4b | **Confirmed, all five** | `:10020` `recordPhase("I","Implementation",…)`; `:10250` `("PT","PROPERTIES Tests",…)`; `:10407` `("H","Harvest",…)`; `:10462` `("PUB","Raise PR & Verify CI",…)`; `:10568` `("MERGE","Merge PR",…)` |
+| 17 | The undecidable set for a pre-convention file is I, PT, CR, H, PUB, MERGE, disjoint from the decidable set | AC-5.2 | **PT added (v3 F-07 closed); disjointness false** (F-03) | `:10603` `` `docs/${featureName}/POSTMORTEM-${haltPhase}-${featureName}.md` `` — `{phase}` in row 3 is any halting phase, not only a converge phase |
+| 18 | `harvest-learnings/SKILL.md` metadata table `:70-78`, `Harvested from` `:77`, `## 6. Approval Record` `:105` | AC-5.2 | **Confirmed, restated exactly** | `:70` `| Field | Detail |`, `:77` `Harvested from`, `:105` `## 6. Approval Record` |
+| 19 | `hooks.json` registers only `PreToolUse` `:3`, `PostToolUse` `:14`, `SessionStart` `:29` | REQ-CONS-01 | **Confirmed, and set-equal** — those are the only three event keys in the file | `pdlc/hooks/hooks.json:3`, `:14`, `:29` |
+| 20 | `consolidate-learnings/SKILL.md` — boundary `:35`, pass record `:43`, proposal name `:49`, four-column table `:54` | §1, REQ-CONS-01, AC-2.4 | **Confirmed, all four** | `:35` the `Date Completed` boundary rule this feature replaces; `:43` step 6; `:49` `CONSOLIDATION-PROPOSAL-{date}`; `:54` the header row |
+| 21 | `QUEUE.md:11` "this queue is the pipeline's own queue"; `:279` every PR trips the self-modification guard | §1 | **Confirmed, both** | `:11`, `:279` |
+| 22 | DC-09 at `docs/_constraints/DOMAIN-CONSTRAINTS.md:245` | §5a | **Confirmed** | `:245` `## DC-09: A REQ stays at requirements altitude, and carries its own stopping rule` |
+
 ## Questions
 
 ## Positive Observations
