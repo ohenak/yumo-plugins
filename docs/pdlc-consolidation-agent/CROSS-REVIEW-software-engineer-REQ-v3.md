@@ -71,7 +71,56 @@ Every `file:line` claim the revision added or changed, checked against HEAD on
 
 ## Questions
 
+Only questions arising from the changed sections. v2's Q-01…Q-05 are answered by the revision
+(Q-01 by AC-6.1's corpus-state table and BL-01a, Q-02 by AC-5.5's evaluated-pass population,
+Q-03 by AC-3.8b, Q-04 by §5's workflow-bundle paragraph, Q-05 by AC-3.8b's "never committed"
+ruling on the marker) and are not re-asked.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-02: is the intended migration to **seed** `<!-- pdlc:consumed -->` blocks from the two entries already in `.consolidation-log.md`, or to declare the legacy JSON out of scope and accept one re-consolidation of `LEARNINGS-orchestrate-dev-workflow.md`? The second is defensible at this scale, but it must be *chosen* — and if chosen, NFR-4's idempotence claim needs a sentence saying it does not cover pre-convention LEARNINGS, because `failure-mode-id` cannot key them. |
+| Q-02 | Also for F-02: what is the cadence datum on a repo with no qualifying row — treat the interval as elapsed (first tick always runs), or seed it from something observable (the oldest un-consolidated LEARNINGS' `Date Completed`, the log file's own mtime)? The first is simplest and is testable; the second couples the datum to a field `harvest-learnings/SKILL.md:74` already emits. |
+| Q-03 | For F-04: is the invoking `feat-*` branch genuinely the intended destination for the AC-2.1/AC-2.2 promotions, accepting that they ride an unrelated feature's PR to the default branch? If yes I have no objection to the mechanism — but the REQ should say it out loud, because a reader of AC-3.6 ("never pushed") will reasonably conclude the opposite. |
+| Q-04 | AC-3.8b says the pass commits "exactly once, at its terminal outcome". A `refused` pass (AC-1.3) never takes the marker and does no work — does it commit at all? The AC-1.3 marker table implies not, but "every terminal outcome" and "exactly once at its terminal outcome" read as universal over §4b's six statuses. One row in the AC-1.3 table (a "commits?" column) would settle it against the same enumeration. |
+
 ## Positive Observations
+
+- **The revision answered the hardest v2 finding by narrowing the requirement rather than the
+  claim.** REQ-CONS-06 could have been saved by asserting that an operator will enable the tier.
+  Instead it states flatly that `ESCALATIONS.md` "does not exist at HEAD", books the corpus as
+  BL-01a **"Not met, and not expected to be"**, specifies three corpus states with the *shipping*
+  one first, and gates AC-6.3 on two conjuncts so the day-one all-five-seams widening cannot fire.
+  That is the absent-first design I asked for, and it makes the requirement testable today rather
+  than after an opt-in that may never come.
+
+- **AC-1.5 went the other way on the ladder, and was right to.** v2's REQ conceded a restatement and
+  called drift "a named risk". The revision found the actual seam — `resolveAdvisoryRung` is
+  exported (`orchestrate-dev.js:1833`) and the shipped second consumer threads `rungState` through
+  an injected seam rather than copying literals (`orchestrate-queue.js:1245-1256`) — and adopted it.
+  Better still, the fallback clause forbids the outcome v2 settled for: a restatement is acceptable
+  only with "a named drift observable … A restatement without that observable is not an acceptable
+  outcome." Converting a named risk into a failing test is exactly the right move.
+
+- **AC-5.2's phase observable is the strongest new material in the document.** v2's `prevented` arm
+  rested on "a feature that exercised the promotion's recorded `phase`" with no field to read it
+  from — I did not catch that, and the author did. The revision verified the absence against the
+  real metadata table (`harvest-learnings/SKILL.md:70-78`), added the field, **and** supplied a
+  total derivation for files predating the convention, with the undecidable case routed to
+  `insufficient-evidence` rather than a guessed `prevented`. Three construction sites are cited and
+  two of the three are exact. That is how a determinism claim is earned.
+
+- **§4b is the right response to F-04, not the minimum one.** The ask was to reconcile two closed
+  sets; the delivery is one table over *every* enumerated vocabulary in the document, with a
+  Category column and an explicit legality join, plus the two previously-undetermined joins settled
+  in prose beneath it. I checked it for orphans in both directions and it is set-equal against the
+  rest of the REQ. Adding `promoted-degraded` as a status rather than leaving degradation in a route
+  field is the substantive call, and it is the correct one — an operator reads the status.
+
+- **The tick order made the document cheaper to review, not just correct.** Four numbered steps,
+  the enumerate-vs-read distinction stated twice and anchored to what the shipped hook actually
+  does, and a named cadence datum with the reason it must exist ("Without this, every tick's own row
+  would become 'the last logged pass'"). F-02 is precisely a *bootstrap* gap in that datum — which
+  is only visible because the datum was named. The v2 text had the same hole and no way to see it.
 
 ## Recommendation
 
