@@ -1999,10 +1999,10 @@ falsifies it; none of them is new here.
 |---|---|---|---|
 | BR-23 | The PR is opened against `consolidation.pluginRepository`, defaulting to `null` ⇒ the current repository. A non-null value that does not resolve is `repository-unresolved` and degrades through §6.3 — it is **not** a parse fallback. | §11.2, §6.3 | AT-N4 |
 | BR-24 | The branch is `consolidation/{passId}`; the body carries the `PDLC-CONSOLIDATION-PASS` trailer and each commit carries `PDLC-PROMOTION-ID`. | §6.2 | AT-Q2 |
-| BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`, read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged`. A `closed`-unmerged PR is not in the key set. | §6.4 | AT-Q3, AT-Q4 |
+| BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`. Its carrier depends on the route: on the PR route it is read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged` (a `closed`-unmerged PR is not in the key set); on the consuming-repo route it is read from the §8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`, over the two-member state set `enacted` / `absent`. One key, two carriers — a route with no carrier would not be idempotent at all. | §6.4 | AT-Q3, AT-Q4 |
 | BR-26 | A suppressed proposal opens nothing, fires no fallback, and populates `suppressed-by:` — never `pr:`. | §6.4, §10.3 | AT-Q3, AT-L2 |
 | BR-27 | An existing machine-opened PR is never extended, amended or superseded by a later pass. | §6.4 | AT-Q3 |
-| BR-28 | No merge or enable-auto-merge API is called on any PR, including the pass's own, under any status or configuration. | §6.5 | AT-Q7 |
+| BR-28 | The pass's observed git/PR call set is set-equal to `{create-branch, push, create-pr}` and the PR it opened is `open` when the pass returns — so no merge or enable-auto-merge call is made on any PR, including its own, under any status or configuration. The rule is stated positively because an absence-only form is satisfied by a pass that calls nothing. | §6.5 | AT-Q7, AT-Q7b |
 
 ### 18.6 Credential
 
@@ -2020,8 +2020,11 @@ falsifies it; none of them is new here.
 | BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored file. | §8.1, §8.2 | AT-F1, AT-F2, AT-F3 |
 | BR-34 | Every prior promotion gets a verdict on every reporting pass: `prevented` / `recurred` / `insufficient-evidence` — a `no-op` pass restates them unchanged (AC-1.4). | §8.3, §12.3 | AT-F5, AT-F6, AT-F7, AT-F8 |
 | BR-35 | `recurred` on two consecutive counted passes ⇒ state `ineffective`, and a `revision` or `retirement` proposal is emitted. | §8.5 | AT-F9, AT-F10 |
+| BR-35a | Which alternative is proposed is decided by spent-alternative rows first, then by **one file-existence test** on the promotion's `artifact` — never by a match on `symptom`, which is non-keying free text the recurrence evidence does not carry. | §8.5, §8.1 | AT-F17, AT-F18 |
+| BR-35b | A `failure-mode-id` reaches a LEARNINGS only by verbatim copy from an existing log record; the ids appearing in the corpus are a subset of the recorded ids, and an unmatched id is a parse notice, never a verdict. | §8.4 | AT-F15, AT-F16 |
 | BR-36 | `insufficient-evidence` on `consolidation.unmeasurablePasses` consecutive evaluated passes (default `3`) ⇒ state `unmeasurable`. | §8.7, §11.2 | AT-F13 |
 | BR-37 | Advisory counts come only from `docs/_queue/ESCALATIONS.md`; no count is ever derived from LEARNINGS advisory prose. | §9.1, §9.2 | AT-A3, AT-A7 |
+| BR-37a | Every §9.4 and §9.5 quantity ranges over the **whole** of `ESCALATIONS.md` — no filter on `Feature`, none on date, and no relation to the pass's consumed set. | §9.2, §9.4, §9.5 | AT-A6 |
 | BR-38 | An absent `ESCALATIONS.md` ⇒ `no-advisory-corpus`; present-but-empty ⇒ `advisory-corpus-empty`. Both compose with the run's own status. | §9.3 | AT-A1, AT-A2 |
 
 ### 18.8 Recording
@@ -2031,8 +2034,9 @@ falsifies it; none of them is new here.
 | BR-39 | Every log write is an append of one whole record; no record is ever rewritten in place. | §10.2, §12.4 | AT-L3 |
 | BR-40 | A pass that takes the marker appends exactly one terminal row; a `skipped-cadence` tick appends none. | §10.1, §10.3 | AT-C3, AT-L3 |
 | BR-41 | Every terminal row carries a trigger (NFR-3a) and a `credential:` value (AC-4.2) — a `refused` row included. | §10.3 | AT-L5, AT-M1 |
+| BR-41a | `credential: absent` on a `refused` row means **not attempted**; on any other status it means attempted-and-found-nothing. The two are separated on the row by `credential-unavailable`, which the `refused` row never carries. | §10.3, §7.2 | AT-K6 |
 | BR-42 | A git refusal at step 15 adds `writes-uncommitted` and never changes the pass's status. | §5.4, §12.1 S-12 | AT-R4 |
-| BR-43 | Every status, reason code and field value written is a member of vocabularies §1 at `Version` 1.4, and every §1 row is used — set equality in both directions (REQ §4b). | §15.2 | AT-L5 |
+| BR-43 | Every **enumerated-class** value written (§10.3: status, trigger, reason codes, `credential:`, route names, per-promotion verdict / state / action / phase) is a member of vocabularies §1 at `Version` 1.4, and every §1 row is used — set equality in both directions (REQ §4b). Free-form values — a URL, a date, a branch, a `passId`, a model id — are data and are outside the compared set. | §15.2, §10.3 | AT-L5 |
 | BR-44 | A configuration fallback is report content, never a reason code — no §1 row exists for one. | §11.3 | AT-N2, AT-N3 |
 
 ## 19. Edge Cases and Error Scenarios
