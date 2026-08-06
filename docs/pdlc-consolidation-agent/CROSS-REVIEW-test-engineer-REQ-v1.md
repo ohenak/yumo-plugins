@@ -26,11 +26,23 @@
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | Where does an unattended pass actually execute? D-CONS-04 defers the cloud-Routine vehicle, and `pdlc/workflows/` holds only `orchestrate-dev.js`, `orchestrate-queue.js` and `runtime-adapter.js`. If the vehicle is a new workflow script, its inputs/report shape are the testable surface and belong in the REQ; if it is the SessionStart hook, F-02 applies. |
+| Q-02 | AC-3.3 lets several promotions share one PR with one commit each. What is the test's oracle for "revertible independently" — one commit per promotion by count, or a stated commit-message/trailer convention that maps a commit to a promotion id? Commit count alone is satisfied by an unrelated chore commit. |
+| Q-03 | AC-5.1 requires the failure mode to be "stated concretely enough to be observed: which phase, which symptom, which artifact". Is that a **structured** record (three named fields, machine-checkable) or prose? AC-5.2's recurrence check is only mechanisable against the former. |
+| Q-04 | AC-5.4 routes a *retirement* through AC-3.1's PR path — but AC-3.1 is scoped to promotions targeting `pdlc/skills/**` or `pdlc/workflows/**`. Retiring a promotion that landed in `docs/_constraints/DOMAIN-CONSTRAINTS.md` (AC-2.1, consuming repo) is not a cross-repo edit at all. Which path does that retirement take, and who reviews it? |
+| Q-05 | NFR-3 says cadence must not lower the promotion bar. What observable distinguishes a cadence-triggered pass from a threshold-triggered one in the log, so a test can assert the bar held on both? |
+| Q-06 | AC-7.2's "single notification" — through which channel, and is its content asserted (PR URL present when and only when a PR was opened) or only its existence? |
 
 ## Positive Observations
 
-_(filled below)_
+- The REQ's own diagnosis is the strongest thing in it: §1 separates *propose-only* from *hand-transcribed* precisely, and that distinction is exactly what makes AC-3.1 testable in principle (a PR either contains a diff or it does not).
+- AC-3.5 is the right shape for a degradation path — it names today's behavior as the fallback, so the negative case has a concrete positive outcome rather than "the promotion is lost".
+- AC-5.3's `ineffective` flag plus AC-5.4's symmetric retirement path is a genuinely falsifiable improvement loop: it gives the effectiveness table a consequence, which is what stops it from being decoration. D-CONS-03 correctly refuses the age-based proxy for it.
+- Upstream citations check out against the cited files: `DEC-E2` (`docs/design/MASTER-PLAN-engineering-loop.md:195`), `DEC-E4` (`:216`), `DEC-E5` (`:228`), `OQ-E3` (`:304`), and `pdlc-merge-phase` REQ-MERGE-03 (`docs/completed/pdlc-merge-phase/REQ-pdlc-merge-phase.md:163`) all exist and say what the REQ says they say. The nonexistent-authority failure mode this checklist watches for did not recur here — only F-01's *scope* reading of REQ-MERGE-03 is wrong, not its existence.
+- The AC-1.2 threshold claim is accurate to the code: `THRESHOLD = 5` in `pdlc/hooks/scripts/nudge-consolidation.sh`. The defect in F-02 is the predicate behind the number, not the number.
+- §5's out-of-scope list is unusually disciplined — "retiring the manual `/pdlc:consolidate-learnings` entry point" being explicitly out of scope preserves the one entry point every test fixture can drive deterministically.
 
 ## Recommendation
 
