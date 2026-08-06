@@ -782,6 +782,187 @@ The status text recorded is the API's, never the request.
 
 ## 8. FSPEC-CONS-07 — Falsifiability
 
+**Links:** REQ-CONS-05 (AC-5.1 … AC-5.5), NFR-4, AC-1.4, AC-3.3, AC-7.1.
+
+### 8.1 The failure-mode record and the id derivation
+
+Every promotion records a four-field structured record, not prose:
+
+| Field | Value | Keys the id? |
+|---|---|---|
+| `failure-mode-id` | the derived slug below | — |
+| `phase` | a member of the closed 13-member catalogue `R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE` (vocabularies §1, sourced from `PHASE_DISPATCH`, `orchestrate-dev.js:3337-3437`, and the `recordPhase` literals for I `:10020`, PT `:10250`, H `:10407`, PUB `:10462`, MERGE `:10568`) | **yes** |
+| `symptom` | one line, human-readable, explicitly **non-keying** | **no** |
+| `artifact` | **exactly one canonical repository path** — the single file the edit touches; never a glob, never a directory; root-relative, no `./`, no symlink alias | **yes** |
+
+**The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs:
+
+> `failure-mode-id = "{phase-lowercased}-{artifact-slug}"`, where `artifact-slug` is the normalised
+> path with `/` and `.` each replaced by `-`, lowercased, with any run of non-`[a-z0-9-]` characters
+> collapsed to a single `-` and leading/trailing `-` stripped.
+
+Worked: `phase = DOD`, `artifact = pdlc/skills/dod-verify/SKILL.md` ⇒
+`dod-pdlc-skills-dod-verify-skill-md`. It is total (every path yields a slug), injective enough for
+its purpose (two distinct `(phase, artifact)` pairs cannot collide, because the substitution is
+reversible up to case), and consults nothing else — not the pass, not its consumed set, and **not**
+`symptom`.
+
+**Why exactly those inputs.** Determinism of the derivation is not stability of its inputs. `phase`
+and `artifact` are *file* text — the property §8.3's determinism rests on. `symptom` is a line the
+pass's own model writes under no vocabulary, so two passes recognising one failure mode from
+different corpora would word it differently and slug differently — exactly the case NFR-4 must
+survive (§5.5's abandonment: a later pass with a *larger* consumed set). The glob form is forbidden
+for the same reason in the other direction: passes free to name `pdlc/workflows/orchestrate-dev.js`,
+`pdlc/workflows/*.js` or `pdlc/workflows/` for one mode would slug three ways and NFR-4 would miss.
+
+### 8.2 One promotion is one authored file
+
+"The single file the edit touches" is a requirement, not an assumption.
+
+| Shape | Proposals | Consequence |
+|---|---|---|
+| A remedy spanning two authored files | **two** — two ids, two §6.2 commits, two §8.3 rows, two §8.4 streaks | they may share one PR (§6.2 already permits that); they share nothing else and are measured separately |
+| An authored file plus its regenerated build outputs | **one** — `artifact` is the authored source file | the generated paths ride the authored file's commit |
+
+**Generated is a predicate keyed on the producer, never on a path glob.** A path a tracked build step
+of this repo writes is generated. At HEAD that is exactly the four tracked outputs of
+`pdlc/workflows/build-runtime.mjs`, all under `pdlc/workflows/dist/`, which `CLAUDE.md` requires to be
+rebuilt "in the same commit" as their source. An authored file whose path merely *contains* `dist/` —
+the `pdlc/workflows/__tests__/fixtures/` copies — is **authored** and does mint an id. So an edit to
+`pdlc/workflows/orchestrate-dev.js` plus its rebuilt bundles is one promotion whose `artifact` is
+that source file, and the derivation stays total on every edit shape.
+
+**Uniqueness, scoped.** Within one pass the pair `(failure-mode-id, action)` is unique: two proposals
+deriving one id under one action name the same `phase` and `artifact`, are one failure mode, and are
+recorded once. The pass never mints a suffixed variant — that would break derivation purity and with
+it NFR-4. Two distinct failure modes in one phase touching one file therefore merge into one
+promotion carrying one `symptom`; that is the accepted cost of a path-level key (D-CONS-08).
+
+**Across passes the id deliberately repeats** — NFR-4 sanctions re-proposing a promotion whose PR the
+operator closed unmerged. Log **records** are keyed `(failure-mode-id, passId, action)`; a
+**promotion**, the unit whose effectiveness is measured, is keyed on the id alone. Every
+effectiveness contract counts promotions: §8.3 emits one row per id, §8.4 counts one streak per id
+over all its records, §8.5 retires an id.
+
+**`action`** is one of `promote` / `revise` / `retire`, recorded beside the id and **never folded
+into its derivation**.
+
+### 8.3 The effectiveness table (AC-5.2)
+
+Every pass that emits a report emits this table over **every** promotion recorded in prior passes.
+Each row's verdict is decided by a rule with **no model judgment**, so two runs over the same inputs
+cannot disagree:
+
+| Verdict | Condition |
+|---|---|
+| `recurred` | at least one LEARNINGS in this pass's consumed set names this `failure-mode-id` |
+| `prevented` | no consumed LEARNINGS names the id, **and** at least one consumed LEARNINGS is decided by the phase observable to have exercised the promotion's recorded `phase` |
+| `insufficient-evidence` | otherwise — no consumed LEARNINGS is decided to have exercised that phase |
+
+The three arms are evaluated in that order and are exhaustive, so the split is total and an
+undecidable input falls into `insufficient-evidence` rather than into a guess.
+
+**The phase observable** — how a consumed LEARNINGS' phase population is decided (delegated here by
+AC-5.2) — is stated in `docs/_constraints/pdlc-consolidation-vocabularies.md` §2 at `Version` 1.4 and
+is **binding, not restated**. Two consequences this rule depends on:
+
+1. Its decidable and undecidable halves are set-equal to the 13-member catalogue **for every file**,
+   which is what makes the rule total.
+2. Any phase the mapping cannot decide counts as **not** exercised, routing that promotion to
+   `insufficient-evidence` and never to a guessed `prevented`.
+
+This feature adds the **`Phases exercised`** row to the harvest metadata table
+(`pdlc/skills/harvest-learnings/SKILL.md:70-78`), so post-convention LEARNINGS carry the value
+directly and the §2 mapping is needed only for pre-convention files.
+
+**Set-equality obligation on the table.** Exactly one row per **distinct `failure-mode-id`** recorded
+in prior passes — records sharing an id are one promotion carrying one standing verdict, not two rows
+— with **no missing rows and no rows for promotions never made**. A dropped row is a failure, not a
+smaller table.
+
+### 8.4 Making the id observable in the corpus, and its limit
+
+This feature adds a `failure-mode-id` line to the LEARNINGS §5 Open Items convention, which is what
+makes `recurred` observable at all.
+
+| Corpus file | Evidence for `recurred`? | Evidence for the `phase` population? |
+|---|---|---|
+| Post-convention (carries `failure-mode-id` lines) | yes | yes |
+| Pre-convention (carries none) | **no** — it names no id | yes, via the §2 mapping from `Harvested from` |
+
+A pre-convention LEARNINGS therefore cannot produce a false `recurred`, and can produce a
+`prevented` — which is correct: it exercised the phase and did not report the mode.
+
+### 8.5 `ineffective`, and which remediation is proposed
+
+**The flag.** A promotion whose verdict was `recurred` on **two consecutive counted passes** is
+flagged `ineffective`.
+
+| Pass kind | Counted toward the `ineffective` streak? |
+|---|---|
+| returned `prevented` or `recurred` for this promotion | **yes** |
+| returned `insufficient-evidence` | no — skipped entirely, neither advancing nor resetting |
+| had an **empty consumed set** (AC-1.4's first cause — produces no verdict at all) | no |
+| `skipped-cadence` | no — it emits no table |
+
+The population is keyed on **consumed-set emptiness, never on the `no-op` label**: a
+duplicate-suppressed `no-op` has a non-empty consumed set and *is* counted. Quiet weeks therefore
+cannot silently reset a streak. The streak is counted **in passes, not elapsed time**.
+
+**The choice (delegated here by AC-5.3).** The pass proposes exactly one of `revision` / `retirement`,
+by this rule, evaluated top-down; the first matching row decides:
+
+| # | Condition | Proposed |
+|---|---|---|
+| 1 | a `retire` proposal for this id is already on a PR in state open or merged | **nothing** — the ladder has ended; record `duplicate-suppressed` against that PR and report the field as `retirement` |
+| 2 | a `revise` proposal for this id is already on a PR in state open or merged | `retirement` |
+| 3 | the promotion's `artifact` still exists and the recurrence names the same `symptom` the promotion targeted — the edit addressed the right mode and under-reached | `revision` |
+| 4 | otherwise — the recurrence indicates the edit targeted the wrong mechanism, or the `artifact` no longer exists | `retirement` |
+
+Rows 1–2 are the **spent-alternative** clause: NFR-4 suppresses on the pair, so each action fires at
+most once per id, and without this clause AC-5.3's promise would be merely achievable rather than
+guaranteed. `retire` is **terminal** — a retired promotion is gone, so no successor is owed — and
+terminality is stated over the **proposal** (row 1), since the pending case is the reachable one.
+
+The §10 report names the chosen alternative in a field over `revision` / `retirement`, **absent** for
+an ordinary `promote`, which chose nothing. The field names the alternative **actually proposed**,
+never the one displaced.
+
+A **merged revision resets that promotion's `ineffective` streak to zero**, so a revision that lands
+is re-judged on two fresh `recurred` counted passes rather than re-flagged on the next one.
+
+### 8.6 Routing a remediation (AC-5.4)
+
+Retiring or revising follows the **same propose-only path as making** the promotion — the route is
+decided by the promotion's own `artifact`, exactly as §5.1 decides any target:
+
+| The promotion landed in… | Its remediation |
+|---|---|
+| a guard-set path | a PR (§6), under the `revise` or `retire` action |
+| `DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` | written into `CONSOLIDATION-PROPOSAL-{passId}.md` for operator approval — **never** applied by the pass |
+
+Removal is as reviewable as addition on both routes. A revision routes exactly as that promotion's
+retirement would; the two alternatives differ in the edit they carry, never in their route. The unit
+remediated is a `failure-mode-id`, not one of its records, and neither proposal is ever suppressed by
+the `promote` it remediates (§6.4).
+
+### 8.7 `unmeasurable` (AC-5.5)
+
+A promotion that returned `insufficient-evidence` on `consolidation.unmeasurablePasses` consecutive
+**evaluated** passes (default 3) is reported `unmeasurable`.
+
+| Pass kind | Evaluated? | Effect on the `unmeasurable` streak |
+|---|---|---|
+| non-empty consumed set, produced any verdict for this promotion | yes | `insufficient-evidence` advances it; `prevented` or `recurred` **resets it to zero** |
+| empty consumed set (AC-1.4's first cause) | no | neither advances nor resets |
+| `skipped-cadence` | no | neither |
+| duplicate-suppressed `no-op` (consumed set non-empty) | **yes** | advances or resets normally |
+
+The population is deliberately **not** §8.5's `counted` set, which excludes `insufficient-evidence`
+by construction and would make this state unreachable. Once reached, `unmeasurable` stands until a
+verdict resets it, and a `no-op` pass restates it meanwhile (AC-1.4) — as it restates every prior
+promotion's standing verdict and state.
+
 ## 9. FSPEC-CONS-08 — Advisory-corpus input
 
 ## 10. FSPEC-CONS-09 — Reporting and the log record grammar
