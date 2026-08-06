@@ -1124,11 +1124,15 @@ promotion is re-proposed (which NFR-4 already sanctions), and §8.4 step 1 leave
 extra harvest question, the failure direction O-C7 accepts).
 
 **"For that contract" is per field, per reader — the enumeration, so no reader is left to infer its
-own arm.** A record is skipped only by the contracts that index the field it is missing:
+own arm.** A record is skipped only by the contracts that index the field it is missing. The table is
+set-equal to the readers this document names — the four in the paragraph below (§5.1, §6.4, §8.4
+step 1, §8.6) plus §10.2 order 2, §8.3 and §8.5 — and a reader added later is a change to this table,
+made here:
 
 | Reader | Fields it indexes | A record short of one of them |
 |---|---|---|
 | §5.1 routing | `target` | not routed; the promotion is re-proposed on a later pass |
+| §8.6 remediation routing | `target` | **not §5.1's arm, and it is spelled because the state differs**: here a remediation has already been *chosen* (§8.5) and has nowhere to go. It is **not routed on a guessed path** — neither the PR route nor the proposal file is picked by default — the promotion keeps the state it had for that pass, and the notice is the report. The remediation is re-proposed on a later pass, exactly as §8.5's arm re-proposes nothing rather than guessing a `retirement` |
 | §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route` | reads `absent`, so the promotion is re-proposed |
 | §8.4 step 1 open list | `failure-mode-id`, `action`, `route` | the id stays **open** |
 | §10.2 order 2 | the record as written | appended unchanged; nothing is repaired |
@@ -2472,7 +2476,7 @@ E-29) and each now names its own test.
 | E-10 | A log row that is malformed or unparseable | contributes no `m` to the `passId` derivation and is skipped — the derivation never aborts | §2.5 | AT-C6 |
 | E-11 | Marker file truncated or unparseable | **reclaimed, not refused**; the abandoned id is reported `unknown` | §4.2 | AT-M3 |
 | E-12 | `ESCALATIONS.md` entry whose `Feature` row is missing | that entry is skipped with a parse notice; no count is attributed to a guessed key; the read does not abort | §9.2 | AT-A7 |
-| E-12b | A **failure-mode record** in the log missing a field a reader indexes (a truncated or legacy record — `route` for §6.4 / §8.4 step 1, `target` for §5.1, `artifact` for §8.3 / §8.5) | a parse notice naming the record and the missing field; the record is skipped **only** by the contracts that index that field (§8.1's reader table); the pass reaches its terminal status, never halts, writes no guessed default and never rewrites the record. Sibling of E-12 on the other corpus | §8.1, §6.4, §8.4 | **AT-F21** |
+| E-12b | A **failure-mode record** in the log missing a field a reader indexes (a truncated or legacy record — `route` for §6.4 / §8.4 step 1, `target` for §5.1 / §8.6, `artifact` for §8.3 / §8.5) | a parse notice naming the record and the missing field; the record is skipped **only** by the contracts that index that field (§8.1's reader table); the pass reaches its terminal status, never halts, writes no guessed default and never rewrites the record. Sibling of E-12 on the other corpus | §8.1, §6.4, §8.4 | **AT-F21** for the `route` and `target` arms. The `artifact` arms (§8.3's row emitted with an unavailable path rather than dropped, §8.5's refusal to guess a `retirement`) have **no fixture at this layer** and are named PROPERTIES-owned per DEC-LAYER-01 — the rule and its observables are stated in §8.1's reader table; the fixture that pins them is not claimed here |
 | E-13 | `.claude/pdlc.config.json` absent | every `consolidation` key defaults; the pass does not terminate | §11.1 | AT-N1 |
 | E-14 | One `consolidation` key of the wrong type | that key alone falls back and is named in the report; every other configured key keeps its value | §11.2 | AT-N2 |
 | E-15 | `consolidation` present but not an object | every key defaults, and the report distinguishes this (`sectionMalformed`) from an absent section | §11.3 | AT-N3 |
