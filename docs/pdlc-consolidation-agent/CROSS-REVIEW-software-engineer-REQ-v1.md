@@ -77,4 +77,58 @@ Every assertion the REQ makes about *existing* code, checked in one pass against
 
 ## Recommendation
 
-_(populated below)_
+**Needs revision.** 8 High, 6 Medium, 2 Low.
+
+### DC-09 check, applied honestly
+
+DC-09 (`docs/_constraints/DOMAIN-CONSTRAINTS.md:245`) says a round whose blocking findings are
+**all** implementability or oracle-falsifiability defects means the REQ has met its bar and the
+findings should be routed downstream rather than re-litigated. I applied that test before writing
+this verdict, and this round does **not** pass it — four of the eight High findings contest scope,
+phasing or a factual claim about existing behaviour, which are REQ-layer concerns:
+
+- **F-01** and **F-02** are *false or under-stated claims about existing code*, not missing oracles.
+  A REQ may defer how a thing is tested; it may not assert a control is in force when no code path
+  enforces it (F-01) or restate a four-member shipped catalogue as two members (F-02).
+- **F-03** is a **scope** defect: the topology the whole of REQ-CONS-03/04 assumes (two repos) is
+  not the topology of the only consumer that exists.
+- **F-04** is a **phasing** defect: AC-1.1 requires a platform capability that does not exist at
+  HEAD and whose only candidate the same document defers (D-CONS-04).
+- **F-08** is a standing-constraint violation that DC-09 states about REQs specifically.
+
+The remaining four High findings (F-05, F-06, F-07) plus every Medium are closer to the
+implementability class, and I would accept most of them being **closed by deferral with a named
+receiving phase** rather than by writing mechanism into the REQ — with two exceptions that must be
+answered *here*, because they change what the feature is rather than how it is built:
+
+- **F-06's configured values** must land as declared keys with defaults and owners before FSPEC, per
+  the standing REQ bar. Naming `.claude/pdlc.config.json` keys is requirements-altitude work.
+- **F-07's input availability** is a scope question, not a test question: if the structured advisory
+  summary is not persisted, REQ-CONS-06 is unbuildable as written and either gains a persistence
+  requirement or narrows to what LEARNINGS prose can actually support.
+
+### What must change for approval
+
+1. **F-01** — restate AC-3.7 against a real enforcement surface, or mark it explicitly as a
+   consequence of "nothing auto-merges in the plugin repo" rather than as inherited machinery.
+2. **F-02** — make the routing predicate set-equal to `MERGE_GUARD_DEFAULTS`
+   (`orchestrate-dev.js:48-53`), or cite the constant by name so drift is impossible.
+3. **F-03** — add an AC covering the same-repo configuration, or scope the feature to the two-repo
+   case and record the self-consumption case as a bound deferral.
+4. **F-04** — name the cadence trigger surface, or move AC-1.1 behind a named successor and let
+   AC-1.2 be the operative trigger for this feature.
+5. **F-06** — declare cadence, plugin-repository, and staleness-in-passes as config keys with
+   defaults and a named owner.
+6. **F-07** — state whether the advisory summary is persisted in a defined form, and if not, narrow
+   REQ-CONS-06 accordingly.
+7. **F-08** — paste a stopping rule into the REQ, per DC-09.
+8. **F-05, F-10, F-14** — each needs one sentence at requirements altitude: what marks a pass
+   in-progress and who clears it; what a rung fallback means for the pass; what positively records
+   consumption (the mechanism already exists — `nudge-consolidation.sh:38`).
+
+The Mediums not listed above (F-09, F-11, F-12, F-13) and both Lows should be addressed but are
+individually cheap; F-11 is the one to answer deliberately, since it decides whether NFR-4 is true.
+
+## Verdict
+
+VERDICT: Needs revision
