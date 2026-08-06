@@ -965,6 +965,111 @@ promotion's standing verdict and state.
 
 ## 9. FSPEC-CONS-08 — Advisory-corpus input
 
+**Links:** REQ-CONS-06 (AC-6.1 … AC-6.3), AC-2.3, AC-3.1, BL-01a.
+
+### 9.1 What is read, and what is never counted
+
+The pass's machine-readable advisory input is `docs/_queue/ESCALATIONS.md` — the one durable
+per-seam record, per `docs/_constraints/pdlc-advisory-corpus-baseline.md` §1 at `Version` 1.0,
+binding here and not restated.
+
+| Input | Role |
+|---|---|
+| `docs/_queue/ESCALATIONS.md` | the **only** numeric input — counts per `Seam` per `Feature` |
+| advisory text folded into a LEARNINGS by the H2 distil step | **corroborating and non-numeric** — the pass may cite it as evidence, never derives a count from it |
+| per-feature `ADVISORY-{feature}.md` | not read — baseline §1 states it is deleted after Phase PUB's distil step |
+
+The asymmetry is deliberate: the distilled text is prose an LLM wrote, so a count taken from it would
+be a count of phrasings. `renderEscalationEntry` (`pdlc/workflows/orchestrate-dev.js:2763`) emits
+fixed fields, which is what makes counting well-defined.
+
+**Absent-first, by construction.** Baseline §2 finds `ESCALATIONS.md` absent at HEAD — verified:
+`docs/_queue/` contains only `QUEUE.md` — because the advisory tier ships disabled. This section is
+therefore specified so that it ships and is testable with the tier off; corpus availability is
+tracked as BL-01a, not asserted as delivered, and it does **not** gate this FSPEC.
+
+### 9.2 Counting (delegated here by AC-6.1)
+
+`ESCALATIONS.md` is an append-only sequence of entries, each rendered by `renderEscalationEntry`
+(`:2763`). The count is over **entries**, and an entry's two keying fields are read from its metadata
+table rather than from its heading:
+
+| Field | Emitted at | Read as |
+|---|---|---|
+| `Feature` | `orchestrate-dev.js:2782` (`\| Feature \| ${feature} \|`) | the feature key |
+| `Seam` | `:2783` (`\| Seam \| ${seam} \|`) | the seam key, a member of `ADVISORY_SEAMS` (`:1669`) |
+
+The entry's `## {iso} — {feature} — {seam}` heading (`:2776`) carries the same two values and is
+**not** the parse target: a feature name containing an em dash would make the heading ambiguous while
+the table row stays exact. Reading the table is the receive-side total parse (DC-01).
+
+The count is `escalations[seam][feature]`, and the two derived quantities §9.3 uses are: a seam's
+**total** across all features, and its **distinct feature count**.
+
+### 9.3 The three corpus states (AC-6.1)
+
+Shipping state first. Every state is decidable and none is an error:
+
+| Corpus state | Meaning | Pass behaviour |
+|---|---|---|
+| File **absent** | the tier has never run here — the shipping default, `advisory.enabled: false` | record reason code `no-advisory-corpus`; make **no** seam proposal of any kind — neither §9.4 nor §9.5 may fire; the rest of the pass proceeds normally |
+| File present, **zero entries** | the tier ran and escalated nothing | record `advisory-corpus-empty`; §9.4 cannot fire (no counts) and §9.5's non-emptiness gate fails |
+| File present, **≥1 entry** | a real corpus | §9.4 and §9.5 apply as written |
+
+Two receive-side clauses complete the totality (DC-01): a file present but unreadable is treated as
+**absent** (`no-advisory-corpus`), never as empty — the two codes make different claims and are never
+conflated; and an entry whose `Feature` or `Seam` row is missing or unparseable is **skipped and
+reported as a parse notice**, never counted under a guessed key, and never aborts the read.
+
+**Absence of the file is never read as absence of escalations.** A tier that could not escalate is
+not a tier whose seams worked — which is why row 1 suppresses both proposal kinds rather than letting
+§9.5's "no escalations from this seam" condition read as true for all five seams at once.
+
+### 9.4 Over-escalating seam (AC-6.2)
+
+| Conjunct | Condition |
+|---|---|
+| Pattern bar | the seam's escalations span **at least two distinct features** — the AC-2.3 bar applied to this corpus |
+| Dominance | the seam's total **exceeds** every other seam's total |
+
+Both required. When they hold, the pass surfaces that seam as a candidate for **envelope revision or
+upstream-phase repair**, bound to the relevant deferral. It is surfaced, not enacted — like every
+other guard-set change it reaches the operator through §6 or §5.3.
+
+A tie on the dominance test fires nothing: `exceeds` is strict, so two seams at the same total are
+not a signal, and the pass reports the tie in its §10 report rather than picking one.
+
+### 9.5 Under-exercised seam (AC-6.3)
+
+| Conjunct | Condition |
+|---|---|
+| Corpus non-empty | at least one **other** seam escalated across the consumed window (row 3 of §9.3) |
+| Silence | this seam has escalations from **no** feature across that same window |
+
+Both required, and the first is what stops a first pass on a stock repo from proposing a widening for
+all five `ADVISORY_SEAMS` (`orchestrate-dev.js:1669`) on the strength of a corpus no run could have
+written. The proposal is an **envelope widening**, never enacted.
+
+**Where it routes** turns on which surface holds the value:
+
+| Target | Route |
+|---|---|
+| the **shipped defaults** in `pdlc/workflows/` | a PR, under §5.1's guard-set predicate — `pdlc/workflows/` is a `MERGE_GUARD_DEFAULTS` member |
+| a consumer's `.claude/pdlc.config.json` | **not** a PR-able surface — the file is untracked (`/.claude/workflows/` is gitignored and the config is per-consumer), so the widening is reported as an **operator action** in the §10 report |
+
+The second row is not a degradation and carries no §6.3 failure class: there is no PR to fail to
+open. It appears in the report under the operator-action heading, not under `degraded`.
+
+### 9.6 The honest limit
+
+`ESCALATIONS.md` records **escalations, not resolutions** (baseline §4). Nothing in §9.4 or §9.5
+therefore measures whether a seam's advisory attempt *worked* — only how often it gave up. A
+resolution-rate input needs `advisorySummaryRows` (`orchestrate-dev.js:2708`) persisted into a
+defined LEARNINGS section, which is an `orchestrate-dev` change and is deferred as D-CONS-06. This
+FSPEC states the limit rather than papering over it: a seam that never escalates because it never
+runs and a seam that never escalates because it always succeeds are **indistinguishable** in this
+corpus, and §9.5's proposal is a candidate for human judgment for exactly that reason.
+
 ## 10. FSPEC-CONS-09 — Reporting and the log record grammar
 
 ## 11. Configuration parse behaviour
