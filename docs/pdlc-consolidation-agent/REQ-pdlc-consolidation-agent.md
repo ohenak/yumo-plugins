@@ -324,12 +324,46 @@ summary to be persisted, which is D-CONS-06.
 
 - **NFR-1** — No promotion is ever applied to a skill or workflow file by this agent. Pull request
   only, operator approves, always (DEC-E2).
-- **NFR-2** — The credential never appears in a log, PR body, artifact, or notification.
+- **NFR-2** — The credential never appears in a log, PR body, artifact, or notification; and on the
+  same path, the log row carries the AC-4.2 `credential:` field from its closed three-value set, so
+  the absence is asserted on a run that demonstrably reached the credential.
 - **NFR-3** — The pattern-vs-coincidence bar (AC-2.3) is unchanged; running on a cadence must not
   lower the promotion threshold, or cadence becomes a volume machine.
-- **NFR-4** — A pass is idempotent with respect to its boundary: re-running it over the same
-  LEARNINGS set produces no duplicate promotions and no duplicate PR.
-- **NFR-5** — The pass never modifies a LEARNINGS file it consumed.
+- **NFR-3a** — A cadence-triggered pass and a volume-triggered pass are distinguishable in the log:
+  the pass's log row records its trigger over the closed set `cadence` / `volume` / `manual`, so
+  NFR-3's "the bar held on both" is checkable rather than asserted.
+- **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly: re-running over
+  the same consumed-LEARNINGS set produces no duplicate promotion (identity: `failure-mode-id`,
+  AC-5.1) and no duplicate PR (identity: the `PDLC-CONSOLIDATION-SOURCES` trailer of AC-3.1). A pass
+  that finds an **open** PR carrying an identical sources trailer opens nothing, records
+  `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an
+  interrupted pass's partial PR is left for the operator to merge or close, not silently amended.
+  Idempotence is well-defined precisely because AC-5.2's verdicts are deterministic.
+- **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
+  positively records consumption by appending the consumed basenames to
+  `docs/_decisions/.consolidation-log.md` (AC-2.4) — which is exactly what makes those files
+  "consolidated" for the AC-1.1 predicate (`pdlc/hooks/scripts/nudge-consolidation.sh:41`). The log
+  must name **exactly** the consumed set: neither more nor fewer.
+
+## 4a. Configuration
+
+All keys live under `.claude/pdlc.config.json` → `consolidation`, following the contract shape
+`parseAdvisoryConfig` establishes: **per-key independent fallback with a stated default**, so one
+malformed key never retunes the rest, and an absent or malformed `consolidation` section leaves
+every key at its default. **Config owner: the repo operator** (the human who owns
+`.claude/pdlc.config.json`; the same owner as `implementation`, `advisory`, `distribution`, `merge`).
+
+| Key | Default | Malformed / absent | Used by |
+|---|---|---|---|
+| `consolidation.cadenceHours` | `168` (weekly) | falls back to default, noted in report | AC-1.1 |
+| `consolidation.volumeThreshold` | `5` (matches `nudge-consolidation.sh:25`) | falls back to default | AC-1.2 |
+| `consolidation.staleLockMinutes` | `60` | falls back to default | AC-1.3 |
+| `consolidation.pluginRepository` | `null` → the current repository (the same-repo case, AC-3.8) | treated as unresolved: `repository-unresolved`, AC-3.5 fallback | AC-3.1, AC-4.1 |
+| `consolidation.credentialEnv` | `"PDLC_PLUGIN_REPO_TOKEN"` | falls back to default | AC-4.2 |
+| `consolidation.unmeasurablePasses` | `3` | falls back to default | AC-5.5 |
+
+`cadenceHours` resolves master-plan OQ-E3 for this feature: weekly **and** threshold-driven, whichever
+arrives first (AC-1.2). BL-04 is thereby closed at the REQ layer.
 
 ## 5. Scope
 
