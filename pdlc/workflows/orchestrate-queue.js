@@ -1260,6 +1260,23 @@ export default async function main({
       // routing decision that is already known.
       advisoryDispositions.push({ ...advisoryDisposition, seam });
 
+      // H-2b / DEC-ADV-03 (queue-side durability): `runAdvisorySeam`'s Step 7 RECORD (dev:2884)
+      // appends the disposition to `ADVISORY-{feature}.md` for every terminal outcome of EVERY
+      // seam, A1 included — but A1 is deliberately capability-free (permittedActions: [],
+      // verifyGate: null, TSPEC A1-4), so unlike A2's own `verifyGate` there is no SeamOps-owned
+      // commit to make that append durable in git. Neither seam owns the queue's process
+      // boundary, so the commit belongs here, in `main`'s own flow, right after every seam
+      // dispatch this pass — pathspec-scoped to the one record file, never `-a`, never pushed. An
+      // A2 pass whose own `verifyGate` already committed the same file leaves nothing staged,
+      // which is a notice, not a failure (mirrors `commitQueueRow`'s own idempotence handling
+      // below).
+      await commitAdvisoryRecord(
+        `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
+        entry.feature,
+        gitFn,
+        emit
+      );
+
       if (seam === "A1") {
         // Decision #3 (this file's own header / advisoryQueueSeams.test.js): A1 declares
         // permittedActions: [], so the generic driver always classifies A1's real recommendation
@@ -1576,6 +1593,43 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
   }
 
   return uncommitted(committed, queuePath);
+}
+
+/**
+ * H-2b / DEC-ADV-03 — commit the advisory record, pathspec-scoped to that one file, never `-a`,
+ * never pushed. Mirrors `commitQueueRow`'s exact two-call shape (`git add -- {path}` then
+ * `git commit -m "…" -- {path}`) so the pathspec rides the commit call itself, not only the add.
+ * Idempotent by design: an A2 pass whose own `verifyGate` already committed the same file (or any
+ * pass where the append produced no net diff) leaves nothing staged, which `git commit` reports
+ * via its "nothing to commit" family of messages — a notice, not a failure, so this never halts
+ * the queue. A `git add` or unrecognised `git commit` refusal is likewise only ever logged: this
+ * step runs after the seam has already been adjudicated and recorded on disk, and demoting queue
+ * progress to a halt over a durability shortfall here would be a strictly worse outcome than
+ * leaving the record momentarily uncommitted for a later pass (or an operator) to pick up.
+ */
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+  const added = await gitFn(["add", "--", recordPath]);
+  if (!added || added.ok !== true) {
+    emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
+    return;
+  }
+
+  const committed = await gitFn([
+    "commit",
+    "-m",
+    `chore(advisory): record ${feature} (queue)`,
+    "--",
+    recordPath,
+  ]);
+  if (committed && committed.ok === true) return;
+
+  if (
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stdout) ?? "") ||
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stderr) ?? "")
+  ) {
+    return;
+  }
+  emit(`Advisory record for "${feature}" left uncommitted: git commit failed.`);
 }
 
 /**
