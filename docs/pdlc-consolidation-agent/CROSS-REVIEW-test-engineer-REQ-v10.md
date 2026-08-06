@@ -103,4 +103,46 @@ and F-52's is a two-character widening in a file this feature owns.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 2 Low.
+
+All four v9 Lows are resolved, and resolved on the mechanism rather than on the wording. F-48's base
+case is now stated over the *proposal*, so the one reachable state its ladder did not name — an
+`ineffective` tick while a `retire` proposal sits on an open PR — has three named observables instead
+of two defensible readings. F-51's generated-path rule is now a producer-keyed predicate with a
+counter-example that is a real tracked file in this repo, so a glob implementation is falsified by a
+fixture that already exists. F-49 is answered in both artifacts, with a file-wide version-bump
+obligation I had not asked for. F-50 was complied with in the required order.
+
+Applying the Challenger bar to each of the two remaining candidates rather than to their count:
+
+- **F-52** would be a Medium if drift in §3/§4 were undetectable. It is not: the constraints file's
+  own file-wide clause makes an unbumped row change a defect, and the REQ pins `Version` 1.3 in all
+  three citations, so a deleted trailer row cannot land silently. What is missing is the *symmetric*
+  rule and the ownership sentence over the two sections that moved this round — a maintenance lag, not
+  a hole. A test author can transcribe §4's four-row trailer table today with a pinned expected value.
+- **F-53** is a measurement inside the ceiling, filed `Process` because the lesson is about sizing a
+  relocation against the round it runs beside, not about this document's content.
+
+I re-derived every factual claim in the changed text rather than accepting the relocation as
+truth-preserving: the four tracked `dist/` outputs and `build-runtime.mjs:465`; the fixture path that
+contains `dist/` and is authored; `nudge-consolidation.sh:28`/`:36-37`/`:41`; the 5/2/3 first-run
+corpus against the actual filesystem and the actual log; `check-req-size.sh:41-42`/`:47-48`;
+`consolidate-learnings/SKILL.md:49`; `pdlc-advisory-corpus-baseline.md:55`; the vocabularies file's
+`Version` 1.3 and its §1–§4 structure. All resolve.
+
+What should change, in order — both are single clauses, and F-53 says where to write them:
+
+1. **F-52** — In `pdlc-consolidation-vocabularies.md:19-20`, widen "owns every row of **§1 and §2**"
+   to "§1–§4" (a two-character edit in the file, not in the REQ); then widen §4b's oracle range and
+   §5's deliverable to match, so the symmetric defect rule covers §4's trailer enumeration.
+2. **F-53** — Size the next relocation against the round it runs beside. REQ-CONS-06's preamble
+   (`:447-453`) recapitulates a baseline file that already states all of it at `Version` 1.0; the REQ
+   needs the citation and the two obligations, not the summary.
+
+No upstream defects were found. Every `file:line` in the changed text and in both edited
+`docs/_constraints/` files resolves to a real authority saying what is attributed to it. No ERRATUM
+lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
