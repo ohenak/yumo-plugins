@@ -91,6 +91,17 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "mergeWorktree",
   "checkFileNonEmpty",
   "parsePlanTasks",
+  // The queue module's advisory imports (PLAN A-30) — republished so the
+  // queue IIFE's prelude can re-bind them as free identifiers.
+  "runAdvisorySeam",
+  "readAdvisoryConfigSafely",
+  "parseAdvisoryConfig",
+  "defaultAppendFile",
+  "ADVISORY_CONFIG_PATH",
+  "resolveAdvisoryRung",
+  "advisorySummaryRows",
+  "ADVISORY_DEFAULTS",
+  "commitPaths",
 ]);
 
 const queueModule = wrapModule(
@@ -99,7 +110,16 @@ const queueModule = wrapModule(
   // §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
   // `_recordQueueRow` closure calls; without them on `__queue` it has nothing to call.
   ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
-  "const realMain = __dev.main;"
+  ["const realMain = __dev.main;",
+   "const runAdvisorySeam = __dev.runAdvisorySeam;",
+   "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;",
+   "const parseAdvisoryConfig = __dev.parseAdvisoryConfig;",
+   "const defaultAppendFile = __dev.defaultAppendFile;",
+   "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;",
+   "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
+   "const advisorySummaryRows = __dev.advisorySummaryRows;",
+   "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;",
+   "const commitPaths = __dev.commitPaths;"].join("\n")
 );
 
 // `meta` must be a pure literal and the first statement, so each bundle carries
@@ -275,17 +295,171 @@ const cliArtifact = [
   cliBody,
 ].join("\n\n");
 
+// The workflow runtime rejects a script over 512 KiB, and the comment-dense
+// sources pushed the concatenated dev bundle past it. The two runtime bundles
+// are therefore emitted with comments stripped. The stripper is hand-rolled
+// and dependency-free ON PURPOSE: this builder runs on a fresh clone before
+// any `npm install` (the bootstrap contract, pinned by DOD-03's temp-tree
+// checks), so it may not require npm packages. `runtimeBundle.test.js`
+// re-parses the stripped bundles with the test environment's real parser, so
+// a stripper bug is a red suite, not a silently corrupt artifact. The banner
+// is re-prepended below because it must outlive stripping: it is the
+// "generated — never edit" warning an operator reads. pdlc-cli.mjs is plain
+// Node with no size ceiling and keeps its comments.
+const REGEX_PREFIX_WORDS = new Set([
+  "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
+  "throw", "case", "do", "else", "yield", "await",
+]);
+
+function stripJsComments(code) {
+  let out = "";
+  let i = 0;
+  const n = code.length;
+  // Mode stack: "code" (with its ${}-depth) nests inside "template" and back.
+  const stack = [{ mode: "code", braces: 0 }];
+  let prevCh = ""; // last significant char emitted in code mode
+  let prevWord = ""; // last identifier-ish word emitted in code mode
+
+  const top = () => stack[stack.length - 1];
+
+  while (i < n) {
+    const s = top();
+    const c = code[i];
+    const d = i + 1 < n ? code[i + 1] : "";
+
+    if (s.mode === "code") {
+      if (c === "/" && d === "/") {
+        while (i < n && code[i] !== "\n") i++;
+        continue; // the \n itself is emitted on the next pass
+      }
+      if (c === "/" && d === "*") {
+        const hadNewline = () => code.slice(start, i).includes("\n");
+        const start = i;
+        i += 2;
+        while (i < n && !(code[i] === "*" && code[i + 1] === "/")) i++;
+        i = Math.min(n, i + 2);
+        // Preserve line structure so a stripper bug stays diffable to a line.
+        if (hadNewline()) out += "\n";
+        continue;
+      }
+      if (c === "'" || c === '"') {
+        stack.push({ mode: "string", quote: c });
+        out += c; i++; prevCh = c; prevWord = "";
+        continue;
+      }
+      if (c === "`") {
+        stack.push({ mode: "template" });
+        out += c; i++; prevCh = c; prevWord = "";
+        continue;
+      }
+      if (c === "/") {
+        // Regex literal vs division, by what precedes it.
+        const regexish =
+          prevCh === "" || "(,=:[!&|?{};+-*%~^<>".includes(prevCh) ||
+          REGEX_PREFIX_WORDS.has(prevWord);
+        if (regexish) {
+          stack.push({ mode: "regex", inClass: false });
+        }
+        out += c; i++; prevCh = c; prevWord = "";
+        continue;
+      }
+      if (c === "{") { s.braces++; }
+      if (c === "}") {
+        if (s.braces === 0 && stack.length > 1) {
+          // End of a template's ${ … } hole.
+          stack.pop();
+          out += c; i++;
+          continue;
+        }
+        s.braces--;
+      }
+      out += c; i++;
+      if (!/\s/.test(c)) {
+        prevCh = c;
+        if (/[A-Za-z0-9_$]/.test(c)) prevWord += c;
+        else prevWord = "";
+      }
+      continue;
+    }
+
+    if (s.mode === "string") {
+      out += c;
+      if (c === "\\") { out += d; i += 2; continue; }
+      i++;
+      if (c === s.quote) stack.pop();
+      continue;
+    }
+
+    if (s.mode === "template") {
+      if (c === "\\") { out += c + d; i += 2; continue; }
+      if (c === "$" && d === "{") {
+        stack.push({ mode: "code", braces: 0 });
+        out += "${"; i += 2;
+        continue;
+      }
+      out += c; i++;
+      if (c === "`") stack.pop();
+      continue;
+    }
+
+    // regex
+    out += c;
+    if (c === "\\") { out += d; i += 2; continue; }
+    i++;
+    if (c === "[") s.inClass = true;
+    else if (c === "]") s.inClass = false;
+    else if (c === "/" && !s.inClass) { stack.pop(); prevCh = "/"; }
+    else if (c === "\n") stack.pop(); // never a real regex — bail conservatively
+  }
+  // Collapse the blank lines stripping leaves behind, but never touch content:
+  // only fully-empty (whitespace-only) line runs shrink.
+  return out.replace(/\n(?:[ \t]*\n)+/g, "\n\n");
+}
+
+/** Replace `await import("x")` with a rejecting expression carrying the same specifier.
+ *
+ * Constraint 2 in this file's header ("No `import` — static or dynamic") is a
+ * LAUNCHER constraint, not merely a runtime one: the Workflow launcher parses
+ * the script statically and refuses to start on any `import(` token, long
+ * before any injection could happen. The canonical modules' Node-only seam
+ * defaults (`defaultGit`, `defaultGhRun`, `defaultReadFile`, `defaultWriteFile`,
+ * `checkPrCi`, `mergeWorktree`) each carry one, and each is overridden by
+ * runtime-adapter.js — they are dead code inside the runtime, but a dead
+ * `import(` still costs the whole pipeline its launch.
+ *
+ * The replacement is deliberately self-contained (no helper binding to place
+ * relative to the `meta` first-statement rule), keeps the specifier verbatim so
+ * the site stays greppable, and throws if a path this build believed dead ever
+ * runs — a loud failure beats a silent fallback to a seam that isn't there.
+ */
+export function neutralizeDynamicImports(code) {
+  return code.replace(
+    /\bawait\s+import\(\s*("[^"\n]*"|'[^'\n]*')\s*\)/g,
+    (_match, specifier) =>
+      `await Promise.reject(new Error("Node module " + ${specifier} + ` +
+      `" is unavailable in the workflow runtime; this seam must be injected"))`
+  );
+}
+
+function stripCommentsForRuntime(code) {
+  return `${BANNER}\n${neutralizeDynamicImports(stripJsComments(code))}`;
+}
+
 const bundles = [
   {
     file: "orchestrate-queue.bundle.js",
-    contents: [QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n"),
+    contents: stripCommentsForRuntime(
+      [QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n")
+    ),
   },
   {
     file: "orchestrate-dev.bundle.js",
     // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
     // `_recordQueueRow` closure can reach the queue's row helpers. ORDERING HAZARD:
     // queueModule's prelude references `__dev.main`, so devModule must precede it.
-    contents: [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
+    contents: stripCommentsForRuntime(
+      [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n")
+    ),
   },
   {
     file: "pdlc-cli.mjs",
@@ -295,6 +469,21 @@ const bundles = [
     contents: cliArtifact,
   },
 ];
+
+// Self-enforcing gate on the constraint `neutralizeDynamicImports` exists to keep:
+// no `import(` token may survive in a runtime bundle, whatever produced it. Scoped
+// to the `.bundle.js` rows — pdlc-cli.mjs is plain Node and keeps its imports.
+for (const { file, contents } of bundles) {
+  if (!file.endsWith(".bundle.js")) continue;
+  const surviving = contents.match(/\bimport\s*\(/g) || [];
+  if (surviving.length) {
+    console.error(
+      `${file}: ${surviving.length} dynamic import(s) survived neutralization — ` +
+        `the workflow launcher rejects the script on sight. See neutralizeDynamicImports.`
+    );
+    process.exit(1);
+  }
+}
 
 const checkOnly = process.argv.includes("--check");
 let stale = false;

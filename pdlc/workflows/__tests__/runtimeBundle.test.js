@@ -10,12 +10,15 @@
  */
 
 import { execFileSync } from "child_process";
+import { createRequire } from "module";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
-import { stripModuleSyntax } from "../build-runtime.mjs";
+import { neutralizeDynamicImports, stripModuleSyntax } from "../build-runtime.mjs";
+
+const requireHere = createRequire(import.meta.url);
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
@@ -457,9 +460,49 @@ describe("stripModuleSyntax", () => {
     );
   });
 
-  it("leaves dynamic imports alone (they sit in overridden code paths)", () => {
+  // Dynamic imports are not this layer's job — `neutralizeDynamicImports` (below)
+  // removes them from the runtime bundles. Keeping them here means the CLI
+  // artifact, which is plain Node and needs them, is built from the same strip.
+  it("leaves dynamic imports alone (the runtime bundles neutralize them later)", () => {
     const src = 'const { execSync } = await import("child_process");';
     expect(stripModuleSyntax(src)).toBe(src);
+  });
+});
+
+// The Workflow LAUNCHER parses statically and refuses to start on any `import(`
+// token — "dead code in an overridden seam" is not a defence, because nothing has
+// been injected yet at parse time. A bundle shipped with a surviving `import(`
+// costs the whole pipeline its launch with `SyntaxError: import() is not
+// available in workflow scripts`, which is how this oracle came to exist.
+describe("neutralizeDynamicImports", () => {
+  it("replaces an awaited dynamic import with a rejecting expression", () => {
+    const out = neutralizeDynamicImports('const { execSync } = await import("child_process");');
+    expect(out).not.toMatch(/\bimport\s*\(/);
+    expect(out).toMatch(/await Promise\.reject\(new Error\(/);
+  });
+
+  it("keeps the specifier verbatim, so the site stays greppable", () => {
+    expect(neutralizeDynamicImports('await import("fs")')).toContain('"fs"');
+    expect(neutralizeDynamicImports("await import('child_process')")).toContain("'child_process'");
+  });
+
+  it("throws when a path this build believed dead is actually taken", async () => {
+    // eslint-disable-next-line no-new-func
+    const run = new Function(`return (async () => { ${neutralizeDynamicImports(
+      'const { execSync } = await import("child_process"); return execSync;'
+    )} })();`)();
+    await expect(run).rejects.toThrow(/child_process.*unavailable in the workflow runtime/);
+  });
+
+  it("leaves code with no dynamic import untouched", () => {
+    const src = "const a = 1;\nfunction f() { return important(a); }";
+    expect(neutralizeDynamicImports(src)).toBe(src);
+  });
+});
+
+describe.each(BUNDLES)("%s launcher constraint", (file) => {
+  it("carries no dynamic import — the launcher rejects the script on sight", () => {
+    expect(read(file).match(/\bimport\s*\(/g) || []).toEqual([]);
   });
 });
 
@@ -1269,6 +1312,32 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     ).not.toThrow();
   });
 
+  it.each(["orchestrate-dev.bundle.js", "orchestrate-queue.bundle.js"])(
+    "the stripped %s parses as the runtime will parse it (comment stripping is a red suite, not a corrupt artifact)",
+    (file) => {
+      const root = makeBuildTree();
+      const code = readFileSync(distFile(root, file), "utf8");
+      // The builder's dependency-free stripper is verified here with the test
+      // environment's real parser — the builder itself may not require it
+      // (fresh-clone bootstrap runs before npm install).
+      const babel = requireHere("@babel/core");
+      expect(() =>
+        babel.parseSync(code, {
+          configFile: false,
+          babelrc: false,
+          parserOpts: {
+            sourceType: "module",
+            allowAwaitOutsideFunction: true,
+            allowReturnOutsideFunction: true,
+          },
+        })
+      ).not.toThrow();
+      // And the stripper actually earned its keep: under the runtime's script
+      // size ceiling, which is what forced stripping in the first place.
+      expect(code.length).toBeLessThan(524288);
+    }
+  );
+
   it("--check writes nothing: a stale tree stays stale after the check", () => {
     const root = makeBuildTree();
     perturb(root, "distribution-manifest.json");
@@ -1475,4 +1544,46 @@ describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §
       expect(calls[0][6]).toBeUndefined();
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// RLH-AT-65: no C0 control bytes in workflow source or built artifacts.
+//
+// A stray NUL (0x00) once sat in orchestrate-dev.js as the erratum dedup-key
+// separator (`${docType}\x00${item}`, a mistyped space). It passed every
+// behavioural test — a NUL separates Map keys as well as a space — yet it made
+// the file "binary" to grep and, worse, was inlined verbatim into the shipped
+// bundle, where the Workflow launcher's permission dialog rejects control
+// characters and refuses to run the pipeline at all. This oracle is byte-level
+// and covers both the tested source and the artifacts the runtime actually
+// loads, so the class cannot regress silently.
+describe("RLH-AT-65: no C0 control bytes in workflow source or artifacts", () => {
+  // 0x09 tab, 0x0A LF, 0x0D CR are the only C0 bytes text may carry.
+  const forbidden = (buf) => {
+    const hits = [];
+    for (let i = 0; i < buf.length; i++) {
+      const b = buf[i];
+      if (b <= 0x1f && b !== 0x09 && b !== 0x0a && b !== 0x0d) {
+        hits.push({ offset: i, byte: "0x" + b.toString(16).padStart(2, "0") });
+      }
+    }
+    return hits;
+  };
+
+  const SOURCES = [
+    "orchestrate-dev.js",
+    "cli.mjs",
+    "build-runtime.mjs",
+    "runtime-adapter.js",
+  ];
+  it.each(SOURCES)("source %s carries no C0 control byte", (name) => {
+    const hits = forbidden(readFileSync(resolve(WORKFLOWS, name)));
+    expect(hits).toEqual([]);
+  });
+
+  const ARTIFACTS = [...BUNDLES, "pdlc-cli.mjs"];
+  it.each(ARTIFACTS)("built artifact %s carries no C0 control byte", (name) => {
+    const hits = forbidden(readFileSync(resolve(DIST, name)));
+    expect(hits).toEqual([]);
+  });
 });

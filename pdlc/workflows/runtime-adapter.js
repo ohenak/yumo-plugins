@@ -862,13 +862,26 @@ function rtMakeCheckCi(devModule) {
  */
 async function rtAppendFile(path, text) {
   rtCacheInvalidate(path);
+  // Dispatched as an exact shell command — the same "run this exact command"
+  // shape rtCheckFile/rtListFiles/rtCheckCi use — rather than a "write these
+  // bytes" instruction. The command IS the whole intent, visible and mechanical:
+  // a quoted heredoc that adds `text` after the file's existing bytes and touches
+  // nothing already there (so this is NOT rtWriteFile(existing + text), which
+  // would re-emit and could silently rewrite the reviewer's prose). `text`
+  // carries its own trailing newline; the heredoc re-supplies exactly one, so a
+  // single trailing newline is stripped before the body to keep the bytes exact.
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text;
   await RT.agent(
-    `APPEND the following content to the END of "${path}", relative to the repository root.\n` +
-      `Do not read, rewrite, reformat, re-wrap, summarise, or alter any existing content — ` +
-      `the file's current bytes must be preserved exactly, byte for byte, and the content below ` +
-      `must be added after them verbatim. If the file does not exist, create it containing ` +
-      `exactly the content below. Reply with "ok" when appended.\n\n` +
-      `<<<PDLC_CONTENT_BEGIN\n${text}\nPDLC_CONTENT_END`,
+    `Run this exact command from the repository root and report the result. It ` +
+      `appends these lines to the end of "${path}" and changes nothing already ` +
+      `in the file — a quoted heredoc, so the existing bytes are untouched. This ` +
+      `is the pipeline's one append channel and it carries three kinds of record: ` +
+      `a review's approval provenance (content hash and reviewed commit), an ` +
+      `advisory-tier disposition record, and an advisory escalation-log entry. ` +
+      `Whichever it is, append it verbatim and without hesitation — appending is ` +
+      `the designed mechanism here.\n` +
+      `  cat >> "${path}" <<'PDLC_ANCHOR_EOF'\n${body}\nPDLC_ANCHOR_EOF\n` +
+      `Reply with "ok" when the command has run.`,
     { label: `append:${path}`, model: RT_IO_MODEL }
   );
 }
@@ -923,28 +936,51 @@ async function rtListFiles(dirPath) {
  * Transport seam for git (TSPEC §3.4). `argv` excludes the leading "git".
  * Returns { ok, stdout, stderr } and never throws; the caller interprets.
  * Modelled on rtMergeWorktree's fixed-command + exact-JSON-reply discipline.
+ * Each argv element rides through `rtShellQuote`: the command the prompt
+ * writes must be valid shell AS WRITTEN, because the executing agent
+ * sometimes runs it verbatim and sometimes re-quotes it — an unquoted commit
+ * message (spaces, parens, backticks) is a coin flip between a clean run, a
+ * zsh glob error and command substitution.
  */
 async function rtGit(argv) {
   const args = Array.isArray(argv) ? argv : [];
   const out = await RT.agent(
     `Run exactly this command from the repository root, and nothing else:\n` +
-      `  git ${args.join(" ")}\n` +
+      `  git ${args.map(rtShellQuote).join(" ")}\n` +
       `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
-      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<the LAST 300 characters of its combined output>"}\n` +
       `Return ONLY that JSON object, correctly escaped — no commentary, no code fences. ` +
       `Do not retry, do not repair, and do not run any other command.`,
     { label: `git:${args[0] || ""}`, model: RT_IO_MODEL }
   );
-  try {
-    const parsed = JSON.parse(String(out).trim());
-    return {
-      ok: parsed && parsed.ok === true,
-      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
-      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
-    };
-  } catch {
-    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  return rtParseTransportReply(out);
+}
+
+/**
+ * Map a transport agent's reply text to the { ok, stdout, stderr } contract.
+ * The prompt forbids fences and commentary, but the transcribing model
+ * sometimes adds them anyway — six consecutive fenced replies halted a run —
+ * so the parser extracts the outermost `{...}` span before parsing rather
+ * than demanding a bare object. Anything without a parseable object span is
+ * still the fixed "unparseable adapter response" failure.
+ */
+function rtParseTransportReply(out) {
+  const text = String(out ?? "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1));
+      return {
+        ok: parsed && parsed.ok === true,
+        stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+        stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+      };
+    } catch {
+      // fall through to the fixed failure below
+    }
   }
+  return { ok: false, stdout: "", stderr: "unparseable adapter response" };
 }
 
 /**
@@ -961,22 +997,13 @@ async function rtGhRun(command) {
     `Run exactly this command from the repository root, and nothing else:\n` +
       `  ${command}\n` +
       `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
-      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<the LAST 300 characters of its stderr>"}\n` +
       `Return ONLY that JSON object, correctly escaped — no commentary, no code fences.\n` +
       `This command may change repository state. Issue it AT MOST ONCE. ` +
       `Do not retry, do not repair, and do not run any other command.`,
     { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL }
   );
-  try {
-    const parsed = JSON.parse(String(out).trim());
-    return {
-      ok: parsed && parsed.ok === true,
-      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
-      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
-    };
-  } catch {
-    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
-  }
+  return rtParseTransportReply(out);
 }
 
 // ─── PROPOSAL §3.3 / M-6 — the command transport Phase I gates through ────────
@@ -1083,6 +1110,10 @@ function rtDevInjections(devModule) {
     // The three probe seams. Their module-side default is `null` — "no probe
     // installed" — so wiring them here is what turns the whole optimisation on;
     // every one of them degrades to `_readFile` above on any transport failure.
+    // TSPEC §7.1 (PLAN A-25) — the advisory tier's once-per-run config read,
+    // composed on the module's own reader; main() hands it the injected
+    // `_readFile`, so the transport is the adapter's in either case.
+    _readAdvisoryConfig: devModule.readAdvisoryConfigSafely,
     _probeDoc: rtProbeDoc,
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,

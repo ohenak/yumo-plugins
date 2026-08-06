@@ -117,3 +117,64 @@ describe("rtGhRun", () => {
     });
   });
 });
+
+describe("rtGit — the command is valid shell AS WRITTEN (quoting is not the executing agent's job)", () => {
+  it("single-quotes argv elements that carry shell-active characters", async () => {
+    const agent = scriptedAgent(['{"ok":true,"stdout":"","stderr":""}']);
+    const { rtGit } = load(agent);
+
+    await rtGit(["commit", "-m", "feat(pdlc-advisory-tier): A-03 — RED `describe.skip`"]);
+
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toContain(
+      "  git 'commit' '-m' 'feat(pdlc-advisory-tier): A-03 — RED `describe.skip`'\n"
+    );
+  });
+
+  it("quotes every argv element — the shared rtShellQuote is total", async () => {
+    const agent = scriptedAgent(['{"ok":true,"stdout":"","stderr":""}']);
+    const { rtGit } = load(agent);
+
+    await rtGit(["diff", "--cached", "--name-only", "--", "src/one.js"]);
+
+    expect(agent.calls[0].prompt).toContain(
+      "  git 'diff' '--cached' '--name-only' '--' 'src/one.js'\n"
+    );
+  });
+
+  it("escapes embedded single quotes so the written command still parses", () => {
+    const { rtShellQuote } = loadAdapter();
+    expect(rtShellQuote("it's")).toBe("'it'\\''s'");
+    expect(rtShellQuote("plain-safe_word.js")).toBe("'plain-safe_word.js'");
+  });
+});
+
+describe("rtParseTransportReply — fenced or noisy replies still parse (observed: six consecutive fenced Haiku replies)", () => {
+  it("extracts the JSON object from a code-fenced reply", async () => {
+    const agent = scriptedAgent([
+      '```json\n{"ok":false,"stdout":"","stderr":"nothing added to commit but untracked files present"}\n```',
+    ]);
+    const { rtGit } = load(agent);
+    expect(await rtGit(["commit", "-m", "msg"])).toEqual({
+      ok: false,
+      stdout: "",
+      stderr: "nothing added to commit but untracked files present",
+    });
+  });
+
+  it("tolerates commentary around the object", async () => {
+    const agent = scriptedAgent(['Here is the result: {"ok":true,"stdout":"done","stderr":""} as requested.']);
+    const { rtGit } = load(agent);
+    expect(await rtGit(["add", "--", "a.js"])).toEqual({ ok: true, stdout: "done", stderr: "" });
+  });
+
+  it("still maps a brace-free reply to the fixed unparseable failure", async () => {
+    const agent = scriptedAgent(["not json at all"]);
+    const { rtGit } = load(agent);
+    expect(await rtGit(["status"])).toEqual({
+      ok: false,
+      stdout: "",
+      stderr: "unparseable adapter response",
+    });
+  });
+});

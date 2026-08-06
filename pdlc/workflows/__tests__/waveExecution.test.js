@@ -568,7 +568,7 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
     },
   });
 
-  it("runs the post-wave command AFTER the gate and commits the pathspecs", async () => {
+  it("runs the post-wave command BEFORE the gate and commits the pathspecs", async () => {
     const gitCalls = [];
     const ran = [];
     const result = await main(
@@ -582,10 +582,11 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
       })
     );
     expect(result.outcome).toBe("success");
-    // …then the V-wave's verification run of the test command (§3.2 row 2). The
-    // post-wave BUILD command belongs to the implementation waves and is not
-    // repeated for the V-wave, which is exactly what this ordering shows.
-    expect(ran).toEqual(["npm test", "node build.mjs", "npm test"]);
+    // The BUILD precedes the wave's gate: the suite asserts generated-artifact
+    // freshness, so a source-editing wave must be built before it is judged.
+    // Then the V-wave's verification run of the test command (§3.2 row 2) —
+    // the build belongs to the implementation waves and is not repeated there.
+    expect(ran).toEqual(["node build.mjs", "npm test", "npm test"]);
 
     const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
     expect(commits).toEqual([
@@ -741,6 +742,121 @@ describe("Phase I — index.lock retry and non-transient git failures", () => {
     // Not retried (absence), and the failure was reached (positive).
     expect(slept).toEqual([]);
     expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(1);
+  });
+
+  it("the commit subject is shell-inert: backticks, $, backslash and double-quote are stripped", async () => {
+    // The subject travels into a `git commit -m` run by the agent-transcribed
+    // shell, whose quoting the script does not control — a double-quoted zsh
+    // executes backticks, and PLAN descriptions legitimately carry them.
+    const plan = [
+      "| Task ID | Description | Batch | Dependencies |",
+      "|---|---|---|---|",
+      '| T1 | RED (`describe.skip`) "cost $5" \\slash | 1 | - |',
+      "",
+      "| Task | Files |",
+      "|---|---|",
+      "| T1 | `src/one.js` |",
+    ].join("\n");
+    const gitCalls = [];
+    const result = await main(
+      makeArgs({
+        plan,
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    const commits = gitCalls.filter((a) => a[0] === "commit");
+    expect(commits).toEqual([
+      ["commit", "-m", "feat(test-feat): T1 — RED (describe.skip) cost 5 slash"],
+    ]);
+  });
+
+  it("an 'unparseable adapter response' is transient — retried like index.lock, not a halt", async () => {
+    // The `_git` seam is agent-transcribed, so the commit may have succeeded
+    // with only the report garbled. One failed transcription must cost a
+    // retry, never the wave.
+    const gitCalls = [];
+    const slept = [];
+    let commitAttempts = 0;
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "commit" && ++commitAttempts === 1
+          ? { ok: false, stdout: "", stderr: "unparseable adapter response" }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([GIT_LOCK_RETRY_DELAY_MS]);
+    expect(commitAttempts).toBeGreaterThan(1);
+  });
+
+  it("a pathspec that 'did not match any files' is transient — the transport ran git from the wrong cwd", async () => {
+    // The tracked file exists at the repo root; only an agent that ignored the
+    // prompt's "from the repository root" can see this error. A retry is a new
+    // agent, and `git add` is idempotent.
+    const gitCalls = [];
+    const slept = [];
+    let addAttempts = 0;
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "add" && ++addAttempts === 1
+          ? { ok: false, stdout: "", stderr: "fatal: pathspec 'src/one.js' did not match any files" }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([GIT_LOCK_RETRY_DELAY_MS]);
+    expect(addAttempts).toBeGreaterThan(1);
+  });
+
+  it("a commit refused as 'nothing to commit' is the read-back's late verdict — a notice, not a halt", async () => {
+    // The staged read-back travels the agent-transcribed channel, so a garbled
+    // non-empty answer can push a no-change task into `git commit` anyway. Git's
+    // own refusal must land as the nothing-staged notice, never as a halt.
+    const gitCalls = [];
+    const logs = [];
+    const slept = [];
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "commit"
+          ? {
+              ok: false,
+              stdout:
+                "On branch feat-test-feat\nnothing added to commit but untracked files present (use \"git add\" to track)",
+              stderr: "",
+            }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        logs,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([]);
+    expect(
+      logs.some((m) => m === "Wave 1 task T1: nothing staged — no changes to commit")
+    ).toBe(true);
   });
 
   it("a failing `git add` halts with the same recoverable-work remedy", async () => {

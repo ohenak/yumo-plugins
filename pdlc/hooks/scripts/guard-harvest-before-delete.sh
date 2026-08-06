@@ -32,19 +32,23 @@ except Exception:
 cmd = (data.get("tool_input", {}) or {}).get("command", "") or ""
 
 # Only a removal command that touches review process artifacts is in scope.
-if "CROSS-REVIEW" not in cmd and "CODE_REVIEW" not in cmd:
+if "CROSS-REVIEW" not in cmd and "CODE_REVIEW" not in cmd and "ADVISORY" not in cmd:
     sys.exit(0)
 if not re.search(r'(?:^|\s|;|&|\|)(?:rm|unlink)\b|\bgit\s+rm\b', cmd):
     sys.exit(0)
 
 proj = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
-# Pull out the CROSS-REVIEW / CODE_REVIEW path tokens and the dirs they live in.
-tokens = re.findall(r'\S*(?:CROSS-REVIEW|CODE_REVIEW)-[\w.\-]*', cmd)
+# Pull out the CROSS-REVIEW / CODE_REVIEW / ADVISORY path tokens and the dirs they live in.
+tokens = re.findall(r'\S*(?:CROSS-REVIEW|CODE_REVIEW|ADVISORY)-[\w.\-]*', cmd)
 dirs = set()
+classes = set()
 for t in tokens:
     t = t.strip('\'"')
     dirs.add(os.path.dirname(t))
+    m = re.match(r'.*?(CROSS-REVIEW|CODE_REVIEW|ADVISORY)-', t)
+    if m:
+        classes.add(m.group(1))
 
 blocked = []
 for d in sorted(dirs):
@@ -53,11 +57,16 @@ for d in sorted(dirs):
         blocked.append(d or ".")
 
 if blocked:
+    # The prefix and the bracketed directory below keep their exact bytes — orchestrate-dev.js
+    # both string-tests for the literal prefix and regex-extracts the bracketed directory from
+    # this exact shape. The artifact class is an additive trailing `[class: …]` token; never a
+    # rewrite of the message this guard already emits (TSPEC §9.3).
     sys.stderr.write(
         "pdlc guard: refusing to delete CROSS-REVIEW files in [%s] — no LEARNINGS-*.md "
         "exists there yet. Run /pdlc:harvest-learnings and commit LEARNINGS first "
-        "(harvest-then-delete). This guard also covers CODE_REVIEW-* files.\n"
-        % ", ".join(blocked)
+        "(harvest-then-delete). This guard also covers CODE_REVIEW-* and ADVISORY-* files. "
+        "[class: %s]\n"
+        % (", ".join(blocked), ", ".join(sorted(classes)) or "?")
     )
     sys.exit(2)
 

@@ -251,6 +251,9 @@ describe("raisePrAndVerifyCi", () => {
     expect(result).toEqual({
       prUrl: "https://github.com/a/b/pull/9",
       ciStatus: "passed",
+      // A5 (TSPEC §8.1) widened the return with a `noChecks` provenance flag;
+      // a first-poll pass observed real checks, so it is false here.
+      noChecks: false,
     });
     expect(sleeps).toBe(0);
   });

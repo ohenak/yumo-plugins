@@ -37,7 +37,8 @@
  * does not replace it, it drives it.
  */
 
-import realMain from "./orchestrate-dev.js";
+// Single-line on purpose: stripModuleSyntax recognises imports line-wise.
+import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, advisorySummaryRows, commitPaths } from "./orchestrate-dev.js";
 
 // ─── Exported meta object (mirrors orchestrate-dev) ──────────────────────────
 export const meta = {
@@ -293,16 +294,21 @@ export function parseReqFrontmatter(text) {
 
 /**
  * Extract the Phase-0 triage verdict from an se-author result.
- * Looks for the last line of form `TRIAGE: ready|blocked|needs-human`.
+ * Looks for the last line of form `TRIAGE: ready|blocked|needs-human [SEAM:A1|A2]? <reason>`.
  * Defaults to "needs-human" (the safe, no-auto-run option) when absent/malformed.
  *
+ * `seamToken` is `null` for an absent or unrecognised token — the anchored single-group
+ * alternation only matches `A1`/`A2`; anything else (including a malformed "both tokens on one
+ * stop" stop) falls through into `reason` unconsumed. TSPEC §6.2/§6.5.
+ *
  * @param {string | null | undefined} result
- * @returns {{ verdict: "ready"|"blocked"|"needs-human", reason: string }}
+ * @returns {{ verdict: "ready"|"blocked"|"needs-human", reason: string, seamToken: "A1"|"A2"|null }}
  */
 export function parseTriageVerdict(result) {
   const fallback = {
     verdict: "needs-human",
     reason: "triage agent returned no TRIAGE verdict — treating as needs-human",
+    seamToken: null,
   };
   if (result == null || (typeof result === "string" && result.trim() === "")) {
     return fallback;
@@ -313,13 +319,49 @@ export function parseTriageVerdict(result) {
     const trimmed = lines[i].trim();
     const m = /^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(.*)$/i.exec(trimmed);
     if (m) {
+      const verdict = m[1].toLowerCase();
+      const rest = m[2].trim();
+
+      // Consume at most one leading [SEAM:A1|A2] token. A second one immediately following
+      // (the "both tokens on one stop" malformed case, V-4) is left unconsumed — seamToken
+      // stays null and `reason` carries the residual "[SEAM:" prefix, which is exactly what
+      // `hasResidualSeamToken` is the one predicate for.
+      let seamToken = null;
+      let reason = rest;
+      const tokenMatch = /^\[SEAM:(A1|A2)\]\s*(.*)$/i.exec(rest);
+      if (tokenMatch) {
+        if (/^\[SEAM:/i.test(tokenMatch[2].trim())) {
+          seamToken = null;
+          reason = rest;
+        } else {
+          seamToken = tokenMatch[1].toUpperCase();
+          reason = tokenMatch[2].trim();
+        }
+      }
+
       return {
-        verdict: m[1].toLowerCase(),
-        reason: m[2].trim() || "(no reason given)",
+        verdict,
+        seamToken,
+        reason: reason || "(no reason given)",
       };
     }
   }
   return fallback;
+}
+
+// ─── QUEUE-PARSE-04: hasResidualSeamToken ────────────────────────────────────
+
+/**
+ * True when `reason` (as returned by `parseTriageVerdict`) still carries an unconsumed
+ * `[SEAM:` prefix — the "both tokens on one stop" malformed case (TSPEC §6.2/§6.5, V-4): the
+ * anchored single-group match in `parseTriageVerdict` consumes at most one token, so a second
+ * one lands, unconsumed, at the front of `reason`.
+ *
+ * @param {string | null | undefined} reason
+ * @returns {boolean}
+ */
+export function hasResidualSeamToken(reason) {
+  return typeof reason === "string" && /^\[SEAM:/i.test(reason.trim());
 }
 
 // ─── QUEUE-WRITE-01: updateQueueStatus ───────────────────────────────────────
@@ -648,6 +690,219 @@ export function precheckDependencies(dependsOn, entries) {
   return { blocked: false };
 }
 
+/**
+ * A1's queue-level decision surface (TSPEC §6.3, A1-2/A1-3). `precheck` is a superset of
+ * `precheckDependencies`'s own return — `{ blocked, dependsOn, entries }` — carrying the same
+ * `dependsOn`/`entries` the pre-check already had in scope, so this function can enforce A1-3
+ * (presence-in-base unsettled ⇒ escalate) without a second query surface.
+ *
+ * A1-2 (defence in depth): a `blocked` precheck always escalates, regardless of `verdict` — the
+ * candidate must never run, even if A1's own recommendation was `run-candidate`.
+ * A1-3: a declared dependency with no matching row in `entries` is "unsettled" and forces
+ * `escalate` regardless of `verdict` — it cannot be judged safe from the queue alone.
+ * Otherwise, `verdict` passes through unchanged.
+ *
+ * @param {"run-candidate"|"hold"|"escalate"} verdict
+ * @param {{ blocked: boolean, dependsOn: string[], entries: Array<{feature: string, status: string}> }} precheck
+ * @returns {"run-candidate"|"hold"|"escalate"}
+ */
+export function honourA1Verdict(verdict, precheck) {
+  const p = precheck || {};
+  if (p.blocked) {
+    return "escalate";
+  }
+  const dependsOn = Array.isArray(p.dependsOn) ? p.dependsOn : [];
+  const entries = Array.isArray(p.entries) ? p.entries : [];
+  const unsettled = dependsOn.some((dep) => !entries.some((e) => e.feature === dep));
+  if (unsettled) {
+    return "escalate";
+  }
+  return verdict;
+}
+
+// ─── Advisory SeamOps builders (TSPEC §6.3/§6.4) ──────────────────────────────
+
+/**
+ * A1's `SeamOps` (TSPEC §6.3): triage-abstention adjudication. A1-4 — no file-changing
+ * capability at all: `declaredScope`/`permittedActions` are both empty, `verifyGate` is null,
+ * and `apply`/`producedPaths`/`revert` are unreachable (the generic driver never calls them when
+ * `permittedActions` is empty) but throw descriptively rather than silently no-op if it ever did.
+ *
+ * @param {{ feature: string, reqPath: string, dependsOn: string[], triageReason: string, precheck: object }} args
+ * @returns {import("./orchestrate-dev.js").SeamOps}
+ */
+function buildA1SeamOps({ feature, reqPath, dependsOn, triageReason, precheck }) {
+  const unreachable = (member) => async () => {
+    throw new Error(
+      `A1 SeamOps.${member} is unreachable: permittedActions is empty (TSPEC §6.3, A1-4)`
+    );
+  };
+  return {
+    gatherEvidence: async () =>
+      `Feature: ${feature}\nREQ: ${reqPath}\n` +
+      `Phase-0 triage abstained: ${triageReason}\n` +
+      `Declared dependencies: ${dependsOn.length ? dependsOn.join(", ") : "(none)"}\n` +
+      `Pre-check: ${JSON.stringify(precheck)}`,
+    prompt: (evidence) =>
+      `A1 triage-abstention adjudication for "${feature}".\n${evidence}\n\n` +
+      `Decide whether the pipeline should run for this candidate now. Reply with your verdict ` +
+      `trailer; proposedAction must be exactly one of "run-candidate", "hold", or "escalate".`,
+    conditionHolds: async () => true,
+    apply: unreachable("apply"),
+    producedPaths: unreachable("producedPaths"),
+    revert: unreachable("revert"),
+    verifyGate: null,
+    declaredScope: [],
+    permittedActions: [],
+  };
+}
+
+// A citation is a `path/to/file.ext:123` token, the project-wide file:line convention (also
+// matched by the drift-gate prose above and by `triagePrompt`'s own "file:line citations").
+const CITATION_RE = /([\w./-]+\.[A-Za-z0-9]+):(\d+)/g;
+
+/**
+ * Extract load-bearing file:line citations from REQ text (TSPEC §6.4 `gatherEvidence`).
+ * Pure, total — never throws on REQ text with no citations at all (returns `[]`).
+ *
+ * @param {string} reqText
+ * @returns {Array<{location: string, file: string, line: number}>}
+ */
+function extractCitations(reqText) {
+  const citations = [];
+  const re = new RegExp(CITATION_RE.source, "g");
+  let m;
+  while ((m = re.exec(reqText || "")) !== null) {
+    citations.push({ location: `${m[1]}:${m[2]}`, file: m[1], line: Number(m[2]) });
+  }
+  return citations;
+}
+
+/**
+ * A2's `SeamOps` (TSPEC §6.4): stale-REQ re-grounding. `gatherEvidence` produces
+ * citation-resolution evidence through the existing `_git` seam (PROP-A2-01 — never asserted by
+ * the agent alone); `apply` rewrites citation **location text only** — the frontmatter region and
+ * every requirements sentence are outside the rewritable span (P-2, A2-3); `verifyGate` performs
+ * the irreversible act per §6.4.1's durability order: RECORD (append the advisory entry) precedes
+ * the ONE pathspec-scoped `commitPaths` over `[reqPath, recordPath]`, then a branch-head
+ * confirmation (A2-6 / H-2b / DEC-ADV-03).
+ *
+ * @param {{ feature: string, reqPath: string, originalReqText: string, _readFile: function,
+ *   _writeFile: function, _git: function, _appendFile: function, _commitPaths: function }} args
+ * @returns {import("./orchestrate-dev.js").SeamOps}
+ */
+function buildA2SeamOps({
+  feature,
+  reqPath,
+  originalReqText,
+  _readFile,
+  _writeFile,
+  _git,
+  _appendFile,
+  _commitPaths,
+}) {
+  const recordPath = `docs/${feature}/ADVISORY-${feature}.md`;
+  let capturedRows = null;
+
+  return {
+    gatherEvidence: async () => {
+      const citations = extractCitations(originalReqText);
+      const lines = [
+        `Feature: ${feature}`,
+        `REQ: ${reqPath}`,
+        `Citations found: ${citations.length}`,
+      ];
+      for (const citation of citations) {
+        let resolves = "unknown";
+        try {
+          const grep = await _git(["grep", "-n", "-F", citation.location, "--", citation.file]);
+          resolves = grep && grep.ok && String(grep.stdout || "").trim() ? "resolves" : "drifted";
+        } catch {
+          resolves = "drifted";
+        }
+        lines.push(`  ${citation.location}: ${resolves}`);
+      }
+      lines.push("", originalReqText);
+      return lines.join("\n");
+    },
+    prompt: (evidence) =>
+      `A2 stale-REQ re-grounding for "${feature}".\n\n${evidence}\n\n` +
+      `For each drifted citation, propose { oldLocation, newLocation, symbol, symbolStillExists }. ` +
+      `Reply with your verdict trailer whose proposedAction is exactly ` +
+      `JSON.stringify([{ oldLocation, newLocation, symbol, symbolStillExists }, …]). ` +
+      `Rewrite citation location text ONLY — never the frontmatter region or any requirements ` +
+      `sentence (P-2, A2-3).`,
+    conditionHolds: async () => (await _readFile(reqPath)) === originalReqText,
+    apply: async (verdict) => {
+      let rows;
+      try {
+        rows = JSON.parse(verdict && verdict.proposedAction);
+      } catch {
+        return { ok: false, why: "proposedAction was not valid JSON (expected an array of re-grounding rows)" };
+      }
+      if (!Array.isArray(rows)) {
+        return { ok: false, why: "proposedAction did not parse to an array of re-grounding rows" };
+      }
+      capturedRows = rows;
+      let text = originalReqText;
+      for (const row of rows) {
+        if (row && typeof row.oldLocation === "string" && typeof row.newLocation === "string") {
+          text = text.split(row.oldLocation).join(row.newLocation);
+        }
+      }
+      await _writeFile(reqPath, text);
+      return { ok: true };
+    },
+    producedPaths: async () => {
+      const diff = await _git(["diff", "--name-only"]);
+      return diff && diff.ok && diff.stdout
+        ? String(diff.stdout)
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+    },
+    revert: async () => {
+      await _git(["checkout", "--", reqPath]);
+    },
+    verifyGate: async () => {
+      const entry =
+        `\n## ${new Date().toISOString()} — A2 — re-grounded\n\n` +
+        `Feature: ${feature}\nREQ: ${reqPath}\n` +
+        `Rows: ${JSON.stringify(capturedRows || [])}\n`;
+      try {
+        await _appendFile(recordPath, entry);
+      } catch (err) {
+        return { passed: false, detail: `record write failed: ${err && err.message}` };
+      }
+
+      let commitResult;
+      try {
+        commitResult = await _commitPaths({
+          paths: [reqPath, recordPath],
+          message: `chore(advisory): A2 re-grounded citations for ${feature}`,
+          what: `A2 re-grounding for ${feature}`,
+          _git,
+          emit: () => {},
+        });
+      } catch (err) {
+        return { passed: false, detail: `commit failed: ${err && err.message}` };
+      }
+
+      // Branch-head confirmation (A2-6 / H-2b): re-read the branch head and confirm both files
+      // landed, rather than trusting the commit call alone.
+      const reqAtHead = await _git(["show", `HEAD:${reqPath}`]);
+      const recordAtHead = await _git(["show", `HEAD:${recordPath}`]);
+      const confirmed = Boolean(reqAtHead && reqAtHead.ok && recordAtHead && recordAtHead.ok);
+      return confirmed
+        ? { passed: true, detail: `${commitResult}` }
+        : { passed: false, detail: "branch head does not carry both the REQ and the advisory record" };
+    },
+    declaredScope: [reqPath],
+    permittedActions: ["E-4"],
+  };
+}
+
 // ─── Prompt helper ───────────────────────────────────────────────────────────
 
 export function triagePrompt(feature, reqPath, dependsOn) {
@@ -660,10 +915,13 @@ export function triagePrompt(feature, reqPath, dependsOn) {
     `given the current state of the codebase. Specifically verify, using git history and the ` +
     `working tree, that every declared dependency's implementation is present in the base. ` +
     `Also flag if the REQ references subsystems that do not yet exist.\n\n` +
+    `Also check whether the REQ's file:line citations still resolve at HEAD. If some have drifted ` +
+    `but every cited symbol still exists, return needs-human [SEAM:A2].\n\n` +
     `Do NOT modify any files. End your final message with exactly one line:\n` +
     `TRIAGE: ready        <one-line reason>   — dependencies satisfied, safe to run\n` +
     `TRIAGE: blocked      <one-line reason>   — a dependency is not yet in the base; skip for now\n` +
-    `TRIAGE: needs-human  <one-line reason>   — ambiguous; a human must decide`
+    `TRIAGE: needs-human [SEAM:A1] <one-line reason>   — ambiguous; a human must decide\n` +
+    `TRIAGE: needs-human [SEAM:A2] <one-line reason>   — the REQ's file:line citations have drifted`
   );
 }
 
@@ -737,6 +995,23 @@ async function defaultGit(argv, { execFn } = {}) {
   }
 }
 
+/**
+ * Default for `_readAdvisoryConfig` (TSPEC §6.1). Composes the raw-text read seam
+ * (`readAdvisoryConfigSafely`, never throws — a missing/unreadable file maps to `null`) with the
+ * pure parse (`parseAdvisoryConfig`), mirroring the read+parse composition orchestrate-dev's own
+ * `main` uses for merge config (dev.js:1412-1413: `raw = await readMergeConfigSafely(...); parsed
+ * = parseMergeConfig(raw);`). Callers receive the fully parsed `{config, sectionMalformed,
+ * invalidKeys}` shape and never see raw JSON text.
+ *
+ * @param {function} readFileFn - async (path) => string|null
+ * @param {string} path
+ * @returns {Promise<{config: object, sectionMalformed: boolean, invalidKeys: string[]}>}
+ */
+async function defaultReadAdvisoryConfig(readFileFn, path) {
+  const raw = await readAdvisoryConfigSafely(readFileFn, path);
+  return parseAdvisoryConfig(raw);
+}
+
 // ─── main() ───────────────────────────────────────────────────────────────────
 
 /**
@@ -760,8 +1035,12 @@ export default async function main({
   _agent: rawAgentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
+  _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
   _runPipeline: runPipelineFn = realMain,
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  _readAdvisoryConfig: readAdvisoryConfigFn = defaultReadAdvisoryConfig,
+  _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
 } = {}) {
@@ -818,7 +1097,27 @@ export default async function main({
       `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
     );
   }
-  const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
+  // Accumulates one entry per seam invocation this pass — `{...disposition, seam}` — so the
+  // queue's own report can carry the same advisory summary the dev-side final report does
+  // (TSPEC §9.4 S-5). Declared before `finish` is invoked (never before it is CLOSED OVER, which
+  // is fine); `advisorySummaryRows` guarantees five rows, a seam that never fired visibly zero.
+  const advisoryDispositions = [];
+  const finish = (fields) =>
+    buildQueueReport({
+      ...fields,
+      driftReport: driftNotice,
+      advisory:
+        advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
+          ? advisorySummaryRows(advisoryDispositions)
+          : undefined,
+    });
+
+  // ─── Advisory-tier config (TSPEC §6.1) ───────────────────────────────────
+  // Read once per run: after the drift gate (a blocked gate costs no advisory work) and before
+  // QUEUE.md is read, so every candidate walked below shares one config read and one rung-state
+  // memo (TSPEC §3.4/§3.5 — model-rung resolution happens once per run, not once per seam call).
+  const advisoryConfig = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
+  const rungState = { resolved: null };
 
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");
@@ -865,8 +1164,16 @@ export default async function main({
   const skipped = [];
 
   for (const entry of selection.candidates) {
-    // REQ-gate: frontmatter must mark ready:true and contributes extra deps.
-    const reqText = await readFileFn(entry.reqPath);
+    // REQ-gate: frontmatter must mark ready:true and contributes extra deps. `readFileFn`'s
+    // documented contract is `async (path) => string|null` (never throws), but a queue may walk
+    // past entries whose REQ was never seeded for this candidate's scenario — tolerate an
+    // injected double that throws (e.g. an ENOENT-shaped error) the same as a documented `null`.
+    let reqText;
+    try {
+      reqText = await readFileFn(entry.reqPath);
+    } catch {
+      reqText = null;
+    }
     if (reqText == null) {
       emit(`Skip "${entry.feature}": REQ not found at ${entry.reqPath}.`);
       skipped.push({ feature: entry.feature, reason: "REQ file missing" });
@@ -910,12 +1217,119 @@ export default async function main({
       continue;
     }
     if (triage.verdict === "needs-human") {
-      emit(
-        `Skip "${entry.feature}": needs human decision — ${triage.reason}.`
+      // TSPEC §6.1/§6.2 — the seam token on the triage verdict names the route; default to A1
+      // (triage-abstention adjudication) when no recognised token is present.
+      const seam = triage.seamToken === "A2" ? "A2" : "A1";
+      const seamOps =
+        seam === "A2"
+          ? buildA2SeamOps({
+              feature: entry.feature,
+              reqPath: entry.reqPath,
+              originalReqText: reqText,
+              _readFile: readFileFn,
+              _writeFile: writeFileFn,
+              _git: gitFn,
+              _appendFile: appendFileFn,
+              _commitPaths: commitPathsFn,
+            })
+          : buildA1SeamOps({
+              feature: entry.feature,
+              reqPath: entry.reqPath,
+              dependsOn,
+              triageReason: triage.reason,
+              precheck,
+            });
+
+      // A1/A2 dispatch through the raw agent, NOT the MODEL_QUEUE-pinned `agentFn` wrapper
+      // (TSPEC §6.1) — the advisory driver resolves its own model rung.
+      const advisoryDisposition = await runAdvisorySeamFn({
+        seam,
+        feature: entry.feature,
+        seamOps,
+        config: advisoryConfig.config,
+        rungState,
+        _agent: rawAgentFn,
+        _appendFile: appendFileFn,
+        _writeFile: writeFileFn,
+        _readFile: readFileFn,
+        _git: gitFn,
+        _log: emit,
+        // TSPEC §10.2 N-4 — the queue report has no `notices` field of its own, so the advisory
+        // escalation notice (and a failed escalation-log write) reaches the operator through the
+        // queue's one operator-visible channel, `emit`. The ESCALATIONS.md entry itself is written
+        // by the driver through the same `_appendFile` seam either way.
+        _notice: emit,
+      });
+      // Recorded for `buildQueueReport`'s advisory summary (TSPEC §9.4 S-5) — the scripted test
+      // double's dispositions do not carry `seam` themselves, so it is attached here from the
+      // routing decision that is already known.
+      advisoryDispositions.push({ ...advisoryDisposition, seam });
+
+      // H-2b / DEC-ADV-03 (queue-side durability): `runAdvisorySeam`'s Step 7 RECORD (dev:2884)
+      // appends the disposition to `ADVISORY-{feature}.md` for every terminal outcome of EVERY
+      // seam, A1 included — but A1 is deliberately capability-free (permittedActions: [],
+      // verifyGate: null, TSPEC A1-4), so unlike A2's own `verifyGate` there is no SeamOps-owned
+      // commit to make that append durable in git. Neither seam owns the queue's process
+      // boundary, so the commit belongs here, in `main`'s own flow, right after every seam
+      // dispatch this pass — pathspec-scoped to the one record file, never `-a`, never pushed. An
+      // A2 pass whose own `verifyGate` already committed the same file leaves nothing staged,
+      // which is a notice, not a failure (mirrors `commitQueueRow`'s own idempotence handling
+      // below).
+      await commitAdvisoryRecord(
+        `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
+        entry.feature,
+        gitFn,
+        emit
       );
+
+      if (seam === "A1") {
+        // Decision #3 (this file's own header / advisoryQueueSeams.test.js): A1 declares
+        // permittedActions: [], so the generic driver always classifies A1's real recommendation
+        // as out-of-envelope — that is A1's normal completion, not a driver failure. Read
+        // `disposition.verdict.proposedAction` through `honourA1Verdict` only in that case; any
+        // other escalation reason is an unconditional escalate regardless of proposedAction.
+        const action =
+          advisoryDisposition.reason === "out-of-envelope" && advisoryDisposition.verdict
+            ? honourA1Verdict(advisoryDisposition.verdict.proposedAction, {
+                blocked: precheck.blocked,
+                dependsOn,
+                entries,
+              })
+            : "escalate";
+
+        if (action === "run-candidate") {
+          return runPicked({
+            entry,
+            dependsOn,
+            triageReason: triage.reason,
+            queuePath,
+            queueText,
+            remainingPending,
+            skipped,
+            runPipelineFn,
+            writeFileFn,
+            readFileFn,
+            gitFn,
+            phaseFn,
+            emit,
+            finish,
+          });
+        }
+
+        emit(`Skip "${entry.feature}": A1 adjudicated ${action} — ${triage.reason}.`);
+        skipped.push({
+          feature: entry.feature,
+          reason: `needs-human (A1 ${action}): ${triage.reason}`,
+        });
+        continue;
+      }
+
+      // A2 (PLAN A-31 lands its real apply/verifyGate handling) — for this task's scope, an A2
+      // route never picks the candidate; it is skipped exactly like any other needs-human stop.
+      emit(`Skip "${entry.feature}": needs human decision (A2) — ${triage.reason}.`);
       skipped.push({
         feature: entry.feature,
-        reason: `needs-human: ${triage.reason}`,
+        reason: `needs-human (A2): ${triage.reason}`,
       });
       continue;
     }
@@ -1187,6 +1601,43 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
 }
 
 /**
+ * H-2b / DEC-ADV-03 — commit the advisory record, pathspec-scoped to that one file, never `-a`,
+ * never pushed. Mirrors `commitQueueRow`'s exact two-call shape (`git add -- {path}` then
+ * `git commit -m "…" -- {path}`) so the pathspec rides the commit call itself, not only the add.
+ * Idempotent by design: an A2 pass whose own `verifyGate` already committed the same file (or any
+ * pass where the append produced no net diff) leaves nothing staged, which `git commit` reports
+ * via its "nothing to commit" family of messages — a notice, not a failure, so this never halts
+ * the queue. A `git add` or unrecognised `git commit` refusal is likewise only ever logged: this
+ * step runs after the seam has already been adjudicated and recorded on disk, and demoting queue
+ * progress to a halt over a durability shortfall here would be a strictly worse outcome than
+ * leaving the record momentarily uncommitted for a later pass (or an operator) to pick up.
+ */
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+  const added = await gitFn(["add", "--", recordPath]);
+  if (!added || added.ok !== true) {
+    emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
+    return;
+  }
+
+  const committed = await gitFn([
+    "commit",
+    "-m",
+    `chore(advisory): record ${feature} (queue)`,
+    "--",
+    recordPath,
+  ]);
+  if (committed && committed.ok === true) return;
+
+  if (
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stdout) ?? "") ||
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stderr) ?? "")
+  ) {
+    return;
+  }
+  emit(`Advisory record for "${feature}" left uncommitted: git commit failed.`);
+}
+
+/**
  * E-38 / FSPEC §13.4 — the row is correct on disk but git refused (hook
  * rejection, missing identity, index lock). Distinct from `"error"` because the
  * operator's remaining action differs: a manual commit, not a re-run.
@@ -1227,6 +1678,7 @@ function buildQueueReport({
   pipelineReport,
   skipped,
   driftReport,
+  advisory,
 }) {
   return {
     outcome,
@@ -1237,6 +1689,7 @@ function buildQueueReport({
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
     ...(driftReport ? { driftReport } : {}),
+    ...(advisory ? { advisory } : {}),
   };
 }
 

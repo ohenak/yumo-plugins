@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { dirname } from "path";
 
 // ⚠️  GENERATED FILE — DO NOT EDIT.
 // Built by `node pdlc/workflows/build-runtime.mjs` from:
@@ -1119,6 +1120,21 @@ function firstLine(text) {
 }
 
 /**
+ * Phase H2's guard-refusal predicate (TSPEC §9.3, PLAN A-27, decision 1). A `git rm` of the
+ * advisory record is refused exactly when it carries the reused, unmodified guard literal
+ * `guard-harvest-before-delete.sh` produces — the same string Phase H's own TSPEC-HARVEST-04
+ * detection tests for at `dev:8342` (message extended, never rewritten, per §9.3's ⚠️).
+ */
+function guardRefused(del) {
+  return Boolean(
+    del &&
+      del.ok === false &&
+      typeof del.stderr === "string" &&
+      del.stderr.includes("pdlc guard: refusing to delete CROSS-REVIEW files")
+  );
+}
+
+/**
  * `executeMerge` — O6 (TSPEC §4.7). Issues exactly one `gh pr merge` variant
  * for `method`, then — only when that command itself exited zero —
  * independently reads back `gh pr view --json mergeCommit,state` and
@@ -1336,6 +1352,15 @@ const MERGE_ESCALATIONS = Object.freeze({
     `MERGE ESCALATION: merged ${prUrl} (${shortSha}) but the queue row for ${feature} was not updated — ${detail}`,
   tree: ({ prUrl, reason, branch }) =>
     `MERGE ESCALATION: working tree not updated after merging ${prUrl} — ${reason}; tree is on ${branch}`,
+});
+
+// TSPEC §10.2 — a sibling catalogue, deliberately adjacent to MERGE_ESCALATIONS so the two read
+// together, and deliberately NOT merged onto it (N-1 — MERGE_ESCALATIONS is untouched). Both
+// prefixes contain the substring `ESCALATION:`, so one grep finds both (N-3); the advisory
+// prefix is its own, distinct text (N-2).
+const ADVISORY_ESCALATIONS = Object.freeze({
+  seam: ({ seam, feature, reason }) =>
+    `ADVISORY ESCALATION: seam ${seam} for ${feature} — ${reason}; see docs/_queue/ESCALATIONS.md`,
 });
 
 /**
@@ -1629,6 +1654,1672 @@ const TRAILER_FAILURES = Object.freeze([
 ]);
 
 const MODEL_IMPLEMENTATION = "sonnet"; // Phase I se-implement batches only
+
+// ─── TSPEC §3.1 — advisory-tier constants ──────────────────────────────────
+//
+// Placed immediately after MODEL_IMPLEMENTATION so all four model rungs (opus/sonnet default,
+// implementation, advisory, advisory fallback) read as one block (AC-1.5).
+const MODEL_ADVISORY = "fable"; // BL-01 — see TSPEC §3.3
+const MODEL_ADVISORY_FALLBACK = "opus"; // === MODEL_DEFAULT's literal, deliberately a separate constant
+
+const ADVISORY_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json" (dev:43)
+
+// The permitted-action set — the whole envelope, shipped. A seam's own `permittedActions` is a
+// SUBSET of this (TSPEC §4.3, §8.3); this frozen literal is the operand T-03-8 transcribes for
+// its set-equality assertion. The members are FSPEC E-1…E-4 verbatim.
+const ENVELOPE_DEFAULTS = Object.freeze(["E-1", "E-2", "E-3", "E-4"]);
+
+const ADVISORY_DEFAULTS = Object.freeze({
+  enabled: false,
+  attemptBudget: 3,
+  seamBudgetMinutes: 10,
+  envelope: ENVELOPE_DEFAULTS, // the four-member literal above
+});
+
+const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"]);
+
+/**
+ * Parse the repo's `advisory` config section out of the SAME `.claude/pdlc.config.json`
+ * `parseMergeConfig`/`parseImplementationConfig` read. Pure and total: never throws, never
+ * reads anything, and every key falls back INDEPENDENTLY — one bad key must not silently retune
+ * the others (FSPEC C-2). Modelled on `parseImplementationConfig` (dev:181-231) rather than
+ * `parseMergeConfig`, per TSPEC §3.2: independent per-key fallback plus an `invalidKeys` list the
+ * caller reports.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+function parseAdvisoryConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: ADVISORY_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("advisory" in parsed)) return degraded(false);
+
+  const section = parsed.advisory;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
+  const positiveInt = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 1) return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
+  const positiveNumber = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
+  let envelope = ADVISORY_DEFAULTS.envelope;
+  if ("envelope" in section) {
+    const v = section.envelope;
+    if (Array.isArray(v) && v.every((p) => typeof p === "string" && p.trim() !== "")) {
+      envelope = Object.freeze([...v]);
+    } else {
+      invalidKeys.push("envelope");
+    }
+  }
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      attemptBudget: positiveInt("attemptBudget"),
+      seamBudgetMinutes: positiveNumber("seamBudgetMinutes"),
+      envelope,
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
+/**
+ * Read the advisory config file, never throwing. Byte-for-byte the shape of
+ * `readMergeConfigSafely` (dev:261-267) and adopted for the same reason: the injected read is
+ * agent-mediated in production and returns `null` for a missing file rather than throwing — but a
+ * throw from some future read implementation must not abort the pipeline. Read once per run (C-3)
+ * and the result threaded, never re-read.
+ *
+ * @param {function} readFileFn - async (path) => string|null (or throws)
+ * @param {string} path - ADVISORY_CONFIG_PATH
+ * @returns {Promise<string|null>}
+ */
+async function readAdvisoryConfigSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
+}
+
+// ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
+//
+// `MODEL_ERROR_RE` classifies a dispatch rejection as a model/alias resolution failure (M-1)
+// rather than an ordinary invocation failure. NOTE: TSPEC §3.4's inline literal
+// (`\b(unrecognis|unrecogniz)\b`) puts a word boundary immediately after the truncated stem,
+// which never matches the full words "unrecognised"/"unrecognized" — the trailing letters are
+// still word characters, so no boundary exists there. This is the same predicate TSPEC §3.4
+// describes and T-01-2..T-01-5 exercise; `\w*` after each stem is the fix that makes the
+// boundary land where the word actually ends, matching both the British and American spellings
+// the test suite scripts.
+const MODEL_ERROR_RE =
+  /\b(unknown|unrecognis\w*|unrecogniz\w*|invalid|unsupported)\b[^\n]*\b(model|alias)\b/i;
+
+/**
+ * Classifies a dispatch rejection as a model/alias resolution failure (TSPEC §3.4, M-1) rather
+ * than an ordinary invocation failure. Pure, total, never throws — accepts an `Error`, a
+ * plain object carrying `.message`, or any other rejection value.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isModelResolutionError(err) {
+  return MODEL_ERROR_RE.test(String(err?.message ?? err ?? ""));
+}
+
+// The skill EVERY advisory dispatch goes out under. One constant, referenced by the one ladder
+// below — which is the only place in either module that names an advisory model rung (AC-1.5).
+const ADVISORY_RUNG_SKILL = "se-review";
+
+/**
+ * `resolveAdvisoryRung` — TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships.
+ * `runAdvisorySeam`'s DIAGNOSE step calls this directly for every attempt, so the tested semantics
+ * are the shipped semantics: there is no second, private copy of this ladder anywhere.
+ *
+ * Rung resolution is lazy and memoised per run through `_state` (`{ resolved: null }`), threaded
+ * from the caller rather than held in module state (§3.5): the bundle inlines this module into both
+ * shipped artifacts and jest runs every test against one imported module instance, so a
+ * module-level memo would leak resolution across tests and across a queue invocation's delegated
+ * `orchestrate-dev` run. With `_state.resolved` already set, the cached rung is used directly and
+ * no ladder is entered (M-4).
+ *
+ * Non-resolution is detected by classifying the rejection of the **real** dispatch
+ * (`isModelResolutionError`, M-1), never by a separate probe — the caller's own `prompt` is what
+ * goes out, so the happy path costs exactly one `_agent` call, not two. A matched rejection emits
+ * `ADVISORY_MODEL_FALLBACK`, substitutes `MODEL_ADVISORY_FALLBACK`, and re-dispatches the SAME
+ * prompt once (M-2). A rejection that also matches on the fallback rung halts (M-3) — there is no
+ * third rung, and no advisory agent output is ever produced. A rejection that does not match is an
+ * ordinary invocation failure, returned as `{kind:"dispatch-error"}` for the caller's attempt loop
+ * to disposition, without entering the ladder (T-01-5).
+ *
+ * **Deliberately NOT `async`, and deliberately `.then`-chained.** The caller races the returned
+ * promise against a wall-clock deadline built as `_sleep(...).then(...)`. `Promise.race` breaks a
+ * tie between two promises that settle at the same microtask hop-depth in favour of whichever
+ * underlying async work was invoked first, and the test doubles' `_agent`/`_sleep` both settle
+ * synchronously — so this must settle exactly ONE hop past the underlying `_agent` call, the same
+ * depth as the deadline. An `async`/`await` body here would add hops and let the deadline win a
+ * race on hop-count alone rather than on elapsed time.
+ *
+ * @param {{ _agent: Function, _log: Function, prompt: string,
+ *           _state: { resolved: {model: string, fallback: boolean}|null } }} deps
+ * @returns {Promise<{kind: "response", raw: string} | {kind: "dispatch-error", err: unknown}>}
+ * @throws  haltError (as a rejection) when neither rung resolves (M-3)
+ */
+function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+  const log = typeof _log === "function" ? _log : () => {};
+
+  // `dispatchAt` exists for §8.5's returned-promise ruling: `return _agent(…);` is a classified
+  // seam call, while a `.then`-chained one is not — and the chaining below is load-bearing (see
+  // the hop-count note above), so the seam call moves into a body the ruling covers and the chain
+  // hangs off the returned promise, adding no microtask hop.
+  function dispatchAt(model) {
+    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+  }
+
+  if (_state.resolved != null) {
+    return dispatchAt(_state.resolved.model).then(
+      (raw) => ({ kind: "response", raw }),
+      (err) => ({ kind: "dispatch-error", err })
+    );
+  }
+
+  return dispatchAt(MODEL_ADVISORY).then(
+    (raw) => {
+      _state.resolved = { model: MODEL_ADVISORY, fallback: false };
+      return { kind: "response", raw };
+    },
+    (err) => {
+      if (!isModelResolutionError(err)) return { kind: "dispatch-error", err };
+      log(
+        `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+      );
+      return dispatchAt(MODEL_ADVISORY_FALLBACK).then(
+        (raw) => {
+          _state.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
+          return { kind: "response", raw };
+        },
+        (fallbackErr) => {
+          if (!isModelResolutionError(fallbackErr)) return { kind: "dispatch-error", err: fallbackErr };
+          throw haltError(
+            `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
+              `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+          );
+        }
+      );
+    }
+  );
+}
+
+/**
+ * @typedef {Object} AdvisoryVerdict          AC-2.1 / FSPEC §4.2. The agent's product.
+ * @property {"A1"|"A2"|"A3"|"A4"|"A5"} seam
+ * @property {string}   diagnosis             non-empty
+ * @property {string}   proposedAction        non-empty; may be the literal "nothing"
+ * @property {"high"|"low"} confidence
+ * @property {boolean}  withinEnvelope        ADVISORY ONLY — never the membership decision (V-3)
+ * @property {string[]} evidence              non-empty; file:line / log citations
+ */
+
+/**
+ * @typedef {Object} AdvisoryDisposition      V-7. Exactly three terminal values.
+ * @property {"resolved"|"escalated"|"no-action"} outcome
+ * @property {string|null} reason             one §5.3 reason iff outcome === "escalated"
+ * @property {AdvisoryVerdict|null} verdict   last well-formed verdict, if any
+ * @property {number}  attempts               attempts consumed
+ * @property {string}  model                  the rung actually used (§3.4)
+ * @property {boolean} fallback
+ */
+
+/**
+ * Parse the raw agent trailer produced at TSPEC §4.4 step 1 into an {@link AdvisoryVerdict},
+ * enforcing every well-formedness rule of TSPEC §4.4/PROPERTIES PROP-VER-03 in one place — pure
+ * and total: never throws, and returns `{ verdict: null, malformed: true, why }` for any input
+ * that does not parse cleanly (TSPEC §4.2, following `parseDodStatus` / `parseVerdict`: parse the
+ * agent's trailer, never trust its shape).
+ *
+ * The five malformedness rules, checked in order — each independently falsifiable:
+ *   (a) `seam` does not match `dispatchedSeam` (skipped when `dispatchedSeam` is `undefined` —
+ *       there is no "dispatched seam" concept to compare against)
+ *   (b) `evidence` is empty
+ *   (c) `diagnosis` is empty
+ *   (d) `proposedAction` is absent (the literal `"nothing"` is a valid, well-formed value —
+ *       FSPEC §4.4 row 4 — distinct from an absent trailer line)
+ *   (e) `confidence` is outside the `"high"|"low"` enum
+ *
+ * `withinEnvelope` is preserved data only ("yes"/"no" → true/false) — it never blocks or forces a
+ * clean parse by itself (V-3).
+ *
+ * @param {string} raw               the agent's raw trailer text
+ * @param {string} [dispatchedSeam]  the seam `runAdvisorySeam` actually dispatched; omit to skip
+ *                                   the wrong-seam rule
+ * @returns {{ verdict: AdvisoryVerdict|null, malformed: boolean, why: string|null }}
+ */
+function parseAdvisoryVerdict(raw, dispatchedSeam) {
+  const fail = (why) => ({ verdict: null, malformed: true, why });
+
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return fail("empty");
+  }
+
+  const lines = raw.split("\n");
+  const extract = (prefix) => {
+    let value;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(prefix)) {
+        value = trimmed.slice(prefix.length).trim();
+      }
+    }
+    return value;
+  };
+
+  const seam = extract("SEAM:");
+  const diagnosis = extract("DIAGNOSIS:");
+  const proposedAction = extract("PROPOSED-ACTION:");
+  const confidence = extract("CONFIDENCE:");
+  const withinEnvelopeRaw = extract("WITHIN-ENVELOPE:");
+  const evidenceRaw = extract("EVIDENCE:");
+
+  const nothingParsed =
+    seam === undefined &&
+    diagnosis === undefined &&
+    proposedAction === undefined &&
+    confidence === undefined &&
+    withinEnvelopeRaw === undefined &&
+    evidenceRaw === undefined;
+  if (nothingParsed) {
+    return fail("unparseable");
+  }
+
+  if (dispatchedSeam !== undefined && seam !== dispatchedSeam) {
+    return fail("seam");
+  }
+
+  const evidence =
+    evidenceRaw === undefined || evidenceRaw.trim() === ""
+      ? []
+      : evidenceRaw
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+  if (evidence.length === 0) {
+    return fail("evidence");
+  }
+
+  if (diagnosis === undefined || diagnosis.trim() === "") {
+    return fail("diagnosis");
+  }
+
+  if (proposedAction === undefined || proposedAction.trim() === "") {
+    return fail("proposedAction");
+  }
+
+  if (confidence !== "high" && confidence !== "low") {
+    return fail("confidence");
+  }
+
+  return {
+    verdict: {
+      seam,
+      diagnosis,
+      proposedAction,
+      confidence,
+      withinEnvelope: withinEnvelopeRaw === "yes",
+      evidence,
+    },
+    malformed: false,
+    why: null,
+  };
+}
+
+/**
+ * Pure budget arithmetic (TSPEC §4.5, PROP-BUD-01): `true` iff either the attempt bound or the
+ * wall-clock bound has been reached. `waitMs` is the check-rollup wait the driver accumulates
+ * (`runAdvisorySeam` owns the counter, only A5 ever calls the `recordWait` sink) — zero at every
+ * other seam — and is subtracted from `elapsedMs` before the wall-clock comparison (NFR-4's
+ * rollup-wait carve-out, PROP-BUD-03).
+ *
+ * @param {{ attempts: number, attemptBudget: number, elapsedMs: number, waitMs: number, seamBudgetMinutes: number }} args
+ * @returns {boolean}
+ */
+function budgetExceeded({ attempts, attemptBudget, elapsedMs, waitMs, seamBudgetMinutes }) {
+  return attempts >= attemptBudget || elapsedMs - waitMs >= seamBudgetMinutes * 60_000;
+}
+
+// ─── TSPEC §5 — envelope enforcement, refusal ladder (PLAN A-20) ───────────
+//
+// The frozen, ordered eight-reason catalogue (TSPEC §5.3). Order matters: `refusalReasonFor`
+// returns the FIRST member of this array whose `signals` key is true, so the array's own order
+// pins §5.1's evaluation precedence (T-03-5).
+const ADVISORY_REFUSAL_REASONS = Object.freeze([
+  "prohibited-action",
+  "revert-on-test-touch",
+  "out-of-envelope",
+  "post-action-verification-failed",
+  "record-write-failed",
+  "malformed-verdict",
+  "low-confidence",
+  "budget-exhausted",
+]);
+
+// The exclusion set — §5.1's evaluation order (X-a test artifacts, X-e guard paths, X-d declared
+// scope, X-b DoD criteria, X-c/membership). `classifyEnvelope` iterates this array in order
+// (T-03-8, PROP-ENV-04).
+const ADVISORY_EXCLUSIONS = Object.freeze(["X-a", "X-e", "X-d", "X-b", "X-c"]);
+
+/**
+ * The first matching reason, in `ADVISORY_REFUSAL_REASONS` catalogue order (TSPEC §5.3). `signals`
+ * is built once, at termination, from the terminating condition — never accumulated (§4.5).
+ *
+ * @param {Object<string,boolean>} signals - the conditions true AT TERMINATION
+ * @returns {string} the first matching reason
+ */
+function refusalReasonFor(signals) {
+  for (const reason of ADVISORY_REFUSAL_REASONS) {
+    if (signals && signals[reason]) return reason;
+  }
+  return undefined;
+}
+
+// The two X-a regexes plus the shared test-config regex (TSPEC §5.2) — path-based detection.
+const TEST_PATH_RE = /(^|\/)(tests?|__tests__|spec)\//i;
+const TEST_FILE_RE = /\.(test|spec)\.[jt]sx?$|^conftest\.py$|_test\.py$|^test_.*\.py$/i;
+const TEST_CONFIG_RE = /(^|\/)(jest\.config|pytest\.ini|\.coveragerc|setup\.cfg|vitest\.config|mutmut\.ini)/i;
+
+// X-a's seven named operations (TSPEC §5.2, FSPEC AC-3.5) — the closed set `touchesTestArtifact`'s
+// operation-based branch recognises. Any other `action.op` value is not, by itself, an X-a touch.
+const TEST_TOUCH_OPERATIONS = new Set([
+  "edit-assertion",
+  "delete-test-file",
+  "delete-test-case",
+  "rename-out-of-collection",
+  "add-skip-marker",
+  "narrow-parametrised-cases",
+  "lower-threshold",
+]);
+
+/**
+ * X-a — path-based AND operation-based (TSPEC §5.2). A path matching any of the three test-artifact
+ * regexes is caught regardless of `action`; separately, one of the seven named operations is a touch
+ * regardless of path (a coverage/mutation threshold can live in `package.json`/`pyproject.toml`,
+ * neither of which matches a test path).
+ *
+ * @param {string[]} paths
+ * @param {{op?: string}} action
+ * @returns {boolean}
+ */
+function touchesTestArtifact(paths, action) {
+  const list = Array.isArray(paths) ? paths : [];
+  if (list.some((p) => TEST_PATH_RE.test(p) || TEST_FILE_RE.test(p) || TEST_CONFIG_RE.test(p))) {
+    return true;
+  }
+  return Boolean(action && TEST_TOUCH_OPERATIONS.has(action.op));
+}
+
+// X-b's DoD-criterion-content path fragments (TSPEC §5.2) — a threshold change in either manifest
+// is a DoD-criterion touch regardless of the operation named.
+const DOD_CRITERION_PATH_RE = /(^|\/)(package\.json|pyproject\.toml)$/i;
+
+/**
+ * X-b — DoD criteria / thresholds (TSPEC §5.2, §5.4 P-1). A path-and-content predicate: either the
+ * path is one of the manifests a coverage/mutation threshold lives in, or the operation itself names
+ * marking a DoD finding satisfied.
+ *
+ * @param {string[]} paths
+ * @param {{op?: string}} action
+ * @returns {boolean}
+ */
+function touchesDodCriterion(paths, action) {
+  const list = Array.isArray(paths) ? paths : [];
+  if (list.some((p) => DOD_CRITERION_PATH_RE.test(p))) return true;
+  return Boolean(action && action.op === "mark-criterion-satisfied");
+}
+
+/**
+ * A4-1 — *branch-created* is a property of the file, not of who edited it (TSPEC §7.3): true iff
+ * `path` is absent from BOTH the merge-base tree and the default-branch tip tree, via two
+ * `git cat-file -e {ref}:{path}` probes. Both conjuncts are required — a file added on the default
+ * branch since the merge base (absent at merge-base, present at default-tip) is NOT branch-created.
+ *
+ * @param {string} path
+ * @param {string} mergeBase
+ * @param {string} defaultTip
+ * @param {(argv: string[]) => Promise<{ok: boolean}>} _git
+ * @returns {Promise<boolean>}
+ */
+async function branchCreated(path, mergeBase, defaultTip, _git) {
+  const atMergeBase = await _git(["cat-file", "-e", `${mergeBase}:${path}`]);
+  const atDefaultTip = await _git(["cat-file", "-e", `${defaultTip}:${path}`]);
+  return atMergeBase.ok !== true && atDefaultTip.ok !== true;
+}
+
+/**
+ * `classifyEnvelope` — one pure function, evaluated twice (TSPEC §5.1): once over the proposal
+ * (step 3), once over the produced diff (step 5, E-R2/BR-3). Iterates `ADVISORY_EXCLUSIONS` in
+ * order so a candidate satisfying two exclusions yields the earlier reason. Row 3 (X-e) is a
+ * cite-and-reuse of Phase MERGE's `guardVerdict`/`effectiveGuardPaths` (`dev:731`, `dev:708`) —
+ * no second matcher.
+ *
+ * @param {{action: string, paths: string[]}} candidate
+ * @param {{seam: string, permittedActions: string[], declaredScope: string[], guardPaths: string[],
+ *          capabilities: object}} ctx
+ * @returns {{inside: boolean, reason: string|null, matched: string[]}}
+ */
+function classifyEnvelope(candidate, ctx) {
+  const paths = Array.isArray(candidate && candidate.paths) ? candidate.paths : [];
+  const action = candidate && candidate.action;
+
+  for (const exclusion of ADVISORY_EXCLUSIONS) {
+    if (exclusion === "X-a") {
+      if (touchesTestArtifact(paths, { op: action })) {
+        return { inside: false, reason: "revert-on-test-touch", matched: [...paths] };
+      }
+    } else if (exclusion === "X-e") {
+      const verdict = guardVerdict({ ok: true, files: paths }, ctx.guardPaths || []);
+      if (verdict.fired) {
+        return { inside: false, reason: "out-of-envelope", matched: verdict.matched };
+      }
+    } else if (exclusion === "X-d") {
+      const scope = Array.isArray(ctx.declaredScope) ? ctx.declaredScope : [];
+      const outside = paths.filter((p) => !scope.includes(p));
+      if (outside.length > 0) {
+        return { inside: false, reason: "out-of-envelope", matched: outside };
+      }
+    } else if (exclusion === "X-b") {
+      if (touchesDodCriterion(paths, { op: action })) {
+        return { inside: false, reason: "out-of-envelope", matched: [...paths] };
+      }
+    } else if (exclusion === "X-c") {
+      const permitted = Array.isArray(ctx.permittedActions) ? ctx.permittedActions : [];
+      if (!permitted.includes(action)) {
+        return { inside: false, reason: "out-of-envelope", matched: [...paths] };
+      }
+    }
+  }
+
+  return { inside: true, reason: null, matched: [...paths] };
+}
+
+// ─── TSPEC §7.2 — A3's SeamOps for DoD exhaustion (PLAN A-23) ──────────────
+//
+// `ADVISORY_A3_CLASSES` — the frozen, set-equality-tested closed set TSPEC §7.2 A3-2 names but does
+// not itself name (this file's naming decision, mirroring `ADVISORY_REFUSAL_REASONS` /
+// `ADVISORY_SEAMS`).
+const ADVISORY_A3_CLASSES = Object.freeze(["real-defect", "mis-scoped-criterion", "deferral-candidate"]);
+
+const A3_CLASS_RANK = Object.freeze({ "real-defect": 3, "mis-scoped-criterion": 2, "deferral-candidate": 1 });
+
+const A3_FIELD_RE = {
+  finding: /^FINDING:\s*(.*)$/m,
+  classification: /^CLASSIFICATION:\s*(.*)$/m,
+  evidence: /^EVIDENCE:\s*(.*)$/m,
+  successor: /^SUCCESSOR:\s*(.*)$/m,
+};
+
+/**
+ * `parseA3Classification(raw)` — TSPEC §7.2, A3-1/A3-2/A3-4. Pure and total over arbitrary agent
+ * text (P-8): `raw` is repeated `FINDING:`/`CLASSIFICATION:`/`EVIDENCE:` blocks (optionally
+ * `SUCCESSOR:`), one per finding, separated by a line containing exactly `---`. A block whose
+ * `CLASSIFICATION` is not a member of `ADVISORY_A3_CLASSES`, or whose classification is
+ * `deferral-candidate` with no `SUCCESSOR`, is dropped rather than counted — this is what keeps
+ * every emitted `class` a closed-set member without a fourth, undeclared class. `complete` is
+ * `classes.length === ` the number of `FINDING:` lines found in `raw` (A3-1): fewer classified
+ * blocks than findings is exactly the incompleteness signal.
+ *
+ * @param {string} raw
+ * @returns {{classes: Array<{finding: string, class: string, evidence: string, successor?: string}>, complete: boolean}}
+ */
+function parseA3Classification(raw) {
+  const text = String(raw ?? "");
+  const findingCount = (text.match(/^FINDING:/gm) || []).length;
+  const closedSet = new Set(ADVISORY_A3_CLASSES);
+  const classes = [];
+
+  for (const block of text.split(/\n---\n/)) {
+    const findingMatch = A3_FIELD_RE.finding.exec(block);
+    const classMatch = A3_FIELD_RE.classification.exec(block);
+    if (!findingMatch || !classMatch) continue;
+
+    const cls = classMatch[1].trim();
+    if (!closedSet.has(cls)) continue;
+
+    const successorMatch = A3_FIELD_RE.successor.exec(block);
+    if (cls === "deferral-candidate" && !successorMatch) continue;
+
+    const evidenceMatch = A3_FIELD_RE.evidence.exec(block);
+    const entry = {
+      finding: findingMatch[1].trim(),
+      class: cls,
+      evidence: evidenceMatch ? evidenceMatch[1].trim() : "",
+    };
+    if (successorMatch) entry.successor = successorMatch[1].trim();
+    classes.push(entry);
+  }
+
+  return { classes, complete: classes.length === findingCount };
+}
+
+/**
+ * `governingClass(classes)` — TSPEC §7.2 A3-7. A pure total order over a **non-empty** multiset of
+ * `{class}` entries: `real-defect` > `mis-scoped-criterion` > `deferral-candidate`. The empty input
+ * is unreachable by construction (A3-1 rejects as malformed any classification whose classified
+ * count is below the finding count, and A3 only fires when findings are outstanding), so this
+ * function names no return value for it (TSPEC §7.2, PLAN §6.5 P-9's scope).
+ *
+ * @param {Array<{class: string}>} classes
+ * @returns {string}
+ */
+function governingClass(classes) {
+  const list = Array.isArray(classes) ? classes : [];
+  let winner = null;
+  let winnerRank = -Infinity;
+  for (const entry of list) {
+    const rank = A3_CLASS_RANK[entry && entry.class];
+    if (rank !== undefined && rank > winnerRank) {
+      winnerRank = rank;
+      winner = entry.class;
+    }
+  }
+  return winner;
+}
+
+/**
+ * `summariseA3Classification(raw)` — TSPEC §7.1/§7.2 (AC-6.3), pure and total over arbitrary agent
+ * text. Composes the two leaves above into the ONE string the Phase DOD halt appends: parse the
+ * reply's classification blocks, take the governing class (`real-defect` > `mis-scoped-criterion` >
+ * `deferral-candidate`, A3-7), and name it together with the finding that carried it and that
+ * finding's evidence. Returns `""` — never `null`, never a partial sentence — when the reply
+ * carries no well-formed block at all, which is exactly the byte-identical-halt case (the halt
+ * `.trimEnd()`s the empty suffix away). A `deferral-candidate` winner additionally names its bound
+ * successor (A3-4), so an operator reading the halt sees the deferral is not unbound.
+ *
+ * This is `runAdvisorySeam`'s `_summarise` seam for A3 and nothing else: the driver stays
+ * seam-agnostic and the A3-specific parsing lives here, beside the two functions it composes.
+ *
+ * @param {string} raw
+ * @returns {string}
+ */
+function summariseA3Classification(raw) {
+  const parsed = parseA3Classification(raw);
+  if (parsed.classes.length === 0) return "";
+  const governing = governingClass(parsed.classes);
+  const lead = parsed.classes.find((entry) => entry.class === governing);
+  if (!lead) return "";
+  const evidence = lead.evidence ? ` (evidence: ${lead.evidence})` : "";
+  const successor = lead.successor ? ` [successor: ${lead.successor}]` : "";
+  return `${governing}: ${lead.finding}${evidence}${successor}`;
+}
+
+/**
+ * `buildA3SeamOps({dodResult, codeReviewText, _readFile})` — TSPEC §7.2. `permittedActions: []`
+ * (A3-6, "A3 changes no file") makes `apply`/`revert` structurally unreachable through
+ * `runAdvisorySeam`'s step 6 gate (`verifyGate: null`, §5.5); both are throwing stubs so a driver
+ * that mistakenly reached either fails loudly (a rejected promise) rather than silently mutating
+ * the working tree (T-05-5).
+ *
+ * @param {{dodResult: {lastStatus: string}, codeReviewText: string, _readFile: Function}} args
+ * @returns {SeamOps}
+ */
+function buildA3SeamOps({ dodResult, codeReviewText, _readFile } = {}) {
+  async function gatherEvidence() {
+    const lastStatus = dodResult && dodResult.lastStatus;
+    let text = codeReviewText;
+    if (text === undefined && typeof _readFile === "function") {
+      try {
+        text = await _readFile();
+      } catch {
+        text = "";
+      }
+    }
+    return `DOD_STATUS: ${lastStatus}\n${text || ""}`;
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) =>
+      "Classify every remaining finding as real-defect / mis-scoped-criterion / deferral-candidate, " +
+      `each with evidence, and bind every deferral-candidate to a named successor.\n${evidence}`,
+    conditionHolds: async () => true,
+    apply: async () => {
+      throw new Error("A3 seam: apply is unreachable — permittedActions is empty (A3-6)");
+    },
+    producedPaths: async () => [],
+    revert: async () => {
+      throw new Error("A3 seam: revert is unreachable — permittedActions is empty (A3-6)");
+    },
+    verifyGate: null,
+    declaredScope: [],
+    permittedActions: [],
+  };
+}
+
+// ─── TSPEC §7.3/§7.4 — A4's SeamOps for a rebase conflict (PLAN A-23) ──────
+//
+// `readGitFileList(argv, _git)` — the shared `git … --name-only`-shaped stdout parser every A4
+// member below uses: split on newline, trim, drop blanks.
+async function readGitFileList(argv, _git) {
+  const result = await _git(argv);
+  const stdout = result && typeof result.stdout === "string" ? result.stdout : "";
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+/**
+ * `buildA4SeamOps({mergeBase, preRebaseHead, defaultTip, planFiles, implConfig, _git, _runCommand})`
+ * — TSPEC §7.3/§7.4. The conflict set and each file's A4-1 branch-created determination
+ * (`branchCreated`, two `git cat-file -e` probes) are computed by `gatherEvidence`, never the
+ * agent, and drive the same invocation's later `declaredScope`/`permittedActions` reads (both run
+ * after `gatherEvidence` in `runAdvisorySeam`'s DIAGNOSE → GATE order). Both members are exposed as
+ * the SAME mutable array `gatherEvidence` fills in place (`.length = 0` then `.push(...)`, never a
+ * property reassignment) — `advisoryDriver.test.js`'s gate-exclusivity fixtures build their spy
+ * wrapper via `{ ...rawSeamOps }`, a shallow copy that keeps the array *reference* but freezes any
+ * plain-property or getter *value* at spread time; only a shared, in-place-mutated array reference
+ * stays live through that copy. A4-2: a conflict set containing any non-branch-created file (a
+ * "mixed" set) empties `permittedActions` for that invocation, so `classifyEnvelope`'s X-c refuses
+ * the proposal at GATE, before `apply` is ever reached — the seam never produces a third tree state
+ * (A4-6). `declaredScope` unions the PLAN files, the pre-rebase branch diff, and the conflict set's
+ * non-test-artifact paths — a branch-created **test** file is deliberately excluded here (X-a
+ * always outranks a permitted E-3 action, §7.3) so it is `apply`'s post-hoc `producedPaths` — not
+ * `declaredScope` — that lets `classifyEnvelope`'s step-5 CHECK catch it and revert (T-06-5):
+ * declaring it in scope up front would let GATE refuse it before `apply`, which would never revert
+ * anything, at odds with the revert-on-test-touch contract.
+ *
+ * @param {{mergeBase: string, preRebaseHead: string, defaultTip: string, planFiles: string[],
+ *          implConfig: {testCommand: string|null}, _git: Function, _runCommand: Function}} args
+ * @returns {SeamOps}
+ */
+function buildA4SeamOps({ mergeBase, preRebaseHead, defaultTip, planFiles, implConfig, _git, _runCommand } = {}) {
+  const ownPlanFiles = Array.isArray(planFiles) ? planFiles : [];
+  const declaredScope = [...ownPlanFiles];
+  const permittedActions = ["E-3"];
+
+  async function gatherEvidence() {
+    const conflictFiles = await readGitFileList(["diff", "--name-only", "--diff-filter=U"], _git);
+    const determinations = [];
+    let mixed = false;
+    for (const path of conflictFiles) {
+      const created = await branchCreated(path, mergeBase, defaultTip, _git);
+      if (!created) mixed = true;
+      determinations.push({ path, branchCreated: created });
+    }
+    const preRebaseDiff = await readGitFileList(["diff", "--name-only", `${mergeBase}..${preRebaseHead}`], _git);
+    const nonTestConflictFiles = conflictFiles.filter((p) => !touchesTestArtifact([p], {}));
+
+    declaredScope.length = 0;
+    declaredScope.push(...new Set([...ownPlanFiles, ...preRebaseDiff, ...nonTestConflictFiles]));
+
+    permittedActions.length = 0;
+    if (!(conflictFiles.length > 0 && mixed)) permittedActions.push("E-3");
+
+    return determinations.map((d) => `${d.path}: ${d.branchCreated ? "branch-created" : "shared"}`).join("\n");
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) => `Resolve each conflict in a branch-created file, reporting per file which side was taken and why.\n${evidence}`,
+    conditionHolds: async () => {
+      const current = await readGitFileList(["diff", "--name-only", "--diff-filter=U"], _git);
+      return current.length > 0;
+    },
+    apply: async () => ({ ok: true }),
+    producedPaths: async () => readGitFileList(["diff", "--name-only"], _git),
+    revert: async () => {
+      await _git(["rebase", "--abort"]);
+    },
+    verifyGate: async () => {
+      const testCommand = implConfig && implConfig.testCommand;
+      const hasTestCommand = typeof testCommand === "string" && testCommand.length > 0;
+      if (!hasTestCommand || typeof _runCommand !== "function") {
+        return { passed: false }; // TSPEC §7.4 — unverifiable ≠ resolved
+      }
+      const continueResult = await _git(["rebase", "--continue"]);
+      if (!continueResult || continueResult.ok !== true) {
+        return { passed: false, detail: continueResult && continueResult.stderr };
+      }
+      const testResult = await _runCommand(testCommand);
+      return { passed: Boolean(testResult && testResult.ok === true) };
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
+// ─── TSPEC §8.3 — A5's capability probes (PLAN A-24) ───────────────────────
+//
+// Both are per-repo runtime facts, probed once per A5 invocation through the
+// existing `_ghRun` seam — no new credential, no new transport (NFR-5). These
+// are reads that classify a failure, not new capabilities that can act; BL-06's
+// `--dry-run` is the one probe against a write surface, and the write itself
+// happens only inside `verifyGate` under E-1.
+
+/** BL-05 — can the default branch's check runs be read for the comparison? */
+async function probeDefaultBranchChecks(defaultBranch, { _ghRun } = {}) {
+  const reply = await _ghRun(
+    `gh run list --branch ${defaultBranch} --json conclusion,workflowName,headSha`
+  );
+  if (!reply || reply.ok !== true) return { available: false, runs: [] };
+  try {
+    const parsed = JSON.parse(String(reply.stdout || "").trim());
+    return Array.isArray(parsed)
+      ? { available: true, runs: parsed }
+      : { available: false, runs: [] };
+  } catch {
+    return { available: false, runs: [] };
+  }
+}
+
+/** BL-06 — can a failed workflow run be re-run? Dry-run first; on refusal the
+ *  `actions:write` scope in `gh auth status` is the fallback determination. */
+async function probeWorkflowRerun(runId, { _ghRun } = {}) {
+  const idPart = runId ? ` ${runId}` : "";
+  const dryRun = await _ghRun(`gh run rerun --failed${idPart} --dry-run`);
+  if (dryRun && dryRun.ok === true) return { available: true };
+  const auth = await _ghRun("gh auth status");
+  const scoped =
+    auth && auth.ok === true && /actions:\s*write|actions:write/.test(String(auth.stdout || ""));
+  return { available: Boolean(scoped) };
+}
+
+// ─── TSPEC §8.2 — A5's SeamOps (PLAN A-24) ─────────────────────────────────
+//
+// Async because BL-05/BL-06 probing is IO (§8.3): both capability
+// determinations and the default-branch comparison are computed before the
+// agent is ever dispatched, and A5-1's ordering (comparison before E-2's
+// *introduced* test) is why the comparison lives here rather than in the gate.
+// `recordWait` is §4.3's sink — A5 is the only seam that calls it, once per
+// re-poll, so the CI wait is carved out of the wall-clock budget (A5-3).
+
+/**
+ * `makeWaitAccumulator()` — TSPEC §4.3/§4.5's rollup-wait counter, as one object with the two
+ * halves the two ends of the seam need: `recordWait(ms)` is handed to `buildA5SeamOps` (the only
+ * seam that calls it), and `waitMs()` is handed to `runAdvisorySeam` as its `_waitMs` reader, whose
+ * value is the `waitMs` argument the driver passes to `budgetExceeded` (the surface PROP-BUD-03
+ * pins). One accumulator per seam INVOCATION, created by whichever composition root constructs the
+ * seam — `waitMs` is deliberately not a tenth `SeamOps` member (§4.3).
+ *
+ * Negative, non-finite and non-numeric durations are ignored rather than corrupting the counter:
+ * `nowSafe()` returns 0 where no clock is available, so a re-poll can legitimately report `0 - 0`.
+ *
+ * @returns {{recordWait: (ms: number) => void, waitMs: () => number}}
+ */
+function makeWaitAccumulator() {
+  let total = 0;
+  return {
+    recordWait: (ms) => {
+      const value = Number(ms);
+      if (Number.isFinite(value) && value > 0) total += value;
+    },
+    waitMs: () => total,
+  };
+}
+
+async function buildA5SeamOps({
+  feature,
+  prUrl,
+  preSeamHead,
+  defaultBranch,
+  mergeBase,
+  recordWait,
+  _git,
+  _ghRun,
+  _checkCi,
+} = {}) {
+  const bl05 = await probeDefaultBranchChecks(defaultBranch, { _ghRun });
+  const bl06 = await probeWorkflowRerun(undefined, { _ghRun });
+
+  // A5-1 — the default-branch comparison, authoritative on the reading it gets.
+  const tipRun = bl05.runs.length > 0 ? bl05.runs[0] : null;
+  const preExisting = Boolean(tipRun && tipRun.conclusion !== "success");
+  // E-2's conjunct (i) needs a default-branch reading BEYOND the merge base: a
+  // latest reading AT the merge base cannot certify that the branch introduced
+  // the failure, so E-2 drops from this invocation's permitted set.
+  const e2Uncertified = Boolean(
+    tipRun && tipRun.conclusion === "success" && tipRun.headSha === mergeBase
+  );
+
+  const permittedActions = [];
+  if (bl05.available) {
+    if (bl06.available) permittedActions.push("E-1");
+    if (!e2Uncertified) permittedActions.push("E-2");
+  }
+
+  const declaredScope = await readGitFileList(
+    ["diff", "--name-only", `${mergeBase}..HEAD`],
+    _git
+  );
+
+  // A5-8 — revert is PRE-PUSH only: once `verifyGate` has pushed, nothing is
+  // force-pushed and no history is rewritten; the escalation inherits the
+  // pushed fix commit legibly instead.
+  let pushed = false;
+  let lastAction = null;
+
+  // The workflow runtime forbids an ambient clock; the sink still gets called
+  // once per re-poll with the best duration available (0 where no clock is).
+  function nowSafe() {
+    try {
+      return Date.now();
+    } catch {
+      return 0;
+    }
+  }
+
+  async function rePoll() {
+    let status;
+    const t0 = nowSafe();
+    try {
+      status = await _checkCi(prUrl);
+    } catch {
+      // §8.2 — Phase PUB's completion cap signals by throwing; the seam
+      // consumes the attempt instead of escalating separately (T-07-11).
+      if (typeof recordWait === "function") recordWait(nowSafe() - t0);
+      return { passed: false, consumesAttempt: true, detail: "completion cap reached" };
+    }
+    if (typeof recordWait === "function") recordWait(nowSafe() - t0);
+    return { passed: status === "passed", consumesAttempt: true, detail: `re-poll: ${status}` };
+  }
+
+  return {
+    gatherEvidence: async () => {
+      // A5-5 — an unretrievable log short-circuits before any dispatch: no
+      // diagnosis is ever produced from a guess.
+      const log = await _ghRun("gh run view --log-failed");
+      if (!log || log.ok !== true) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      // A5-2 — BL-05 absent: the comparison is undone; escalate attempting no fix.
+      if (!bl05.available) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      // A5-1 — observed failing at the default-branch tip: pre-existing.
+      if (preExisting) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      return { log: String(log.stdout || "") };
+    },
+    prompt: (evidence) =>
+      [
+        `CI for ${feature} (${prUrl}) is red. Name the failing step and its cause, and classify:`,
+        `E-1 (flaky — a re-run should pass), E-2 (branch-introduced lint/format/type fix), or neither.`,
+        `Failing job log:`,
+        evidence && evidence.log ? evidence.log : "",
+      ].join("\n"),
+    conditionHolds: async () => (await _checkCi(prUrl)) === "failed",
+    apply: async (verdict) => {
+      lastAction = verdict ? verdict.proposedAction : null;
+      if (lastAction === "E-1") return { ok: true }; // nothing to write — the act is the re-run
+      const commit = await _git([
+        "commit",
+        "-m",
+        `advisory(A5): ${feature} — branch-introduced CI fix`,
+      ]);
+      return { ok: Boolean(commit && commit.ok === true) };
+    },
+    producedPaths: async () =>
+      readGitFileList(["diff", "--name-only", `${preSeamHead}..HEAD`], _git),
+    revert: async () => {
+      if (pushed) return; // A5-8 — post-push, the record and report carry the state instead
+      await _git(["reset", "--hard", preSeamHead]);
+    },
+    verifyGate: async () => {
+      if (lastAction === "E-1") {
+        const rerun = await _ghRun("gh run rerun --failed");
+        if (!rerun || rerun.ok !== true) {
+          return { passed: false, consumesAttempt: true, detail: "re-run refused" };
+        }
+        return rePoll();
+      }
+      const push = await _git(["push"]);
+      if (!push || push.ok !== true) {
+        return {
+          passed: false,
+          consumesAttempt: true,
+          detail: `push rejected: ${String((push && push.stderr) || "").trim()}`,
+        };
+      }
+      pushed = true;
+      return rePoll();
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
+// ─── TSPEC §9 — the advisory record (PLAN A-21) ────────────────────────────
+//
+// `docs/{feature}/ADVISORY-{feature}.md` — append-only, one `##` entry per invocation, in
+// occurrence order (R-3). Seven declared fields, matching §10.1's escalation-log table
+// one-for-one (TSPEC §9.1): Seam, Confidence, Envelope, Disposition, Model — a `| Field | Value
+// |` table — plus **Diagnosis.** and **Evidence.** prose sections.
+
+// A single line never carries an embedded raw newline into the record's line grammar
+// (PROP-REC-08/P-6) — every field body is passed through this before being interpolated.
+function advisoryEntrySingleLine(value) {
+  return String(value).replace(/\r?\n/g, " ");
+}
+
+/**
+ * `renderAdvisoryEntry(disposition, { now })` — pure (TSPEC §9.1, PROP-REC-01): takes the
+ * timestamp rather than reading a clock, so the rendered bytes are testable exactly. When
+ * `disposition.verdict` is `null` (an escalation that never reached a well-formed verdict),
+ * Confidence/Envelope fall back to `"n/a"`, Diagnosis to `"no verdict was produced"`, and
+ * Evidence to `"(none)"` — the totality claim (P-6) requires the renderer never throw on this
+ * case. The Model field carries the literal suffix `" (fallback)"` when `disposition.fallback`
+ * is true (PROP-REC-07) — the fallback readable off the record as well as off the summary (M-2).
+ *
+ * @param {{seam: string, outcome: string, reason: string|null, verdict: object|null,
+ *          attempts: number, model: string, fallback: boolean}} disposition
+ * @param {{now: string}} opts - `now` is an already-formatted timestamp string
+ * @returns {string}
+ */
+function renderAdvisoryEntry(disposition, { now }) {
+  const { seam, outcome, reason, verdict, model, fallback } = disposition;
+
+  const dispositionValue =
+    outcome === "escalated" && reason ? `${outcome} — ${reason}` : outcome;
+  const confidence = verdict ? verdict.confidence : "n/a";
+  const envelope = verdict ? (verdict.withinEnvelope ? "in" : "out") : "n/a";
+  const diagnosis = verdict ? verdict.diagnosis : "no verdict was produced";
+  const evidence =
+    verdict && Array.isArray(verdict.evidence) && verdict.evidence.length > 0
+      ? verdict.evidence
+      : ["(none)"];
+  const modelValue = fallback ? `${model} (fallback)` : model;
+
+  const lines = [
+    `## ${now} — ${seam} — ${outcome}`,
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    `| Seam | ${seam} |`,
+    `| Confidence | ${advisoryEntrySingleLine(confidence)} |`,
+    `| Envelope | ${envelope} |`,
+    `| Disposition | ${advisoryEntrySingleLine(dispositionValue)} |`,
+    `| Model | ${advisoryEntrySingleLine(modelValue)} |`,
+    "",
+    `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
+    "",
+    "**Evidence.**",
+    ...evidence.map((e) => `- ${advisoryEntrySingleLine(e)}`),
+    "",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * `appendAdvisoryEntry` — the step-7 primitive (TSPEC §9.2). Throws on write failure; the
+ * driver's step 7 catches and refuses `record-write-failed` (§4.4). Written for EVERY terminal
+ * disposition including `no-action` (R-4) — the record is not escalation-only, unlike §10's log.
+ *
+ * @param {{feature: string, disposition: object, _appendFile: function, _now: function}} args
+ * @returns {Promise<void>}
+ */
+async function appendAdvisoryEntry({ feature, disposition, _appendFile, _now }) {
+  const now = _now();
+  const entry = renderAdvisoryEntry(disposition, { now });
+  const path = `docs/${feature}/ADVISORY-${feature}.md`;
+  await _appendFile(path, entry);
+}
+
+/**
+ * `advisorySummaryRows(dispositions)` — pure (TSPEC §9.4). `ADVISORY_SEAMS` drives the row list
+ * (S-1), so five rows always appear and a seam that never fired is visibly zero. The per-row and
+ * total identity `invocations === resolved + escalated + noAction` holds by construction. Each
+ * row also carries the `model`/`fallback` of its LAST invocation (S-2) — undefined/falsy when the
+ * seam never fired.
+ *
+ * **S-3** — `noChecks` and `completionCap` are threaded in from `raisePrAndVerifyCi` (§8.1) and
+ * named on the summary itself, so A5-6 ("no check ever registered") and A5-9 ("checks registered
+ * and never completed") are distinguishable, by an operator reading the report alone, from an A5
+ * row that is zero because the seam simply never fired. Both default to `false`, so every existing
+ * caller — and every pure unit test of this function — is unchanged.
+ *
+ * @param {Array<{seam: string, outcome: string, model?: string, fallback?: boolean}>} dispositions
+ * @param {{noChecks?: boolean, completionCap?: boolean}} [pubOutcome]
+ * @returns {{rows: Array<object>, total: object, noChecks: boolean, completionCap: boolean}}
+ */
+function advisorySummaryRows(dispositions, pubOutcome = {}) {
+  const list = Array.isArray(dispositions) ? dispositions : [];
+
+  const rows = ADVISORY_SEAMS.map((seam) => {
+    const forSeam = list.filter((d) => d && d.seam === seam);
+    const resolved = forSeam.filter((d) => d.outcome === "resolved").length;
+    const escalated = forSeam.filter((d) => d.outcome === "escalated").length;
+    const noAction = forSeam.filter((d) => d.outcome === "no-action").length;
+    const last = forSeam.length > 0 ? forSeam[forSeam.length - 1] : null;
+    return {
+      seam,
+      invocations: forSeam.length,
+      resolved,
+      escalated,
+      noAction,
+      model: last ? last.model : undefined,
+      fallback: last ? last.fallback : undefined,
+    };
+  });
+
+  const total = rows.reduce(
+    (acc, row) => ({
+      invocations: acc.invocations + row.invocations,
+      resolved: acc.resolved + row.resolved,
+      escalated: acc.escalated + row.escalated,
+      noAction: acc.noAction + row.noAction,
+    }),
+    { invocations: 0, resolved: 0, escalated: 0, noAction: 0 }
+  );
+
+  return {
+    rows,
+    total,
+    noChecks: Boolean(pubOutcome && pubOutcome.noChecks),
+    completionCap: Boolean(pubOutcome && pubOutcome.completionCap),
+  };
+}
+
+// ─── TSPEC §10 — the escalation log and report notices (PLAN A-21) ────────
+//
+// `docs/_queue/ESCALATIONS.md` — a single, non-feature-scoped, append-only log (TSPEC §10.1),
+// newest-last (L-1). Eight declared fields, the one-sentence decision statement first (L-2).
+const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
+
+/**
+ * `renderEscalationEntry(disposition, ctx, { now })` — pure, mirroring `renderAdvisoryEntry`
+ * (TSPEC §10.1). Unlike the advisory record's `now`, this `now` is a millisecond epoch value
+ * (matching `_now()`'s existing convention elsewhere in this module) and is rendered via
+ * `new Date(now).toISOString()`.
+ *
+ * @param {{reason: string|null, verdict: object|null}} disposition
+ * @param {{feature: string, seam: string, phase: string, phaseOutcome: string, decision: string}} ctx
+ * @param {{now: number}} opts
+ * @returns {string}
+ */
+function renderEscalationEntry(disposition, ctx, { now }) {
+  const { reason, verdict } = disposition;
+  const { feature, seam, phase, phaseOutcome, decision } = ctx;
+  const iso = new Date(now).toISOString();
+
+  const diagnosis = verdict ? verdict.diagnosis : "no verdict was produced";
+  const proposedAction = verdict ? verdict.proposedAction : "(none)";
+  const evidence =
+    verdict && Array.isArray(verdict.evidence) && verdict.evidence.length > 0
+      ? verdict.evidence
+      : ["(none)"];
+
+  const lines = [
+    `## ${iso} — ${feature} — ${seam}`,
+    "",
+    `**Decide:** ${advisoryEntrySingleLine(decision)}`,
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    `| Feature | ${feature} |`,
+    `| Seam | ${seam} |`,
+    `| Refusal reason | ${advisoryEntrySingleLine(reason ?? "n/a")} |`,
+    "",
+    `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
+    "",
+    `**Proposed action.** ${advisoryEntrySingleLine(proposedAction)}`,
+    "",
+    "**Evidence.**",
+    ...evidence.map((e) => `- ${advisoryEntrySingleLine(e)}`),
+    "",
+    `**Pipeline state.** ${phase} — ${phaseOutcome}`,
+    "",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * `appendEscalationEntry` — TSPEC §10.1. Uses `_appendFile` (`defaultAppendFile`, which now
+ * creates `docs/_queue/` when absent). Called OUTSIDE the try/catch that governs the seam's
+ * action (T-09-8): a throw here is caught by the CALLER, pushed onto `notices`, and the
+ * disposition is never upgraded to `resolved` on account of it — the asymmetry with a failed
+ * record write (§9.2, R-2), which does revert.
+ *
+ * @param {{disposition: object, ctx: object, _appendFile: function, _now: function}} args
+ * @returns {Promise<void>}
+ */
+async function appendEscalationEntry({ disposition, ctx, _appendFile, _now }) {
+  const now = _now();
+  const entry = renderEscalationEntry(disposition, ctx, { now });
+  await _appendFile(ESCALATIONS_PATH, entry);
+}
+
+/**
+ * `ADVISORY_SEAM_PHASES` — TSPEC §10.1's *Pipeline state* field is "the phase id and that phase's
+ * outcome", and both are properties of the SEAM, not of the call site: each seam fires in exactly
+ * one phase (§6.1 queue-side, §7.1 Phase DOD, §8.1 Phase PUB) and each phase has exactly one
+ * outcome on the escalation path — the dev-side seams sit immediately before a `throw haltError`,
+ * the queue-side seams before a `continue` that skips the candidate. Deriving it here rather than
+ * asking every call site to repeat it is what keeps the field from drifting per call site.
+ */
+// (The member is deliberately named `id`, not the obvious `phase`: `dodPhase.test.js` locates
+// `PHASE_DISPATCH.DOD` by source-scanning for a `phase`-keyed "DOD" pair, and a second object
+// carrying that same pair earlier in the file would be found first — a naming collision, not a
+// behavioural one, but a red suite either way.)
+const ADVISORY_SEAM_PHASES = Object.freeze({
+  A1: Object.freeze({ id: "QUEUE", outcome: "skipped" }),
+  A2: Object.freeze({ id: "QUEUE", outcome: "skipped" }),
+  A3: Object.freeze({ id: "DOD", outcome: "halted" }),
+  A4: Object.freeze({ id: "DOD", outcome: "halted" }),
+  A5: Object.freeze({ id: "PUB", outcome: "halted" }),
+});
+
+/**
+ * `escalationDecision(...)` — TSPEC §10.1's L-2 field: the ONE sentence naming what the operator
+ * must decide, written first so the log reads as a decision queue rather than a diagnostic dump.
+ * Pure and total: an escalation that never reached a well-formed verdict has no proposed action to
+ * name, and says so rather than interpolating `undefined`.
+ *
+ * `classificationSummary`, when the seam produced one (A3 — see `summariseA3Classification`), is
+ * named in the same sentence: the class the tier assigned is the single most decision-relevant
+ * fact an operator reading this log needs, and carrying it here keeps §10.1's eight declared
+ * fields exactly eight rather than growing a ninth.
+ *
+ * @param {{seam: string, feature: string, reason: string|null, verdict: object|null,
+ *          classificationSummary?: string}} args
+ * @returns {string}
+ */
+function escalationDecision({ seam, feature, reason, verdict, classificationSummary }) {
+  const proposal =
+    verdict && verdict.proposedAction ? `"${verdict.proposedAction}"` : "no well-formed proposal";
+  const classified = classificationSummary ? `; classified ${classificationSummary}` : "";
+  return (
+    `whether to take the ${seam} proposal for ${feature} yourself (${proposal}) — ` +
+    `the advisory tier refused it as ${reason ?? "unclassified"} and changed nothing${classified}`
+  );
+}
+
+// ─── TSPEC §4.4 — runAdvisorySeam, the one impure component (PLAN A-22) ────
+//
+// TSPEC §5.4 ("Prohibitions — structural, not asserted") makes P-1…P-4 unreachable through the
+// EXISTING mechanisms `classifyEnvelope` already owns (X-b, X-d/membership, and simply never
+// wiring a capability) rather than a dedicated matcher, and `advisoryEnvelope.test.js` (A-06)
+// says so explicitly: that file's `classifyEnvelope` never emits `"prohibited-action"` as its own
+// `reason`, and disclaims P-1…P-4 as living here instead. This driver therefore carries a small,
+// independent, PROSE-based recognizer, `isProhibitedAction`, run at step 3 GATE ahead of
+// `classifyEnvelope` — a defense-in-depth check of the verdict's own claim that does not trust
+// `seamOps.permittedActions` to have refused it (PLAN A-22's `advisoryDriver.test.js` REASON_FIXTURES
+// "prohibited-action" fixture deliberately declares the prohibited sentence as *permitted* on the
+// fake seam, to prove the driver refuses it anyway).
+const PROHIBITED_ACTION_PATTERNS = [
+  // P-1 — mark/weaken/reduce a DoD criterion or the iteration count.
+  /\b(mark|weaken|reduce)\b[\s\S]*\b(dod|definition of done)\b/i,
+  /\bdefinition of done\b[\s\S]*\b(satisfied|weaken|reduce)/i,
+  // P-2 — set ready: true on a REQ.
+  /\bready\s*:\s*true\b/i,
+  // P-3 — declare CI passed.
+  /\bdeclare\b[\s\S]*\bci\b[\s\S]*\bpassed\b/i,
+  // P-4 — merge a PR, or alter a queue Status cell.
+  /\bmerge\b[\s\S]*\b(pr|pull request)\b/i,
+  /\balter\b[\s\S]*\bqueue\b[\s\S]*\bstatus\b/i,
+];
+
+/**
+ * @param {string} proposedAction
+ * @returns {boolean}
+ */
+function isProhibitedAction(proposedAction) {
+  const text = String(proposedAction || "");
+  return PROHIBITED_ACTION_PATTERNS.some((re) => re.test(text));
+}
+
+/**
+ * @typedef {Object} SeamOps                  TSPEC §4.3. One implementation per seam.
+ * @property {() => Promise<string>}            gatherEvidence
+ * @property {(evidence: string) => string}     prompt
+ * @property {() => Promise<boolean>}           conditionHolds
+ * @property {(v: AdvisoryVerdict) => Promise<{ok: boolean, why?: string}>} apply
+ * @property {() => Promise<string[]>}          producedPaths
+ * @property {() => Promise<void>}              revert
+ * @property {null | (() => Promise<{passed: boolean, detail?: string}>)} verifyGate
+ * @property {string[]}                         declaredScope
+ * @property {string[]}                         permittedActions
+ */
+
+/**
+ * `runAdvisorySeam` — TSPEC §4.4, the tier's one impure component. Runs the seven-step lifecycle
+ * (DIAGNOSE, VALIDATE, GATE, RE-CHECK, ACT, CHECK, VERIFY, RECORD — eight `_log` tokens; GATE
+ * covers both the prohibition check and `classifyEnvelope` + confidence, one `_log("GATE")` call)
+ * against an injected `SeamOps`. A disabled config (see `parseAdvisoryConfig`) returns before any
+ * dispatch or rung resolution (D-1, D-2). The attempt loop (DIAGNOSE+VALIDATE) races each dispatch against a
+ * wall-clock deadline (`_sleep`) so a preemption can end an in-flight attempt (V-5); `attempts`
+ * counts only DIAGNOSE/VALIDATE cycles that did NOT yield a well-formed verdict — a verdict
+ * obtained on the first try leaves `attempts === 0` (RE-CHECK's "no attempt consumed" reading,
+ * TSPEC §4.4 last row). A single-attempt budget whose one response is malformed reports
+ * `malformed-verdict` (this file's header interpretive decision 2); every other budget exhaustion
+ * — multiple malformed attempts, or a wall-clock preemption — reports `budget-exhausted`.
+ *
+ * `seamOps.revert()` throwing is never absorbed by the terminal catch (BR-5: an unrevertable tree
+ * halts rather than silently resolving as an ordinary escalation) — every revert call is routed
+ * through `doRevert`, which tags a thrown error before rethrowing, and the terminal catch rethrows
+ * anything so tagged instead of mapping it to `escalated`.
+ *
+ * Three optional seams, all defaulted so no existing caller changes shape:
+ *
+ * - `_notice` — the run report's notice channel (TSPEC §10.2 N-4). Every `escalated` terminal
+ *   disposition pushes `ADVISORY_ESCALATIONS.seam(...)` onto it, and a failed escalation-log write
+ *   is downgraded onto it too. Defaults to a no-op.
+ * - `_waitMs` — the §4.3 rollup-wait reader (see `makeWaitAccumulator`). Defaults to `() => 0`,
+ *   which is exactly right for A1–A4: only A5 ever calls `recordWait`.
+ * - `_summarise` — an optional `(raw) => string` over the LAST well-formed agent reply, whose
+ *   result rides on the terminal disposition as `classificationSummary`. A3's Phase DOD halt reads
+ *   it (AC-6.3); every other seam leaves it unset, so the key is absent rather than `undefined`.
+ *
+ * @param {{seam: string, feature: string, seamOps: SeamOps, config: object, rungState: object,
+ *          _agent: Function, _appendFile: Function, _writeFile: Function, _readFile: Function,
+ *          _git: Function, _log: Function, _now: Function, _sleep: Function, _notice: Function,
+ *          _waitMs: Function, _summarise: Function}} args
+ * @returns {Promise<{outcome: string, reason: string|null, verdict: object|null, attempts: number,
+ *          model: string|undefined, fallback: boolean, seam: string, classificationSummary?: string}>}
+ */
+async function runAdvisorySeam({
+  seam,
+  feature,
+  seamOps,
+  config,
+  rungState,
+  _agent,
+  _appendFile,
+  _writeFile,
+  _readFile,
+  _git,
+  _log,
+  _now = () => Date.now(),
+  _sleep = sleep,
+  _notice,
+  _waitMs,
+  _summarise,
+}) {
+  const log = typeof _log === "function" ? _log : () => {};
+  const notice = typeof _notice === "function" ? _notice : () => {};
+  const readWaitMs = typeof _waitMs === "function" ? _waitMs : () => 0;
+  // The summary of the last well-formed reply this invocation saw. A later malformed attempt never
+  // erases an earlier classification: the halt should carry whatever the seam did manage to learn.
+  let summary = "";
+  // Hoisted out of the `try` below so the TSPEC §17.3 terminal catch can terminate with the state
+  // the invocation actually had — the last computed refusal reason, the last parsed verdict and the
+  // real attempt count — instead of discarding all three.
+  let lastReason = null;
+  let attempts = 0;
+  let verdict = null;
+
+  if (!config || config.enabled === false) {
+    return { outcome: "no-action", reason: null, verdict: null, attempts: 0, model: undefined, fallback: false, seam };
+  }
+
+  // Rung resolution (TSPEC §3.4/§4.4 entry row: resolved before any dispatch, once per run) is
+  // deliberately NOT a discrete probe dispatch here — TSPEC §3.4's own header says non-resolution
+  // is detected "by classifying the rejection of the real dispatch... never a separate probe".
+  // `resolveAdvisoryRung` (module scope, above) IS that real dispatch, and is the ONE ladder: this
+  // driver holds no private copy of it. Attempt 1 of the DIAGNOSE loop carries the M-1/M-2 fallback
+  // ladder inline (so it consumes exactly one `_agent` call on the happy path, not two), and every
+  // later attempt in the same seam invocation reuses the now-cached `rungState.resolved` rung
+  // directly. `rungState` is the caller's memo, so a whole PT-phase run resolves the rung once
+  // across every seam it dispatches, per §3.4's "lazy, once per run".
+  //
+  // The single refusal-reason resolver (AC-3.6, TSPEC §5.3). Every escalation below states the
+  // conditions true AT TERMINATION as a signal set and lets `refusalReasonFor` pick the first match
+  // in `ADVISORY_REFUSAL_REASONS`' own order — so re-ordering that catalogue re-orders the shipped
+  // precedence, which is the whole point of declaring it ordered. `lastReason` remembers what it
+  // last resolved, for TSPEC §17.3's terminal catch (below), which reports the last computed
+  // refusal reason or `budget-exhausted` when none was computed.
+  function refuse(signals) {
+    lastReason = refusalReasonFor(signals) ?? "budget-exhausted";
+    return lastReason;
+  }
+
+  // Every `seamOps.revert()` call goes through here so a thrown revert failure can be
+  // distinguished, downstream, from an ordinary unclassified throw (BR-5).
+  async function doRevert() {
+    try {
+      await seamOps.revert();
+    } catch (err) {
+      if (err && typeof err === "object") err.__isRevertFailure = true;
+      throw err;
+    }
+  }
+
+  // Step 7 RECORD, for every terminal disposition (R-4) — including `no-action` and every
+  // escalation, not only `resolved`. A write failure reverts (when the action had already been
+  // applied) and overrides the outcome/reason to `escalated` / `record-write-failed` (§4.6).
+  async function terminate({ outcome, reason, verdict, attempts, appliedSuccessfully }) {
+    let finalOutcome = outcome;
+    let finalReason = reason;
+    log("RECORD");
+    const disposition = {
+      seam,
+      outcome: finalOutcome,
+      reason: finalReason,
+      verdict,
+      attempts,
+      model: rungState.resolved ? rungState.resolved.model : undefined,
+      fallback: rungState.resolved ? rungState.resolved.fallback : false,
+    };
+    try {
+      await appendAdvisoryEntry({ feature, disposition, _appendFile, _now });
+    } catch {
+      if (appliedSuccessfully) await doRevert();
+      finalOutcome = "escalated";
+      finalReason = "record-write-failed";
+    }
+    const terminal = {
+      seam,
+      outcome: finalOutcome,
+      reason: finalReason,
+      verdict,
+      attempts,
+      model: rungState.resolved ? rungState.resolved.model : undefined,
+      fallback: rungState.resolved ? rungState.resolved.fallback : false,
+      // AC-6.3 — present only when a `_summarise` seam produced something, so a seam without one
+      // carries no key at all rather than an `undefined` the halt would have to `?? ""` away.
+      ...(summary ? { classificationSummary: summary } : {}),
+    };
+
+    // ── TSPEC §10.1 — the escalation output, for EVERY `escalated` terminal disposition ────────
+    // `appendEscalationEntry` runs OUTSIDE the try/catch that governs the seam's ACTION: the local
+    // catch below can only ever downgrade its throw to a report notice, so a failed log write can
+    // never revert anything and can never upgrade an escalation to a resolution (T-09-8's
+    // asymmetry with §9.2's record write, which does revert). The `ADVISORY ESCALATION:` notice
+    // (§10.2 N-2/N-4) accompanies the entry whether or not the write itself succeeded — the
+    // operator is told the seam escalated even when the log could not be reached.
+    if (finalOutcome === "escalated") {
+      const placement = ADVISORY_SEAM_PHASES[seam];
+      try {
+        await appendEscalationEntry({
+          disposition: terminal,
+          ctx: {
+            feature,
+            seam,
+            phase: placement ? placement.id : "unknown",
+            phaseOutcome: placement ? placement.outcome : "unknown",
+            decision: escalationDecision({
+              seam,
+              feature,
+              reason: finalReason,
+              verdict,
+              classificationSummary: summary,
+            }),
+          },
+          _appendFile,
+          _now,
+        });
+      } catch (err) {
+        notice(
+          `ADVISORY escalation log write failed for seam ${seam}: ${
+            err && err.message ? err.message : String(err)
+          }`
+        );
+      }
+      notice(ADVISORY_ESCALATIONS.seam({ seam, feature, reason: finalReason }));
+    }
+
+    return terminal;
+  }
+
+  const totalBudgetMs = config.seamBudgetMinutes * 60_000;
+
+  // The wall-clock deadline (V-5) is constructed FRESH on every attempt, and — critically — only
+  // AFTER `dispatched` has already been constructed for that same attempt. `Promise.race` breaks
+  // ties between two promises that settle at the same microtask hop-depth in FAVOUR of whichever
+  // one's underlying async work was *invoked* first (its settlement microtask lands earlier in the
+  // FIFO queue): with the doubles' `_agent`/`_sleep` both settling synchronously (no real
+  // wall-clock wait) at the same hop depth, constructing `dispatched` first is what lets an
+  // ordinary attempt win the race on every call — constructing the deadline first (or once,
+  // up-front, reused across attempts) would either spuriously preempt every attempt, or — once
+  // reused past its own settlement — spuriously preempt every attempt after the first. Only a
+  // dispatch that genuinely never settles (T-02-5's `neverResolves`) lets the deadline win.
+  // `budgetExceeded`'s own `elapsedMs` argument is therefore 0 for every attempt-loop call below
+  // (see its call sites) — wall-clock exhaustion is enforced solely by this per-attempt race,
+  // `attemptBudget` exhaustion by the loop's own attempt counter.
+  try {
+    // ── DIAGNOSE + VALIDATE — the attempt loop ──────────────────────────
+    // The loop encloses steps 1–6, not only DIAGNOSE/VALIDATE: A5-3 defines
+    // one attempt as one act → re-poll cycle, so a `verifyGate` failure that
+    // declares `consumesAttempt: true` re-enters here (see VERIFY below).
+    // Every other step's failure path returns, so for the seams whose gates
+    // never set that flag the loop still executes each step at most once.
+    while (true) {
+      log("DIAGNOSE");
+      const evidence = await seamOps.gatherEvidence();
+
+      // A seam may decide, from evidence alone, that no dispatch can be
+      // justified (A5-5's unretrievable log, A5-2's undone comparison, A5-1's
+      // pre-existing failure): `{ __preDispatch: { outcome, reason } }`
+      // terminates with no agent call and no verdict.
+      if (evidence && typeof evidence === "object" && evidence.__preDispatch) {
+        const pre = evidence.__preDispatch;
+        return await terminate({
+          outcome: pre.outcome,
+          reason: pre.reason ?? null,
+          verdict: null,
+          attempts,
+          appliedSuccessfully: false,
+        });
+      }
+
+      const promptText = seamOps.prompt(evidence);
+
+      // `dispatched` is constructed BEFORE `deadline` on every iteration — see the comment above.
+      // already {kind:...}-shaped or a halt rejection
+      const dispatched = resolveAdvisoryRung({ _agent, _log: log, _state: rungState, prompt: promptText });
+      const deadline = _sleep(totalBudgetMs).then(() => ({ kind: "preempted" }));
+      const raced = await Promise.race([dispatched, deadline]);
+
+      if (raced.kind === "preempted") {
+        attempts += 1; // the in-flight attempt counts as consumed by the preemption (T-02-5)
+        return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict: null, attempts, appliedSuccessfully: false });
+      }
+
+      log("VALIDATE");
+
+      if (raced.kind === "dispatch-error") {
+        attempts += 1;
+        if (
+          budgetExceeded({
+            attempts,
+            attemptBudget: config.attemptBudget,
+            elapsedMs: 0,
+            waitMs: readWaitMs(),
+            seamBudgetMinutes: config.seamBudgetMinutes,
+          })
+        ) {
+          return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict: null, attempts, appliedSuccessfully: false });
+        }
+        continue;
+      }
+
+      // AC-6.3 — the optional per-seam summariser runs over the RAW reply, before the generic
+      // verdict parse decides anything: A3's classification blocks travel alongside the verdict
+      // trailer in one reply, and a reply whose trailer is malformed can still have carried a
+      // usable classification. `_summarise` is pure and total by contract; a throwing one is
+      // absorbed here rather than escalating the seam over a report-only field.
+      if (typeof _summarise === "function") {
+        try {
+          const produced = _summarise(raced.raw);
+          if (typeof produced === "string" && produced !== "") summary = produced;
+        } catch {
+          // report-only: a summariser fault never changes the disposition
+        }
+      }
+
+      const parsed = parseAdvisoryVerdict(raced.raw, seam);
+      if (parsed.malformed) {
+        attempts += 1;
+        if (
+          budgetExceeded({
+            attempts,
+            attemptBudget: config.attemptBudget,
+            elapsedMs: 0,
+            waitMs: readWaitMs(),
+            seamBudgetMinutes: config.seamBudgetMinutes,
+          })
+        ) {
+          // BOTH signals are true here whenever the single-attempt budget is what ran out, so
+          // which one is reported is decided by `ADVISORY_REFUSAL_REASONS`' order — `malformed-
+          // verdict` precedes `budget-exhausted`, hence this file's header interpretive decision 2
+          // (a one-attempt budget whose one response is unparseable reports the malformed response,
+          // not the exhausted budget). Re-ordering the catalogue re-orders this outcome.
+          const reason = refuse({ "malformed-verdict": attempts === 1, "budget-exhausted": true });
+          return await terminate({ outcome: "escalated", reason, verdict: null, attempts, appliedSuccessfully: false });
+        }
+        continue;
+      }
+
+      verdict = parsed.verdict;
+
+    // ── step 3b RE-CHECK — the seam condition may already be gone (V-7, R-4) ────────────────
+    // Runs BEFORE the gate: a condition that has resolved itself is `no-action`
+    // whatever the envelope would have said about the proposal — the world's
+    // state outranks a judgment about a fix the world no longer needs
+    // (T-07-2's conjunct-iii pins this against conjunct-i's gate refusal).
+    log("RE-CHECK");
+    const holds = await seamOps.conditionHolds();
+    if (!holds) {
+      return await terminate({ outcome: "no-action", reason: null, verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 3 GATE — prohibitions, classifyEnvelope, confidence (V-1, BR-2) ────────────────
+    log("GATE");
+
+    const gateCtx = {
+      seam,
+      permittedActions: seamOps.permittedActions,
+      declaredScope: seamOps.declaredScope,
+      guardPaths: effectiveGuardPaths(undefined),
+      capabilities: {},
+    };
+    const proposalCandidate = { action: verdict.proposedAction, paths: seamOps.declaredScope };
+    // All three gate conditions are computed before any of them refuses — `isProhibitedAction` and
+    // `classifyEnvelope` are both pure, so evaluating them together costs nothing and makes the
+    // signal set complete at termination. A proposal that trips two of them (a prohibited sentence
+    // whose declared scope is also a test artifact, say) is refused as whichever reason
+    // `ADVISORY_REFUSAL_REASONS` puts first — precedence lives in the catalogue, not in the order
+    // these `if`s happen to be written (AC-3.6).
+    const prohibited = isProhibitedAction(verdict.proposedAction);
+    const gateResult = classifyEnvelope(proposalCandidate, gateCtx);
+    const lowConfidence = verdict.confidence !== "high";
+    if (prohibited || !gateResult.inside || lowConfidence) {
+      const gateSignals = { "prohibited-action": prohibited, "low-confidence": lowConfidence };
+      if (!gateResult.inside && gateResult.reason) gateSignals[gateResult.reason] = true;
+      return await terminate({ outcome: "escalated", reason: refuse(gateSignals), verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 4 ACT ───────────────────────────────────────────────────────────────────────────
+    log("ACT");
+    const applyResult = await seamOps.apply(verdict);
+    if (!applyResult || applyResult.ok !== true) {
+      await doRevert();
+      return await terminate({ outcome: "escalated", reason: refuse({ "post-action-verification-failed": true }), verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 5 CHECK — classifyEnvelope again, over the produced diff (E-R2, BR-3) ──────────
+    log("CHECK");
+    const producedPaths = await seamOps.producedPaths();
+    const checkCandidate = { action: verdict.proposedAction, paths: Array.isArray(producedPaths) ? producedPaths : [] };
+    const checkResult = classifyEnvelope(checkCandidate, gateCtx);
+    if (!checkResult.inside) {
+      await doRevert();
+      return await terminate({
+        outcome: "escalated",
+        reason: refuse(checkResult.reason ? { [checkResult.reason]: true } : {}),
+        verdict,
+        attempts,
+        appliedSuccessfully: false,
+      });
+    }
+
+    // ── step 6 VERIFY ────────────────────────────────────────────────────────────────────────
+    log("VERIFY");
+    if (seamOps.verifyGate !== null) {
+      const gateOutcome = await seamOps.verifyGate();
+      if (!gateOutcome || gateOutcome.passed !== true) {
+        await doRevert();
+        // A5-3 — a gate that declares its red outcome an act → re-poll cycle
+        // (`consumesAttempt: true`, e.g. a red CI re-poll or the completion
+        // cap) consumes an attempt and re-enters the loop; exhaustion is
+        // `budget-exhausted`. A plain `{passed:false}` stays what it always
+        // was: terminal `post-action-verification-failed`.
+        if (gateOutcome && gateOutcome.consumesAttempt === true) {
+          attempts += 1;
+          if (
+            budgetExceeded({
+              attempts,
+              attemptBudget: config.attemptBudget,
+              elapsedMs: 0,
+              waitMs: readWaitMs(),
+              seamBudgetMinutes: config.seamBudgetMinutes,
+            })
+          ) {
+            return await terminate({ outcome: "escalated", reason: refuse({ "budget-exhausted": true }), verdict, attempts, appliedSuccessfully: false });
+          }
+          continue;
+        }
+        return await terminate({ outcome: "escalated", reason: refuse({ "post-action-verification-failed": true }), verdict, attempts, appliedSuccessfully: false });
+      }
+    }
+
+    // ── resolved ─────────────────────────────────────────────────────────────────────────────
+    return await terminate({ outcome: "resolved", reason: null, verdict, attempts, appliedSuccessfully: true });
+    }
+  } catch (err) {
+    if (err && err.__isRevertFailure) throw err; // BR-5 — never silently swallow an unrevertable tree
+    if (err && err.isHalt) throw err; // M-3 — no rung resolved; propagate, never mapped to an escalation
+    // TSPEC §17.3 — an unclassified throw is an escalation like any other, and therefore goes
+    // through `terminate`: the ADVISORY record (AC-9.1) is written, the `ESCALATIONS.md` entry
+    // (AC-10.1) is appended and the `ADVISORY ESCALATION:` notice (AC-10.5) is emitted, exactly as
+    // on every other escalating path. The reason is the LAST COMPUTED refusal reason, or
+    // `budget-exhausted` when none was computed — always a member of the closed catalogue
+    // (AC-3.6), never an ad-hoc value. `verdict`/`attempts` are the invocation's real state, not
+    // discarded. `terminate` is declared outside this `try`, so calling it here cannot re-enter it;
+    // `appliedSuccessfully: false` is deliberate — an unclassified throw leaves the tree in an
+    // unknown state, and a speculative revert is not a safe response to that.
+    return await terminate({
+      outcome: "escalated",
+      reason: lastReason ?? "budget-exhausted",
+      verdict,
+      attempts,
+      appliedSuccessfully: false,
+    });
+  }
+}
 
 // TSPEC-SCRIPT-03: Exported meta object
 const meta = {
@@ -3973,7 +5664,7 @@ function parseErrata(text, onIgnored) {
       if (typeof onIgnored === "function") onIgnored(docType, item);
       return;
     }
-    const key = `${docType} ${item}`;
+    const key = `${docType} ${item}`;
     if (seen.has(key)) return;
     seen.add(key);
     found.push({ docType, item });
@@ -5859,6 +7550,14 @@ function waveImplementPrompt(task, featureName) {
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
+    // The runtime kills any dispatch that makes no visible progress for 180
+    // seconds (hardcoded, not configurable) — one A-24-sized task died on all
+    // six retries composing a single large edit. The clause below is the wave
+    // sibling of PACING_CONTRACT_CLAUSE: small writes, frequent tool calls.
+    `PACING (hard runtime constraint): you are killed after 180 seconds without a tool call. ` +
+    `Never compose one large write — start each file small and extend it in increments of at ` +
+    `most 8,000 bytes per Write/Edit, interleaving verification commands. If a single edit ` +
+    `would be long, split it into several smaller edits.\n` +
     `Report a short summary of what you changed.\n` +
     branchPinClause(featureName)
   );
@@ -5883,6 +7582,23 @@ function harvestPrompt(featureName) {
     `4. Commit and push LEARNINGS before any delete operation.\n` +
     `5. Only after the LEARNINGS commit is confirmed on remote, delete the harvested CROSS-REVIEW-* and CODE_REVIEW-* files.\n` +
     `6. Commit and push the deletions.\n` +
+    branchPinClause(featureName)
+  );
+}
+
+/**
+ * Phase H2's distil dispatch prompt (TSPEC §9.3, PLAN A-27, decision 4). Deliberately named as a
+ * distinguishable ADVISORY-class dispatch (never mistaken for Phase H's own `harvest-learnings`
+ * call) — the pipeline itself performs the guarded delete afterward, so this prompt never asks the
+ * agent to delete the record.
+ */
+function advisoryDistilPrompt(featureName) {
+  return (
+    `ADVISORY distil for feature ${featureName}:\n` +
+    `1. Read docs/${featureName}/ADVISORY-${featureName}.md.\n` +
+    `2. Append a summary of its entries to docs/${featureName}/LEARNINGS-${featureName}.md.\n` +
+    `3. Do NOT delete ADVISORY-${featureName}.md yourself — the pipeline deletes it through the ` +
+    `guarded channel after this dispatch returns.\n` +
     branchPinClause(featureName)
   );
 }
@@ -6342,7 +8058,15 @@ async function dodVerifyLoop({
  * @param {number} [params.noChecksTimeoutMs]
  * @param {number} [params.pollIntervalMs]
  * @param {number} [params.completionTimeoutMs]
- * @returns {Promise<{ prUrl: string, ciStatus: "passed" | "no-checks" }>}
+ * @param {function} [params._runAdvisorySeam] - TSPEC §8.1 (PLAN A-26). Fires only on the
+ *   `status === "failed"` branch; defaults to `escalated` so every pre-existing caller/test of
+ *   this function is unaffected (PROP-A5-19) — `escalated` is the only outcome that falls
+ *   through to the byte-identical halt. A `no-action` default would NOT be a no-op: `no-action`
+ *   is loop-safe only when a real seam has just re-observed the rollup green, which a stub has
+ *   not, so a persistently red CI would re-poll forever instead of halting.
+ * @param {function} [params._advisoryRecord] - the step-7 record sink for the A5 disposition;
+ *   defaults to a no-op.
+ * @returns {Promise<{ prUrl: string, ciStatus: "passed" | "no-checks", noChecks?: boolean }>}
  */
 async function raisePrAndVerifyCi({
   feature,
@@ -6354,6 +8078,8 @@ async function raisePrAndVerifyCi({
   noChecksTimeoutMs = CI_NO_CHECKS_TIMEOUT_MS,
   pollIntervalMs = CI_POLL_INTERVAL_MS,
   completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
+  _runAdvisorySeam = async () => ({ outcome: "escalated" }),
+  _advisoryRecord = () => {},
 }) {
   // 1. Create (or reuse) the PR. The branch was already rebased onto the latest
   //    default branch in Phase DOD, so ship-pr does not rebase here.
@@ -6376,9 +8102,25 @@ async function raisePrAndVerifyCi({
 
     if (status === "passed") {
       _log(`GHA checks passed for PR ${prUrl}`);
-      return { prUrl, ciStatus: "passed" };
+      return { prUrl, ciStatus: "passed", noChecks: false };
     }
     if (status === "failed") {
+      // TSPEC §8.1 (PLAN A-26) — the seam fires on exactly this branch, nowhere
+      // else. A `resolved` outcome re-polls in place (the seam's own verifyGate
+      // already observed green); anything else falls through to the byte-identical
+      // halt below.
+      const a5 = await _runAdvisorySeam({ seam: "A5", feature, prUrl });
+      _advisoryRecord(a5);
+      // §8.5 — "CI turns green mid-diagnosis" also re-polls rather than halting: the seam's own
+      // `conditionHolds` re-read already found the rollup green, so `no-action` carries the same
+      // "the re-poll already returned green" fact `resolved` does. Only `escalated` — no permitted
+      // action matched, or the seam ran out of budget — reaches the byte-identical halt below.
+      // `model` is only ever set once a dispatch actually ran (see `runAdvisorySeam`), so it also
+      // distinguishes that genuine re-check from a seam that never dispatched at all (e.g. an
+      // inert tier) — the latter must fall through to the halt rather than spin forever.
+      if (a5 && a5.outcome !== "escalated" && a5.model !== undefined) {
+        continue;
+      }
       throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
     }
     if (status === "pending" && completionStart === null) {
@@ -6391,20 +8133,24 @@ async function raisePrAndVerifyCi({
       // Checks are registered and running — wait for completion up to the overall
       // cap, measured from when checks first appeared (not from PR-raise).
       if (_now() - completionStart >= completionTimeoutMs) {
+        // A5-9: no failing check to diagnose, so the seam never fires here; the
+        // halt carries `completionCap` so the caller can name the outcome (S-3).
         throw haltError(
           `Error: Phase PUB — GHA checks did not complete within ` +
-            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`
+            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`,
+          { completionCap: true }
         );
       }
     } else if (_now() - start >= noChecksTimeoutMs) {
       // No checks ever appeared (status none/unknown) within the window —
       // assume the repo has no PR checks configured and treat the phase as a pass.
+      // A5-6: the seam never fires here either; `noChecks` names the outcome (S-3).
       _log(
         `No GHA checks detected within ${Math.round(
           noChecksTimeoutMs / 60000
         )} minutes — assuming repo has no PR checks configured`
       );
-      return { prUrl, ciStatus: "no-checks" };
+      return { prUrl, ciStatus: "no-checks", noChecks: true };
     }
 
     await _sleep(pollIntervalMs);
@@ -6813,6 +8559,11 @@ function defaultWriteFile(path, contents, { fsMod = fs } = {}) {
  * @returns {void}
  */
 function defaultAppendFile(path, text, { fsMod = fs } = {}) {
+  // TSPEC §10.1 — creates the parent directory (e.g. `docs/_queue/`) when absent, so a
+  // consumer repo with no queue directory yet still gets its escalation log written. Strictly
+  // additive: `appendFileSync` below already throws on failure, and `mkdirSync` does too — the
+  // function's "throws on failure" contract is unchanged.
+  fsMod.mkdirSync(dirname(path), { recursive: true });
   fsMod.appendFileSync(path, text, "utf8");
 }
 
@@ -6857,13 +8608,17 @@ const GIT_LOCK_RETRIES = 5;
 const GIT_LOCK_RETRY_DELAY_MS = 5000;
 
 /**
- * `.git/index.lock` is the one git failure that is expected, transient and
- * NOT a reason to halt: a wave's agents run in one shared tree, and the tail of
+ * Two git failures are expected, transient and NOT a reason to halt.
+ * `.git/index.lock`: a wave's agents run in one shared tree, and the tail of
  * an agent's own tooling (a formatter, a watcher, a `git status` from a
  * language server) can still hold the index for a second or two after the
- * dispatch returned. Every other git failure is a real one and reaches the
- * caller unretried — retrying a rejected commit hook five times just delays the
- * halt by 25 seconds.
+ * dispatch returned. `unparseable adapter response`: the runtime `_git` seam is
+ * agent-transcribed, so the git call may well have SUCCEEDED and only the
+ * report of it been garbled — a retry is safe on every argv this helper serves,
+ * because `add` is idempotent and a re-`commit` of already-recorded work lands
+ * in `commitPaths`' nothing-staged arm rather than double-committing. Every
+ * other git failure is a real one and reaches the caller unretried — retrying a
+ * rejected commit hook five times just delays the halt by 25 seconds.
  *
  * @param {string[]} argv
  * @param {{ _git: function, _sleep: function, emit: function, label: string }} seams
@@ -6875,9 +8630,18 @@ async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
     result = await _git(argv);
     if (result && result.ok === true) return result;
     const stderr = String((result && result.stderr) || "");
-    if (!stderr.includes("index.lock") || attempt === GIT_LOCK_RETRIES) return result;
+    const transient = stderr.includes("index.lock")
+      ? ".git/index.lock is held"
+      : stderr.includes("unparseable adapter response")
+        ? "adapter response was unparseable"
+        : /no matches found|command not found/.test(stderr)
+          ? "the transport shell mangled the command"
+          : /did not match any files/.test(stderr)
+            ? "the transport ran git outside the repository root"
+            : null;
+    if (transient === null || attempt === GIT_LOCK_RETRIES) return result;
     emit(
-      `${label}: .git/index.lock is held — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
+      `${label}: ${transient} — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
         `(attempt ${attempt + 1} of ${GIT_LOCK_RETRIES})`
     );
     await _sleep(GIT_LOCK_RETRY_DELAY_MS);
@@ -6940,6 +8704,19 @@ async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
     label: `${what}: git commit`,
   });
   if (!commit || commit.ok !== true) {
+    // The staged read-back above travels the same agent-transcribed channel as
+    // every other adapter read, so a garbled "non-empty" answer can send a
+    // no-change task into `git commit` anyway. Git then refuses with its
+    // "nothing to commit" family of messages — which is the read-back's own
+    // verdict arriving late, not a failure to record verified work. Honour it
+    // as the notice it would have been; every other refusal still halts.
+    const refusal = `${String((commit && commit.stdout) || "")}\n${String(
+      (commit && commit.stderr) || ""
+    )}`;
+    if (/nothing (added )?to commit|no changes added to commit/.test(refusal)) {
+      emit(`${what}: nothing staged — no changes to commit`);
+      return "nothing-staged";
+    }
     throw haltError(
       `Error: ${what} — \`git commit\` failed: ` +
         `${String((commit && commit.stderr) || "no output").trim()}. ` +
@@ -6950,9 +8727,18 @@ async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
   return "committed";
 }
 
-/** The one-line commit subject for a wave task. */
+/**
+ * The one-line commit subject for a wave task. The PLAN description travels
+ * into a `git commit -m` executed by the adapter's agent-transcribed shell,
+ * whose quoting is not under this script's control — a double-quoted zsh still
+ * interprets backticks, `$`, `\` and `"`, and a PLAN description legitimately
+ * carries backticks (`` `describe.skip` ``). Those four characters are
+ * stripped so the subject is inert under any quoting the transport picks.
+ */
 function waveCommitMessage(featureName, task) {
-  const description = String(task.description || "").trim();
+  const description = String(task.description || "")
+    .replace(/[`"$\\]/g, "")
+    .trim();
   const short =
     description.length > 60 ? `${description.slice(0, 57)}...` : description;
   return `feat(${featureName}): ${task.id}${short ? ` — ${short}` : ""}`;
@@ -6976,6 +8762,124 @@ async function defaultRecordQueueRow(/* { feature, status } */) {
   return { queueRow: "none" };
 }
 
+// ─── TSPEC §7.1 — A4's Phase DOD context (PLAN A-25) ───────────────────────
+//
+// `buildA4SeamOps` needs `mergeBase`, `preRebaseHead`, `defaultTip`, `planFiles` and `implConfig`
+// (`dev:2288`) but computes none of them itself. This gathers all five, entirely through `_git` and
+// `_readFile` — A4's own declared capability surface is `_git` alone (TSPEC §7.3's member table
+// names no `_ghRun`), so the default branch is resolved via `git symbolic-ref
+// refs/remotes/origin/HEAD` rather than a `gh repo view` probe. Every git/read failure degrades to
+// `null`/`[]` rather than throwing: `buildA4SeamOps`'s own `verifyGate` already treats a
+// missing/failed probe as unverifiable (§7.4), so a degraded context here still routes to the
+// conservative (escalate) outcome instead of crashing the phase.
+//
+// @param {{feature: string, preRebaseHead: string|null, _git: Function, _readFile: Function}} args
+// @returns {Promise<{mergeBase: string|null, preRebaseHead: string|null, defaultTip: string|null,
+//          planFiles: string[], implConfig: object}>}
+async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
+  let defaultRef = null;
+  try {
+    const symRef = await _git(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    const match =
+      symRef && symRef.ok
+        ? /^refs\/remotes\/origin\/(.+)$/.exec(String(symRef.stdout || "").trim())
+        : null;
+    if (match) defaultRef = `origin/${match[1]}`;
+  } catch {
+    defaultRef = null;
+  }
+
+  let mergeBase = null;
+  let defaultTip = null;
+  if (defaultRef) {
+    try {
+      const mergeBaseResult = await _git(["merge-base", "HEAD", defaultRef]);
+      mergeBase = mergeBaseResult && mergeBaseResult.ok ? String(mergeBaseResult.stdout || "").trim() : null;
+    } catch {
+      mergeBase = null;
+    }
+    try {
+      const defaultTipResult = await _git(["rev-parse", defaultRef]);
+      defaultTip = defaultTipResult && defaultTipResult.ok ? String(defaultTipResult.stdout || "").trim() : null;
+    } catch {
+      defaultTip = null;
+    }
+  }
+
+  let planFiles = [];
+  try {
+    const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
+    const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
+    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+  } catch {
+    planFiles = [];
+  }
+
+  let implConfig = IMPLEMENTATION_DEFAULTS;
+  try {
+    const implRaw = await readMergeConfigSafely(_readFile, MERGE_CONFIG_PATH);
+    implConfig = parseImplementationConfig(implRaw).config;
+  } catch {
+    implConfig = IMPLEMENTATION_DEFAULTS;
+  }
+
+  return { mergeBase, preRebaseHead, defaultTip, planFiles, implConfig };
+}
+
+// ─── TSPEC §8.1/§8.2 — A5's Phase PUB context (PLAN A-26) ──────────────────
+//
+// `buildA5SeamOps` needs `defaultBranch` (a branch NAME — it is interpolated into
+// `gh run list --branch …`, §8.3's BL-05 probe), `mergeBase` (a sha, the E-2 *introduced* test's
+// reference point) and `preSeamHead` (the sha `revert` resets to, A5-8). None is computed by the
+// seam. This gathers all three through `_git` alone — the same `symbolic-ref
+// refs/remotes/origin/HEAD` resolution `gatherA4Context` uses, so the two seams agree about which
+// branch is "default" without adding a second, `gh`-shaped source of truth.
+//
+// `preSeamHead` is read HERE rather than at Phase PUB entry, because this function is called from
+// inside the `status === "failed"` branch — i.e. immediately before the seam fires, which is the
+// capture point A5-8's revert contract assumes (the same shape A4's `preRebaseHead` uses).
+//
+// Every probe degrades to `null` rather than throwing: `buildA5SeamOps`'s own BL-05 probe already
+// treats an unusable reading as "the comparison is undone" and escalates attempting no fix (A5-2),
+// so a degraded context here routes to the conservative outcome instead of crashing Phase PUB.
+//
+// @param {{_git: Function}} args
+// @returns {Promise<{defaultBranch: string|null, mergeBase: string|null, preSeamHead: string|null}>}
+async function gatherA5Context({ _git }) {
+  let defaultBranch = null;
+  try {
+    const symRef = await _git(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    const match =
+      symRef && symRef.ok
+        ? /^refs\/remotes\/origin\/(.+)$/.exec(String(symRef.stdout || "").trim())
+        : null;
+    if (match) defaultBranch = match[1];
+  } catch {
+    defaultBranch = null;
+  }
+
+  let mergeBase = null;
+  if (defaultBranch) {
+    try {
+      const mergeBaseResult = await _git(["merge-base", "HEAD", `origin/${defaultBranch}`]);
+      mergeBase =
+        mergeBaseResult && mergeBaseResult.ok ? String(mergeBaseResult.stdout || "").trim() : null;
+    } catch {
+      mergeBase = null;
+    }
+  }
+
+  let preSeamHead = null;
+  try {
+    const headResult = await _git(["rev-parse", "HEAD"]);
+    preSeamHead = headResult && headResult.ok ? String(headResult.stdout || "").trim() : null;
+  } catch {
+    preSeamHead = null;
+  }
+
+  return { defaultBranch, mergeBase, preSeamHead };
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
@@ -6997,6 +8901,11 @@ async function main({
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
   _rebaseOntoDefault: rebaseOntoDefaultFn = rebaseOntoDefault,
   _dodVerifyLoop: dodVerifyLoopFn = dodVerifyLoop,
+  // TSPEC §7.1 (PLAN A-25) — Phase DOD's advisory seams. Free idents by default
+  // (§2.3): a runtime that supplies neither runs the real driver against the
+  // real config file, exactly as a repo with the tier configured would see.
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  _readAdvisoryConfig: readAdvisoryConfigFn = readAdvisoryConfigSafely,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
   _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
@@ -7037,6 +8946,24 @@ async function main({
 
   const phases = [];
   let haltReason;
+
+  // TSPEC §8.4 (PLAN A-26, OQ-3) — the commit `git rev-parse HEAD` reported the moment Phase
+  // DOD's verify loop passed. `buildFinalReport` reports it and derives `dodHeadUnverified` by
+  // comparing it against the branch head at report-build time — report-only, never a re-verify
+  // and never a halt (DEC-ADV-07).
+  let dodVerifiedCommit = null;
+
+  // Companion to `dodVerifiedCommit` above: the branch head at report-build time, read the same
+  // report-only way (never throws, `null` on any read failure). Called at each `buildFinalReport`
+  // call site so the comparison reflects the tree as of that report.
+  async function readCurrentHead() {
+    try {
+      const headResult = await gitFn(["rev-parse", "HEAD"]);
+      return headResult && headResult.ok ? String(headResult.stdout || "").trim() : null;
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * §5.8/§4.7: an unresolved POSTMORTEM found on a SKIP path. The state is real
@@ -7726,6 +9653,82 @@ async function main({
   // (§11 row 23).
   let mergeOutcome;
 
+  // ─── TSPEC §7.1 (PLAN A-25) — advisory config, read once per run, before the
+  // phase loop (C-3). `advisoryRungState` is the resolution memo `runAdvisorySeam`
+  // threads across every seam it dispatches this run (§3.4's "lazy, once per run").
+  const advisoryConfigRaw = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
+  const advisoryConfigResult = parseAdvisoryConfig(advisoryConfigRaw);
+  // Read once, reused everywhere below (including the report-time S-1 gate) so the
+  // tier's own master switch is inspected from source text exactly once here.
+  const advisoryTierOn = advisoryConfigResult.config.enabled;
+  if (advisoryTierOn && advisoryConfigResult.invalidKeys.length) {
+    emit(`Advisory config: using defaults for ${advisoryConfigResult.invalidKeys.join(", ")}`);
+  }
+  const advisoryRungState = { resolved: null };
+  // §9.4/S-1 — every disposition this run's advisory dispatches produce, in dispatch order.
+  // Feeds `advisorySummaryRows` at report time so an enabled-but-quiet run still carries five
+  // zero rows rather than `undefined` (T-10-5) — a disabled run leaves this empty and the field
+  // itself absent below.
+  const advisoryDispositions = [];
+  // §10.2 N-4 — the one notice sink every advisory seam this run dispatches writes through. The
+  // notices array is the same one Phase MERGE's escalations use and rides the same report field.
+  const advisoryNotice = (line) => notices.push(line);
+  // §9.4 S-3 — the two Phase PUB outcome booleans A5 deliberately does NOT fire on: `noChecks`
+  // (A5-6, no check ever registered) and `completionCap` (A5-9, checks registered and never
+  // completed). Both ride onto the advisory summary so an operator can tell either from an A5 row
+  // that reads zero because the seam simply never fired. Mutated by Phase PUB (success path) and
+  // by the halt handler (cap path); `false` on every run that reached neither.
+  const advisoryPubOutcome = { noChecks: false, completionCap: false };
+
+  // ─── TSPEC §8.1/§8.2 (PLAN A-26) — seam A5's composition root ─────────────
+  // `raisePrAndVerifyCi` deliberately owns no seam construction: its `_runAdvisorySeam` DEFAULT is
+  // the inert `escalated` stub that preserves the pre-existing halt for every caller that supplies
+  // nothing. THIS is the binding that makes A5 real — it constructs the seam's `SeamOps` from the
+  // pipeline's own transports (`gitFn`, `ghRunFn`, `checkCiFn`, `agentFn`) plus the once-per-run
+  // config and rung memo, and threads the §4.3 wait accumulator through both ends: `recordWait`
+  // into the seam, `waitMs` into the driver's `budgetExceeded` arithmetic.
+  //
+  // One accumulator per invocation (constructed inside the closure, not outside it): the carve-out
+  // exists so a single seam invocation's CI waits do not consume that invocation's wall-clock
+  // budget, not so waits accumulate across invocations.
+  //
+  // Bound only when the tier is ON — reusing `advisoryTierOn` above rather than re-reading the
+  // flag. With the tier off, `_runAdvisorySeam` is left unset below, so `raisePrAndVerifyCi`
+  // applies its inert default and the phase is byte-identical to the pre-advisory pipeline: no
+  // capability probe runs, no `gh` process is spawned, and no advisory file is written.
+  const runA5AdvisorySeam = async ({ seam, feature, prUrl }) => {
+    const wait = makeWaitAccumulator();
+    const a5Context = await gatherA5Context({ _git: gitFn });
+    const seamOps = await buildA5SeamOps({
+      feature,
+      prUrl,
+      preSeamHead: a5Context.preSeamHead,
+      defaultBranch: a5Context.defaultBranch,
+      mergeBase: a5Context.mergeBase,
+      recordWait: wait.recordWait,
+      _git: gitFn,
+      _ghRun: ghRunFn,
+      _checkCi: checkCiFn,
+    });
+    return runAdvisorySeamFn({
+      seam,
+      feature,
+      seamOps,
+      config: advisoryConfigResult.config,
+      rungState: advisoryRungState,
+      _agent: agentFn,
+      _appendFile: appendFileFn,
+      _writeFile: writeFileFn,
+      _readFile: readFileFn,
+      _git: gitFn,
+      _log: emit,
+      _now,
+      _sleep,
+      _notice: advisoryNotice,
+      _waitMs: wait.waitMs,
+    });
+  };
+
   try {
     // The branch guard, once, BEFORE any phase runs: every artifact this run
     // writes — cross-reviews, spec revisions, implementation commits, the queue
@@ -8119,22 +10122,12 @@ async function main({
         // Dispatch-level failures halt whatever the gate is (rules 1 and 3).
         evaluateWaveDispatch(waveResults, waveIndex, wave);
 
-        if (scriptGate) {
-          const gate = await runCommandFn(implConfig.testCommand);
-          if (!gate || gate.ok !== true) {
-            throw haltError(
-              `Error: Wave ${waveNum} test gate failed — \`${implConfig.testCommand}\` ` +
-                `did not pass. Output tail:\n${outputTail(gate && gate.output)}`
-            );
-          }
-          emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
-        } else {
-          evaluateBatchGate(waveResults, waveIndex, wave);
-        }
-
-        // A build that fails is a red wave: the suite can pass against sources
-        // whose generated artifacts no longer match them (this repo's own
-        // build-runtime is exactly that shape).
+        // The build runs BEFORE the test gate: a wave that edits workflow
+        // sources leaves the generated artifacts stale, and the suite itself
+        // asserts their freshness (runtimeBundle.test.js) — gating first would
+        // red every source-editing wave for its own unbuilt outputs. A build
+        // that fails is still a red wave in its own right: the suite can pass
+        // against sources whose generated artifacts no longer match them.
         let postWaveRan = false;
         if (implConfig.postWaveCommand && typeof runCommandFn === "function") {
           const post = await runCommandFn(implConfig.postWaveCommand);
@@ -8147,6 +10140,19 @@ async function main({
           }
           postWaveRan = true;
           emit(`Wave ${waveNum} post-wave: \`${implConfig.postWaveCommand}\` passed`);
+        }
+
+        if (scriptGate) {
+          const gate = await runCommandFn(implConfig.testCommand);
+          if (!gate || gate.ok !== true) {
+            throw haltError(
+              `Error: Wave ${waveNum} test gate failed — \`${implConfig.testCommand}\` ` +
+                `did not pass. Output tail:\n${outputTail(gate && gate.output)}`
+            );
+          }
+          emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
+        } else {
+          evaluateBatchGate(waveResults, waveIndex, wave);
         }
 
         // Only now — verified — does anything get committed (M-6).
@@ -8283,18 +10289,57 @@ async function main({
         // DOD step 0: rebase onto the latest default branch so the scan — and the PR
         // raised later in Phase PUB — reflects the real merge state. Moved here from
         // ship-pr so DoD evaluates the post-rebase tree.
+        //
+        // TSPEC §7.1/A4-3 (PLAN A-25) — preRebaseHead is captured BEFORE rebaseOntoDefaultFn
+        // mutates the tree, so a subsequent A4 dispatch's declaredScope diff is against the
+        // branch's own pre-rebase state, not whatever the rebase (or its conflict) left behind.
+        const preRebaseHeadResult = await gitFn(["rev-parse", "HEAD"]);
+        const preRebaseHead =
+          preRebaseHeadResult && preRebaseHeadResult.ok ? String(preRebaseHeadResult.stdout || "").trim() : null;
+
         const rebaseStatus = await rebaseOntoDefaultFn({
           feature: featureName,
           _agent: agentFn,
           _log: emit,
         });
         if (rebaseStatus === "conflict") {
-          recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
-          throw haltError(
-            `Phase DOD — rebase conflict for feature ${featureName}. ` +
-            `The feature branch cannot be cleanly rebased onto the default branch. ` +
-            `Resolve conflicts manually and re-run.`
-          );
+          // TSPEC §7.1 (PLAN A-25) — A4 fires immediately before the pre-existing halt
+          // (PROP-REG-01). Both `haltError` calls below are byte-identical to the
+          // tier-disabled/unresolved run; only a `resolved` outcome changes control flow.
+          const a4Context = await gatherA4Context({
+            feature: featureName,
+            preRebaseHead,
+            _git: gitFn,
+            _readFile: readFileFn,
+          });
+          const a4 = await runAdvisorySeamFn({
+            seam: "A4",
+            feature: featureName,
+            seamOps: buildA4SeamOps({ ...a4Context, _git: gitFn, _runCommand: runCommandFn }),
+            config: advisoryConfigResult.config,
+            rungState: advisoryRungState,
+            _agent: agentFn,
+            _appendFile: appendFileFn,
+            _writeFile: writeFileFn,
+            _readFile: readFileFn,
+            _git: gitFn,
+            _log: emit,
+            _now,
+            _sleep,
+            // TSPEC §10.2 N-4 — the escalation notice rides the same `notices` array the merge
+            // phase already uses, and the same report field.
+            _notice: advisoryNotice,
+          });
+          advisoryDispositions.push(a4);
+          if (a4.outcome !== "resolved") {
+            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
+            throw haltError(
+              `Phase DOD — rebase conflict for feature ${featureName}. ` +
+              `The feature branch cannot be cleanly rebased onto the default branch. ` +
+              `Resolve conflicts manually and re-run.`
+            );
+          }
+          // resolved ⇒ the branch is rebased and green; fall through to the DoD loop.
         }
         const dodResult = await dodVerifyLoopFn({
           feature: featureName,
@@ -8306,10 +10351,58 @@ async function main({
             dodResult.lastStatus
               ? `stubs=${dodResult.lastStatus.stubs}, mock_data=${dodResult.lastStatus.mock_data}, unwired=${dodResult.lastStatus.unwired_integrations}, coverage_gap=${dodResult.lastStatus.coverage_below_threshold}, req_gaps=${dodResult.lastStatus.req_gaps}`
               : "verification failed";
+
+          // TSPEC §7.1 (PLAN A-25) — A3 fires immediately before the pre-existing halt. A3 can
+          // NEVER resolve (`permittedActions: []`, A3-6), so this branch is unconditional — no
+          // `if (resolved)` — and the halt below always fires; only the appended classification
+          // (AC-6.3) differs from the tier-disabled/unresolved run.
+          const codeReviewPath = `docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`;
+          let codeReviewText = "";
+          try {
+            const text = await readFileFn(codeReviewPath);
+            codeReviewText = typeof text === "string" ? text : "";
+          } catch {
+            codeReviewText = "";
+          }
+          const a3 = await runAdvisorySeamFn({
+            seam: "A3",
+            feature: featureName,
+            seamOps: buildA3SeamOps({ dodResult, codeReviewText, _readFile: readFileFn }),
+            config: advisoryConfigResult.config,
+            rungState: advisoryRungState,
+            _agent: agentFn,
+            _appendFile: appendFileFn,
+            _writeFile: writeFileFn,
+            _readFile: readFileFn,
+            _git: gitFn,
+            _log: emit,
+            _now,
+            _sleep,
+            _notice: advisoryNotice,
+            // AC-6.3's producer: the real A3 reply is parsed into its governing class by
+            // `summariseA3Classification` (`parseA3Classification` + `governingClass`), and the
+            // driver carries the result out on the disposition as `classificationSummary`.
+            _summarise: summariseA3Classification,
+          });
+          advisoryDispositions.push(a3);
+          // AC-6.3's diagnosis: the classification carried on the disposition (when present) is
+          // appended to the byte-identical halt below, never replaces it.
+          const classificationSummary =
+            (a3 && a3.classificationSummary) ?? "";
           recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", `Failed after ${dodResult.iterations} iterations — ${detail}`, dodResult.iterations);
           throw haltError(
-            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail}`
+            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail} ${classificationSummary}`.trimEnd()
           );
+        }
+        // TSPEC §8.4 (PLAN A-26, OQ-3) — the verified commit sha, captured the moment
+        // `dodResult.passed` becomes true. A read failure leaves it `null` rather than halting:
+        // the field is report-only.
+        try {
+          const dodHeadResult = await gitFn(["rev-parse", "HEAD"]);
+          dodVerifiedCommit =
+            dodHeadResult && dodHeadResult.ok ? String(dodHeadResult.stdout || "").trim() : null;
+        } catch {
+          dodVerifiedCommit = null;
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
       }
@@ -8386,14 +10479,65 @@ async function main({
           _log: emit,
           _now,
           _sleep,
+          // The composition root above, or nothing at all when the tier is off — in which case
+          // `raisePrAndVerifyCi`'s own inert default applies (see `runA5AdvisorySeam`).
+          ...(advisoryTierOn ? { _runAdvisorySeam: runA5AdvisorySeam } : {}),
+          _advisoryRecord: (disposition) => advisoryDispositions.push(disposition),
         });
         prUrl = pubResult.prUrl;
         ciStatus = pubResult.ciStatus;
+        // §9.4 S-3 — A5-6's "no check ever registered" is a property of the PHASE, not of any
+        // disposition, so it is carried out of the phase and onto the summary explicitly.
+        advisoryPubOutcome.noChecks = Boolean(pubResult.noChecks);
         const ciDetail =
           ciStatus === "passed"
             ? `PR ${prUrl} — all GHA checks passed`
             : `PR ${prUrl} — no GHA checks detected within timeout (assumed none configured)`;
         recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
+      }
+
+      // ─── Phase H2: distil the advisory record (TSPEC §9.3, PLAN A-27) ────
+      // Placed strictly between Phase PUB and Phase MERGE (dev:8386/dev:8389 — I-11).
+      // Phase H itself (above) is untouched: at that point A5 has not run yet. The whole step is
+      // fail-open (mirrors this tier's other "notice, never halt" terms — e.g. R-2's failed
+      // record write, and the guard-refusal branch just below) — a transport fault here must
+      // never take down an otherwise-successful pipeline run. `h2Sleep` mirrors the wave-commit
+      // call sites' own `waveSleep` fallback pattern rather than forwarding `_sleep` bare, which
+      // would register this call site as an unresolved E-2 forward (`commitPaths` does not
+      // declare `_sleep` with a default) under RLH-AT-64's composition-root wiring check.
+      if (advisoryTierOn) {
+        const advisoryPath = `docs/${featureName}/ADVISORY-${featureName}.md`;
+        const advisoryLearningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+        const h2Sleep = typeof _sleep === "function" ? _sleep : sleep;
+        try {
+          const check = await checkFileFn(advisoryPath);
+          const recordExists = Boolean(check && check.ok);
+          if (recordExists) {
+            await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
+            const del = await gitFn(["rm", "--", advisoryPath]);
+            if (guardRefused(del)) {
+              notices.push(`ADVISORY record retained: ${firstLine(del && del.stderr)}`);
+            } else if (!del || del.ok !== true) {
+              notices.push(
+                `ADVISORY distil step failed: ${firstLine(del && del.stderr) || "git rm did not succeed"}`
+              );
+            } else {
+              await commitPaths({
+                paths: [advisoryLearningsPath, advisoryPath],
+                message: `chore(advisory): distil ${featureName} advisory record into LEARNINGS`,
+                what: "Phase H2 distil",
+                _git: gitFn,
+                _sleep: h2Sleep,
+                emit,
+              });
+              await gitFn(["push", "origin", "HEAD"]);
+            }
+          }
+        } catch (err) {
+          notices.push(
+            `ADVISORY distil step failed: ${err && err.message ? err.message : String(err)}`
+          );
+        }
       }
 
       // ─── Phase MERGE: Merge & Advance Queue ──────────────────────────────
@@ -8438,6 +10582,9 @@ async function main({
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;
     }
+    // §9.4 S-3 — Phase PUB's completion cap signals through the halt error's own detail field
+    // (`haltError(msg, { completionCap: true })`), which is the only channel a throwing phase has.
+    if (err && err.completionCap === true) advisoryPubOutcome.completionCap = true;
 
     // ─── TSPEC §4.7 / §6.5 — what an operator gets on a halt ────────────────
     // The phase that failed is read off the recorded rows rather than carried in
@@ -8518,6 +10665,12 @@ async function main({
       postmortemPath,
       queueRow,
       notices,
+      dodVerifiedCommit,
+      headSha: await readCurrentHead(),
+      // S-1/T-08-9: `advisory` rides the halt path exactly as `notices` and `queueRow` already
+      // do — a halt that reached at least one advisory-aware phase still reports the seams it
+      // reached, un-distilled (H-4: the record itself is untouched by a halt before Phase H2).
+      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
     });
   }
 
@@ -8544,6 +10697,12 @@ async function main({
     harvestStatus,
     prUrl,
     ciStatus,
+    dodVerifiedCommit,
+    headSha: await readCurrentHead(),
+    // S-1: an enabled tier always reports its five rows, even when every one reads zero
+    // invocations (this run's `advisoryDispositions` stayed empty) — only a disabled tier
+    // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
+    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
   });
 }
 
@@ -8624,7 +10783,20 @@ function buildFinalReport({
   mergeSha = null,
   mergeMethod = null,
   notices = [],
+  // TSPEC §8.4 (PLAN A-26, OQ-3) — `dodVerifiedCommit` is the sha Phase DOD verified; `headSha`
+  // is the branch head at report-build time (not itself reported — only the derived comparison
+  // is). Report-only: no re-verify, no halt on the divergence (DEC-ADV-07).
+  dodVerifiedCommit = null,
+  headSha = null,
+  // S-1: `advisorySummaryRows` output for this run, or `undefined` when the tier never ran
+  // (disabled config, or a halt before any advisory-aware phase). Spread conditionally, like
+  // `prUrl`/`ciStatus` above — a disabled run must never carry a defined `advisory` key at all
+  // (T-10-3/T-10-4 assert `toBeUndefined()`, not merely falsy).
+  advisory = undefined,
 }) {
+  const dodHeadUnverified = Boolean(
+    dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
+  );
   return {
     feature,
     outcome,
@@ -8632,6 +10804,8 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    dodVerifiedCommit,
+    dodHeadUnverified,
     // §4.7's non-skip report lines. Carried as their own field rather than
     // appended to a phase row's `detail`, which oracles pin verbatim.
     notices,
@@ -8648,6 +10822,7 @@ function buildFinalReport({
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
+    ...(advisory ? { advisory } : {}),
   };
 }
 
