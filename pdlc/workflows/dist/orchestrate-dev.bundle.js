@@ -5878,7 +5878,7 @@ async function raisePrAndVerifyCi({
       const a5 = await _runAdvisorySeam({ seam: "A5", feature, prUrl });
       _advisoryRecord(a5);
 
-      if (a5 && a5.outcome !== "escalated") {
+      if (a5 && a5.outcome !== "escalated" && a5.model !== undefined) {
         continue;
       }
       throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
@@ -6908,10 +6908,14 @@ async function main({
 
   const advisoryConfigRaw = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
   const advisoryConfigResult = parseAdvisoryConfig(advisoryConfigRaw);
-  if (advisoryConfigResult.config.enabled && advisoryConfigResult.invalidKeys.length) {
+
+  const advisoryTierOn = advisoryConfigResult.config.enabled;
+  if (advisoryTierOn && advisoryConfigResult.invalidKeys.length) {
     emit(`Advisory config: using defaults for ${advisoryConfigResult.invalidKeys.join(", ")}`);
   }
   const advisoryRungState = { resolved: null };
+
+  const advisoryDispositions = [];
 
   try {
 
@@ -7353,6 +7357,7 @@ async function main({
             _now,
             _sleep,
           });
+          advisoryDispositions.push(a4);
           if (a4.outcome !== "resolved") {
             recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
             throw haltError(
@@ -7397,6 +7402,7 @@ async function main({
             _now,
             _sleep,
           });
+          advisoryDispositions.push(a3);
 
           const classificationSummary =
             (a3 && a3.classificationSummary) ?? "";
@@ -7613,6 +7619,8 @@ async function main({
     ciStatus,
     dodVerifiedCommit,
     headSha: await readCurrentHead(),
+
+    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
   });
 }
 
@@ -7673,6 +7681,8 @@ function buildFinalReport({
 
   dodVerifiedCommit = null,
   headSha = null,
+
+  advisory = undefined,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -7699,6 +7709,7 @@ function buildFinalReport({
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
+    ...(advisory ? { advisory } : {}),
   };
 }
 
