@@ -914,7 +914,7 @@ resolves to `merge` however it was spelled.
 | Seam domain | **Obliged** — present on a pass whose Given obliges it (column 5) | **Permitted but not obliged** | Absent, on every pass | Obliged on which Given |
 |---|---|---|---|---|
 | **PR seam** — every call that reads or mutates a pull request in the target repository | `read-pr` (§6.4's state table cannot be evaluated without it), `create-pr` (AC-3.1) | — | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` | a pass that opens a PR (AT-Q7) |
-| **git seam, invoking tree** | `add`, `commit` (§5.4's single commit) | every **non-mutating read** — `read-branch` (`git rev-parse --abbrev-ref HEAD` and equivalent spellings) and `read-status` — see the paragraph below | every branch operation AC-3.8 forbids — `checkout`, `switch`, `stash`, `reset`, `rebase` — in **any** spelling, plus every merge verb above | a pass that makes a §5.4 commit — i.e. any pass that promotes anything, PR-opening or not (AT-Q7 **and** AT-Q7c) |
+| **git seam, invoking tree** | `add`, `commit` (§5.4's single commit) | every **non-mutating read** — `read-branch` (`git rev-parse --abbrev-ref HEAD` and equivalent spellings) and `read-status` — see the paragraph below | every branch operation AC-3.8 forbids — `checkout`, `switch`, `stash`, `reset`, `rebase` — in **any** spelling, plus every merge verb above | a pass that **makes** the §5.4 commit, PR-opening or not (AT-Q7 **and** AT-Q7c). A promoting pass whose `git add` stages nothing — §5.4's fourth consequence, AT-R5 — makes no commit and is **outside** this Given: it observes `add` and no `commit`, and the obligation is not asserted on it |
 | **git seam, §6.1 clone** | `clone` (§6.1), `create-branch` (§6.2), `add`, `commit` (one per edit, §6.2), `push` (§6.2) | `fetch` — §6.1 obliges a clone *cut from the fetched default branch*, and a `clone` already fetches, so a distinct `fetch` verb is conforming and its **absence** is equally conforming; plus the same **non-mutating reads** (`read-branch`, `read-status`), for the same reason | every merge verb above. AC-3.8's branch prohibition is **not** asserted here: it is scoped to the invoking tree, and inside a throwaway clone a branch-creating spelling resolves to `create-branch` | a pass that opens a PR (AT-Q7) |
 
 **Why the read verbs are permitted rather than absent, and why they are not obliged.** Every
@@ -922,8 +922,10 @@ row-writing pass must report **the branch the §5.4 commit landed on** (AC-3.8b;
 field, §10.4 item 9), including the §5.4 path where `git add` stages nothing and there is no commit
 output to parse it out of. The shipped precedent for that observation is a `git rev-parse
 --abbrev-ref HEAD` read through the git seam (`parseAbbrevRef`,
-`pdlc/workflows/orchestrate-dev.js:3491-3496`; the branch-guard read at `:3585`, beside the same
-seam's `gitWithLockRetry` `:8617` and `commitPaths` `:8669`). A spy over "the resolved verb of every
+`pdlc/workflows/orchestrate-dev.js:3491-3496`; the read itself is `readHeadBranch` (`:3520`), which
+issues `_git(["rev-parse", "--abbrev-ref", "HEAD"])` through the seam at **`:3524`**, and the branch
+guard calls it at `:3580` — beside the same seam's `gitWithLockRetry` `:8617` and `commitPaths`
+`:8669`). A spy over "the resolved verb of every
 call routed through the seam" therefore sees a read verb on a conforming pass, and an oracle whose
 permitted set were `{add, commit}` would be red on correct behaviour. It is **not** obliged, because
 AC-3.8b obliges the *observation*, not a seam: TSPEC (T-04) may resolve the branch name from the
@@ -931,6 +933,12 @@ commit's own output, from a `rev-parse`, or from a runtime-supplied value, and a
 exactly the shape `fetch` has in the clone row. Reads are non-mutating in both trees, so admitting
 them costs the oracle nothing: no read verb is a branch operation AC-3.8 forbids, and no read verb
 is a merge verb.
+
+**The permitted read set is the closed two-member enumeration the table spells** — `read-branch` and
+`read-status` — and not the open class "any non-mutating read". A test author transcribes the closed
+set, so widening it silently would make the containment assertion unfalsifiable at its own boundary;
+a pass that needs a third read verb (`git log`, `git diff`, a `gh pr list`) is a change to this table,
+made here, not a reading of it.
 
 The permitted set of a domain is its obliged column ∪ its permitted-but-not-obliged column. The
 universal assertion is **observed ⊆ permitted**, which is what falsifies a merge on *any* pass,
@@ -943,7 +951,11 @@ not share one. A pass with no guard-set proposal that nevertheless promotes — 
 subset of its permitted set, so the universal assertion is green on it and a set-equality would not
 be. Note the asymmetry this makes explicit: on the invoking tree the assertion is containment
 **bounded on both sides** — obligation below, permission above — and never an equality, because the
-read verbs are optional; equality is asserted on no domain, on any Given.
+read verbs are optional; equality **with a domain's permitted set** is asserted on no domain, on any
+Given. AT-Q7c's two `∅` conjuncts — the PR seam and the clone seam on a no-guard-set pass — *are*
+equalities, with the empty set rather than with a permitted set, and they are deliberate: they are
+what falsifies a pass that quietly clones or reads a PR when nothing routes there, and weakening them
+to containment (which `∅ ⊆ permitted` satisfies vacuously) would leave that row nothing to catch.
 
 Comparison is over the **set** of verbs, not a multiset: §6.2 obliges one commit per edit, so a
 multiset comparison would be red on any pass with more than one promotion (AT-Q2's three) while
