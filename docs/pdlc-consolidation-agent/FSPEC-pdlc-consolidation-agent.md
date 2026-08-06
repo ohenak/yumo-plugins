@@ -83,8 +83,8 @@ terminating always proceeds to the next.
 | 5 | Mint `passId` (§2.5) | — |
 | 6 | Take the in-progress marker (§4) | `refused` when the marker is held and fresh |
 | 7 | Append the `<!-- pdlc:consumed {passId} -->` pair (§3.3, NFR-5) — **complete, in one append, even when empty** | — |
-| 8 | Resolve the advisory model rung (§2.6) | `failed` (`advisory-model-unresolved`) when neither rung resolves |
-| 9 | Read the consumed LEARNINGS bodies; cluster; apply the AC-2.3 bar | — |
+| 8 | Read the consumed LEARNINGS bodies (§3) and issue the pass's **first advisory dispatch** — the clustering call — through `resolveAdvisoryRung` (§2.6). Rung resolution is *observed here, by that real dispatch*, and nowhere earlier | `failed` (`advisory-model-unresolved`) when neither rung resolves; `failed` with **no** reason code when that dispatch fails for any other reason (§2.6 row 4) |
+| 9 | Apply the AC-2.3 bar to the clusters the step-8 dispatch returned | — |
 | 10 | Read `ESCALATIONS.md` (§9) | — |
 | 11 | Compute the AC-5.2 effectiveness table over prior passes (§8.3) | — |
 | 12 | Derive proposals (promotions + §8.5 remediations); apply NFR-4 suppression (§6.4) | — |
@@ -96,6 +96,11 @@ terminating always proceeds to the next.
 Step 7 precedes step 8 deliberately: the consumed pair freezes the legacy-region boundary
 unconditionally (vocabularies §3(a)), so a pass that dies at step 8 has still frozen it. Step 11
 precedes step 12 because a `recurred` verdict is an input to the §8.5 remediation proposals.
+
+**Step 8 is one step, not two, and that is forced by the seam.** §2.6 explains why: the shipped
+resolver has no probe mode, so "resolve the rung" and "make the first advisory dispatch" are the same
+observation. Reading the bodies is therefore inside step 8, because that dispatch's prompt is what
+carries them.
 
 ### 2.3 The volume and cadence tests (AC-1.1, AC-1.2)
 
@@ -156,30 +161,75 @@ artifact carrying the duplicated id, which no contract keys on (log **records** 
 ### 2.6 The model rung (AC-1.5, AC-1.6)
 
 The pass **reuses** `resolveAdvisoryRung` (`pdlc/workflows/orchestrate-dev.js:1833`) — the exported
-resolver whose doc comment (`:1800`) calls it "the **one** ladder the tier ships" — threading its own
-`rungState` (`{ resolved: null }`) exactly as `orchestrate-queue` does
-(`pdlc/workflows/orchestrate-queue.js:1245-1256`). It restates neither `MODEL_ADVISORY` (`:1652`)
-nor `MODEL_ADVISORY_FALLBACK` (`:1653`); those are module-private and stay so.
+resolver whose doc comment (`:1800`) calls it "the **one** ladder the tier ships". It restates
+neither `MODEL_ADVISORY` (`:1652`) nor `MODEL_ADVISORY_FALLBACK` (`:1653`); those are module-private
+and stay so.
 
-| Resolution outcome | Behaviour | Recorded |
-|---|---|---|
-| Primary rung resolves | pass proceeds | the rung it ran on, in the report and in the log row |
-| Primary fails, fallback resolves | pass proceeds; the resolver emits `ADVISORY_MODEL_FALLBACK:` (`orchestrate-dev.js:1859`) and the pass surfaces that line in its report | the fallback rung, named — never a silent downgrade |
-| Neither resolves | the resolver throws its halt error (`:1866`+). The pass **makes no promotion**, appends its terminal row, releases the marker (§4.3), and exits | status `failed`, reason code `advisory-model-unresolved` |
+**Two properties of the shipped resolver govern how it can be reused, and both are stated here
+rather than assumed.**
 
-There is no third rung and no default-model fall-through.
+1. **There is no probe mode.** The doc comment states it in so many words (`:1811-1813`):
+   non-resolution is detected "by classifying the rejection of the **real** dispatch
+   (`isModelResolutionError`), never by a separate probe — the caller's own `prompt` is what goes
+   out". So *resolving the rung* and *making the pass's first advisory dispatch* are one act, and a
+   step that resolved the rung without dispatching anything would have to be a throwaway dispatch
+   this FSPEC declines to spend. Step 8 is therefore stated as **the first advisory dispatch**: the
+   clustering call, carrying the consumed LEARNINGS bodies as its prompt.
+2. **The dispatched skill is a constant, so reuse needs one signature widening.** `ADVISORY_RUNG_SKILL`
+   is `"se-review"` (`:1797`) and is the only skill the resolver dispatches (`:1841`,
+   `_agent(ADVISORY_RUNG_SKILL, prompt, { model })`); the exported signature is
+   `({ _agent, _log, _state, prompt })` (`:1833`) and takes no skill. Reusing it verbatim would send
+   every consolidation prompt to `se-review`. This feature therefore adds an **optional `skill`
+   parameter defaulting to `ADVISORY_RUNG_SKILL`**, so every existing call site is unchanged and the
+   ladder stays single. That is an edit to `pdlc/workflows/orchestrate-dev.js` — a guard-set path —
+   and it is listed as such in §15.3 and constrained at §14.1 T-05. The alternative the corpus
+   baseline §3 sanctions (restating the two literals behind a drift observable) is **not** taken: it
+   would create the second copy of the ladder that comment forbids.
 
-**Step 8's position is forced, and its consequence is stated rather than hidden.** Rung resolution
-cannot be moved before step 7: AC-1.3's table records `failed` as a status that **takes** the
-marker, and vocabularies §3(a) obliges every marker-holding pass to append its consumed pair
-*before any other record it writes* — and an `advisory-model-unresolved` pass does write a record,
-its AC-7.2 terminal row. So a pass that dies at step 8 has already marked its corpus consolidated
-without having read a single LEARNINGS body, and step 15 commits that block. Under the §3.2
-predicate those files are then permanently consolidated: no pass re-enumerates them, and no
+`rungState` is this pass's own `{ resolved: null }`, the shape `orchestrate-queue` initialises at
+`pdlc/workflows/orchestrate-queue.js:1120`. The queue threads that state into `runAdvisorySeam`
+(`:1245-1256`), not into the resolver, and the resolver's only shipped call site is
+`orchestrate-dev.js:3132` inside `runAdvisorySeam` — so **this pass's direct call is a new call
+site**, not an instance of a shipped pattern, and this FSPEC says so rather than citing a precedent
+that does not exist.
+
+| # | Dispatch outcome | Behaviour | Recorded |
+|---|---|---|---|
+| 1 | Primary rung resolves (`{kind: "response"}`) | pass proceeds with the returned clusters | the rung it ran on, in the report (`rung:`) and in the log row |
+| 2 | Primary fails a model-resolution check, fallback resolves | pass proceeds; the resolver emits `ADVISORY_MODEL_FALLBACK:` (`:1859`) and the pass surfaces **that line verbatim** in its report body (§10.4 item 2) | the **fallback** rung, named — never a silent downgrade, and never the primary rung |
+| 3 | Neither rung resolves | the resolver throws its halt error (`:1868`). The pass **makes no promotion**, appends its terminal row, releases the marker (§4.3), and exits | status `failed`, reason code `advisory-model-unresolved` |
+| 4 | The dispatch fails for a reason that is **not** model resolution — the resolver's fourth return, `{kind: "dispatch-error", err}` (`:1857`, `:1867`) | the pass **makes no promotion**, appends its terminal row, releases the marker, and exits — identically to row 3 in every observable except the reason field | status `failed`, **no reason code**, with the error's message surfaced verbatim in the report body |
+
+There is no third rung, no default-model fall-through, and no fifth outcome: rows 1–4 are set-equal
+to the resolver's return and throw set.
+
+**Row 4 carries no reason code deliberately, and the gap is routed upstream.** `reason:` is "zero or
+more reason codes" (§10.3), and `skipped-cadence` already ships carrying none — so an empty reason
+field is a legal row, not an invented value, and nothing here breaches REQ §4b. But an operator
+reading `failed` with an empty reason cannot tell row 4 from a truncated row without opening the
+report body, so this FSPEC records an **erratum against the REQ** asking for a dedicated reason code
+(`advisory-dispatch-failed`, permitted with `failed`) in vocabularies §1 (§14.4). Until that row
+exists, row 4's discriminator is the report body, and AT-M6 asserts it there.
+
+Every other agent dispatch the pass makes — the §8.5 remediation authoring at step 12 and the §5/§6
+proposal authoring at step 13 — goes out through the **same** resolver with the same `rungState`, so
+rows 2–4 are their arms too. A memoised `rungState` means rows 2 and 3 cannot re-occur after step 8
+(`:1844-1849`: with `_state.resolved` set, the cached rung is used and no ladder is entered), but
+row 4 can, and it terminates those steps exactly as it terminates step 8.
+
+**Step 8's position is forced, and its consequence is stated rather than hidden.** The first advisory
+dispatch cannot be moved before step 7: AC-1.3's table records `failed` as a status that **takes**
+the marker, and vocabularies §3(a) obliges every marker-holding pass to append its consumed pair
+*before any other record it writes* — and a `failed` pass does write a record, its AC-7.2 terminal
+row. So a pass that dies at step 8 has already marked its corpus consolidated while producing **no
+promotion, no effectiveness verdict and no proposal** from it, and step 15 commits that block. Under
+the §3.2 predicate those files are then permanently consolidated: no pass re-enumerates them, and no
 vocabularies §1 field exists in which a `failed` pass could record "re-consume these". This FSPEC
 specifies the ordering as required and raises the loss as an upstream item (§14, O-C1); it does not
 invent a recovery channel, which would add an unlisted record type and breach REQ §4b's
-set-equality obligation.
+set-equality obligation. The loss is stated over *value extracted*, not over *bodies read*: fusing
+resolution into the first dispatch means a row-3 or row-4 pass has read the bodies into a prompt
+that produced nothing, which is the same loss by a different route.
 
 ## 3. FSPEC-CONS-02 — The consumed predicate and the LEARNINGS corpus
 
