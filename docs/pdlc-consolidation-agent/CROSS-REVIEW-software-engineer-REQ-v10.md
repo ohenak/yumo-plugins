@@ -50,7 +50,67 @@ ranges over, not about whether a sentence is true.
 
 ## Questions
 
+v9's Q-01 is answered by the shape of the fix rather than by a sentence: the ownership route was
+taken, not the ids route, which decides that `pdlc-engineering-loop` gets its own section or its own
+file rather than interleaving rows — and the file now says so ("a successor feature's vocabulary
+belongs in its own section of this file or in its own file",
+`pdlc-consolidation-vocabularies.md:18-19`). Q-02's relocation question is answered by what happened:
+two more blocks were relocated out (REQ-CONS-01's legacy-region construction, REQ-CONS-03's trailer
+grammar) and the round's fixes were paid for out of the space that freed, not out of a reason. Q-03
+is answered in the affirmative for the vocabularies file — the change-control paragraph makes the
+version pin the maintenance obligation — and the `Cited by` row was in fact updated this round, which
+is the behaviour the question asked about. No prior question is left open.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Not blocking, but it bounds how F-01 lands: the REQ is at **61,096 bytes** against the 61,440-byte hard ceiling (`pdlc/hooks/scripts/check-req-size.sh:41-42`) — **344 bytes** of headroom, 43 fewer than last round, and still above both soft thresholds. F-01's fix as I have written it is byte-neutral or negative (`§1 and §2` → `§1–§4` in three places), so it should not force a relocation. I flag the number only so that the fix is not *expanded* into a paragraph it does not need to be. |
+| Q-02 | For F-01, and it decides which of the two fixes is right: are §3 and §4 intended to be *enumerations under the set-equality oracle* (§4's trailer table is one, on its face) or *narrative constraints* that a downstream layer implements but does not transcribe row-for-row? §1 and §2 are unambiguously the former. If §4 is also the former, the range must include it; if it is the latter, saying so explicitly is what turns "unowned" into "owned, not enumerated". |
+
 ## Positive Observations
+
+- **The fix took the harder half of the finding — the direction the oracle runs — without being
+  asked for it.** My F-01 asked which rows the set-equality obligation ranges over. The revision
+  answered that *and* wrote the symmetry: "a value used here with no row there **and** a row there
+  naming a value this REQ never uses being equally defects. The symmetry is what makes a *deleted*
+  row a breach" (`:566-568`). A one-sided containment check passes when a row is deleted, which is
+  precisely the failure a set-equality oracle exists to catch, and nothing in my finding said so. The
+  same paragraph appears in the shared file (`pdlc-consolidation-vocabularies.md:19-22`), so a
+  successor reading only that file inherits the rule.
+
+- **The version pin turns a shared-file dependency into something a test can transcribe.** "Consumers
+  cite this file **at its `Version`**; a row change that is not accompanied by a version bump is
+  itself a defect" (`:23-24`), and every one of the REQ's five citations names 1.3 or 1.0 to match.
+  That is the mechanism the shipped `pdlc-rcv-baseline.md` family never had, and it is strictly
+  better than the fact-id scheme I offered as the alternative: ids pin *which* rows, a version pins
+  *which bytes*, and a downstream test needs the second to have a fixed expected value at all.
+
+- **AC-5.3's base case is stated over the reachable state, not the tidy one.** The new clause does
+  not say "retire is terminal" and stop; it says terminal is stated over the **proposal**, "since the
+  pending case is the reachable one: once a `retire` proposal for an id is on a PR in state open or
+  merged, that id's ladder has **ended** — a later `ineffective` tick proposes nothing, records
+  `duplicate-suppressed` against that PR, and the AC-7.1 field names `retirement`" (`:423-426`). I
+  replayed it against NFR-4 and the vocabularies join: `duplicate-suppressed` may accompany
+  `promoted`/`promoted-degraded`/`no-op` (`pdlc-consolidation-vocabularies.md:50`), a pass whose
+  every promotion is suppressed is `no-op` (`:65`), and NFR-4's closed-unmerged exclusion means an
+  operator rejection reopens the ladder rather than deadlocking it. The displacement clause can no
+  longer point back into a spent pair, and the `otherwise` that follows keeps the AC-7.1 field's rule
+  total across both cases rather than contradicting it.
+
+- **The relocation was done by the same discipline as last round's, and I could check it the same
+  way.** Two more blocks moved into a shared file at round 10, and the only difference I could find
+  between the removed REQ prose and the new §3 is a dropped `AC-7.2` label on the exempt-record
+  clause — the content, both freeze clauses, the Pass 1 shape and the passId/timestamp argument all
+  came across intact. Twice in a row a large move has cost zero rows, which is not the usual outcome
+  of moving normative text this late.
+
+- **The `generated` predicate got sharper under a finding that was already resolved.** v9 confirmed
+  it; this round rewrote it anyway to be keyed on the producer *by construction* — "*Generated* is a
+  predicate, not an example, and is keyed on the **producer**, never on a path glob" — added the
+  cardinality (four), the anchor for the non-obvious fourth (`build-runtime.mjs:465`, the row the
+  builder itself annotates as underivable from its filename), and wrote the counterexample into the
+  REQ: the `__tests__/fixtures/` copies whose paths contain `dist/` are authored and *do* mint an id.
+  The observation I recorded in v9's positive notes is now the document's own text, which is where it
+  belongs.
 
 ## Recommendation
 
