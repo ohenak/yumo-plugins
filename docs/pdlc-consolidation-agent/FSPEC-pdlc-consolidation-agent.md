@@ -87,8 +87,8 @@ terminating always proceeds to the next.
 | 9 | Apply the AC-2.3 bar to the clusters the step-8 dispatch returned | — |
 | 10 | Read `ESCALATIONS.md` (§9) | — |
 | 11 | Compute the AC-5.2 effectiveness table over prior passes (§8.3) | — |
-| 12 | Derive proposals (promotions + §8.5 remediations); apply NFR-4 suppression (§6.4) | — |
-| 13 | Route each proposal (§5, §6) | — |
+| 12 | Derive proposals (promotions + §8.5 remediations); apply NFR-4 suppression (§6.4) | `failed` with **no** reason code when its advisory dispatch returns `{kind: "dispatch-error"}` (§2.6 row 4) |
+| 13 | Route each proposal (§5, §6) | `failed` with **no** reason code, on the same condition |
 | 14 | Write the consuming-repo artifacts and append the terminal log row (§10) | `promoted` / `promoted-degraded` / `no-op` / `failed` |
 | 15 | Commit the AC-3.8b pathspec (§5.4) | — (a git refusal records `writes-uncommitted`, never changes the status) |
 | 16 | Release the marker (§4.3) | — |
@@ -96,6 +96,15 @@ terminating always proceeds to the next.
 Step 7 precedes step 8 deliberately: the consumed pair freezes the legacy-region boundary
 unconditionally (vocabularies §3(a)), so a pass that dies at step 8 has still frozen it. Step 11
 precedes step 12 because a `recurred` verdict is an input to the §8.5 remediation proposals.
+
+**"Terminates" names a jump, not an exit.** A step whose terminating branch fires stops the pass's
+*decision-making* and goes directly to **step 14**, which appends the terminal row; steps 15 and 16
+then run unchanged, so a terminated pass still commits the §5.4 pathspec and still releases the
+marker. This is how step 8's `failed` already behaves (§2.6 rows 3–4: "appends its terminal row,
+releases the marker") and it is the same for the two rows above; it is stated here once so that no
+terminating branch has to restate it. The one terminal branch that is **not** a jump is step 4's
+`skipped-cadence`, which took no marker, wrote no record and therefore has nothing to append,
+commit or release (§2.4, §12.1 S-01).
 
 **Step 8 is one step, not two, and that is forced by the seam.** §2.6 explains why: the shipped
 resolver has no probe mode, so "resolve the rung" and "make the first advisory dispatch" are the same
@@ -210,8 +219,11 @@ There is no third rung, no default-model fall-through, and no fifth outcome: row
 to the resolver's return and throw set.
 
 **Row 4 carries no reason code deliberately, and the gap is routed upstream.** `reason:` is "zero or
-more reason codes" (§10.3), and `skipped-cadence` already ships carrying none — so an empty reason
-field is a legal row, not an invented value, and nothing here breaches REQ §4b. But an operator
+more reason codes" (**§10.3**, which is where the field's cardinality is defined and is the whole
+authority for this claim) — so an empty reason field is a legal row, not an invented value, and
+nothing here breaches REQ §4b. (An earlier draft cited `skipped-cadence` as the precedent for an
+empty `reason:`. That is withdrawn: a `skipped-cadence` tick appends **no row at all** (§10.1,
+§12.1 S-01), so it is a precedent for nothing about a row's fields.) But an operator
 reading `failed` with an empty reason cannot tell row 4 from a truncated row without opening the
 report body, so this FSPEC records an **erratum against the REQ** asking for a dedicated reason code
 (`advisory-dispatch-failed`, permitted with `failed`) in vocabularies §1 (§14.4). Until that row
@@ -221,7 +233,25 @@ Every other agent dispatch the pass makes — the §8.5 remediation authoring at
 proposal authoring at step 13 — goes out through the **same** resolver with the same `rungState`, so
 rows 2–4 are their arms too. A memoised `rungState` means rows 2 and 3 cannot re-occur after step 8
 (`:1844-1849`: with `_state.resolved` set, the cached rung is used and no ladder is entered), but
-row 4 can, and it terminates those steps exactly as it terminates step 8.
+row 4 can.
+
+**A row-4 dispatch-error at step 12 or step 13 is terminal, and its observables are named rather
+than inherited.** §2.2 now carries the `Terminates` cell for both steps, §12.1 carries S-11c, and
+AT-M9 constructs it. It terminates in the §2.2 sense — a jump to step 14 — so it is *not* identical
+to step 8 in what it leaves behind, and the differences are exactly these:
+
+| Observable | Step-8 row 4 (S-11b) | Step-12 / step-13 row 4 (S-11c) |
+|---|---|---|
+| Terminal status / reason | `failed`, no reason code | identical |
+| §10.2 order-2 failure-mode records | none — no proposal was derived | one per proposal the pass **had already routed** before the failure, and **none** for a proposal it had not; a partially-routed pass is therefore readable from the log |
+| §10.2 order-3 effectiveness table | emitted (steps 10–11 preceded the failure only from step 12 on) — at step 8 the table does not yet exist and is **not** emitted | emitted in full: step 11 completed |
+| §5.4 commit (step 15) | runs, over the §5.4 pathspec | runs, identically — including any `DOMAIN-CONSTRAINTS.md` / `DECISIONS-{topic}.md` append a step-13 route had already made, so partial work is durable rather than orphaned on disk |
+| `writes-uncommitted` | only if git refuses (§12.1 S-12) | identical — termination never implies it |
+| Report body | the error message verbatim (§10.4 item 2) | the error message verbatim, **and** the routed / unrouted split of the pass's proposals |
+
+Nothing here invents a record type or a reason code: the split above is rendered inside the §10.4
+sections that already exist (item 4 promotions by route, item 8 deferred), so REQ §4b's set-equality
+obligation is untouched. Rows 2 and 3, being unreachable after step 8, are given no such row.
 
 **Step 8's position is forced, and its consequence is stated rather than hidden.** The first advisory
 dispatch cannot be moved before step 7: AC-1.3's table records `failed` as a status that **takes**
