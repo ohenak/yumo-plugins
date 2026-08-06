@@ -39,8 +39,111 @@ today, which is why none is filed higher.
 
 ## Questions
 
+No open questions. None of the three findings is a request for information: F-54's fix is a version
+digit, F-55's is naming a file inside two sentences that already exist, and F-56 is a measurement
+with a stated next step.
+
 ## Positive Observations
+
+- **The round split "owned" from "enumerated" instead of just widening the range, which is the
+  distinction the oracle actually needs — and I checked the split against the sections rather than
+  against its own summary.** F-52 asked only for "§1 and §2" → "§1–§4". The round gave that, then
+  qualified it: §1, §2 and §4 are enumerations under the set-equality oracle, §3 is owned normative
+  prose carrying no row oracle (`pdlc-consolidation-vocabularies.md:18-27`, mirrored at REQ
+  `:560-562`). Blind widening would have put §3 under a row oracle it cannot satisfy — §3
+  (`:102-154`) is prose plus one fenced grammar example, with no table to transcribe — and would have
+  produced a property no implementer could write. Meanwhile §4 (`:156-170`) is exactly what the
+  oracle should reach: a two-row derived-names table and a four-row trailer table. So the
+  `PDLC-CONSOLIDATION-SOURCES` row whose silent deletion v10 found unpunished is now covered by the
+  symmetric rule, and the range clause names the four-row table explicitly (`:563-565`) so a
+  PROPERTIES author does not have to infer which tables count.
+- **Both relocations were checked for loss, and both citations point at text that says what is
+  attributed to it.** `ef6eb17` removed REQ-CONS-01's restatement of the two freeze clauses and
+  AC-1.3's restatement of the write-granularity obligation, leaving citations to vocabularies §3.
+  I read §3 rather than trusting the commit message: `:143-154` carries both freeze clauses in full,
+  including the empty-pair case ("even when its consumed set is empty … so the boundary is frozen
+  unconditionally by the first pass"), the single `refused`-row exemption with its
+  no-field-is-ever-a-basename argument, and the explicit "The in-progress marker is **not** a second
+  exempt record: it lives in its own file" — which is the clause the REQ kept inline (`:99-100`) and
+  correctly kept, since it is the REQ's own disambiguation. `:123-132` carries the write-granularity
+  rule with the two consequences AC-1.3 now cites in one line instead of four. Nothing a test needs
+  was left behind in either move.
+- **REQ-CONS-06's preamble now cites the baseline's two sections and states its two obligations,
+  which is the shape a test author wants.** The v10 text recapitulated §1's fate table and §2's
+  absence finding in a single 7-line paragraph; the new one (`:447-451`) names §1 and §2, then states
+  what this REQ takes from them as lettered obligations — "(a) REQ-CONS-06 consumes
+  `docs/_queue/ESCALATIONS.md` … and never a destroyed artifact, so no count is ever derived from
+  LEARNINGS advisory text" and "(b) Because §2 finds it absent at HEAD, REQ-CONS-06 is specified
+  **absent-first**". Both are testable as written: (a) is a negative with a positive on the same path
+  (the count comes from `ESCALATIONS.md`, not from LEARNINGS text), and (b) names the fixture state
+  (tier off) the AC-6.1 tests run in. I verified the baseline still supports both — `:22-30` is the
+  fate table naming `ESCALATIONS.md` durable and `ADVISORY-{feature}.md` deleted at H2, `:33-44` is
+  the absent-at-HEAD finding with its `advisoryTierOn` / `parseAdvisoryConfig` citations.
+- **The version repin was complete rather than partial.** All six vocabularies citations in the REQ
+  moved 1.3 → 1.4 in the same round the file's header did (`:83`, `:99`, `:182`, `:222`, `:398`,
+  `:557` against `pdlc-consolidation-vocabularies.md:7`), and the file's `Cited by` row was updated
+  to match the actual citation set — it now lists `§5` and `AC-3.7`, and I confirmed AC-3.7 does cite
+  vocabularies §4 (REQ `:268`, "the PR body carries the `PDLC-CONSOLIDATION-PASS` trailer
+  (vocabularies §4, cited by the REQ-CONS-03 preamble)"). A partial repin is the failure mode that
+  makes a pinned citation worse than none; this one has no stragglers.
+- **`check-req-size.sh` is genuinely non-blocking, which is why F-56 is Process and not a delivery
+  risk.** I read the script to the end rather than assuming: every path prints a
+  `PostToolUse`/`additionalContext` JSON line and falls through to `exit 0`
+  (`pdlc/hooks/scripts/check-req-size.sh`, final block). So the 331-byte margin degrades the
+  document's headroom, not the pipeline's ability to run.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 3 Low.
+
+Both v10 Lows are dispositioned on their mechanism. F-52 is resolved and resolved better than asked:
+the round widened ownership to §1–§4 in both files *and* split the owned set into enumerations
+(§1/§2/§4, under the symmetric set-equality rule) and owned normative prose (§3, no row oracle) —
+so §4's four-row trailer table is now covered, a deleted `PDLC-CONSOLIDATION-SOURCES` row is a
+breach, and §3 is not saddled with an oracle it cannot satisfy. F-53 was complied with in the
+required order, on the two candidates v10 named, with no loss of anything a test needs; only its
+measurement failed to improve, and that is refiled as F-56.
+
+Applying the Challenger bar to each of the three remaining candidates rather than to their count:
+
+- **F-54** would be a Medium if any value a downstream test transcribes had changed under a frozen
+  version. None did — the baseline's diff touches its `Cited by` row and inserts a governance
+  paragraph; §1's fate table, §2's absence finding, §3's ladder and §4's limit are byte-identical.
+  And the file declares itself outside any row oracle, so nothing downstream pins a row of it. It is
+  a self-breach of a new clause, not a drift a test can observe.
+- **F-55** would be a Medium if the ambiguity were undecidable. It is not: the range clause pins
+  `Version 1.4`, which only the vocabularies file carries, and the baseline file states the answer in
+  its own words. A PROPERTIES author reaches the right oracle; they just have to cross two documents
+  to be sure of it.
+- **F-56** is a measurement inside a warn-only budget, filed `Process`. The script exits 0 on every
+  path, so nothing is blocked.
+
+I re-derived every factual claim in the changed text rather than accepting the relocation as
+truth-preserving: the six repinned vocabularies citations against the file's `Version` 1.4 header;
+§3's freeze clauses and write-granularity rule against the text the REQ stopped restating
+(`:123-131`, `:143-154`); §4's two-row and four-row tables against the classification that calls it
+an enumeration (`:156-170`); the baseline's §1 table, §2 absence finding and §4 heading against
+REQ-CONS-06's new preamble and the honest-limit line; AC-3.7's vocabularies §4 citation (`:268`)
+against the file's updated `Cited by` row; and `check-req-size.sh`'s limits and its `exit 0`. All
+resolve.
+
+What should change, in order — all three are single edits:
+
+1. **F-54** — Bump `docs/_constraints/pdlc-advisory-corpus-baseline.md` to `Version` 1.1 and repin
+   the REQ's three citations (`:202`, `:448`, `:474`). Four characters plus three, and it makes the
+   file's own new clause true of the file.
+2. **F-55** — Name the vocabularies file in §4b's classification sentence ("Of **the vocabularies
+   file's** owned sections, §1, §2 and §4 are enumerations …") and add to §5's deliverable that the
+   baseline's four owned sections carry no row oracle. ~40 bytes.
+3. **F-56** — Do not plan a relocation for round 12; there is little restatement left to move and
+   the two fixes above fit in the remaining 331 bytes. If the document must grow again after that,
+   move §4b's change-control machinery to its own `docs/_constraints/` file rather than trimming a
+   reason.
+
+No upstream defects were found. Every `file:line` in the changed text and in both edited
+`docs/_constraints/` files resolves to a real authority saying what is attributed to it. No ERRATUM
+lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
