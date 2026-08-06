@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 3.0 | 2026-08-06 |
+| pdlc | draft | Claude | 4.0 | 2026-08-06 |
 
 ## 1. Scope and entry obligations
 
@@ -36,7 +36,7 @@ this layer first, and §15 records where each row is used.
 | Delegated by | Question | Discharged at |
 |---|---|---|
 | REQ AC-5.3 | Which of `revision` / `retirement` a pass proposes for an `ineffective` promotion | §8.5 |
-| REQ AC-5.1 | The deterministic derivation of `failure-mode-id` from `phase` and `artifact` | §8.1 |
+| REQ AC-5.1 | The deterministic derivation of `failure-mode-id` from `phase` and the subject `artifact` (§8.1's `target` is a separate, non-keying field) | §8.1 |
 | REQ vocabularies §4 | How the `{n}` of `passId` is derived on a given calendar date | §2.5 |
 | REQ AC-1.1, AC-7.2 | The order in which a pass appends its records, and the log row's field grammar | §10.2, §10.3 |
 | REQ AC-5.2 | How a promotion's `phase` population is decided per consumed LEARNINGS | §8.3 |
@@ -1883,8 +1883,8 @@ PROPERTIES' (DC-09).
 | AT-F14 | operator | an ordinary `promote` with no remediation | the pass reports | the `revision`/`retirement` field is **absent**, not empty-valued |
 | AT-F15 | operator | a **constructed** corpus fixture: a LEARNINGS whose §5 Open Item carries one `failure-mode-id` line byte-equal to one of three recorded promotions' ids, the other two recorded promotions being unnamed by any corpus file | a pass consumes it | the verdict is `recurred` for **exactly** the named promotion, and is decided on the other two by §8.3's remaining arms without reference to the id. This is a **receive-side** test and is stated as one: the producing side (a harvest agent placing the id) is an LLM invocation with no reproducible output, is therefore untestable here, and is carried as O-C6 rather than claimed by this row |
 | AT-F16 | operator | a LEARNINGS carrying a `failure-mode-id` that matches **no** record in the log | a pass consumes it | it is reported as a parse notice and contributes to **no** verdict; no promotion is invented for it and the pass does not abort |
-| AT-F17 | operator | an `ineffective` promotion with no spent alternative, whose `artifact` **exists** at the pass's HEAD (§8.5 row 3) | the remediation is chosen | `revision` is proposed and the report field names `revision`. Run twice over one fixture, the choice is identical — the predicate is a file-existence test, so it carries no free-text match |
-| AT-F18 | operator | an `ineffective` promotion with no spent alternative, whose `artifact` has been **deleted** since the promotion landed (§8.5 row 4) | the remediation is chosen | `retirement` is proposed — there is nothing left to revise — and the report field names `retirement` |
+| AT-F17 | operator | an `ineffective` promotion with no spent alternative, whose **subject** `artifact` **exists** at the pass's HEAD (§8.5 row 3) | the remediation is chosen | `revision` is proposed and the report field names `revision`. Run twice over one fixture, the choice is identical — the predicate is a file-existence test, so it carries no free-text match |
+| AT-F18 | operator | an `ineffective` promotion with no spent alternative, whose **subject** `artifact` has been **deleted** since the promotion landed (§8.5 row 4) | the remediation is chosen | `retirement` is proposed — there is nothing left to revise — and the report field names `retirement` |
 
 ### 13.8 Advisory corpus (§9)
 
@@ -1997,7 +1997,7 @@ row names a criterion the REQ does not carry.
 | AC-1.3 | §4.1, §4.2, §4.3, §4.4 | AT-M1, AT-M2, AT-M3, AT-M5, AT-K6 |
 | AC-1.4 | §5.3, §8.5, §8.7, §12.1 | AT-K3, AT-L2, AT-F13 |
 | AC-1.5 | §2.6, §10.3 | AT-M7, AT-M8 (the `rung:` field names the rung actually run on, asserted on both branches) |
-| AC-1.6 | §2.6, §12.1 S-11, S-11b, S-11c | AT-M4 (neither resolves), AT-M6 (first-dispatch error), AT-M9 (post-step-8 dispatch error), AT-M10 (the widened resolver's default is unchanged), AT-M7 (fallback resolves, no silent downgrade) |
+| AC-1.6 | §2.6, §12.1 S-11, S-11b, S-11c | AT-M4 (neither resolves), AT-M6 (first-dispatch error, incl. the absent effectiveness table), AT-M6b (the `refused` arm of the same negative), AT-M9 (post-step-8 dispatch error), AT-M10 (the widened resolver's default is unchanged), AT-M7 (fallback resolves, no silent downgrade) |
 | AC-2.1 | §5.2, §5.4 | AT-R2 |
 | AC-2.2 | §5.2, §5.4 | AT-R6, AT-R6b |
 | AC-2.3 | §5.2, §9.4 | AT-A4 |
@@ -2008,14 +2008,14 @@ row names a criterion the REQ does not carry.
 | AC-3.4 | §10.2, §10.3 | AT-L1 |
 | AC-3.5 | §6.3, §5.3 | AT-Q6, AT-Q8, AT-K2, AT-K7 |
 | AC-3.6 | §6.2 | AT-Q1 |
-| AC-3.7 | §6.5 | AT-Q7 (runtime set-equality), AT-Q7b (supplementary source check) |
+| AC-3.7 | §6.5 | AT-Q7 (runtime containment + obligation on a PR-opening pass), AT-Q7c (containment on a pass that opens none), AT-Q7b (supplementary source check) |
 | AC-3.8 | §6.1, §12.4 | AT-Q1, AT-R3 |
 | AC-3.8b | §5.4, §5.5 | AT-R3, AT-R4, AT-R5 |
 | AC-4.1 | §7.1 | AT-K5 |
-| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5, AT-K6 (all five readings of `credential: absent`) |
+| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5, AT-K6 (all six row shapes across §10.3's three readings of `credential: absent`) |
 | AC-4.3 | §7.3, §6.3 | AT-K2, AT-K3, AT-K7 |
 | AC-4.4 | §7.2 | AT-K1 |
-| AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4 |
+| AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4, AT-R6b (the subject/target split: a guard-set **subject** with a `docs/_decisions/` **target**, and the intra-pass merge) |
 | AC-5.2 | §8.3, §8.4 | AT-F5, AT-F6, AT-F7, AT-F8, AT-F15, AT-F16 |
 | AC-5.3 | §8.5 | AT-F9, AT-F10, AT-F11, AT-F12, AT-F14, AT-F17, AT-F18 |
 | AC-5.4 | §8.6, §5.3 | AT-F10, AT-Q5 |
@@ -2025,14 +2025,14 @@ row names a criterion the REQ does not carry.
 | AC-6.3 | §9.5, §9.2 | AT-A3, AT-A6 |
 | AC-7.1 | §10.3, §10.4 | AT-L4, AT-L5, AT-K7, AT-P10 |
 | AC-7.2 | §10.1, §10.3, §4.4 | AT-C3, AT-L1, AT-L2, AT-L3 |
-| NFR-1 | §5.1, §6.5, §12.4 | AT-Q7, AT-Q7b |
+| NFR-1 | §5.1, §6.5, §12.4 | AT-Q7, AT-Q7b, AT-Q7c, AT-R6 (an AC-2.2 promotion whose subject is a guard-set path writes only its `docs/_decisions/` target) |
 | NFR-2 | §7.4, §10.5 | AT-K5 |
 | NFR-3 | §5.2, §2.3 | AT-C8 (comparative: one corpus yields a set-equal promotion set under `cadence` and under `volume`) |
 | NFR-3a | §10.3 | AT-C1, AT-C2, AT-C4 |
 | NFR-4 | §6.4, §8.1, §8.2 | AT-Q3, AT-Q4, AT-Q5, AT-Q9, AT-F1 (PR carrier); AT-Q10, AT-Q11, AT-Q12 (consuming-repo carrier — `enacted`, `absent`, and the degraded record that must not suppress) |
 | NFR-5 | §3.3, §12.4 | AT-P6, AT-P2, AT-P8, AT-P9, AT-P11 |
 | §4a config | §11 | AT-N1, AT-N2, AT-N3, AT-N4 |
-| §4b vocabularies | §15.2, §10.3 | AT-L5 (enumerated-class fields only; §14.4 ER-1/ER-2 route the two missing rows) |
+| §4b vocabularies | §15.2, §10.3 | AT-L5 (enumerated-class fields only; §14.4 ER-1/ER-2/ER-4 route the three gaps) |
 
 ### 15.2 Vocabularies §1 rows → where this FSPEC uses each
 
@@ -2238,7 +2238,7 @@ falsifies it; none of them is new here.
 | # | Rule | Section | AT |
 |---|---|---|---|
 | BR-17 | The pattern-vs-coincidence bar is unchanged: recurrence across ≥2 unrelated features, **or** a single occurrence stating an obviously generalising standing invariant. The trigger decides whether a pass runs, never what clears the bar (NFR-3). | §5.2 | AT-A4, AT-C2 |
-| BR-18 | A proposal has exactly one canonical repository-root-relative target path — never a glob, never a directory — and that path alone decides the route. | §5.1 | AT-R1 |
+| BR-18 | A proposal has exactly one canonical repository-root-relative **target** path (§8.1's `target`) — never a glob, never a directory — decided by the promotion's kind (§5.2), and that path alone decides the route. The promotion's **subject** `artifact` keys the id and never routes; the two coincide only for a process-learning promotion. | §5.1, §5.2, §8.1 | AT-R1, AT-R6 |
 | BR-19 | A target path under any member of `MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48-53` — `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/`) takes the PR route. No code path in the pass writes such a path in any tree (NFR-1). | §5.1, §6 | AT-R1, AT-Q1 |
 | BR-20 | `DOMAIN-CONSTRAINTS.md` and `DECISIONS-{topic}.md` targets are applied directly to the consuming repo; any other non-guard path is written to the proposal file and **never applied**. | §5.1, §5.2, §5.3 | AT-R2, AT-Q6 |
 | BR-21 | All consuming-repo writes of one pass land in **one** commit, pathspec-scoped per AC-3.8b, never `-a`. | §5.4 | AT-R2, AT-R3, AT-R5 |
@@ -2268,10 +2268,10 @@ falsifies it; none of them is new here.
 
 | # | Rule | Section | AT |
 |---|---|---|---|
-| BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored file. | §8.1, §8.2 | AT-F1, AT-F2, AT-F3 |
+| BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically from `phase` and its **subject** `artifact`, one **`target`** path decided by its kind (§5.2) and never folded into the id, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored subject file. | §8.1, §8.2, §5.2 | AT-F1, AT-F2, AT-F3, AT-R6b |
 | BR-34 | Every prior promotion gets a verdict on every reporting pass: `prevented` / `recurred` / `insufficient-evidence` — a `no-op` pass restates them unchanged (AC-1.4). | §8.3, §12.3 | AT-F5, AT-F6, AT-F7, AT-F8 |
 | BR-35 | `recurred` on two consecutive counted passes ⇒ state `ineffective`, and a `revision` or `retirement` proposal is emitted. | §8.5 | AT-F9, AT-F10 |
-| BR-35a | Which alternative is proposed is decided by spent-alternative rows first, then by **one file-existence test** on the promotion's `artifact` — never by a match on `symptom`, which is non-keying free text the recurrence evidence does not carry. | §8.5, §8.1 | AT-F17, AT-F18 |
+| BR-35a | Which alternative is proposed is decided by spent-alternative rows first, then by **one file-existence test** on the promotion's **subject** `artifact` (never its `target`) — never by a match on `symptom`, which is non-keying free text the recurrence evidence does not carry. | §8.5, §8.1 | AT-F17, AT-F18 |
 | BR-35b | A `failure-mode-id` reaches a LEARNINGS only by verbatim copy from an existing log record; the ids appearing in the corpus are a subset of the recorded ids, and an unmatched id is a parse notice, never a verdict. | §8.4 | AT-F15, AT-F16 |
 | BR-36 | `insufficient-evidence` on `consolidation.unmeasurablePasses` consecutive evaluated passes (default `3`) ⇒ state `unmeasurable`. | §8.7, §11.2 | AT-F13 |
 | BR-37 | Advisory counts come only from `docs/_queue/ESCALATIONS.md`; no count is ever derived from LEARNINGS advisory prose. | §9.1, §9.2 | AT-A3, AT-A7 |
