@@ -4,7 +4,7 @@
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
 | Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, REQ-CONS-01, REQ-CONS-03 preamble, AC-1.3, AC-3.3, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
-| Version | 1.3 · 2026-08-06 |
+| Version | 1.4 · 2026-08-06 |
 
 **Why this file exists.** The consolidation REQ's enumerated vocabularies and the phase observable
 are the largest self-contained block in that document, are read by every downstream layer, and are
@@ -15,12 +15,15 @@ against the reasons the REQ exists to carry.
 **No cell in any table below may use a positional back-reference.** Every *May accompany status*
 cell names its permitted set explicitly, so inserting a row can never silently re-point a neighbour.
 
-**Change control, and who owns these rows.** `REQ-pdlc-consolidation-agent` **owns every row of §1
-and §2** and changes none belonging to anyone else; a successor feature's vocabulary belongs in its
-own section of this file or in its own file, never interleaved into §1 or §2. The defect rule is
-**symmetric in both directions**: a value that REQ names with no row here, **and** a row here naming
-a value that REQ never uses, are equally defects — so a *deleted* row is as much a breach as a
-missing one, which is what makes the downstream set-equality oracle meaningful rather than a
+**Change control, and who owns these rows.** `REQ-pdlc-consolidation-agent` **owns every section of
+this file — §1–§4 entire** — and changes none belonging to anyone else; a successor feature's
+vocabulary belongs in its own new section of this file or in its own file, never interleaved into
+§1–§4. Of the owned sections, **§1, §2 and §4 are enumerations** — their tables are transcribed
+row-for-row downstream and are under the set-equality oracle below — while **§3 is owned normative
+prose**, binding but not enumerated, so it carries no row oracle. The defect rule over the enumerated
+sections is **symmetric in both directions**: a value that REQ names with no row here, **and** a row
+here naming a value that REQ never uses, are equally defects — so a *deleted* row is as much a breach
+as a missing one, which is what makes the downstream set-equality oracle meaningful rather than a
 one-sided containment check. Consumers cite this file **at its `Version`**; a row change that is not
 accompanied by a version bump is itself a defect.
 
