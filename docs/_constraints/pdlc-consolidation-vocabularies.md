@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4) |
-| Version | 1.0 · 2026-08-06 |
+| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, AC-1.3, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
+| Version | 1.1 · 2026-08-06 |
 
 **Why this file exists.** The consolidation REQ's enumerated vocabularies and the phase observable
 are the largest self-contained block in that document, are read by every downstream layer, and are
@@ -86,3 +86,33 @@ converge phase: the shared review loop builds `POSTMORTEM-${phaseId}-${feature}.
 `phase: "CR"` (`:10255-10257`), and the halt path builds the same name from whatever phase halted (`:10603`). So `POSTMORTEM-CR-*` is producible and
 decides CR for the file naming it; a file naming none decides no phase. Any phase the mapping cannot decide for a pre-convention file counts as
 **not** exercised — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`.
+
+## 3. The consolidation log's record grammar
+
+`docs/_decisions/.consolidation-log.md` is written by more than one record type, so its grammar is
+stated here once for every feature that reads or appends to it.
+
+**Consumption is recorded only inside a delimited block.** The shipped un-consolidated predicate is a
+bare substring test over the whole file (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, read at `:32`),
+so any other record carrying a LEARNINGS basename — a PR title, a failure mode's `artifact` field, an
+effectiveness row — would falsely mark that file consolidated. The block is:
+
+```
+<!-- pdlc:consumed {passId} -->
+LEARNINGS-{feature}.md      (one basename per line)
+<!-- /pdlc:consumed -->
+```
+
+The predicate matches a basename **only within** such a block, and **no other record type may appear
+inside one**. `nudge-consolidation.sh:41` is scoped the same way by the consolidation feature, so the
+hook and the pass keep one predicate rather than two — which is what makes "the block names exactly
+the consumed set" enforceable by the predicate that consumes it.
+
+**Write granularity: every write is an append of one whole record at end of file.** A whole-file
+read-modify-write of the log is **forbidden**, not merely unnecessary: it is the one shape that loses
+a concurrent append, and it is why the log needs no lock. The two writes that would have violated it
+are decided away rather than serialised — an in-progress marker's take and release are in-place edits
+of a whole small file, so the marker lives in its own file (`docs/_decisions/.consolidation-lock`),
+never in the log; and a pass's `<!-- pdlc:consumed {passId} -->` pair is emitted **complete, in one
+append**, its consumed set fixed before any promotion work. Two passes' records therefore interleave
+in either order without loss.

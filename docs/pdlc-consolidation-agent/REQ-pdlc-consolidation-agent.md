@@ -75,21 +75,15 @@ test** — durable against LEARNINGS date edits and already shipped — and upda
 
 **The predicate's corpus is a delimited region, not the whole log.** The shipped predicate is a bare
 substring test over the whole of `docs/_decisions/.consolidation-log.md` (`:41`, read at `:32`), and
-this feature writes further record types into that same file (AC-3.4's PR URLs, AC-5.1's
-failure-mode records — whose `artifact` field may legitimately be a LEARNINGS path — and AC-5.2's
-effectiveness table), any of which could contain a basename and falsely mark that file
-consolidated. So consumption is recorded **only** inside a delimited block:
-
-```
-<!-- pdlc:consumed {passId} -->
-LEARNINGS-{feature}.md      (one basename per line)
-<!-- /pdlc:consumed -->
-```
-
-The predicate matches a basename **only within** such blocks; no other record type may appear inside
-one. This feature updates `pdlc/hooks/scripts/nudge-consolidation.sh:41` to scope its test the same
-way, so the hook and the pass keep one predicate rather than two. This is what makes NFR-5's
-"exactly the consumed set" enforceable by the predicate that consumes it.
+this feature writes further record types into that same file (AC-3.4's PR URLs, AC-5.1's failure-mode
+records — whose `artifact` field may legitimately be a LEARNINGS path — and AC-5.2's effectiveness
+table), any of which could contain a basename and falsely mark that file consolidated. So consumption
+is recorded **only** inside the delimited `<!-- pdlc:consumed {passId} -->` block whose grammar,
+exclusivity rule ("no other record type may appear inside one") and append-only write granularity are
+stated in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** and are binding here. This
+feature updates `pdlc/hooks/scripts/nudge-consolidation.sh:41` to scope its test to those blocks, so
+the hook and the pass keep one predicate rather than two — which is what makes NFR-5's "exactly the
+consumed set" enforceable by the predicate that consumes it.
 
 **What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md` **exists** and predates every convention this
 feature introduces: a markdown pass log whose `## Pass 1 — 2026-07-29` records its consumed set as a two-column table of **full paths** (one row per
@@ -193,12 +187,11 @@ pass — the never-fires failure this datum prevents.
   is all its evidentiary purpose needs. It writes **no** consumed block — only marker-holding passes emit one (REQ-CONS-01) — so it never touches the
   legacy-region boundary.
 
-  **Why no lock is needed: the write-granularity obligation.** Every write to `.consolidation-log.md`, by any pass, is a single **append of one whole
-  record at end of file**. A whole-file read-modify-write of the log is **forbidden**, not merely unnecessary: it is the one shape that loses a
-  concurrent append. The two writes that would have violated it are decided away rather than serialised — the marker's take and release are in-place
-  edits, so the marker lives in `.consolidation-lock` (above); and the winner's `<!-- pdlc:consumed {passId} -->` pair is emitted **complete, in one
-  append**, its consumed set fixed at step 1 before any promotion work (NFR-5). So the loser's refused row and the winner's records interleave in either
-  order without loss, which is what makes both durability claims above true.
+  **Why no lock is needed: the write-granularity obligation** (`docs/_constraints/pdlc-consolidation-vocabularies.md` §3, binding here). Every write to
+  `.consolidation-log.md`, by any pass, is a single **append of one whole record at end of file**; the whole-file read-modify-write is forbidden. That
+  is why the marker lives in `.consolidation-lock` (its take and release are in-place edits) and why the winner's `<!-- pdlc:consumed {passId} -->` pair
+  is emitted complete, in one append, its consumed set fixed at step 1 before any promotion work (NFR-5). So the loser's refused row and the winner's
+  records interleave in either order without loss, which is what makes both durability claims above true.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that dies mid-flight cannot wedge the cadence. An
