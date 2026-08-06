@@ -797,13 +797,25 @@ carriers**, one per route, because a promotion that never becomes a PR never app
 | Route | Carrier of the key set | Observed states |
 |---|---|---|
 | §6 PR route (guard-set targets) | the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs in the target repository | `open` / `merged` / `closed`-unmerged / reopened — the table below |
-| §5.2 consuming-repo route (`DOMAIN-CONSTRAINTS.md`, `DECISIONS-{topic}.md`) and the §5.3 proposal-file route | the **§8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`**, each of which carries its `failure-mode-id` and its `action` (§10.2 order 2) | `enacted` (a prior pass's record carries this pair) / `absent` (no record does) — a two-member set, read from the same log text the §3.2 predicate reads |
+| §5.2 consuming-repo route (`DOMAIN-CONSTRAINTS.md`, `DECISIONS-{topic}.md`) and the §5.3 proposal-file route | the **§8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`**, each of which carries its `failure-mode-id`, its `action` and its `route` as **fields of the §8.1 record** (§8.1 is normative for the record's shape; §10.2 order 2 is when it is written) | `enacted` / `absent` — a two-member set defined below, read from the same log text the §3.2 predicate reads |
 
-**The consuming-repo carrier's rule.** A proposal whose pair is `enacted` — some prior pass's
-failure-mode record in the log carries the same `(failure-mode-id, action)` — is **suppressed**: the
-pass appends nothing to `DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` for it and records
-`duplicate-suppressed` naming the pair and the `passId` of the record that enacted it, in place of a
-PR URL. So re-running a pass over the same corpus does **not** append the same constraint twice.
+**The consuming-repo carrier's rule, and what `enacted` means.** A pair is `enacted` when some prior
+pass's failure-mode record carries the same `(failure-mode-id, action)` **and that record's `route`
+is not `degraded`** — i.e. the write actually landed in the consuming repo. A pair is `absent`
+otherwise. An `enacted` proposal is **suppressed**: the pass appends nothing to
+`DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` for it and records `duplicate-suppressed` naming
+the pair and the `passId` of the record that enacted it, in place of a PR URL. So re-running a pass
+over the same corpus does **not** append the same constraint twice.
+
+**The `route`-conditioning is the point, not a detail.** §10.2 order 2 writes a failure-mode record
+for **every** promotion the pass made, including one that §6.3 / §7.3 degraded to a proposal file
+because it could not be applied (`credential-unavailable`, `branch-exists`, `api-failure`,
+`repository-unresolved`). Keying `enacted` on the record's mere existence would therefore suppress,
+forever, a promotion that exists nowhere but in a proposal file — the exact opposite of the PR
+route's deliberate rule that a `closed`-unmerged PR is **not** in the key set and the proposal is
+re-proposable (AT-Q4). With `route != degraded` in the definition, the two routes agree: a proposal
+that reached nothing is re-proposable on the next pass, and a proposal that landed is not. AT-Q12
+constructs the degraded case and asserts the re-proposal.
 
 **Why that carrier is sound where a PR trailer would not be.** The AC-2.1/AC-2.2 append and the
 failure-mode record that keys it are written into the **same §5.4 commit** (§10.2 orders 2–4 and
