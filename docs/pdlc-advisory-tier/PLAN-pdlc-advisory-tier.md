@@ -683,7 +683,7 @@ reviewer never has to interpret a reference):
 
 | Module | Functions in scope |
 |---|---|
-| `pdlc/workflows/orchestrate-dev.js` | `parseAdvisoryConfig`, `readAdvisoryConfigSafely`, `isModelResolutionError`, `resolveAdvisoryRung`, `parseAdvisoryVerdict`, `budgetExceeded`, `refusalReasonFor`, `classifyEnvelope`, `touchesTestArtifact`, `touchesDodCriterion`, `branchCreated`, `runAdvisorySeam`, `parseA3Classification`, `governingClass`, `probeDefaultBranchChecks`, `probeWorkflowRerun`, `renderAdvisoryEntry`, `appendAdvisoryEntry`, `renderEscalationEntry`, `appendEscalationEntry`, `advisorySummaryRows`, `distilAdvisoryRecord` |
+| `pdlc/workflows/orchestrate-dev.js` | `parseAdvisoryConfig`, `readAdvisoryConfigSafely`, `isModelResolutionError`, `resolveAdvisoryRung`, `parseAdvisoryVerdict`, `budgetExceeded`, `refusalReasonFor`, `classifyEnvelope`, `touchesTestArtifact`, `touchesDodCriterion`, `branchCreated`, `runAdvisorySeam`, `parseA3Classification`, `governingClass`, `probeDefaultBranchChecks`, `probeWorkflowRerun`, `renderAdvisoryEntry`, `appendAdvisoryEntry`, `renderEscalationEntry`, `appendEscalationEntry`, `advisorySummaryRows`, `advisoryDistilPrompt` |
 | `pdlc/workflows/orchestrate-queue.js` | `hasResidualSeamToken` and `honourA1Verdict` — **and nothing else** |
 
 Explicitly **out** of the denominator: every `(reused)` symbol of TSPEC §14.1 —
@@ -720,7 +720,7 @@ console.log('statements',(100*s/st).toFixed(1),'branches',(100*b/bt).toFixed(1))
   parseAdvisoryVerdict budgetExceeded refusalReasonFor classifyEnvelope touchesTestArtifact \
   touchesDodCriterion branchCreated runAdvisorySeam parseA3Classification governingClass \
   probeDefaultBranchChecks probeWorkflowRerun renderAdvisoryEntry appendAdvisoryEntry \
-  renderEscalationEntry appendEscalationEntry advisorySummaryRows distilAdvisoryRecord \
+  renderEscalationEntry appendEscalationEntry advisorySummaryRows advisoryDistilPrompt \
   hasResidualSeamToken honourA1Verdict
 ```
 
