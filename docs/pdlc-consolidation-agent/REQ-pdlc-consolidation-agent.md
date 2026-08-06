@@ -186,9 +186,11 @@ unreachable until someone runs a manual pass — the never-fires failure this da
   `consolidation.staleLockMinutes`, Then the second pass exits with status `refused` and reason
   code `consolidation-in-progress`, naming the marker's timestamp and pass id; the refused pass is
   **dropped, not queued** — the next tick re-evaluates from scratch. The marker is a single
-  `IN-PROGRESS: {passId} {ISO-8601}` line in `docs/_decisions/.consolidation-log.md`, written
-  **after** the trigger decision of steps 1–4 and before any other pass work, and it lives in the
-  working tree only — it is never a commit of its own (AC-3.8b). Take and release are set-equal to
+  `IN-PROGRESS: {passId} {ISO-8601}` line in a file of its **own**, `docs/_decisions/.consolidation-lock` —
+  deliberately **not** in `.consolidation-log.md`, because taking and releasing it are in-place
+  rewrites of a whole small file and every write to the *log* must stay an append (below). It is
+  written **after** the trigger decision of steps 1–4 and before any other pass work, lives in the
+  working tree only, and is never committed by any pass (AC-3.8b). Take and release are set-equal to
   AC-7.1's terminal-status set, one stated outcome per status, so no status is unmapped:
 
   | Terminal status | Marker taken? | Marker released by this pass? | Commits (AC-3.8b)? |
@@ -203,12 +205,18 @@ unreachable until someone runs a manual pass — the never-fires failure this da
   **A `refused` pass writes its AC-7.2 row and commits nothing.** The row is the only evidence a tick was refused, and REQ-CONS-01's cadence rule
   already presupposes it ("a `refused` row is not a datum"); AC-7.2's exemption set therefore stays a single member, `skipped-cadence`. The row carries
   a trigger (NFR-3a — the refused tick fired one of `cadence` / `volume` / `manual`; that is how it reached the marker check) and `credential: absent`
-  (AC-4.2). It is **written, never committed**, by decision: a pathspec stages a whole file, so a refused commit would capture the winner's live
-  `IN-PROGRESS:` line — falsifying AC-3.8b's "the marker is never committed" — and the winner's log at an arbitrary mid-pass instant. The winner's own
-  AC-3.8b commit covers the same path and sweeps the row up; if the winner dies first the row stays in the working tree, which is all its evidentiary
-  purpose needs. So the two passes' concurrent writes need no lock, the refused row is an **append of one
-  whole record at end of file** — never an edit inside the winner's `<!-- pdlc:consumed -->` block or any other region. It writes **no** consumed
-  block — only marker-holding passes emit one (REQ-CONS-01) — so it never touches the legacy-region boundary.
+  (AC-4.2). It is **written, never committed**, by decision: a pathspec stages a whole file, so a refused commit would capture the winner's log at an
+  arbitrary mid-pass instant — a half-written record the loser does not own. The winner's own AC-3.8b commit covers the same path and sweeps the row up;
+  if the winner dies first the row stays in the working tree, which is all its evidentiary purpose needs. It writes **no** consumed block — only
+  marker-holding passes emit one (REQ-CONS-01) — so it never touches the legacy-region boundary.
+
+  **Why no lock is needed: the write-granularity obligation.** Every write to `.consolidation-log.md`, by any pass, is a single **append of one whole
+  record at end of file**. No pass rewrites a region another pass wrote, and no pass performs a whole-file read-modify-write of the log — that shape is
+  **forbidden**, not merely unnecessary, because it is the one that loses a concurrent append. The two writes that could have violated the obligation
+  are decided away rather than serialised: the marker's take and release are in-place edits, so the marker lives in `.consolidation-lock` (above) and
+  never touches the log; and the winner's `<!-- pdlc:consumed {passId} -->` pair is emitted **complete, in one append** — its consumed set is fixed at
+  step 1 of the tick order, before any promotion work, so nothing is inserted into it afterwards (NFR-5). Under that obligation the loser's refused row
+  and the winner's records interleave in either order without loss, which is what makes both durability claims above true; a lock would buy nothing.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that
@@ -331,7 +339,8 @@ duplicate-PR key NFR-4 is stated against — it rides the PR, so it outlives the
   (`pdlc/workflows/orchestrate-dev.js:8669`), whose commit is a plain `git commit -m` with no pathspec (`:8690`) — deliberately, because there the
   `git add` scopes a set the wave already verified: that shape would sweep a staged index into the pass's commit, and AC-3.8's shipping tree may be
   mid-pipeline with one. Consequences the REQ commits to:
-  the AC-1.3 marker is written and removed inside the pass and is **never committed**; an unrelated pathspec-scoped
+  the AC-1.3 marker is written and removed inside the pass and is **never committed** — it is not one of the enumerated paths, and
+  `docs/_decisions/.consolidation-lock` appears in no pathspec of any pass; an unrelated pathspec-scoped
   pipeline commit in the same tree cannot pick these files up and vice versa; and because a concurrent commit can hold `index.lock`, the pass retries
   that failure class as `commitPaths` does (`gitWithLockRetry`, `:8670`) — a commit that still fails leaves the writes uncommitted for the operator,
   does not change the terminal status, and records `writes-uncommitted`. These writes never travel through the AC-3.1 PR, which carries only
@@ -550,10 +559,10 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
   that convention (AC-5.2), so suppression would not protect a re-consumed pre-convention corpus — which is why the REQ-CONS-01 legacy region prevents
   that re-consumption rather than relying on NFR-4 to absorb it.
 - **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
-  positively records consumption by appending the consumed basenames to the delimited
-  `<!-- pdlc:consumed {passId} -->` block of `docs/_decisions/.consolidation-log.md` (REQ-CONS-01,
-  AC-2.4; that block is appended before any other record the pass writes — and is emitted **even
-  when the consumed set is empty**, as an empty pair — freezing the legacy-region boundary
+  positively records consumption in the delimited `<!-- pdlc:consumed {passId} -->` block of
+  `docs/_decisions/.consolidation-log.md` (REQ-CONS-01, AC-2.4; the block is emitted **complete, in
+  one append** — AC-1.3's write-granularity obligation — before any other record the pass writes,
+  and **even when the consumed set is empty**, as an empty pair, freezing the legacy-region boundary
   unconditionally) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
   (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
   blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
