@@ -7678,7 +7678,7 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths };
 })();
 
 const __queue = (function () {
@@ -7688,6 +7688,10 @@ const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;
 const parseAdvisoryConfig = __dev.parseAdvisoryConfig;
 const defaultAppendFile = __dev.defaultAppendFile;
 const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;
+const resolveAdvisoryRung = __dev.resolveAdvisoryRung;
+const advisorySummaryRows = __dev.advisorySummaryRows;
+const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;
+const commitPaths = __dev.commitPaths;
 
 const meta = {
   name: "orchestrate-queue",
