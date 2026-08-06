@@ -73,6 +73,39 @@ as F-03 rather than as a question.
 
 ## Positive Observations
 
+- **Four of four v5 findings resolved, and three of them resolved past what was asked.** F-01 did
+  not merely add the condition I offered as the cheap escape; it took the expensive option, minted a
+  third trailer, demoted the sources trailer to provenance in the same sentence, and restated *why*
+  the set key was wrong in the finding's own terms. F-02 took the horn of Q-02 that collapses three
+  changes into one, so the revision is smaller than the finding. F-03 replaced an asserted row with a
+  derivation whose citation quotes an AC verbatim, so the composition rule is now checkable rather
+  than believable. That is the pattern of a document converging rather than a document being patched.
+
+- **NFR-4's state-reading rule is a hole nobody raised.** "State is read at poll time with no memory
+  of prior states: a reopened PR is open, hence a key" (`:546-547`) closes a case that neither
+  reviewer found — a PR closed then reopened by an operator, where a suppression rule with memory
+  would keep treating it as rejected. Volunteering a rule for an unraised case is the behaviour that
+  ends review rounds; it is also the answer to the *shape* of question v5 asked, generalised.
+
+- **The phase catalogue is now sourced entirely from code.** §4b's 13 phase ids used to rest on a
+  range plus assertion; this round pinned the range's first key and named a `recordPhase` literal
+  for each of the five phases `PHASE_DISPATCH` does not carry (`:10020`, `:10250`, `:10407`,
+  `:10462`, `:10568` — all five confirmed). A set-equality test over the catalogue can now be
+  transcribed with every member traceable to a line, which is precisely what §4b promised of itself
+  and did not yet deliver.
+
+- **F-02's fix names the mechanism that makes it safe, not just the decision.** Reverting the
+  Commits cell would have been enough to close the contradiction. The revision also states *why* a
+  pathspec commit could not have worked ("a pathspec stages a whole file, so a refused commit would
+  capture the winner's live `IN-PROGRESS:` line") and closes the evidentiary loop in both directions
+  — winner survives, winner dies. The reader who later wonders "why doesn't the refused pass just
+  commit its own row?" finds the answer in the document instead of re-deriving it.
+
+- **The two new Mediums are on one seam, and it is the seam the fix created.** F-01 and F-02 are both
+  about `failure-mode-id` — its stability and its uniqueness — and they exist because v5 F-01's fix
+  moved load onto that id. That is honest debt from a good change, not a new problem area; the
+  document's blast radius is shrinking round over round even as the finding count holds.
+
 ## Recommendation
 
 ## Verdict
