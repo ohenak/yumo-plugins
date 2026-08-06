@@ -51,10 +51,59 @@ finding.
 | ID | Question |
 |----|---------|
 | Q-01 | §10.4 item 4's subject-axis clause obliges the report to name "**every** canonical subject path the tie-break elided" (`:1774-1776`). §8.2's tie-break selects the lexicographically first of the candidates, and §8.2 consequence 1 already contemplates a merge "of **three** failure modes under one key" (`:1256-1257`) — so the elided set can have more than one member. AT-R6b fixture 2 asserts the two-candidate case (one elided path, named literally). Nothing in §13 exercises three, and nothing needs to at this layer — but is the three-candidate case in scope for the PROPERTIES row §8.2's third note already opens (the two-process-learning colliding merge)? If so, one clause naming it there would keep the whole tie-break surface under one downstream owner rather than two. |
-| Q-02 | E-12b now names the `artifact` arms PROPERTIES-owned (`:2507`) and §8.2's third note names the `target`-follows clause PROPERTIES-owned (`:1300-1307`). Both are the right call under DEC-LAYER-01. Is there a place in this document that collects those deferrals — the way §14.4 collects errata — so the PROPERTIES author inherits a list rather than a grep? Two are easy to carry in the head; the count rose from zero to two in one round, and §14.2's observed-constraints table is the nearest existing shape. |
+| Q-02 | E-12b now names the `artifact` arms PROPERTIES-owned (`:2507`) and §8.2's third note names the `target`-follows clause PROPERTIES-owned (`:1300-1307`). Both are the right call under DEC-LAYER-01. Is there a place in this document that collects those deferrals — the way §14.4 collects errata — so the PROPERTIES author inherits a list rather than a grep? Two are easy to carry in the head; the count rose from zero to two in one round, and §14.2 ("Open questions — decided here, recorded for review", `:2117`) is the nearest existing shape. |
 | Q-03 | AT-F21's Given has the later pass "re-derive `F`'s promotion", and conjunct (3)'s `F` arm asserts a set of negatives — not routed, no write on its behalf, no `route` guessed, no §8.6 remediation — with "re-proposed on a later pass" as the positive. That positive is not observable inside the pass under test. The pairing is nonetheless satisfied on the same path by conjunct (2)'s parse notice naming `F`, and by conjunct (1)'s terminal status, so the row is not an absence-only oracle as it stands. Is the intent that (2) is the positive for `F`'s arm? If so it is worth half a clause, because the arm currently reads as if "re-proposed on a later pass" were the assertion, and a test author may go looking for a second-pass fixture the row does not require. |
 
 ## Positive Observations
+
+- **AT-F21's repair fixed the reasoning *and* the fixture, and then went one step past what I
+  asked.** I asked for three things: restate the middle prohibited behaviour as a non-`degraded`
+  default, give `E` a `retire` record so the open-list conjunct is not vacuous, and reassign the
+  conjunct mapping. All three landed. What was not asked for is the fourth line: the row now names
+  `route ?? "degraded"` explicitly as a **reachable default that is not unsafe on either reader** —
+  it leaves `E` open and the pair `absent`, the same outcome the skip rule produces — and assigns it
+  to conjunct (2) as "an implementation that defaults silently instead of reporting the notice".
+  That is the honest version of a conjunct map: it says which behaviours are caught where, *and*
+  which behaviour is caught only by the notice. My v6 finding was that "each is red on exactly one"
+  was false; the repair did not weaken the claim to "each is red on at least one", it enumerated the
+  four cases and stated the asymmetry. I re-derived all four against BR-33c (`:2454`) and BR-25
+  (`:2433`) and the mapping is now correct in both directions.
+- **The §8.6 reader row argues its arm from the state rather than copying §5.1's.** The cheap repair
+  to my v6 F-02 was one row reading "as §5.1". Instead `:1142` spells why the state differs — a
+  remediation has already been *chosen* by §8.5 and has nowhere to go, which is not the same as a
+  promotion that was never routed — and lands on the same safe direction by a different argument
+  ("not routed on a guessed path — neither the PR route nor the proposal file is picked by default").
+  Sitting beside §8.5's row, the two now read as one policy applied at two points: never guess a
+  path, never guess a `retirement`, let the notice be the report.
+- **§10.4 item 4's widening states why the subject axis is the load-bearing one, not merely that it
+  is symmetric.** "The two axes are one rule read twice" would have been enough to close F-03. The
+  revision adds the asymmetry that matters (`:1778-1781`): on the kind axis the elided content still
+  exists as a re-proposable proposal, but on the subject axis **the id is one**, BR-35a's
+  file-existence test runs on the survivor only, and §8.3's row carries the survivor — "the report is
+  the operator's only handle on the elided one". That is a blast-radius argument for a report line,
+  which is a rare thing to find written down.
+- **Two coverage claims were narrowed rather than defended.** §8.2's third note now says outright
+  that AT-R6b "**cannot** assert the `target`-follows clause" — its fixture is kind 2 on both sides,
+  so `target` is a function of the id and invariant under the tie-break — and hands the case to
+  PROPERTIES with the observable it owes stated (`artifact` and `target` are the same path on the
+  merged record). E-12b splits its AT cell the same way for the `artifact` arms. Both are places
+  where the easy move was to leave the citation unqualified and let a reviewer not notice. F-04 is
+  that the same split has not yet reached §18's BR rows — a propagation lag, not a retreat.
+- **Every code and upstream citation in this round's diff is exact — re-verified at HEAD.**
+  `MERGE_GUARD_DEFAULTS` is `Object.freeze` over four members with `pdlc/workflows/` first at
+  `pdlc/workflows/orchestrate-dev.js:48-53`; `readHeadBranch` is at `:3520` and issues
+  `_git(["rev-parse", "--abbrev-ref", "HEAD"])` at `:3524`. The vocabularies `suppressed-by:` row is
+  verbatim at `docs/_constraints/pdlc-consolidation-vocabularies.md:63` — still `` `{id}:{action} →
+  PR URL` entries, or empty ``, so ER-5 remains correctly open. Both new authority citations resolve:
+  `docs/_decisions/DECISIONS-spec-layer-boundary.md:10` (DEC-LAYER-01) and
+  `docs/_constraints/DOMAIN-CONSTRAINTS.md:20` (DC-01), and each says what the FSPEC says it says —
+  DEC-LAYER-01's third bullet does assign seam verb permitted-sets to TSPEC (`:30`) and its fourth
+  does assign fixture construction and set-equality domains to PROPERTIES (`:31-33`). Third
+  consecutive round with no citation drift.
+- **The version bump is honest.** `7.0`, not `6.2`: this round changed a report obligation
+  (§10.4 item 4), a business rule (BR-33b) and an edge-case row (E-12b), which is a contract change,
+  not an editorial pass. Documents that bump their own minor for a rule change are how the pinned-
+  version oracles downstream stay meaningful.
 
 ## Recommendation
 
