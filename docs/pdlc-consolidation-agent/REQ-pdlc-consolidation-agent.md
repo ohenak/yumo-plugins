@@ -10,7 +10,7 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..5}.md` (10 files) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..6}.md` (12 files) |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
@@ -87,9 +87,9 @@ below saying "un-consolidated" or "accumulated since the last pass" means exactl
 
 **The predicate's corpus is a delimited region, not the whole log.** The shipped predicate is a bare
 substring test over the whole of `docs/_decisions/.consolidation-log.md` (`:41`, read at `:32`), and
-this feature writes further record types into that same file (the AC-1.3 marker, AC-3.4's PR URLs,
-AC-5.1's failure-mode records — whose `artifact` field may legitimately be a LEARNINGS path — and
-AC-5.2's effectiveness table), any of which could contain a basename and falsely mark that file
+this feature writes further record types into that same file (AC-3.4's PR URLs, AC-5.1's
+failure-mode records — whose `artifact` field may legitimately be a LEARNINGS path — and AC-5.2's
+effectiveness table), any of which could contain a basename and falsely mark that file
 consolidated. So consumption is recorded **only** inside a delimited block:
 
 ```
@@ -104,9 +104,9 @@ way, so the hook and the pass keep one predicate rather than two. This is what m
 "exactly the consumed set" enforceable by the predicate that consumes it.
 
 **What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md` **exists** and predates every convention this
-feature introduces: a markdown pass log whose `## Pass 1 — 2026-07-29` records its consumed set as a two-column table of **full paths**
-(`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md` | 2026-06-02, same shape for `docs/pdlc-workflow-distribution/…`), then prose
-promotion sections. It carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any kind — "Promoted" is only a section heading. A
+feature introduces: a markdown pass log whose `## Pass 1 — 2026-07-29` records its consumed set as a two-column table of **full paths** (one row per
+consumed LEARNINGS, path plus date), then prose promotion sections. It carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any
+kind — "Promoted" is only a section heading. A
 predicate matching blocks alone would report both files un-consolidated on the first pass, re-consuming a corpus a prior pass already promoted from,
 with no help from NFR-4 (keyed on `failure-mode-id`, which a pre-convention LEARNINGS does not carry, AC-5.2). The predicate is therefore stated over
 two regions, and is total over any log:
@@ -119,10 +119,10 @@ The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) ap
 consolidated is re-consumed and no transcription or parse of Pass 1's prose is required. It is frozen by construction, in two clauses: **(a)** every pass
 that takes the AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when
 its consumed set is empty** (the pair is then empty, which satisfies NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by
-the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** exactly **two** records are exempt — both can precede the
-first block, and neither is readable as legacy consumption because neither ever carries a basename: the AC-1.3 in-progress marker (a passId and an
-ISO-8601 timestamp, never committed, removed by the pass that wrote it), and a `refused` pass's AC-7.2 row (status, trigger, `credential:` and reason
-code only — AC-1.3), written there by a tick that loses the race between the winner's marker and its block. Every other record lands after it.
+the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** exactly **one** record is exempt — it may precede the first
+block, and it is not readable as legacy consumption because it never carries a basename: a `refused` pass's AC-7.2 row (status, trigger, `credential:`
+and reason code only — AC-1.3), appended by a tick that loses the race between the winner's marker and its block. The AC-1.3 marker is **not** a second
+exempt record: it lives in its own file, never in this log (AC-1.3). Every other record lands after it.
 `nudge-consolidation.sh:41` is updated to the same two-region rule, keeping hook and pass on one predicate. **On this repo
 today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
@@ -135,8 +135,8 @@ reads a LEARNINGS **body**:
    un-consolidated set. Enumeration is basenames only, which is all `nudge-consolidation.sh:41` does.
    The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md`. The shipped glob
    is depth-1 only (`nudge-consolidation.sh:28`), but this repo archives completed features one level
-   deeper (three `docs/completed/*/` dirs each hold a LEARNINGS, named below; BL-02 cites the
-   convention), so depth-1 hides 3 of the 5 LEARNINGS at HEAD
+   deeper — `docs/completed/pdlc-merge-phase/`, `docs/completed/pdlc-review-loop-hardening/` and
+   `docs/completed/pdlc-workflow-distribution/` each hold one LEARNINGS — so depth-1 hides 3 of the 5 at HEAD
    and biases AC-5.2's phase population toward `insufficient-evidence`. `docs/discarded/*/` is
    deliberately **excluded** — abandoned work is not evidence about a delivered pipeline. Widening
    makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one enumeration as well as one
