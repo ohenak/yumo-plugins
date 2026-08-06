@@ -60,7 +60,47 @@ Low.
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | Process, non-blocking, and the only thing about this round that is actually new: Phase R was re-entered for a confirming round after `POSTMORTEM-R` was resolved, but the REQ has not changed since that resolution — the round is confirming a tree it already approved at v11. Is a re-entry with an empty delta meant to produce a fresh review pair at all, or should the recorded v11 approval (whose `APPROVAL-HASH` still matches the bytes at HEAD) satisfy the gate directly? I have written the review either way; the question is whether the pipeline should be spending two reviewer rounds on a byte-identical document. |
+
 ## Positive Observations
+
+- **The v11 approval anchor is still valid, and I checked it rather than assuming it.**
+  `shasum -a 256` over the REQ at HEAD returns
+  `0d2b2497235209181f0599a2ef2e25fa106d1917af8f02448a027fe969ad6f17`, identical to the
+  `APPROVAL-HASH` line in `CROSS-REVIEW-test-engineer-REQ-v11.md:151`. That is the anchor doing its
+  designed job: it says the approval covers *these* bytes, and the bytes are unchanged, so the
+  approval is not stale. This is the case the anchor mechanism exists for and it survived a
+  hundred-plus intervening commits.
+- **Phase F did not silently edit its upstream.** ~120 commits landed between the two reviewed
+  trees — the whole FSPEC v1→v6 arc, ten FSPEC cross-reviews and a Phase F postmortem — and the REQ
+  diff is empty. Errata that Phase F found were routed as FSPEC-layer work and as two project-level
+  decisions (`DECISIONS-spec-layer-boundary.md`, `DECISIONS-review-severity-bars.md`), not folded
+  into the REQ by whoever noticed them. That is the erratum channel behaving as specified.
+- **Every code citation in the REQ still resolves at HEAD, re-verified line by line rather than
+  carried over from v11** — a hundred commits is enough for a pinned line number to drift, so I
+  re-ran them all. `resolveAdvisoryRung` is at `pdlc/workflows/orchestrate-dev.js:1833`
+  (`export function resolveAdvisoryRung({ _agent, _log, _state, prompt })`, cited by AC-1.5 `:202`);
+  the fallback notice is at `:1859` (`ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not
+  resolve …`, cited by AC-1.6 `:205-206`); `ADVISORY_SEAMS` is at `:1669`
+  (`export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"])`, cited by
+  REQ-CONS-06) — and it is a frozen five-member literal, which is what makes the "widen the seam
+  set" proposal a real PR-able surface rather than a config edit. `consolidate-learnings/SKILL.md:35`
+  is the boundary step naming `docs/_decisions/.consolidation-log.md` and `docs/*/LEARNINGS-*.md`;
+  `nudge-consolidation.sh:41` is the predicate `pending = [p for p in learnings if
+  os.path.basename(p) not in logtext]` and `:28` is the glob
+  `glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))` — still the un-widened
+  `docs/*/`, so §5's claim that this feature widens it to `docs/completed/*/` is a claim about work
+  not yet done, which is the correct tense for a scope line.
+- **`harvest-learnings/SKILL.md:70-78` is the metadata table §5 says this feature extends, and it
+  does not yet carry `Phases exercised`.** The rows at HEAD are Feature / REQ / Date Completed /
+  Total Iterations / Upstream / Harvested from / DoD rounds. So AC-5.2's convention addition is a
+  genuine delta against HEAD, not a description of something already shipped — the failure mode
+  where an activation REQ asks for wiring that already exists is absent here.
+- **`check-req-size.sh` is still non-blocking at HEAD.** Its final block prints the
+  `PostToolUse`/`additionalContext` JSON and falls through to `exit 0`, which is why F-56 is a
+  headroom observation and not a delivery risk.
 
 ## Recommendation
 
