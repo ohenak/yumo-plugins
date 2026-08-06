@@ -71,16 +71,62 @@ process that cannot be wrong cannot be trusted to be right.
 
 ### REQ-CONS-01 — Cadence and trigger
 
-- **AC-1.1** — Given a configured cadence, Then a consolidation pass runs without operator
-  invocation, and `/pdlc:consolidate-learnings` continues to work as a manual trigger.
-- **AC-1.2** — Given the existing `nudge-consolidation` SessionStart hook's threshold (≥5
-  un-consolidated LEARNINGS), Then that threshold also triggers a pass, so consolidation fires on
-  whichever of cadence or volume arrives first.
-- **AC-1.3** — Given a pass begins while another is in progress, Then the second is refused —
-  consolidation is serial, for the same reason the queue is.
-- **AC-1.4** — Given no LEARNINGS accumulated since the last logged pass, Then the pass records
-  `no-op` and exits successfully without opening anything.
-- **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung (`MODEL_ADVISORY`).
+**Trigger surface, named.** The pass ships as a workflow script invoked as
+`/pdlc:consolidate-learnings`. Its cadence vehicle at HEAD is the same one the queue already uses —
+a session-resident `/loop run /pdlc:consolidate-learnings` (CLAUDE.md, "Entry (queue, multi-feature)"),
+where the operator starts the loop once and each tick runs a pass with no per-pass invocation.
+Nothing in `pdlc/hooks/hooks.json` can start a pass: it registers only `PreToolUse`, `PostToolUse`
+and `SessionStart` entries (`:3`, `:14`, `:29`), and `nudge-consolidation.sh` only prints
+`hookSpecificOutput.additionalContext` and exits 0 (`:47`, header `:4`). The hook's role is
+**unchanged by this feature** — it advises, it does not trigger. Truly session-free execution (no
+Claude Code session at all) is D-CONS-04, bound to `pdlc-engineering-loop`.
+
+**One predicate for "un-consolidated", named.** Two definitions exist at HEAD and disagree: the
+hook's basename test (`pending = [p for p in learnings if os.path.basename(p) not in logtext]`,
+`pdlc/hooks/scripts/nudge-consolidation.sh:41`, against `docs/_decisions/.consolidation-log.md`,
+`:32`) and the skill's date boundary (`Date Completed` after the last logged pass,
+`pdlc/skills/consolidate-learnings/SKILL.md:35`). **This feature adopts the basename test as the
+single predicate** — it is durable against LEARNINGS date edits and is already the shipped
+mechanism — and updates `consolidate-learnings/SKILL.md:35` to match. Every AC below that says
+"un-consolidated" or "accumulated since the last pass" means exactly this predicate.
+
+- **AC-1.1** — Given a `/loop` tick and `consolidation.cadenceHours` elapsed since the last logged
+  pass, Then a consolidation pass runs with no per-pass operator invocation; given the interval has
+  not elapsed, Then the tick exits `skipped-cadence` without reading LEARNINGS. Given a direct
+  `/pdlc:consolidate-learnings` invocation, Then the pass runs regardless of the interval — the
+  manual entry point is never gated by cadence.
+- **AC-1.2** — Given the count of un-consolidated LEARNINGS (the AC-1.1 predicate) is at least
+  `consolidation.volumeThreshold` (default 5, the value at `nudge-consolidation.sh:25`), Then the
+  pass runs on this tick even if `consolidation.cadenceHours` has not elapsed, so consolidation
+  fires on whichever of cadence or volume arrives first. The threshold is evaluated **by the pass
+  itself**, not by the hook.
+- **AC-1.3** — Given a pass begins while the in-progress marker is present and younger than
+  `consolidation.staleLockMinutes`, Then the second pass exits with status `refused` and reason
+  code `consolidation-in-progress`, naming the marker's timestamp and pass id; the refused pass is
+  **dropped, not queued** — the next tick re-evaluates from scratch. The marker is a single
+  `IN-PROGRESS: {passId} {ISO-8601}` line in `docs/_decisions/.consolidation-log.md`, written before
+  any other pass work and removed by the pass itself on every terminal outcome (success, `no-op`,
+  or failure). Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then
+  the pass reclaims it, records `reclaimed-stale-lock` with the abandoned pass id in its report,
+  and proceeds — so a pass that dies mid-flight cannot wedge the cadence permanently. An operator
+  may also clear it by deleting the line.
+- **AC-1.4** — Given no un-consolidated LEARNINGS under the AC-1.1 predicate, Then the pass records
+  `no-op` in `docs/_decisions/.consolidation-log.md` and exits successfully without opening a PR or
+  writing a proposal file. A `no-op` pass still emits the AC-5.2 effectiveness table (it can observe
+  that a prior promotion has aged into `unmeasurable` per AC-5.5) and still releases the AC-1.3
+  marker.
+- **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it
+  actually ran on in its report and in the log row. The rung ladder is the one
+  `pdlc-advisory-tier` ships: `MODEL_ADVISORY` (`pdlc/workflows/orchestrate-dev.js:1652`) first,
+  `MODEL_ADVISORY_FALLBACK` (`:1653`) on non-resolution. Both constants are module-private to
+  `orchestrate-dev.js` and are not imported by `orchestrate-queue.js` (which carries its own
+  `MODEL_QUEUE`), so this feature **restates the two-rung ladder for itself** rather than importing
+  it; keeping the two in step is a named risk, not an inherited guarantee.
+- **AC-1.6** — Given the primary rung does not resolve, Then the pass runs on the fallback rung and
+  reports the downgrade explicitly (mirroring `ADVISORY_MODEL_FALLBACK:`,
+  `pdlc/workflows/orchestrate-dev.js:1859`) — never a silent downgrade. Given **neither** rung
+  resolves, Then the pass makes no promotion, releases the AC-1.3 marker, and exits with status
+  `failed` and reason code `advisory-model-unresolved`; it does not fall through to a default model.
 
 ### REQ-CONS-02 — Promotion routing (unchanged behavior preserved)
 
