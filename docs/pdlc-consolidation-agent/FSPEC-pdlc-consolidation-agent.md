@@ -1142,9 +1142,14 @@ consuming-repo carrier and §8.4 step 1 both index into records appended by *ear
 field is added stays as written. The rule is the receive-side discipline this document applies
 everywhere else (§3.4, §9.3, AT-F16): **a record missing a field the reader indexes is reported as a
 parse notice and skipped for that contract — never a halt, never a guessed default, and never an
-in-place repair.** Skipping is the safe direction for both readers: §6.4 fails to suppress and the
-promotion is re-proposed (which NFR-4 already sanctions), and §8.4 step 1 leaves the id open (one
-extra harvest question, the failure direction O-C7 accepts).
+in-place repair.** Skipping is the safe direction wherever the missing field is one the reader's
+own predicate is a function of: §6.4 short of `route` fails to suppress and the promotion is
+re-proposed (which NFR-4 already sanctions), and §8.4 step 1 leaves the id open (one extra harvest
+question, the failure direction O-C7 accepts). **It is not the safe direction for a field a reader
+indexes only to *spell* an outcome its predicate already decided** — there, skipping would discard a
+decision the record does support. Exactly one such field exists in the table below (§6.4's `passId`),
+and its arm is spelled in the row rather than left to this rule; every other cell takes this rule as
+written.
 
 **"For that contract" is per field, per reader — the enumeration, so no reader is left to infer its
 own arm.** A record is skipped only by the contracts that index the field it is missing. The table is
@@ -1156,7 +1161,7 @@ that set — and a reader added later is a change to this table, made here:
 |---|---|---|
 | §5.1 routing | `target` | not routed; the promotion is re-proposed on a later pass |
 | §8.6 remediation routing | `target` | **not §5.1's arm, and it is spelled because the state differs**: here a remediation has already been *chosen* (§8.5) and has nowhere to go. It is **not routed on a guessed path** — neither the PR route nor the proposal file is picked by default — the promotion keeps the state it had for that pass, and the notice is the report. The remediation is re-proposed on a later pass, exactly as §8.5's arm re-proposes nothing rather than guessing a `retirement` |
-| §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route`, **`passId`** | reads `absent`, so the promotion is re-proposed. `passId` is indexed because the carrier does not only decide `enacted` — it spells the evidence, and §10.3 pins that evidence as `pass:{passId}` of *the enacting record* (`:1712`). A record short of `passId` therefore leaves a suppression the carrier could decide but cannot spell, and the general rule above applies unchanged: parse notice, skip that contract, no suppression, re-proposed. `pass:undefined` is the guessed default this section forbids |
+| §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route` — the `enacted` predicate — plus **`passId`**, for the evidence only | **Two arms, because this reader indexes its fields for two jobs (§6.4).** Short of `failure-mode-id`, `action` or `route`: the predicate cannot be evaluated, so the general rule above applies unchanged — parse notice, skip that contract, reads `absent`, the promotion is re-proposed. Short of **`passId` alone**: the predicate is still decidable — it is a function of the pair and `route`, not of `passId` — so the contract **is not skipped and the suppression holds**; what degrades is the *evidence spelling* only, the `suppressed-by:` entry naming the pair with an explicit unavailable statement in place of the enacting `passId` (§6.4; §10.3's `suppressed-by:` row is normative for the two spellings). This is the §8.3 shape, not the §5.1 shape: skipping here would re-append a constraint that already landed and defeat NFR-4 with a field outside its key, so the safe direction is the reverse of the `route` arm's. `pass:undefined` is the guessed default this section forbids in both arms |
 | §8.4 step 1 open list | `failure-mode-id`, `action`, `route` | the id stays **open** |
 | §10.2 order 2 | the record as written | appended unchanged; nothing is repaired |
 | §8.3 effectiveness table | `failure-mode-id`, and `artifact` for the row's canonical path | the row is still emitted, keyed on the id; a missing `artifact` is reported as the notice and the path cell carries **no path** and is rendered as an explicit unavailable statement rather than as an empty cell or a guessed path (§10.4's receive-side totality, DC-01). "Unavailable" is the **observable**, not a literal this document pins — the spelling of that cell is TSPEC's, per DEC-LAYER-01, and §15.2's lexicon owns no such value. The row is never dropped, which would read as `insufficient-evidence` and silently move a verdict |
