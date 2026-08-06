@@ -181,3 +181,156 @@ reader-side rule, BR-33a/b/c, AT-F19/F20, O-C8, §10.4 items 4 and 10, ER-5). Ea
 matching edits at four to six coupled sites (a BR row, an AT row, an `E-` row, a §15 traceability
 row, a report-body item, a §14.2 cost entry). A site missed is a legitimate Medium. The document's
 own coupling is what sets the manufacture rate in pattern 3.
+
+## Best-Guess Root Cause
+
+**The loop is a fixed point, not a convergent series, because the FSPEC is still acquiring
+normative mechanism at the layer below the one it owns — and each acquisition manufactures roughly
+as many Mediums as the round's repairs retire.** Four contributing causes, in decreasing
+confidence.
+
+### RC-1 (primary) — implementable-layer decisions are being settled at FSPEC layer
+
+The four distinct open Mediums are, in order: a *tie-break algorithm* over canonical paths
+(lexicographic, input-pure); a *fixture construction* (AT-R6b's Given); a *per-field reader index*
+and its parse-notice contract; and a *fixture-set completeness argument* over a three-member order.
+Every one of these is a decision a TSPEC author or a PROPERTIES author is equipped to make, and
+three of the four are test-artefact decisions. The FSPEC settled them because each round's reviewer
+correctly observed that a rule stated at FSPEC layer without its pinning artefact is unfalsifiable
+— so the document answered at FSPEC layer, and every answer is a new checkable claim in a document
+whose claims are checked by two reviewers per round.
+
+The size ratio is the symptom: 247,750 bytes of FSPEC against 61,109 bytes of REQ, for one
+workflow pass. Nothing about the *feature* is 4× its requirements; the excess is layer absorption.
+
+### RC-2 — the coupling factor makes every repair a multi-site edit
+
+§5.2's three promotion kinds × §8.1's eight-field record × §6.5's four seam domains × §13's AT
+table × §18.7's BR table × §19's error rows × §15's traceability form a lattice. A rule added at
+one node obliges edits at four to six others, and the reviewers — correctly, and per the
+completeness-by-set-equality clause they are dispatched with — check every one. A 90 %-accurate
+multi-site edit yields a Medium per round essentially by arithmetic. This is why the Medium count
+is flat rather than decaying: it is a function of edit volume, not of remaining defect stock.
+
+### RC-3 — five rounds is calibrated for a document that has stopped growing
+
+`MAX_REVIEW_ROUNDS = 5` assumes the review population is a fixed defect stock being drained. That
+assumption held for the High population (12 → 6 → 2 → 0, fully drained by round 4) and fails for
+the Medium population, which is regenerated each round. The window was consumed in 1 h 46 m of wall
+clock with author turnarounds of ~10 minutes; the loop was not slow, it was *productive in a
+direction the round counter does not measure*. Raising the constant would not fix this — it would
+buy rounds at the same manufacture rate. Only RC-1 changes the rate.
+
+### RC-4 — feature-level recurrence, not phase-level bad luck
+
+Phase R on this same feature exhausted two full windows (rounds 1–5 and 6–10) before the REQ was
+approved, and the Phase R resolution's own diagnosis was adjacent: governance rules stated without
+the version-pin/defect clause that makes them checkable. The same feature has now spent 20 REQ
+reviews and 10 FSPEC reviews. The common factor is a specification whose subject matter is *itself*
+a specification-governance mechanism — the document and its reviewers are reasoning over the same
+kind of object, so every rule the document states is immediately available as a rule the reviewers
+can check it against. That reflexivity is real and is not going away by rewriting prose.
+
+### Ruled out
+
+| Hypothesis | Why not |
+|---|---|
+| Author non-responsiveness / stalling | 100 % of prior findings closed as filed in four consecutive rounds; the round-5 findings were closed within 7 minutes of the last review landing |
+| Reviewer severity inflation | Both reviewers retired High entirely by round 4 and TE filed exactly one finding in round 4; every open Medium names a specific undetermined value or an untested normative sentence |
+| Reviewer disagreement / deadlock | Zero contradicted findings across five rounds; two of round 5's findings are the *same* defect found independently |
+| Ambiguous or contested REQ scope | No round re-opened scope, structure, or a settled decision — both reviewers state this explicitly in rounds 4 and 5 |
+| Watchdog / pacing failure | No no-progress halt occurred; every round produced committed, versioned revisions |
+
+## Recommendation
+
+Ordered. Steps 1–3 are the resolution; step 4 is re-entry; steps 5–7 are scope notes.
+
+### 1. Verify the v6.0 tree against the nine open round-5 findings — against the tree, not the commit messages
+
+`561dd89`…`657b59a` claim closure of SE F-01…F-06, TE M-01/M-02/L-01 and all six questions. Verify
+each **per finding, against the file at HEAD**, in the shape the Phase R resolution used (its
+step 1). Specifically:
+
+- SE F-01 — §8.2 states a tie-break that is a pure function of the inputs (lexicographic over the
+  canonical path, **not** proposal order), and §8.1's `artifact` follows it.
+- SE F-02 / TE M-02 — AT-R6b's fixtures are buildable as written (no self-contradicting Given, the
+  row's lead sentence describes the fixtures it now contains) and range over **all three** ordered
+  pairs of the precedence order, with the rank-2/rank-3 pair asserting `route: decisions`, no
+  guard-set write and no PR.
+- SE F-03 / TE M-01 — AT-F21 constructs a `.consolidation-log.md` record short of an indexed field
+  and asserts, on one path, the **positive** half (terminal status reached, notice names the
+  record, promotion re-proposed / id present in AT-F19's open list) beside the negative
+  ("never a halt", bytes unchanged); E-12b exists beside E-12; BR-33a points at AT-F21 and no
+  longer at AT-F16/AT-F20.
+- SE F-04 / TE L-01 — §6.5 cites `orchestrate-dev.js:3524` (the seam call) and/or `:3580` (the call
+  site), not `:3585`. Re-verify at HEAD; do not trust this postmortem's line numbers either.
+- SE F-05, F-06 — §6.5's equality absolute is qualified against AT-Q7c's `∅` assertions, and the
+  fifth column's "i.e." no longer widens its Given past §5.4's stages-nothing path.
+
+Record the verification per finding in a `## Resolution` section appended to this file. Any finding
+that does not verify is remediated before re-entry, not deferred into the confirming round.
+
+### 2. Freeze the mechanism for the confirming round
+
+Declare, in the resolution commit, a **structural freeze**: the confirming round may add no new
+normative rule, no new BR, no new AT beyond the pinning artefacts of rules already stated. This is
+the direct countermeasure to pattern 3 — it removes the manufacture surface for one round so the
+loop can observe its own fixed point. Reviewers should be told the freeze is in force, so a finding
+that proposes *new* mechanism is filed as Low/deferred rather than as a blocking Medium.
+
+### 3. Record the layer boundary as a project-level decision (this is the step that changes the rate)
+
+Write `docs/_decisions/DECISIONS-spec-layer-boundary.md` fixing which classes of decision are
+FSPEC-owned and which are TSPEC/PROPERTIES-owned. On the evidence of this window, at minimum:
+tie-break and ordering **algorithms**, per-field reader indices, seam verb permitted-sets, and
+**fixture construction / oracle strength** belong below FSPEC. An FSPEC states the observable and
+names the artefact that will pin it; it does not carry the artefact. Without this step, RC-1
+persists into Phase T and the same arithmetic reappears one document down — and the FSPEC's 4.1×
+size ratio persists into everything derived from it.
+
+This is a genuine judgement call with a real cost: moving these decisions down means the FSPEC's
+reviewers lose falsifiers they currently have, and TSPEC inherits four open decisions. It is
+recommended anyway, because the alternative — settling them at FSPEC layer — is exactly what
+consumed this window.
+
+### 4. Re-entry
+
+Once steps 1–3 are done and every finding in this document's Recommendation is verifiably
+addressed on the branch:
+
+1. Append the `## Resolution` section naming what addressed each finding.
+2. Flip the marker to `RESOLVED: yes` in the same commit, and name the evidence in the commit
+   message. **The workflow never writes `yes`; an operator or agent does, after verifying.**
+3. Re-invoke with the phase forced:
+   `/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md", "forcePhases": "F"}`
+
+Re-entry opens rounds 6–10 (`deriveRoundWindow` derives them from the `-v5` basenames present, so
+the append-only review history is preserved). The expectation under the freeze is **one short delta
+round confirming the closures**, as Phase R's second resolution expected and got.
+
+### 5. Not recommended
+
+| Option | Why not |
+|---|---|
+| Rewrite or restructure the FSPEC | Nothing in five rounds found a structural defect; every open finding is local and named. A rewrite discards five rounds of verified convergence and re-opens the High population |
+| Lower the approval bar / force past the reviews | Both reviewers apply the bar consistently and their Mediums are real undetermined values — an undetermined `target` on the common kind (§5.2's own worked collapse: three of fifteen skill directories share one decision file) ships as an unstated tie-break |
+| Re-open REQ scope or split the feature | The REQ cost two full windows to approve. Splitting now forfeits that and re-enters Phase R |
+| Raise `MAX_REVIEW_ROUNDS` | Buys rounds at an unchanged manufacture rate (RC-3). Step 3 changes the rate; the constant does not |
+
+### 6. Housekeeping (not blocking)
+
+- SE Q-02's open question — which contract owns a short record for §8.3's effectiveness rows — is
+  answered by `df3feef`'s per-field reader table; confirm the table names §8.3.
+- TE Q-02's read-set question (closed two-member enumeration vs. open "any non-mutating read") is
+  claimed closed by `561dd89` as the closed set; confirm a test author reading §6.5 alone reaches
+  the same reading.
+
+### 7. Phase H
+
+Harvest must fold **both** halted phases into `LEARNINGS-pdlc-consolidation-agent.md`: 20 REQ
+cross-reviews, 10 FSPEC cross-reviews, and both post-mortems. The durable signal is § Pattern of
+Disagreement 3 and RC-1 — *on an accreting specification, repairs manufacture defects at a roughly
+constant rate, so High drains and Medium does not; a fixed round window then expires on a document
+that is converging in severity but not in count.* That is a candidate for promotion to
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` at the next `consolidate-learnings` pass, together with
+the layer boundary from step 3.
