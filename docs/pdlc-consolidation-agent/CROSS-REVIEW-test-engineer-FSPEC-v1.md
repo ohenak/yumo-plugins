@@ -97,3 +97,7 @@ the revision is bounded. What must change:
 10. **F-14** — disambiguate `credential: absent` on a `refused` row, in §10.3 and in an AT.
 
 F-15 and F-16 are Low and may be folded into the same revision or deferred to TSPEC.
+
+## Verdict
+
+VERDICT: Needs revision
