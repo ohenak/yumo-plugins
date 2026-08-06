@@ -148,6 +148,10 @@ function buildSeamOpsOverrides(
 async function invokeDriver({ seam, config, seamOps, agent, fileDouble, appendFile, now, clock }) {
   const files = fileDouble || makeFileDouble();
   const fakeClock = clock || makeFakeClock(now !== undefined ? { start: now } : undefined);
+  // The report's notice channel (TSPEC §10.2 N-4). Captured for every invocation so AC-4.6's O-1
+  // triple can be asserted on the same path that produced the disposition, rather than needing a
+  // second, differently-plumbed call.
+  const notices = [];
   const disposition = await dev.runAdvisorySeam({
     seam,
     feature: FEATURE,
@@ -162,8 +166,49 @@ async function invokeDriver({ seam, config, seamOps, agent, fileDouble, appendFi
     _log: () => {},
     _now: fakeClock._now,
     _sleep: fakeClock._sleep,
+    _notice: (message) => notices.push(String(message)),
   });
-  return { disposition, fileDouble: files, clock: fakeClock };
+  return { disposition, fileDouble: files, clock: fakeClock, notices };
+}
+
+// ─── The AC-4.6 / O-1 escalation triple, asserted on ONE path ───────────────────────────────────
+//
+// AC-4.6 requires each prohibition case to assert the AC-3.6 POSITIVE triple on the same path that
+// produced the refusal — not merely that the refusal happened. The three conjuncts:
+//
+//   1. the disposition is `escalated` and its `reason` is a member of the closed catalogue;
+//   2. that SAME reason string appears byte-equal in the `ADVISORY-{feature}.md` record's
+//      `Disposition` row AND in `docs/_queue/ESCALATIONS.md`'s `Refusal reason` row — the two
+//      operator-visible artifacts of the refusal, which is what makes "every refusal produces the
+//      same triple" falsifiable rather than a claim about a return value;
+//   3. the pre-advisory behaviour still stands. At this level — a generic driver behind a fake
+//      `SeamOps`, with no pipeline around it (see this file's header note 3) — that is: the seam
+//      changed nothing (`apply` never ran, or its effect was reverted) and the operator was told,
+//      via an `ADVISORY ESCALATION:` notice on the report's notice channel, so the caller's halt or
+//      skip proceeds exactly as it did before the tier existed. The pipeline-level leg (a
+//      byte-identical halt message, a byte-identical `QUEUE.md`) is asserted by
+//      `advisoryDodSeams.test.js` and `advisoryPubSeam.test.js`, which do have a pipeline.
+const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
+
+function assertEscalationTriple({ disposition, fileDouble, notices, seamOps }) {
+  // Conjunct 1 — the positive outcome plus catalogue membership (the reason is never ad hoc).
+  expect(disposition.outcome).toBe("escalated");
+  expect(dev.ADVISORY_REFUSAL_REASONS).toContain(disposition.reason);
+
+  // Conjunct 2 — the same bytes in both artifacts.
+  const record = fileDouble.appends.find((a) => a.path === `docs/${FEATURE}/ADVISORY-${FEATURE}.md`);
+  expect(record).toBeDefined();
+  expect(record.contents).toContain(`| Disposition | escalated — ${disposition.reason} |`);
+
+  const escalation = fileDouble.appends.find((a) => a.path === ESCALATIONS_PATH);
+  expect(escalation).toBeDefined();
+  expect(escalation.contents).toContain(`| Refusal reason | ${disposition.reason} |`);
+
+  // Conjunct 3 — nothing was left applied, and the operator was told.
+  if (seamOps) {
+    expect(seamOps.calls.apply.length).toBe(seamOps.calls.revert.length);
+  }
+  expect(notices.some((n) => n.includes("ADVISORY ESCALATION:"))).toBe(true);
 }
 
 // ─── The gate-exclusivity registry (PROP-GATE-01…06, TSPEC §5.5, §6.5) ──────────────────────────
@@ -561,6 +606,50 @@ describe("A-22 — driver lifecycle", () => {
   });
 
   describe("PROP-LIFE-11 — escalatesOnUnclassified (TSPEC §17.3, E-32, the terminal catch)", () => {
+    it("an unclassified throw anywhere in the lifecycle terminates like every other escalation: record, escalation entry, notice, catalogue reason (CODE_REVIEW v1 finding 3)", async () => {
+      // The oracle this case used to carry — `outcome !== "resolved"` and `reason !== null` — was
+      // satisfied by a terminal catch that built its disposition as a raw literal, bypassing
+      // `terminate()` entirely: no `ADVISORY-{feature}.md` record (AC-9.1), no `ESCALATIONS.md`
+      // entry (AC-10.1), no `ADVISORY ESCALATION:` notice (AC-10.5), and a `reason` outside the
+      // frozen catalogue (AC-3.6). Each of those is now asserted positively, so the bypass is
+      // detectable on this exact path.
+      const config = makeAdvisoryConfig({ enabled: true }).config;
+      const scope = ["owned/path.js"];
+      const agent = makeAgentDouble({
+        script: [verdictFixture({ seam: "A2", proposedAction: "rewrite-citation", confidence: "high", withinEnvelope: "yes" })],
+      });
+      const boom = async () => {
+        throw new TypeError("cannot read property 'x' of undefined");
+      };
+      const seamOps = makeSeamOps(
+        buildSeamOpsOverrides(["rewrite-citation"], scope, boom, async () => ({ ok: true }), undefined, async () => scope)
+      );
+
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A2", config, seamOps, agent });
+
+      // The full AC-3.6 triple — the same one every other escalating path produces.
+      expect(disposition.outcome).toBe("escalated");
+      expect(dev.ADVISORY_REFUSAL_REASONS).toContain(disposition.reason);
+      const record = fileDouble.appends.find((a) => a.path === `docs/${FEATURE}/ADVISORY-${FEATURE}.md`);
+      expect(record).toBeDefined();
+      expect(record.contents).toContain(`| Disposition | escalated — ${disposition.reason} |`);
+      const escalation = fileDouble.appends.find((a) => a.path === ESCALATIONS_PATH);
+      expect(escalation).toBeDefined();
+      expect(escalation.contents).toContain(`| Refusal reason | ${disposition.reason} |`);
+      expect(notices.some((n) => n.includes("ADVISORY ESCALATION:"))).toBe(true);
+      // Exactly the two appends the escalation path owes: the record and the escalation entry.
+      expect(fileDouble.appends).toHaveLength(2);
+      // TSPEC §17.3 — the last computed refusal reason, or `budget-exhausted` when none was
+      // computed. Nothing refused before the throw here, so it is the documented default.
+      expect(disposition.reason).toBe("budget-exhausted");
+      // The invocation's real state survives, rather than being discarded as null/0.
+      expect(disposition.verdict).not.toBeNull();
+      expect(disposition.verdict.proposedAction).toBe("rewrite-citation");
+      // The rung that was actually used is carried too — a dispatch did happen on this path.
+      expect(typeof disposition.model).toBe("string");
+      expect(disposition.fallback).toBe(false);
+    });
+
     it("an unclassified throw anywhere in the lifecycle maps to escalated, never resolved", async () => {
       const config = makeAdvisoryConfig({ enabled: true }).config;
       const scope = ["owned/path.js"];
@@ -629,10 +718,9 @@ describe("A-22 — driver lifecycle", () => {
       });
       const seamOps = makeSeamOps(buildSeamOpsOverrides([], []));
 
-      const { disposition } = await invokeDriver({ seam: "A3", config, seamOps, agent });
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A3", config, seamOps, agent });
 
-      expect(disposition.outcome).toBe("escalated");
-      expect(dev.ADVISORY_REFUSAL_REASONS).toContain(disposition.reason);
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
       expect(seamOps.calls.apply).toHaveLength(0);
     });
 
@@ -654,10 +742,9 @@ describe("A-22 — driver lifecycle", () => {
         )
       );
 
-      const { disposition } = await invokeDriver({ seam: "A2", config, seamOps, agent });
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A2", config, seamOps, agent });
 
-      expect(disposition.outcome).toBe("escalated");
-      expect(dev.ADVISORY_REFUSAL_REASONS).toContain(disposition.reason);
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
       expect(seamOps.calls.verifyGate).toHaveLength(0);
     });
 
@@ -668,11 +755,10 @@ describe("A-22 — driver lifecycle", () => {
       });
       const seamOps = makeSeamOps(buildSeamOpsOverrides([], []));
 
-      const { disposition } = await invokeDriver({ seam: "A5", config, seamOps, agent });
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A5", config, seamOps, agent });
 
       expect(disposition).not.toHaveProperty("ciStatus");
-      expect(disposition.outcome).toBe("escalated");
-      expect(dev.ADVISORY_REFUSAL_REASONS).toContain(disposition.reason);
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
     });
 
     it("P-4 — never merges a PR or alters a queue Status cell: this seam's declared scope carries no merge/queue capability, plus O-1 on a refused path", async () => {
@@ -682,11 +768,76 @@ describe("A-22 — driver lifecycle", () => {
       });
       const seamOps = makeSeamOps(buildSeamOpsOverrides([], []));
 
-      const { disposition } = await invokeDriver({ seam: "A1", config, seamOps, agent });
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A1", config, seamOps, agent });
 
-      expect(disposition.outcome).toBe("escalated");
-      expect(dev.ADVISORY_REFUSAL_REASONS).toContain(disposition.reason);
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
       expect(seamOps.declaredScope).toEqual([]);
+    });
+  });
+
+  // ─── AC-3.6 — the catalogue's ORDER decides, on the production path ────────────────────────────
+  //
+  // The refusal reason on every escalating path is resolved by `refusalReasonFor` over the signals
+  // true at termination, so `ADVISORY_REFUSAL_REASONS`' own order — not the order the driver's
+  // `if`s happen to be written in — fixes which of two simultaneously-true conditions is reported.
+  // Both cases below are scenarios where TWO catalogue members genuinely apply, and each asserts
+  // the reported reason is the earlier of the two AS DERIVED FROM THE CATALOGUE. A build that
+  // hard-coded either literal at the call site passes only while the catalogue happens to agree
+  // with it; re-order the catalogue and the expectation moves with it while a hard-coded value
+  // does not, which is exactly the drift AC-3.6 declares the ordering to prevent.
+  describe("AC-3.6 — when two refusal reasons both apply, ADVISORY_REFUSAL_REASONS' order decides", () => {
+    /** The earlier of two catalogue members, read off the catalogue itself. */
+    function earlierInCatalogue(a, b) {
+      const order = dev.ADVISORY_REFUSAL_REASONS;
+      expect(order).toContain(a);
+      expect(order).toContain(b);
+      expect(order.indexOf(a)).not.toBe(order.indexOf(b));
+      return order.indexOf(a) < order.indexOf(b) ? a : b;
+    }
+
+    it("a prohibited action whose declared scope is also a test artifact: both prohibited-action and revert-on-test-touch hold", async () => {
+      const config = makeAdvisoryConfig({ enabled: true }).config;
+      // A test-artifact path (X-a) AND a sentence `isProhibitedAction` recognises (P-4), with the
+      // action declared permitted so nothing else refuses first.
+      const scope = ["pdlc/workflows/__tests__/someFile.test.js"];
+      const prohibitedAction = "merge the pull request for this feature";
+      const seamOps = makeSeamOps(
+        buildSeamOpsOverrides([prohibitedAction], scope, async () => ({ passed: true }), async () => ({ ok: true }), undefined, async () => scope)
+      );
+      const agent = makeAgentDouble({
+        script: [verdictFixture({ seam: "A2", proposedAction: prohibitedAction, confidence: "high", withinEnvelope: "yes" })],
+      });
+
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A2", config, seamOps, agent });
+
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
+      expect(disposition.reason).toBe(earlierInCatalogue("prohibited-action", "revert-on-test-touch"));
+    });
+
+    it("a low-confidence proposal that is ALSO out of envelope: both low-confidence and out-of-envelope hold", async () => {
+      const config = makeAdvisoryConfig({ enabled: true }).config;
+      const seamOps = makeSeamOps(buildSeamOpsOverrides([], ["owned/path.js"]));
+      const agent = makeAgentDouble({
+        script: [verdictFixture({ seam: "A2", proposedAction: "an-action-not-permitted", confidence: "low", withinEnvelope: "yes" })],
+      });
+
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A2", config, seamOps, agent });
+
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
+      expect(disposition.reason).toBe(earlierInCatalogue("out-of-envelope", "low-confidence"));
+    });
+
+    it("a single-attempt budget whose one response is malformed: both malformed-verdict and budget-exhausted hold", async () => {
+      // This is this file's header interpretive decision 2, restated as what it actually is — a
+      // consequence of the catalogue's order, not of a ternary at the call site.
+      const config = makeAdvisoryConfig({ enabled: true, attemptBudget: 1 }).config;
+      const seamOps = makeSeamOps(buildSeamOpsOverrides(["rewrite-citation"], ["owned/path.js"]));
+      const agent = makeAgentDouble({ script: ["not a verdict at all, just agent prose"] });
+
+      const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A2", config, seamOps, agent });
+
+      assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
+      expect(disposition.reason).toBe(earlierInCatalogue("malformed-verdict", "budget-exhausted"));
     });
   });
 

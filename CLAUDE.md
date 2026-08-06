@@ -174,7 +174,8 @@ run is byte-identical to the pre-advisory baseline (`advisoryDisabled.test.js`, 
   `docs/_queue/ESCALATIONS.md` — a single append-only escalation log, never distilled and
   never deleted.
 - **Reporting:** the final report's `advisory` field carries five per-seam rows on both the
-  success and halt paths (all-zero rows when enabled-but-quiet, `null` when disabled), and
+  success and halt paths (all-zero rows when enabled-but-quiet; the key is **absent** —
+  `undefined`, not `null` — when disabled, per AC-1.6's "carries no advisory summary"), and
   `ciStatus` provenance is always a real `checkPrCi` observation, never an advisory verdict
   field.
 

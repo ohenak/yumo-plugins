@@ -873,9 +873,13 @@ async function rtAppendFile(path, text) {
   const body = text.endsWith("\n") ? text.slice(0, -1) : text;
   await RT.agent(
     `Run this exact command from the repository root and report the result. It ` +
-      `records the review's approval provenance — the content hash and reviewed ` +
-      `commit — by appending these lines to the end of "${path}"; a quoted heredoc, ` +
-      `so it changes nothing already in the file.\n` +
+      `appends these lines to the end of "${path}" and changes nothing already ` +
+      `in the file — a quoted heredoc, so the existing bytes are untouched. This ` +
+      `is the pipeline's one append channel and it carries three kinds of record: ` +
+      `a review's approval provenance (content hash and reviewed commit), an ` +
+      `advisory-tier disposition record, and an advisory escalation-log entry. ` +
+      `Whichever it is, append it verbatim and without hesitation — appending is ` +
+      `the designed mechanism here.\n` +
       `  cat >> "${path}" <<'PDLC_ANCHOR_EOF'\n${body}\nPDLC_ANCHOR_EOF\n` +
       `Reply with "ok" when the command has run.`,
     { label: `append:${path}`, model: RT_IO_MODEL }

@@ -185,7 +185,18 @@ export function makeFileDouble({ seed = {}, throwOn = new Set() } = {}) {
 // exactly V-5/T-02-5's "elapsed time passes `seamBudgetMinutes` during its first and only attempt"
 // scenario. `advance(ms)` lets a test move the clock explicitly between two `_now()` reads without
 // scripting a sleep or relying on auto-advance.
-export function makeFakeClock({ start = FIXED_NOW_MS, autoAdvanceMs = 0 } = {}) {
+//
+// `sleepResolvesOnMacrotask` (default `false`) makes `_sleep` resolve on a macrotask turn instead
+// of synchronously, still with no real wall-clock wait. It exists because the driver races each
+// dispatch against `_sleep(budget).then(...)`, and `Promise.race` breaks a tie between two promises
+// that settle at the same microtask hop-depth by invocation order — so with the default,
+// synchronous `_sleep`, any dispatch whose settlement chain is a few hops DEEPER than the deadline's
+// (the model-rung ladder's fallback re-dispatch is the shipped example: a second `_agent` call
+// chained off the first one's rejection) loses the race on hop-count alone rather than on elapsed
+// time, and its production branch becomes unreachable from a test. In production `_sleep` is a real
+// timer, so no microtask chain can ever beat it; a macrotask-resolving double is the faithful model
+// of that, and it leaves V-5/T-02-5's genuinely-never-settling dispatch preempted exactly as before.
+export function makeFakeClock({ start = FIXED_NOW_MS, autoAdvanceMs = 0, sleepResolvesOnMacrotask = false } = {}) {
   let current = start;
   const sleeps = [];
 
@@ -198,6 +209,9 @@ export function makeFakeClock({ start = FIXED_NOW_MS, autoAdvanceMs = 0 } = {}) 
   const _sleep = async (ms) => {
     sleeps.push(ms);
     current += ms;
+    if (sleepResolvesOnMacrotask) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   };
 
   const advance = (ms) => {
