@@ -1155,7 +1155,11 @@ written.
 own arm.** A record is skipped only by the contracts that index the field it is missing. The table is
 set-equal to the readers this document names — §5.1, §8.6, §6.4, §8.4 step 1, §10.2 order 2, §8.3 and
 §8.5, seven, one row each, and no reader of a failure-mode record anywhere in this document outside
-that set — and a reader added later is a change to this table, made here:
+that set — and a reader added later is a change to this table, made here. **The set-equality is over
+the table's cells, not only its rows**: for every field in §8.1's eight, the readers that index it are
+exactly those whose `Fields it indexes` cell names it. A reader that indexes an unlisted field, and a
+field indexed by a reader whose row omits it, are the same defect — which is why §6.4's row names
+`passId`:
 
 | Reader | Fields it indexes | A record short of one of them |
 |---|---|---|
@@ -1172,10 +1176,12 @@ names the record. AT-F21 asserts that on one path, and E-12b is its edge-case ro
 
 `target`, `passId`, `action` and `route` are bookkeeping, not identity: the *promotion* is keyed on
 the id alone (§8.2), and none of the four participates in the derivation below. They are in the
-record because four contracts read them off it — §5.1 routes on `target`, NFR-4's consuming-repo
-carrier reads `action` and `route` — and `passId`, to spell its `suppressed-by:` evidence (§6.4,
-§10.3) — §8.4 step 1's open-promotion list reads `action` and `route`, and §8.6 routes a remediation
-on `target`.
+record because four contracts read **these four bookkeeping fields** off it — §5.1 routes on
+`target`, NFR-4's consuming-repo carrier reads `action` and `route` — and `passId`, to spell its
+`suppressed-by:` evidence (§6.4, §10.3) — §8.4 step 1's open-promotion list reads `action` and
+`route`, and §8.6 routes a remediation on `target`. **Four is the count of the readers of the
+bookkeeping fields, not of the record**: all seven readers of the record are enumerated once, in the
+reader table above, and the other three (§10.2 order 2, §8.3, §8.5) index no bookkeeping field.
 
 **The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs —
 `phase` and the **subject** `artifact`, never `target`:
