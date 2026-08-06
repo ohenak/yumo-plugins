@@ -197,6 +197,56 @@ why the loop cannot terminate under its own budget.
 
 ## Best-Guess Root Cause
 
+**A REQ pinned against its size ceiling must relocate normative text to buy space for each round's
+fixes; each relocation opens a fresh ownership/oracle-range seam; and one reviewer's severity bar
+scores every such seam as blocking. That composition emits one blocking Medium per round
+indefinitely, so no finite round budget terminates the loop.**
+
+Three factors compose, in order of weight:
+
+1. **The byte ceiling turned into a treadmill.** The REQ is at 61,003–61,096 bytes against a
+   61,440-byte hard ceiling (`check-req-size.sh:42`) and past both soft thresholds. The soft
+   threshold's own comment predicted this: "a REQ that can only absorb the next review round by
+   deleting existing text will eventually delete a reason rather than a restatement" (`:47-48`).
+   The author did the disciplined thing — relocate restatements to `docs/_constraints/` files rather
+   than delete reasons, and relocate *first*, per `pm-author/SKILL.md:118` — and the discipline
+   worked on its own terms (two lossless relocations, verified independently by both reviewers). But
+   the relocations are **structural edits to a shared normative file**, and every structural edit to
+   a normative file is new surface for the next review. The document is not converging because it is
+   not holding still, and it is not holding still because it cannot both answer a round and stay
+   under the ceiling without moving text.
+
+2. **The governance rules for the relocated file were written incrementally, one round behind the
+   relocations.** Ownership, the set-equality range, the version-pin obligation and §5's deliverable
+   list each arrived in the round *after* the relocation that made them necessary — and each was
+   scoped to the sections that existed when it was written. v9 F-01 asked for a range; the round-10
+   fix wrote "§1 and §2 entire" while the same five commits created §3 and §4. That is not
+   carelessness: it is what happens when the rule and the thing it governs are authored in the same
+   round under a byte budget that forces both to be terse. Nothing in the authoring seam forces
+   "after relocating a block, re-derive every rule whose scope is stated as a section list" — the
+   exact structural analogue of the first window's missing propagation checklist, one level up.
+
+3. **Two defensible severity bars, never reconciled, and the stricter one is decisive.** SE scores
+   "an obligation whose scope is unstated" as Medium because the REQ owns oracle scope. TE scores the
+   same fact as Low because the version-pin clause makes drift detectable, so a test author is not
+   blocked today. Both are consistent with the shipped review guidance, both were applied
+   consistently for three rounds, and the approval bar (any open Medium ⇒ Needs revision) makes the
+   stricter one binding. The loop has no adjudication seam: delta-scoped reviewers never read each
+   other's cross-review, so a two-reviewer severity split cannot be resolved *by* the loop — only by
+   an operator or by removing the generator that keeps feeding it.
+
+**Why more rounds would not help.** The steady state is one blocking Medium per round, sustained by
+factor 1 and scored by factor 3. Five more rounds absorb five more relocations and produce five more
+seams. This is the same conclusion the first window reached about propagation lag, now confirmed by a
+second, independent window: the budget is not the binding constraint.
+
+**What is not the root cause:** reviewer drift or escalating standards (severity fell monotonically;
+both bars were applied consistently and stated explicitly); reviewer error (four consecutive rounds
+with no defect row; every disputed fact independently verified at HEAD by both reviewers); a
+defective upstream document (zero ERRATUM lines in ten rounds); an unimplementable or ill-scoped
+requirement (uncontested by both reviewers since round 4); or author non-responsiveness (100% closure
+in all ten rounds, and every v10 finding already fixed on the branch).
+
 ## Recommendation
 
 ## Appendix — first window (rounds 1–5, resolved)
