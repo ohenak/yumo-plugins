@@ -205,13 +205,9 @@ pass — the never-fires failure this datum prevents.
   streaks it advances is decided by consumed-set emptiness, never by the `no-op` label** — the two
   causes differ exactly there, and AC-5.3 and AC-5.5 state each population in those terms.
 - **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it actually ran on in its report and in the log row.
-  The rung ladder is the one `pdlc-advisory-tier` ships: `MODEL_ADVISORY` (`pdlc/workflows/orchestrate-dev.js:1652`) first, `MODEL_ADVISORY_FALLBACK`
-  (`:1653`) on non-resolution. **This feature reuses that ladder; it does not restate it.** The two constants are module-private, but the ladder is
-  not: the resolver `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833`, under a doc comment at `:1800` calling it "the **one** ladder the
-  tier ships", and the shipped second consumer takes it through an injected seam with a threaded `rungState` (`orchestrate-queue.js:1245-1256`) rather
-  than copying literals. The consolidation pass resolves the same way. If FSPEC/TSPEC establishes that reuse is impossible here, the fallback is a
-  restated pair of literals **plus a named drift observable**, never a named risk: a test asserting set-equality with `MODEL_ADVISORY` /
-  `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`), failing when either copy moves.
+  The rung ladder — its two constants, its exported resolver `resolveAdvisoryRung`
+  (`pdlc/workflows/orchestrate-dev.js:1833`), its shipped second consumer, and the drift-observable fallback if reuse proves impossible — is stated in
+  **`docs/_constraints/pdlc-advisory-corpus-baseline.md` §3** and is binding here. **This feature reuses that ladder; it does not restate it.**
 - **AC-1.6** — Given the primary rung does not resolve, Then the pass runs on the fallback rung and
   reports the downgrade explicitly (mirroring `ADVISORY_MODEL_FALLBACK:`,
   `pdlc/workflows/orchestrate-dev.js:1859`) — never a silent downgrade. Given **neither** rung
@@ -391,8 +387,9 @@ procedural — it holds even if every other control failed.
   **Action, and what it discriminates.** Every proposal carries an `action` over the closed set `promote` / `revise` / `retire` (§4b): `promote` for an
   edit targeting the mode, `revise` and `retire` for the two AC-5.3 remediations. NFR-4's suppression key is the **pair**, never the id alone, and the
   consequence must be visible: a merged `promote` PR bars a second `promote` for that `(phase, artifact)` pair forever and bars **nothing else** — the
-  AC-5.3 remediations are different keys, are never suppressed by the promotion they remediate, and reach the AC-3.1 route unimpeded. `action` is
-  recorded beside the id, never folded into its derivation.
+  AC-5.3 remediations are different keys, are never suppressed by the promotion they remediate, and reach the AC-3.1 route unimpeded **by it**. They can
+  still be suppressed by an *earlier remediation of the same kind* — each action fires at most once per id — which is why AC-5.3 routes the pass to the
+  other alternative when its first choice is spent, and makes `retire` terminal. `action` is recorded beside the id, never folded into its derivation.
 - **AC-5.2** — Given a consolidation pass, Then it reports, for **every** promotion recorded in
   prior passes, a verdict over the closed set `prevented` / `recurred` / `insufficient-evidence`,
   decided by a deterministic rule with no model judgment — so two runs over the same inputs cannot
@@ -428,6 +425,13 @@ procedural — it holds even if every other control failed.
   counted: an `insufficient-evidence` verdict is skipped entirely, as is any pass with an **empty consumed set** (which produces no verdict at all —
   AC-1.4's first cause), so quiet weeks cannot silently reset the streak. The population is keyed on consumed-set emptiness, never on the `no-op` label
   (AC-1.4), and it governs the `ineffective` streak **only**; AC-5.5 counts a different population.
+
+  **A spent alternative, and the terminal remediation.** NFR-4 suppresses on the pair, so each `action` fires at most once per id — which would leave
+  AC-5.3's promise merely *achievable* rather than guaranteed if the pass could choose an alternative already spent. It cannot: **when the pass's chosen
+  alternative is already on a PR in state open or merged, it proposes the other one**, and `retire` is the **terminal** remediation — a retired promotion
+  is gone, so no successor is owed and the ladder cannot run out. The AC-7.1 field then names the alternative actually proposed, never the one displaced.
+  And a **merged** revision resets that promotion's `ineffective` streak to zero — the reset AC-5.5 makes explicit for `unmeasurable`, made explicit here
+  too — so a revision that lands is re-judged on two fresh `recurred` counted passes rather than re-flagged on the next one.
 - **AC-5.4** — Given a promotion flagged `ineffective`, Then retiring it follows the same
   propose-only path as making it: one that landed under the AC-3.1 guard set is retired by a PR
   (AC-3.1, AC-3.6); one that landed in the **consuming repo** — `DOMAIN-CONSTRAINTS.md` (AC-2.1) or

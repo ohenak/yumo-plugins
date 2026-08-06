@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (REQ-CONS-06, BL-01a, D-CONS-06) |
+| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (AC-1.5, AC-1.6, REQ-CONS-06, BL-01, BL-01a, D-CONS-06) |
 | Version | 1.0 · 2026-08-06 |
 | Verified at | HEAD, 2026-08-06 |
 
@@ -36,7 +36,23 @@ default is `enabled: false` (`:1663`), and this repo's `.claude/pdlc.config.json
 So any feature consuming this corpus must be specified **absent-first**: it ships and is testable with
 the tier off, and availability is a tracked dependency rather than an asserted delivery.
 
-## 3. The honest limit
+## 3. The two-rung model ladder, and that it is reusable
+
+The advisory tier ships **one** model-rung ladder: `MODEL_ADVISORY`
+(`pdlc/workflows/orchestrate-dev.js:1652`) first, `MODEL_ADVISORY_FALLBACK` (`:1653`) on
+non-resolution, with the downgrade announced rather than silent (`ADVISORY_MODEL_FALLBACK:`, `:1859`).
+
+The two constants are module-private, but the ladder is **not**: the resolver `resolveAdvisoryRung` is
+exported at `:1833`, under a doc comment at `:1800` calling it "the **one** ladder the tier ships", and
+the shipped second consumer takes it through an injected seam with a threaded `rungState`
+(`pdlc/workflows/orchestrate-queue.js:1245-1256`) rather than copying literals.
+
+Consequence for any consumer: **reuse the resolver, do not restate the ladder.** Where reuse is
+genuinely impossible, a restated pair of literals is acceptable only with a named drift observable — a
+test asserting set-equality against `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK`, failing when either
+copy moves — never with a named risk.
+
+## 4. The honest limit
 
 `ESCALATIONS.md` records escalations, not resolutions. "The seam resolved it autonomously" is
 observable only as the *absence* of an escalation. A resolution-**rate** input needs
