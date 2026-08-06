@@ -104,4 +104,52 @@ Low.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 3 Low.
+
+The document under review is byte-identical to the one I approved at v11 — same digest, empty diff,
+empty diff over both governed `docs/_constraints/` files. So the verdict is the same verdict, for
+the same reasons, and I want to be explicit that this is not deference to the prior round: I
+re-derived it. Every one of the REQ's `file:line` claims about existing behaviour was re-run against
+HEAD (§Positive Observations lists them with the text found at each line), because ~120 commits is
+more than enough to move a pinned line number, and all of them still resolve to code saying what is
+attributed to it. All three carried Lows were re-checked against the files they are about, not
+against v11's description of them.
+
+Applying the Challenger bar to the three candidates individually rather than to their count:
+
+- **F-54** would be Medium if a value a downstream test transcribes had changed under a frozen
+  version. None did: the baseline's §1 fate table, §2 absent-at-HEAD finding, §3 ladder and §4 limit
+  are byte-identical across the diff that broke the rule, and the file declares itself outside any
+  row oracle (`:17-19`). It is a self-breach of a governance clause, not a drift any oracle can
+  observe.
+- **F-55** would be Medium if the oracle's subject were undecidable. It is not — the range clause
+  pins `Version 1.4`, only the vocabularies file carries 1.4, and the baseline states the answer in
+  its own words. A PROPERTIES author reaches the right range; they cross two documents to be sure.
+- **F-56** is a headroom measurement inside a warn-only budget (`exit 0` on every path), filed
+  `Process`.
+
+All three sit squarely in the class `DEC-SEV-01` adjudicates as Low
+(`docs/_decisions/DECISIONS-review-severity-bars.md:10`), and I reached that scoring by its test —
+"does this block a downstream author today?" — rather than by citing it. No High, no Medium,
+therefore not Needs revision.
+
+What should change, unchanged from v11 and now ~44 bytes in total:
+
+1. **F-54** — bump `docs/_constraints/pdlc-advisory-corpus-baseline.md` to `Version` 1.1 and repin
+   the REQ's two version-pinned citations (`:202`, `:448`). Seven characters.
+2. **F-55** — name the vocabularies file in §4b's classification sentence ("Of **the vocabularies
+   file's** owned sections, §1, §2 and §4 are enumerations …") and add to §5 that the baseline's
+   four owned sections carry no row oracle. ~40 bytes.
+3. **F-56** — both fixes fit in the 331-byte margin. Do not plan a relocation to make room; there is
+   little restatement left to move, and v11's evidence is that a relocation round buys nothing.
+
+If the phase closes without them, none is a blocker at the REQ layer — but F-55 is the one worth
+landing, because it is the only one of the three that a PROPERTIES author has to resolve by
+cross-reading two files.
+
+**No upstream defects.** REQ is the root document of this feature; nothing upstream of it exists to
+be wrong. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
