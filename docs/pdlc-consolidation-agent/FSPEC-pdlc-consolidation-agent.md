@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 6.0 | 2026-08-06 |
+| pdlc | draft | Claude | 6.1 | 2026-08-06 |
 
 ## 1. Scope and entry obligations
 
@@ -914,7 +914,7 @@ resolves to `merge` however it was spelled.
 | Seam domain | **Obliged** — present on a pass whose Given obliges it (column 5) | **Permitted but not obliged** | Absent, on every pass | Obliged on which Given |
 |---|---|---|---|---|
 | **PR seam** — every call that reads or mutates a pull request in the target repository | `read-pr` (§6.4's state table cannot be evaluated without it), `create-pr` (AC-3.1) | — | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` | a pass that opens a PR (AT-Q7) |
-| **git seam, invoking tree** | `add`, `commit` (§5.4's single commit) | every **non-mutating read** — `read-branch` (`git rev-parse --abbrev-ref HEAD` and equivalent spellings) and `read-status` — see the paragraph below | every branch operation AC-3.8 forbids — `checkout`, `switch`, `stash`, `reset`, `rebase` — in **any** spelling, plus every merge verb above | a pass that **makes** the §5.4 commit, PR-opening or not (AT-Q7 **and** AT-Q7c). A promoting pass whose `git add` stages nothing — §5.4's fourth consequence, AT-R5 — makes no commit and is **outside** this Given: it observes `add` and no `commit`, and the obligation is not asserted on it |
+| **git seam, invoking tree** | `add`, `commit` (§5.4's single commit) | the two **non-mutating reads** — `read-branch` (`git rev-parse --abbrev-ref HEAD` and equivalent spellings) and `read-status` — see the paragraph below | every branch operation AC-3.8 forbids — `checkout`, `switch`, `stash`, `reset`, `rebase` — in **any** spelling, plus every merge verb above | a pass that **makes** the §5.4 commit, PR-opening or not (AT-Q7 **and** AT-Q7c). A promoting pass whose `git add` stages nothing — §5.4's fourth consequence, AT-R5 — makes no commit and is **outside** this Given: it observes `add` and no `commit`, and the obligation is not asserted on it |
 | **git seam, §6.1 clone** | `clone` (§6.1), `create-branch` (§6.2), `add`, `commit` (one per edit, §6.2), `push` (§6.2) | `fetch` — §6.1 obliges a clone *cut from the fetched default branch*, and a `clone` already fetches, so a distinct `fetch` verb is conforming and its **absence** is equally conforming; plus the same **non-mutating reads** (`read-branch`, `read-status`), for the same reason | every merge verb above. AC-3.8's branch prohibition is **not** asserted here: it is scoped to the invoking tree, and inside a throwaway clone a branch-creating spelling resolves to `create-branch` | a pass that opens a PR (AT-Q7) |
 
 **Why the read verbs are permitted rather than absent, and why they are not obliged.** Every
@@ -1163,7 +1163,7 @@ substitution maps both `/` and `.` to `-` and then collapses runs, so it is many
 
 | Consequence | Bound |
 |---|---|
-| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. Where the merged proposals are of **different §5.2 kinds**, §8.2's precedence rule decides the single `target` and the report body names the elided kind (AT-R6b's third and fourth fixtures, O-C8); and because the merged proposals name **two** canonical subject paths by construction here, §8.2's subject tie-break decides the single `artifact` — and, where precedence returns the process-learning kind, the `target` with it. `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
+| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. Where the merged proposals are of **different §5.2 kinds**, §8.2's precedence rule decides the single `target` and the report body names the elided kind (AT-R6b's third, fourth and fifth fixtures, O-C8); and because the merged proposals name **two** canonical subject paths by construction here, §8.2's subject tie-break decides the single `artifact` — and, where precedence returns the process-learning kind, the `target` with it. `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
 | **Across passes**, NFR-4 suppresses a promotion whose subject collides with a *different* one already on a PR or in a §6.4 log record | the two files are in the same directory tree and differ only by separator-vs-dot in one path component; this suppression **is** reported (`duplicate-suppressed` names the pair **and** the PR or `passId`), so an operator reading the row sees which promotion was withheld. This is the cross-pass cost, and it is the only one the reason code covers |
 | §8.3 emits one effectiveness row for two failure modes | the row's `artifact` field carries the **unslugged** canonical subject path of the promotion that made it, so the row is never ambiguous about which file it measured |
 | §8.5 retires or revises one and appears to have retired both | same — the proposal carries the canonical path, not the slug |
@@ -1278,8 +1278,8 @@ Three notes, each of which is why the rule is spelled rather than left open:
 - **It is load-bearing two passes later.** §8.5 chooses the remediation with a file-existence test on
   the **subject** (BR-35a), so which of the colliding paths survives decides whether AT-F17's
   `revision` branch or AT-F18's `retirement` branch is taken. AT-R6b's colliding fixture asserts
-  **which** `artifact` and `target` survive — `pdlc/skills/a-b.md`, since `-` (0x2D) precedes `/`
-  (0x2F) — not merely that there is one.
+  **which** `artifact` survives (and, on a kind-3 merge, the `target` with it) — `pdlc/skills/a-b.md`,
+  since `-` (0x2D) precedes `/` (0x2F) — not merely that there is one.
 
 O-C8 (§14.2) records the accepted cost.
 

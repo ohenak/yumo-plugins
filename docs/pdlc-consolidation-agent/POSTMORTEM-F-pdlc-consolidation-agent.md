@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (pm-author) | 1.0 | 2026-08-06 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -334,3 +334,37 @@ constant rate, so High drains and Medium does not; a fixed round window then exp
 that is converging in severity but not in count.* That is a candidate for promotion to
 `docs/_constraints/DOMAIN-CONSTRAINTS.md` at the next `consolidate-learnings` pass, together with
 the layer boundary from step 3.
+
+## Resolution (2026-08-06)
+
+The Recommendation was carried out in full by the outer orchestrator.
+
+**Step 1 — per-finding verification (Opus agent, FSPEC v6.0 at HEAD, judged against file text,
+not commit messages).** All nine round-5 findings and all six questions verified CLOSED:
+
+| Finding | Verified closed by |
+|---|---|
+| SE F-01 (subject tie-break) | §8.2 `:1256-1268` — lexicographic byte order over normalised root-relative paths, input-pure, proposal order explicitly refused; `target` follows `artifact` on kind 3; BR-33b/BR-35a/O-C8 carry it |
+| SE F-02 / TE M-02 (AT-R6b) | AT-R6b `:1971` — five named fixtures, no self-contradicting Given, all three ordered pairs (1,3)/(2,3)/(1,2) fixtured, rank-2/rank-3 pair asserts `route: decisions`, no guard-set write, no PR |
+| SE F-03 / TE M-01 (reader-side rule) | AT-F21 `:2028` — two short records + one well-formed, positive and negative halves asserted on one path; E-12b beside E-12; BR-33a cites AT-F20/AT-F21 |
+| SE F-04 / TE L-01 (citation) | §6.5 `:925-928` cites `:3520`/`:3524`/`:3580`; `:3585` gone; all re-verified at HEAD |
+| SE F-05 / F-06 (§6.5 absolutes) | `:954-958` equality absolute qualified against AT-Q7c's `∅`; `:917` Given un-widened |
+| SE Q-01..Q-03, TE Q-01..Q-03 | AT-F19 literal count `3`; per-field reader table names §8.3 and §8.5; `symptom` one-line obligation with report-body compensation; §6.5 closed two-member read set; ER-5 on-landing delta spelled |
+
+Three residual wording risks the verifier flagged (none a round-5 finding) were fixed in the
+resolution commit as FSPEC v6.1: §8.2 `:1280` no longer overstates the fixture's `target`
+assertion; §6.5's `:917` cell says "the two non-mutating reads" instead of the open class; `:1166`
+cites AT-R6b's third, fourth **and fifth** fixtures.
+
+**Step 2 — structural freeze, declared and in force for the confirming round.** Rounds 6–10 may
+add **no new normative rule, no new BR, and no new AT** beyond pinning artefacts of rules already
+stated in v6.1. A finding that proposes new mechanism is filed as Low/deferred per
+`docs/_decisions/DECISIONS-spec-layer-boundary.md` (DEC-LAYER-01), not as a blocking Medium.
+
+**Step 3 — layer boundary recorded.** `docs/_decisions/DECISIONS-spec-layer-boundary.md`
+DEC-LAYER-01: tie-break/ordering algorithms, per-field reader indices, seam verb permitted-sets,
+and fixture construction/oracle strength are TSPEC/PROPERTIES-owned; an FSPEC states the
+observable and names the pinning artefact's owner. Companion to DEC-SEV-01.
+
+**Step 4 — re-entry.** Queue row 15 back to `pending`; re-entry opens rounds 6–10 from the
+on-disk `-v5` basenames. Expectation: one short delta round confirming the closures above.
