@@ -15,7 +15,7 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-05 |
+| pdlc | draft | Claude | 1.5 | 2026-08-06 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry
 > pipeline-level promotions to `yumo-plugins` as pull requests — the same repository today
@@ -611,7 +611,7 @@ containment across six sections; adding a value above without a row here is a de
 | `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
 | `revision` / `retirement` | proposed action on an `ineffective` promotion | as above | AC-5.3 |
 | `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
-| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3336-3437` — declaration `:3336`, first key `R:` `:3337`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
+| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3437` — declaration `:3337`, first key `R:` `:3338`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
 
 Two joins the table settles. A pass that promoted something and also hit an AC-3.5 fallback class is
 `promoted-degraded`, never a bare `promoted` — the degradation is visible in the status, not only in

@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (pm-author) | 1.0 | 2026-08-05 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -206,3 +206,32 @@ propagation lag, and the right move is to split the REQ — the consolidation-ca
 (REQ-CONS-01, AC-1.x, §4b) and the cross-repo-promotion half (REQ-CONS-03, AC-3.x, AC-5.x, NFR-4)
 have almost disjoint enumeration sets, and the coupling between them is what makes each decision's
 ripple set large.
+
+## Resolution (2026-08-06)
+
+The Recommendation's steps 1 and 3 were carried out by two independent verification agents
+against the current tree (REQ read at `2e29dd9`; all code citations checked against
+`pdlc/workflows/orchestrate-dev.js` at HEAD, which no commit on this branch touches).
+
+**Step 1 — per-finding verification.** Nine of the ten v5 findings, and all four open
+questions, are closed by the commits the table above names, verified against the REQ text at
+the cited lines — not against commit messages:
+
+| v5 finding | Verified closed by |
+|---|---|
+| SE F-01 / TE Q-11 | `e75a115` — NFR-4 keys per promotion on the `PDLC-CONSOLIDATION-PROMOTIONS` trailer (REQ `:266-268`, `:540-547`); `failure-mode-id` stability at `:392-395` |
+| SE F-02 / TE F-34 | `4e2c002` — AC-1.3 `refused` row commits nothing (`:200`, `:203-211`); AC-3.8b's "never committed" absolute is true again; end-of-file whole-record append discipline stated |
+| SE F-03(a)(b) / TE F-33 | `7640bd2` — §4b `no-cadence-datum` admits `refused` (`:599`, justification `:627-630`); `writes-uncommitted` excludes it (`:600`, `:630-631`) |
+| SE F-04(a)(b) / TE F-36 | `cc601c3` — `phase: "CR"` cited `:10255-10257`; both dod-verify dispatch sites (`:7911`, `:7941`) named |
+| TE F-37 | `cc601c3` — REQ-CONS-01(b) names exactly two exempt pre-boundary records (`:122-125`) |
+| TE F-35 | **regressed by `7640bd2`, corrected in the resolution commit**: the v5 fix adopted TE's line number, but TE's premise was wrong (SE v5 verification row 7 was accurate) — `:3336` is a comment; the `PHASE_DISPATCH` declaration is `:3337`, first key `R:` `:3338`. REQ §4b now cites `:3337-3437`. Verified against the file directly. REQ header bumped to v1.5. |
+
+**Step 3 — propagation sweep.** All six self-nominated set-equality oracles (§4b, AC-1.3,
+AC-4.2, AC-5.2, AC-7.2, NFR-4) were re-derived from the surrounding ACs and diffed against the
+written tables: SWEEP CLEAN — no missing, extra, or contradictory cell; every ripple of the v5
+"`refused` writes a row" decision is propagated, including the AC-1.3/§4b/AC-4.2/AC-7.2 and
+REQ-CONS-01(b) sites.
+
+No reviewer round is skipped by this resolution: per §3.6, re-entry derives a fresh window
+(rounds 6–10) from the on-disk `-v{1..5}` files, and the reviewers judge the current tree in
+round 6. Steps 2 and 4 of the Recommendation are the re-invocation itself.
