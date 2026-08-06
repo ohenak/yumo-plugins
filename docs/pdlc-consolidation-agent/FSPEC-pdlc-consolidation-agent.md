@@ -921,10 +921,26 @@ Every promotion records a four-field structured record, not prose:
 > collapsed to a single `-` and leading/trailing `-` stripped.
 
 Worked: `phase = DOD`, `artifact = pdlc/skills/dod-verify/SKILL.md` ⇒
-`dod-pdlc-skills-dod-verify-skill-md`. It is total (every path yields a slug), injective enough for
-its purpose (two distinct `(phase, artifact)` pairs cannot collide, because the substitution is
-reversible up to case), and consults nothing else — not the pass, not its consumed set, and **not**
-`symptom`.
+`dod-pdlc-skills-dod-verify-skill-md`. It is **total** (every path yields a slug), **deterministic**
+(a pure function of the two file-text fields), and consults nothing else — not the pass, not its
+consumed set, and **not** `symptom`.
+
+**It is not injective, and the collision is an accepted, bounded cost rather than a claim.** The
+substitution maps both `/` and `.` to `-` and then collapses runs, so it is many-to-one:
+`pdlc/skills/a-b.md`, `pdlc/skills/a/b.md` and `pdlc/skills/a.b.md` all slug to
+`pdlc-skills-a-b-md`, and with one `phase` they are one id. What that costs, stated exactly:
+
+| Consequence | Bound |
+|---|---|
+| NFR-4 suppresses a promotion targeting one of the colliding files because a *different* one is already on a PR or in a §6.4 log record | the two files are in the same directory tree and differ only by separator-vs-dot in one path component; the suppression is reported (`duplicate-suppressed` names the pair **and** the PR or `passId`), so an operator reading the row sees which promotion was withheld |
+| §8.3 emits one effectiveness row for two failure modes | the row's `artifact` field carries the **unslugged** canonical path of the promotion that made it, so the row is never ambiguous about which file it measured |
+| §8.5 retires or revises one and appears to have retired both | same — the proposal carries the canonical path, not the slug |
+
+The repair — a lossless encoding, e.g. percent-escaping the separators — is available and is
+**deliberately not taken**: the id appears verbatim in a git trailer, a branch-adjacent record and a
+LEARNINGS line a human writes (§8.4), and a lossless encoding is not a slug a person will reproduce
+by hand. The collision is accepted at a rate bounded by "two authored files in one tree whose paths
+differ only in separator-vs-dot" and is reported wherever it fires; it is **not** asserted away.
 
 **Why exactly those inputs.** Determinism of the derivation is not stability of its inputs. `phase`
 and `artifact` are *file* text — the property §8.3's determinism rests on. `symptom` is a line the
