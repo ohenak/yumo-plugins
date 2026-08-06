@@ -98,3 +98,17 @@ of the FSPEC; roll-up below.
 | US-03 | REQ-ADV-01, REQ-ADV-03 | FSPEC-ADV-01, FSPEC-ADV-03, FSPEC-ADV-10 |
 | US-04 | REQ-ADV-09 | FSPEC-ADV-08 |
 | US-05 | REQ-ADV-02, REQ-ADV-04 | FSPEC-ADV-02, FSPEC-ADV-03 |
+
+## pdlc-consolidation-agent
+
+Upstream: `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (v2.0). Downstream:
+`docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` (v1.0). The authoritative
+per-criterion mapping lives in FSPEC §15.1; roll-up below.
+
+| User Story | Requirement | FSPEC sections |
+|---|---|---|
+| US-01 | REQ-CONS-03 | §5 FSPEC-CONS-04, §6 FSPEC-CONS-05 |
+| US-02 | REQ-CONS-03, REQ-CONS-04 | §6.5, §7 FSPEC-CONS-06 |
+| US-03 | REQ-CONS-01 | §2 FSPEC-CONS-01, §3 FSPEC-CONS-02, §4 FSPEC-CONS-03 |
+| US-04 | REQ-CONS-05, REQ-CONS-07 | §8 FSPEC-CONS-07, §10 FSPEC-CONS-09 |
+| US-05 | REQ-CONS-05, REQ-CONS-06 | §8.5, §8.7, §9 FSPEC-CONS-08 |
