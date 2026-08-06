@@ -320,6 +320,117 @@ round-trip, not by delay.
 
 ## Recommendation
 
+Ordered. Steps 1–4 are the resolution; step 5 is re-entry; steps 6–8 are scope notes and the
+escalation this feature has now earned.
+
+### 1. Verify the v11.0 tree against the six open round-10 items — against the tree, not the commit messages
+
+Commits `ee742a3`…`04e172e` claim closure of SE F-01/F-02/F-03 and TE M-01/L-01/L-02. Verify each
+**per finding, at the file at HEAD**, in the shape the first resolution used:
+
+- **SE F-01 / TE M-01** — §14.1 T-10 no longer names §8.1's unavailable-`phase`/id arms; it names
+  §8.4 steps 2–3's unavailable-half rendering. §14.5's lead assigns the `phase` and
+  `failure-mode-id` arms to LD-5 alone. Re-read the *"exactly one home"* sentence and check it in
+  **both** directions against the table beneath it: every arm in the table has exactly one register,
+  and every register member is an arm in the table. If the sentence cannot be made true by
+  inspection in one reading, **delete the sentence** rather than repair it again (see step 2).
+- **SE F-02 / TE L-02** — §8.4 step 1's cell states its own `failure-mode-id` arm, so no arm's only
+  statement lives in another reader's row under the cell-normativity rule at `:1155-1159`.
+- **SE F-03 / TE L-01** — E-12b's field→reader parenthetical names all eight fields including
+  `action`, and its arm enumeration matches the readers its Given names; LD-1's scope line names
+  §8.4's `artifact` arm.
+- Re-verify every line number the repair introduced **at HEAD**, and do not trust this postmortem's
+  line numbers either. The one citation defect this window produced was a self-citation by line
+  number that a later edit invalidated (round 8, both reviewers) — prefer section-and-row anchors,
+  which `04e172e` already began doing.
+
+Record the verification per finding in a `## Resolution` section appended to this file. Any finding
+that does not verify is remediated before re-entry, not deferred into the confirming round.
+
+### 2. Register freeze — delete completeness universals rather than repairing them (this is the RC-A countermeasure)
+
+Declare, in the resolution commit, that the mechanism freeze **continues** and is extended: for the
+confirming round the document may add no new register entry, no new coverage universal, and no new
+"exactly one / for every / set-equal" sentence about its own bookkeeping. Where such a sentence is
+already present and is not itself an observable the downstream layer must honour, **remove it and
+keep the members**. A register that lists its entries needs no theorem about the list; the theorem
+is what four of the last five Mediums falsified, and it is the only surface the freeze left open.
+
+Reviewers should be told the register freeze is in force, so that a finding proposing a new coverage
+argument is filed Low/deferred rather than as a blocking Medium.
+
+### 3. Make approval sticky — the rate-independent fix (this is the RC-B countermeasure, and the one that ends the halt)
+
+Record a project-level decision — `docs/_decisions/DECISIONS-review-convergence.md`, `DEC-CONV-01`
+— fixing that **a reviewer's approval carries forward**: once a reviewer returns Approved (or
+Approved with minor changes) at round *N*, that approval stands into round *N+1…* and is re-opened
+only by that reviewer, and only when the intervening diff touches a section the approval's Scope
+named, or introduces a finding the reviewer scores Medium or higher. Convergence is then *both
+reviewers hold an approval*, not *both approve in the same round*.
+
+This is the direct countermeasure to the anti-phase pattern, and on this window's evidence it is
+decisive: with carry-forward, TE's round-6 approval plus SE's round-7 approval converge the document
+at **round 7**, three rounds before the window closed, with the same reviews and the same findings.
+Note what it does not do: it does not lower a bar, does not force a verdict, and does not let a
+Medium through — a Medium in a later round re-opens the approval by construction.
+
+Record the same decision's consequence for the severity bar in
+`docs/_decisions/DECISIONS-review-severity-bars.md`: a finding that a document's *own bookkeeping
+completeness assertion* is falsified — where no observable, rule, arm or artefact is wrong, and the
+repair is to delete or narrow the assertion — is **Low**, not Medium. Both terminal Mediums are of
+exactly this class, and neither would have changed the specified behaviour by one word.
+
+### 4. Do not re-litigate `DEC-LAYER-01`
+
+It worked. Keep it, and add this window's evidence to its record: the mechanism-class Medium
+disappeared and the Medium rate fell by roughly three quarters. The residual finding rate is the
+*cost of the discipline it prescribes*, priced in step 2, not a reason to reverse it.
+
+### 5. Re-entry
+
+Once steps 1–4 are verifiably addressed on the branch:
+
+1. Append a `## Resolution` section naming the evidence for each addressed finding.
+2. Flip the marker to `RESOLVED: yes` in the same commit, and name the evidence in the commit
+   message. **The workflow never writes `yes`; an operator or agent does, after verifying.**
+3. Re-invoke the phase forced:
+   `/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md", "forcePhases": "F"}`
+
+Re-entry opens rounds 11–15 (`deriveRoundWindow` derives the window from the `-v10` basenames
+present, so the append-only review history is preserved). The expectation under the register freeze
+**and** carry-forward approval is **one delta round that confirms the round-10 closures and holds
+both standing approvals**. If step 3 has been recorded, that is a convergence, not a coincidence.
+
+### 6. Not recommended
+
+| Option | Why not |
+|---|---|
+| Rewrite or restructure the FSPEC | Ten rounds have found no structural defect; every open finding is local and named. A rewrite discards ten rounds of verified convergence and re-opens the High population |
+| Lower the approval bar, or force past the reviews without step 3 | The bar is being applied correctly and the reviewers approve when it is met. The fix is to stop discarding approvals, not to stop requiring them |
+| Raise `MAX_REVIEW_ROUNDS` | Buys rounds against an unchanged synchronisation rule (RC-B) and an unchanged manufacture floor (RC-A). It would not have converged this window either |
+| Re-open the REQ, or split the feature | The REQ cost two full windows to approve. Splitting now forfeits that and re-enters Phase R |
+| Reverse `DEC-LAYER-01` or lift the mechanism freeze | Both demonstrably worked on their target class; reversing them restores the four-to-five Medium rate of Appendix A's window |
+
+### 7. Housekeeping (not blocking)
+
+- The FSPEC is at **4.5×** its REQ's size for one workflow pass. That ratio is inherited by
+  everything downstream. Consider it an input to Phase T's scoping, not a defect to fix here.
+- Prefer section-and-row anchors over line numbers for the document's citations of itself; round 8
+  showed a line-number self-citation invalidated by the very revision that added it.
+- `docs/_constraints/pdlc-consolidation-vocabularies.md:63` (the `suppressed-by:` value grammar)
+  remains routed as §14.4 ER-5 and is still open upstream. It is not a Phase F blocker and must not
+  be lost at the phase boundary.
+
+### 8. Escalation — the decision an operator should take if a third window is exhausted
+
+This feature has now consumed **four** review windows (two in Phase R, two in Phase F). If rounds
+11–15 also close without simultaneous approval, do **not** open a fifth. Accept the FSPEC at its
+then-current version, route the open items to Phase T as errata through the erratum channel (they
+are, by construction under the register freeze, bookkeeping items with no behavioural content), and
+record the acceptance and its reasoning in this file. The reviewers' findings will be checked one
+layer down by the reviewers `DEC-LAYER-01` says are equipped to check them. Continuing to spend
+rounds at this layer has, across two windows and 20 reviews, retired every High and no window.
+
 ## Appendix A — Prior window (rounds 1–5), resolved 2026-08-06
 
 This is the record of the **first** Phase F halt, preserved verbatim (headings demoted one level).
