@@ -45,6 +45,47 @@ cell. No High and no Medium.
 
 ## Positive Observations
 
+- **The Medium was repaired at both registers *and* its generator was removed.** I asked for two
+  clauses. The revision spent them, and then `4fbb696` deleted the universal that made the
+  mis-assignment a falsifiable claim in the first place — the class `DEC-SEV-02` names. That is the
+  right order of operations, and it matters for testing specifically: the arms were made correct
+  *first* (`ee742a3`, `c8ab0cc`), so the deletion removed a bookkeeping theorem, not a symptom. A
+  spec that deleted the universal while leaving `phase` in both registers would have been a worse
+  document with a quieter review.
+- **Every load-bearing set-equality survived the deletion pass.** This was the thing I checked
+  hardest, because "delete the assertion" is the repair shape that can silently cost an oracle. It
+  did not: §8.1's cell-level rule (`:1169-1172`), §14.5's register set-equality (`:2225-2227`),
+  BR-33a's enumeration-by-set-equality (`:2539`), and the four AT-level set-equalities that a
+  PROPERTIES author actually writes — AT-F19's `{B, C, D}` with the literal cardinality `3`
+  (`:2113`), AT-F20's eight-name field set (`:2114`), AT-F21's `{E, F}` (`:2115`), AT-Q7c's
+  two-sided containment (`:2072`) — are all intact and unedited. The deletions touched four
+  sentences about registers and nothing an implementation must honour.
+- **§8.4 step 1's new arm reconciles itself with the AT that would otherwise contradict it.** The
+  cell (`:1181`) does not merely state "contributes no member"; it says why that is not a violation
+  of the set-equality AT-F19 asserts — "the assertion there ranges over the ids the log carries, and
+  an id-less record contributes none". This is the second time the document has made that
+  reconciliation for the same field (§8.3's row `:1184` makes it for rows), and both times it stops
+  a PROPERTIES author from writing a set-equality property that a *correct* implementation fails.
+  That is the rare kind of spec sentence that prevents a false red rather than a false green.
+- **LD-5's defect column is now total across its four arms**, so the register row is fully
+  transcribable: every arm has a stated obligation and a stated defect, and the two `symptom` /
+  `action` defects added this round are the exact inversions ("read an `action`-short pair as
+  `enacted`", "drop a `symptom`-short promotion from the question list") — negative behaviours each
+  paired with the positive the spec requires instead. LD-1 got the same treatment for its third
+  arm. Every register row now reads as an oracle sketch rather than an obligation note.
+- **The Q-01 clause was spent where the misreading was, not where the rule was.** The precedence
+  sentence was already correct; the fix went into the *general* sentence a reader hits first
+  (`:1157-1159`), which is where the cheap wrong reading lived. Fixing the sentence people read
+  rather than the sentence that is right is the harder call and the correct one.
+- **Grounding spot-checks all passed at HEAD.** `MERGE_GUARD_DEFAULTS` is at
+  `pdlc/workflows/orchestrate-dev.js:48-53` with exactly the four members AT-R1 and AT-Q7 rely on;
+  `docs/_decisions/DECISIONS-spec-layer-boundary.md`, `DECISIONS-review-convergence.md`
+  (`DEC-CONV-01`) and `DECISIONS-review-severity-bars.md` (`DEC-SEV-01`, `DEC-SEV-02`) all exist;
+  `docs/_constraints/pdlc-consolidation-vocabularies.md:7` is at `Version` 1.4, the version §8.3 and
+  ER-4 bind to; `pdlc/skills/harvest-learnings/SKILL.md:70-78` is the harvest metadata table §8.3
+  amends; `BR-35b` (`:2545`) and `O-C7` (`:2183`) both exist and say what the changed cells cite them
+  for. No repo path this revision touched is misdescribed, and the changed text names no new one.
+
 ## Recommendation
 
 ## Verdict
