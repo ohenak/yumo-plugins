@@ -42,6 +42,46 @@ re-litigated; I read every changed hunk of the six commits and nothing else.
 
 ## Positive Observations
 
+- **AT-F19 is the row I asked for, written to falsify rather than to demonstrate.** Four arms in one
+  fixture, a literal expected set, both directions asserted, and each direction tied in the row's own
+  text to the specific defect it catches (`A` absent ⇒ the dropped `route != degraded` conjunct; `B`
+  present ⇒ a `degraded` retirement wrongly closing an id). It also states the reason set-equality is
+  not negotiable here — containment is satisfied by "every id ever recorded", which is O-C7's
+  accepted *limit* and would otherwise quietly become the implementation. And the row names its own
+  test level: "a pass-side arithmetic test over a file fixture with no agent in it". That is a test I
+  could write today without asking a question.
+- **The §6.5 read-verb repair is the right shape of answer to a false-red risk, and it did not weaken
+  the oracle to get there.** The tempting fix was to drop the invoking-tree obligation. Instead the
+  table grew a fifth column naming *which Given obliges each domain* — so the two git rows no longer
+  share one Given — reads went into the permitted-but-not-obliged column with the reason stated, and
+  AT-Q7c's invoking-tree conjunct became two-sided (contains `{add, commit}`, contained in
+  `{add, commit, read-branch, read-status}`). BR-28 now closes with "Equality is asserted on no
+  domain, on any Given", which is the sentence a test author needs. I verified the precedent the
+  paragraph rests on at HEAD: `parseAbbrevRef` (`pdlc/workflows/orchestrate-dev.js:3492`),
+  `gitWithLockRetry` (`:8617`) and `commitPaths` (`:8669`) are all where the document says, and the
+  guard does read the branch through the same seam (`:3524`) — only the one line number in L-01 is
+  off.
+- **AT-F20 answers a question with an assertion instead of prose, and picks the harder half.** It
+  asserts field-set-equality **per record on four different paths** (three §5.2 kinds plus a
+  `degraded` record), not on one sample, and states both failure directions it catches — a dropped
+  `target`/`route` invisible "until §6.4's consuming-repo carrier misreads it two passes later", and
+  an invented ninth field. The eight names in the row are set-equal to §8.1's table as it stands
+  (`FSPEC:1060-1095`), so the AT and the normative table cannot drift without one of them failing.
+- **ER-5 is a divergence declared rather than absorbed.** The easy move was available and refused:
+  §10.3 could have claimed `suppressed-by:`'s value under the free-form exemption and nobody would
+  have noticed for a while. Instead §15.2's free-form row, §10.3's field table, BR-26 and §15.2's
+  closing paragraph all say the same thing — the field *name* has a §1 row (which is what keeps
+  AT-L5 exact), the *value grammar* here is wider than `:63`, and that is an erratum. Verified at
+  HEAD: `docs/_constraints/pdlc-consolidation-vocabularies.md:63` reads
+  `` `{id}:{action} → PR URL` entries, or empty ``, so the divergence and the citation are both real.
+  §15.2's "so the table is not read as a clean bill" is the honest framing.
+- **O-C8 and §10.4 item 4 make the merge's loss reportable instead of silent.** A precedence rule
+  that elides a write is exactly the kind of mechanism that ships as an unstated tie-break; here the
+  order is written down, the reason for the order is given (widest reach first, so the surviving
+  write is never the narrower one), the elided kind is named in the report body so an operator can
+  re-propose it by hand, and the trade it accepts — losing a write versus losing NFR-4's suppression
+  key — is stated in O-C8 rather than assumed. My M-02 is about the fixture set, not about the rule.
+
 ## Recommendation
 
 ## Verdict
