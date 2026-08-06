@@ -818,9 +818,11 @@ carriers**, one per route, because a promotion that never becomes a PR never app
 pass's failure-mode record carries the same `(failure-mode-id, action)` **and that record's `route`
 is not `degraded`** — i.e. the write actually landed in the consuming repo. A pair is `absent`
 otherwise. An `enacted` proposal is **suppressed**: the pass appends nothing to
-`DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` for it and records `duplicate-suppressed` naming
-the pair and the `passId` of the record that enacted it, in place of a PR URL. So re-running a pass
-over the same corpus does **not** append the same constraint twice.
+`DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` for it and records `duplicate-suppressed` with a
+`suppressed-by:` entry naming the pair and, in place of a PR URL, the enacting record's `passId` in
+§10.3's second spelling — `{id}:{action} → pass:{passId}`. That is one grammar with two admissible
+evidence forms, not a second field and not a free choice: §10.3 is normative for it. So re-running a
+pass over the same corpus does **not** append the same constraint twice.
 
 **The `route`-conditioning is the point, not a detail.** §10.2 order 2 writes a failure-mode record
 for **every** promotion the pass made, including one that §6.3 / §7.3 degraded to a proposal file
@@ -1531,7 +1533,7 @@ oracle (AT-L5) well-defined rather than false on a correct implementation:
 | Class | Fields | Obligation |
 |---|---|---|
 | **Enumerated** — the value is drawn from a closed set | `status:`, `trigger:`, `reason:`, `credential:`, the route names inside `promotions:`, and the per-promotion verdict / state / action / phase values the report carries | every value is a member of a vocabularies §1 category, and **no value in this class has no §1 row** |
-| **Free-form** — the value is data, not a vocabulary | `pass:`, `date:`, `consumed:`, `branch:`, `deferred:`, `pr:` (a URL or empty), `suppressed-by:` (a `{id}:{action} → URL` composite), `rung:` (a model identifier) | the **field name** has a §1 row where §1 defines one; the **value** is outside the compared set. A URL, a date, a branch name and a model id are not vocabulary members and were never intended to be |
+| **Free-form** — the value is data, not a vocabulary | `pass:`, `date:`, `consumed:`, `branch:`, `deferred:`, `pr:` (a URL or empty), `suppressed-by:` (a `{id}:{action} → {evidence}` composite, the evidence being a PR URL or `pass:{passId}` — see the field table below), `rung:` (a model identifier) | the **field name** has a §1 row where §1 defines one; the **value** is outside the compared set. A URL, a date, a branch name and a model id are not vocabulary members and were never intended to be |
 
 `rung:` is in the free-form class by value and is the one field whose *name* has no §1 row at
 `Version` 1.4 — a gap in a REQ-owned file (§15.3), routed as an erratum (§14.4) rather than patched
@@ -1549,7 +1551,7 @@ here.
 | `consumed:` | the consumed basenames — the §3.3 pair's set, restated for the reader | AC-2.4 |
 | `promotions:` | promoted items by route: constraints / decisions / PR / `degraded` | AC-7.1 |
 | `pr:` | the URL of a PR **this pass opened**, or empty | AC-3.4, AC-7.2 |
-| `suppressed-by:` | zero or more `{id}:{action} → {PR URL}` entries | NFR-4 |
+| `suppressed-by:` | zero or more `{id}:{action} → {evidence}` entries, one per suppressed proposal. **`{evidence}` has exactly two admissible spellings, one per §6.4 carrier**, and which one an entry carries is decided by the suppressed proposal's own route, never by the writer: the **PR URL** verbatim when the pair was found on an `open` or `merged` PR (§6.4's PR carrier), and `pass:{passId}` — the literal prefix `pass:` followed by the enacting record's `passId` — when it was found in a §8.1 failure-mode record with `route != degraded` (§6.4's consuming-repo carrier). No third spelling exists, no entry carries both, and the two are told apart by the `pass:` prefix, which no URL bears | NFR-4 |
 | `branch:` | the branch the §5.4 commit landed on | AC-3.8b |
 | `deferred:` | what the pass left for human judgment | AC-7.1 |
 
@@ -1615,7 +1617,8 @@ The returned body carries everything AC-7.1 requires, in a form a `/loop` tick p
 5. the §8.3 effectiveness table: one row per distinct `failure-mode-id`, its verdict, and its state
    (`ineffective` / `unmeasurable`) where one holds, with the §8.5 `revision` / `retirement` field
    present only where a remediation was proposed,
-6. `duplicate-suppressed` entries, one per suppressed proposal, naming the pair and the PR,
+6. `duplicate-suppressed` entries, one per suppressed proposal, naming the pair and its carrier's
+   evidence — the PR on the PR route, the enacting `passId` on the consuming-repo route (§10.3),
 7. the §9 advisory notes: the corpus state, any §9.4 / §9.5 candidate, and any operator action,
 8. what it deferred for human judgment,
 9. the branch the §5.4 commit landed on, or `writes-uncommitted`.
@@ -1733,7 +1736,7 @@ Independent of the pass's terminal status, each proposal reaches exactly one of:
 | P-01 | applied to the consuming repo | the append in `DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md`, inside the §5.4 commit |
 | P-02 | opened as a PR | the PR URL in `pr:` and in `CONSOLIDATION-PROPOSAL-{passId}.md`; one commit per edit carrying `PDLC-PROMOTION-ID` |
 | P-03 | degraded to the proposal file | the full diff inline in `CONSOLIDATION-PROPOSAL-{passId}.md`, plus its failure class in both the file and the row |
-| P-04 | suppressed as a duplicate | a `suppressed-by:` entry naming the `(id, action)` pair and the open-or-merged PR; **no** PR opened, **no** fallback fired |
+| P-04 | suppressed as a duplicate | a `suppressed-by:` entry naming the `(id, action)` pair and its carrier's evidence in §10.3's grammar — the **open-or-merged PR's URL** on the PR route, `pass:{passId}` of the enacting §8.1 record on the consuming-repo route; **no** PR opened, **no** fallback fired, and on the consuming-repo route **no** append made |
 | P-05 | written as an operator action | the §9.5 consumer-config widening, in the report only — no PR, no `degraded` classification |
 
 ### 12.3 Per-promotion verdicts and states
@@ -1838,7 +1841,7 @@ PROPERTIES' (DC-09).
 | AT-Q7c | operator | a pass with **no** guard-set proposal — every promotion routes to the consuming repo (§12.1 S-02's common shape) — under the same three spies | the pass returns | the containment assertion (1) holds on all three domains with the PR seam and the clone seam observing `∅`, and the invoking tree observing `{add, commit}`; **no** obligation is asserted on the two empty domains. This is the row that pins the universal rule as containment: an implementation of AT-Q7's oracle that asserted set-equality universally is red here on correct behaviour |
 | AT-Q7b | maintainer | the pass's source at HEAD | it is inspected | no merge or enable-auto-merge call appears on any path. This is a **supplementary** check that adds a static direction to AT-Q7's runtime oracle; it is never the sole evidence for AC-3.7, and §6.5 control (b) is asserted through AT-Q7, not through this row |
 | AT-Q8 | operator | the PR API failing with a network, rate-limit or 5xx error | the PR is attempted | reason code `api-failure` with the API's status text recorded verbatim; the fallback proposal file carries the full diff; the pass does not halt. Distinct from AT-Q6's `branch-exists` Given: E-23 and E-24 are different failure classes and each names a different reason code |
-| AT-Q10 | operator | a proposal for `docs/_constraints/DOMAIN-CONSTRAINTS.md` whose `(failure-mode-id, action)` pair is already carried by a prior pass's §8.1 failure-mode record with `route: constraints` — the `enacted` arm of §6.4's consuming-repo carrier | the pass runs | **nothing** is appended to `DOMAIN-CONSTRAINTS.md` for it (the file's bytes are unchanged); `duplicate-suppressed` is recorded naming the pair **and** the enacting record's `passId`; `pr:` is **empty**, since no PR is involved on this route. All three conjuncts are required — an implementation that suppressed the append but recorded nothing is indistinguishable from one that never derived the proposal |
+| AT-Q10 | operator | a proposal for `docs/_constraints/DOMAIN-CONSTRAINTS.md` whose `(failure-mode-id, action)` pair is already carried by a prior pass's §8.1 failure-mode record with `route: constraints` — the `enacted` arm of §6.4's consuming-repo carrier | the pass runs | **nothing** is appended to `DOMAIN-CONSTRAINTS.md` for it (the file's bytes are unchanged); `duplicate-suppressed` is recorded and `suppressed-by:` carries **exactly one** entry whose literal text is `{failure-mode-id}:{action} → pass:{enacting passId}` — §10.3's consuming-repo spelling, not a URL and not a bare id; `pr:` is **empty**, since no PR is involved on this route. All three conjuncts are required — an implementation that suppressed the append but recorded nothing is indistinguishable from one that never derived the proposal |
 | AT-Q11 | operator | the same proposal with **no** matching record in the log — the `absent` arm — in a pass that is then re-run over an unchanged corpus | both passes run | the first pass appends **exactly once** and writes its failure-mode record with `route: constraints`; the second pass suppresses, and `DOMAIN-CONSTRAINTS.md` is **byte-identical** after the second pass to what it was after the first. The byte-identity assertion is the one this row exists for: it is the only oracle that fails an implementation which never consults the log and re-appends on every run — the exact failure §6.4's second carrier was added to prevent |
 | AT-Q12 | operator | a prior pass's failure-mode record for a pair with `route: degraded` — the promotion reached nothing but `CONSOLIDATION-PROPOSAL-{passId}.md` (§6.3, §7.3) — and a later pass deriving the same pair | the later pass runs | the pair reads **`absent`**, not `enacted`: the promotion is re-proposed and, where it can now be applied, appended. A record's existence alone must not suppress; only a landed `route` does. This row is the consuming-repo mirror of AT-Q4's closed-unmerged PR |
 | AT-Q9 | operator | a pass that opened a PR and recorded its promotion on an invoking branch which is then **deleted without merging** | the PR is read, and a later pass runs | the PR and its `PDLC-CONSOLIDATION-PROMOTIONS` trailer survive the branch's loss and still suppress a duplicate proposal (NFR-4); the later pass re-mints the promotion's effectiveness record from scratch, exactly the §5.5 cost, and reports it rather than pretending the record was never lost |
@@ -2243,7 +2246,7 @@ falsifies it; none of them is new here.
 | BR-23 | The PR is opened against `consolidation.pluginRepository`, defaulting to `null` ⇒ the current repository. A non-null value that does not resolve is `repository-unresolved` and degrades through §6.3 — it is **not** a parse fallback. | §11.2, §6.3 | AT-N4 |
 | BR-24 | The branch is `consolidation/{passId}`; the body carries the `PDLC-CONSOLIDATION-PASS` trailer and each commit carries `PDLC-PROMOTION-ID`. | §6.2 | AT-Q2 |
 | BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`. Its carrier depends on the route: on the PR route it is read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged` (a `closed`-unmerged PR is not in the key set); on the consuming-repo route it is read from the §8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`, where a pair is `enacted` only when a record carries it with a `route` other than `degraded`, and `absent` otherwise. The two carriers agree on the substantive rule: **a proposal that reached nothing is re-proposable; one that landed is not.** One key, two carriers — a route with no carrier would not be idempotent at all. | §6.4 | AT-Q3, AT-Q4 (PR carrier); AT-Q10, AT-Q11, AT-Q12 (consuming-repo carrier) |
-| BR-26 | A suppressed proposal opens nothing, fires no fallback, and populates `suppressed-by:` — never `pr:`. | §6.4, §10.3 | AT-Q3, AT-L2 |
+| BR-26 | A suppressed proposal opens nothing, fires no fallback, appends nothing, and populates `suppressed-by:` — never `pr:`. Its entry is `{id}:{action} → {evidence}` where the evidence is the open-or-merged PR's URL (PR carrier) or `pass:{passId}` of the enacting §8.1 record (consuming-repo carrier); §10.3 is normative for the grammar and admits no third form. | §6.4, §10.3, §12.2 P-04 | AT-Q3, AT-Q10, AT-L2 |
 | BR-27 | An existing machine-opened PR is never extended, amended or superseded by a later pass. | §6.4 | AT-Q3 |
 | BR-28 | Over **each** of §6.5's three enumerated seam domains — the PR seam, the git seam in the invoking tree, the git seam in the §6.1 clone — the pass's observed verb **set** is a **subset** of that domain's permitted set, on every pass and under every status or configuration; every merge and enable-auto-merge verb is outside every permitted set, so containment alone forbids a merge on any PR including its own. On a pass that **opens a PR**, each domain's *obliged* verbs are additionally present and the PR it opened is `open` when the pass returns. Containment is the universal form because a conforming pass with no guard-set proposal observes `∅` on two domains; the obliged conjunct is what stops the rule from being satisfied by a pass that calls nothing. Verbs are compared as resolved operations, not function names. | §6.5 | AT-Q7, AT-Q7b, AT-Q7c |
 
