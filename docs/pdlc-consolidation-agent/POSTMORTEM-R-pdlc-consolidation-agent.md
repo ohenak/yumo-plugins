@@ -87,6 +87,25 @@ at any point.
 
 ## Reviewers
 
+| Role | Skill | Files (this window) | Final verdict (v10) |
+|---|---|---|---|
+| Software Engineer | `pdlc:se-review` | `CROSS-REVIEW-software-engineer-REQ-v{6..10}.md` | **Needs revision** (0 H, 1 M, 0 L) |
+| Test Engineer | `pdlc:te-review` | `CROSS-REVIEW-test-engineer-REQ-v{6..10}.md` | **Approved with minor changes** (0 H, 0 M, 2 L) |
+
+Author across all five rounds: `pdlc:pm-author`. Both reviewers worked in delta mode from round 2
+onward (`Scope: Local`, explicit delta base commit named in each file's header), re-reading their own
+prior cross-review and diffing the REQ rather than re-reviewing the whole document.
+
+Reviewer approval history over the full ten rounds:
+
+| | v1 | v2 | v3 | v4 | v5 | v6 | v7 | v8 | v9 | v10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| SE | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| TE | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | **✓** | ✗ | **✓** | **✓** |
+
+TE has approved three of the last four rounds. SE has never approved. The phase has therefore never
+been one reviewer away from convergence in the same round until now, and in round 10 it was.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
