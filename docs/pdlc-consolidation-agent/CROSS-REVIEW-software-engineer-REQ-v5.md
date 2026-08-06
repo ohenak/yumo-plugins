@@ -96,4 +96,54 @@ than as a question.
 
 ## Recommendation
 
+**Needs revision.** 0 High, 3 Medium, 1 Low. No High finding for the second round running, and no
+finding in this round contests user need, scope, priority, phasing, or the truth of a claim about
+existing code — the nine changed citations all check out against HEAD.
+
+The trajectory: v1→v2 closed 8 High, v2→v3 closed 2H+5M, v3→v4 closed 2H+2M+3L, v4→v5 closed 2 of 3
+and introduced no High. Three Mediums is a step up in count from v4's one, and it is worth being
+honest about why: two of the three (F-02, F-03) are propagation debt from a single change made this
+round — `refused` became a row-writing, committing status — rather than new problem areas. F-01 is
+the one finding that is genuinely unfinished from last round.
+
+### The stopping rule, applied against itself
+
+§5a names four classes that must be fixed at the REQ layer and directs everything else downstream.
+Against my own four findings:
+
+- **F-01 (Medium)** belongs here. NFR-4 promises no duplicate PR; AC-3.8b names the merged PR as
+  the durable key that delivers that promise across an abandonment; the key is the sorted consumed
+  set, which the scenario changes. Choosing between "the key becomes per-promotion" and "the
+  duplicate is accepted under this condition" is a requirements decision — FSPEC cannot add a
+  trailer to a PR body the REQ enumerates.
+- **F-02 (Medium)** belongs here. Two ACs now assert incompatible things about the same file:
+  AC-3.8b says the marker is never committed, AC-1.3 makes a non-marker-holding pass commit the
+  file the marker lives in while it is live. That is a contradiction between requirements, not an
+  under-specification an FSPEC can resolve without picking one of them to overrule.
+- **F-03 (Medium)** belongs here narrowly, and only because this REQ nominated §4b as the
+  downstream oracle in its own words ("checkable by set-equality against this table"). A table
+  whose closing paragraph contradicts one of its rows and whose composition rule contradicts
+  another cannot serve that purpose, and a PROPERTIES author transcribing it would produce two
+  tests that disagree. Under any other REQ this would be Low.
+- **F-04 (Low)** would not hold the document alone: two anchors land within a few lines of their
+  own tokens and neither changes a requirement. Fix it in the same pass.
+
+### What must change for approval
+
+1. **F-01** — either put the per-promotion `failure-mode-id` in the PR body so the key survives on
+   the PR (and say NFR-4 keys on it), or state the condition under which the merged-PR key fires
+   (identical consumed set) and accept the duplicate outside it. One paragraph either way.
+2. **F-02** — decide whether a `refused` pass commits or only writes. If it commits, say what
+   happens to the winner's live marker line in that commit, and how the two passes' writes to
+   `.consolidation-log.md` are serialised. If it only writes, set AC-1.3's Commits cell for
+   `refused` back to **no** and revert §4b's `writes-uncommitted` extension with it.
+3. **F-03** — (a) drop or reword "its only *reason* code is `consolidation-in-progress`", which
+   denies the `writes-uncommitted` row two lines above it; (b) add `refused` to `no-cadence-datum`'s
+   permitted set, or state why the composition rule does not reach it given AC-1.1 mandates that
+   code on any cadence-triggered row with an empty datum set.
+4. **F-04** — cite `:10257` for `phase: "CR"`, and either cite both dod-verify prompt sites
+   (`:7911` round 1, `:7941` rounds ≥2) or scope the parenthetical to round 1.
+
 ## Verdict
+
+VERDICT: Needs revision
