@@ -86,4 +86,37 @@ deferral both close the finding.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v5 Mediums are resolved in the strong form — M-01 with AT-F21, the reader table and E-12b;
+M-02 with a five-fixture AT-R6b covering all three ordered pairs of the kind order — and the v5 Low
+citation is fixed at both the seam call and the call site. All three v5 questions are answered in the
+document rather than in a reply. Every repository claim in the changed text holds at HEAD, re-derived
+line by line. Nothing in this revision re-opens a settled decision, and nothing in it broke a section
+I had previously approved.
+
+The three findings above are all Low. Each is of the class `DEC-LAYER-01` places below this layer —
+fixture construction and oracle strength — and in each case the FSPEC states the observable and the
+rule; what is missing is a fixture or a conjunct that pins it, which
+`DECISIONS-spec-layer-boundary.md:35-39` makes "deferred, tracked" rather than blocking. Under the
+structural freeze in force for this round (`POSTMORTEM-F` §Resolution step 2), I have proposed no new
+normative rule, no new BR and no new AT: each finding's FSPEC-layer repair is a single clause that
+either deletes an overstated coverage claim or names the downstream owner.
+
+Suggested minor changes, in the order I would take them:
+
+1. **L-01** — delete the "(and, on a kind-3 merge, the `target` with it)" parenthetical at `:1281`,
+   or qualify it; fixture 2 is kinds 2+2 and structurally cannot assert it. Name the two-process-
+   learning colliding merge as the PROPERTIES-owned case.
+2. **L-02** — split E-12b's AT cell: `AT-F21` for the `route` and `target` arms, the `artifact`
+   arms (§8.3's verdict move, §8.5's guessed `retirement`) named as PROPERTIES-owned.
+3. **L-03** — extend AT-F21's conjunct (3) to `F`'s §5.1 arm, or state that arm is PROPERTIES-owned.
+
+If the optimizer prefers to take none of them and carry all three into TSPEC/PROPERTIES as tracked
+deferrals, that is consistent with DEC-LAYER-01 and with the freeze, and I would not re-file them
+here. The approval bar is unchanged and no High or Medium finding is open, old or new.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
