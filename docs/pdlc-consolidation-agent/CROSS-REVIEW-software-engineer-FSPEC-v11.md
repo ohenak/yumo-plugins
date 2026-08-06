@@ -108,8 +108,47 @@ open.**
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+All three v10 findings are closed and both v10 questions are answered — the tenth consecutive round
+in which every prior item was addressed rather than argued with. **No High finding remains, and none
+has since v3. No Medium finding is open for the first time in this phase's second window.**
+
+Two **Low** findings are open, both against text added this round and both of DEC-SEV-02's class:
+
+1. **F-01 — §14.5's ownership sentence (`:2233-2234`) says the `phase` arm renders no unavailable
+   literal, two lines after handing §8.4 steps 2–3's unavailable-half rendering to T-10.** That
+   rendering covers the `phase` half. One qualifier fixes it: "**§8.3's** `phase` arm and §8.1's
+   `failure-mode-id` arm are this table's alone" — the justification already written is true of
+   exactly those two.
+2. **F-02 — E-12b's parenthetical (`:2591`) maps `phase` to §8.3 alone**, while §8.1's table gives
+   it two readers (`:1182`, `:1184`). Every other field in that list names all of its readers.
+   Repair: "`phase` for §8.3 / §8.4's harvest question".
+
+Neither touches an arm, a rule, an observable, an AT or a fixture; both narrow or complete a
+bookkeeping line, which is what the round-11–15 register freeze asks for. Under the approval
+rule — Low findings only ⇒ Approved with minor changes — this iteration **approves**
+`FSPEC-pdlc-consolidation-agent.md` at version 11.1. Per DEC-CONV-01 this approval **stands into
+later rounds** of Phase F and is re-opened only by me, and only if the intervening diff touches the
+sections this Scope names or I file something Medium-or-higher against it. I do not require the two
+Low repairs before the phase advances; they are worth making, and making them does not re-open
+anything.
+
+Everything the last two rounds changed in the contract I would keep verbatim: §8.4 step 1's
+member-type arm and its AT-F19 reconciliation, the three-`artifact`-arm widening landed in all three
+registers at once, T-10's consequence-argued exclusion, LD-5's paired defect column, and — above
+all — the four deletions, which removed the generator of four of this window's last five Mediums
+without weakening a single oracle.
+
+**No erratum is emitted with this review.** The only upstream defect in scope remains the
+`suppressed-by:` value grammar at `docs/_constraints/pdlc-consolidation-vocabularies.md:63`, already
+routed as §14.4 ER-5 and re-verified verbatim at HEAD this round.
 
 ## Verdict
 
-_(pending)_
+Two Low findings (F-01, F-02) are open, both against text added this round; **no High and no Medium
+finding remains**. Per the approval rule — Low findings only ⇒ Approved with minor changes — this
+iteration **approves** `FSPEC-pdlc-consolidation-agent.md` at version 11.1, and per DEC-CONV-01 the
+approval carries forward into subsequent rounds of Phase F.
+
+VERDICT: Approved with minor changes
