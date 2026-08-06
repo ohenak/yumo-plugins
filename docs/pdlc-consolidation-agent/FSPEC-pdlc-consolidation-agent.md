@@ -1690,7 +1690,17 @@ invented downstream).
 | T-05 | The `resolveAdvisoryRung` call site and its `rungState` threading | §2.6: reuse, never restate, the two constants |
 | T-06 | The parse implementation for `ESCALATIONS.md` entries | §9.2: read the metadata table rows, never the heading |
 | T-07 | The `.gitignore` pattern's exact text | §4.1: root-relative, contains a separator, never slash-free or `**/`-prefixed |
-| T-08 | Whether the corpus enumeration is shared code with `nudge-consolidation.sh` or two implementations held equal by test | §3.1 requires one corpus and one predicate; it does not require one implementation |
+| T-08 | Whether the corpus enumeration is shared code with `nudge-consolidation.sh` or two implementations held equal by test | §3.1 requires one corpus and one predicate; it does not require one implementation. Whichever is chosen, AT-P7 is the differential form and stands |
+| T-09 | **At least one property strategy per parameterisable component**, over and above §13's examples — the mechanism (generator shape, shrinking, library) is TSPEC's and PROPERTIES', the obligation is not | §13 covers all four components with hand-picked examples only, and an example set cannot range over an input space. The four components and the invariant each must be tested against are named below; TSPEC may not discharge T-09 by citing the existing ATs |
+
+The four components T-09 ranges over, with the invariant each property asserts:
+
+| Component | Section | Invariant a property must range over |
+|---|---|---|
+| The two-region consumed predicate | §3.2 | for **any** interleaving of openers, closers, strays and basenames, a basename inside any `<!-- pdlc:consumed -->` block is consolidated, and the predicate is total (never throws, never omits an enumerated file from exactly one of the two sets) |
+| The `passId` derivation | §2.5 | for **any** multiset of log rows, the minted id is strictly greater than every parseable id bearing `{today}`, and unparseable rows change nothing |
+| The `consolidation` config parse | §11.2 | for **any** subset of keys corrupted, every uncorrupted key keeps its configured value and every corrupted one takes its documented default — per-key independence, the property `parseAdvisoryConfig` establishes |
+| The `ESCALATIONS.md` count | §9.2 | for **any** entry sequence, the total attributed count is ≤ the number of entries carrying both a `Feature` and a `Seam` row, and no count is attributed to a key not present in the input |
 
 ### 14.2 Open questions — decided here, recorded for review
 
@@ -1701,8 +1711,9 @@ invented downstream).
 | O-C3 | The marker take is read-then-write, so two passes can both observe "absent". | **Stated, bounded.** Blast radius is closed by two independent properties: every log write is a whole-record append, and NFR-4 keys on the PR trailer rather than the log. An atomic create-exclusive take is TSPEC's if the runtime offers one. | §4.5 |
 | O-C4 | A promotion whose invoking branch is abandoned loses its effectiveness record and re-enters the table as if first made. | **Accepted loss**, stated in the REQ and restated here rather than closed. | §5.5 |
 | O-C5 | `ESCALATIONS.md` cannot distinguish a seam that never escalates because it never runs from one that never escalates because it always succeeds. | **Honest limit**, which is why §9.5's output is a candidate for human judgment. Resolution rates are D-CONS-06. | §9.6 |
+| O-C6 | `recurred` depends on a harvest agent recognising a recurrence and copying an id (§8.4 step 2). A harvest that should have attached an id and did not is invisible to the pass. | **Accepted recall limit.** The miss direction is toward `prevented` / `insufficient-evidence` — "we cannot show it worked" — never toward a false `recurred`, so the loop degrades safe. Closing it needs a producing-side check the pass cannot perform, since only the harvest sees the feature's own failures. | §8.4 |
 
-None of the five is a blocking gap: each names what is observed, what is accepted, and — where one
+None of the six is a blocking gap: each names what is observed, what is accepted, and — where one
 exists — the deferral that carries it.
 
 ### 14.3 Questions this FSPEC raises for the operator, not for a downstream layer
@@ -1713,12 +1724,24 @@ exists — the deferral that carries it.
 | O-P2 | Whether to enable the advisory tier so BL-01a's corpus can exist | §9.3 ships and is testable with the tier off; enabling it is a config decision with its own cost |
 | O-P3 | Which branch a pass is invoked on, given §5.5's abandonment consequence | the pass never changes the branch (AC-3.8), so the choice is entirely the operator's |
 
-### 14.4 Nothing here is a defect of an upstream document
+### 14.4 Errata against upstream documents
 
-Every question above was raised and settled by the REQ, or is a mechanism choice the REQ explicitly
-delegated. This FSPEC records **no** erratum against `REQ-pdlc-consolidation-agent` v2.0, against
-`docs/_constraints/pdlc-consolidation-vocabularies.md` at `Version` 1.4, or against
-`docs/_constraints/pdlc-advisory-corpus-baseline.md` at `Version` 1.0.
+Every question in §14.2 and §14.3 was raised and settled by the REQ, or is a mechanism choice the REQ
+explicitly delegated. Three items are **not** of that kind: they are gaps in documents this layer
+does not own, and each is routed as an erratum rather than patched here or folded into this
+document's own scope.
+
+| # | Against | Item | Why it cannot be fixed here |
+|---|---|---|---|
+| ER-1 | REQ (vocabularies §1, pinned at `Version` 1.4 by REQ §4b) | no row for the `rung:` field, which §10.3 carries and AC-1.5 requires the row to record | §1 is an **enumeration the REQ owns** (`pdlc-consolidation-vocabularies.md`, change control: "`REQ-pdlc-consolidation-agent` owns every section of this file"). Adding a row is a REQ-side edit plus a `Version` bump; this FSPEC works around it by putting `rung:` in §10.3's free-form class, which keeps AT-L5 green on a correct implementation but leaves the field unenumerated |
+| ER-2 | REQ (vocabularies §1) | no reason code for §2.6 row 4, the resolver's `dispatch-error` return — a `failed` row with an empty reason field is legal but indistinguishable from a truncated row without opening the report body | same ownership. §2.6 states the request precisely (`advisory-dispatch-failed`, permitted with `failed`); until the row exists AT-M6 asserts the discriminator in the report body |
+| ER-3 | REQ | AC-1.4 states two exhaustive causes of `no-op` while AC-4.3 produces a third (a pass whose only promotion degraded). §5.3 and §7.3 are reconciled **within** this document, so the FSPEC is self-consistent; the REQ's own enumeration is not | the exhaustiveness claim is the REQ's, and correcting a REQ acceptance criterion is its author's edit, not this layer's |
+
+Nothing is recorded against `docs/_constraints/pdlc-advisory-corpus-baseline.md` at `Version` 1.0.
+Its §3 "reuse the resolver" instruction is satisfiable as written once §2.6's reading is taken — the
+pass reuses `resolveAdvisoryRung` at a **new call site** with its own `rungState`, which is reuse of
+the exported function, not of a shipped call pattern — so the earlier reading that treated it as an
+upstream defect is withdrawn.
 
 ## 15. Traceability
 
