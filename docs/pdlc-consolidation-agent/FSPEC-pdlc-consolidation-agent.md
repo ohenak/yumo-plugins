@@ -555,21 +555,51 @@ guard-set path in any tree.** The guard-set edit exists only as a commit in the 
 | Promotion kind | Destination | Shape |
 |---|---|---|
 | Domain invariant future REQs must respect | append to `docs/_constraints/DOMAIN-CONSTRAINTS.md` | as today (`pdlc/skills/consolidate-learnings/SKILL.md:40`) |
-| Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | as today (`:41`) |
+| Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | the path shape is today's (`pdlc/skills/consolidate-learnings/SKILL.md:41`); **`{topic}`'s derivation is new and this feature changes the convention** — see below |
 | Process learning about a skill prompt, checklist or workflow phase | **propose, never apply** | §6 (PR) or §5.3 (proposal file) |
 
 **`{topic}` is derived, not chosen** (AC-2.2 states the destination; the derivation is this layer's).
-It is the **promotion's own `failure-mode-id` `phase` segment plus the basename of its `artifact`**,
-under §8.1's slug normalisation — i.e. `{topic} = failure-mode-id with the artifact's directory
-segments dropped`. Worked: `phase = P`, `artifact = pdlc/skills/se-author/SKILL.md` ⇒
-`docs/_decisions/DECISIONS-p-skill-md.md`. Three properties follow, and each is why the derivation is
-stated rather than left to the model:
+It is the promotion's **`failure-mode-id`, verbatim and entire** (§8.1):
+
+> `{topic} = failure-mode-id`
+
+Worked: `phase = P`, `artifact = pdlc/skills/se-author/SKILL.md` ⇒
+`docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md`.
+
+**An earlier draft dropped the artifact's directory segments** (`{topic} = p-skill-md`). That is
+**withdrawn**, because dropping them is exactly what destroys discrimination: with `phase = P`, every
+`SKILL.md` in the repository collapses to one file — `pdlc/skills/se-author/SKILL.md`,
+`pdlc/skills/dod-verify/SKILL.md` and `pdlc/skills/te-review/SKILL.md` — fifteen skill directories at
+HEAD — are one file named for a phase letter and an extension. Using the whole slug
+keeps the derivation total and deterministic while narrowing collisions to **exactly** the bounded
+case §8.1 already prices — two authored paths differing only by separator-vs-dot — which §8.1
+reports wherever it fires (`duplicate-suppressed` naming the pair) and which is inherited here
+unchanged rather than restated. There is no collision class in `{topic}` that is not a collision
+class in `failure-mode-id`.
+
+Four properties follow, and each is why the derivation is stated rather than left to the model:
 
 | Property | Consequence |
 |---|---|
-| A pure function of the two keying fields (§8.1), never of `symptom` or of the consumed set | two passes recognising one decision write the **same** path, so §6.4's consuming-repo carrier can suppress the second — a model-chosen topic would not be stable enough to key on |
+| A pure function of the two keying fields (§8.1), never of `symptom` or of the consumed set | two passes recognising one decision write the **same** path, so the same decision accumulates in one file across passes instead of scattering — this is a *readability* property of the record, not an idempotence mechanism: §6.4 keys suppression on `(failure-mode-id, action)` and never on the destination path, so path stability buys the carrier nothing and is not claimed to |
+| Discriminating on the full `artifact`, not on its basename | two decisions about two different files never share a file; the only collisions are §8.1's separator-vs-dot pairs, reported there |
 | An existing file at that path is **appended to**, never replaced or re-created | the file is an append-only decision record like `DOMAIN-CONSTRAINTS.md`; §10.2's write granularity applies to it |
 | The path is always inside `docs/_decisions/` and never inside a guard-set prefix | so an AC-2.2 promotion is always the §5.1 consuming-repo route, never the PR route |
+
+**This changes the `{topic}` convention, and the change is listed rather than implied.** The three
+decision files at HEAD — `DECISIONS-plugin-distribution.md`, `DECISIONS-review-severity-bars.md`,
+`DECISIONS-test-oracle-mechanics.md` — carry human-chosen topical names that no derivation can
+reproduce, which is precisely why a pass must not try: a model-chosen topic is not a function of
+anything the log records, so two passes would disagree. Consequences, stated exactly:
+
+- A pass **never writes to a hand-named decision file**. It creates or appends
+  `DECISIONS-{failure-mode-id}.md` only. The three files above are untouched by every pass, and no
+  pass orphans, renames or duplicates them.
+- Consolidating a hand-named file with a derived one is an **operator merge**, not a pass action, and
+  is out of scope here exactly as every other retrospective migration is (REQ §5).
+- The skill's own instruction at `pdlc/skills/consolidate-learnings/SKILL.md:41` states the
+  destination without stating how `{topic}` is chosen. This feature edits that line to carry the
+  derivation, so the manual entry point and the pass cannot diverge — listed in §15.3.
 
 The pattern-vs-coincidence bar is **unchanged and still governs every promotion**: recurs across ≥2
 unrelated features, **or** a single occurrence stating a standing invariant that obviously
@@ -1627,7 +1657,8 @@ PROPERTIES' (DC-09).
 | AT-R3 | operator | an invoking tree on a `feat-*` branch with a partially staged index | a pass runs to a terminal outcome | HEAD and branch are identical before and after; the commit contains **exactly** the §5.4 pathspec; the pre-staged files are not swept in |
 | AT-R4 | operator | git refuses the commit after the lock retries | the pass ends | the terminal status is unchanged, `writes-uncommitted` is recorded, and the writes remain correct on disk |
 | AT-R5 | operator | a pass whose working tree already matches (nothing to stage) | the commit runs | no failure and no `writes-uncommitted` — the empty stage is a return, not a warning |
-| AT-R6 | operator | an AC-2.2 promotion with `phase = P` and `artifact = pdlc/skills/se-author/SKILL.md`, run against (a) a tree with no such decision file and (b) a tree already carrying one | routing and the write run | the path is `docs/_decisions/DECISIONS-p-skill-md.md` in **both** runs — the §5.2 derivation is a pure function of the two keying fields, so the topic is stable across passes; in (a) the file is created, in (b) it is **appended to**, never replaced; the write is in the invoking tree and inside the §5.4 commit; the route is never the PR route. AC-2.2's target is a different path with a derived segment and does not share AT-R2's fixture |
+| AT-R6 | operator | an AC-2.2 promotion with `phase = P` and `artifact = pdlc/skills/se-author/SKILL.md`, run against (a) a tree with no such decision file and (b) a tree already carrying one | routing and the write run | the path is `docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md` in **both** runs — the §5.2 derivation is a pure function of the two keying fields, so the topic is stable across passes; in (a) the file is created, in (b) it is **appended to**, never replaced; the write is in the invoking tree and inside the §5.4 commit; the route is never the PR route. AC-2.2's target is a different path with a derived segment and does not share AT-R2's fixture |
+| AT-R6b | operator | two AC-2.2 promotions in one pass sharing `phase = P` whose artifacts are **siblings** — `pdlc/skills/se-author/SKILL.md` and `pdlc/skills/te-review/SKILL.md` — and, in a second fixture, two artifacts that collide under §8.1's slug (`pdlc/skills/a-b.md` and `pdlc/skills/a/b.md`) | routing and the writes run | in the sibling fixture the two promotions write **two distinct** files, one per artifact — the withdrawn basename derivation would have written one, so this is the row that falsifies it. In the colliding fixture the two write **one** file and the collision is reported exactly as §8.1 obliges (`duplicate-suppressed` naming the pair), so the accepted collision is asserted to be reported rather than silent. Distinct from AT-R6, whose Given is one promotion across two trees |
 
 ### 13.5 The PR route and idempotence (§6)
 
