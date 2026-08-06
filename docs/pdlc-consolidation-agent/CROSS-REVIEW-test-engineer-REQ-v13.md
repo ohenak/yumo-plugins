@@ -111,6 +111,35 @@ three of mine are already Low. No new rule in the intervening diff raises any of
 
 ## Positive Observations
 
+- **The approval anchor did its job for a third round, and I checked it rather than trusted it.**
+  `shasum -a 256` over the REQ at HEAD returns
+  `0d2b2497235209181f0599a2ef2e25fa106d1917af8f02448a027fe969ad6f17`, identical to the
+  `APPROVAL-HASH` at `CROSS-REVIEW-test-engineer-REQ-v12.md:157`. The anchor's whole purpose is to
+  say *this approval covers these bytes*; the bytes are unchanged, so the approval is not stale.
+- **The REQ's claims about existing behaviour still hold, re-run against HEAD.**
+  `ADVISORY_SEAMS` is at `pdlc/workflows/orchestrate-dev.js:1669` and is still
+  `Object.freeze(["A1", "A2", "A3", "A4", "A5"])` — a frozen five-member literal, which is what makes
+  REQ-CONS-06's "widen the seam set" a real PR-able surface rather than a config edit;
+  `resolveAdvisoryRung` is at `:1833` with the signature AC-1.5 (`:202`) attributes to it; the
+  fallback notice `ADVISORY_MODEL_FALLBACK: …` is at `:1859`, as AC-1.6 (`:205-206`) says. All three
+  are on the exact lines the REQ pins, and `git diff --stat 455929d..HEAD -- pdlc/` is empty, so no
+  citation could have drifted.
+- **A whole halt-and-resolve cycle landed upstream-adjacent without touching the upstream.** The
+  interval contains a second Phase F halt, a full `POSTMORTEM-F` with a `RESOLVED` flip, four
+  freeze-mandated FSPEC deletions and two new project decisions — and the REQ diff is still empty.
+  Findings that belonged to the REQ layer were routed as decisions (`DEC-CONV-01`, `DEC-SEV-02`) or
+  as FSPEC-layer repairs, not folded into the REQ by whoever noticed them. That is the erratum and
+  layer-boundary machinery behaving as specified, under the kind of pressure that usually breaks it.
+- **The new decisions are the right shape for a test author.** `DEC-CONV-01`'s convergence condition
+  — both reviewers *holding* a standing approval — is mechanically checkable from the cross-review
+  files alone (`VERDICT:` lines plus the `-v{N}` ordering), with no clock and no reviewer memory
+  required. `DEC-SEV-02`'s preferred repair, "deletion: a register that lists its entries needs no
+  theorem about the list", removes an assertion class that manufactures Mediums without protecting
+  any observable. Both are falsifiable rules rather than exhortations.
+- **`check-req-size.sh` is still non-blocking at HEAD** — its final block prints the
+  `PostToolUse`/`additionalContext` JSON and falls through to `exit 0` on every path, which is why
+  F-56 is headroom bookkeeping and not a delivery risk.
+
 ## Recommendation
 
 ## Verdict
