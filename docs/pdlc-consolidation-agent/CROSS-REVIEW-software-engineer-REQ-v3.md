@@ -40,6 +40,35 @@ changed.
 
 ## Existing-Code Claim Verification (changed sections)
 
+Every `file:line` claim the revision added or changed, checked against HEAD on
+`feat-pdlc-consolidation-agent` in a single pass. v2's 23 rows are not re-checked.
+
+| # | New/changed REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `additionalContext` at `nudge-consolidation.sh:47-48` | REQ-CONS-01 | **Confirmed** — v2 F-09 fixed | `:47` opens `print(json.dumps({...}))`, `:48` `"additionalContext": msg` |
+| 2 | `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833` | AC-1.5 | **Confirmed** | `:1833` `export function resolveAdvisoryRung({ _agent, _log, _state, prompt })` |
+| 3 | …and documented **there** as "the **one** ladder the tier ships" | AC-1.5 | **Off by 33** (F-06a) — the phrase is real and verbatim, at `:1800` | `:1800` `* \`resolveAdvisoryRung\` — TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships.` |
+| 4 | `orchestrate-queue.js` dispatches through an injected seam with the raw agent and a threaded `rungState` rather than copying literals | AC-1.5 | **Confirmed substantively** — `runAdvisorySeamFn({ …, rungState, _agent: rawAgentFn, … })`, and `runAdvisorySeam` resolves via `resolveAdvisoryRung` (`orchestrate-dev.js:3132`) | `orchestrate-queue.js:1245-1256` |
+| 5 | …at `orchestrate-queue.js:1244-1251`, comment at `:1243` | AC-1.5 | **Off by one, both anchors** (F-06b) | comment `:1243-1244`, dispatch opens `:1245` |
+| 6 | `MODEL_ADVISORY` `:1652` / `MODEL_ADVISORY_FALLBACK` `:1653` are module-private | AC-1.5, BL-01 | **Confirmed** — restated from v2, still exact, neither carries `export` | `orchestrate-dev.js:1652-1653` |
+| 7 | `commitPaths` at `orchestrate-dev.js:8669` is `git add -- <paths>` then a plain `git commit -m` | AC-3.8b | **Confirmed as to the shape** | `:8669` signature, `:8670` `["add", "--", ...paths]`, `:8690` `["commit", "-m", message]` — no pathspec |
+| 8 | …and that discipline "already applies to the pipeline's own queue-row commit" | AC-3.8b | **False** (F-01) | `commitPaths`' only call sites are `:10158`, `:10169`, `:10515` (Phase I waves + advisory record). The queue row is `commitQueueRow` (`orchestrate-queue.js:1576`, called `:1550`), whose commit **is** pathspec-scoped (`:1580-1585`); `orchestrate-dev.js` has no queue-row commit — `defaultRecordQueueRow` `:8751` returns `"none"`, comment `:8744-8747` |
+| 9 | LEARNINGS metadata table is `Feature` / `REQ` / `Date Completed` / `Total Iterations` / `Upstream` / `Harvested from` / `DoD rounds` at `harvest-learnings/SKILL.md:70-78` | AC-5.2 | **Confirmed, set-equal and line-exact** — `:70` header row through `:78` `DoD rounds` | `harvest-learnings/SKILL.md:70-78` |
+| 10 | `Harvested from` is `:77`; `## 6. Approval Record` is `:105` and is keyed by document type, not phase | AC-5.2 | **Confirmed, both** | `:77`, `:105` (columns `Document Type | Round | Role | …`) |
+| 11 | `CROSS-REVIEW-{role}-{docType}-v{N}.md` shipped naming at `orchestrate-dev.js:5799` | AC-5.2 | **Confirmed** — the construction site (`reviewTargetPath`) | `:5797-5799` |
+| 12 | `POSTMORTEM-{phase}-{feature}.md` at `orchestrate-dev.js:5429` | AC-5.2 | **Confirmed** — the construction site | `:5429` |
+| 13 | `CODE_REVIEW-{feature}-v{N}.md` at `orchestrate-dev.js:6423` | AC-5.2 | **Weak** (F-06c) — `:6423` is `artifactClassOf`'s recogniser regex, not a construction site | `:6420-6425` |
+| 14 | The docType→phase mapping REQ→R, FSPEC→F, TSPEC→T, DECISIONS→D, PLAN→P, PROPERTIES→PR | AC-5.2 | **Confirmed** against the shipped phase graph | CLAUDE.md "Phase graph and the erratum channel"; `converge()` phases R, F, T, D, P, PR |
+| 15 | The undecidable set for a pre-convention file is (I, CR, H, PUB, MERGE) | AC-5.2 | **Incomplete** (F-07) — omits PT | `orchestrate-dev.js:10030`, `:10212` `"Phase PT: PROPERTIES Tests"` |
+| 16 | `ADVISORY_SEAMS` at `orchestrate-dev.js:1669` | AC-6.3 | **Confirmed, exact** | `:1669` `export const ADVISORY_SEAMS = Object.freeze(["A1","A2","A3","A4","A5"]);` |
+| 17 | `advisoryTierOn` `:9653` resolves from `parseAdvisoryConfig` `:1682`, default `enabled: false` `:1663`; this repo's `.claude/pdlc.config.json` has no `advisory` key | REQ-CONS-06, BL-01a | **Confirmed** — restated from v2 F-01's own evidence, all four still hold | `orchestrate-dev.js:9653`, `:1682`, `:1663`; `.claude/pdlc.config.json` |
+| 18 | `docs/_queue/ESCALATIONS.md` does not exist at HEAD or in history | REQ-CONS-06 | **Confirmed** — and the REQ now says so itself, which is the F-01 fix | `docs/_queue/` holds `QUEUE.md` alone; `git log --all -- docs/_queue/ESCALATIONS.md` empty |
+| 19 | The AC-1.1 predicate's file is `docs/_decisions/.consolidation-log.md`, read at `nudge-consolidation.sh:32`, matched at `:41` | REQ-CONS-01, NFR-5 | **Confirmed as to the lines** | `:32` path, `:33` `os.path.isfile(log)` guard, `:41` predicate |
+| 20 | …and that file is a log of pass **rows** carrying a **status** | AC-1.1, AC-2.4, AC-7.2 | **False as to HEAD** (F-02) | the file exists and its entire content is one JSON array of `{"LEARNINGS","Date Completed"}` objects — no rows, no statuses, no `<!-- pdlc:consumed -->` blocks |
+| 21 | `docs/*/LEARNINGS-*.md` is the enumeration glob (`nudge-consolidation.sh:28`) | REQ-CONS-01 step 1 | **Confirmed** — and it matches 2 files here, below the default `volumeThreshold` 5, which is what makes F-02(i) reachable rather than theoretical | `:28`; `docs/orchestrate-dev-workflow/`, `docs/pdlc-advisory-tier/` |
+| 22 | `consolidate-learnings/SKILL.md:43` records the pass in `.consolidation-log.md` | AC-2.4 | **Confirmed** | `:43` step 6 |
+| 23 | The pass ships as a workflow bundle alongside the skill, a new `build-runtime.mjs` artifact and manifest row | §5 Scope | **Confirmed as a coherent plan** — the `orchestrate-queue` shape it names is real (bundle + skill sharing a name, manifest row per artifact) | CLAUDE.md "Workflow scripts and the runtime build"; answers v2 Q-04 |
+
 ## Questions
 
 ## Positive Observations
