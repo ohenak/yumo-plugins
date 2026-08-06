@@ -36,9 +36,9 @@ writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a four-column mark
 names live in `yumo-plugins/pdlc/skills/`. Nothing carries the proposal across that boundary: no
 `gh pr create` and no cross-repo push exists outside Phase PUB's own-repo `ship-pr`. So the pipeline
 accumulates precise evidence about its own failure modes and then hand-transcribes it, or doesn't.
-The propose-only rule behind that is correct — agents proposing changes to the prompts that govern
-agents must pass through human judgment — but *propose-only* and *hand-transcribed* are different
-requirements, and the skill enforces the second while intending only the first.
+Propose-only is correct — agents changing the prompts that govern agents must pass through human
+judgment — but *propose-only* and *hand-transcribed* are different requirements, and the skill
+enforces the second while intending only the first.
 
 **Today's only consumer is `yumo-plugins` itself.** `docs/_queue/QUEUE.md:11` states that this queue
 is the pipeline's own queue, and `:279` that every PR in it trips the self-modification guard. So the
@@ -105,11 +105,11 @@ way, so the hook and the pass keep one predicate rather than two. This is what m
 
 **What is in that file at HEAD, and the migration rule.** `docs/_decisions/.consolidation-log.md` **exists** and predates every convention this
 feature introduces: a markdown pass log whose `## Pass 1 — 2026-07-29` records its consumed set as a two-column table of **full paths**
-(`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md` | 2026-06-02, and the same shape for `docs/pdlc-workflow-distribution/…`),
-followed by prose promotion sections. It carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any kind — "Promoted" appears only
-as a section heading. A predicate matching blocks alone would report both files un-consolidated on the first pass, re-consume a corpus a prior pass
-already promoted from, and get no help from NFR-4 (keyed on `failure-mode-id`, which a pre-convention LEARNINGS does not carry, AC-5.2). The
-predicate is therefore stated over two regions, and is total over any log:
+(`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md` | 2026-06-02, same shape for `docs/pdlc-workflow-distribution/…`), then prose
+promotion sections. It carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any kind — "Promoted" is only a section heading. A
+predicate matching blocks alone would report both files un-consolidated on the first pass, re-consuming a corpus a prior pass already promoted from,
+with no help from NFR-4 (keyed on `failure-mode-id`, which a pre-convention LEARNINGS does not carry, AC-5.2). The predicate is therefore stated over
+two regions, and is total over any log:
 
 > A basename is **consolidated** if it appears inside a `<!-- pdlc:consumed {passId} -->` block, **or**
 > anywhere in the log's **legacy region** — the text preceding the file's *first* `<!-- pdlc:consumed`
@@ -122,8 +122,7 @@ its consumed set is empty** (the pair is then empty, which satisfies NFR-5's "ex
 the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** exactly **two** records are exempt — both can precede the
 first block, and neither is readable as legacy consumption because neither ever carries a basename: the AC-1.3 in-progress marker (a passId and an
 ISO-8601 timestamp, never committed, removed by the pass that wrote it), and a `refused` pass's AC-7.2 row (status, trigger, `credential:` and reason
-code only — AC-1.3), which a tick losing the race between the winner's marker and its block can write there. Every other record lands after the
-boundary.
+code only — AC-1.3), written there by a tick that loses the race between the winner's marker and its block. Every other record lands after it.
 `nudge-consolidation.sh:41` is updated to the same two-region rule, keeping hook and pass on one predicate. **On this repo
 today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
@@ -136,8 +135,8 @@ reads a LEARNINGS **body**:
    un-consolidated set. Enumeration is basenames only, which is all `nudge-consolidation.sh:41` does.
    The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md`. The shipped glob
    is depth-1 only (`nudge-consolidation.sh:28`), but this repo archives completed features one level
-   deeper (`docs/completed/{pdlc-merge-phase,pdlc-review-loop-hardening,pdlc-workflow-distribution}/`
-   each hold a LEARNINGS; BL-02 cites the convention), so depth-1 hides 3 of the 5 LEARNINGS at HEAD
+   deeper (three `docs/completed/*/` dirs each hold a LEARNINGS, named below; BL-02 cites the
+   convention), so depth-1 hides 3 of the 5 LEARNINGS at HEAD
    and biases AC-5.2's phase population toward `insufficient-evidence`. `docs/discarded/*/` is
    deliberately **excluded** — abandoned work is not evidence about a delivered pipeline. Widening
    makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one enumeration as well as one
@@ -204,12 +203,12 @@ unreachable until someone runs a manual pass — the never-fires failure this da
   **A `refused` pass writes its AC-7.2 row and commits nothing.** The row is the only evidence a tick was refused, and REQ-CONS-01's cadence rule
   already presupposes it ("a `refused` row is not a datum"); AC-7.2's exemption set therefore stays a single member, `skipped-cadence`. The row carries
   a trigger (NFR-3a — the refused tick fired one of `cadence` / `volume` / `manual`; that is how it reached the marker check) and `credential: absent`
-  (AC-4.2). It is **written, never committed**, decided rather than omitted: a pathspec stages a whole file, so a refused commit would necessarily
-  capture the winner's live `IN-PROGRESS:` line — falsifying AC-3.8b's "the marker is never committed" — and would capture the winner's log at an
-  arbitrary mid-pass instant. The winner's own AC-3.8b commit covers the same path and sweeps the row up; if the winner dies first the row stays in the
-  working tree, which is all its evidentiary purpose needs. So the two passes' concurrent writes need no lock, the refused row is an **append of one
+  (AC-4.2). It is **written, never committed**, by decision: a pathspec stages a whole file, so a refused commit would capture the winner's live
+  `IN-PROGRESS:` line — falsifying AC-3.8b's "the marker is never committed" — and the winner's log at an arbitrary mid-pass instant. The winner's own
+  AC-3.8b commit covers the same path and sweeps the row up; if the winner dies first the row stays in the working tree, which is all its evidentiary
+  purpose needs. So the two passes' concurrent writes need no lock, the refused row is an **append of one
   whole record at end of file** — never an edit inside the winner's `<!-- pdlc:consumed -->` block or any other region. It writes **no** consumed
-  block: it never took the marker, and only marker-holding passes emit the block (REQ-CONS-01), so it never touches the legacy-region boundary.
+  block — only marker-holding passes emit one (REQ-CONS-01) — so it never touches the legacy-region boundary.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that
@@ -263,9 +262,10 @@ where `n` is the 1-based ordinal of that pass on that calendar date — so the t
 AC-1.2 makes an expected case never collide. The proposal artifact is
 `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` (superseding today's `{date}`-only name at
 `pdlc/skills/consolidate-learnings/SKILL.md:49`), the promotion branch is
-`consolidation/{passId}`, and the PR body carries two trailers:
-`PDLC-CONSOLIDATION-PASS: {passId}` and `PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`.
-These are the identity keys NFR-4 is stated against.
+`consolidation/{passId}`, and the PR body carries three trailers: `PDLC-CONSOLIDATION-PASS: {passId}`;
+`PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`, which records pass provenance and is **not** a duplicate key; and
+`PDLC-CONSOLIDATION-PROMOTIONS: {sorted failure-mode-ids}`, one id per promotion the PR enacts (AC-5.1, AC-3.3). The promotions trailer is the
+duplicate-PR key NFR-4 is stated against — it rides the PR, so it outlives the log record of the pass that opened it.
 
 - **AC-3.1** — Given a promotion targets any path under the guard set — **exactly**
   `MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48-53`): `pdlc/workflows/`,
@@ -295,7 +295,7 @@ These are the identity keys NFR-4 is stated against.
   | `consolidation.pluginRepository` unset, not found, or renamed | `repository-unresolved` | yes | class + the configured value |
   | Network / API failure, including rate limiting | `api-failure` | yes | class + the API's status text |
   | Head branch `consolidation/{passId}` already exists remotely | `branch-exists` | yes | class + the existing branch and any PR found for it |
-  | An **open or merged** PR already carries this pass's `PDLC-CONSOLIDATION-SOURCES` trailer | `duplicate-suppressed` | **no** | class + the existing PR URL (NFR-4) |
+  | An **open or merged** PR already carries this promotion's id in its `PDLC-CONSOLIDATION-PROMOTIONS` trailer | `duplicate-suppressed` | **no** | class + the existing PR URL (NFR-4) |
 
 - **AC-3.6** — Given any promotion, Then it is **never** pushed directly to the default branch: pull
   request only, from branch `consolidation/{passId}`, never reused across passes (`passId` makes it
@@ -308,12 +308,11 @@ These are the identity keys NFR-4 is stated against.
   `PDLC-CONSOLIDATION-PASS` trailer defined in the REQ-CONS-03 preamble ("Pass identity and artifact
   naming"), so a repo-side control can recognise it.
 
-  This restates, and does not repeat, `pdlc-merge-phase` REQ-MERGE-03: that guard is `guardVerdict`
-  (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`), reachable only from
-  Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both inside a run
-  deciding about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`, refusal
-  `:838`). Nothing here evaluates an inbound PR raised by another process, so claiming inheritance
-  would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
+  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict`
+  (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) and the
+  advisory-envelope check (`:2143`) — both inside a run deciding about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`,
+  refusal `:838`). Nothing here evaluates an inbound PR raised by another process, so claiming inheritance would assert a control nothing enforces.
+  Repository-side enforcement is BL-05, an operator duty.
 - **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
   consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
   a **separate clone under a temporary directory**, cut from the fetched default branch. In the
@@ -330,16 +329,16 @@ These are the identity keys NFR-4 is stated against.
   `git add -- {paths}` *and* `git commit -m {msg} -- {paths}`. The precedent is `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1576`: add
   `:1577`, commit `:1580-1585`) and the advisory-record commit mirroring its exact two-call shape (`:1615`). It is explicitly **not** `commitPaths`
   (`pdlc/workflows/orchestrate-dev.js:8669`), whose commit is a plain `git commit -m` with no pathspec (`:8690`) — deliberately, because there the
-  `git add` scopes a set the wave already verified. That shape would sweep anything already staged into the pass's commit, and AC-3.8's shipping tree
-  is precisely one that may be mid-pipeline with a staged index, so it cannot deliver this AC's isolation guarantee. Consequences the REQ commits to:
-  the AC-1.3 marker is written and removed inside the pass and is **never committed** (one commit per pass, not two); an unrelated pathspec-scoped
+  `git add` scopes a set the wave already verified: that shape would sweep a staged index into the pass's commit, and AC-3.8's shipping tree may be
+  mid-pipeline with one. Consequences the REQ commits to:
+  the AC-1.3 marker is written and removed inside the pass and is **never committed**; an unrelated pathspec-scoped
   pipeline commit in the same tree cannot pick these files up and vice versa; and because a concurrent commit can hold `index.lock`, the pass retries
   that failure class as `commitPaths` does (`gitWithLockRetry`, `:8670`) — a commit that still fails leaves the writes uncommitted for the operator,
-  does not change the terminal status, and records reason code `writes-uncommitted`. These writes never travel through the AC-3.1 PR, which carries
-  only guard-set edits.
+  does not change the terminal status, and records `writes-uncommitted`. These writes never travel through the AC-3.1 PR, which carries only
+  guard-set edits.
 
-  **Where those commits go, stated.** The invoking branch **is** the accepted destination, with the
-  consequence said out loud: when it is a mid-pipeline `feat-*`, the AC-2.1/AC-2.2 promotions reach
+  **Where those commits go, stated.** The invoking branch **is** the accepted destination, with its
+  consequence stated: when it is a mid-pipeline `feat-*`, the AC-2.1/AC-2.2 promotions reach
   the default branch by riding that feature's own PR (pushed by Phase PUB, merged if at all by Phase
   MERGE) — a PR raised and reviewed for something else — so the AC-7.1 report names the branch the
   commit landed on. Abandonment is closed by construction **for the consuming-repo writes this AC
@@ -350,9 +349,10 @@ These are the identity keys NFR-4 is stated against.
   **The AC-3.1 PR route under the same abandonment, stated separately**, because there the failure inverts: a guard-set promotion is pushed from the
   AC-3.8 separate clone to `consolidation/{passId}` and lives or dies independently of the invoking branch. If that PR merges and the branch is then
   abandoned, the promotion survives on the default branch while the consumed block, the AC-5.1 `failure-mode-id` record and the AC-3.4 PR URL die with
-  the branch. This is closed on the PR identity, not on the log: NFR-4's suppression keys on any PR carrying an identical sources trailer that is
-  **open or merged**, so the merged PR is itself the durable key and a later pass re-deriving the same promotion records `duplicate-suppressed` rather
-  than opening a second PR. What is *not* recovered is the effectiveness record — that promotion re-enters the AC-5.2 table as if first made — and
+  the branch. This is closed on the PR identity, not on the log: NFR-4 keys **per promotion** on the `failure-mode-id` in the merged PR's
+  `PDLC-CONSOLIDATION-PROMOTIONS` trailer, and that id is stable across passes (AC-5.1), so a later pass re-deriving the same promotion from a
+  *larger* consumed set still records `duplicate-suppressed` rather than opening a second PR — which a sources-set key could not do (NFR-4).
+  What is *not* recovered is the effectiveness record — that promotion re-enters the AC-5.2 table as if first made — and
   that loss is accepted here, not closed. Any other destination (a `consolidation/{passId}` branch for the consuming-repo writes too) is **not**
   specified: it needs the branch operations AC-3.8 forbids.
 
@@ -383,14 +383,16 @@ These are the identity keys NFR-4 is stated against.
   `consolidation.pluginRepository` names a different repository (BL-03).
 
 AC-4.1 is a principle, not a convenience: an identity that proposes changes to the rules governing it
-must not be able to enact them. Separating propose-rights from merge-rights at the credential level
-makes that structural — the agent cannot merge its own proposal even if every other control failed.
+must not be able to enact them — separating propose-rights from merge-rights at the credential level
+makes that structural, so the agent cannot merge its own proposal if every other control failed.
 
 ### REQ-CONS-05 — Falsifiability
 
 - **AC-5.1** — Given any promotion, Then it records the failure mode it targets as a **structured
-  record with four named fields**, not prose: `failure-mode-id` (a stable slug, unique within the
-  log), `phase` (a member of the pipeline's phase catalogue), `symptom` (one line), and
+  record with four named fields**, not prose: `failure-mode-id` (a slug derived deterministically
+  from the failure mode itself — its `phase` and `symptom` — never from the pass or its consumed set,
+  so a later pass re-deriving the same failure mode yields the same id, which is what lets NFR-4 key
+  on it after a log record is lost; unique within the log), `phase` (a member of the pipeline's phase catalogue), `symptom` (one line), and
   `artifact` (a path or glob the symptom appears in). The record is written into
   `docs/_decisions/.consolidation-log.md` alongside the promotion, and the same
   `failure-mode-id` is carried by the `PDLC-PROMOTION-ID` trailer of AC-3.3.
@@ -427,8 +429,7 @@ makes that structural — the agent cannot merge its own proposal even if every 
   `phase: "CR"` (`:10255-10257`), and the halt path builds the same name from whatever phase halted (`:10603`). So `POSTMORTEM-CR-*` is producible and
   decides CR for the file naming it; a file naming none decides no phase. Nothing here is a disjointness claim, and a set-equality test transcribed
   from this paragraph must be written per file. Any phase the mapping cannot decide for a pre-convention file counts as **not** exercised
-  — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`. Both
-  inputs are file text, so two runs over the same corpus cannot disagree; that is what NFR-4 rests on.
+  — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`.
 
   The table is under a **set-equality** obligation: exactly one row per prior promotion in the log —
   no missing rows, no rows for promotions never made; a dropped row is a failure, not a smaller
@@ -441,8 +442,7 @@ makes that structural — the agent cannot merge its own proposal even if every 
   the disjunction is assertable rather than implied. (Which one to choose is FSPEC's rule to state; that the choice is reported is this REQ's.) The
   streak is counted **in passes, not elapsed time**, and only passes that returned `prevented` or `recurred` for that promotion are counted: an
   `insufficient-evidence` verdict is skipped entirely, as is any pass with an **empty consumed set** (which produces no verdict at all — AC-1.4's first
-  cause). The population is keyed on consumed-set emptiness, never on the `no-op` label: a `no-op` reached by duplicate suppression has a non-empty
-  consumed set and real verdicts, so it counts here like any other pass. Quiet weeks therefore cannot silently reset the streak. This `counted`
+  cause). The population is keyed on consumed-set emptiness, never on the `no-op` label (AC-1.4). Quiet weeks cannot silently reset the streak. This `counted`
   population governs the `ineffective` streak **only**; AC-5.5 counts a different population.
 - **AC-5.4** — Given a promotion flagged `ineffective`, Then retiring it follows the same
   propose-only path as making it: one that landed under the AC-3.1 guard set is retired by a PR
@@ -537,22 +537,24 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
   NFR-3's "the bar held on both" is checkable rather than asserted. The set needs no "no trigger"
   member: a `skipped-cadence` tick fired no trigger and writes no log row (AC-7.2), and every status
   that does write a row was reached by exactly one of these three.
-- **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly: re-running over the same consumed-LEARNINGS set produces no
-  duplicate promotion (identity: `failure-mode-id`, AC-5.1) and no duplicate PR (identity: the `PDLC-CONSOLIDATION-SOURCES` trailer defined in the
-  REQ-CONS-03 preamble, "Pass identity and artifact naming"). A pass that finds a PR carrying an identical sources trailer in state **open or merged**
-  opens nothing, records `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an interrupted pass's partial PR is
-  left for the operator to merge or close, not silently amended. Merged is in the key set deliberately: it is what survives when the invoking branch
-  carrying the log record is abandoned (AC-3.8b, "the AC-3.1 PR route under the same abandonment"). A **closed-unmerged** PR is *not* a key — the
-  operator rejected that promotion, and a later pass re-proposing it is intended behaviour, not a duplicate. Idempotence is well-defined precisely
-  because AC-5.2's verdicts are deterministic. Its limit is stated: `failure-mode-id` cannot key a LEARNINGS predating that convention (AC-5.2), so
-  duplicate suppression would not protect a re-consumed pre-convention corpus — which is why the REQ-CONS-01 legacy region prevents that
-  re-consumption instead of relying on NFR-4 to absorb it.
+- **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly and **per promotion**: re-running produces no duplicate promotion
+  and no duplicate PR, both keyed on `failure-mode-id` (AC-5.1) — for the PR, as carried by the body's `PDLC-CONSOLIDATION-PROMOTIONS` trailer
+  (REQ-CONS-03 preamble). It is deliberately **not** keyed on the sources trailer: a consumed set is time-dependent (REQ-CONS-01 step 1 enumerates
+  whatever is un-consolidated *now*), so two passes proposing the same promotion normally consume different sets and a set key would miss exactly
+  when suppression matters. A pass whose promotion's id is already on a PR in state **open or merged** opens nothing for it, records
+  `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an interrupted pass's partial PR is the operator's to merge
+  or close, not silently amended. State is read at poll time with no memory of prior states: a reopened PR is open, hence a key; a
+  **closed-unmerged** PR is *not* — the operator rejected that promotion, and a later pass re-proposing it is intended behaviour. Merged is in the key
+  set deliberately: it is what survives when the invoking branch carrying the log record is abandoned (AC-3.8b, "the AC-3.1 PR route under the same
+  abandonment"). Idempotence is well-defined because AC-5.2's verdicts are deterministic. Its limit: `failure-mode-id` cannot key a LEARNINGS predating
+  that convention (AC-5.2), so suppression would not protect a re-consumed pre-convention corpus — which is why the REQ-CONS-01 legacy region prevents
+  that re-consumption rather than relying on NFR-4 to absorb it.
 - **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
   positively records consumption by appending the consumed basenames to the delimited
   `<!-- pdlc:consumed {passId} -->` block of `docs/_decisions/.consolidation-log.md` (REQ-CONS-01,
   AC-2.4; that block is appended before any other record the pass writes — and is emitted **even
-  when the consumed set is empty**, as an empty pair — which is what freezes the legacy-region
-  boundary unconditionally) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
+  when the consumed set is empty**, as an empty pair — freezing the legacy-region boundary
+  unconditionally) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
   (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
   blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
   may be written inside one, so a basename appearing elsewhere in the log (a PR title, a failure
@@ -611,12 +613,12 @@ containment across six sections; adding a value above without a row here is a de
 | `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
 | R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3336-3437` — declaration `:3336`, first key `R:` `:3337`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
 
-Two joins the table settles, because both were previously undetermined. A pass that promoted
-something and also hit an AC-3.5 fallback class is `promoted-degraded`, never a bare `promoted` — the
-degradation is visible in the status, not only in a route field. A pass whose every promotion was
-`duplicate-suppressed` promoted nothing new and is therefore `no-op` (AC-1.4's second cause), while a
-pass that suppressed one duplicate and landed another is `promoted` — or `promoted-degraded` if it
-also degraded a third, which is why `duplicate-suppressed` permits all three.
+Two joins the table settles. A pass that promoted something and also hit an AC-3.5 fallback class is
+`promoted-degraded`, never a bare `promoted` — the degradation is visible in the status, not only in
+a route field. A pass whose every promotion was `duplicate-suppressed` promoted nothing new and is
+therefore `no-op` (AC-1.4's second cause), while a pass that suppressed one duplicate and landed
+another is `promoted` — or `promoted-degraded` if it also degraded a third, which is why
+`duplicate-suppressed` permits all three.
 
 A pass may carry more than one reason code, and each row's permitted set is derived **by
 composition, not by the status the code was first introduced under**: a code is legal with every
@@ -643,11 +645,11 @@ two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-
 `ESCALATIONS.md` consumption in all three corpus states (AC-6.1); reporting against §4b's
 vocabularies; tests.
 
-The pass ships as a workflow script alongside the existing `consolidate-learnings` skill — the
-`orchestrate-queue` shape, a skill and a bundled workflow sharing a name — so its bundle is a new
+The pass ships as a workflow script beside the existing `consolidate-learnings` skill (the
+`orchestrate-queue` shape: a skill and a bundled workflow sharing a name), so its bundle is a new
 tracked artifact of `pdlc/workflows/build-runtime.mjs` and a new row in
-`pdlc/workflows/dist/distribution-manifest.json`; BL-02's distribution machinery applies to this
-feature's own output as much as to what it promotes.
+`pdlc/workflows/dist/distribution-manifest.json`; BL-02's machinery applies to this feature's own
+output as much as to what it promotes.
 
 **Out of scope:** merging any promotion PR; changing the promotion bar; session-free (no Claude Code
 session) execution; a new notification channel; consolidating across multiple consuming repos;
