@@ -1827,10 +1827,10 @@ invented downstream).
 | # | Obligation | Constrained by |
 |---|---|---|
 | T-01 | Function names, seam signatures and module placement for the pass | §2.2's step sequence is the behavioural contract; the decomposition is TSPEC's |
-| T-02 | The bundle's row in `pdlc/workflows/dist/distribution-manifest.json`, and its entry in `build-runtime.mjs` | REQ §5: the pass ships as a workflow script beside the skill, in the `orchestrate-queue` shape |
+| T-02 | The bundle's row in `pdlc/workflows/dist/distribution-manifest.json`, its entry in `build-runtime.mjs`, and — explicitly — **how the consolidation bundle reaches `resolveAdvisoryRung`**. The runtime forbids `import`, and the shipped precedent reaches across modules only by inlining the whole module (`bundles`, `build-runtime.mjs:448-466`: the queue bundle is `[QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY].join(…)`, and the dev bundle likewise carries `devModule` — verified at HEAD). TSPEC must state which it takes, because the choice decides whether the consolidation bundle inherits `orchestrate-dev`'s module-level constants and whether a drift in the widened resolver is one artifact or three | REQ §5: the pass ships as a workflow script beside the skill, in the `orchestrate-queue` shape |
 | T-03 | How the §6.1 temporary clone is created, located and removed | AC-3.8: no branch operation in the invoking tree; the clone is cut from the fetched default branch |
 | T-04 | The injected seams for file IO, git and the PR API | every one must be `await`ed (CLAUDE.md, runtime-adapter contract) |
-| T-05 | The `resolveAdvisoryRung` call site and its `rungState` threading | §2.6: reuse, never restate, the two constants |
+| T-05 | The `resolveAdvisoryRung` call site, its `rungState` threading, **and the shape of the signature widening §2.6 item 2 requires**. The widening is constrained here and TSPEC chooses only its spelling: the new `skill` parameter is **optional and defaults to `ADVISORY_RUNG_SKILL`** (`orchestrate-dev.js:1797`), so **every existing call site is unchanged with no edit** (AT-M10 is the regression); it is threaded to the one `_agent` call (`:1841`) and to the memoised path (`:1844-1849`) alike, so a pass cannot resolve on one skill and dispatch on another; and **exactly one ladder remains** — no second constant, no second resolver, no per-caller model list. TSPEC must also state the deadline question §2.6 leaves open: the shipped call site races the resolver against a wall-clock deadline and dispositions a fifth shape, `{kind: "preempted"}` (`:3130-3134`), which is that call site's, not the resolver's; this pass has no seam budget and calls the resolver **bare**, so §2.6's four rows stay set-equal to the resolver's own return and throw set, and a hung dispatch is bounded only by the runtime's no-progress watchdog (recoverable through §4.2's stale-lock reclaim) | §2.6: reuse, never restate, the two constants; §15.3 lists the edit and its bundle rebuild |
 | T-06 | The parse implementation for `ESCALATIONS.md` entries | §9.2: read the metadata table rows, never the heading |
 | T-07 | The `.gitignore` pattern's exact text | §4.1: root-relative, contains a separator, never slash-free or `**/`-prefixed |
 | T-08 | Whether the corpus enumeration is shared code with `nudge-consolidation.sh` or two implementations held equal by test | §3.1 requires one corpus and one predicate; it does not require one implementation. Whichever is chosen, AT-P7 is the differential form and stands |
@@ -1984,15 +1984,23 @@ meantime.
 | Path | Change | Section |
 |---|---|---|
 | `pdlc/hooks/scripts/nudge-consolidation.sh` | predicate at `:41` scoped to the two regions; corpus glob at `:28` widened to include `docs/completed/*/` | §3.1, §3.2 |
-| `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the §3.2 predicate | §3.2 |
+| `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the §3.2 predicate; `:41`'s `DECISIONS-{topic}.md` route gains the §5.2 derivation (`{topic} = failure-mode-id`), so the manual entry point and the pass cannot diverge | §3.2, §5.2 |
+| **`pdlc/workflows/orchestrate-dev.js`** — a **guard-set** path | `resolveAdvisoryRung` (`:1833`) gains an **optional `skill` parameter defaulting to `ADVISORY_RUNG_SKILL`** (`:1797`), threaded to the dispatch at `:1841` and to the memoised path at `:1844-1849`. Every existing call site is unchanged (AT-M10). This is the one edit this feature makes to already-shipped behaviour, and the only reason §2.6's reuse story compiles | §2.6 item 2, §14.1 T-05 |
+| **`pdlc/workflows/dist/orchestrate-dev.bundle.js`** and **`pdlc/workflows/dist/orchestrate-queue.bundle.js`** | rebuilt, **in the same commit** as the row above — `CLAUDE.md` requires it, and both bundles inline `devModule` wholesale (`build-runtime.mjs:448-466`), so the widened resolver's bytes live in both artifacts as well as in the source | §14.1 T-02 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row added to the metadata table (`:70-78`); a `failure-mode-id` line added to the §5 Open Items convention | §8.3, §8.4 |
 | `.gitignore` | one entry for `docs/_decisions/.consolidation-lock` | §4.1 |
 | `pdlc/workflows/build-runtime.mjs` and `pdlc/workflows/dist/distribution-manifest.json` | the new bundle's build entry and manifest row | §14.1 T-02 |
 | `docs/_constraints/pdlc-consolidation-vocabularies.md` | authored and owned by this feature (§1–§4 entire), kept at `Version` 1.4 | REQ §4b |
 | `docs/_constraints/pdlc-advisory-corpus-baseline.md` | authored and owned by this feature (§1–§4 entire), kept at `Version` 1.0 | REQ §4b |
 
-Every path above is verified present at HEAD except the new bundle artifacts, which this feature
-creates.
+Every path above is verified present at HEAD except the consolidation bundle's own artifacts, which
+this feature creates.
+
+**The two guard-set rows are this feature's own implementation, not a runtime write, and NFR-1 is
+untouched.** NFR-1 forbids *the pass*, at run time, from writing a guard-set path in any tree (§5.1);
+it says nothing about the feature's delivery diff, which reaches `pdlc/workflows/` the ordinary way —
+through this feature's own reviewed PR. The distinction is the same one §5.1 draws between a routing
+predicate and an inherited control.
 
 ## 16. Linked Requirements
 
