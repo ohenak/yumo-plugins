@@ -88,4 +88,34 @@ cell. No High and no Medium.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three v10 findings are resolved and both v10 questions were answered by construction. The Medium
+was resolved twice over — the two registers were corrected on the merits (`ee742a3`, `c8ab0cc`), and
+then the falsified universal that produced the finding was deleted rather than re-stated (`4fbb696`,
+v11.1), which is the repair `DEC-SEV-02` prescribes for exactly this class. Nothing in this revision
+re-opens a settled decision, and nothing in it broke a section I had previously approved: I re-derived
+the eight-reader / eight-field cell-level set-equality over §8.1's table, re-checked that every
+surviving set-equality obligation is intact after the deletion pass (§8.1 `:1169-1172`, §14.5
+`:2225-2227`, BR-33a `:2539`, AT-F19/F20/F21/Q7c), confirmed AT-F21 still covers exactly the two arms
+BR-33a claims for it and grew no third short record, verified `BR-35b` and `O-C7` say what the new
+cells cite them for, and re-checked every repo path the changed text names.
+
+The one open item is **L-01**, a Low: E-12b's rewritten field→reader index maps `phase` to one reader
+where §8.1's normative table gives it two. It is a Low rather than a Medium for the reason the
+severity bar keys on — no rule, arm, observable or downstream artefact is wrong, both `phase`
+observables are stated normatively at `:1182` and `:1184`, LD-1 and LD-5 both carry the steps 2–3
+arm, and a test author can write both arms today from the reader table without asking anyone a
+question. The repair is four words in an index cell and adds no rule, no BR, no AT and no register
+entry, so it sits inside the freeze. It may equally be carried as a tracked deferral: it costs a
+transcriber one extra lookup, not a decision.
+
+Per `DEC-CONV-01`, this approval **stands** into subsequent rounds of Phase F. I will re-open it only
+if a later diff touches a section this review's Scope named, or if I score something Medium-or-higher
+against a later delta. Suggested disposition for the optimizer: take L-01 if a revision is being made
+for another reason; do not open a revision solely for it.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
