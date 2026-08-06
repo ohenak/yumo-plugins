@@ -1324,8 +1324,17 @@ lock-free (§4.1).
 
 ### 10.3 The terminal row's fields
 
-One row, one pass. Each field is a member of a vocabularies §1 category; **no field carries a value
-with no §1 row**.
+One row, one pass. The fields split into two classes, and the split is what makes the §1 set-equality
+oracle (AT-L5) well-defined rather than false on a correct implementation:
+
+| Class | Fields | Obligation |
+|---|---|---|
+| **Enumerated** — the value is drawn from a closed set | `status:`, `trigger:`, `reason:`, `credential:`, the route names inside `promotions:`, and the per-promotion verdict / state / action / phase values the report carries | every value is a member of a vocabularies §1 category, and **no value in this class has no §1 row** |
+| **Free-form** — the value is data, not a vocabulary | `pass:`, `date:`, `consumed:`, `branch:`, `deferred:`, `pr:` (a URL or empty), `suppressed-by:` (a `{id}:{action} → URL` composite), `rung:` (a model identifier) | the **field name** has a §1 row where §1 defines one; the **value** is outside the compared set. A URL, a date, a branch name and a model id are not vocabulary members and were never intended to be |
+
+`rung:` is in the free-form class by value and is the one field whose *name* has no §1 row at
+`Version` 1.4 — a gap in a REQ-owned file (§15.3), routed as an erratum (§14.4) rather than patched
+here.
 
 | Field | Value | Source |
 |---|---|---|
@@ -1355,6 +1364,23 @@ recorded — not by the status under which the code was first introduced.
 `consumed:` restates the §3.3 pair's set for a human reader and is **not** a second consumption
 record: it lies outside any `<!-- pdlc:consumed -->` block, so under §3.2 it is in neither region and
 can never mark a file consolidated. That is precisely why the block form exists.
+
+**`credential: absent` is read against the row's status, and the two readings are stated here rather
+than left to the reader.** The closed set has three members (§7.2) and gains no fourth: adding a
+`not-attempted` member would be a vocabularies §1 change, and §1 is a REQ-owned enumeration this
+layer does not edit. So the disambiguation is by status, and it is total:
+
+| Row's `status:` | Reading of `credential: absent` |
+|---|---|
+| `refused` (§12.1 S-09 — the pass terminated at step 6 holding no marker) | **not attempted.** No credential resolution ran at all. The pass reached no PR route, so there was nothing to resolve; `absent` is the row's null, not a finding |
+| any other status | **attempted and found nothing** — neither a `credentialEnv` variable nor working local `gh` auth (§7.2), the finding AT-K2 constructs |
+
+A `refused` row therefore never carries reason `credential-unavailable` — that code is legal only
+with `promoted-degraded` and `no-op` (vocabularies §1), which is the independent observable that
+separates the two readings on the row itself: **attempted-and-found-nothing always co-occurs with
+`credential-unavailable`; not-attempted never does.** AT-K6 asserts exactly that pairing in both
+directions, so an implementation that recorded a genuine credential finding on a `refused` row, or
+omitted the reason code on a real one, fails.
 
 ### 10.4 The report body
 
