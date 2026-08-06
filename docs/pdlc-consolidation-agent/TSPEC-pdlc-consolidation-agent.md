@@ -85,7 +85,123 @@ constraint that shapes §9's design more than any other: the pass cannot call `m
 
 ## 3. Project structure — files created and modified
 
+### 3.1 New files
+
+| Path | Role | Notes |
+|---|---|---|
+| `pdlc/workflows/consolidate-learnings.js` | the pass — one ES module, `export default async function main({…})`, every IO through a defaulted injection parameter | mirrors `orchestrate-queue.js`'s shape (`:1033`), so `build-runtime.mjs` can strip and wrap it with the existing `stripModuleSyntax` / `wrapModule` pair (`build-runtime.mjs:44`, `:56`) with no new build machinery |
+| `pdlc/workflows/dist/consolidate-learnings.bundle.js` | generated runtime artifact | §8.2 |
+| `pdlc/workflows/__tests__/helpers/consolidationDoubles.js` | the **one** canonical double module for this feature's two new seams and its log/corpus fixtures | excluded from jest by the shipped `testPathIgnorePatterns` (`package.json`); re-exports rather than re-declares every double that already exists (§11.2) |
+| `pdlc/workflows/__tests__/consolidation*.test.js` | the suites — one file per §11.1 group | §11.5 names the split |
+
+The pass is **one module, not a package.** `orchestrate-dev.js` is ~10.7 kLoC in one file and
+`orchestrate-queue.js` ~1.7 kLoC; the build inlines whole module bodies into an IIFE
+(`wrapModule`), and a multi-file module would need a build change for no behavioural gain. The
+decomposition is by **exported pure function** (§4), not by file.
+
+### 3.2 Modified files
+
+| Path | Change | Constrained by |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | `resolveAdvisoryRung` (`:1833`) gains an optional `skill` parameter defaulting to `ADVISORY_RUNG_SKILL` (`:1797`), threaded to `dispatchAt`'s `_agent` call (`:1841`) and therefore to both the memoised path (`:1844-1849`) and the two-rung path | §8.1; FSPEC §15.3, §14.1 T-05 |
+| `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
+| `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`) | §5.3, §9.1 |
+| `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions | §7.1 |
+| `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the block/legacy predicate; `:41`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
+| `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-78`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
+| `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
+
+`pdlc/.claude-plugin/plugin.json`'s `version` is bumped by the release step, not by this feature's
+implementation tasks; the manifest's `pluginVersion` stamp follows it (§8.3).
+
+### 3.3 The `.gitignore` pattern, decided (T-07)
+
+`docs/_decisions/.consolidation-lock` — a repository-root-relative path **containing a separator**,
+written without a leading slash and without `**/`. Per gitignore(5) a pattern with a non-trailing
+separator is already anchored to the `.gitignore`'s own directory, which the shipped
+`/.claude/workflows/` entry documents at length in its own comment block (verified at HEAD, that
+comment is the last block of the file). A slash-free `\.consolidation-lock` or a `**/`-prefixed form
+would match at every depth and would silently swallow a fixture of the same name under
+`pdlc/workflows/__tests__/fixtures/` — which §11 does create.
+
+### 3.4 Consumer-visible surface
+
+The pass is invoked as `/pdlc:consolidate-learnings`. That name already resolves to the **skill**
+of the same name; after this feature it also resolves to a workflow bundle, exactly the
+`orchestrate-queue` shape REQ §5 names (a skill and a bundle sharing one name). Nothing in
+`pdlc/hooks/hooks.json` changes: no hook can start a pass (FSPEC §2.1), and `nudge-consolidation.sh`
+keeps its advisory-only role (`:47-48` print `additionalContext` and exit 0).
+
 ## 4. Module architecture — decomposition and dependency graph
+
+### 4.1 The shape: one impure driver over a wall of pure functions
+
+`main()` is the only function that touches a seam. Every decision the FSPEC states — the predicate,
+the datum, the id derivation, the merge, the verdicts, the streaks, the routing, the suppression,
+the counting, the row rendering — is a **pure function of already-read text**, exported for direct
+unit test. This is not a style preference: FSPEC §8.3's "no model judgment, two runs over the same
+inputs cannot disagree" and §14.1 T-09's property obligations are only assertable if the decision is
+reachable without standing up a pass.
+
+```
+main({ …seams })                       ← the only impure function
+ ├─ resolveConsolidationConfig         (pure)   §7.8
+ ├─ enumerateCorpus            ←_listFiles      §7.1
+ │   └─ unconsolidatedSet              (pure)   §7.1
+ ├─ cadenceDatum / triggerFor          (pure)   §7.2
+ ├─ mintPassId                         (pure)   §7.2
+ ├─ takeMarker                 ←_readFile/_writeFile   §7.3
+ ├─ renderConsumedPair                 (pure)   §7.1
+ ├─ dispatchClustering         ←resolveAdvisoryRung    §8.1
+ ├─ parseEscalations                   (pure)   §7.7
+ │   └─ seamCandidates                 (pure)   §7.7
+ ├─ parseLogRecords                    (pure)   §7.4
+ │   ├─ effectivenessTable             (pure)   §7.5
+ │   ├─ openPromotionList              (pure)   §7.5
+ │   └─ suppressionVerdict             (pure)   §7.6
+ ├─ deriveProposals                    (pure over the clustering reply)  §7.4
+ │   ├─ failureModeId                  (pure)   §7.4
+ │   ├─ mergeProposals                 (pure)   §7.4
+ │   └─ remediationChoice              (pure)   §7.5
+ ├─ routeProposal                      (pure)   §7.6
+ │   ├─ consuming-repo write   ←_appendFile
+ │   └─ PR route               ←_git/_ghRun/_envPresent/_makeTempDir  §9
+ ├─ renderTerminalRow / renderReport   (pure)   §7.9
+ └─ commitConsumingRepoPaths   ←_git             §9.4
+```
+
+**Dependency direction is one-way.** No pure function calls another module's impure helper, and no
+pure function closes over `main`'s scope. `main` threads a single `PassState` (§6.1) through the
+sequence, which is what makes FSPEC §2.2's "terminates = a jump to step 14" implementable as an
+early `return finishPass(state, …)` rather than as an exception (§10.2).
+
+### 4.2 Where each function lives
+
+All of the above are exported from `pdlc/workflows/consolidate-learnings.js` **except** four
+reused imports, which are not re-authored (DC-08):
+
+| Reused symbol | Source at HEAD | Used for |
+|---|---|---|
+| `resolveAdvisoryRung` | `orchestrate-dev.js:1833` | every agent dispatch the pass makes (§8.1) |
+| `MERGE_GUARD_DEFAULTS` | `orchestrate-dev.js:48-53` | §7.6's routing predicate — read, never copied |
+| `mergeCommandFor` | `orchestrate-dev.js:319` | the sole place a literal `gh` command string is built (§9.2 extends its `switch` rather than adding a second builder) |
+| `gitWithLockRetry` | `orchestrate-dev.js:8617` | the `index.lock` retry class on §9.4's commit |
+
+`commitPaths` (`:8669`) is **not** reused: its commit is a plain `git commit -m` with no pathspec
+(`:8690`), which FSPEC §5.4 forbids here. The reused shape is `commitQueueRow`'s two-call form
+(`orchestrate-queue.js:1576`; add `:1577`, commit `:1580-1585`) and `commitAdvisoryRecord`'s
+mirror (`:1615`), including their shared `NOTHING_TO_COMMIT_RE` treatment (`:1631-1635`).
+
+### 4.3 How the imports reach the bundle
+
+`consolidate-learnings.js` imports those four symbols from `./orchestrate-dev.js` as an ordinary ES
+module import, exactly as `orchestrate-queue.js` does today. The **bundle** cannot import, so
+`build-runtime.mjs` inlines the dev module and re-binds the names in the consolidation IIFE's
+prelude — the mechanism `queueModule`'s prelude already uses (`build-runtime.mjs:113-123`, a
+`const X = __dev.X;` line per symbol). §8.2 states the four lines this adds and the four names
+`devModule`'s export list gains.
+
 
 ## 5. Interfaces — the injected seam protocol
 
