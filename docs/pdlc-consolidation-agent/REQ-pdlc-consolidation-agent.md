@@ -108,8 +108,9 @@ consolidated is re-consumed and no transcription or parse of Pass 1's prose is r
 that takes the AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when
 its consumed set is empty** (the pair is then empty, which satisfies NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by
 the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** exactly **one** record is exempt — it may precede the first
-block, and it is not readable as legacy consumption because it never carries a basename: a `refused` pass's AC-7.2 row (status, trigger, `credential:`
-and reason code only — AC-1.3), appended by a tick that loses the race between the winner's marker and its block. The AC-1.3 marker is **not** a second
+block, and it is not readable as legacy consumption because **no field it carries is ever a basename**: a `refused` pass's AC-7.2 row — status, trigger,
+`credential:`, reason code, and the held marker's passId and ISO-8601 timestamp, which AC-1.3 requires it to name, and only those — appended by a tick
+that loses the race between the winner's marker and its block. A passId is `{YYYY-MM-DD}-{n}` and a timestamp is neither a `LEARNINGS-*.md` basename. The AC-1.3 marker is **not** a second
 exempt record: it lives in its own file, never in this log (AC-1.3). Every other record lands after it. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
 `…-pdlc-review-loop-hardening`) are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the cadence test.
@@ -168,7 +169,11 @@ runs a manual pass — the never-fires failure this datum prevents.
   deliberately **not** in `.consolidation-log.md`, because taking and releasing it are in-place
   rewrites of a whole small file and every write to the *log* must stay an append (below). It is
   written **after** the trigger decision of steps 1–4 and before any other pass work, lives in the
-  working tree only, and is never committed by any pass (AC-3.8b). Take and release are set-equal to
+  working tree only, and is never committed by any pass (AC-3.8b). Because a standalone untracked file in a tracked directory is committable by any
+  actor that is not pathspec-scoped, "working tree only" is guaranteed against actors other than the pass too: this feature adds
+  `docs/_decisions/.consolidation-lock` to the repository `.gitignore` (§5), which today carries no pattern matching it (verified at HEAD:
+  `.tokensave/`, `.claude/settings.local.json`, `.claude/.headroom_wrap_marker.json`, `node_modules/`, `/.claude/workflows/`). Without that clause a
+  committed lock reaches every fresh clone and refuses every pass with `consolidation-in-progress` until `staleLockMinutes` elapses, per clone. Take and release are set-equal to
   AC-7.1's terminal-status set, one stated outcome per status, so no status is unmapped:
 
   | Terminal status | Marker taken? | Marker released by this pass? | Commits (AC-3.8b)? |
@@ -638,8 +643,8 @@ credential, in both the same-repo (AC-3.8) and two-repo configurations, plus the
 commit of the consuming-repo writes (AC-3.8b); the effectiveness/falsifiability loop, including the
 two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-5.2) and
 `Phases exercised` in the harvest metadata table (`harvest-learnings/SKILL.md:70-78`);
-`ESCALATIONS.md` consumption in all three corpus states (AC-6.1); reporting against §4b's
-vocabularies; tests.
+`ESCALATIONS.md` consumption in all three corpus states (AC-6.1); the one-line `.gitignore` entry for
+`docs/_decisions/.consolidation-lock` (AC-1.3); reporting against §4b's vocabularies; tests.
 
 The pass ships as a workflow script beside the existing `consolidate-learnings` skill (the `orchestrate-queue` shape: a skill and a bundled workflow
 sharing a name), so its bundle is a new tracked artifact of `pdlc/workflows/build-runtime.mjs` and a new row in
