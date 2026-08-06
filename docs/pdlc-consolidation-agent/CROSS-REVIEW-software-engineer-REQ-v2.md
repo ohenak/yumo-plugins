@@ -123,4 +123,50 @@ Q-07 by AC-1.4) and are not re-asked.
 
 ## Recommendation
 
+**Needs revision.** 2 High, 5 Medium, 2 Low. All nine are new; all sixteen v1 findings are resolved.
+
+This is a substantially better document than v1 — the revision closed eight High findings without
+inflating the REQ past requirements altitude, and its new citations are accurate in 21 of 23 cases.
+The bar is nonetheless unchanged, and two High findings are open.
+
+### The stopping rule, applied against itself
+
+§5a says a round is done when its blocking findings are **all** "this cannot be tested as written"
+or "this needs an oracle", and names four classes that must be fixed at this layer. Both High
+findings land inside that list, by the REQ's own test:
+
+- **F-01** is "a false or under-stated claim about code at HEAD" — BL-01 records `ESCALATIONS.md`
+  as delivered and it has never existed — *and* "a topology or trigger the shipped architecture
+  cannot provide", since the file is produced only by a tier that ships disabled. It is not an
+  oracle question: it decides whether REQ-CONS-06 has an input at all.
+- **F-02** is an internal contradiction that makes an AC unreachable and a declared config key
+  inert. Nothing downstream can test its way out of `unmeasurable` being unsatisfiable.
+
+The five Mediums are closer to the boundary. F-04, F-06 and F-07 are closed-set reconciliations
+that a careful FSPEC would otherwise have to invent; F-03 and F-05 are contract contradictions
+between ACs. None is an oracle question, and all five are one or two sentences of requirements
+prose. I would not hold the REQ for the two Lows alone.
+
+### What must change for approval
+
+1. **F-01** — split BL-01 (model ladder delivered; escalation corpus not), and give REQ-CONS-06 a
+   precondition that distinguishes "no escalations because the seams work" from "no escalations
+   because nothing could escalate". AC-6.3 must not fire on an empty-because-disabled corpus.
+2. **F-02** — give AC-5.5 its own counting population, distinct from AC-5.3's `counted` streak, and
+   fix or delete AC-1.4's no-op parenthetical.
+3. **F-03** — narrow AC-3.8's isolation clause to branch/stash operations, and state where the
+   AC-2.1/2.2/2.4 writes land and who commits them.
+4. **F-04** — reconcile AC-3.5's reason codes with AC-7.1's status set (a `degraded` status member
+   or an explicit code→status mapping).
+5. **F-05** — scope the AC-1.1 predicate to a delimited region of the log, or forbid the other
+   record types from carrying a LEARNINGS basename.
+6. **F-06** — state the trigger-evaluation order explicitly (enumerate → volume → cadence →
+   `skipped-cadence`), so AC-1.1 and AC-1.2 stop contradicting each other.
+7. **F-07** — either add a `none` member to NFR-3a's trigger set or exempt `skipped-cadence` ticks
+   from AC-7.2's log-row obligation; prefer the exemption, since under `/loop` the skipped tick is
+   the common case.
+8. **F-08, F-09** — two citation corrections, cheap.
+
 ## Verdict
+
+VERDICT: Needs revision
