@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (AC-1.5, AC-1.6, REQ-CONS-06, BL-01, BL-01a, D-CONS-06) |
+| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§5, AC-1.5, AC-1.6, REQ-CONS-06, BL-01, BL-01a, D-CONS-06) |
 | Version | 1.0 · 2026-08-06 |
 | Verified at | HEAD, 2026-08-06 |
 
@@ -11,6 +11,13 @@
 about `orchestrate-dev` rather than about any one consuming feature. D-CONS-06 binds the successor
 work to `pdlc-engineering-loop`, which will re-derive exactly these facts; stating them once keeps the
 two features from drifting apart, and keeps the consuming REQ inside its size budget.
+
+**Change control, and who owns these sections.** `REQ-pdlc-consolidation-agent` owns every section
+of this file — §1–§4 entire — and changes none belonging to anyone else; a successor feature's facts
+belong in its own new section of this file or in its own file, never interleaved into §1–§4. All
+four sections are **owned normative prose**: no table here is transcribed row-for-row downstream, so
+no set-equality oracle ranges over this file. Consumers cite this file **at its `Version`**; a
+content change that is not accompanied by a version bump is itself a defect.
 
 ## 1. What is destroyed, and what survives
 

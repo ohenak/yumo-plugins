@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (pm-author) | 2.0 | 2026-08-06 |
 
-RESOLVED: no
+RESOLVED: yes
 
 > **This is the second halt of Phase R on this REQ.** Version 1.0 of this file recorded the
 > first window (rounds 1–5) and was resolved on 2026-08-06; that record is preserved in
@@ -328,6 +328,37 @@ Two durable lessons, both cheap to promote and both stated in the reviewers' own
    stated as a section list.** This is the propagation checklist the first window recommended, one
    level up: the first window missed cells inside enumerations, this window missed sections inside
    scope statements. One authoring-seam rule covers both.
+
+## Resolution (window 2, 2026-08-06)
+
+The Recommendation was carried out in full by the outer orchestrator:
+
+**Step 1 — per-finding verification (Opus agent, against the tree at `4879e6b`, not commit
+messages).** SE F-01 / TE F-52 closed by `7fa2a84`/`07a3549`/`589b6a9`: ownership §1–§4 entire in
+both artifacts, the enumerated (§1/§2/§4) vs owned-prose (§3) split stated in both, §5's
+deliverable widened, citations pinned at `Version` 1.4 (header is 1.4). TE F-53 closed by
+`eef3b3c`/`ef6eb17`: REQ-CONS-06's preamble cites the baseline instead of recapitulating it,
+vocabularies §3 no longer restated; margin 344 → 437 bytes. Both Q-01/Q-02 answered explicitly.
+All code citations introduced by the five commits re-verified at HEAD; no defect row.
+
+**Step 4 — governance sweep, both `docs/_constraints/` files.** The vocabularies file's rules are
+fully consistent; the generator survived one file over — `pdlc-advisory-corpus-baseline.md` had no
+ownership/classification/version-bump paragraph, two unpinned primary binding declarations, §5's
+deliverable under-ranged it, and both `Cited by` rows were stale. Fixed in the resolution commit
+without relocating any REQ text (REQ v2.0, 637 lines / 61,109 bytes, margin 331): version pins
+added at the §3/§2/baseline-§3 binding declarations, §4b's ownership widened to "each
+`docs/_constraints/` file it authors", §5's baseline parenthetical now "(§1–§4 entire, per §4b)",
+a change-control paragraph appended to the baseline file, `Cited by` rows completed, and the
+Cross-Reviews header row corrected to `v{1..10}` (20 files).
+
+**Step 2 — severity adjudication, recorded.** `docs/_decisions/DECISIONS-review-severity-bars.md`
+DEC-SEV-01: a governance-rule scope gap that is *detectable* through a version-pin/defect clause
+is Low (TE's bar); Medium is reserved for gaps that block a downstream author today. Recorded at
+project level so this family inherits it.
+
+**Step 3 — the confirming round.** This resolution relocates nothing; the structure is frozen.
+Re-entry opens rounds 11–15; the expectation is one short delta round confirming the closures
+above.
 
 ## Appendix — first window (rounds 1–5, resolved)
 

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, REQ-CONS-01, REQ-CONS-03 preamble, AC-1.3, AC-3.3, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
+| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, §5, REQ-CONS-01, REQ-CONS-03 preamble, AC-1.3, AC-3.3, AC-3.7, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
 | Version | 1.4 · 2026-08-06 |
 
 **Why this file exists.** The consolidation REQ's enumerated vocabularies and the phase observable

@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..9}.md` (18 files) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..10}.md` (20 files) |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.9 | 2026-08-06 |
+| pdlc | draft | Claude | 2.0 | 2026-08-06 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -80,7 +80,7 @@ records — whose `artifact` field may legitimately be a LEARNINGS path — and 
 table), any of which could contain a basename and falsely mark that file consolidated. So consumption
 is recorded **only** inside the delimited `<!-- pdlc:consumed {passId} -->` block whose grammar,
 exclusivity rule ("no other record type may appear inside one") and append-only write granularity are
-stated in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** and are binding here. This
+stated in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.4) and are binding here. This
 feature updates `pdlc/hooks/scripts/nudge-consolidation.sh:41` to scope its test to those blocks, so
 the hook and the pass keep one predicate rather than two — which is what makes NFR-5's "exactly the
 consumed set" enforceable by the predicate that consumes it.
@@ -199,7 +199,7 @@ pass — the never-fires failure this datum prevents.
 - **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it actually ran on in its report and in the log row.
   The rung ladder — its two constants, its exported resolver `resolveAdvisoryRung`
   (`pdlc/workflows/orchestrate-dev.js:1833`), its shipped second consumer, and the drift-observable fallback if reuse proves impossible — is stated in
-  **`docs/_constraints/pdlc-advisory-corpus-baseline.md` §3** and is binding here. **This feature reuses that ladder; it does not restate it.**
+  **`docs/_constraints/pdlc-advisory-corpus-baseline.md` §3** (at `Version` 1.0) and is binding here. **This feature reuses that ladder; it does not restate it.**
 - **AC-1.6** — Given the primary rung does not resolve, Then the pass runs on the fallback rung and
   reports the downgrade explicitly (mirroring `ADVISORY_MODEL_FALLBACK:`,
   `pdlc/workflows/orchestrate-dev.js:1859`) — never a silent downgrade. Given **neither** rung
@@ -395,7 +395,7 @@ procedural — it holds even if every other control failed.
   predating that convention, by a stated and total mapping from `Harvested from`. That mapping — its
   three basename-class rows, their shipped-naming citations, the per-file (never fixed-partition)
   split, and the precedence of the POSTMORTEM row — is stated once in
-  **`docs/_constraints/pdlc-consolidation-vocabularies.md` §2** and is binding here. Its two
+  **`docs/_constraints/pdlc-consolidation-vocabularies.md` §2** (at `Version` 1.4) and is binding here. Its two
   consequences this AC depends on: the decidable and undecidable halves are set-equal to the §4b
   catalogue for every file, which makes the rule total; and any phase the mapping cannot decide counts
   as **not** exercised, which routes that promotion to `insufficient-evidence`, never to a guessed
@@ -557,9 +557,9 @@ with its category, its permitted statuses and its `file:line` definition site, i
 **`docs/_constraints/pdlc-consolidation-vocabularies.md` §1** (cited at `Version` 1.4), together with
 the two joins and the composition rule that decide which codes a status may carry.
 
-**This REQ owns every section of that file — §1–§4 entire**, and changes none of anyone else's; a
-successor feature's vocabulary belongs in its own new section of that file or in its own file, never
-interleaved into §1–§4. Of the owned sections, **§1, §2 and §4 are enumerations** and **§3 is owned
+**This REQ owns every section of each `docs/_constraints/` file it authors — §1–§4 entire in
+both**, and changes none of anyone else's; a successor feature's vocabulary belongs in its own new
+section of the governed file or in its own file, never interleaved into §1–§4. Of the owned sections, **§1, §2 and §4 are enumerations** and **§3 is owned
 normative prose** — binding, but carrying no table a downstream layer transcribes, so no row oracle
 ranges over it. So the oracle's range is stated, not "the table": downstream completeness is
 checkable by **set-equality over every enumerated row this REQ owns — §1, §2 and §4 entire at
@@ -583,7 +583,7 @@ two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-
 `ESCALATIONS.md` consumption in all three corpus states (AC-6.1); the one-line `.gitignore` entry for
 `docs/_decisions/.consolidation-lock` (AC-1.3); the two project-level reference files this feature
 authors and thereafter owns — `docs/_constraints/pdlc-consolidation-vocabularies.md` (§1–§4 entire,
-per §4b) and `docs/_constraints/pdlc-advisory-corpus-baseline.md` (REQ-CONS-06's corpus facts), both
+per §4b) and `docs/_constraints/pdlc-advisory-corpus-baseline.md` (§1–§4 entire, per §4b), both
 kept current with this REQ under §4b's change-control rule; reporting against
 `pdlc-consolidation-vocabularies.md` §1's vocabularies; tests.
 
