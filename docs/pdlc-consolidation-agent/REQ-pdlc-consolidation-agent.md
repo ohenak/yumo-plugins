@@ -275,24 +275,50 @@ procedural — the agent cannot merge its own proposal even if every other contr
 
 ### REQ-CONS-06 — Advisory-record input
 
-- **AC-6.1** — Given `pdlc-advisory-tier` harvests `ADVISORY-{feature}.md` into LEARNINGS, Then
-  the consolidation pass reads the advisory summary — invocations, resolutions, escalations, by
-  seam — as a first-class input.
-- **AC-6.2** — Given a seam escalates disproportionately across features, Then the pass surfaces
-  it as a candidate for envelope revision or upstream-phase repair, bound to the relevant deferral.
-- **AC-6.3** — Given a seam resolves autonomously with a consistently high rate and no downstream
-  defect, Then the pass may propose an envelope widening — as a PR under AC-3.1, never enacted.
+**Why this requirement narrowed.** The structured per-seam counts do exist — `advisorySummaryRows`
+(`pdlc/workflows/orchestrate-dev.js:2708`, driven by `ADVISORY_SEAMS`) — but only as an in-memory
+field of one run's report (`:10663`, `:10695`), never persisted. The per-feature record
+`ADVISORY-{feature}.md` has a strict schema (`renderAdvisoryEntry`, `:2642`) but is **deleted**
+after Phase H2's distil (`:10499`), and that distil dispatch asks only for a prose summary with no
+schema (`advisoryDistilPrompt`, `:7585-7594`). So LEARNINGS advisory text is not parseable and
+cannot carry counts. `docs/_queue/ESCALATIONS.md` (`ESCALATIONS_PATH`, `:2750`; appended at `:2812`)
+is the one durable per-seam record — append-only, non-feature-scoped, never distilled, never
+deleted — and `renderEscalationEntry` (`:2763`) gives every entry named `Feature` and `Seam` fields.
+REQ-CONS-06 therefore consumes **that**, and does not require a structured artifact that is
+destroyed.
+
+- **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its
+  machine-readable per-seam input, counting escalations per `Seam` per `Feature` from the entry
+  fields `renderEscalationEntry` emits. Advisory text folded into LEARNINGS is a **corroborating,
+  non-numeric** input only: the pass may cite it as evidence but never derives a count from it.
+- **AC-6.2** — Given a seam whose escalation count in `docs/_queue/ESCALATIONS.md` spans at least
+  two distinct features and exceeds the other seams' counts (the AC-2.3 pattern bar applied to this
+  corpus), Then the pass surfaces it as a candidate for envelope revision or upstream-phase repair,
+  bound to the relevant deferral.
+- **AC-6.3** — Given a seam with escalations from no feature across the consumed window, Then the
+  pass may propose an envelope widening — never enacted. The proposal targets the **shipped
+  defaults** in `pdlc/workflows/`, so it routes as a PR under AC-3.1. A consumer's
+  `.claude/pdlc.config.json` is untracked and is not a PR-able surface; a widening a consumer must
+  adopt locally is reported as an operator action in the AC-7.1 report, never as a PR.
 
 REQ-CONS-06 is what makes the advisory envelope evidence-driven rather than frozen at whatever was
-guessed on day one, while keeping every widening under operator approval.
+guessed on day one, while keeping every widening under operator approval. Note the honest limit:
+`ESCALATIONS.md` records escalations, not resolutions, so "resolves autonomously at a high rate" is
+observable here only as *absence of escalation*. A resolution-rate input requires the advisory
+summary to be persisted, which is D-CONS-06.
 
 ### REQ-CONS-07 — Reporting
 
-- **AC-7.1** — Given a pass completes, Then it reports: LEARNINGS consumed, promotions by route
-  (constraints, decisions, cross-repo PR), the prior-promotion effectiveness table from AC-5.2,
-  and what it deferred for human judgment.
-- **AC-7.2** — Given the pass ran unattended, Then a single notification carries the report, with
-  the cross-repo PR URL if one was opened.
+- **AC-7.1** — Given a pass completes, Then it reports: terminal status and reason code (the closed
+  set `promoted` / `no-op` / `skipped-cadence` / `refused` / `failed`), the rung it ran on
+  (AC-1.5/AC-1.6), LEARNINGS consumed by basename, promotions by route (constraints, decisions, PR,
+  `degraded`), the AC-5.2 effectiveness table, and what it deferred for human judgment.
+- **AC-7.2** — Given a pass completes on any path, Then exactly one report is emitted, on one
+  channel: the pass's terminal report, written as the pass's row in
+  `docs/_decisions/.consolidation-log.md` and returned as the invocation's report body (which is
+  what a `/loop` tick prints). It carries the PR URL **when and only when** a PR was opened. No
+  separate notification channel is introduced by this feature; a channel that survives with no
+  session at all is bound to D-CONS-04.
 
 ## 4. Non-functional requirements
 
