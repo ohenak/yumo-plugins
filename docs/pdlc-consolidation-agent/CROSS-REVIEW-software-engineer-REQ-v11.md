@@ -84,7 +84,59 @@ quantified over, and both are questions about governance text, not about the cod
 
 ## Questions
 
+v10's Q-02 — are §3/§4 enumerations under the oracle or narrative constraints — is **answered
+explicitly and differently for each**: §4 is an enumeration and is now in the range; §3 is
+owned-but-not-enumerated and is said to be (`:559-565`). That is the answer I asked for, given as a
+decision rather than as a widened range, and it is the reason F-01 closes rather than half-closes.
+Q-01's byte question is carried forward below with a new number since the figure moved.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Not blocking; it bounds F-03's fix. The REQ is **61,109 bytes** against the 61,440-byte hard ceiling (`pdlc/hooks/scripts/check-req-size.sh:41-42`) — **331 bytes** of headroom, 13 fewer than v10 despite this round's three compressions, because the seven version repins and the §4b rewrite spent slightly more than the deletions freed. F-03's fix as I have written it is ~60 bytes, F-02's preferred fix is byte-neutral in the REQ (it edits the baseline file), so neither forces a relocation. I record the number only so the fixes are not expanded into paragraphs. |
+| Q-02 | For F-02, and it is the question behind the finding rather than a request for information: is the version-pin/defect clause meant to bind the commit that *introduces* it? I read it as prospective — a rule cannot govern its own genesis — which is why F-02 is Low and why I offered narrowing the wording as the preferred fix rather than a retroactive bump. But this clause is now stated in two shared files that `pdlc-engineering-loop` will read and may copy, so whichever reading is intended is worth stating once, in the vocabularies' wording, rather than leaving each successor to decide. |
+| Q-03 | Process, and I raise it because it affects how the next round is *scored*, not what it contains: DEC-SEV-01 was recorded by the phase's own POSTMORTEM resolution rather than by either reviewer, and neither reviewer's skill prompt cites it. It binds `se-review`/`te-review` only for as long as someone remembers to read `docs/_decisions/` — which the skill does instruct (Project-Level Context). Should the harvest promote it into `DOMAIN-CONSTRAINTS.md`, where the severity rule sits next to DC-13's scope-tagging rule that reviewers already consult? Not a REQ question and not blocking; routed as `Process`. |
+
 ## Positive Observations
+
+- **The answer to Q-02 was a decision, not a widening — and it is the harder answer.** I offered two
+  alternatives: extend the range to §1–§4, or declare §3/§4 owned-but-not-enumerated. The revision
+  took neither wholesale. It *split* them: §1, §2 and §4 are enumerations under the oracle, §3 is
+  owned normative prose under none (`:559-565`, mirrored at `pdlc-consolidation-vocabularies.md:18-27`).
+  Widening would have dragged §3's freeze-clause prose under a row oracle that has no rows to range
+  over — technically satisfying my finding while making the obligation unimplementable. Declaring both
+  narrative would have left §4's four-row trailer table, the duplicate-PR key's grammar, outside any
+  oracle. The split is the only one of the three readings under which every enumerated row is covered
+  and no non-enumeration is falsely claimed, and the document reached it without being told.
+
+- **Seven version repins, zero misses — the failure mode a version pin invites did not happen.** A
+  version-pinned citation scheme's characteristic defect is partial repinning: you bump the file, fix
+  the citations you happen to be editing, and leave the rest silently naming a version that no longer
+  exists. `grep -n "Version. 1\.3"` over the REQ returns nothing; all seven vocabularies citations
+  moved to 1.4, including `:83` and `:182`, which this round had no other reason to touch. The
+  mechanism this REQ invented at v10 survived its own first bump.
+
+- **The three compressions were paid for correctly, and I could verify that they were lossless.**
+  Each cite-don't-restate deletion (`:97-101`, `:182-186`, `:447-451`) was checked against the section
+  it now points at, and in every case the deleted text survives verbatim there — both freeze clauses
+  with their full argument (vocabularies `:143-155`), the write-granularity obligation with both
+  consequences the REQ's durability argument uses (`:124-131`), and the baseline's §1/§2 phrasing,
+  which the REQ now quotes rather than paraphrases (`:30`, `:32-33`). The discipline that matters here
+  is *which half* was dropped: in all three cases the REQ kept the consequence its own argument needs
+  and dropped only the shared restatement. That is the correct half, and it is not the easy one to
+  pick.
+
+- **The round wrote the governance clause into the second file unprompted.** `pdlc-advisory-corpus-baseline.md`
+  was under an ownership claim by §5 with no reciprocal statement of its own — a file governed from
+  outside, with nothing on its face telling a successor it was governed. It now carries its own
+  ownership, scope and change-control paragraph (`:15-20`), including the sentence that closes the
+  question §4b's "in both" quantifier raises: "All four sections are **owned normative prose** … no
+  set-equality oracle ranges over this file." F-03 exists precisely because that sentence is right and
+  §4b's is imprecise — the file corrected the REQ, not the other way round.
+
+- **The `Cited by` metadata rows were maintained, which is the field that always rots.** Both governed
+  files' `Cited by` rows list the citing sections, and both were updated this round to name the new
+  ones (`AC-3.7`, `§5` for vocabularies at `:6`). I checked because a back-reference row in a shared
+  file is maintained by nobody by default and is stale within two rounds. It is accurate at HEAD.
 
 ## Recommendation
 
