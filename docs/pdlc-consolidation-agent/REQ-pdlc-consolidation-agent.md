@@ -452,7 +452,9 @@ procedural — it holds even if every other control failed.
   (AC-3.1, AC-3.6); one that landed in the **consuming repo** — `DOMAIN-CONSTRAINTS.md` (AC-2.1) or
   `DECISIONS-{topic}.md` (AC-2.2) — has its retirement written into
   `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` for operator approval, **never** applied by the pass — removal as reviewable as addition on both
-  routes. The unit retired is a `failure-mode-id` (AC-5.1), not one of its records.
+  routes. A **revision** routes exactly as that promotion's retirement would, under the `revise` action instead of `retire`; the two AC-5.3 alternatives
+  differ in the edit they carry, never in their route. The unit retired or revised is a `failure-mode-id` (AC-5.1), not one of its records, and neither
+  proposal is ever suppressed by the `promote` it remediates (NFR-4).
 - **AC-5.5** — Given a promotion that has returned `insufficient-evidence` on
   `consolidation.unmeasurablePasses` consecutive **evaluated** passes (default 3), Then it is
   reported as `unmeasurable`, so a promotion whose effect can never be observed is visible as such rather than accumulating silently. An **evaluated
