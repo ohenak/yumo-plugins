@@ -98,6 +98,18 @@ governance text, not about the codebase.
 
 ## Questions
 
+v11's Q-02 (is the version-pin/defect clause meant to bind its own genesis commit?) and Q-03 (should
+DEC-SEV-01 be promoted into `DOMAIN-CONSTRAINTS.md`) are both unanswered, because nothing was written
+in reply. Both are carried below unchanged in substance. Q-01's byte figure is unchanged and is
+restated only so that the two fixes are not expanded into paragraphs.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Not blocking; it bounds F-03's fix. The REQ is **61,109 bytes** against the 61,440-byte hard ceiling (`pdlc/hooks/scripts/check-req-size.sh:41-42`) — **331 bytes** of headroom, unchanged from v11 because the document is unchanged. F-03's fix as written is ~60 bytes and F-02's preferred fix is byte-neutral in the REQ (it edits the baseline file), so neither forces a relocation. |
+| Q-02 | Carried from v11, still open. Is the version-pin/defect clause meant to bind the commit that *introduces* it? I read it as prospective — a rule cannot govern its own genesis — which is why F-02 is Low and why I prefer narrowing the wording to a retroactive bump. The clause now sits in two shared files that `pdlc-engineering-loop` will read and may copy, so whichever reading is intended is worth stating once, in the vocabularies' wording, rather than leaving each successor to decide. |
+| Q-03 | `Process`, carried from v11. DEC-SEV-01 was recorded by a phase POSTMORTEM resolution rather than by either reviewer, and neither reviewer's skill prompt cites it; DEC-LAYER-01 has now arrived by the same route (`POSTMORTEM-F` Recommendation step 3). Two project-level decisions that bind reviewer scoring now depend on someone remembering to read `docs/_decisions/` — which the skill does instruct, but only as one line of Project-Level Context. Should harvest promote both into `DOMAIN-CONSTRAINTS.md`, next to DC-13's scope-tagging rule reviewers already consult? Not a REQ question and not blocking. |
+| Q-04 | New, and it is the only question I have about *this* round rather than about the document: Phase R was re-entered at iteration 12 with the REQ byte-identical to the one approved at v11, and with `POSTMORTEM-R` already carrying `RESOLVED: yes` (`:14`). The two open findings are Low and were explicitly filed as optimizer-pass work, so nothing in my v11 review asked for another R round. If the re-entry was intended to collect the two Low fixes, they are still available and cost ~60 bytes plus a two-word edit in the baseline; if it was incidental, the document needs nothing from me. I raise it because a re-review that finds an unmoved document cannot distinguish "the author declined the fixes" from "the author never saw the round", and those warrant different next steps. |
+
 ## Positive Observations
 
 ## Recommendation
