@@ -403,28 +403,16 @@ procedural — it holds even if every other control failed.
   - `insufficient-evidence` — otherwise: no consumed LEARNINGS is decided to have exercised that
     phase. This is the arm an undecidable input falls into, so the split is total.
 
-  **The phase observable, named.** A LEARNINGS at HEAD carries no phase field: its metadata table is
-  `Feature` / `REQ` / `Date Completed` / `Total Iterations` / `Upstream` / `Harvested from` /
-  `DoD rounds` (`pdlc/skills/harvest-learnings/SKILL.md:70-78`), and `## 6. Approval Record` (`:105`)
-  is keyed by document type, not phase. So this feature adds a **`Phases exercised`** row to that
-  table, carrying the set of phase ids the feature's run executed. For a LEARNINGS predating the
-  convention the value is derived, by a stated and total mapping, from `Harvested from` (`:77`) — the
-  one field that already names phase-bearing artifacts:
-
-  | `Harvested from` basename class | Phases it evidences | Shipped naming |
-  |---|---|---|
-  | `CROSS-REVIEW-{role}-{docType}-v{N}.md` | the phase owning that docType (REQ→R, FSPEC→F, TSPEC→T, DECISIONS→D, PLAN→P, PROPERTIES→PR) | `orchestrate-dev.js:5799` |
-  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | both dod-verify dispatch sites — `orchestrate-dev.js:7911` (round 1, `dodVerifyPrompt`) and `:7941` (rounds ≥2, `dodReVerifyPrompt` `:7924`); classified at `:6423` |
-  | `POSTMORTEM-{phase}-{feature}.md` | that `{phase}` verbatim | `orchestrate-dev.js:5429` |
-
-  The split is **per file, not a fixed partition of the catalogue**, and row 3 takes precedence over every other statement here. For one
-  pre-convention LEARNINGS: **decidable** = the phases that file's own `Harvested from` decides — R, F, T, D, P, PR from row 1, DOD from row 2, plus
-  whatever `{phase}` row 3 names verbatim; **undecidable** = the §4b catalogue minus that set. Their union is set-equal to the catalogue for every
-  file — which makes the rule total — but neither half is fixed, because `{phase}` in a POSTMORTEM basename is **any** halting phase, not only a
-  converge phase: the shared review loop builds `POSTMORTEM-${phaseId}-${feature}.md` (`orchestrate-dev.js:5429`), Phase CR runs that loop with
-  `phase: "CR"` (`:10255-10257`), and the halt path builds the same name from whatever phase halted (`:10603`). So `POSTMORTEM-CR-*` is producible and
-  decides CR for the file naming it; a file naming none decides no phase. Any phase the mapping cannot decide for a pre-convention file counts as
-  **not** exercised — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`.
+  **The phase observable, named.** A LEARNINGS at HEAD carries no phase field, so this feature adds a
+  **`Phases exercised`** row to the harvest metadata table and derives the value, for a LEARNINGS
+  predating that convention, by a stated and total mapping from `Harvested from`. That mapping — its
+  three basename-class rows, their shipped-naming citations, the per-file (never fixed-partition)
+  split, and the precedence of the POSTMORTEM row — is stated once in
+  **`docs/_constraints/pdlc-consolidation-vocabularies.md` §2** and is binding here. Its two
+  consequences this AC depends on: the decidable and undecidable halves are set-equal to the §4b
+  catalogue for every file, which makes the rule total; and any phase the mapping cannot decide counts
+  as **not** exercised, which routes that promotion to `insufficient-evidence`, never to a guessed
+  `prevented`.
 
   The table is under a **set-equality** obligation: exactly one row per **distinct `failure-mode-id`** recorded in prior passes — records sharing an id
   are one promotion carrying one standing verdict, not two rows (AC-5.1) — with no missing rows and no rows for promotions never made; a dropped row is
@@ -572,51 +560,14 @@ arrives first (AC-1.2). BL-04 is thereby closed at the REQ layer.
 
 ## 4b. Enumerated vocabularies
 
-Every enumerated value this REQ uses, in one place, with its category and the statuses it may
-accompany. Downstream completeness is checkable by **set-equality against this table**, not by
-containment across six sections; adding a value above without a row here is a defect.
-
-| Value | Category | May accompany status | Defined at |
-|---|---|---|---|
-| `promoted` | terminal status | — | AC-7.1 |
-| `promoted-degraded` | terminal status | — | AC-7.1, AC-4.3 |
-| `no-op` | terminal status | — | AC-1.4 |
-| `skipped-cadence` | terminal status | — | AC-1.1 (writes no log row, AC-7.2) |
-| `refused` | terminal status | — | AC-1.3 |
-| `failed` | terminal status | — | AC-1.6, AC-3.5 |
-| `consolidation-in-progress` | reason code | `refused` | AC-1.3 |
-| `reclaimed-stale-lock` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.3 |
-| `advisory-model-unresolved` | reason code | `failed` | AC-1.6 |
-| `no-cadence-datum` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed`, `refused` | AC-1.1 |
-| `writes-uncommitted` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-3.8b |
-| `credential-unavailable` | reason code | `promoted-degraded`, `no-op` | AC-3.5, AC-4.3 |
-| `repository-unresolved` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
-| `api-failure` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
-| `branch-exists` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
-| `duplicate-suppressed` | reason code | `promoted`, `promoted-degraded`, `no-op` | NFR-4 |
-| `no-advisory-corpus` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-6.1 |
-| `advisory-corpus-empty` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-6.1 |
-| `cadence` / `volume` / `manual` | trigger | any status that writes a row | NFR-3a, REQ-CONS-01 tick order |
-| constraints / decisions / PR / `degraded` | promotion route | `promoted`, `promoted-degraded` | AC-7.1, AC-4.3 |
-| `prevented` / `recurred` / `insufficient-evidence` | per-promotion verdict | any status emitting the AC-5.2 table | AC-5.2 |
-| `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
-| `promote` / `revise` / `retire` | `action` — the NFR-4 key's second member; `revise`/`retire` are the AC-5.3 `revision`/`retirement` alternatives named as actions | any status emitting a proposal | AC-5.1, NFR-4 |
-| `revision` / `retirement` | proposed action on an `ineffective` promotion, as reported (the AC-5.1 `revise` / `retire` actions under their AC-5.3 names) | as above | AC-5.3 |
-| PR URL or empty | `pr:` field — a PR **this pass opened** | any status that writes a row | AC-7.2, AC-3.4 |
-| `{id}:{action} → PR URL` entries, or empty | `suppressed-by:` field — one entry per proposal suppressed as a duplicate | `promoted`, `promoted-degraded`, `no-op` | NFR-4 |
-| `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
-| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3437` — declaration `:3337`, first key `R:` `:3338`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
-
-Two joins the table settles. A pass that promoted something and also hit an AC-3.5 fallback class is `promoted-degraded`, never a bare `promoted`. A
-pass whose **every** promotion was `duplicate-suppressed` promoted nothing new and is therefore `no-op` (AC-1.4's second cause), while a pass that
-suppressed one duplicate and landed another is `promoted` — or `promoted-degraded` if it also degraded a third, which is why `duplicate-suppressed`
-permits all three.
-
-A pass may carry more than one reason code, and each row's permitted set is derived **by composition, not by the status the code was first introduced
-under**: a code is legal with every terminal status still reachable after the point at which it is recorded. Hence the two AC-6.1 corpus codes permit
-`failed` (the corpus is read before AC-3.5's or AC-1.6's failure is decidable), and `no-cadence-datum` permits `refused` (decided at step 3, before the
-marker check that yields `refused` — AC-1.3). `writes-uncommitted` does **not** permit `refused`: a refused pass commits nothing. `skipped-cadence`
-carries no code at all — it writes no log row (AC-7.2).
+Every enumerated value this REQ uses — terminal statuses, reason codes, trigger, promotion route,
+per-promotion verdicts and states, `action`, the reported `revision`/`retirement` field, the `pr:`,
+`suppressed-by:` and `credential:` fields, and the closed 13-member phase catalogue — is stated once,
+with its category, its permitted statuses and its `file:line` definition site, in
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §1**, together with the two joins and the
+composition rule that decide which codes a status may carry. That table is this REQ's vocabulary:
+downstream completeness is checkable by **set-equality against it**, and adding a value here without a
+row there is a defect.
 
 ## 5. Scope
 
