@@ -1385,7 +1385,10 @@ is **binding, not restated**. Two consequences this rule depends on:
 1. Its decidable and undecidable halves are set-equal to the 13-member catalogue **for every file**,
    which is what makes the rule total.
 2. Any phase the mapping cannot decide counts as **not** exercised, routing that promotion to
-   `insufficient-evidence` and never to a guessed `prevented`.
+   `insufficient-evidence` and never to a guessed `prevented`. A promotion **record** short of the
+   `phase` field is the same epistemic state and takes the same direction — the row is emitted and the
+   verdict is `insufficient-evidence`, never a guessed `prevented`; §8.1's reader row for this section
+   is normative for that arm, and for the id-less record that yields no row at all.
 
 This feature adds the **`Phases exercised`** row to the harvest metadata table
 (`pdlc/skills/harvest-learnings/SKILL.md:70-78`), so post-convention LEARNINGS carry the value
@@ -1421,7 +1424,7 @@ the open-promotion list**, and is stated in the skill in these terms:
 | # | Harvest-side step | Detail |
 |---|---|---|
 | 1 | Read the open-promotion list | `docs/_decisions/.consolidation-log.md` — the same tracked file the pass writes (§5.4). Each promotion record carries the eight fields of §8.1. **Open** is computed **by the pass**, from the log and nothing else, and handed to the harvest prompt as a list — the arithmetic is not delegated to the agent, so it is testable at this layer (a landed `retire` closes an id; a `degraded` one does not): an id is open when **no** record for that id carries `action: retire` with a `route` other than `degraded`. Equivalently — a landed retirement closes an id; a `retire` that reached only a proposal file does not. |
-| 2 | For each §5 Open Item being written, ask one question per open promotion | "Does this open item report the failure this promotion's `symptom` describes, on this promotion's **subject** `artifact` (§8.1 — the file the mode was observed on, never the `target` the promotion wrote), in this promotion's `phase`?" |
+| 2 | For each §5 Open Item being written, ask one question per open promotion | "Does this open item report the failure this promotion's `symptom` describes, on this promotion's **subject** `artifact` (§8.1 — the file the mode was observed on, never the `target` the promotion wrote), in this promotion's `phase`?" **Steps 2–3 are a reader of the record in their own right — not step 1's — and have their own row in §8.1's reader table**, which is normative for a record short of any of the three question fields (the question is still asked on the fields present, with the missing half stated as unavailable) and for one short of `failure-mode-id` (no question, since step 3 has nothing to copy). |
 | 3 | On a yes, copy the id **verbatim** | append `failure-mode-id: {id}` to that open item, character-for-character from the log row. Never re-slug, never abbreviate, never mint a new id. |
 | 4 | On no matches, write no line | the absence is meaningful: `recurred` does not fire and the phase observable still yields `prevented` or `insufficient-evidence` on its own evidence (table above). |
 
