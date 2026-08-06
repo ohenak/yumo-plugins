@@ -47,7 +47,49 @@ question, and neither re-opens a settled point. Both are one-line fixes.
 
 ## Questions
 
+v3's Q-09 is answered in full (see §Prior findings). One new question, non-blocking, and deliberately
+*not* filed as a finding because AC-1.3's Commits cell appears to settle it already:
+
+| ID | Question |
+|---|---|
+| Q-10 | NFR-5 requires the consumed block to name "**exactly** the consumed set — neither more nor fewer" and to be appended before any other record, which is what freezes the legacy-region boundary. AC-1.4's first cause is a pass whose un-consolidated set is **empty**, and AC-1.3's Commits row for `no-op` says "the log row **and consumed block** are still writes" — which I read as: an empty consumed set still emits an empty `<!-- pdlc:consumed {passId} -->` block. That reading matters, because if the first pass on a repo is an empty `no-op` and it writes *no* block, its log row (and any AC-5.1 failure-mode record whose `artifact` field is a LEARNINGS path) lands in the legacy region and falsely marks that file consolidated — precisely the hazard the block exists to prevent. Is the empty-block emission intended, and is it worth one clause in NFR-5 rather than being inferred from AC-1.3's table cell? |
+
 ## Positive Observations
+
+- The legacy-region rule is a better answer than F-23 asked for. Every option I offered required
+  either a migration write or a parse of Pass 1's prose; the revision found a third that requires
+  neither and is **total** over any log, then made it self-maintaining by ordering the block write
+  first. "Frozen by construction" is doing real work there — the boundary cannot drift because
+  nothing this feature writes can precede it.
+- The empty-datum decision was made in the direction that keeps the mechanism reachable, and the
+  rejected alternative is stated with the failure it produces. A REQ that records why it did *not*
+  choose the other branch is one a later reader cannot silently reverse.
+- §4b's composition rule is the durable half of F-27's fix. The finding asked for corrected cells;
+  the revision supplied the rule that derives them ("legal with every terminal status still reachable
+  after the point at which the code is recorded"), which means the next reason code added does not
+  need a reviewer to catch the same error again. I re-derived all fourteen reason-code rows against
+  it and only the `refused`-writes-a-row question (F-30) is unsettled — and that is an AC-1.3/AC-7.2
+  disagreement, not a §4b one.
+- The corpus widening carried its own consequence into §5 without being asked twice: `:28` is now an
+  in-scope edit, `docs/discarded/` is excluded on a stated ground rather than by oversight, and the
+  "on this repo today" paragraph gives a first-run test its expected values — 5 matched, 2 legacy-
+  consolidated, 3 pending, below threshold, cadence path. I verified all four numbers against the
+  tree; every one is right.
+- AC-3.8b's `commitQueueRow`-over-`commitPaths` argument is the strongest piece of new reasoning in
+  this round. It does not merely pick a precedent — it says why the obvious one is wrong (`commitPaths`
+  commits with no pathspec, `orchestrate-dev.js:8690`, which would sweep a mid-pipeline staged index
+  into the pass's commit) and cites the two-call shape that does hold (`orchestrate-queue.js:1576`,
+  add `:1577`, commit `:1580-1585`, mirrored at `:1615`). Verified line by line; all four resolve.
+- "Where those commits go, stated" closes the abandonment hazard **by construction rather than by
+  policy** — promotions and the consumed block in one commit, so a discarded branch loses both
+  together and "consumed while the promotion is lost" is unreachable. That is a structural argument a
+  test can be written against, not an assurance.
+- Compression did not cost citations. This round removed ~200 lines of prose to get under the size
+  budget, and I re-checked every `file:line` in the changed text (`resolveAdvisoryRung` `:1833` and
+  its doc comment `:1800`, `orchestrate-queue.js` `:1243-1244`/`:1245-1256`, `gitWithLockRetry`
+  `:8670`, `commitPaths` `:8669`/`:8690`, `nudge-consolidation.sh` `:25`/`:28`/`:41`, the five
+  `recordPhase` literals, `checkPostmortem` `:5429`). Only two are imprecise (F-31, F-32) and neither
+  changes a claim. Nothing was quietly dropped to make room.
 
 ## Recommendation
 
