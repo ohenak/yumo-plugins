@@ -1153,13 +1153,15 @@ written.
 
 **"For that contract" is per field, per reader — the enumeration, so no reader is left to infer its
 own arm.** A record is skipped only by the contracts that index the field it is missing. The table is
-set-equal to the readers this document names — §5.1, §8.6, §6.4, §8.4 step 1, §10.2 order 2, §8.3 and
-§8.5, seven, one row each, and no reader of a failure-mode record anywhere in this document outside
-that set — and a reader added later is a change to this table, made here. **The set-equality is over
-the table's cells, not only its rows**: for every field in §8.1's eight, the readers that index it are
-exactly those whose `Fields it indexes` cell names it. A reader that indexes an unlisted field, and a
-field indexed by a reader whose row omits it, are the same defect — which is why §6.4's row names
-`passId`:
+set-equal to the readers this document names — §5.1, §8.6, §6.4, §8.4 step 1, §8.4 steps 2–3's
+harvest question, §10.2 order 2, §8.3 and §8.5, **eight**, one row each, and no reader of a
+failure-mode record anywhere in this document outside that set — and a reader added later is a change
+to this table, made here. **The set-equality is over the table's cells, not only its rows**: for every
+field in §8.1's eight, the readers that index it are exactly those whose `Fields it indexes` cell
+names it. A reader that indexes an unlisted field, and a field indexed by a reader whose row omits it,
+are the same defect — which is why §6.4's row names `passId`, why §8.3's names `phase`, and why the
+harvest question is a row of its own rather than folded into §8.4 step 1's, whose fields it does not
+share. Every one of the eight fields is therefore named by at least one cell, `symptom` included:
 
 | Reader | Fields it indexes | A record short of one of them |
 |---|---|---|
@@ -1167,8 +1169,9 @@ field indexed by a reader whose row omits it, are the same defect — which is w
 | §8.6 remediation routing | `target` | **not §5.1's arm, and it is spelled because the state differs**: here a remediation has already been *chosen* (§8.5) and has nowhere to go. It is **not routed on a guessed path** — neither the PR route nor the proposal file is picked by default — the promotion keeps the state it had for that pass, and the notice is the report. The remediation is re-proposed on a later pass, exactly as §8.5's arm re-proposes nothing rather than guessing a `retirement` |
 | §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route` — the `enacted` predicate — plus **`passId`**, for the evidence only | **Two arms, because this reader indexes its fields for two jobs (§6.4).** Short of `failure-mode-id`, `action` or `route`: the predicate cannot be evaluated, so the general rule above applies unchanged — parse notice, skip that contract, reads `absent`, the promotion is re-proposed. Short of **`passId` alone**: the predicate is still decidable — it is a function of the pair and `route`, not of `passId` — so the contract **is not skipped and the suppression holds**; what degrades is the *evidence spelling* only, the `suppressed-by:` entry naming the pair with an explicit unavailable statement in place of the enacting `passId` (§6.4; §10.3's `suppressed-by:` row is normative for the two spellings). This is the §8.3 shape, not the §5.1 shape: skipping here would re-append a constraint that already landed and defeat NFR-4 with a field outside its key, so the safe direction is the reverse of the `route` arm's. `pass:undefined` is the guessed default this section forbids in both arms |
 | §8.4 step 1 open list | `failure-mode-id`, `action`, `route` | the id stays **open** |
+| §8.4 steps 2–3 harvest question | `symptom`, the subject `artifact` and `phase` — the three the question is composed of — plus `failure-mode-id`, for step 3's verbatim copy | **Not the same reader as step 1 and not the same fields, which is why it is its own row.** Short of `symptom`, `artifact` or `phase`: the promotion is **still put to the harvest agent**, on the fields the record does carry, with the missing half stated as unavailable rather than guessed; the notice names the record and the field. Dropping it from the question list is the failure direction — it would make `recurred` unreachable for that id and drift it to `insufficient-evidence` and then `unmeasurable` (§8.7), which is the precise harm §8.4's lookup exists to prevent. Short of **`failure-mode-id`**: there is nothing for step 3 to copy verbatim and step 1 has already left the record out of the open list, so no question is asked for it and the notice is the report — never a re-slugged or minted id (BR-35b) |
 | §10.2 order 2 | the record as written | appended unchanged; nothing is repaired |
-| §8.3 effectiveness table | `failure-mode-id`, and `artifact` for the row's canonical path | the row is still emitted, keyed on the id; a missing `artifact` is reported as the notice and the path cell carries **no path** and is rendered as an explicit unavailable statement rather than as an empty cell or a guessed path (§10.4's receive-side totality, DC-01). "Unavailable" is the **observable**, not a literal this document pins — the spelling of that cell is TSPEC's, per DEC-LAYER-01, and §15.2's lexicon owns no such value. The row is never dropped, which would read as `insufficient-evidence` and silently move a verdict |
+| §8.3 effectiveness table | `failure-mode-id`; `artifact`, for the row's canonical path; **`phase`**, which the `prevented` test is a function of (§8.3's verdict table) | **Three arms, one per field.** Short of **`artifact`**: the row is still emitted, keyed on the id; the notice is reported and the path cell carries **no path**, rendered as an explicit unavailable statement rather than as an empty cell or a guessed path (§10.4's receive-side totality, DC-01). "Unavailable" is the **observable**, not a literal this document pins — the spelling of that cell is TSPEC's, per DEC-LAYER-01, and §15.2's lexicon owns no such value. The row is never dropped, which would read as `insufficient-evidence` and silently move a verdict. Short of **`phase`**: the row is likewise still emitted and its **verdict falls to `insufficient-evidence`**, never to a guessed `prevented` — a record with no `phase` and a `phase` the §2 mapping cannot decide are the same epistemic state, and §8.3's totality rule already fixes that direction for the second, so this arm inherits it rather than adding a concept; the notice names the record and the missing field. Short of **`failure-mode-id`**: this is the one arm where "never dropped" cannot apply, because a row cannot be keyed on an id the record does not carry — the record contributes **no** row and the parse notice is the whole report. That is not a dropped row in §8.3's set-equality sense: the obligation there ranges over the **distinct ids the log carries**, and an id-less record contributes none |
 | §8.5 remediation choice | `artifact` (BR-35a's file-existence test) | the test cannot run: the promotion keeps the state it had for that pass and **no** remediation is proposed — the notice is the report, never a guessed `retirement` |
 
 In every arm the pass reaches its terminal status, the record's bytes are unchanged, and the notice
@@ -1180,8 +1183,9 @@ record because four contracts read **these four bookkeeping fields** off it — 
 `target`, NFR-4's consuming-repo carrier reads `action` and `route` — and `passId`, to spell its
 `suppressed-by:` evidence (§6.4, §10.3) — §8.4 step 1's open-promotion list reads `action` and
 `route`, and §8.6 routes a remediation on `target`. **Four is the count of the readers of the
-bookkeeping fields, not of the record**: all seven readers of the record are enumerated once, in the
-reader table above, and the other three (§10.2 order 2, §8.3, §8.5) index no bookkeeping field.
+bookkeeping fields, not of the record**: all eight readers of the record are enumerated once, in the
+reader table above, and the other four (§10.2 order 2, §8.3, §8.5, §8.4 steps 2–3) index no
+bookkeeping field — §8.4 steps 2–3 index `symptom`, `artifact`, `phase` and the id, none of the four.
 
 **The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs —
 `phase` and the **subject** `artifact`, never `target`:
