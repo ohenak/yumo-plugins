@@ -2756,8 +2756,8 @@ export function isProhibitedAction(proposedAction) {
  * `runAdvisorySeam` — TSPEC §4.4, the tier's one impure component. Runs the seven-step lifecycle
  * (DIAGNOSE, VALIDATE, GATE, RE-CHECK, ACT, CHECK, VERIFY, RECORD — eight `_log` tokens; GATE
  * covers both the prohibition check and `classifyEnvelope` + confidence, one `_log("GATE")` call)
- * against an injected `SeamOps`. `config.enabled === false` returns before any dispatch or rung
- * resolution (D-1, D-2). The attempt loop (DIAGNOSE+VALIDATE) races each dispatch against a
+ * against an injected `SeamOps`. A disabled config (see `parseAdvisoryConfig`) returns before any
+ * dispatch or rung resolution (D-1, D-2). The attempt loop (DIAGNOSE+VALIDATE) races each dispatch against a
  * wall-clock deadline (`_sleep`) so a preemption can end an in-flight attempt (V-5); `attempts`
  * counts only DIAGNOSE/VALIDATE cycles that did NOT yield a well-formed verdict — a verdict
  * obtained on the first try leaves `attempts === 0` (RE-CHECK's "no attempt consumed" reading,
@@ -7869,7 +7869,10 @@ export async function raisePrAndVerifyCi({
       // `conditionHolds` re-read already found the rollup green, so `no-action` carries the same
       // "the re-poll already returned green" fact `resolved` does. Only `escalated` — no permitted
       // action matched, or the seam ran out of budget — reaches the byte-identical halt below.
-      if (a5 && a5.outcome !== "escalated") {
+      // `model` is only ever set once a dispatch actually ran (see `runAdvisorySeam`), so it also
+      // distinguishes that genuine re-check from a seam that never dispatched at all (e.g. an
+      // inert tier) — the latter must fall through to the halt rather than spin forever.
+      if (a5 && a5.outcome !== "escalated" && a5.model !== undefined) {
         continue;
       }
       throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
@@ -9355,10 +9358,18 @@ export default async function main({
   // threads across every seam it dispatches this run (§3.4's "lazy, once per run").
   const advisoryConfigRaw = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
   const advisoryConfigResult = parseAdvisoryConfig(advisoryConfigRaw);
-  if (advisoryConfigResult.config.enabled && advisoryConfigResult.invalidKeys.length) {
+  // Read once, reused everywhere below (including the report-time S-1 gate) so the
+  // tier's own master switch is inspected from source text exactly once here.
+  const advisoryTierOn = advisoryConfigResult.config.enabled;
+  if (advisoryTierOn && advisoryConfigResult.invalidKeys.length) {
     emit(`Advisory config: using defaults for ${advisoryConfigResult.invalidKeys.join(", ")}`);
   }
   const advisoryRungState = { resolved: null };
+  // §9.4/S-1 — every disposition this run's advisory dispatches produce, in dispatch order.
+  // Feeds `advisorySummaryRows` at report time so an enabled-but-quiet run still carries five
+  // zero rows rather than `undefined` (T-10-5) — a disabled run leaves this empty and the field
+  // itself absent below.
+  const advisoryDispositions = [];
 
   try {
     // The branch guard, once, BEFORE any phase runs: every artifact this run
@@ -9958,6 +9969,7 @@ export default async function main({
             _now,
             _sleep,
           });
+          advisoryDispositions.push(a4);
           if (a4.outcome !== "resolved") {
             recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
             throw haltError(
@@ -10006,6 +10018,7 @@ export default async function main({
             _now,
             _sleep,
           });
+          advisoryDispositions.push(a3);
           // AC-6.3's diagnosis: the classification carried on the disposition (when present) is
           // appended to the byte-identical halt below, never replaces it.
           const classificationSummary =
@@ -10262,6 +10275,10 @@ export default async function main({
     ciStatus,
     dodVerifiedCommit,
     headSha: await readCurrentHead(),
+    // S-1: an enabled tier always reports its five rows, even when every one reads zero
+    // invocations (this run's `advisoryDispositions` stayed empty) — only a disabled tier
+    // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
+    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
   });
 }
 
@@ -10347,6 +10364,11 @@ function buildFinalReport({
   // is). Report-only: no re-verify, no halt on the divergence (DEC-ADV-07).
   dodVerifiedCommit = null,
   headSha = null,
+  // S-1: `advisorySummaryRows` output for this run, or `undefined` when the tier never ran
+  // (disabled config, or a halt before any advisory-aware phase). Spread conditionally, like
+  // `prUrl`/`ciStatus` above — a disabled run must never carry a defined `advisory` key at all
+  // (T-10-3/T-10-4 assert `toBeUndefined()`, not merely falsy).
+  advisory = undefined,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -10376,5 +10398,6 @@ function buildFinalReport({
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
+    ...(advisory ? { advisory } : {}),
   };
 }

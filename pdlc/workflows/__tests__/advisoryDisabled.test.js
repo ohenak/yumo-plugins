@@ -101,6 +101,23 @@ const QUEUE_SOURCE = readFileSync(join(__dirname, "..", "orchestrate-queue.js"),
 const FIXTURE_PATH = join(__dirname, "fixtures", "created-files-26c3f1c.json");
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
 
+// A shape-valid, "everything in sync" drift-state record (mirrors advisoryQueueSeams.test.js's
+// own `GREEN_DRIFT_STATE`) — the A1/A2 queue tests below exercise triage/advisory routing
+// downstream of the drift gate, not the gate itself, so it must always read as row 9 (proceed,
+// nothing to note) or the gate blocks before the triage agent is ever dispatched.
+const GREEN_DRIFT_STATE = JSON.stringify({
+  schemaVersion: 1,
+  baselineStatus: "resolved",
+  baselineReason: null,
+  checkEnabled: true,
+  rows: [{ id: "orchestrate-dev", state: "in-sync", reason: null }],
+  retiredPresent: [],
+  writeFailures: [],
+  generatedBy: "hook",
+  pluginVersion: "0.19.0",
+  syncCommand: null,
+});
+
 // ─── A disabled `AdvisoryConfig` (T-01-1's ADVISORY_DEFAULTS shape) — never imported from a
 // canonical double so this file has one literal, matching PROP-DIS-07's own "master switch first"
 // framing (other keys are deliberately garbage in some cases below, per decision 1's cases). ────
@@ -114,7 +131,7 @@ function disabledConfig(overrides = {}) {
   };
 }
 
-describe.skip("A-33 — disabled-tier equivalence", () => {
+describe("A-33 — disabled-tier equivalence", () => {
   // =================================================================================================
   // T-10-1 / PROP-DIS-01 — every seam condition, disabled, produces its pre-advisory outcome with
   // no advisory agent dispatched — driving the real phase/queue body (O-4).
@@ -123,6 +140,7 @@ describe.skip("A-33 — disabled-tier equivalence", () => {
   describe("T-10-1 / PROP-DIS-01 — per-seam pre-advisory outcome, no dispatch", () => {
     test("A1 — queue needs-human triage: candidate escalated/held exactly as today, no advisory dispatch", async () => {
       const files = {
+        [queue.DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
         [queue.DEFAULT_QUEUE_PATH]:
           "| Order | Status | Feature | REQ Path | Depends-On |\n|---|---|---|---|---|\n" +
           "| 1 | pending | feat-a1 | docs/feat-a1/REQ-feat-a1.md | — |\n",
@@ -156,6 +174,7 @@ describe.skip("A-33 — disabled-tier equivalence", () => {
 
     test("A2 — queue re-grounding: stale-REQ candidate skipped exactly as today, no advisory dispatch", async () => {
       const files = {
+        [queue.DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
         [queue.DEFAULT_QUEUE_PATH]:
           "| Order | Status | Feature | REQ Path | Depends-On |\n|---|---|---|---|---|\n" +
           "| 1 | pending | feat-a2 | docs/feat-a2/REQ-feat-a2.md | — |\n",
@@ -356,6 +375,12 @@ describe.skip("A-33 — disabled-tier equivalence", () => {
    */
   function makeScenarioHarness({ configText }) {
     const created = new Set();
+    // The harness's own working tree starts on the real branch this suite runs on;
+    // `ensureFeatureBranch`'s `checkout`/`checkout -b` calls (the LAST argv element
+    // in both forms) are simulated as actually landing the tree on that branch, so
+    // the guard's post-checkout re-read (a second, independent `rev-parse`) agrees
+    // with the checkout it just "performed" — exactly like a real git working tree.
+    let currentBranch = "feat-pdlc-advisory-tier";
 
     const _writeFile = async (path) => {
       created.add(String(path));
@@ -374,8 +399,12 @@ describe.skip("A-33 — disabled-tier equivalence", () => {
         }
         return { ok: true, stdout: "", stderr: "" };
       }
+      if (args[0] === "checkout") {
+        currentBranch = args[args.length - 1];
+        return { ok: true, stdout: "", stderr: "" };
+      }
       if (args[0] === "rev-parse" && args.includes("--abbrev-ref")) {
-        return { ok: true, stdout: "feat-pdlc-advisory-tier\n", stderr: "" };
+        return { ok: true, stdout: `${currentBranch}\n`, stderr: "" };
       }
       if (args[0] === "rev-parse") {
         return { ok: true, stdout: "abc1234abc1234abc1234abc1234abc1234abcd", stderr: "" };
