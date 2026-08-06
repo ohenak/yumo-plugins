@@ -98,7 +98,7 @@ The log's shape at HEAD, and the two clauses that freeze the legacy boundary —
 before any other record it writes, even when the pair is empty (which is what satisfies NFR-5's "exactly the consumed set" unconditionally, from the
 first pass rather than only from one with a non-empty set), and **(b)** the single exempt record, a `refused` pass's AC-7.2 row, carries no field that
 is ever a `LEARNINGS-*.md` basename, while the AC-1.3 marker is not a second exemption because it lives in its own file — are stated once in
-**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.3) and are binding here. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.4) and are binding here. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
 `…-pdlc-review-loop-hardening`) are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the cadence test.
 
@@ -220,7 +220,7 @@ pass — the never-fires failure this datum prevents.
 
 **Pass identity and artifact naming.** The `passId` form `{YYYY-MM-DD}-{n}` (which is what keeps the two same-day passes AC-1.2 makes an expected case
 from colliding), the derived proposal-artifact and branch names, and the three PR-body trailers plus the per-commit `PDLC-PROMOTION-ID` are stated once
-in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §4** (at `Version` 1.3) and are binding here. Two obligations over that grammar are this
+in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §4** (at `Version` 1.4) and are binding here. Two obligations over that grammar are this
 REQ's own. `PDLC-CONSOLIDATION-PROMOTIONS` is **set-equal** to the proposals the PR enacts, `action` over the closed set `promote` / `revise` / `retire`
 (AC-5.1, §4b): a revision or a retirement (AC-5.4) sharing the PR is enumerated there like any other, under its own action. And that trailer — never the
 sources trailer — is the duplicate-PR key NFR-4 is stated against: it rides the PR, so it outlives the log record of the pass that opened it, and
@@ -583,8 +583,8 @@ two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-
 `Phases exercised` in the harvest metadata table (`harvest-learnings/SKILL.md:70-78`);
 `ESCALATIONS.md` consumption in all three corpus states (AC-6.1); the one-line `.gitignore` entry for
 `docs/_decisions/.consolidation-lock` (AC-1.3); the two project-level reference files this feature
-authors and thereafter owns — `docs/_constraints/pdlc-consolidation-vocabularies.md` (§4b's owned
-rows) and `docs/_constraints/pdlc-advisory-corpus-baseline.md` (REQ-CONS-06's corpus facts), both
+authors and thereafter owns — `docs/_constraints/pdlc-consolidation-vocabularies.md` (§1–§4 entire,
+per §4b) and `docs/_constraints/pdlc-advisory-corpus-baseline.md` (REQ-CONS-06's corpus facts), both
 kept current with this REQ under §4b's change-control rule; reporting against
 `pdlc-consolidation-vocabularies.md` §1's vocabularies; tests.
 
