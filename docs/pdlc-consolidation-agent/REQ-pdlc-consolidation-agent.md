@@ -445,12 +445,11 @@ procedural — it holds even if every other control failed.
 
 ### REQ-CONS-06 — Advisory-record input
 
-**Why this requirement narrowed, and what it may rely on.** Which advisory records survive a run is stated once in
-**`docs/_constraints/pdlc-advisory-corpus-baseline.md`** (at `Version` 1.0) and is binding here — §1: `docs/_queue/ESCALATIONS.md` is the **one** durable
-machine-readable per-seam record, with named `Feature` and `Seam` fields per entry, the structured counts being in memory only and the per-feature
-`ADVISORY-{feature}.md` **deleted** at Phase H2's distil, so LEARNINGS advisory text cannot carry counts; §2: it **does not exist at HEAD**, its only
-writer being a tier that ships disabled. REQ-CONS-06 therefore consumes `ESCALATIONS.md`, never a destroyed artifact, and is specified **absent-first**: it ships
-and is testable with the tier off. Availability is tracked as BL-01a, not asserted as delivered.
+**Why this requirement narrowed, and what it may rely on.** Which advisory records survive a run (§1) and whether the surviving one exists at HEAD (§2)
+are stated once in **`docs/_constraints/pdlc-advisory-corpus-baseline.md`** (at `Version` 1.0) and are binding here; this REQ restates neither, and takes
+two obligations from them. **(a)** REQ-CONS-06 consumes `docs/_queue/ESCALATIONS.md` — §1's one durable machine-readable per-seam record — and never a
+destroyed artifact, so no count is ever derived from LEARNINGS advisory text. **(b)** Because §2 finds it absent at HEAD, REQ-CONS-06 is specified
+**absent-first**: it ships and is testable with the tier off, and availability is tracked as BL-01a, not asserted as delivered.
 
 - **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its machine-readable per-seam input, counting escalations per
   `Seam` per `Feature` from the entry fields `renderEscalationEntry` emits. Advisory text folded into LEARNINGS is a **corroborating, non-numeric**
