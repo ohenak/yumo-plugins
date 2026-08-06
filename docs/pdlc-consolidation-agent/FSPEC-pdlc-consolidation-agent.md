@@ -816,7 +816,7 @@ carriers**, one per route, because a promotion that never becomes a PR never app
 | Route | Carrier of the key set | Observed states |
 |---|---|---|
 | §6 PR route (guard-set targets) | the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs in the target repository | `open` / `merged` / `closed`-unmerged / reopened — the table below |
-| §5.2 consuming-repo route (`DOMAIN-CONSTRAINTS.md`, `DECISIONS-{topic}.md`) and the §5.3 proposal-file route | the **§8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`**, each of which carries its `failure-mode-id`, its `action` and its `route` as **fields of the §8.1 record** (§8.1 is normative for the record's shape; §10.2 order 2 is when it is written) | `enacted` / `absent` — a two-member set defined below, read from the same log text the §3.2 predicate reads |
+| §5.2 consuming-repo route (`DOMAIN-CONSTRAINTS.md`, `DECISIONS-{topic}.md`) and the §5.3 proposal-file route | the **§8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`**, each of which carries its `failure-mode-id`, its `action`, its `route` and its `passId` as **fields of the §8.1 record** (§8.1 is normative for the record's shape; §10.2 order 2 is when it is written). **The four are indexed for two different jobs and the split is normative**: `failure-mode-id`, `action` and `route` are the three the `enacted` predicate below is a function of; `passId` is indexed **only** to spell the evidence of a suppression that predicate has already decided, and never participates in deciding it. §8.1's reader row for this carrier states the same four fields and the same split | `enacted` / `absent` — a two-member set defined below, read from the same log text the §3.2 predicate reads |
 
 **The consuming-repo carrier's rule, and what `enacted` means.** A pair is `enacted` when some prior
 pass's failure-mode record carries the same `(failure-mode-id, action)` **and that record's `route`
@@ -827,6 +827,22 @@ otherwise. An `enacted` proposal is **suppressed**: the pass appends nothing to
 §10.3's second spelling — `{id}:{action} → pass:{passId}`. That is one grammar with two admissible
 evidence forms, not a second field and not a free choice: §10.3 is normative for it. So re-running a
 pass over the same corpus does **not** append the same constraint twice.
+
+**A record short of `passId` does not un-suppress.** The predicate above is a function of
+`(failure-mode-id, action)` and `route` — the key REQ NFR-4 names plus the `route`-conditioning this
+section adds — so it is **decidable without `passId`**, and it decides the same way whether or not
+that field is present: an enacting record with `route != degraded` makes the pair `enacted` and the
+proposal **suppressed**, and nothing is appended to `DOMAIN-CONSTRAINTS.md` or
+`DECISIONS-{topic}.md`. What degrades on the short record is the **evidence spelling only**: the
+`suppressed-by:` entry still names the pair, and in place of the enacting `passId` it carries an
+explicit unavailable statement rather than a guessed value — `pass:undefined` is never written, and
+the entry is never dropped, which would read as "not suppressed". That is the same shape §8.1's §8.3
+row uses for a missing `artifact`: the contract runs, the unavailable half is *reported* as
+unavailable, nothing is guessed. **"Unavailable" is the observable; its spelling inside the entry is
+TSPEC's, per DEC-LAYER-01** — §15.2's lexicon owns no such value. The safety direction is the one
+NFR-4 fixes: the alternative — skipping the contract and re-proposing — would re-append a constraint
+that already landed in the consuming repo, which is exactly the duplicate the paragraph above
+promises does not happen, produced by a field outside the suppression key.
 
 **The `route`-conditioning is the point, not a detail.** §10.2 order 2 writes a failure-mode record
 for **every** promotion the pass made, including one that §6.3 / §7.3 degraded to a proposal file
