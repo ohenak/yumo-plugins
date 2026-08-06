@@ -90,4 +90,40 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Recommendation
 
+**Needs revision**
+
+All four v4 findings are closed as filed — the fourth consecutive round in which every prior finding
+was addressed rather than argued with. **No High finding remains, and none has since v3.** What is
+open is three Mediums and three Lows, and the three Mediums are all consequences of this round's own
+repairs — none touches the document's scope, structure, or any settled decision.
+
+1. **F-01 — finish the merge rule on the subject axis.** The precedence table closes the *kind*
+   ambiguity; kind 3's `target` is the subject file, and the merge's premise is two different subject
+   paths. State a tie-break that is a pure function of the inputs (lexicographic over the canonical
+   path — not proposal order, which a model decides), say `artifact` follows it too, and make
+   AT-R6b's second fixture assert **which** `target` survives rather than that there is one.
+2. **F-02 — make AT-R6b's third fixture buildable.** Its Given names one shared subject and "the same
+   colliding subjects" in the same breath, and the row still opens "two AC-2.2 promotions" though
+   fixture 3 contains none. The oracle is right under either reading, which is exactly why the Given
+   must pick one. Recommend the one-shared-path reading: it is the minimal fixture for precedence and
+   it does not inherit F-01.
+3. **F-03 — test the reader-side rule you just made normative.** The parse-notice-and-skip rule is
+   stated three ways and asserted nowhere; its cited ATs (AT-F20, AT-F16) have other Givens. One E row
+   and one AT over a constructed log fixture — AT-F19's own shape — closes it, and the AT must carry
+   the positive half (the promotion is re-proposed / the id stays open) beside the "never a halt".
+
+F-04, F-05 and F-06 are corrections of record: a citation that points at an error string rather than
+the read it names, an absolute in §6.5 that its own AT-Q7c falsifies, and an "i.e." that widens a
+Given past the condition it restates. None blocks.
+
+**No erratum is emitted with this review.** The one upstream defect I found this round — the
+`suppressed-by:` value grammar at `pdlc-consolidation-vocabularies.md:63` — was routed by the author
+as ER-5 in response to v4 F-02, and is already in the orchestrator's hands.
+
 ## Verdict
+
+No High finding remains. Three Medium findings (F-01, F-02, F-03) are open, plus three Low (F-04,
+F-05, F-06). Per the approval rule — any High or Medium finding means the document is not approved —
+this iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision
