@@ -418,13 +418,21 @@ makes that structural — the agent cannot merge its own proposal even if every 
   | `Harvested from` basename class | Phases it evidences | Shipped naming |
   |---|---|---|
   | `CROSS-REVIEW-{role}-{docType}-v{N}.md` | the phase owning that docType (REQ→R, FSPEC→F, TSPEC→T, DECISIONS→D, PLAN→P, PROPERTIES→PR) | `orchestrate-dev.js:5799` |
-  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | `orchestrate-dev.js:10349` |
+  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | `orchestrate-dev.js:7911` (the dod-verify dispatch, taken on every DoD round); classified at `:6423` |
   | `POSTMORTEM-{phase}-{feature}.md` | that `{phase}` verbatim | `orchestrate-dev.js:5429` |
 
-  The mapping is a partition of the §4b phase catalogue: **decidable** = R, F, T, D, P, PR (row 1),
-  DOD (row 2), plus whatever `{phase}` row 3 names verbatim; **undecidable** = I, PT, CR, H, PUB,
-  MERGE. The two sets are disjoint and their union is set-equal to the catalogue, so no phase falls
-  through. Any phase the mapping cannot decide for a pre-convention file counts as **not** exercised
+  The split is **per file, not a fixed partition of the catalogue**, and row 3 takes precedence over
+  every other statement here. For one pre-convention LEARNINGS: **decidable** = the phases that
+  file's own `Harvested from` decides — R, F, T, D, P, PR from row 1, DOD from row 2, plus whatever
+  `{phase}` row 3 names verbatim; **undecidable** = the §4b catalogue minus that set. Their union is
+  set-equal to the catalogue for every file, which is what makes the rule total, but neither half is
+  fixed: `{phase}` in a POSTMORTEM basename is **any** halting phase, not only a converge phase — the
+  shared review loop builds `POSTMORTEM-${phaseId}-${feature}.md` (`orchestrate-dev.js:5429`) and
+  Phase CR runs that loop with `phase: "CR"` (`:10255-10256`), and the halt path builds the same name
+  from whatever phase halted (`:10603`). So `POSTMORTEM-CR-*` is producible and decides CR for the
+  file that names it; a file that names none decides no phase at all. Nothing here is disjointness,
+  and a set-equality test transcribed from this paragraph must be written per file. Any phase the
+  mapping cannot decide for a pre-convention file counts as **not** exercised
   — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`. Both
   inputs are file text, so two runs over the same corpus cannot disagree; that is what NFR-4 rests on.
 
@@ -629,7 +637,7 @@ containment across six sections; adding a value above without a row here is a de
 | `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
 | `revision` / `retirement` | proposed action on an `ineffective` promotion | as above | AC-5.3 |
 | `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
-| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3431`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
+| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3437` — declaration `:3337`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
 
 Two joins the table settles, because both were previously undetermined. A pass that promoted
 something and also hit an AC-3.5 fallback class is `promoted-degraded`, never a bare `promoted` — the
