@@ -52,7 +52,49 @@ classes are named by §5a as belonging **here**, not downstream.
 
 ## Questions
 
+v1's Q-01…Q-06 are all answered by the revision (trigger surface, commit→promotion mapping via
+`PDLC-PROMOTION-ID`, structured four-field failure mode, the consuming-repo retirement route,
+the NFR-3a trigger field, and the single AC-7.2 channel). Two new ones, neither blocking:
+
+| ID | Question |
+|----|---------|
+| Q-07 | AC-3.8 requires the same-repo promotion to run in "a separate clone under a temporary directory, cut from the fetched default branch", so the invoking tree is never disturbed. What is the observable that a test asserts to prove the invoking tree was untouched — `git status --porcelain` empty plus `rev-parse --abbrev-ref HEAD` unchanged across the pass, or something stronger? The failure this guards against (a mid-pipeline `feat-*` tree stashed under it) is severe enough that the assertion should be positive on both conjuncts, not just "no error was raised". |
+| Q-08 | AC-2.4 and NFR-5 both make the log the record of consumption, and NFR-5 requires it to name **exactly** the consumed set. AC-1.1's predicate is `basename not in logtext` — a substring test over the whole file. Does a basename appearing anywhere in the log (in a proposal quote, a PR title, a `Harvested from` echo) mark that LEARNINGS consolidated? If so the "exactly" of NFR-5 is not enforceable by the predicate that consumes it, and the two should agree on a delimited field rather than free substring. |
+
 ## Positive Observations
+
+- The revision did the hard version of every v1 fix rather than the cheap one. AC-3.7 is the
+  clearest case: the easy move was to soften "inherits the guard" into "is consistent with";
+  instead it names three controls this feature owns, and then explains at `file:line` why the
+  inherited claim would have been false. That is the shape a REQ should take when a reviewer
+  says an AC is unobservable.
+- Citation discipline is now excellent, and I checked it exhaustively rather than sampling:
+  every `file:line` in the document resolves and says what the document attributes to it —
+  `MERGE_GUARD_DEFAULTS` (`:48-53`), `mergeMode: "off"` (`:61`), `effectiveGuardPaths` (`:709`),
+  `guardVerdict` (`:732`), the `:838` refusal, the `:899-900` call site, both model constants
+  (`:1652`, `:1653`), `ADVISORY_MODEL_FALLBACK` (`:1859`), the envelope check (`:2143`),
+  `renderAdvisoryEntry` (`:2642`), `advisorySummaryRows` (`:2708`), `ESCALATIONS_PATH` (`:2750`),
+  `renderEscalationEntry` (`:2763`), the append at `:2812`, `advisoryDistilPrompt` (`:7585-7594`),
+  the ADVISORY delete at `:10499`, the report fields at `:10663`/`:10695`; plus
+  `nudge-consolidation.sh` `:4`/`:25`/`:32`/`:41`/`:47`, `SKILL.md` `:35`/`:43`/`:49`/`:54`,
+  `hooks.json` `:3`/`:14`/`:29`, `QUEUE.md` `:11`/`:279`, and DC-09 at
+  `docs/_constraints/DOMAIN-CONSTRAINTS.md:245`. No nonexistent authority, no misquoted line.
+- AC-3.5's failure-class table is the single biggest testability gain in the round. Five rows,
+  each with a reason code, an explicit fallback-fires column, and a stated recorded value — and
+  the one row where the fallback deliberately does **not** fire (`duplicate-suppressed`) is
+  marked, which is exactly the case a containment-style reading would have lost.
+- REQ-CONS-06's narrowing is intellectually honest in a way that is rare: it states the limit of
+  its own input out loud ("`ESCALATIONS.md` records escalations, not resolutions, so 'resolves
+  autonomously at a high rate' is observable here only as *absence of escalation*") and binds the
+  missing half to D-CONS-06 rather than asserting a capability. F-17 is a gap in the same
+  paragraph's honesty, not a contradiction of it.
+- The §5a stopping rule is a genuinely useful addition and I applied it as written: I dropped
+  several fixture-shaped observations I would otherwise have filed, and every finding above is
+  either an internal contradiction or an under-stated HEAD claim — both classes §5a names as
+  belonging here.
+- AC-5.3's pass-class arithmetic (skip `insufficient-evidence`, skip `no-op`, count only
+  `prevented`/`recurred`) is precisely the boundary v1 asked for, and it is stated in a form a
+  three-pass fixture table can be built from directly.
 
 ## Recommendation
 
