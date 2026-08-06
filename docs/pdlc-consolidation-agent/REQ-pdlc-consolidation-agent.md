@@ -372,6 +372,14 @@ procedural — it holds even if every other control failed.
   canonical path closes the split direction as `phase` closes the merge direction, which makes "a later pass re-deriving the same failure mode yields
   the same id" true rather than hoped for.
 
+  **One promotion is one authored file.** "The single file the edit touches" is a requirement, not an assumption: a remedy spanning two authored files
+  is **two** proposals — two ids, two AC-3.3 commits, two AC-5.2 rows, two AC-5.3 streaks — which may share one PR (AC-3.3 already permits that shape);
+  they share nothing else and are measured separately. A **generated** path is never an `artifact` and never mints an id: the tracked outputs of
+  `pdlc/workflows/build-runtime.mjs` under `pdlc/workflows/dist/`, which this repo requires to be rebuilt "in the same commit" as their source
+  (`CLAUDE.md`, "Consequence for anyone editing a workflow source"), ride the authored file's commit. So the likeliest promotion this feature will make
+  — an edit to `pdlc/workflows/orchestrate-dev.js` plus its rebuilt bundles — is **one** promotion whose `artifact` is
+  `pdlc/workflows/orchestrate-dev.js`, and the derivation stays total on every edit shape.
+
   **Uniqueness, scoped.** Within **one pass** the pair `(failure-mode-id, action)` is unique: two proposals deriving one id under one `action` name the
   same `phase` and `artifact`, are one failure mode, and are recorded once — the pass never mints a suffixed variant, which would break derivation
   purity and with it NFR-4. Two distinct failure modes in one `phase` touching one file therefore merge into one promotion carrying one `symptom`; that
@@ -439,18 +447,13 @@ procedural — it holds even if every other control failed.
 
 ### REQ-CONS-06 — Advisory-record input
 
-**Why this requirement narrowed.** The structured per-seam counts exist only in memory: `advisorySummaryRows` (`pdlc/workflows/orchestrate-dev.js:2708`,
-driven by `ADVISORY_SEAMS`) is a field of one run's report (`:10663`, `:10695`), never persisted; the per-feature `ADVISORY-{feature}.md` has a strict
-schema (`renderAdvisoryEntry`, `:2642`) but is **deleted** after Phase H2's distil (`:10499`), whose dispatch asks only for prose with no schema
-(`advisoryDistilPrompt`, `:7585-7594`) — so LEARNINGS advisory text cannot carry counts. `docs/_queue/ESCALATIONS.md` (`ESCALATIONS_PATH`, `:2750`;
-appended `:2812`) is the one durable per-seam record — append-only, never distilled, never deleted — and `renderEscalationEntry` (`:2763`) gives every
-entry named `Feature` and `Seam` fields. REQ-CONS-06 consumes **that**, not an artifact that is destroyed.
-
-**Availability, stated honestly.** `docs/_queue/ESCALATIONS.md` **does not exist at HEAD** — `docs/_queue/` holds `QUEUE.md` alone and
-`git log --all -- docs/_queue/ESCALATIONS.md` returns nothing. Its only writer is the advisory tier, which ships **disabled**: `advisoryTierOn`
-(`orchestrate-dev.js:9653`) resolves from `parseAdvisoryConfig` (`:1682`), default `enabled: false` (`:1663`), and this repo's
-`.claude/pdlc.config.json` has an `implementation` section only. So REQ-CONS-06 is specified **absent-first**: it ships and is testable with the tier
-off. Availability is tracked as BL-01a, not asserted as delivered.
+**Why this requirement narrowed, and what it may rely on.** Which advisory records survive a run is stated once in
+**`docs/_constraints/pdlc-advisory-corpus-baseline.md`** and is binding here. Its three load-bearing consequences: the structured per-seam counts
+(`advisorySummaryRows`) are in memory only and the per-feature `ADVISORY-{feature}.md` is **deleted** at Phase H2's distil, so LEARNINGS advisory text
+cannot carry counts; `docs/_queue/ESCALATIONS.md` (`ESCALATIONS_PATH`, `orchestrate-dev.js:2750`) is the **one** durable per-seam record, with named
+`Feature` and `Seam` fields per entry; and it **does not exist at HEAD**, because its only writer is the advisory tier and that ships disabled
+(`enabled: false`, `:1663`). REQ-CONS-06 therefore consumes `ESCALATIONS.md`, never a destroyed artifact, and is specified **absent-first**: it ships
+and is testable with the tier off. Availability is tracked as BL-01a, not asserted as delivered.
 
 - **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its machine-readable per-seam input, counting escalations per
   `Seam` per `Feature` from the entry fields `renderEscalationEntry` emits. Advisory text folded into LEARNINGS is a **corroborating, non-numeric**
@@ -473,8 +476,7 @@ off. Availability is tracked as BL-01a, not asserted as delivered.
   defaults** in `pdlc/workflows/`, so it routes as a PR under AC-3.1. A consumer's `.claude/pdlc.config.json` is untracked and is not a PR-able
   surface; a widening a consumer must adopt locally is reported as an operator action in the AC-7.1 report, never as a PR.
 
-The honest limit: `ESCALATIONS.md` records escalations, not resolutions, so "resolves autonomously" is observable only as *absence of escalation*; a
-resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
+The honest limit (baseline §3): `ESCALATIONS.md` records escalations, not resolutions — a resolution-rate input is D-CONS-06.
 
 ### REQ-CONS-07 — Reporting
 
