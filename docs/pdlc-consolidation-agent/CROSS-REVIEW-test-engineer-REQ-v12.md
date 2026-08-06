@@ -35,6 +35,29 @@ Each v11 finding is re-checked against the file it was about, not against its ow
 
 ## Findings
 
+No new findings. The three carried forward are F-54, F-55 and F-56, re-verified above and restated
+here so the table is complete on its own terms; ids are not renumbered across rounds.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-54 | Low | Cross-Feature | The baseline file's content changed under a frozen `Version`, and the clause that makes that a defect is the paragraph the same commit added, so the file breaches its own rule; the REQ pins the unbumped `1.0` in three places. Fix: `1.0` → `1.1` in the baseline header and in the REQ's two version-pinned citations. | `docs/_constraints/pdlc-advisory-corpus-baseline.md:6-7`, `:15-20`; REQ `:202`, `:448`, `:474` |
+| F-55 | Low | Local | §4b's ownership sentence spans both governed files, but the enumeration/prose classification and the oracle range built on it were written for one. Read literally it puts the baseline file's §1 table under a set-equality oracle at a `Version` that file does not carry, while the baseline file says all four of its sections are prose under no row oracle. Decidable today only via the `Version 1.4` pin. Fix: name the vocabularies file in the classification sentence, and add to §5 that the baseline's four owned sections carry no row oracle. | REQ §4b (`:558-565`), §5 (`:585-586`); `docs/_constraints/pdlc-advisory-corpus-baseline.md:17-19`, `:24-30`, `:46` |
+| F-56 | Low | Process | The REQ sits at 61,109 / 61,440 bytes — a 331-byte margin against a warn-only budget — and the trend across rounds 9→12 is 387 → 344 → 331 → 331. Not a delivery risk: `check-req-size.sh` emits a `PostToolUse` `additionalContext` line and `exit 0` on every path (final block), so nothing is blocked. Filed to keep the headroom visible to whoever lands F-54/F-55 (~44 bytes together, which fit). | Whole document; `pdlc/hooks/scripts/check-req-size.sh:41-42`, `:47-48` |
+
+**Why no finding was upgraded on a no-change round.** The Challenger default is that a document
+that did not move does not thereby earn a better verdict — but it does not earn a worse one either,
+and severity is a property of the defect, not of how many rounds it has survived. `DEC-SEV-01`
+(`docs/_decisions/DECISIONS-review-severity-bars.md:10`) settles exactly this class: "a
+version-pin-detectable governance-scope gap is Low; Medium is reserved for gaps that block a
+downstream author today." I applied the test rather than the label. F-54: a PROPERTIES or TSPEC
+author transcribing an expected value from the baseline file transcribes §1's fate table, §2's
+absent-at-HEAD facts, §3's ladder or §4's limit — all byte-identical across the diff that broke the
+version rule, and all outside any row oracle by the file's own declaration (`:17-19`), so no
+expected value is wrong today. F-55: the range clause pins `Version 1.4`, only one of the two files
+carries 1.4, and the other states the answer in its own words — the oracle's subject is
+recoverable, just not from one sentence. Neither blocks a fixture being written today. They stay
+Low.
+
 ## Questions
 
 ## Positive Observations
