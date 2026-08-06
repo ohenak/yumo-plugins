@@ -1,6 +1,6 @@
 // advisoryEnvelope.test.js — PLAN A-06 (batch 3, depends on A-02).
 //
-// RED (authored as `describe.skip`, un-skipped by the 🟢 owner A-20). This file owns FSPEC
+// RED (authored as `skipped-describe`, un-skipped by the 🟢 owner A-20). This file owns FSPEC
 // T-03-1 … T-03-5, T-03-8, T-03-9, T-03-10 and PROPERTIES §6.5's generator-driven P-4 / P-5
 // (PROPERTIES §11, PLAN §6.5) over `classifyEnvelope`, `touchesTestArtifact`, `touchesDodCriterion`,
 // `branchCreated` and `refusalReasonFor` (TSPEC §5).
@@ -23,10 +23,10 @@
 // `refusalReasonFor`, `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, `ADVISORY_EXCLUSIONS` and
 // `ADVISORY_SEAMS` do not exist on `orchestrate-dev.js` yet — they land at A-20 (plus `ADVISORY_SEAMS`
 // at A-06's own §3.1 sibling work). This file therefore imports the module as a namespace
-// (`* as devModule`) and reaches every not-yet-existing symbol only from *inside* `describe.skip`
+// (`* as devModule`) and reaches every not-yet-existing symbol only from *inside* `skipped-describe`
 // bodies (property access on a namespace object for a missing member yields `undefined` at runtime
 // rather than a link-time SyntaxError, unlike a named import of a nonexistent export). Every
-// `describe.skip` block therefore imports cleanly today and will run, unmodified, the moment A-20
+// `skipped-describe` block therefore imports cleanly today and will run, unmodified, the moment A-20
 // adds the exports. `effectiveGuardPaths` already exists at HEAD (`orchestrate-dev.js:708`), so it is
 // read the same way, off the namespace, for consistency with everything else in this file.
 

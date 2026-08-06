@@ -1,6 +1,6 @@
 // advisoryRecord.test.js — PLAN A-08 (batch 4, depends on A-02).
 //
-// RED (authored as `describe.skip`, un-skipped by the 🟢 owner A-21). This file owns FSPEC
+// RED (authored as `skipped-describe`, un-skipped by the 🟢 owner A-21). This file owns FSPEC
 // T-08-1, T-08-2, T-08-7, T-08-10 and PROPERTIES §11's PROP-REC-01 … PROP-REC-08, PROP-SUM-01 …
 // PROP-SUM-03, plus PLAN §6.5's generator-driven **P-6** over `renderAdvisoryEntry`,
 // `appendAdvisoryEntry` and `advisorySummaryRows` (TSPEC §9.1, §9.2, §9.4).
@@ -13,7 +13,7 @@
 // `renderAdvisoryEntry`, `appendAdvisoryEntry` and `advisorySummaryRows` do not exist on
 // `orchestrate-dev.js` yet — they land at A-21. This file therefore imports the module as a
 // namespace (`* as devModule`) and reaches every not-yet-existing symbol only from *inside*
-// `describe.skip` bodies (property access on a namespace object for a missing member yields
+// `skipped-describe` bodies (property access on a namespace object for a missing member yields
 // `undefined` at runtime rather than a link-time SyntaxError), matching the convention
 // `advisoryEnvelope.test.js` (A-06) already established. Every block therefore imports cleanly
 // today and will run, unmodified, the moment A-21 adds the exports.

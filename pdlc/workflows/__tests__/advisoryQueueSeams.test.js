@@ -1,6 +1,6 @@
 // advisoryQueueSeams.test.js — PLAN A-12 (batch 4, depends on A-02).
 //
-// RED (authored as three `describe.skip` blocks, each un-skipped by a different 🟢 owner, per
+// RED (authored as three `skipped-describe` blocks, each un-skipped by a different 🟢 owner, per
 // PLAN §3's un-skipper rule — no block is un-skipped before the symbols its cases exercise
 // exist):
 //
@@ -67,7 +67,7 @@
 // yet accept `_runAdvisorySeam`/`_appendFile`/`_readAdvisoryConfig` (A-30 lands those), and
 // `buildQueueReport` does not yet carry an `advisory` summary (A-31 lands it). This file therefore
 // imports the module as a namespace (`* as queueModule`) and reaches every not-yet-existing symbol
-// only from *inside* `describe.skip` bodies, exactly as `advisoryDriver.test.js` and
+// only from *inside* `skipped-describe` bodies, exactly as `advisoryDriver.test.js` and
 // `advisoryEnvelope.test.js` already do.
 
 import * as queueModule from "../orchestrate-queue.js";

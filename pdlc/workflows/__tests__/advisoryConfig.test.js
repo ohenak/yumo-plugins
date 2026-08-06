@@ -1,6 +1,6 @@
 // advisoryConfig.test.js — PLAN A-03 (batch 3, depends on A-02).
 //
-// RED (authored as `describe.skip`, un-skipped by the 🟢 owner A-17). This file owns
+// RED (authored as `skipped-describe`, un-skipped by the 🟢 owner A-17). This file owns
 // PROP-CFG-01 … PROP-CFG-07 and P-1 (PROPERTIES §4.1, §11, §12.2) — the full property set over
 // `parseAdvisoryConfig` and `readAdvisoryConfigSafely` (TSPEC §3.2). It exercises TSPEC/FSPEC
 // cases T-01-1 (no `advisory` section behaves exactly like §12) and T-01-6 (one out-of-range key
@@ -21,9 +21,9 @@
 // `parseAdvisoryConfig`, `readAdvisoryConfigSafely` and `ADVISORY_DEFAULTS` do not exist on
 // `orchestrate-dev.js` yet — they land at A-17. This file therefore imports the module as a
 // namespace (`* as devModule`) and reaches the not-yet-existing symbols only from *inside*
-// `describe.skip` bodies (property access on a namespace object for a missing member yields
+// `skipped-describe` bodies (property access on a namespace object for a missing member yields
 // `undefined` at runtime rather than a link-time SyntaxError, unlike a named import of a
-// nonexistent export). Every `describe.skip` block therefore imports cleanly today and will run,
+// nonexistent export). Every `skipped-describe` block therefore imports cleanly today and will run,
 // unmodified, the moment A-17 adds the exports.
 
 import * as devModule from "../orchestrate-dev.js";

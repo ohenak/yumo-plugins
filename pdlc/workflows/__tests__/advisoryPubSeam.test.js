@@ -1,6 +1,6 @@
 // advisoryPubSeam.test.js — PLAN A-11 (batch 3, depends on A-02).
 //
-// RED (authored as two `describe.skip` blocks, each un-skipped by a different 🟢 owner, per
+// RED (authored as two `skipped-describe` blocks, each un-skipped by a different 🟢 owner, per
 // PLAN §3's un-skipper rule):
 //
 //   - `A-24 — A5 SeamOps + capability probes` (batch 11) — lands `probeDefaultBranchChecks`,
@@ -17,7 +17,7 @@
 //
 // `probeDefaultBranchChecks`, `probeWorkflowRerun`, `runAdvisorySeam`'s A5 binding and
 // `raisePrAndVerifyCi`'s advisory parameters do not exist yet at A-11. This file therefore reaches
-// every not-yet-existing symbol only from *inside* `describe.skip` bodies, importing the module as
+// every not-yet-existing symbol only from *inside* `skipped-describe` bodies, importing the module as
 // a namespace (`import * as dev`), exactly as `advisoryDriver.test.js` (A-07) already does.
 //
 // Every canonical double comes from `helpers/advisoryDoubles.js` (PROP-INFRA-01/-02) — no

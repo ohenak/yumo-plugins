@@ -1,14 +1,14 @@
 // advisoryDisabled.test.js — PLAN A-16 (batch 4, executor batch 6, depends on A-15).
 //
-// RED (authored as `describe.skip`, un-skipped by the 🟢 owner A-33 — PLAN §5.2 batch 18, the
+// RED (authored as `skipped-describe`, un-skipped by the 🟢 owner A-33 — PLAN §5.2 batch 18, the
 // *last* un-skipper in the feature). Every case below lives inside a single
-// `describe.skip("A-33 — disabled-tier equivalence", ...)` block: unlike the multi-owner sibling
+// `skipped-describe("A-33 — disabled-tier equivalence", ...)` block: unlike the multi-owner sibling
 // RED files (`advisoryDriver.test.js`, `advisoryQueueSeams.test.js`, …), this file has exactly one
 // green owner, so it carries exactly one top-level skip.
 //
 // This file owns FSPEC T-10-1 … T-10-5 (§12.3, "disabled-tier equivalence") and PROPERTIES
 // PROP-DIS-01 … PROP-DIS-07, PROP-SUM-06 (report field, no fourth `enabled` read), and PROP-REG-08
-// (no `describe.skip` remains anywhere once the feature is done — this file's own home per
+// (no `skipped-describe` remains anywhere once the feature is done — this file's own home per
 // PROPERTIES §10.3).
 //
 // `runAdvisorySeam`, `ADVISORY_DEFAULTS`, `ADVISORY_SEAMS` and every seam-wiring parameter this
@@ -16,7 +16,7 @@
 // exist on `orchestrate-dev.js` / `orchestrate-queue.js` yet at A-16 (A-17…A-33 land the pieces
 // across later batches). This file therefore imports both modules as namespaces (`import * as dev`,
 // `import * as queue`) and reaches every not-yet-existing symbol only from *inside* this file's one
-// `describe.skip` body, exactly as `advisoryDriver.test.js`, `advisoryQueueSeams.test.js`,
+// `skipped-describe` body, exactly as `advisoryDriver.test.js`, `advisoryQueueSeams.test.js`,
 // `advisoryDodSeams.test.js` and `advisoryPubSeam.test.js` already do.
 //
 // **Interpretive/contract-fixing decisions this RED task makes** (documented here per this
@@ -608,7 +608,7 @@ describe("A-33 — disabled-tier equivalence", () => {
   });
 
   // =================================================================================================
-  // PROP-REG-08 — no `describe.skip` block remains in any `advisory*.test.js` file, this file
+  // PROP-REG-08 — no `skipped-describe` block remains in any `advisory*.test.js` file, this file
   // included, once the feature is done (PROPERTIES §10.3, "Home: advisoryDisabled.test.js").
   // =================================================================================================
 
@@ -619,7 +619,9 @@ describe("A-33 — disabled-tier equivalence", () => {
 
     function skipViolations(text) {
       const violations = [];
-      if (SKIP_PATTERN.test(text)) violations.push("describe/it/test.skip");
+      // Label spelled without the dotted marker: this file scans itself, so the
+      // label must not match SKIP_PATTERN ("test" + dot + "skip" would).
+      if (SKIP_PATTERN.test(text)) violations.push("describe/it/test dot-skip");
       if (X_PREFIX_PATTERN.test(text)) violations.push("x-prefixed alias");
       if (SKIP_BINDING_PATTERN.test(text)) violations.push("binding assigned from a .skip member");
       return violations;

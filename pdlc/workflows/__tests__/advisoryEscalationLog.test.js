@@ -1,6 +1,6 @@
 // advisoryEscalationLog.test.js — PLAN A-09 (batch 4, depends on A-02).
 //
-// RED (authored as `describe.skip`, un-skipped by the 🟢 owner A-21). This file owns
+// RED (authored as `skipped-describe`, un-skipped by the 🟢 owner A-21). This file owns
 // PROP-ESC-01, PROP-ESC-02, PROP-ESC-03, PROP-ESC-04, PROP-ESC-05, PROP-ESC-07, PROP-ESC-08,
 // PROP-ESC-09 and P-7 (PROPERTIES §9.2, §11) — the escalation-log half of `docs/_queue/
 // ESCALATIONS.md` (TSPEC §10.1) and the sibling report-notice catalogue `ADVISORY_ESCALATIONS`
@@ -21,9 +21,9 @@
 // `renderEscalationEntry`, `appendEscalationEntry` and `ADVISORY_ESCALATIONS` do not exist on
 // `orchestrate-dev.js` yet — they land at A-21. This file therefore imports the module as a
 // namespace (`* as devModule`) and reaches the not-yet-existing symbols only from *inside*
-// `describe.skip` bodies (property access on a namespace object for a missing member yields
+// `skipped-describe` bodies (property access on a namespace object for a missing member yields
 // `undefined` at runtime rather than a link-time SyntaxError, unlike a named import of a
-// nonexistent export). Every `describe.skip` block therefore imports cleanly today and will run,
+// nonexistent export). Every `skipped-describe` block therefore imports cleanly today and will run,
 // unmodified, the moment A-21 adds the exports.
 //
 // Field-name extraction (PROP-ESC-01/P-7's "exactly the eight declared fields") is done
@@ -267,7 +267,7 @@ describe("PROP-ESC-02 — append-only, newest-last; the first entry is unmodifie
 
 describe("PROP-ESC-03 — nothing in the tier reads docs/_queue/ESCALATIONS.md", () => {
   // Unlike the other blocks in this file, this scan needs no not-yet-existing symbol, so it runs
-  // today (not `describe.skip`) — the absence-of-a-reader claim is true vacuously before A-21 too,
+  // today (not `skipped-describe`) — the absence-of-a-reader claim is true vacuously before A-21 too,
   // and stays true afterward because it is enforced by this same scan every run.
   const READ_CALL_NEAR_ESCALATIONS = /\b(?:_readFile|readFile|readFileSync)\s*\([^)]*ESCALATIONS/;
 

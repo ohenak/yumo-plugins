@@ -1,6 +1,6 @@
 // advisoryRung.test.js — PLAN A-04 (batch 3, depends on A-02).
 //
-// RED: authored as a single `describe.skip` block named for its green owner,
+// RED: authored as a single `skipped-describe` block named for its green owner,
 // A-18 (PLAN §5.2 — every new case is reported as skipped until its owner
 // un-skips it). Un-skipping this block is A-18's job, not this task's.
 //

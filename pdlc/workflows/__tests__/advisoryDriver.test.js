@@ -1,6 +1,6 @@
 // advisoryDriver.test.js — PLAN A-07 (batch 3, depends on A-02).
 //
-// RED (authored as four `describe.skip` blocks, each un-skipped by a different 🟢 owner, per
+// RED (authored as four `skipped-describe` blocks, each un-skipped by a different 🟢 owner, per
 // PLAN §3's un-skipper rule — no block is un-skipped before the symbols its cases exercise
 // exist):
 //
@@ -49,7 +49,7 @@
 // `runAdvisorySeam`, `ADVISORY_SEAMS`, `ADVISORY_REFUSAL_REASONS` and `budgetExceeded` do not exist
 // on `orchestrate-dev.js` yet at A-07 (A-22/A-19 land them later). This file therefore imports the
 // module as a namespace (`import * as dev`) and reaches every not-yet-existing symbol only from
-// *inside* `describe.skip` bodies, exactly as `advisoryVerdict.test.js` and
+// *inside* `skipped-describe` bodies, exactly as `advisoryVerdict.test.js` and
 // `advisoryEnvelope.test.js` already do.
 //
 // **Interpretive/contract-fixing decisions this RED task makes** (documented here per this
@@ -167,7 +167,7 @@ async function invokeDriver({ seam, config, seamOps, agent, fileDouble, appendFi
 }
 
 // ─── The gate-exclusivity registry (PROP-GATE-01…06, TSPEC §5.5, §6.5) ──────────────────────────
-// One row per `ADVISORY_SEAMS` member, module scope — outside every `describe.skip` block, so the
+// One row per `ADVISORY_SEAMS` member, module scope — outside every `skipped-describe` block, so the
 // single set-equality driver (A-22's block, below) and the three per-seam generators (A-23/A-24/
 // A-31's blocks) all read the *same* registry. `gate: null` marks A1 and A3 (TSPEC:655/:657); every
 // other row's `action` is the permitted-action label its own seam declares (TSPEC §5.5). Neither
@@ -182,7 +182,7 @@ const GATE_EXCLUSIVITY_REGISTRY = {
 };
 
 // ─── Generated per-seam gate-exclusivity cases (PROP-GATE-01…05) ────────────────────────────────
-// Called once from inside each of the three per-seam `describe.skip` blocks below, filtered to
+// Called once from inside each of the three per-seam `skipped-describe` blocks below, filtered to
 // that block's own seams — never hand-written per seam (§8.2's "the loop closed in both
 // directions").
 function gateExclusivityCases(seams) {

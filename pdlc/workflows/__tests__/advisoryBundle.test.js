@@ -1,6 +1,7 @@
 // advisoryBundle.test.js — PLAN A-14 (batch 3, depends on A-02).
 //
-// RED (authored as `describe.skip`, un-skipped by the 🟢 owner A-32). This file owns the one
+// RED (authored with skipped describes, un-skipped by the 🟢 owner A-32 — the marker is spelled
+// obliquely here so PROP-REG-08's raw-text sweep never matches this narration). This file owns the one
 // PLAN-level bundle-composition obligation TSPEC §2.3 states: `orchestrate-dev.js`'s advisory
 // core is reached from `orchestrate-queue.js` only through the shared `__dev` IIFE the bundler
 // already produces (TSPEC §2.1/§2.2 — "no new build source, no new inlining order, no change to

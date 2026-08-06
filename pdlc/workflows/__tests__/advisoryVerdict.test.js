@@ -1,8 +1,8 @@
 /**
  * advisoryVerdict.test.js — PLAN A-05 (batch 3, depends on A-02).
  *
- * RED (authored `describe.skip`, un-skipped by the 🟢 owner). Every case below lives inside
- * `describe.skip("A-19 — verdict + budgets", ...)` — the block A-19 (batch 6) un-skips, per
+ * RED (authored `skipped-describe`, un-skipped by the 🟢 owner). Every case below lives inside
+ * `skipped-describe("A-19 — verdict + budgets", ...)` — the block A-19 (batch 6) un-skips, per
  * PLAN §3's un-skipper rule: A-19 is the task that lands `parseAdvisoryVerdict` and
  * `budgetExceeded` on `orchestrate-dev.js`.
  *

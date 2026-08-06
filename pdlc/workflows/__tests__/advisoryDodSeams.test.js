@@ -1,8 +1,8 @@
 // advisoryDodSeams.test.js — PLAN A-10 (batch 3, depends on A-02).
 //
-// RED (authored `describe.skip`, un-skipped by the 🟢 owner — A-23, batch 10, which lands
+// RED (authored `skipped-describe`, un-skipped by the 🟢 owner — A-23, batch 10, which lands
 // `parseA3Classification`, `governingClass`, A3's `SeamOps` and A4's `SeamOps` on
-// `orchestrate-dev.js`). Every case below lives inside `describe.skip("A-23 — A3/A4 seams", ...)`
+// `orchestrate-dev.js`). Every case below lives inside `skipped-describe("A-23 — A3/A4 seams", ...)`
 // per PLAN §3's un-skipper rule: no block is un-skipped before the symbols its cases exercise
 // exist. A-25 (batch 12, Phase DOD wiring) adds its own later block to this same file for the
 // phase-integration halves of PROP-A3-05/PROP-A3-07/PROP-A4-03/PROP-A4-09 — those are not part of
@@ -23,7 +23,7 @@
 // `buildA3SeamOps`, `buildA4SeamOps` nor `runAdvisorySeam` is exported by `orchestrate-dev.js` yet
 // at A-10 — a named import would fail the whole file to load (see `advisoryVerdict.test.js`'s
 // header on the same point). This file therefore imports the module as a namespace
-// (`import * as dev`) and reaches every symbol only from inside `describe.skip` bodies.
+// (`import * as dev`) and reaches every symbol only from inside `skipped-describe` bodies.
 //
 // **Interpretive/contract-fixing decisions this RED task makes** (documented here per this
 // project's own convention, for A-23 to implement against):
