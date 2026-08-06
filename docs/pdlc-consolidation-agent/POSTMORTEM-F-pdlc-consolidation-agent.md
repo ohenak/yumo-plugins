@@ -50,6 +50,79 @@ remaining cause to something neither countermeasure touched.
 
 ## Iterations (5 — limit reached)
 
+Findings counted from each review's `## Findings` table only (prior-finding disposition tables are
+excluded — a row there is a closure, not a finding). Rounds are numbered continuously with the
+first window, so this window's cross-review files carry the suffixes `-v6` … `-v10`.
+
+| Round | FSPEC ver. | software-engineer | test-engineer | SE verdict | TE verdict |
+|---|---|---|---|---|---|
+| 6 | 6.1 | 0 High, 3 Medium, 2 Low | 0 High, 0 Medium, 3 Low | Needs revision | **Approved with minor changes** |
+| 7 | 7.0 | 0 High, 0 Medium, 5 Low | 0 High, 1 Medium, 3 Low | **Approved with minor changes** | Needs revision |
+| 8 | 8.0 | 0 High, 0 Medium, 2 Low | 0 High, 1 Medium, 2 Low | **Approved with minor changes** | Needs revision |
+| 9 | 9.0 | 0 High, 1 Medium, 1 Low | 0 High, 1 Medium, 2 Low | Needs revision | Needs revision |
+| 10 | 10.0 | 0 High, 1 Medium, 2 Low | 0 High, 1 Medium, 2 Low | Needs revision | Needs revision |
+
+Three facts this table carries that the first window's did not:
+
+1. **High has been absent for eight consecutive rounds** (last High: round 3). Neither reviewer
+   filed one in this window, and both say so in terms — SE round 10: *"No High finding remains, and
+   none has since v3."*
+2. **Medium fell from a flat four-or-five per round to one or two, and in the last two rounds to
+   exactly one per reviewer.** The freeze and `DEC-LAYER-01` did move the number. They did not move
+   it to zero, and — see § Pattern of Disagreement — they did not move it *toward* zero after
+   round 8.
+3. **Three of the five rounds contained an approval.** Rounds 6, 7 and 8 each ended with exactly
+   one reviewer approving and the other requiring revision, and the approving reviewer **alternated**
+   (TE in 6, SE in 7 and 8). At no point in five rounds did both approve in the same round. This is
+   new; in rounds 1–5 both reviewers returned Needs revision in every round.
+
+### Prior-finding disposition, by round
+
+| Round | Prior findings re-checked | Closed as filed | Argued / rejected / partially addressed |
+|---|---|---|---|
+| 6 | SE 6, TE 3 (+3 questions) | all | none |
+| 7 | SE 5, TE 3 (+questions) | all | none |
+| 8 | SE 5, TE 4 (+questions) | all | none |
+| 9 | SE 2, TE 3 (+questions) | all | none |
+| 10 | SE 2, TE 3 (+2 questions) | all | none |
+
+Nine consecutive rounds — four in the first window, five in this one — in which **every** prior
+finding was closed as filed and none was argued with. SE's round-10 recommendation states it:
+*"the ninth consecutive round in which every prior item was addressed rather than argued with, and
+the Medium was closed by the more expensive of the two directions I offered."*
+
+### Open at the limit (round 10, against FSPEC v10.0)
+
+| ID | Reviewer | Sev | Subject |
+|---|---|---|---|
+| F-01 | SE | Medium | §14.5's new two-register disjointness paragraph (`:2225-2231`) assigns §8.1's unavailable-`phase`/id arms to §14.1 T-10; T-10 (`:2160`) enumerates four spellings and none is an id, and §8.1's id arm emits nothing at all (`:1180-1182`) — so the paragraph's own universal, *"every deferral this document makes has exactly one home"*, is false on the arms it names |
+| M-01 | TE | Medium | The same defect, found independently and argued from the testing side: T-10 sends a TSPEC author to invent a spelling for a row whose verdict this document already pins to `insufficient-evidence` (`:1182`, `:1835`), so taken literally the §8.7 streak never accumulates and `unmeasurable` is unreachable — a silent drift with no oracle |
+| F-02 | SE | Low | §8.4 step 1's cell lacks its `failure-mode-id` arm (`:1179`), so the only statement of that case sits in a different reader's row under a rule the same round made normative (`:1155-1159`) |
+| L-02 | TE | Low | Same defect: split §8.4 step 1's cell as §8.3's was split, and re-anchor LD-5 |
+| F-03 | SE | Low | E-12b's field→reader parenthetical (`:2590`), widened this round, lists seven of eight fields — `action` is omitted while the same row's AT cell names the `action` arm |
+| L-01 | TE | Low | Adjacent: LD-1's scope line does not name §8.4's `artifact` arm, and E-12b's arm enumeration does not match the three readers its own Given now names |
+
+**One distinct Medium, found independently by both reviewers** (SE F-01 ≡ TE M-01), and two
+distinct Lows likewise doubled (SE F-02 ≡ TE L-02; SE F-03 ≈ TE L-01). The open set at the limit is
+**three defects**, all of them in text this round added, none of them touching a rule, an arm or an
+observable — both recommendations say the repair is a handful of clauses inside two registers and
+adds no BR, no AT and no fixture.
+
+### What happened after the limit
+
+| Commit | Time | Closes |
+|---|---|---|
+| `ee742a3` | 15:51 | SE F-01, TE M-01 — T-10 drops the `phase`/id arms and registers §8.4 steps 2–3's unavailable half instead |
+| `c8ab0cc` | 15:52 | SE F-01 (second half) — §14.5's lead states the `phase`/id arms are LD-5's alone; the registers are disjoint on members |
+| `7de603b` | 15:52 | SE F-02, TE L-02 — §8.4 step 1's cell gains its `failure-mode-id` arm |
+| `3bf184e` | 15:53 | TE L-01 — LD-1 names §8.4's `artifact` arm; LD-5 anchors step 1 and totalises its defect column |
+| `b759d7d` | 15:53 | SE F-03, TE L-01 — E-12b lists all eight fields and three `artifact` arms |
+| `d8b7f2f` | 15:53 | BR-33a's arm enumeration matched to LD-1/LD-5 |
+| `586a7d9` `46bd850` `04e172e` | 15:54 | version bump to **11.0**; back-pointer symmetry; the §8.4 steps 2–3 reader cited by section rather than by line number |
+
+Every round-10 item was closed within **six minutes** of the last review landing. The tree at HEAD
+is v11.0 and no reviewer has ever seen it.
+
 ## Reviewers
 
 ## Pattern of Disagreement
