@@ -58,6 +58,19 @@ requested, and rows 3–4 volunteer more precision than was asked for.
 
 ## Questions
 
+Only questions arising from the changed sections. v5's Q-01 is answered by the revision (the
+`PDLC-CONSOLIDATION-PROMOTIONS` trailer is exactly the shape Q-01 proposed) and Q-02 by AC-1.3's
+reverted Commits cell, so neither is re-asked. v5's Q-03 is answered by assertion, so it reappears
+as F-03 rather than as a question.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: is `failure-mode-id` meant to be **minted** by the promoting pass, or **looked up** first? The two readings need different sentences. Minting is what AC-5.1 describes today ("a slug derived deterministically from the failure mode itself — its `phase` and `symptom`"), and it is stable only if `symptom` is stable, which nothing constrains. Lookup — match the promotion's target artifact against the `PDLC-CONSOLIDATION-PROMOTIONS` trailers of existing PRs, reuse the id on a hit, mint on a miss — makes the id stable by construction and needs no vocabulary, because the comparison is over the trailer's ids and the target path, not over prose. If lookup is the intent, one sentence in AC-5.1 says so and F-01 closes without touching NFR-4 at all. |
+| Q-02 | For F-01, the narrower variant: would deriving the slug from `phase` + the promotion's **target artifact** (path or glob) instead of `phase` + `symptom` be acceptable? Both fields are already in the AC-5.1 record (`:395-396`), both are file text rather than generated text — which is the property AC-5.2's determinism argument actually rests on — and `symptom` would keep its job as the human-readable line without also being load-bearing for suppression. The cost is that two genuinely different failure modes in the same phase touching the same artifact would collide; whether that is acceptable is a product call I am not making. |
+| Q-03 | For F-02: which of the three resolutions do you want, and does the answer change AC-5.2's "exactly one row per prior promotion in the log"? I flag this because that phrase is the one a PROPERTIES author transcribes into a set-equality test, and all three resolutions change what "one row per promotion" enumerates — keying records on `(failure-mode-id, passId)` makes it one row per *record*; reusing the record makes it one row per id with a multi-attempt history; scoping uniqueness to open promotions makes it one row per id with closed ones excluded. Whichever is chosen, that sentence has to move with it or the fix will not survive transcription. |
+| Q-04 | For F-03: does the pass write `.consolidation-log.md` through the workflow's injected `_writeFile` seam (whole-file), through an append seam, or by dispatching an agent to edit the file? The REQ does not say, and the three have different atomicity. I am not asking the REQ to name a seam — that is FSPEC's job — but "the two passes' concurrent writes need no lock" is a claim only the append-granular reading supports, so the REQ has to state the granularity obligation that its own claim depends on even if it leaves the mechanism open. |
+| Q-05 | Non-blocking, for the record: AC-1.3 says a `refused` pass writes its row and commits nothing, relying on "the winner's own AC-3.8b commit covers the same path and sweeps the row up". Is it intended that a refused row can therefore be committed by a pass that never saw it, inside a commit whose message describes the *winner's* promotion? I think yes and I think it is fine — the row carries its own `passId` — but it means the commit log's attribution and the log file's content disagree by construction, and a reader debugging a refusal will look at the wrong pass first. One clause in AC-3.8b noting it would save that reader a round trip. |
+
 ## Positive Observations
 
 ## Recommendation
