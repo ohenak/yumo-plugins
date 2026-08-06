@@ -122,4 +122,73 @@ remains open but unasked; the refused-row attribution point still holds and is s
 
 ## Recommendation
 
+**Needs revision.** 1 High, 2 Medium, 2 Low. Every v6 finding closed, no v6 fix regressed, and the
+verification table has no defect row for the first time in seven rounds.
+
+The High needs an explanation, because the last three rounds carried none and I do not want it read
+as a regression in the document's quality. It is not one. F-01 is **newly decidable**, not newly
+introduced: while `failure-mode-id` derived from a free-text `symptom` (v6 and earlier), the question
+"can a retirement PR be opened for an id that is already merged?" had no determinate answer, because
+the retirement's id was not determinate either. This round made the id a pure function of `phase` +
+`artifact` — correctly, at my own request — and that is exactly what turns the previously-fuzzy
+overlap with NFR-4's `merged` key into a provable unreachability. The fix I asked for is what made
+the defect visible. It is still a High, because as written AC-5.3's central promise ("an edit that
+did not work is not left in place indefinitely") cannot be kept on the AC-3.1 route, and that promise
+is the whole answer to §1's `Unfalsifiability` problem — the requirement the feature exists to
+satisfy.
+
+The trajectory: v1→v2 closed 8H, v2→v3 closed 2H+5M, v3→v4 closed 2H+2M+3L, v4→v5 closed 2 of 3,
+v5→v6 closed 4 of 4, v6→v7 closed **5 of 5**. Two consecutive clean-sweep rounds. The surface is
+still narrowing — all three blocking findings live on one seam (`failure-mode-id`'s relationship to
+NFR-4's key set) and two of them share a single fix.
+
+### The stopping rule, applied against itself
+
+§5a names what must be fixed at the REQ layer and directs everything else downstream. Against my own
+five findings — and note that **none** of them is a "this cannot be tested as written" or "this needs
+an oracle" finding, which is the class §5a directs away from this layer:
+
+- **F-01 (High)** belongs here. It is a contradiction between two requirements — NFR-4's key set and
+  AC-5.3's remediation obligation — and both the key set and the id's derivation basis are
+  enumerated in this document as closed. FSPEC cannot carve an exception into a key the REQ states
+  without exception; doing so would be FSPEC overruling an NFR.
+- **F-02 (Medium)** belongs here. AC-3.3 asks for "its own id" and AC-5.1 forbids minting one. An
+  FSPEC that resolved it would be choosing which AC to disregard. The trailer-membership half is the
+  same: `PDLC-CONSOLIDATION-PROMOTIONS` is defined in the REQ-CONS-03 preamble and is the key NFR-4
+  is stated against, so its membership rule is a REQ-layer contract.
+- **F-03 (Medium)** belongs here. AC-7.2's "when and only when" is a biconditional this REQ states,
+  and NFR-4 now requires a row that falsifies it on AC-1.4's second cause — the ordinary
+  all-suppressed `no-op`. Two requirements, mutually unsatisfiable; nothing downstream can pick.
+- **F-04 (Low)** and **F-05 (Low)** would not hold the document alone. F-04 is two field
+  enumerations of one row that disagree; F-05 is a missing complementary clause about a path this
+  round introduced. Both are a single sentence; take them in the same pass.
+
+### What must change for approval
+
+1. **F-01** — exempt an AC-5.3 remediation from NFR-4's suppression. Cheapest: key suppression on
+   `(failure-mode-id, action)` with `action` over `promote` / `revise` / `retire` (AC-5.3 already
+   names the last two as a closed pair), so a remediation is never suppressed by the promotion it
+   remediates. Alternative, possibly better: state that a promotion flagged `ineffective` leaves the
+   key set (Q-02). Either way, say explicitly that a merged PR's id no longer bars *every* future
+   proposal touching that `(phase, artifact)` pair — that consequence is the one a reader must be
+   able to see.
+2. **F-02** — state what id a retirement/revision commit carries and whether it appears in
+   `PDLC-CONSOLIDATION-PROMOTIONS`. If F-01 is fixed with an `action` discriminator, the same
+   discriminator answers this: the trailer enumerates `{id}:{action}` pairs and AC-3.3's "its own
+   id" becomes "the retired promotion's id under the `retire` action". One sentence in AC-3.3 plus
+   one in the REQ-CONS-03 preamble.
+3. **F-03** — scope AC-7.2's biconditional to a PR **this pass opened**, and give the suppressed
+   promotion's URL its own named field (`suppressed-by:`), with a §4b vocabulary row so the
+   set-equality obligation there still covers the row's full field set. Or revert NFR-4's relocation
+   and leave the duplicate URL in the AC-3.5 proposal artifact, as v6 had it.
+4. **F-04** — correct the exempt-record field list to include the held marker's passId and
+   timestamp (AC-1.3 requires them), keeping the "never a basename" argument, which survives intact.
+5. **F-05** — add one clause to AC-1.3 that `docs/_decisions/.consolidation-lock` is gitignored by
+   this feature, so "working tree only" is guaranteed against actors other than the pass itself.
+
+Four of the five are a single sentence. F-01 and F-02 share one fix if the `action` discriminator is
+the chosen shape, so the whole round is plausibly three edits.
+
 ## Verdict
+
+VERDICT: Needs revision
