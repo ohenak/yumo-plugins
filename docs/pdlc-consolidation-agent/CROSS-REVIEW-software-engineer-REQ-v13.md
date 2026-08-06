@@ -128,6 +128,39 @@ new one, and it is about the round rather than about the document.
 
 ## Positive Observations
 
+- **The REQ has now survived two full FSPEC review windows without an erratum.** Between the commit I
+  approved at v11 and HEAD, an FSPEC was authored, reviewed ten times by two reviewers across two
+  windows, hit the round limit twice, produced two POSTMORTEMs, was resolved twice, and had four
+  registers deleted under a freeze. Twenty cross-reviews and two root-cause analyses all read this
+  REQ. Not one routed an erratum back to it. `git diff 455929d..HEAD -- .../REQ-*.md` being empty
+  across 112 commits is not inertia — it is the erratum channel declining to fire under the hardest
+  load the process applies to an upstream document.
+
+- **The second POSTMORTEM's root causes are both downstream of this REQ, and both were diagnosed as
+  such.** RC-B is a synchronisation defect in the review loop (anti-phase approvals) and RC-A is
+  manufacture relocated to the wrong layer. Neither names an underdetermined requirement. That is the
+  strongest available evidence for the only test that matters at this altitude — handed this REQ, can
+  an FSPEC author make every decision? — because it is the verdict of a root-cause analysis that was
+  actively looking for something to blame.
+
+- **§5a's three-layer routing kept paying off.** DEC-LAYER-01 exists because the FSPEC settled
+  decisions belonging a layer below it. The rule §5a already carried routes "fixture construction and
+  oracle mechanics" to "FSPEC, TSPEC and PROPERTIES" (`:602-603`) — all three, not the next hop. Had
+  it said "downstream to the FSPEC" it would have been a contributing cause of the exact window
+  exhaustion that produced both new decisions.
+
+- **The two governed files did not drift across either window.** `git diff 455929d..HEAD --
+  docs/_constraints/` is empty. A shared reference file cited by an actively-revised FSPEC is exactly
+  the artefact a downstream author is tempted to adjust in passing; the ownership paragraphs this REQ
+  wrote into both files (`pdlc-consolidation-vocabularies.md:18-28`,
+  `pdlc-advisory-corpus-baseline.md:15-20`) are what made that temptation legible as a violation, and
+  they held through 112 commits of pressure.
+
+- **No code claim went stale, and it is provable rather than sampled.** The exclusion diff over
+  everything outside `docs/` is empty, which converts a spot-check into a proof — and the five anchors
+  I re-derived anyway all match, with no version pin regressed. Seventh consecutive round with no
+  defect row.
+
 ## Recommendation
 
 ## Verdict
