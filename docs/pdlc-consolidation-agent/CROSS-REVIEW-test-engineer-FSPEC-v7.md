@@ -89,4 +89,41 @@ stated, and one reading of it is red on conforming behaviour. The other three ar
 
 ## Recommendation
 
+**Needs revision**
+
+All three v6 Lows are resolved — two of them in a stronger form than the finding asked for, by naming
+the deferred owner *and* the observable it owes — and both v6 questions are answered in the document
+rather than in a reply. Nothing in this revision re-opens a settled decision, and nothing in it broke
+a section I had previously approved. Every repository claim in the changed text holds at HEAD.
+
+The verdict is Needs revision on **M-01 alone**. I want to be precise about why it is not a Low
+deferral like the others: `DEC-LAYER-01` assigns *fixture construction and oracle strength* below
+this layer, and I have applied that consistently — L-03 is a missing fixture and is Low for exactly
+that reason. M-01 is not a missing fixture. AT-F21 **is** the fixture, it is stated at this layer,
+and as stated its Given does not determine its Then: with `F`'s `route` unwritten, BR-25 decides
+whether the re-derivation is suppressed or live, and the two branches falsify different halves of
+conjunct (3). One of the two readings makes the conjunct **red on conforming behaviour**, which is a
+false-red an implementer will resolve by weakening the oracle. That is an FSPEC-layer defect in a row
+this document owns, not a deferral.
+
+The repair is one clause in one cell and adds no new rule, BR or AT, so it is admissible under the
+freeze:
+
+1. **M-01** — fix `F`'s record in AT-F21's Given as `E`'s was fixed (`action: promote`,
+   `route: degraded`, so §6.4 reads the pair `absent` and the re-derivation is live), and scope
+   conjunct (3)'s `F` arm to what a missing `target` actually blocks: §8.6 routes no remediation for
+   `F` and no `target` is guessed for it. Drop "not routed / no write is made on its behalf" — that
+   clause describes the freshly derived proposal, whose `target` is a function of its kind and is not
+   missing.
+2. **L-01** — fix the pointer in §8.1's set-equality lead; the set is correct, the reference is not.
+3. **L-02** — `:1131` → `:1141` in AT-F21's reader-table citation.
+4. **L-03** — name the two-action-one-subject pass PROPERTIES-owned per DEC-LAYER-01, with its
+   observable, as this revision already does for its two other unfixtured claims.
+
+Taking (1) clears the verdict. (2)–(4) are Low and, per `DEC-LAYER-01`, may be carried as tracked
+deferrals; I would not re-file them.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 3}
