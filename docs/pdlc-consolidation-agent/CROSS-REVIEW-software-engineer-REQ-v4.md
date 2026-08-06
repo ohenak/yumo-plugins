@@ -115,4 +115,48 @@ commits go", Q-04 by AC-1.3's new Commits column) and are not re-asked.
 
 ## Recommendation
 
+**Needs revision.** 0 High, 1 Medium, 2 Low. All seven v3 findings are resolved — including both
+Highs — and no new High exists. One Medium blocks.
+
+The trajectory: v1→v2 closed 8 High, v2→v3 closed 2 High + 5 Medium, v3→v4 closed 2 High + 2 Medium
++ 3 Low and introduced no High. The remaining Medium is not a new problem area — it is the last
+uncovered corner of the answer to v3 F-04, in text that did not exist a round ago.
+
+### The stopping rule, applied against itself
+
+§5a names four classes that must be fixed at the REQ layer and directs everything else downstream.
+Applying it honestly to my own three findings:
+
+- **F-01 (Medium)** belongs here. It is not an oracle question and not a testability question: two
+  requirements disagree about a reachable case. NFR-4 promises "no duplicate PR"; AC-3.8b says
+  abandonment makes the lost-work case "unreachable" **by construction**; on the AC-3.1 route the
+  construction does not hold and the duplicate NFR-4 forbids is the outcome. Deciding which
+  guarantee gives way is a requirements decision, not an FSPEC one — FSPEC cannot pick between "a
+  merged PR is a suppression key" and "the log record is the only key and its loss is accepted"
+  without inventing scope.
+- **F-02, F-03 (Low)** would not hold the REQ on their own. F-02 is a write-ordering statement
+  contradicted by AC-1.3 with a currently-nil consequence plus one unstated bootstrap case; F-03 is
+  a partition claim that is safe in every direction it can be wrong. Both are cheap and both are
+  worth fixing in the same pass as F-01, but neither is a blocker by the approval rules and neither
+  would justify a further round alone.
+
+Nothing in this round contests user need, scope, priority, phasing, or the truth of a claim about
+existing code — the 22 verified citations are the strongest set this document has carried, and the
+one factual dispute from v3 was resolved **against** the reviewer.
+
+### What must change for approval
+
+1. **F-01** — scope AC-3.8b's abandonment closure to the consuming-repo writes it enumerates, and
+   state what the AC-3.1 PR route does when the invoking branch is abandoned after that PR merged.
+   If the answer is that NFR-4's suppression keys on merged PRs too, say so in NFR-4; if it is that
+   the loss is accepted, say that instead. One or two sentences either way.
+2. **F-02** — exempt the AC-1.3 marker from "before any other record it writes" (it carries no
+   basename and is never committed), and require the block marker pair to be written even when the
+   consumed set is empty, so the legacy-region boundary is frozen by the first pass unconditionally.
+3. **F-03** — restate AC-5.2's split per file (decidable = what that file's `Harvested from`
+   decides; undecidable = the catalogue minus that) instead of as a fixed disjoint partition, since
+   `POSTMORTEM-{phase}` can name any halting phase (`orchestrate-dev.js:10603`).
+
 ## Verdict
+
+VERDICT: Needs revision
