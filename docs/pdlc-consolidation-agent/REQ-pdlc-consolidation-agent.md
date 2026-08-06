@@ -241,8 +241,10 @@ AC-1.2 makes an expected case never collide. The proposal artifact is
 `pdlc/skills/consolidate-learnings/SKILL.md:49`), the promotion branch is
 `consolidation/{passId}`, and the PR body carries three trailers: `PDLC-CONSOLIDATION-PASS: {passId}`;
 `PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`, which records pass provenance and is **not** a duplicate key; and
-`PDLC-CONSOLIDATION-PROMOTIONS: {sorted failure-mode-ids}`, one id per promotion the PR enacts (AC-5.1, AC-3.3). The promotions trailer is the
-duplicate-PR key NFR-4 is stated against — it rides the PR, so it outlives the log record of the pass that opened it.
+`PDLC-CONSOLIDATION-PROMOTIONS: {sorted id:action pairs}`, one `{failure-mode-id}:{action}` pair per proposal the PR enacts — `action` over the closed
+set `promote` / `revise` / `retire` (AC-5.1, §4b) — and **set-equal** to the proposals the PR enacts: a revision or a retirement (AC-5.4) sharing the PR
+is enumerated here like any other, under its own action. The promotions trailer is the duplicate-PR key NFR-4 is stated against — it rides the PR, so
+it outlives the log record of the pass that opened it, and because the key is the pair, a merged `promote` entry never bars its own remediation.
 
 - **AC-3.1** — Given a promotion targets any path under the guard set — **exactly**
   `MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48-53`): `pdlc/workflows/`,
@@ -254,9 +256,11 @@ duplicate-PR key NFR-4 is stated against — it rides the PR, so it outlives the
 - **AC-3.2** — Given such a PR, Then its body cites the source LEARNINGS files by feature name, the failure mode the edit targets, and the pattern
   evidence that cleared AC-2.3.
 - **AC-3.3** — Given multiple promotions in one pass, Then they may share one PR, but each edit is a
-  separate commit carrying `PDLC-PROMOTION-ID: {id}` naming exactly the promotion it enacts, so any
-  single edit is independently revertible and commit → promotion is readable without counting. A
-  retirement (AC-5.4) may share that PR, with its own id and its own commit.
+  separate commit carrying `PDLC-PROMOTION-ID: {id}:{action}` naming exactly the proposal it enacts, so any
+  single edit is independently revertible and commit → proposal is readable without counting. A
+  revision or retirement (AC-5.3, AC-5.4) may share that PR, in its own commit; it carries the **retired promotion's own `failure-mode-id`** under the
+  `revise` or `retire` action — AC-5.1 mints no second id for it — and that pair joins `PDLC-CONSOLIDATION-PROMOTIONS` like any other, so the trailer
+  stays set-equal to the proposals the PR enacts.
 - **AC-3.4** — Given the PR is opened, Then its URL is written back into `docs/_decisions/.consolidation-log.md` and into
   `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, so a later reader can tell which promotions landed and which are still open.
 - **AC-3.5** — Given the PR cannot be opened, Then the pass **still** writes
