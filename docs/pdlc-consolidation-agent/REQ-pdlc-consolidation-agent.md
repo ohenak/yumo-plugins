@@ -261,8 +261,10 @@ it outlives the log record of the pass that opened it, and because the key is th
   revision or retirement (AC-5.3, AC-5.4) may share that PR, in its own commit; it carries the **retired promotion's own `failure-mode-id`** under the
   `revise` or `retire` action — AC-5.1 mints no second id for it — and that pair joins `PDLC-CONSOLIDATION-PROMOTIONS` like any other, so the trailer
   stays set-equal to the proposals the PR enacts.
-- **AC-3.4** — Given the PR is opened, Then its URL is written back into `docs/_decisions/.consolidation-log.md` and into
-  `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, so a later reader can tell which promotions landed and which are still open.
+- **AC-3.4** — Given the PR is opened, Then its URL is recorded in `docs/_decisions/.consolidation-log.md` and in
+  `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, so a later reader can tell which promotions landed and which are still open. In the log it is
+  **not** an in-place edit of an earlier record — that shape is forbidden (AC-1.3): it is the `pr:` field of the pass's single terminal row, appended
+  once (AC-7.2). "Exactly one report" there counts reports, and the log gains exactly one row per pass on this path.
 - **AC-3.5** — Given the PR cannot be opened, Then the pass **still** writes
   `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` with the full proposed diff inline, so the
   fallback is today's behavior rather than a lost promotion. The failure classes are enumerated and
@@ -507,7 +509,9 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
   `refused` / `failed`.
 - **AC-7.2** — Given a pass completes on any path **other than `skipped-cadence`** — `refused` included (AC-1.3) — Then exactly one report is emitted,
   on one channel: the pass's terminal report, written as the pass's row in `docs/_decisions/.consolidation-log.md` and returned as the invocation's
-  report body (what a `/loop` tick prints). It carries the PR URL **when and only when** a PR was opened. A `skipped-cadence` tick writes **no log
+  report body (what a `/loop` tick prints). Its `pr:` field carries the URL of a PR **this pass opened**, when and only when this pass opened one — the
+  biconditional is scoped to *this pass's own* PR, so an all-suppressed `no-op` (AC-1.4's second cause) leaves `pr:` empty and carries its evidence in
+  the distinct `suppressed-by:` field instead (NFR-4, §4b); the two fields are never merged and a row may carry both. A `skipped-cadence` tick writes **no log
   row**, returning its status as the report body only — the exemption is load-bearing twice: the skipped tick is the common case under `/loop`, so a
   row per tick would grow the log without bound, and it is that same log the AC-1.1 predicate and cadence datum read from.
 
@@ -600,7 +604,10 @@ containment across six sections; adding a value above without a row here is a de
 | constraints / decisions / PR / `degraded` | promotion route | `promoted`, `promoted-degraded` | AC-7.1, AC-4.3 |
 | `prevented` / `recurred` / `insufficient-evidence` | per-promotion verdict | any status emitting the AC-5.2 table | AC-5.2 |
 | `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
-| `revision` / `retirement` | proposed action on an `ineffective` promotion | as above | AC-5.3 |
+| `promote` / `revise` / `retire` | `action` — the NFR-4 key's second member; `revise`/`retire` are the AC-5.3 `revision`/`retirement` alternatives named as actions | any status emitting a proposal | AC-5.1, NFR-4 |
+| `revision` / `retirement` | proposed action on an `ineffective` promotion, as reported (the AC-5.1 `revise` / `retire` actions under their AC-5.3 names) | as above | AC-5.3 |
+| PR URL or empty | `pr:` field — a PR **this pass opened** | any status that writes a row | AC-7.2, AC-3.4 |
+| `{id}:{action} → PR URL` entries, or empty | `suppressed-by:` field — one entry per proposal suppressed as a duplicate | `promoted`, `promoted-degraded`, `no-op` | NFR-4 |
 | `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
 | R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3437` — declaration `:3337`, first key `R:` `:3338`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
 
