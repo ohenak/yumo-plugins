@@ -316,6 +316,110 @@ repaired — repairing it would need a key the shipped predicate does not have (
 
 ## 4. FSPEC-CONS-03 — The in-progress marker
 
+**Links:** REQ-CONS-01, AC-1.3, AC-7.2, NFR-5, REQ §5 (the `.gitignore` entry).
+
+### 4.1 The marker's shape and location
+
+| Property | Value |
+|---|---|
+| Path | `docs/_decisions/.consolidation-lock` — a file of its **own** |
+| Content | a single line, `IN-PROGRESS: {passId} {ISO-8601}` |
+| Written | at step 6, **after** the trigger decision of steps 3–4 and before any other pass work |
+| Lifetime | working tree only; never committed by any pass (§5.4) |
+| Removed | at step 16, by the pass that took it, or by an operator deleting the file |
+
+It is deliberately **not** a record in `.consolidation-log.md`. Taking and releasing it are in-place
+rewrites of a whole small file, and every write to the log must be an append of one whole record
+(vocabularies §3, binding here). Keeping it in a separate file is what lets the log stay append-only
+and therefore lock-free.
+
+**The `.gitignore` entry is part of this feature.** `docs/_decisions/.consolidation-lock` is added to
+the repository `.gitignore`, which at HEAD carries no pattern matching it — its patterns are
+`.tokensave/`, `.claude/settings.local.json`, `.claude/.headroom_wrap_marker.json`, `node_modules/`
+and `/.claude/workflows/` (verified against the file at HEAD). Without the entry an untracked file
+in a tracked directory is committable by any actor that is not pathspec-scoped, and a committed lock
+reaches every fresh clone and refuses every pass with `consolidation-in-progress` until
+`staleLockMinutes` elapses, per clone. The pattern is written with the same anchoring discipline the
+existing `/.claude/workflows/` entry documents: a path containing a separator, relative to the
+repository root, never a slash-free or `**/`-prefixed pattern that would match at every depth.
+
+### 4.2 Take — the three outcomes at step 6
+
+Read the file; if it is absent, write the marker and proceed. Otherwise parse its single line and
+compare its timestamp to now.
+
+| Observed state | Age vs `consolidation.staleLockMinutes` | Outcome |
+|---|---|---|
+| File absent | — | marker written; pass proceeds |
+| Marker present, parseable | younger | terminate `refused`, reason code `consolidation-in-progress`, naming the marker's `passId` and timestamp |
+| Marker present, parseable | older (default 60 min) | **reclaim**: overwrite the marker with this pass's own line, record reason code `reclaimed-stale-lock` naming the abandoned `passId`, and proceed |
+| Marker present, unparseable or empty (truncated write) | undecidable | treated as **stale and reclaimed**, recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown` (DC-01 receive side) |
+
+The last row is decided toward reclamation rather than refusal on purpose: an unparseable marker
+carries no timestamp, so it can never age out, and refusing on it would wedge the cadence
+permanently — the exact failure the stale-lock rule exists to prevent. The reclamation is recorded,
+so it is never silent.
+
+A `refused` pass is **dropped, not queued**: nothing is retained, and the next `/loop` tick
+re-evaluates steps 1–4 from scratch against whatever the corpus and the datum then are.
+
+### 4.3 Release, and what each terminal status does
+
+The take/release/commit obligations are set-equal to the six-member terminal-status set of
+vocabularies §1, so no status is unmapped. This table restates AC-1.3's, adding the step at which
+each outcome is reached:
+
+| Terminal status | Reached at step | Marker taken? | Released by this pass? | Commits (§5.4)? |
+|---|---|---|---|---|
+| `promoted` | 14 | yes | yes, at 16 | yes |
+| `promoted-degraded` | 14 | yes | yes, at 16 | yes |
+| `no-op` | 14 | yes | yes, at 16 | yes — the log row and the consumed pair are still writes |
+| `failed` | 8 or 14 | yes | yes, at 16 | yes — a completed `failed` pass always wrote its row |
+| `refused` | 6 | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner | **no** — it writes its AC-7.2 row and commits nothing |
+| `skipped-cadence` | 4 | **no** — the tick terminates before step 6 | **no** | **no** — it writes no log row at all |
+
+Release is unconditional for every marker-holding pass, including `failed`: it runs at step 16 after
+the terminal row is appended, so a pass that halts at step 8 still releases. A process killed before
+step 16 leaves the marker behind, and the §4.2 stale rule is what recovers it — that is the only
+recovery channel, and it needs no cleanup handler to be correct.
+
+### 4.4 Why a `refused` pass still writes a row
+
+A `refused` tick writes its AC-7.2 terminal row and commits nothing. The row is the only evidence a
+tick was refused, and the cadence datum rule presupposes it ("a `refused` row is not a datum",
+§2.3). It carries a trigger over `cadence` / `volume` / `manual` (NFR-3a — the refused tick fired one
+of them to reach step 6) and `credential: absent` (AC-4.2: no credential was in hand when the row was
+written).
+
+It is **written, never committed**, because a pathspec stages a whole file: a refused commit would
+capture the winner's log at an arbitrary mid-pass instant. The winner's own step-15 commit covers the
+same path and sweeps the row up; if the winner dies first the row stays in the working tree, which is
+all its evidentiary purpose needs.
+
+It writes **no** consumed pair — only marker-holding passes emit one (§3.3) — so it never moves the
+legacy-region boundary. This is what makes it the single exempt record of vocabularies §3(b): every
+field it carries (status, trigger, `credential:`, reason code, the held marker's `passId` and
+ISO-8601 timestamp) is structurally incapable of being a `LEARNINGS-*.md` basename, so it cannot be
+misread as legacy consumption even when it precedes the file's first block.
+
+### 4.5 Concurrency — what two simultaneous passes observe
+
+Two ticks can reach step 6 together. The marker file is the only serialisation point, and the log
+needs none:
+
+| Interleaving | Winner | Loser | Log outcome |
+|---|---|---|---|
+| Loser reads the marker after the winner wrote it | proceeds | `refused`, `consolidation-in-progress` | two appends, any order, both intact |
+| Both read "absent", both write | the later writer's line stands | the earlier writer's marker is overwritten; it releases at step 16 having done its work | both consumed pairs append; the second names an already-consolidated set, and §6.4's NFR-4 suppression prevents a duplicate proposal |
+
+The second row is the residual race the file-marker design does not close, and it is stated rather
+than claimed away: without an atomic create-exclusive primitive the take is read-then-write. Its
+blast radius is bounded by two properties that hold independently — every log write is a whole-record
+append, so no record is lost whatever the order; and NFR-4 keys suppression on
+`(failure-mode-id, action)` carried by the PR, not on the log, so the second pass opens no duplicate
+PR even though its consumed set overlaps. An atomic take primitive is TSPEC's to choose if the
+runtime offers one (§14, O-C3).
+
 ## 5. FSPEC-CONS-04 — Promotion routing and the consuming-repo writes
 
 ## 6. FSPEC-CONS-05 — The pull-request route
