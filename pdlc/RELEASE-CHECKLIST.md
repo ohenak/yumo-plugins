@@ -181,6 +181,18 @@ script and a JS parser — easy to break by an innocent-looking rewording of eit
 - [ ] `cd pdlc/workflows && npm test -- __tests__/advisoryHarvest.test.js` is green on the
       release tree (bash present, so the guard-integration cases actually ran — 0 skipped).
 
+**4c. BL-01 — the `"fable"` rung dispatch is still unverified until recorded.** PLAN A-34's
+manual verification (`docs/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md`)
+shipped in its admissible form (ii): `RESULT: unverified — no runtime available`. The
+obligation carries forward here so it is re-asked at every release rather than forgotten:
+in a fresh session with a synced `.claude/workflows/` copy and `advisory.enabled: true`,
+drive one advisory seam to a dispatch on `"fable"` and paste the runtime's own output into
+that file under `RESULT: verified`, naming the §3.4 ladder branch that fired. Once recorded,
+delete this row.
+
+- [ ] Either MANUAL-VERIFICATION now records `RESULT: verified` with pasted runtime output,
+      or this release consciously ships with BL-01 still open (note it in the release notes).
+
 ---
 
 ## A note for anyone editing this file
