@@ -633,26 +633,37 @@ a defect.
 | `consolidation-in-progress` | reason code | `refused` | AC-1.3 |
 | `reclaimed-stale-lock` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.3 |
 | `advisory-model-unresolved` | reason code | `failed` | AC-1.6 |
+| `no-cadence-datum` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.1 |
+| `writes-uncommitted` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-3.8b |
 | `credential-unavailable` | reason code | `promoted-degraded`, `no-op` | AC-3.5, AC-4.3 |
 | `repository-unresolved` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
 | `api-failure` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
 | `branch-exists` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
-| `duplicate-suppressed` | reason code | `promoted`, `no-op` | AC-3.5, NFR-4 |
-| `no-advisory-corpus` | reason code | `promoted`, `promoted-degraded`, `no-op` | AC-6.1 |
-| `advisory-corpus-empty` | reason code | `promoted`, `promoted-degraded`, `no-op` | AC-6.1 |
+| `duplicate-suppressed` | reason code | `promoted`, `promoted-degraded`, `no-op` | AC-3.5, NFR-4 |
+| `no-advisory-corpus` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-6.1 |
+| `advisory-corpus-empty` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-6.1 |
 | `cadence` / `volume` / `manual` | trigger | any status that writes a row | NFR-3a, REQ-CONS-01 tick order |
 | constraints / decisions / PR / `degraded` | promotion route | `promoted`, `promoted-degraded` | AC-7.1, AC-4.3 |
 | `prevented` / `recurred` / `insufficient-evidence` | per-promotion verdict | any status emitting the AC-5.2 table | AC-5.2 |
 | `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
 | `revision` / `retirement` | proposed action on an `ineffective` promotion | as above | AC-5.3 |
 | `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
+| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3431`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
 
 Two joins the table settles, because both were previously undetermined. A pass that promoted
 something and also hit an AC-3.5 fallback class is `promoted-degraded`, never a bare `promoted` — the
 degradation is visible in the status, not only in a route field. A pass whose every promotion was
 `duplicate-suppressed` promoted nothing new and is therefore `no-op` (AC-1.4's second cause), while a
-pass that suppressed one duplicate and landed another is `promoted`. A pass may carry more than one
-reason code; each must be legal for the status it accompanies.
+pass that suppressed one duplicate and landed another is `promoted` — or `promoted-degraded` if it
+also degraded a third, which is why `duplicate-suppressed` permits all three.
+
+A pass may carry more than one reason code, and each row's permitted set is derived **by
+composition, not by the status the code was first introduced under**: a code is legal with every
+terminal status still reachable after the point in the pass at which the code is recorded. That is
+why the two AC-6.1 corpus codes permit `failed` (the corpus is read before AC-3.5's or AC-1.6's
+failure is decidable) and why `no-cadence-datum` and `writes-uncommitted` permit all four
+row-writing statuses. By the same rule `refused` carries `consolidation-in-progress` and nothing
+else, and `skipped-cadence` carries no code at all — it writes no log row (AC-7.2).
 
 ## 5. Scope
 
