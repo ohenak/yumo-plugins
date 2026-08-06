@@ -108,6 +108,93 @@ been one reviewer away from convergence in the same round until now, and in roun
 
 ## Pattern of Disagreement
 
+The first window halted with **no disagreement at all** — both reviewers found the same defects and
+neither approved. This window is different, and the difference is the whole story:
+
+> **The reviewers agree on the facts and disagree on one severity. That single severity call is the
+> only thing standing between this REQ and Phase F.**
+
+### 1. The round-10 finding is one finding, filed twice, at two severities
+
+SE F-01 and TE F-52 are textually distinct and substantively identical. Both say: round 10 relocated
+two further normative blocks into `docs/_constraints/pdlc-consolidation-vocabularies.md` as §3 and
+§4, and bound the REQ to both ("are stated once in … §3/§4 (at `Version` 1.3) and are binding here",
+REQ `:100-101`, `:221-223`) — but the ownership rule and the set-equality range written in the *same
+round* name only "§1 and §2 entire" (`:565-566`). So §3 and §4 hold REQ-derived normative content
+that no document claims, and §4's four-row PR-trailer table is an enumeration under no oracle.
+
+Both name the same three fix sites (§4b `:559-566`, §5 `:584-585`, and the mirror paragraph in the
+constraints file). Both agree the fix is roughly three token substitutions. Neither disputes a single
+fact the other asserts. They differ on exactly one judgment:
+
+| | SE (Medium ⇒ blocks) | TE (Low ⇒ does not block) |
+|---|---|---|
+| **Test applied** | "If I imagine this REQ handed to an FSPEC author today, is there a decision they cannot make? Yes, exactly one — a PROPERTIES author writing the set-equality oracle for §4's trailer table has no stated range." | "F-52 would be a Medium if drift in §3/§4 were undetectable. It is not." |
+| **Decisive evidence** | The obligation's scope is a REQ-layer contract; §5a routes "needs an oracle" downstream, but this is *about* an oracle's range, which the REQ already chose to state at the REQ layer | The constraints file's own file-wide clause makes an unbumped row change a defect (`:25-26`), and the REQ pins `Version` 1.3 in all three citations — so a deleted trailer row cannot land silently |
+| **Conclusion** | "Applying the bar consistently across rounds means it is Medium here too, even though the fix is three token substitutions" | "a maintenance lag, not a hole. A test author can transcribe §4's four-row trailer table today with a pinned expected value" |
+
+Both arguments are sound, and they are sound because they measure different things. SE measures
+whether the *obligation* is stated; TE measures whether a *test can be written today*. On this
+document those two questions came apart for the first time in round 10, and nothing in the loop
+adjudicates between them.
+
+### 2. The severity split is structural, not a one-off
+
+The same split produced the whole window's verdict pattern. In v7, v9 and v10 TE reached 0 High /
+0 Medium and approved while SE held at 1–2 Medium. Read SE's three round-10-adjacent Mediums in
+order and they are one continuous thread:
+
+- **v8 F-03** (Medium): §4b's new `action` row introduces an unenumerated status qualifier — an
+  enumeration under §4b's set-equality obligation with an undefined cell.
+- **v9 F-01** (Medium): §4b nominates the newly-created `pdlc-consolidation-vocabularies.md` as a
+  set-equality source but does not state the range — "the table" is not a range.
+- **v10 F-01** (Medium): the range was stated (§1 and §2) in the same round that created §3 and §4.
+
+TE filed the v9 instance at **Low** (F-49) and the v10 instance at **Low** (F-52). Same defect
+family, same evidence, consistently one severity band apart for three consecutive rounds. Neither
+reviewer drifted: each applied its own bar consistently, and each said so explicitly. There is no
+round in which either reviewer changed its mind about the other's reasoning — the question was never
+argued between them, because delta-scoped reviewers read the document and their own prior review,
+not each other's.
+
+### 3. What the disagreement is *not*
+
+- **Not divergence.** The document improved monotonically. Findings fell 5 → 5 → 3 → 3 → 1 (SE) and
+  4 → 3 → 3 → 4 → 2 (TE), severity fell to zero High for three straight rounds, and closure was 100%
+  every round.
+- **Not re-litigation.** No settled decision was reopened by either reviewer in five rounds. SE's
+  round-10 note is explicit: "I am not manufacturing a finding to avoid approving."
+- **Not a factual dispute.** Four consecutive rounds with no defect row in SE's code-claim table;
+  TE independently re-derived the same claims against the filesystem, the log, and the builder.
+- **Not an upstream defect.** Zero ERRATUM lines in ten rounds.
+- **Not scope, priority, phasing, or user need.** Uncontested by both reviewers since round 4.
+- **Not a feasibility objection.** No reviewer in either window has contested implementability.
+
+### 4. The recurring *shape* of the residual findings: relocation debt
+
+The first window's residue was **propagation debt** — a decision taken in round *N* not carried to
+every enumeration frozen against the old answer. That failure mode is gone: TE's round-10 sweep of
+the relocated text found "nothing was dropped in either move; both gained", and this is the second
+consecutive round where a large relocation cost zero rows.
+
+What replaced it is **relocation debt**, and it is a byte-ceiling artefact:
+
+> The REQ sits 344–437 bytes below a hard ceiling it cannot cross. Every round must therefore
+> **relocate normative text out of the REQ to pay for its own fixes**. Each relocation creates new
+> sections in a shared file — and the ownership rule, the oracle range, and the §5 deliverable list
+> that govern those sections were written for the sections that had moved *at the time*. The next
+> round finds the seam the relocation opened, files it, the fix is written, and the round's fixes
+> consume the space the relocation freed.
+
+TE states the loop in one sentence (F-53): "a relocation that runs concurrently with a finding round
+buys nothing at all — the two must be sized against each other, not merely ordered." The measurement
+backs it: round 10 relocated ~2,900 bytes out of the REQ in the required order (`80bbc30` first,
+per `pdlc/skills/pm-author/SKILL.md:118`) and the margin still got **worse**, 387 → 344 bytes.
+
+This is a generator, not a residue. It produces approximately **one Medium per round for SE**, and
+approximately **one Low per round for TE** — which is exactly the observed steady state, and exactly
+why the loop cannot terminate under its own budget.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
