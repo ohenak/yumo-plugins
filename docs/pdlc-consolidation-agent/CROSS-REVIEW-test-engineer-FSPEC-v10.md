@@ -49,6 +49,47 @@ two are Low.
 
 ## Positive Observations
 
+- **The M-01 repair was taken at the source, not at the symptom.** I offered two shapes and said (1)
+  was the smaller edit; the author took (2) *and* went one step further than either — the general
+  skip rule itself was amended (`:1155-1161`) so the third, forbidden outcome I found reachable
+  ("skip the record for §8.3") is no longer directed by the default at all, and a precedence rule
+  between the default and the cells was stated rather than left to the reader. A spec that repairs
+  the rule that produced the contradiction, instead of the two cells that exposed it, does not
+  regenerate the same defect at the ninth reader.
+- **The eighth reader is a genuine discovery, and it was carried to both of its sides.** §8.4's
+  harvest question was always reading three fields off the record; nothing named it a reader until
+  this revision. It now has a row (`:1180`), and §8.4 step 2 says so from its own end (`:1435`) —
+  "**Steps 2–3 are a reader of the record in their own right — not step 1's — and have their own row
+  in §8.1's reader table**". The row's arm also states its *failure direction* with the harm named:
+  dropping a short promotion from the question list "would make `recurred` unreachable for that id
+  and drift it to `insufficient-evidence` and then `unmeasurable` (§8.7)". That is a positive arm
+  paired with the negative it defeats — the shape I ask for in oracles, stated in prose before any
+  oracle exists.
+- **The `phase` arm was derived from an existing rule rather than invented.** §8.1's cell argues it:
+  "a record with no `phase` and a `phase` the §2 mapping cannot decide are the same epistemic state,
+  and §8.3's totality rule already fixes that direction for the second, so **this arm inherits it
+  rather than adding a concept**". I checked the antecedent — §8.3 consequence 2 (`:1396-1399`) and
+  the verdict table's exhaustive third arm (`:1384`) — and the inheritance is sound. An arm that is a
+  corollary needs no new fixture to be believed, which is what makes LD-5 an honest deferral rather
+  than a parked decision.
+- **The id-less record got the one honest exception in the document.** Every other arm ends in "the
+  row is never dropped". §8.3's cell (`:1182`) says plainly that this is "the one arm where 'never
+  dropped' cannot apply, because a row cannot be keyed on an id the record does not carry" — and then
+  reconciles it with §8.3's set-equality obligation instead of leaving the two in tension: "the
+  obligation there ranges over the **distinct ids the log carries**, and an id-less record
+  contributes none". That reconciliation is what stops a PROPERTIES author from writing a
+  set-equality property that the correct implementation fails.
+- **Both v9 questions were answered by building something, not by replying.** Q-01 produced T-10 and
+  a stated register boundary; Q-02 produced an explicit pin on AT-F21's Given plus a sentence naming
+  which register owns the unexercised arm ("never both here and there"). I verified AT-F21 still
+  covers exactly the two arms BR-33a claims for it, and it does — the Given grew pins, not arms,
+  which is the outcome that keeps the coverage claim true.
+- **Grounding spot-checks all passed.** `MERGE_GUARD_DEFAULTS` is at `pdlc/workflows/orchestrate-dev.js:48-53`
+  as AT-R6b fixture 3 cites; `docs/_decisions/DECISIONS-spec-layer-boundary.md` exists;
+  `pdlc/skills/harvest-learnings/SKILL.md:70-78` is the harvest metadata table §8.3 amends; and
+  `docs/_constraints/pdlc-consolidation-vocabularies.md` is at `Version` 1.4, the version §8.3 binds
+  to (`:7`). No repo path this revision touched is misdescribed.
+
 ## Recommendation
 
 ## Verdict
