@@ -39,6 +39,24 @@ Neither is a regression in quality; both are the next contradiction down.
 
 ## Existing-Code Claim Verification (changed sections)
 
+Every claim about existing state that the `9c5ea35..HEAD` diff added or rewrote, checked in a single
+pass. Rows verified in earlier rounds and untouched by this diff are not re-checked. This round's
+diff is almost entirely contract work plus compression, so the changed existing-code surface is
+three rows; row 4 is an anchor my own F-02 rests on and is therefore verified here rather than
+asserted.
+
+| # | New/changed REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | The repo `.gitignore` "today carries no pattern matching" `docs/_decisions/.consolidation-lock`, and its entries are `.tokensave/`, `.claude/settings.local.json`, `.claude/.headroom_wrap_marker.json`, `node_modules/`, `/.claude/workflows/` — **newly transcribed into the REQ this round** | AC-1.3 | **Confirmed — the enumeration is set-equal to HEAD** | `.gitignore` at HEAD carries exactly those five patterns (the rest of the file is comment prose explaining the `/.claude/workflows/` anchoring). None matches a dotfile under `docs/`: four are anchored elsewhere and `node_modules/` is a directory pattern. Transcribing the list into the REQ is the right shape here — it makes the claim falsifiable by a test rather than by a reviewer's memory — though note it is now a copy that can drift; a test asserting the absence of a matching pattern would be the durable form, and that is FSPEC/PROPERTIES work, not a REQ defect |
+| 2 | AC-1.5's shortened quote: `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833` under a doc comment at `:1800` calling it "the **one** ladder the tier ships" | AC-1.5 | **Confirmed — the compression did not break the quote** | `orchestrate-dev.js:1833` is `export function resolveAdvisoryRung({ _agent, _log, _state, prompt })`; `:1800` reads ``* `resolveAdvisoryRung` — TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships.`` The REQ dropped the "TSPEC §3.4's model-rung ladder, and" prefix and kept the operative clause verbatim, including its emphasis. `MODEL_ADVISORY` (`:1652`) and `MODEL_ADVISORY_FALLBACK` (`:1653`) are both where the drift-observable fallback says they are |
+| 3 | The shipped second consumer "takes it through an injected seam with a threaded `rungState` (`orchestrate-queue.js:1245-1256`) rather than copying literals" — rewritten this round | AC-1.5 | **Confirmed** | `orchestrate-queue.js:1245` opens `const advisoryDisposition = await runAdvisorySeamFn({` and the option object through `:1256` carries `rungState`, `_agent: rawAgentFn`, and the file/git seams. No model literal appears in that call — the rung is resolved inside the seam, which is exactly the pattern the REQ says this feature will follow |
+| 4 | (my F-02) `MERGE_GUARD_DEFAULTS` at `orchestrate-dev.js:48-53` is the four-member guard set AC-3.1 routes on | AC-3.1 | **Confirmed, and it is what makes F-02's case ordinary** | The constant spans those lines with the four members the REQ names. The point F-02 rests on is not the constant but its span: `pdlc/workflows/` includes both `orchestrate-dev.js` and its generated `dist/` bundles, and this repo's own standing rule requires a source edit and its rebuilt artifacts to land "in the same commit" (CLAUDE.md, "Consequence for anyone editing a workflow source"; enforced in CI by the `Generated artifacts are in sync` job, `.github/workflows/pr-tests.yml`). So the most likely guard-set promotion is multi-file by construction |
+
+No claim added or changed in this round is factually wrong about the codebase — the second
+consecutive round with no defect row. The two compressions that touched citations (AC-1.5's doc-comment
+quote, AC-3.7's `guardVerdict`/`effectiveGuardPaths` sentence) both kept every `file:line` anchor and
+cut only connective prose.
+
 ## Questions
 
 ## Positive Observations
