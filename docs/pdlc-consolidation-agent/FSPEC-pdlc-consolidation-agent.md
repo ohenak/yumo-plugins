@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.0 | 2026-08-06 |
+| pdlc | draft | Claude | 3.0 | 2026-08-06 |
 
 ## 1. Scope and entry obligations
 
@@ -1900,9 +1900,9 @@ row names a criterion the REQ does not carry.
 | AC-1.3 | §4.1, §4.2, §4.3, §4.4 | AT-M1, AT-M2, AT-M3, AT-M5, AT-K6 |
 | AC-1.4 | §5.3, §8.5, §8.7, §12.1 | AT-K3, AT-L2, AT-F13 |
 | AC-1.5 | §2.6, §10.3 | AT-M7, AT-M8 (the `rung:` field names the rung actually run on, asserted on both branches) |
-| AC-1.6 | §2.6, §12.1 S-11 | AT-M4 (neither resolves), AT-M6 (dispatch-error), AT-M7 (fallback resolves, no silent downgrade) |
+| AC-1.6 | §2.6, §12.1 S-11, S-11b, S-11c | AT-M4 (neither resolves), AT-M6 (first-dispatch error), AT-M9 (post-step-8 dispatch error), AT-M10 (the widened resolver's default is unchanged), AT-M7 (fallback resolves, no silent downgrade) |
 | AC-2.1 | §5.2, §5.4 | AT-R2 |
-| AC-2.2 | §5.2, §5.4 | AT-R6 |
+| AC-2.2 | §5.2, §5.4 | AT-R6, AT-R6b |
 | AC-2.3 | §5.2, §9.4 | AT-A4 |
 | AC-2.4 | §5.2, §10.3 | AT-L3 |
 | AC-3.1 | §5.1, §6 | AT-R1 |
@@ -1915,7 +1915,7 @@ row names a criterion the REQ does not carry.
 | AC-3.8 | §6.1, §12.4 | AT-Q1, AT-R3 |
 | AC-3.8b | §5.4, §5.5 | AT-R3, AT-R4, AT-R5 |
 | AC-4.1 | §7.1 | AT-K5 |
-| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5, AT-K6 |
+| AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5, AT-K6 (all five readings of `credential: absent`) |
 | AC-4.3 | §7.3, §6.3 | AT-K2, AT-K3, AT-K7 |
 | AC-4.4 | §7.2 | AT-K1 |
 | AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4 |
@@ -1932,7 +1932,7 @@ row names a criterion the REQ does not carry.
 | NFR-2 | §7.4, §10.5 | AT-K5 |
 | NFR-3 | §5.2, §2.3 | AT-C8 (comparative: one corpus yields a set-equal promotion set under `cadence` and under `volume`) |
 | NFR-3a | §10.3 | AT-C1, AT-C2, AT-C4 |
-| NFR-4 | §6.4, §8.2 | AT-Q3, AT-Q4, AT-Q5, AT-Q9, AT-F1 |
+| NFR-4 | §6.4, §8.1, §8.2 | AT-Q3, AT-Q4, AT-Q5, AT-Q9, AT-F1 (PR carrier); AT-Q10, AT-Q11, AT-Q12 (consuming-repo carrier — `enacted`, `absent`, and the degraded record that must not suppress) |
 | NFR-5 | §3.3, §12.4 | AT-P6, AT-P2, AT-P8, AT-P9, AT-P11 |
 | §4a config | §11 | AT-N1, AT-N2, AT-N3, AT-N4 |
 | §4b vocabularies | §15.2, §10.3 | AT-L5 (enumerated-class fields only; §14.4 ER-1/ER-2 route the two missing rows) |
@@ -1949,7 +1949,7 @@ used here without a §1 row. AT-L5 asserts the equality in both directions at `V
 | `no-op` | §7.3, §12.1 S-05/S-06/S-08 |
 | `skipped-cadence` | §2.3, §2.4, §10.1, §12.1 S-01 |
 | `refused` | §4.3, §4.4, §12.1 S-09 |
-| `failed` | §2.6, §12.1 S-11 |
+| `failed` | §2.6, §12.1 S-11, S-11b, S-11c |
 | `consolidation-in-progress` | §4.2, §12.1 S-09 |
 | `reclaimed-stale-lock` | §4.2, §12.1 S-10 |
 | `advisory-model-unresolved` | §2.6, §12.1 S-11 |
@@ -1963,7 +1963,7 @@ used here without a §1 row. AT-L5 asserts the equality in both directions at `V
 | `no-advisory-corpus` | §9.3, §12.1 S-13 |
 | `advisory-corpus-empty` | §9.3, §12.1 S-14 |
 | `cadence` / `volume` / `manual` | §2.1, §2.3, §10.3 |
-| constraints / decisions / PR / `degraded` | §5.1, §7.3, §10.4 |
+| constraints / decisions / PR / `degraded` | §5.1, §7.3, §10.4, and the §8.1 record's `route` field (§6.4's `enacted` test, §8.4 step 1's open test) |
 | `prevented` / `recurred` / `insufficient-evidence` | §8.3, §12.3 V-01 |
 | `ineffective` / `unmeasurable` | §8.5, §8.7, §12.3 V-02/V-03 |
 | `promote` / `revise` / `retire` | §8.1, §8.2, §6.4 |
@@ -2150,7 +2150,7 @@ falsifies it; none of them is new here.
 |---|---|---|---|
 | BR-23 | The PR is opened against `consolidation.pluginRepository`, defaulting to `null` ⇒ the current repository. A non-null value that does not resolve is `repository-unresolved` and degrades through §6.3 — it is **not** a parse fallback. | §11.2, §6.3 | AT-N4 |
 | BR-24 | The branch is `consolidation/{passId}`; the body carries the `PDLC-CONSOLIDATION-PASS` trailer and each commit carries `PDLC-PROMOTION-ID`. | §6.2 | AT-Q2 |
-| BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`. Its carrier depends on the route: on the PR route it is read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged` (a `closed`-unmerged PR is not in the key set); on the consuming-repo route it is read from the §8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`, over the two-member state set `enacted` / `absent`. One key, two carriers — a route with no carrier would not be idempotent at all. | §6.4 | AT-Q3, AT-Q4 |
+| BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`. Its carrier depends on the route: on the PR route it is read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged` (a `closed`-unmerged PR is not in the key set); on the consuming-repo route it is read from the §8.1 failure-mode records already in `docs/_decisions/.consolidation-log.md`, where a pair is `enacted` only when a record carries it with a `route` other than `degraded`, and `absent` otherwise. The two carriers agree on the substantive rule: **a proposal that reached nothing is re-proposable; one that landed is not.** One key, two carriers — a route with no carrier would not be idempotent at all. | §6.4 | AT-Q3, AT-Q4 (PR carrier); AT-Q10, AT-Q11, AT-Q12 (consuming-repo carrier) |
 | BR-26 | A suppressed proposal opens nothing, fires no fallback, and populates `suppressed-by:` — never `pr:`. | §6.4, §10.3 | AT-Q3, AT-L2 |
 | BR-27 | An existing machine-opened PR is never extended, amended or superseded by a later pass. | §6.4 | AT-Q3 |
 | BR-28 | Over each of §6.5's two enumerated seam domains, the pass's observed verb **set** is set-equal to that domain's permitted set — `{read-pr, create-pr}` on the PR seam, `{clone, fetch, create-branch, add, commit, push}` on the git seam — and the PR it opened is `open` when the pass returns; so no merge or enable-auto-merge call is made on any PR, including its own, under any status or configuration. The rule is stated positively because an absence-only form is satisfied by a pass that calls nothing, and per-domain because the pass is *required* to make git calls (§5.4, §6.1, §6.2). | §6.5 | AT-Q7, AT-Q7b |
