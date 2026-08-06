@@ -44,6 +44,54 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Positive Observations
 
+- **The subject/target split is the right repair and it was carried through the whole document in one
+  round.** v3 F-01 could have been closed by re-wording §5.2's worked example; instead the field was
+  split at §8.1 and then chased into §5.1, §5.2, §8.2, §8.5, §8.6, §10.2, BR-18, BR-33, BR-35a,
+  AT-R6, AT-R6b, AT-F17, AT-F18 and two §15.1 traceability rows. The three numbered consequences in
+  §8.1 are the durable part: they say *why* the fields must stay two, so a later editor who wants to
+  collapse them can see what breaks (a non-terminating derivation, an AC-2.2 promotion routed to the
+  PR route, and NFR-4 suppressing every domain invariant after the first).
+- **Every code citation added this round is exact, and I re-verified all of them at HEAD.** The
+  `bundles` array is `build-runtime.mjs:448`, its third entry is `{ file: "pdlc-cli.mjs", id:
+  "pdlc-cli", contents: cliArtifact }` and `cliArtifact` is composed at `:291` wrapping the dev
+  module as `__dev`; `resolveAdvisoryRung` is defined at `dist/orchestrate-dev.bundle.js:1994`,
+  `dist/orchestrate-queue.bundle.js:1970` **and** `dist/pdlc-cli.mjs:1843`; all three are
+  `git ls-files`-tracked and `distribution-manifest.json` carries one `pluginSha1` row per artifact
+  under exactly the ids `orchestrate-dev` / `orchestrate-queue` / `pdlc-cli`.
+  `MERGE_GUARD_DEFAULTS` is `orchestrate-dev.js:48-53`; `ADVISORY_RUNG_SKILL` `:1797`; the export
+  `:1833`; the single `_agent` call `:1841`; the memo short-circuit `:1844-1849`; the `_log` template
+  literal `:1859`. The one thing I did not take on trust — §15.3's claim that CI fails a commit
+  rebuilding two of the three artifacts — is true for the reason given: `pr-tests.yml:97-101` rebuilds
+  and then runs `git diff --exit-code -- pdlc/workflows/dist/` over the whole directory.
+- **§15.3's third-artifact correction is the most valuable line added this round.** v3's Q-03 asked
+  only whether the manifest row was singular; the answer found a *third* tracked artifact carrying the
+  widened resolver that nobody had named, and then stated why the count is load-bearing rather than
+  bookkeeping. T-02 inherits it correctly ("inlining makes the consolidation bundle a **fourth**").
+  That is a finding the document made against itself, from a question that did not ask for it.
+- **§10.3's third reading is an honest answer to a question with no clean one.** The easy repairs
+  were available — move the credential resolution, or record the code anyway — and both were rejected
+  for stated reasons (the second would breach REQ §4b and turn AT-L5 red). Naming the case as a *loss
+  of row-level decidability*, pointing the reader at the report body, routing ER-4 with the exact
+  composition-rule argument, and giving AT-K6 the (iv)/(v) pair whose only discriminator is the report
+  body, is the shape a spec should take when the upstream vocabulary is the thing that is wrong.
+  ER-4's shipping assumption ("implementation does not wait; if the widened column lands, AT-K6 rows
+  (iv)/(v) gain the reason-code assertion **in addition to** the report-body one") reuses ER-2's
+  ruling instead of inventing a second policy.
+- **The negative arms added this round are paired, not absence-only.** AT-M6's "no effectiveness table
+  and no failure-mode record" is asserted on the same path as AT-M9's positive and the row says so;
+  AT-M6b adds the `refused` arm no row covered and asserts *exactly one* appended record rather than
+  the absence of a table; AT-R6b's merge fixture asserts a four-element observable set **and** the two
+  things that must not appear, with the reason the negative half exists ("an implementation that
+  reported the merge as a suppression would be indistinguishable, in the log, from one that dropped a
+  promotion"). AT-Q7c exists purely to falsify the wrong reading of AT-Q7's oracle — a test whose job
+  is to keep another test honest.
+- **T-04 answers v3's Q-01 by widening an obligation rather than by arguing.** The `_log` capture is
+  now named as TSPEC's obligation, both report-body assertions (`ADVISORY_MODEL_FALLBACK:` and §2.6
+  row 4's error message) are folded into one capture, and the row is explicit that TSPEC chooses the
+  mechanism and not whether the capture exists. O-C7 does the same for Q-02: the growth is accepted,
+  the two obvious mitigations are rejected with the failure direction each would introduce, and the
+  successor's repair is named as a *reported* cap.
+
 ## Recommendation
 
 ## Verdict
