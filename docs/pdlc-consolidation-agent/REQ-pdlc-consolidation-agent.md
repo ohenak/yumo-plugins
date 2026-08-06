@@ -195,9 +195,18 @@ unreachable until someone runs a manual pass — the never-fires failure this da
   | `promoted` | yes | yes | yes |
   | `promoted-degraded` | yes | yes | yes |
   | `no-op` | yes | yes | yes — the log row and consumed block are still writes |
-  | `failed` | yes | yes | yes, if it wrote anything; otherwise nothing to commit |
-  | `refused` | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner | **no** — it wrote nothing |
+  | `failed` | yes | yes | **yes** — under AC-7.2 a completed `failed` pass always wrote its row |
+  | `refused` | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner | **yes** — its AC-7.2 row, and that row only |
   | `skipped-cadence` | **no** — the tick terminates before the marker is written | **no** | **no** — it writes no log row (AC-7.2) |
+
+  **A `refused` pass writes its AC-7.2 row, and that is the whole of its disk effect.** The row is
+  the only evidence a tick was refused, and REQ-CONS-01's cadence rule already presupposes it ("a
+  `refused` row is not a datum"); AC-7.2's exemption set therefore stays a single member,
+  `skipped-cadence`. The row carries trigger (NFR-3a — the refused tick did fire one of `cadence` /
+  `volume` / `manual`; that is how it reached the marker check) and `credential: absent` (AC-4.2),
+  and it is committed pathspec-scoped like any other consuming-repo write (AC-3.8b). It writes no
+  consumed block: it never took the marker, and only marker-holding passes emit the block
+  (REQ-CONS-01). A `refused` pass therefore never touches the legacy-region boundary.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that
@@ -371,7 +380,9 @@ These are the identity keys NFR-4 is stated against.
   written into a PR body, never persisted into any artifact. **Positive conjunct on the same path:**
   every pass's log row carries exactly one `credential:` field over the closed set
   `present (redacted)` / `absent` / `local-gh`, so the absence assertion is made on a path that
-  demonstrably ran.
+  demonstrably ran. `absent` means **no credential was in hand when the row was written** — which
+  covers both a pass that looked and found none (AC-4.3) and a pass that terminated before reading
+  one, i.e. `refused` (AC-1.3). The set needs no fourth "not reached" member.
 - **AC-4.3** — Given the credential is absent or invalid, Then the pass degrades to AC-3.5's
   proposal-file fallback with reason code `credential-unavailable`, records
   `credential: absent` per AC-4.2, and surfaces the affected promotion in the AC-7.1 report under a
@@ -623,7 +634,7 @@ containment across six sections; adding a value above without a row here is a de
 | `reclaimed-stale-lock` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.3 |
 | `advisory-model-unresolved` | reason code | `failed` | AC-1.6 |
 | `no-cadence-datum` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.1 |
-| `writes-uncommitted` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-3.8b |
+| `writes-uncommitted` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed`, `refused` | AC-3.8b |
 | `credential-unavailable` | reason code | `promoted-degraded`, `no-op` | AC-3.5, AC-4.3 |
 | `repository-unresolved` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
 | `api-failure` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
@@ -650,9 +661,11 @@ A pass may carry more than one reason code, and each row's permitted set is deri
 composition, not by the status the code was first introduced under**: a code is legal with every
 terminal status still reachable after the point in the pass at which the code is recorded. That is
 why the two AC-6.1 corpus codes permit `failed` (the corpus is read before AC-3.5's or AC-1.6's
-failure is decidable) and why `no-cadence-datum` and `writes-uncommitted` permit all four
-row-writing statuses. By the same rule `refused` carries `consolidation-in-progress` and nothing
-else, and `skipped-cadence` carries no code at all — it writes no log row (AC-7.2).
+failure is decidable) and why `no-cadence-datum` permits all four marker-holding statuses. By the
+same rule `writes-uncommitted` additionally permits `refused` — a `refused` pass commits its AC-7.2
+row (AC-1.3) and that commit can lose the `index.lock` race like any other — while its only *reason*
+code is `consolidation-in-progress`. `skipped-cadence` carries no code at all: it writes no log row
+(AC-7.2).
 
 ## 5. Scope
 
