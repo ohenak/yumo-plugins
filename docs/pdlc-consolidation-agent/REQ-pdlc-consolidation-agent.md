@@ -223,23 +223,17 @@ unreachable until someone runs a manual pass — the never-fires failure this da
   counted one (AC-5.3): it advances neither streak, so it can report an ageing but never cause one.
   A duplicate-suppressed `no-op` has a **non-empty** consumed set and real AC-5.2 verdicts, so it
   counts in both populations on the ordinary rules.
-- **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it
-  actually ran on in its report and in the log row. The rung ladder is the one
-  `pdlc-advisory-tier` ships: `MODEL_ADVISORY` (`pdlc/workflows/orchestrate-dev.js:1652`) first,
-  `MODEL_ADVISORY_FALLBACK` (`:1653`) on non-resolution. **This feature reuses that ladder; it does
-  not restate it.** The two constants are module-private, but the ladder itself is not: the resolver
-  `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833`, under a doc comment at `:1800`
-  calling it "TSPEC §3.4's model-rung ladder, and the **one** ladder the tier ships". The shipped
-  second consumer follows exactly that pattern rather than copying literals —
-  `orchestrate-queue.js` dispatches through an injected seam with the raw agent and a threaded
-  `rungState` (`orchestrate-queue.js:1245-1256`, under the comment "the advisory
-  driver resolves its own model rung", `:1243-1244`), and the build inlines `orchestrate-dev` into the
-  queue bundle so that works (CLAUDE.md, "Workflow scripts and the runtime build"). The consolidation
-  pass resolves its rung the same way, and the rung it actually ran on is what AC-7.1 reports.
+- **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it actually ran on in its report and in the log row.
+  The rung ladder is the one `pdlc-advisory-tier` ships: `MODEL_ADVISORY` (`pdlc/workflows/orchestrate-dev.js:1652`) first, `MODEL_ADVISORY_FALLBACK`
+  (`:1653`) on non-resolution. **This feature reuses that ladder; it does not restate it.** The two constants are module-private, but the ladder is
+  not: the resolver `resolveAdvisoryRung` is exported at `orchestrate-dev.js:1833`, under a doc comment at `:1800` calling it "TSPEC §3.4's model-rung
+  ladder, and the **one** ladder the tier ships". The shipped second consumer follows that pattern rather than copying literals —
+  `orchestrate-queue.js` dispatches through an injected seam with the raw agent and a threaded `rungState` (`orchestrate-queue.js:1245-1256`, under the
+  comment "the advisory driver resolves its own model rung", `:1243-1244`), and the build inlines `orchestrate-dev` into the queue bundle so that works
+  (CLAUDE.md, "Workflow scripts and the runtime build"). The consolidation pass resolves its rung the same way, and AC-7.1 reports the rung it ran on.
 
-  If FSPEC/TSPEC establishes that reuse is impossible here, the fallback is a restated pair of
-  literals **plus a named drift observable**, never a named risk: a test asserting set-equality with
-  `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`), failing when either
+  If FSPEC/TSPEC establishes that reuse is impossible here, the fallback is a restated pair of literals **plus a named drift observable**, never a
+  named risk: a test asserting set-equality with `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`), failing when either
   copy moves. A restatement without that observable is not an acceptable outcome.
 - **AC-1.6** — Given the primary rung does not resolve, Then the pass runs on the fallback rung and
   reports the downgrade explicitly (mirroring `ADVISORY_MODEL_FALLBACK:`,
@@ -598,8 +592,8 @@ containment across six sections; adding a value above without a row here is a de
 | `consolidation-in-progress` | reason code | `refused` | AC-1.3 |
 | `reclaimed-stale-lock` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.3 |
 | `advisory-model-unresolved` | reason code | `failed` | AC-1.6 |
-| `no-cadence-datum` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.1 |
-| `writes-uncommitted` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed`, `refused` | AC-3.8b |
+| `no-cadence-datum` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed`, `refused` | AC-1.1 |
+| `writes-uncommitted` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-3.8b |
 | `credential-unavailable` | reason code | `promoted-degraded`, `no-op` | AC-3.5, AC-4.3 |
 | `repository-unresolved` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
 | `api-failure` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
@@ -613,7 +607,7 @@ containment across six sections; adding a value above without a row here is a de
 | `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
 | `revision` / `retirement` | proposed action on an `ineffective` promotion | as above | AC-5.3 |
 | `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
-| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3337-3437` — declaration `:3337`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
+| R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE | pipeline phase id (AC-5.1's catalogue) | any status emitting the AC-5.2 table | `PHASE_DISPATCH` (`orchestrate-dev.js:3336-3437` — declaration `:3336`, first key `R:` `:3337`, last key `DOD:` `:3431`, close `:3437`) for R/F/T/D/P/PR/CR/DOD; `recordPhase` literals for I (`:10020`), PT (`:10250`), H (`:10407`), PUB (`:10462`), MERGE (`:10568`) |
 
 Two joins the table settles, because both were previously undetermined. A pass that promoted
 something and also hit an AC-3.5 fallback class is `promoted-degraded`, never a bare `promoted` — the
@@ -626,11 +620,11 @@ A pass may carry more than one reason code, and each row's permitted set is deri
 composition, not by the status the code was first introduced under**: a code is legal with every
 terminal status still reachable after the point in the pass at which the code is recorded. That is
 why the two AC-6.1 corpus codes permit `failed` (the corpus is read before AC-3.5's or AC-1.6's
-failure is decidable) and why `no-cadence-datum` permits all four marker-holding statuses. By the
-same rule `writes-uncommitted` additionally permits `refused` — a `refused` pass commits its AC-7.2
-row (AC-1.3) and that commit can lose the `index.lock` race like any other — while its only *reason*
-code is `consolidation-in-progress`. `skipped-cadence` carries no code at all: it writes no log row
-(AC-7.2).
+failure is decidable), and why `no-cadence-datum` permits `refused`: it is decided at step 3 of the
+tick order, and the marker check that yields `refused` comes after (AC-1.3 — the marker is written
+"after the trigger decision of steps 1–4"), so a tick with an empty datum set that then loses the
+race carries both. `writes-uncommitted` does **not** permit `refused`, because a refused pass commits
+nothing (AC-1.3). `skipped-cadence` carries no code at all: it writes no log row (AC-7.2).
 
 ## 5. Scope
 
