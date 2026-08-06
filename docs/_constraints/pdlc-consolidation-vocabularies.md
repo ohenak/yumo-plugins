@@ -4,7 +4,7 @@
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
 | Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, AC-1.3, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
-| Version | 1.1 · 2026-08-06 |
+| Version | 1.2 · 2026-08-06 |
 
 **Why this file exists.** The consolidation REQ's enumerated vocabularies and the phase observable
 are the largest self-contained block in that document, are read by every downstream layer, and are
@@ -14,6 +14,15 @@ against the reasons the REQ exists to carry.
 
 **No cell in either table below may use a positional back-reference.** Every *May accompany status*
 cell names its permitted set explicitly, so inserting a row can never silently re-point a neighbour.
+
+**Change control, and who owns these rows.** `REQ-pdlc-consolidation-agent` **owns every row of §1
+and §2** and changes none belonging to anyone else; a successor feature's vocabulary belongs in its
+own section of this file or in its own file, never interleaved into §1 or §2. The defect rule is
+**symmetric in both directions**: a value that REQ names with no row here, **and** a row here naming
+a value that REQ never uses, are equally defects — so a *deleted* row is as much a breach as a
+missing one, which is what makes the downstream set-equality oracle meaningful rather than a
+one-sided containment check. Consumers cite this file **at its `Version`**; a row change that is not
+accompanied by a version bump is itself a defect.
 
 ## 1. Enumerated vocabularies
 
@@ -93,7 +102,7 @@ decides CR for the file naming it; a file naming none decides no phase. Any phas
 stated here once for every feature that reads or appends to it.
 
 **Consumption is recorded only inside a delimited block.** The shipped un-consolidated predicate is a
-bare substring test over the whole file (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, read at `:32`),
+bare substring test over the whole file (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, whose read of the log is at `:36-37`),
 so any other record carrying a LEARNINGS basename — a PR title, a failure mode's `artifact` field, an
 effectiveness row — would falsely mark that file consolidated. The block is:
 
@@ -116,3 +125,27 @@ of a whole small file, so the marker lives in its own file (`docs/_decisions/.co
 never in the log; and a pass's `<!-- pdlc:consumed {passId} -->` pair is emitted **complete, in one
 append**, its consumed set fixed before any promotion work. Two passes' records therefore interleave
 in either order without loss.
+
+**The log at HEAD, and the legacy region.** The file **exists** and predates the block convention
+above: a markdown pass log whose `## Pass 1 — 2026-07-29` records its consumed set as a two-column
+table of **full paths** (one row per consumed LEARNINGS, path plus date), then prose promotion
+sections. It carries **no** `<!-- pdlc:consumed -->` block and **no** row status of any kind —
+"Promoted" is only a section heading. A predicate matching blocks alone would therefore report both
+files un-consolidated on a first pass, re-consuming a corpus a prior pass already promoted from.
+Hence the **legacy region**: the text preceding the file's *first* `<!-- pdlc:consumed` marker (a log
+with no block at all is legacy region entire), over which the shipped bare substring test
+(`nudge-consolidation.sh:41`) applies unchanged — so nothing already consolidated is re-consumed and
+no parse of Pass 1's prose is required.
+
+**The legacy region is frozen by construction, in two clauses.** **(a)** Every pass that takes the
+in-progress marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair
+**before any other record it writes, even when its consumed set is empty** (the pair is then empty,
+which still names exactly the consumed set), so the boundary is frozen unconditionally by the first
+pass rather than only by one whose consumed set happens to be non-empty. **(b)** Exactly **one**
+record is exempt — it may precede the first block, and it is not readable as legacy consumption
+because **no field it carries is ever a basename**: a `refused` pass's row — status, trigger,
+`credential:`, reason code, and the held marker's passId and ISO-8601 timestamp, and only those —
+appended by a tick that loses the race between the winner's marker and its block. A passId is
+`{YYYY-MM-DD}-{n}` and a timestamp is neither a `LEARNINGS-*.md` basename. The in-progress marker is
+**not** a second exempt record: it lives in its own file, never in this log. Every other record
+lands after the first block.
