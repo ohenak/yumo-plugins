@@ -27,6 +27,18 @@ form the revision left them.
 
 ## Findings
 
+All findings below are in text this round added. Nothing unchanged since v7 is re-litigated. **No
+High or Medium finding is open**, and none has been since v6 (Medium) / v3 (High). Both Lows are of
+classes `DEC-LAYER-01` (`docs/_decisions/DECISIONS-spec-layer-boundary.md:21-33`) leaves to a
+downstream owner or are corrections of record; per that decision's review consequence (`:35-39`) a
+finding whose downstream owner is named is **Low, deferred and tracked**, and in both cases here the
+FSPEC does state the observable, which is the part that stays blocking at this layer.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **The new §6.4 reader cell cites §10.3 at the wrong line — `:1712` is the `rung:` row, not the `pass:{passId}` evidence it names.** `:1144` reads "§10.3 pins that evidence as `pass:{passId}` of *the enacting record* (`:1712`)". At HEAD, line 1712 is `` | `rung:` | the model rung the pass actually ran on (§2.6) | AC-1.5, AC-1.6 | ``; the text actually cited — "`pass:{passId}` — the literal prefix `pass:` followed by **the enacting record's `passId`**" — is the `suppressed-by:` row at **`:1717`**. The drift is mechanical, not substantive: my own v7 F-01 cited `:1710` and was correct at v7.0, and this round's edits (§6.5 −2, §8.1 +3, §8.2 +6) pushed §10.3's table down by seven; the new citation was written against a mid-edit line count. It matters only because this document's self-citations are dense enough that a TSPEC author will follow them mechanically, and this one lands on an unrelated field two rows away from a field table whose rows all look alike. Every *other* citation added this round resolves (checked below). Repair: `:1712` → `:1717`. Better: cite the row by field name (`§10.3's `suppressed-by:` row`), which does not rot on the next insertion — the same defence §8.1's own citations already use for §5.1 and §8.6. | §8.1 `:1144` vs §10.3 `:1717` |
+| F-02 | Low | Process | **The count of explicitly deferred, PROPERTIES-owned obligations rose from two to three, and there is still no place in the document that collects them.** This round added a third (`:1237-1242`: the two-action-one-subject pass, "**No fixture in §13 covers** that … named **PROPERTIES-owned per DEC-LAYER-01**", with its observable stated — two records under two keys, both writes made, the guard-set one made as a PR), alongside the two v7 added (E-12b / BR-33a's `artifact` arms `:2459`/`:2514`, §8.2's `target`-follows clause `:2460`). Each is individually well-formed: named owner, stated observable, stated defective implementation — exactly what DEC-LAYER-01 `:35-39` asks for. The gap is aggregate. The PROPERTIES author inherits three obligations discoverable only by grepping for "PROPERTIES-owned", scattered across §8.2, §18.7 and §19; §13 does not list them, and unlike the third one the first two have no `§13` anchor at all. §14.4 shows this document already knows the pattern — errata are routed through a numbered register, not by grep. I asked this as v7 Q-02 when the count was two and did not file it; at three, and with the trajectory one per round, it is a finding rather than a question. It is `Process` rather than `Local` because the shape recurs: any FSPEC that applies DEC-LAYER-01 honestly accumulates these, and "collect the layer deferrals in one register" is the reusable lesson, not a fact about this feature. Repair: one table in §14 (or a `§13.x` row) listing id, owner, observable, and the section that states it. | §8.2 `:1237-1242`, BR-33a `:2459`, BR-33b `:2460`, E-12b `:2514`, §14.4 |
+
 ## Questions
 
 ## Positive Observations
