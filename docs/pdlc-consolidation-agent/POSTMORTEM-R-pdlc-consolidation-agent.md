@@ -330,3 +330,44 @@ Two durable lessons, both cheap to promote and both stated in the reviewers' own
    scope statements. One authoring-seam rule covers both.
 
 ## Appendix — first window (rounds 1–5, resolved)
+
+Version 1.0 of this file recorded the first Phase R halt and was marked `RESOLVED: yes` on
+2026-08-06, which is what permitted re-entry into rounds 6–10. Its findings are summarised here so
+the two windows can be read against each other; the full text is in git history
+(`git log --follow -- docs/pdlc-consolidation-agent/POSTMORTEM-R-pdlc-consolidation-agent.md`).
+
+**Iterations (window 1).** 5 — limit reached. Both reviewers `Needs revision` in every round.
+
+| Round | SE findings | TE findings |
+|---|---|---|
+| v1 | 8 H, 6 M, 2 L | 6 H, 5 M |
+| v2 | 2 H, 5 M, 2 L | 4 H, 3 M, 2 L |
+| v3 | 2 H, 2 M, 3 L | 2 H, 3 M, 1 L |
+| v4 | 0 H, 1 M, 2 L | 0 H, 2 M, 2 L |
+| v5 | 0 H, 3 M, 1 L | 0 H, 2 M, 3 L |
+
+Severity trajectory 14 H → 6 H → 4 H → 0 H → 0 H, 100% per-round closure, zero ERRATUM lines.
+
+**Pattern (window 1).** No disagreement of any kind — the reviewers' v5 blocker sets overlapped
+almost exactly (SE F-02 ≡ TE F-34, SE F-03(b) ≡ TE F-33, SE F-04(a) ≡ TE F-36), and where they
+differed they were complementary. The disagreement was with the round budget.
+
+**Root cause (window 1).** *Propagation debt.* The REQ nominated half a dozen enumerations as
+normative set-equality oracles ("checkable by set-equality against this table, not by containment"),
+so every semantic change had to be propagated to *N* tables and any single missed cell was a
+blocking finding by the document's own standard. With one decision per round and a 5-round budget,
+the loop could absorb at most four decisions cleanly; this REQ took more. Contributing: no
+propagation checklist at the authoring seam.
+
+**Resolution (window 1, 2026-08-06).** All ten v5 findings and four open questions were verified
+closed against the REQ text by two independent verification agents (commits `4e2c002`, `7640bd2`,
+`cc601c3`, `e75a115`, `0445706`, plus one correction: TE F-35's fix had adopted a wrong line number,
+repointed to `PHASE_DISPATCH` at `:3337`). A propagation sweep over all six self-nominated
+set-equality oracles returned SWEEP CLEAN. The marker was flipped to `yes` and the pipeline
+re-entered at round 6.
+
+**How window 2 differs.** Propagation debt did not recur — the enumerations stayed consistent, and
+both large relocations were verified lossless. The residue moved up a level, from *cells inside
+enumerations* to *sections inside scope statements*, and for the first time the reviewers split on
+severity. The two windows share one structural lesson: **the loop's residue is always the mechanical
+closure check that no authoring-seam rule forces the author to run.**
