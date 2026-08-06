@@ -2222,6 +2222,17 @@ function governingClass(classes) {
   return winner;
 }
 
+function summariseA3Classification(raw) {
+  const parsed = parseA3Classification(raw);
+  if (parsed.classes.length === 0) return "";
+  const governing = governingClass(parsed.classes);
+  const lead = parsed.classes.find((entry) => entry.class === governing);
+  if (!lead) return "";
+  const evidence = lead.evidence ? ` (evidence: ${lead.evidence})` : "";
+  const successor = lead.successor ? ` [successor: ${lead.successor}]` : "";
+  return `${governing}: ${lead.finding}${evidence}${successor}`;
+}
+
 function buildA3SeamOps({ dodResult, codeReviewText, _readFile } = {}) {
   async function gatherEvidence() {
     const lastStatus = dodResult && dodResult.lastStatus;
@@ -2343,6 +2354,17 @@ async function probeWorkflowRerun(runId, { _ghRun } = {}) {
   const scoped =
     auth && auth.ok === true && /actions:\s*write|actions:write/.test(String(auth.stdout || ""));
   return { available: Boolean(scoped) };
+}
+
+function makeWaitAccumulator() {
+  let total = 0;
+  return {
+    recordWait: (ms) => {
+      const value = Number(ms);
+      if (Number.isFinite(value) && value > 0) total += value;
+    },
+    waitMs: () => total,
+  };
 }
 
 async function buildA5SeamOps({
@@ -2512,7 +2534,7 @@ async function appendAdvisoryEntry({ feature, disposition, _appendFile, _now }) 
   await _appendFile(path, entry);
 }
 
-function advisorySummaryRows(dispositions) {
+function advisorySummaryRows(dispositions, pubOutcome = {}) {
   const list = Array.isArray(dispositions) ? dispositions : [];
 
   const rows = ADVISORY_SEAMS.map((seam) => {
@@ -2542,7 +2564,12 @@ function advisorySummaryRows(dispositions) {
     { invocations: 0, resolved: 0, escalated: 0, noAction: 0 }
   );
 
-  return { rows, total };
+  return {
+    rows,
+    total,
+    noChecks: Boolean(pubOutcome && pubOutcome.noChecks),
+    completionCap: Boolean(pubOutcome && pubOutcome.completionCap),
+  };
 }
 
 const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
@@ -2589,6 +2616,24 @@ async function appendEscalationEntry({ disposition, ctx, _appendFile, _now }) {
   await _appendFile(ESCALATIONS_PATH, entry);
 }
 
+const ADVISORY_SEAM_PHASES = Object.freeze({
+  A1: Object.freeze({ id: "QUEUE", outcome: "skipped" }),
+  A2: Object.freeze({ id: "QUEUE", outcome: "skipped" }),
+  A3: Object.freeze({ id: "DOD", outcome: "halted" }),
+  A4: Object.freeze({ id: "DOD", outcome: "halted" }),
+  A5: Object.freeze({ id: "PUB", outcome: "halted" }),
+});
+
+function escalationDecision({ seam, feature, reason, verdict, classificationSummary }) {
+  const proposal =
+    verdict && verdict.proposedAction ? `"${verdict.proposedAction}"` : "no well-formed proposal";
+  const classified = classificationSummary ? `; classified ${classificationSummary}` : "";
+  return (
+    `whether to take the ${seam} proposal for ${feature} yourself (${proposal}) — ` +
+    `the advisory tier refused it as ${reason ?? "unclassified"} and changed nothing${classified}`
+  );
+}
+
 const PROHIBITED_ACTION_PATTERNS = [
 
   /\b(mark|weaken|reduce)\b[\s\S]*\b(dod|definition of done)\b/i,
@@ -2621,8 +2666,15 @@ async function runAdvisorySeam({
   _log,
   _now = () => Date.now(),
   _sleep = sleep,
+  _notice,
+  _waitMs,
+  _summarise,
 }) {
   const log = typeof _log === "function" ? _log : () => {};
+  const notice = typeof _notice === "function" ? _notice : () => {};
+  const readWaitMs = typeof _waitMs === "function" ? _waitMs : () => 0;
+
+  let summary = "";
 
   if (!config || config.enabled === false) {
     return { outcome: "no-action", reason: null, verdict: null, attempts: 0, model: undefined, fallback: false, seam };
@@ -2693,7 +2745,7 @@ async function runAdvisorySeam({
       finalOutcome = "escalated";
       finalReason = "record-write-failed";
     }
-    return {
+    const terminal = {
       seam,
       outcome: finalOutcome,
       reason: finalReason,
@@ -2701,11 +2753,45 @@ async function runAdvisorySeam({
       attempts,
       model: rungState.resolved ? rungState.resolved.model : undefined,
       fallback: rungState.resolved ? rungState.resolved.fallback : false,
+
+      ...(summary ? { classificationSummary: summary } : {}),
     };
+
+    if (finalOutcome === "escalated") {
+      const placement = ADVISORY_SEAM_PHASES[seam];
+      try {
+        await appendEscalationEntry({
+          disposition: terminal,
+          ctx: {
+            feature,
+            seam,
+            phase: placement ? placement.id : "unknown",
+            phaseOutcome: placement ? placement.outcome : "unknown",
+            decision: escalationDecision({
+              seam,
+              feature,
+              reason: finalReason,
+              verdict,
+              classificationSummary: summary,
+            }),
+          },
+          _appendFile,
+          _now,
+        });
+      } catch (err) {
+        notice(
+          `ADVISORY escalation log write failed for seam ${seam}: ${
+            err && err.message ? err.message : String(err)
+          }`
+        );
+      }
+      notice(ADVISORY_ESCALATIONS.seam({ seam, feature, reason: finalReason }));
+    }
+
+    return terminal;
   }
 
   const totalBudgetMs = config.seamBudgetMinutes * 60_000;
-  const waitMs = 0; 
 
   try {
     let attempts = 0;
@@ -2746,13 +2832,22 @@ async function runAdvisorySeam({
             attempts,
             attemptBudget: config.attemptBudget,
             elapsedMs: 0,
-            waitMs,
+            waitMs: readWaitMs(),
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
           return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
         }
         continue;
+      }
+
+      if (typeof _summarise === "function") {
+        try {
+          const produced = _summarise(raced.raw);
+          if (typeof produced === "string" && produced !== "") summary = produced;
+        } catch {
+
+        }
       }
 
       const parsed = parseAdvisoryVerdict(raced.raw, seam);
@@ -2763,7 +2858,7 @@ async function runAdvisorySeam({
             attempts,
             attemptBudget: config.attemptBudget,
             elapsedMs: 0,
-            waitMs,
+            waitMs: readWaitMs(),
             seamBudgetMinutes: config.seamBudgetMinutes,
           })
         ) {
@@ -2832,7 +2927,7 @@ async function runAdvisorySeam({
               attempts,
               attemptBudget: config.attemptBudget,
               elapsedMs: 0,
-              waitMs,
+              waitMs: readWaitMs(),
               seamBudgetMinutes: config.seamBudgetMinutes,
             })
           ) {
@@ -6334,6 +6429,41 @@ async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
   return { mergeBase, preRebaseHead, defaultTip, planFiles, implConfig };
 }
 
+async function gatherA5Context({ _git }) {
+  let defaultBranch = null;
+  try {
+    const symRef = await _git(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    const match =
+      symRef && symRef.ok
+        ? /^refs\/remotes\/origin\/(.+)$/.exec(String(symRef.stdout || "").trim())
+        : null;
+    if (match) defaultBranch = match[1];
+  } catch {
+    defaultBranch = null;
+  }
+
+  let mergeBase = null;
+  if (defaultBranch) {
+    try {
+      const mergeBaseResult = await _git(["merge-base", "HEAD", `origin/${defaultBranch}`]);
+      mergeBase =
+        mergeBaseResult && mergeBaseResult.ok ? String(mergeBaseResult.stdout || "").trim() : null;
+    } catch {
+      mergeBase = null;
+    }
+  }
+
+  let preSeamHead = null;
+  try {
+    const headResult = await _git(["rev-parse", "HEAD"]);
+    preSeamHead = headResult && headResult.ok ? String(headResult.stdout || "").trim() : null;
+  } catch {
+    preSeamHead = null;
+  }
+
+  return { defaultBranch, mergeBase, preSeamHead };
+}
+
 async function main({
   reqPath,
   forcePhases = null,
@@ -6913,6 +7043,43 @@ async function main({
 
   const advisoryDispositions = [];
 
+  const advisoryNotice = (line) => notices.push(line);
+
+  const advisoryPubOutcome = { noChecks: false, completionCap: false };
+
+  const runA5AdvisorySeam = async ({ seam, feature, prUrl }) => {
+    const wait = makeWaitAccumulator();
+    const a5Context = await gatherA5Context({ _git: gitFn });
+    const seamOps = await buildA5SeamOps({
+      feature,
+      prUrl,
+      preSeamHead: a5Context.preSeamHead,
+      defaultBranch: a5Context.defaultBranch,
+      mergeBase: a5Context.mergeBase,
+      recordWait: wait.recordWait,
+      _git: gitFn,
+      _ghRun: ghRunFn,
+      _checkCi: checkCiFn,
+    });
+    return runAdvisorySeamFn({
+      seam,
+      feature,
+      seamOps,
+      config: advisoryConfigResult.config,
+      rungState: advisoryRungState,
+      _agent: agentFn,
+      _appendFile: appendFileFn,
+      _writeFile: writeFileFn,
+      _readFile: readFileFn,
+      _git: gitFn,
+      _log: emit,
+      _now,
+      _sleep,
+      _notice: advisoryNotice,
+      _waitMs: wait.waitMs,
+    });
+  };
+
   try {
 
     await ensureFeatureBranch({ feature: featureName, _git: gitFn, _log: emit });
@@ -7352,6 +7519,8 @@ async function main({
             _log: emit,
             _now,
             _sleep,
+
+            _notice: advisoryNotice,
           });
           advisoryDispositions.push(a4);
           if (a4.outcome !== "resolved") {
@@ -7397,6 +7566,9 @@ async function main({
             _log: emit,
             _now,
             _sleep,
+            _notice: advisoryNotice,
+
+            _summarise: summariseA3Classification,
           });
           advisoryDispositions.push(a3);
 
@@ -7480,11 +7652,14 @@ async function main({
           _log: emit,
           _now,
           _sleep,
-          _runAdvisorySeam: runAdvisorySeamFn,
+
+          ...(advisoryTierOn ? { _runAdvisorySeam: runA5AdvisorySeam } : {}),
           _advisoryRecord: (disposition) => advisoryDispositions.push(disposition),
         });
         prUrl = pubResult.prUrl;
         ciStatus = pubResult.ciStatus;
+
+        advisoryPubOutcome.noChecks = Boolean(pubResult.noChecks);
         const ciDetail =
           ciStatus === "passed"
             ? `PR ${prUrl} — all GHA checks passed`
@@ -7565,6 +7740,8 @@ async function main({
       testSummary = haltReason;
     }
 
+    if (err && err.completionCap === true) advisoryPubOutcome.completionCap = true;
+
     const failedRow = [...phases].reverse().find((row) => row.status === "❌");
     const haltPhase = failedRow ? failedRow.phase : null;
 
@@ -7630,7 +7807,7 @@ async function main({
       dodVerifiedCommit,
       headSha: await readCurrentHead(),
 
-      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
+      advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
     });
   }
 
@@ -7655,7 +7832,7 @@ async function main({
     dodVerifiedCommit,
     headSha: await readCurrentHead(),
 
-    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions) : undefined,
+    advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
   });
 }
 
@@ -8602,6 +8779,8 @@ async function main({
         _readFile: readFileFn,
         _git: gitFn,
         _log: emit,
+
+        _notice: emit,
       });
 
       advisoryDispositions.push({ ...advisoryDisposition, seam });
