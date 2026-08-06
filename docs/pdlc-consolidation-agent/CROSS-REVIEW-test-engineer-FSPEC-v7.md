@@ -40,7 +40,52 @@ stated, and one reading of it is red on conforming behaviour. The other three ar
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-F21's conjunct (3) for `E` now says the open-list membership is "asserted as a set-equality over this fixture's ids in AT-F19's form, not as containment". This fixture's ids are `{E, F, well-formed}` — but the open list is over *promotions*, and `E`'s only record is an `action: retire`. Is the asserted set literally `{E, F, W}`, or `{E, F}`, or something the fixture's `action` values decide? AT-F19 fixes this by giving each of its four ids a stated action; this row does not (for `F` and the well-formed record). If M-01's repair pins `F`'s `action`, please pin the well-formed record's too and write the expected set as a literal — a set-equality whose expected side is described rather than transcribed is the containment problem one level up. |
+| Q-02 | §8.1's §8.3 row now says the unavailable path cell is "the **observable**, not a literal this document pins — the spelling of that cell is TSPEC's, per DEC-LAYER-01, and §15.2's lexicon owns no such value". I read that as consistent with the layer decision and I am not filing on it. The check I want on record for the TSPEC author: the observable as stated is "carries **no path** and is rendered as an explicit unavailable statement rather than as an empty cell or a guessed path", of which two thirds are negative. Does the TSPEC intend to pin a literal (which makes the positive conjunct mechanical), or to assert "non-empty ∧ not a repository path"? The second is assertable but weaker, and it is the reading a PROPERTIES author will default to if the TSPEC stays silent. |
+
 ## Positive Observations
+
+- **The two deferrals this revision added are the good kind: owner named, observable stated.** §8.2's
+  kind-3 tie-break case does not merely say "PROPERTIES-owned" — it says what the deferred fixture
+  must assert ("`artifact` and `target` are the same path on the merged record") and what a defective
+  implementation looks like ("applying the tie-break to `artifact` while keeping proposal order for
+  `target` disagrees with itself"). E-12b's `artifact` arms do the same, naming §8.3's verdict move
+  and §8.5's guessed `retirement` as the two outcomes the deferred fixtures kill. A deferral that
+  hands the next layer an oracle is not a coverage gap; it is a routing decision. My L-03 is that a
+  third unfixtured claim in the same revision did not get this treatment.
+- **AT-F21's prohibited-behaviour mapping is now stated per conjunct, and it is right.** "Which
+  conjunct catches which prohibited behaviour, stated exactly because the mapping is not symmetric"
+  is the sentence that turns a five-conjunct list into an oracle. I checked the `E` half against the
+  rules rather than against the prose: a `route ?? "constraints"` default makes BR-33c (`:2455`)
+  close `E` — its predicate is `action: retire` with a `route` other than `degraded`, which is
+  exactly satisfied — and makes BR-25 (`:2433`) read the pair `enacted`, suppressing the
+  re-proposal; both are red on conjunct (3). And the row is honest about the case its own conjuncts
+  do **not** discriminate: `route ?? "degraded"` "is **not** unsafe on either reader … so it is
+  caught by (2) alone". Naming a defect your strong conjuncts cannot see, and pointing at the weak
+  one that can, is rarer than it should be.
+- **The tie-break's comparison domain is now unambiguous, and the ambiguity it removed was real.**
+  "byte order over the **canonical** root-relative paths of §8.1, i.e. each candidate's `artifact`
+  value **as written**, before any slug substitution. ('Normalised' is §8.1's word for the slug-side
+  transform, under which the candidates are identical by construction — that is why they merged — so
+  it is not the comparison meant here.)" Under the old wording a literal-minded implementer compares
+  the slugs, which are equal, and the tie-break is undefined on its only input. The fix explains why
+  the wrong reading is wrong instead of just replacing the word.
+- **The subject-axis loss is now compensated on the same channel as the kind-axis loss, and all four
+  places agree.** §10.4 item 4 gains the obligation ("any promotion whose merge invoked §8.2's
+  subject tie-break names, beside the surviving `artifact`, every canonical subject path the
+  tie-break elided"), BR-33b carries it as a rule, O-C8 corrects its own compensation claim ("It is
+  **not** carried by the merged `symptom`, which §8.1 pins as one non-keying line"), and AT-R6b
+  fixture 2 asserts the literal elided path `pdlc/skills/a/b.md`. Rule, price, report row and
+  fixture all four moved together — the previous version had the price pointing at a channel that
+  could not carry it.
+- **Every repository claim in the changed text holds at HEAD.** `MERGE_GUARD_DEFAULTS` is
+  `pdlc/workflows/orchestrate-dev.js:48-53` and is the frozen four-member array AT-R6b fixture 3
+  relies on for `pdlc/workflows/` being a guard-set path (`Object.freeze` at `:48`, members `:49-52`,
+  close `:53`). §6.5's `read-pr` is in the PR seam's obliged column at `:916`, which is what the new
+  scoping paragraph claims. The only citation defect I found is the document's citation of **itself**
+  (L-02).
 
 ## Recommendation
 
