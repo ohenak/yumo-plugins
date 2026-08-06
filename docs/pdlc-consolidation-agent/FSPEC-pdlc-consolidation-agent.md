@@ -1148,7 +1148,7 @@ substitution maps both `/` and `.` to `-` and then collapses runs, so it is many
 
 | Consequence | Bound |
 |---|---|
-| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. Where the merged proposals are of **different §5.2 kinds**, §8.2's precedence rule decides the single `target` and the report body names the elided kind (AT-R6b's third fixture, O-C8). `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
+| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. Where the merged proposals are of **different §5.2 kinds**, §8.2's precedence rule decides the single `target` and the report body names the elided kind (AT-R6b's third and fourth fixtures, O-C8); and because the merged proposals name **two** canonical subject paths by construction here, §8.2's subject tie-break decides the single `artifact` — and, where precedence returns the process-learning kind, the `target` with it. `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
 | **Across passes**, NFR-4 suppresses a promotion whose subject collides with a *different* one already on a PR or in a §6.4 log record | the two files are in the same directory tree and differ only by separator-vs-dot in one path component; this suppression **is** reported (`duplicate-suppressed` names the pair **and** the PR or `passId`), so an operator reading the row sees which promotion was withheld. This is the cross-pass cost, and it is the only one the reason code covers |
 | §8.3 emits one effectiveness row for two failure modes | the row's `artifact` field carries the **unslugged** canonical subject path of the promotion that made it, so the row is never ambiguous about which file it measured |
 | §8.5 retires or revises one and appears to have retired both | same — the proposal carries the canonical path, not the slug |
@@ -1232,6 +1232,34 @@ because each is checkable:
 3. **Same-kind merges are unaffected**, and they are the common case: the precedence rule is a
    total order over a three-member set, so it is decidable on every merge, and on a same-kind merge
    it returns the kind both proposals already had.
+
+**Precedence ranks kinds; a second rule ranks subjects, because for the lowest-precedence kind
+`target` is a function of the subject.** Kinds 1 and 2 have a `target` that is a constant
+(`docs/_constraints/DOMAIN-CONSTRAINTS.md`) or a function of the id
+(`docs/_decisions/DECISIONS-{failure-mode-id}.md`), so ranking the kind decides the write. Kind 3's
+`target` is *the subject `artifact` itself*, and the merge's premise is that the merged proposals name
+**different** subject paths that slug to one id (§8.1's collision table). A same-kind merge of two
+process learnings over colliding subjects therefore leaves both `artifact` and `target` with two
+candidates — the same "one `target`" observable, one axis over. The tie-break:
+
+> On any merge whose proposals name more than one canonical subject path, the merged record's
+> `artifact` is the **lexicographically first** of them — byte order over the normalised, root-relative
+> paths of §8.1. `target` follows `artifact` wherever precedence returns kind 3; on kinds 1 and 2 the
+> `target` is already decided above and the tie-break touches only `artifact`.
+
+Three notes, each of which is why the rule is spelled rather than left open:
+
+- **It is a pure function of the inputs.** "First proposed" is not: proposal order is decided by the
+  pass's own model, so an implementation keyed on it is not reproducible across two passes over one
+  corpus — the property §8.3's determinism rests on (§8.1, "Why exactly those inputs").
+- **The `failure-mode-id` is unaffected** — it is why the merge happened: every candidate subject
+  slugs to the same id, so the tie-break never moves the key, only the field an operator and §8.5
+  read the canonical path off.
+- **It is load-bearing two passes later.** §8.5 chooses the remediation with a file-existence test on
+  the **subject** (BR-35a), so which of the colliding paths survives decides whether AT-F17's
+  `revision` branch or AT-F18's `retirement` branch is taken. AT-R6b's colliding fixture asserts
+  **which** `artifact` and `target` survive — `pdlc/skills/a-b.md`, since `-` (0x2D) precedes `/`
+  (0x2F) — not merely that there is one.
 
 O-C8 (§14.2) records the accepted cost.
 
