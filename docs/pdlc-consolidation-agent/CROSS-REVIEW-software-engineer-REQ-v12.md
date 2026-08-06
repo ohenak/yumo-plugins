@@ -142,4 +142,56 @@ restated only so that the two fixes are not expanded into paragraphs.
 
 ## Recommendation
 
+**Approved with minor changes.** 0 High, 0 Medium, 2 Low — the same two, at the same severity, on the
+same unmoved document.
+
+I want to be exact about what that verdict does and does not assert, because "approved again with no
+diff" is a shape that can hide either of two very different situations. It is not a re-approval by
+inertia: the two governed files were diffed and found unmoved, the five load-bearing code anchors
+were re-derived at HEAD, the version-pin sweep was re-run, and the one project-level decision that is
+new since v11 was read and applied. Every one of those could have turned an unchanged document red —
+a bumped constraint file, a moved `export`, a decision the REQ now contradicts — and none did. The
+verdict is the result of those checks, not a default.
+
+Nor is it a lowering of the bar to close a phase. The bar is unchanged: any open High or Medium means
+Needs revision. There is no High and no Medium. Both remaining findings are of the class DEC-SEV-01
+adjudicates — a gap in the scope of a governance rule over a shared normative file whose version-pin
+obligation makes the breach itself a defect — and I scored them Low at v11 under a decision that went
+against my own bar, before I knew the document would not move. Scoring them differently now, on
+identical bytes, purely because they went unaddressed for a round, would be exactly the re-litigation
+DEC-SEV-01 was recorded to stop.
+
+The test I apply every round: handed this REQ today, is there a decision an FSPEC author cannot make?
+**No** — and this round that question has an empirical answer rather than a predicted one. An FSPEC
+author was handed this REQ, wrote a full FSPEC, took five rounds of review from two reviewers, hit a
+round limit and produced a root-cause analysis. The postmortem's primary cause is layer absorption at
+the FSPEC — decisions settled a layer above where they belong — not an underdetermined REQ. Across
+all of that, no erratum was routed back to this document.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream. Neither finding
+here is of that shape: F-02 concerns a clause's scope over its own genesis commit and F-03 which of
+two files a sentence quantifies over. Both are single-clause edits to text this REQ owns, and neither
+re-scopes anything downstream. They belong here — as minor changes, not as a gate. Six rounds of
+clean sweeps preceded this one; a seventh round spent on two Low governance-wording fixes would cost
+more review than the fixes are worth, which is precisely why they are Low.
+
+### What should change (non-blocking, unchanged from v11)
+
+1. **F-03** (~60 bytes against 331 of headroom) — give §4b's enumerated/prose split an explicit
+   subject: "Of the vocabularies file's owned sections, §1, §2 and §4 are enumerations and §3 is
+   owned normative prose; the baseline's four sections are all owned normative prose, under no row
+   oracle (baseline `:18-20`)."
+2. **F-02** (byte-neutral in the REQ) — narrow the baseline's change-control clause from "a
+   **content** change" to "a change to any **stated fact**", matching the vocabularies file's
+   row-scoped wording. §4b governs the two files as a pair; their change-control rules should not be
+   asymmetrically strict. Bumping the baseline to 1.1 and repinning `:202`/`:448` is the alternative,
+   but it fixes the symptom rather than the wording that produced it.
+
+Both are appropriate for a single optimizer pass. Neither warrants a further review round on its own
+account, and I would not file either again if the document reaches me unchanged a third time.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
