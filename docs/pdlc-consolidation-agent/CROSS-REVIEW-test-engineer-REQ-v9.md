@@ -40,7 +40,55 @@ test author from writing the fixture today, which is exactly why none is filed h
 
 ## Questions
 
+No open questions. None of the four findings is a request for information: each names the clause that
+closes it, and in three of the four the REQ already contains the intent the clause would make literal.
+
 ## Positive Observations
+
+- **The relocation was checked for loss, not for size, and it survived that check.** I compared
+  `docs/_constraints/pdlc-consolidation-vocabularies.md` §1 (`:24-53`) against the §4b table it
+  replaced, row by row: same 28 rows, same order, both joins (`:55-58`) and the composition paragraph
+  (`:60-64`) verbatim. The three cells that had read "as above" or "any status emitting a proposal"
+  were **replaced by explicit sets** — `ineffective`/`unmeasurable` and `revision`/`retirement` now
+  both read "any status emitting the AC-5.2 table" (`:47`, `:49`), and `action` reads
+  "`promoted`, `promoted-degraded`, `no-op`" (`:48`) — under the file's own rule that "no cell in
+  either table below may use a positional back-reference" (`:15-16`). I checked that resolution for
+  fidelity rather than assuming it: `failed` is excluded from the `action` row, and that is correct,
+  because AC-3.5's four failure classes all resolve to `promoted-degraded`/`no-op` (`:264-269`) and
+  AC-1.6's `failed` is decided before any proposal exists (`:211-215`). The set-equality obligation
+  came out of the move harder to break by row insertion, not softer.
+- **The size fix was a relocation, not a fifth compression pass — which is what I asked for and the
+  more expensive of the two options.** 4,439 bytes came out into two committed project-level files,
+  each carrying a `Cited by` row naming the exact REQ sections that depend on it and a `Version`
+  stamp. `pdlc-advisory-corpus-baseline.md` additionally carries `Verified at | HEAD, 2026-08-06` —
+  which is the right shape for a file whose whole content is claims about `orchestrate-dev.js` line
+  numbers. No reason was deleted to fund it.
+- **Every relocated citation still resolves at HEAD, and I re-verified them in the new files rather
+  than trusting that a move preserves truth.** `MODEL_ADVISORY` (`orchestrate-dev.js:1652`) and
+  `MODEL_ADVISORY_FALLBACK` (`:1653`) are the two constants; `resolveAdvisoryRung` is exported at
+  `:1833`; the `ADVISORY_MODEL_FALLBACK:` announcement is at `:1859`; `MERGE_GUARD_DEFAULTS` is the
+  frozen four-member array at `:48-53`; the POSTMORTEM name is built at `:5429` and the cross-review
+  name at `:5799`; `recordPhase("I", …)` is at `:10020`. `CLAUDE.md:68` says what AC-5.1 attributes
+  to it, word for word. `check-req-size.sh` still reads `LINE_LIMIT=700` / `BYTE_LIMIT=61440`
+  (`:41-42`) and `SOFT_LINE_LIMIT=630` / `SOFT_BYTE_LIMIT=55296` (`:47-48`).
+- **F-45 was answered on the strongest available shape, plus one I had not offered.** I gave three
+  options and the round took the hardest — a displacement rule plus a terminal action — and added a
+  fourth mechanic I had not asked for and that the fixture needs: a **merged** revision resets the
+  `ineffective` streak to zero (`:434-435`), so a revision that lands is re-judged on two fresh
+  `recurred` counted passes. Without that reset the very next counted pass would re-flag a promotion
+  whose fix had just merged, and the AC-5.3 oracle would have been decidable but wrong. The residual
+  I file as F-48 is one word inside that new paragraph, not a missing mechanism.
+- **AC-5.1's new paragraph closed a hole I had not filed while closing the one I had.** F-47 asked
+  only for the two-authored-file id count; the answer states it as a requirement with all four
+  consequences enumerated ("two ids, two AC-3.3 commits, two AC-5.2 rows, two AC-5.3 streaks — which
+  may share one PR", `:371-373`) **and** rules that a generated path never mints an id, which removes
+  a three-ids-for-one-edit reading of the likeliest promotion this feature will ever make. That is the
+  fourth consecutive round in which the narrower answer was available and the wider one was given.
+- **AC-5.3's report field gained its absent case from the SE side without weakening mine.** The
+  `revision` / `retirement` field is now "**absent** for an ordinary `promote`, which chose nothing"
+  (`:423`). A three-state field (`revision` / `retirement` / absent) with each state tied to a stated
+  precondition is assertable; the two-state field it replaced forced an implementer to invent a value
+  for the ordinary path. F-48 is the one remaining state that field does not name.
 
 ## Recommendation
 
