@@ -1119,7 +1119,7 @@ substitution maps both `/` and `.` to `-` and then collapses runs, so it is many
 
 | Consequence | Bound |
 |---|---|
-| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
+| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. Where the merged proposals are of **different §5.2 kinds**, §8.2's precedence rule decides the single `target` and the report body names the elided kind (AT-R6b's third fixture, O-C8). `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
 | **Across passes**, NFR-4 suppresses a promotion whose subject collides with a *different* one already on a PR or in a §6.4 log record | the two files are in the same directory tree and differ only by separator-vs-dot in one path component; this suppression **is** reported (`duplicate-suppressed` names the pair **and** the PR or `passId`), so an operator reading the row sees which promotion was withheld. This is the cross-pass cost, and it is the only one the reason code covers |
 | §8.3 emits one effectiveness row for two failure modes | the row's `artifact` field carries the **unslugged** canonical subject path of the promotion that made it, so the row is never ambiguous about which file it measured |
 | §8.5 retires or revises one and appears to have retired both | same — the proposal carries the canonical path, not the slug |
@@ -1170,6 +1170,41 @@ vocabulary for a proposal *withheld* because a prior pass's record or an open PR
 and an intra-pass merge withholds nothing (there is no second promotion, and no PR or enacting
 `passId` to name). AT-R6b's second fixture asserts the merge in this form; §8.1's collision table
 prices the cross-pass case separately.
+
+**When the merged proposals are of different §5.2 kinds, one `target` is decided by precedence — not
+left to the writer.** The merge key reads `phase`, `artifact` and `action` and reads no kind, so the
+two proposals it merges may be, say, a domain invariant and a process learning about one file in one
+phase. `target` is a function of the kind (§8.1's three-row table), so without a rule the merged
+record would have two candidate targets and the "one `target`" observable above would be
+undetermined. The rule, in this order:
+
+| Precedence | Kind (§5.2) | `target` |
+|---|---|---|
+| 1 (highest) | Domain invariant future REQs must respect (AC-2.1) | `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| 2 | Architectural decision now project-level (AC-2.2) | `docs/_decisions/DECISIONS-{failure-mode-id}.md` |
+| 3 (lowest) | Process learning about a skill prompt, checklist or workflow phase | the subject `artifact` itself |
+
+The merged record carries the **highest-precedence** kind's `target` and its `route`; the order is by
+reach — a constraint binds every future REQ, a decision binds the project, a prompt edit binds one
+file — so the merge never narrows what the surviving write reaches. Three consequences, each stated
+because each is checkable:
+
+1. **The write that is elided is the lower-precedence one, and it is not silent.** The merged
+   promotion's single `symptom` states both failure modes, and §10.4 item 4 names the elided kind
+   beside the promotion it was merged into. What is lost is the *second write*, not the content — the
+   corpus keeps both descriptions, which is what §8.2's "nothing is withheld" has always meant. It is
+   **not** a `duplicate-suppressed`: §6.4 defines that code only over a prior pass's record or an
+   open/merged PR, and neither exists here.
+2. **A mixed-kind merge never takes the PR route.** Both kinds that outrank a process learning have a
+   `target` under `docs/_constraints/` or `docs/_decisions/`, which §5.1 routes to the consuming repo
+   — so a process learning about a guard-set file, merged with either, loses its guard-set `target`
+   and with it its PR. This is §8.1 consequence 2 holding one case further out, not an exception to
+   it.
+3. **Same-kind merges are unaffected**, and they are the common case: the precedence rule is a
+   total order over a three-member set, so it is decidable on every merge, and on a same-kind merge
+   it returns the kind both proposals already had.
+
+O-C8 (§14.2) records the accepted cost.
 
 **Across passes the id deliberately repeats** — NFR-4 sanctions re-proposing a promotion whose PR the
 operator closed unmerged. Log **records** are keyed `(failure-mode-id, passId, action)`; a
@@ -1632,7 +1667,9 @@ The returned body carries everything AC-7.1 requires, in a form a `/loop` tick p
 2. the rung it ran on, and the `ADVISORY_MODEL_FALLBACK:` line verbatim when one was emitted (§2.6),
 3. LEARNINGS consumed, **by basename**,
 4. promotions by route — constraints, decisions, PR, `degraded` — each `degraded` one naming its
-   §6.3 failure class and reason code,
+   §6.3 failure class and reason code, and each promotion produced by a **mixed-kind intra-pass
+   merge** (§8.2) naming the elided lower-precedence kind beside it, so the write that did not happen
+   is legible without diffing the log,
 5. the §8.3 effectiveness table: one row per distinct `failure-mode-id`, its verdict, and its state
    (`ineffective` / `unmeasurable`) where one holds, with the §8.5 `revision` / `retirement` field
    present only where a remediation was proposed,
@@ -1830,7 +1867,7 @@ PROPERTIES' (DC-09).
 | AT-M1 | operator | a marker present, younger than `staleLockMinutes` | a second pass starts | terminal `refused`, reason `consolidation-in-progress`, naming the held `passId` and timestamp; **no** consumed pair; **no** commit; one log row is still written |
 | AT-M2 | operator | a marker older than `staleLockMinutes` | a pass starts | the marker is reclaimed, `reclaimed-stale-lock` records the abandoned `passId`, and the pass proceeds |
 | AT-M3 | operator | a truncated or unparseable marker file | a pass starts | it is reclaimed (not refused), with the abandoned id reported `unknown` |
-| AT-M4 | operator | a pass that terminates `failed` at step 8 | the pass ends | the marker is released, the terminal row is written, and the consumed pair (appended at step 7) is present |
+| AT-M4 | operator | a pass that terminates `failed` at step 8 because **neither** model rung resolves (§12.1 S-11) | the pass ends | the marker is released, the terminal row is written with reason `advisory-model-unresolved`, the consumed pair (appended at step 7) is present, **and no §8.3 effectiveness table is appended**. The absent-table conjunct is the same one AT-M6 asserts, and it is asserted here as well because S-11 and S-11b reach it by the **same** path — §10.2 order 3's "step 11 never ran" — and not by two arms: step 8 is one step, and every way of leaving it early leaves it before step 11. Two rows assert it because the two Givens differ (unresolved rung vs. dispatch error) and an implementation could special-case one |
 | AT-M5 | operator | a pass that takes the marker and runs to a terminal outcome, with the git seam under a spy | the pass ends | the **observed pathspec set** of every commit the pass makes is **set-equal** to the §5.4 write set — which does not contain the lock path. The positive set-equality is the assertion; a maintainer-side check that `.gitignore` carries a pattern matching `docs/_decisions/.consolidation-lock` accompanies it, but cannot stand alone: a pass that made no commit at all would satisfy an absence-only oracle |
 | AT-M6 | operator | a first advisory dispatch that fails for a reason that is **not** model resolution — the resolver's `{kind: "dispatch-error", err}` return (§2.6 row 4) | the pass ends | terminal `failed` with **no** reason code; the error's message appears verbatim in the report body; the marker is released and the consumed pair from step 7 is present; **and the log carries the terminal row and nothing else the pass would have appended later — no §8.3 effectiveness table and no failure-mode record** (§10.2 order 3: step 11 never ran). That negative is asserted on the same path as AT-M9's positive and is the paired half of it: without it, an implementation that emitted a table on every pass regardless of where it terminated passes both rows. The report-body assertion is what separates this row from AT-M4's `advisory-model-unresolved`, and is required until the erratum's `advisory-dispatch-failed` row exists |
 | AT-M6b | operator | a pass `refused` at step 6 — the marker held and fresh (§12.1 S-09) | the pass ends | the log carries **exactly one** appended record, its terminal row: **no** effectiveness table (step 11 never ran) and **no** consumed pair (§4.4). The `refused` arm of §10.2 order 3's negative, which no other row asserted; AT-M1 covers the same Given's status and reason code, this row covers what the pass did **not** append |
@@ -1849,7 +1886,7 @@ PROPERTIES' (DC-09).
 | AT-R4 | operator | git refuses the commit after the lock retries | the pass ends | the terminal status is unchanged, `writes-uncommitted` is recorded, and the writes remain correct on disk |
 | AT-R5 | operator | a pass whose working tree already matches (nothing to stage) | the commit runs | no failure and no `writes-uncommitted` — the empty stage is a return, not a warning |
 | AT-R6 | operator | an AC-2.2 promotion with `phase = P` and `artifact = pdlc/skills/se-author/SKILL.md`, run against (a) a tree with no such decision file and (b) a tree already carrying one | routing and the write run | the path is `docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md` in **both** runs — the §5.2 derivation is a pure function of the two keying fields, so the topic is stable across passes; in (a) the file is created, in (b) it is **appended to**, never replaced; the write is in the invoking tree and inside the §5.4 commit; the route is never the PR route. AC-2.2's target is a different path with a derived segment and does not share AT-R2's fixture |
-| AT-R6b | operator | two AC-2.2 promotions in one pass sharing `phase = P` whose **subject** artifacts are **siblings** — `pdlc/skills/se-author/SKILL.md` and `pdlc/skills/te-review/SKILL.md` — and, in a second fixture, two subjects that collide under §8.1's slug (`pdlc/skills/a-b.md` and `pdlc/skills/a/b.md`) | routing and the writes run | in the sibling fixture the two promotions write **two distinct** files, one per subject — the withdrawn basename derivation would have written one, so this is the row that falsifies it. In the colliding fixture the two are **one** promotion under §8.2's intra-pass uniqueness rule, and the assertion is that merge's exact observable set: **one** failure-mode record for the id, **one** `symptom`, **one** `target`, **one** file written — **and no** `duplicate-suppressed` reason code and **no** `suppressed-by:` entry, because nothing was withheld and there is neither a PR nor an enacting `passId` to name (§8.2, §6.4). The negative half is the half this fixture exists for: an implementation that reported the merge as a suppression would be indistinguishable, in the log, from one that dropped a promotion. Distinct from AT-R6, whose Given is one promotion across two trees; and distinct from AT-Q10, whose Given is the **cross-pass** suppression §8.1's collision table prices |
+| AT-R6b | operator | two AC-2.2 promotions in one pass sharing `phase = P` whose **subject** artifacts are **siblings** — `pdlc/skills/se-author/SKILL.md` and `pdlc/skills/te-review/SKILL.md` — in a second fixture, two subjects that collide under §8.1's slug (`pdlc/skills/a-b.md` and `pdlc/skills/a/b.md`), and in a **third** fixture the same colliding subjects proposed under **different §5.2 kinds** — one a process learning about `pdlc/workflows/orchestrate-dev.js` (a guard-set subject whose `target` is that file itself) and one an AC-2.1 domain invariant about it (`target` = `docs/_constraints/DOMAIN-CONSTRAINTS.md`) | routing and the writes run | in the sibling fixture the two promotions write **two distinct** files, one per subject — the withdrawn basename derivation would have written one, so this is the row that falsifies it. In the colliding fixture the two are **one** promotion under §8.2's intra-pass uniqueness rule, and the assertion is that merge's exact observable set: **one** failure-mode record for the id, **one** `symptom`, **one** `target`, **one** file written — **and no** `duplicate-suppressed` reason code and **no** `suppressed-by:` entry, because nothing was withheld and there is neither a PR nor an enacting `passId` to name (§8.2, §6.4). The negative half is the half this fixture exists for: an implementation that reported the merge as a suppression would be indistinguishable, in the log, from one that dropped a promotion. In the **third** fixture the merge is again one promotion, and the assertion is §8.2's kind-precedence rule: the single `target` is `docs/_constraints/DOMAIN-CONSTRAINTS.md` — the higher-precedence kind's — the `route` is `constraints`, **no** guard-set path is written and **no** PR is opened (the process learning's own `target` would have taken the PR route, and precedence removes it), the one `symptom` names **both** failure modes, and the report body names the elided kind. The two lower fixtures cannot see any of that: their kinds coincide by construction, so their "one `target`" conjunct is satisfied vacuously and an implementation with no precedence rule at all passes them. Distinct from AT-R6, whose Given is one promotion across two trees; and distinct from AT-Q10, whose Given is the **cross-pass** suppression §8.1's collision table prices |
 
 ### 13.5 The PR route and idempotence (§6)
 
@@ -1971,8 +2008,9 @@ The four components T-09 ranges over, with the invariant each property asserts:
 | O-C5 | `ESCALATIONS.md` cannot distinguish a seam that never escalates because it never runs from one that never escalates because it always succeeds. | **Honest limit**, which is why §9.5's output is a candidate for human judgment. Resolution rates are D-CONS-06. | §9.6 |
 | O-C6 | `recurred` depends on a harvest agent recognising a recurrence and copying an id (§8.4 step 2). A harvest that should have attached an id and did not is invisible to the pass. | **Accepted recall limit.** The miss direction is toward `prevented` / `insufficient-evidence` — "we cannot show it worked" — never toward a false `recurred`, so the loop degrades safe. Closing it needs a producing-side check the pass cannot perform, since only the harvest sees the feature's own failures. | §8.4 |
 | O-C7 | §8.4 step 1's open-promotion filter closes an id only on a **landed** `retire`, and a `retire` of a guard-set promotion lands only when an operator merges its PR — so on this repo the filter closes little, and the harvest question list grows monotonically with every promotion ever made. | **Accepted, unbounded, and recorded rather than capped.** No recency window and no cap ship: both would drop a promotion from the list silently, turning §8.4's safe failure direction (one extra question) into the unsafe one (a missed recurrence, and with it a false `prevented`). The cost is a longer harvest prompt, which is bounded by the promotion rate, not by pass count. If it becomes a real burden the repair is a **reported** cap — one that names what it elided — and that is a successor's decision, not a silent default here. | §8.4 |
+| O-C8 | An intra-pass merge of two proposals of **different** §5.2 kinds keeps one `target` by §8.2's precedence rule, so the lower-precedence kind's write never happens — a process learning merged with a domain invariant edits no skill prompt that pass. | **Accepted and reported, not repaired.** The alternative — two records sharing one `(failure-mode-id, action)` in one pass — would break the uniqueness rule NFR-4's suppression key rests on, so the choice is between losing a write and losing the key. The loss is bounded by the same rate §8.1 prices the collision at (two failure modes, one phase, one file), the content survives in the merged `symptom`, and §10.4 item 4 names the elided kind so an operator can re-propose it by hand. Precedence runs widest-reach-first so the surviving write is never the narrower one. | §8.2 |
 
-None of the seven is a blocking gap: each names what is observed, what is accepted, and — where one
+None of the eight is a blocking gap: each names what is observed, what is accepted, and — where one
 exists — the deferral that carries it.
 
 ### 14.3 Questions this FSPEC raises for the operator, not for a downstream layer
