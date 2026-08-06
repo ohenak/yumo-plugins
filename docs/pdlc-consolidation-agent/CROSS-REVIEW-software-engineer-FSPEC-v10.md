@@ -47,6 +47,53 @@ it ranges over.
 
 ## Positive Observations
 
+- **The reader table absorbed a whole reader rather than qualifying the universal away.** I offered
+  two directions for v9 F-01 and expected the cheaper one (scope the closure to pass-side predicate
+  readers). What landed is the expensive one: the §8.4 harvest question is now a row in its own right
+  (`:1180`), with the reason it is not step 1's stated in the cell — "Not the same reader as step 1
+  and not the same fields, which is why it is its own row" — and both of its arms spelled. The
+  document is now *more* closed than the claim it had to defend, and `symptom`, previously indexed by
+  nothing, has an owner.
+- **The `phase` arm was derived, not chosen.** `:1182` argues it from the epistemic state ("a record
+  with no `phase` and a `phase` the §2 mapping cannot decide are the same epistemic state") and then
+  points at the rule that already fixed the direction for the second case, so the arm "inherits it
+  rather than adding a concept" — and §8.3's totality rule was amended to say the same thing from its
+  own side (`:1396-1399`), so the two sections are consistent by construction rather than by
+  coincidence. That is the third round running in which a new arm has been traced to an existing rule
+  instead of asserted.
+- **The one arm where "never dropped" genuinely cannot hold is the one arm that says so.** `:1182`'s
+  `failure-mode-id` case does not paper over the tension with the row's own "the row is never
+  dropped": "this is the one arm where 'never dropped' cannot apply, because a row cannot be keyed on
+  an id the record does not carry … That is not a dropped row in §8.3's set-equality sense: the
+  obligation there ranges over the **distinct ids the log carries**, and an id-less record contributes
+  none." Naming the exception and reconciling it with the set-equality it appears to breach is the
+  difference between a spec a reviewer can check and one a reviewer has to trust.
+- **A new normativity rule was added at exactly the point the table grew arms.** `:1155-1159`: "Where
+  a cell states an arm, the cell is normative and this rule is its default, not its override." With
+  three rows now carrying multi-arm cells, the general skip rule and the per-cell arms would otherwise
+  have been in an unstated precedence relation, and an implementer would have had to guess which wins.
+  It also states the second exception class ("where dropping the reader's **output** would itself be
+  read as a decision") rather than leaving §8.3's and §8.4's arms looking like ad-hoc carve-outs.
+- **AT-F21 declares three more arms it does not exercise, and says why it declines to grow.** `:2118`:
+  all of `phase`, `failure-mode-id` and `symptom` are now pinned present, "and their arms are
+  deliberately not exercised here (TE v9 Q-02): this fixture stays at two arms rather than growing a
+  fourth short record, so the `phase` arm's one home is §8.1's reader table for the rule and §14.5
+  LD-5 for the fixture, never both here and there." A fixture that refuses scope creep *and* names
+  where the refused scope went is the pattern that keeps AT cells from being cited for arms they never
+  tested.
+- **Citation health, sixth consecutive round.** Every citation added this round resolves at HEAD:
+  `MERGE_GUARD_DEFAULTS` is still `pdlc/workflows/orchestrate-dev.js:48`, so AT-R6b fixture 3's
+  guard-set path claim holds; vocabularies §1's `suppressed-by:` value grammar is still verbatim
+  `` `{id}:{action} → PR URL` `` (`docs/_constraints/pdlc-consolidation-vocabularies.md:63`), so
+  §14.4 ER-5 remains correctly open and BR-26's divergence note is accurate; DEC-LAYER-01's
+  fixture-strength bullet and its review consequence
+  (`docs/_decisions/DECISIONS-spec-layer-boundary.md:31-33`, `:35-39`) say what §14.5 and T-10 lean
+  on, including the clause that keeps "fails to state the *observable*" blocking at this layer. No
+  line-number citation added this round is stale.
+- **The version bump is honest, again.** `10.0`, not `9.1`: a reader was added to a table the document
+  calls set-equal, a cardinality that appears in three sentences moved, two business rules and an edge
+  case grew arms, and a TSPEC register row was created. Contract changes, not an editorial pass.
+
 ## Recommendation
 
 ## Verdict
