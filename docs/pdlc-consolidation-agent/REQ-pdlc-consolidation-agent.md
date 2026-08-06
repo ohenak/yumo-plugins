@@ -435,13 +435,15 @@ procedural — the agent cannot merge its own proposal even if every other contr
   | `Harvested from` basename class | Phases it evidences | Shipped naming |
   |---|---|---|
   | `CROSS-REVIEW-{role}-{docType}-v{N}.md` | the phase owning that docType (REQ→R, FSPEC→F, TSPEC→T, DECISIONS→D, PLAN→P, PROPERTIES→PR) | `orchestrate-dev.js:5799` |
-  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | `orchestrate-dev.js:6423` |
+  | `CODE_REVIEW-{feature}-v{N}.md` | DOD | `orchestrate-dev.js:10349` |
   | `POSTMORTEM-{phase}-{feature}.md` | that `{phase}` verbatim | `orchestrate-dev.js:5429` |
 
-  Any phase the mapping cannot decide for a pre-convention file (I, CR, H, PUB, MERGE) counts as
-  **not** exercised — which routes that promotion to `insufficient-evidence`, never to a guessed
-  `prevented`. Both inputs are file text, so two runs over the same corpus cannot disagree; that is
-  what NFR-4 rests on.
+  The mapping is a partition of the §4b phase catalogue: **decidable** = R, F, T, D, P, PR (row 1),
+  DOD (row 2), plus whatever `{phase}` row 3 names verbatim; **undecidable** = I, PT, CR, H, PUB,
+  MERGE. The two sets are disjoint and their union is set-equal to the catalogue, so no phase falls
+  through. Any phase the mapping cannot decide for a pre-convention file counts as **not** exercised
+  — which routes that promotion to `insufficient-evidence`, never to a guessed `prevented`. Both
+  inputs are file text, so two runs over the same corpus cannot disagree; that is what NFR-4 rests on.
 
   The table is under a **set-equality** obligation: it carries exactly one row per prior promotion
   in the log — no missing rows and no rows for promotions that were never made. A dropped row is a
@@ -457,9 +459,12 @@ procedural — the agent cannot merge its own proposal even if every other contr
   disjunction is assertable rather than implied. (Which one to choose is FSPEC's rule to state; that
   the choice is reported is this REQ's.) The streak is counted **in passes, not elapsed time**, and
   only passes that returned `prevented` or `recurred` for that promotion are counted: an
-  `insufficient-evidence` verdict and an AC-1.4 `no-op` pass are skipped entirely — they neither
-  advance nor reset the streak. Quiet weeks therefore cannot silently reset it. This `counted`
-  population governs the `ineffective` streak **only**; AC-5.5 counts a different population.
+  `insufficient-evidence` verdict is skipped entirely, as is any pass with an **empty consumed set**
+  (which produces no verdict at all — AC-1.4's first cause). The population is keyed on consumed-set
+  emptiness, never on the `no-op` label: a `no-op` reached by duplicate suppression has a non-empty
+  consumed set and real verdicts, so it counts here like any other pass. Quiet weeks therefore cannot
+  silently reset the streak. This `counted` population governs the `ineffective` streak **only**;
+  AC-5.5 counts a different population.
 - **AC-5.4** — Given a promotion flagged `ineffective`, Then retiring it follows the same
   propose-only path as making it. A promotion that landed under the AC-3.1 guard set is retired by a
   PR (AC-3.1, AC-3.6). A promotion that landed in the **consuming repo** — `DOMAIN-CONSTRAINTS.md`
@@ -473,8 +478,9 @@ procedural — the agent cannot merge its own proposal even if every other contr
   set** that produced any AC-5.2 verdict for this promotion — the population is deliberately *not*
   AC-5.3's `counted` set, which excludes `insufficient-evidence` by construction and would make this
   state unreachable. A `prevented` or `recurred` verdict resets the `unmeasurable` streak to zero; a
-  `no-op` pass (empty consumed set) and a `skipped-cadence` tick are not evaluated passes and neither
-  advance nor reset it. Once reached, `unmeasurable` is a standing state reported by every subsequent
+  pass with an **empty** consumed set (AC-1.4's first cause) and a `skipped-cadence` tick are not
+  evaluated passes and neither advance nor reset it — while a duplicate-suppressed `no-op`, whose
+  consumed set is non-empty, is an evaluated pass and does. Once reached, `unmeasurable` is a standing state reported by every subsequent
   pass, including a `no-op` one (AC-1.4), until a verdict resets it.
 
 ### REQ-CONS-06 — Advisory-record input
