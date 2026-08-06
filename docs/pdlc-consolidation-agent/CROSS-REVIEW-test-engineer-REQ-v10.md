@@ -40,7 +40,66 @@ higher.
 
 ## Questions
 
+No open questions. Neither finding is a request for information: each names the clause that closes it,
+and F-52's is a two-character widening in a file this feature owns.
+
 ## Positive Observations
+
+- **The generated-path predicate is now falsifiable, and I checked it against the builder rather than
+  against its own example.** v9's F-51 asked for a predicate; the round gave one keyed on the
+  **producer** ("never on a path glob", `:363`) and then supplied the counter-example that proves the
+  glob reading wrong: `pdlc/workflows/__tests__/fixtures/` copies whose paths contain
+  `pdlc/workflows/dist/` are authored and **do** mint an id (`:366-367`). That file genuinely exists
+  and is tracked —
+  `pdlc/workflows/__tests__/fixtures/covered-violations/pdlc/workflows/dist/distribution-manifest.json`
+  — so a naive implementation keyed on the path substring is falsified by a fixture already in the
+  repo. The count checks too: `git ls-files pdlc/workflows/dist/` returns exactly four rows, and
+  `build-runtime.mjs:464-469` is the `pdlc-cli.mjs` entry, so "`:465` mints the fourth" is literally
+  true. This is the shape I ask of a test and rarely get from a spec: a negative assertion paired with
+  what happens instead, on the same path.
+- **The relocation was checked for loss again, and again it survived.** §3 (`:99-151`) carries the
+  legacy-region material the REQ shed, and it carries **more** than the REQ held: the Pass-1 shape
+  ("a two-column table of **full paths** … no row status of any kind — 'Promoted' is only a section
+  heading", `:129-132`), both freeze clauses verbatim including the empty-pair case and the single
+  `refused`-row exemption, **and** the write-granularity rule ("every write is an append of one whole
+  record at end of file … a whole-file read-modify-write of the log is **forbidden**", `:120-127`),
+  which is the clause that explains why the log needs no lock. §4 (`:153-170`) likewise carries the
+  `passId` grammar, both derived names and a four-row trailer table that adds the per-commit
+  `PDLC-PROMOTION-ID` row. Nothing was dropped in either move; both gained.
+- **The first-run corpus claim — the one datum a first-run test asserts against — is exactly right at
+  HEAD, and it is right only because of a widening this REQ itself owns.** REQ-CONS-01 says "step 1's
+  enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
+  `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other
+  3 … are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the
+  cadence test" (`:101-105`). I enumerated it: `docs/*/LEARNINGS-*.md` — the shipped glob at
+  `nudge-consolidation.sh:28` — matches **2**; `docs/completed/*/LEARNINGS-*.md` matches **3**
+  (`pdlc-merge-phase`, `pdlc-review-loop-hardening`, `pdlc-workflow-distribution`); 2 + 3 = 5, which
+  holds only under the `docs/completed/*/` widening §5 puts in scope (`:577-578`). Grepping
+  `docs/_decisions/.consolidation-log.md` for `LEARNINGS-*.md` returns exactly the two basenames the
+  REQ names. So the fixture is 5 enumerated, 2 consolidated, 3 pending, 3 < 5 — every number in that
+  sentence is a transcription, and the load-bearing dependency between the count and the glob widening
+  is one the document itself states.
+- **The predicate's own citation was corrected to distinguish the test from the read.** REQ-CONS-01
+  now reads "a bare substring test over the whole of `docs/_decisions/.consolidation-log.md` (`:41`;
+  the read is `:36-37`)" (`:77`). That is precise: `nudge-consolidation.sh:36-37` is the
+  `with open(log …) as fh: logtext = fh.read()` pair and `:41` is
+  `pending = [p for p in learnings if os.path.basename(p) not in logtext]`. The distinction matters to
+  an implementer, because scoping the predicate to the consumed block is an edit at `:41`, not at the
+  read.
+- **F-49 was answered in both artifacts, and the file-wide clause was the one I had not asked for.**
+  I asked for a version-pinned citation and a converse defect rule. The round put the symmetric rule
+  in the REQ **and** in the constraints file, and added "Consumers cite this file **at its `Version`**;
+  a row change that is not accompanied by a version bump is itself a defect"
+  (`pdlc-consolidation-vocabularies.md:25-26`) — which is what actually makes the pin load-bearing,
+  since a pinned citation with no bump obligation drifts silently. It also generalised the
+  back-reference ban from "either table" to "**any** table" (`:15`) in the same round the file grew
+  from two tables to four, which is the correct order of operations and is precisely the maintenance
+  step F-52 observes was not applied to the ownership sentence.
+- **The baseline citation was repointed to the section that exists.** REQ-CONS-06's honest-limit line
+  now cites "baseline §4" (`:476`), and `pdlc-advisory-corpus-baseline.md:55` is
+  `## 4. The honest limit`. v9's text cited §3, which is `## 3. The two-rung model ladder`. A stale
+  section pointer in a relocated citation is the failure mode I flagged the whole relocation strategy
+  for; this round found and fixed one unprompted.
 
 ## Recommendation
 
