@@ -36,6 +36,12 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §8.1's `target` is now a recorded **field** of the failure-mode record, and §6.4's consuming-repo carrier reads records off `.consolidation-log.md` written by *earlier* passes. Records written before this feature ships do not exist, so there is no migration — but records written by a pass at one `{topic}` convention and read by a pass at another do: §5.2 declares the `{topic}` convention change and §15.3 lists the three hand-named `DECISIONS-*.md` files at HEAD. Is a record whose `target` field is absent (a log line written by any future writer that predates a field addition) a parse notice, a skipped row, or a halt? §8.4 step 1 and §6.4 both index into fields of records they did not write, and §10.2's append-only grammar guarantees old records are never rewritten. This is the same question §8.1's "normative for the record's shape" ruling settled for *writers*; it is not settled for readers. |
+| Q-02 | AT-Q7c's Then reads "the containment assertion (1) holds on all three domains with the PR seam and the clone seam observing `∅`, and the invoking tree observing `{add, commit}`". Is that last clause a containment assertion or an equality? Read as an equality it is the strongest form of the row and it is what makes AT-Q7c falsify a pass that quietly clones on a no-guard-set corpus — but it is also the form F-01 makes red. If F-01 is repaired by widening the invoking tree's permitted set, this cell needs to say which of the two it means, because "observing `{add, commit}`" will then be neither the permitted set nor obviously a subset claim. |
+| Q-03 | O-C7 accepts unbounded growth of the harvest question list and rules out both a recency window and a cap, on the ground that either would drop a promotion silently. Agreed as far as it goes — but §8.4 step 1's list is now computed **by the pass** and handed to the harvest prompt (this round's change, and the right one). Does that make the list a *prompt-size* obligation on the harvest dispatch — i.e. is there a size at which the pass should report the list's length in §10.4 rather than only emit it, so the growth is observable before it becomes a truncation? O-C7 bounds the cost by the promotion rate; it does not say who notices when the bound is exceeded. |
+
 ## Positive Observations
 
 ## Recommendation
