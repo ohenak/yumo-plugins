@@ -41,8 +41,93 @@ absence moves an effectiveness verdict. The other two are Low.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §14.5's lead says the register "is **set-equal** to the deferrals this document names; a deferral added later is a row added here". I audited it and it holds for the **PROPERTIES-owned** deferrals — I grepped every `PROPERTIES-owned` / `no fixture at this layer` site (`:1269`, `:1341`, `:2041`, `:2098`, `:2512`, `:2513`, `:2567`) and each maps onto LD-1…LD-4 with no fifth. But the document also defers three *spellings* to **TSPEC** under the same `DEC-LAYER-01` (§8.1's §8.3 unavailable-path cell `:1171`, §10.3's `suppressed-by:` unavailable rendering `:1748`, §6.4's `:842`), and §6.5's seam permitted-set widening is a "recorded TSPEC decision" (`:960`). Those are not in the register, and on my reading they should not be — the register's title and lead scope it to PROPERTIES. Is that scoping deliberate and worth one clause ("TSPEC-owned spellings are §14.1's, not this table's")? If the answer is yes, this is free; if the register was meant to be the one place a downstream author looks for *any* deferral, the four TSPEC sites are missing rows and I would want that decided at this layer rather than discovered at TSPEC. |
+| Q-02 | If M-01 is repaired by shape (2) — completing the table — §8.3's `phase` arm becomes assertable at this layer with the fixture already in §13: AT-F21's log fixture would need one more short record (`phase` absent, `failure-mode-id`/`artifact` present) and one more conjunct (the §8.3 row is emitted and its verdict is `insufficient-evidence`, never `prevented`). Is that inside the freeze, or does it read as a new fixture arm and therefore as PROPERTIES-owned under `DEC-LAYER-01` with a §14.5 row (LD-5)? I am not asking for the fixture — I am asking which of the two the repair should say, because whichever it is, the arm needs exactly one home, which is the discipline BR-33a's cell now imposes on itself. |
+
 ## Positive Observations
+
+- **The M-01 repair was taken as a decision, not as a hedge, and it propagated.** The v8 defect was
+  one rule stated two ways. The repair could have been a single reconciling sentence; instead §6.4
+  gained the rule with its safety argument attached ("skipping … would re-append a constraint that
+  already landed in the consuming repo, which is exactly the duplicate the paragraph above promises
+  does not happen, produced by a field outside the suppression key", `:840-846`), and every place
+  the rule is visible downstream was updated in the same revision — §8.1's reader row, §10.3's
+  `suppressed-by:` row, BR-26, BR-33a, E-12b. I checked all five at their line numbers. A rule that
+  changes in one place and stales in four is the usual outcome of a spec repair; this one did not.
+- **`passId` was distinguished from the predicate fields *normatively*, which is what makes the arm
+  testable at all.** §6.4's carrier row now states the split as binding ("The four are indexed for
+  two different jobs and the split is normative", `:819`), and §8.1's row spells two arms rather than
+  one exception. That is the difference between "this field is special" and a rule an implementer can
+  apply to a field added later: the test is whether the reader's predicate is a *function* of the
+  field, and BR-33a (`:2512`) now states it in exactly that form. It is the generalisation, not the
+  patch.
+- **§14.5 is the strongest thing in this revision, and it is a testing artifact.** The register gives
+  each deferral three columns — what is owed, where its observable is stated, and **what a defective
+  implementation does**. That third column is an oracle sketch: LD-4's "skips the contract and
+  re-appends a constraint that already landed … or writes `pass:undefined`, or drops the
+  `suppressed-by:` entry so the suppression is unevidenced" is directly transcribable into three
+  falsifying assertions by a PROPERTIES author who never reads §6.4. Deferrals in this document were
+  previously discoverable only from the point they arose; now they are enumerated once, and the table
+  states its own set-equality obligation so a later deferral without a row is a defect rather than an
+  omission. I verified the set-equality holds today (Q-01 records the one scoping question).
+- **AT-F21 was scoped rather than stretched.** The easy answer to my v8 Q-02 would have been to add
+  a fourth short record and claim the `passId` arm. The row instead pins `passId` *present* on all
+  three records and says why — the fixture stays on the two arms it can actually decide, and the
+  third arm is named PROPERTIES-owned with a §14.5 row. A fixture that declines a case explicitly is
+  worth more than one that covers it ambiguously, because the coverage claim in BR-33a stays true.
+- **The §8.2 class repair is substantively right and I checked it against the fixtures.** The claim
+  that AT-F9, AT-F10 and AT-F18 place a later action beside an earlier `promote` **across passes**
+  holds at BR-35 (`:2516`) and at AT-F18's Given (`:2095`); the intra-pass two-action case really is
+  uncovered by §13, which is what LD-3 now records. Only the numeral is wrong (L-02).
 
 ## Recommendation
 
+**Needs revision**
+
+All three v8 findings are resolved, and the Medium was resolved in the strong form: the branch was
+decided, argued from NFR-4's key, and propagated to all five downstream statements. Both v8
+questions are answered inside the document rather than in a reply. Nothing in this revision re-opens
+a settled decision, and nothing in it broke a section I had previously approved — I checked every
+section the diff touched, re-verified the `:1748` citation target, re-grepped the deferral sites for
+§14.5's set-equality, and re-derived the §8.2 cross-pass claim from BR-35 and AT-F18 rather than from
+the prose.
+
+The verdict is **Needs revision on M-01 alone**, and the reasoning is the same shape as v8's, applied
+consistently. `DEC-LAYER-01` puts fixture construction and set-equality *domains* below this layer,
+and I have applied that: L-01 is a missing arm in a coverage enumeration and is Low for exactly that
+reason; the `passId` and `artifact` deferrals are not findings at all. M-01 is neither. This revision
+**strengthened a completeness claim** — from row-level to cell-level set-equality over §8.1's reader
+table — and the document's own text falsifies the strengthened form at two cells (§8.3 indexes
+`phase` at `:1371`; the §8.4 harvest question indexes `symptom`, `artifact` and `phase` at `:1420`).
+The claim is load-bearing for testing precisely because the table is the enumeration from which a
+test author derives the short-record arms: read as true, it says `phase` has no reader and therefore
+no arm, when in fact a `phase`-short record leaves §8.3 unable to evaluate `prevented` and the
+document directs three mutually exclusive outcomes for it, one of which (`skip`) §8.3's own row
+forbids. That is a false-verdict path with no stated oracle — the same class of harm §8.3's
+"never dropped, which would read as `insufficient-evidence` and silently move a verdict" exists to
+close.
+
+The repair is one scoping clause or two table cells, adds no BR and — at the author's choice under
+Q-02 — either no new AT or one extra record in an existing Given, so it is admissible under the
+freeze:
+
+1. **M-01** — either scope the cell-level claim to the fields the table's readers index, naming
+   `phase` and `symptom` as read by §8.3 and by the §8.4 harvest question with their arms stated
+   there; or complete the table (add `phase` to §8.3's cell with the arm "row still emitted, verdict
+   falls to `insufficient-evidence`, never a guessed `prevented`", the direction `:1383-1384`
+   already fixes, and give the §8.4 harvest question its fields or its own row). Then answer Q-02 so
+   the `phase` arm has exactly one home.
+2. **L-01** — state the `failure-mode-id` and `action` arms, or give them a §14.5 LD-5 row. "Shares a
+   reader" is not "shares an arm", and §8.3's "keyed on the id" cannot describe an id-less record.
+3. **L-02** — "the two **classes**" → three, or drop the numeral.
+
+Taking (1) clears the verdict. (2) and (3) are Low and may be carried as tracked deferrals per
+`DEC-LAYER-01`, though (3) is a one-token edit in the sentence this revision rewrote, and the
+counting-mismatch class has now recurred four times in this section.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 2}
