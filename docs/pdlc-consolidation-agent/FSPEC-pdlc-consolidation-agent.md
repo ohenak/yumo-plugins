@@ -1072,6 +1072,110 @@ corpus, and §9.5's proposal is a candidate for human judgment for exactly that 
 
 ## 10. FSPEC-CONS-09 — Reporting and the log record grammar
 
+**Links:** REQ-CONS-07 (AC-7.1, AC-7.2), AC-2.4, AC-3.4, AC-5.1, AC-1.3, NFR-2, NFR-3a, NFR-4.
+
+### 10.1 One report, one channel
+
+| Terminal status | Log row written? | Report body returned? |
+|---|---|---|
+| `promoted` / `promoted-degraded` / `no-op` / `failed` | yes — exactly one | yes |
+| `refused` | yes — exactly one (§4.4) | yes |
+| `skipped-cadence` | **no row at all** | yes — the status alone |
+
+"Exactly one report" counts **reports**, not fields: the pass's terminal report is written as its row
+in `docs/_decisions/.consolidation-log.md` **and** returned as the invocation's report body (what a
+`/loop` tick prints). Those are one report on one channel rendered twice, not two reports.
+
+The `skipped-cadence` exemption is load-bearing twice: the skipped tick is the common case under
+`/loop`, so a row per tick would grow the log without bound — and it is that same log the §3.2
+predicate and the §2.3 cadence datum are read from.
+
+### 10.2 Write order within a pass
+
+Every write is an append of one whole record at end of file (vocabularies §3, binding). The pass
+appends in exactly this order:
+
+| Order | Record | Step | Condition |
+|---|---|---|---|
+| 1 | the `<!-- pdlc:consumed {passId} -->` pair (§3.3) | 7 | every marker-holding pass, empty pair included |
+| 2 | one failure-mode record per promotion (§8.1) | 13 | when the pass promoted anything |
+| 3 | the effectiveness table (§8.3) | 14 | every pass emitting a report other than `skipped-cadence` |
+| 4 | the terminal row (§10.3) | 14 | as §10.1 |
+
+Order 1 before everything else is vocabularies §3(a)'s obligation and freezes the legacy-region
+boundary unconditionally. Orders 2–4 are appends in a fixed sequence so a truncated pass is readable:
+a log ending mid-sequence names what the pass had decided, and the absent terminal row is itself the
+evidence the pass did not complete.
+
+**No record is ever edited in place.** The AC-3.4 PR URL is not a back-edit of an earlier record: it
+is the `pr:` field of this pass's own single terminal row, appended once. That is what keeps the log
+lock-free (§4.1).
+
+### 10.3 The terminal row's fields
+
+One row, one pass. Each field is a member of a vocabularies §1 category; **no field carries a value
+with no §1 row**.
+
+| Field | Value | Source |
+|---|---|---|
+| `pass:` | `{passId}` (§2.5) | vocabularies §4 |
+| `date:` | the pass's start timestamp — the value §2.3's cadence datum reads | AC-1.1 |
+| `status:` | one of the six terminal statuses | AC-7.1 |
+| `trigger:` | `cadence` / `volume` / `manual` — present on **every** row | NFR-3a |
+| `reason:` | zero or more reason codes, each legal with this status per vocabularies §1's composition rule | AC-7.1 |
+| `rung:` | the model rung the pass actually ran on (§2.6) | AC-1.5, AC-1.6 |
+| `credential:` | exactly one of `present (redacted)` / `absent` / `local-gh` | AC-4.2, NFR-2 |
+| `consumed:` | the consumed basenames — the §3.3 pair's set, restated for the reader | AC-2.4 |
+| `promotions:` | promoted items by route: constraints / decisions / PR / `degraded` | AC-7.1 |
+| `pr:` | the URL of a PR **this pass opened**, or empty | AC-3.4, AC-7.2 |
+| `suppressed-by:` | zero or more `{id}:{action} → {PR URL}` entries | NFR-4 |
+| `branch:` | the branch the §5.4 commit landed on | AC-3.8b |
+| `deferred:` | what the pass left for human judgment | AC-7.1 |
+
+**`pr:` is a biconditional scoped to this pass's own PR** — carried when and only when this pass
+opened one. An all-suppressed `no-op` (AC-1.4's second cause) therefore leaves `pr:` **empty** and
+carries its evidence in `suppressed-by:` instead. The two fields are never merged, and a row may
+carry both — a pass that opened one PR and suppressed another proposal.
+
+A row may carry **more than one reason code**. Legality is decided by vocabularies §1's composition
+rule — a code is legal with every terminal status still reachable after the point at which it was
+recorded — not by the status under which the code was first introduced.
+
+`consumed:` restates the §3.3 pair's set for a human reader and is **not** a second consumption
+record: it lies outside any `<!-- pdlc:consumed -->` block, so under §3.2 it is in neither region and
+can never mark a file consolidated. That is precisely why the block form exists.
+
+### 10.4 The report body
+
+The returned body carries everything AC-7.1 requires, in a form a `/loop` tick prints:
+
+1. terminal status and reason codes,
+2. the rung it ran on, and the `ADVISORY_MODEL_FALLBACK:` line verbatim when one was emitted (§2.6),
+3. LEARNINGS consumed, **by basename**,
+4. promotions by route — constraints, decisions, PR, `degraded` — each `degraded` one naming its
+   §6.3 failure class and reason code,
+5. the §8.3 effectiveness table: one row per distinct `failure-mode-id`, its verdict, and its state
+   (`ineffective` / `unmeasurable`) where one holds, with the §8.5 `revision` / `retirement` field
+   present only where a remediation was proposed,
+6. `duplicate-suppressed` entries, one per suppressed proposal, naming the pair and the PR,
+7. the §9 advisory notes: the corpus state, any §9.4 / §9.5 candidate, and any operator action,
+8. what it deferred for human judgment,
+9. the branch the §5.4 commit landed on, or `writes-uncommitted`.
+
+Receive-side totality (DC-01): a section with nothing to say is rendered as an explicit empty
+statement, never omitted. A reader must be able to distinguish "no promotions" from "the promotions
+section was dropped", which is the same set-equality discipline §8.3 places on the table.
+
+### 10.5 What is never in the report or the log
+
+| Never | Why |
+|---|---|
+| the credential value, in any form | NFR-2, §7.4 |
+| a LEARNINGS **body** quotation used as a count | §9.1 — counts come from `ESCALATIONS.md` only |
+| a value with no vocabularies §1 row | REQ §4b set-equality; §15 records where each row is used |
+| an in-place edit of any earlier record | vocabularies §3 write granularity |
+| a basename outside a `<!-- pdlc:consumed -->` block presented as consumption | §3.2 |
+
 ## 11. Configuration parse behaviour
 
 ## 12. Observable outcomes per scenario
