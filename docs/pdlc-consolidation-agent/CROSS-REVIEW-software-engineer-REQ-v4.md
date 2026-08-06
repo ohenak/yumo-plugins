@@ -65,7 +65,53 @@ rows are not re-checked.
 
 ## Questions
 
+Only questions arising from the changed sections. v3's Q-01…Q-04 are answered by the revision (Q-01
+and Q-02 by the legacy-region rule and the empty-datum decision, Q-03 by AC-3.8b's "Where those
+commits go", Q-04 by AC-1.3's new Commits column) and are not re-asked.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: is duplicate suppression intended to key on **merged** PRs as well as open ones? NFR-4's current wording ("an **open** PR") is a deliberate-looking choice — an interrupted pass's partial PR is left alone — but it means a merged promotion offers no suppression key at all once its log record is gone. If the answer is "the log record is the durable key and its loss is accepted", say that; the finding is about the closure claim being stated universally, not about which answer is right. |
+| Q-02 | For F-02: does a pass with an empty consumed set write an empty `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair? NFR-5's "exactly the consumed set — neither more nor fewer" is satisfied by an empty block, and writing one unconditionally is what makes the legacy-region freeze true for every first pass rather than only for one whose consumed set happens to be non-empty. |
+| Q-03 | AC-3.8b commits "exactly once, at its terminal outcome", and AC-1.3's Commits column says a `failed` pass commits "if it wrote anything". A `failed` pass reached through AC-1.6 (neither rung resolves) has taken the marker and written nothing else — so it must still *remove* the marker line, which is a modification of `.consolidation-log.md` in the working tree with no commit. Is leaving that uncommitted modification behind intended (it is a deletion, so the tree returns to its prior content and nothing is lost), or should the row for a `failed` pass be written before the marker is released so there is always something to commit? |
+
 ## Positive Observations
+
+- **The revision checked my claim instead of accepting it, and was right to.** My v3 F-02 asserted
+  `.consolidation-log.md` was "a single-line JSON array"; it is a markdown pass log with a
+  `## Pass 1` section and a full-path consumed table. A REQ author under time pressure with a High
+  finding in hand has every incentive to write to the reviewer's description of the file. This one
+  opened the file, described what is actually there (`:8`, `:14-17`), and then answered the part of
+  the finding that survived — that a block-only predicate would re-consume an already-promoted
+  corpus. That is the behaviour §5a's "the truth of a claim about existing code" is supposed to
+  protect, working in the direction nobody designs for.
+
+- **The legacy-region rule is a better answer than the seeding migration I proposed.** Seeding
+  `<!-- pdlc:consumed -->` blocks from Pass 1 would have required parsing prose written before any
+  convention existed — a one-shot transcription with no test that could ever fail again. Defining
+  the predicate over two regions instead makes the shipped substring test *the* legacy semantics by
+  construction, needs no migration step, is total over any log including a fresh repo's absent one,
+  and is verifiable today: 5 enumerated, 2 in the legacy region, 3 pending, below the volume
+  threshold, cadence test reached. Every one of those five numbers checks out against the tree.
+
+- **AC-3.8b now argues from the difference between two shipped mechanisms rather than naming one.**
+  The v3 text cited `commitPaths` and inherited a guarantee it does not provide. The revision cites
+  `commitQueueRow`, states the pathspec-on-both-calls requirement in the AC's own words, and then
+  explains why `commitPaths` is *correctly* different where it lives ("there the `git add` scopes a
+  set the wave already verified") instead of treating it as a bug. Distinguishing a precedent you
+  reject from a precedent that is wrong is the harder write-up and the more useful one.
+
+- **§4b absorbed the phase catalogue rather than leaving it implicit.** F-07 asked for one missing
+  member. The delivery is a thirteen-id row with a per-id anchor split across `PHASE_DISPATCH` and
+  the five `recordPhase` literals — which is how I verified it in one pass, and how a downstream
+  PROPERTIES author will get set-equality over the phase enumeration for free instead of
+  reconstructing it from CLAUDE.md prose.
+
+- **Length went down while claims went up.** The document is 693 lines after adding a migration rule,
+  a destination paragraph, a phase catalogue and three streak clarifications — the four tightening
+  commits gave that back out of prose. I re-checked the sections those commits touched (§1,
+  REQ-CONS-01/03/04/05/06, §4a/§4b/§5/§5a) against v3 and found no claim or citation dropped in the
+  compression.
 
 ## Recommendation
 
