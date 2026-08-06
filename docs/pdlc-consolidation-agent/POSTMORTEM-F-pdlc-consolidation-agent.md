@@ -239,6 +239,85 @@ completeness claim — see pattern 3.
 
 ## Best-Guess Root Cause
 
+**Two independent causes, either of which alone would have exhausted this window.** The first
+window had one dominant cause and the countermeasures for it worked; what is left is a smaller
+manufacture rate (RC-A) sitting behind a convergence rule that cannot absorb even a small one
+(RC-B). RC-B is the higher-confidence and the cheaper of the two.
+
+### RC-B (primary) — the convergence rule requires simultaneous approval over a document that changes between every judgement
+
+The loop stops only when both reviewers approve **in the same round**. Rounds 6–8 each contained an
+approval and the approvals alternated, because the revision that satisfies one reviewer is the same
+revision that gives the other new text to check. Under that rule an approval is perishable: it is
+discarded by the next round's repair, even when the repair does not touch the section the approval
+was about. Round 6's TE approval and rounds 7–8's SE approvals were all discarded this way, and none
+was ever withdrawn on its merits.
+
+The evidence that this is the binding constraint, not a symptom: the open set at the limit is **one
+Medium and two Lows**, all of them in text added in that round, closable in six minutes and closed
+in six minutes. A rule that can hold a document with that open set for two further rounds is not
+measuring the document's readiness; it is measuring whether two independent judgement streams
+happened to be empty at the same instant.
+
+Confidence: high. The pattern is directly observable in the verdict table and has no competing
+explanation — both reviewers state that the approval bar was applied as written and neither
+inflated a severity to hold the document.
+
+### RC-A (secondary, and the reason RC-B binds) — the freeze relocated claim manufacture from mechanism to bookkeeping, and did not reduce it to zero
+
+`DEC-LAYER-01` removed the mechanism-class Medium exactly as intended: no tie-break algorithm, no
+reader index, no seam permitted-set, no fixture-construction argument entered the document after
+round 6. The replacement discipline — *state the observable, name the downstream owner* — obliges a
+register of named owners, and a register invites a completeness claim over its own contents. Rounds
+9 and 10 both fail on precisely that: a universal quantified over a range the same commit enlarged.
+
+So the manufacture rate fell (four-or-five Mediums per round → one per reviewer) but its **floor is
+not zero**, because:
+
+1. The reviewers are dispatched with a completeness-by-set-equality clause and correctly ask for
+   coverage arguments.
+2. The only way to answer at this layer, under the freeze, is a universal over a register.
+3. Any amendment to the register — including the amendment that answers the previous finding —
+   ranges over new members and can falsify the universal.
+
+This is a self-referential loop with a fixed point above zero, and five rounds cannot reach a fixed
+point that the process itself keeps displacing.
+
+Confidence: high for the mechanism, medium for the claim that the floor is strictly positive rather
+than one or two more rounds away. Rounds 9 and 10 are the only two data points at the post-freeze
+rate, and they are equal.
+
+### RC-C (contributing) — reflexivity of the subject matter
+
+Unchanged from the first window (Appendix A, RC-4) and now with more evidence behind it. This
+feature specifies a **specification-governance mechanism**: the document and its reviewers reason
+about the same kind of object, so every rule the document states about records, registers, coverage
+and deferral is immediately available as a rule the reviewers can check the document itself
+against — and they do, correctly. The subject matter converts ordinary spec prose into checkable
+claims at an unusually high rate. Phase R on this same feature also required two full windows.
+Across the feature: **20 REQ reviews and 20 FSPEC reviews**, and no reviewer has yet been wrong.
+
+### RC-D (contributing) — `MAX_REVIEW_ROUNDS = 5` measures rounds, not progress
+
+The window closed in **54 minutes** of wall clock. The loop was never slow and never stalled; it was
+productive in a direction the round counter does not measure. Raising the constant is still not a
+fix — it buys rounds at an unchanged rate and against an unchanged synchronisation rule — but it is
+worth recording that the budget was exhausted by a process running at roughly ten minutes per
+round-trip, not by delay.
+
+### Ruled out
+
+| Hypothesis | Why not |
+|---|---|
+| Author non-responsiveness or stalling | 100 % of prior findings closed as filed in nine consecutive rounds; round-10 findings closed within six minutes of the last review landing |
+| Reviewer severity inflation or a ratchet | Three of five rounds contain an approval; both reviewers deliberately down-scored findings under `DEC-LAYER-01` and said so per finding; no High since round 3 |
+| Reviewer disagreement or deadlock | Zero contradicted findings in this window; the terminal Medium was found independently by both, as were both Lows |
+| The countermeasures were not applied | `87a6cb7` landed the freeze and `DEC-LAYER-01` before round 6; both are cited by name in the reviews; no new BR, AT or rule entered the document after round 6 |
+| The countermeasures were wrong | They removed the class of finding they targeted — the mechanism Medium is gone and the Medium rate fell by ~75 %. They were incomplete, not mistaken |
+| Ambiguous or contested REQ scope | No round re-opened scope, structure or a settled decision; both reviewers state this explicitly in rounds 9 and 10 |
+| Watchdog or pacing failure | No no-progress halt occurred; every round produced committed, versioned revisions |
+| A structural defect in the FSPEC | Every open finding is local and names a specific clause; the terminal repair touches two register paragraphs and adds nothing |
+
 ## Recommendation
 
 ## Appendix A — Prior window (rounds 1–5), resolved 2026-08-06
