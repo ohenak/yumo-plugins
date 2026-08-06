@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | — |
-| LEARNINGS | — |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
+| LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-07-27 |
+| pdlc | draft | Claude | 1.1 | 2026-08-05 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry
 > pipeline-level promotions across the repository boundary as pull requests against
@@ -30,10 +30,18 @@ project-level `DOMAIN-CONSTRAINTS` and `DECISIONS`. That part works and stays.
 Two things do not.
 
 **The cross-repo dead end.** When a learning says *a skill prompt itself should change*, the skill
-writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a markdown table with columns
-"Target skill / Proposed change / Rationale" — **in the consuming repo**. The skills it names live
-in `yumo-plugins/pdlc/skills/`. Nothing carries the proposal across that boundary. It is a note to
+writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a four-column markdown table,
+`| Source LEARNINGS | Target skill | Proposed change | Rationale |`
+(`pdlc/skills/consolidate-learnings/SKILL.md:54`) — **in the consuming repo**. The skills it names
+live in `yumo-plugins/pdlc/skills/`. Nothing carries the proposal across that boundary: no
+`gh pr create` and no cross-repo push exists outside Phase PUB's own-repo `ship-pr`. It is a note to
 a human who must read it, switch repositories, and hand-apply each row.
+
+**Today's only consumer is `yumo-plugins` itself.** `docs/_queue/QUEUE.md:11` states that this queue
+is the pipeline's own queue, and `:279` that every PR in it trips the self-modification guard. So the
+"consuming repo" and the "plugin repo" are, in the shipping configuration, one repository. This REQ
+therefore specifies the same-repo case as the primary configuration (AC-3.8) rather than assuming a
+two-repo topology that does not yet exist.
 
 The result is that the pipeline accumulates precise evidence about its own failure modes and then
 does nothing with it. The one loop meant to make the pipeline better is the only fully manual one.
