@@ -1301,6 +1301,121 @@ A `no-op` pass emits V-01 through V-04 unchanged, restating each standing verdic
 
 ## 13. Acceptance tests
 
+Per DC-05 every named behavioural branch above carries an acceptance test here. Each is stated in
+**Who / Given / When / Then** form and asserts an observable of §12 — a status, a reason code, a file
+state, or a field. Oracle mechanics, fixture construction and coverage floors are TSPEC's and
+PROPERTIES' (DC-09).
+
+### 13.1 Cadence, volume and the tick order (§2)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-C1 | operator | this repository at HEAD — 5 LEARNINGS in corpus, 2 named in the log's legacy region, default `volumeThreshold` 5, no log row carrying a datum status | a `/loop` tick runs | the un-consolidated set has 3 members; the volume test does **not** fire; the cadence test fires on the empty-datum branch; the row records trigger `cadence` and reason code `no-cadence-datum` |
+| AT-C2 | operator | 5 or more un-consolidated LEARNINGS and `cadenceHours` **not** elapsed | a tick runs | the pass runs with trigger `volume` |
+| AT-C3 | operator | fewer than `volumeThreshold` un-consolidated and `cadenceHours` not elapsed | a tick runs | terminal `skipped-cadence`; **no** log row is appended; no LEARNINGS body was read; no `passId` minted; no git call made |
+| AT-C4 | operator | `cadenceHours` not elapsed by any measure | `/pdlc:consolidate-learnings` is invoked directly | the pass runs with trigger `manual` — the manual entry is never gated by cadence |
+| AT-C5 | operator | a log whose most recent datum-status row is a `refused` row followed by a `promoted` row | a tick evaluates the cadence test | the datum is the `promoted` row's date; the `refused` row is skipped |
+| AT-C6 | operator | a log already carrying a row with `passId` `{today}-1` | a second pass mints its id | the new `passId` is `{today}-2` |
+
+### 13.2 The consumed predicate and the corpus (§3)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-P1 | operator | a LEARNINGS under `docs/completed/{feature}/` | the corpus is enumerated | it is in the corpus; a LEARNINGS under `docs/discarded/{feature}/` is **not** |
+| AT-P2 | operator | a basename appearing in the log **outside** any `<!-- pdlc:consumed -->` block and after the first such marker — e.g. in an `artifact` field | the predicate runs | that file is **un-consolidated**; the stray occurrence marks nothing |
+| AT-P3 | operator | a log with no `<!-- pdlc:consumed` marker at all | the predicate runs | the whole file is legacy region; a basename appearing anywhere in it is consolidated |
+| AT-P4 | operator | an absent log file | the predicate runs | every enumerated basename is un-consolidated; no error |
+| AT-P5 | operator | an opening `<!-- pdlc:consumed {id} -->` with no closing marker | the predicate runs | the unterminated block extends to end of file and its basenames count as consumed |
+| AT-P6 | operator | an empty un-consolidated set | a pass runs | the consumed pair is still appended, **empty**, before any other record |
+| AT-P7 | operator | `pdlc/hooks/scripts/nudge-consolidation.sh` after this feature | the hook runs | its predicate is the §3.2 two-region test and its glob includes `docs/completed/*/` — the same corpus and predicate the pass uses |
+
+### 13.3 The marker (§4)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-M1 | operator | a marker present, younger than `staleLockMinutes` | a second pass starts | terminal `refused`, reason `consolidation-in-progress`, naming the held `passId` and timestamp; **no** consumed pair; **no** commit; one log row is still written |
+| AT-M2 | operator | a marker older than `staleLockMinutes` | a pass starts | the marker is reclaimed, `reclaimed-stale-lock` records the abandoned `passId`, and the pass proceeds |
+| AT-M3 | operator | a truncated or unparseable marker file | a pass starts | it is reclaimed (not refused), with the abandoned id reported `unknown` |
+| AT-M4 | operator | a pass that terminates `failed` at step 8 | the pass ends | the marker is released, the terminal row is written, and the consumed pair (appended at step 7) is present |
+| AT-M5 | maintainer | the repository at HEAD | `.gitignore` is read | it carries a pattern matching `docs/_decisions/.consolidation-lock`, and that path appears in no pathspec of any pass |
+
+### 13.4 Routing, writes and the commit (§5)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-R1 | operator | a promotion targeting `pdlc/hooks/scripts/nudge-consolidation.sh` | routing runs | it takes the **PR** route — the predicate is set-equal to `MERGE_GUARD_DEFAULTS`, not a subset |
+| AT-R2 | operator | a promotion targeting `docs/_constraints/DOMAIN-CONSTRAINTS.md` | routing runs | it is appended in the invoking tree and is inside the §5.4 commit |
+| AT-R3 | operator | an invoking tree on a `feat-*` branch with a partially staged index | a pass runs to a terminal outcome | HEAD and branch are identical before and after; the commit contains **exactly** the §5.4 pathspec; the pre-staged files are not swept in |
+| AT-R4 | operator | git refuses the commit after the lock retries | the pass ends | the terminal status is unchanged, `writes-uncommitted` is recorded, and the writes remain correct on disk |
+| AT-R5 | operator | a pass whose working tree already matches (nothing to stage) | the commit runs | no failure and no `writes-uncommitted` — the empty stage is a return, not a warning |
+
+### 13.5 The PR route and idempotence (§6)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-Q1 | operator | `pluginRepository` resolving to the current repository | a guard-set promotion is made | the edit is committed in a separate clone under a temporary directory cut from the fetched default branch; the invoking tree sees no branch operation |
+| AT-Q2 | operator | three promotions in one pass sharing one PR | the PR is opened | there are three commits, each with a distinct `PDLC-PROMOTION-ID: {id}:{action}`, and `PDLC-CONSOLIDATION-PROMOTIONS` is **set-equal** to those three pairs |
+| AT-Q3 | operator | a proposal whose `(id, action)` pair is on an **open** PR | the pass runs | nothing is opened; `duplicate-suppressed` names the pair and the PR in `suppressed-by:`; `pr:` stays empty; that PR is not amended |
+| AT-Q4 | operator | the same pair on a **closed-unmerged** PR | the pass runs | the proposal is re-opened as a new PR — a rejected proposal is re-proposable |
+| AT-Q5 | operator | a merged `promote` PR for an id, and that promotion now `ineffective` | the pass proposes a remediation | the `revise` or `retire` proposal is **not** suppressed by the merged `promote` |
+| AT-Q6 | operator | the remote head branch `consolidation/{passId}` already exists | the PR is attempted | reason code `branch-exists`, the fallback proposal file carries the full diff, and the existing branch and any PR for it are named |
+| AT-Q7 | maintainer | any code path of the pass | the source is inspected | no merge or enable-auto-merge API call exists, on any path, for any PR including its own |
+
+### 13.6 Credential (§7)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-K1 | operator | no `credentialEnv` variable and working local `gh` auth | a pass runs | the row records `credential: local-gh` and the PR route is attempted |
+| AT-K2 | operator | neither a credential variable nor `gh` auth | a pass runs | `credential: absent`, reason `credential-unavailable`, the §6.3 fallback fires, the promotion appears under the `degraded` route, and the pass does **not** halt |
+| AT-K3 | operator | a pass that promoted nothing else and degraded its only promotion | the pass ends | terminal `no-op` — never a bare `promoted` |
+| AT-K4 | operator | a credential present but rejected by the repository | a pass runs | `credential: present (redacted)` **and** reason `credential-unavailable` — the two fields are not collapsed |
+| AT-K5 | maintainer | any pass on any path | every artifact and the report body are searched | the credential value appears in none of them, and the row carries exactly one `credential:` value from the closed set |
+
+### 13.7 Falsifiability (§8)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-F1 | operator | two passes deriving a promotion for the same `phase` and `artifact` from **different** consumed sets and different `symptom` wording | the ids are compared | they are identical — `symptom` and the consumed set are not inputs |
+| AT-F2 | operator | a remedy spanning two authored files | proposals are derived | there are **two** proposals, two ids, two commits, two effectiveness rows — sharing one PR is permitted |
+| AT-F3 | operator | an edit to `pdlc/workflows/orchestrate-dev.js` plus its rebuilt `pdlc/workflows/dist/` bundles | proposals are derived | **one** proposal, `artifact` being the source file; no generated path mints an id |
+| AT-F4 | operator | an edit to a `pdlc/workflows/__tests__/fixtures/` file whose path contains `dist/` | proposals are derived | it is authored and **does** mint an id |
+| AT-F5 | operator | prior passes recording N distinct `failure-mode-id`s, two of them sharing an id | a pass reports | the table has exactly one row per distinct id, none missing and none for a promotion never made |
+| AT-F6 | operator | a consumed LEARNINGS naming an id | the verdict is computed | `recurred` |
+| AT-F7 | operator | no consumed LEARNINGS naming the id, and one whose `Phases exercised` (or the §2 mapping) includes the promotion's `phase` | the verdict is computed | `prevented` |
+| AT-F8 | operator | no consumed LEARNINGS decided to have exercised that phase | the verdict is computed | `insufficient-evidence` — never a guessed `prevented` |
+| AT-F9 | operator | a promotion `recurred` on two consecutive counted passes, with an `insufficient-evidence` pass and an empty-consumed-set pass interleaved | the pass runs | the streak is unbroken — neither interleaved pass counts — and the promotion is flagged `ineffective` |
+| AT-F10 | operator | an `ineffective` promotion whose `revise` is already on an open PR | the remediation is chosen | `retirement` is proposed and the report field names `retirement` |
+| AT-F11 | operator | an `ineffective` promotion whose `retire` is already on an open or merged PR | the pass runs | **nothing** is proposed; `duplicate-suppressed` is recorded against that PR; the field names `retirement` |
+| AT-F12 | operator | a merged revision for an id | the next passes run | that promotion's `ineffective` streak is zero — two fresh `recurred` counted passes are required to re-flag it |
+| AT-F13 | operator | a promotion at `insufficient-evidence` for `unmeasurablePasses` consecutive evaluated passes, with a duplicate-suppressed `no-op` among them | the pass reports | that `no-op` **counted** as evaluated; the promotion is `unmeasurable` |
+| AT-F14 | operator | an ordinary `promote` with no remediation | the pass reports | the `revision`/`retirement` field is **absent**, not empty-valued |
+
+### 13.8 Advisory corpus (§9)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-A1 | operator | `docs/_queue/ESCALATIONS.md` absent — the state at HEAD | a pass runs | reason `no-advisory-corpus`; **no** seam proposal of any kind; the rest of the pass proceeds normally |
+| AT-A2 | operator | the file present with zero entries | a pass runs | reason `advisory-corpus-empty`; no over-escalation candidate and no widening proposal |
+| AT-A3 | operator | a stock repo with the tier never run | a pass runs | it does **not** propose widening all five `ADVISORY_SEAMS` |
+| AT-A4 | operator | a corpus where seam A escalated across two distinct features and strictly more often than every other seam | a pass runs | A is surfaced as an over-escalation candidate |
+| AT-A5 | operator | two seams tied on the highest total | a pass runs | no over-escalation candidate; the tie is reported |
+| AT-A6 | operator | a non-empty corpus in which seam B has escalations from no feature and another seam has some | a pass runs | a widening for B is proposed, never enacted; a `pdlc/workflows/` default routes as a PR, a consumer-config value is reported as an operator action |
+| AT-A7 | operator | an entry whose `Feature` row is missing | the corpus is counted | that entry is skipped with a parse notice; no count is attributed to a guessed key; the read does not abort |
+
+### 13.9 Reporting and configuration (§10, §11)
+
+| ID | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-L1 | operator | a pass that opened a PR and suppressed another proposal | the row is read | `pr:` carries this pass's PR and `suppressed-by:` carries the suppressed pair — both present, neither merged into the other |
+| AT-L2 | operator | a pass that opened nothing and suppressed everything | the row is read | `pr:` is **empty**; the evidence is in `suppressed-by:`; terminal `no-op` |
+| AT-L3 | operator | any pass other than `skipped-cadence` | the pass ends | exactly one log row is appended and one report body returned; no earlier record was edited in place |
+| AT-L4 | operator | a report with no promotions | the body is read | the promotions section is present and explicitly empty — omission is a failure |
+| AT-L5 | maintainer | every enumerated value the report and row emit | they are compared to vocabularies §1 at `Version` 1.4 | the two sets are **equal** in both directions — no value without a row, no row unused |
+| AT-N1 | operator | `.claude/pdlc.config.json` absent | a pass runs | every `consolidation` key is at its default; the pass does not terminate |
+| AT-N2 | operator | a `consolidation` section with one key of the wrong type | a pass runs | that key falls back and is named in the report; every other configured key keeps its value |
+| AT-N3 | operator | `consolidation` present but not an object | a pass runs | every key defaults, and the report distinguishes this from an absent section |
+| AT-N4 | operator | `pluginRepository` set to a name that does not resolve | a pass runs | reason `repository-unresolved` with the configured value recorded verbatim — **not** a silent fallback to the current repository |
+
 ## 14. Obligations and open questions
 
 ## 15. Traceability
