@@ -49,6 +49,35 @@ revision changed.
 
 ## Existing-Code Claim Verification (changed sections)
 
+The revision added roughly two dozen new `file:line` citations. Every one checked against HEAD on
+`feat-pdlc-consolidation-agent`, in a single pass. Only the last two rows are wrong.
+
+| # | New REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `MERGE_GUARD_DEFAULTS` is exactly `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` at `:48-53` | AC-3.1, NFR-1 | **Confirmed, set-equal** | `orchestrate-dev.js:48-53` |
+| 2 | `guardVerdict` at `:732` over `effectiveGuardPaths` at `:709` | AC-3.7 | **Confirmed** (v1 cited `:731`/`:708`; the revision's numbers are the correct ones) | `orchestrate-dev.js:709`, `:732` |
+| 3 | Guard reachable only from the MERGE ladder `:899-900` and the advisory-envelope check `:2143` | AC-3.7 | **Confirmed** — those are the only two call sites | `orchestrate-dev.js:899-900`, `:2143` |
+| 4 | Phase MERGE ships `mergeMode: "off"` at `:61`, refusal at `:838` | AC-3.7 | **Confirmed** | `orchestrate-dev.js:61`, `:838` (`if (config.mergeMode === "off")`) |
+| 5 | No code path in this repository evaluates an inbound PR from another process | AC-3.7 | **Confirmed** | both `guardVerdict` call sites are inside an `orchestrate-dev` run's own-PR decision |
+| 6 | `hooks.json` registers only `PreToolUse` `:3`, `PostToolUse` `:14`, `SessionStart` `:29` | REQ-CONS-01 | **Confirmed, exact lines** | `pdlc/hooks/hooks.json:3`, `:14`, `:29` |
+| 7 | The hook's basename predicate is at `nudge-consolidation.sh:41`, log path at `:32` | REQ-CONS-01, NFR-5 | **Confirmed, exact lines** | `:41` `pending = [p for p in learnings if os.path.basename(p) not in logtext]`; `:32` |
+| 8 | Threshold `5` lives at `nudge-consolidation.sh:25` | AC-1.2, §4a | **Confirmed** | `:25` `THRESHOLD = 5` |
+| 9 | The skill's competing predicate is the `Date Completed` boundary at `SKILL.md:35` | REQ-CONS-01 | **Confirmed, and the two do disagree** | `consolidate-learnings/SKILL.md:35` |
+| 10 | `.consolidation-log.md` pass record is `SKILL.md:43` | AC-2.4 | **Confirmed** | `consolidate-learnings/SKILL.md:43` |
+| 11 | `CONSOLIDATION-PROPOSAL-{date}.md` is written at `SKILL.md:49`; four-column table at `:54` | §1, REQ-CONS-03 | **Confirmed verbatim** | `consolidate-learnings/SKILL.md:49`, `:54` |
+| 12 | `MODEL_ADVISORY` `:1652`, `MODEL_ADVISORY_FALLBACK` `:1653`, `ADVISORY_MODEL_FALLBACK:` notice `:1859` | AC-1.5, AC-1.6 | **Confirmed, all three** | `orchestrate-dev.js:1652`, `:1653`, `:1859` |
+| 13 | Both constants are module-private and `orchestrate-queue.js` imports neither | AC-1.5 | **Confirmed** — neither carries `export`; the queue has its own `MODEL_QUEUE` | `orchestrate-dev.js:1652-1653` (no `export`) |
+| 14 | `advisorySummaryRows` at `:2708`, driven by `ADVISORY_SEAMS`, surfaced only at `:10663` / `:10695` | REQ-CONS-06, D-CONS-06 | **Confirmed** — both surfacings are report fields, never a write | `orchestrate-dev.js:2708`, `:10663`, `:10695` |
+| 15 | `renderAdvisoryEntry` schema at `:2642`; the record is deleted after distil at `:10499` | REQ-CONS-06 | **Confirmed** | `orchestrate-dev.js:2642`; `:10499` `const advisoryPath = ...` inside the `advisoryTierOn` H2 block |
+| 16 | `advisoryDistilPrompt` `:7585-7594` asks only for a prose summary with no schema | REQ-CONS-06 | **Confirmed verbatim** — step 2 is `Append a summary of its entries to …LEARNINGS…`, no schema | `orchestrate-dev.js:7585-7594` |
+| 17 | `ESCALATIONS_PATH` `:2750`, appended at `:2812`, `renderEscalationEntry` `:2763` | AC-6.1 | **Confirmed** | `orchestrate-dev.js:2750`, `:2763`, `:2812` |
+| 18 | Every escalation entry carries named `Feature` and `Seam` fields | AC-6.1 | **Confirmed** — emitted as table rows | `orchestrate-dev.js:2782-2783` |
+| 19 | DC-09 is at `docs/_constraints/DOMAIN-CONSTRAINTS.md:245` | §5a | **Confirmed** | `DOMAIN-CONSTRAINTS.md:245` |
+| 20 | `/loop run /pdlc:{skill}` is the shipped cadence vehicle | REQ-CONS-01 | **Confirmed** as a documented entry form | `CLAUDE.md:215` |
+| 21 | `QUEUE.md:11` states this is the pipeline's own queue; `:279` that every PR trips REQ-MERGE-03 | §1 | **Confirmed, both lines** | `docs/_queue/QUEUE.md:11`, `:279` |
+| 22 | `docs/_queue/ESCALATIONS.md` **exists** (BL-01 "Met") | BL-01, AC-6.1 | **False** (F-01) | `docs/_queue/` contains `QUEUE.md` only; `git log --all -- docs/_queue/ESCALATIONS.md` returns nothing; the writer is gated on `advisoryTierOn` (`:9653`) whose default is `enabled: false` (`:1663`) and this repo's `.claude/pdlc.config.json` has no `advisory` section |
+| 23 | `additionalContext` is emitted at `nudge-consolidation.sh:47` | REQ-CONS-01 | **Off by one** (F-09) — true statement, wrong anchor; the key is at `:48` | `nudge-consolidation.sh:47-48` |
+
 ## Questions
 
 ## Positive Observations
