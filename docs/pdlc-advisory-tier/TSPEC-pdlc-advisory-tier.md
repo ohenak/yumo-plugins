@@ -311,12 +311,22 @@ the tier ships correctly either way, which is what "non-fatal by construction" m
 
 ```js
 /**
- * Resolve the advisory rung at the FIRST advisory dispatch of a run (§15.2 — lazy).
+ * Resolve the advisory rung at the FIRST advisory dispatch of a run (§15.2 — lazy),
+ * carrying that dispatch's own prompt so no probe turn is ever spent on resolution.
+ * The `{ model, fallback }` decision is recorded on `_state.resolved` (the per-run
+ * memo the driver and the report read); the return value is the dispatch outcome.
+ *
+ * [v1.1 — DoD v2] Contract updated to the shipped reconciliation of the rung
+ * ladder (CODE_REVIEW v1 High "tested code ≠ shipped code"): one ladder, driven
+ * by the seam's real dispatch. Deliberately non-async (`.then`-chained) so the
+ * driver's Promise.race hop-depth invariant holds — see the note at the
+ * implementation site.
  * @param {{ _agent, _log, _state }} deps
- * @returns {Promise<{ model: string, fallback: boolean }>}
+ * @param {string} prompt - the seam's own dispatch prompt
+ * @returns {Promise<{ kind: "response", raw: string } | { kind: "dispatch-error", err: Error }>}
  * @throws  haltError when neither rung resolves (M-3)
  */
-export async function resolveAdvisoryRung({ _agent, _log, _state }) { … }
+export function resolveAdvisoryRung({ _agent, _log, _state }, prompt) { … }
 ```
 
 - `_state` is the per-run memo (`{ resolved: null }`). A non-null memo returns immediately — that is
