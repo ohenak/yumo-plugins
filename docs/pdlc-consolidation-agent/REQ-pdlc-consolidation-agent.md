@@ -411,16 +411,43 @@ deleted — and `renderEscalationEntry` (`:2763`) gives every entry named `Featu
 REQ-CONS-06 therefore consumes **that**, and does not require a structured artifact that is
 destroyed.
 
+**Availability of that input, stated honestly.** `docs/_queue/ESCALATIONS.md` **does not exist at
+HEAD** — `docs/_queue/` holds `QUEUE.md` alone, and `git log --all -- docs/_queue/ESCALATIONS.md`
+returns nothing, so it has never existed on any branch. It is written only by the advisory tier, and
+that tier ships **disabled**: `advisoryTierOn = advisoryConfigResult.config.enabled`
+(`pdlc/workflows/orchestrate-dev.js:9653`) resolves from `parseAdvisoryConfig` (`:1682`) whose
+default is `enabled: false` (`:1663`), and this repo's `.claude/pdlc.config.json` carries an
+`implementation` section only — no `advisory` key at all. So in the shipping configuration the file
+is absent, and stays absent until an operator opts in. REQ-CONS-06 is therefore specified for an
+**absent-first** world: the requirement ships and is testable with the tier off, and its proposals
+are gated on a corpus that could actually have carried evidence. The corpus's availability is
+tracked as BL-01a, not asserted as delivered.
+
 - **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its
   machine-readable per-seam input, counting escalations per `Seam` per `Feature` from the entry
   fields `renderEscalationEntry` emits. Advisory text folded into LEARNINGS is a **corroborating,
-  non-numeric** input only: the pass may cite it as evidence but never derives a count from it.
+  non-numeric** input only: the pass may cite it as evidence but never derives a count from it. The
+  three states of that input are distinguished, and the shipping state is the first:
+
+  | Corpus state | Meaning | Pass behavior |
+  |---|---|---|
+  | File absent | the advisory tier has never run here (the shipping default, `enabled: false`) | records reason code `no-advisory-corpus` in the AC-7.1 report; makes **no** seam proposal of any kind — neither AC-6.2 nor AC-6.3 may fire; the rest of the pass proceeds normally |
+  | File present, zero entries | the tier ran and escalated nothing | records `advisory-corpus-empty`; AC-6.2 cannot fire (no counts); AC-6.3 may fire only under its own non-emptiness gate below, which this state fails |
+  | File present, ≥1 entry | a real corpus | AC-6.2 and AC-6.3 apply as written |
+
+  Absence of the file is never read as absence of escalations: a tier that could not escalate is not
+  a tier whose seams worked.
 - **AC-6.2** — Given a seam whose escalation count in `docs/_queue/ESCALATIONS.md` spans at least
   two distinct features and exceeds the other seams' counts (the AC-2.3 pattern bar applied to this
   corpus), Then the pass surfaces it as a candidate for envelope revision or upstream-phase repair,
   bound to the relevant deferral.
-- **AC-6.3** — Given a seam with escalations from no feature across the consumed window, Then the
-  pass may propose an envelope widening — never enacted. The proposal targets the **shipped
+- **AC-6.3** — Given a **non-empty** corpus (AC-6.1 row 3) in which at least one *other* seam
+  escalated across the consumed window, and a seam with escalations from no feature across that same
+  window, Then the pass may propose an envelope widening for that seam — never enacted. Both
+  conjuncts are required: with an absent or empty corpus the pass makes no widening proposal at all,
+  so the first pass on a stock repo cannot propose widening all five `ADVISORY_SEAMS`
+  (`pdlc/workflows/orchestrate-dev.js:1669`) on the strength of a corpus that no run could have
+  written. The proposal targets the **shipped
   defaults** in `pdlc/workflows/`, so it routes as a PR under AC-3.1. A consumer's
   `.claude/pdlc.config.json` is untracked and is not a PR-able surface; a widening a consumer must
   adopt locally is reported as an operator action in the AC-7.1 report, never as a PR.
@@ -529,7 +556,8 @@ Concretely, for the review loop:
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | `pdlc-advisory-tier` delivered — the two-rung advisory ladder (`MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK`) and `docs/_queue/ESCALATIONS.md` exist | PR merged | **Met** — queue row 14 `done`, merged `bb99f89` (#38) |
+| BL-01 | `pdlc-advisory-tier`'s two-rung model ladder delivered — `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`) and the exported resolver `resolveAdvisoryRung` (`:1833`) | PR merged | **Met** — queue row 14 `done`, merged `bb99f89` (#38). Gates AC-1.5/AC-1.6 |
+| BL-01a | An advisory **escalation corpus** — `docs/_queue/ESCALATIONS.md` with ≥1 entry | Operator sets `.claude/pdlc.config.json` → `advisory.enabled: true`, and a run escalates | **Not met, and not expected to be.** The file does not exist at HEAD or in history; the writer is gated on `advisoryTierOn` (`orchestrate-dev.js:9653`) whose default is `enabled: false` (`:1663`), and this repo's config has no `advisory` section. Does **not** gate FSPEC: AC-6.1 specifies the absent and empty states as first-class, and AC-6.2/AC-6.3 are inert without a corpus |
 | BL-02 | `pdlc-workflow-distribution` delivered. A promotion that lands in `yumo-plugins` and never reaches a consumer's `.claude/workflows/` is not a promotion | PR merged | **Met** — archived to `docs/completed/pdlc-workflow-distribution/` |
 | BL-03 | Fine-grained token per AC-4.1 provisioned, and the env var of `consolidation.credentialEnv` populated | Operator action + config value | Required only for the two-repo configuration; the same-repo shipping configuration (AC-3.8) runs on local `gh` auth (AC-4.4), so this does **not** gate FSPEC |
 | BL-04 | Cadence value (master plan OQ-E3) | Config default | **Closed** by §4a: `cadenceHours` default 168, plus the AC-1.2 volume trigger |
