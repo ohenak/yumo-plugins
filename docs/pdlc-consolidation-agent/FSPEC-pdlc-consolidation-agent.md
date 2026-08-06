@@ -1564,3 +1564,38 @@ used here without a §1 row. AT-L5 asserts the equality in both directions at `V
 
 Every path above is verified present at HEAD except the new bundle artifacts, which this feature
 creates.
+
+## 16. Linked Requirements
+
+The functional units of this document are the nine `FSPEC-CONS-0N` specs of §2–§10. This section is
+the linkage roll-up: which REQ requirement each one discharges, and which user story that requirement
+serves. §15.1 is the finer-grained view (criterion → section → acceptance test); this one is the
+coarse view a reviewer needs to check that no requirement is unclaimed and no spec is orphaned.
+
+| FSPEC unit | Section | Linked requirement(s) | Linked NFRs | User stories |
+|---|---|---|---|---|
+| FSPEC-CONS-01 — Tick evaluation and pass lifecycle | §2 | REQ-CONS-01 (AC-1.1, AC-1.2, AC-1.5, AC-1.6) | NFR-3, NFR-3a | US-03 |
+| FSPEC-CONS-02 — Consumed predicate and LEARNINGS corpus | §3 | REQ-CONS-01 (AC-1.1, AC-1.2), REQ-CONS-02 (AC-2.4) | NFR-5 | US-03 |
+| FSPEC-CONS-03 — The in-progress marker | §4 | REQ-CONS-01 (AC-1.3), REQ-CONS-07 (AC-7.2, via §4.4) | — | US-03 |
+| FSPEC-CONS-04 — Promotion routing and consuming-repo writes | §5 | REQ-CONS-02 (AC-2.1, AC-2.2, AC-2.3, AC-2.4), REQ-CONS-03 (AC-3.1, AC-3.5, AC-3.8b) | NFR-1, NFR-3 | US-01, US-02 |
+| FSPEC-CONS-05 — The pull-request route | §6 | REQ-CONS-03 (AC-3.1 – AC-3.8) | NFR-1, NFR-4 | US-01, US-02 |
+| FSPEC-CONS-06 — Credential handling | §7 | REQ-CONS-04 (AC-4.1 – AC-4.4) | NFR-2 | US-02 |
+| FSPEC-CONS-07 — Falsifiability | §8 | REQ-CONS-05 (AC-5.1 – AC-5.5), REQ-CONS-01 (AC-1.4) | NFR-4 | US-04, US-05 |
+| FSPEC-CONS-08 — Advisory-corpus input | §9 | REQ-CONS-06 (AC-6.1, AC-6.2, AC-6.3) | — | US-04, US-05 |
+| FSPEC-CONS-09 — Reporting and the log record grammar | §10 | REQ-CONS-07 (AC-7.1, AC-7.2), REQ-CONS-01 (AC-1.5) | NFR-3a | US-03, US-04 |
+| Configuration parse behaviour | §11 | REQ §4a (the config contract) | — | US-03 |
+
+**Both directions hold.** Every REQ requirement `REQ-CONS-01` … `REQ-CONS-07` appears at least once
+above, and every non-functional requirement `NFR-1` … `NFR-5` appears at least once; conversely no
+row names a requirement the REQ does not carry (REQ §3 defines exactly `REQ-CONS-01` – `REQ-CONS-07`;
+REQ §4 defines exactly `NFR-1` – `NFR-5`, `NFR-3a` included). The criterion-level statement of the
+same property — every acceptance criterion mapped exactly once — is §15.1, and the vocabulary-level
+statement is §15.2.
+
+**Two upstream constraint files are inputs, not requirements**, and so carry no row here: they are
+cited by pinned `Version` in §1 and used throughout (`docs/_constraints/pdlc-consolidation-vocabularies.md`
+at 1.4, `docs/_constraints/pdlc-advisory-corpus-baseline.md` at 1.0). Project-level domain
+constraints DC-01, DC-05 and DC-09 (`docs/_constraints/DOMAIN-CONSTRAINTS.md`) bind this document's
+form rather than its behaviour: DC-09 keeps oracle mechanics out (§1 Altitude), DC-05 obliges an
+acceptance test per named branch (§13), DC-01 obliges an absent/malformed/truncated arm per parsed
+input (§3.4, §9.3, §10.4, §11).
