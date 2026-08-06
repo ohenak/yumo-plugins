@@ -1143,7 +1143,7 @@ made here:
 | §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route` | reads `absent`, so the promotion is re-proposed |
 | §8.4 step 1 open list | `failure-mode-id`, `action`, `route` | the id stays **open** |
 | §10.2 order 2 | the record as written | appended unchanged; nothing is repaired |
-| §8.3 effectiveness table | `failure-mode-id`, and `artifact` for the row's canonical path | the row is still emitted, keyed on the id; a missing `artifact` is reported as the notice and the path cell reads unavailable — the row is never dropped, which would read as `insufficient-evidence` and silently move a verdict |
+| §8.3 effectiveness table | `failure-mode-id`, and `artifact` for the row's canonical path | the row is still emitted, keyed on the id; a missing `artifact` is reported as the notice and the path cell carries **no path** and is rendered as an explicit unavailable statement rather than as an empty cell or a guessed path (§10.4's receive-side totality, DC-01). "Unavailable" is the **observable**, not a literal this document pins — the spelling of that cell is TSPEC's, per DEC-LAYER-01, and §15.2's lexicon owns no such value. The row is never dropped, which would read as `insufficient-evidence` and silently move a verdict |
 | §8.5 remediation choice | `artifact` (BR-35a's file-existence test) | the test cannot run: the promotion keeps the state it had for that pass and **no** remediation is proposed — the notice is the report, never a guessed `retirement` |
 
 In every arm the pass reaches its terminal status, the record's bytes are unchanged, and the notice
@@ -1229,7 +1229,11 @@ prices the cross-pass case separately.
 **When the merged proposals are of different §5.2 kinds, one `target` is decided by precedence — not
 left to the writer.** The merge key reads `phase`, `artifact` and `action` and reads no kind, so the
 two proposals it merges may be, say, a domain invariant and a process learning about one file in one
-phase. `target` is a function of the kind (§8.1's three-row table), so without a rule the merged
+phase. **The precedence rule is scoped to one `action`, because the merge is**: the key includes
+`action`, so a `promote` and a `revise` over one subject at one phase are two keys, no merge fires,
+precedence never runs, and both writes happen — including a guard-set one. Consequence 2 below is
+therefore an absolute about *merged* records, not about every pair of proposals over one subject.
+`target` is a function of the kind (§8.1's three-row table), so without a rule the merged
 record would have two candidate targets and the "one `target`" observable above would be
 undetermined. The rule, in this order:
 
