@@ -1748,3 +1748,62 @@ falsifies it; none of them is new here.
 | BR-42 | A git refusal at step 15 adds `writes-uncommitted` and never changes the pass's status. | §5.4, §12.1 S-12 | AT-R4 |
 | BR-43 | Every status, reason code and field value written is a member of vocabularies §1 at `Version` 1.4, and every §1 row is used — set equality in both directions (REQ §4b). | §15.2 | AT-L5 |
 | BR-44 | A configuration fallback is report content, never a reason code — no §1 row exists for one. | §11.3 | AT-N2, AT-N3 |
+
+## 19. Edge Cases and Error Scenarios
+
+Every parsed input of this feature has an absent, malformed and truncated arm (DC-01, receive side),
+and every failure of an external call has a named class. This section gathers them so a reviewer can
+check totality in one pass: nothing below aborts the pass without a recorded status, and no two
+distinct input states are silently collapsed into one.
+
+### 19.1 Parsed-input edge cases
+
+| # | Input state | Behaviour | Section | AT |
+|---|---|---|---|---|
+| E-01 | `docs/_decisions/.consolidation-log.md` absent | both regions empty; every basename un-consolidated; datum set empty ⇒ the first pass runs on the `no-cadence-datum` branch | §3.4, §2.3 | AT-P4, AT-C1 |
+| E-02 | Log present but unreadable (permissions, IO error) | treated as **empty text**, mirroring `nudge-consolidation.sh:38-39`'s `except: logtext = ""` — fail-open toward re-consumption, never toward silently skipping a corpus; NFR-4 is what then prevents a duplicate proposal | §3.4 | AT-P4 |
+| E-03 | Log present with no `<!-- pdlc:consumed` marker | the whole file is legacy region — the HEAD state | §3.4 | AT-P3 |
+| E-04 | Opening `<!-- pdlc:consumed {passId} -->` with no closing marker (a truncated append) | the unterminated block runs to end of file and counts as consumed — a partially flushed pair never *loses* consumption | §3.4 | AT-P5 |
+| E-05 | Closing `<!-- /pdlc:consumed -->` with no opener | ignored; opens no block, moves no boundary | §3.4 | AT-P2 |
+| E-06 | A basename in both regions | consolidated once — the clauses are a disjunction over a set of basenames | §3.4 | AT-P3 |
+| E-07 | A basename appearing in the log outside any block (e.g. in an `artifact` field) after the first marker | **un-consolidated** — the stray occurrence marks nothing | §3.2 | AT-P2 |
+| E-08 | Corpus glob matches nothing | un-consolidated set empty; volume cannot fire; a pass that runs is the AC-1.4 `no-op` with an empty consumed pair | §3.4 | AT-P6 |
+| E-09 | Two LEARNINGS sharing a basename under different directories | one set member; the collision is **reported** in the AC-7.1 report, never silently resolved (repair needs a key the shipped predicate lacks — §14 O-C2) | §3.4 | AT-P1 |
+| E-10 | A log row that is malformed or unparseable | contributes no `m` to the `passId` derivation and is skipped — the derivation never aborts | §2.5 | AT-C6 |
+| E-11 | Marker file truncated or unparseable | **reclaimed, not refused**; the abandoned id is reported `unknown` | §4.2 | AT-M3 |
+| E-12 | `ESCALATIONS.md` entry whose `Feature` row is missing | that entry is skipped with a parse notice; no count is attributed to a guessed key; the read does not abort | §9.2 | AT-A7 |
+| E-13 | `.claude/pdlc.config.json` absent | every `consolidation` key defaults; the pass does not terminate | §11.1 | AT-N1 |
+| E-14 | One `consolidation` key of the wrong type | that key alone falls back and is named in the report; every other configured key keeps its value | §11.2 | AT-N2 |
+| E-15 | `consolidation` present but not an object | every key defaults, and the report distinguishes this (`sectionMalformed`) from an absent section | §11.3 | AT-N3 |
+
+### 19.2 Error scenarios — external calls and contention
+
+| # | Scenario | Terminal effect | Section | AT |
+|---|---|---|---|---|
+| E-16 | Marker held and fresh | `refused`, reason `consolidation-in-progress`; one log row, no consumed pair, no commit | §4.2, §4.4 | AT-M1 |
+| E-17 | Marker held and stale | reclaimed; `reclaimed-stale-lock` composes with the run's own status | §4.2 | AT-M2 |
+| E-18 | Two passes racing to mint the same `passId` | harmless: the loser is `refused` at step 6, and no contract keys on a refused row's id | §2.5, §4.5 | AT-C6, AT-M1 |
+| E-19 | Neither model rung resolves | `failed`, reason `advisory-model-unresolved`; no promotion; consumed pair already written at step 7; marker released | §2.6 | AT-M4 |
+| E-20 | Credential absent or invalid | `credential-unavailable`, `credential: absent`, §6.3 fallback fires, pass does **not** halt | §7.3, §6.3 | AT-K2 |
+| E-21 | Credential present but rejected by the repository | `credential: present (redacted)` **and** `credential-unavailable` — the two fields are never collapsed | §7.2, §6.3 | AT-K4 |
+| E-22 | `pluginRepository` names a repository that does not resolve | `repository-unresolved` with the configured value verbatim — never a silent fallback to the current repository | §6.3, §11.2 | AT-N4 |
+| E-23 | Network or API failure, rate limiting included | `api-failure` with the API's status text; the proposal file carries the full diff | §6.3 | AT-Q6 |
+| E-24 | Remote head branch `consolidation/{passId}` already exists | `branch-exists`; the fallback file names the existing branch and any PR found for it | §6.3 | AT-Q6 |
+| E-25 | A proposal duplicates an open-or-merged `(id, action)` pair | **not** an error: suppressed before any PR is attempted, fires no fallback, records `duplicate-suppressed` | §6.4, §6.3 | AT-Q3 |
+| E-26 | Every promotion suppressed | `no-op` with `pr:` empty and `suppressed-by:` populated | §12.1 S-06 | AT-L2 |
+| E-27 | Git refuses the AC-3.8b commit after the lock retries | status unchanged; `writes-uncommitted` recorded; writes remain correct on disk | §5.4 | AT-R4 |
+| E-28 | Nothing to stage at commit time | no failure and no `writes-uncommitted` — an empty stage is a return, not a warning | §5.4 | AT-R5 |
+| E-29 | The invoking branch carrying the log record is later abandoned | the merged PR is what survives; §5.5 states the cost rather than compensating for it | §5.5 | AT-Q3 |
+| E-30 | `ESCALATIONS.md` absent (the state at HEAD) / present-but-empty | `no-advisory-corpus` / `advisory-corpus-empty`; no seam proposal of any kind; the rest of the pass proceeds | §9.3 | AT-A1, AT-A2 |
+| E-31 | Two advisory seams tied on the highest total | no over-escalation candidate; the tie is reported | §9.4 | AT-A5 |
+
+### 19.3 The two losses this FSPEC records rather than repairs
+
+Both are consequences of an ordering the REQ requires, and both are raised in §14 as items for the
+upstream layer — neither is routed around here, because routing around them would add a record type
+outside vocabularies §1 and breach REQ §4b's set-equality obligation.
+
+| # | Loss | Why it cannot be repaired at this layer | §14 item |
+|---|---|---|---|
+| E-32 | A pass that dies at step 8 has already marked its corpus consolidated without reading a body — those files are permanently consolidated | AC-1.3 makes `failed` a marker-taking status and vocabularies §3(a) obliges the consumed pair before any other record; no §1 field can express "re-consume these" | O-C1 |
+| E-33 | A basename collision across `docs/` and `docs/completed/` cannot be disambiguated | the shipped predicate keys on basename, deliberately, so hook and pass share one predicate (BR-09) | O-C2 |
