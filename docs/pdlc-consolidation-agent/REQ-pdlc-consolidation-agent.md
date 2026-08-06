@@ -521,16 +521,20 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
   NFR-3's "the bar held on both" is checkable rather than asserted. The set needs no "no trigger"
   member: a `skipped-cadence` tick fired no trigger and writes no log row (AC-7.2), and every status
   that does write a row was reached by exactly one of these three.
-- **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly and **per promotion**: re-running produces no duplicate promotion
-  and no duplicate PR, both keyed on `failure-mode-id` (AC-5.1) — for the PR, as carried by the body's `PDLC-CONSOLIDATION-PROMOTIONS` trailer
-  (REQ-CONS-03 preamble). It is deliberately **not** keyed on the sources trailer: a consumed set is time-dependent (REQ-CONS-01 step 1 enumerates
-  whatever is un-consolidated *now*), so two passes proposing the same promotion normally consume different sets and a set key would miss exactly
-  when suppression matters. A pass whose promotion's id is already on a PR in state **open or merged** opens nothing for it, records
-  `duplicate-suppressed` with that PR's URL in its log row and its AC-7.1 report, and never extends or supersedes it — an interrupted pass's partial PR is the operator's to merge
-  or close, not silently amended. State is read at poll time with no memory of prior states: a reopened PR is open, hence a key; a
-  **closed-unmerged** PR is *not* — the operator rejected that promotion, and a later pass re-proposing it is intended behaviour. Merged is in the key
-  set deliberately: it is what survives when the invoking branch carrying the log record is abandoned (AC-3.8b, "the AC-3.1 PR route under the same
-  abandonment"). Idempotence is well-defined because AC-5.2's verdicts are deterministic. Its limit: `failure-mode-id` cannot key a LEARNINGS predating
+- **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly and **per proposal**: re-running produces no duplicate proposal and no
+  duplicate PR, both keyed on the pair `(failure-mode-id, action)` (AC-5.1) — for the PR, as carried by the body's `PDLC-CONSOLIDATION-PROMOTIONS`
+  trailer (REQ-CONS-03 preamble). It is deliberately **not** keyed on the sources trailer: a consumed set is time-dependent (REQ-CONS-01 step 1
+  enumerates whatever is un-consolidated *now*), so two passes proposing the same promotion normally consume different sets and a set key would miss
+  exactly when suppression matters. It is equally deliberately not keyed on the id alone: that would let a merged `promote` PR suppress the `revise` and
+  `retire` proposals AC-5.3 requires, making the remediation of an `ineffective` promotion unreachable and the §1 `Unfalsifiability` problem unsolved.
+  A pass whose proposal's pair is already on a PR in state **open or merged** opens nothing for it, records `duplicate-suppressed` naming that pair and
+  that PR's URL in its log row's `suppressed-by:` field (§4b) and its AC-7.1 report — one entry per suppressed proposal, and **never** in AC-7.2's
+  opened-PR URL field, which stays empty for a pass that opened nothing — and never extends or supersedes it: an interrupted pass's partial PR is the
+  operator's to merge or close, not silently amended. State is read at poll time with no memory of prior states: a reopened PR is open, hence a key; a
+  **closed-unmerged** PR is *not* — the operator rejected that proposal, and a later pass re-proposing it is intended behaviour. Merged is in the key
+  set deliberately, and now harmlessly: it is what survives when the invoking branch carrying the log record is abandoned (AC-3.8b, "the AC-3.1 PR route
+  under the same abandonment"), and with `action` in the key it suppresses only a re-`promote`, never a remediation.
+  Idempotence is well-defined because AC-5.2's verdicts are deterministic. Its limit: `failure-mode-id` cannot key a LEARNINGS predating
   that convention (AC-5.2), so suppression would not protect a re-consumed pre-convention corpus — which is why the REQ-CONS-01 legacy region prevents
   that re-consumption rather than relying on NFR-4 to absorb it.
 - **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
