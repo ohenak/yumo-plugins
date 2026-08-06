@@ -53,7 +53,46 @@ quoted token.
 
 ## Questions
 
+Only questions arising from the changed sections. v4's Q-01 and Q-02 are answered by the revision
+(Q-01 by NFR-4's merged-PR key, Q-02 by REQ-CONS-01 clause (a)'s unconditional empty pair) and are
+not re-asked. v4's Q-03 is answered in a direction that created F-02, so it reappears there rather
+than as a question.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: would the PR body carrying the per-promotion `failure-mode-id`s (alongside, not instead of, the sources trailer) be acceptable as the durable duplicate key? It is the one identity that survives the abandonment — it rides the PR rather than the log — and it is already defined (AC-5.1). The sources trailer would then keep its current job, pass provenance, and stop doubling as a suppression key it can only serve when two passes consume byte-identical sets. |
+| Q-02 | For F-02: was the intent that a `refused` pass commits, or only that it *writes*? AC-1.3's own justification for the row is evidentiary ("the only evidence a tick was refused") and REQ-CONS-01's cadence rule reads the row, not a commit of it — both are satisfied by a working-tree write that the winner's own AC-3.8b commit (same pathspec, same file) sweeps up moments later. If write-without-commit is acceptable, the Commits column for `refused` goes back to **no**, the "marker is never committed" guarantee survives intact, and §4b's `writes-uncommitted`/`refused` extension is unnecessary — three of the four things this round changed collapse into one. |
+| Q-03 | Does anything serialise the two passes' writes to `.consolidation-log.md`, or is the marker the only mechanism? The marker prevents concurrent *work*, but with the refused pass now writing to the marker-bearing file, nothing in the REQ prevents two processes doing read-modify-write on it at once. If the answer is "the writes are appends and appends do not conflict", that should be stated as a requirement on the write, because "append a row" and "append inside the `<!-- pdlc:consumed -->` block" are not the same operation and the second is a mid-file edit. |
+
 ## Positive Observations
+
+- **The two-clause freeze is a stronger answer than the two sentences I asked for.** I asked for the
+  AC-1.3 marker to be exempted and for the block pair to be emitted unconditionally. The revision
+  does both and gives each its own justification — the marker carries a passId and a timestamp and
+  never a basename, so it cannot be *read* as legacy consumption even though it is written before
+  the boundary; and the empty pair is shown to satisfy NFR-5's "exactly the consumed set" rather
+  than being asserted as harmless. That second point is the one a reader would have challenged, and
+  it is pre-empted in the same sentence.
+
+- **AC-5.2's rewrite dropped a claim rather than defending it.** The easy fix to F-03 was to delete
+  the word "disjoint". Instead the paragraph re-founds the split per file, states that row 3 takes
+  precedence over everything else in the section, proves `POSTMORTEM-CR-*` is producible from two
+  independent sites (`:5429` via the review loop, `:10603` via the halt path) rather than one, and
+  then tells the downstream test author what shape the set-equality test must take. That last
+  sentence is worth more than the correction: it is the difference between a spec that is right and
+  a spec whose rightness survives transcription.
+
+- **The AC-3.5 row and NFR-4 moved together.** When a key set widens, the usual failure is that one
+  of the three places naming it is missed. Here the AC-3.5 table row (`:299`), NFR-4 (`:543`) and
+  AC-3.8b's prose (`:354-355`) all say "open or merged", and NFR-4 additionally names the member
+  that was *not* added and why — closed-unmerged is an operator rejection, so re-proposing is
+  intended behaviour. Stating the excluded member is what makes the set checkable.
+
+- **The `refused` change is the right instinct even though it broke two things.** TE's finding was
+  correct: a refused tick that leaves no trace is unobservable, and REQ-CONS-01's cadence rule was
+  already written as if the row existed ("a `refused` row is not a datum"), so the document was
+  internally inconsistent before this round. F-02 and F-03 are about the *consequences* of the fix
+  not being propagated — the commit semantics and two §4b rows — not about the fix being wrong.
 
 ## Recommendation
 
