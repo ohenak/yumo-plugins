@@ -263,7 +263,8 @@ These are the identity keys NFR-4 is stated against.
   impossible, and the pass asserts them as its own observables rather than inheriting a mechanism:
   (a) the credential grants no merge rights (AC-4.1); (b) the pass never calls a merge or
   enable-auto-merge API on any PR — including its own; (c) the PR body carries the
-  `PDLC-CONSOLIDATION-PASS` trailer of AC-3.1, so a repo-side control can recognise it.
+  `PDLC-CONSOLIDATION-PASS` trailer defined in the REQ-CONS-03 preamble ("Pass identity and artifact
+  naming"), so a repo-side control can recognise it.
 
   This restates, and does not repeat, `pdlc-merge-phase` REQ-MERGE-03. That guard is `guardVerdict`
   (`pdlc/workflows/orchestrate-dev.js:732`) over `effectiveGuardPaths` (`:709`), reachable only
@@ -275,10 +276,25 @@ These are the identity keys NFR-4 is stated against.
   an operator responsibility, tracked as BL-05.
 - **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
   consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
-  a **separate clone under a temporary directory**, cut from the fetched default branch. It never
-  checks out, stashes, or otherwise disturbs the working tree it was invoked from, which may be
-  mid-pipeline on a `feat-*` branch. Everything else in REQ-CONS-03 and REQ-CONS-04 applies
-  unchanged; AC-4.4's local `gh` authentication is the supported credential in this configuration.
+  a **separate clone under a temporary directory**, cut from the fetched default branch. In the
+  invoking tree it performs **no branch operation of any kind**: no `checkout`, no `switch`, no
+  `stash`, no `reset`, no `rebase`, no fetch into its refs — the tree may be mid-pipeline on a
+  `feat-*` branch and its HEAD must be identical before and after the pass. Everything else in
+  REQ-CONS-03 and REQ-CONS-04 applies unchanged; AC-4.4's local `gh` authentication is the supported
+  credential in this configuration.
+- **AC-3.8b** — Given the pass writes the consuming-repo artifacts — `DOMAIN-CONSTRAINTS.md`
+  (AC-2.1), `DECISIONS-{topic}.md` (AC-2.2), `.consolidation-log.md` (AC-1.3, AC-2.4, AC-3.4, AC-5.1,
+  AC-7.2) and `CONSOLIDATION-PROPOSAL-{passId}.md` (AC-3.5, AC-5.4) — Then those writes land in the
+  **invoking tree on whatever branch it is already on** (AC-3.8 forbids changing it), and the pass
+  commits them **itself, exactly once, at its terminal outcome**, pathspec-scoped to exactly those
+  paths and never `-a`, never pushed — the same discipline `commitPaths`
+  (`pdlc/workflows/orchestrate-dev.js:8669`: `git add -- <paths>` then a plain `git commit -m`) already
+  applies to the pipeline's own queue-row commit. Consequences the REQ commits to: the AC-1.3 marker
+  is written and removed inside the pass and is therefore **never committed** (one commit per pass,
+  not two); a pass that terminates before its commit leaves the writes uncommitted for the operator
+  and records that in its report; and because the commit is pathspec-scoped, an unrelated
+  pathspec-scoped pipeline commit in the same tree cannot pick these files up and vice versa. These
+  writes never travel through the AC-3.1 PR — that PR carries only guard-set edits.
 
 ### REQ-CONS-04 — Credential scope
 
