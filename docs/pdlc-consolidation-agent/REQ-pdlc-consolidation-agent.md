@@ -460,16 +460,22 @@ summary to be persisted, which is D-CONS-06.
 
 ### REQ-CONS-07 — Reporting
 
-- **AC-7.1** — Given a pass completes, Then it reports: terminal status and reason code (the closed
-  set `promoted` / `no-op` / `skipped-cadence` / `refused` / `failed`), the rung it ran on
-  (AC-1.5/AC-1.6), LEARNINGS consumed by basename, promotions by route (constraints, decisions, PR,
-  `degraded`), the AC-5.2 effectiveness table, and what it deferred for human judgment.
-- **AC-7.2** — Given a pass completes on any path, Then exactly one report is emitted, on one
-  channel: the pass's terminal report, written as the pass's row in
+- **AC-7.1** — Given a pass completes, Then it reports: terminal status and reason code (both drawn
+  from §4b's enumeration, and paired only as §4b permits), the rung it ran on (AC-1.5/AC-1.6),
+  LEARNINGS consumed by basename, promotions by route (constraints, decisions, PR, `degraded`), the
+  AC-5.2 effectiveness table, and what it deferred for human judgment. The terminal-status set is
+  the six-member set of §4b: `promoted` / `promoted-degraded` / `no-op` / `skipped-cadence` /
+  `refused` / `failed`. `promoted-degraded` exists so that a pass which promoted something *and* fell
+  back to a proposal file (AC-4.3's `degraded` route) never reads as an unqualified success.
+- **AC-7.2** — Given a pass completes on any path **other than `skipped-cadence`**, Then exactly one
+  report is emitted, on one channel: the pass's terminal report, written as the pass's row in
   `docs/_decisions/.consolidation-log.md` and returned as the invocation's report body (which is
-  what a `/loop` tick prints). It carries the PR URL **when and only when** a PR was opened. No
-  separate notification channel is introduced by this feature; a channel that survives with no
-  session at all is bound to D-CONS-04.
+  what a `/loop` tick prints). It carries the PR URL **when and only when** a PR was opened. A
+  `skipped-cadence` tick writes **no log row** — it returns its status as the invocation's report
+  body only. The exemption is load-bearing twice over: under a `/loop` cadence the skipped tick is
+  the common case, so a row per tick would grow the log without bound, and it is that same log the
+  AC-1.1 predicate and the AC-1.1 cadence datum are read from. No separate notification channel is
+  introduced by this feature; a channel that survives with no session at all is bound to D-CONS-04.
 
 ## 4. Non-functional requirements
 
@@ -486,7 +492,8 @@ summary to be persisted, which is D-CONS-06.
   NFR-3's "the bar held on both" is checkable rather than asserted.
 - **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly: re-running over
   the same consumed-LEARNINGS set produces no duplicate promotion (identity: `failure-mode-id`,
-  AC-5.1) and no duplicate PR (identity: the `PDLC-CONSOLIDATION-SOURCES` trailer of AC-3.1). A pass
+  AC-5.1) and no duplicate PR (identity: the `PDLC-CONSOLIDATION-SOURCES` trailer defined in the
+  REQ-CONS-03 preamble, "Pass identity and artifact naming"). A pass
   that finds an **open** PR carrying an identical sources trailer opens nothing, records
   `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an
   interrupted pass's partial PR is left for the operator to merge or close, not silently amended.
@@ -516,6 +523,45 @@ every key at its default. **Config owner: the repo operator** (the human who own
 
 `cadenceHours` resolves master-plan OQ-E3 for this feature: weekly **and** threshold-driven, whichever
 arrives first (AC-1.2). BL-04 is thereby closed at the REQ layer.
+
+## 4b. Enumerated vocabularies
+
+Every enumerated value this REQ uses, in one place, with its category and the terminal statuses it
+may accompany. Completeness of any downstream handling is checkable by **set-equality against this
+table**, not by containment across six sections; adding a value anywhere above without a row here is
+a defect.
+
+| Value | Category | May accompany status | Defined at |
+|---|---|---|---|
+| `promoted` | terminal status | — | AC-7.1 |
+| `promoted-degraded` | terminal status | — | AC-7.1, AC-4.3 |
+| `no-op` | terminal status | — | AC-1.4 |
+| `skipped-cadence` | terminal status | — | AC-1.1 (writes no log row, AC-7.2) |
+| `refused` | terminal status | — | AC-1.3 |
+| `failed` | terminal status | — | AC-1.6, AC-3.5 |
+| `consolidation-in-progress` | reason code | `refused` | AC-1.3 |
+| `reclaimed-stale-lock` | reason code | `promoted`, `promoted-degraded`, `no-op`, `failed` | AC-1.3 |
+| `advisory-model-unresolved` | reason code | `failed` | AC-1.6 |
+| `credential-unavailable` | reason code | `promoted-degraded`, `no-op` | AC-3.5, AC-4.3 |
+| `repository-unresolved` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
+| `api-failure` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
+| `branch-exists` | reason code | `promoted-degraded`, `no-op` | AC-3.5 |
+| `duplicate-suppressed` | reason code | `promoted`, `no-op` | AC-3.5, NFR-4 |
+| `no-advisory-corpus` | reason code | `promoted`, `promoted-degraded`, `no-op` | AC-6.1 |
+| `advisory-corpus-empty` | reason code | `promoted`, `promoted-degraded`, `no-op` | AC-6.1 |
+| `cadence` / `volume` / `manual` | trigger | any status that writes a row | NFR-3a, REQ-CONS-01 tick order |
+| constraints / decisions / PR / `degraded` | promotion route | `promoted`, `promoted-degraded` | AC-7.1, AC-4.3 |
+| `prevented` / `recurred` / `insufficient-evidence` | per-promotion verdict | any status emitting the AC-5.2 table | AC-5.2 |
+| `ineffective` / `unmeasurable` | per-promotion state | as above | AC-5.3, AC-5.5 |
+| `revision` / `retirement` | proposed action on an `ineffective` promotion | as above | AC-5.3 |
+| `present (redacted)` / `absent` / `local-gh` | `credential:` field | any status that writes a row | AC-4.2 |
+
+Two joins the table settles, because both were previously undetermined. A pass that promoted
+something and also hit an AC-3.5 fallback class is `promoted-degraded`, never a bare `promoted` — the
+degradation is visible in the status, not only in a route field. A pass whose every promotion was
+`duplicate-suppressed` promoted nothing new and is therefore `no-op` (AC-1.4's second cause), while a
+pass that suppressed one duplicate and landed another is `promoted`. A pass may carry more than one
+reason code; each must be legal for the status it accompanies.
 
 ## 5. Scope
 
