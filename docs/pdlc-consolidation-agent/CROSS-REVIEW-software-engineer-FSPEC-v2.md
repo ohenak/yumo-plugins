@@ -62,4 +62,41 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Recommendation
 
-*(filled below)*
+**Needs revision**
+
+The revision is substantial and honest: ten of twelve v1 findings are fully closed, and the two
+that are not are closed in *shape* while leaving a checkable defect in *content*. Three High and
+four Medium remain. What must change before approval:
+
+1. **F-01 — make the `orchestrate-dev.js` edit real.** §2.6 asserts it is listed in §15.3 and
+   constrained at T-05; it is in neither. Add the §15.3 row for `pdlc/workflows/orchestrate-dev.js`
+   **and** the `pdlc/workflows/dist/` bundle rebuild that must ride the same commit, and extend
+   T-05 to constrain the widening.
+2. **F-02 — fix AT-Q7's enumeration.** The permitted verb set must include the two §5.4 git verbs
+   and the §6.4 PR read, or the spy must be partitioned per seam with a set-equality on each. As
+   written the only runtime oracle for AC-3.7 / NFR-1 cannot pass on a conforming pass, and the
+   likely repair is a loosening back to the absence-only shape v1 rejected.
+3. **F-03 — reconcile the `{topic}` derivation with the convention it claims to preserve.** Either
+   derive something topical and say how it meets the three `DECISIONS-*.md` files at HEAD, or state
+   that this feature changes `consolidate-learnings/SKILL.md:41`'s convention and list that edit.
+   Drop or correct property row 1's rationale: §6.4 keys on the pair, not on the path.
+4. **F-04 — put `action` in §8.1's record table** (or name §8.2 as normative for the record shape),
+   since the F-03 repair reads half the suppression key off that record.
+5. **F-05 — decide what `enacted` means for a degraded promotion**, and give the decision an AT.
+   Right now a promotion that reached nothing but a proposal file is suppressed forever, which
+   contradicts the PR route's deliberate re-proposability.
+6. **F-06 — define "open"** in §8.4 step 1 over something the log carries; **F-07 — extend §10.3's
+   `credential:` disambiguation to the `failed` statuses** and widen AT-K6's Given accordingly.
+
+F-08 is a correction of record, not a blocker.
+
+Nothing above contests the REQ's scope or the document's structure, and the three errata §14.4
+raises are correctly routed — I re-emit them below rather than folding them into this verdict.
+
+## Verdict
+
+Three High findings (F-01, F-02, F-03) and four Medium (F-04…F-07) are open, plus one Low (F-08).
+Per the approval rule — any High or Medium finding means the document is not approved — this
+iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision
