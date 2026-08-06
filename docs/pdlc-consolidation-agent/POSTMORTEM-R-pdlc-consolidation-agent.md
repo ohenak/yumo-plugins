@@ -117,3 +117,92 @@ need, scope, priority, phasing, or the truth of any claim the REQ makes about ex
 v5 citation audits check 9 (SE) and 12 (TE) changed `file:line` claims against HEAD; every one
 resolves to a real authority saying what the REQ attributes to it, with two off-by-one-to-two
 range slips that change no requirement.
+
+## Best-Guess Root Cause
+
+**The REQ made itself the downstream set-equality oracle, and the review loop's round budget was
+sized for a document that had not.**
+
+Three factors compose. In order of weight:
+
+1. **Self-nominated oracle density.** The REQ deliberately elevates half a dozen enumerations
+   (§4b's reason-code × status table, AC-1.3's status set, AC-7.2's exemption set, AC-4.2's
+   `credential:` value set, AC-5.2's artifact mapping, NFR-4's key set) to normative
+   set-equality sources — "checkable by set-equality against this table, not by containment".
+   That is good requirements engineering and it is why the Highs died so fast. It also means
+   **every** semantic change has to be propagated to *N* tables, and any single missed cell is a
+   legitimate blocking finding by the document's own stated standard. The REQ raised its own bar
+   and then had to clear it, five times, under a fixed budget.
+
+2. **Serial single-decision rounds.** Each round closed the prior round's findings by taking one
+   or two *decisions* (v5: "`refused` becomes a row-writing status"), and each decision had a
+   ripple set of 4–5 places. The revision carried 3 of 5 ripples unprompted; the reviewers found
+   the other 2 — and those 2 became the next round's blockers. The loop's steady state was
+   therefore not "residual defects" but "one round of propagation lag per decision". With one
+   decision per round and a 5-round budget, the loop can absorb at most four decisions cleanly.
+   This REQ took more than four.
+
+3. **No propagation checklist at the authoring seam.** Nothing in the authoring step forced the
+   author, after changing a value in one enumeration, to re-derive every table whose membership
+   is a function of that value. The reviewers ended up performing that derivation — correctly and
+   consistently, which is why the findings are one-cell fixes — but a reviewer round is an
+   expensive way to run a mechanical closure check, and it costs one of five rounds each time.
+
+Contributing but not causal: the document is at the top of its size budget (697/700 lines,
+60,246/61,440 bytes), so several rounds spent effort on compression that could have gone to
+propagation. Not causal because compression demonstrably cost nothing checkable — TE re-verified
+every citation in the reflowed text in v5 and found no regression.
+
+**What is not the root cause:** reviewer disagreement (there is none), reviewer drift or
+escalating standards (severity fell monotonically), a defective upstream document (zero ERRATUM
+lines in five rounds), or an unimplementable requirement (no reviewer contested feasibility, and
+SE verified 22 citations in v4 and 9 in v5 against HEAD without finding a false claim about the
+codebase).
+
+## Recommendation
+
+The REQ is close. Two rounds with zero High findings, monotonically falling severity, complete
+per-round closure, and — critically — **every v5 finding has already been addressed on the
+branch** in commits made after the v5 reviews were written:
+
+| v5 finding | Addressed by |
+|---|---|
+| SE F-02 / TE F-34 (`refused` commit vs. marker) | `4e2c002` — a refused pass writes its row but commits nothing |
+| SE F-03 / TE F-33 / TE F-35 (§4b rows, `PHASE_DISPATCH` line) | `7640bd2` — `no-cadence-datum` admits `refused`; `writes-uncommitted` does not; declaration is `:3336` |
+| SE F-04 / TE F-36 / TE F-37 (citations, second legacy-region exemption) | `cc601c3` |
+| SE F-01 / TE Q-11 (duplicate-PR suppression key) | `e75a115` — suppression keys per promotion on a `PDLC-CONSOLIDATION-PROMOTIONS` trailer; `failure-mode-id` stability stated |
+| Cross-review roster through v5 | `0445706` — REQ header v1.4 |
+
+No reviewer has yet observed that tree. The halt therefore records an exhausted budget, not an
+unresolved defect set.
+
+**Recommended action, in order:**
+
+1. **Verify the five commits above actually close the ten v5 findings.** Read each finding
+   against the current REQ text — not against the commit messages. This is the judgment call the
+   `RESOLVED:` marker gates, and it is the operator's, not the loop's.
+2. **Re-run one bounded review round on the current tree.** Clear the halt by setting
+   `RESOLVED: yes` in this file with a commit that names what addressed each finding, then
+   re-invoke:
+   `/pdlc:orchestrate-dev { "reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md", "forcePhases": "R" }`.
+   Expect a short round: the reviewers' v5 dispositions show they close cleanly what has been
+   addressed, and every open item is a one-cell or one-paragraph fix.
+3. **Before that round, run a propagation sweep yourself.** For each enumeration the REQ nominates
+   as a set-equality oracle (§4b, AC-1.3, AC-4.2, AC-5.2, AC-7.2, NFR-4), re-derive its membership
+   from the current ACs rather than reading it. This is the check that has consumed one round in
+   four of the last five, and it is mechanical.
+4. **Do not re-open settled ground.** Scope, priority, phasing, user need, and every claim about
+   the shipped codebase have been reviewed and are uncontested by both reviewers for two rounds.
+   A round that revisits them spends the budget on ground that is already firm.
+
+**Not recommended:** re-running the loop unchanged with a larger budget. The steady state is one
+round of propagation lag per decision; more rounds absorb more decisions but do not remove the
+lag. If a future REQ in this family again self-nominates dense set-equality oracles, the durable
+fix is a propagation checklist at the authoring seam (§3 above) — a candidate for
+`harvest-learnings` to promote at Phase H.
+
+**Escalation path if step 2 does not converge:** the residue would then be genuine, not
+propagation lag, and the right move is to split the REQ — the consolidation-cadence half
+(REQ-CONS-01, AC-1.x, §4b) and the cross-repo-promotion half (REQ-CONS-03, AC-3.x, AC-5.x, NFR-4)
+have almost disjoint enumeration sets, and the coupling between them is what makes each decision's
+ripple set large.
