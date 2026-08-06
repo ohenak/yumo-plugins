@@ -102,4 +102,43 @@ v4's Q-10 is answered in full (see §Prior findings). One new question, non-bloc
 
 ## Recommendation
 
+**Needs revision** — 0 High, 2 Medium, 3 Low. All four v4 findings are resolved. Both remaining
+blockers are consequences of the F-30 decision that were not carried into the two enumerations that
+depended on the old answer.
+
+I applied §5a's stopping rule as written, and it is closer than last round: no Highs, no claim about
+the shipped architecture is wrong, and neither Medium contests user need, scope, priority or
+phasing. But both sit squarely in §5a's belongs-here list. F-33 is a statement §4b's own composition
+rule falsifies — and §4b is the document's set-equality source, the one section whose stated purpose
+is to be transcribed verbatim into a test. F-34 is two absolute claims ("the marker is never
+committed", `:123` and `:336`) that the new AC-1.3 Commits cell makes false on the very fixture
+AC-1.3 exists for. Neither is a fixture-mechanics question: an FSPEC author writing "two `/loop`
+ticks race on a repo with no cadence datum" — which is this repo, today, per REQ-CONS-01's own
+paragraph — must decide both answers, and deciding them downstream is how a REQ's enumerations stop
+being normative.
+
+What must change:
+
+1. **F-33** — add `refused` to §4b's `no-cadence-datum` permitted-status set, and drop
+   "marker-holding" from the justifying sentence. `no-cadence-datum` is recorded at step 3, before
+   the marker is written (AC-1.3: "written **after** the trigger decision of steps 1–4"), so
+   `refused` is reachable after it and the composition rule admits it. `reclaimed-stale-lock` needs
+   no change — a reclaiming pass goes on to hold the marker.
+2. **F-34** — decide what a `refused` pass's commit may contain. A pathspec-scoped
+   `git commit -- docs/_decisions/.consolidation-log.md` stages the whole file, so the winner's live
+   `IN-PROGRESS:` line rides along. Either scope it so the marker cannot (and say how), or soften
+   the two absolute claims to AC-1.3's surviving "never a commit **of its own**" and name the
+   consequence — a marker can reach branch history, bounded by `staleLockMinutes`.
+
+F-35 (`PHASE_DISPATCH`'s declaration is `:3336`, not `:3337` — the range itself is now correct),
+F-36 (`phase: "CR"` is `:10257`; cite `:10255-10257`) and F-37 (a `refused` row is a second record
+that can precede the first consumed block; it is safe because it carries no basename, but say so)
+are corrections, not blockers.
+
+No upstream defects were found this round. Every `orchestrate-dev.js`, `orchestrate-queue.js`,
+`nudge-consolidation.sh`, `pdlc-advisory-tier` and `DOMAIN-CONSTRAINTS` citation in the changed text
+resolves to a real authority saying what the REQ attributes to it. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Needs revision
