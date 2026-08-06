@@ -61,3 +61,9 @@ F-11 and F-12 are corrections of record, not blockers.
 
 Nothing above contests the REQ's scope, phasing or user need. Two upstream items are routed as errata rather than folded into this verdict: the REQ's two incompatible definitions of `no-op`, and `pdlc-advisory-corpus-baseline.md` §3's "reuse the resolver" instruction, which the resolver's hardcoded skill parameter does not support.
 
+## Verdict
+
+Five High findings (F-01…F-05), five Medium (F-06…F-10) and two Low (F-11, F-12) are open. Per the approval rule — any High or Medium finding means the document is not approved — this iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision
+
