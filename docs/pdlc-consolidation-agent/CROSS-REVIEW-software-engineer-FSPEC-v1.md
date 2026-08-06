@@ -26,12 +26,38 @@
 
 ## Questions
 
-<!-- QUESTIONS -->
+| ID | Question |
+|----|---------|
+| Q-01 | The pass ships as a new workflow bundle (REQ §5, T-02). The runtime allows **no imports** (`build-runtime.mjs:41`), and the queue bundle reaches `orchestrate-dev` only because the builder inlines that whole module (`bundles`, `:448-466`; CLAUDE.md). Does the consolidation bundle likewise inline all of `orchestrate-dev.js` to reach `resolveAdvisoryRung`, and is that acceptable at T-02, or does F-01's alternative (restated literals + drift observable) become the cheaper route? §2.6 asserts reuse without naming the vehicle. |
+| Q-02 | §2.2 puts the marker take at step 6 and the consumed-pair append at step 7, but the pass's own writes to `.consolidation-log.md` are appends while the *predicate* reads the same file. Two passes that both observed the marker absent (§4.5 row 2) each append a pair naming an overlapping set. §3.2's disjunction makes that harmless for membership — but §8.3's `recurred` and §8.5's streak count over "this pass's consumed set". Does the second pass's duplicate consumption double-count a verdict for the same promotion in the same window? |
+| Q-03 | §5.4's write set is committed once at step 15, but §10.2 appends the effectiveness table (order 3) and the terminal row (order 4) at step 14, and the consumed pair at step 7. If the process dies between step 7 and step 14, the pair is on disk and uncommitted. §3.3 says "the next pass reads the working tree" — is that also true for a pass invoked in a *different* checkout of the same repo (the §6.1 clone is temporary, but an operator's second worktree is not)? |
+| Q-04 | §9.5 routes a widening of "the **shipped defaults** in `pdlc/workflows/`" to a PR. The advisory envelope default is `ADVISORY_DEFAULTS`/`envelope` inside `orchestrate-dev.js` (a `pdlc/workflows/` path ✓), but `ADVISORY_SEAMS` is `Object.freeze` (`:1669`) and the envelope is a "four-member literal" per CLAUDE.md. Is a widening proposal an edit to that literal, and does §8.2's one-promotion-one-authored-file rule then force the rebuilt `dist/` bundles to ride it (§8.2 row 2 says yes)? Worth confirming explicitly, since AT-F3 tests that shape only for `orchestrate-dev.js`. |
+
 
 ## Positive Observations
 
-<!-- POSITIVES -->
+- **Every `file:line` citation in the document was checked against HEAD and all but the three in F-11 are exact.** Verified: `MERGE_GUARD_DEFAULTS` `orchestrate-dev.js:48-53` (frozen four-member array), `MERGE_DEFAULTS`/`mergeMode: "off"` `:60-61`, `effectiveGuardPaths` `:709`, `guardVerdict` `:732`, `MODEL_ADVISORY` `:1652` / `MODEL_ADVISORY_FALLBACK` `:1653` (both module-private, as claimed), `ADVISORY_SEAMS` `:1669`, `parseAdvisoryConfig` `:1682`, the resolver doc comment `:1800` and export `:1833`, `ADVISORY_MODEL_FALLBACK:` `:1859`, `advisorySummaryRows` `:2708`, `renderEscalationEntry` `:2763` with the heading at `:2776` and the `| Feature |` / `| Seam |` rows at `:2782-2783`, `PHASE_DISPATCH` `:3337-3437`, `gitWithLockRetry` `:8617`, `commitPaths` `:8669` with its plain `git commit -m` at `:8690` and the doc-comment rationale at `:8660-8663`, the `recordPhase` literals `:10020` / `:10250` / `:10407` / `:10462` / `:10568`, `commitQueueRow` `orchestrate-queue.js:1576-1577`, `commitAdvisoryRecord` `:1615`, `hooks.json:3/:14/:29`, `nudge-consolidation.sh:25/:28/:32/:36-37/:38-39/:41/:47-48`, `consolidate-learnings/SKILL.md:35/:38/:40/:41/:43/:54`, `harvest-learnings/SKILL.md:70-78`, `.gitignore` (no pattern matching the lock path), `docs/_queue/` holding `QUEUE.md` alone. This is a materially higher standard of existing-code claim than the norm.
+- **The 13-member phase catalogue is sourced correctly.** `PHASE_DISPATCH` carries exactly eight keys (R, F, T, D, P, PR, CR, DOD); the remaining five (I, PT, H, PUB, MERGE) come from the `recordPhase` literals §8.1 cites individually. 8 + 5 = 13, and the citation set is complete.
+- **The corpus measurement is right.** Five LEARNINGS under `docs/*/` ∪ `docs/completed/*/`, two under `docs/discarded/*/` — so §3.1's insistence that the widening is "exactly one added literal path segment" rather than a depth increase is a real defect avoided, not a stylistic point, and §2.3's first-tick assertion (3 un-consolidated, below the threshold of 5, cadence fires on the empty datum) is verifiable at HEAD.
+- **§5.4's precedent selection is correct and non-obvious.** `commitPaths` really does commit without a pathspec (`:8690`) and really does document that as deliberate (`:8660-8663`); `commitQueueRow` really does carry the pathspec on both calls. Choosing the latter for a pass that may run against a mid-pipeline tree with a staged index is the right call, and AT-R3 tests exactly that.
+- **Receive-side totality is genuinely total, not gestured at.** §3.4, §9.3, §11.1 and §19.1 each enumerate absent / unreadable / truncated / stray-marker arms, and the two deliberately asymmetric decisions (an unterminated block counts as consumed; an unparseable marker reclaims rather than refuses) are each argued from the failure they prevent.
+- **§14.2 and §19.3 record two real losses rather than routing around them.** O-C1 in particular is stated against the FSPEC's own interest.
+
 
 ## Recommendation
 
-<!-- RECOMMENDATION -->
+**Needs revision**
+
+Five High and five Medium findings. What must change before approval:
+
+1. **F-01 / F-02 — close the model-rung seam.** State what step 8 actually does given that `resolveAdvisoryRung` dispatches `se-review` (`:1797`, `:1841`) and has no probe mode: either name the throwaway dispatch (skill, prompt, and why its output is discarded), or take baseline §3's sanctioned alternative and name the drift observable — and list any `pdlc/workflows/` edit it implies in §15.3. Then map the resolver's `dispatch-error` outcome to a terminal status and reason code; if no vocabularies §1 row exists for it, that is an upstream row to add, not a branch to leave unhandled.
+2. **F-03 — give the consuming-repo routes an idempotence carrier.** §6.4's PR-trailer key cannot cover P-01. Name the non-PR carrier and its observed states, and correct §3.4's and §4.5's claims that NFR-4 absorbs re-consumption on those routes.
+3. **F-04 — restate §8.5 row 3 over a decidable input.** The condition may not range over `symptom`, which §8.1 declares non-keying and which the recurrence evidence does not carry.
+4. **F-05 — specify the producing side of `recurred`.** Without a stated harvest-side derivation or lookup, the only positive-recurrence verdict in the feature is unreachable and the falsifiability loop degenerates to `unmeasurable`. Add the obligation and an acceptance test that ranges over a harvest-authored LEARNINGS.
+5. **F-06 — reconcile the `no-op` proposal-file rule** so §5.3, §7.3, S-08 and AT-K3 agree on whether the file exists.
+6. **F-07 — drop or correct the injectivity claim**; **F-08 — define the consumed window**; **F-09 — add an AT for AC-1.6's fallback branch**; **F-10 — pair AT-Q7's absence with a positive set-equality**.
+
+F-11 and F-12 are corrections of record, not blockers.
+
+Nothing above contests the REQ's scope, phasing or user need. Two upstream items are routed as errata rather than folded into this verdict: the REQ's two incompatible definitions of `no-op`, and `pdlc-advisory-corpus-baseline.md` §3's "reuse the resolver" instruction, which the resolver's hardcoded skill parameter does not support.
+
