@@ -533,7 +533,7 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
   `retire` proposals AC-5.3 requires, making the remediation of an `ineffective` promotion unreachable and the §1 `Unfalsifiability` problem unsolved.
   A pass whose proposal's pair is already on a PR in state **open or merged** opens nothing for it, records `duplicate-suppressed` naming that pair and
   that PR's URL in its log row's `suppressed-by:` field (§4b) and its AC-7.1 report — one entry per suppressed proposal, and **never** in AC-7.2's
-  opened-PR URL field, which stays empty for a pass that opened nothing — and never extends or supersedes it: an interrupted pass's partial PR is the
+  `pr:` field, which stays empty for a pass that opened nothing — and never extends or supersedes it: an interrupted pass's partial PR is the
   operator's to merge or close, not silently amended. State is read at poll time with no memory of prior states: a reopened PR is open, hence a key; a
   **closed-unmerged** PR is *not* — the operator rejected that proposal, and a later pass re-proposing it is intended behaviour. Merged is in the key
   set deliberately, and now harmlessly: it is what survives when the invoking branch carrying the log record is abandoned (AC-3.8b, "the AC-3.1 PR route
