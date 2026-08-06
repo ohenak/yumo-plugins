@@ -93,4 +93,44 @@ v3's Q-09 is answered in full (see §Prior findings). One new question, non-bloc
 
 ## Recommendation
 
+**Needs revision** — 0 High, 2 Medium, 2 Low. All six v3 findings are resolved, including both
+Highs, and the two remaining blockers are one-line corrections inside the structures this round
+added.
+
+I applied §5a's stopping rule as written. It does not license approval, but it is close: there are no
+Highs left, no claim about the shipped architecture is wrong, and neither Medium contests user need,
+scope, priority or phasing. F-29 is the second bullet of §5a's belongs-here list — a false claim
+about code at HEAD: `POSTMORTEM-CR-{feature}.md` is producible (`orchestrate-dev.js:5429` reached
+from the Phase CR `reviewLoop` call at `:10255-10256`) and is harvested into `Harvested from`, so
+row 3 of AC-5.2's own mapping decides `CR`, while the partition sentence three lines below declares
+`CR` undecidable and the two sets disjoint. F-30 is the same defect class turned inward: AC-1.3's new
+Commits column and AC-7.2 give opposite answers for the `refused` pass, and REQ-CONS-01's
+cadence-datum paragraph sides with AC-7.2 ("a `refused` row is not a datum"), so the document
+outvotes itself two to one. Neither is a fixture question — an FSPEC author facing "two ticks race"
+or "a consumed LEARNINGS names `POSTMORTEM-CR-*`" must invent the answer, and inventing it downstream
+is how a REQ's enumeration stops being normative.
+
+What must change:
+
+1. **F-29** — make AC-5.2's partition true. Either move `CR` out of the undecidable list and say it
+   is decidable only via a `POSTMORTEM-CR-*` (row 3), or keep the list and state that row 3 takes
+   precedence, replacing the disjointness claim with a precedence rule. I, PT, H, PUB and MERGE need
+   no change — none of them can appear in a POSTMORTEM name.
+2. **F-30** — decide whether a `refused` pass writes its AC-7.2 log row. If it does, the AC-1.3
+   Commits cell reads `yes` and AC-4.2 must say what `credential:` value that row carries; if it does
+   not, AC-7.2's exemption set gains a second member and REQ-CONS-01's "a `refused` row is not a
+   datum" needs rewording. Also flatten the `failed` cell to plain `yes` — under AC-7.2 the hedge is
+   unreachable.
+
+F-31 (`PHASE_DISPATCH` is `:3336-3437`, not `:3337-3431` — the cited range truncates `DOD`) and F-32
+(cite `:7911` or `:6423` for `CODE_REVIEW` naming rather than the DoD-failure-path line `:10349`) are
+citation corrections, not blockers.
+
+No upstream defects were found this round. Every `MASTER-PLAN`, `pdlc-advisory-tier`,
+`pdlc-merge-phase`, `DOMAIN-CONSTRAINTS`, `harvest-learnings/SKILL.md`, `orchestrate-queue.js`,
+`nudge-consolidation.sh` and `orchestrate-dev.js` citation in the changed text resolves to a real
+authority saying what the REQ attributes to it. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Needs revision
