@@ -84,4 +84,34 @@ re-litigated; I read every changed hunk of the six commits and nothing else.
 
 ## Recommendation
 
+**Needs revision**
+
+The v4 finding H-06 is resolved in the strong form, all three v4 questions are answered, and every
+repository claim in the changed text holds at HEAD except one line number (L-01). Nothing in this
+revision re-opens a settled decision. The approval bar is unchanged, and two Medium findings are
+open — both in text this revision introduced, and both of the same shape the last two rounds have
+had: a new mechanism arriving one step ahead of the artefact that pins it.
+
+What must change:
+
+1. **M-01** — §8.1's new reader-side rule (a record missing an indexed field ⇒ parse notice, skip,
+   never halt / default / repair) and BR-33a have no falsifier; AT-F20 is writer-side and AT-F16's
+   Given is an unmatched id, not a short record. Add one AT whose Given is a log carrying a record
+   missing `route` (and/or `target`), asserting on one path: the pass reaches its terminal status and
+   does not halt, the notice names the record, the positive downstream state (proposal re-proposed
+   rather than suppressed; the id present in AT-F19's open list), and the record's bytes unchanged.
+   Point BR-33a at it and give it an `E-` row beside E-12, which is the sibling rule's precedent.
+2. **M-02** — §8.2's precedence order is a three-member enumeration tested at one pair. Add a fourth
+   AT-R6b fixture for an AC-2.2 decision merged with a process learning, asserting
+   `target = docs/_decisions/DECISIONS-{failure-mode-id}.md`, `route = decisions`, no guard-set write
+   and no PR — the rank-2 half of consequence 2's "never takes the PR route", which nothing asserts
+   today. Say in the row that the fixtures together range over every pair the order admits, and name
+   both on BR-33b.
+
+L-01 is a line-number correction and does not block on its own. The three questions are questions,
+not findings: none of them blocks.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 2, "low": 1}
