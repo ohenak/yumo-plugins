@@ -66,6 +66,47 @@ question is left open.
 
 ## Positive Observations
 
+- **The relocation is lossless, and I can say that mechanically rather than impressionistically.**
+  Moving a 28-row normative table out of a document at review round 9 is the kind of edit that
+  usually costs a row. This one cost none: truncated to their first 45 characters the old and new
+  tables are byte-identical, so no value was added, dropped, renamed or reordered, and the only four
+  full-line differences are the three cells v8 F-03 asked for plus a strengthening of the phase
+  row's category. The joins and the composition paragraph came across verbatim. A reviewer can
+  verify that in one command, which is the property that made me willing to approve a move of this
+  size on its own terms.
+
+- **The fix went past the finding and closed the class.** F-03 asked for two cells. The revision
+  fixed three and then wrote the invariant above both tables — "**No cell in either table below may
+  use a positional back-reference.** Every *May accompany status* cell names its permitted set
+  explicitly, so inserting a row can never silently re-point a neighbour"
+  (`pdlc-consolidation-vocabularies.md:15-16`). That is the optional half of my finding, taken, and
+  it now protects §2's table as well as §1's — a table my finding never mentioned.
+
+- **The generated-path carve-out is keyed on the producer, not on the path, and that distinction is
+  live in this repo.** AC-5.1 says "the tracked outputs of `pdlc/workflows/build-runtime.mjs` under
+  `pdlc/workflows/dist/`". I checked what a path glob would have caught instead: `git ls-files`
+  returns four **authored** fixture files whose paths contain `pdlc/workflows/dist/`, under
+  `pdlc/workflows/__tests__/fixtures/covered-violations/`. A glob-worded rule would have exempted
+  them from minting an id — silently, and only for the one feature whose subject is exempting
+  things. The wording that shipped does not. I doubt that was an accident given how the round wrote
+  everything else, and it is the difference between a rule that is total and a rule that looks
+  total.
+
+- **AC-5.3's remediation ladder is now a terminating argument, written as one.** The paragraph does
+  not just add the routing clause I asked for; it says *why* the ladder cannot run out ("`retire` is
+  the **terminal** remediation — a retired promotion is gone, so no successor is owed"), answers the
+  open question about the streak in the same breath, and adds the sentence that keeps the report
+  honest under the new routing ("The AC-7.1 field then names the alternative actually proposed,
+  never the one displaced"). Three rounds ago this region needed a reviewer to replay a fixture to
+  find the hole; now the document replays it for you.
+
+- **The round fixed a shipped-budget breach that no finding of mine had raised, and fixed it by the
+  sanctioned mechanism.** The REQ was at 65,492 bytes against a 61,440-byte hard ceiling — over, and
+  I did not catch it; `pm-author` §5e's remedy (relocate to `docs/_constraints/` **before**
+  addressing the round's findings) is exactly what was done, in that order, in its own commits,
+  before the three fixes landed. My F-01 is a complaint about the *terms* of that relocation, not
+  about the decision, which was right.
+
 ## Recommendation
 
 ## Verdict
