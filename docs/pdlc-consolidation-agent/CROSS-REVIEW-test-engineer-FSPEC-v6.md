@@ -45,7 +45,44 @@ deferral both close the finding.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Fixtures 3, 4 and 5 of AT-R6b all use `phase = P` and the same subject `pdlc/workflows/orchestrate-dev.js`, so all three derive the **same** `failure-mode-id` — which is what makes the merge fire, and is correct. Are they three separate passes (three fixtures, three logs), or is there any reading under which a test author builds them as one pass? The row says "each one pass at `phase = P`", which I read as three passes; asking only because a single-pass reading would collide all three merges on one id and one record, and the row's assertions are per-fixture. No finding either way. |
+| Q-02 | §6.5's closed-read-set paragraph says a pass needing `git log` / `git diff` / `gh pr list` "is a change to this table, made here". Under DEC-LAYER-01 seam verb permitted-sets are TSPEC-owned (`DECISIONS-spec-layer-boundary.md:30`). Does "made here" survive that decision — i.e. is §6.5's table the frozen v6.1 statement that TSPEC now inherits and may widen with a recorded reason, or does a widening still require an FSPEC edit? Asking so the TSPEC author is not left guessing which document owns the set they are about to transcribe. |
+
 ## Positive Observations
+
+- **AT-F21 is the row I asked for, and it pairs every negative with a positive on the same path.**
+  Five conjuncts over one fixture: terminal status reached (positive) beside "does not halt"
+  (negative), the notice naming each record beside the record's bytes unchanged, and — the one that
+  makes it a real oracle — the positive downstream state, `E` re-proposed and present in AT-F19's
+  open list. The row then names the three prohibited implementations and says each "is red on
+  exactly one of these conjuncts", which is the sentence that proves the conjunct set is not
+  padding. It is a file-fixture test with no agent in it, so it is writable today.
+- **AT-R6b now covers the kind order by set-equality over its ordered pairs, not by sampling.**
+  Fixtures 3, 4 and 5 give (1,3), (2,3) and (1,2) one fixture each, and the row says why the third
+  is not redundant: without the (1,2) fixture the rank is "inferred from the other two". The (2,3)
+  fixture names the exact wrong implementation it kills ("constraints wins, otherwise keep whichever
+  proposal arrived first … green on every other row in §13 and red only here"). That is a fixture set
+  written to falsify a transposition, which is what an enumerated order needs.
+- **The tie-break refuses proposal order for a stated, testable reason.** "'First proposed' is not
+  [a pure function of the inputs]: proposal order is decided by the pass's own model, so an
+  implementation keyed on it is not reproducible across two passes over one corpus" (`:1270-1274`).
+  A tie-break keyed on model output would be an untestable rule dressed as a rule; refusing it on
+  determinism grounds, and naming the byte comparison plus the literal that discriminates it
+  (`pdlc/skills/a-b.md`, `-` = 0x2D before `/` = 0x2F — which I verified is the correct ordering
+  for those two paths), is what makes it fixturable at all. My L-01 is about one clause of the
+  coverage claim, not about the rule.
+- **AT-F19's count conjunct names the wrong answers, not just the right one.** "the **literal `3`**
+  … not merely as present: a report emitting a constant, or the count of every recorded id (`4`
+  here), satisfies presence". Stating the value a defective implementation would emit is the
+  difference between an assertion and a stronger-sounding assertion.
+- **Every repository claim in the changed text holds at HEAD, including the two the revision moved.**
+  I re-derived rather than trusting the resolution note: `readHeadBranch` `orchestrate-dev.js:3520`,
+  its seam call `:3524`, the guard's call site `:3580`, `parseAbbrevRef` `:3492`, `gitWithLockRetry`
+  `:8617`, `commitPaths` `:8669`, and AT-R6b's new guard-set citation `MERGE_GUARD_DEFAULTS`
+  `:48-53` — which is exactly the frozen four-member array, and `pdlc/workflows/` in it is what makes
+  fixture 3's subject a genuine guard-set path. No citation in the changed text is off by a line.
 
 ## Recommendation
 
