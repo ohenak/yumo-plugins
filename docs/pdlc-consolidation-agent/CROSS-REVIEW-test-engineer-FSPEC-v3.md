@@ -42,8 +42,75 @@ section was re-litigated.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §8.4 step 1's `open` is now a **mechanical** predicate ("no record for that id carries `action: retire` with a `route` other than `degraded`"), but the party that computes it is the harvest agent, and §13 has no row for it. Is the open-list computation a pass-side function the harvest prompt merely consumes (in which case it is testable here and should have an AT — a landed `retire` closes an id, a `degraded` one does not), or is the arithmetic itself delegated to the agent (in which case say so, as AT-F15 now says of the producing side)? The stated failure direction — "one extra question, never a missed one" — makes this safe either way, which is why it is a question and not a finding. |
+| Q-02 | AT-M9's Then asserts "exactly **one** failure-mode record is appended — for the routed proposal, none for the unrouted one". §10.2 order 2 places all failure-mode records at step 13; for that oracle to be constructible the appends must be **per proposal as it routes**, not one batch at the end of step 13. Is that the intent? If so, §10.2's order table should say "one append per promotion, as it routes", since the difference is the whole content of AT-M9's discriminating conjunct. |
+| Q-03 | §6.4's `enacted` predicate is keyed on a record whose `route` is "not `degraded`" over the four-member set `constraints` / `decisions` / `PR` / `degraded`. What is the reading when a prior record for the pair carries `route: PR` and the current pass derives the same pair as a **consuming-repo** proposal (the guard-set classification having changed, e.g. after the §15.3 SKILL.md edit moves a path)? The PR carrier would consult the PR's state; the consuming-repo carrier as written reads `enacted` from the record alone. AT-Q10/Q11/Q12 span `constraints` and `degraded` only. |
+
 ## Positive Observations
+
+- **Three of the six fixes changed a mechanism rather than an assertion, which is the pattern this
+  document has now sustained across two revisions.** G-01 was not answered by narrowing AT-Q7; it was
+  answered by *enumerating the two seam domains in §6.5 first* and then writing one equality per
+  domain, with the reason the pooled form was wrong stated in the spec ("§5.4, §6.1 and §6.2 all
+  oblige git verbs"). G-04 was not answered by adding a collision test; it was answered by replacing
+  the derivation, then declaring the convention change and its consequences for the three hand-named
+  files at HEAD, then adding the test. G-05 was not answered by editing §15.3's table; T-05 grew the
+  constraint (optional, defaulted, threaded to both paths, exactly one ladder) so the widening cannot
+  be spelled in a way that breaks the existing call site, and AT-M10 is its falsifier.
+- **AT-Q11's byte-identity conjunct is the strongest oracle added in this revision.** "`DOMAIN-CONSTRAINTS.md`
+  is **byte-identical** after the second pass to what it was after the first" is the one assertion
+  that fails an implementation which never consults the log, and the row says so in its own text
+  rather than leaving a reader to infer it. AT-Q12 is its necessary complement — a record's mere
+  existence must not suppress — and it is correctly framed as "the consuming-repo mirror of AT-Q4".
+- **AT-C3's positive conjunct was added at the right layer.** The fix was not to bolt a call-count
+  spy onto four absences; it was to make §10.1 state that a `skipped-cadence` tick returns a body
+  carrying the status, so the positive conjunct is a real artefact of the design and not a test-only
+  observable. The row then names why it is required.
+- **Two overclaims were withdrawn in writing rather than quietly edited.** §8.4 now separates "the
+  convention is asserted" from "a violation is detected" and keeps only the second; §5.2 demotes path
+  stability from an idempotence mechanism to a readability property and states outright that "path
+  stability buys the carrier nothing and is not claimed to". Both cost the document a claim and both
+  make the surviving claims testable.
+- **ER-2 now answers the question a test author would otherwise have to ask twice.** Naming `Version`
+  1.4 as the shipping pin, saying implementation does not wait, and specifying that a landed reason
+  code is **added to** the report-body assertion rather than replacing it, means AT-M6 and AT-M9 have
+  exactly one shape today and a known delta later.
 
 ## Recommendation
 
+**Needs revision**
+
+Every v2 finding and every v2 question is resolved, and three of the six were resolved by changing
+mechanism. The approval bar is unchanged, and one High and three Medium findings are open — all four
+inside text this revision introduced.
+
+What must change:
+
+1. **H-01** — AT-R6b's colliding fixture asserts `duplicate-suppressed` for an **intra-pass**
+   collision, which §8.2 says is a merge recorded once, §6.4 defines only over a prior pass's record
+   or an open/merged PR, and §10.3's `suppressed-by:` grammar cannot express. Restate the fixture
+   over §8.2's actual observable (one id, one record, one `symptom`, one file) and say whether an
+   intra-pass merge is reported at all — or make it a reported event with a field and a §12.1 row.
+   The sibling fixture is sound and should stay.
+2. **H-02** — extend §10.3's `suppressed-by:` grammar and §12.2 P-04 to the two-carrier form, so
+   AT-Q10's "names the enacting `passId`" conjunct has one literal expected shape. `suppressed-by:`
+   is excluded from AT-L5's comparison, so nothing else in §13 catches a wrong guess.
+3. **H-03** — §15.3's bundle row names two artifacts; three tracked artifacts carry
+   `resolveAdvisoryRung` at HEAD (`dist/orchestrate-dev.bundle.js:1994`,
+   `dist/orchestrate-queue.bundle.js:1970`, `dist/pdlc-cli.mjs:1843`), each with its own
+   `distribution-manifest.json` row. Correct the row and T-02's "one artifact or three".
+4. **H-04** — split §6.5's git seam by tree and mark each verb obliged-or-permitted, so AT-Q7's
+   equality is not red on a pass that folds `fetch` into `clone` or spells `create-branch` as
+   `checkout -b` inside the throwaway clone.
+5. **H-05** (Low) — delete the leading "emitted" from §2.6's order-3 cell, which then reads as the
+   negative the rest of the document states.
+
+None of the five re-opens a decision this revision settled. H-01, H-02 and H-03 are places where new
+mechanism arrived ahead of the field, grammar or manifest it writes into; H-04 is a scoping repair to
+text already present.
+
 ## Verdict
+
+VERDICT: Needs revision
