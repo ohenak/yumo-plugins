@@ -321,12 +321,11 @@ the tier ships correctly either way, which is what "non-fatal by construction" m
  * by the seam's real dispatch. Deliberately non-async (`.then`-chained) so the
  * driver's Promise.race hop-depth invariant holds — see the note at the
  * implementation site.
- * @param {{ _agent, _log, _state }} deps
- * @param {string} prompt - the seam's own dispatch prompt
+ * @param {{ _agent, _log, _state, prompt }} deps - one bag; `prompt` is the seam's own dispatch prompt
  * @returns {Promise<{ kind: "response", raw: string } | { kind: "dispatch-error", err: Error }>}
  * @throws  haltError when neither rung resolves (M-3)
  */
-export function resolveAdvisoryRung({ _agent, _log, _state }, prompt) { … }
+export function resolveAdvisoryRung({ _agent, _log, _state, prompt }) { … }
 ```
 
 - `_state` is the per-run memo (`{ resolved: null }`). A non-null memo returns immediately — that is
@@ -337,7 +336,7 @@ export function resolveAdvisoryRung({ _agent, _log, _state }, prompt) { … }
   output**". The implementation therefore wraps the *real* first dispatch:
 
 ```js
-const MODEL_ERROR_RE = /\b(unknown|unrecognis|unrecogniz|invalid|unsupported)\b[^\n]*\b(model|alias)\b/i;
+const MODEL_ERROR_RE = /\b(unknown|unrecognis\w*|unrecogniz\w*|invalid|unsupported)\b[^\n]*\b(model|alias)\b/i;
 
 export function isModelResolutionError(err) {
   return MODEL_ERROR_RE.test(String(err?.message ?? err ?? ""));
@@ -351,7 +350,7 @@ invocation failure and goes to §4's lifecycle, never to the ladder.
 
 - On a matched rejection: emit `ADVISORY_MODEL_FALLBACK: "fable" did not resolve — substituting "opus"`,
   set `{ model: MODEL_ADVISORY_FALLBACK, fallback: true }`, and **re-dispatch the same prompt**.
-- If the fallback dispatch is *also* rejected as a model error: `throw haltError(...)` (`dev:1755`).
+- If the fallback dispatch is *also* rejected as a model error: `throw haltError(...)` (`dev:1868`).
   There is no third rung (M-3), and no advisory agent has run.
 
 ### 3.5 Why the resolution memo is a parameter, not module state
