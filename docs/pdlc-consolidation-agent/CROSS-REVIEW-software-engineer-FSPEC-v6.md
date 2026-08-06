@@ -50,6 +50,61 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Positive Observations
 
+- **AT-R6b's rebuild is the strongest single edit of this round, and it closes the enumeration
+  rather than the fixture I complained about.** I asked for one contradictory Given to be made
+  buildable. The revision restructured the row into five named fixtures, took the one-shared-path
+  reading and said so in the cell ("the merge trigger here is key identity, not slug collision, so no
+  tie-break is in play"), and then **added two fixtures nobody asked for** so that all three pairs a
+  three-member total order admits — (1,3), (2,3), (1,2) — are each asserted. The cell states the
+  completeness argument in the form this review has been asking for everywhere: "a deleted or
+  transposed rank fails at least one of them; sampled at one pair, the enumeration is not covered."
+  Fixture 4's cell goes further and names the *specific* wrong implementation it is the only row to
+  catch — "constraints wins, otherwise keep whichever proposal arrived first" — which is green on
+  every other row in §13. That is a falsifiability argument, not a coverage claim.
+- **The subject tie-break is a pure function of the inputs and the document argues *why* that
+  mattered.** The rule could have said "first proposed" and nobody would have noticed for a release.
+  The first of its three notes rules that out explicitly — proposal order "is decided by the pass's
+  own model, so an implementation keyed on it is not reproducible across two passes over one corpus"
+  — and ties it to the determinism property §8.3 already rests on. The third note carries the rule
+  forward to BR-35a's file-existence test two passes later and names the two ATs (AT-F17 / AT-F18)
+  whose branch it decides. A tie-break that explains its own blast radius is rare.
+- **AT-F21 is a real receive-side test, not a restatement of the rule.** Five conjuncts on one path,
+  each mapped to a concrete wrong implementation; the "never a halt" negative is paired with a
+  terminal-status positive so it is not an absence-only oracle; conjunct (4) asserts the log's
+  **bytes** are unchanged, which is the only way to catch a silent repair; and conjunct (5) pins that
+  the well-formed record's contracts still run, so "skipped for that contract" is bounded on both
+  sides. Two short records with **different** missing fields (`route` and `target`) in one fixture is
+  the right shape — it exercises two rows of the reader table without two fixtures. My F-01 is about
+  the row's reasoning and its unpinned `action`, not about its construction.
+- **§8.1's reader table answers a question by enumeration instead of by principle.** My Q-02 asked
+  which of §8.3 and §8.5 owns a record short of `artifact`; the answer could have been one sentence.
+  Instead the revision tabulated all the readers it could see, and gave §8.3 and §8.5 **opposite**
+  arms with a reason for each — §8.3 emits the row anyway because dropping it "would read as
+  `insufficient-evidence` and silently move a verdict", §8.5 declines to propose because a guess would
+  be "a guessed `retirement`". Both arms fail in the safe direction and both say which direction that
+  is. F-02 is that the enumeration is one row short, not that the arms are wrong.
+- **Q-03's answer refused the easy repair.** The obvious move was to let `symptom` grow to carry a
+  merged two-mode description. §8.2 instead holds the one-line obligation, moves the load to §10.4
+  item 4's report body, and states the reason as a contract argument: `symptom` is non-keying free
+  text no contract parses, "so growing it would buy legibility nowhere and cost the record's shape".
+  That is the right call, and it is why §8.1's eight-field shape and AT-F20's set-equality survive
+  this round intact.
+- **ER-5's on-landing delta was upgraded from "no AT changes" to a real forward plan.** The v5 text
+  ended at "no AT changes", which reads as a non-goal. The revision keeps the shipping assumption but
+  spells what becomes *available* once the value grammar is vocabulary-owned — a value-level check
+  over `suppressed-by:`'s two spellings joining AT-L5 (or a sibling row), and AT-Q10's literal-text
+  conjunct becoming an assertion against §1 — and closes with "Values staying outside AT-L5's domain
+  is a consequence of the erratum being open, not a non-goal". That sentence is the difference
+  between a routed erratum and a shrugged one.
+- **Every code and upstream citation in this round's diff is exact — I re-verified all of them at
+  HEAD.** `readHeadBranch` `orchestrate-dev.js:3520` with its `_git(["rev-parse","--abbrev-ref",
+  "HEAD"])` at `:3524` and the branch guard's call at `:3580`; `parseAbbrevRef` `:3491-3496`;
+  `gitWithLockRetry` `:8617`; `commitPaths` `:8669`; `MERGE_GUARD_DEFAULTS` `:48-53` (four frozen
+  members, `pdlc/workflows/` first). The vocabularies quotation is verbatim at
+  `docs/_constraints/pdlc-consolidation-vocabularies.md:63`. The `-` = 0x2D / `/` = 0x2F byte
+  reasoning in AT-R6b checks out. This is the second consecutive round with no citation drift beyond
+  a single pointer, and this round has none at all.
+
 ## Recommendation
 
 ## Verdict
