@@ -1178,6 +1178,58 @@ section was dropped", which is the same set-equality discipline §8.3 places on 
 
 ## 11. Configuration parse behaviour
 
+**Links:** REQ §4a, DC-01. Config owner: **the repo operator** — the same owner as `implementation`,
+`advisory`, `distribution`, `merge`.
+
+### 11.1 The shape, and the precedent it follows
+
+All keys live under `.claude/pdlc.config.json` → `consolidation`, in the shape
+`parseAdvisoryConfig` establishes (`pdlc/workflows/orchestrate-dev.js:1682`): **per-key independent
+fallback with a stated default**, so one malformed key never retunes the rest.
+
+The precedent's structure is followed exactly, verified at HEAD:
+
+| Observed state | `parseAdvisoryConfig` behaviour | `consolidation` behaviour |
+|---|---|---|
+| file absent (`text == null`) | every key at its default, `sectionMalformed: false` (`:1689`) | identical |
+| file present, not valid JSON | every key at its default, not flagged malformed (`:1693-1696`) | identical |
+| valid JSON with no such section | every key at its default (`:1698`) | identical |
+| section present but not an object | every key at its default, `sectionMalformed: true` (`:1700-1701`) | identical — the distinction is reported |
+| one key of the wrong type | that key falls back and is named in `invalidKeys`; every other key keeps its configured value (`:1705-1713`) | identical |
+
+Step 1 of §2.2 therefore **never terminates the pass**: there is no configuration state that halts,
+and every fallback is reported rather than silently applied.
+
+### 11.2 The keys
+
+| Key | Type | Default | Malformed or absent | Used by |
+|---|---|---|---|---|
+| `consolidation.cadenceHours` | positive number | `168` (weekly) | falls back, noted in the report | §2.3 |
+| `consolidation.volumeThreshold` | positive integer | `5` — matching `nudge-consolidation.sh:25` | falls back, noted | §2.3 |
+| `consolidation.staleLockMinutes` | positive number | `60` | falls back, noted | §4.2 |
+| `consolidation.pluginRepository` | string or `null` | `null` → **the current repository** (the same-repo case, §6.1) | a non-null value that does not resolve is **not** a parse fallback: it is reason code `repository-unresolved` and the §6.3 fallback | §5.1, §6, §7.1 |
+| `consolidation.credentialEnv` | string | `"PDLC_PLUGIN_REPO_TOKEN"` | falls back, noted | §7.2 |
+| `consolidation.unmeasurablePasses` | positive integer | `3` | falls back, noted | §8.7 |
+
+The `pluginRepository` row is the one key whose failure is **not** a parse fallback, and the
+distinction is deliberate: a mistyped repository name is well-formed JSON, so silently falling back to
+"the current repository" would push a promotion into the wrong repo. It degrades through §6.3 with
+the configured value recorded verbatim, so the operator sees what was tried.
+
+`cadenceHours` resolves the master plan's OQ-E3 for this feature — **weekly and threshold-driven,
+whichever arrives first** (§2.3). BL-04 is closed at the REQ layer; nothing here re-opens it.
+
+### 11.3 Reporting a degraded configuration
+
+A pass whose configuration degraded still runs. It reports, in the §10.4 body:
+
+- each key that fell back, by name, with the default it fell back to;
+- `sectionMalformed` when the `consolidation` value was present but not an object — distinguishable
+  from an absent section, exactly as the precedent distinguishes them.
+
+Neither is a reason code: vocabularies §1 has no row for a config fallback, and inventing one would
+breach REQ §4b's set-equality obligation. They are report content, not enumerated status.
+
 ## 12. Observable outcomes per scenario
 
 ## 13. Acceptance tests
