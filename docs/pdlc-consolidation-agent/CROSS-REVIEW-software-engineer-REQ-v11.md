@@ -140,4 +140,54 @@ Q-01's byte question is carried forward below with a new number since the figure
 
 ## Recommendation
 
+**Approved with minor changes.** 0 High, 0 Medium, 2 Low. v10's single Medium is closed by the
+harder of the two alternatives I offered, no prior fix regressed, three cite-don't-restate
+compressions verified lossless against the sections they now point at, and the code-claim table
+carries no defect row for the fifth consecutive round.
+
+The trajectory: v1→v2 closed 8H, v2→v3 2H+5M, v3→v4 2H+2M+3L, v4→v5 2 of 3, v5→v6 4 of 4, v6→v7 5 of
+5, v7→v8 5 of 5 including the High, v8→v9 3 of 3, v9→v10 3 of 3, v10→v11 **1 of 1**. Six consecutive
+clean sweeps; the count fell 1M → 2L, and both remaining findings are in the governance layer this
+round created rather than in the requirements the FSPEC author reads.
+
+I want to be explicit about the severity call, because I am the reviewer this decision went against.
+Both findings are of exactly the class **DEC-SEV-01** adjudicates — a gap in the scope of a
+governance rule over a shared normative file, where the governed file carries a version-pin
+obligation whose breach is itself a defect — and I have scored them Low accordingly rather than
+re-litigating a bar a project-level decision has settled. That is not deference for its own sake: the
+decision's reason holds here concretely. F-03's ambiguity is resolvable by reading one sentence in a
+file §4b itself declares binding (`pdlc-advisory-corpus-baseline.md:18-19`), and F-02's is visible in
+git and changes no stated fact. Neither is a blind spot; both are maintenance lag.
+
+The test I apply at every round: handed this REQ today, is there a decision an FSPEC author cannot
+make? This round, **no**. The one that existed at v10 — what range the set-equality oracle over the
+governed file's enumerated rows covers — is answered per section and pinned to a version. F-03 could
+in principle mislead an author who reads §4b's "in both" quantifier literally and never follows the
+citation, but the same sentence pins `Version 1.4`, which is the vocabularies file alone, so the
+subject is recoverable without leaving the sentence. That is why it is Low and why it does not block.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream to the FSPEC.
+Neither finding here is of that shape and neither is the opposite shape v10's F-01 was: F-02 is about
+a clause's scope over its own genesis commit and F-03 about which of two files a sentence quantifies
+over. Both are edits to text this REQ owns, both are single-clause, and neither re-scopes anything
+downstream. They belong here — but as minor changes, not as a gate.
+
+### What should change (non-blocking)
+
+1. **F-03** (~60 bytes against 331 of headroom) — give §4b's enumerated/prose split an explicit
+   subject, so the sentence stops depending on the reader inferring which governed file it is about:
+   "Of the vocabularies file's owned sections, §1, §2 and §4 are enumerations and §3 is owned
+   normative prose; the baseline's four sections are all owned normative prose, under no row oracle
+   (baseline `:18-19`)."
+2. **F-02** (byte-neutral in the REQ) — narrow the baseline's change-control clause from "a
+   **content** change" to "a change to any **stated fact**", matching the vocabularies file's
+   row-scoped wording. §4b governs the two files as a pair; their change-control rules should not be
+   asymmetrically strict. Bumping the baseline to 1.1 and repinning `:202`/`:448` is the alternative,
+   but it fixes the symptom rather than the wording that produced it.
+
+Both are appropriate for the optimizer to take in a single pass; neither warrants a further review
+round on its own account.
+
 ## Verdict
