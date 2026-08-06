@@ -1658,3 +1658,93 @@ restates:
   in §14, not routed around here).
 - **No branch that skips the effectiveness table.** A `no-op` pass emits every standing verdict and
   state unchanged (AC-1.4, §12.3) — reporting is not conditional on having promoted anything.
+
+## 18. Business Rules
+
+The decidable rules the flow of §17 evaluates, gathered in one place and stated so each is
+independently testable. Every rule names the section that specifies it and the acceptance test that
+falsifies it; none of them is new here.
+
+### 18.1 Running, and how often
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-01 | A tick runs when the un-consolidated set has **at least** `consolidation.volumeThreshold` members (default `5`), trigger `volume`. | §2.3 | AT-C2 |
+| BR-02 | Otherwise a tick runs when **at least** `consolidation.cadenceHours` (default `168`) have elapsed since the datum, trigger `cadence`. | §2.3 | AT-C1 |
+| BR-03 | The datum is the `date` of the most recent log row whose status is one of `promoted`, `promoted-degraded`, `no-op`, `failed`. A `refused` row is skipped, and a `skipped-cadence` tick wrote no row — so ticking can never advance the datum. | §2.3 | AT-C5 |
+| BR-04 | An empty datum set counts as **elapsed**: the pass runs, trigger `cadence`, and its row carries `no-cadence-datum`. | §2.3 | AT-C1 |
+| BR-05 | A direct invocation skips BR-01 and BR-02 entirely and runs unconditionally, trigger `manual`. | §2.1 | AT-C4 |
+| BR-06 | A `skipped-cadence` tick reads only configuration, corpus basenames and the log. It writes nothing and makes no git call. | §2.4 | AT-C3 |
+
+### 18.2 What counts as evidence
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-07 | The corpus is exactly `docs/*/LEARNINGS-*.md` ∪ `docs/completed/*/LEARNINGS-*.md`. `docs/discarded/` is excluded. | §3.1 | AT-C2, AT-P1 |
+| BR-08 | Enumeration is by basename; no LEARNINGS body is opened before step 9. | §3.1, §2.2 | AT-C3 |
+| BR-09 | A LEARNINGS file is *consumed* iff its basename appears in the log's consumed region or in the legacy region — one predicate, shared verbatim by the pass, `nudge-consolidation.sh` and `consolidate-learnings/SKILL.md`. | §3.2 | AT-P2, AT-P3, AT-P7 |
+| BR-10 | The pass never modifies a LEARNINGS file it consumed (NFR-5). | §3.3, §12.4 | AT-P2, AT-P6 (§15.1's NFR-5 row) |
+| BR-11 | Consumption is recorded as one complete `<!-- pdlc:consumed {passId} -->` pair, appended in a single write, **even when the consumed set is empty**. | §3.3 | AT-P6 |
+| BR-12 | Only a marker-holding pass writes a consumed pair; a `refused` pass writes none. | §4.4 | AT-M1 |
+
+### 18.3 Exclusivity
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-13 | At most one pass holds `docs/_decisions/.consolidation-lock` at a time; a second pass observing it fresh terminates `refused` with `consolidation-in-progress`. | §4.2 | AT-M1 |
+| BR-14 | A marker older than `consolidation.staleLockMinutes` (default `60`) is reclaimed, and the reclaiming pass records `reclaimed-stale-lock` alongside its own status. | §4.2 | AT-M2, AT-M3 |
+| BR-15 | Every marker-holding terminal arm releases the marker — `failed` included. | §4.3 | AT-M4 |
+| BR-16 | The marker file is never committed (it is git-ignored, and it is outside the AC-3.8b pathspec). | §4.1, §5.4 | AT-M5 |
+
+### 18.4 Promotion and routing
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-17 | The pattern-vs-coincidence bar is unchanged: recurrence across ≥2 unrelated features, **or** a single occurrence stating an obviously generalising standing invariant. The trigger decides whether a pass runs, never what clears the bar (NFR-3). | §5.2 | AT-A4, AT-C2 |
+| BR-18 | A proposal has exactly one canonical repository-root-relative target path — never a glob, never a directory — and that path alone decides the route. | §5.1 | AT-R1 |
+| BR-19 | A target path under any member of `MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48-53` — `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/`) takes the PR route. No code path in the pass writes such a path in any tree (NFR-1). | §5.1, §6 | AT-R1, AT-Q1 |
+| BR-20 | `DOMAIN-CONSTRAINTS.md` and `DECISIONS-{topic}.md` targets are applied directly to the consuming repo; any other non-guard path is written to the proposal file and **never applied**. | §5.1, §5.2, §5.3 | AT-R2, AT-Q6 |
+| BR-21 | All consuming-repo writes of one pass land in **one** commit, pathspec-scoped per AC-3.8b, never `-a`. | §5.4 | AT-R2, AT-R3, AT-R5 |
+| BR-22 | The invoking tree's HEAD and branch are never changed, and no branch operation is performed in it (AC-3.8). | §6.1, §12.4 | AT-Q1, AT-R3 |
+
+### 18.5 The pull-request route
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-23 | The PR is opened against `consolidation.pluginRepository`, defaulting to `null` ⇒ the current repository. A non-null value that does not resolve is `repository-unresolved` and degrades through §6.3 — it is **not** a parse fallback. | §11.2, §6.3 | AT-N4 |
+| BR-24 | The branch is `consolidation/{passId}`; the body carries the `PDLC-CONSOLIDATION-PASS` trailer and each commit carries `PDLC-PROMOTION-ID`. | §6.2 | AT-Q2 |
+| BR-25 | The suppression key is the **pair** `(failure-mode-id, action)`, read from the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or `merged`. A `closed`-unmerged PR is not in the key set. | §6.4 | AT-Q3, AT-Q4 |
+| BR-26 | A suppressed proposal opens nothing, fires no fallback, and populates `suppressed-by:` — never `pr:`. | §6.4, §10.3 | AT-Q3, AT-L2 |
+| BR-27 | An existing machine-opened PR is never extended, amended or superseded by a later pass. | §6.4 | AT-Q3 |
+| BR-28 | No merge or enable-auto-merge API is called on any PR, including the pass's own, under any status or configuration. | §6.5 | AT-Q7 |
+
+### 18.6 Credential
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-29 | The credential's scope is `contents:write` + `pull_requests:write` only — it grants no merge rights. | §7.1 | AT-K5 |
+| BR-30 | Resolution records exactly one of three values: `present (redacted)`, `absent`, `local-gh`. | §7.2 | AT-K1, AT-K4, AT-K5 |
+| BR-31 | An unavailable credential forces `credential-unavailable` and the §6.3 degradation — never a silent skip. | §7.3 | AT-K2, AT-K3 |
+| BR-32 | No credential value appears in any log row, PR body, artifact, report or notification (NFR-2). | §7.4, §10.5 | AT-K5 |
+
+### 18.7 Falsifiability and the advisory corpus
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored file. | §8.1, §8.2 | AT-F1, AT-F2, AT-F3 |
+| BR-34 | Every prior promotion gets a verdict on every reporting pass: `prevented` / `recurred` / `insufficient-evidence` — a `no-op` pass restates them unchanged (AC-1.4). | §8.3, §12.3 | AT-F5, AT-F6, AT-F7, AT-F8 |
+| BR-35 | `recurred` on two consecutive counted passes ⇒ state `ineffective`, and a `revision` or `retirement` proposal is emitted. | §8.5 | AT-F9, AT-F10 |
+| BR-36 | `insufficient-evidence` on `consolidation.unmeasurablePasses` consecutive evaluated passes (default `3`) ⇒ state `unmeasurable`. | §8.7, §11.2 | AT-F13 |
+| BR-37 | Advisory counts come only from `docs/_queue/ESCALATIONS.md`; no count is ever derived from LEARNINGS advisory prose. | §9.1, §9.2 | AT-A3, AT-A7 |
+| BR-38 | An absent `ESCALATIONS.md` ⇒ `no-advisory-corpus`; present-but-empty ⇒ `advisory-corpus-empty`. Both compose with the run's own status. | §9.3 | AT-A1, AT-A2 |
+
+### 18.8 Recording
+
+| # | Rule | Section | AT |
+|---|---|---|---|
+| BR-39 | Every log write is an append of one whole record; no record is ever rewritten in place. | §10.2, §12.4 | AT-L3 |
+| BR-40 | A pass that takes the marker appends exactly one terminal row; a `skipped-cadence` tick appends none. | §10.1, §10.3 | AT-C3, AT-L3 |
+| BR-41 | Every terminal row carries a trigger (NFR-3a) and a `credential:` value (AC-4.2) — a `refused` row included. | §10.3 | AT-L5, AT-M1 |
+| BR-42 | A git refusal at step 15 adds `writes-uncommitted` and never changes the pass's status. | §5.4, §12.1 S-12 | AT-R4 |
+| BR-43 | Every status, reason code and field value written is a member of vocabularies §1 at `Version` 1.4, and every §1 row is used — set equality in both directions (REQ §4b). | §15.2 | AT-L5 |
+| BR-44 | A configuration fallback is report content, never a reason code — no §1 row exists for one. | §11.3 | AT-N2, AT-N3 |
