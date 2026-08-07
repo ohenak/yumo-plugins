@@ -60,6 +60,12 @@ code is F-01 below, and it is a claim about a *property*, not a line number.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | DEC-CONS-05 is **provisional** — §7 says so in terms ("not settled here… raised upstream as an erratum") — while §2 lists it as load-bearing on AC-1.1, AC-1.2 and NFR-5. That is the right disclosure and I am not asking to change it. The question is for the PLAN: if the REQ author answers "yes, an ignored LEARNINGS file is corpus", the entry says divergence class (i) closes at the price of one flag. Does the PLAN need a contingent task for that flag, or is the answer expected before Phase P? Nothing here blocks; I would rather the sequencing be stated than discovered. |
+| Q-02 | §10 row 12 folds the shipped-hook `PDLC_PENDING:` stderr line into DEC-CONS-05 and says DEC-CONS-05 is *conditional* on it. REQ §5's in-scope list enumerates hook edits at `nudge-consolidation.sh:41` (predicate) and `:28` (corpus glob) but not a third, observation-only edit. I am **not** raising this as a finding: it was weighed and settled at the TSPEC layer (`TSPEC:117`, `§13.1` row 12), which I approved at v7, and REQ §5a puts re-opening a settled question out of order absent new `file:line` evidence — I have none. The question is only whether the REQ's in-scope sentence should pick the edit up during its next erratum pass, so the scope list and the shipped diff agree on paper. |
+| Q-03 | DEC-CONS-04's Testability says the race "is deliberately **not** tested" and DEC-CONS-07's says the unreachable arm is not tested. Both are correct calls and both are argued. Should §11.2 carry a one-line "what is deliberately unasserted, and why" list, so the PROPERTIES author inherits the *absences* as explicitly as the three invariants it already inherits? A property author reading §11.2 alone would not know that two named behaviours are out of bounds by decision rather than by oversight. |
+
 ## Positive Observations
 
 ## Recommendation
