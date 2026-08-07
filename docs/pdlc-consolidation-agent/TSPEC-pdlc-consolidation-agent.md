@@ -1529,7 +1529,7 @@ reporter's skip line plus that warning, and CI's `Unit tests` job surfaces both.
 |---|---|---|
 | `_agent` | `makeAgentDouble({script, throwOn})` | `__tests__/helpers/advisoryDoubles.js` — already built to drive `isModelResolutionError` from a scripted rejection *message*, which is exactly what FSPEC §2.6 rows 2–4 need |
 | `_git` | `fakeGit(script)` | `mergeDoubles.js`, re-exported by `advisoryDoubles.js` as `makeGitDouble` |
-| `_ghRun` | `fakeGhRun(script)`, `passingGh` | same |
+| `_ghRun` | `fakeGhRun(script)` — **not** `passingGh` | same. `matchKey` (`mergeDoubles.js:45-60`) keys both new surfaces cleanly (`gh pr list --json url,state,body`; `gh pr create`), so `fakeGhRun` needs no change. `passingGh`'s defaults (`:93+`) answer only the six shipped Phase MERGE surfaces, so the consolidation suites build their **own** script map rather than widening it, and `GH_SURFACE_NAMES` (`:181` — `Object.keys(SURFACE_KEY_BY_NAME)`) does **not** grow: it is the set `passingGh` is obliged to answer, and this feature adds no obligation to that helper |
 | `_readFile` / `_writeFile` / `_appendFile` / `_checkFile` | `fakeFs(initialContents, opts)` | `__tests__/helpers/seams.js` |
 | `_listFiles` | `fakeListFiles(spec)` | same — wired for protocol completeness only. **No consolidation test drives it**: the corpus is enumerated through `_git` (§7.1), precisely because the double is more capable than the seam it doubles. A test that reached for it would be re-introducing the DC-07 hazard §7.1 removes |
 | clock, sleep | `fakeNow`, `FIXED_NOW_MS`, `fakeSleep` | `mergeDoubles.js` |
