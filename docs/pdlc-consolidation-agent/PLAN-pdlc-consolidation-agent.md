@@ -370,7 +370,80 @@ carries both.
 
 ## 8. Verification and Definition of Done
 
-_placeholder_
+### 8.1 What runs, at which level
+
+| Level | Suites | Shells out? |
+|---|---|---|
+| L1 pure | `consolidationPredicate`, `consolidationIdentity`, `consolidationEffectiveness`, `consolidationParse`, `consolidationAdvisory` (+ the L1 half of `consolidationReport`) | no |
+| L2 orchestration | `consolidationPass`, `consolidationRoute`, `consolidationCredential`, `consolidationRung`, `consolidationLifecycle` (+ the L2 half of `consolidationReport`) | no — every seam doubled |
+| L3 build and source text | `consolidationBuild`, `consolidationTraceability`, `consolidationPreflight`, and the two widened sets in the shipped `runtimeBundle` | no |
+| L4 differential | `consolidationHookParity` | **yes** — a real `python3`/`bash`, and a real `git` in a temp repository the case builds |
+| L5 property | `consolidationProperties` | no |
+
+L4 is the only level that shells out, and it **never touches this repository's own `docs/` tree**:
+the differential harness writes its fixture corpus into a temp directory and points the hook at it
+through `CLAUDE_PROJECT_DIR`, and the pathspec case builds its own throwaway repository. Both are
+pure functions of an injected root (DC-04), so neither can drift as this repo's `docs/` grows.
+
+### 8.2 Per-wave gate
+
+After every wave the script runs `.claude/pdlc.config.json` → `implementation.testCommand` and halts
+on failure, then `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`), then commits each
+task's owned files pathspec-scoped plus `postWavePathspecs`. §2's `describe.skip` discipline is what
+keeps every one of those gates green **and** truthful: a parked case is reported as skipped, never
+as passed.
+
+### 8.3 Definition of Done
+
+**Mechanical — all must pass.**
+
+- [ ] `cd pdlc/workflows && npm test` is green on both CI legs (ubuntu, macos, node 20); no
+      `consolidation*` case is still `describe.skip`, verified by grepping the fifteen suites for
+      `describe.skip(` and finding none.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0, and a rebuild produces no diff.
+- [ ] `pdlc/workflows/dist/` carries **four** bundles plus `distribution-manifest.json`, and the
+      manifest holds a row for `consolidate-learnings.bundle.js` with its sha1 and the plugin version
+      those bytes were built at.
+- [ ] `pdlc/hooks/scripts/sync-workflows.sh --check` classifies the new artifact rather than
+      ignoring it.
+- [ ] `bash -n pdlc/hooks/scripts/nudge-consolidation.sh` is clean, the file keeps mode `100755`,
+      and a session with the debug variable **unset** produces byte-identical output to HEAD's.
+- [ ] `consolidationTraceability.test.js` reports set equality in both directions over the FSPEC
+      register's **96** ids and TSPEC §12.3's table.
+- [ ] `parsePlanTasks` / `parsePlanOwnership` / `validatePlanContract` /
+      `computeTopologicalBatches` over this PLAN return 34 / 34 / `{ok:true}` / no cycle — the Phase P
+      gate's own answer (§6).
+- [ ] The `await` audit ranges over `consolidate-learnings.js` **and** scans for `_envPresent` and
+      `_makeTempDir` (T13), and reports green.
+
+**Demonstrated, not merely asserted.**
+
+- [ ] **T31's mutation check** (TSPEC §11.2): delete one `await` inside `finishPass`, observe
+      `consolidationLifecycle.test.js` RED on **both** conjuncts, restore. A test whose falsifier has
+      never been observed is a claim.
+- [ ] **T03's `rtConsInjections` case fails with `_checkFile` removed** — the failure it exists to
+      catch. Set equality, not containment, is what makes that true.
+- [ ] **T04's counter is observed in the all-skip world too**: with `PY_BIN` forced empty the suite
+      reports skips and the counter test still runs and passes at `0`.
+- [ ] **T24's dropped-code control**: `no-cadence-datum` is **not** dropped, on the same fixture set
+      where the illegal pair is.
+
+**Reviewer-read (no executable oracle exists — see §9).**
+
+- [ ] T07's two `consolidate-learnings/SKILL.md` edits read against FSPEC §3.2 and §5.2.
+- [ ] T08's two `harvest-learnings/SKILL.md` edits read against FSPEC §8.3 and §8.4, with
+      `LEARNINGS_SECTIONS` and the `Harvested from` row confirmed untouched.
+- [ ] T12's `rtEnvPresent` and `rtMakeTempDir` **prompts** read for transport correctness — they are
+      agent prompts and nothing here executes a real agent (TSPEC §11.6). The prompt *text* is pinned
+      by T03 for `rtWriteFile` only; the two new prompts are reviewed, which is the same posture every
+      other adapter transport takes.
+- [ ] T33's `CLAUDE.md` and `pdlc/RELEASE-CHECKLIST.md` edits read for accuracy against the shipped
+      artifact set.
+
+**Not in scope of this PLAN's Done.** `pdlc/.claude-plugin/plugin.json`'s version bump and the
+manifest's `pluginVersion` stamp are the release step's. The first queue invocation after this lands
+is expected to be **blocked by the drift gate** until `sync-workflows.sh` runs — that is the designed
+behaviour T33 documents, not a defect.
 
 ## 9. Handed downstream and open items
 
