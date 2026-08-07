@@ -2041,10 +2041,21 @@ synchronously and deferred only its result would leave the missing `await` invis
 rather than whether it discriminates.** On the *broken* implementation the assertions run while a
 `setTimeout` is still pending, so (i) every double instance is constructed **per case**, inside the
 case body, never at module scope — a late timer must never be able to write into a double a later
-case reads; and (ii) the case drains the loop before it returns (`await new Promise(r => setTimeout(r, 0))`
-after its assertions), so jest sees no open handle and the failure it reports is the assertion, not a
-teardown warning. Neither changes the discrimination in the table above; both are required of the
-PLAN task that writes the row.
+case reads; and (ii) the case drains the loop before it returns — and the drain is in a **`finally`**,
+not after the assertions:
+
+```js
+try { /* …assertions… */ } finally { await new Promise((r) => setTimeout(r, 0)); }
+```
+
+An earlier draft specified it as "after its assertions", which put it on the one path where it
+cannot run. A timer is still pending only on the **broken** implementation, which is exactly the world
+the mandated mutation check below puts the suite in — and there the first assertion throws, so a
+trailing drain never executes: present in every run that did not need it, absent from every run that
+did. The `finally` form runs in both. (jest's fake timers with `runAllTimers()` in an `afterEach` are
+an equivalent answer; the `try/finally` is chosen because it keeps the case self-contained and does
+not change the macrotask semantics the table above depends on.) Neither constraint changes the
+discrimination in that table; both are required of the PLAN task that writes the row.
 
 **The row owes its own mutation check.** `consolidationLifecycle.test.js` is the only oracle for an
 invariant §10.1 states nothing else guards, so the PLAN task that writes it must demonstrate it
