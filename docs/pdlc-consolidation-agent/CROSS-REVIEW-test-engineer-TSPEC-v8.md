@@ -49,6 +49,21 @@ Nothing in the delta breaks a section I approved at v7. Two Low findings, both c
 
 ## Questions
 
+None. Neither Low finding needs an answer before implementation.
+
 ## Positive Observations
 
+- The NFR-2 row does the thing a traceability row usually fails to do under pressure: it separates the property that is **structural** from the property that is **disciplined**, names the exact byte channel that carries the residual, and bounds it. A reviewer can now falsify the claim by reading three cited lines instead of reasoning about the whole seam.
+- §9.2 records that an earlier draft was wrong, in the section, rather than silently rewriting it. That is the second time this document has done so (the `read-remote`/`read-object` fold at `:1681` is the first) and it is what makes the rejected-alternative rows worth reading.
+- The rejection of the command-string git transport is argued on a **testability** ground, not an aesthetic one: it would move the push out of the domain whose classifier AT-Q7's containment assertion ranges over. That is the right reason to reject it and it is stated as such.
+- The version block's changelog note names both errata and the two swept sections, so the next reviewer can scope a diff without reconstructing it.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves both underlying defects — all seven routed items — and breaks nothing I approved at v7. The two Low findings are documentation-consistency residue and may be swept whenever §12.1 or §9.2 is next touched; neither blocks Phase P.
+
+## Verdict
+
+VERDICT: Approved with minor changes
