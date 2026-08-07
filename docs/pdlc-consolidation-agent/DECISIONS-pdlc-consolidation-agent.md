@@ -108,7 +108,76 @@ path that demonstrably executed.
 
 ## 4. DEC-CONS-02: Reuse `resolveAdvisoryRung` by widening it, rather than restating the ladder
 
-_(pending)_
+**Context.** AC-1.5 requires the pass to run on the advisory model rung and to report the rung it
+actually ran on; AC-1.6 requires an explicit, never-silent downgrade. `pdlc-advisory-tier` already
+ships exactly that ladder: `MODEL_ADVISORY` (`orchestrate-dev.js:1652`), `MODEL_ADVISORY_FALLBACK`
+(`:1653`) and the exported resolver `resolveAdvisoryRung` (`:1833`), whose only shipped call site is
+`runAdvisorySeam` at `:3132`. The resolver dispatches under one constant skill,
+`ADVISORY_RUNG_SKILL = "se-review"` (`:1796`); the consolidation pass must dispatch under its own
+skill.
+
+**Decision.** Widen the resolver by one **optional, defaulted** destructured parameter —
+`skill = ADVISORY_RUNG_SKILL` — and substitute it at the single `_agent(...)` call inside the
+resolver's inner `dispatchAt`. The shipped call site passes no `skill` and is not edited.
+`MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` stay module-private and are not re-exported, so exactly
+one ladder remains in the tree.
+
+**Alternatives considered.**
+
+- **Restate the two rungs in the consolidation module, behind a drift observable** — the escape
+  hatch `docs/_constraints/pdlc-advisory-corpus-baseline.md` §3 explicitly sanctions — rejected. It
+  creates the second copy of the ladder the resolver's own doc comment forbids in terms:
+  "there is no second, private copy of this ladder anywhere" (`orchestrate-dev.js:1800-1801`). A
+  drift observable detects divergence *after* it happens; the import prevents it. The claimed cost
+  of the rejected form is not obviously higher — two constants and a `try`/`catch` — which is why the
+  rejection needs recording.
+- **Export the two model constants and let the pass build its own ladder** — rejected for the same
+  reason, and it is strictly worse: it moves the failure mode from "two ladders that can drift" to
+  "two ladders that *will* drift", because the fallback semantics (`isModelResolutionError`
+  classification, the memoised `_state`, the halt on double non-resolution) would be re-implemented
+  rather than shared.
+- **Pass the skill positionally, or at each rung** — rejected on a mechanical property: `dispatchAt`
+  is the resolver's sole dispatch site, and the memoised path and both ladder rungs all route through
+  it, so threading the parameter through `dispatchAt` makes it structurally impossible for a pass to
+  resolve on one skill and dispatch on another. Passing it per-rung reintroduces exactly that gap.
+
+**Constraints that forced this shape.**
+
+- `pdlc/workflows/orchestrate-dev.js` is under `MERGE_GUARD_DEFAULTS` (`:48`), so this edit is a
+  self-modification-guard path: it can never be auto-merged, and it is one of three edits this
+  feature makes to that one file (with the `gitWithLockRetry` export and the `mergeCommandFor`
+  surfaces). That is a PLAN serialisation obligation, not a design choice.
+- The resolver is **deliberately not `async`** and is `.then`-chained, because its shipped caller
+  races the returned promise against a `_sleep`-built deadline and the microtask hop count is
+  load-bearing (its doc comment states this at `:1820-1826`). Adding a defaulted parameter adds no
+  hop; any refactor that makes the body `async` breaks a caller this feature does not otherwise
+  touch.
+- Reuse-by-inlining is the only mechanism available: the runtime forbids `import` entirely, and
+  `build-runtime.mjs`'s `bundles` array (`:448`) reaches across modules only by concatenating whole
+  module bodies. There is no third option (a shared artifact holding the resolver is not
+  representable), which is why that sub-choice is *not* recorded as a decision — see §10.
+
+**Reversibility:** hard. The bytes of the widened resolver live in **four** tracked artifacts once
+this feature lands — the three at HEAD (`orchestrate-dev`, `orchestrate-queue`, `pdlc-cli`, per
+`pdlc/workflows/dist/distribution-manifest.json`) plus the new `consolidate-learnings` bundle — so
+reverting means a coordinated rebuild, and CI's `Generated artifacts are in sync` job fails a partial
+one.
+
+**Re-evaluation triggers.** A third consumer needing a rung ladder with *different* rungs (at which
+point the parameter should become a rung list, not a skill); the runtime gaining `import`, which
+would make a shared artifact representable and retire the inlining constraint; the advisory tier
+retiring `MODEL_ADVISORY` in favour of a per-seam model, which would move the decision from "which
+skill" to "which model" and invalidate the defaulting scheme.
+
+**Testability:** the widening is falsifiable at L1 in three places. (i) A regression asserting the
+resolver called **without** `skill` dispatches `"se-review"` on the primary rung, the fallback rung
+and the memoised path — this is the assertion that keeps the shipped call site's behaviour pinned
+while a new parameter exists. (ii) A conjunct asserting the pass's own call dispatches its own skill
+on all three of those paths, so "threaded to every path" is observed rather than argued. (iii) A
+source-level assertion that the module declares exactly one rung ladder — no second model constant,
+no second resolver — which is the observable form of "reuse, do not restate". The `_log`-emitted
+`ADVISORY_MODEL_FALLBACK:` line (`:1858-1860`) is captured through an injected log collector, so the
+AC-1.6 report obligation is asserted on real resolver output rather than on a re-rendered string.
 
 ## 5. DEC-CONS-03: The clone is cut from `origin`'s URL, not from the working-tree path
 
