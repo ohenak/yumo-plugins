@@ -24,7 +24,22 @@ PROPERTIES will need, and whether each `Testability:` line names an oracle that 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Which domain does the `git clone` argv belong to for the DEC-CONS-03 containment assertion (F-01)? If it is exempted from the invoking-tree set, what pins the fact that its destination is the `_makeTempDir` reply and not a path inside the repository? |
+| Q-02 | Is the shipped-hook edit one line or two changes (F-02, F-03)? §7 and §11.1 of this document give different answers, and the PLAN's ownership manifest is derived from §11.1 |
+| Q-03 | DEC-CONS-05's differential feeds "one basename list and one log text" to both implementations. The hook's shipped predicate is a bare substring test against the whole log (`nudge-consolidation.sh:41`); does the differential harness call the hook's *predicate* in isolation, or the hook end-to-end via the `PDLC_PENDING:` channel? Only the second observes the production path — the first is a re-implementation of the hook inside the test, which would make the "one predicate" claim unfalsifiable |
+| Q-04 | DEC-CONS-02's testability conjunct (iii) asserts "the module declares exactly one rung ladder". Which artifact is scanned — the source module, or the built `consolidate-learnings` bundle? The ladder is inlined into four artifacts once this lands, so a source-only scan cannot see a second copy introduced by the build |
+
 ## Positive Observations
+
+- Every measurement the document leans on reproduces exactly. `grep -nc "unlink\|rm -f\|rmdir" pdlc/workflows/runtime-adapter.js` returns `0`; `grep -n "relative to the repository root"` returns exactly one line, `:805`, inside `rtWriteFile` (`:802`); `rtCheckFile` (`:817-831`) maps a present-but-empty file to `{ok:false, reason:"file_empty"}` exactly as DEC-CONS-07 states; `rtListFiles` (`:905`) filters directories and rejects any reply line containing `/` (`:929-931`); `rtReadProbe` (`:369`) transports shell commands under a **cwd** instruction (`:374`), not a path-resolution instruction. DEC-CONS-06's distinction between the two is real and was clearly measured, not asserted.
+- The `git ls-files` reversibility measurement in DEC-CONS-05 is exact: five paths with **and** without `--exclude-standard`, seven without the `:(glob)` prefixes, re-admitting `docs/discarded/pdlc-rcv-budget-stop/` and `docs/discarded/pdlc-review-convergence/`. Stating the price of closing divergence class (i) as "an ignored LEARNINGS file is corpus, and nothing else" is a genuinely useful, falsifiable claim.
+- DEC-CONS-02's four-artifact reversibility claim checks out — `pdlc/workflows/dist/` ships `orchestrate-dev`, `orchestrate-queue` and `pdlc-cli` at HEAD, per `distribution-manifest.json`.
+- DEC-CONS-04 refusing to test the race is the right call and is argued the right way: an oracle that cannot fail is worse than a recorded gap (DEC-ORACLE-02). Testing the take's *shape* — the ordered three-call log — instead is a legitimate substitute, and the "`present` is read from `_checkFile`, never from `_readFile`" conjunct is given a real falsifier by DEC-CONS-07's empty-vs-unparseable fixture pair rather than left as an absence claim.
+- DEC-CONS-07's conjunct (ii) is the model the rest of this document should follow: a paired fixture where the empty marker must yield `free` **with no** `reclaimed-stale-lock` record and the non-empty unparseable one must yield `reclaim` **with** one. Negative and positive on the same path, in the same case.
+- Declining to test the unreachable half of FSPEC §4.2's row, and raising it as an erratum instead of reinterpreting it, is correct on both counts.
+- §11.2 correctly identifies that three of these are run-level invariants rather than unit cases, and pre-empts the two classic false-greens (absence-only credential fixtures; invariance-only determinism fixtures satisfied by a constant function).
 
 ## Recommendation
 
