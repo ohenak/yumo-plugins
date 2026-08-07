@@ -150,8 +150,73 @@ correctness from prose into a red.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §11.2's `asAsync` resolves on a `setTimeout(…, 0)` that is still pending when T-13's assertions run on the broken implementation. Jest will therefore fire that timer after the test body has finished — an open handle, and a write into a double that a later case may share. Is the row expected to drain it (`await new Promise(r => setTimeout(r, 0))` after the assertions, or fake timers advanced explicitly), and is the double instance per-case rather than module-level? Neither changes the discrimination; both change whether the suite is quiet. |
+| Q-02 | §11.1's executed-row counter is asserted in an `afterAll`. On the degradation path §11.3(f) describes (no `python3`, or the hook unrunnable), does the harness `test.skip` every row — leaving `executed === 0`, the legitimate case — or does it skip the *file*? If a notice is emitted but rows still run against a degraded probe, `executed === TABLE.length` is reached with no real comparison behind it, which is the one way the all-or-nothing invariant could still be green on nothing. |
+| Q-03 | §12.2 now carries three unnumbered `(no FSPEC AT)` rows, and §12.3 explains how the id parser ignores their prose. Is there anything asserting the converse — that a row *intending* to claim no id has not accidentally named one (say by citing AT-L5 in a sentence, which the report row does deliberately)? The parser is idempotent there, so this is a question about intent drift, not about the current text. |
+
 ## Positive Observations
+
+- **F-01's repair went past the fix to the reason.** §11.2 does not merely swap `Promise.resolve`
+  for `setTimeout`; it states the general fact — "a microtask deferral cannot survive a caller that
+  awaits at all, because awaiting is itself microtask-scheduled" — gives the two-row table of what
+  the test's continuation sees under each implementation, and then explains why the *recording* is
+  deferred with the resolution rather than performed eagerly. That last paragraph closes the reading
+  of "same recording behaviour" that would have made the row vacuous by construction, which is the
+  half of my finding that was easiest to miss. Durable signal well beyond this feature.
+- **The revision volunteered the scope limit I had only used as an argument.** §10.1, §11.2 and
+  §12.2 all now say that the two `return await finishPass(…)` call sites are a stack/`try`
+  improvement rather than a behavioural one, and that T-13 "does not claim the other two". A test
+  row that states which of the three defects it can actually see is rarer than it should be, and it
+  will stop a later reader from deleting the intra-`finishPass` `await` on the theory that "T-13
+  covers awaits".
+- **F-03's repair generalised into a rule.** Rather than adding the one row I asked for, §12.2 added
+  the principle ("a named gap is not a licence to ship uncovered"), applied it to both register gaps,
+  and distinguished the erratum from the local case as complementary rather than alternative. The
+  §12.3 paragraph on how the parser reads a cell that carries prose is the load-bearing detail that
+  keeps the set-equality honest while the cells grow.
+- **§10.4 corrects its own earlier claim, out loud, and with a measurement.** "That is **false, and
+  it contradicted §7.1 point 2 of this same document**" — followed by the exact command and its
+  result. I re-ran it and it holds. The two costs are then stated asymmetrically (class (ii) not
+  closable at this layer; class (i) closable at exactly one price) instead of merged into one
+  impossibility claim, which is what makes the residue auditable.
+- **Row 12's re-argument answers the question it was actually asked.** "A predicate differential is
+  not a consolation prize for the enumeration equality — the two-region predicate is where every edge
+  case the FSPEC enumerates lives (E-04, E-05, E-09, the region boundary), and it is the half a
+  maintainer will actually change." That is the right justification for editing a shipped hook, and
+  it survives row 6's narrowing rather than being weakened by it.
+- **The fixture rule was moved into the code.** §11.3(f)'s "no fixture may depend on git visibility"
+  is now specified to live in `consolidationDoubles.js`'s header, beside the precedents — and those
+  precedents are real: `seams.js:1-41` ("**No test file defines an ad-hoc seam object**") and
+  `advisoryDoubles.js:1-14` ("The single canonical source of every test double … PROP-INFRA-01
+  scans the suite's own source text to enforce that"). A constraint a contributor must not violate,
+  placed where they are working.
 
 ## Recommendation
 
+**Needs revision**
+
+Two Mediums are open, and both are narrow:
+
+1. **F-01** — decide what `releaseMarker` does and where `markerVerdict`'s `present` comes from,
+   then restate T-13's conjunct (ii) against that observable. As written the conjunct asserts a
+   state ("gone") that no declared seam can produce, and the plausible in-place-rewrite reading
+   collides with §7.3's present-but-unparseable ⇒ `reclaim` rule.
+2. **F-02** — give §7.1's unreadable-corpus-entry decision a `(no FSPEC AT)` row and a §12.3 file
+   entry, with the three obligations asserted as a pair against a readable control.
+
+The two Lows are one-clause edits and do not block: F-03 (anchor the hook-side pin on the
+expression, not the line index) and F-04 (one real-`git` case to turn §10.4's measurement into an
+assertion).
+
+Everything I raised at v3 is closed at the mechanism, and the `asAsync` repair in particular is
+better than the fix I asked for. Both new Mediums are second-order consequences of good repairs —
+the take/release conjunct became concrete enough to reveal that the release itself was never
+specified, and the unreadable-entry question was answered so completely that the answer now owes
+assertions. Neither is a redesign.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 2, "low": 2}
