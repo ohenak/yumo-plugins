@@ -93,6 +93,25 @@ I do not re-argue them below.
 
 ## Existing-Code Claim Verification (changed sections)
 
+No section changed, so there is no new claim to verify. The live question for an unmoved document is
+the inverse: did the codebase move beneath it? It did not. `git diff 1cebcce..HEAD -- .
+':(exclude)docs/'` is empty across all 145 commits — no source file, script, workflow bundle or
+config differs from the tree v13's table was verified against. That is a proof, not a sample.
+
+I re-derived the five load-bearing anchors anyway, because the exclusion diff cannot catch a claim
+that was already wrong at v13, and a version-pin regression is cheap to check.
+
+| # | Claim | Verdict | Evidence re-derived at HEAD |
+|---|---|---|---|
+| 1 | BL-01 / AC-1.5 / AC-1.6: the two-rung ladder's resolver exists at `orchestrate-dev.js:1833` | **Confirmed** | `:1833` is `export function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {` |
+| 2 | REQ-CONS-06 / D-CONS-06: `advisorySummaryRows` at `:2708`, `ESCALATIONS_PATH` at `:2750`, `renderEscalationEntry` at `:2763` | **Confirmed, all three** | `:2708` `export function advisorySummaryRows(dispositions, pubOutcome = {}) {`; `:2750` `const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";`; `:2763` `export function renderEscalationEntry(disposition, ctx, { now }) {` |
+| 3 | BL-01a and baseline §2: `ESCALATIONS.md` does not exist at HEAD | **Confirmed** | `git ls-files docs/_queue/` returns `docs/_queue/QUEUE.md` alone — the absent-first framing is still a fact about HEAD |
+| 4 | §5's `nudge-consolidation.sh:41` predicate anchor | **Confirmed** | `:41` is still `pending = [p for p in learnings if os.path.basename(p) not in logtext]` — the bare substring test the REQ's predicate change targets |
+| 5 | Q-01's size ceiling, and the version-pin sweep | **Confirmed, and no pin regressed** | `check-req-size.sh:41-42` are `LINE_LIMIT=700` / `BYTE_LIMIT=61440`; the REQ is 637 lines / 61,109 bytes — 331 bytes of headroom. `grep -c 'Version. 1\.3'` over the REQ returns **0**; all 13 `1.4` occurrences stand, so every vocabularies citation remains pinned at 1.4 |
+
+No defect row, for the eighth consecutive round. Neither open finding is a row here: both are about
+governance text, not about the codebase.
+
 ## Questions
 
 ## Positive Observations
