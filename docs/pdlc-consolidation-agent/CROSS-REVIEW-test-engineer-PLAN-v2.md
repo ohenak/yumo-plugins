@@ -30,6 +30,20 @@ Every one re-measured at HEAD, not read off the revision.
 
 ## Findings
 
+One Low, new this round, in changed text. Nothing High or Medium remains open.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **T05's headline label still says the opposite of T05's own precondition.** The cell opens `🟢 **Traceability set-equality (green at authoring, no skip)**` and later states, correctly, that "this case is red until that erratum lands" and that a wave reaching it with TSPEC §12.3 at 96 must halt and name the three ids. Both statements are in the same cell. The body is the one a reader should act on, but the label is what a dispatcher's task summary and a skim both read first, and "green at authoring" is exactly the claim v1.0 was faulted for. Restate the label conditionally — e.g. `🟢 **… (no skip; green once §9.1 erratum 4 lands)**` — so the row's first six words and its precondition agree. Nothing else changes. | §4.1 T05 |
+
+**Mechanical re-derivation, run rather than asserted.** Importing the four gate exports from
+`pdlc/workflows/orchestrate-dev.js` and applying them to the current file: `parsePlanTasks` = **34**
+tasks, `parsePlanOwnership` = **34** rows, `validatePlanContract` = `{"ok":true}`,
+`computeTopologicalBatches` = **15** ready-sets, batch-column mismatches against
+`max(batch of Deps) + 1` = **0** across all 34 rows, and same-batch file collisions across the §5
+manifest = **0**. The T25 → T19 edge is present in the parsed graph. §6.1's newly added run block
+reports precisely these numbers, so its figures are reproducible and not transcribed.
+
 ## Questions
 
 ## Positive Observations
