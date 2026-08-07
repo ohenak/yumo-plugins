@@ -31,6 +31,13 @@ consuming repo, carrying the last pass's `RELEASED:` line", and "a `RELEASED:`-c
 
 ## Findings
 
+One **Low**, new with this diff. Nothing carried forward: v13's four are all closed above. No test is
+missing and no test would be written wrong on it.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| L-01 | Low | Local | **The new two-producer table's intra-document locator is stale.** Its second row cites "(§4.3 `:511-512` orders release after the append)" (`:513`), but `:511-512` are that table's own header separator and first data row. The statement it means to cite is §4.3 `:543-544` — "Release is unconditional for every marker-holding pass, including `failed`: it runs at step 16 after the terminal row is appended". The claim is **true** and the section named (§4.3) is right; only the line pair is wrong, and it is wrong by exactly the 34 lines this diff inserted above it, so it looks like a locator bumped by `+2` when the insertion moved it by `+34`. Nothing depends on it: the ordering is also fixed by §4.3's terminal-status table (`:534-541`, "yes, at 16") and by the step numbering, and no AT reads a line number. Repair is two digits. Worth flagging beyond the typo because it is the second-order cost L-04's own drift warning names — this document cites itself by line, and every edit invalidates some of those. | §4.2 (`:513`) vs §4.3 (`:543-544`) |
+
 ## Questions
 
 ## Positive Observations
