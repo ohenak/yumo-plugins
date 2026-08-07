@@ -93,3 +93,5 @@ satisfiable arm in §12.3 the way AT-M3's is already stated; (b) re-read FSPEC B
 None of the three requires restructuring, and none touches a section outside this erratum's scope.
 
 ## Verdict
+
+VERDICT: Needs revision
