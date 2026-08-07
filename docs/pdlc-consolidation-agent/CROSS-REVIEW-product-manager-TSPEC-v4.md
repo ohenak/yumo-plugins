@@ -28,6 +28,11 @@ Q-07, Q-08 and Q-09 are all answered. Q-07: §7.1 names the relocated exit's sid
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-10 | §7.1's new decision puts an unreadable corpus entry **in the consumed pair**, which means the log will record as consumed a file whose body the pass never read. BR-09 (`FSPEC-…:2489`) defines consumed purely as "its basename appears in the log's consumed region", so this is definitionally consistent and I am not raising it as a finding — the convergence argument is right and the alternative (nudged forever) is worse. But it does mean a LEARNINGS file can be permanently marked consumed while contributing **zero** evidence to any promotion, and the only trace is the report body's named list for that one pass. Is that acceptable to the product, or should the log row itself carry the unreadable basenames (e.g. an `unread:` field beside `consumed`) so the fact survives past the pass that observed it? The report is transient; the log is the durable record an operator later reads. |
+| Q-11 | §13.3 now raises the enumeration relaxation upstream as an erratum against **both** REQ and FSPEC, together with the `--exclude-standard` sub-question. If the REQ answers "yes, an ignored LEARNINGS file is corpus", §10.4 says the change is "one flag and one line of §7.1, with AT-P1's literal-argv conjunct going red until it is updated deliberately" — but the hook side does not have an `--exclude-standard` at all (`glob.glob` sees ignored files unconditionally), so that answer would *close* class (i) by making the two sides agree. Does the author intend to note that in §13.3? As written, the erratum presents both directions as neutral, where one of them strictly reduces the divergence set the relaxation is being requested for — which is information the REQ reviewer would want when deciding. |
+
 ## Positive Observations
 
 ## Recommendation
