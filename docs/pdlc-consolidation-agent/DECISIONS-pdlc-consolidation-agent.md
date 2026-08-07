@@ -824,9 +824,11 @@ future agent that finds one of them and thinks it is an open question can see it
 
 Two further alternatives were weighed at the FSPEC/REQ layer and are **not** this document's to
 record, listed only so the boundary is visible: whether an ignored LEARNINGS file is corpus
-(DEC-CONS-05's upstream question), and whether the durable log must witness a pass that dies mid-take
-(DEC-CONS-07's). Both are product judgements about what counts as evidence, not technical choices,
-and both are raised as errata rather than settled here.
+(DEC-CONS-05's upstream question, **still open**), and whether the durable log must witness a pass
+that dies mid-take (DEC-CONS-07's, **answered yes** by FSPEC v11.3 — BR-14a's `RELEASED:` sentinel,
+`FSPEC:2585`/`:2678`/`:2679`). Both are product judgements about what counts as evidence, not
+technical choices, and both were raised as errata rather than settled here; the second has since been
+decided upstream and this document records the consequence in §9 rather than re-deciding it.
 
 ## 11. Consequences for downstream layers
 
@@ -964,21 +966,28 @@ writing a test that appears to cover it:
 | Not asserted | Why | Where recorded |
 |---|---|---|
 | The two-pass take race (`_checkFile`/`_readFile`/`_writeFile` window) | No oracle exists at any level available here; a test that appeared to cover it would assert a property the code does not have (DEC-ORACLE-02). The take's *shape* is asserted instead. Detection after the fact is operator-reported and un-instrumented, with a stated forensic signature | DEC-CONS-04 |
-| FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm | Unreachable under the release form; raised as an erratum rather than tested | DEC-CONS-07 |
+| ~~FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm~~ — **row withdrawn; this arm IS asserted** | It was unreachable only under the empty release form. BR-14a's `RELEASED:` sentinel makes it reachable (`FSPEC:2678`), and it is asserted by the `""` fixture in the four-fixture marker case (`TSPEC:1940`, `:2640`). A PROPERTIES author must **not** read this row as licence to omit it | DEC-CONS-07 |
 | The inbound failure-reply channel (`rtGit`'s 300-character combined output reaching a rendered report body) | Bounded by what `git` prints, not by the seam interface; recorded as a residual. (The credentialed-argv question that once rode with it is **closed** — the push carries a credential helper, `TSPEC:1693-1698`, §11.3 item 3 — but the inbound channel itself stays unasserted for the reason in this row) | DEC-CONS-01 |
 
 ### 11.3 Errata raised, not settled here
 
 Three items were handed up rather than absorbed. They are listed here so a reader of *this* document
-knows the corresponding entry is provisional — **item 3 is now closed upstream and is kept, struck
-through, as the record of a settled round; only items 1 and 2 are live**, and item 3 leaves behind
-one narrower, anchor-level erratum stated in its own paragraph:
+knows the corresponding entry is provisional. **Only item 2 is still live.** Items 1 and 3 are closed
+upstream and are kept, struck through, as the record of settled rounds — item 1 answered by FSPEC
+v11.3, item 3 by TSPEC erratum round 1.7, each leaving a consequence for this document that is
+recorded in its entry rather than handed up (item 3 additionally leaves one narrower, anchor-level
+erratum, stated in its own paragraph):
 
-1. **FSPEC §4.1 / §4.2 — the marker's removal verb and the empty arm** (DEC-CONS-07). §4.1's
-   lifetime row says "Removed at step 16" (`FSPEC:415`), which no declared seam can do; §4.2's fourth
-   row (`:442`), E-11 and AT-M3's *Given* then bind an `empty (truncated write)` arm that is
-   unreachable under the release form. The product question is *what the durable log must witness
-   when a pass dies mid-take*, and it belongs to the REQ/FSPEC author.
+1. ~~**FSPEC §4.1 / §4.2 — the marker's removal verb and the empty arm**~~ (DEC-CONS-07)
+   — **CLOSED upstream; retained as the record of the round.** §4.1's lifetime row said "Removed at
+   step 16" (`FSPEC:415`), which no declared seam can do, and §4.2's fourth row then bound an
+   `empty (truncated write)` arm unreachable under an empty release. FSPEC v11.3 answered the product
+   question — *must the durable log witness a pass that dies mid-take?* — **yes**, and answered it
+   with a representation rather than a removal verb: **BR-14a** releases by writing
+   `RELEASED: {passId} {ISO-8601}` (`FSPEC:2585`), **E-11** is reachable *because* of that
+   (`FSPEC:2678`), **E-11b** takes a `RELEASED:` marker like an absent one at any age (`FSPEC:2679`).
+   TSPEC §7.3 adopts all three and raises no erratum of its own (`TSPEC:1015-1020`). Nothing is handed
+   up here; what this closure costs **this** document is the two-halves supersession recorded in §9.
 2. **REQ §3.1 step 1 / FSPEC AT-P7 — the enumeration relaxation** (DEC-CONS-05). `REQ:115-116`'s
    "keeping one enumeration as well as one predicate" cannot be delivered as written, and an
    enumeration set-equality assertion would be red on correct code. The sub-question that decides how
