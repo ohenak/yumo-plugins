@@ -152,4 +152,49 @@ retained the claim with softened wording; it does not.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 4 Low.
+
+The one question this round was asked to answer: **yes — the delta resolves all four routed items, and
+breaks nothing my previous approval covered.**
+
+- Items 1–2 are resolved by withdrawing the claim outright and replacing it with the true, weaker one:
+  one predicate by construction, two enumerations as a stated testable property.
+- Item 3 is answered in the direction it was measured — a `.gitignore`d LEARNINGS **is** corpus, no
+  `--exclude-standard` — and the asymmetric second class (staged-but-deleted) is answered the other way
+  and said so. I re-measured the price on this tree; it is what the REQ claims.
+- Item 4 is answered at §4b, the layer that reserves the field set: no `unread:` field, unreadable
+  entry not consumed, `§3` held at `Version 1.4` so no downstream expected value moves.
+- Nothing regressed: three hunks, +40/−2, no AC id, vocabulary row, reason code or oracle-ranged
+  enumeration touched, and the three `file:line` claims my v14 approval leaned on still print.
+
+The verdict was re-derived, not deferred to v14. My standing approval carries forward under
+`DEC-CONV-01` only if neither re-opening trigger fired: the intervening diff *does* touch this REQ, so
+I scanned the changed sections and opened one new finding — **F-57, Low**. Low is not Medium-or-higher,
+so the standing approval is re-issued rather than re-manufactured, and the Challenger bar was applied
+per-finding rather than to the count.
+
+What should change, in landing order and small enough to land together:
+
+1. **F-57** — one sentence at §4b or REQ-CONS-01 step 2 saying whether an unreadable basename counts
+   toward the volume test. Without it a PROPERTIES author cannot state the termination property for the
+   pathological case. This is the only one of the four that is new, and the only one I would ask for if
+   I could ask for exactly one.
+2. **F-55** — name the vocabularies file in §4b's classification sentence. Unchanged from v11; still
+   the finding a PROPERTIES author must otherwise resolve by cross-reading two files.
+3. **F-54** — bump the baseline file to `Version 1.1` and repin the REQ's two citations (`:226`,
+   `:472`). Seven characters.
+4. **F-56** — the REQ is now 2,957 bytes past a warn-only ceiling. Not a blocker and not a reason to
+   hold this erratum; do plan the relocation before the next round that adds prose, because the budget
+   is no longer a place to spend.
+
+If Phase D closes without them, none blocks the next layer.
+
+**No upstream defects.** REQ is the root document of this feature; nothing upstream of it exists to be
+wrong. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:c21f8a42bd766aa28deec9f5de1488c194452c0e7e3c52c5c0b8f26b34d9ffd0
+REVIEWED-COMMIT: 6bccbfc91e376323d5fe31f783630c4de04dc639
