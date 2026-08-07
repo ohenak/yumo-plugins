@@ -31,6 +31,11 @@ in §7 remove nothing but the dangling reference.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **The corrected verb-set property is containment-only, and containment alone is vacuously satisfiable.** §11.2's DEC-CONS-03 bullet, and §5 domains 1 and 2, now state the oracle as `observed ⊆ declared` plus "no verb from the absent-always column". Both conjuncts are satisfied by a pass that issues **no invoking-tree `git` call at all** — i.e. by a regression that silently drops the AC-1.3 log commit `REQ:288` obliges. The TSPEC does not have this hole: `TSPEC:2094-2098` specifies **four** set assertions, and the third is **obligation**, `obliged ⊆ observed` per domain "on the Given that obliges it". §11.2 is the section a PROPERTIES author inherits, and as written it transcribes only two of the four. One clause fixes it — add the obligation conjunct (`add` and `commit` observed in the invoking-tree domain; `clone`, `create-branch`, `add`, `commit`, `push` in the clone domain) and cite `TSPEC:2097`, so the property cannot green on a pass that did nothing | §11.2, DEC-CONS-03 bullet; §5 domains 1 and 2 |
+| F-02 | Low | Local | **Domain 2 claims to cite where it in fact transcribes, and the difference is exactly the drift the sentence says it prevents.** §5 domain 2 reads "as `TSPEC:1620` enumerates it — obliged `clone`, `create-branch`, `add`, `commit`, `push`; permitted `fetch`, `read-branch`, `read-status`; absent every merge verb — **cited rather than restated**, so a later widening of that row fails the assertion instead of drifting past it". The list *is* restated inline, and a test written from this sentence will hardcode it, in which case a later widening of `TSPEC:1620` drifts past silently — the opposite of the stated property. The transcription is correct today (verified character-for-character against `:1620`), so nothing is wrong now; the wording is. Either drop the "cited rather than restated" clause, or state the pin the way §7 pins `CORPUS_GLOBS` and §9 pins the six terminal statuses: a transcription **with provenance** whose divergence from the cited row is itself asserted | §5, DEC-CONS-03 *Testability*, domain 2 |
+
 ## Questions
 
 ## Positive Observations
