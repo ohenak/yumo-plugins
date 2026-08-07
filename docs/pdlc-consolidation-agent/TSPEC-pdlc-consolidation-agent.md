@@ -2459,8 +2459,10 @@ re-argued on what a count-above-threshold comparison can supply.
 
 - **DECISIONS** — warranted. §13.1 rows 1 (credential seam shape), 2 (resolver reuse vs. restate),
   4 (clone source), 5 (non-atomic marker take), 6 (two predicate implementations, with the
-  predicate/enumeration split named) and 11 (widening **`rtWriteFile` alone**, rather than routing
-  clone writes through git or widening both prompts for symmetry) each weighed a real
+  predicate/enumeration split named), 11 (widening **`rtWriteFile` alone**, rather than routing
+  clone writes through git or widening both prompts for symmetry) and 13 (release as an empty write
+  with `file_empty ≡ absent`, over preserving FSPEC §4.2's empty-reclaim arm or minting a removal
+  seam) each weighed a real
   alternative with a different reversibility profile, and each will otherwise be reconsidered
   confidently by a future agent. Each needs a `Testability:` line per DC-10.
 - **PLAN** — the file-ownership manifest must serialise the three writers of
@@ -2481,7 +2483,28 @@ re-argued on what a count-above-threshold comparison can supply.
   is blocked by the drift gate until `sync-workflows.sh` runs (§8.3). (iv) `consolidationLifecycle.test.js`
   (§12.2 T-13) and `consolidationDoubles.js`'s `asAsync` wrapper (§11.2) are two more owned files in
   the manifest; the wrapper is created by the doubles task and depended on by the lifecycle task, per
-  batch-safety rule 4.
+  batch-safety rule 4. (v) `consolidationLifecycle.test.js` now owes **two** cases — T-13's await
+  discipline and §12.2's release-across-the-six-terminal-statuses set equality — and
+  `consolidationBuild.test.js` owes a fourth, §12.2's `rtConsInjections()` ↔ §5.1 set equality. Each
+  file stays a **single** task per batch-safety rule 2; the build file's new case is an edge from the
+  `runtime-adapter.js` task of (i), since it reads the object that task creates.
+- **Upstream (FSPEC) — the marker's removal verb and the empty-marker arm.** §7.3 raises one erratum
+  against FSPEC §4.1/§4.2, and it is a product judgement rather than a technical one. §4.1's lifetime
+  row says the marker is "**Removed** at step 16" (`FSPEC-…:415`), which no declared seam can do —
+  the adapter ships no unlink of any kind — so release is an in-place write of `""` and the file is
+  permanently present-and-empty. §4.2's fourth row then assigns "unparseable **or empty (truncated
+  write)**" the outcome "reclaimed, recording `reclaimed-stale-lock` with the abandoned id `unknown`"
+  (`:442`), bound again by E-11 (`:2592`) and by AT-M3's *Given* (`:2038`); the empty half of that row
+  is unreachable under the release form, because a released marker and a truncated one are the same
+  observed state. The question the FSPEC owns is **what the durable log must witness when a pass dies
+  mid-take**: today's rule makes the next pass record `reclaimed-stale-lock`, which is the only signal
+  an operator gets that a pass died; the shipped behaviour lets the next pass proceed silently. Both
+  are defensible — a truncated marker is weak evidence of anything actionable — but the choice belongs
+  to the REQ/FSPEC author and not to the adapter's verb set. Until it is answered, §10.3 rows 4/4a
+  state both arms, §12.3 states which arm of AT-M3 is satisfiable, and no test is written to the
+  unreachable half. Accepted residue if the narrowing stands: one class of pass death that leaves no
+  log trace, and one permanent zero-byte `docs/_decisions/.consolidation-lock` per consuming repo —
+  `.gitignore`d by §3.3, so invisible to every git-mediated surface.
 - **Upstream (REQ and FSPEC) — the enumeration relaxation, raised rather than absorbed.** REQ §3.1
   step 1 closes with "Widening makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one
   enumeration as well as one predicate" (`REQ-…:115-116`), and FSPEC AT-P7's *When* is "**both the
