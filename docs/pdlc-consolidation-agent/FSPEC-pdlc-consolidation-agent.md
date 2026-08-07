@@ -9,7 +9,16 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 11.2 | 2026-08-06 |
+| pdlc | draft | Claude | 11.3 | 2026-08-06 |
+
+**Erratum round (Phase D), v11.3** — a targeted edit answering seven errata raised against this
+FSPEC while DECISIONS was authored; nothing else is changed. (1) §4.1's marker lifetime no longer
+claims a removal no seam can perform; release is an in-place write. (2) §4.2's empty-marker arm,
+E-11 and AT-M3 are re-grounded on that release form, and the product question behind them — must the
+durable log witness a pass that died mid-take? — is answered in §4.2. (3) AT-P7 is re-scoped from
+"run the hook" to "compare the predicate". (4) AC-3.2's body obligation gains AT-Q13. (5) §5.3's
+"only when" negative half gains AT-R7. (6)–(7) Two Low repairs from the v12 reviews (T-10's and
+BR-33a's `phase`-arm subjects).
 
 ## 1. Scope and entry obligations
 
@@ -412,7 +421,21 @@ repaired — repairing it would need a key the shipped predicate does not have (
 | Content | a single line, `IN-PROGRESS: {passId} {ISO-8601}` |
 | Written | at step 6, **after** the trigger decision of steps 3–4 and before any other pass work |
 | Lifetime | working tree only; never committed by any pass (§5.4) |
-| Removed | at step 16, by the pass that took it, or by an operator deleting the file |
+| Released | at step 16, by the pass that took it — an **in-place rewrite** of the same file to a single line, `RELEASED: {passId} {ISO-8601}` |
+| Removed | **never by the pass.** Only an operator removes the file; an absent file and a `RELEASED:` file are the same free state to §4.2 |
+
+**Why release is a write and not a removal.** No seam this feature may use can remove a file: the
+runtime adapter ships file read, write and existence checks and no deletion of any kind
+(`grep -nc "unlink\|rm -f\|rmdir" pdlc/workflows/runtime-adapter.js` returns `0` at HEAD). A
+lifetime that said "removed at step 16" would state a capability the runtime does not have, so
+release is specified as the one operation available: an in-place write of the same path.
+
+The released form is a **sentinel line, not an empty file**, and that choice is load-bearing rather
+than cosmetic. Truncating to empty would make a released marker and a marker whose write died
+mid-flush the same observed state, collapsing two outcomes §4.2 must keep apart. With the sentinel
+they stay distinguishable through the existence seam alone, which reports a present-but-empty file
+as `file_empty` and an absent one as `file_missing` (`pdlc/workflows/runtime-adapter.js:817-831`):
+`RELEASED:` is a parseable line, empty is not, and neither is `IN-PROGRESS:`.
 
 It is deliberately **not** a record in `.consolidation-log.md`. Taking and releasing it are in-place
 rewrites of a whole small file, and every write to the log must be an append of one whole record
@@ -429,22 +452,41 @@ reaches every fresh clone and refuses every pass with `consolidation-in-progress
 existing `/.claude/workflows/` entry documents: a path containing a separator, relative to the
 repository root, never a slash-free or `**/`-prefixed pattern that would match at every depth.
 
-### 4.2 Take — the three outcomes at step 6
+### 4.2 Take — the four outcomes at step 6
 
-Read the file; if it is absent, write the marker and proceed. Otherwise parse its single line and
-compare its timestamp to now.
+Read the file; if it is absent, write the marker and proceed. Otherwise parse its single line: it is
+either an `IN-PROGRESS:` line, whose timestamp is compared to now, a `RELEASED:` line, or neither.
 
 | Observed state | Age vs `consolidation.staleLockMinutes` | Outcome |
 |---|---|---|
 | File absent | — | marker written; pass proceeds |
-| Marker present, parseable | younger | terminate `refused`, reason code `consolidation-in-progress`, naming the marker's `passId` and timestamp |
-| Marker present, parseable | older (default 60 min) | **reclaim**: overwrite the marker with this pass's own line, record reason code `reclaimed-stale-lock` naming the abandoned `passId`, and proceed |
-| Marker present, unparseable or empty (truncated write) | undecidable | treated as **stale and reclaimed**, recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown` (DC-01 receive side) |
+| `RELEASED:` line | not tested — a released marker is free at any age | marker written over it; pass proceeds, recording **nothing**: this is the ordinary take, not a reclamation |
+| `IN-PROGRESS:` line, parseable | younger | terminate `refused`, reason code `consolidation-in-progress`, naming the marker's `passId` and timestamp |
+| `IN-PROGRESS:` line, parseable | older (default 60 min) | **reclaim**: overwrite the marker with this pass's own line, record reason code `reclaimed-stale-lock` naming the abandoned `passId`, and proceed |
+| Present but **empty**, or a line that is neither form | undecidable | treated as **stale and reclaimed**, recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown` (DC-01 receive side) |
 
-The last row is decided toward reclamation rather than refusal on purpose: an unparseable marker
+The `RELEASED:` row and the absent row differ only in bookkeeping, never in outcome: both are free,
+both are taken, neither is a reclamation and neither writes a reason code. Age is not consulted on a
+released marker — staleness is a property of a *held* marker, and a released one is not held.
+
+The last row is decided toward reclamation rather than refusal on purpose: an undecidable marker
 carries no timestamp, so it can never age out, and refusing on it would wedge the cadence
 permanently — the exact failure the stale-lock rule exists to prevent. The reclamation is recorded,
 so it is never silent.
+
+**Is that last row reachable, and must the log witness it?** Both halves are answered here rather
+than left to the implementer, because the answer changed when §4.1 fixed release as a sentinel
+write. Under a release that truncated the file to empty, "empty" would have been the *normal* end
+state of every pass and the arm would have been unreachable as written — a released marker and a
+half-written one indistinguishable. Under §4.1's sentinel it is reachable and it means exactly one
+thing: a pass died between opening the marker write and completing it, leaving a present-but-empty
+file the existence seam reports as `file_empty`, distinct from the absent file it reports as
+`file_missing`. **The durable log must witness that pass.** A take that stepped over an empty marker
+silently would erase the only trace of an abandonment — the abandoned pass appended no terminal row,
+by construction, since it did not survive its own take — so the reclaiming pass records
+`reclaimed-stale-lock` with the abandoned id `unknown`, exactly as for an unparseable line. The
+recorded `unknown` is the honest reading: the id was never durably written, and no later reader can
+recover it.
 
 A `refused` pass is **dropped, not queued**: nothing is retained, and the next `/loop` tick
 re-evaluates steps 1–4 from scratch against whatever the corpus and the datum then are.
