@@ -94,6 +94,31 @@ anchors** that is refuted by counterexample. Two Lows follow from it.
 
 ## Positive Observations
 
+- **§11.2's rewritten DEC-CONS-03 row is the best version of this handoff the document has had.**
+  My v4 F-09 asked for three corrections; the revision delivered a different and better artifact —
+  a numbered enumeration in the TSPEC's own order, each item carrying its own sub-anchor, with the
+  reason for the ordering stated ("the order matters only because a property author reading a
+  re-ordered summary will mis-attribute the anchors"). Item 4 does not just add the clone-domain
+  `∅`; it says the invoking-tree-only form "is not set-equal to the TSPEC's oracle," which teaches
+  the criterion instead of patching the instance. That is the difference between fixing a review
+  finding and making the next one unnecessary.
+- **Two of the three obligation cites now carry their own negative control.** "(`TSPEC:2202-2203`,
+  the **obligation** clause; `:2201-2202` is *containment*, which is precisely the conjunct this
+  sentence has just said is insufficient)" is a paired positive-and-negative on the same anchor. A
+  bare corrected line number would have been sufficient for my finding; this form survives the
+  *next* shift too, because a reader who lands on containment now knows they have landed wrong.
+- **The impulse behind the *Anchor provenance* paragraph is right even though its warranty is not.**
+  Recording that anchors are measurements against a moving file, that the v4 reviews were correct at
+  the revision they reviewed, and that content should be trusted over line numbers, is genuinely
+  useful to a PROPERTIES author — it is the reason F-10 is a scoping defect rather than a request to
+  delete the paragraph. Narrowed to what was actually re-measured, this paragraph should stay.
+- **Nothing was traded away to fix the anchors.** I checked specifically for the failure mode where
+  a citation-cleanup round quietly weakens an assertion: the verb sets in domains 1 and 2 are still
+  set-equal to `TSPEC:1724`/`:1725` in both directions, §11.6(e) conjunct 2's guard sentence is
+  intact, the `rtHashFile` / `_checkFile` exclusion still names its revisit trigger, and §11.2 is a
+  strict superset of the prose it replaced. Three anchor-churn commits with zero substantive
+  regression is not the default outcome.
+
 ## Recommendation
 
 ## Verdict
