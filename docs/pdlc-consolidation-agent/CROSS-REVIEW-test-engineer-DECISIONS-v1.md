@@ -43,4 +43,32 @@ PROPERTIES will need, and whether each `Testability:` line names an oracle that 
 
 ## Recommendation
 
+**Needs revision** (2 High, 5 Medium, 2 Low).
+
+Exactly what must change:
+
+1. **F-01** — restate DEC-CONS-03's containment oracle over three domains, with the `clone` argv pinned
+   positionally (last two arguments are the `remote get-url` reply and the `_makeTempDir` reply), not
+   exempted.
+2. **F-02** — state the `CORPUS_GLOBS` widening inside DEC-CONS-05's Decision, and state the divergence
+   set explicitly relative to the *post-edit* hook; the current two-class claim is measured against a
+   hook that sees `docs/*` only.
+3. **F-03** — correct the "one line" cost claim for the shipped-hook edit, and reconcile §7 with §11.1.
+4. **F-04** — replace DEC-CONS-01's structural type claim with a runtime oracle (`typeof` over recorded
+   seam returns, plus a source pin on `rtEnvPresent`'s transported command).
+5. **F-05** — make the `credential:` field oracle a set-equality over AC-4.2's three values.
+6. **F-06** — pair DEC-CONS-06's read-prompt absence assertion with a positive conjunct on the same path.
+7. **F-07** — make DEC-CONS-04's residual-duplicate-write trigger observable, or mark it explicitly
+   un-instrumented and operator-reported.
+8. **F-08, F-09** — cite the six-member terminal-status enumeration; fix the two off-by-one line
+   citations.
+
+Nothing here disputes any of the seven decisions themselves. Every finding is about whether the
+`Testability:` line under a decision names an oracle that can fail, and whether a claimed cost survives
+contact with the file it is claimed against. The document is unusually well-measured; the defects are
+concentrated in the two places where a measurement was made against HEAD and then described as if the
+feature's own edits were already in the tree (F-02) or as if a type system existed (F-04).
+
 ## Verdict
+
+VERDICT: Needs revision
