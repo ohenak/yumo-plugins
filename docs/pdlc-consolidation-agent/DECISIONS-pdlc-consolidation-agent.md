@@ -348,7 +348,11 @@ FSPEC states as a known exposure.
 - **`git`-mediated locking** (commit the marker, rely on index/ref atomicity) — rejected on two
   independent grounds: AC-1.3 requires the marker to live in the working tree only and never be
   committed by any pass (it is `.gitignore`d for exactly this reason), and the invoking-tree verb set
-  admits no mutating git verb at all.
+  admits no mutating git verb **other than the pathspec-scoped `add`/`commit` of the enumerated log
+  paths** (`TSPEC:1619`'s obliged column, `REQ:288`) — a locking commit is not among them. An
+  earlier draft said "admits no mutating git verb at all"; that is withdrawn as false of the
+  domain, and this rejection stands on its first ground alone in any case: AC-1.3 requires the
+  marker never to be committed by any pass, and it is `.gitignore`d.
 - **Derive presence from `_readFile(...) !== null`, collapsing three calls to two** — rejected here
   and re-rejected from the other end in DEC-CONS-07: it conflates the released (empty) marker with a
   present-but-unparseable one and would record `reclaimed-stale-lock` on every steady-state pass.
@@ -727,8 +731,12 @@ must land as properties rather than as unit cases:
   and the observed set exactly equal to the declared set, so a deleted or renamed value fails rather
   than shrinking coverage. A fixture written against absence alone is satisfied by a pass that does
   nothing.
-- **DEC-CONS-03** — over any pass, the invoking-tree `git` argv set contains no mutating verb. This
-  is a containment property over a closed set, so it stays true for calls nobody has written yet.
+- **DEC-CONS-03** — over any pass, every invoking-tree `git` argv is contained in that domain's
+  declared verb set at `TSPEC:1619` (obliged `add`, `commit`; permitted `read-branch`,
+  `read-status`, `read-object`, `read-remote`, `read-index`), and no argv carries a verb from that
+  row's absent-always column. Stated as **containment**, not exclusion, so it stays red — not green
+  — for calls nobody has classified yet. Note the property is *not* "no mutating verb": the pass's
+  own pathspec-scoped log commit is obliged there (`REQ:288`).
 - **DEC-CONS-07** — over the six terminal statuses enumerated at
   `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
   take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
