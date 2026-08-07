@@ -1564,10 +1564,19 @@ claiming a terminal row that is still pending and a marker (AC-1.3) still held.
 So the oracle is stated explicitly, because it is the only shape that distinguishes *written* from
 *scheduled*: **an L2 assertion that reads the log double and the marker double after `main()`'s
 promise resolves** — not inside the pass, not from the report — and finds (i) the terminal row
-present in the log double's accumulated text and (ii) the marker absent. Driven by the **async**
-variants of the doubles (`consolidationDoubles.js` exposes an async-wrapping form of `fakeAppendFile`
-and `fakeWriteFile` for exactly this test; §11.2), an un-awaited `finishPass` fails both conjuncts
-while every other suite stays green. §12.2's T-13 row carries it.
+present in the log double's accumulated text and (ii) the marker, **observed present in the write
+double during the pass**, gone after `main()` resolves. Conjunct (ii) carries that take-side
+precondition because a bare "marker absent" is equally true of a pass that never took one (a
+`refused` or `skipped-cadence` fixture, or a take that did not land — §10.3 row 5a); asserting the
+take and then the release is the positive-then-negative pair the §11.3 oracles already use, and it
+is what makes this row cover AC-1.3 rather than merely coexist with it.
+
+Driven by the **macrotask-deferring** variants of the doubles (`consolidationDoubles.js`'s `asAsync`
+wrapper; §11.2 states why a microtask deferral could not falsify anything), a missing `await` inside
+`finishPass` fails both conjuncts while every other suite stays green. The defect this catches is
+specifically the intra-`finishPass` one — `main()`'s own `return await finishPass(state)` call sites
+are a stack/`try` improvement rather than a behavioural one, since an `async` function's `return p`
+already adopts `p`. §12.2's T-13 row carries it, with the mutation check §11.2 requires.
 
 `skipped-cadence` reaches that first line from **exactly one place**: `main()`'s step-4 branch, where
 `triggerFor` (§7.2) returns `"skipped-cadence"` — before `mintPassId`, before `takeMarker`, before
@@ -1745,13 +1754,42 @@ their own headers.
 
 **One wrapper, not a third factory: `asAsync(double)`.** `seams.js`'s doubles are **sync** — that is
 stated in its own header as the central hazard, and it is what makes an un-awaited seam call
-invisible to every L2 suite (§10.1). `asAsync` takes any of them and returns a function with the
-same recording behaviour whose result is a promise resolved on a later microtask tick, so a caller
-that forgets `await` observes the pre-write state. It exists for exactly one row — §12.2's T-13
-await-discipline test, which drives `asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` /
-`asAsync(fakeGit)` and asserts **after** `main()`'s promise resolves. No other suite uses it: the
-rest deliberately keep the sync doubles, because their subject is the pass's logic, not its await
-discipline.
+invisible to every L2 suite (§10.1). `asAsync` takes any of them and returns a function that
+**defers both the recording and the resolution onto a macrotask** and returns the promise:
+
+```js
+const asAsync = (fn) => (...args) =>
+  new Promise((resolve) => setTimeout(() => resolve(fn(...args)), 0));
+```
+
+**The deferral must be a macrotask, and specifying it as a microtask would have shipped a test that
+can only pass.** A microtask deferral (`Promise.resolve().then(…)`, an `await` inside the wrapper)
+cannot survive a caller that awaits at all, because awaiting is itself microtask-scheduled: on the
+broken implementation the wrapper's continuation is queued *before* the test's `await main()`
+continuation, so it runs first, the write lands, and the assertion is green. Timer callbacks run in
+a later phase of the event loop than the whole microtask queue, so the discrimination becomes exact:
+
+| Implementation | What the test's `await main()` continuation sees |
+|---|---|
+| correct (`await appendTerminalRow(state)`) | `finishPass` suspends until the timer fires and the double records; `main()` resolves **after** the write ⇒ terminal row **present** |
+| broken (`appendTerminalRow(state)` un-awaited) | the pending promise is dropped, `main()` resolves on a microtask, the assertion runs **before** the timer fires ⇒ terminal row **absent** ⇒ RED |
+
+Recording is deferred with resolution, not performed eagerly, for the same reason: `appendTerminalRow`
+is a void write whose only observable *is* the double's accumulated text, so a wrapper that recorded
+synchronously and deferred only its result would leave the missing `await` invisible by construction.
+
+**The row owes its own mutation check.** `consolidationLifecycle.test.js` is the only oracle for an
+invariant §10.1 states nothing else guards, so the PLAN task that writes it must demonstrate it
+fails: delete one `await` inside `finishPass`, expect RED, restore. A test whose falsifier has never
+been observed is a claim.
+
+Scope: it exists for exactly one row — §12.2's T-13 await-discipline test, which drives
+`asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` / `asAsync(fakeGit)` and asserts **after**
+`main()`'s promise resolves. No other suite uses it: the rest deliberately keep the sync doubles,
+because their subject is the pass's logic, not its await discipline. (Only the *intra*-`finishPass`
+`await`s are behaviourally observable this way — §10.2's two `return await finishPass(…)` call sites
+are a stack/`try`-semantics improvement, since an `async` function's `return p` already adopts `p`.
+T-13 is scoped to the observable defect and does not claim the other two.)
 
 ### 11.3 The oracles that need a mechanism, not just an assertion
 
