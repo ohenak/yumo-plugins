@@ -2499,7 +2499,11 @@ re-argued on what a count-above-threshold comparison can supply.
   discipline and §12.2's release-across-the-six-terminal-statuses set equality — and
   `consolidationBuild.test.js` owes a fourth, §12.2's `rtConsInjections()` ↔ §5.1 set equality. Each
   file stays a **single** task per batch-safety rule 2; the build file's new case is an edge from the
-  `runtime-adapter.js` task of (i), since it reads the object that task creates.
+  `runtime-adapter.js` task of (i), since it reads the object that task creates. (vi) `consolidationPass.test.js`'s
+  marker case gains §12.2's empty-marker conjunct (the `""` fixture paired against AT-M3's non-empty
+  unparseable one). It adds **no** file and **no** task — it is a conjunct inside a case that file's
+  single owning task already writes — so the ownership manifest is unchanged; it is recorded here only
+  so the task's Definition of Done names it and a PLAN reader does not read §10.3 row 4a as unowned.
 - **Upstream (FSPEC) — the marker's removal verb and the empty-marker arm.** §7.3 raises one erratum
   against FSPEC §4.1/§4.2, and it is a product judgement rather than a technical one. §4.1's lifetime
   row says the marker is "**Removed** at step 16" (`FSPEC-…:415`), which no declared seam can do —
