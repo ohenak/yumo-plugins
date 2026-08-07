@@ -581,8 +581,8 @@ renderConsumedPair(passId: string, basenames: string[]): string           // pur
 
 **Enumeration is one `_git` read, not a directory walk.** The seam a directory walk would need does
 not exist. `rtListFiles` (`runtime-adapter.js:905`) transports `ls -p -A "${d}" | grep -v '/$'`
-(`:913`) — `-p` appends `/` to directory names and the `grep -v` deletes every one of them — and its
-reply validator then rejects any line carrying a separator at all (`:925-929`). So `_listFiles`
+(`:915`) — `-p` appends `/` to directory names and the `grep -v` deletes every one of them — and its
+reply validator then rejects any line carrying a separator at all (`:929-931`). So `_listFiles`
 returns the regular *files* directly under a directory and can never return a subdirectory name, in
 either direction; there is no other listing seam in the adapter (`rtDevInjections`, `:1086-1110`).
 A design that walked `docs/*` would find zero feature subdirectories in production on every run,
@@ -727,7 +727,7 @@ read-then-write form and **records the decision** rather than inventing a lock: 
 exclusive-create seam would be a new agent transport whose observation (whether the file already
 existed) is exactly as racy as the read it replaces. §13 carries it.
 
-**Take is read, write, then read back.** `rtWriteFile` (`runtime-adapter.js:802-813`) awaits an agent
+**Take is read, write, then read back.** `rtWriteFile` (`runtime-adapter.js:802-811`) awaits an agent
 dispatch, inspects no reply and returns `undefined`; the adapter's own comment at `:798-801` says
 the cache entry is deliberately not repopulated from `contents` because "an agent-mediated write is
 a request, not proof of the bytes on disk — the next read re-verifies against a probe, which is the
@@ -1487,7 +1487,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | 3 | Unparseable log row | `mintPassId` / `cadenceDatum` skip it | derivation never aborts |
 | 4 | Marker unparseable | §7.3 `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown` |
 | 5 | Marker held and fresh | `refuse` | `refused` + `consolidation-in-progress`; no consumed pair, no commit |
-| 5a | **Marker take did not land** — read-back absent, unparseable, or another pass's `passId` (§7.3) | `takeMarker`'s read-back conjunct; `rtWriteFile` (`runtime-adapter.js:802-813`) reports nothing, so the write alone is not evidence | `refused` + `consolidation-in-progress`; no consumed pair, no commit; the AT asserts the terminal status **and** the marker file's content on disk |
+| 5a | **Marker take did not land** — read-back absent, unparseable, or another pass's `passId` (§7.3) | `takeMarker`'s read-back conjunct; `rtWriteFile` (`runtime-adapter.js:802-811`) reports nothing, so the write alone is not evidence | `refused` + `consolidation-in-progress`; no consumed pair, no commit; the AT asserts the terminal status **and** the marker file's content on disk |
 | 6 | Neither rung resolves | §10.2's `catch` | `failed` + `advisory-model-unresolved` |
 | 7 | Dispatch error (any dispatch) | §10.2's `kind` check | `failed`, no reason code, message in the report body |
 | 8 | `_makeTempDir` ⇒ `null` | §9.1 step 1 | `api-failure`, proposal-file fallback with the full diff |
@@ -1809,7 +1809,7 @@ Every value used in this document is a `pdlc-consolidation-vocabularies.md` §1 
 **ER-6 (new, raised by this layer).** §7.6's `routeOf` has a fifth outcome the `Route` union cannot
 express: FSPEC §5.1 row 4 routes "any other consuming-repo path" to the proposal file, and AC-5.4
 diverts every `revise`/`retire` of a consuming-repo promotion there too — but `Route` is
-`"constraints" | "decisions" | "PR" | "degraded"` (vocabularies §1 line 28, transcribed exactly),
+`"constraints" | "decisions" | "PR" | "degraded"` (`docs/_constraints/pdlc-consolidation-vocabularies.md:57`, inside §1's `:38-65` table, transcribed exactly),
 so `FailureModeRecord.route` (§6.2, a closed eight-field record required on every kind) has no
 value for it. An earlier draft of this section claimed full conformance while §7.6's own prose used
 the value, and raised nothing — the claim, not the gap, was this layer's defect.
@@ -1844,7 +1844,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
 | 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
-| 10 | Enumerate the corpus with one `_git(["ls-files", …])` read, `:(glob)`-anchored | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:913`, `:925-929`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
+| 10 | Enumerate the corpus with one `_git(["ls-files", …])` read, `:(glob)`-anchored | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:915`, `:929-931`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
 | 11 | Widen `rtWriteFile` / `rtReadFile` to accept an absolute path | route the clone's writes through `_git` | git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index` — three mutating calls in the clone domain to replace one path argument (§5.6(a)) |
 | 12 | Add an env-gated `PDLC_PENDING:` stderr line to the hook | keep the count-above-threshold message as AT-P7's oracle | the shipped hook emits a count and only above `THRESHOLD = 5`, which is blind on every fixture that discriminates the two-region predicate — so T-08's "held equal by a differential test" would not be true (§7.1) |
 
