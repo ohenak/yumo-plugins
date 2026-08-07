@@ -87,6 +87,22 @@ Not re-argued from v15 — re-run. Every one still holds:
 
 ## Findings
 
+Nothing changed in the document, so nothing in it can have regressed. Four findings carry forward
+from v15 unchanged and unaddressed; one is new, and it is new because the re-grounding pass in §(b)
+above looked at a sentence the erratum never touched. **All five are Low. None is a gate.**
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-05 | Low | Local | *(new — from the `DEC-ERR-01` re-grounding pass, not a delta regression)* `:316` glosses the marker lifecycle as "written and **removed** inside the pass". `FSPEC` `BR-14a` (`FSPEC:2551`) decides release is an in-place write of `RELEASED: {passId} {ISO-8601}` and that no seam can remove the file, and the REQ's own AC-1.3 already says "in-place rewrites" (`:179-180`) and "in-place edits" (`:208`) — so `:316` uses the one verb its own normative half rules out. It is Low, not blocking, on three counts: the sentence's binding claim is "never committed" (unaffected — the file is in no pathspec either way), the release form is owned and stated correctly two hundred lines earlier, and `:316` is not a hand-off section any downstream task is authored against. Suggested repair, byte-neutral: "written and released in place inside the pass". | AC-3.8b consequences, `:316` |
+| F-01 | Low | Local | *(carried forward from v15, unchanged, still open)* AC-2.4 (`:239-240`) glosses the recorded consumed basenames as "exactly the AC-1.1 predicate's set", but §4b's new rule leaves an unreadable-but-enumerated basename un-consolidated and **not** consumed, so the two sets can differ by exactly that class. NFR-5's "**exactly** the consumed set" (`:553`) is the binding statement and is unaffected — a legibility defect, not a contradiction. Repair: "consumed basenames (the set the pass actually consumed — §4b omits an unreadable entry)". | AC-2.4 |
+| F-02 | Low | Local | *(carried forward from v15, unchanged, still open)* Step 1's block asserts "**The two** classes on which those mechanisms would otherwise disagree" — a closed enumeration. A third exists in principle (a symlinked feature directory: `glob` reads through it, `git ls-files` does not descend into it). Re-measured at HEAD this round: `find docs -maxdepth 2 -type l` is still empty, so it costs nothing today; the exposure is that a closed claim is what a later reader trusts. Repair: "the two classes that arise at HEAD". | REQ-CONS-01 step 1 |
+| F-03 | Low | Local | *(carried forward from v15, unchanged, still open)* §4b's split needs an explicit subject — "Of the vocabularies file's owned sections, §1, §2 and §4 are enumerations and §3 is owned normative prose; the baseline's four sections are all owned normative prose, under no row oracle". Not re-argued here. | §4b |
+| F-04 | Low | Local | *(carried forward from v15, unchanged, still open)* Narrow §4b's baseline change-control clause from "a **content** change" to "a change to any **stated fact**", matching the vocabularies file's row-scoped wording. Not re-argued here. | §4b |
+
+Every one of the five is a single-clause wording repair inside text this REQ already owns. If an
+optimizer pass is open on the REQ for any other reason, they should ride along with it; if none is,
+none of them justifies opening a round, and I will not open one on their account.
+
 ## Questions
 
 ## Positive Observations
