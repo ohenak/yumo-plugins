@@ -175,6 +175,86 @@ the shipped bar (any open High or Medium ⇒ Needs revision) to a finding set th
 
 ## Pattern of Disagreement
 
+**There is no disagreement between the reviewers, and none between the reviewers and the author.**
+Zero findings were argued in four consecutive rounds; where the reviewers overlap they *converge*
+(PM F-18 and TE F-01 are the same defect shape found independently from opposite lenses in the same
+round), and one reviewer withdrew its own claim rather than defend it. Five patterns describe the
+window, and the first is the one Phase F could not have shown.
+
+### 1. Both late Highs are the same class: a decision this layer had to make, colliding with an enumerated upstream artifact
+
+| Round | High | The decision | The upstream artifact it collided with |
+|---|---|---|---|
+| 3 | PM F-10 | the corpus enumeration and the hook's enumeration cannot be held set-equal by a test, so the equality is narrowed to the predicate | REQ `:115-116` ("keeping one **enumeration** as well as one predicate") and FSPEC AT-P7's *Then* (`:2026`, the two sets "set-equal"), bound by BR-09 |
+| 5 | PM F-17 | release is `_writeFile(markerPath, "")` and `file_empty` is treated exactly as absent, because no seam can remove a file | FSPEC §4.2's fourth row (`:442`), E-11 (`:2592`) and AT-M3's *Given* (`:2038`), which require an empty marker to be **reclaimed** with `reclaimed-stale-lock` recorded |
+
+Both decisions are *correct* — each reviewer verified the engineering argument at HEAD and said so.
+Neither is a scope violation, an invention, or a slip. In both cases the finding is not "you decided
+wrongly" but **"you decided locally something whose owner is upstream, and did not say so"**, and in
+both cases the accepted repair was identical and had three parts: name the upstream artifact this
+layer cannot satisfy, state what ships instead with a falsifier for it, and raise the erratum so the
+owner re-decides. PM v5 says it explicitly: *"the right disposition is the one this document uses
+elsewhere … What it must not do is state `file_empty ≡ absent` as a settled local fact while three
+FSPEC artifacts say otherwise."*
+
+This class did not exist in Phase F's windows, and it exists here **by design**: `DEC-LAYER-01`
+moved exactly these decisions — tie-break algorithms, per-field reader indices, seam permitted-sets,
+fixture construction and oracle strength — out of the FSPEC and into the TSPEC. It priced the move
+honestly ("TSPEC inherits four open decisions") and it worked on its target: the FSPEC's Medium rate
+fell ~75 %. What it did not do is give the receiving layer a *disposition rule* for the case where
+an inherited decision turns out to falsify an enumerated upstream row. Absent that rule, every such
+collision is a fresh High.
+
+### 2. The second-largest class is a decided observable with no coverage row
+
+| Round | Finding | The observable that was minted | Where the row was missing |
+|---|---|---|---|
+| 3 | PM F-12 | AC-3.2's three PR-body citations; FSPEC §5.3's "and only when" negative | no AT in the register, and no local case either |
+| 4 | TE F-02 | §7.1's unreadable-corpus-entry decision — counted, in the consumed pair, named in the report body | no §12.2 row, no §12.3 file, no register AT |
+| 5 | PM F-18 | `releaseMarker`'s six-status take/release obligation | §12.1 CONS-03 row present; §12.2 and §12.3 rows absent |
+| 5 | TE F-01 | `rtConsInjections()`'s contents, once `_checkFile` was promoted to a protocol seam | no §12.2 row, no §12.3 file |
+
+Four of the window's nine Mediums are this one shape. It is manufactured by the repair, not by the
+draft: each round's fix *decides* something, a decision is an observable, and §12.2/§12.3 form a
+coverage contract that every observable owes two rows to. The author's own rule for it — minted at
+round 4 in response to PM F-12 — is the right one and is quoted approvingly by both reviewers:
+**"a named gap is not a licence to ship uncovered."** The rule is correct and it is also the reason
+the class keeps recurring: it converts every new decision into two further edits whose omission is a
+legitimate Medium.
+
+### 3. The residual class is propagation lag inside a heavily cross-referenced document
+
+PM F-14 (round 4) found the *same* pin pair placed at two different levels in two different files by
+two different sections of one revision; the repair had to touch five sections. TE F-02 (round 5) found
+§7.3's take sequence still spelling `read → verdict` two paragraphs below a decision forbidding it.
+TE's own summary is the general statement: *"Both new Mediums are the same shape as last round's: a
+decision made correctly in one place that has not yet reached the one remaining place that
+contradicts it. Neither is a redesign."* The document's coupling — §5.1 protocol × §7 functions ×
+§10.3 outcome table × §11 levels × §12.1 CONS rows × §12.2 discharge rows × §12.3 file assignments ×
+§13.1 decisions × §13.3 PLAN hand-off — means a single decision obliges edits at six to eight sites,
+and the reviewers correctly check all of them.
+
+### 4. Findings migrate one axis over rather than recurring
+
+As in every prior window on this feature, no finding is ever the same finding twice. The marker
+thread across five rounds: round 1 — nothing; round 4 (TE F-01) — T-13's conjunct (ii) cannot be
+written because the document never says what release *does*; round 5 (TE F-01) — release is decided
+but the seam that supplies `present` is never asserted to be wired; round 5 (TE F-02) — the take
+sequence contradicts the decision; round 5 (PM F-17) — the decision makes an FSPEC row unreachable;
+round 5 (PM F-18) — the decision has no coverage row; round 5 (PM F-19) — the type comment overstates
+what the doubles distinguish. One subject, six genuinely different defects, each living in the text
+written to close the previous one.
+
+### 5. No approval was ever available, so the Phase F countermeasure could not act
+
+`DEC-CONV-01` makes convergence "both reviewers *holding* an approval". In this window neither
+reviewer ever held one. Each round's blocking set was non-empty on the merits, and in three of the
+five rounds it contained a High. This is the crucial difference from Phase F's second window: there,
+the document was approvable and the *rule* discarded the approvals; here, the document was not
+approvable in any round, because each round's repair decided something new that collided with either
+an upstream row (pattern 1) or the coverage contract (pattern 2). Fixing convergence cannot fix this
+window. Only reducing the rate at which a repair manufactures a **blocking** finding can.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
