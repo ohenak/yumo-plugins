@@ -9,7 +9,18 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 11.3 | 2026-08-06 |
+| pdlc | draft | Claude | 11.4 | 2026-08-06 |
+
+**Round 13 (v11.4) — the five Low findings of the v13 reviews, both of which are PASS approvals; no
+rule, AC, BR, AT or fixture changes shape.** (a) §4.2's new rationale no longer claims the empty
+marker has a single producer: a kill inside the step-16 release is the second, and the deliberately
+conservative record is stated (te L-03). (b) BR-13 is narrowed to a fresh **`IN-PROGRESS:`** marker,
+matching BR-14/BR-14a and §4.2's table (te L-01). (c) AT-P7 names the channel its comparison reads —
+the block's `pending` binding, not its threshold-gated stdout — with the empty-corpus early exit and
+the line-number drift stated (te L-04). (d) E-12b's `phase`-arm attribution is narrowed to §8.3's
+arm, agreeing with T-10 and BR-33a (te L-02). (e) §4.1's justification no longer overloads "the
+existence seam alone" (se F-01). Both reviewers' Q-01 — should an aged `RELEASED:` marker be
+reported? — is answered as a declined option in §4.2.
 
 **Erratum round (Phase D), v11.3** — a targeted edit answering seven errata raised against this
 FSPEC while DECISIONS was authored; nothing else is changed. (1) §4.1's marker lifetime no longer
