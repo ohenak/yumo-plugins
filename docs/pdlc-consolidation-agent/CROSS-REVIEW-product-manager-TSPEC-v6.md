@@ -43,8 +43,22 @@ Q-12 and Q-13 are both answered. Q-12 asked whether the *operator-facing* conseq
 
 ## Recommendation
 
-_(filled below)_
+**Approved with minor changes**
+
+Both blocking findings from v5 are resolved, and resolved in the shape I asked for rather than the shape that would have cleared them. F-17 (High) is closed on all three axes — the unreachable FSPEC §4.2 arm is named in §7.3, given its own row 4a in §10.3, marked as partial coverage in §12.3's AT-M3 assignment, recorded as §13.1 row 13 with its rejected alternatives, and raised upstream in §13.3 as a product question rather than a technical one. F-18 (Medium) is closed by a §12.2 row whose oracle is set-equality over the six-member terminal-status enumeration, whose negative arms (`refused`, `skipped-cadence`) are paired against positive controls in the same table, and whose §12.3 assignment explains why it shares a file with T-13. F-19 (Low) is closed both ways I offered.
+
+I re-verified every code and FSPEC citation the revision added, not only the ones the findings turned on: `rtCheckFile`'s `test -f && test -s` (`runtime-adapter.js:823`), `fakeFs.checkFile`'s trim comparison (`__tests__/helpers/seams.js:298`), the absence of any removal verb in the adapter, `checkFileNonEmpty`'s `file_missing` catch (`orchestrate-dev.js:3690-3692`), `defaultReadFile`'s dynamic import (`orchestrate-queue.js:949`), the never-wired-`_writeFile` note (`runtime-adapter.js:1098-1100`), `adapterProbe.test.js:253-258`, and on the FSPEC side `:415`, `:442`, `:460-465`, `:2038`, `:2594`. All hold. Nothing I approved in earlier rounds is broken by the take-order change, the release decision, or the two test-mechanics corrections — and the take-order change is itself a repair, since the earlier `read → verdict → …` line would have forced the `_readFile(...) !== null` derivation decision 2 forbids.
+
+Three Low findings to fold in while the file is open; none of them changes a decision, and all three are sweeps the revision started and did not finish:
+
+1. **F-20** — §13.1 row 5 still says "read-then-write" after §7.3 and §10.4 were unified on "observe-then-write (three seam calls)". It matters only because §13.3 nominates row 5 for DECISIONS, so the withdrawn spelling is the one that would outlive this document.
+2. **F-21** — §12.2's release row keys its set-equality on `TerminalStatus`, a `ts`-fence type with no runtime existence in these plain-JS modules. Name §6.4's frozen `TERMINAL_STATUSES` instead, and cite §11.3(b)'s vocabularies-authority leg, which is what makes reading the module's own array a legitimate oracle rather than an implementation echo.
+3. **F-22** — BR-15 is at `FSPEC-…:2502`, not `:2500`. The number came from my v5 text; the same sweep that corrected E-11 to `:2594` should take it.
+
+One question, Q-14, is deliberately not a finding: whether the accepted residue ("one class of pass death that leaves no log trace") deserves an operator-facing sentence is premature until the FSPEC answers the erratum.
+
+I am raising **no new erratum**. The FSPEC-side defect — §4.1's unperformable "Removed at step 16" and §4.2's fourth row's empty arm — is the one I raised at v5, it is unchanged in the FSPEC (`:415`, `:442` verbatim at HEAD), and §13.3 now carries it correctly. Re-emitting it would be a second batch against the same document for the same item.
 
 ## Verdict
 
-_(filled below)_
+VERDICT: Approved with minor changes
