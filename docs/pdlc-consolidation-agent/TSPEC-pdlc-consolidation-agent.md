@@ -154,8 +154,9 @@ reachable without standing up a pass.
 ```
 main({ …seams })                       ← the only impure function
  ├─ resolveConsolidationConfig         (pure)   §7.8
- ├─ enumerateCorpus            ←_listFiles      §7.1
- │   └─ unconsolidatedSet              (pure)   §7.1
+ ├─ enumerateCorpus            ←_git (ls-files) §7.1
+ │   ├─ parseCorpusListing             (pure)   §7.1
+ │   └─ classifyCorpus                 (pure)   §7.1
  ├─ cadenceDatum / triggerFor          (pure)   §7.2
  ├─ mintPassId                         (pure)   §7.2
  ├─ takeMarker                 ←_readFile/_writeFile   §7.3
@@ -171,9 +172,11 @@ main({ …seams })                       ← the only impure function
  │   ├─ failureModeId                  (pure)   §7.4
  │   ├─ mergeProposals                 (pure)   §7.4
  │   └─ remediationChoice              (pure)   §7.5
- ├─ routeProposal                      (pure)   §7.6
+ ├─ routeProposal                      (pure)   §7.6   ← the only caller of routeOf
+ │   ├─ routeOf                        (pure)   §7.6
  │   ├─ consuming-repo write   ←_appendFile
- │   └─ PR route               ←_git/_ghRun/_envPresent/_makeTempDir  §9
+ │   ├─ proposal file          ←_writeFile      §7.9  renderProposalFile
+ │   └─ PR route               ←_git/_ghRun/_envPresent/_makeTempDir  §9  renderPrBody
  ├─ renderTerminalRow / renderReport   (pure)   §7.9
  └─ commitConsumingRepoPaths   ←_git             §9.4
 ```
@@ -697,6 +700,30 @@ read-then-write form and **records the decision** rather than inventing a lock: 
 exclusive-create seam would be a new agent transport whose observation (whether the file already
 existed) is exactly as racy as the read it replaces. §13 carries it.
 
+**Take is read, write, then read back.** `rtWriteFile` (`runtime-adapter.js:802-813`) awaits an agent
+dispatch, inspects no reply and returns `undefined`; the adapter's own comment at `:798-801` says
+the cache entry is deliberately not repopulated from `contents` because "an agent-mediated write is
+a request, not proof of the bytes on disk — the next read re-verifies against a probe, which is the
+only evidence this adapter trusts". A take with no read-back therefore lets the pass proceed through
+all sixteen steps believing it holds a lock it does not hold, which is precisely the guarantee
+AC-1.3 rests on. `takeMarker` closes it with the re-read the adapter's comment names:
+
+```
+read → verdict → write → read back → parseMarker → confirm parsed.passId === state.passId
+```
+
+A read-back that returns `null`, an unparseable marker, or **another pass's** `passId` is a failed
+take. The pass terminates `refused` with `consolidation-in-progress` (the same disposition as an
+observed fresh marker — from the pass's own vantage the lock is not its own either way), records no
+consumed pair, and commits nothing, per §4.4. §10.3 row 5a carries it. The read-back costs one seam
+call on the one path where a wrong answer is unrecoverable, and it is a *positive* post-condition —
+the AT asserts the terminal status **and** the marker file's content on disk, never "no second pass
+ran".
+
+The read-back does **not** close the race of §10.4 item 1: two passes can both read free, both
+write, and the later writer's read-back succeeds while the earlier writer's fails. That asymmetry is
+an improvement (one of the two now knows), not a lock, and §10.4 states the residue unchanged.
+
 ### 7.4 The id, proposals, and the intra-pass merge (FSPEC §8.1, §8.2, §5.2)
 
 ```ts
@@ -789,17 +816,63 @@ filesystem stat the runtime cannot perform.
 ### 7.6 Routing and suppression (FSPEC §5.1, §6.4)
 
 ```ts
-routeOf(target: string): Route                                        // pure
+routeOf(target: string): RouteOutcome                                 // pure
+routeProposal(proposal: Proposal): RouteOutcome                       // pure — the ONLY caller of routeOf
 enactedByLog(pair, records): {enacted: boolean, passId: string|null}  // pure
 enactedByPr(pair, prStates): {enacted: boolean, url: string|null}     // pure
+
+// routeOf's outcome set is FIVE-valued; Route (6.1) has four members. See below.
+type RouteOutcome = Route | "proposal-file";
 ```
+
+**Routing reads the action, not only the target — and the function that does so is named.** FSPEC
+§8.6 makes a retirement or revision follow the same propose-only path as a promotion, "route decided
+by the promotion's own `target` (§8.1), exactly as §5.1 decides any target", with one arm that is
+*not* an application:
+
+| Where the promotion landed | `action: promote` | `action: revise` / `retire` |
+|---|---|---|
+| a `MERGE_GUARD_DEFAULTS` path | PR | **PR**, in its own commit under that action (AC-3.3) |
+| `DOMAIN-CONSTRAINTS.md` / `DECISIONS-{topic}.md` | append | **proposal file, never applied** (AC-5.4, FSPEC §8.6 row 2) |
+| any other consuming-repo path | proposal file only | proposal file only (FSPEC §5.1 row 4) |
+
+`routeProposal` is that table, and it is the **only** caller of `routeOf`:
+
+```js
+export function routeProposal(p) {
+  const r = routeOf(p.target);                       // "PR" | "constraints" | "decisions" | "proposal-file"
+  if (r === "PR") return "PR";                       // guard-set: every action goes through the PR
+  if (p.action === "promote") return r;              // append, or the proposal file
+  return "proposal-file";                            // AC-5.4: never applied by the pass
+}
+```
+
+Making it a stated function rather than an implication is the point of the finding it answers: with
+`routeOf` alone in the call graph, an implementer removes or rewrites a promoted constraint in the
+consuming repo, which is exactly the "never applied by the pass" prohibition the whole propose-only
+symmetry rests on. §4.1's graph names `routeProposal`, and `routeOf` is reachable from nowhere else.
+
+**`routeOf` has a fifth outcome the `Route` union cannot express.** `"proposal-file"` is
+`routeOf`'s answer for FSPEC §5.1 row 4 and for every `revise`/`retire` diversion above, and
+vocabularies §1 at `Version` 1.4 has no `Route` row for it (§6.1's four-member union is transcribed
+correctly from `pdlc-consolidation-vocabularies.md:38-65`). That gap is **upstream**, recorded as
+ER-6 in §12.4 and not patched here.
+
+Until ER-6 lands, `FailureModeRecord.route` for a proposal-file promotion is written
+**`"degraded"`** — the one legal value whose meaning is already "the promotion reached nothing but
+`CONSOLIDATION-PROPOSAL-{passId}.md`", which is FSPEC AT-Q12's own gloss on it. The consequence is
+correct rather than merely legal: §7.6's `enactedByLog` does not enact on a `degraded` record, so
+the proposal is re-proposed on the next pass — which is what an item awaiting operator approval
+should do, and is the direction AT-Q12 asserts. The loss ER-6 would recover is that a *routed*
+propose-only item and a *degraded* PR attempt are indistinguishable in the record; the report body
+(§7.9 item 4) names each promotion's route in full and is the discriminator meanwhile.
 
 `routeOf` normalises the target — repository-root-relative, no leading `./`, no `..` segment, `/`
 separators — and returns `"PR"` when it is prefixed by **any member of `MERGE_GUARD_DEFAULTS`**
 (imported from `orchestrate-dev.js:48-53`, never copied: a copy would silently survive a change to
 the constant, and set-equality with it is AT-R1's whole point). Otherwise it returns `constraints`
 for `docs/_constraints/DOMAIN-CONSTRAINTS.md`, `decisions` for `docs/_decisions/DECISIONS-*.md`, and
-routes every other consuming-repo path to the proposal file. `guardVerdict` (`:732`) and
+`"proposal-file"` for every other consuming-repo path. `guardVerdict` (`:732`) and
 `effectiveGuardPaths` (`:709`) are **not** called: both are reachable only from Phase MERGE's ladder
 and the advisory-envelope check and both decide about *that run's own* PR, so calling them would
 claim an enforcement neither performs. The pass reads the constant and decides for itself.
