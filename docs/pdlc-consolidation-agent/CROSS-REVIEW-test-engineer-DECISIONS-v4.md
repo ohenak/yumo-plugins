@@ -109,3 +109,6 @@ No upstream defects found this round — no ERRATUM lines.
 ## Verdict
 
 VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:496286f486d1507cdd51da2295de0b058a604145c4610ac1bc6713cf06c407c7
+REVIEWED-COMMIT: 61f1147802c73d6f132c86339ff7b1a013260ade
