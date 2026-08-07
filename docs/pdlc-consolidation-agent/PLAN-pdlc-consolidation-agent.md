@@ -391,6 +391,7 @@ reviewer can confirm the claim without re-deriving it.
 | `rtDevInjections` | `runtime-adapter.js:1086`; the comment at `:1098-1100` records a shipped adapter function that existed and was never wired | `rtConsInjections()` lands beside it, and T03's set-equality case is the guard that the same mistake does not repeat — `_checkFile` is the member whose silent omission would turn AC-1.3's mutual exclusion off in production while every L2 fixture stayed green | T12 |
 | `rtCheckFile` vs `fakeFs.checkFile` | `runtime-adapter.js:823` decides emptiness by **byte size** (`test -s`); `__tests__/helpers/seams.js:298` decides it by **trimmed content** | the divergence is real and **unreachable here**: the only marker states this feature produces are `""` and absent, on which the two agree. Recorded so it stays unreachable — no row may assert *which* `reason` came back | T20, T28 |
 | the `bundles` array | `pdlc/workflows/build-runtime.mjs:448`, with `QUEUE_META` at `:127`, `QUEUE_ENTRY` at `:185`, `stripModuleSyntax` at `:45`, `wrapModule` at `:55` and the prelude pattern at `:113-123` | one new row plus a `CONS_META`/`CONS_ENTRY` pair; the four reused symbols reach the IIFE through `const X = __dev.X;` prelude lines, because the runtime forbids `import` entirely | T32 |
+| `BUNDLES` / `ARTIFACTS` | `__tests__/runtimeBundle.test.js:26` (`["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js"]`) and `:1584` (`[...BUNDLES, "pdlc-cli.mjs"]`); `BUNDLES` is consumed at `:503`, `:509`, `:549`, `:1044`, `:1290` and `:1584` | `BUNDLES` gains the third bundle, which is what puts it inside all six of those assertions; `ARTIFACTS` follows automatically. This is §9.1 erratum 2's local cover | T32 |
 | `AT19_SEAM_NAMES` / `AWAIT_SCAN_SOURCES` | `__tests__/runtimeBundle.test.js:215` and `:1040`; consumed at `:427` and `:1054`; `RLH-SCAN-01` at `:626` | both widened in one commit. Widening only the source axis leaves the scan green on exactly the seams this feature invents | T13 |
 | `nudge-consolidation.sh` | `pdlc/hooks/scripts/nudge-consolidation.sh` — `PY_BIN` probe `:13-20`, `CLAUDE_PROJECT_DIR` `:26`, `THRESHOLD = 5` `:25`, glob `:28`, early exit `:29-30`, predicate `:41`, `n >= THRESHOLD` `:43`, output `:47-48` | four edits, one task. The `PY_BIN` probe's silent `exit 0` is inherited by the L4 harness as a **reported skip**, never a pass | T09 |
 | the shipped double set | `seams.js` (`fakeFs:243`, `fakeListFiles:132`, `fakeGit:389`, `LIST_FAILURE_VALUES:58`), `mergeDoubles.js` (`fakeGhRun:75`, `matchKey:45`, `passingGh:163`, `GH_SURFACE_NAMES:181`, `fakeNow:259`, `FIXED_NOW_MS:256`), `advisoryDoubles.js` (`makeAgentDouble:53`, re-exports at `:25`), `driftGenerators.js` (`seeded:76`, `resolveSeed:134`) | re-exported, never re-declared. **`passingGh` is not widened and `GH_SURFACE_NAMES` does not grow** — that set is what `passingGh` is obliged to answer, and this feature adds no obligation to it | T01 |
@@ -419,6 +420,10 @@ carries both.
 | L4 differential | `consolidationHookParity` | **yes** — a real `python3`/`bash`, and a real `git` in a temp repository the case builds |
 | L5 property | `consolidationProperties` | no |
 
+**Sixteen** new suites, counted off this table: 5 (L1) + 5 (L2) + 3 (L3, excluding the shipped
+`runtimeBundle`) + 1 (L4) + 1 (L5) + `consolidationReport`, which is split across L1 and L2 and so
+is named in neither row's list. Sixteen is the number §1 and §8.3 use.
+
 L4 is the only level that shells out, and it **never touches this repository's own `docs/` tree**:
 the differential harness writes its fixture corpus into a temp directory and points the hook at it
 through `CLAUDE_PROJECT_DIR`, and the pathspec case builds its own throwaway repository. Both are
@@ -437,18 +442,30 @@ as passed.
 **Mechanical — all must pass.**
 
 - [ ] `cd pdlc/workflows && npm test` is green on both CI legs (ubuntu, macos, node 20); no
-      `consolidation*` case is still `describe.skip`, verified by grepping the fifteen suites for
-      `describe.skip(` and finding none.
+      `consolidation*` case is still `describe.skip`, verified by grepping the **sixteen** suites
+      (`pdlc/workflows/__tests__/consolidation*.test.js`) for `describe.skip(` and finding none. The
+      grep is scoped to that glob and to the token `describe.skip(` only — T04's `PY_BIN`-gated
+      `test.skip` is a **runtime** skip on a leg with no interpreter, is not matched by this row, and
+      must not be deleted to satisfy it (its non-vacuity is the counter row below).
 - [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0, and a rebuild produces no diff.
-- [ ] `pdlc/workflows/dist/` carries **four** bundles plus `distribution-manifest.json`, and the
-      manifest holds a row for `consolidate-learnings.bundle.js` with its sha1 and the plugin version
-      those bytes were built at.
+- [ ] `pdlc/workflows/dist/` carries §1's **five files** — three `*.bundle.js`
+      (`orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`,
+      `consolidate-learnings.bundle.js`, i.e. `BUNDLES` after T32's widening), `pdlc-cli.mjs`, and
+      `distribution-manifest.json` — and the manifest holds **four** rows, the new one for
+      `consolidate-learnings` carrying its sha1 and the plugin version those bytes were built at.
 - [ ] `pdlc/hooks/scripts/sync-workflows.sh --check` classifies the new artifact rather than
       ignoring it.
-- [ ] `bash -n pdlc/hooks/scripts/nudge-consolidation.sh` is clean, the file keeps mode `100755`,
-      and a session with the debug variable **unset** produces byte-identical output to HEAD's.
-- [ ] `consolidationTraceability.test.js` reports set equality in both directions over the FSPEC
-      register's **96** ids and TSPEC §12.3's table.
+- [ ] `bash -n pdlc/hooks/scripts/nudge-consolidation.sh` is clean and the file keeps mode `100755`.
+      The no-regression obligation is T04's `T09` block, **not** a byte-identity claim: on the
+      above-threshold fixture the edited hook's `additionalContext` text equals HEAD's **and** the
+      message transcribed from the shipped template at that `n`; on the divergence fixture the two
+      differ and the edited hook's text equals the transcribed message at the **new** `n`. (Identity
+      alone is vacuous here — on this repository both hooks print nothing.)
+- [ ] `consolidationTraceability.test.js` reports set equality in both directions between the FSPEC
+      v11.3 register and TSPEC §12.3's table, with the version pin (FSPEC `11.3`, TSPEC `1.7`) and
+      the non-vacuity floor green. Measurement of record at authoring: **99** register ids
+      (FSPEC §13, `:2041-2191`, `AT-…` tokens de-duplicated). The row is tickable only once §9.1
+      erratum 4 has landed — TSPEC §12.3 carries 96 at HEAD.
 - [ ] `parsePlanTasks` / `parsePlanOwnership` / `validatePlanContract` /
       `computeTopologicalBatches` over this PLAN return 34 / 34 / `{ok:true}` / no cycle — the Phase P
       gate's own answer (§6).
