@@ -236,7 +236,63 @@ covered without a network.
 
 ## 6. DEC-CONS-04: The marker take is observe-then-write, not atomic
 
-_(pending)_
+**Context.** AC-1.3 makes the in-progress marker the mutual-exclusion mechanism between two passes:
+a second pass that begins while the marker is present and younger than
+`consolidation.staleLockMinutes` exits `refused` with reason code `consolidation-in-progress`. A
+mutual-exclusion mechanism naturally wants an atomic test-and-set.
+
+**Decision.** The take is three separate seam calls and is **not** atomic:
+`_checkFile(markerPath)` for presence, `_readFile(markerPath)` for the content `parseMarker`
+consumes, then `_writeFile(markerPath, line)`. The race between two passes observing "free" and both
+writing is **not closed**, and is recorded as unhandled rather than papered over. What bounds it is
+elsewhere: every log write is one whole record appended at end of file (so two passes' records
+interleave without loss), the PR route is keyed on `(failure-mode-id, action)` in the merged PR's own
+trailer rather than on log state, and the residual exposure is a duplicate consuming-repo write the
+FSPEC states as a known exposure.
+
+**Alternatives considered.**
+
+- **An exclusive-create seam (`O_EXCL` semantics: "create this file, fail if it exists")** — the
+  correct primitive, and rejected because no transport can carry it. Every adapter seam is an
+  `agent()` dispatch that returns *the agent's report of what happened*; an agent's report that the
+  file did not previously exist is exactly as racy as this module reading it, because the check and
+  the create are still two observations separated by the same window. Adding the seam would buy an
+  atomicity claim that the transport cannot honour, which is worse than the honest three-call form —
+  a reader would trust it.
+- **`git`-mediated locking** (commit the marker, rely on index/ref atomicity) — rejected on two
+  independent grounds: AC-1.3 requires the marker to live in the working tree only and never be
+  committed by any pass (it is `.gitignore`d for exactly this reason), and the invoking-tree verb set
+  admits no mutating git verb at all.
+- **Derive presence from `_readFile(...) !== null`, collapsing three calls to two** — rejected here
+  and re-rejected from the other end in DEC-CONS-07: it conflates the released (empty) marker with a
+  present-but-unparseable one and would record `reclaimed-stale-lock` on every steady-state pass.
+
+**Constraints that forced this shape.** No adapter transport offers exclusive create — the shipped
+verb set is `rtWriteFile` (`runtime-adapter.js:802`), `rtAppendFile` (`:863`), `rtListFiles`
+(`:905`), `rtGit` (`:945`), and the read/probe seams; none of them expresses create-if-absent. Per
+DEC-ORACLE-02 (`docs/_decisions/DECISIONS-test-oracle-mechanics.md`), a path that cannot be
+instrumented or guaranteed is **recorded**, never worked around, and that is what this entry does.
+The stale-lock reclaim (`staleLockMinutes`, default 60) is the recovery for the other failure mode —
+a pass that dies holding the marker — and it is load-bearing precisely because the pass calls the
+model resolver bare, with no deadline of its own.
+
+**Reversibility:** one-way door *at this layer*. Nothing in the pass can make the take atomic; only
+a new runtime capability can. Reversible immediately above this layer if the runtime ever grants
+in-process `fs`.
+
+**Re-evaluation triggers.** The adapter gaining a real exclusive-create or lock verb; the runtime
+gaining `fs`; consolidation ceasing to be serial (today `/loop` runs one tick at a time, so the race
+requires an operator's manual invocation to collide with a tick); the residual duplicate write
+becoming observed in practice rather than theoretical.
+
+**Testability:** the take's *shape* is asserted, since its atomicity cannot be. The seam double
+records an ordered call log, and the assertion is that a take issues exactly the three calls in that
+order with the marker path, and that `present` is read from the `_checkFile` result and never from
+the `_readFile` result — the second conjunct is what keeps DEC-CONS-07 from being re-broken by a
+refactor that "simplifies" the take. The race itself is deliberately **not** tested: there is no
+oracle for it at any level available here, and writing a test that appears to cover it would assert
+a property the code does not have. The mitigations *are* tested — append-only write granularity, and
+the `refused` path writing its row and committing nothing.
 
 ## 7. DEC-CONS-05: Two enumerations, held by literal pins; one predicate, held by a differential
 
