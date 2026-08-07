@@ -63,7 +63,60 @@ re-measured and all hold:
 
 ## 3. Questions
 
+Q-01 … Q-04 of v1 are all answered in the document: Q-01 by the header's upstream-version table,
+Q-02 by T20/T21's assignments (the placement I proposed, and the row argues for it rather than
+merely adopting it), Q-03 by §8.3's first row, which now says in terms that the grep matches
+`describe.skip(` only and that T04's `PY_BIN`-gated `test.skip` is a runtime skip that "must not be
+deleted to satisfy it", and Q-04 by §6's transcript, which I reproduced exactly. One question
+remains, and it is not blocking.
+
+| ID | Question |
+|----|---------|
+| Q-05 | T05 is now specified as **red at HEAD** and green only once TSPEC §12.3 gains the three ids (§9.1 erratum 4). I confirmed the premise: §12.3 (`TSPEC:2385-2441`) carries exactly **96** ids and none of `AT-M11`, `AT-Q13`, `AT-R7`. The row's reasoning — that the erratum channel repairs upstream documents after Phase P converges and before Phase I dispatches — is right for errata raised *in this phase*. But §9.1's errata 4 and 5 are raised by the PLAN against the **TSPEC**, which is an upstream document of the phase now converging, so they route this round; that is the ordinary path and it should hold. The question is only about the failure mode if it does not: T05's halt reports the three ids by name, which is the right behaviour — is anything needed beyond that, or is the §9.4 risk row the whole answer? I read it as the whole answer and raise this for the record, not as a change request. |
+| Q-06 | When erratum 4 lands, TSPEC §12.3 must assign `AT-M11` → `consolidationPass.test.js` and `AT-Q13` / `AT-R7` → `consolidationRoute.test.js`, or T05's "exactly one file per register id" fails for a new reason. T20 anticipates half of this ("Both AT-M11 halves live in this one file, so T05's … is undisturbed"). Should the §9.1 erratum 4 row name the two target files, so the upstream author edits §12.3 to agree with the PLAN rather than guessing? |
+
 ## 4. Positive Observations
+
+- **The revision closed the two High findings at the root rather than at the symptom.** v1.0's
+  defect was a transcription of FSPEC v11.1; v1.1 does not merely patch the three ids in — it
+  carries the upstream versions in the header, replaces the hard-coded register count with a *read*
+  plus a version pin, and raises the two TSPEC defects as errata 4 and 5 instead of absorbing them.
+  That is the difference between fixing this instance and making the class detectable, and the new
+  §9.4 risk row ("the failure reads *the register moved*, not *the code is wrong*") states the
+  intent explicitly.
+- **T04's rewrite is the strongest single change in the diff, and it is exactly the oracle-quality
+  repair a reviewer hopes for.** The old claim — output byte-identical to HEAD's with the debug
+  variable unset — was absence-only *and* vacuous on this repository, and the revision says so with
+  the measurement that proves it. The replacement pairs a **positive-identity** fixture (both hooks'
+  `additionalContext` equal each other **and** equal the message transcribed from the shipped
+  template at that `n`) with a **divergence** fixture (the two must differ, and the edited hook's
+  text equals the transcribed message at the *new* `n`, "never whatever HEAD printed"), in one
+  block so neither arm can pass vacuously. Expected values are transcribed from the shipped
+  template, never read off the implementation.
+- **The three newly assigned register ids are specified as pairs, not as extra happy paths.** AT-M11
+  is placed beside AT-M3 precisely because the pair *is* the oracle; AT-R7 carries a positive
+  control (the degraded promotion that must yield exactly one proposal file) against its two
+  negative fixtures; AT-Q13's fixture (b) is named as the arm that stops an unconditional recurrence
+  list, and its expected values are transcribed from the fixture LEARNINGS corpus rather than read
+  off the produced record. Each of the three is the *negative half* of an acceptance criterion, and
+  each is written so the negative cannot pass on an empty world.
+- **§6's transcript converts §6's numbers from assertions into a reproducible measurement**, which
+  was the point of Q-04, and it volunteers the parser hazard that produced a real defect this round
+  (a raw `|` in a description cell shifting `Deps` into `Batch`). That is a process learning stated
+  where the next editor will hit it.
+- **The `dist/` vocabulary is now defined once and used unchanged in six places**, and it is the
+  *shipped* vocabulary (`BUNDLES` / `ARTIFACTS` as `runtimeBundle.test.js` defines them) rather than
+  a new one invented for the PLAN — so §8.3's checkbox is mechanically tickable against the suite.
+  §9.1 erratum 3 went further than I asked and found that `CLAUDE.md:62`'s "Those three are the
+  tracked, shipped outputs" is **already false at HEAD** because `pdlc-cli.mjs` is tracked; I
+  confirmed it (`git ls-files pdlc/workflows/dist/` → four paths). T33 now repairs a live error, not
+  only a coming one.
+- **Scope is still respected in both directions.** No task implements behaviour the REQ does not
+  ask for; §6.3 item 2 still holds the hook to advisory-only (env-gated, stderr, `:47-48`
+  unchanged); the `plugin.json` version bump is still outside this PLAN's Done. The three new
+  register assignments add coverage, not scope: all three land in files that already existed in the
+  table, no new task, batch or ownership row appeared, and the gate re-derives 34 / 34 / `{ok:true}`
+  with zero batch mismatches and zero same-batch collisions.
 
 ## 5. Errata raised against upstream documents
 
