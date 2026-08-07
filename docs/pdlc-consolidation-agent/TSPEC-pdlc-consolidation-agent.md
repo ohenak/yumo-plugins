@@ -9,7 +9,18 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-06 |
+| pdlc | draft | Claude | 1.7 | 2026-08-06 |
+
+> **1.7 (erratum round 7, targeted edit — no restructuring).** Two Phase-D errata, nothing else:
+> (a) the NFR-2 traceability row (§8, `:1325`) no longer states non-disclosure as unqualifiedly
+> "structural" — it is structural **outbound**, and the row now records the inbound residual
+> (`rtGit`'s 300-character combined-output failure reply, `runtime-adapter.js:951`, rendered per
+> §10.3 row 1a and §9.1), carried under DEC-CONS-01's qualification; (b) §9.2's claim that the
+> credentialed push reaches `git` by shell expansion is corrected — `rtShellQuote`
+> (`runtime-adapter.js:668-670`) single-quotes every `_git` argv element — and a lane is picked
+> (credential helper on `_git`, expanded by `git`'s own shell), with the command-string-seam and
+> `gh`-for-both alternatives recorded as rejected. §5.3's summary sentence and §13.1 row 1 are
+> aligned to (b).
 
 > **Scope in one line.** The mechanism for one consolidation pass: one new workflow module
 > (`pdlc/workflows/consolidate-learnings.js`), the seam protocol it is injected with, the pure
@@ -327,8 +338,11 @@ rtEnvPresent(name):
     a claimed credential).
 ```
 
-The credential's **value** reaches `git` and `gh` by shell expansion inside the transported command
-(§9.2), so it is never a JS string and never an argv element the pass logs.
+The credential's **value** reaches `gh` by shell expansion inside the transported command, and
+reaches `git` by expansion **one process lower**, inside the credential helper `git` itself runs —
+because `rtShellQuote` single-quotes every `_git` argv element (`runtime-adapter.js:668-670`), so no
+`$VAR` in a `_git` argv expands at transport time (§9.2). Either way it is never a JS string and
+never an argv element the pass logs.
 
 **`_makeTempDir(passId) => Promise<string|null>`.** FSPEC §6.1 requires the guard-set edit to be
 made in a separate clone under a temporary directory. The pass cannot call `mkdtemp`. The adapter
@@ -2464,7 +2478,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 
 | # | Decision | Rejected alternative | Why |
 |---|---|---|---|
-| 1 | The credential seam returns a **boolean**, and the value reaches `git`/`gh` by shell expansion | a `_readEnv(name) => string` seam | the value would enter the JS process **and** the agent transcript that transported it — a surface NFR-2 cannot redact. The boolean form makes non-disclosure structural |
+| 1 | The credential seam returns a **boolean**; the value reaches `gh` by shell expansion in the transported command and `git` through a **credential helper** `git` expands one process lower (§9.2 — `rtShellQuote` single-quotes every `_git` argv element, `runtime-adapter.js:668-670`, so transport-time expansion is impossible there) | a `_readEnv(name) => string` seam; or a second, unquoted command-string git transport | the value would enter the JS process **and** the agent transcript that transported it — a surface NFR-2 cannot redact. The boolean form makes non-disclosure structural **outbound** (inbound residual: `TSPEC:1325`, DEC-CONS-01). The second transport is rejected in §9.2: it moves the push out of §9.3's `_git`-argv domain classifier for a capability the helper form already gives |
 | 2 | Reuse `resolveAdvisoryRung` by adding an optional `skill` parameter | restate the two rungs behind a drift observable (which corpus baseline §3 sanctions) | it would create the second copy of the ladder the resolver's own doc comment forbids (`:1800`) |
 | 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
 | 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
