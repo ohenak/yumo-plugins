@@ -1042,6 +1042,75 @@ disk, and **does not change the terminal status**.
 
 ## 10. Error handling
 
+Every failure scenario the FSPEC enumerates, with the mechanism that produces its stated behaviour.
+The organising rule: **no seam failure throws out of `main`.** Seams return `{ok:false,…}` or `null`;
+pure functions are total; the only exception `main` can see is the resolver's halt rejection, and it
+is caught at exactly one site (§10.2).
+
+### 10.1 Terminating branches are returns, not exceptions
+
+FSPEC §2.2's "terminates = a jump to step 14" is implemented as an early `return finishPass(state)`,
+where `finishPass` performs steps 14–16 unconditionally: append the terminal row, run §9.4's commit,
+release the marker. Three consequences the FSPEC requires fall out for free — a terminated pass
+still commits, still releases, and still returns exactly one report — and none of them is a branch
+that could be forgotten at a new termination point, because there is only one exit.
+
+`state.reasons` is a `Set`, so a composing code (`reclaimed-stale-lock`, `writes-uncommitted`,
+`no-advisory-corpus`, `advisory-corpus-empty`, `no-cadence-datum`) is added where it is observed and
+survives to the row regardless of which branch terminates the pass — subject only to §6.4's legality
+check at render time.
+
+### 10.2 The one caught exception
+
+`resolveAdvisoryRung` **throws** (as a rejection) when neither rung resolves (`:1868`). Every call
+site in the pass is therefore wrapped:
+
+```js
+let dispatched;
+try { dispatched = await resolveAdvisoryRung({…}); }
+catch (err) { return finishPass(fail(state, "advisory-model-unresolved")); }
+if (dispatched.kind === "dispatch-error") { … return finishPass(failNoReason(state, err)); }
+```
+
+`failNoReason` is the FSPEC §2.6 row-4 shape: status `failed`, **no** reason code, the error's
+message pushed onto §8.4's `dispatchLog` for the report body. It is a distinct helper from `fail`
+precisely so that "no reason code" is a named intention in the source rather than an omission a
+future edit repairs by inventing a code — which would breach REQ §4b until ER-2 lands.
+
+### 10.3 The failure table
+
+| # | Failure | Mechanism | Observable |
+|---|---|---|---|
+| 1 | Log absent / unreadable | `_readFile` ⇒ `null`; `classifyCorpus` treats it as empty text | every basename un-consolidated; empty datum ⇒ `no-cadence-datum` |
+| 2 | Log truncated mid-block | §7.1 step 3's open-span-to-EOF rule | consumption never lost |
+| 3 | Unparseable log row | `mintPassId` / `cadenceDatum` skip it | derivation never aborts |
+| 4 | Marker unparseable | §7.3 `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown` |
+| 5 | Marker held and fresh | `refuse` | `refused` + `consolidation-in-progress`; no consumed pair, no commit |
+| 6 | Neither rung resolves | §10.2's `catch` | `failed` + `advisory-model-unresolved` |
+| 7 | Dispatch error (any dispatch) | §10.2's `kind` check | `failed`, no reason code, message in the report body |
+| 8 | `_makeTempDir` ⇒ `null` | §9.1 step 1 | `api-failure`, proposal-file fallback with the full diff |
+| 9 | `origin`/`pluginRepository` unresolved | `_git`/`_ghRun` `{ok:false}` | `repository-unresolved` + the configured value verbatim |
+| 10 | Push or PR-create fails | `{ok:false}` with `stderr` | `api-failure` + the API's status text; auth rejections classify as `credential-unavailable` by observation, per FSPEC §6.3 |
+| 11 | Head branch exists remotely | `gh pr list` finds the head, or push is rejected non-fast-forward | `branch-exists` + the existing branch and any PR for it |
+| 12 | No credential and no `gh` auth | §9.2's resolution order | `credential: absent` + `credential-unavailable` + degradation |
+| 13 | Git refuses the §9.4 commit | after `gitWithLockRetry` | `writes-uncommitted`; status **unchanged**; writes correct on disk |
+| 14 | Nothing staged | `NOTHING_TO_COMMIT_RE` | a return, not a warning |
+| 15 | `ESCALATIONS.md` absent/unreadable | `_readFile` ⇒ `null` | `no-advisory-corpus`; **no** seam proposal of any kind |
+| 16 | Escalation entry missing `Feature`/`Seam` | §7.7's per-entry skip | parse notice; no count under a guessed key; read continues |
+| 17 | Failure-mode record short of a field | §7.4's partial record + per-reader arm | parse notice; the pass reaches its terminal status; the record's bytes are unchanged |
+| 18 | Config absent / malformed / one bad key | §7.8 | per-key fallback, reported in the body; never a reason code, never a halt |
+| 19 | Two files sharing a basename | §7.1's `basenameCollisions` | one set member; the collision **reported** |
+| 20 | Corpus id matching no record | §7.5's verdict input | parse notice; counts toward no verdict; no promotion invented |
+
+### 10.4 What is deliberately not handled
+
+- **A second pass racing the marker.** §7.3's read-then-write cannot exclude it; the blast radius is
+  bounded by append-only writes and by the PR-route carrier, and the residual consuming-repo
+  duplicate is FSPEC §4.5's stated exposure. Nothing here claims to close it.
+- **Recovering a corpus consumed by a pass that died at step 8** (O-C1). No vocabularies §1 field
+  can express "re-consume these", and inventing a record type would breach REQ §4b.
+- **Clone removal failure.** §9.1 issues no removal, so there is no failure to handle.
+
 ## 11. Test strategy
 
 ## 12. Traceability
