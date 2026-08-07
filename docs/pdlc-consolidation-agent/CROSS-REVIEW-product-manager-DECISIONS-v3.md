@@ -143,4 +143,39 @@ new issue in the changed spans.
 
 ## Recommendation
 
+**Needs revision**
+
+All three of my v2 Low findings are resolved, and two of them were resolved beyond what I asked. The
+revision also corrected a claim I had positively endorsed at v2 (domain 3's "belongs to no verb
+set"), which is the direction of correction that almost never happens. Nothing in the changed spans
+broke anything I approved earlier: DEC-CONS-01's residual, DEC-CONS-02, DEC-CONS-05's post-edit-hook
+baseline, DEC-CONS-07's costs, §10, §11.1 and §11.3 are untouched, and every new `file:line` and both
+new set transcriptions (`TSPEC:1619`, `TSPEC:1620`) verified exactly.
+
+One Medium is open, and it is new — introduced by this revision, in `7bdb99a`:
+
+1. **F-07** — strike or correct DEC-CONS-06's claim that "this feature's own widening puts a second
+   such clause in that same write prompt". `TSPEC:425-426`'s widened prompt contains the string
+   `relative to the repository root` exactly once, and `TSPEC §11.6(e)` conjunct 2 (`TSPEC:2160`)
+   obliges a test asserting that whole-file count is exactly one. As written, the document gives a
+   PROPERTIES author a documented reason to weaken the only falsifier the feature has for the
+   read/write harmonisation mistake §5.6(a) exists to prevent. The scoping decision itself is right
+   and is independently carried by the verified three-occurrence measurement on the cwd sentence
+   (`:374`, `:618`, `:911`); only the second, unverifiable ground needs to go.
+
+That is the whole ask. Specifically I am **not** asking for changes to DEC-CONS-03's three domains
+(all three now transcribe `TSPEC:1619`/`:1620` correctly), to DEC-CONS-04's rejection, to §7's two
+edited sentences, to §11.2's restated property, or to DEC-CONS-06's decision, its two-prompt scoping,
+or its positive arms. Q-04, Q-05 and Q-06 are questions for the PLAN and for PROPERTIES ownership,
+not findings.
+
+No new upstream errata leave this review. The two TSPEC errata I raised at v2 (`rtShellQuote`
+single-quoting every `_git` argv element; `TSPEC:1325`'s unqualified "structural" non-disclosure row)
+remain open and are already routed — I do not re-emit them, since a second erratum batch for the same
+upstream document in the same phase halts the pipeline rather than helping it. F-07 is a defect of
+**this** document, not of the TSPEC: the TSPEC's `§11.6(e).2` and `:425-426` are mutually consistent
+and correct; it is DECISIONS that misreports them.
+
 ## Verdict
+
+VERDICT: Needs revision
