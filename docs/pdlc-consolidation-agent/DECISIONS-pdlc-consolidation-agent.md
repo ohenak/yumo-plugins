@@ -752,6 +752,15 @@ probe side, and an `file_empty ≡ absent` oracle is red against `TSPEC:988` and
 - **Preserve FSPEC §4.2's empty arm — treat an empty marker as `reclaim`** — rejected. A *released*
   marker **is** an empty file, so this records `reclaimed-stale-lock` on every steady-state pass after
   the first: a louder and far more frequent falsehood than the truncated-marker case it preserves.
+  (**Rejected on a premise the `RELEASED:` sentinel removes — and this alternative is now the shipped
+  behaviour.** Do **not** transcribe this bullet as current direction. Release is an in-place write of
+  `RELEASED: {passId} {ISO-8601}` (`TSPEC:974-977`), so a released marker is parseable and non-empty
+  and the sentence "a *released* marker **is** an empty file" is false at HEAD; an empty marker is a
+  **truncated** one and reaches `markerVerdict`'s `reclaim` arm, recording `reclaimed-stale-lock` with
+  abandoned id `unknown` — §10.3 row 4 at `TSPEC:1940`, fixture set at `TSPEC:2640`. An oracle written
+  from this bullet as it stands — `"" ⇒ free`, no `reclaimed-stale-lock` — is red against `TSPEC:1940`
+  and blind to an AC-1.3 operator-visible outcome. See the supersession note above, whose *Consequence*
+  bullet names this alternative by its own words.)
 - **Derive `present` from `_readFile(...) !== null`** — rejected; it is the same bug from the other
   end. The empty released form reads as present-and-unparseable and `markerVerdict` takes the
   `reclaim` arm on a completely normal pass. (**Still rejected upstream, on a reason that outlived the
