@@ -80,4 +80,35 @@ code is F-01 below, and it is a claim about a *property*, not a line number.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding is open, so the rule applies. What must change is narrow, and I want to be precise
+about the boundary, because most of this document is right and I do not want a revision that rewrites
+what is working:
+
+1. **F-01 (High) — DEC-CONS-01's second rejection, and its Testability line.** Either (a) record the
+   failure-reply channel as a stated residual, in DEC-CONS-04's voice — the seam returns up to 300
+   characters of a failed command's combined output (`runtime-adapter.js:951`, parsed `:976-980`) and
+   this feature renders that field into a report body (`TSPEC:1832`), so non-disclosure on that path
+   is bounded by what `git`/`gh` print, not by the interface — or (b) state the mechanism that closes
+   it, if the design's answer is that no credentialed argv element ever exists and therefore no
+   combined output can carry the value. Either way, drop or qualify "the module has no boundary to
+   scrub", which is the sentence the code contradicts, and say which arm of the Testability line (if
+   any) observes the channel. A residual honestly recorded is an acceptable outcome here; an
+   unqualified structural claim is not.
+2. **F-02, F-03 (Low) — two one-line carries.** AC-4.3 into §2's index row for DEC-CONS-01; the
+   permanent zero-byte marker (`TSPEC:962-966`, `:2522`) into DEC-CONS-07's accepted-cost paragraph.
+
+Nothing else needs to move. Specifically: I am **not** asking for changes to DEC-CONS-02,
+DEC-CONS-03, DEC-CONS-04, DEC-CONS-05 or DEC-CONS-06; not to §10's dispositions; not to §11.1's PLAN
+obligations; and not to either erratum in §11.3 — both are correctly scoped, correctly framed as
+product questions, and correctly left unsettled at this layer. Q-01 to Q-03 are questions, not
+findings, and none of them gates approval.
+
+One upstream item leaves this review as an erratum rather than as a finding against this document:
+`TSPEC:1325`'s traceability row makes the same unqualified claim for NFR-2 ("non-disclosure is
+structural"), and that row is the TSPEC's to correct, not this document's.
+
 ## Verdict
+
+VERDICT: Needs revision
