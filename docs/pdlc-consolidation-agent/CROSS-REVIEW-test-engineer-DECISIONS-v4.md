@@ -80,4 +80,32 @@ an open question.
 
 ## Recommendation
 
+**Approved with minor changes** (0 High, 0 Medium, 1 Low).
+
+Both v3 findings are closed, and both were closed above the level the finding asked for — F-01 in
+three sections with a fourth conjunct I had not requested, F-02 by a withdrawal that states why the
+old wording was wrong rather than by deleting the clause. Both v3 questions are answered in the
+document itself. Every measurement the changed text asserts reproduces at HEAD:
+`TSPEC:1619`, `TSPEC:1620`, `TSPEC:2095-2100`, `TSPEC:2160`, `TSPEC:425-426`, `TSPEC:912-919`,
+`TSPEC:969-971`, `TSPEC:439`, `REQ:288`, `runtime-adapter.js:613`, `:618`, `:805` (sole occurrence
+of `"relative to the repository root"`, confirmed by `grep -n`), `:821-826`.
+
+Nothing in the revision broke an unchanged section. The three sites that had to agree about the
+invoking-tree verb set (§5, §6, §11.2) still agree, and §11.2 is now the strictly stronger of them.
+§8's changed paragraph strengthens rather than contradicts §5.6(a) as cited by `TSPEC §11.6(e)`.
+
+The single remaining item is Low and disputes no decision:
+
+1. **F-01** — retarget the obligation cite from `TSPEC:2097` (the partition parenthetical) to
+   `TSPEC:2098-2099`, in all three places it appears, and widen §11.2's block range from
+   `TSPEC:2094-2098` to `TSPEC:2095-2100`. The transcribed content is correct; only the line
+   provenance is off by one.
+
+No further review round is needed. Fold the retarget into the optimizer pass that carries this
+document into Phase P.
+
+No upstream defects found this round — no ERRATUM lines.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
