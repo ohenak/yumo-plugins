@@ -105,8 +105,58 @@ none of them justifies opening a round, and I will not open one on their account
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried forward from v15, unchanged)* The gitignore decision's stated reason is that the alternative leaves "a nag that never quiesces"; the unreadable-entry decision accepts that shape deliberately. I read it as bounded — consuming the readable entries drops the un-consolidated count below `volumeThreshold` unless ≥5 files are simultaneously unreadable, after which the cadence test governs. Still a TSPEC-level note at most, not a REQ change. |
+| Q-02 | *(carried forward from v15, unchanged)* The REQ is 674 lines / 64,397 bytes against the pdlc budget of 700 lines / 60 KB, so `check-req-size.sh` warns on the byte half. Unchanged this round (the file did not move), so it is neither a new breach nor a delta regression. Flagged only so the next author knows the line budget has 26 lines of headroom. |
+| Q-03 | Phase R has now re-entered on a document that did not change and whose approval anchors still verify against its bytes. If that re-entry was mechanical rather than intentional, the cheaper path is to honour the recorded v15 approval rather than spend a round confirming it — the halt that produced this re-entry (`POSTMORTEM-P`) is a TSPEC/PLAN-layer defect and names no REQ repair anywhere in its Recommendation (steps 1–3 are TSPEC edits, 4–5 are process, 6 is re-entry). Nothing here needs an answer before Phase F; I raise it so the round is not read as evidence the REQ was in doubt. |
+
 ## Positive Observations
+
+- **The REQ survives the re-grounding pass that `POSTMORTEM-P` was written to force.** The one
+  decision that moved underneath this feature — `BR-14a`'s `RELEASED:` sentinel — is a *refinement*
+  of what AC-1.3 already said twice, not a contradiction of it. The REQ left the payload open and
+  pinned the mechanism ("in-place"), which is the layering that lets a downstream decision land
+  without invalidating its parent. That is `DEC-LAYER-01` working as intended, visible only because
+  the FSPEC actually exercised it.
+- **The `.gitignore` clause at `:184-186` is still exactly right, and still not yet implemented.**
+  Re-measured this round: the file carries five entries and none matches `.consolidation-lock`. The
+  REQ's argument for why that matters — a committed lock reaches every fresh clone and refuses every
+  pass for `staleLockMinutes`, per clone — is a real failure mode with a one-line fix, correctly
+  scoped into §5 rather than left to be discovered in implementation.
+- **Every code citation in the REQ verifies at HEAD, and the sharpest one is the negative.** `:313-314`
+  does not merely cite the precedent it follows (`commitQueueRow`); it cites the shipped function it
+  deliberately does **not** follow (`commitPaths`, whose commit at `orchestrate-dev.js:8690` genuinely
+  carries no pathspec) and says why. A spec that names the near-miss it rejected is much harder to
+  implement wrongly than one that names only the pattern it wants.
+- **The four Lows I carried forward have stayed Low across two rounds without drifting.** None of them
+  has acquired a downstream consumer or grown into a contradiction — which is the evidence that
+  declining to open a round for them at v15 was the right call rather than a deferral that aged badly.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+The document is byte-identical to the revision I approved at v15 (`sha256:c21f8a42…d9ffd0` matches
+the recorded `APPROVAL-HASH` exactly), so there is no delta to regress and my v15 approval carries
+forward unchanged.
+
+I did not stop at that. Per `DEC-ERR-01`, which landed on this branch after v15, I re-grounded the
+REQ against everything that moved underneath it: the two new project-level decisions (neither
+constrains REQ content, and none of the four `POSTMORTEM-P` countermeasures is a §5 deliverable), the
+`FSPEC` `BR-14a` / `E-11b` release-form decision that halted Phase P (the REQ states the winning form
+at `:179-180` and `:208` — it is refined, not falsified), and eight existing-code claims re-measured
+rather than re-trusted (`orchestrate-queue.js:1576`/`:1615`, `orchestrate-dev.js:8669`/`:8670`/`:8690`/
+`:1833`/`:1859`, `nudge-consolidation.sh:38-41`, `.gitignore`, the symlink probe — all hold).
+
+Five open findings, all Low, all single-clause wording repairs: F-05 new from the re-grounding pass,
+F-01…F-04 carried forward untouched. None blocks FSPEC, TSPEC, PLAN or implementation. Nothing in
+this REQ is implicated in the `POSTMORTEM-P` halt, and nothing in that halt's Recommendation asks for
+a REQ change.
+
+**Errata:** none. The REQ is the top of the chain and I found no defect in an upstream document.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
