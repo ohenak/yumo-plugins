@@ -543,16 +543,60 @@ implements. Unless stated otherwise every function here is **pure, total and syn
 ### 7.1 The corpus and the two-region predicate (FSPEC §3.1, §3.2, §3.4)
 
 ```ts
-enumerateCorpus(_listFiles): Promise<CorpusFile[]>
+enumerateCorpus(_git): Promise<{files: CorpusFile[]} | {unlistable: true, detail: string}>
+parseCorpusListing(stdout: string): CorpusFile[]                          // pure, total
 classifyCorpus(files: CorpusFile[], logText: string | null): Predicate     // pure
 renderConsumedPair(passId: string, basenames: string[]): string           // pure
 ```
 
-`enumerateCorpus` issues exactly two directory walks — `docs/*` and `docs/completed/*` — through
-`_listFiles`, filters each child directory's entries by `/^LEARNINGS-.*\.md$/`, and **never opens a
-file**. `docs/discarded/` is not walked at all: exclusion is by *not enumerating*, not by filtering
-afterwards, so a widened glob cannot re-admit it by accident (the directory holds two LEARNINGS at
-HEAD, under `docs/discarded/pdlc-rcv-budget-stop/` and `docs/discarded/pdlc-review-convergence/`).
+**Enumeration is one `_git` read, not a directory walk.** The seam a directory walk would need does
+not exist. `rtListFiles` (`runtime-adapter.js:905`) transports `ls -p -A "${d}" | grep -v '/$'`
+(`:913`) — `-p` appends `/` to directory names and the `grep -v` deletes every one of them — and its
+reply validator then rejects any line carrying a separator at all (`:925-929`). So `_listFiles`
+returns the regular *files* directly under a directory and can never return a subdirectory name, in
+either direction; there is no other listing seam in the adapter (`rtDevInjections`, `:1086-1110`).
+A design that walked `docs/*` would find zero feature subdirectories in production on every run,
+while every unit test drove `fakeListFiles` (`__tests__/helpers/seams.js:132-166`), whose map form
+returns whatever the spec supplies — a double more capable than the seam it doubles, which is the
+DC-07 "production path ≠ unit path" failure exactly.
+
+The pass therefore asks git, in one call:
+
+```js
+_git(["ls-files", "--cached", "--others", "--exclude-standard", "--",
+      ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"])
+```
+
+Four properties of that call, each verified against this repository at HEAD:
+
+1. **It returns repository-root-relative paths**, one per line, which is what `CorpusFile.path`
+   needs anyway — the walk would have had to reassemble them from a directory and a basename.
+2. **`:(glob)` magic is load-bearing, not decoration.** Without it git's default wildmatch lets `*`
+   cross a `/`, and `docs/*/LEARNINGS-*.md` then matches `docs/discarded/{feature}/LEARNINGS-*.md`
+   (measured: two hits at HEAD, under `docs/discarded/pdlc-rcv-budget-stop/` and
+   `docs/discarded/pdlc-review-convergence/`). With `:(glob)` the same pathspec matches exactly the
+   one-level-deep set and those two hits are zero. Exclusion of `docs/discarded/` is therefore still
+   by *not enumerating* — the pathspec cannot name it — and not by a filter a later edit can drop.
+3. **`--cached --others --exclude-standard`** is one set, not two calls: a LEARNINGS harvested but
+   not yet committed is still corpus, and an ignored file never is.
+4. **It is a read.** `ls-files` reads the index and the worktree and mutates nothing; §9.3 records it
+   as the `read-index` verb in the invoking-tree domain.
+
+`parseCorpusListing` is the pure half: split on newline, drop empty lines, and map each path to
+`{path, basename}` by its last `/`. `enumerateCorpus` **never opens a file**.
+
+`{ok: false}` from the seam is **not** an empty corpus. `enumerateCorpus` returns
+`{unlistable: true, detail: stderr}`, and `main` dispositions it through §10.2's **`failNoReason`**
+— terminal status `failed`, **no** reason code, the pathspec and `stderr` pushed onto §8.4's
+`dispatchLog` for the report body. No new reason code is minted for it: vocabularies §1 at
+`Version` 1.4 has no row for a corpus read failure, and inventing one here would breach REQ §4b and
+this document's own §1.3 altitude check. `{unlistable: true}` is an in-module control value, never a
+rendered one — it appears in no log row, no artifact and no §6.4 catalogue.
+
+This is the same fail-safe direction §7.7 takes for `ESCALATIONS.md` ("never as empty: the two codes
+make different claims"), applied to the corpus rather than contradicted one section earlier: an
+unlistable corpus must never terminate `no-op`, which would be indistinguishable from a genuinely
+empty one and would advance the cadence datum on a pass that read nothing. §10.3 row 1a carries it.
 
 `classifyCorpus` is the predicate. Its algorithm, in order:
 
@@ -577,10 +621,37 @@ legacy region must reproduce the shipped predicate over prose that names full pa
 a bundle that cannot import; the hook is a Python heredoc inside bash that no JS test can import
 (`nudge-consolidation.sh:22-50`). Extracting a shared implementation would need a third artifact and
 a language boundary neither side has today. The two are therefore written separately to one stated
-algorithm and pinned by AT-P7's differential harness, which runs both over one fixture table and
+algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs both over one fixture table and
 asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s glob gains a second
 `glob.glob` over `docs/completed/*/LEARNINGS-*.md`, and `:41`'s comprehension tests against the two
 regions computed by a short helper rather than against `logtext` whole.
+
+**A third hook edit exists, and it is what makes AT-P7 an oracle at all.** The shipped hook cannot
+emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count**
+(`:44-48`), and it prints it only when `n >= THRESHOLD` with `THRESHOLD = 5` (`:25`, `:43`); below
+five it prints nothing and exits 0 (`:49`). Every fixture that discriminates the two-region
+predicate — the truncated block (E-04), the stray closer (E-05), the basename collision (E-09), the
+legacy/block boundary — has fewer than five pending files, so an oracle reading that message is
+blind on all of them, and a count-above-five comparison would pass unchanged if the hook's
+two-region logic were deleted outright. The hook therefore gains, immediately before the threshold
+test:
+
+```python
+if os.environ.get("PDLC_CONSOLIDATION_DEBUG") == "1":
+    names = sorted(os.path.basename(p) for p in pending)
+    sys.stderr.write("PDLC_PENDING:" + ",".join(names) + "\n")
+```
+
+Three constraints on it, each falsified rather than promised: it writes to **stderr**, so the
+SessionStart stdout contract (a JSON object, or nothing) is byte-unchanged; it is **env-gated off**,
+so an ordinary session sees nothing; and it fires **regardless of `THRESHOLD`**, which is the whole
+point. The channel is itself tested — an AT runs the hook with the variable unset over a
+five-file corpus and asserts that neither stream carries `PDLC_PENDING:`, and a second runs it with
+the variable set over a one-file corpus and asserts the line is present — because a debug channel
+nobody falsifies is the one that quietly starts emitting the operator's file list. Without this
+line T-08's "held equal by a differential test" is not true, and the decision would have to be
+re-argued on evidence a count-above-threshold oracle can actually supply; §13.1 row 6 records that
+dependency.
 
 ### 7.2 Trigger, datum and `passId` (FSPEC §2.3, §2.5)
 
