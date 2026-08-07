@@ -654,6 +654,119 @@ Row 3's `headExists` is supplied by the caller from one
 verb of §9.3's invoking-tree domain, never a checkout and never a filesystem stat the runtime
 cannot perform.
 
+### 7.6 Routing and suppression (FSPEC §5.1, §6.4)
+
+```ts
+routeOf(target: string): Route                                        // pure
+enactedByLog(pair, records): {enacted: boolean, passId: string|null}  // pure
+enactedByPr(pair, prStates): {enacted: boolean, url: string|null}     // pure
+```
+
+`routeOf` normalises the target — repository-root-relative, no leading `./`, no `..` segment, `/`
+separators — and returns `"PR"` when it is prefixed by **any member of `MERGE_GUARD_DEFAULTS`**
+(imported from `orchestrate-dev.js:48-53`, never copied: a copy would silently survive a change to
+the constant, and set-equality with it is AT-R1's whole point). Otherwise it returns `constraints`
+for `docs/_constraints/DOMAIN-CONSTRAINTS.md`, `decisions` for `docs/_decisions/DECISIONS-*.md`, and
+routes every other consuming-repo path to the proposal file. `guardVerdict` (`:732`) and
+`effectiveGuardPaths` (`:709`) are **not** called: both are reachable only from Phase MERGE's ladder
+and the advisory-envelope check and both decide about *that run's own* PR, so calling them would
+claim an enforcement neither performs. The pass reads the constant and decides for itself.
+
+**Suppression has one key and two carriers**, and each carrier is a separate pure function so
+neither can accidentally consult the other's evidence:
+
+- `enactedByLog` is a function of `(failureModeId, action)` **and** `route`, and of nothing else. A
+  record whose `route` is `degraded` does not enact. A record short of `failureModeId`, `action` or
+  `route` cannot be evaluated ⇒ `absent` ⇒ the promotion is re-proposed. A record short of only
+  `passId` **still enacts** — the predicate does not read that field — and returns
+  `{enacted: true, passId: null}`, which §7.9 renders with §6.5's literal. This is the one arm
+  where the reader's general skip rule is inverted, and it is inverted *in the return type* rather
+  than in a caller's conditional, so no caller can get it wrong.
+- `enactedByPr` reads the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `open` or
+  `merged`. State is read at poll time with no memory: a reopened PR is `open`; a `closed`-unmerged
+  PR is not in the key set. §9.2 states the one `gh` call that supplies `prStates`.
+
+### 7.7 The advisory corpus (FSPEC §9.2, §9.3 — T-06)
+
+```ts
+parseEscalations(text: string | null): EscalationCounts      // pure, total
+seamCandidates(counts): {over: string|null, tie: string[], under: string[]}   // pure
+```
+
+The parse target is the **metadata table row**, never the heading. `renderEscalationEntry`
+(`orchestrate-dev.js:2763`) emits `| Feature | ${feature} |` at `:2782` and `| Seam | ${seam} |` at
+`:2783`; the heading it emits at `:2776` carries the same two values joined by em dashes, which a
+feature name containing an em dash makes ambiguous. `parseEscalations` therefore splits the text on
+`/^## /m` into entries and, within each, matches
+`/^\|\s*Feature\s*\|\s*(.+?)\s*\|\s*$/m` and the corresponding `Seam` row. An entry missing either
+row is **skipped with a parse notice** and attributed to no key; the read never aborts (E-12).
+
+`corpusState` is `absent` when `_readFile` returned `null` — which covers unreadable as well as
+missing, and is the fail-safe direction the FSPEC fixes ("never as empty: the two codes make
+different claims") — `empty` when the text parses to zero entries, and `present` otherwise.
+
+`seamCandidates` ranges over **every entry in the file**: no filter on `Feature`, none on date, no
+relation to the consumed set (BR-37a). Over-escalation requires both conjuncts — ≥2 distinct
+features **and** a total strictly exceeding every other seam's; a tie returns `tie` and no
+candidate. Under-exercise requires a non-empty corpus with ≥1 *other* seam escalating and this seam
+at zero. Seam identity comes from `ADVISORY_SEAMS` (`orchestrate-dev.js:1669`), imported.
+
+### 7.8 Configuration (FSPEC §11 — the `parseAdvisoryConfig` precedent)
+
+```ts
+parseConsolidationConfig(text: string | null): ConfigParse    // pure, total
+```
+
+Structurally identical to `parseAdvisoryConfig` (`orchestrate-dev.js:1682`), whose five observed
+states are verified at HEAD (`:1689`, `:1693-1696`, `:1698`, `:1700-1701`, `:1705-1713`) and
+reproduced key-for-key: absent file, unparseable JSON, missing section, non-object section
+(`sectionMalformed: true`), and per-key type rejection that names the key in `invalidKeys` while
+leaving every other configured key at its configured value.
+
+It is a **separate function, not a generalised one.** Refactoring `parseAdvisoryConfig` into a
+shared parameterised parser would edit a guard-set file for a second reason and put a shipped,
+tested advisory path at risk for a cosmetic gain; the FSPEC's reuse obligation is over the *rung
+ladder*, which is behaviour, not over a config parser, which is twelve lines of shape. The
+duplication is bounded and is pinned by a test that asserts the two functions agree on all five
+states (§11.3).
+
+`pluginRepository` is the one key whose failure is not a parse fallback: a non-null value that does
+not resolve is `repository-unresolved` and the §9 degradation, decided at the PR-route attempt, not
+at parse time.
+
+### 7.9 Rendering — the log records and the report body (FSPEC §10.2 – §10.4)
+
+```ts
+renderConsumedPair(passId, basenames): string          // §7.1, one whole record
+renderFailureModeRecord(record): string                // one whole record
+renderEffectivenessTable(rows): string                 // one whole record
+renderTerminalRow(state): {text: string, dropped: ReasonCode[]}
+renderReportBody(state): string
+```
+
+Four appends in a fixed order (consumed pair → failure-mode records → effectiveness table →
+terminal row), **one `_appendFile` call per record**, never a batch. The granularity is the
+contract, not an implementation detail: it is what makes a partially-routed pass readable from the
+log (AT-M9's discriminating conjunct), and it is why the failure-mode record is appended **as each
+proposal routes** rather than after the routing loop.
+
+`renderTerminalRow` emits the FSPEC §10.3 field set, splitting exactly as that section does:
+enumerated-class values are drawn from §6.4's frozen catalogues; free-form values (`pass:`, `date:`,
+`consumed:`, `branch:`, `deferred:`, `pr:`, `suppressed-by:`, `rung:`) are data. It returns the
+codes it **dropped** as illegal-with-this-status (§6.4), so the caller can put them in the report
+body — the mechanism by which ER-4's named loss stays legible rather than silent.
+
+`suppressed-by:` renders `{id}:{action} → {evidence}` with exactly two evidence spellings, chosen by
+the suppression's own carrier and never by the writer: a PR URL, or `pass:{passId}` — degrading to
+`pass:(unavailable)` (§6.5) when the enacting record carried no `passId`. The entry is never
+dropped, and `pass:undefined` is unproducible because the renderer takes `passId: string | null`
+and maps `null` to the literal.
+
+`renderReportBody` emits the ten items of FSPEC §10.4 in order, each **present even when empty**
+(DC-01 receive-side totality: a reader must be able to tell "no promotions" from "the section was
+dropped"). Item 4 names each promotion's route and, for a merged promotion, its `elidedKinds` and
+`elidedArtifacts`; item 10 prints `openPromotionList(...).length` as a number.
+
 ## 8. Reuse of the advisory rung ladder, and the bundle wiring
 
 ## 9. The pull-request route — clone, commit, credential
