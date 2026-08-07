@@ -675,14 +675,33 @@ with the abandoned id `unknown`" (`:442`), bound again by E-11 and by AT-M3's *G
 
 There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
 the zero-byte marker is **permanent** — one per consuming repo, from the first pass onward, because
-no seam can remove it (`TSPEC:962-966`, carried into §13.3's residue list as "one permanent zero-byte
-`docs/_decisions/.consolidation-lock` per consuming repo", `TSPEC:2522`). It is `.gitignore`d, so it
+no seam can remove it (`TSPEC:966-970` — "There is no removal verb anywhere in reach: §5.1's
+protocol declares none, and the adapter ships `rtWriteFile` … and no unlink of any kind" — carried
+into §13.3's residue list at `TSPEC:2658-2660`). It is `.gitignore`d, so it
 reaches no diff, no PR and no fresh-clone bootstrap check; the only surface on which it appears is a
 literal `ls docs/_decisions/`, where a zero-byte `.consolidation-lock` means **free, not stuck**.
 That reading is the inverse of the one AC-1.3 invites when it tells the operator that deleting
 `.consolidation-lock` clears the lock — so it is stated here rather than left to the TSPEC, and the
 two manual channels agree: a hand-deleted file yields `file_missing`, a released pass yields
 `file_empty`, and §7.3 treats both as absent, so neither channel can wedge the cadence.
+
+**Anchor-sweep note — the release *form* moved upstream after this entry was approved.** Re-measuring
+`:962-966` and `:2522` for the v5 sweep surfaced that the TSPEC at HEAD no longer specifies the empty
+write this entry decides. It adopts FSPEC **BR-14a**'s in-place write
+`RELEASED: {passId} {ISO-8601}` (`TSPEC:974`, `:977`; `parseMarker` recognises the `RELEASED:` form
+at `:951`; **E-11b** maps it to `free` at any age with no reason code, `TSPEC:1016-1018`), and the
+residue line now reads "**never empty in steady state**, one per consuming repo, carrying the last
+pass's `RELEASED:` line" (`TSPEC:1036`, `:2658-2660`), with a zero-byte file at that path re-cast as
+a *signal* that a pass died mid-write rather than the steady state. The **reasoning** in this entry
+is what carried: release is a write, never a removal; `present` is `_checkFile(...).ok`; the two
+manual channels must agree. The **empty payload** did not, and the `RELEASED:`-line form makes the
+two costs recorded above obsolete rather than merely relocated — the marker is still permanent, but
+it is not zero-byte, and FSPEC §4.2's empty arm is unreachable for a different reason. This is
+recorded, not re-decided, in this citation-sweep revision: DEC-CONS-04's payload half is
+**superseded by `TSPEC:974-977`**, and a PLAN or PROPERTIES task must be written against the
+`RELEASED:` form (`TSPEC:998-1003` states the read-back conjunct), never against the empty one —
+`TSPEC:2656-2657` says so in terms ("a PLAN task written against the empty release form would be
+written against the losing side").
 
 **Alternatives considered.**
 
