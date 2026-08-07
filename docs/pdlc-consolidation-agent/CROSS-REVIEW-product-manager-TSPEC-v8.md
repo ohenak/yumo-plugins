@@ -26,6 +26,16 @@ Not a finding, recorded so the next reviewer does not re-raise it: §12.1's CONS
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-14 | (carried, unchanged from v6/v7, still deliberately open) Does the accepted residue — one class of pass death that leaves no log trace — deserve an operator-facing sentence? Nothing in this round touched it. |
+| Q-15 | The credential-helper element reaches `git` as a single-quoted argv element, which is what makes it survive transport. `rtGit`'s own doc comment notes the executing agent "sometimes runs it verbatim and sometimes re-quotes it". I am satisfied this is harmless for the helper (it is inert text to `git` either way, and the value is expanded below the transport), and it is a technical question rather than a product one — recorded, not asked as a blocker. |
+
 ## Positive Observations
+
+- **The erratum did the harder of the two available things.** The cheap resolution of E-1 was to delete the word "structural"; the row instead states the residual, names its two render sites, bounds it, and ties it to the DECISIONS disposition already approved — so the TSPEC and DECISIONS now cannot drift apart on the one NFR the operator cares about. As PM I would rather ship a recorded residual than an unqualified claim I cannot verify.
+- **E-2 was resolved without spending a frozen scope boundary.** The obvious fix (a second, unquoted command-string git transport) would have added a seam to FSPEC §6.5's frozen set and broken §9.3's `_git`-argv domain classifier. The chosen helper form leaves both untouched — no product-scope change, no FSPEC re-open, no new operator-visible surface. The rejected alternatives are recorded with that reason, which is exactly where a scope-protecting argument belongs.
+- **The document withdraws its own wrong claim by name** ("an earlier draft of this section was wrong about it") rather than quietly rewriting it, which is the pattern §7.3 and §13.1 row 5 already established here.
+- Every code citation in the delta verified at HEAD: `runtime-adapter.js:668-670`, `:951`, `:967`, `:977`, `:995`.
 
 ## Recommendation
