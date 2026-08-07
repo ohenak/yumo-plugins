@@ -238,6 +238,7 @@ interface ConsolidationSeams {
   _readFile(path: string): Promise<string | null>;          // null = absent OR unreadable
   _writeFile(path: string, contents: string): Promise<void>;
   _appendFile(path: string, text: string): Promise<void>;   // ONE whole record per call
+  _checkFile(path: string): Promise<CheckReply>;            // existence/non-empty gate — §7.3
   _listFiles(dirPath: string): Promise<ListReply>;          // NOT string[] — see below
   _git(argv: string[]): Promise<{ok: boolean; stdout: string; stderr: string}>;
   _ghRun(command: string): Promise<{ok: boolean; stdout: string; stderr: string}>;
@@ -252,6 +253,11 @@ interface ConsolidationSeams {
 // The listing seam's real, closed contract at HEAD (runtime-adapter.js:905-931;
 // the same four-member set is frozen for the doubles as LIST_FAILURE_VALUES,
 // __tests__/helpers/seams.js:58-63).
+// The presence probe's contract at HEAD (runtime-adapter.js:817-831). §7.3 depends on
+// `file_empty` being distinguishable from `file_missing` — and on both being treated as
+// absent — which is why the marker's `present` flag comes from here and not from _readFile.
+type CheckReply = {ok: true} | {ok: false; reason: "file_missing" | "file_empty"};
+
 type ListReply = {ok: true; files: string[]}
                | {ok: false; reason: "dir_missing" | "not_a_directory"
                                    | "unreadable" | "bad_argument"};
@@ -345,7 +351,7 @@ trailer plus an output tail, which is the wrong shape for a call whose stdout th
 
 | Seam | Module default | Behaviour when the default stands |
 |---|---|---|
-| `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation |
+| `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation |
 | `_now` | `Date.now` — a **module-level default, not an adapter seam** (§5.6) | ordinary operation |
 | `_ghRun` | `null` | the PR route degrades with `api-failure` before any call is attempted; the proposal file still carries the diff (§10.3) |
 | `_envPresent` | `null` | treated as "no credential variable observable" ⇒ §7.2 falls through to the `local-gh` probe, then to `absent` |
@@ -800,6 +806,7 @@ function stays pure and property-testable over an arbitrary multiset of rows (T-
 parseMarker(text: string | null): {passId: string, at: number} | null            // pure
 markerVerdict(parsed, present, nowMs, staleLockMinutes): "free"|"refuse"|"reclaim"  // pure
 takeMarker(state, seams): Promise<…>                                             // impure
+releaseMarker(state, seams): Promise<void>                                       // impure — step 16
 ```
 
 `parseMarker` accepts exactly `IN-PROGRESS: {passId} {ISO-8601}` on one line; anything else — empty,
@@ -807,6 +814,32 @@ truncated, multi-line, unparseable timestamp — yields `null`. `markerVerdict` 
 unparseable** marker to `reclaim`, never to `refuse`: an unparseable marker carries no timestamp, so
 it can never age out, and refusing on it would wedge the cadence permanently. The `present` flag is
 what separates that case from an absent file (`free`), so the two `null`s are never conflated.
+
+**What release does, and where `present` comes from — both decided, because the two answers must
+agree or every steady-state pass reclaims a lock nobody holds.** There is no removal verb anywhere
+in reach: §5.1's protocol declares none, and the adapter ships `rtWriteFile` (`runtime-adapter.js:802`),
+`rtAppendFile` (`:863`), `rtListFiles` (`:905`), `rtGit` (`:945`) and no unlink of any kind; `git rm`
+is outside §9.3's invoking-tree verb set and would not apply anyway, since the marker is untracked
+and `.gitignore`d by §3.3. AC-1.3 also settles the shape upstream — taking and releasing it "are
+in-place rewrites of a whole small file" (`REQ-…:155-156`). So:
+
+1. **`releaseMarker` is `await _writeFile(markerPath, "")`** — one seam call, no git call, the file
+   left **present and empty** on disk. It is the only write step 16 makes; §10.1's comment naming a
+   `_git` alternative was wrong and is corrected there.
+2. **`present` is `(await _checkFile(markerPath)).ok === true`**, and *only* that. `rtCheckFile`
+   (`runtime-adapter.js:817-831`) returns `{ok:true}` for a file that exists and is non-empty, and
+   `{ok:false, reason:"file_empty"}` / `{ok:false, reason:"file_missing"}` otherwise — so **`file_empty`
+   is treated exactly as absent**. `takeMarker` therefore probes with `_checkFile` for `present` and
+   reads with `_readFile` for the content `parseMarker` consumes; `present` is never derived from
+   `_readFile(...) !== null`, which would read the empty released form as present-and-unparseable and
+   send `markerVerdict` down the `reclaim` arm on a completely normal pass, recording
+   `reclaimed-stale-lock` on every steady-state run after the first. `_checkFile` is in §5.1's
+   protocol for this reason and is doubled by `fakeFs` already (§11.2).
+
+The two decisions are one decision read from both ends: an empty file is what release leaves, and an
+empty file is what the presence probe calls absent. The observable a test can hold is the **write
+double's last recorded contents for the marker path** — the `IN-PROGRESS:` line during the pass, the
+empty string after it — which is how §10.1 restates T-13's conjunct (ii).
 
 Take is `_readFile` then `_writeFile` — **read-then-write, not atomic**. FSPEC §4.5 / O-C3 prices
 this race and asks whether the runtime offers an atomic create-exclusive primitive. **It does
