@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-06 |
+| pdlc | draft | Claude | 1.2 | 2026-08-06 |
 
 > **Scope in one line.** The mechanism for one consolidation pass: one new workflow module
 > (`pdlc/workflows/consolidate-learnings.js`), the seam protocol it is injected with, the pure
@@ -114,7 +114,7 @@ decomposition is by **exported pure function** (§4), not by file.
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
 | `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-811`) **alone**, whose prompt today says `relative to the repository root` (`:805`, the only occurrence of that string in the file). `rtReadFile` is **not** modified — see §5.6(a) | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
-| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1) | §7.1 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions; `:29-30`'s early exit replaced by a `pending = []` fall-through; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the block/legacy predicate; `:41`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-78`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
 | `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
@@ -683,6 +683,23 @@ line T-08's "held equal by a differential test" is not true, and the decision wo
 re-argued on evidence a count-above-threshold oracle can actually supply; §13.1 row 6 records that
 dependency.
 
+**Placement: after `pending` is computed, but the early exit moves.** The shipped hook returns at
+`:29-30` (`if not learnings: sys.exit(0)`) before `pending` exists, so a zero-corpus fixture would
+emit no line at all and the harness would have to read `∅` from **silence** — an absence-only reading
+of the one channel the whole differential rests on, indistinguishable from "the hook did not run".
+The edit therefore replaces that early exit with a `pending = []` fall-through so the debug line is
+reached on every path, and the `n >= THRESHOLD` test at `:43` (which is already false for `n == 0`)
+carries the no-output behaviour unchanged. That keeps the shipped stdout contract byte-identical on a
+zero corpus while making `PDLC_PENDING:` (with an empty value) a **positive** observation of `∅`.
+§11.3(f)'s fixture table gains a zero-corpus row to exercise it.
+
+**How the PLAN must route this edit: production code, not test scaffolding.** It ships in
+`pdlc/hooks/scripts/nudge-consolidation.sh`, a consumer runs it on every `SessionStart`, and
+`bash -n` in CI's `Shell scripts parse` job covers it — so it belongs to the hook's owning
+implementation task with the `:28` glob and `:41` predicate edits (one file, one task, per
+batch-safety rule 2), never to a test-helper task. The release note names it as a new,
+default-off debug channel, alongside §8.3's drift-gate notice.
+
 ### 7.2 Trigger, datum and `passId` (FSPEC §2.3, §2.5)
 
 ```ts
@@ -1216,6 +1233,14 @@ exists to prevent. §13.3 hands the PLAN the obligation to say so where a queue 
 it: the feature's release note and `pdlc/RELEASE-CHECKLIST.md` both name the required
 `sync-workflows.sh` run, and the repo's own bootstrap already documents the two-command order.
 
+**No AC or FSPEC row owns it, and that is the correct place for it.** The interruption is not
+behaviour this feature specifies: it is the *shipped* drift gate's existing contract
+(`docs/_queue/QUEUE.md`'s gate, `distribution.checkEnabled`) meeting a new artifact row, and it fires
+identically for any feature that adds a bundle. Inventing an AC for it would push a distribution
+mechanic into a functional spec that decides pass behaviour. So its discharge **is** the §13.3
+release-note obligation — stated here so the choice is visible rather than looking like an omission,
+and stated in the two places an operator actually reads before running a queue.
+
 ### 8.4 Capturing the resolver's `_log` stream (T-04)
 
 `ADVISORY_MODEL_FALLBACK:` is emitted through `_log` (`orchestrate-dev.js:1858-1860`, the template
@@ -1746,8 +1771,10 @@ discriminating fixture. Three conjuncts per fixture row, so the oracle is positi
 invariance-only: the JS set equals the hook set in both directions, **and** each equals the expected
 set transcribed literally in the fixture table — without the third, two implementations that both
 return `∅` agree perfectly. The table covers the truncated block (E-04), the stray closer (E-05),
-the basename collision (E-09), the legacy/block boundary, and one row above the threshold so the
-shipped `additionalContext` count is also compared. L4 degrades exactly as the hook does when no
+the basename collision (E-09), the legacy/block boundary, one row above the threshold so the
+shipped `additionalContext` count is also compared, and a **zero-corpus** row that asserts
+`PDLC_PENDING:` is emitted with an empty value (§7.1's relocated early exit) — so `∅` is read
+positively rather than inferred from silence. L4 degrades exactly as the hook does when no
 usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recorded notice.
 
 **What this harness does not falsify, stated rather than implied.** Feeding both sides the same
