@@ -33,11 +33,42 @@ than the weakest, which is what v5 asked for.
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | The sweep re-measured every `TSPEC:` anchor. F-02 shows that a correct anchor can still carry a stale *claim* — `:1405` and `:1675-1677` both resolve, and both now say something different from what the sentence citing them asserts. Is it worth one more pass that reads the **content** at each retargeted anchor against the sentence that cites it, rather than only confirming the anchor resolves? Three sites in this revision cite lines whose text moved as well as their number (`:1675-1677`, `:1405`, `:966-970`); two of the three are the subject of F-02. |
+| Q-02 | DEC-CONS-04's new supersession note is the right pattern for "the upstream moved under an approved entry". F-01 and F-02 are two more instances of the same pattern (`FSPEC:2154`'s permitted set; §12 item 3). Should that note's shape be lifted into a short standing subsection — "entries whose upstream has moved" — so a PROPERTIES author has one place to look rather than three scattered paragraphs? |
 
 ## Positive Observations
 
-_(filled below)_
+- **The v5 finding was closed on the merits, not by softening the text.** The restatement adds the
+  PR-seam conjunct back, corrects the clone conjunct from a merge-verb intersection to whole-domain
+  emptiness, and adds the non-implication argument (`∅ ⊆ permitted` is vacuous) that makes it
+  obvious *why* both are needed. The invoking-tree intersection I offered to drop was kept and
+  labelled implied, with the reason for the label written down — which is the answer to v5's Q-01
+  and a better one than dropping it.
+- **DEC-CONS-04's supersession note is the strongest new paragraph in the revision.** It found, by
+  re-measuring anchors rather than by being told, that the TSPEC had adopted BR-14a's
+  `RELEASED: {passId} {ISO-8601}` in-place write and that the zero-byte payload this entry decided
+  no longer exists in steady state; it separates the **reasoning** that survived (release is a
+  write, never a removal; `present` is `_checkFile(...).ok`) from the **payload** that did not; and
+  it tells a PLAN or PROPERTIES author, in terms, to write against the `RELEASED:` form. Every
+  anchor in it reproduces at HEAD — `TSPEC:974`, `:977`, `parseMarker`'s `RELEASED:` arm at `:951`,
+  E-11b's `free`-at-any-age mapping at `:1016-1018`, the residue line at `:1036` and `:2658-2660`,
+  the read-back conjunct at `:998-1003`, and `:2656-2657`'s "a PLAN task written against the empty
+  release form would be written against the losing side". Recording a supersession instead of
+  silently re-deciding is the behaviour a decision log exists for.
+- **The retargets are individually measured and every one lands.** I resolved all eleven stale
+  values independently: `:672`/`:738` (the `enumerateCorpus` signature and the exact
+  `{unlistable: true, detail: stderr}` phrase), `:1937` (§10.3 row 1a), `:1602` (`openClone`'s
+  signature), `:1675-1677` and `:1699`, `:806` and `:841-842` (the `CORPUS_GLOBS` prose and the
+  Python form), `:807`, `:847`/`:850` (declaration-not-line-number, and `glob.glob(` exactly once),
+  `:966-970`, `:2658-2660`, `:1405`. All reproduce. The note's replacement of a single global offset
+  with a measured range — `+54`, `+80`, `+104`, `+105`, `+122` — and its flat statement that "adding
+  a constant to a stale anchor lands nowhere" is the correct lesson from the v5 round.
+- **Both High findings are transcription defects against a moving upstream, not decision defects.**
+  Nothing in this revision reopened a settled question, and no decision recorded here is wrong.
+  DEC-CONS-03 is still containment-not-exclusion, conjoined with obligation, compared as a `Set`;
+  DEC-CONS-01's inbound residual is real and the TSPEC now agrees with it at `:1405`.
 
 ## Recommendation
 
