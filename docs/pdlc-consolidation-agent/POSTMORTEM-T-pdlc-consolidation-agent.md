@@ -131,6 +131,48 @@ The tree at HEAD is v1.5 and no reviewer has ever seen it.
 
 ## Reviewers
 
+| Role | Skill | Lens | Rounds | Files |
+|---|---|---|---|---|
+| product-manager | `pdlc:pm-review` | requirements traceability, scope compliance, AC fidelity, channel discipline | 1–5 | `CROSS-REVIEW-product-manager-TSPEC-v{1..5}.md` |
+| test-engineer | `pdlc:te-review` | testability, oracle strength, fixture buildability, completeness by set-equality | 1–5 | `CROSS-REVIEW-test-engineer-TSPEC-v{1..5}.md` |
+
+Nothing in this window impeaches either reviewer's conduct. The record on both:
+
+- **Delta scoping held from round 2 onward.** Every review names its baseline commit and its diff
+  range and states that unchanged sections were not re-litigated (round 3: `ea5be5a` → `e75feca`,
+  "251 insertions / 62 deletions"; round 5: `74f990a` → HEAD, "188 insertions, 38 deletions across
+  seven commits"). No round re-opened a settled decision, and both reviewers say so in terms
+  ("Nothing I approved in earlier rounds is broken by this revision").
+- **Claims were verified against the repository, not asserted — and re-verified each round.** Round
+  5 alone re-checks `rtCheckFile` (`runtime-adapter.js:817-831`) and its `test -f && test -s`
+  command, `fakeFs.checkFile`'s trim-based form (`__tests__/helpers/seams.js:292-300`), the absence
+  of any removal verb in the adapter, `checkFileNonEmpty`'s never-throw contract
+  (`orchestrate-dev.js:3674-3693`) and its unbound `fs` in the shipped bundle
+  (`dist/orchestrate-dev.bundle.js:3219`), `nudge-consolidation.sh:28`'s `glob.glob` form, and the
+  `adapterProbe.test.js:253-258` precedent. Earlier rounds re-ran the corpus pathspec measurement
+  by hand, in both directions, three separate times.
+- **A reviewer corrected itself against measurement.** PM v3 withdrew its own v2 sub-claim about the
+  shipped `rtWriteFile` prompt text after re-measuring, and said so in the disposition table rather
+  than quietly dropping it. That is the opposite of a ratchet.
+- **The severity bars were applied as written, including downward.** Every finding filed Medium or
+  High names a specific undetermined value, an unreachable enumerated row, or an obligation with no
+  falsifier. No finding in the window is of the `DEC-SEV-02` bookkeeping-completeness class that
+  would have had to be scored Low; the two Highs are both upstream-obligation collisions, which no
+  standing decision assigns to Low (see § Recommendation 3).
+- **The erratum channel was used rather than bypassed, by both reviewers and by the author.** PM v3
+  F-10 was cleared by *raising* the enumeration relaxation against REQ `:115-116` and FSPEC AT-P7
+  rather than absorbing it; PM v4 raised two errata in its own final message; PM v5 raised the
+  FSPEC-side half of F-17; the author's §12.4 records ER-6 with a falsifiable interim, and §13.3
+  now carries the marker erratum. No reviewer edited an upstream document.
+- **Both reviewers repeatedly asked for less than they were given.** TE v5's disposition records
+  that two of four repairs exceeded the finding ("the pin anchor was fixed by changing the artifact
+  rather than weakening the assertion, and the pathspec case was moved to a self-built temp
+  repository I had not thought to require"). A window in which the author over-delivers on every
+  round and the reviewers say so is not a window failing on effort.
+
+The one thing neither reviewer did — and it is the whole of the halt — is **approve**. Both applied
+the shipped bar (any open High or Medium ⇒ Needs revision) to a finding set that was never empty.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
