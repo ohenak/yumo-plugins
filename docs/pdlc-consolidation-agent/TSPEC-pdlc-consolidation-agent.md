@@ -843,13 +843,21 @@ filesystem stat the runtime cannot perform.
 ### 7.6 Routing and suppression (FSPEC §5.1, §6.4)
 
 ```ts
-routeOf(target: string): RouteOutcome                                 // pure
-routeProposal(proposal: Proposal): RouteOutcome                       // pure — the ONLY caller of routeOf
+routeOf(target: string): RouteDecision                                // pure
+routeProposal(proposal: Proposal): RouteDecision                      // pure — the ONLY caller of routeOf
 enactedByLog(pair, records): {enacted: boolean, passId: string|null}  // pure
 enactedByPr(pair, prStates): {enacted: boolean, url: string|null}     // pure
 
-// routeOf's outcome set is FIVE-valued; Route (6.1) has four members. See below.
-type RouteOutcome = Route | "proposal-file";
+// The RANGE of both routing functions. Four members, exactly — this is the type a
+// set-equality oracle asserts against. "degraded" is NOT in it: no conforming
+// implementation of either function can return it (see below).
+type RouteDecision = "PR" | "constraints" | "decisions" | "proposal-file";
+
+// The RECORD field's domain, which is a different set: Route (§6.1) is the
+// four-member vocabulary value written to FailureModeRecord.route, and "degraded"
+// is one of its members. RouteDecision and Route overlap in three members and are
+// neither a subset nor a superset of one another.
+// Route = "constraints" | "decisions" | "PR" | "degraded"      (§6.1)
 ```
 
 **Routing reads the action, not only the target — and the function that does so is named.** FSPEC
@@ -879,7 +887,20 @@ Making it a stated function rather than an implication is the point of the findi
 consuming repo, which is exactly the "never applied by the pass" prohibition the whole propose-only
 symmetry rests on. §4.1's graph names `routeProposal`, and `routeOf` is reachable from nowhere else.
 
-**`routeOf` has a fifth outcome the `Route` union cannot express.** `"proposal-file"` is
+**Two sets, and the reason they must be named separately.** `RouteDecision` is the routing
+functions' **range** and has exactly four members; `Route` (§6.1) is the record field's vocabulary
+and also has four, but a *different* four. The two differ in one member each way: `"proposal-file"`
+is reachable from `routeProposal` and is not a `Route`; `"degraded"` is a legal `Route` and is
+**unreachable** from either routing function — `routeProposal`'s three branches can return only
+`"PR"`, `routeOf`'s answer (`constraints` / `decisions` / `proposal-file`), or `"proposal-file"`.
+This is stated as two named types rather than one union because §6 makes every enumerated contract a
+**set-equality** oracle over the full enumeration: an oracle written against a union that is wider
+than the range would red on correct code, and the predictable repair — weakening it to containment —
+would stop failing when a route is deleted, which is the failure the oracle exists to catch. So the
+routing oracle asserts `range(routeProposal) = RouteDecision` (four members, both directions) and the
+record oracle asserts the `route` field ∈ `Route`; neither type appears in the other's assertion.
+
+**`routeOf` has an outcome the `Route` union cannot express.** `"proposal-file"` is
 `routeOf`'s answer for FSPEC §5.1 row 4 and for every `revise`/`retire` diversion above, and
 vocabularies §1 at `Version` 1.4 has no `Route` row for it (§6.1's four-member union is transcribed
 correctly from `pdlc-consolidation-vocabularies.md:38-65`). That gap is **upstream**, recorded as
