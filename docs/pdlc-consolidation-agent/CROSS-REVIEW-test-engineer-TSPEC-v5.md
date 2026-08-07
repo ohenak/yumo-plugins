@@ -142,8 +142,80 @@ warning, which is why this is Low and not Medium.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The new L4 pathspec case builds its temp repository with `git init` + `git add -A`. Both patterns are then reached through `--cached`, so `--exclude-standard` is inert in that fixture — the case proves the `:(glob)` half but not the flag half. Is that deliberate (the flag's cost is what §13.3 hands upstream, so pinning it here would pre-empt the erratum), or should the case add one untracked-and-ignored file to make the `--others --exclude-standard` behaviour observable too? Either answer is fine; I would like the choice recorded, since a later reader will otherwise assume the case covers the whole argv. |
+| Q-02 | §11.1's counter assertion is stated to run "in both worlds". Jest does not run `beforeAll`/`afterAll` for a block in which every test is skipped, so in the all-skip world the `executed === 0` branch is likely unobserved rather than asserted. It costs nothing — `0` is the branch that would have passed — but the sentence claims more than the harness delivers. Is the counter intended to live at file top level for that reason, or should the claim be softened to "the mixed world cannot arise, because the probe decides once"? |
+| Q-03 | With `present` sourced from `_checkFile`, the empty released marker stays on disk forever (§3.3 `.gitignore`s it, no seam removes it). `rtCheckFile` calls it absent via `test -s`; `fakeFs.checkFile` calls it absent via `String(...).trim() === ""` (`seams.js:298-299`). The two agree on `""` and disagree on a whitespace-only file. Nothing in this feature can produce one, so this is not a finding — but is the double's trim-based form the contract §7.3 means to depend on, or should the doubles' comment record that the real seam is byte-size based? |
+
 ## Positive Observations
+
+- **F-01's repair answered a question I had framed as two, and showed they were one.** "The two
+  decisions are one decision read from both ends: an empty file is what release leaves, and an empty
+  file is what the presence probe calls absent." That sentence is the whole content of the finding,
+  and the revision found it rather than patching the two halves independently. It then followed
+  through into the protocol (`_checkFile` added to §5.1 and §5.3), the call graph, the §12.1 CONS-03
+  row and the `finishPass` comment — the promotion is visible in every place it should be, which is
+  why F-02 above is a genuinely isolated straggler rather than a symptom.
+- **The pin-anchor repair changed the artifact instead of the assertion.** I asked for the pin to
+  stop depending on a line index. The revision could have satisfied that with a regex over
+  `os.path.join` components; instead it made the shipped hook declare the two patterns as named
+  literals, so the pin reads a declaration, the hook is more legible, and the "exactly two, no
+  third" falsifier survives. The added conjunct — `glob.glob(` occurs once, inside that comprehension
+  — closes the bypass I did not raise (a second call site the set assertion would not see). I
+  verified both premises at HEAD.
+- **The level/file split for the two pins was corrected out loud, on the right axis, and for the
+  right reason.** "A source-text grep of the JS module's own text cannot see a call site that builds
+  a different array at runtime, where an assertion on the array actually handed `_git` can — and this
+  pair is the compensating falsifier a REQ relaxation is being conceded against, so the weaker
+  reading is not the one to ship." That is the argument, not a preference, and the second half of it
+  — that file ownership is a PLAN-level fact through §12.3 feeding the ownership manifest — is why
+  the correction had to propagate to four places. It did: §7.1, §11.1, §11.3(f), §12.2's T-08 row,
+  §12.3 and §13.1 row 6 all now say the same thing.
+- **T-11's new paragraph states oracle provenance, which is the failure my brief exists to catch.**
+  "They are transcribed from the fixture LEARNINGS corpus the pass was handed, never from
+  `state.promotions[i]` or any other field of the produced record… reading the expected strings off
+  the record would green it even when the pass and the renderer drop the same field together." That
+  is an implementation-echo hazard named and closed in the row itself, with the operator-visible
+  consequence (a PR body citing nothing) attached so a later editor knows what the row is for.
+- **The unreadable-entry row carries its control inside one fixture.** Not "a case for the unreadable
+  member and another for the readable one" — one corpus with both, so every conjunct is a difference
+  rather than a presence. Conjunct (3) is stated in both directions in a single sentence. That is the
+  pair-not-absence discipline applied without being asked twice.
+- **§13.3 now tells the upstream reviewer which answer reduces the divergence set.** "The hook has no
+  `--exclude-standard` to drop — `glob.glob` sees ignored files unconditionally — so an answer of
+  'yes, an ignored LEARNINGS file is corpus' *closes* class (i)… the erratum says so rather than
+  presenting them as neutral alternatives." An erratum that ranks its own options is worth several
+  that merely raise them, and the third question riding with the batch (should the log row carry the
+  unreadable basenames?) was declined at this layer for a stated reason — a vocabularies §3 field-set
+  change — rather than quietly minted.
 
 ## Recommendation
 
+**Needs revision**
+
+Two Mediums, both narrow, and both the unfinished tail of the same repair rather than anything
+structural:
+
+1. **F-01** — give `rtConsInjections()` a set-equality assertion against §5.1's protocol (one §12.2
+   row, one §12.3 file), and say in §5.3 what the module defaults do in the runtime rather than under
+   jest. `_checkFile` is the one seam whose unwired failure can read as "no marker present", which
+   turns AC-1.3's mutual exclusion off while the suite stays green; the repo has shipped this exact
+   omission once already (`runtime-adapter.js:1098-1100`).
+2. **F-02** — reconcile §7.3's take sequence (`read → verdict → …`) with §7.3's own decision 2. The
+   sequence line is the text an implementer transcribes, and as written it supplies `present` from
+   the read the decision forbids.
+
+F-03 is a one-clause edit (`try/finally` around the drain) and does not block.
+
+Everything I raised at v4 is closed at the mechanism, and two of the four repairs are better than
+what I asked for — the pin anchor was fixed by changing the artifact rather than weakening the
+assertion, and the pathspec case was moved to a self-built temp repository I had not thought to
+require. Both new Mediums are the same shape as last round's: a decision made correctly in one place
+that has not yet reached the one remaining place that contradicts it. Neither is a redesign.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 2, "low": 1}
+
