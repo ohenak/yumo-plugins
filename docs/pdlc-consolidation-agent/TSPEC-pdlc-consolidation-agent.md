@@ -59,9 +59,16 @@ type that produce it, and the test level that falsifies it.
 ### 1.3 Altitude self-check
 
 Per DC-09/DC-10 this document carries mechanism, not requirements: no new status, reason code,
-route, verdict or field name appears here. Every enumerated value used is a
-`pdlc-consolidation-vocabularies.md` §1 row at `Version` 1.4, and every literal this document *does*
-pin (§6.5) is a value §1 has no row for and the FSPEC explicitly deferred under DEC-LAYER-01.
+route, verdict or field name appears here. Every enumerated value written to a log row, an artifact
+or a record is a `pdlc-consolidation-vocabularies.md` §1 row at `Version` 1.4, and every literal
+this document *does* pin (§6.5) is a value §1 has no row for and the FSPEC explicitly deferred under
+DEC-LAYER-01.
+
+Two in-module control values are **not** vocabulary and are never rendered: `routeOf`'s
+`"proposal-file"` outcome (§7.6) and `enumerateCorpus`'s `{unlistable: true}` (§7.1). Each names a
+branch the FSPEC states and §1 has no row for; each is recorded — the first as ER-6 in §12.4, the
+second as §10.3 row 1a's no-reason-code disposition — and neither is minted into a catalogue,
+because minting one would be the REQ §4b breach this check exists to catch.
 
 ## 2. Technology stack and new dependencies
 
@@ -480,7 +487,9 @@ interface Suppression { failureModeId: string; action: Action;
 interface ParseNotice { subject: string; missingField: string; detail?: string; }
 ```
 
-`FailureModeRecord` is a **closed eight-field record on both sides** (DC-01): the writer emits all
+`FailureModeRecord.route` is `Route`, the four-member union — so a promotion routed to the proposal
+file records `"degraded"` until ER-6 lands (§7.6, §12.4). `FailureModeRecord` is a **closed
+eight-field record on both sides** (DC-01): the writer emits all
 eight on every kind and on the `degraded` route (AT-F20), and the reader is total over any subset
 (§7.4's `parseLogRecords` yields a partial record plus the notice list, never a filled default). The
 two halves are separate typedefs so the reader's type cannot drift into the writer's.
@@ -916,6 +925,12 @@ features **and** a total strictly exceeding every other seam's; a tie returns `t
 candidate. Under-exercise requires a non-empty corpus with ≥1 *other* seam escalating and this seam
 at zero. Seam identity comes from `ADVISORY_SEAMS` (`orchestrate-dev.js:1669`), imported.
 
+**The whole-file range is the FSPEC's, and PROPERTIES must fixture against it.** FSPEC §9.5 settled
+that `seamCandidates` ranges over every entry with no filter on `Feature`, none on date and no
+relation to the consumed set (BR-37a); the REQ's AC-6.3 text still reads "across the consumed
+window". This layer transcribes the FSPEC, so it is not a defect here — but a PROPERTIES fixture
+written from the REQ's wording would falsify a conforming implementation. §11.5 carries the note.
+
 ### 7.8 Configuration (FSPEC §11 — the `parseAdvisoryConfig` precedent)
 
 ```ts
@@ -1054,7 +1069,8 @@ falsify:
    list. `MODEL_ADVISORY` (`:1652`) and `MODEL_ADVISORY_FALLBACK` (`:1653`) stay module-private and
    are not re-exported; the corpus baseline §3's "reuse the resolver, do not restate the ladder" is
    satisfied by import, so its drift-observable escape hatch is not taken.
-4. **The function stays non-`async` and `.then`-chained.** Its doc comment (`:1819-1826`) states
+4. **The function stays non-`async` and `.then`-chained.** Its doc comment (`:1820-1826` — the
+   "Deliberately NOT `async`" block; `:1819` is the preceding blank comment line) states
    that the hop count is load-bearing: the shipped caller races the returned promise against a
    `_sleep`-built deadline, and an `async` body would add microtask hops and let the deadline win on
    hop count. Adding a defaulted parameter changes no hop; converting the body would break a caller
@@ -1139,6 +1155,16 @@ touched once per artifact the rebuild changes, not once per feature.
 `sync-workflows.sh` needs no edit: it copies every row of the manifest, so the new bundle reaches
 `.claude/workflows/` by the shipped mechanism. `--check` will report the new row as `missing` until
 the first sync, which is the designed signal, not a regression.
+
+**And it blocks the queue until the operator syncs — deliberately, and it must be written down.**
+`orchestrate-queue`'s drift gate runs before `QUEUE.md` is even read and returns
+`outcome: "blocked"` on a row that is still `missing`, so the first queue invocation after this
+feature lands refuses until `sync-workflows.sh` has run. That is the gate working, not a regression:
+a consumer whose `.claude/workflows/` lacks the new bundle cannot run the pass anyway, and the
+alternative — a gate that ignores a missing row — is the silently-stale-copy failure the gate
+exists to prevent. §13.3 hands the PLAN the obligation to say so where a queue operator will read
+it: the feature's release note and `pdlc/RELEASE-CHECKLIST.md` both name the required
+`sync-workflows.sh` run, and the repo's own bootstrap already documents the two-command order.
 
 ### 8.4 Capturing the resolver's `_log` stream (T-04)
 
@@ -1642,6 +1668,11 @@ range over `parseLogRecords`'s output and its readers, so they belong in
 (two-action-one-subject) range over `mergeProposals` and belong in `consolidationIdentity.test.js`
 beside AT-R6b. Nothing about their fixtures is decided here.
 
+One standing caution passes through with them: no AT-A fixture may be written against the REQ's
+AC-6.3 "across the consumed window" wording. FSPEC §9.5 / BR-37a is the settled contract —
+`seamCandidates` ranges over **every** entry in `ESCALATIONS.md` (§7.7) — and a fixture taken from
+the REQ text would red a conforming implementation.
+
 ### 11.6 What is not tested, and why
 
 - **The producing side of the `failure-mode-id` convention** (a harvest agent copying an id). Its
@@ -1779,10 +1810,15 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 6 | Two predicate implementations, held equal by AT-P7 | one shared implementation | the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
-| 9 | Widen two §6.5 permitted sets (`read-auth`, `read-object`) rather than mis-classify into an existing verb | fold `gh auth status` and `git cat-file -e` into `read-pr` / `read-status` | §6.5 forbids reading a third verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards (§9.3) |
+| 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
+| 10 | Enumerate the corpus with one `_git(["ls-files", …])` read, `:(glob)`-anchored | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:913`, `:925-929`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
+| 11 | Widen `rtWriteFile` / `rtReadFile` to accept an absolute path | route the clone's writes through `_git` | git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index` — three mutating calls in the clone domain to replace one path argument (§5.6(a)) |
+| 12 | Add an env-gated `PDLC_PENDING:` stderr line to the hook | keep the count-above-threshold message as AT-P7's oracle | the shipped hook emits a count and only above `THRESHOLD = 5`, which is blind on every fixture that discriminates the two-region predicate — so T-08's "held equal by a differential test" would not be true (§7.1) |
 
-Rows 1, 2, 4, 5 and 6 are load-bearing and reversible only at cost; §13.3 records that DECISIONS is
-warranted for them.
+Rows 1, 2, 4, 5, 6 and 11 are load-bearing and reversible only at cost; §13.3 records that DECISIONS
+is warranted for them. Row 6's decision is now **conditional on row 12**: without the hook's
+observation channel there is no differential oracle, and two-implementations would have to be
+re-argued on what a count-above-threshold comparison can supply.
 
 ### 13.2 Risks
 
@@ -1796,8 +1832,9 @@ warranted for them.
 ### 13.3 Handed to the next layers
 
 - **DECISIONS** — warranted. §13.1 rows 1 (credential seam shape), 2 (resolver reuse vs. restate),
-  4 (clone source), 5 (non-atomic marker take) and 6 (two predicate implementations) each weighed a
-  real alternative with a different reversibility profile, and each will otherwise be reconsidered
+  4 (clone source), 5 (non-atomic marker take), 6 (two predicate implementations) and 11 (widening
+  the adapter's path contract rather than routing clone writes through git) each weighed a real
+  alternative with a different reversibility profile, and each will otherwise be reconsidered
   confidently by a future agent. Each needs a `Testability:` line per DC-10.
 - **PLAN** — the file-ownership manifest must serialise the three writers of
   `pdlc/workflows/orchestrate-dev.js` (the resolver widening, the `gitWithLockRetry` export, the
@@ -1805,4 +1842,13 @@ warranted for them.
   same-batch tasks appending to it. The four `dist/` artifacts are a per-wave chore commit, not a
   task's owned files.
 - **PROPERTIES** — §11.4's six properties and FSPEC §14.5's LD-1 … LD-5, in the files §11.5 names.
+  The two determinism properties carry a **positive conjunct each** (§11.4's second table); a
+  fixture written against invariance alone would be satisfied by a constant function.
+- **PLAN, additionally** — three obligations this revision creates. (i) The `runtime-adapter.js`
+  writers are **one** task for the same reason `orchestrate-dev.js`'s three are: `rtEnvPresent`,
+  `rtMakeTempDir`, `rtConsInjections` and §5.6(a)'s two prompt widenings are one file. (ii) The
+  `__tests__/runtimeBundle.test.js` edits — `AWAIT_SCAN_SOURCES` **and** `AT19_SEAM_NAMES`
+  (§11.3(c)) — are one task in that one file. (iii) The release note and
+  `pdlc/RELEASE-CHECKLIST.md` must state that the first queue invocation after this feature lands
+  is blocked by the drift gate until `sync-workflows.sh` runs (§8.3).
 
