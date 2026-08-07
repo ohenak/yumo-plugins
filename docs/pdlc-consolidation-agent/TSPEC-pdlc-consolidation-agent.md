@@ -769,6 +769,145 @@ dropped"). Item 4 names each promotion's route and, for a merged promotion, its 
 
 ## 8. Reuse of the advisory rung ladder, and the bundle wiring
 
+### 8.1 The signature widening, exactly (T-05)
+
+`resolveAdvisoryRung`'s current signature is `({ _agent, _log, _state, prompt })`
+(`orchestrate-dev.js:1833`) and its inner `dispatchAt` calls
+`_agent(ADVISORY_RUNG_SKILL, prompt, { model })` at `:1841`. The edit is one destructured parameter
+and one substitution:
+
+```js
+export function resolveAdvisoryRung({ _agent, _log, _state, prompt, skill = ADVISORY_RUNG_SKILL }) {
+  …
+  function dispatchAt(model) {
+    return _agent(skill, prompt, { model });          // was: ADVISORY_RUNG_SKILL
+  }
+```
+
+Four constraints on that edit, each of which the implementation must satisfy and a test must
+falsify:
+
+1. **Optional, defaulting to `ADVISORY_RUNG_SKILL` (`:1797`).** The shipped call site
+   (`:3132`, inside `runAdvisorySeam`) passes no `skill` and is not edited. AT-M10 is the
+   regression: the resolver called without `skill` dispatches `"se-review"` on the primary rung, on
+   the fallback rung, and on the memoised path.
+2. **Threaded to the one `_agent` call, therefore to every path.** `dispatchAt` is the sole
+   dispatch site — it is declared at `:1840`, and the memoised path (`:1844-1849`) and the two
+   ladder rungs (`:1851`, `:1861`) all
+   go through it — so a pass cannot resolve on one skill and dispatch on another. This is why the
+   parameter is threaded through `dispatchAt` rather than passed separately at each rung.
+3. **Exactly one ladder remains.** No second constant, no second resolver, no per-caller model
+   list. `MODEL_ADVISORY` (`:1652`) and `MODEL_ADVISORY_FALLBACK` (`:1653`) stay module-private and
+   are not re-exported; the corpus baseline §3's "reuse the resolver, do not restate the ladder" is
+   satisfied by import, so its drift-observable escape hatch is not taken.
+4. **The function stays non-`async` and `.then`-chained.** Its doc comment (`:1819-1826`) states
+   that the hop count is load-bearing: the shipped caller races the returned promise against a
+   `_sleep`-built deadline, and an `async` body would add microtask hops and let the deadline win on
+   hop count. Adding a defaulted parameter changes no hop; converting the body would break a caller
+   this feature does not otherwise touch.
+
+**The pass's own call is a new call site, not an instance of a shipped pattern.** The queue threads
+`rungState` into `runAdvisorySeam` (`orchestrate-queue.js:1245-1256`), not into the resolver; the
+resolver's only shipped call site is `orchestrate-dev.js:3132`. The pass therefore owns its own
+`{ resolved: null }` state (the shape `orchestrate-queue.js:1120` initialises) and calls the
+resolver **bare** — no deadline, no `_sleep`, no `{kind:"preempted"}` fifth shape. That shape is the
+shipped call site's disposition (`:3130-3134`), not the resolver's, and the pass has no seam budget
+to enforce; so FSPEC §2.6's four rows stay set-equal to the resolver's own return and throw set, and
+a hung dispatch is bounded only by the runtime's no-progress watchdog — recoverable through §7.3's
+stale-lock reclaim, which is why that reclaim is not merely a nicety.
+
+Every dispatch the pass makes (step 8 clustering, step 12 remediation authoring, step 13 proposal
+authoring) goes through the same resolver with the same `rungState`. Memoisation makes FSPEC §2.6
+rows 2 and 3 unreachable after step 8 (`:1844-1849`: with `_state.resolved` set the cached rung is
+used and no ladder is entered); row 4 remains reachable at every dispatch, which is exactly why
+S-11c exists.
+
+### 8.2 The bundle, and how it reaches the resolver (T-02)
+
+**Decision: inline, as the two shipped bundles already do.** `build-runtime.mjs` reaches across
+modules only by inlining a whole module body (`bundles`, `:448-471`); the queue bundle is
+`[QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY]` (`:450-453`) and `pdlc-cli.mjs`
+wraps the same dev body as `__dev` (`cliArtifact`, `:291`). The consolidation bundle takes the same
+form:
+
+```js
+{
+  file: "consolidate-learnings.bundle.js",
+  contents: stripCommentsForRuntime(
+    [CONS_META, BANNER, adapter, devModule, consModule, CONS_ENTRY].join("\n\n")
+  ),
+}
+```
+
+with `consModule = wrapModule("__cons", stripModuleSyntax(consSource), ["main", "meta"], prelude)`
+and the prelude re-binding the four reused symbols the same way `queueModule`'s does
+(`:113-122`):
+
+```js
+"const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
+"const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;",
+"const mergeCommandFor      = __dev.mergeCommandFor;",
+"const gitWithLockRetry     = __dev.gitWithLockRetry;",
+```
+
+Two of those four are not on `devModule`'s current export list (`:86-105`), which publishes
+`resolveAdvisoryRung` and `commitPaths` but not `MERGE_GUARD_DEFAULTS`, `mergeCommandFor` or
+`gitWithLockRetry`. The list therefore gains three names. `gitWithLockRetry` is **not** exported
+from `orchestrate-dev.js` today (it is a module-private `async function` at `:8617`); exporting it
+is part of this feature's edit to that file, and it is a pure addition — no call site changes.
+
+**What inlining decides, stated because T-02 asks.** The consolidation bundle inherits
+`orchestrate-dev`'s module-level constants by value at build time, so a drift in the widened
+resolver reaches **four** tracked artifacts, not three: `dist/orchestrate-dev.bundle.js`,
+`dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs` and the new
+`dist/consolidate-learnings.bundle.js`. All four are rebuilt by one `build-runtime.mjs` run and all
+four are diffed by CI's `Generated artifacts are in sync` job, so a commit that rebuilds three of
+four fails it. The alternative — a fifth artifact holding only the resolver, imported by all — is
+not available: the runtime forbids `import` entirely.
+
+`CONS_ENTRY` mirrors `QUEUE_ENTRY` (`:185-213`): it reads `args` (a bare string or an object) into
+the one optional input, spreads `rtConsInjections()`, and returns `await __cons.main({…})`.
+`CONS_META` is a hand-written pure literal, first statement, carrying `name`, `description`,
+`whenToUse`, one declared input (`{name: "direct", type: "boolean", required: false}` — the manual
+entry point of FSPEC §2.1) and a `phases` list of the four operator-visible stages
+(Enumerate / Trigger / Promote / Report). It is hand-written for the reason the file's own comment
+gives at `:125-126`: `meta` must be a pure literal and the first statement, so each bundle carries
+its own copy rather than re-exporting the module's.
+
+### 8.3 The manifest and the release stamp
+
+`distribution-manifest.json` carries one row per artifact with its own `sha1` (ids
+`orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` at HEAD). The rebuild adds a fourth row,
+`consolidate-learnings`, **and re-stamps the three existing rows** whose bytes changed because the
+dev module they inline changed. That is a property of the manifest, not a per-feature choice: it is
+touched once per artifact the rebuild changes, not once per feature.
+
+`sync-workflows.sh` needs no edit: it copies every row of the manifest, so the new bundle reaches
+`.claude/workflows/` by the shipped mechanism. `--check` will report the new row as `missing` until
+the first sync, which is the designed signal, not a regression.
+
+### 8.4 Capturing the resolver's `_log` stream (T-04)
+
+`ADVISORY_MODEL_FALLBACK:` is emitted through `_log` (`orchestrate-dev.js:1858-1860`, the template
+literal at `:1859`) and never appears in the resolver's return value. FSPEC §10.4 item 2 and AT-M7
+require that line **verbatim** in the report body, so the pass cannot pass its plain `_log` through.
+
+**Mechanism: a tee.** `main` builds
+
+```js
+const dispatchLog = [];
+const teeLog = (msg) => { dispatchLog.push(String(msg)); _log(msg); };
+```
+
+and passes `teeLog` as the resolver's `_log`. The operator still sees every line on the run log
+(nothing is swallowed), and the pass holds the text it must render. The same buffer carries FSPEC
+§2.6 row 4's error message: the resolver returns `{kind: "dispatch-error", err}` (`:1857`, `:1867`),
+so `main` pushes `String(err?.message ?? err)` onto `dispatchLog` at the point it dispositions the
+row — one capture serving both report-body obligations, which is what T-04 asks for.
+
+The buffer is **report-body only**. It never reaches the log row (whose fields are closed, §7.9),
+never reaches an artifact, and is not a vocabularies §1 value — so it cannot breach REQ §4b.
+
 ## 9. The pull-request route — clone, commit, credential
 
 ## 10. Error handling
