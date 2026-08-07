@@ -111,4 +111,47 @@ places where re-measurement **disagreed** with the document.
 
 ## 5. Errata raised against upstream documents
 
+Two defects behind F-01/F-02/F-03 originate in the **TSPEC**, not in the PLAN. They are not
+edited here, are not folded into the verdict as PLAN defects, and are emitted to the
+orchestrator's erratum channel in the response trailer.
+
+| # | Upstream defect | Measured how |
+|---|---|---|
+| 1 | **TSPEC §12.3's traceability table omits three FSPEC register ids** — `AT-M11`, `AT-Q13`, `AT-R7`. `grep -n "AT-M11\|AT-Q13\|AT-R7"` over `TSPEC-pdlc-consolidation-agent.md` returns **no match** for any of the three. All three are register rows in FSPEC v11.3 §13 (`:2085`, `:2106`, `:2126`) and all three are traced to an AC by FSPEC §15 (`:2311`, `:2312`, `:2320`). Because §12.3 is what the PLAN's T05 compares the register against, the omission propagates: the PLAN cannot assign a task to an id the TSPEC never handed it | grep over both documents at HEAD |
+| 2 | **TSPEC §12.3 fixes the register size at a stale measurement.** `TSPEC:2395` reads "The FSPEC's AT register carries **96** ids, measured at v11.1". FSPEC is at **v11.3** (`:14`), whose own erratum note records the two additions that make 96 wrong: "(4) AC-3.2's body obligation gains AT-Q13. (5) §5.3's 'only when' negative half gains AT-R7" (`:19-20`). Re-enumerating `AT-…` tokens over FSPEC §13's range (`:2041-2191`), de-duplicated, gives **99**. The stale number is the PLAN's source for F-03 | re-enumerated over FSPEC §13 at HEAD |
+
+Both are the same class as the PLAN's own §9.1 errata 2 and 3 — a shipped enumeration that a
+later addition falsifies — which is an argument for the TSPEC carrying the FSPEC version beside
+every count it transcribes.
+
+## Recommendation
+
+**Needs revision** — two High and three Medium findings.
+
+This is a strong PLAN and the revision is narrow. Nothing in §4's decomposition, §5's ownership
+manifest, §6's edge justifications or §8's Definition of Done needs restructuring; the scope is
+right in both directions and the test discipline is the best this feature has produced. What is
+wrong is that the document was derived against **FSPEC v11.1** and the FSPEC on disk is **v11.3**,
+so three register ids and one count are stale.
+
+Exactly what must change:
+
+1. **F-01 / F-02** — assign `AT-M11`, `AT-Q13` and `AT-R7` to tasks, and delete T21's two
+   "(no FSPEC AT)" labels for AC-3.2's PR-body citations and FSPEC §5.3's "and only when"
+   negative. All three fit files that already exist in the table (see Q-02); no new task, batch
+   or ownership row appears to be needed, so §5, §6 and the `Batch` arithmetic should be
+   untouched by this repair.
+2. **F-03** — re-measure the register count against the FSPEC version this PLAN is derived from,
+   and name that version beside the number in T05 and in §8.3's checkbox.
+3. **F-04** — re-measure or drop the "74 `*.test.js` files" figure in §1 (measured: 83). The
+   claim that carries weight — no file is named `consolidation*` — is true and should stay.
+4. **F-05** — repair or remove the two `DC-07` citations in T25 and §6.3.
+5. **F-06 / F-07** — state the `dist/` artifact counts once in the shipped vocabulary
+   (`BUNDLES` + `pdlc-cli.mjs` + manifest), and complete the two incomplete line citations.
+
+Answering Q-01 by carrying the upstream FSPEC/TSPEC versions in the PLAN's header table would
+make this whole class of finding inspectable rather than re-measurable next round.
+
 ## Verdict
+
+VERDICT: Needs revision
