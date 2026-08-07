@@ -161,4 +161,57 @@ Q-01 to Q-03 and Q-05 are carried; Q-05 is materially stronger this round. No ne
 
 ## Recommendation
 
+**Approved with minor changes.** 0 High, 0 Medium, 2 Low — the same two, at the same severity, on
+the same unmoved document. Under `DEC-CONV-01` this is a **re-issue of a standing approval**, not a
+fresh one: my v11, v12 and v13 approvals stand, the intervening diff on this document is empty, and
+I have no Medium-or-higher finding against that diff because there is no diff.
+
+What the verdict asserts, precisely, because "approved again with no diff" can conceal two very
+different situations. It is not re-approval by inertia: the two governed files were diffed and found
+unmoved; the five load-bearing code anchors were re-derived at HEAD; the version-pin sweep was
+re-run; the exclusion diff over everything outside `docs/` was checked across 145 commits; and the
+one new decision plus the one amended decision were read and applied before scoring. Any of those
+could have turned an unchanged document red — a bumped constraint file, a moved `export`, a decision
+the REQ now contradicts, an erratum routed home from Phase T. None did.
+
+Nor is it a lowered bar. Any open High or Medium means Needs revision; there is neither. Both
+findings are Low on grounds recorded before this round: F-02 under DEC-SEV-01, F-03 under DEC-SEV-01
+**and** DEC-SEV-02. DEC-SEV-03, the new rule, was checked against both and reaches neither. Escalating
+identical bytes purely because they went unaddressed for another round is the re-litigation
+DEC-SEV-01 and DEC-CONV-01 were recorded to stop.
+
+The test I apply every round: handed this REQ today, is there a decision a downstream author cannot
+make? **No** — and the answer is now empirical at three layers. Phase T, the layer that must decide
+what DEC-LAYER-01 moved down, exhausted its window on its own collision-disclosure discipline
+(DEC-SEV-03's context paragraph, `DECISIONS-review-severity-bars.md:63-70`) and routed no erratum
+here.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream. Neither finding
+here is of that shape: F-02 concerns a clause's scope over its own genesis commit, F-03 which of two
+files a sentence quantifies over. Both are single-clause edits to text this REQ owns; neither
+re-scopes anything downstream. They belong here as minor changes, not as a gate. Eight consecutive
+clean code sweeps precede this one; a fifth Phase R round spent on two Low governance-wording fixes
+would cost more review than the fixes are worth, which is what Low means.
+
+### What should change (non-blocking, unchanged from v13)
+
+1. **F-03** (~60 bytes against 331 of headroom) — give §4b's split an explicit subject: "Of the
+   vocabularies file's owned sections, §1, §2 and §4 are enumerations and §3 is owned normative
+   prose; the baseline's four sections are all owned normative prose, under no row oracle (baseline
+   `:17-19`)." DEC-SEV-02's preferred repair — deleting the universal — is cheaper still.
+2. **F-02** (byte-neutral in the REQ) — narrow the baseline's change-control clause from "a
+   **content** change" to "a change to any **stated fact**", matching the vocabularies file's
+   row-scoped wording. §4b governs the two files as a pair; their change-control rules should not be
+   asymmetrically strict.
+
+Both fit a single optimizer pass. This phase has converged as far as I am concerned, and I will not
+open a further round on either finding's account.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:0d2b2497235209181f0599a2ef2e25fa106d1917af8f02448a027fe969ad6f17
+REVIEWED-COMMIT: 22564a6f47f6ff4989e64ca6007eac7cf9ca9998
