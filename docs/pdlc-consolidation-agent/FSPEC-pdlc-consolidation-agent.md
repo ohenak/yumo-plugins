@@ -433,9 +433,11 @@ release is specified as the one operation available: an in-place write of the sa
 The released form is a **sentinel line, not an empty file**, and that choice is load-bearing rather
 than cosmetic. Truncating to empty would make a released marker and a marker whose write died
 mid-flush the same observed state, collapsing two outcomes §4.2 must keep apart. With the sentinel
-they stay distinguishable through the existence seam alone, which reports a present-but-empty file
-as `file_empty` and an absent one as `file_missing` (`pdlc/workflows/runtime-adapter.js:817-831`):
-`RELEASED:` is a parseable line, empty is not, and neither is `IN-PROGRESS:`.
+those two are separable by the existence seam alone: a released marker is non-empty, a half-written
+one is reported `file_empty` and an absent one `file_missing`
+(`pdlc/workflows/runtime-adapter.js:817-831`). Which of the two **non-empty** forms is present —
+`RELEASED:` or `IN-PROGRESS:` — is decided not by existence but by §4.2's read of the single line;
+the existence seam is what makes the empty state distinguishable from both.
 
 It is deliberately **not** a record in `.consolidation-log.md`. Taking and releasing it are in-place
 rewrites of a whole small file, and every write to the log must be an append of one whole record
@@ -478,15 +480,26 @@ so it is never silent.
 than left to the implementer, because the answer changed when §4.1 fixed release as a sentinel
 write. Under a release that truncated the file to empty, "empty" would have been the *normal* end
 state of every pass and the arm would have been unreachable as written — a released marker and a
-half-written one indistinguishable. Under §4.1's sentinel it is reachable and it means exactly one
-thing: a pass died between opening the marker write and completing it, leaving a present-but-empty
-file the existence seam reports as `file_empty`, distinct from the absent file it reports as
-`file_missing`. **The durable log must witness that pass.** A take that stepped over an empty marker
-silently would erase the only trace of an abandonment — the abandoned pass appended no terminal row,
-by construction, since it did not survive its own take — so the reclaiming pass records
-`reclaimed-stale-lock` with the abandoned id `unknown`, exactly as for an unparseable line. The
-recorded `unknown` is the honest reading: the id was never durably written, and no later reader can
-recover it.
+half-written one indistinguishable. Under §4.1's sentinel it is reachable, and it means one
+thing in general: a pass died part-way through a marker write, leaving a present-but-empty file the
+existence seam reports as `file_empty`, distinct from the absent file it reports as `file_missing`.
+
+That state has **two producers**, and the spec is deliberately conservative across both:
+
+| Producer | What the dying pass had already done | What the reclaiming pass records |
+|---|---|---|
+| Killed inside the **take** at step 6 | nothing — it never survived its own take, so it appended no terminal row | `reclaimed-stale-lock`, abandoned id `unknown` |
+| Killed inside the **release** at step 16 | everything, including its terminal row (§4.3 `:511-512` orders release after the append) | the same `reclaimed-stale-lock` / `unknown` |
+
+**The durable log must witness the first.** A take that stepped over an empty marker silently would
+erase the only trace of an abandonment: the pass killed at step 6 appended no terminal row, by
+construction, so the reclaiming pass's record is the abandonment's only trace. Because the two
+producers are indistinguishable from the empty file alone, the second is recorded the same way — an
+extra `reclaimed-stale-lock` for a pass that in fact completed. That is over-recording, never
+under-recording, and it is the safe direction: a spurious reclamation row is legible to a reader
+holding the completed pass's own terminal row beside it, whereas a missed one is unrecoverable. The
+recorded `unknown` is the honest reading in both cases: the id was never durably written, and no
+later reader can recover it from the marker.
 
 A `refused` pass is **dropped, not queued**: nothing is retained, and the next `/loop` tick
 re-evaluates steps 1–4 from scratch against whatever the corpus and the datum then are.
