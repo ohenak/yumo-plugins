@@ -114,7 +114,7 @@ decomposition is by **exported pure function** (§4), not by file.
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
 | `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-811`) **alone**, whose prompt today says `relative to the repository root` (`:805`, the only occurrence of that string in the file). `rtReadFile` is **not** modified — see §5.6(a) | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
-| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions; `:29-30`'s early exit replaced by a `pending = []` fall-through; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28`'s single `os.path.join` glob replaced by a named two-literal `CORPUS_GLOBS` tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; `:41` predicate scoped to the two §3.2 regions; `:29-30`'s early exit replaced by a `pending = []` fall-through; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the block/legacy predicate; `:41`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-78`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
 | `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
@@ -166,7 +166,7 @@ main({ …seams })                       ← the only impure function
  │   └─ classifyCorpus                 (pure)   §7.1
  ├─ cadenceDatum / triggerFor          (pure)   §7.2
  ├─ mintPassId                         (pure)   §7.2
- ├─ takeMarker                 ←_readFile/_writeFile   §7.3
+ ├─ takeMarker         ←_checkFile/_readFile/_writeFile §7.3
  ├─ renderConsumedPair                 (pure)   §7.1
  ├─ dispatchClustering         ←resolveAdvisoryRung    §8.1
  ├─ parseEscalations                   (pure)   §7.7
@@ -1762,7 +1762,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 - **Clone removal failure.** §9.1 issues no removal, so there is no failure to handle.
 - **The two enumerations disagreeing on a git-visibility edge case.** §7.1 enumerates the pass's
   corpus with `git ls-files --cached --others --exclude-standard`; the hook keeps `glob.glob`
-  (`nudge-consolidation.sh:28`), which does not consult git. The two therefore answer different
+  (`nudge-consolidation.sh:28`, over §7.1's `CORPUS_GLOBS`), which does not consult git. The two therefore answer different
   questions about the same tree in exactly two classes, both accepted here rather than closed:
   (i) a LEARNINGS file matched by `.gitignore` is in the **hook's** set and not the pass's — the
   operator is nudged about a file no pass will consolidate, and no pass can clear the nudge;
@@ -2055,7 +2055,7 @@ usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recor
 **What this harness does not falsify, stated rather than implied.** Feeding both sides the same
 basename list holds the **predicate** equal and holds the **enumeration** equal by construction —
 so the enumeration pair (`git ls-files --cached --others --exclude-standard` on the JS side,
-`glob.glob` on the hook's, `:28`) is outside AT-P7's reach entirely. That is deliberate, and it is
+`glob.glob` over `CORPUS_GLOBS` on the hook's) is outside AT-P7's reach entirely. That is deliberate, and it is
 the reason the fixtures are fed rather than enumerated: the fixture temp directory is not a git
 repository, so `enumerateCorpus` could not run there without a `git init` and a staged index, and
 even with one the two enumerations are **not** equal in general — §10.4 records the two divergence
@@ -2162,7 +2162,7 @@ Every `FSPEC-CONS-0N` unit appears exactly once; no row names a unit the FSPEC d
 |---|---|---|---|
 | CONS-01 Tick evaluation and pass lifecycle | §2 | `triggerFor`, `mintPassId`, the single-exit `finishPass` | §7.2, §10.1 |
 | CONS-02 Consumed predicate and corpus | §3 | `enumerateCorpus`, `classifyCorpus`, `renderConsumedPair`; hook parity by differential test | §7.1 |
-| CONS-03 The in-progress marker | §4 | `parseMarker`, `markerVerdict`, `takeMarker`; `.gitignore` text | §7.3, §3.3 |
+| CONS-03 The in-progress marker | §4 | `parseMarker`, `markerVerdict`, `takeMarker`, `releaseMarker`; `.gitignore` text | §7.3, §3.3 |
 | CONS-04 Routing and consuming-repo writes | §5 | `routeOf` over the imported `MERGE_GUARD_DEFAULTS`; `commitConsumingRepoPaths` | §7.6, §9.4 |
 | CONS-05 The pull-request route | §6 | `openClone`, `mergeCommandFor`'s two new surfaces, `resolveSeamVerb` | §9.1 – §9.3 |
 | CONS-06 Credential handling | §7 | `_envPresent` (boolean-only seam), shell-expansion of the value, resolution order | §5.3, §9.2 |
