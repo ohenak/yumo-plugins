@@ -441,7 +441,8 @@ in this repository at HEAD that glob returns **2** paths while
 `docs/orchestrate-dev-workflow` and `docs/pdlc-advisory-tier`. That gap is larger than classes (i)
 and (ii) combined, and it is **not** a residual of this decision: it is closed by the decision, by
 replacing `:28`'s single glob with the two-member `CORPUS_GLOBS` tuple and a comprehension over it
-(`TSPEC §7.1:787-788`, scoped by `TSPEC:117`). Stating the two-class divergence set against the
+(`TSPEC §7.1:806`, the code form at `:841-842`, scoped by `TSPEC:807`). Stating the two-class
+divergence set against the
 pre-edit hook would be comparing the pass to a hook this feature does not ship; every claim below —
 "two classes", "closed", "derivable from the two enumerations' own text" — is asserted against the
 post-edit hook, whose two patterns are exactly the pass's two `:(glob)` pathspecs.
@@ -485,9 +486,9 @@ relaxation is accepted.
   1. an **env-gated `PDLC_PENDING:` stderr write** — a guard plus a write, so at minimum two lines,
      not one;
   2. replacing `:28`'s single `os.path.join` glob with the two-member `CORPUS_GLOBS` tuple and a
-     comprehension over it (`TSPEC §7.1:787-788`) — the corpus widening stated in the Decision
-     above, which the REQ itself already lists as an in-scope edit (`REQ:115`);
-  3. scoping `:41`'s predicate to the two regions (`TSPEC:117`), which is the change that makes the
+     comprehension over it (`TSPEC §7.1:806`, code at `:841-842`) — the corpus widening stated in
+     the Decision above, which the REQ itself already lists as an in-scope edit (`REQ:115`);
+  3. scoping `:41`'s predicate to the two regions (`TSPEC:807`), which is the change that makes the
      hook's rule the *same* rule as the pass's.
 
   All three land in a Python heredoc inside a bash script CI already `bash -n`s and whose
@@ -529,7 +530,8 @@ unfalsifiable.
 change to the pathspec is a deliberate test edit. (3) The hook enumeration pin: an L3 source-text read
 of the `CORPUS_GLOBS` declaration — stated over the *declaration*, never a line number, plus the
 conjunct that `glob.glob(` occurs in the file exactly once and inside that comprehension, so a third
-pattern cannot enter through a second call site (`TSPEC:793-796`). Together, and **only against the
+pattern cannot enter through a second call site (`TSPEC:847` for the declaration-not-line-number
+statement, `:850` for the exactly-once conjunct). Together, and **only against the
 post-edit hook**, they make the divergence set **derivable from the two enumerations' own text**,
 which is the property that lets §10.4's two classes be stated as closed rather than as "the ones we
 happened to think of". The residue is stated, not asserted away: class (i)
