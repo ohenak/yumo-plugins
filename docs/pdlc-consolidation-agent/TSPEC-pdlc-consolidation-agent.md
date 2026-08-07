@@ -1584,10 +1584,18 @@ is what makes the harness a pure function of an injected root (DC-04).
 degrades to a silent `exit 0` when no usable interpreter is found, and a differential test that
 inherits that degradation silently is the test that will be skipped on the platform where it
 matters. So the suite uses jest's `test.skip` — which reports as **skipped**, not passed, in the run
-summary — and additionally asserts once, unconditionally, that the probe either found an interpreter
-or recorded the notice; the notice is a `console.warn` line naming the probed candidates
-(`python3`, `python`, `py`). Answering the reviewer's question directly: the notice is the jest
+summary — and emits a `console.warn` naming the probed candidates (`python3`, `python`, `py`) in the
+branch where it finds none. Answering the reviewer's question directly: the notice is the jest
 reporter's skip line plus that warning, and CI's `Unit tests` job surfaces both.
+
+An earlier draft added a second assertion here — "the probe either found an interpreter **or**
+recorded the notice" — and it is **withdrawn**: the harness itself emits that notice in the branch
+where the probe found nothing, so the disjunction is a tautology over the harness's own control flow
+and can only pass. It is replaced by the one thing in this area that is falsifiable: **the count of
+executed differential rows is either the full fixture table's length or exactly zero**, asserted
+unconditionally. All-or-nothing is the real invariant — a harness that silently ran *some* rows
+(a mid-table interpreter failure, a fixture that threw and was swallowed) is red, where the
+disjunction was green.
 
 ### 11.2 Test doubles — reuse first (DC-08)
 
@@ -1607,6 +1615,16 @@ they double do not exist yet: `fakeEnvPresent(presentNames: Set<string>)` and
 builder, a corpus builder, an `ESCALATIONS.md` builder) so no test file constructs a log by string
 concatenation — the same single-canonical-double rule `seams.js` and `advisoryDoubles.js` state in
 their own headers.
+
+**One wrapper, not a third factory: `asAsync(double)`.** `seams.js`'s doubles are **sync** — that is
+stated in its own header as the central hazard, and it is what makes an un-awaited seam call
+invisible to every L2 suite (§10.1). `asAsync` takes any of them and returns a function with the
+same recording behaviour whose result is a promise resolved on a later microtask tick, so a caller
+that forgets `await` observes the pre-write state. It exists for exactly one row — §12.2's T-13
+await-discipline test, which drives `asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` /
+`asAsync(fakeGit)` and asserts **after** `main()`'s promise resolves. No other suite uses it: the
+rest deliberately keep the sync doubles, because their subject is the pass's logic, not its await
+discipline.
 
 ### 11.3 The oracles that need a mechanism, not just an assertion
 
