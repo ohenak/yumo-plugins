@@ -516,7 +516,24 @@ have.
 
 ## 10. Alternatives considered but not recorded as decisions
 
-_(pending)_
+TSPEC §13.1 records thirteen rows. Seven are promoted above. The remaining six are listed here with
+the reason each is *not* a decision, so a reader does not mistake omission for oversight — and so a
+future agent that finds one of them and thinks it is an open question can see it was closed and why.
+
+| TSPEC §13.1 row | Choice | Why it is not a DECISIONS entry |
+|---|---|---|
+| 3 | Inline the dev module into a fourth bundle, rather than share an artifact holding the resolver | **No alternative existed.** The runtime forbids `import` entirely and `build-runtime.mjs`'s `bundles` array (`:448`) reaches across modules only by concatenating whole bodies. A choice with one option is a constraint, and it is recorded as one in DEC-CONS-02 |
+| 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s per-key-independent-fallback shape rather than generalising the shipped parser (`orchestrate-dev.js:1682`) | Weighed and rejected, but the rejection is a straight application of a standing rule rather than a new judgement: generalising edits a merge-guard file for a second reason and risks a shipped advisory path for a cosmetic gain. Recorded in the TSPEC; nothing here forecloses generalising later, and no future agent will reconsider it *confidently* — the shipped parser is right there to compare against |
+| 8 | Extend `mergeCommandFor` (`orchestrate-dev.js:319`) rather than add a second `gh` command builder | Same: the function's own doc comment states the property being preserved — it is "the SOLE place every `gh` command string used by Phase MERGE is built, so a single audit of this function's body accounts for every literal command the phase can run" (`:310-312`). A second builder falsifies a claim the shipped comment makes. Applying an existing invariant is not a new decision |
+| 9 | Widen four permitted verb sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — one verb per read, rather than mis-classify any into an existing verb | A taxonomy choice the TSPEC's own verb table owns and states completely. It is load-bearing (folding `remote` into `read-object` would have let a later `git remote add` pass containment) but it is *documented in the place it is enforced*, so it cannot be silently reconsidered |
+| 10 | Enumerate with one `git ls-files` read rather than two `_listFiles` directory walks | Folded into **DEC-CONS-05**, where it belongs: it is the constraint that forced the two-enumeration shape, not an independent decision |
+| 12 | Add an env-gated `PDLC_PENDING:` stderr line to the shipped hook | Folded into **DEC-CONS-05**. DEC-CONS-05 is *conditional* on it — without that observation channel there is no differential oracle and the two-implementation choice would have to be re-argued on what a count-above-threshold comparison can supply |
+
+Two further alternatives were weighed at the FSPEC/REQ layer and are **not** this document's to
+record, listed only so the boundary is visible: whether an ignored LEARNINGS file is corpus
+(DEC-CONS-05's upstream question), and whether the durable log must witness a pass that dies mid-take
+(DEC-CONS-07's). Both are product judgements about what counts as evidence, not technical choices,
+and both are raised as errata rather than settled here.
 
 ## 11. Consequences for downstream layers
 
