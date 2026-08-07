@@ -75,7 +75,30 @@ are explicitly landable later. An author who changed nothing did exactly what th
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-02 | Carried from v15, still non-blocking and still addressed to the PROPERTIES layer rather than to this REQ. The v2.1 erratum converted an equality that had been claimed as structural into one that must be *observed*: the hook's enumeration ≡ the pass's enumeration over the two globs. The natural oracle is a property test that generates a docs tree — tracked, untracked, `.gitignore`d, staged-but-deleted, nested deeper than one level, and under `docs/discarded/` — and asserts the two enumerations return the same basename **set**. Both mechanisms are pure functions of the tree, so this parameterises cleanly and should not be example-based. Should PROPERTIES carry it as a property with those six generators named? Set-equality matters specifically here rather than containment: the failure mode this guards is one enumeration *dropping* a basename the other keeps, which a containment assertion would pass. |
+
 ## Positive Observations
+
+- **The document is byte-identical to the bytes I approved, and I proved it rather than assumed it.**
+  `shasum -a 256` at HEAD returns the exact `APPROVAL-HASH` recorded at
+  `CROSS-REVIEW-test-engineer-REQ-v15.md:199`. This is what the tier-1 approval anchors exist for:
+  an approval pinned to bytes lets a later round re-establish its own premise in one command instead
+  of re-reading 674 lines and hoping. It is worth naming as a positive because the anchor mechanism
+  is easy to treat as bookkeeping, and this round is a case where it did real work.
+- **The empty `docs/_constraints/` diff makes two carried findings decidable without judgment.** F-54
+  and F-55 are both about governed constraint files; neither file moved, so their status this round
+  is a mechanical consequence rather than a re-assessment. A finding whose open/closed state can be
+  settled by a diffstat is a well-formed finding.
+- **The one non-empty code diff is provably out of range.** The three changed files are
+  `pdlc/skills/{pm,se,te}-author/SKILL.md`, +18 lines each. No `file:line` claim in this REQ resolves
+  into `pdlc/skills/`, and every mechanism it does cite lives in the untouched remainder — so the
+  citations verified at v14 and v15 are structurally still true, not merely un-refuted.
+- **The erratum's oracle-preserving choices continue to hold.** §4b still refuses an `unread:` field
+  and still holds `§3` at `Version 1.4` (`:596-598`), which keeps the fixed expected value that the
+  set-equality oracle at `:589-593` gives a downstream test to transcribe. Every round that leaves
+  that pin alone is a round in which no downstream transcription has to move.
 
 ## Recommendation
 
