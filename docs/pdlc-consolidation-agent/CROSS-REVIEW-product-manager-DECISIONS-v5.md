@@ -33,6 +33,44 @@ DEC-CONS-03 row, rewritten from a prose sentence into a four-item enumeration, p
 
 ## Verification of the changed sections
 
+Every retargeted anchor in the three commits was re-run against the TSPEC and the adapter at HEAD.
+
+- **The two domain rows are now correct.** `TSPEC:1724` is the `git, invoking tree` row of §9.3's
+  domain table (obliged `add`, `commit`; permitted `read-branch`, `read-status`, ⊕ `read-object`,
+  ⊕ `read-remote`, ⊕ `read-index`; absent always `checkout`, `switch`, `stash`, `reset`, `rebase`,
+  every merge verb) and `TSPEC:1725` is the `git, clone` row (obliged `clone`, `create-branch`,
+  `add`, `commit`, `push`; permitted `fetch`, `read-branch`, `read-status`; absent every merge
+  verb). Both are **set-equal** to what DEC-CONS-03 domains 1 and 2 and §11.2 transcribe — I
+  compared member by member in both directions, and neither transcription has gained or lost a verb
+  in this revision.
+- **The four set assertions verify against `TSPEC:2199-2204` line for line.** `:2199-2200`
+  partition and its union clause, `:2201` the "(without this, a call that falls out of the
+  partition is exempt from containment)" rationale plus the word **containment**, `:2202` the
+  containment formula and the word **obligation**, `:2203` "the Given that obliges it; and the two
+  `∅` equalities of AT-Q7c. Comparison is over a `Set`, never a", `:2204` "multiset". Every
+  sub-anchor §11.2 now gives — `:2199-2201`, `:2201-2202`, `:2202-2203`, `:2203`, `:2203-2204` —
+  lands on the clause it names.
+- **The DEC-CONS-06 retargets are right.** `TSPEC:479-480` is the widened `rtWriteFile` clause
+  quoted verbatim, and I re-confirmed the count it turns on: `grep -n 'relative to the repository
+  root' pdlc/workflows/runtime-adapter.js` still returns the single line `805:`, and `:480` reads
+  "against the repository root", a different string — so the post-widening whole-file count is still
+  1, exactly as the entry says. `TSPEC:2282-2284` is §11.6(e) conjunct 2 ("the string … occurs in
+  `runtime-adapter.js` **exactly once** — the count is the falsifier for the opposite mistake"),
+  correctly retargeted from the stale `:2160`. The standing guard sentence I praised at v4 is
+  intact.
+- **The exclusion paragraph's retargets are right.** `TSPEC:992-996` is the `takeMarker` passage
+  that probes with `_checkFile` and reads with `_readFile`; `:1046-1048` is the observe-then-write
+  ordering. `grep -n '_hashFile'` over the TSPEC still returns **exactly one** line — `:493`, the
+  `rtDevInjections` member list — so "no consumer" holds and the retarget from `:439` is correct.
+- **No regression against anything I approved.** DEC-CONS-06's decision, scoping and positive arms,
+  DEC-CONS-03's three domains, the withdrawn-ground paragraphs and the `∅`/obligation strengthening
+  are all untouched in substance; this revision moves anchors and expands one enumeration, and
+  removes no assertion. I re-checked that §11.2's rewritten row is a superset of the prose it
+  replaced — it is.
+- **What did not verify: the new *Anchor provenance* paragraph's universal claim.** See F-10. Its
+  scoped statement about the conjuncts is true (`:2095` ⇒ `:2199` and `:2098` ⇒ `:2202` are both
+  +104), but the sentence generalises to the whole file, and the whole file does not hold.
+
 ## Findings
 
 ## Questions
