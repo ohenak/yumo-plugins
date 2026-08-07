@@ -114,6 +114,15 @@ governance text, not about the codebase.
 
 ## Questions
 
+Q-01 to Q-03 and Q-05 are carried; Q-05 is materially stronger this round. No new question.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Not blocking; it bounds F-03's fix. The REQ is **61,109 bytes** against the 61,440-byte hard ceiling (`pdlc/hooks/scripts/check-req-size.sh:41-42`) — **331 bytes** of headroom, unchanged because the document is unchanged. F-03's fix is ~60 bytes and F-02's preferred fix is byte-neutral in the REQ, so neither forces a relocation. |
+| Q-02 | Carried, still open. Is the version-pin/defect clause meant to bind the commit that *introduces* it? I read it as prospective — a rule cannot govern its own genesis — which is why F-02 is Low and why I prefer narrowing the wording to a retroactive bump. The clause sits in two shared files `pdlc-engineering-loop` will read and may copy, so whichever reading is intended is worth stating once. |
+| Q-03 | `Process`, carried. There are now **five** decisions binding reviewer scoring (DEC-SEV-01/02/03, DEC-LAYER-01 + companion, DEC-CONV-01), all recorded by phase-POSTMORTEM resolutions, none cited by either reviewer's skill prompt. DEC-CONV-01 changes the *verdict rule*; DEC-SEV-03 changes how a whole class of downstream finding is scored. A reviewer who does not read `docs/_decisions/` will now mis-score two distinct classes. Should harvest promote them into `DOMAIN-CONSTRAINTS.md` next to DC-13? Not a REQ question and not blocking, but the cost of a miss keeps rising. |
+| Q-05 | `Process`, carried and stronger. This is the **fourth** consecutive Phase R round on byte-identical input and the fourth to reach the same verdict from the same two Lows. Three of those four rounds also had an empty diff over everything outside `docs/`. DEC-CONV-01's own logic says a round whose only input is "nothing changed" has no work in it — the standing approval was never re-openable, because re-opening requires an intervening diff. Is there a cheap precondition (an empty-diff check before dispatching Phase R) that would let the orchestrator re-issue a standing approval without spending a round? Workflow question, not a REQ one. |
+
 ## Positive Observations
 
 ## Recommendation
