@@ -1440,7 +1440,7 @@ is caught at exactly one site (§10.2).
 
 ### 10.1 Terminating branches are returns, not exceptions
 
-FSPEC §2.2's "terminates = a jump to step 14" is implemented as an early `return finishPass(state)`,
+FSPEC §2.2's "terminates = a jump to step 14" is implemented as an early `return await finishPass(state)`,
 where `finishPass` performs steps 14–16: append the terminal row, run the 9.4 commit, release the
 marker. There is one exit, so a terminated pass still returns exactly one report and no new
 termination point can forget to write one.
@@ -1457,14 +1457,37 @@ is only one exit" and carved out no status. That is wrong twice, and both errors
 So `finishPass` is:
 
 ```js
-function finishPass(state) {
+async function finishPass(state) {
   if (state.status === "skipped-cadence") return report(state);   // no row, no commit, no marker, no git call
-  appendTerminalRow(state);                                       // step 14
-  if (state.status !== "refused") await commitConsumingRepoPaths(...);  // step 15
-  if (state.markerHeld) await releaseMarker(state);               // step 16
+  await appendTerminalRow(state);                                 // step 14 — _appendFile
+  if (state.status !== "refused") await commitConsumingRepoPaths(...);  // step 15 — _git
+  if (state.markerHeld) await releaseMarker(state);               // step 16 — _writeFile / _git
   return report(state);
 }
 ```
+
+**`finishPass` is `async`, and every one of its steps and every one of its call sites is `await`ed.**
+This is normative, not incidental. All three steps reach a seam — `appendTerminalRow` is step 14's
+`_appendFile`, `commitConsumingRepoPaths` is step 15's `_git`, `releaseMarker` is step 16's — so
+§5.1's "every seam call is `await`ed without exception" reaches them transitively through the module
+functions that wrap them. Correspondingly, `main()` writes `return await finishPass(state)` at
+**every** terminating branch, including the two in §10.2.
+
+The reason this is spelled out rather than left to the reader is that **nothing in §11 falsifies it
+by construction**. §11.3(c)'s static audit scans call sites of *injected seam identifiers*;
+`finishPass`, `appendTerminalRow`, `commitConsumingRepoPaths` and `releaseMarker` are module
+functions, so a missing `await` on any of them is invisible to it. And every L2 test drives **sync**
+doubles (`seams.js`'s header names this as the central hazard), under which an un-awaited promise
+settles before the assertion runs — green suite, broken production, where `main()` resolves a report
+claiming a terminal row that is still pending and a marker (AC-1.3) still held.
+
+So the oracle is stated explicitly, because it is the only shape that distinguishes *written* from
+*scheduled*: **an L2 assertion that reads the log double and the marker double after `main()`'s
+promise resolves** — not inside the pass, not from the report — and finds (i) the terminal row
+present in the log double's accumulated text and (ii) the marker absent. Driven by the **async**
+variants of the doubles (`consolidationDoubles.js` exposes an async-wrapping form of `fakeAppendFile`
+and `fakeWriteFile` for exactly this test; §11.2), an un-awaited `finishPass` fails both conjuncts
+while every other suite stays green. §12.2's T-13 row carries it.
 
 `skipped-cadence` reaches that first line from **exactly one place**: `main()`'s step-4 branch, where
 `triggerFor` (§7.2) returns `"skipped-cadence"` — before `mintPassId`, before `takeMarker`, before
@@ -1489,8 +1512,8 @@ site in the pass is therefore wrapped:
 ```js
 let dispatched;
 try { dispatched = await resolveAdvisoryRung({…}); }
-catch (err) { return finishPass(fail(state, "advisory-model-unresolved")); }
-if (dispatched.kind === "dispatch-error") { … return finishPass(failNoReason(state, err)); }
+catch (err) { return await finishPass(fail(state, "advisory-model-unresolved")); }
+if (dispatched.kind === "dispatch-error") { … return await finishPass(failNoReason(state, err)); }
 ```
 
 `failNoReason` is the FSPEC §2.6 row-4 shape: status `failed`, **no** reason code, the error's
