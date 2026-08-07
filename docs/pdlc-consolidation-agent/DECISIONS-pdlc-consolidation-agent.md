@@ -776,7 +776,16 @@ must land as properties rather than as unit cases:
   `read-status`, `read-object`, `read-remote`, `read-index`), and no argv carries a verb from that
   row's absent-always column. Stated as **containment**, not exclusion, so it stays red — not green
   — for calls nobody has classified yet. Note the property is *not* "no mutating verb": the pass's
-  own pathspec-scoped log commit is obliged there (`REQ:288`).
+  own pathspec-scoped log commit is obliged there (`REQ:288`). **Those two conjuncts are not the
+  whole contract, and a property author must not read them as it.** Containment plus an
+  absent-always negative are both satisfied by a pass that issues *no* invoking-tree `git` call at
+  all — i.e. by a regression that silently drops the AC-1.3 log commit. The oracle is **four** set
+  assertions at `TSPEC:2094-2098`, and the third is **obligation**, `obliged ⊆ observed` per domain
+  on the Given that obliges it (`TSPEC:2097`): `add` and `commit` observed in the invoking-tree
+  domain, and `clone`, `create-branch`, `add`, `commit`, `push` observed in the clone domain. The
+  fourth is **partition** (`TSPEC:2095-2096`) — every observed call classified into exactly one
+  domain — without which an unclassified call is exempt from containment. Comparison is over a
+  `Set`, never a multiset.
 - **DEC-CONS-07** — over the six terminal statuses enumerated at
   `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
   take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
