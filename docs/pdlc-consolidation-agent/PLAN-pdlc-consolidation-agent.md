@@ -215,7 +215,70 @@ a batch; the `Deps` chain T25 → T26 → T27 → T28 → T29 → T30 → T31 is
 
 ## 5. File-ownership manifest
 
-_placeholder_
+Every task in §4 has exactly one row here, and every row names a task in §4 — the correspondence
+`validatePlanContract` checks before Phase I runs. The wave commit stages **only** these paths,
+pathspec-scoped (`pdlc/workflows/orchestrate-dev.js:10151`), so a file a task creates and does not
+list is created and never committed.
+
+`pdlc/workflows/dist/` appears in **no** row, by §2's rule: it is the per-wave chore commit driven by
+`implementation.postWavePathspecs`.
+
+| Task | Files owned | Batch |
+|---|---|---|
+| T00 | `pdlc/workflows/__tests__/consolidationPreflight.test.js` | 1 |
+| T01 | `pdlc/workflows/__tests__/helpers/consolidationDoubles.js` | 2 |
+| T02 | `pdlc/workflows/consolidate-learnings.js` | 2 |
+| T03 | `pdlc/workflows/__tests__/consolidationBuild.test.js` | 2 |
+| T04 | `pdlc/workflows/__tests__/consolidationHookParity.test.js` | 2 |
+| T05 | `pdlc/workflows/__tests__/consolidationTraceability.test.js` | 2 |
+| T06 | `pdlc/workflows/__tests__/consolidationRung.test.js` | 2 |
+| T07 | `pdlc/skills/consolidate-learnings/SKILL.md` | 2 |
+| T08 | `pdlc/skills/harvest-learnings/SKILL.md` | 2 |
+| T09 | `pdlc/hooks/scripts/nudge-consolidation.sh`, `pdlc/workflows/__tests__/consolidationHookParity.test.js` | 3 |
+| T10 | `.gitignore`, `pdlc/workflows/__tests__/consolidationBuild.test.js` | 3 |
+| T11 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/consolidationRung.test.js` | 3 |
+| T12 | `pdlc/workflows/runtime-adapter.js`, `pdlc/workflows/__tests__/consolidationBuild.test.js` | 4 |
+| T13 | `pdlc/workflows/__tests__/runtimeBundle.test.js` | 3 |
+| T14 | `pdlc/workflows/__tests__/consolidationPredicate.test.js` | 3 |
+| T15 | `pdlc/workflows/__tests__/consolidationIdentity.test.js` | 3 |
+| T16 | `pdlc/workflows/__tests__/consolidationParse.test.js` | 3 |
+| T17 | `pdlc/workflows/__tests__/consolidationEffectiveness.test.js` | 3 |
+| T18 | `pdlc/workflows/__tests__/consolidationAdvisory.test.js` | 3 |
+| T19 | `pdlc/workflows/__tests__/consolidationProperties.test.js` | 3 |
+| T20 | `pdlc/workflows/__tests__/consolidationPass.test.js` | 3 |
+| T21 | `pdlc/workflows/__tests__/consolidationRoute.test.js` | 3 |
+| T22 | `pdlc/workflows/__tests__/consolidationCredential.test.js` | 3 |
+| T23 | `pdlc/workflows/__tests__/consolidationLifecycle.test.js` | 3 |
+| T24 | `pdlc/workflows/__tests__/consolidationReport.test.js` | 3 |
+| T25 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationPredicate.test.js`, `pdlc/workflows/__tests__/consolidationHookParity.test.js`, `pdlc/workflows/__tests__/consolidationProperties.test.js` | 4 |
+| T26 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationIdentity.test.js`, `pdlc/workflows/__tests__/consolidationParse.test.js`, `pdlc/workflows/__tests__/consolidationProperties.test.js` | 5 |
+| T27 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationEffectiveness.test.js`, `pdlc/workflows/__tests__/consolidationAdvisory.test.js`, `pdlc/workflows/__tests__/consolidationProperties.test.js` | 6 |
+| T28 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationPass.test.js`, `pdlc/workflows/__tests__/consolidationRoute.test.js` | 7 |
+| T29 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationReport.test.js` | 8 |
+| T30 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationRoute.test.js`, `pdlc/workflows/__tests__/consolidationCredential.test.js` | 9 |
+| T31 | `pdlc/workflows/consolidate-learnings.js`, `pdlc/workflows/__tests__/consolidationPass.test.js`, `pdlc/workflows/__tests__/consolidationRoute.test.js`, `pdlc/workflows/__tests__/consolidationCredential.test.js`, `pdlc/workflows/__tests__/consolidationLifecycle.test.js`, `pdlc/workflows/__tests__/consolidationReport.test.js`, `pdlc/workflows/__tests__/consolidationRung.test.js` | 10 |
+| T32 | `pdlc/workflows/build-runtime.mjs`, `pdlc/workflows/__tests__/consolidationBuild.test.js`, `pdlc/workflows/__tests__/runtimeBundle.test.js` | 11 |
+| T33 | `CLAUDE.md`, `pdlc/RELEASE-CHECKLIST.md` | 12 |
+
+**The four shared-file clusters, and the edge that serialises each.**
+
+| File | Writers, in order | Serialised by |
+|---|---|---|
+| `pdlc/workflows/consolidate-learnings.js` | T02 → T25 → T26 → T27 → T28 → T29 → T30 → T31 | the `Deps` chain in §4.2; batches 2, 4, 5, 6, 7, 8, 9, 10 |
+| `pdlc/workflows/__tests__/consolidationBuild.test.js` | T03 → T10 → T12 → T32 | T10 deps T03; **T12 deps T10** — the edge exists for this reason alone, T12 needing nothing else from `.gitignore`; T32 deps T03 and T31 |
+| `pdlc/workflows/__tests__/consolidationRoute.test.js` | T21 → T28 → T30 → T31 | the module chain, which each un-skipper already sits on |
+| `pdlc/workflows/__tests__/runtimeBundle.test.js` | T13 → T32 | T32 deps T31, which transitively deps T13 through T25 |
+
+Three further test files carry two or three writers each — `consolidationHookParity` (T04 → T09 →
+T25), `consolidationPass` (T20 → T28 → T31), `consolidationCredential` (T22 → T30 → T31),
+`consolidationReport` (T24 → T29 → T31), `consolidationRung` (T06 → T11 → T31),
+`consolidationPredicate` (T14 → T25), `consolidationIdentity` (T15 → T26), `consolidationParse`
+(T16 → T26), `consolidationEffectiveness` (T17 → T27), `consolidationAdvisory` (T18 → T27),
+`consolidationProperties` (T19 → T25 → T26 → T27). Every one of those pairs sits in a strictly
+increasing batch, which is checkable from the manifest's own `Batch` column without reading §4.
+
+**No row names a directory.** A directory entry collides with everything beneath it, so a manifest
+carrying `pdlc/workflows/` would make every module task collide with every test task. Files only.
 
 ## 6. Dependencies and ordering notes
 
