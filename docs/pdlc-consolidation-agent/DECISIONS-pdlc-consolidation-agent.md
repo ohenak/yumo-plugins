@@ -47,7 +47,7 @@ DEC-CONS-07 are direct applications of DEC-DIST-01 and DEC-ORACLE-02 respectivel
 
 | ID | Decision, in one line | Reversibility | Load-bearing on |
 |---|---|---|---|
-| DEC-CONS-01 | The credential seam returns `boolean`, and the secret reaches `git`/`gh` only by shell expansion | easy (seam is new; nothing consumes a value) | NFR-2, AC-4.2, **AC-4.3, AC-3.5** |
+| DEC-CONS-01 | The credential seam returns `boolean`, and the secret reaches `git`/`gh` only by shell expansion (the `gh` half is settled; the `git` half is **provisional** pending §11.3 item 3 — `rtShellQuote` single-quotes every `_git` argv element, so shell expansion cannot carry it there) | easy (seam is new; nothing consumes a value) | NFR-2, AC-4.2, **AC-4.3, AC-3.5** |
 | DEC-CONS-02 | Reuse `resolveAdvisoryRung` (`orchestrate-dev.js:1833`) by adding an optional `skill` parameter | hard (edits a guard-set file every advisory dispatch reads) | AC-1.5, AC-1.6 |
 | DEC-CONS-03 | Clone from `git remote get-url origin`, never from the working-tree path | easy (one seam argument) | AC-3.8 |
 | DEC-CONS-04 | The marker take is observe-then-write (`_checkFile`, `_readFile`, `_writeFile`); no atomic take exists | one-way door at this layer (no `O_EXCL` transport) | AC-1.3 |
@@ -283,21 +283,38 @@ remote, dir])`, which carries no `-C` prefix and whose verb `clone` is mutating.
 positionally, never exempted:
 
 1. **Invoking-tree domain** — every argv with no `-C` prefix that is *not* the clone argv. Asserted
-   by containment against the closed invoking-tree read-verb set (`read-object`, `read-remote`,
-   `read-index`, per TSPEC §13.1 row 9); a `checkout`, `switch`, `stash`, `reset`, `rebase` or bare
-   `fetch` fails by construction rather than by enumeration of known-bad calls, and DEC-CONS-04's
-   "admits no mutating git verb at all" continues to hold of *this* domain exactly.
+   by containment against that domain's **whole** verb set as TSPEC §9.3 states it
+   (`TSPEC-pdlc-consolidation-agent.md:1619`): obliged `add` and `commit` — the pass's own
+   pathspec-scoped log commit, `git add -- {paths}` then `git commit -m {msg} -- {paths}`, required
+   by `REQ-pdlc-consolidation-agent.md:288` and mirroring `commitQueueRow`
+   (`pdlc/workflows/orchestrate-queue.js:1576-1585`) — plus the five permitted reads `read-branch`,
+   `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index`. An earlier draft of this line
+   cited TSPEC §13.1 row 9 for "the closed invoking-tree read-verb set" and named only the three ⊕
+   widenings; that is **withdrawn**, because §13.1 row 9 is the *widenings* row, not the domain's
+   set — it understated the reads by two and omitted the two obliged mutating verbs, so the
+   assertion as written was **red on correct code**, failing on the pass's own log commit. The
+   falsifying force sits on `TSPEC:1619`'s **absent-always** column — `checkout`, `switch`, `stash`,
+   `reset`, `rebase`, every merge verb — which is what makes "a `checkout` fails by construction"
+   true; a bare `fetch` fails too, being in neither the obliged nor the permitted column of this
+   domain. The direction stays **containment**, not exclusion, per §11.2: a verb nobody has
+   classified yet must red rather than green.
 2. **Clone domain** — every argv whose first two elements are `["-C", dir]` where `dir` is the string
-   `_makeTempDir`'s double returned. Its verb set is the closed clone-domain set; nothing here is
+   `_makeTempDir`'s double returned. Asserted by containment against the clone domain's verb set as
+   `TSPEC:1620` enumerates it — obliged `clone`, `create-branch`, `add`, `commit`, `push`; permitted
+   `fetch`, `read-branch`, `read-status`; absent every merge verb — cited rather than restated, so a
+   later widening of that row fails the assertion instead of drifting past it. Nothing here is
    checked against the invoking-tree set.
 3. **The single `clone` argv** — asserted by **shape**, exactly once per pass, and pinned
    positionally: the argv equals `["clone","--depth","1","--single-branch", R, D]` where `R` is
    character-identical to the `remote get-url` double's reply (or, in the two-repo arm, to
    `https://github.com/{pluginRepository}.git`) and `D` is character-identical to `_makeTempDir`'s
    reply. Both trailing positions are pinned, so the destination cannot be a path inside the
-   repository and the source cannot be the repository root path. Answering the reviewer's Q-01
-   directly: the clone belongs to no verb set — it is its own case, and what pins its destination is
-   the last-argument identity, not a permission.
+   repository and the source cannot be the repository root path. `TSPEC:1620` bins this call in the
+   clone domain ("plus the `clone` call itself"), and nothing here contradicts that: domain 3 is a
+   **shape assertion in addition to** that membership, not a fourth domain. It is separated out
+   because verb containment is too weak for this one call — what pins its destination is
+   last-argument identity, not a permission — and an earlier draft's "the clone belongs to no verb
+   set" is withdrawn as a mis-statement of that separation.
 
 The partition is total by construction: an argv that matches none of the three fails the assertion,
 so a fourth kind of call cannot slip through unclassified. The two-repo arm is case 3 with
