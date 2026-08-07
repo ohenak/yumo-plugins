@@ -125,11 +125,45 @@ ride out of the changed spans; neither can steer a PLAN or PROPERTIES author wro
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-05 | *(carried unchanged from v2.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags? |
+| Q-06 | *(carried unchanged from v3.)* `REQ:288` obliges a **pathspec** on both invoking-tree calls and explicitly rejects `commitPaths`' bare `git commit -m` shape. The obligation conjunct asserts the two verbs are *observed*, but a verb-level observation still cannot see the pathspec. Which oracle owns the pathspec — an AT in the register, or an argv-shape assertion like domain 3's? |
+| Q-07 | *(carried from v5.)* A mechanical link-resolver would have caught F-10, F-16 and F-17; it would not have caught F-13, a stale *claim* whose anchors all resolved. Is there a cheaper convention that catches both — e.g. every DECISIONS entry carrying a one-line `Superseded-by:` field that the TSPEC's §13.1 row is required to match, so a supersession is a set comparison rather than a prose paragraph a reader has to find? |
+| Q-08 | *(carried from v6, answered in practice.)* The author chose "annotate in place", and did it thoroughly enough that §2's index row, the heading and the Decision block all now carry the flag. The structural question stands for the next document: should §2's index only ever list *live* decisions, with overturned entries relocated to a short "superseded" section? Not a finding — the in-place annotation works. |
+| Q-09 | *(new.)* §11.3 now retains two closed items struck through, as "the record of settled rounds", and one live item. That is the right instinct — a closed erratum is evidence a question was asked and answered — but the section's title is still *Errata raised, not settled here*, which now describes one of its three items. Does the PLAN's reader need §11.3 partitioned (live / closed), so "what is still handed up" is a set they can read off rather than derive from strikethrough? |
 
 ## Positive Observations
 
-*(pending)*
+- **F-13 was answered by conceding the reviewer's point in the document's own voice.** The note does
+  not quietly swap the wrong sentence out; it says "An earlier draft of this note said the `present`
+  half 'carried' and only the payload moved; that is **withdrawn** — it is exactly backwards about
+  the probe, and getting it wrong costs an oracle rather than a grep." That is the second time in
+  three rounds this document has recorded a withdrawal rather than an edit (§5 domain 1 did the
+  same), and it is why the anchor-level findings that remain are cheap to check: the document tells
+  me where it changed its mind.
+- **The consequence bullet is the best thing in the revision.** Discovering that your entry's
+  *rejected* alternative is what shipped is an uncomfortable finding to write down. The document
+  writes it down, names the fixture set that proves it (`TSPEC:2640`), and then does the part almost
+  nobody does — reconstructs *why* the rejection was correct at the time and what dissolved it
+  ("under an *empty* release a released marker and a truncated one are the same observed state").
+  A future reader who wonders whether the rejection was sloppy has the answer in place.
+- **The Testability fix removes an absence-license instead of relabelling it.** The old §11.2 row
+  told a PROPERTIES author that FSPEC §4.2's empty arm was unreachable and must not be tested. That
+  row is now struck with "**row withdrawn; this arm IS asserted**" and the explicit warning not to
+  read it as licence to omit. Combined with the four-fixture pairing and its stated falsification
+  argument, DEC-CONS-07 now hands downstream a paired oracle where it previously handed a hole.
+- **DEC-CONS-01's index row went from hedged to settled, on evidence.** "the `git` half is
+  **provisional**" became a named lane with a mechanism, a rejected alternative and a code cite I
+  could check (`runtime-adapter.js:667-669`). Q-04, open since v2, closes on it. The document did not
+  declare the question settled — the TSPEC settled it, and the document reports that with anchors.
+- **The sweep found an error in my own v6 verification.** I certified "ten stale values across
+  twelve sites"; the true pre-sweep count is eleven across fourteen, because `:117` occurred twice
+  and the bare `:684` continuation existed at all. The revision corrected both. A revision that
+  audits its reviewer's arithmetic is doing more than answering findings.
+- **Nothing was traded away across eight commits of churn.** I checked DEC-CONS-03's verb sets,
+  DEC-CONS-05's evidence structure, DEC-CONS-06's exclusion, §11.6(e)'s guard sentence and the
+  six-status set-equality specifically for silent weakening, and found none.
 
 ## Recommendation
 
