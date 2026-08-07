@@ -822,12 +822,27 @@ must land as properties rather than as unit cases:
 
   Comparison is over a `Set`, never a multiset (`TSPEC:2203-2204`).
 
-  *Anchor provenance.* Every `TSPEC:` line number in this document was re-measured against the TSPEC
-  at the commit that carries this revision. The v4 cross-reviews cite the same conjuncts at
-  `TSPEC:2095-2100` / `:2098-2099`; those were correct at the TSPEC revision they reviewed, and the
-  subsequent TSPEC round shifted the file by roughly +105 lines. The **content** of every conjunct is
-  unchanged and matches both readings — only the anchors moved, so a PROPERTIES author should trust
-  the transcribed set assertions above and re-measure the anchors if the TSPEC moves again.
+  *Anchor provenance.* The v5 revision re-measured **every** `TSPEC:` anchor in this document
+  against the TSPEC at the commit that carries this revision — the full enumeration, extracted
+  mechanically (`grep -on 'TSPEC[^ ]*:[0-9]\+\(-[0-9]\+\)\?'` over this file) and resolved one by
+  one, not the subset that happened to be under edit. Eleven were already correct; nine were stale
+  and are corrected in this revision (`:618`⇒`:672`/`:738`, `:1832`⇒`:1937`, `:1522`⇒`:1602`,
+  `:1595-1601`⇒`:1675-1677` in both places, `:787-788`⇒`:806`/`:841-842`, `:117`⇒`:807`,
+  `:793-796`⇒`:847`/`:850`, `:962-966`⇒`:966-970`, `:2522`⇒`:2658-2660`, `:1325`⇒`:1405`). Three of
+  the stale ones were inherited by faithful quotation from the TSPEC's own stale cites and are
+  raised as an erratum rather than corrected only here.
+
+  The v4 cross-reviews cite the §11.3(a) conjuncts at `TSPEC:2095-2100` / `:2098-2099`; those were
+  correct at the TSPEC revision they reviewed, and the intervening TSPEC round moved them **+104**
+  (`:2095`⇒`:2199`, `:2098`⇒`:2202`). That shift is **local, not a global offset**: it is cumulative
+  and depends on where in the file you are, because the round inserted at several points. Measured
+  on this revision's own retargets, it ranges from **+54** (`:425`⇒`:479`, `:439`⇒`:493`) through
+  **+80** (`:912`⇒`:992`) and **+105** (`:1619`⇒`:1724`) to **+122** (`:2160`⇒`:2282`). Adding a
+  constant to a stale anchor lands nowhere; each one has to be measured.
+
+  The **content** of every conjunct is unchanged and matches both readings — only the anchors moved.
+  A PROPERTIES author should therefore trust the transcribed set assertions above over any line
+  number, and re-measure rather than re-derive if the TSPEC moves again.
 - **DEC-CONS-07** — over the six terminal statuses enumerated at
   `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
   take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
