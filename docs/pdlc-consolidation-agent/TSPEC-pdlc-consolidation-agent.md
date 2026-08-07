@@ -1250,11 +1250,15 @@ depth-1 clone) and its residue is inspectable, which matches AC-3.6's decision t
 
 Writing a file **inside the clone** uses the `_writeFile` seam with an absolute path under `dir` —
 and that **is** a new capability, granted by §5.6(a)'s prompt widening, not an existing one. The
-shipped prompt says "relative to the repository root" (`runtime-adapter.js:806-807`) and `dir` is
+shipped prompt says "relative to the repository root" (`runtime-adapter.js:805`) and `dir` is
 outside the repository, so the earlier claim that "no new capability is needed" was wrong in the one
 direction that matters: three things depend on this working — the guard-set edit committed in the
 clone, the PR body file, and with it the whole `--body-file` mechanism. §5.6(a) states the widened
-contract and §11.3(e) states the assertion that pins it; §11.6 no longer exempts it.
+contract and §11.3(e) states the assertion that pins it; §11.6 no longer exempts it. Only the
+**write** prompt changes: every path this pass hands `_readFile` is repo-root-relative (the corpus
+files enumerated by `ls-files`, the log, the marker), and `rtReadFile`'s shell-command transport
+resolves an absolute path verbatim anyway (§5.6(a)), so there is no read-side edit here and none is
+needed.
 
 NFR-1 is untouched: the only guard-set path the pass ever writes is inside the throwaway clone,
 never in any tree the invoking repository checks out. The widening does not weaken that — an
@@ -1626,12 +1630,23 @@ sync by contract (§5.6(b)) and awaiting a number is noise, not discipline.
 that runs both parsers over the same five observed states and asserts the same classification, so a
 future change to one is a red test rather than a silent divergence.
 
-**(e) The adapter-prompt assertion for the widened path contract (§5.6(a)).** `rtWriteFile` and
-`rtReadFile` are agent prompts, so their behaviour cannot be executed in a unit test — but their
-**text** can be read, and the repo already asserts over adapter source (`runtimeBundle.test.js`
-scans `runtime-adapter.js` at `:1573-1580`). The assertion pins the widened clause in both prompts
-verbatim, so a future edit that reverts them to "relative to the repository root" reds rather than
-silently breaking every clone write. This is the L3 counterpart of the `_envPresent` prompt review
+**(e) The adapter-prompt assertion for the widened path contract (§5.6(a)).** `rtWriteFile` is an
+agent prompt, so its behaviour cannot be executed in a unit test — but its **text** can be read, and
+the repo already reads `runtime-adapter.js`'s source in a test (`runtimeBundle.test.js:1573-1580`
+lists it in the C0-control-byte scan's `SOURCES`; that precedent establishes *reading the file*, not
+matching prompt text, so the prompt-text match is a new shape — stated plainly rather than
+borrowed). The assertion is scoped to **`rtWriteFile`'s prompt only**, and has two conjuncts:
+
+1. the widened absolute-path clause of §5.6(a) appears verbatim inside `rtWriteFile`, so a future
+   edit that reverts it to the bare "relative to the repository root" reds rather than silently
+   breaking every clone write;
+2. the string `"relative to the repository root"` occurs in `runtime-adapter.js` **exactly once** —
+   the count is the falsifier for the opposite mistake, someone "harmonising" `rtReadFile` by adding
+   the clause there (§5.6(a) records why that would be gratuitous).
+
+There is deliberately **no** assertion over `rtReadFile`'s prompt text: it carries no
+path-resolution clause today and gains none, so an assertion there could only pin text that does not
+exist — which reds on a correct tree and gets "fixed" by deletion. This is the L3 counterpart of the `_envPresent` prompt review
 in §11.6: a capability the feature *invents* is not in the same class as "the real `gh` accepts
 these flags", so it does not get that section's exemption.
 
