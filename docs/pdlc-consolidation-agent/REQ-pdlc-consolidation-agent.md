@@ -15,7 +15,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.0 | 2026-08-06 |
+| pdlc | draft | Claude | 2.1 | 2026-08-06 |
+
+> **Erratum round (v2.1, Phase D).** Three targeted corrections, nothing else changed: REQ-CONS-01 step 1 withdraws its
+> "one enumeration as well as one predicate" claim and decides the two classes on which the hook's and the pass's
+> enumerations would otherwise disagree (including whether a `.gitignore`d LEARNINGS file is corpus — it is); §4b decides
+> whether the durable log row carries unreadable corpus basenames (it does not).
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
