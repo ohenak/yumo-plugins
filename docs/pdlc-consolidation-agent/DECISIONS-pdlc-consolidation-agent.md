@@ -47,7 +47,7 @@ DEC-CONS-07 are direct applications of DEC-DIST-01 and DEC-ORACLE-02 respectivel
 
 | ID | Decision, in one line | Reversibility | Load-bearing on |
 |---|---|---|---|
-| DEC-CONS-01 | The credential seam returns `boolean`, and the secret reaches `git`/`gh` only by shell expansion | easy (seam is new; nothing consumes a value) | NFR-2, AC-4.2 |
+| DEC-CONS-01 | The credential seam returns `boolean`, and the secret reaches `git`/`gh` only by shell expansion | easy (seam is new; nothing consumes a value) | NFR-2, AC-4.2, **AC-4.3, AC-3.5** |
 | DEC-CONS-02 | Reuse `resolveAdvisoryRung` (`orchestrate-dev.js:1833`) by adding an optional `skill` parameter | hard (edits a guard-set file every advisory dispatch reads) | AC-1.5, AC-1.6 |
 | DEC-CONS-03 | Clone from `git remote get-url origin`, never from the working-tree path | easy (one seam argument) | AC-3.8 |
 | DEC-CONS-04 | The marker take is observe-then-write (`_checkFile`, `_readFile`, `_writeFile`); no atomic take exists | one-way door at this layer (no `O_EXCL` transport) | AC-1.3 |
@@ -81,9 +81,43 @@ inside the transported command (TSPEC §9.2).
   would then be a discipline enforced by review across every future call site, not a property of the
   interface. The code cost of the rejected form is *lower*, not higher — it is the same one-function
   adapter — which is exactly why it needs to be written down as rejected.
-- **Redact at the logging boundary instead** (scrub the value out of `_log` output) — rejected: the
-  transcript is written by the runtime, not by this module's `_log`, so the module has no boundary to
-  scrub. There is no shipped precedent for a redacting log in either bundle.
+- **Redact at the logging boundary instead** (scrub the value out of `_log` output) — rejected for
+  the *outbound* direction, and the rejection is narrower than an earlier draft of this entry
+  claimed. What the module can emit through `_log` is derived only from values it holds, and it
+  holds no credential value, so there is nothing for an outbound scrubber to catch; the agent
+  transcript, where the value *would* be visible, is written by the runtime and is not a boundary
+  this module owns. There is no shipped precedent for a redacting log in either bundle. The earlier
+  wording "the module has no boundary to scrub" is withdrawn: the module does have an **inbound**
+  boundary, and §3a below records what it leaves open.
+
+**Residual: the failure-reply channel is inbound, and it is not closed.** Non-disclosure holds
+structurally on the way *out* — the value never becomes a JS string (TSPEC §9.2, `TSPEC:1595-1601`).
+It does **not** hold structurally on the way *in*. On a non-zero exit `rtGit` instructs the transport
+agent to return "the LAST 300 characters of its **combined output**"
+(`pdlc/workflows/runtime-adapter.js:951`), which `rtParseTransportReply` (`:967`) surfaces as the
+`stderr` field (`:977`); `rtGhRun` (`:995`) parses through the same function (`:1006`) but asks its
+agent for stderr only (`:1000`), so the combined-output arm is `rtGit`'s alone. This feature renders
+that field: `enumerateCorpus` returns `{unlistable: true, detail: stderr}` (`TSPEC:618`, `:684`) and
+§10.3 row 1a puts the "pathspec `stderr` in report body" (`TSPEC:1832`); `openClone` returns
+`{failure, detail}` (`TSPEC:1522`) on the clone/push path, which is the **credentialed** one. So
+non-disclosure on the inbound path is bounded by *what `git` prints on failure*, not by the seam's
+interface, and no arm of the Testability line below observes that channel — both arms drive
+`_envPresent` only.
+
+Two things bound it, and neither closes it:
+
+- The credential is passed to `git`/`gh` by *name*, not by value, so a credentialed argv element
+  should not exist to be echoed back in a usage or error message. That is an obligation on the
+  implementation, not a property of the seam — and it is not currently satisfied on one path, which
+  is why the TSPEC erratum in §11.3 item 3 exists: `rtShellQuote` single-quotes every argv element
+  (`runtime-adapter.js:668-670`), so a `$VAR` written into a `_git` argv element is passed
+  **literally** and never expanded. A push that needs the token in argv therefore cannot get it by
+  shell expansion through `_git`.
+- The channel is truncated to 300 characters and only opens on a non-zero exit.
+
+Recorded, per DEC-ORACLE-02, as a stated residual rather than asserted away — the same treatment
+DEC-CONS-04 gives its unclosed race. NFR-2 is honoured **by construction outbound and by
+implementation discipline inbound**, and the two must not be conflated.
 
 **Constraints that forced this shape.** No `process` in the runtime (DEC-DIST-01); every seam is
 agent-transported, so *reply text is disclosure*. Fail-closed is required by AC-4.3: an unparseable
@@ -98,13 +132,29 @@ shape is the cheaper-looking one.
 transport); a credential form that cannot be consumed by shell expansion (e.g. one requiring a
 signed exchange before use); NFR-2 being narrowed to permit redacted logging of the value.
 
-**Testability:** the positive and negative arms are both L1-observable through the doubled seam — a
-`fakeEnvPresent` returning `true` / `false` / an unparseable reply drives the three arms of the
-credential branch, and the assertion that no test double ever *receives* a credential value is
-structural: the protocol's type has no string channel to carry one. The disclosure property is
-asserted as absence-plus-positive per DC-10's sibling rule — every rendered log row carries a
-`credential:` field from AC-4.2's closed three-value set, so the "never logged" assertion runs on a
-path that demonstrably executed.
+**Testability:** three arms and two conjuncts, all executable — this codebase has **no type system**
+to appeal to (`pdlc/workflows/` ships plain ES-module JS, checked only by jest; there is no tracked
+`*.ts` and no `tsconfig.json` anywhere under `pdlc/`), so an earlier draft's "the protocol's type has
+no string channel to carry one" is withdrawn: nothing would fail if a double returned a string.
+
+1. **Branch arms.** A `fakeEnvPresent` returning `true` / `false` / an unparseable reply drives the
+   three arms of the credential branch (`present (redacted)` / `local-gh` / `absent` +
+   `credential-unavailable`, AC-4.2 and AC-4.3's degrade to the AC-3.5 fallback).
+2. **Runtime type oracle, replacing the structural claim.** Across the whole case set, assert
+   `typeof` every recorded `_envPresent` return is `"boolean"` — a real assertion that a
+   value-returning seam would fail — **and** pin the transported command text at source:
+   `rtEnvPresent`'s prompt interpolates the variable *name* only, never a value, asserted as an
+   adapter-source read in the same style as DEC-CONS-06's pin.
+3. **Set-equality on the `credential:` field, not containment.** AC-4.2's three values
+   (`present (redacted)` / `absent` / `local-gh`, `REQ-pdlc-consolidation-agent.md:320-322`) are an
+   enumerated contract, so the oracle is set-equality over the full enumeration: each of the three is
+   observed at least once across the case set, and the observed value set is **exactly** equal to the
+   declared set — deleting or renaming a value fails a test rather than silently shrinking coverage.
+   This is what carries the "never logged" absence assertion onto a path that demonstrably executed
+   (DC-10's sibling rule).
+
+Not observed by any of these: the inbound failure-reply channel recorded above. It is stated as a
+residual, not asserted — see §11.2's deliberately-unasserted list.
 
 ## 4. DEC-CONS-02: Reuse `resolveAdvisoryRung` by widening it, rather than restating the ladder
 
