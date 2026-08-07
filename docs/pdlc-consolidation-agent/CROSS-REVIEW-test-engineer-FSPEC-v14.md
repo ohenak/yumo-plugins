@@ -40,7 +40,50 @@ missing and no test would be written wrong on it.
 
 ## Questions
 
+None. My v13 Q-01 is answered in the document (`:485-493`) and I have nothing to replace it with.
+
 ## Positive Observations
+
+- **A declined option was written down as a decision, which is the rarer half of answering a
+  reviewer's question.** Q-01 asked whether aging a released marker had been considered and declined,
+  precisely so a later reader would not read silence as oversight. The answer (`:485-493`) does not
+  add a rule, an AT or a config key — it records the weighing, names the alternative that already
+  answers the same question from a better source, and says which property makes the rejected one
+  weaker ("lost on every fresh clone"). It also states its own scope: "no acceptance test asserts
+  anything about a released marker's age beyond AT-M11's 'free at any age'", so the test surface is
+  bounded in the same breath. An FSPEC that grows a feature every time a reviewer asks a question is
+  the failure mode here, and this diff did not do it.
+- **L-03 was fixed with a table where I had proposed a sentence.** My suggested repair was "name the
+  second producer and say the record is deliberately conservative". The diff builds a three-column
+  producer table (`:510-513`) that additionally records *what the dying pass had already done* — the
+  column that makes the conservatism legible rather than asserted, because it is what shows the
+  step-16 case already has its terminal row in the log. That is the column a PROPERTIES author needs
+  to state the invariant ("a reclamation row is never the only trace of a pass that completed"), and
+  it was not asked for.
+- **Every conjunct I would use to falsify the new prose survived the edit.** I re-derived §4.2's
+  outcome table as a total function over the six observable states (absent, `RELEASED:`,
+  `IN-PROGRESS:` young, `IN-PROGRESS:` old, empty, neither-form) after the diff: all six still
+  covered exactly once, the two free states still differing only in bookkeeping (`:481-483`), and the
+  last row still decided toward reclamation with the wedge argument intact (`:495-498`). AT-M3
+  (`:2118`) and AT-M11 (`:2119`) are byte-unchanged, and AT-M11 remains correctly shaped — its
+  negative conjuncts ("**no** `reclaimed-stale-lock` and **no** `consolidation-in-progress`") are
+  paired with the positive on the same path ("the marker is taken and the pass proceeds"), so it is
+  not an absence-only oracle even though BR-13's new clause leans on it.
+- **The `pending` channel is specified precisely enough to write the test today, including its one
+  ugly arm.** The part of L-04 I cared about was not naming the binding — it was the empty-corpus
+  case, where a verbatim execution exits at `:29-30` and leaves `pending` unbound, so a naive
+  namespace read raises rather than returning a set. AT-P7 now states the expected reading ("`pending`
+  is unbound and the hook's set is read as empty rather than as an error"), which is the difference
+  between a test that is green and a test that is red for a reason that is not a defect. I re-ran the
+  hook's line anchors at HEAD and all seven cited lines are exact, including the `:43` threshold
+  comparison the row now cites correctly.
+- **The header block declares the round honestly and the diff bears it out.** v11.4 (`:12-22`)
+  enumerates five lettered items plus the Q-01 answer; every hunk in the diff maps to one of them.
+  No new repo path, no new lexicon value, no new config key, no new AT, no new BR, no new §14.5
+  register row — and I re-checked the set-equalities I have tracked since v10 (§8.1's cell-level
+  rule, the §14.5 register, BR-33a's enumeration, AT-F19/F20/F21/Q7c, the AC→AT map at `:2345`) and
+  none of them moved. The only register that changed content is BR-13, and it changed to agree with
+  three others rather than to add a sixth position.
 
 ## Recommendation
 
