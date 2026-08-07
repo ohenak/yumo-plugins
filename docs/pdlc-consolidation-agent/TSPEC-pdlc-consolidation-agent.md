@@ -1597,9 +1597,34 @@ prefixes the transported command with the variable *by name*:
 `GH_TOKEN="$PDLC_PLUGIN_REPO_TOKEN" gh pr create …` (the actual name coming from config). The shell
 inside the transport expands it; the pass holds only the name. That is what makes FSPEC §7.4's
 "never echoed back through a subprocess argument" structurally true rather than a review promise —
-there is no code path on which the value exists in the module. The same prefix form carries the push
-(`_git` takes argv, so the push uses `-c http.extraheader` only when a token is present; with
-`local-gh` it uses the ambient credential helper and no prefix at all).
+there is no code path on which the value exists in the module. That statement is exact for the `gh`
+half: `_ghRun` takes a **command string** which `rtGhRun` interpolates verbatim into the transported
+command (`pdlc/workflows/runtime-adapter.js:995`), so an environment prefix written by the module is
+expanded by the shell that runs it.
+
+**The push half is different, and an earlier draft of this section was wrong about it.** `_git`
+takes **argv**, and `rtGit` passes every element through `rtShellQuote`
+(`pdlc/workflows/runtime-adapter.js:668-670`), which POSIX single-quotes it. A `$VAR` written into a
+`_git` argv element — including an `-c http.extraheader=…$PDLC_PLUGIN_REPO_TOKEN…` element — is
+therefore transported **literally** and never expanded, so the credentialed push cannot reach `git`
+by shell expansion through this seam. Nor may the module hold the value instead: NFR-2 and
+DEC-CONS-01 forbid it. The lane this layer picks is **neither of those**:
+
+- **Chosen.** The push stays on `_git` (so §9.3's clone-domain classifier and its `push` obligation
+  are unchanged) and carries the credential as a **git credential helper**, not as a header value:
+  `_git(["-C", dir, "-c", "credential.helper=!f(){ echo username=x; echo password=$PDLC_PLUGIN_REPO_TOKEN; };f", "push", …])` (the variable name coming from
+  `consolidation.credentialEnv`). `rtShellQuote` single-quoting that element is exactly what is
+  wanted: the helper text reaches `git` intact, and `git` runs it through **its own** shell, which
+  expands the variable from the environment it inherited. Expansion happens one process below the
+  transport, so the module still holds only the name and the value still never becomes a JS string.
+- **Rejected — route the push through a command-string seam of `rtGhRun`'s shape.** It closes the
+  finding, but it adds a second git transport whose argv is unquoted, moves the push out of §9.3's
+  `_git`-argv classifier (whose domain test is literally "`_git` whose argv begins
+  `["-C", cloneDir]`"), and so re-opens a frozen FSPEC §6.5 set for a mechanism the chosen form
+  already provides.
+- **Rejected — `gh` for both.** `gh` has no push verb; the push would still be `git` underneath.
+
+With `local-gh` the push uses the ambient credential helper and carries no `-c` element at all.
 
 `credential:` resolution order is §7.2's: variable present ⇒ `present (redacted)`; else a working
 `gh` auth probe (`_ghRun("gh auth status")`) ⇒ `local-gh`; else `absent` + `credential-unavailable`.
