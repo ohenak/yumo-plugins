@@ -479,7 +479,7 @@ relaxation is accepted.
   `SessionStart` robustness budget (no git, no Python, not a repository ⇒ exit 0) is unchanged by any
   of them, so the edit remains cheap relative to a third shared artifact — which is the comparison
   that matters. It is not *one line*, and §11.1 row 6 states the same three, so the two sections
-  agree. (Reviewer Q-02: three changes, one file, one owning task.)
+  agree: three changes, one file, one owning task.
 
 **Constraints that forced this shape.** The `_listFiles` seam's structural limit above; the runtime's
 no-`import` rule, which forecloses a shared module; the hook's `SessionStart` robustness budget
@@ -509,7 +509,7 @@ predicate" claim, and it is only observable because of the `PDLC_PENDING:` stder
 The differential invokes the hook **end-to-end** — a real `bash`/`python3` subprocess reading the
 `PDLC_PENDING:` channel (`TSPEC §11.3`'s L4 row, `consolidationHookParity.test.js`) — never a
 re-implementation of the hook's predicate inside the test, which would make the "one predicate" claim
-unfalsifiable (reviewer Q-03).
+unfalsifiable.
 (2) The JS enumeration pin: a literal-argv assertion at L1, both `:(glob)` prefixes included, so any
 change to the pathspec is a deliberate test edit. (3) The hook enumeration pin: an L3 source-text read
 of the `CORPUS_GLOBS` declaration — stated over the *declaration*, never a line number, plus the
