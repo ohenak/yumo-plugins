@@ -1113,6 +1113,114 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 
 ## 11. Test strategy
 
+### 11.1 Levels
+
+| Level | What it ranges over | Seams | Where |
+|---|---|---|---|
+| **L1 — pure function** | every §7 function, called directly on literal inputs | none | `consolidationPredicate.test.js`, `consolidationIdentity.test.js`, `consolidationEffectiveness.test.js`, `consolidationParse.test.js` |
+| **L2 — orchestration** | `main()` end-to-end with doubles for every seam; the §12 acceptance tests live here | all doubled | `consolidationPass.test.js`, `consolidationRoute.test.js`, `consolidationCredential.test.js` |
+| **L3 — build & artifact** | the bundle is emitted, is in sync, carries no `import(`, and its `meta` is first and literal | none | extends the shipped `runtimeBundle.test.js` rather than adding a parallel suite |
+| **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7) |
+| **L5 — property** | the four T-09 components | none | `consolidationProperties.test.js` |
+
+L4 is the only level that shells out. It is scoped to the hook script, is skipped with a recorded
+notice when no usable Python interpreter is found (the hook's own `PY_BIN` probe, `:13-20`, has the
+same degradation), and never touches the repository's own `docs/` tree — it writes its fixture
+corpus into a temp directory and points the hook at it through `CLAUDE_PROJECT_DIR` (`:26`), which
+is what makes the harness a pure function of an injected root (DC-04).
+
+### 11.2 Test doubles — reuse first (DC-08)
+
+| Seam | Double | Source |
+|---|---|---|
+| `_agent` | `makeAgentDouble({script, throwOn})` | `__tests__/helpers/advisoryDoubles.js` — already built to drive `isModelResolutionError` from a scripted rejection *message*, which is exactly what FSPEC §2.6 rows 2–4 need |
+| `_git` | `fakeGit(script)` | `mergeDoubles.js`, re-exported by `advisoryDoubles.js` as `makeGitDouble` |
+| `_ghRun` | `fakeGhRun(script)`, `passingGh` | same |
+| `_readFile` / `_writeFile` / `_appendFile` / `_checkFile` | `fakeFs(initialContents, opts)` | `__tests__/helpers/seams.js` |
+| `_listFiles` | `fakeListFiles(spec)` | same |
+| clock, sleep | `fakeNow`, `FIXED_NOW_MS`, `fakeSleep` | `mergeDoubles.js` |
+| PRNG | `seeded`, `resolveSeed` | `driftGenerators.js` — the repo's one seeded-PRNG library |
+
+**Two new factories only**, both in `__tests__/helpers/consolidationDoubles.js`, because the seams
+they double do not exist yet: `fakeEnvPresent(presentNames: Set<string>)` and
+`fakeMakeTempDir(path | null)`. That module also holds this feature's fixture builders (a log
+builder, a corpus builder, an `ESCALATIONS.md` builder) so no test file constructs a log by string
+concatenation — the same single-canonical-double rule `seams.js` and `advisoryDoubles.js` state in
+their own headers.
+
+### 11.3 The oracles that need a mechanism, not just an assertion
+
+Four assertions the FSPEC states cannot be written as a plain `expect` and are specified here.
+
+**(a) The seam-verb spy (AT-Q7, AT-Q7b, AT-Q7c).** A recording wrapper around `_git` and `_ghRun`
+that classifies each call with the module's own `resolveSeamVerb` (§9.3) and bins it by domain,
+using the clone directory the test's `fakeMakeTempDir` returned as the discriminator. The oracle is
+then three set assertions per domain: **containment** `observed ⊆ permitted` universally,
+**obligation** `obliged ⊆ observed` on the Given that obliges it, and the two `∅` equalities of
+AT-Q7c. Comparison is over a `Set`, never a multiset — AT-Q2's three commits are three occurrences
+of one verb. AT-Q7b's supplementary source check greps the module's own source for a merge verb and
+is never the sole evidence.
+
+**(b) The vocabulary set-equality (AT-L5).** The harness collects the enumerated-class values a
+fixture set produced and compares them against a transcription of vocabularies §1 at `Version` 1.4
+held in `consolidationDoubles.js` as a literal table. Both directions are asserted. The free-form
+class is excluded **by name**, so narrowing the domain cannot silently drop a direction. Because
+§6.4's frozen catalogues are the module's own source of those values, a third assertion is cheap and
+included: catalogue array ⊆ §1 transcription and vice versa, which fails at build time rather than
+after a fixture happens to exercise a branch.
+
+**(c) The `await` audit.** `seams.js`'s header names the sync-double/async-adapter asymmetry as the
+central hazard: a missing `await` passes L1 and L2 and fails only in production. The compensating
+control is the shipped one — the L3 suite's source scan, extended to
+`consolidate-learnings.js`: every call to an injected seam identifier must be syntactically
+`await`ed. This is a static check over the module's own text, not a runtime assertion, because a
+sync double makes the runtime one unfalsifiable.
+
+**(d) The `parseAdvisoryConfig` parity test.** §7.8's duplication is pinned by a table-driven test
+that runs both parsers over the same five observed states and asserts the same classification, so a
+future change to one is a red test rather than a silent divergence.
+
+### 11.4 Property strategies (T-09)
+
+One strategy per parameterisable component, all drawn from `driftGenerators.js`'s `seeded`/`resolveSeed`
+— **no property-testing dependency is added**, matching the shipped decision recorded in that file's
+header.
+
+| Component | Generator | Invariant |
+|---|---|---|
+| §7.1 two-region predicate | random interleavings of openers, closers, stray basenames and prose, over a random enumerated corpus | every basename inside any block is consolidated; the predicate is total (never throws) and every enumerated file lands in **exactly one** of the two sets |
+| §7.2 `passId` | a random multiset of rows, a random subset made unparseable | the minted id is strictly greater than every parseable `{today}` id; unparseable rows change nothing; the result is invariant under row permutation |
+| §7.8 config parse | a random subset of keys corrupted by type | every uncorrupted key keeps its configured value; every corrupted key takes its documented default; `invalidKeys` is set-equal to the corrupted subset |
+| §7.7 escalation count | a random entry sequence with a random subset missing `Feature` or `Seam` | the total attributed count equals the number of entries carrying both rows; no count is attributed to a key absent from the input |
+
+Two further properties are added beyond T-09's four because they are the FSPEC's determinism claims
+and an example cannot range over them: `failureModeId` is invariant under the *order* of two
+proposals that merge (§7.4), and `effectivenessTable` is invariant under the order in which two
+passes' records were appended when their dates are unchanged (§7.5).
+
+### 11.5 Where the FSPEC's deferrals land
+
+FSPEC §14.5's register (LD-1 … LD-5) is PROPERTIES-owned per `DEC-LAYER-01` and passes through this
+layer unchanged. This TSPEC states only **where** each will be written, so the PLAN can name a task:
+LD-1 (three `artifact` arms), LD-4 (`passId` arm) and LD-5 (the four remaining short-record arms) all
+range over `parseLogRecords`'s output and its readers, so they belong in
+`consolidationParse.test.js` beside AT-F21; LD-2 (the `target`-follows clause) and LD-3
+(two-action-one-subject) range over `mergeProposals` and belong in `consolidationIdentity.test.js`
+beside AT-R6b. Nothing about their fixtures is decided here.
+
+### 11.6 What is not tested, and why
+
+- **The producing side of the `failure-mode-id` convention** (a harvest agent copying an id). Its
+  output is an LLM invocation with no reproducible result; the receive side is AT-F15/AT-F16 and the
+  gap is FSPEC O-C6.
+- **The real `gh` and the real network.** Every PR-route test drives `fakeGhRun`. The one thing that
+  cannot be asserted this way — that a real `gh pr create` accepts the flags §9.2 builds — is
+  covered the way the repo already covers `mergeCommandFor`: by an exact-string test over the
+  builder's output, reviewed against the CLI's documented interface.
+- **`_envPresent`'s adapter transport.** It is an agent prompt; the module-side contract (a boolean,
+  fail-closed on anything unparseable) is tested with a double, and the prompt itself is reviewed,
+  not executed — the same posture every other `runtime-adapter.js` transport takes.
+
 ## 12. Traceability
 
 ## 13. Risks and open items handed downstream
