@@ -42,7 +42,30 @@ confined to conjunct 4. And the closing "Comparison is over a `Set`, never a mul
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Once F-01 is restated, is the invoking-tree absent-always intersection worth keeping as a **fifth**, explicitly-redundant note (labelled as implied by containment), or dropped? I have no objection either way — but if it is kept, it must be labelled implied, because an unlabelled redundant conjunct is the kind of thing a later simplification deletes along with a load-bearing one. |
+
 ## Positive Observations
+
+- **The re-anchoring pass is the right response to a moving upstream, and it was done by measurement
+  rather than by arithmetic.** Every one of the eleven anchors the revision moved reproduces at HEAD
+  when checked independently (`TSPEC:1724`, `:1725`, `:479-480`, `:493`, `:992-996`, `:1046-1048`,
+  `:2199-2204`, `:2202-2203`, `:2282-2284`). A bulk `+105` applied uniformly would have broken the
+  early-file cites, which shifted `+54` and `+80`; they are individually correct instead.
+- **The v4 F-01 retarget went beyond the retarget.** Each of the three obligation cites now names
+  *what the neighbouring range is* — "`:2201-2202` is *containment*, which is precisely the conjunct
+  this sentence has just said is insufficient". A future off-by-one is now self-diagnosing: the
+  document says which clause it expects at which anchor, so a reader who measures a mismatch knows
+  immediately whether the anchor drifted or the content changed.
+- **The Anchor provenance paragraph is a durable process artefact, not just a footnote.** It records
+  that the v4 cross-reviews' anchors were correct against the revision they read and that only the
+  line numbers moved — which is exactly the ambiguity that makes a harvested review look wrong to a
+  later reader. Cross-review anchors into a document still under revision are provenance for a
+  *revision*, not for a file; saying so on the page is worth keeping.
+- **F-01 is the only defect in the changed text, and it is a transcription defect, not a decision
+  defect.** The decision DEC-CONS-03 records — containment, not exclusion; conjoined with obligation;
+  compared as a `Set` — is unchanged and correct. Nothing in this round reopened a settled question.
 
 ## Recommendation
 
