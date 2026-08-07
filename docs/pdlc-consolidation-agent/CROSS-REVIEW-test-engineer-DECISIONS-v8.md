@@ -71,4 +71,46 @@ approved in v1–v7 are not re-litigated.
 
 ## Recommendation
 
+**Approved with minor changes** (0 High, 0 Medium, 1 Low).
+
+Both v7 findings are closed on the merits, and neither was closed narrowly. F-01's Alternatives
+bullet now carries the supersession, the false premise, the shipped route, the oracle it would have
+produced, and a do-not-transcribe instruction — every anchor in it (`TSPEC:974-977`, `:1940`,
+`:2640`) resolves at HEAD to the content the sentence claims. F-02's item (i) now says "whole verb
+set (obliged ∪ permitted)" and splits the columns the way `TSPEC:1724` splits them, so the two
+passages the document calls the same set by construction are finally the same words.
+
+Nothing in the revision broke an unchanged section, and I checked each changed one against the
+upstream file rather than against the document's account of it:
+
+- §9's Context past-tenses the removed FSPEC lifetime row and quotes the replacement verbatim
+  (`FSPEC:435-436`, `:441-442` — both reproduce exactly); the no-unlink grep still returns 0.
+- §9's accepted-cost paragraph re-quotes the empty-or-neither-form row from `FSPEC:479` verbatim and
+  explains the fourth⇒fifth renumbering by naming the row inserted at `FSPEC:476`. I counted the
+  table; the ordinal and the cause are both right.
+- §11.3 item 1's rewrite states the same three retargets and stays a closed record, not a live queue.
+- §11.2's FSPEC-warranty scope note is honest about an unswept set. I swept it: 27 sites, 11 distinct
+  values, every live one resolving at HEAD (Q-01).
+
+One Low remains, and it is bookkeeping rather than direction: §11.2's new continuation-anchor note
+publishes "92 prefixed sites / 122 bare tokens" for "this revision", which are the counts at
+`50e28b23` — the revision v7 reviewed — while this revision measures 98/132. The pair's stated job
+is to let a re-sweeper confirm they have the whole set, so a stale pair makes the check misfire in
+the one direction it exists to serve. The remedy is the form the same paragraph already uses for its
+40/42 pair: pin the commit the counts were measured at. It does not block approval — no oracle,
+PLAN task or PROPERTIES row transcribes these numbers, and the failure mode is a spurious red for a
+human re-runner, never a green on a regression.
+
+Three upstream defects are emitted as ERRATUM lines in my final message; none is a defect of this
+document, and this document transcribes none of them. Two are unchanged from v7 and still open at
+HEAD (`FSPEC:2154`'s pre-widening AT-Q7c bound, and the TSPEC's own stale internal anchors at
+`TSPEC:1405` / `:52` / `:2578` — I re-confirmed the citing lines are untouched by this round). The
+third is new and was surfaced by this revision's own renumbering work: `TSPEC:1940` and `TSPEC:2590`
+both call the empty-marker arm "FSPEC §4.2's **fourth** row", which at HEAD is the stale-lock reclaim
+row (`FSPEC:478`); the empty arm is the fifth (`FSPEC:479`). An AT author fixturing "the fourth row"
+from the TSPEC builds a stale-`IN-PROGRESS:` marker instead of an empty one and proves nothing about
+E-11.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
