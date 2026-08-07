@@ -15,7 +15,13 @@ sections approved in v1–v5 are not re-litigated.
 
 ## Disposition of v5 findings
 
-_(filled below)_
+| v5 ID | Severity | Status | Evidence checked at HEAD |
+|---|---|---|---|
+| F-01 | High | **Resolved** | I asked for §11.2 conjunct 4 to be restated as AT-Q7c's two whole-domain emptiness equalities on the **PR seam** and the **clone**, with the note that neither is implied by containment, and for the invoking-tree absent-always intersection to be kept only if labelled implied. All of that landed. The bullet now reads "**PR-seam observed `= ∅`** and **clone-seam observed `= ∅`**", quotes `FSPEC:2154` verbatim for it, states in (ii) that `∅ ⊆ permitted` is satisfied **vacuously** so neither equality is implied by conjunct 2, states in (iii) that **no** obligation is asserted on the two empty domains, and demotes the invoking-tree intersection to a separately-labelled implied negative that "must not be written in their place". Re-measured at HEAD: `FSPEC:2154` is the AT-Q7c row and carries the quoted clause word-for-word; `FSPEC:1060-1063` carries "with the empty set rather than with a permitted set … would leave that row nothing to catch"; `TSPEC:2203` names the conjuncts without defining them, and `grep -n AT-Q7c` on the TSPEC returns exactly `:2192`, `:2203`, `:2481`, `:2502`, none a definition — the bullet's own provenance claim reproduces. The dropped PR-seam conjunct is restored and the inverted clone conjunct is corrected |
+
+Conjuncts 1–3 and the `Set`-not-multiset closer were re-checked against `TSPEC:2199-2204` and are
+unchanged and still exact. The two `∅` equalities are now the strongest part of the bullet rather
+than the weakest, which is what v5 asked for.
 
 ## Findings
 
