@@ -116,7 +116,46 @@ since the wave commit stages `task.files` pathspec-scoped (`orchestrate-dev.js:1
 
 ## 3. Pre-flight gate and baseline status
 
-_placeholder_
+This feature extends a prior-phase baseline: TSPEC §4.2 reuses four `orchestrate-dev.js` symbols
+rather than re-authoring them, §11.2 reuses seven shipped test doubles rather than writing new ones,
+and §11.3(c) widens two frozen sets that live in a shipped suite. Every one of those is a
+**BL-PREREQ**: absent at HEAD, the task that depends on it fails for a reason that looks like its own
+bug. **T00 is therefore the first task in the table** and asserts existence only — never the shape a
+later task creates.
+
+| BL-PREREQ | Asserted how | Present at HEAD |
+|---|---|---|
+| `resolveAdvisoryRung`, `mergeCommandFor`, `MERGE_GUARD_DEFAULTS` | imported from `pdlc/workflows/orchestrate-dev.js`; each is already `export`ed | yes — `:1833`, `:319`, `:48` |
+| `gitWithLockRetry` | **source-text presence**, not import: it is declared `async function` with no `export` at `:8617`, so T11 must add the keyword before T30 can import it | yes as a declaration, **no** as an export |
+| `ADVISORY_RUNG_SKILL` | source-text presence — T11's widening defaults `skill` to it | yes — `:1797` |
+| `rtWriteFile`, `rtCheckFile`, `rtAppendFile`, `rtListFiles`, `rtGit`, `rtShellQuote`, `rtDevInjections` | source-text presence in `pdlc/workflows/runtime-adapter.js` (the file is inlined by the build and exports nothing) | yes — `:802`, `:817`, `:863`, `:905`, `:945`, `:668`, `:1086` |
+| `stripModuleSyntax`, `wrapModule`, `QUEUE_META`, `QUEUE_ENTRY`, the `bundles` array | source-text presence in `pdlc/workflows/build-runtime.mjs` | yes — `:45`, `:55`, `:127`, `:185`, `:448` |
+| `AT19_SEAM_NAMES`, `AWAIT_SCAN_SOURCES` | source-text presence in `pdlc/workflows/__tests__/runtimeBundle.test.js`, **plus** the negative T13 turns positive: neither set carries `consolidate-learnings.js`, `_envPresent` or `_makeTempDir` today | yes — `:215`, `:1040` |
+| `fakeFs`, `fakeListFiles`, `fakeGit`, `LIST_FAILURE_VALUES` | imported from `__tests__/helpers/seams.js` | yes — `:243`, `:132`, `:389`, `:58` |
+| `fakeGhRun`, `matchKey`, `fakeNow`, `FIXED_NOW_MS`, `fakeSleep`, `GH_SURFACE_NAMES` | imported from `__tests__/helpers/mergeDoubles.js` | yes — `:75`, `:45`, `:259`, `:256`, `:181` |
+| `makeAgentDouble` | imported from `__tests__/helpers/advisoryDoubles.js` | yes — `:53` |
+| `seeded`, `resolveSeed` | imported from `__tests__/helpers/driftGenerators.js` | yes — `:76`, `:134` |
+| `docs/_constraints/pdlc-consolidation-vocabularies.md` `Version` cell reads `1.4` | file read, cell matched | yes — `:7` (`1.4 · 2026-08-06`) |
+
+**One BL-PREREQ is already known-absent, and that is the point of asserting it.** `gitWithLockRetry`
+is not exported. T30 imports it (TSPEC §4.2), so T11 adds `export` to the declaration at
+`orchestrate-dev.js:8617`. T00 records the absence as **blocking work already scheduled** rather
+than promoting it — the promotion rule applies to a symbol nothing in this PLAN repairs.
+
+**The gate branches on `.claude/pdlc.config.json` and asserts a positive in each branch.**
+`git ls-files .claude` returns nothing at HEAD: the file is **untracked**, so CI's fresh clone does
+not have it while the maintainer's tree does. An unguarded read would go red on
+`.github/workflows/pr-tests.yml`'s matrix and halt Phase PUB for a reason unrelated to the diff. So
+T00 asserts: (i) file present ⇒ `implementation.postWavePathspecs` contains
+`pdlc/workflows/dist/` and `implementation.postWaveCommand` is `node pdlc/workflows/build-runtime.mjs`
+— the two settings §2's dist rule depends on; (ii) file absent ⇒ the documented degradation, i.e.
+Phase I falls back to the legacy self-report gate, asserted through the shipped parser rather than
+skipped. Neither branch is vacuous and neither depends on the operator's tracking decision.
+
+**The gate asserts existence, never shape.** It does not assert that `resolveAdvisoryRung` accepts a
+`skill` parameter (T11 creates that), that `rtConsInjections` exists (T12 creates it), or that the
+scan sets carry the new members (T13 adds them). A pre-flight that asserted the post-condition of a
+task in its own PLAN would be red on a correct tree until that task landed.
 
 ## 4. Batches — task table
 
