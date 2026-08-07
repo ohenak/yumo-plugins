@@ -96,6 +96,14 @@ both in DEC-CONS-07, plus one Low against the sweep's stated method.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | *(carried unchanged from v2–v5, still unanswered and still not a finding against this document.)* §11.3 item 3 is a functional gap as well as a documentation one: if the credentialed push cannot reach `git` by shell expansion and the module may not hold the value, AC-4.2's `present (redacted)` path has no shipped mechanism until the TSPEC picks a lane. Does the PLAN need the erratum answered **before** the task that implements `rtEnvPresent` and the push? |
+| Q-05 | *(carried unchanged.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags? |
+| Q-06 | *(carried unchanged from v3–v5.)* `REQ:288` obliges a **pathspec** on both invoking-tree calls and explicitly rejects `commitPaths`' bare `git commit -m` shape. The obligation conjunct asserts the two verbs are *observed*, but a verb-level observation still cannot see the pathspec. Which oracle owns the pathspec — an AT in the register, or an argv-shape assertion like domain 3's? |
+| Q-07 | *(carried from v5, now sharper.)* The mechanical link-resolver I asked about would have caught F-10's six anchors; it would **not** have caught F-13, which is a stale *claim* whose anchors all resolve. Is there a cheaper convention that would — e.g. every DECISIONS entry carrying a one-line `Superseded-by:` field that the TSPEC's §13.1 row is required to match, so a supersession is a set comparison rather than a prose paragraph a reader has to find? |
+| Q-08 | *(new.)* DEC-CONS-07 is now a decision the TSPEC has overturned on both halves. §10 of this document exists for "alternatives considered but not recorded as decisions"; there is no section for *decisions overtaken upstream*. Should an overturned entry stay in the numbered decision list at all, or move to a short "superseded" section so §2's index only ever lists live decisions? I ask because F-14's fix is cosmetic if the answer is "annotate in place" and structural if it is "relocate", and that is a call for the author, not for me. |
+
 ## Positive Observations
 
 ## Recommendation
