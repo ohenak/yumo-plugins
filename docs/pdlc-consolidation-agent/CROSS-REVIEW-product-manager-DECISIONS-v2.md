@@ -99,7 +99,53 @@ Three Low findings, all one-line carries, none gating.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | §11.3 item 3 is, on my reading, not only a documentation defect but a **functional** one: if the credentialed push cannot reach `git` by shell expansion and the module may not hold the value, then AC-4.2's `present (redacted)` path has no shipped mechanism at all until the TSPEC picks a lane (a command-string seam for the push, or `gh` for both). The entry handles this correctly for its own layer. My question is for sequencing, not for this document: does the PLAN need the erratum answered **before** the task that implements `rtEnvPresent` and the push, or can that task be written against either lane? I would rather the dependency be stated in the ownership manifest than discovered in Phase I. |
+| Q-05 | DEC-CONS-04's new observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — and says nothing computes it. That is the honest call and I am not asking for a counter. The question is whether that signature belongs in the operator-facing release note beside the drift-gate row §11.1 already flags, so the one human who could ever notice it knows what to look for. Not a finding; a suggestion for the same row that "no AC owns". |
+
 ## Positive Observations
+
+- **The revision withdrew two claims by name rather than quietly rewriting them.** "The earlier
+  wording 'the module has no boundary to scrub' is withdrawn" and "an earlier draft's 'the protocol's
+  type has no string channel to carry one' is withdrawn" — both say what was wrong and why, in the
+  document that will outlive this review. That is the rarer half of addressing feedback: a revision
+  that silently deletes the sentence leaves a future reader unable to tell a considered retraction
+  from an accident.
+- **F-01 came back narrower than I raised it, and the narrowing is correct.** I claimed the
+  combined-output channel for both `rtGit` and `rtGhRun` on the strength of the "reply shape is
+  rtGit's, verbatim" doc comment. The revision checked the actual prompt and found `rtGhRun` asks for
+  **stderr only** (`:1000`) while sharing the *parser* (`:1006`) — so the residual is `rtGit`'s alone.
+  A revision that had simply agreed with me would have recorded a slightly wrong residual.
+- **DEC-CONS-03's own testability was found red on correct code, by the author, and the fix is a
+  partition rather than an exemption.** The v1 two-domain predicate would have failed on the clone
+  argv the entry's own Decision issues. The three-domain form pins the clone by last-argument
+  identity — destination character-identical to `_makeTempDir`'s reply, source character-identical to
+  the `remote get-url` reply — and states the partition is total by construction, so a fourth kind of
+  call fails rather than slipping through unclassified. "The clone belongs to no verb set — it is its
+  own case, and what pins its destination is the last-argument identity, not a permission" is the
+  right distinction and it is the one that keeps AC-3.8 honest.
+- **The three-change hook cost is stated because it would otherwise corrupt a comparison, and the
+  document says so.** "an understated accepted cost would corrupt the comparison" — DEC-CONS-05's
+  rejection of the shared-implementation alternative turns on relative cost, so inflating the taken
+  path's cheapness is the specific way that rejection could have been laundered. I checked the three
+  changes against the file they land in and against `TSPEC:117`; the cost is now honest in the
+  direction that makes the taken path look *worse*, which is the direction almost never corrected.
+- **§11.2's unasserted table gives the PROPERTIES author the absences as a first-class inheritance.**
+  Three rows, each with a why and a where-recorded, and each traceable to the entry that decided it.
+  A property author reading §11.2 alone now knows which two behaviours are out of bounds by decision
+  rather than by oversight — and, critically, the table says "none should be closed by writing a test
+  that appears to cover it", which is the failure mode DEC-ORACLE-02 exists to prevent.
+- **The set-equality upgrades are anchored to a file, not to a prose list.** DEC-CONS-07's six
+  terminal statuses now cite `pdlc-consolidation-vocabularies.md:38-43` as the assertion's source of
+  truth, and DEC-CONS-01's `credential:` arm cites `REQ:320-322`. Both are literal transcriptions from
+  upstream documents rather than values derived from the module under test, and both are stated as
+  exact set equality with the deletion case named. That is the bar for an enumerated contract and this
+  revision hits it in two places it previously only gestured at.
+- **DEC-CONS-05's new paragraph refuses a flattering baseline.** It would have been easy to leave the
+  divergence set stated against HEAD's hook, where two classes look small. Stating it against the
+  post-edit hook, and disclosing that the HEAD gap (2 vs 5) "is larger than classes (i) and (ii)
+  combined", makes the entry harder on itself. I reproduced both numbers.
 
 ## Recommendation
 
