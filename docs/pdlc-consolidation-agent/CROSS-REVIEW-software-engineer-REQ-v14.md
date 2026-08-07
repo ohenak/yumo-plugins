@@ -76,6 +76,21 @@ for the reason given above; DC-13 (accurate Scope tags, `:356`) is why F-02 rema
 
 ## Findings
 
+Two, carried at the same severity from v13, v12 and v11, both in the governance layer rather than in
+the requirements an FSPEC or TSPEC author reads. **No new finding.** There is no changed section to
+scan, and under DEC-CONV-01 a standing approval is re-opened only by a Medium-or-higher scored
+against the intervening diff — there is no intervening diff.
+
+At v13 I wrote that I would not file these a fourth time. I am recording them here because the
+disposition table must account for every prior finding, and because dropping a still-open finding
+from the table would make the record say they were resolved. They are stated once, in the table, and
+I do not re-argue them below.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-02 | Low | Cross-Feature | **The baseline file's change-control clause is worded strictly enough to be breached by the commit that introduced it, and the file did not bump.** `pdlc-advisory-corpus-baseline.md:19-20` — "Consumers cite this file **at its `Version`**; a **content** change that is not accompanied by a version bump is itself a defect." The commit that added that paragraph also added the `§5` entry to `Cited by` (`:6`) and left `Version \| 1.0 · 2026-08-06` unchanged (`:7`). The vocabularies file's escape is unavailable as worded: its clause is scoped to a **row** change (`pdlc-consolidation-vocabularies.md:27-28`). Real size: `Version 1.0` denotes two byte-states, so the pin no longer discriminates provenance — but no *fact* changed, the REQ's two baseline citations transcribe the literal "1.0" and are unaffected as expected values (REQ `:202`, `:448`), and the drift is visible in git. Fix, either: bump the baseline to `1.1` and repin those two citations, **or** narrow the clause to "a change to any **stated fact**". I still prefer the second — the asymmetry is the defect, and §4b governs the two files as a pair. | `pdlc-advisory-corpus-baseline.md:15-20`, `:6-7`; cf. `pdlc-consolidation-vocabularies.md:27-28` |
+| F-03 | Low | Local | **§4b's enumerated/prose split is written under an "in both" quantifier, so read literally it contradicts what the baseline file says about itself.** §4b quantifies over both governed files — "§1–§4 entire in both" (`:560-561`) — and the next sentence, with no change of subject, says "§1, §2 and §4 are enumerations … §3 is owned normative prose" (`:562-563`). Applied to the baseline that is false in both directions: `pdlc-advisory-corpus-baseline.md:17-19` states "All four sections are **owned normative prose** … no set-equality oracle ranges over this file", while its §1 *is* a three-row table (`:24-28`) a literal §4b would drag under a row oracle the file disclaims. Non-blocking on three independent grounds: the oracle sentence pins "at Version 1.4" (`:565-566`) and 1.4 is the vocabularies file alone (baseline is 1.0, `:7`), so the intended subject is recoverable inside the sentence; the baseline answers the question itself in a file §4b declares binding; and DEC-SEV-02's class fits exactly. Fix is one clause (~60 bytes against 331 of headroom, Q-01), or deletion of the universal per DEC-SEV-02's preferred repair. | §4b `:560-569`; `pdlc-advisory-corpus-baseline.md:17-19`, `:24-28` |
+
 ## Existing-Code Claim Verification (changed sections)
 
 ## Questions
