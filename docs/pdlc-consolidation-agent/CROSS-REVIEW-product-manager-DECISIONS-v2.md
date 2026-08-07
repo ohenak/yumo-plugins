@@ -31,6 +31,61 @@ six-status enumeration; §11.1 row 6; §11.2's new deliberately-unasserted table
 
 ## Verification of the changed sections
 
+Every new `file:line` and every new measurement in the revision was re-run against HEAD rather than
+read as given. All of the following verified exactly as written:
+
+- **The inbound channel (DEC-CONS-01's residual).** `rtGit` asks for "the LAST 300 characters of its
+  **combined output**" at `pdlc/workflows/runtime-adapter.js:951`; `rtParseTransportReply` is declared
+  at `:967` and assigns `stderr` at `:977`; `rtGhRun` at `:995` asks for "the LAST 300 characters of
+  its **stderr**" at `:1000` and parses through the same function at `:1006`. The revision's sharpening
+  — that the *combined-output* arm is `rtGit`'s alone and `rtGhRun` asks for stderr only — is correct
+  and is a genuine narrowing of my v1 finding, not a hedge.
+- **The `rtShellQuote` claim, which is the load-bearing one.** `function rtShellQuote(arg)` at `:668`
+  returns `'${String(arg).split("'").join("'\\''")}'` (`:668-670`) — POSIX single-quote wrapping of
+  every argv element. A `$VAR` written into a `_git` argv element is therefore transported literally
+  and never expanded, exactly as §11.3 item 3 states, and `rtGit` maps every element through it
+  (`:949`). `rtGhRun` by contrast interpolates a fully-built command **string** (`:995-998`), so a
+  `GH_TOKEN="$VAR" gh …` prefix does expand. The asymmetry the erratum rests on is real.
+- **DEC-CONS-03's "red on correct code" claim.** `TSPEC:1536` and `TSPEC:1679` both issue
+  `_git(["clone", "--depth", "1", "--single-branch", remote, dir])` — no `-C` prefix, mutating verb.
+  The v1 two-domain predicate would indeed have failed on correct code; the three-domain partition,
+  with the clone pinned positionally by last-argument identity rather than exempted, fixes it without
+  opening a hole.
+- **DEC-CONS-02's two citation corrections.** `ADVISORY_RUNG_SKILL = "se-review"` is at
+  `orchestrate-dev.js:1797` (not `:1796`) and "there is no second, private copy of this ladder
+  anywhere" is at `:1802` (not `:1800-1801`). `git log -- pdlc/workflows/orchestrate-dev.js` shows no
+  commit on this branch, so the file is unchanged since `bb99f89` — my v1 citations were off by one
+  and the revision's are right. I note this explicitly because a "citation fix" is exactly the kind of
+  edit a reviewer should suspect of introducing drift, and this one does not.
+- **The "no type system" withdrawal.** `git ls-files 'pdlc/**/*.ts' 'pdlc/**/tsconfig.json'` returns
+  **nothing** tracked. The retraction is correct and the runtime `typeof` oracle that replaces the
+  structural claim is a real assertion.
+- **DEC-CONS-05's post-edit-hook paragraph, reproduced command-for-command.** At HEAD
+  `nudge-consolidation.sh:28` is a single `glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))`;
+  run against this repository it returns **2** paths, while the pass's two `:(glob)` pathspecs return
+  **5** — the three `docs/completed/*` entries plus `docs/orchestrate-dev-workflow` and
+  `docs/pdlc-advisory-tier`, exactly the set named. The paragraph's point stands: stating the
+  divergence set against the pre-edit hook would compare the pass to a hook this feature does not ship.
+- **The three-change hook cost, and its in-scope status.** `REQ:115` reads "Widening makes
+  `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one enumeration as well as one
+  predicate" — so the glob widening was already in scope and my v1 Q-02 is answered from the REQ
+  itself. `TSPEC:117` carries all three edits (`:28`'s glob, `:41`'s predicate, the env-gated
+  `PDLC_PENDING:` line). §7's bullet and §11.1 row 6 now state the same three, and row 6 is in fact
+  the sixth data row of §11.1 — the cross-reference is accurate.
+- **The six terminal statuses.** `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43` are
+  exactly `promoted`, `promoted-degraded`, `no-op`, `skipped-cadence`, `refused`, `failed`, in that
+  order, under a table whose own preamble says downstream completeness is "checkable by
+  **set-equality against this table**". Naming that file as the oracle's source of truth is the right
+  move: a seventh status added there fails the assertion instead of being silently excluded.
+- **AC-4.2's three values** are at `REQ:320-322` (`present (redacted)` / `absent` / `local-gh`), and
+  the REQ itself already frames them as a closed set with a positive conjunct — so DEC-CONS-01's
+  set-equality arm transcribes the spec rather than deriving its expectation from the code.
+- **The hook parity differential is end-to-end.** `TSPEC:1926` declares the L4 row as a "real
+  `python3`/`bash` subprocess" in `consolidationHookParity.test.js`, so the "one predicate" claim is
+  falsifiable rather than tested against a re-implementation.
+
+I found **no** false or overstated citation among the additions.
+
 ## Findings
 
 ## Questions
