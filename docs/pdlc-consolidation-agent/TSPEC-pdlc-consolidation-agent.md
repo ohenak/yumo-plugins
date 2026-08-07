@@ -1204,10 +1204,17 @@ depth-1 clone) and its residue is inspectable, which matches AC-3.6's decision t
 | duplicate poll | `_ghRun(mergeCommandFor("consolidationPrs", {repo}))` | `read-pr` |
 | open | `_ghRun(mergeCommandFor("consolidationCreate", {…}))` | `create-pr` |
 
-Writing a file **inside the clone** uses the same `_writeFile` seam with a path under `dir`; the
-seam is path-addressed, so no new capability is needed. NFR-1 is untouched: the only guard-set path
-the pass ever writes is inside the throwaway clone, never in any tree the invoking repository
-checks out.
+Writing a file **inside the clone** uses the `_writeFile` seam with an absolute path under `dir` —
+and that **is** a new capability, granted by §5.6(a)'s prompt widening, not an existing one. The
+shipped prompt says "relative to the repository root" (`runtime-adapter.js:806-807`) and `dir` is
+outside the repository, so the earlier claim that "no new capability is needed" was wrong in the one
+direction that matters: three things depend on this working — the guard-set edit committed in the
+clone, the PR body file, and with it the whole `--body-file` mechanism. §5.6(a) states the widened
+contract and §11.3(e) states the assertion that pins it; §11.6 no longer exempts it.
+
+NFR-1 is untouched: the only guard-set path the pass ever writes is inside the throwaway clone,
+never in any tree the invoking repository checks out. The widening does not weaken that — an
+absolute path is only ever one `_makeTempDir` returned, and the pass constructs none itself (§5.3).
 
 `mergeCommandFor` (`orchestrate-dev.js:319`) is extended with two surfaces rather than a second
 builder being written. Its doc comment (`:310-312`) states the rule in Phase MERGE's scope — "the
@@ -1247,13 +1254,13 @@ proposal never runs it and reports `absent` as its null.
 
 The FSPEC froze these sets and made widening a **recorded TSPEC decision** under `DEC-LAYER-01`
 ("a widening is a recorded TSPEC decision against this set, never a silent reading of it"). This
-layer records **exactly two widenings**, both in permitted-but-not-obliged columns, both
-non-mutating, and both marked ⊕ below. Every other cell is transcribed unchanged at FSPEC v11.1.
+layer records **exactly four widenings**, every one in a permitted-but-not-obliged column, every one
+non-mutating, each marked ⊕ below. Every other cell is transcribed unchanged at FSPEC v11.1.
 
 | Domain | How a call is classified | Obliged | Permitted, not obliged | Absent always |
 |---|---|---|---|---|
 | PR seam | every `_ghRun` call | `read-pr`, `create-pr` | ⊕ `read-auth` | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` |
-| git, invoking tree | `_git` whose argv does **not** begin `["-C", cloneDir]` | `add`, `commit` | `read-branch`, `read-status`, ⊕ `read-object` | `checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb |
+| git, invoking tree | `_git` whose argv does **not** begin `["-C", cloneDir]`, and is not the `clone` call | `add`, `commit` | `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index` | `checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb |
 | git, clone | `_git` whose argv begins `["-C", cloneDir]`, plus the `clone` call itself | `clone`, `create-branch`, `add`, `commit`, `push` | `fetch`, `read-branch`, `read-status` | every merge verb |
 
 **Widening 1 — `read-auth` on the PR seam.** AC-4.4 makes local `gh` authentication the *shipping*
@@ -1266,26 +1273,64 @@ over the whole seam. It is non-mutating and is no merge verb, so the assertion l
 An erratum against the FSPEC asks §6.5 to state the domain by transport (`_ghRun`) rather than by
 subject (a pull request).
 
-**Widening 2 — `read-object` in the invoking tree.** §7.5's `remediationChoice` needs FSPEC §8.5
-row 3's file-existence test at HEAD, and the runtime has no filesystem: the only way to ask is
-`git cat-file -e HEAD:{path}` through the git seam. `read-status` would be a mis-classification
-(the verb reads an object from the object database, not the working tree's status), and §6.5
-forbids reading a third verb into the closed two-member set silently. `git remote get-url origin`
-(§9.1 step 2) resolves to `read-remote`, which this layer folds into `read-object` rather than
-adding a third verb: both are non-mutating reads of repository metadata, neither is a branch
-operation AC-3.8 forbids, and a two-verb widening is easier for a test author to transcribe exactly
-than a three-verb one.
+**Widenings 2–4 — three named reads in the invoking tree, each classified as what it reads.** The
+pass makes three non-mutating git reads of the invoking tree that FSPEC §6.5's closed set has no
+verb for, and each gets its **own** verb:
 
-Both widenings are **permitted, never obliged**, so no Given asserts their presence and an
-implementation that resolves the branch name or the file's existence some other way still conforms.
+| Call | Verb | Why the pass makes it |
+|---|---|---|
+| `git cat-file -e HEAD:{path}` | ⊕ `read-object` | FSPEC §8.5 row 3's file-existence test at HEAD (§7.5), which the runtime cannot ask of a filesystem it does not have |
+| `git remote get-url origin` | ⊕ `read-remote` | §9.1 step 2's clone source in the same-repo case |
+| `git ls-files --cached --others --exclude-standard -- :(glob)…` | ⊕ `read-index` | §7.1's corpus enumeration |
+
+An earlier draft folded `read-remote` into `read-object` "because a two-verb widening is easier for
+a test author to transcribe exactly than a three-verb one". That is withdrawn, and it was wrong on
+its own terms: reading remote configuration is not reading the object database, transcription cost
+is the weakest possible ground for widening a set whose entire purpose is to make AT-Q7's
+containment assertion mean something, and it did the very thing §13.1 row 9 records this layer as
+having *rejected* — mis-classifying into an existing verb rather than naming a new one. The concrete
+cost was that `resolveSeamVerb` became lossy at the boundary: an implementation that later reached
+for `git remote add` would classify as the already-permitted `read-object` and pass containment.
+With one verb per read, `remote add` resolves to a mutating remote verb that is in no permitted set
+and reds. `read-status` would have been the same mis-classification for `cat-file`, and §6.5 forbids
+reading a further verb into a closed set silently — which is why all three are recorded, not folded.
+
+All four widenings are **permitted, never obliged**, so no Given asserts their presence and an
+implementation that resolves the branch name, the file's existence, the remote or the corpus some
+other way still conforms.
 
 Classification is by **resolved operation**, not function name: the resolver maps an argv or a
 command string to a verb, so `checkout -b` and `switch -c` in the clone both resolve to
 `create-branch`, and a merge issued through any spelling of `_ghRun` resolves to `merge`. The
-classifier is a small exported pure function, `resolveSeamVerb(domain, argvOrCommand)`, so the spy
+classifier has two exported pure halves, `resolveSeamDomain` and `resolveSeamVerb`, so the spy
 in §11.3 reads the contract's own classification rather than re-implementing it — and a verb the
 classifier cannot resolve returns `"unknown"`, which is in no permitted set and therefore fails the
 containment assertion rather than passing silently.
+
+**Both halves are the module's, not the spy's.**
+
+```ts
+resolveSeamDomain(seam: "_git"|"_ghRun", argvOrCommand, cloneDir: string|null)
+  : "pr" | "git-invoking" | "git-clone"          // total — never null
+resolveSeamVerb(domain, argvOrCommand): string   // "unknown" when unresolvable
+```
+
+`resolveSeamDomain` exists because an earlier draft left the **domain** half to the test: `domain`
+is an *input* to `resolveSeamVerb`, so the module classified the verb and never the domain, and the
+spy computed the domain itself from the clone directory — half the contract re-implemented in test
+code, which is the exact failure this paragraph claims to avoid. It also did not cover the whole
+set: the rule is "`_git` whose argv begins `["-C", cloneDir]`, plus the `clone` call itself", and
+the clone call is `_git(["clone", "--depth", "1", "--single-branch", remote, dir])` (9.1 step 3),
+which carries **no** `-C` prefix. A hand-written special case in the test for the one call that
+*establishes* the domain is precisely where a mis-binned call hides: binned into the invoking-tree
+domain, `clone` is in no permitted set and AT-Q7 reds for the wrong reason; binned nowhere, it
+disappears from both assertions. `resolveSeamDomain` returns `"git-clone"` for it **by name**, and
+`cloneDir === null` — no clone opened — makes every `_git` call `"git-invoking"`.
+
+Because that function is total over the three domains, the spy carries a **fourth** assertion the
+earlier three lacked: every observed call is classified into **exactly one** domain, and the union
+of the three observed sets equals the set of all observed calls. Without it a call that falls out of
+the partition is silently exempt from containment, which is AT-Q7's whole subject.
 
 The branch name for `branch:` comes from `git rev-parse --abbrev-ref HEAD` (`read-branch`), the
 shipped observation `readHeadBranch` (`orchestrate-dev.js:3520`) makes through `_git` at `:3524`.
