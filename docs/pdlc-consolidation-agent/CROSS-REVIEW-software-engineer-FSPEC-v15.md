@@ -76,6 +76,43 @@ carried by "merge verb ∉ any permitted set", and that is unchanged.
 
 ## 3. Regression check against the v14 approval
 
+Four things could have broken. I checked each against HEAD rather than against the erratum note.
+
+**(a) Does the sibling row AT-Q7 carry the same defect?** No — and this is the check that decides
+whether the erratum was correctly *scoped* rather than merely correctly *applied*. AT-Q7's
+assertion (1) (`:2166`) bounds every domain by "that domain's permitted set (§6.5's obliged ∪
+permitted columns)" — a **reference to the shape** of the set, resolved through §6.5, whose own text
+(`:1058`) tells the reader the set is widened by recorded TSPEC decision. AT-Q7 never inlines the
+literal, so an author following it arrives at the widened set. AT-Q7c was defective precisely
+because it *did* inline the literal and then asserted it was "its permitted set". Leaving AT-Q7
+untouched is correct, not an omission; editing it would have added a second place to keep in sync.
+AT-Q7's assertion (2) does name literals, but only in the **obliged** column (`{add, commit}` in the
+invoking tree), which no widening touches — TSPEC §9.3 records all four widenings in
+permitted-but-not-obliged columns (`TSPEC:1713`), so the obliged literals are still exact.
+
+**(b) Did the header insertion drift any other intra-document locator?** No. The 14-line insertion
+shifts every line below it, so I enumerated every `` `:NNNN` ``-style locator in the document (29
+lines carry one) and classified each. All of them except the two repaired here point into *other
+files* — `orchestrate-dev.js` (`:709`, `:1797`, `:1833`, `:3520`, `:8617`, …), `build-runtime.mjs`
+(`:448-471`), `pdlc-cli.mjs` (`:291`) — and are unaffected by a shift in this document. The FSPEC
+has exactly two self-locators, and both are the ones this delta repaired. The one surviving
+`§14 :2401` string is inside the erratum note itself, quoting the value it replaced. No residual
+drift.
+
+**(c) Did anything I approved in v14 change meaning?** No. Hunks 2 and 3 change only digits inside a
+citation, and both new targets resolve: §4.3 spans `:542-561` and its "release runs at step 16 after
+the terminal row is appended" sentence is at `:557-558`; §15.3 opens at `:2445` with the
+`nudge-consolidation.sh` row at `:2449`. Both of my v14 F-01 sub-findings are closed, and closed
+against HEAD rather than against my (now stale by construction) v14 line numbers. Hunk 4 touches one
+table cell; §6.5, every rule, AC, BR, NFR, E-row and every other AT row are byte-identical.
+
+**(d) Is the AT-Q7c cell still internally consistent after the insertion?** Yes. The added paragraph
+sits between the upper-bound clause and the pre-existing "That is containment, not equality"
+sentence, and that sentence's referent is unchanged — it still refers to the two-sided bound just
+stated. The cell still carries its `∅`-on-two-domains claim, its no-obligation-on-empty-domains
+claim, its `promoted`-Given rationale and its two named red-on-correct-code counterexamples. Nothing
+in the cell now contradicts anything else in it.
+
 ## Findings
 
 ## Questions
