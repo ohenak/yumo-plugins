@@ -138,4 +138,46 @@ both in DEC-CONS-07, plus one Low against the sweep's stated method.
 
 ## Recommendation
 
+**Needs revision**
+
+All three v5 findings are resolved, F-10 by the harder remedy, and nothing I approved earlier was
+weakened. On the substance of every decision in this document I remain: approve. The verdict turns
+on the two new blocks, and specifically on DEC-CONS-07.
+
+1. **F-13 (High)** — the new *Anchor-sweep note* tells the reader which half of DEC-CONS-07 survived
+   upstream, and gets it backwards. It certifies "`present` is `_checkFile(...).ok`" as carried;
+   `TSPEC:987-988` reads "**`file_missing` alone as absent** … treats `{ok:true}` and `file_empty`
+   alike as **present**", and `TSPEC:1940`/`:2640` route an empty marker to **`reclaim`** —
+   the alternative this entry explicitly rejects. A PROPERTIES author following the note writes the
+   payload right and the presence oracle wrong, and misses `reclaimed-stale-lock`, an AC-1.3
+   operator-visible outcome. Extend the supersession to both halves and reconcile `DECISIONS:679`
+   and `:685-687` with it.
+2. **F-14 (Medium)** — the supersession lives only inside the entry (all four `RELEASED:` mentions
+   are within `DECISIONS:692-703`). §2's index row, §9's heading, §11.1's "empty-vs-unparseable
+   fixture pair" PLAN obligation and §11.2's DEC-CONS-07 bullet all still direct downstream to the
+   losing form. Mark the index row and heading superseded, restate the fixture obligation, and put
+   the `RELEASED:`-form instruction in §11.2 where PROPERTIES will look for it.
+
+One Low rides with them:
+
+3. **F-15** — the published sweep recipe's `grep` returns 40 of 42 citation sites; it cannot match
+   the `TSPEC §7.1:806` spelling used at `DECISIONS:444` and `:489`. Widen the quoted pattern or
+   state both counts, so the next re-sweep covers what the sentence claims.
+
+I am **not** asking for changes to §11.2's conjunct-4 rewrite — it is correct, better than the
+version I approved at v5, and I would keep it verbatim — nor to the anchor corrections, nor to any
+other decision, nor to the *existence* of the anchor-sweep note. F-13 and F-14 are defects of **this**
+document introduced by **this** revision, and both remedies are entirely within it.
+
+One upstream erratum leaves this review, and it is the one I raised at v5, re-verified as still open
+at HEAD rather than re-raised on faith: `TSPEC:1405`'s NFR-2 / §7.4 traceability row still cites
+`TSPEC:1832` and `TSPEC:1522` for §10.3 row 1a and `openClone` (actually `:1937` and `:1602`), and
+the TSPEC's own §1 pointer at `TSPEC:52` still cites the NFR-2 row as `:1325`, which is a blank line.
+DECISIONS has now corrected its inherited copies, which leaves the TSPEC as the only remaining
+carrier. The two TSPEC errata from v2 (`rtShellQuote` single-quoting every `_git` argv element;
+`TSPEC:1325`'s unqualified "structural" non-disclosure row) remain open and already routed; I do not
+re-emit them.
+
 ## Verdict
+
+VERDICT: Needs revision
