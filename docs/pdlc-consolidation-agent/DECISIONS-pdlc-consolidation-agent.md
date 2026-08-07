@@ -920,11 +920,17 @@ must land as properties rather than as unit cases:
 
   *Anchor provenance.* The v5 revision re-measured **every** `TSPEC:` anchor in this document
   against the TSPEC at the commit that carries this revision — the full enumeration, extracted
-  mechanically (`grep -on 'TSPEC[^ ]*:[0-9]\+\(-[0-9]\+\)\?'` over this file) and resolved one by
-  one, not the subset that happened to be under edit. The anchors the v5 retargeting pass had
-  already moved all reproduce at HEAD; **ten** distinct stale values, across **twelve** citation
-  sites, did not, and are corrected in this revision (`:618`⇒`:672`/`:738`, `:1832`⇒`:1937`,
-  `:1522`⇒`:1602`,
+  mechanically and resolved one by one, not the subset that happened to be under edit. The
+  extraction pattern is **`grep -onE 'TSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`**, which admits both
+  spellings this document uses: the bare `TSPEC:806` form and the `TSPEC §7.1:806` form. The narrower
+  `grep -on 'TSPEC[^ ]*:[0-9]\+\(-[0-9]\+\)\?'` used on the first pass cannot cross the space before
+  `§7.1:` and returned **40** of the **42** sites present at the sweep commit (`01624628`), missing
+  exactly the two `TSPEC §7.1:806` sites; both were correct, but the recipe is published as the
+  reproducible method, so it is stated at the width of the claim. Re-run it after any TSPEC move —
+  the site count is a function of the revision, not a constant. The anchors the v5 retargeting pass
+  had already moved all reproduce at HEAD; **eleven** distinct stale values, across **fourteen**
+  citation sites, did not, and are corrected in this revision (`:618`⇒`:672` and `:684`⇒`:738` —
+  two anchors in one sentence, counted as two — `:1832`⇒`:1937`, `:1522`⇒`:1602`,
   `:1595-1601`⇒`:1675-1677` in both places, `:787-788`⇒`:806`/`:841-842`, `:117`⇒`:807`,
   `:793-796`⇒`:847`/`:850`, `:962-966`⇒`:966-970`, `:2522`⇒`:2658-2660`, `:1325`⇒`:1405`). Three of
   the stale ones were inherited by faithful quotation from the TSPEC's own stale cites and are
