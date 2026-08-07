@@ -33,6 +33,28 @@ No High or Medium findings. Nothing in the delta blocks implementation.
 
 ## 3. Regression check — did the delta break anything previously approved?
 
+The marker-lifetime change is the only one with reach beyond its own row, so I traced every
+downstream reader of the old "removed at step 16" statement.
+
+| Previously approved surface | Still holds? | Why |
+|---|---|---|
+| §4.3 terminal-status table (`:500-507`) — every marker-holding arm "Released by this pass? yes, at 16" | **Yes** | The table says *released*, never *removed*, so its cells are unchanged in meaning by the sentinel. `refused` and `skipped-cadence` still release nothing, which is still correct: neither took the marker |
+| §4.3's recovery statement (`:509-512`) — "a process killed before step 16 leaves the marker behind, and the §4.2 stale rule is what recovers it" | **Yes, and it is now stronger** | Under the sentinel the abandoned marker is an aged `IN-PROGRESS:` line, which §4.2's third row reclaims; the pathological sub-case (killed *inside* the take) is now the empty row rather than an unstated gap. The "no cleanup handler needed" claim survives — indeed it had to, since no seam could have run one |
+| BR-15 (`:2552`) "every marker-holding terminal arm releases the marker — `failed` included", AT-M4 | **Yes** | Unchanged; "release" now denotes a write it can actually perform |
+| BR-16 / AT-M5 (`:2087`) — the marker is never committed; §5.4 pathspec set-equality | **Yes** | The lock path is still outside every pathspec and still git-ignored (`:445`, `:2406`). A sentinel write leaves the file present at end of pass where a removal would have left it absent — which is precisely why the `.gitignore` entry, already specified, is load-bearing rather than belt-and-braces. Nothing in AT-M5's oracle changes |
+| §12.1 S-11 / S-11b / S-11c and AT-M4 / AT-M6 / AT-M9 — "the marker is released" on the failure paths | **Yes** | All three assert release, not absence; no oracle in them observes the marker's post-pass content |
+| §2.6 rows 3-4 (`:224-225`) — release on the model-resolution arms | **Yes** | Same: they name §4.3, which is consistent |
+| AT-M1 / AT-M2 / BR-13 / BR-14 — refusal on a fresh marker, reclaim on a stale one | **Yes** | Both Givens are now explicitly `IN-PROGRESS:` markers, which is what they always meant; the narrowing is a tightening, not a change of behaviour, and BR-14a carries the new arm rather than overloading BR-14 |
+| §5.3's proposal-file rule and its "when" half (AT-K3, the per-status rows) | **Yes** | The paragraph gained a citation clause only; the rule text ("decided by the three rows above and by nothing else — never by the terminal status") is byte-identical, and AT-R7 is consistent with it — fixture (b) is a `no-op` with no cause and fixture (a) a `promoted` with no cause, which is the same rule read in both directions |
+| §6.2 trailers and AT-Q2 | **Yes** | AT-Q13 is additive and explicitly disjoint: AT-Q2 owns the trailer set, AT-Q13 the body. Neither oracle now subsumes the other, and the map row says so |
+| AT-P1…AT-P6, AT-P8…AT-P10 (the fixture table AT-P7 ranges over) | **Yes** | AT-P7's Given still names "the same table AT-P2…AT-P5 range over"; only the *When* and the scope note changed. I checked the region hazard specifically: the re-scoped AT-P7 executes the **shipped** hook predicate, and §3.2 / `:2401` put the `docs/completed/*/` glob widening at `nudge-consolidation.sh:28` inside this feature's write set — so the two predicates range over the same two regions and set-equality is satisfiable, not a false red by construction |
+| T-10 / BR-33a / E-12b arm enumeration | **Yes** | The two edits move BR-33a and T-10 *onto* E-12b's existing enumeration rather than away from it; the `failure-mode-id` arm, which genuinely emits no row, is untouched in all three |
+
+No previously approved statement is contradicted, and no AT that was green before the delta becomes
+unstateable after it. The four new/rewritten ATs (AT-M3, AT-M11, AT-R7, AT-Q13) are all reachable
+with fixtures the document itself specifies, and each carries a paired negative — which is the
+property that made the old AT-M3 weak in the first place.
+
 ## 4. Questions
 
 ## 5. Positive Observations
