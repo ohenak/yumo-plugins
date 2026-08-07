@@ -42,7 +42,41 @@ it is rarer than it should be.
 
 ## Questions
 
+None. Both v3 questions are answered in the revision, and F-01 above is a cite retarget rather than
+an open question.
+
 ## Positive Observations
+
+- **F-01 was over-satisfied in the only way that counts.** I asked for one conjunct (obligation) in
+  one section (§11.2). The revision added it in three sections and brought the **fourth** assertion
+  — partition — with it, which I had not asked for and which is the one that keeps an unclassified
+  call from being exempt from containment (`TSPEC:2096-2097`). §11.2 now carries the whole oracle a
+  PROPERTIES author inherits, not a summary of it, and says in terms that the two conjuncts it used
+  to carry "are not the whole contract, and a property author must not read them as it".
+- **The vacuous-pass hazard is named, not just fixed.** Both §5 domains and §11.2 spell out what
+  containment alone would have let through — "a pass that issued no invoking-tree `git` call at all"
+  — and tie it to the operator-visible loss (the AC-1.3 log commit, `REQ:288`). A property author
+  reading the fix understands why the conjunct exists, so a later simplification that drops it is a
+  visible regression rather than a tidy-up.
+- **§8's withdrawal protects the assertion the false claim would have licensed dropping.** The
+  withdrawn ground implied the whole-file count of `"relative to the repository root"` would rise to
+  2 after the widening. It does not — `TSPEC:425-426`'s widened prompt carries the tracked string
+  once, its second sentence using "against the repository root" — and rather than deleting the
+  sentence and moving on, the entry identifies the live shipped conjunct that depends on the count
+  (`TSPEC §11.6(e)` conjunct 2, `TSPEC:2160`), states that its falsifying job is the *opposite*
+  mistake, and forbids reading the entry as grounds to weaken it. That is the difference between
+  correcting a document and correcting the thing the document was about to cause.
+- **Q-02 was closed permanently rather than answered locally.** The new §8 paragraph does not merely
+  say "no absolute path reaches `rtHashFile` or `_checkFile`"; it cites the consumer census that
+  makes it true (`TSPEC:912-919`, `:969-971` for the marker probe; `TSPEC:439` as `_hashFile`'s only
+  occurrence, and it really is the only one), and names the trigger to revisit. A future reader does
+  not have to re-run my greps to know whether the exclusion still holds.
+- **Three rounds of withdrawals are all still on the page.** DEC-CONS-03's §13.1 mis-cite, "no
+  mutating git verb at all", "the clone belongs to no verb set", "cited rather than restated", and
+  now §8's false second scoping ground — each recorded with what was wrong and why, none overwritten.
+  For a decisions document that a PROPERTIES author will mine for oracles, the record of rejected
+  formulations is worth as much as the accepted ones: it is the list of oracles that look right and
+  are not.
 
 ## Recommendation
 
