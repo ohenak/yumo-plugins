@@ -9,7 +9,23 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.7 | 2026-08-06 |
+| pdlc | draft | Claude | 1.8 | 2026-08-06 |
+
+> **1.8 (erratum round 8, targeted edit — no restructuring).** Five Phase-P errata, nothing else:
+> (a) §12.3's register measurement re-taken — **99 ids at FSPEC v11.3**, not "96 at v11.1" — with the
+> reader-summary status of the number stated (`consolidationTraceability.test.js` re-derives both
+> sides at run time); (b) the three ids v11.3 minted are **assigned**: `AT-M11` to
+> `consolidationPass.test.js` beside its pair AT-M3, `AT-Q13` and `AT-R7` to
+> `consolidationRoute.test.js`, so the PLAN's T05 has a file for every register id; (c) §12.2's T-11
+> and T-12 rows record the erratum landing — their interim `(no FSPEC AT)` cases are re-labelled
+> `AT-Q13` / `AT-R7` rather than written twice; (d) §3.2 gains the `CLAUDE.md` row (its `:62`
+> "Those three" is already false at HEAD — `dist/pdlc-cli.mjs` is tracked and manifest-stamped — and
+> false again when this feature's bundle lands), and §12.2 gains falsifying tests for it and for the
+> two `SKILL.md` production edits, which had none; (e) §11.3(c) names its **third** scan axis,
+> `runtimeBundle.test.js:26`'s two-member `BUNDLES`, which drives six L3 suites a new bundle would
+> otherwise ship exempt from. One divergence is **raised, not settled**: AT-M11 spells the released
+> marker as FSPEC §4.1's `RELEASED:` sentinel while §7.3 decides the empty form (§12.3's AT-M11 note).
+> §7.3 is left as approved.
 
 > **1.7 (erratum round 7, targeted edit — no restructuring).** Two Phase-D errata, nothing else:
 > (a) the NFR-2 traceability row (§8, `:1325`) no longer states non-disclosure as unqualifiedly
@@ -2438,7 +2454,7 @@ falsifies if it drifts again. Every register id has exactly one file below:
 | `consolidationParse.test.js` | L1 | AT-F19, AT-F20, AT-F21 |
 | `consolidationAdvisory.test.js` | L1 | AT-A1, AT-A2, AT-A3, AT-A4, AT-A5, AT-A6, AT-A7 |
 | `consolidationReport.test.js` | L1 + L2 | AT-L1, AT-L2, AT-L3, AT-L4, AT-L5, AT-N1, AT-N2, AT-N3, AT-N4. Plus **(no FSPEC AT)** the ER-6 two-fixture discriminator control (§7.6, §12.2, §12.4) and the dropped-code report-body notice carried under AT-L5 |
-| `consolidationBuild.test.js` | L3 | (no FSPEC AT) T-02's build assertions, §3.3's `.gitignore` text, §11.3(e)'s adapter-prompt text, and the **`rtConsInjections()` ↔ §5.1 set-equality** case §12.2 records. The last one lives here because its subject is the adapter artifact rather than the pass's behaviour, which is this file's |
+| `consolidationBuild.test.js` | L3 | (no FSPEC AT) T-02's build assertions, §3.3's `.gitignore` text, §11.3(e)'s adapter-prompt text, and the **`rtConsInjections()` ↔ §5.1 set-equality** case §12.2 records. The last one lives here because its subject is the adapter artifact rather than the pass's behaviour, which is this file's. Plus two further **(no FSPEC AT)** source-text cases §12.2 records: the **two `SKILL.md` production edits** (four verbatim conjuncts, located by heading and never by line index) and the **`CLAUDE.md` ↔ manifest ↔ `BUNDLES` set-equality** case, which also carries §11.3(c)'s third-axis falsifier. All of them share this file's subject — the shipped artifacts and text this feature edits, rather than the pass's runtime behaviour — and none claims a register id, so §12.3's set equality is undisturbed |
 | `consolidationLifecycle.test.js` | L2 | (no FSPEC AT) T-13's await-discipline case (§10.1, §11.2's `asAsync`), and the **release-across-the-six-terminal-statuses** set-equality case §12.2 records (§7.3, FSPEC §4.3). Both claim **no** register id, so `consolidationTraceability.test.js`'s set equality is unaffected: the equality is asserted over the ids this table's rows *carry*, and a row carrying none contributes nothing to either side. The release case lives beside T-13 because both hold the same observable — the write double's recorded history for the marker path — so one file owns that oracle and the single-writer-per-file rule stays satisfiable |
 
 **The enumeration is asserted, not maintained by hand.** `consolidationTraceability.test.js` (L3)
