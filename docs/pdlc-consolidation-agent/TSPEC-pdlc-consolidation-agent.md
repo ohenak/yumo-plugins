@@ -1477,11 +1477,25 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7) |
 | **L5 — property** | the four T-09 components | none | `consolidationProperties.test.js` |
 
-L4 is the only level that shells out. It is scoped to the hook script, is skipped with a recorded
-notice when no usable Python interpreter is found (the hook's own `PY_BIN` probe, `:13-20`, has the
-same degradation), and never touches the repository's own `docs/` tree — it writes its fixture
+L3 is a **set over two axes**: the sources scanned (`AWAIT_SCAN_SOURCES` gains
+`consolidate-learnings.js`) and the seam names scanned for (`AT19_SEAM_NAMES` gains `_envPresent`
+and `_makeTempDir`) — §11.3(c). L3 also carries §11.3(e)'s adapter-prompt assertion and §3.3's
+`.gitignore` text assertion, both source-text checks in the shape `runtimeBundle.test.js` already
+uses.
+
+L4 is the only level that shells out. It is scoped to the hook script and never touches the
+repository's own `docs/` tree — it writes its fixture
 corpus into a temp directory and points the hook at it through `CLAUDE_PROJECT_DIR` (`:26`), which
 is what makes the harness a pure function of an injected root (DC-04).
+
+**A skipped L4 is distinguishable from a passing one.** The hook's own `PY_BIN` probe (`:13-20`)
+degrades to a silent `exit 0` when no usable interpreter is found, and a differential test that
+inherits that degradation silently is the test that will be skipped on the platform where it
+matters. So the suite uses jest's `test.skip` — which reports as **skipped**, not passed, in the run
+summary — and additionally asserts once, unconditionally, that the probe either found an interpreter
+or recorded the notice; the notice is a `console.warn` line naming the probed candidates
+(`python3`, `python`, `py`). Answering the reviewer's question directly: the notice is the jest
+reporter's skip line plus that warning, and CI's `Unit tests` job surfaces both.
 
 ### 11.2 Test doubles — reuse first (DC-08)
 
@@ -1504,16 +1518,22 @@ their own headers.
 
 ### 11.3 The oracles that need a mechanism, not just an assertion
 
-Four assertions the FSPEC states cannot be written as a plain `expect` and are specified here.
+Six assertions the FSPEC states cannot be written as a plain `expect` and are specified here.
 
 **(a) The seam-verb spy (AT-Q7, AT-Q7b, AT-Q7c).** A recording wrapper around `_git` and `_ghRun`
-that classifies each call with the module's own `resolveSeamVerb` (§9.3) and bins it by domain,
-using the clone directory the test's `fakeMakeTempDir` returned as the discriminator. The oracle is
-then three set assertions per domain: **containment** `observed ⊆ permitted` universally,
-**obligation** `obliged ⊆ observed` on the Given that obliges it, and the two `∅` equalities of
-AT-Q7c. Comparison is over a `Set`, never a multiset — AT-Q2's three commits are three occurrences
-of one verb. AT-Q7b's supplementary source check greps the module's own source for a merge verb and
-is never the sole evidence.
+that classifies each call with **both** of the module's own classifiers (§9.3) — `resolveSeamDomain`
+for the bin and `resolveSeamVerb` for the verb — passing the clone directory the test's
+`fakeMakeTempDir` returned as `cloneDir`. The spy computes neither half itself; that is the point of
+exporting the domain function, and it is what puts the `clone` call (which carries no `-C` prefix)
+in the clone domain by the contract's own rule rather than by a special case in test code.
+
+The oracle is then **four** set assertions: **partition** — every observed call is classified into
+exactly one domain, and the union of the three observed sets equals the set of all observed calls
+(without this, a call that falls out of the partition is exempt from containment); **containment**
+`observed ⊆ permitted` per domain, universally; **obligation** `obliged ⊆ observed` per domain, on
+the Given that obliges it; and the two `∅` equalities of AT-Q7c. Comparison is over a `Set`, never a
+multiset — AT-Q2's three commits are three occurrences of one verb. AT-Q7b's supplementary source
+check greps the module's own source for a merge verb and is never the sole evidence.
 
 **(b) The vocabulary set-equality (AT-L5).** The harness collects the enumerated-class values a
 fixture set produced and compares them against a transcription of vocabularies §1 at `Version` 1.4
@@ -1523,6 +1543,22 @@ class is excluded **by name**, so narrowing the domain cannot silently drop a di
 included: catalogue array ⊆ §1 transcription and vice versa, which fails at build time rather than
 after a fixture happens to exercise a branch.
 
+**A fourth leg reads the authority file itself**, and without it the first three are two copies
+compared with each other. The module's frozen arrays and the doubles' literal table are **both**
+transcriptions; a future edit that widens the catalogue and updates the doubles' table in the same
+commit — the natural thing to do when a test goes red — passes every assertion above while
+`pdlc-consolidation-vocabularies.md`, which is the authority and is version-pinned and
+change-controlled, is never consulted. §6's premise is "transcribed, never widened", and a test that
+cannot observe the thing transcribed *from* cannot falsify it.
+
+The harness therefore parses the authority file's §1 table — a markdown table with a stable grammar
+— and asserts **three-way** set equality per catalogue: module catalogue ≡ doubles' transcription ≡
+authority file, in both directions, plus a pin that the file's `Version` cell still reads `1.4`
+(if it does not, the pinned transcription is stale by definition and the test must be re-read, not
+re-greened). Per DC-04 the parser is a pure function of an injected `root`, so it can probe two
+roots in one process. This shape is reusable: every feature that transcribes a project-level shared
+reference has the same two-copies problem, which is why the finding behind it is `Cross-Feature`.
+
 **(c) The `await` audit.** `seams.js`'s header names the sync-double/async-adapter asymmetry as the
 central hazard: a missing `await` passes L1 and L2 and fails only in production. The compensating
 control is the shipped one — the L3 suite's source scan, extended to
@@ -1530,9 +1566,43 @@ control is the shipped one — the L3 suite's source scan, extended to
 `await`ed. This is a static check over the module's own text, not a runtime assertion, because a
 sync double makes the runtime one unfalsifiable.
 
+**The audit is a set over two axes, and both must grow.** Extending only the source set leaves the
+scan green on exactly the seams this feature invents: what it scans *for* is a frozen name list,
+`AT19_SEAM_NAMES` (`__tests__/runtimeBundle.test.js:215-223`), whose members are `_agent`,
+`_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`, `_git`, `_checkCi`,
+`_mergeWorktree`, `_recordQueueRow`, `_rebaseOntoDefault`, `_dodVerifyLoop`, `_raisePrAndVerifyCi`,
+`_ghRun`, `_runCommand` — and neither `_envPresent` nor `_makeTempDir` is on it. So §5.1's "every
+seam call is `await`ed without exception" would be enforced for every seam **except** the new ones,
+and `RLH-SCAN-01` (`:626`) would report green over them. This feature therefore adds
+`"consolidate-learnings.js"` to `AWAIT_SCAN_SOURCES` (`:1040`) **and** `_envPresent` /
+`_makeTempDir` to `AT19_SEAM_NAMES`, in the same commit. `_now` is deliberately not added: it is
+sync by contract (§5.6(b)) and awaiting a number is noise, not discipline.
+
 **(d) The `parseAdvisoryConfig` parity test.** §7.8's duplication is pinned by a table-driven test
 that runs both parsers over the same five observed states and asserts the same classification, so a
 future change to one is a red test rather than a silent divergence.
+
+**(e) The adapter-prompt assertion for the widened path contract (§5.6(a)).** `rtWriteFile` and
+`rtReadFile` are agent prompts, so their behaviour cannot be executed in a unit test — but their
+**text** can be read, and the repo already asserts over adapter source (`runtimeBundle.test.js`
+scans `runtime-adapter.js` at `:1573-1580`). The assertion pins the widened clause in both prompts
+verbatim, so a future edit that reverts them to "relative to the repository root" reds rather than
+silently breaking every clone write. This is the L3 counterpart of the `_envPresent` prompt review
+in §11.6: a capability the feature *invents* is not in the same class as "the real `gh` accepts
+these flags", so it does not get that section's exemption.
+
+**(f) AT-P7, the differential predicate harness (T-08).** The harness writes one fixture corpus into
+a temp directory, points both implementations at it (the hook through `CLAUDE_PROJECT_DIR`, `:26`;
+the JS through `classifyCorpus` over the same enumerated basenames and log text), and compares the
+**sets**. The hook's set is read from the `PDLC_PENDING:` stderr line §7.1 adds — the shipped hook
+emits only a count, and only above `THRESHOLD = 5` (`:25`, `:43`), which is blind on every
+discriminating fixture. Three conjuncts per fixture row, so the oracle is positive rather than
+invariance-only: the JS set equals the hook set in both directions, **and** each equals the expected
+set transcribed literally in the fixture table — without the third, two implementations that both
+return `∅` agree perfectly. The table covers the truncated block (E-04), the stray closer (E-05),
+the basename collision (E-09), the legacy/block boundary, and one row above the threshold so the
+shipped `additionalContext` count is also compared. L4 degrades exactly as the hook does when no
+usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recorded notice.
 
 ### 11.4 Property strategies (T-09)
 
@@ -1548,9 +1618,19 @@ header.
 | §7.7 escalation count | a random entry sequence with a random subset missing `Feature` or `Seam` | the total attributed count equals the number of entries carrying both rows; no count is attributed to a key absent from the input |
 
 Two further properties are added beyond T-09's four because they are the FSPEC's determinism claims
-and an example cannot range over them: `failureModeId` is invariant under the *order* of two
-proposals that merge (§7.4), and `effectivenessTable` is invariant under the order in which two
-passes' records were appended when their dates are unchanged (§7.5).
+and an example cannot range over them. **Order-invariance alone is not an oracle** — a function
+returning a constant, `[]` or `null` satisfies it — so each pairs the invariance with a positive
+conjunct on the same path, the shape the four rows above already have:
+
+| Component | Generator | Invariant **and** positive conjunct |
+|---|---|---|
+| §7.4 `mergeProposals` | a group of ≥2 proposals sharing `(failureModeId, action)`, in a random permutation | the fold is invariant under permutation, **and** for at least one ordering the folded proposal's `kind`, `artifact`, `target`, `elidedKinds` and `elidedArtifacts` equal values transcribed literally from §7.4's fold table |
+| §7.5 `effectivenessTable` | two passes' records appended in a random order, dates unchanged | the table is invariant under that order, **and** the row count equals the number of distinct ids, **and** each row's `verdict` equals the arm §7.5 assigns it |
+
+The subject of the first is `mergeProposals`, not `failureModeId`: §7.4's own invariance argument
+("byte order is total over distinct strings, and a group's members are distinct by construction")
+is about the **fold**, and `failureModeId(phase, artifact)` takes no proposals at all, so order
+cannot be a variable of it. An earlier draft named the wrong function.
 
 ### 11.5 Where the FSPEC's deferrals land
 
@@ -1574,6 +1654,14 @@ beside AT-R6b. Nothing about their fixtures is decided here.
 - **`_envPresent`'s adapter transport.** It is an agent prompt; the module-side contract (a boolean,
   fail-closed on anything unparseable) is tested with a double, and the prompt itself is reviewed,
   not executed — the same posture every other `runtime-adapter.js` transport takes.
+
+**No longer on this list: the clone's writes.** An earlier draft exempted the whole PR route on the
+"real `gh` and the real network" ground, which also swept up `_writeFile`'s behaviour on an absolute
+path — a capability this feature *invents* (§5.6(a)), not a shipped one it merely drives. That is a
+different class, and it left an AC-3.1/NFR-2 chain with no production-path evidence anywhere. The
+prompt text is now pinned by §11.3(e), and the module-side path handling is exercised by the
+`fakeMakeTempDir` route tests. The exemption that remains is narrow and stated: nothing here
+executes a real agent, so the *transport* is still reviewed rather than run.
 
 ## 12. Traceability
 
