@@ -129,3 +129,8 @@ To reach approval:
    HEAD.
 6. **F-07/F-08/F-09.** One-line corrections.
 
+## Verdict
+
+VERDICT: Needs revision
+
+
