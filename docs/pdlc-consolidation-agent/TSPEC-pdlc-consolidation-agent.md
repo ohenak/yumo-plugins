@@ -2029,6 +2029,15 @@ mis-binding visible to the next reader in the row itself rather than only in the
 obligation has no AT (T-11's AC-3.2 citations, T-12's "when, and only when"), the cell says so: an
 empty-but-named gap reads as a gap, where a nearby id reads as coverage.
 
+**A named gap is not a licence to ship uncovered, and this table no longer treats it as one.** Both
+register gaps above describe things an operator reads directly — the PR body an approver reviews, and
+the absence of a proposal file when nothing needed proposing — so each now carries a **(no FSPEC AT)**
+case in the file that owns its subject, in exactly the shape T-13 and the dropped-code notice
+established. The erratum and the local case are complementary, not alternatives: the erratum asks the
+FSPEC to decide whether the register should carry an id, and the local case makes the obligation
+falsifiable in the meantime. Rows carrying no id contribute to neither side of §12.3's set equality,
+so adding them cannot perturb it.
+
 ### 12.3 Acceptance test → level and file
 
 **Enumerated, never ranged.** An earlier draft assigned ATs to files by range (`AT-C1 … AT-C8`,
@@ -2047,14 +2056,14 @@ The FSPEC's AT register carries **96** ids, measured at v11.1 by enumerating the
 | `consolidationPass.test.js` | L2 | AT-C1, **AT-C1b**, AT-C2, AT-C3, AT-C4, AT-C5, AT-C6, AT-C7, AT-C8, AT-M1, AT-M2, AT-M3, AT-M4, AT-M5, AT-M6, AT-M6b, AT-M9 |
 | `consolidationRung.test.js` | L2 | AT-M7, AT-M8, AT-M10 (AT-M10 is a regression over the shipped call site and lives beside the existing `advisoryRung.test.js` assertions) |
 | `consolidationPredicate.test.js` | L1 | AT-P1, AT-P2, AT-P3, AT-P4, AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11 |
-| `consolidationHookParity.test.js` | L4 | AT-P7 |
+| `consolidationHookParity.test.js` | L4 (+ L3) | AT-P7. Plus **(no FSPEC AT)** the hook-side enumeration pin — an L3 source-text read asserting `nudge-consolidation.sh:28` carries exactly the two glob patterns (§7.1); it lives here because its subject is the two implementations' relationship, which is this file's |
 | `consolidationIdentity.test.js` | L1 | AT-R6, AT-R6b, AT-F1, AT-F2, AT-F3, AT-F4, AT-F5 |
-| `consolidationRoute.test.js` | L2 | AT-R1, AT-R2, AT-R3, AT-R4, AT-R5, AT-Q1, AT-Q2, AT-Q3, AT-Q4, AT-Q5, AT-Q6, AT-Q7, **AT-Q7b**, **AT-Q7c**, AT-Q8, AT-Q9, AT-Q10, AT-Q11, AT-Q12 |
+| `consolidationRoute.test.js` | L2 | AT-R1, AT-R2, AT-R3, AT-R4, AT-R5, AT-Q1, AT-Q2, AT-Q3, AT-Q4, AT-Q5, AT-Q6, AT-Q7, **AT-Q7b**, **AT-Q7c**, AT-Q8, AT-Q9, AT-Q10, AT-Q11, AT-Q12. Plus two **(no FSPEC AT)** cases covering the register gaps §12.2 records: AC-3.2's three PR-body citations (T-11) and FSPEC §5.3's "and only when" negative (T-12) |
 | `consolidationCredential.test.js` | L2 | AT-K1, AT-K2, AT-K3, AT-K4, AT-K5, AT-K6, AT-K7 |
 | `consolidationEffectiveness.test.js` | L1 | AT-F6, AT-F7, AT-F8, AT-F9, AT-F10, AT-F11, AT-F12, AT-F13, AT-F14, AT-F15, AT-F16, AT-F17, AT-F18 |
 | `consolidationParse.test.js` | L1 | AT-F19, AT-F20, AT-F21 |
 | `consolidationAdvisory.test.js` | L1 | AT-A1, AT-A2, AT-A3, AT-A4, AT-A5, AT-A6, AT-A7 |
-| `consolidationReport.test.js` | L1 + L2 | AT-L1, AT-L2, AT-L3, AT-L4, AT-L5, AT-N1, AT-N2, AT-N3, AT-N4 |
+| `consolidationReport.test.js` | L1 + L2 | AT-L1, AT-L2, AT-L3, AT-L4, AT-L5, AT-N1, AT-N2, AT-N3, AT-N4. Plus **(no FSPEC AT)** the ER-6 two-fixture discriminator control (§7.6, §12.2, §12.4) and the dropped-code report-body notice carried under AT-L5 |
 | `consolidationBuild.test.js` | L3 | (no FSPEC AT) T-02's build assertions, §3.3's `.gitignore` text, §11.3(e)'s adapter-prompt text |
 | `consolidationLifecycle.test.js` | L2 | (no FSPEC AT) T-13's await-discipline case (§10.1, §11.2's `asAsync`). It claims **no** register id, so `consolidationTraceability.test.js`'s set equality is unaffected: the equality is asserted over the ids this table's rows *carry*, and a row carrying none contributes nothing to either side |
 
@@ -2063,6 +2072,15 @@ parses the FSPEC's AT register and this table's own rows and asserts **set equal
 directions** — every register id has exactly one file, and no file claims an id the register does
 not carry. Adding or deleting an AT upstream therefore reds this table rather than passing it,
 which is what the range notation could never do. The parser takes an injected `root` (DC-04).
+
+**How the parser reads a cell that also carries prose.** Several cells now append a `(no FSPEC AT)`
+clause naming a TSPEC-added case beside their id list. The parser extracts ids by matching the
+`AT-…` token grammar over the whole cell and de-duplicating, so prose contributes nothing unless it
+names an id, and naming an id the row already owns (AT-L5, in the report row) is idempotent. The
+invariant the equality asserts is unchanged: **every register id maps to exactly one file, and no
+file names an id the register does not carry**. A TSPEC-added case is deliberately outside both
+sides — it has no id to contribute, which is precisely why minting one would have been the wrong
+repair.
 
 The split is by **subject, not by AT id range**: a file owns one group of §7 functions, which is
 what keeps the single-writer-per-file rule satisfiable when the PLAN parallelises authoring.
