@@ -336,7 +336,37 @@ check that returned zero mismatches above.
 
 ## 7. Integration points
 
-_placeholder_
+Ten shipped files are touched. Each row below names the exact seam, the line it is at **today**, and
+what the surrounding code does — so an implementer can confirm the landing site before editing and a
+reviewer can confirm the claim without re-deriving it.
+
+| Shipped surface | At HEAD | What the feature does to it | Owner |
+|---|---|---|---|
+| `resolveAdvisoryRung` | `pdlc/workflows/orchestrate-dev.js:1833`, exported; its doc comment at `:1800` calls it "the **one** ladder the tier ships" | gains an optional `skill` defaulting to `ADVISORY_RUNG_SKILL` (`:1797`). Restating the two rungs instead would create the second copy that comment forbids | T11 |
+| shipped call site of the resolver | `orchestrate-dev.js:3132` — `resolveAdvisoryRung({ _agent, _log: log, _state: rungState, prompt: promptText })` | untouched, and AT-M10 is the regression that says so: no argument added, default behaviour identical on the memoised and two-rung paths | T11 (assert), T06 (author) |
+| `gitWithLockRetry` | `orchestrate-dev.js:8617`, `async function`, **not exported**; called at `:8670` and `:8690` inside `commitPaths` | gains `export`. Body untouched, so both existing callers are unaffected | T11 |
+| `commitPaths` | `orchestrate-dev.js:8669`; its commit is a plain `git commit -m` with **no** pathspec (`:8690`, and the comment at `:8658-8661` explains why the add is what scopes the change set) | **not reused.** FSPEC §5.4 requires the pass's commit to be pathspec-scoped, so `commitConsumingRepoPaths` follows `commitQueueRow` instead | T30 |
+| `commitQueueRow` / `commitAdvisoryRecord` | `pdlc/workflows/orchestrate-queue.js:1576` and `:1615`, sharing `NOTHING_TO_COMMIT_RE` at `:1554` | the **shape** reused (add, then commit, both pathspec-scoped, idempotent on "nothing to commit"), not the code | T30 |
+| `mergeCommandFor` | `orchestrate-dev.js:319`; the comment at `:273` names it "the single place every literal `gh` command string is built", and its `switch` throws on an unrecognised surface at `:350` | gains two surfaces. A consolidation-local builder would put two builders in one bundle and falsify the audit that comment claims | T11 |
+| `rtWriteFile` | `runtime-adapter.js:802`; its prompt says `relative to the repository root` at `:805` — the **only** occurrence of that string in the file | widened to accept an absolute path. `rtReadFile` (`:493`) is deliberately untouched: it transports shell commands under a *cwd* instruction (`:374`), which already resolves an absolute path verbatim | T12 |
+| `rtDevInjections` | `runtime-adapter.js:1086`; the comment at `:1098-1100` records a shipped adapter function that existed and was never wired | `rtConsInjections()` lands beside it, and T03's set-equality case is the guard that the same mistake does not repeat — `_checkFile` is the member whose silent omission would turn AC-1.3's mutual exclusion off in production while every L2 fixture stayed green | T12 |
+| `rtCheckFile` vs `fakeFs.checkFile` | `runtime-adapter.js:823` decides emptiness by **byte size** (`test -s`); `__tests__/helpers/seams.js:298` decides it by **trimmed content** | the divergence is real and **unreachable here**: the only marker states this feature produces are `""` and absent, on which the two agree. Recorded so it stays unreachable — no row may assert *which* `reason` came back | T20, T28 |
+| the `bundles` array | `pdlc/workflows/build-runtime.mjs:448`, with `QUEUE_META` at `:127`, `QUEUE_ENTRY` at `:185`, `stripModuleSyntax` at `:45`, `wrapModule` at `:55` and the prelude pattern at `:113-123` | one new row plus a `CONS_META`/`CONS_ENTRY` pair; the four reused symbols reach the IIFE through `const X = __dev.X;` prelude lines, because the runtime forbids `import` entirely | T32 |
+| `AT19_SEAM_NAMES` / `AWAIT_SCAN_SOURCES` | `__tests__/runtimeBundle.test.js:215` and `:1040`; consumed at `:427` and `:1054`; `RLH-SCAN-01` at `:626` | both widened in one commit. Widening only the source axis leaves the scan green on exactly the seams this feature invents | T13 |
+| `nudge-consolidation.sh` | `pdlc/hooks/scripts/nudge-consolidation.sh` — `PY_BIN` probe `:13-20`, `CLAUDE_PROJECT_DIR` `:26`, `THRESHOLD = 5` `:25`, glob `:28`, early exit `:29-30`, predicate `:41`, `n >= THRESHOLD` `:43`, output `:47-48` | four edits, one task. The `PY_BIN` probe's silent `exit 0` is inherited by the L4 harness as a **reported skip**, never a pass | T09 |
+| the shipped double set | `seams.js` (`fakeFs:243`, `fakeListFiles:132`, `fakeGit:389`, `LIST_FAILURE_VALUES:58`), `mergeDoubles.js` (`fakeGhRun:75`, `matchKey:45`, `passingGh:163`, `GH_SURFACE_NAMES:181`, `fakeNow:259`, `FIXED_NOW_MS:256`), `advisoryDoubles.js` (`makeAgentDouble:53`, re-exports at `:25`), `driftGenerators.js` (`seeded:76`, `resolveSeed:134`) | re-exported, never re-declared. **`passingGh` is not widened and `GH_SURFACE_NAMES` does not grow** — that set is what `passingGh` is obliged to answer, and this feature adds no obligation to it | T01 |
+| `docs/_constraints/pdlc-consolidation-vocabularies.md` | `Version` cell reads `1.4 · 2026-08-06` at `:7`; §1's table is the authority | read by two oracles — §11.3(b)'s fourth leg and the `Version` pin. Never edited by this feature | T24 |
+| `.claude/pdlc.config.json` | **untracked** (`git ls-files .claude` is empty); carries `implementation.testCommand`, `postWaveCommand` and `postWavePathspecs: ["pdlc/workflows/dist/"]` | read by the wave gate, not edited. T00 branches on its presence with a positive assertion in each arm, because CI's fresh clone does not have it | T00 |
+
+**One integration point the feature deliberately does not create.** There is no `_runCommand` seam
+for the pass. Everything it does through a shell is a `git` argv or a `gh` command string, and
+`rtRunCommand` (`runtime-adapter.js:1034`) returns a trailer plus an output tail — the wrong shape
+for a call whose stdout must be parsed (a PR URL, a `gh pr list --json` payload).
+
+**Consumer-visible surface, unchanged except by addition.** `pdlc/hooks/hooks.json` is not edited:
+no hook can start a pass. `/pdlc:consolidate-learnings` already resolves to a skill; after T32 it
+also resolves to a workflow bundle — the `orchestrate-queue` shape REQ §5 names, where one name
+carries both.
 
 ## 8. Verification and Definition of Done
 
