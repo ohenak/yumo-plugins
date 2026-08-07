@@ -25,6 +25,12 @@ DEC-CONS-03 row, rewritten from a prose sentence into a four-item enumeration, p
 
 ## Prior findings — disposition
 
+| Prior | Severity | Status | Evidence in the revision |
+|---|---|---|---|
+| F-08 | Low | **Resolved, exactly** | I asked for the obligation conjunct to be cited at `TSPEC:2098-2099` rather than `:2097`, in all three places. The TSPEC has since moved, and the revision retargets to the *current* anchor in all three: DEC-CONS-03 domain 1, domain 2, and §11.2 item 3 now cite `TSPEC:2202-2203`. Verified at HEAD — `TSPEC:2202` reads "`observed ⊆ permitted` per domain, universally; **obligation** `obliged ⊆ observed` per domain, on" and `:2203` continues "the Given that obliges it; and the two `∅` equalities of AT-Q7c." Two of the three sites go further than I asked and state the *negative* — "`:2201-2202` is *containment*, which is precisely the conjunct this sentence has just said is insufficient" — which closes the mis-landing my finding described rather than merely relocating it. |
+| F-09 | Low | **Resolved, in full** | I asked for three things and the revision does all three. (a) The span is now `TSPEC:2199-2204`, which I verified covers the whole oracle sentence from "The oracle is then **four** set assertions" through "never a multiset" — my v4 complaint that the cited span was short at both ends is gone. (b) The four are re-ordered to the TSPEC's own order: partition **first** (`:2199-2201`), containment (`:2201-2202`), obligation (`:2202-2203`), the two `∅` equalities of AT-Q7c **fourth** (`:2203`). I transcribed `TSPEC:2199-2204` and the order matches exactly. (c) The clone-domain absent-always `∅` is now carried — item 4 states *two* intersections, names the invoking-tree absent-always set (`checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb, `TSPEC:1724`) and the clone's (every merge verb, `TSPEC:1725`), and adds the sentence I would have written myself: "a property that carries only the invoking-tree half is not set-equal to the TSPEC's oracle." |
+| Q-04 / Q-05 / Q-06 | — | Still open, still not findings | None is answered here and none needs to be. Carried forward unchanged. |
+
 ## Verification of the changed sections
 
 ## Findings
