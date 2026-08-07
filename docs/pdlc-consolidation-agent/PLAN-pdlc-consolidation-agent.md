@@ -282,7 +282,57 @@ carrying `pdlc/workflows/` would make every module task collide with every test 
 
 ## 6. Dependencies and ordering notes
 
-_placeholder_
+**This section was checked mechanically, not by eye.** `parsePlanTasks` over this document returns
+**34** tasks and `parsePlanOwnership` **34** manifest rows; `validatePlanContract` returns
+`{ok: true}`; `computeTopologicalBatches` returns without a cycle; every row's `Batch` cell
+re-derives to `max(batch of Deps) + 1` with **zero** mismatches; and no two tasks sharing a `Batch`
+number own a file in common. The same four functions are the Phase P gate
+(`pdlc/workflows/orchestrate-dev.js`), so this is the gate's own answer and not a paraphrase of it.
+
+**One warning worth pre-empting.** `computeTopologicalBatches` returns **15** ready-sets, not 12 —
+it splits a wide level into several dispatch waves. That is the dispatcher's width policy, not a
+disagreement with the `Batch` column; the column is validated against the `Deps` edges, which is the
+check that returned zero mismatches above.
+
+### 6.1 Why each cross-cutting edge exists
+
+| Edge | Why it is real, and not bookkeeping |
+|---|---|
+| everything → **T00** | §3's BL-PREREQs. A task that imports `gitWithLockRetry` before T11 exports it fails for a reason indistinguishable from its own bug |
+| T14 … T24 → **T01, T02** | batch-safety rule 4: a shared test prerequisite may only be depended on by tasks strictly downstream of its creator. Every suite imports the doubles module and at least one module symbol |
+| **T25 → T09** | AT-P7 is a *differential*. Without the hook's `PDLC_PENDING:` channel there is no oracle at all — the shipped message is a count and only above `THRESHOLD = 5`, blind on every discriminating fixture. The edge is what makes TSPEC §13.1 row 6 conditional on row 12 |
+| **T25 → T13** | the `await` audit must be live before the first seam call is written, not after. T13 costs nothing at batch 3 (the skeleton makes no seam call) and reds the moment a module task writes an un-awaited one |
+| **T12 → T10** | the only reason is the shared file: both un-skip a block in `consolidationBuild.test.js`, and rule 2 forbids two same-batch writers. Stated so a reader does not hunt for a semantic dependency that is not there |
+| **T30 → T11** | T30 imports `gitWithLockRetry` (needs the `export` keyword) and builds its two `gh` command strings through `mergeCommandFor`'s widened `switch` |
+| **T31 → T12** | the driver's default seam wiring is the protocol `rtConsInjections()` hands over; T03's set-equality case is what keeps the two in step |
+| **T32 → T31** | the bundle inlines the finished module. Building it earlier would stamp a manifest row over a skeleton |
+| **T33 → T32** | the documentation describes the artifact T32 produces, including the drift-gate consequence an operator meets on the next queue invocation |
+
+### 6.2 Ordering constraints that are *not* expressible as edges
+
+- **The rebuild is a wave concern, not a task concern.** T32's four `dist/` artifacts are re-stamped
+  by `implementation.postWaveCommand` and committed under `postWavePathspecs`. A task that also
+  listed them would double-commit. The exposure TSPEC §13.2 names — a partial rebuild of three of
+  four artifacts failing CI's sync job — is closed by the rebuild being one command over the whole
+  `bundles` array rather than four hand edits.
+- **T31's mutation check is a step inside the task, not a successor task.** Delete one `await`
+  inside `finishPass`, observe T23's case RED, restore. There is no artifact to depend on, so the
+  obligation lives in the row and in §8's checklist.
+- **The `describe.skip` blocks are named for their green owner, which is what makes un-skipping
+  auditable.** A reviewer can grep for `describe.skip("T31` and see exactly which blocks are still
+  parked. This is a naming convention, not a dependency, and it is the only thing standing between
+  "the wave gate is green" and "the wave gate is green *and* the cases ran".
+
+### 6.3 The two places where a task could be tempted to over-reach
+
+1. **T25 must not drive `_listFiles`.** The seam is in the protocol for completeness (TSPEC §5.1)
+   and `fakeListFiles` is more capable than the seam it doubles — the DC-07 hazard the `git
+   ls-files` enumeration exists to remove. A test that reaches for it re-introduces exactly what
+   T25 is built to close.
+2. **T09 must not widen the hook's user-visible behaviour.** The `PDLC_PENDING:` line is
+   **env-gated** and goes to **stderr**; `:47-48` keep printing `additionalContext` and exiting 0.
+   The hook stays advisory-only — no hook can start a pass (FSPEC §2.1) — and a session that does
+   not set the gate variable sees byte-identical output to today's.
 
 ## 7. Integration points
 
