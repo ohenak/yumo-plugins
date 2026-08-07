@@ -662,7 +662,9 @@ invoking-tree verb set. Release must therefore be expressed with a write, and on
 presence probe's reading of an empty file becomes load-bearing — the two answers must agree or every
 steady-state pass reclaims a lock nobody holds.
 
-**Decision.** Two halves of one decision:
+**Decision.** Two halves of one decision. **Both are superseded upstream — read the supersession
+note below before carrying either downstream; they are kept here as the record of what was decided
+and why, not as live direction:**
 
 1. **Release is `await _writeFile(markerPath, "")`** — one seam call, no git call, leaving the file
    present and zero-byte on disk.
@@ -752,7 +754,9 @@ probe side, and an `file_empty ≡ absent` oracle is red against `TSPEC:988` and
   the first: a louder and far more frequent falsehood than the truncated-marker case it preserves.
 - **Derive `present` from `_readFile(...) !== null`** — rejected; it is the same bug from the other
   end. The empty released form reads as present-and-unparseable and `markerVerdict` takes the
-  `reclaim` arm on a completely normal pass. This is the second, independent reason DEC-CONS-04's take
+  `reclaim` arm on a completely normal pass. (**Still rejected upstream, on a reason that outlived the
+  empty payload**: `_readFile`'s single `null` conflates *missing* with *unreadable*, so it cannot
+  name `file_missing` — the one reason that now decides the absent arm, `TSPEC:987-994`.) This is the second, independent reason DEC-CONS-04's take
   keeps `_checkFile` in the protocol rather than collapsing to two calls.
 - **Add a removal seam so release deletes the file** — rejected on three counts. It is a new
   agent-transported **mutation** verb in a verb set that ships none of its kind
