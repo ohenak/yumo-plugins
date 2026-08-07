@@ -88,7 +88,7 @@ inside the transported command (TSPEC §9.2).
   transcript, where the value *would* be visible, is written by the runtime and is not a boundary
   this module owns. There is no shipped precedent for a redacting log in either bundle. The earlier
   wording "the module has no boundary to scrub" is withdrawn: the module does have an **inbound**
-  boundary, and §3a below records what it leaves open.
+  boundary, and the paragraph below records what it leaves open.
 
 **Residual: the failure-reply channel is inbound, and it is not closed.** Non-disclosure holds
 structurally on the way *out* — the value never becomes a JS string (TSPEC §9.2, `TSPEC:1595-1601`).
@@ -163,7 +163,7 @@ actually ran on; AC-1.6 requires an explicit, never-silent downgrade. `pdlc-advi
 ships exactly that ladder: `MODEL_ADVISORY` (`orchestrate-dev.js:1652`), `MODEL_ADVISORY_FALLBACK`
 (`:1653`) and the exported resolver `resolveAdvisoryRung` (`:1833`), whose only shipped call site is
 `runAdvisorySeam` at `:3132`. The resolver dispatches under one constant skill,
-`ADVISORY_RUNG_SKILL = "se-review"` (`:1796`); the consolidation pass must dispatch under its own
+`ADVISORY_RUNG_SKILL = "se-review"` (`:1797`); the consolidation pass must dispatch under its own
 skill.
 
 **Decision.** Widen the resolver by one **optional, defaulted** destructured parameter —
@@ -177,7 +177,7 @@ one ladder remains in the tree.
 - **Restate the two rungs in the consolidation module, behind a drift observable** — the escape
   hatch `docs/_constraints/pdlc-advisory-corpus-baseline.md` §3 explicitly sanctions — rejected. It
   creates the second copy of the ladder the resolver's own doc comment forbids in terms:
-  "there is no second, private copy of this ladder anywhere" (`orchestrate-dev.js:1800-1801`). A
+  "there is no second, private copy of this ladder anywhere" (`orchestrate-dev.js:1802`). A
   drift observable detects divergence *after* it happens; the import prevents it. The claimed cost
   of the rejected form is not obviously higher — two constants and a `try`/`catch` — which is why the
   rejection needs recording.
@@ -275,14 +275,33 @@ fallback); an offline/air-gapped consumer requirement, which would force a local
 with it an explicit `--branch {defaultBranch}` and a HEAD-restoration obligation; `--depth 1`
 becoming insufficient because a promotion needs history.
 
-**Testability:** L1-observable through the `_git` double as an **argv-sequence** assertion, in two
-directions. Positive: the clone argv's `remote` element is exactly the string the `remote get-url`
-double returned, never the repository root path. Negative: over a whole pass, no argv issued without
-a `-C {tempdir}` prefix is a mutating verb — the invoking-tree verb set is closed and asserted by
-containment, so a `checkout`, `switch`, `stash`, `reset`, `rebase` or bare `fetch` appearing in the
-invoking domain fails the assertion by construction rather than by enumeration of known-bad calls.
-The two-repo arm is the same assertion with `pluginRepository` set, so the URL-construction branch is
-covered without a network.
+**Testability:** L1-observable through the `_git` double as an **argv-sequence** assertion. The
+predicate partitions every recorded argv into **three** domains, not two — an earlier draft's
+two-domain form ("no argv without a `-C {tempdir}` prefix is a mutating verb") was **red on correct
+code**, because this entry's own Decision issues `_git(["clone","--depth","1","--single-branch",
+remote, dir])`, which carries no `-C` prefix and whose verb `clone` is mutating. The clone is pinned
+positionally, never exempted:
+
+1. **Invoking-tree domain** — every argv with no `-C` prefix that is *not* the clone argv. Asserted
+   by containment against the closed invoking-tree read-verb set (`read-object`, `read-remote`,
+   `read-index`, per TSPEC §13.1 row 9); a `checkout`, `switch`, `stash`, `reset`, `rebase` or bare
+   `fetch` fails by construction rather than by enumeration of known-bad calls, and DEC-CONS-04's
+   "admits no mutating git verb at all" continues to hold of *this* domain exactly.
+2. **Clone domain** — every argv whose first two elements are `["-C", dir]` where `dir` is the string
+   `_makeTempDir`'s double returned. Its verb set is the closed clone-domain set; nothing here is
+   checked against the invoking-tree set.
+3. **The single `clone` argv** — asserted by **shape**, exactly once per pass, and pinned
+   positionally: the argv equals `["clone","--depth","1","--single-branch", R, D]` where `R` is
+   character-identical to the `remote get-url` double's reply (or, in the two-repo arm, to
+   `https://github.com/{pluginRepository}.git`) and `D` is character-identical to `_makeTempDir`'s
+   reply. Both trailing positions are pinned, so the destination cannot be a path inside the
+   repository and the source cannot be the repository root path. Answering the reviewer's Q-01
+   directly: the clone belongs to no verb set — it is its own case, and what pins its destination is
+   the last-argument identity, not a permission.
+
+The partition is total by construction: an argv that matches none of the three fails the assertion,
+so a fourth kind of call cannot slip through unclassified. The two-repo arm is case 3 with
+`pluginRepository` set, so the URL-construction branch is covered without a network.
 
 ## 6. DEC-CONS-04: The marker take is observe-then-write, not atomic
 
