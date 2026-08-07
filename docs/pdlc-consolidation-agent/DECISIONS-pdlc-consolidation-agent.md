@@ -678,16 +678,21 @@ with the abandoned id `unknown`" (`:442`), bound again by E-11 and by AT-M3's *G
 **unreachable**. That is raised as an erratum against FSPEC, not reinterpreted here (§11).
 
 There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
-the zero-byte marker is **permanent** — one per consuming repo, from the first pass onward, because
+the marker is **permanent** — one per consuming repo, from the first pass onward, because
 no seam can remove it (`TSPEC:966-970` — "There is no removal verb anywhere in reach: §5.1's
 protocol declares none, and the adapter ships `rtWriteFile` … and no unlink of any kind" — carried
 into §13.3's residue list at `TSPEC:2658-2660`). It is `.gitignore`d, so it
 reaches no diff, no PR and no fresh-clone bootstrap check; the only surface on which it appears is a
-literal `ls docs/_decisions/`, where a zero-byte `.consolidation-lock` means **free, not stuck**.
+literal `ls docs/_decisions/`, where a **released** `.consolidation-lock` means **free, not stuck**.
 That reading is the inverse of the one AC-1.3 invites when it tells the operator that deleting
 `.consolidation-lock` clears the lock — so it is stated here rather than left to the TSPEC, and the
-two manual channels agree: a hand-deleted file yields `file_missing`, a released pass yields
-`file_empty`, and §7.3 treats both as absent, so neither channel can wedge the cadence.
+two manual channels agree: a hand-deleted file yields `file_missing` and a released pass leaves a
+free marker, and §7.3 takes on both, so neither channel can wedge the cadence. **The conclusion
+survives upstream; the mechanism stated for it does not** — this entry reached it through
+"released ⇒ `file_empty` ⇒ read as absent", and the TSPEC now reaches it through
+"released ⇒ a parseable `RELEASED:` line ⇒ **E-11b** ⇒ `free` at any age" (`TSPEC:1016-1018`,
+`:1040`), with `file_missing` alone read as absent. See the supersession note below before quoting
+either half of this paragraph's mechanism downstream.
 
 **Anchor-sweep note — the release *form* moved upstream after this entry was approved.** Re-measuring
 `:962-966` and `:2522` for the v5 sweep surfaced that the TSPEC at HEAD no longer specifies the empty
@@ -696,16 +701,45 @@ write this entry decides. It adopts FSPEC **BR-14a**'s in-place write
 at `:951`; **E-11b** maps it to `free` at any age with no reason code, `TSPEC:1016-1018`), and the
 residue line now reads "**never empty in steady state**, one per consuming repo, carrying the last
 pass's `RELEASED:` line" (`TSPEC:1036`, `:2658-2660`), with a zero-byte file at that path re-cast as
-a *signal* that a pass died mid-write rather than the steady state. The **reasoning** in this entry
-is what carried: release is a write, never a removal; `present` is `_checkFile(...).ok`; the two
-manual channels must agree. The **empty payload** did not, and the `RELEASED:`-line form makes the
-two costs recorded above obsolete rather than merely relocated — the marker is still permanent, but
-it is not zero-byte, and FSPEC §4.2's empty arm is unreachable for a different reason. This is
-recorded, not re-decided, in this citation-sweep revision: DEC-CONS-04's payload half is
-**superseded by `TSPEC:974-977`**, and a PLAN or PROPERTIES task must be written against the
-`RELEASED:` form (`TSPEC:998-1003` states the read-back conjunct), never against the empty one —
-`TSPEC:2656-2657` says so in terms ("a PLAN task written against the empty release form would be
-written against the losing side").
+a *signal* that a pass died mid-write rather than the steady state.
+
+**Both halves of the Decision are superseded, not one.** An earlier draft of this note said the
+`present` half "carried" and only the payload moved; that is **withdrawn** — it is exactly backwards
+about the probe, and getting it wrong costs an oracle rather than a grep.
+
+- **Payload (Decision half 1) — superseded by `TSPEC:974-977`.** Release is an in-place write of
+  `RELEASED: {passId} {ISO-8601}`, not `""`.
+- **Probe (Decision half 2) — superseded by `TSPEC:987-988`.** This entry says `present` is
+  `_checkFile(...).ok === true` "and only that", so `file_empty` is treated exactly as absent. The
+  TSPEC now states the opposite in terms: "this layer reads **`file_missing` alone as absent**, and
+  treats `{ok:true}` and `file_empty` alike as **present**" (`TSPEC:987-988`), restated at
+  `TSPEC:1026` and carried in §13.1 row 13 (`TSPEC:2590`).
+- **Consequence — this entry's *rejected* first alternative is the shipped behaviour.** With the
+  sentinel release, a zero-byte marker is a **truncated** one, so it must reach `markerVerdict`'s
+  `reclaim` arm and record `reclaimed-stale-lock` with abandoned id `unknown`: §10.3 row 4 routes it
+  exactly so (`TSPEC:1940`), and the fixture set is stated at `TSPEC:2640` — "the `""` and the
+  neither-verb fixtures **reclaim**, the two `RELEASED:` fixtures do not, at either age". That is
+  verbatim the alternative rejected below as "Preserve FSPEC §4.2's empty arm — treat an empty marker
+  as `reclaim`". It was rejected on a premise the sentinel removes: under an *empty* release a
+  released marker and a truncated one are the same observed state, so reclaiming on empty would fire
+  on every steady-state pass; under the `RELEASED:` sentinel there is nothing empty to mistake, and
+  the three states *released* / *truncated* / *absent* have three distinguishable observations
+  (`TSPEC:996-1003`; the FSPEC round that decided it is recorded at `TSPEC:1015-1020`).
+- **What did carry** is the entry's other reasoning, unchanged: release is a **write, never a
+  removal** (no seam can unlink — the premise the sentinel satisfies with a different payload); the
+  two manual channels must agree; and `present` must **not** be derived from `_readFile(...) !== null`
+  (the second rejected alternative below), because that single `null` conflates *missing* with
+  *unreadable* and so cannot name the one reason — `file_missing` — that now decides the absent arm.
+  The permanence cost is also unchanged in substance and changed in form: the marker is still
+  permanent, but it is **never empty in the steady state** (`TSPEC:1036`, `:2658-2660`).
+
+Recorded, not re-decided, and the direction downstream is: write the PLAN and PROPERTIES tasks
+against the `RELEASED:` form (`TSPEC:998-1003` states the read-back conjunct) **and** against
+`file_missing`-alone-as-absent — never against the empty release form and never against
+`file_empty ≡ absent`. `TSPEC:2656-2657` says the first in terms ("a PLAN task written against the
+empty release form would be written against the losing side"); the second is the same trap on the
+probe side, and an `file_empty ≡ absent` oracle is red against `TSPEC:988` and blind to
+`reclaimed-stale-lock`, an AC-1.3 operator-visible outcome.
 
 **Alternatives considered.**
 
