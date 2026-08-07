@@ -148,4 +148,51 @@ wrong layer for anything in this table. No rule in the intervening diff raises a
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 3 Low.
+
+Under `DEC-CONV-01` (`DECISIONS-review-convergence.md:11-40`) this is a **re-issued standing
+approval**, not a fresh one. My v13 approval stands into this round because neither re-opening
+trigger fired: the intervening diff touches no section of this REQ (the diff over it is empty), and I
+file no new finding of any severity, let alone Medium-or-higher.
+
+Re-issuing is not deference to my own prior round. The verdict was re-derived:
+
+- the digest was recomputed and compared to v13's `APPROVAL-HASH`, not assumed;
+- every carried finding was re-checked against the file it is about at HEAD, and each cited line was
+  printed rather than recalled;
+- the REQ's `file:line` claims about shipped behaviour were re-run (`:1669`, `:1833`, `:1859`), and
+  independently corroborated by an empty `git diff --stat` over `pdlc/`;
+- the two decision deltas that landed in the interval were read and applied — DEC-SEV-03 and the
+  DEC-LAYER-01 companion — rather than noted in passing. A new severity rule arriving mid-window is
+  the most plausible way a verdict could change on an unchanged document; this one only demotes, and
+  only downstream documents, so it cannot;
+- and the "not blocking" claim was checked empirically for the first time: a full downstream layer
+  (TSPEC, +2555 lines, five review rounds) was authored on top of these three open Lows and none of
+  them appears in any Phase T blocking finding.
+
+No High, no Medium, therefore not Needs revision. The Challenger bar is unchanged and was applied
+per-finding, not to the count of them.
+
+What should change, unchanged from v11–v13 and still ~44 bytes in total:
+
+1. **F-54** — bump `docs/_constraints/pdlc-advisory-corpus-baseline.md` to `Version` 1.1 and repin
+   the REQ's two version-pinned citations (`:202`, `:448`). Seven characters.
+2. **F-55** — name the vocabularies file in §4b's classification sentence ("Of **the vocabularies
+   file's** owned sections, §1, §2 and §4 are enumerations …") and add to §5 that the baseline's four
+   owned sections carry no row oracle. ~40 bytes.
+3. **F-56** — both fixes fit inside the 331-byte margin. Do not plan a relocation round to make room;
+   four rounds of flat measurement say a relocation buys nothing.
+
+If the phase closes without them, none is a blocker at the REQ layer. F-55 remains the one worth
+landing, because it is the only one of the three a PROPERTIES author must resolve by cross-reading
+two files.
+
+**No upstream defects.** REQ is the root document of this feature; nothing upstream of it exists to
+be wrong. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:0d2b2497235209181f0599a2ef2e25fa106d1917af8f02448a027fe969ad6f17
+REVIEWED-COMMIT: 22564a6f47f6ff4989e64ca6007eac7cf9ca9998
