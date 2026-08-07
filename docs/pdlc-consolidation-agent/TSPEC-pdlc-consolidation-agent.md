@@ -2171,7 +2171,7 @@ control is the shipped one — the L3 suite's source scan, extended to
 `await`ed. This is a static check over the module's own text, not a runtime assertion, because a
 sync double makes the runtime one unfalsifiable.
 
-**The audit is a set over two axes, and both must grow.** Extending only the source set leaves the
+**The audit is a set over three axes, and all three must grow.** Extending only the source set leaves the
 scan green on exactly the seams this feature invents: what it scans *for* is a frozen name list,
 `AT19_SEAM_NAMES` (`__tests__/runtimeBundle.test.js:215-223`), whose members are `_agent`,
 `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`, `_git`, `_checkCi`,
@@ -2182,6 +2182,24 @@ and `RLH-SCAN-01` (`:626`) would report green over them. This feature therefore 
 `"consolidate-learnings.js"` to `AWAIT_SCAN_SOURCES` (`:1040`) **and** `_envPresent` /
 `_makeTempDir` to `AT19_SEAM_NAMES`, in the same commit. `_now` is deliberately not added: it is
 sync by contract (§5.6(b)) and awaiting a number is noise, not discipline.
+
+**The third axis is the bundle set, and missing it exempts the new artifact from every L3 suite.**
+`AWAIT_SCAN_SOURCES` and `AT19_SEAM_NAMES` govern the *source* scan; the *artifact* suites are driven
+by a separate two-member constant, `BUNDLES = ["orchestrate-queue.bundle.js",
+"orchestrate-dev.bundle.js"]` (`__tests__/runtimeBundle.test.js:26`). It is the `describe.each` /
+`it.each` key for the launcher-constraint suite (`:503`), the structural suite (`:509`), the
+sole-output-directory check (`:549`), the `RLH-AT-19` no-`process`/no-`fetch` scan (`:1044`) and the
+drift-perturbation suite (`:1290`), and it is spread into the artifact list at `:1584`
+(`ARTIFACTS = [...BUNDLES, "pdlc-cli.mjs"]`). A `consolidate-learnings.bundle.js` that is built,
+manifest-stamped and shipped but never added to `BUNDLES` is therefore exempt from **all six** — it
+could carry an `import(`, a non-first `meta`, a `process` reference or a stale sha and every one of
+those suites would stay green, because none of them ever names it. This feature adds
+`"consolidate-learnings.bundle.js"` to `BUNDLES` in the same commit as the other two axes. The
+falsifier for the omission is `consolidationBuild.test.js`'s manifest↔suite check (§12.2): the
+`BUNDLES` constant, read from `runtimeBundle.test.js`'s own source text, asserted **set-equal** to
+the `.bundle.js` artifact ids in `distribution-manifest.json` — set equality rather than containment,
+because a surplus member is as much a drift signal as a missing one, and the `pdlc-cli.mjs` row is
+excluded by extension (`.mjs`, not `.bundle.js`) exactly as `:555`'s shipped comment already records.
 
 **(d) The `parseAdvisoryConfig` parity test.** §7.8's duplication is pinned by a table-driven test
 that runs both parsers over the same five observed states and asserts the same classification, so a
