@@ -200,6 +200,92 @@ gap, not a conduct failure.
 
 ## Pattern of Disagreement
 
+**For the first time on this feature, the two reviewers genuinely disagree — and the disagreement is
+about whether a decided upstream fact has been absorbed.** In 60 prior reviews across three phases,
+no finding was ever contradicted by the other reviewer. Here, one and the same divergence is filed by
+`te-review` as a **High** that blocks (F-01, with F-02 as its hand-off half) and dismissed by
+`pm-review` as a non-blocking form question (Q-01: *"it is a form question, not a coverage question,
+and it does not hold up the TSPEC"*). Five patterns describe the round.
+
+### 1. The disagreement is real, it is decidable, and `te-review` is right on the evidence
+
+Both reviewers read §12.3's AT-M11 row, which states the divergence honestly: AT-M11's fixtures spell
+the released marker as FSPEC §4.1's `RELEASED: {passId} {ISO-8601}` sentinel, while §7.3 decides the
+**empty** released form — and the row *raises it as an erratum against FSPEC §4.1/§4.2 and leaves
+§7.3 as approved*.
+
+That disposition — name it, price it, raise it — is exactly what `DEC-SEV-03` prescribes, and
+`pm-review` scored it accordingly. It is also **out of date by 71 minutes**. `FSPEC` v11.3 landed at
+21:19 (`b68dddea`, `fcb8a4bc`) and *answered the question*:
+
+| Artifact | At HEAD | Consequence |
+|---|---|---|
+| `FSPEC:2551` BR-14a | "The marker is released by an **in-place write** of `RELEASED: {passId} {ISO-8601}` — never by removing the file, which no seam can do" | the removal-verb question §13.3 hands downstream as open is **closed** |
+| `FSPEC:2645` E-11b | a `RELEASED:` marker "of any age" is "taken like an absent file … records **no** reason code" | the released-marker case is decided, and AT-M11 is its oracle |
+| `FSPEC:2643` E-11 | now reads "Reachable **because** §4.1 releases by writing a `RELEASED:` sentinel and never by truncating" | the empty-marker arm §7.3 called unreachable is **reachable again** |
+
+So the TSPEC is raising an erratum against a question its own upstream has already decided, in the
+FSPEC's own words, against this feature's own AT-M11. `pm-review`'s "belongs to the FSPEC round" is
+correct in form and empty in substance: the FSPEC round already happened. `te-review` is not
+disagreeing about severity — it is reporting that the upstream fact changed and the document did not
+follow.
+
+### 2. Every raised erratum was a *shadow* of the defect; none was the defect
+
+FSPEC v11.3's erratum did two things at once: it **minted three ids** (AT-M11, AT-Q13, AT-R7) and it
+**decided a mechanism** (BR-14a / E-11b, the `RELEASED:` sentinel). The three ids are visible from a
+downstream document by pure arithmetic — a set difference over a traceability table, a count that no
+longer matches. The mechanism decision is visible only by *reading the FSPEC's prose*.
+
+| What FSPEC v11.3 changed | Detectable how | Raised in Phase P? |
+|---|---|---|
+| three new register ids | set difference over §12.3 | **yes — 5 raises** |
+| register size 96 → 99 | count comparison | **yes — 4 raises** |
+| release form ⇒ `RELEASED:` sentinel (BR-14a) | reading §4.1 | **no** |
+| released marker is free at any age (E-11b) | reading §4.2 / E-11b | **no** |
+| the empty-marker arm becomes reachable (E-11) | reading E-11 | **no** |
+
+Thirteen raises, all on the countable half. Zero on the semantic half. AT-M11 is precisely where the
+two halves meet — it is the *id* the mechanism decision minted — so assigning the id without
+absorbing the mechanism produced the failure mode `te-review` names: **the id has a home and no
+fixture that can live in it.**
+
+### 3. The repair minted a new blocking finding, as every repair on this feature has
+
+F-03 is not a pre-existing defect the round failed to fix; it is a defect the round **created**. E-4
+asked for a missing `CLAUDE.md` row; the author gave it the row *and* — correctly, by this feature's
+own standing rule that "a named gap is not a licence to ship uncovered" — a falsifying oracle. The
+oracle asserts set equality between two sets that structurally cannot be equal, because the manifest
+carries no row for itself while `CLAUDE.md` must keep its manifest bullet. The `BUNDLES` half of the
+very same case states its exclusion explicitly (`.mjs`, not `.bundle.js`); the `CLAUDE.md` half states
+none.
+
+This is the identical mechanism `POSTMORTEM-T` recorded as RC-2 — *the coverage contract turns every
+decision into two further obligations* — reappearing inside a four-minute erratum round. It is the
+strongest evidence that the erratum channel is not a special quiet path: a targeted edit generates
+new blocking surface at the same rate a review round does.
+
+### 4. The channel was used correctly at every step, which is why the failure is protocol, not conduct
+
+Nobody edited an upstream document out of channel. The PLAN reviewers raised rather than absorbed
+(`6bf1a181`, "raise TSPEC errata 4 and 5"); the PLAN's own T05 row **states the erratum as a
+precondition** and predicts the exact failure ("If a wave nonetheless reaches T05 with §12.3 still at
+96, the task halts and reports the three missing ids"); PLAN §9's risk table carries the row "FSPEC or
+TSPEC erratum round moves the AT register mid-implementation and reds T05 inside a halt-on-red wave".
+The author edited in place, versioned, changelogged, and did not restructure. The confirmers scoped
+to the diff and did not re-litigate. **Every actor followed the protocol and the protocol produced a
+halt** — which is the definition of a protocol gap.
+
+### 5. The disagreement is cheap to settle, and settling it closes two of the three findings
+
+`te-review`'s own Q-02 states the resolution and is worth quoting because it is the whole
+recommendation in one sentence: *"an in-place write of a non-empty sentinel is as writable as an
+in-place write of `\"\"`, and the `file_empty ≡ absent` equivalence §7.3 leans on is then no longer
+load-bearing."* §7.3's approved argument is **"no seam can unlink"** — and FSPEC's `RELEASED:` form
+requires no unlink either. Adopting it therefore does not contradict the reasoning either reviewer
+approved at v7/v8; it *satisfies* it. F-01 and F-02 close together, and the divergence §12.3 records
+disappears rather than being disclosed.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
