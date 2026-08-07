@@ -69,3 +69,6 @@ The v2.0 re-decision is faithful to FSPEC v11.3/v11.4 on every point I could che
 ## Verdict
 
 VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:78c467dc407a8ba513fa0f9a0f7f91c0cc8bd5d676869cbcb1ec045661c077be
+REVIEWED-COMMIT: db1fc4f9b8aee7fff339f089e3ad7c5b71186d97
