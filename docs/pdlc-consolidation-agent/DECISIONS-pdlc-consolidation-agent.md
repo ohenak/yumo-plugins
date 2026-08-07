@@ -591,18 +591,37 @@ conjoined on the same path with two positives:
   Both are **cwd** instructions and neither carries a resolution clause. The scoping is
   load-bearing in both directions: the probe's cwd sentence is not unique — measured, that exact
   line occurs **three** times in the adapter (`:374`, `:618`, `:911`, the last in `rtListFiles`) —
-  so a whole-file positive would survive `rtReadProbe`'s deletion; and `"relative to the repository
-  root"` occurs exactly once today (`:805`, inside `rtWriteFile`), but this feature's own widening
-  puts a second such clause in that same write prompt, so a whole-file negative would be **red on
-  this feature's own correct code**. Asserted over the two prompt arguments, the negative runs on
-  prompts the test demonstrably found, and a future symmetry edit to *either* read prompt fails a
-  test.
+  so a whole-file positive would survive `rtReadProbe`'s deletion. That ground alone carries the
+  scoping of **both** arms to the two prompt arguments. An earlier draft of this bullet offered a
+  second ground — that this feature's own widening "puts a second such clause in that same write
+  prompt", making a whole-file negative red on correct code; **that is withdrawn as false, and it
+  pointed the opposite way from what the feature ships.** The widened prompt is stated verbatim at
+  `TSPEC-pdlc-consolidation-agent.md:425-426` and contains the tracked string `"relative to the
+  repository root"` exactly **once** (its second sentence reads "against the repository root", a
+  different string), so the post-widening whole-file count is still 1 — the count it is today
+  (`grep -n` returns the single line `runtime-adapter.js:805`). That count is not incidental: it is
+  a **shipped test assertion**, `TSPEC §11.6(e)` conjunct 2 (`TSPEC:2160`), whose falsifying job is
+  the opposite mistake — someone "harmonising" `rtReadFile` by adding the clause there. Nothing in
+  this entry may be read as a reason to weaken or drop that conjunct; it is the only falsifier this
+  feature has for the read/write harmonisation mistake §5.6(a) exists to prevent. Asserted over the
+  two prompt arguments, the negative runs on prompts the test demonstrably found, and a future
+  symmetry edit to *either* read prompt fails a test.
 - **Absolute paths already resolve verbatim through the shipped shell forms** — an assertion that an
   absolute `${path}` substituted into `rtReadProbe`'s `if [ ! -f "${path}" ] …`, `wc -c < "${path}"`,
   `shasum -a 256 "${path}"` forms (`:374-378`) — and into `rtReadChunk`'s `sed -n '…p' "${path}"`
   forms (`:282-283`) — yields shell text that resolves that path verbatim.
   This is the positive form of "we measured, and there was nothing to widen": the measurement is
   asserted, not merely the absence of a clause.
+
+**Two further adapter functions interpolate `${path}` into a transported command and are deliberately
+outside this oracle — permanently, not by oversight.** `rtHashFile` (`runtime-adapter.js:613`, prompt
+`:618`) and the `_checkFile` transport (`check:${path}`, `:823-825`) are neither read prompt, and no
+absolute path reaches either one in this feature: the pass's only `_checkFile` consumer is the marker
+probe on the repo-relative `docs/_decisions/.consolidation-lock`
+(`TSPEC-pdlc-consolidation-agent.md:912-919`, `:969-971`), and it calls `_hashFile` nowhere — that
+seam appears in the TSPEC only as a member of the injection surface (`TSPEC:439`), with no consumer.
+So the exclusion is sound at this feature's spec, and a future consumer that hands either of them a
+`_makeTempDir` reply is the trigger to revisit it.
 
 Together they mean a future "harmonise the two prompts" edit fails a test rather than passing review,
 and so does a read seam that quietly stops resolving absolute paths. The additive half is covered by the existing shipped adapter assertions in
