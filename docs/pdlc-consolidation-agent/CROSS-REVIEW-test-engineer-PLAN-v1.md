@@ -58,6 +58,74 @@ file not marked **(new)** does.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T05 asserts a set equality between two *documents* that both remain editable through Phase PROPERTIES and Phase I. Once F-01/F-02 are repaired, what stops a later FSPEC or TSPEC erratum round from re-reding T05 mid-implementation and halting a wave for a documentation edit? A pinned-version conjunct (as T24 pins the vocabularies `Version` cell at `1.4`) would at least make the failure legible as "the register moved", not "the code is wrong". |
+| Q-02 | §8.3's first row requires zero `describe.skip(` across the suites at Done. T04's differential rows use `test.skip` when `PY_BIN` is empty, which is a *runtime* skip and would not be caught by that grep — but a reviewer reading the row could reasonably delete `test.skip` to satisfy it. Should the row be narrowed to `describe.skip(` in `consolidation*.test.js` with an explicit carve-out naming T04's runtime skip? |
+| Q-03 | T00 branches on `.claude/pdlc.config.json` presence and claims "neither branch is vacuous". CI's fresh clone always takes the absent arm, so the present arm — which is the one asserting `postWavePathspecs` and `postWaveCommand`, the two settings §2's whole `dist/` rule rests on — never executes on either matrix leg. Is a tracked fixture config (asserted through the same shipped parser, at an injected root) not the stronger form here? |
+
 ## Positive Observations
 
+- The oracle discipline in the red rows is the strongest I have seen in this repo's PLANs, and it is
+  specific rather than incanted. T03's `rtConsInjections` case demands **set equality, not
+  containment**, and names the exact shipped case that shows why — `adapterProbe.test.js:253-258`
+  does assert three keys by identity and would indeed stay green with a fourth omitted, which I
+  confirmed by reading it. T20's unreadable-corpus case carries a **readable control member** so that
+  conjuncts (1) and (3) cannot pass on an all-unreadable fixture. T21 requires the PR-body expected
+  values to be transcribed **from the fixture corpus, never read off the produced record**. T19
+  attaches a positive conjunct to every determinism property because order-invariance alone is
+  satisfied by a constant function. T24's vocabulary oracle has a fourth leg that reads the authority
+  file itself, with the explicit reasoning that the first three legs are otherwise two transcriptions
+  compared with each other. Each of these is a real falsifier, stated where the author will be
+  working.
+- The `describe.skip`-per-green-owner discipline is correctly reasoned from the actual constraint:
+  §2 cites `orchestrate-dev.js:10136-10143` and `:10225-10234`, both of which I read and both of
+  which do halt the run on a failing whole-suite gate, so a RED-terminal wave genuinely is
+  unavailable. The precedent citation to `docs/pdlc-advisory-tier/PLAN-…:207-216` is exact.
+- T23's hygiene clauses are the two that actually matter and are usually missed: doubles constructed
+  **per case inside the case body**, and the microtask/macrotask drain in a **`finally`** — with the
+  correct reason, that on the broken implementation the first assertion throws before an
+  after-assertions drain could run. The take-side precondition ("having been the `IN-PROGRESS:` line
+  earlier in the same recorded history") is what stops bare absence passing on a `refused` fixture.
+- T04's executed-row counter is read by "its **own** unconditional top-level `test()` declared last
+  in the file — **never an `afterAll`**", with the correct justification that jest does not run
+  `afterAll` when every test in a block is skipped. That is a real and commonly-fatal detail.
+- §7's integration table cites a line number and the surrounding behaviour for all fourteen shipped
+  surfaces, and every one of them checks out at HEAD. The `rtCheckFile` (`test -s`, `:823`) versus
+  `fakeFs.checkFile` (trimmed content, `:296-299`) divergence is identified, bounded as unreachable
+  for this feature's two marker states, and fenced with a rule ("no row may assert *which* `reason`
+  came back") rather than left as a latent leaky double.
+- T28's "`present` is `_checkFile(...).ok === true` and is never derived from `_readFile(...) !==
+  null`" names the exact false-positive it prevents (a `reclaimed-stale-lock` on every steady-state
+  pass after the first, because a released marker *is* an empty file). That is a defect specified out
+  of existence before it is written.
+- The batch arithmetic is genuinely mechanical. I re-derived `max(batch of Deps) + 1` for all 34 rows
+  independently and found zero mismatches, and no two same-batch tasks share a manifest file — the
+  single-writer-per-batch rule holds throughout, including the four shared-file clusters §5 tabulates.
+
 ## Recommendation
+
+**Needs revision**
+
+Two High findings, either of which halts Phase I rather than failing one case. F-01 puts a
+guaranteed-red test in batch 2 of a halt-on-red gate; F-02 leaves three registered acceptance tests —
+including `AT-M11`, the only coverage of the `RELEASED:` marker form under AC-1.3 — with no owning
+task, two of them hidden behind a "(no FSPEC AT)" label the FSPEC has already retired.
+
+To reach approval:
+
+1. **F-01/F-02 together.** Assign `AT-M11`, `AT-Q13` and `AT-R7` to tasks (`AT-M11` most naturally to
+   T20's `T28 — marker predicates` block beside `parseMarker`/`markerVerdict`; `AT-Q13` and `AT-R7` to
+   T21, whose cases already cover their substance), delete the two stale **(no FSPEC AT)** labels, and
+   re-state T05's expected cardinality as **99** transcribed from FSPEC v11.3 §13 — or, better, make
+   T05 read the register rather than hard-code a count, keeping only a version pin. T05's status must
+   not claim green-at-authoring until the upstream table carries all 99 rows (see the erratum).
+2. **F-03.** Add `T19` to T25's `Deps`.
+3. **F-04.** Restate §8.3's `dist/` row as four *artifacts*, named.
+4. **F-05.** Re-measure and correct the three counts (83 test files, 34 tasks / 9 shipped-file
+   editors, 16 suites), including §8.3's grep row.
+5. **F-06.** Replace the byte-identity claim with an above-threshold positive comparison plus a
+   fixture in which the widening changes `n` and the expected output is transcribed, not compared to
+   HEAD.
+6. **F-07/F-08/F-09.** One-line corrections.
+
