@@ -87,4 +87,35 @@ None. My v13 Q-01 is answered in the document (`:485-493`) and I have nothing to
 
 ## Recommendation
 
+**Approved with minor changes**
+
+**All four of my v13 Lows are closed and nothing I previously approved is broken.** Each was taken at
+the width I asked for and no wider: BR-13 narrowed to `IN-PROGRESS:` with a positive counterpart
+rather than a bare deletion; E-12b brought into agreement with T-10 and BR-33a's already-narrowed
+subject; §4.2's over-claimed single producer replaced by a two-producer table that states the
+conservative direction and why it is the safe one; AT-P7 given the `pending` binding as its named
+observation channel, with the empty-corpus arm and the locator drift stated. My Q-01 is answered in
+the document as a declined option, with the reason — not deferred, and not converted into a feature.
+
+The testing surface is unchanged by this diff. No AT was added, removed or re-scoped; AT-M3, AT-M11,
+AT-P7's fixture table and comparison, and the AC→AT map are all intact. BR-13's AT cell gained
+`AT-M11`, an existing row, which is a pointer repair rather than new coverage. I re-verified every
+repo anchor the new text cites — `nudge-consolidation.sh:25,28,29-30,36-37,41,43` and
+`runtime-adapter.js:817-831` (`rtCheckFile` returns `{ok:false, reason:"file_empty"}` for
+present-but-empty and `"file_missing"` for absent, exactly as §4.1 `:447-451` now says) — and the
+one forward obligation the new §4.2 text places on TSPEC is already discharged at
+`TSPEC-pdlc-consolidation-agent.md:1034-1039`.
+
+One **Low** is open, new: the two-producer table's self-citation "(§4.3 `:511-512`)" points at §4.2's
+own table instead of §4.3 `:543-544`. The claim it makes is true and independently fixed by §4.3's
+status table; the locator is what is wrong. Do **not** open a revision for it. If a revision is
+opened for any other reason, it is a two-digit edit.
+
+Per `DEC-CONV-01`, this approval **stands** into subsequent rounds of Phase F. I will re-open it only
+if a later diff touches a section this review's Scope named, or if I score something Medium-or-higher
+against a later delta.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
