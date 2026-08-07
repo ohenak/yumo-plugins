@@ -102,4 +102,43 @@ are explicitly landable later. An author who changed nothing did exactly what th
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 0 Medium, 4 Low.
+
+The question this round was asked: are my own blocking findings resolved, and did the revision break
+anything? There were no blocking findings to resolve — v15 closed at 0 High and 0 Medium — and there
+was no revision, so nothing could break. The REQ hashes to the bytes I approved.
+
+- **Nothing regressed**, and the argument is structural rather than a spot-check: an empty diff on
+  the document, an empty diff on `docs/_constraints/`, and a `pdlc/` diff confined to three
+  authoring-role SKILL.md files that no citation in this REQ resolves into.
+- **Four Low findings remain open** — F-54, F-55, F-56, F-57 — each carried verbatim and re-checked
+  against HEAD. None blocks the next layer; the approval bar is High/Medium and neither is present.
+- **No finding was escalated for surviving a round.** Severity tracks the decision a downstream
+  author cannot make today, not the number of rounds a nit has outlived.
+
+Landing order, unchanged from v15 and still small enough to land together:
+
+1. **F-57** — one sentence at §4b or REQ-CONS-01 step 2 saying whether an unreadable basename counts
+   toward the volume test. Still the one I would ask for if I could ask for exactly one: without it a
+   PROPERTIES author cannot state the termination property for the pathological case.
+2. **F-55** — name `pdlc-consolidation-vocabularies.md` in §4b's classification sentence, so the
+   oracle's range is readable in one file.
+3. **F-54** — bump `pdlc-advisory-corpus-baseline.md` to `Version 1.1` and repin the REQ's two
+   citations. Seven characters.
+4. **F-56** — the REQ is 2,957 bytes past a warn-only ceiling. Not a blocker; do plan the relocation
+   before the next round that adds prose.
+
+If Phase R closes without them, none blocks the next layer. I would, however, note that a document
+arriving unchanged at iteration 16 with only Low findings open is a converged document: further
+review rounds on unchanged bytes cannot produce new information, and the four items above are better
+landed as a single small edit than pursued through additional rounds.
+
+**No upstream defects.** REQ is the root document of this feature; nothing upstream of it exists to
+be wrong. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:c21f8a42bd766aa28deec9f5de1488c194452c0e7e3c52c5c0b8f26b34d9ffd0
+REVIEWED-COMMIT: 760ae1c64cf3c6152838d2928bac89422f8623fd
