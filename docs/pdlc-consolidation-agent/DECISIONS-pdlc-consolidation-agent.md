@@ -448,7 +448,71 @@ recorded path arguments: every one of them is either repo-root-relative or begin
 
 ## 9. DEC-CONS-07: Release writes `""`; `file_empty` is read as absent
 
-_(pending)_
+**Context.** FSPEC §4.1's marker-lifetime row says the marker is "**Removed** at step 16"
+(`FSPEC-pdlc-consolidation-agent.md:415`). No declared seam can remove a file:
+`grep -nc "unlink\|rm -f\|rmdir" pdlc/workflows/runtime-adapter.js` returns **0** at HEAD, and the
+marker is untracked and `.gitignore`d, so `git rm` neither applies nor is admitted to the
+invoking-tree verb set. Release must therefore be expressed with a write, and once it is, the
+presence probe's reading of an empty file becomes load-bearing — the two answers must agree or every
+steady-state pass reclaims a lock nobody holds.
+
+**Decision.** Two halves of one decision:
+
+1. **Release is `await _writeFile(markerPath, "")`** — one seam call, no git call, leaving the file
+   present and zero-byte on disk.
+2. **`present` is `(await _checkFile(markerPath)).ok === true`, and only that.** `rtCheckFile`
+   (`runtime-adapter.js:817-831`) returns `{ok:true}` only for a file that exists **and** is
+   non-empty, and `{ok:false, reason:"file_empty"}` / `{ok:false, reason:"file_missing"}` otherwise —
+   so **`file_empty` is treated exactly as absent**.
+
+The accepted cost is stated rather than absorbed: FSPEC §4.2's fourth row assigns "marker present,
+unparseable **or empty (truncated write)**" the outcome "reclaimed, recording `reclaimed-stale-lock`
+with the abandoned id `unknown`" (`:442`), bound again by E-11 and by AT-M3's *Given*. The
+**unparseable-but-non-empty** arm behaves exactly as specified; the **empty** arm becomes
+**unreachable**. That is raised as an erratum against FSPEC, not reinterpreted here (§11).
+
+**Alternatives considered.**
+
+- **Preserve FSPEC §4.2's empty arm — treat an empty marker as `reclaim`** — rejected. A *released*
+  marker **is** an empty file, so this records `reclaimed-stale-lock` on every steady-state pass after
+  the first: a louder and far more frequent falsehood than the truncated-marker case it preserves.
+- **Derive `present` from `_readFile(...) !== null`** — rejected; it is the same bug from the other
+  end. The empty released form reads as present-and-unparseable and `markerVerdict` takes the
+  `reclaim` arm on a completely normal pass. This is the second, independent reason DEC-CONS-04's take
+  keeps `_checkFile` in the protocol rather than collapsing to two calls.
+- **Add a removal seam so release deletes the file** — rejected on three counts. It is a new
+  agent-transported **mutation** verb in a verb set that ships none of its kind
+  (`rtWriteFile:802`, `rtAppendFile:863`, `rtListFiles:905`, `rtGit:945` — and no unlink); its
+  failure mode is deleting a lock another pass holds, which is worse than the failure it fixes; and
+  AC-1.3 settles the shape upstream already, calling take and release "in-place rewrites of a whole
+  small file" (`REQ-pdlc-consolidation-agent.md:155-156`).
+
+**Constraints that forced this shape.** The adapter's verb set, measured above. AC-1.3's stated
+mechanism. And DEC-ORACLE-02's rule — an uninstrumentable or unrepresentable path is recorded, never
+worked around — which is why this entry ships a narrowing plus an erratum instead of a removal seam.
+
+**Reversibility:** one-way door while no removal verb exists; trivially reversible the moment one
+does, since both halves are single expressions. The *upstream* half is a live product question and is
+reversible by decision, not by code: if the FSPEC author rules that the durable log must witness a
+mid-take death, the answer is a removal verb (or a different marker representation), not a change to
+these two expressions.
+
+**Re-evaluation triggers.** The adapter gaining a removal verb; the FSPEC answering the erratum's
+question — *when a pass dies mid-take, must the durable log witness it?*; a marker representation
+that distinguishes "released" from "truncated" without removal (e.g. a released sentinel line), which
+would restore the empty arm at the cost of making `parseMarker` total over two forms.
+
+**Testability:** the observable is the **write double's last recorded contents for the marker path** —
+the `IN-PROGRESS:` line during the pass, the empty string after it. Two conjuncts follow. (i) Release
+happens on **every** terminal status that took the marker: the assertion is a set-equality over the
+six-member terminal-status set rather than a spot check, so a new status cannot silently skip release.
+(ii) The empty-marker fixture (`""`) is paired against the non-empty unparseable fixture in the same
+case: the first must produce `free` with **no** `reclaimed-stale-lock` record, the second must produce
+`reclaim` **with** one. That pairing is the only thing that keeps a future refactor from re-adopting
+either rejected alternative, and it is a conjunct inside a case the marker file's single owning task
+already writes — it adds no file and no task to the ownership manifest. The unreachable half of
+FSPEC §4.2's row is **not** tested: writing a test for it would assert behaviour the code cannot
+have.
 
 ## 10. Alternatives considered but not recorded as decisions
 
