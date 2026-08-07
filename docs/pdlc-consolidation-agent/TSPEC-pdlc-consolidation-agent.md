@@ -1692,34 +1692,74 @@ Every `FSPEC-CONS-0N` unit appears exactly once; no row names a unit the FSPEC d
 | T-04 | seams + `_log` capture | §5.1, §8.4 | AT-M7 (the `ADVISORY_MODEL_FALLBACK:` line verbatim), AT-M6/AT-M9 (the error message verbatim) |
 | T-05 | the resolver widening | §8.1 | AT-M10 (default unchanged on every path) |
 | T-06 | `ESCALATIONS.md` parse | §7.7 | AT-A7 (missing `Feature` row), the §11.4 count property |
-| T-07 | the `.gitignore` text | §3.3 | AT-M5's accompanying maintainer check |
+| T-07 | the `.gitignore` text | §3.3 | `consolidationBuild.test.js` — a jest case reading the tracked `.gitignore` and asserting the comment line and the pattern line verbatim and adjacent. **Not** a maintainer check: a human step goes nothing-red when the pattern is later rewritten slash-free or `**/`-prefixed, which is the exact drift §3.3 argues against |
 | T-08 | one corpus, one predicate | §7.1 | AT-P7 (differential, L4) |
 | T-09 | a property per component | §11.4 | the four properties themselves; the PLAN carries them as tasks, not as prose |
 | T-10 | the unavailable spellings | §6.5 | AT-Q10's literal-text conjunct; LD-1/LD-4's PROPERTIES fixtures |
+| T-11 | **the PR body** — AC-3.2's three citations, AC-3.7(c)/REQ-CONS-03's three vocabularies §4 trailers, `PDLC-CONSOLIDATION-PROMOTIONS` set-equal to the proposals the PR enacts (the NFR-4 duplicate key) | §7.9 `renderPrBody`, `renderPromotionCommitMessage` | `consolidationRoute.test.js`: AT-Q3 (body cites source LEARNINGS by feature name, the failure mode, the AC-2.3 evidence); AT-Q4 (round-trip — `enactedByPr` reads back the trailer `renderPrBody` wrote, so writer and reader are pinned to one another); AT-Q5 (trailer set-equal to `enacted`, both directions); AT-Q2 (per-commit `PDLC-PROMOTION-ID`) |
+| T-12 | **the proposal file** — AC-3.5's full inline diff plus the failure class recorded by name; AC-3.4's second clause | §7.9 `renderProposalFile` | `consolidationRoute.test.js`: AT-Q8/AT-Q9 (each degradation class writes the file with the diff inline and its reason code by name), AT-Q11 (the file is written **only** when something is not enacted). **AC-3.4 answered explicitly:** the file carries `state.prUrl` when a PR was also opened; when the pass enacts everything there is no proposal file (FSPEC §5.3's "when, and only when") and AC-3.4's second clause is **vacuous** — the URL lives in the terminal row's `pr:` field alone |
+| — | `renderTerminalRow`'s **dropped**-code arm (§6.4, §7.9) | §7.9 | `consolidationReport.test.js`, an AT-L-series row with **two** fixtures over one code: one whose `(status, code)` pair is legal at `Version` 1.4 and appears in the row, one whose pair is illegal and is dropped — the drop is then *observed* against a control rather than assumed. The AT asserts the row's field set **and** the report body's notice naming the dropped code. `no-cadence-datum` is deliberately not that code: vocabularies §1 permits it with `refused`, and REQ-CONS-01 decides it at step 3/4 before the marker check, so the drop must never fire for it — which the same test asserts as its control |
 
 ### 12.3 Acceptance test → level and file
 
-| ATs | Level | File |
+**Enumerated, never ranged.** An earlier draft assigned ATs to files by range (`AT-C1 … AT-C8`,
+`AT-M1 … AT-M6b`, …). Range notation cannot express the suffixed ids the FSPEC actually carries, and
+it silently dropped three of them — **AT-C1b, AT-Q7b and AT-Q7c** — even though §11.3(a) names the
+last two by hand. That is not a bookkeeping slip in the `DEC-SEV-02` sense: this table is a
+**downstream observable**, since §13.3 hands the PLAN a manifest keyed on these files and this table
+is what tells a PLAN task which ATs it owes. An AT with no file is an AT the PLAN will not name and
+the implementation will not write, and nothing goes red.
+
+The FSPEC's AT register carries **96** ids, measured at v11.1 by enumerating the register's own
+`| AT-…` rows. Every one has exactly one file below:
+
+| File | Level | ATs owned (exhaustive) |
 |---|---|---|
-| AT-C1 … AT-C8 | L2 | `consolidationPass.test.js` |
-| AT-P1 … AT-P6, AT-P8 … AT-P11 | L1 | `consolidationPredicate.test.js` |
-| AT-P7 | L4 | `consolidationHookParity.test.js` |
-| AT-M1 … AT-M6b, AT-M9 | L2 | `consolidationPass.test.js` |
-| AT-M7, AT-M8, AT-M10 | L2 | `consolidationRung.test.js` (AT-M10 is a regression over the shipped call site and lives beside the existing `advisoryRung.test.js` assertions) |
-| AT-R1 … AT-R6b | L1 + L2 | `consolidationIdentity.test.js` (derivation, merge), `consolidationRoute.test.js` (routing, commit) |
-| AT-Q1 … AT-Q12 | L2 | `consolidationRoute.test.js` |
-| AT-K1 … AT-K7 | L2 | `consolidationCredential.test.js` |
-| AT-F1 … AT-F21 | L1 | `consolidationEffectiveness.test.js`, `consolidationParse.test.js` |
-| AT-A1 … AT-A7 | L1 | `consolidationAdvisory.test.js` |
-| AT-L1 … AT-L5, AT-N1 … AT-N4 | L1 + L2 | `consolidationReport.test.js` |
+| `consolidationPass.test.js` | L2 | AT-C1, **AT-C1b**, AT-C2, AT-C3, AT-C4, AT-C5, AT-C6, AT-C7, AT-C8, AT-M1, AT-M2, AT-M3, AT-M4, AT-M5, AT-M6, AT-M6b, AT-M9 |
+| `consolidationRung.test.js` | L2 | AT-M7, AT-M8, AT-M10 (AT-M10 is a regression over the shipped call site and lives beside the existing `advisoryRung.test.js` assertions) |
+| `consolidationPredicate.test.js` | L1 | AT-P1, AT-P2, AT-P3, AT-P4, AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11 |
+| `consolidationHookParity.test.js` | L4 | AT-P7 |
+| `consolidationIdentity.test.js` | L1 | AT-R6, AT-R6b, AT-F1, AT-F2, AT-F3, AT-F4, AT-F5 |
+| `consolidationRoute.test.js` | L2 | AT-R1, AT-R2, AT-R3, AT-R4, AT-R5, AT-Q1, AT-Q2, AT-Q3, AT-Q4, AT-Q5, AT-Q6, AT-Q7, **AT-Q7b**, **AT-Q7c**, AT-Q8, AT-Q9, AT-Q10, AT-Q11, AT-Q12 |
+| `consolidationCredential.test.js` | L2 | AT-K1, AT-K2, AT-K3, AT-K4, AT-K5, AT-K6, AT-K7 |
+| `consolidationEffectiveness.test.js` | L1 | AT-F6, AT-F7, AT-F8, AT-F9, AT-F10, AT-F11, AT-F12, AT-F13, AT-F14, AT-F15, AT-F16, AT-F17, AT-F18 |
+| `consolidationParse.test.js` | L1 | AT-F19, AT-F20, AT-F21 |
+| `consolidationAdvisory.test.js` | L1 | AT-A1, AT-A2, AT-A3, AT-A4, AT-A5, AT-A6, AT-A7 |
+| `consolidationReport.test.js` | L1 + L2 | AT-L1, AT-L2, AT-L3, AT-L4, AT-L5, AT-N1, AT-N2, AT-N3, AT-N4 |
+| `consolidationBuild.test.js` | L3 | (no FSPEC AT) T-02's build assertions, §3.3's `.gitignore` text, §11.3(e)'s adapter-prompt text |
+
+**The enumeration is asserted, not maintained by hand.** `consolidationTraceability.test.js` (L3)
+parses the FSPEC's AT register and this table's own rows and asserts **set equality in both
+directions** — every register id has exactly one file, and no file claims an id the register does
+not carry. Adding or deleting an AT upstream therefore reds this table rather than passing it,
+which is what the range notation could never do. The parser takes an injected `root` (DC-04).
 
 The split is by **subject, not by AT id range**: a file owns one group of §7 functions, which is
 what keeps the single-writer-per-file rule satisfiable when the PLAN parallelises authoring.
 
 ### 12.4 Vocabulary conformance
 
-No value used in this document lacks a `pdlc-consolidation-vocabularies.md` §1 row at `Version` 1.4.
-The three known gaps are the FSPEC's errata and are **not** patched here: `rung:` has no §1 row
+Every value used in this document is a `pdlc-consolidation-vocabularies.md` §1 row at `Version` 1.4
+**except the four recorded below**, each of which is an upstream gap, none of which is patched here.
+
+**ER-6 (new, raised by this layer).** §7.6's `routeOf` has a fifth outcome the `Route` union cannot
+express: FSPEC §5.1 row 4 routes "any other consuming-repo path" to the proposal file, and AC-5.4
+diverts every `revise`/`retire` of a consuming-repo promotion there too — but `Route` is
+`"constraints" | "decisions" | "PR" | "degraded"` (vocabularies §1 line 28, transcribed exactly),
+so `FailureModeRecord.route` (§6.2, a closed eight-field record required on every kind) has no
+value for it. An earlier draft of this section claimed full conformance while §7.6's own prose used
+the value, and raised nothing — the claim, not the gap, was this layer's defect.
+
+Until ER-6 lands the pass writes **`route: "degraded"`** for a proposal-file promotion. It is the
+one legal value whose meaning already covers the case — FSPEC AT-Q12 glosses `degraded` as "the
+promotion reached nothing but `CONSOLIDATION-PROPOSAL-{passId}.md`" — and it fails in the safe
+direction: §7.6's `enactedByLog` does not enact on a `degraded` record, so the item is re-proposed
+next pass, which is what an item awaiting operator approval should do. The residual loss is that a
+*routed* propose-only item and a *degraded* PR attempt read alike in the record; the report body
+(§7.9 item 4) names the route in full and is the discriminator meanwhile. §12.2's T-12 row carries
+the test.
+
+The other three gaps are the FSPEC's errata and are likewise **not** patched here: `rung:` has no §1 row
 (ER-1) and stays free-form; FSPEC §2.6 row 4 has no reason code (ER-2) and `failNoReason` records
 none; `suppressed-by:`'s value grammar is wider here than §1's (ER-5) and §7.9 writes the wider
 grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's narrower
