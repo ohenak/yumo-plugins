@@ -384,7 +384,67 @@ its own enumeration returned.
 
 ## 8. DEC-CONS-06: Widen `rtWriteFile` alone to accept an absolute path
 
-_(pending)_
+**Context.** DEC-CONS-03's clone lives under a `mktemp -d` directory — **outside** the repository.
+Three things depend on writing files there: the guard-set edit that is committed in the clone, the PR
+body file, and with it the whole `gh pr create --body-file` mechanism. The shipped write seam's
+prompt instructs the agent to resolve the path *"relative to the repository root"*
+(`pdlc/workflows/runtime-adapter.js:805`, inside `rtWriteFile` at `:802`), so an absolute temp path is
+not a capability the seam already serves. An earlier draft of the TSPEC claimed no new capability was
+needed; that was wrong.
+
+**Decision.** Widen **one clause in one prompt** — `rtWriteFile`'s — to resolve a relative path
+against the repository root as today and an absolute path (leading `/`) **verbatim**. `rtReadFile` is
+**not** edited.
+
+**Alternatives considered.**
+
+- **Route the clone's writes through `_git`** — rejected on the actual verb inventory: git has no
+  write-a-working-tree-file verb short of `hash-object -w` followed by `update-index`, i.e. **three
+  mutating calls in the clone domain to replace one path argument**, in a domain whose permitted verb
+  set is deliberately closed. It also inverts the natural order (content would enter the object
+  database before it exists in the tree).
+- **Widen both prompts "for symmetry"** — proposed by an earlier draft of TSPEC §5.6(a) and withdrawn
+  **on measurement, not taste**. `rtReadFile` (`:493`) carries no path-resolution clause to widen:
+  `grep -n "relative to the repository root" pdlc/workflows/runtime-adapter.js` returns **exactly one**
+  line at HEAD, `:805`, inside `rtWriteFile`. `rtReadFile` reaches disk through `rtReadProbe` (`:369`)
+  and a chunked line read, each transporting a *shell command* (`if [ ! -f "${path}" ] …`,
+  `wc -c < "${path}"`, `shasum -a 256 "${path}"`, `:374-378`) under the **cwd** instruction "Run this
+  exact command from the repository root" (`:374`). A cwd instruction is not a path-resolution
+  instruction — every one of those shell forms already resolves an absolute `${path}` verbatim. So the
+  symmetric edit would have been a prompt change to a shipped seam that *every* pipeline phase reads
+  through, with no behavioural motive, purely so a test had a second thing to match. It is recorded
+  positively here so a later reader does not "harmonise" the two prompts and add the clause back.
+- **Construct the temp path in-module and keep the seam untouched** — rejected: the pass never
+  constructs an absolute path. The only absolute paths it ever forms come back from
+  `_makeTempDir`'s reply and are used verbatim, which is what keeps the widening from becoming a
+  general escape from the repository root.
+
+**Constraints that forced this shape.** `runtime-adapter.js` is under the merge-guard set
+(`MERGE_GUARD_DEFAULTS`, `orchestrate-dev.js:48`), so every edit to it is operator-reviewed and is
+worth minimising. The widening is bounded by three properties, each of which the implementation must
+hold: it is **additive** (every relative path behaves exactly as today, which the shipped
+`runtimeBundle.test.js` adapter assertions still pin); it is **non-mutating of any tracked tree**,
+since the only absolute paths in play come from `_makeTempDir`; and it is **falsified rather than
+reviewed** — the widened clause is pinned verbatim by an adapter-source assertion.
+
+**Reversibility:** hard. `runtime-adapter.js` is inlined into every shipped bundle, so the widened
+prompt ships to every consumer of every workflow, and reverting it breaks the PR route entirely. It
+is also the one edit in this feature that changes behaviour for code paths this feature does not own.
+
+**Re-evaluation triggers.** A second consumer needing absolute-path *reads* (at which point
+`rtReadFile`'s implicit behaviour should be made explicit rather than left as a measurement recorded
+in this document); the adapter gaining a first-class "write outside the repository" seam with its own
+verb accounting; the clone moving inside the repository, which would remove the need entirely.
+
+**Testability:** an adapter-source assertion pins the widened clause verbatim in **one** prompt and
+asserts the absence of any such clause in the read prompt — the negative half is what encodes "we
+measured, and there is nothing to widen", so a future symmetry edit fails a test rather than passing
+review. The additive half is covered by the existing shipped adapter assertions in
+`__tests__/runtimeBundle.test.js`, which already pin relative-path behaviour; this feature's edits to
+that file (the await-scan source list and the seam-name set) are a single owned task per
+batch-safety rule 2. Behaviourally, the clone's writes are observed through the `_writeFile` double's
+recorded path arguments: every one of them is either repo-root-relative or begins with the string
+`_makeTempDir` returned.
 
 ## 9. DEC-CONS-07: Release writes `""`; `file_empty` is read as absent
 
