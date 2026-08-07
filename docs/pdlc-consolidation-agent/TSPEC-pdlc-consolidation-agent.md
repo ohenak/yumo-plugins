@@ -359,7 +359,7 @@ trailer plus an output tail, which is the wrong shape for a call whose stdout th
 
 | Seam | Module default | Behaviour when the default stands |
 |---|---|---|
-| `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation |
+| `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation **under jest only** — in the runtime every one of them throws; see below |
 | `_now` | `Date.now` — a **module-level default, not an adapter seam** (§5.6) | ordinary operation |
 | `_ghRun` | `null` | the PR route degrades with `api-failure` before any call is attempted; the proposal file still carries the diff (§10.3) |
 | `_envPresent` | `null` | treated as "no credential variable observable" ⇒ §7.2 falls through to the `local-gh` probe, then to `absent` |
@@ -368,6 +368,31 @@ trailer plus an output tail, which is the wrong shape for a call whose stdout th
 Each `null` default is the FSPEC's fail-safe direction, not a new branch: an uninstalled capability
 degrades the PR route and never touches the invoking tree, never halts the pass, and never reads as
 a credential the pass does not have.
+
+**"Ordinary operation" is a jest-only claim, and for `_checkFile` that matters.** The
+`orchestrate-queue.js:1034-1046` pattern this row cites obtains `fs` through a dynamic import —
+`defaultReadFile` is `const { readFileSync } = await import("fs")` (`orchestrate-queue.js:948-955`) —
+and the workflow runtime has no `import()` and no `fs` (`build-runtime.mjs` header; the same
+constraint §4.3 states). So in the bundle these defaults are **not** ordinary operation: they throw.
+That is tolerable for the seams the pass drives on every path (`_readFile`, `_git`) because the pass
+dies at step 1 and someone notices. `_checkFile` is the exception, and the difference is the whole of
+§7.3's safety: its only consumer is a probe that is *supposed* to be negative on a healthy tree, so a
+default that returned a legal `{ok:false, reason:"file_missing"}` on failure would be
+indistinguishable from a quiet tree — `markerVerdict` would return `free` on every pass, AC-1.3's
+mutual exclusion would be off in production, and every L2 fixture would stay green because the
+`refused` path is exercised only through `fakeFs`. **`defaultCheckFile` therefore fails loudly**: it
+throws on any I/O failure and never returns a `CheckReply`. It deliberately does **not** copy the
+never-throw internal contract of the shipped `checkFileNonEmpty`, whose every catch returns
+`{ok:false, reason:"file_missing"}` (`orchestrate-dev.js:3688-3692`) — that shape is right for a
+caller deciding whether a *document* exists and wrong for one deciding whether a *lock* is held.
+
+The load-bearing consequence is that an unwired seam must be caught by an assertion, not by a
+default: §12.2's `rtConsInjections()` set-equality row is what makes "the composition root hands over
+every §5.1 member" falsifiable. It exists because this repo has shipped the omission once already —
+`runtime-adapter.js:1098-1100` carries the note in its own words ("`_writeFile`'s adapter existed
+since the first bundle but was never in this object") — and the repair's precedent test
+(`adapterProbe.test.js:253-258`, "wires all three into `rtDevInjections`") is the shape, widened from
+per-name containment to set equality because §5.1 is an enumerated contract.
 
 ### 5.6 One adapter contract this feature changes, one it deliberately leaves alone, and the clock it does not
 
