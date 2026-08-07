@@ -129,8 +129,70 @@ agree about who owes it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §11.1's replacement assertion is "the count of executed differential rows is either the full fixture table's length or exactly zero". With jest's `test.skip`, what does the harness count — is the count taken from the fixture table it *dispatched* or from a counter each row increments as it runs? Only the second distinguishes "the interpreter died at row 4" from "the table has four rows"; the first is derivable from the table itself and would be self-satisfying. |
+| Q-02 | §7.1's hook edit removes the `:29-30` early exit, so a zero-corpus session now opens and reads `docs/_decisions/.consolidation-log.md` on every `SessionStart` where it previously did not. That is guarded (`os.path.isfile`, then a `try`), so nothing breaks — but is the added read intended to be stated in the release note alongside the new `PDLC_PENDING:` channel, or is it below the line worth naming? |
+| Q-03 | §11.3(f)'s new rule — "no fixture may be written that depends on git visibility" — is exactly right, and it is the kind of constraint a later contributor adds a fixture in violation of without noticing. Is it enforceable as a comment in `consolidationDoubles.js`'s fixture builder header (where `seams.js` and `advisoryDoubles.js` already put their single-canonical-double rules), rather than only in the TSPEC? |
+
 ## Positive Observations
+
+- **Every v2 finding is closed at the mechanism, and two are closed by *removing* work.** F-02's
+  repair is the clearest: rather than re-describing the oracle, §5.6(a) went and measured
+  (`grep -n "relative to the repository root"` ⇒ one line), concluded the read prompt needs no edit,
+  and then recorded the negative result positively so a later reader does not "harmonise" the two
+  prompts. §11.3(e) turned that into an assertion — the *count* of occurrences is the falsifier for
+  the opposite mistake — which is a better test than the one I asked for.
+- **F-03 was answered with the honest option rather than the flattering one.** The revision could
+  have claimed AT-P7 covers the enumeration pair by adding a `git init` to the harness. Instead
+  §10.4 names both divergence classes as accepted exposure, §11.3(f) has a section headed "what this
+  harness does not falsify, stated rather than implied", and §12.2's T-08 row says it "does **not**
+  falsify the enumeration pair, and §12.2 says so rather than implying coverage it has not got".
+  A traceability row that describes its own limits is rarer than it should be.
+- **F-01's re-binding did not stop at correcting the ids.** It also identified the two obligations
+  that have *no* AT and left the cells naming the gap — with the reasoning that "an empty-but-named
+  gap reads as a gap, where a nearby id reads as coverage" — and explained why quoting the register's
+  words in the Falsified-by column is a mitigation and not a mechanism, since `consolidationTraceability.test.js`
+  is set-equal over ids and structurally blind to a mis-binding. That paragraph is durable signal.
+- **F-07's repair is a withdrawal, argued.** "An earlier draft added a second assertion here … and it
+  is **withdrawn**: the harness itself emits that notice in the branch where the probe found nothing,
+  so the disjunction is a tautology over the harness's own control flow." Replacing it with
+  all-or-nothing is the right invariant, and naming the two failure modes it catches (a mid-table
+  interpreter failure, a swallowed fixture) is what makes it implementable.
+- **Q-01's answer produced a production edit rather than a fixture workaround.** Moving the hook's
+  early exit so `∅` is *emitted* rather than inferred from silence is the correct direction for an
+  observability channel a differential test depends on, and §7.1 goes on to route the edit
+  explicitly — production file, hook's owning task, one file one task per batch-safety rule 2, named
+  in the release note. That paragraph will save the PLAN a mistake.
+- **Q-04's answer is the property-testing point stated in general form.** "Assigning the id
+  independently would admit `(id, phase, artifact)` triples no pass produces, and a counterexample
+  there is not a defect" — a generator obliged to range over the *reachable* input space. That is
+  reusable well beyond this feature.
 
 ## Recommendation
 
+**Needs revision**
+
+One Medium is open, and it is narrow:
+
+1. **F-01** — `asAsync`'s microtask deferral cannot falsify a missing `await`, so T-13 ships green
+   either way. Specify a macrotask deferral (or a test-controlled deferred) and state the
+   discrimination. This is the only blocking item.
+
+The two Lows are one-clause edits and are not blocking on their own: F-02 (add the marker's take as a
+precondition so the absence conjunct cannot pass vacuously) and F-03 (give the ER-6 discriminator a
+§12.2 row).
+
+This revision resolved all seven prior findings and all four questions, and it did so at the
+mechanism in every case — two of them by deleting work rather than adding it. The single Medium is a
+consequence of the F-04 repair itself: the repair correctly identified that no existing oracle could
+see a missing `await` and invented one, and the invented one's timing mechanism is a microtask where
+it needs to be a macrotask. Everything else about that oracle — its placement after `main()`
+resolves, its dedicated file, its exclusion from the traceability set equality, its PLAN manifest
+row — is right.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 2}
+
