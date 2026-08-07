@@ -775,7 +775,7 @@ must land as properties rather than as unit cases:
   than shrinking coverage. A fixture written against absence alone is satisfied by a pass that does
   nothing.
 - **DEC-CONS-03** — over any pass, every invoking-tree `git` argv is contained in that domain's
-  declared verb set at `TSPEC:1619` (obliged `add`, `commit`; permitted `read-branch`,
+  declared verb set at `TSPEC:1724` (obliged `add`, `commit`; permitted `read-branch`,
   `read-status`, `read-object`, `read-remote`, `read-index`), and no argv carries a verb from that
   row's absent-always column. Stated as **containment**, not exclusion, so it stays red — not green
   — for calls nobody has classified yet. Note the property is *not* "no mutating verb": the pass's
@@ -783,12 +783,23 @@ must land as properties rather than as unit cases:
   whole contract, and a property author must not read them as it.** Containment plus an
   absent-always negative are both satisfied by a pass that issues *no* invoking-tree `git` call at
   all — i.e. by a regression that silently drops the AC-1.3 log commit. The oracle is **four** set
-  assertions at `TSPEC:2094-2098`, and the third is **obligation**, `obliged ⊆ observed` per domain
-  on the Given that obliges it (`TSPEC:2097`): `add` and `commit` observed in the invoking-tree
-  domain, and `clone`, `create-branch`, `add`, `commit`, `push` observed in the clone domain. The
-  fourth is **partition** (`TSPEC:2095-2096`) — every observed call classified into exactly one
-  domain — without which an unclassified call is exempt from containment. Comparison is over a
-  `Set`, never a multiset.
+  assertions, enumerated at `TSPEC:2199-2204` **in this order** (the order matters only because a
+  property author reading a re-ordered summary will mis-attribute the anchors):
+  1. **partition** (`TSPEC:2199-2201`) — every observed call is classified into exactly one domain,
+     and the union of the three observed sets equals the set of all observed calls. Without it an
+     unclassified call is exempt from containment.
+  2. **containment** (`TSPEC:2201-2202`) — `observed ⊆ permitted` per domain, universally.
+  3. **obligation** (`TSPEC:2202-2203`) — `obliged ⊆ observed` per domain, on the Given that obliges
+     it: `add` and `commit` observed in the invoking-tree domain, and `clone`, `create-branch`,
+     `add`, `commit`, `push` observed in the clone domain.
+  4. **the two `∅` equalities of AT-Q7c** (`TSPEC:2203`) — *two*, one per `git` domain, not one. For
+     the invoking tree the absent-always set is `checkout`, `switch`, `stash`, `reset`, `rebase`,
+     every merge verb (`TSPEC:1724`); for the clone it is every merge verb (`TSPEC:1725`). Both
+     intersections with the observed set must be `∅`. The clone-domain half is *implied* by
+     containment against `:1725`'s permitted column, but AT-Q7c asserts it directly, and a property
+     that carries only the invoking-tree half is not set-equal to the TSPEC's oracle.
+
+  Comparison is over a `Set`, never a multiset (`TSPEC:2203-2204`).
 - **DEC-CONS-07** — over the six terminal statuses enumerated at
   `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
   take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
