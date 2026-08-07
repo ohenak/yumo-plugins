@@ -167,8 +167,53 @@ ride out of the changed spans; neither can steer a PLAN or PROPERTIES author wro
 
 ## Recommendation
 
-*(pending)*
+**Approved with minor changes**
+
+All three v6 findings are resolved — F-13 (High) and F-14 (Medium) past the remedies I asked for,
+F-15 with the counts corrected beyond what I had caught — and nothing I approved in earlier rounds
+was weakened. On the substance of every decision in this document I remain: approve. I walked the
+one product test that matters at this gate — can a PLAN or PROPERTIES author read this document and
+write the wrong artifact? — across §2's index rows, §9's heading, Decision block, costs, note,
+alternatives, reversibility, triggers and both testability conjuncts, §10's boundary paragraph,
+§11.1's obligation row, §11.2's conjunct 4 and DEC-CONS-07 bullet and *unasserted* table, and
+§11.3's three items. Every one of those surfaces now points at the shipped TSPEC form, and I
+verified each against the TSPEC, the FSPEC and `runtime-adapter.js` at HEAD rather than against the
+document's own account of them. There is no path here to a wrong oracle.
+
+Two Low findings ride out, both anchor hygiene, both entirely fixable inside this document:
+
+1. **F-16** — `FSPEC:415` (two sites, one of them new text in §11.3 item 1) and `FSPEC:442` are
+   stale; the phrase "Removed at step 16" no longer exists in the FSPEC, which now says the opposite
+   at `:436` and explains why at `:441`. `DECISIONS:658` additionally states it in the present tense.
+   Retarget both, past-tense `:658`, and note in *Anchor provenance* that its warranty covers
+   `TSPEC:` anchors only — the FSPEC set has never been swept, which is why these survived two
+   anchor rounds.
+2. **F-17** — the widened recipe admits two spellings and the document uses three; the paragraph's
+   own fourteenth stale site (the bare `:684` continuation) is one its published pattern cannot see.
+   Widen once more, or state that continuation anchors are hand-resolved and give both counts.
+
+Neither blocks the document from being carried downstream, which is what "Approved with minor
+changes" means here: I would hand this DECISIONS to a PLAN author today, and I would expect these
+two corrections to land in the next commit that touches the file rather than in a round of its own.
+
+I am **not** asking for changes to the DEC-CONS-07 supersession, the four-fixture testability
+conjunct, DEC-CONS-01's credential-helper lane, §11.2's conjunct 4 item (i), or §11.3's
+closed-but-retained items — all five are correct, all five are better than what they replaced, and I
+would keep every one of them verbatim.
+
+Two upstream errata leave this review. The first is new and is raised by the document itself in
+§11.2's conjunct 4: `FSPEC:2154` spells AT-Q7c's invoking-tree upper bound `{add, commit,
+read-branch, read-status}` and calls it "its permitted set", but that is FSPEC §6.5's pre-widening
+set — TSPEC §9.3 (`TSPEC:1724`) permits three further non-mutating reads, at least one of which
+(`read-index`, `TSPEC:1745`) is observed on AT-Q7c's own `promoted` Given, so a property
+transcribing FSPEC's bound is red on correct code. The second is the carry-forward I re-measured at
+HEAD rather than re-raised on faith: `TSPEC:1405` still cites `TSPEC:1522` for `openClone` (measured
+`:1602`) and `TSPEC:1832` for §10.3 row 1a (measured `:1937`), and the changelog pointer at
+`TSPEC:52` still spells the NFR-2 row as `:1325`, a blank line. This document corrected its
+inherited copies in the v5 sweep; the TSPEC remains the only carrier. The two TSPEC errata from v2
+are now **closed** upstream (`TSPEC:1685-1698` for `rtShellQuote`/the push lane, `TSPEC:1405` for the
+qualified non-disclosure row) and I do not re-emit them.
 
 ## Verdict
 
-*(pending)*
+VERDICT: Approved with minor changes
