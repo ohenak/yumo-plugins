@@ -1372,10 +1372,40 @@ is caught at exactly one site (§10.2).
 ### 10.1 Terminating branches are returns, not exceptions
 
 FSPEC §2.2's "terminates = a jump to step 14" is implemented as an early `return finishPass(state)`,
-where `finishPass` performs steps 14–16 unconditionally: append the terminal row, run §9.4's commit,
-release the marker. Three consequences the FSPEC requires fall out for free — a terminated pass
-still commits, still releases, and still returns exactly one report — and none of them is a branch
-that could be forgotten at a new termination point, because there is only one exit.
+where `finishPass` performs steps 14–16: append the terminal row, run the 9.4 commit, release the
+marker. There is one exit, so a terminated pass still returns exactly one report and no new
+termination point can forget to write one.
+
+**The three steps are guarded, not unconditional.** An earlier draft said "unconditionally … there
+is only one exit" and carved out no status. That is wrong twice, and both errors are load-bearing:
+
+| Guard | Terminal status it protects | Why |
+|---|---|---|
+| `state.status !== "skipped-cadence"` gates **all three** steps | `skipped-cadence` | FSPEC §2.2 names it as "the one terminal branch that is **not** a jump": step 4 took no marker and wrote no record, so there is nothing to append (§2.4, AC-7.2). AC-1.1 requires the tick to exit "having read no LEARNINGS body … and writes no log row"; AC-1.3's datum rule requires that "ticking cannot advance the datum" (REQ-CONS-01), which a row per `/loop` tick would falsify every tick — and the log would grow without bound |
+| `state.status !== "refused"` gates the **commit** | `refused` | FSPEC §4.3's Commits column reads "**no** — it writes its AC-7.2 row and commits nothing", restated at §4.4 with the reason: a pathspec stages a **whole file**, so a refused commit would capture the winner's in-flight log at an arbitrary mid-pass instant |
+| `state.markerHeld` gates the **release** | `refused` | already stated in §6.1 — the loser never unlocks the winner (FSPEC §4.3) |
+
+So `finishPass` is:
+
+```js
+function finishPass(state) {
+  if (state.status === "skipped-cadence") return report(state);   // no row, no commit, no marker, no git call
+  appendTerminalRow(state);                                       // step 14
+  if (state.status !== "refused") await commitConsumingRepoPaths(...);  // step 15
+  if (state.markerHeld) await releaseMarker(state);               // step 16
+  return report(state);
+}
+```
+
+`skipped-cadence` reaches that first line from **exactly one place**: `main()`'s step-4 branch, where
+`triggerFor` (§7.2) returns `"skipped-cadence"` — before `mintPassId`, before `takeMarker`, before
+any LEARNINGS body is read. Nothing downstream can produce the status, which is what makes the
+carve-out a single early return rather than a condition threaded through the pass. The report body
+it returns carries the status alone (FSPEC §10.1 row 3), which is AC-C3's positive conjunct — the
+four absences alone would also be satisfied by a pass that never ran.
+
+A `refused` pass likewise writes no consumed pair: the pair is step 7, downstream of the step-6
+refusal, so its absence is structural rather than a fourth guard (AT-M1, AT-M6b).
 
 `state.reasons` is a `Set`, so a composing code (`reclaimed-stale-lock`, `writes-uncommitted`,
 `no-advisory-corpus`, `advisory-corpus-empty`, `no-cadence-datum`) is added where it is observed and
@@ -1404,10 +1434,12 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | # | Failure | Mechanism | Observable |
 |---|---|---|---|
 | 1 | Log absent / unreadable | `_readFile` ⇒ `null`; `classifyCorpus` treats it as empty text | every basename un-consolidated; empty datum ⇒ `no-cadence-datum` |
+| 1a | **Corpus unlistable** — `_git(["ls-files", …])` returns `{ok:false}` (§7.1) | `enumerateCorpus` ⇒ `{unlistable: true, detail}`; `main` calls `failNoReason` | `failed`, **no** reason code (vocabularies §1 at 1.4 has no row for it, and §1.3 forbids minting one), the pathspec and `stderr` in the report body. Never `no-op`: an unlistable corpus and an empty one are different claims, and only the latter may advance the cadence datum |
 | 2 | Log truncated mid-block | §7.1 step 3's open-span-to-EOF rule | consumption never lost |
 | 3 | Unparseable log row | `mintPassId` / `cadenceDatum` skip it | derivation never aborts |
 | 4 | Marker unparseable | §7.3 `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown` |
 | 5 | Marker held and fresh | `refuse` | `refused` + `consolidation-in-progress`; no consumed pair, no commit |
+| 5a | **Marker take did not land** — read-back absent, unparseable, or another pass's `passId` (§7.3) | `takeMarker`'s read-back conjunct; `rtWriteFile` (`runtime-adapter.js:802-813`) reports nothing, so the write alone is not evidence | `refused` + `consolidation-in-progress`; no consumed pair, no commit; the AT asserts the terminal status **and** the marker file's content on disk |
 | 6 | Neither rung resolves | §10.2's `catch` | `failed` + `advisory-model-unresolved` |
 | 7 | Dispatch error (any dispatch) | §10.2's `kind` check | `failed`, no reason code, message in the report body |
 | 8 | `_makeTempDir` ⇒ `null` | §9.1 step 1 | `api-failure`, proposal-file fallback with the full diff |
