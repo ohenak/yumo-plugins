@@ -153,4 +153,51 @@ out of the changed spans; it cannot steer a PLAN or PROPERTIES author wrong.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v7 findings are resolved — F-16 on all four limbs, with the retargeted FSPEC anchors resolved by
+me at HEAD rather than taken on the document's word, and F-17 on the harder of the two exits I
+offered — and nothing I approved in earlier rounds was weakened. I walked the one product test that
+matters at this gate — *can a PLAN or PROPERTIES author read this document and write the wrong
+artifact?* — across the four changed surfaces: §9's Context and accepted-cost paragraphs, §9's first
+rejected alternative, §11.2 conjunct 4 item (i), and the *Anchor provenance* paragraph with its new
+warranty-scope note. Every one of them now points at the shipped upstream form. Two of the four
+closed live traps rather than tidying prose: the alternatives-list annotation catches a reader who
+never reaches the supersession note, and the "whole verb set (obliged ∪ permitted)" restatement
+removes a bound that would have excluded the two verbs AT-Q7c's Given requires. There is no path in
+this document to a wrong oracle.
+
+One Low finding rides out:
+
+1. **F-18** — the *Anchor provenance* paragraph publishes "at this revision … **92** prefixed sites
+   … **122** bare tokens". Those are the counts at `50e28b23`, four commits before the sentence
+   exists; at the committing revision (`d8a297e1`) they are **98** and **132**, partly because the
+   sentence's own worked examples are bare tokens. Either re-measure to 98/132, or — better, and this
+   is the same paragraph's own stated rule applied to itself — drop the integers and publish the
+   invariant plus the recipe, since the count is a function of the revision and this file cites
+   itself.
+
+That does not block the document from being carried downstream, which is what "Approved with minor
+changes" means here: I would hand this DECISIONS to a PLAN author today and expect F-18 to land in
+the next commit that touches the file rather than in a round of its own.
+
+I am **not** asking for changes to the rejected-alternative annotation, the §9 Context rewrite, the
+`FSPEC:479` content-addressed row cite, §11.2 conjunct 4 item (i)'s new bound, the continuation-anchor
+paragraph, or the FSPEC warranty-scope note — all six are correct, all six are better than what they
+replaced, and I would keep every one verbatim.
+
+Two upstream errata leave this review, both carried from v7 and both re-measured at HEAD rather than
+re-asserted on faith. First, `FSPEC:2154` (AT-Q7c) still spells the invoking-tree upper bound
+`{add, commit, read-branch, read-status}` and still calls it "its permitted set", but that is FSPEC
+§6.5's pre-widening set — `TSPEC:1724` permits three further non-mutating reads, at least one of
+which (`read-index`) is observed on AT-Q7c's own `promoted` Given, so a property transcribing FSPEC's
+bound is red on correct code. This DECISIONS revision has now made its own statement of the bound
+exactly right in two places, which leaves FSPEC as the only carrier. Second, `TSPEC:1405` still cites
+`TSPEC:1522` for `openClone` (measured at `:1602`) and `TSPEC:1832` for §10.3 row 1a (measured at
+`:1937`), and the changelog pointer at `TSPEC:52` still spells the NFR-2 row as `:1325`, which is a
+blank line. This document corrected its inherited copies in the v5 sweep; the TSPEC remains the only
+carrier.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
