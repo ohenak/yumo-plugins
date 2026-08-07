@@ -96,3 +96,6 @@ further erratum round — fold it in opportunistically if §4.1 is touched again
 ## Verdict
 
 VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:ba91e4c9877edac47b253a96412ba15fdd4295cd9d34f1cc525d4fd9d77f8363
+REVIEWED-COMMIT: 0499e5325b35bc4f7f147e90f098e25f237459a0
