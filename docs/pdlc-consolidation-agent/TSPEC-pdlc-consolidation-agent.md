@@ -921,7 +921,11 @@ empty file is what the presence probe calls absent. The observable a test can ho
 double's last recorded contents for the marker path** — the `IN-PROGRESS:` line during the pass, the
 empty string after it — which is how §10.1 restates T-13's conjunct (ii).
 
-Take is `_readFile` then `_writeFile` — **read-then-write, not atomic**. FSPEC §4.5 / O-C3 prices
+Take is `_checkFile`, then `_readFile`, then `_writeFile` — **observe-then-write, not atomic** — three seam calls on the
+take path, not two, and §10.4 item 1's race window is the span across all three. The
+probe is a third call, not a substitute for the read: `_checkFile` produces `present` and `_readFile`
+produces the text `parseMarker` consumes, and decision 2 above forbids deriving either from the
+other. FSPEC §4.5 / O-C3 prices
 this race and asks whether the runtime offers an atomic create-exclusive primitive. **It does
 not**: `_writeFile` is `rtWriteFile` (`runtime-adapter.js:802`), an agent-transported whole-file
 write with no exclusive-create mode, and no adapter seam exposes one. This TSPEC takes the
@@ -929,7 +933,7 @@ read-then-write form and **records the decision** rather than inventing a lock: 
 exclusive-create seam would be a new agent transport whose observation (whether the file already
 existed) is exactly as racy as the read it replaces. §13 carries it.
 
-**Take is read, write, then read back.** `rtWriteFile` (`runtime-adapter.js:802-811`) awaits an agent
+**Take is check, read, write, then read back.** `rtWriteFile` (`runtime-adapter.js:802-811`) awaits an agent
 dispatch, inspects no reply and returns `undefined`; the adapter's own comment at `:798-801` says
 the cache entry is deliberately not repopulated from `contents` because "an agent-mediated write is
 a request, not proof of the bytes on disk — the next read re-verifies against a probe, which is the
@@ -938,8 +942,18 @@ all sixteen steps believing it holds a lock it does not hold, which is precisely
 AC-1.3 rests on. `takeMarker` closes it with the re-read the adapter's comment names:
 
 ```
-read → verdict → write → read back → parseMarker → confirm parsed.passId === state.passId
+check → read → verdict → write → read back → parseMarker → confirm parsed.passId === state.passId
 ```
+
+**That order is the spec of record, and it is testable text rather than prose.** `verdict` is
+`markerVerdict(parsed, present, …)`, so `present` must already exist when it runs — which is why
+`check` is first and why an earlier draft's `read → verdict → …` line was wrong: transcribed
+literally it forces the `_readFile(...) !== null` derivation decision 2 forbids, and re-opens the
+reclaim-on-every-steady-state-pass bug. It is withdrawn by name here rather than silently rewritten.
+`fakeFs` accumulates an ordered `calls` array whose intended use its own header advertises
+(`__tests__/helpers/seams.js:241` — `expect(fs.calls.map((c) => c.op)).toEqual([…])`), so a
+call-order oracle over `takeMarker` is a natural L2 assertion, and the expected prefix it holds is
+`["check", "read", "write", "read"]` — one expected value, not two.
 
 A read-back that returns `null`, an unparseable marker, or **another pass's** `passId` is a failed
 take. The pass terminates `refused` with `consolidation-in-progress` (the same disposition as an
