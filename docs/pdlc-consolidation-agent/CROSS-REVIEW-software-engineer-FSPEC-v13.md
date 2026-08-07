@@ -25,6 +25,12 @@ Every one is resolved. I re-verified each codebase claim the edit added rather t
 
 ## 2. Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §4.1's justification sentence overloads "the existence seam alone": *"they stay distinguishable through the existence seam alone … `RELEASED:` is a parseable line, empty is not, and neither is `IN-PROGRESS:`."* The existence seam separates absent / empty / non-empty; it cannot separate `RELEASED:` from `IN-PROGRESS:` — that needs the read §4.2 already performs ("Read the file … parse its single line"). The intended reading (the *pair* the paragraph is arguing about — released vs. mid-flush-empty — is separable by existence alone, and neither empty nor `IN-PROGRESS:` is a `RELEASED:` line) is recoverable and correct, and §4.2's table is normative and unambiguous, so nothing is under-specified. It is prose imprecision at a spot an implementer will read closely. Suggested: "…the two are separable by the existence seam alone: a released marker is non-empty, a half-written one is `file_empty`. Which of the two non-empty forms is present is decided by §4.2's read of the line." | §4.1, `:437-442` |
+
+No High or Medium findings. Nothing in the delta blocks implementation.
+
 ## 3. Regression check — did the delta break anything previously approved?
 
 ## 4. Questions
