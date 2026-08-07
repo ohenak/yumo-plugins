@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 1.0 | 2026-08-07 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -183,3 +183,29 @@ the next feature runs, not after.
 
 This is not a specification defect and no artifact needs re-authoring. The document is correct, the
 reviewers approved it, and the pipeline stopped on how it read one of those approvals.
+
+## Resolution (2026-08-07)
+
+Recommendation steps 1–3 carried out by the outer orchestrator; step 4 (the gate fix) is recorded
+as a follow-up, not landed here.
+
+**Step 1 — verified at HEAD (`e51f45c6`):** FSPEC v11.5's AT-Q7c bound states §6.5's frozen set ∪
+the TSPEC §9.3 widenings (header erratum note, `:2168`); §6.5 unchanged. Both v15 confirmations
+carry exactly one approving `VERDICT:` line — se `Approved` (`:176`), te `Approved with minor
+changes` (`:103`). The FSPEC's sha256 at HEAD equals the value below, so the reviewed bytes are
+the bytes at HEAD.
+
+**Step 2 — anchors appended** to both v15 files verbatim (`APPROVAL-HASH:
+sha256:18df4716…dd13`, `REVIEWED-COMMIT: 2f18dbd7…`), the one sanctioned post-verdict write.
+
+**Step 3 — marker flipped** in this commit; the evidence is named in the commit message. The
+pipeline is NOT re-invoked: by operator direction (2026-08-06/07) the feature stops before
+Phase I — `POSTMORTEM-PR-pdlc-consolidation-agent.md` carries the standing stop order — and the
+specification work ships as a PR without implementation.
+
+**Step 4 — follow-up, deliberately not in this change:** the erratum-confirmation gate asymmetry
+in `pdlc/workflows/orchestrate-dev.js` (`:9309` — recoverVerdict, then `extractFileVerdict` over
+the committed confirmation file, halt only when both fail), plus the two follow-ons (de-duplicate
+routed erratum items; append anchors for already-scored approvers). A workflow-code change
+requires a dist rebuild in the same commit and belongs in its own reviewed change, not in this
+docs-only ship. It should land before the next feature runs.
