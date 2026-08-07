@@ -120,6 +120,38 @@ remains, and it is not blocking.
 
 ## 5. Errata raised against upstream documents
 
+The two TSPEC defects I raised at v1 are **still live at HEAD**. The PLAN handled them correctly —
+it did not edit the TSPEC, it raised them as §9.1 errata 4 and 5 and covered both locally — but the
+upstream document is unrepaired, so they are re-emitted here for the orchestrator's erratum channel
+rather than folded into the verdict on this PLAN.
+
+| # | Upstream defect | Re-measured at HEAD |
+|---|---|---|
+| 1 | **TSPEC §12.3's traceability table omits three FSPEC register ids** — `AT-M11`, `AT-Q13`, `AT-R7`. All three are register rows in FSPEC v11.3 §13 (`:2085`, `:2126`, `:2106`) and all three are traced to an AC by FSPEC §15 (AC-1.3 `:2311`, AC-3.2 `:2320`, AC-1.4 `:2312`). Two are the sole oracle for an acceptance criterion's negative half. The PLAN's T05 compares the register against §12.3, so the omission is what makes T05 red on arrival | `grep` over `TSPEC-pdlc-consolidation-agent.md` returns no match for any of the three; §12.3 (`:2385-2441`) carries **96** ids |
+| 2 | **TSPEC §12.3 fixes the register size at a stale measurement.** `TSPEC:2395` reads "The FSPEC's AT register carries **96** ids, measured at v11.1". FSPEC is at **11.3** (`:12`), whose erratum note (`:19`) records the two additions that make 96 wrong | re-enumerating `AT-…` tokens over FSPEC §13 (`:2041-2191`), de-duplicated, gives **99** |
+
 ## Recommendation
 
+**Approved with minor changes** — zero High, zero Medium, one Low.
+
+All five blocking findings from v1 are resolved, and resolved at the root: the PLAN now carries the
+upstream versions it was derived from, reads the register count instead of transcribing it, assigns
+all three orphaned register ids as *paired negatives* rather than as extra rows, states the
+`_listFiles` hazard instead of mis-citing a constraint id, and fixes the `dist/` vocabulary once in
+the shipped terms. Two of the repairs improved on what I asked for — T04's byte-identity claim was
+replaced with a two-arm positive oracle after the revision proved the old one vacuous on this
+repository, and §9.1 erratum 3 found a `CLAUDE.md` sentence that is already false at HEAD.
+
+The single remaining item does not block:
+
+1. **F-08 (Low)** — §8.1's "is named in neither row's list" contradicts the table above it; the
+   count of sixteen is correct and independently verified.
+
+Optional, and worth doing while the file is open: answer Q-06 by naming the two target test files
+in §9.1's erratum 4 row, so the TSPEC author's repair of §12.3 lands in agreement with T20/T21
+rather than by inference.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
