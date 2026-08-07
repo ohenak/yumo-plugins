@@ -18,10 +18,57 @@ I previously approved. I did not re-review unchanged sections.
 | 2 | REQ-CONS-01 step 1 (`:115-140`) | withdraws "keeping one enumeration as well as one predicate"; adds a labelled **One predicate, two enumerations** block deciding the two divergence classes |
 | 3 | §4b (`:595-605`) | adds **Unreadable corpus entries add no field** — no `unread:` field, §3 stays at `Version` 1.4, an unreadable entry is *not consumed* |
 
-No other section moved. `git diff --stat` is +37/−2 lines confined to those three regions, so nothing
+No other section moved. `git diff --stat` is +40/−3 lines confined to those three regions, so nothing
 I approved at v14 outside REQ-CONS-01 step 1 and §4b was touched.
 
 ## Item-by-item disposition
+
+**E-1 (te-review) — the enumeration claim cannot be delivered as written; the REQ must answer whether
+a `.gitignore`d LEARNINGS file is corpus. → CLOSED.** Step 1 now withdraws the claim in terms ("The
+second half is not deliverable and is **withdrawn**") and answers the sub-question directly: a
+`.gitignore`d LEARNINGS file **is** corpus, membership being presence on disk under the two globs,
+so the pass's enumeration does not pass `--exclude-standard`. The staged-but-deleted class is decided
+the other way — an index entry with no working-tree file is not corpus. Both classes te-review named
+now have a stated answer in the REQ rather than a deferral.
+
+**E-2 (se-author) — `_listFiles` structurally cannot walk directories, so only the predicate can be
+held equal. → CLOSED, and the citations verify.** I checked both against HEAD:
+
+- `pdlc/workflows/runtime-adapter.js:915` is `else ls -p -A "${d}" | grep -v '/$'; true; fi` — one
+  directory, directory entries filtered out. The seam cannot recurse.
+- `:929-931` is the reply validator `if (!lines.every((l) => !/[\/\s]/.test(l) …)) return { ok: false,
+  reason: "unreadable" }` — a basename carrying a separator is rejected as unreadable, so even an
+  agent that volunteered `completed/LEARNINGS-x.md` would be discarded, not parsed.
+
+Together those are exactly the mechanism the REQ claims: `_listFiles` cannot express `docs/*/`, so a
+second enumeration through the git seam is forced. That seam exists at HEAD (`rtGit`,
+`runtime-adapter.js:945`), so the REQ is not assuming a capability the runtime lacks. The new framing —
+one predicate guaranteed by construction (both sides run the same block-scoped basename test), two
+enumerations whose agreement is a stated, testable property — is the correct weakening: it is what
+the code supports, and it hands te-review a property to write rather than an identity to assume.
+
+**E-3 (se-author) — the sub-question the relaxation turns on, and the asymmetry of the two answers.
+→ CLOSED.** The REQ picks "yes, `.gitignore`d is corpus", gives a mechanism reason that is not merely
+aesthetic (the hook cannot see `.gitignore`, so the alternative is a nag that can never quiesce — the
+pass would be forbidden to consume the very file the hook counts), and reproduces the price boundary
+se-author measured: the class closes at exactly that price "because `docs/discarded/*/` is excluded by
+the pathspec, not by the ignore rules". I re-measured that at HEAD:
+`git ls-files --others --ignored --exclude-standard -- ':(glob)docs/*/LEARNINGS-*.md'
+':(glob)docs/completed/*/LEARNINGS-*.md'` returns empty, and the plain `--cached --others` form
+returns the same 5 files the REQ's step-1 worked example names. So dropping `--exclude-standard` is a
+no-op on today's tree and cannot silently move the first-run test's expected set — the relaxation is
+paid for only in the class it was bought for.
+
+**E-4 (se-author) — §4b must answer the unreadable-corpus / `unread:` field question. → CLOSED.** §4b
+now decides it in the section that owns the record grammar: no `unread:` field, §3 stays at `Version`
+1.4, and the entry is simply **omitted** from the consumed pair. That is the cheaper of the two
+repairs and the one that needs no vocabulary version bump, so it does not disturb the §4b freeze
+clauses or any downstream test transcribing `Version 1.4`. It is also internally consistent with
+NFR-5 (`:553`), which already requires the block to name **exactly** the consumed set — omission is
+what NFR-5 was already asking for, not an exception carved into it. The stated defect it removes is
+real and directionally argued: an unreadable-but-consumed entry can only ever push AC-5.2 toward
+`prevented` or `insufficient-evidence`, never toward `recurred`, i.e. it biases REQ-CONS-05's
+falsifiability loop in one direction only.
 
 ## Findings
 
