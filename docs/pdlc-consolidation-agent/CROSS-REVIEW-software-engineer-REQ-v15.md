@@ -72,6 +72,20 @@ falsifiability loop in one direction only.
 
 ## Findings
 
+Nothing in the delta breaks anything I approved at v14. Two new Low findings, both single-clause
+wording repairs inside text this REQ already owns, plus the two Lows carried forward from v14 that
+the erratum did not touch (correctly — they were out of its routed scope).
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | AC-2.4 (`:239-240`) still glosses the recorded consumed basenames as "exactly the AC-1.1 predicate's set". Under the new §4b rule an unreadable-but-enumerated basename is un-consolidated yet **not** consumed, so on the strict reading of that parenthetical the two sets can differ by exactly the unreadable entries. NFR-5's "**exactly** the consumed set" (`:553`) is the binding statement and is unaffected, so this is a legibility defect, not a contradiction — but AC-2.4 is the AC an implementer transcribes. Suggested repair, byte-neutral: "consumed basenames (the set the pass actually consumed — §4b omits an unreadable entry)". | AC-2.4 |
+| F-02 | Low | Local | Step 1's new block asserts "**The two** classes on which those mechanisms would otherwise disagree", which is a closed enumeration. A third class exists in principle: `glob.glob` matches a symlinked directory for `docs/*/` and reads through it, while `git ls-files` does not descend into a symlinked directory, so a symlinked feature directory holding a LEARNINGS is visible to the hook and invisible to the pass. There is none at HEAD (`find docs -maxdepth 2 -type l` is empty), so this costs nothing today; the exposure is that a closed "two classes" claim is what a later reader will trust. Suggested repair: say "the two classes that arise at HEAD" rather than "the two classes". | REQ-CONS-01 step 1 |
+| F-03 | Low | Local | *(carried forward from v14, unchanged, still open)* §4b's split needs an explicit subject — "Of the vocabularies file's owned sections, §1, §2 and §4 are enumerations and §3 is owned normative prose; the baseline's four sections are all owned normative prose, under no row oracle". Not re-argued here. | §4b |
+| F-04 | Low | Local | *(carried forward from v14, unchanged, still open)* Narrow §4b's baseline change-control clause from "a **content** change" to "a change to any **stated fact**", matching the vocabularies file's row-scoped wording. Not re-argued here. | §4b |
+
+None of the four is a gate. F-01 and F-02 are each one clause; if an optimizer pass is already open
+for F-03/F-04 they should ride along with it, and if none is, they are not worth opening a round for.
+
 ## Questions
 
 ## Positive Observations
