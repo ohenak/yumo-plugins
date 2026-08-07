@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-06 |
+| pdlc | draft | Claude | 1.4 | 2026-08-06 |
 
 > **Scope in one line.** The mechanism for one consolidation pass: one new workflow module
 > (`pdlc/workflows/consolidate-learnings.js`), the seam protocol it is injected with, the pure
@@ -1791,6 +1791,10 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   - **Class (i) is closable, at one stated price**: drop `--exclude-standard`, and a `.gitignore`d
     LEARNINGS file becomes corpus. `:(glob)` still excludes `docs/discarded/` either way, so the
     price is exactly §7.1 point 3's rule — "an ignored file never is [corpus]" — and nothing else.
+    Note the asymmetry, because it decides which way the upstream question should be answered if
+    convergence is the goal: the hook has **no** `--exclude-standard` to drop (`glob.glob` sees
+    ignored files unconditionally), so dropping it on the JS side is the one edit that makes the two
+    sides agree. §13.3 carries that to the REQ rather than presenting both directions as neutral.
 
   **The choice made here, and why it is provisional.** `--exclude-standard` is **kept**: a
   `.gitignore`d LEARNINGS file is a file its own repository has said is not part of its record, and
@@ -2307,7 +2311,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
 | 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
 | 5 | Take the marker read-then-write | an exclusive-create seam | no adapter transport offers `O_EXCL`, and an agent's report of prior existence is exactly as racy as the read |
-| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's two classes make an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct, both `:(glob)` prefixes literal) and the hook's two glob patterns (a source-text read of `:28`), which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **This decision relaxes REQ `:115-116`'s "keeping one enumeration as well as one predicate", so it is not settled here**: §13.3 raises it as a REQ/FSPEC erratum, and this row records what this layer would ship if the relaxation is accepted |
+| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's two classes make an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct at **L1**, both `:(glob)` prefixes literal, in `consolidationPredicate.test.js`) and the hook's two glob patterns (an **L3** source-text read of the `CORPUS_GLOBS` declaration, in `consolidationHookParity.test.js`) — two levels and two files, for the reasons §7.1 gives — which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **This decision relaxes REQ `:115-116`'s "keeping one enumeration as well as one predicate", so it is not settled here**: §13.3 raises it as a REQ/FSPEC erratum, and this row records what this layer would ship if the relaxation is accepted |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
 | 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
@@ -2369,7 +2373,18 @@ re-argued on what a count-above-threshold comparison can supply.
   set. **Whether that satisfies "one enumeration" is a REQ/FSPEC decision, not this document's**, so
   it is raised as an erratum against both, together with the sub-question §10.4 isolates — is a
   `.gitignore`d LEARNINGS file corpus? (keeping `--exclude-standard` says no; dropping it closes
-  divergence class (i) at exactly that price, and at no other). Accepted residue if the relaxation
+  divergence class (i) at exactly that price, and at no other). **The two directions are not
+  symmetric, and the REQ reviewer should be told which is which**: the hook has no
+  `--exclude-standard` to drop — `glob.glob` sees ignored files unconditionally — so an answer of
+  "yes, an ignored LEARNINGS file is corpus" *closes* class (i) by making the two sides agree, while
+  "no" keeps it open. One of the two answers strictly reduces the divergence set the relaxation is
+  being requested for; the erratum says so rather than presenting them as neutral alternatives.
+  A third question rides with the batch, raised by the same reviewer: §7.1 puts an unreadable corpus
+  entry **in the consumed pair**, so a LEARNINGS file can be permanently marked consumed while
+  contributing no evidence to any promotion, and the only trace is one pass's transient report body.
+  Should the durable log row itself carry the unreadable basenames (an `unread:` field beside
+  `consumed`)? That is a `pdlc-consolidation-vocabularies.md` §3 field-set change, so this layer
+  declines to mint it (REQ §4b) and hands the question up with the rest. Accepted residue if the relaxation
   stands: one operator-visible nudge that no pass can clear (class (i)) and one corpus entry the
   pass reports as unreadable (class (ii)) — never a correctness divergence, since the pass consumes
   only what its own enumeration returned.
