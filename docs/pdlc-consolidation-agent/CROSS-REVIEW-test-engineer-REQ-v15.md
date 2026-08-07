@@ -118,7 +118,37 @@ retained the claim with softened wording; it does not.
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-02 | Non-blocking, for the PROPERTIES layer rather than for this REQ. The erratum converts an equality that was claimed as structural into one that must be *observed*: hook enumeration ≡ pass enumeration over the two globs. The natural oracle is a property test that generates a docs tree (tracked / untracked / `.gitignore`d / staged-but-deleted / nested-deeper / `docs/discarded/`) and asserts the two enumerations return the same basename set. Both mechanisms are pure functions of the tree, so this parameterises cleanly and should not be example-based. Should PROPERTIES carry it as a property with those five generators named, rather than as a handful of examples? I raise it as a question and not a finding because it is a PROPERTIES obligation the REQ correctly hands over, not something the REQ owes. |
+
 ## Positive Observations
+
+- **The withdrawal is a withdrawal, not a hedge.** `:120-121` says the claim "is not deliverable and is
+  **withdrawn**", names what replaces it, and separates the half that survives by construction from the
+  half that becomes a test obligation. Specs usually resolve this class of finding by weakening the
+  adjectives; this one deleted the claim and paid for the replacement.
+- **Every new citation prints at the line given.** `nudge-consolidation.sh:28` is
+  `learnings = glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))`;
+  `runtime-adapter.js:915` is the `ls -p -A "${d}" | grep -v '/$'` line, one directory, directory
+  entries dropped; `:929-931` is the `!/[\/\s]/` rejection that makes a nested path structurally
+  unreturnable. I ran all three rather than trusting the erratum, and `git diff --stat 6c025bb4..HEAD
+  -- pdlc/` being empty means none can have drifted since.
+- **The item-3 price claim is measured, and I re-measured it.** With and without `--exclude-standard`
+  the pathspec enumeration returns the same five basenames at HEAD; the repo `.gitignore` contains no
+  `docs/` pattern; the eight `docs/discarded/*/` directories are excluded by the glob's depth. So
+  "closes this class at exactly that price and no other" is a true statement about this tree, not an
+  assertion about intent.
+- **Item 4 is answered with an oracle argument, in the layer that owns the field set.** The reason
+  given for refusing `unread:` is that a consumed-but-unread entry biases AC-5.2 in one direction only
+  — toward `prevented` / `insufficient-evidence`, never `recurred`. That is precisely the
+  one-directional-bias failure that makes a falsifiability loop unfalsifiable, and it is the argument I
+  would have had to make had the erratum chosen the other answer. Answering it at §4b also keeps the
+  `Version 1.4` pin fixed, so no downstream transcription moves.
+- **The erratum stayed inside its envelope.** Three hunks, +40/−2, no new AC id, no new vocabulary row,
+  no new reason code, no enumeration inside the §4b oracle's range touched. A bounded erratum round
+  that edits only what it was routed is the mechanism working; I checked the diff for scope creep
+  specifically and found none.
 
 ## Recommendation
 
