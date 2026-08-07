@@ -23,11 +23,13 @@
 > retired into **AT-M3**/**AT-M11**, T-13's and the release-set case's oracle re-stated against the
 > sentinel, §12.3's AT-M3 partial-coverage disclosure and AT-M11 divergence both **withdrawn**,
 > §13.1 row 13 re-decided, §13.3's marker bullet closed. **No erratum is raised against the FSPEC
-> about the release form: the upstream decided, so this layer absorbs.** Two further repairs in the
+> about the release form: the upstream decided, so this layer absorbs.** Three further repairs in the
 > same pass: §12.2's `CLAUDE.md` ↔ manifest oracle names its one exclusion (the manifest carries no
-> row for itself) so set equality is achievable without weakening to containment, and §12.2's closing
+> row for itself) so set equality is achievable without weakening to containment; §12.2's closing
 > paragraph is re-cast into the past tense now that both register gaps have landed as `AT-Q13` /
-> `AT-R7`.
+> `AT-R7`; and §13.3's matching hand-off bullet, which had still handed the PLAN those two gaps as
+> **open**, is re-cast the same way — it now states that the PLAN writes the two cases as `AT-Q13` /
+> `AT-R7` and must not re-raise either erratum.
 
 > **1.8 (erratum round 8, targeted edit — no restructuring).** Five Phase-P errata, nothing else:
 > (a) §12.3's register measurement re-taken — **99 ids at FSPEC v11.3**, not "96 at v11.1" — with the
@@ -2684,14 +2686,21 @@ re-argued on what a count-above-threshold comparison can supply.
   stands: one operator-visible nudge that no pass can clear (class (i)) and one corpus entry the
   pass reports as unreadable (class (ii)) — never a correctness divergence, since the pass consumes
   only what its own enumeration returned.
-- **Upstream (FSPEC) — two register gaps recorded, not patched here** (and, unlike the relaxation
-  above, **covered locally in the meantime** — §12.2's two `(no FSPEC AT)` cases in
-  `consolidationRoute.test.js`). §12.2's re-binding surfaced two
-  obligations with no acceptance test: AC-3.2's requirement that the PR body cite each source
-  LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the AC→AT map binds AC-3.2 to
-  AT-Q2, which asserts only the trailers), and FSPEC §5.3's "when, **and only when**" negative
-  direction for the proposal file. Both are raised as errata against the FSPEC rather than bound to
-  a nearby id; until they land, §12.2's cells name the gap explicitly.
+- **Upstream (FSPEC) — two register gaps: raised, answered, closed. Nothing is handed on.** §12.2's
+  re-binding surfaced two obligations that carried no acceptance test — AC-3.2's requirement that the
+  PR body cite each source LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the
+  AC→AT map bound AC-3.2 to AT-Q2, which asserts only the trailers), and FSPEC §5.3's "when, **and
+  only when**" negative direction for the proposal file. Both **were** raised as errata against the
+  FSPEC rather than bound to a nearby id, and both **were covered locally in the meantime** by a
+  `(no FSPEC AT)` case in `consolidationRoute.test.js`, which is why the gap was never a shipping
+  licence. FSPEC v11.3 answered both: **AT-Q13** (`FSPEC-…:2126`, traced to AC-3.2 at `:2320`) and
+  **AT-R7** (`FSPEC-…:2106`, traced to AC-1.4 at `:2312`). The two interim cases are **re-labelled
+  with those ids in place**, not duplicated (§12.2 T-11/T-12, §12.3's route row), so no
+  `(no FSPEC AT)` case remains for either and both ids count on both sides of §12.3's set equality.
+  **The PLAN owes nothing here**: it should write the two cases as `AT-Q13` and `AT-R7`, and it must
+  not re-raise either erratum. This bullet is kept in the past tense rather than deleted because the
+  round trip — gap named → erratum raised → id minted upstream → interim case re-labelled — is the
+  evidence that naming a gap is a working channel.
 
 - **Upstream (vocabularies) — ER-6**, the `Route` union's missing proposal-file member, is
   recorded in full at §12.4 with its `route: "degraded"` interim and the two-fixture
