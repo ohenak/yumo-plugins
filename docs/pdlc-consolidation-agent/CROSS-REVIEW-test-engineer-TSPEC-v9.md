@@ -44,6 +44,52 @@ assignments: I checked each cited line and each oracle's falsifiability, and all
 
 ## 3. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01's repair is a choice between two release forms, and the two are not equal in test cost. Adopting FSPEC §4.1's `RELEASED:` sentinel makes AT-M11 satisfiable but changes §12.2's empty-marker conjunct (a `""` marker would then mean *truncated*, not *released*, and AT-M3 fixture (a)'s reclaim arm becomes reachable again) and changes T-13's release oracle from "last recorded contents are `""`" to "last recorded contents match `RELEASED: {passId} …`". Keeping §7.3's empty form leaves AT-M11 unsatisfiable and needs the §12.3 disclosure F-01 asks for. Which way does §7.3 intend to go, and has the knock-on to those two oracles been priced? |
+| Q-02 | Nothing in this review is a re-litigation of §7.3's reasoning, which I approved at v8 on the evidence that no seam can unlink. Does the FSPEC's `RELEASED:` sentinel actually contradict that argument, or does it satisfy it (an in-place write of a non-empty sentinel is as writable as an in-place write of `""`, and the `file_empty ≡ absent` equivalence §7.3 leans on is then no longer load-bearing)? If the latter, F-01 and F-02 close together with no cost to §7.3's premise. |
+
 ## 4. Positive Observations
+
+- **The register measurement is now falsifiable rather than transcribed.** Stating 99/v11.3 as a
+  reader's summary and pointing at `consolidationTraceability.test.js`'s run-time re-derivation is
+  the right division of labour — this is the third erratum round in which a hand-carried count went
+  stale, and this edit removes the class rather than the instance.
+- **The set equality genuinely holds.** I derived both sides independently (FSPEC §13 `:2041-2191`
+  de-duplicated, §12.3 `:2426-2488` de-duplicated) and diffed them in both directions: empty. Each
+  of the three new ids lands in exactly one file row. This is the first round in which I could
+  confirm §12.3's central claim mechanically rather than by inspection.
+- **AT-Q13 and AT-R7 both carry positive controls in the same case.** AT-R7's negative ("no proposal
+  file") is asserted against a one-degraded-promotion fixture that *does* write exactly one named
+  for that `passId`, and its fixture (b) reaches "no cause" by the other route (all-suppressed
+  `no-op`). AT-Q13's second fixture is a single-occurrence promotion, so an implementation that
+  emits a recurrence list unconditionally reds. Neither is an absence-only oracle — which is what
+  I would have flagged had the interim `(no FSPEC AT)` cases simply been re-badged.
+- **The `SKILL.md` row refuses the easy widening for the right reason.** Adding a fourth member to
+  `skillFiles.test.js:13-17`'s `reviewSkills` would have forced a per-member conditional on a list
+  whose every assertion is about `VERDICT` trailers these two authoring skills must not carry. Siting
+  the four verbatim conjuncts in this feature's own L3 suite, located by heading rather than line
+  index, is the more durable placement.
+- **§11.3(c)'s third axis is stated with its blast radius, not just its name.** Enumerating the six
+  suites `BUNDLES` keys and noting the `:1584` spread makes "exempt from every one" checkable in a
+  minute; I checked all six and they are where the document says.
+
+## Recommendation
+
+**Needs revision.**
+
+The delta resolves five of the six erratum items outright, and I confirmed the sixth's arithmetic
+myself. It does **not** resolve the AT-M11 item in the sense the erratum meant: the id has a file,
+but no fixture at that file can pass against §7.3, so the PLAN task the erratum was raised to
+unblock is still red on arrival (F-01). §13.3 additionally still hands the resolved question
+downstream as open (F-02), and one of the two new oracles the edit introduces cannot green as
+specified (F-03). None of these breaks anything I previously approved — §7.3, §11.3(c), §12.1,
+§12.4 and the unchanged §12.2 rows all stand — but the Challenger bar is unchanged: one High and
+two Medium findings means the delta is not confirmable as it stands.
+
+Smallest sufficient revision: (a) settle the release form or, failing that, state AT-M11's
+satisfiable arm in §12.3 the way AT-M3's is already stated; (b) re-read FSPEC BR-14a / E-11b into
+§13.3's marker bullet; (c) name the manifest-self-row exclusion in §12.2's `CLAUDE.md` oracle.
+None of the three requires restructuring, and none touches a section outside this erratum's scope.
 
 ## Verdict
