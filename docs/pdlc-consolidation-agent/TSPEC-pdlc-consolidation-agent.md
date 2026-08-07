@@ -1940,6 +1940,17 @@ grows. It is **outside** the differential fixture table and therefore outside th
 below — its subject is git, not the hook, and folding it in would make `executed === TABLE.length`
 false for a reason that has nothing to do with the interpreter probe.
 
+**What that case deliberately does not cover, recorded so a later reader does not assume it does.**
+The fixture is built with `git init` + `git add -A`, so every path it asserts over is reached through
+`--cached` and `--exclude-standard` is **inert** in it: the case pins the `:(glob)` half of pin (a)'s
+argv and **not** the flag half. That is deliberate, and the reason is §13.3's: whether a `.gitignore`d
+LEARNINGS file is corpus is exactly the sub-question this layer hands upstream, and the two answers
+differ precisely in whether `--exclude-standard` stays. Adding an untracked-and-ignored file here to
+make the flag observable would pin the answer this document has declined to give, so the case pins
+what the erratum does not touch and the erratum decides the rest. If the answer comes back "an ignored
+LEARNINGS file is corpus", the flag is dropped and there is no flag behaviour left to pin; if it comes
+back "no", this case gains that fixture member and the flag conjunct with it.
+
 **A skipped L4 is distinguishable from a passing one.** The hook's own `PY_BIN` probe (`:13-20`)
 degrades to a silent `exit 0` when no usable interpreter is found, and a differential test that
 inherits that degradation silently is the test that will be skipped on the platform where it
@@ -1960,7 +1971,14 @@ disjunction was green.
 **Where that count comes from, since only one of the two answers is an oracle.** It is **not** read
 from the fixture table's length — that is derivable from the table itself and would be
 self-satisfying. The harness holds a counter that each row increments **as its last statement, after
-its own assertions have passed**, and an `afterAll` asserts `executed === TABLE.length || executed === 0`.
+its own assertions have passed**, and the disjunction `executed === TABLE.length || executed === 0` is
+asserted by its **own top-level `test()`, declared last in the file — never an `afterAll`**. That
+placement is load-bearing and the reviewer's question is what surfaced it: jest does not run a
+block's `beforeAll`/`afterAll` when every test in that block is skipped, so an `afterAll` form would
+leave the all-skip world's `executed === 0` **unobserved** rather than asserted — the one world the
+sentence below claims it covers. A plain `test()` is declared unconditionally and runs in both worlds,
+which is what makes `0` an outcome the suite states rather than one it merely does not contradict.
+Declaring it last is what makes its reading of the counter come after every row that increments it.
 So an interpreter that dies at row 4 of six leaves `executed === 3`, which is neither, and reds; a
 row that throws and is swallowed never reaches its increment, and reds; a wholesale `test.skip` of
 the suite leaves `executed === 0`, which passes, which is the one legitimate all-skip case.
@@ -1970,9 +1988,9 @@ The `PY_BIN` probe is performed once at module scope; if it finds no usable inte
 declares each differential row through `test.skip` and emits the `console.warn` above. There is no
 "degraded probe" path on which rows still execute against a weakened comparison, which is the only
 way `executed === TABLE.length` could be reached with nothing real behind it: a row either runs the
-real interpreter or is not declared as a running test at all. The `afterAll` counter assertion itself
-is **not** skipped — it runs in both worlds, which is what makes `0` an asserted outcome rather than
-an unobserved one.
+real interpreter or is not declared as a running test at all. The counter assertion itself
+is **not** skipped — it is its own unconditional `test()` (above), so it runs in both worlds, which
+is what makes `0` an asserted outcome rather than an unobserved one.
 
 ### 11.2 Test doubles — reuse first (DC-08)
 
