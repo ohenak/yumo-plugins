@@ -88,7 +88,7 @@ because it *did* inline the literal and then asserted it was "its permitted set"
 untouched is correct, not an omission; editing it would have added a second place to keep in sync.
 AT-Q7's assertion (2) does name literals, but only in the **obliged** column (`{add, commit}` in the
 invoking tree), which no widening touches — TSPEC §9.3 records all four widenings in
-permitted-but-not-obliged columns (`TSPEC:1713`), so the obliged literals are still exact.
+permitted-but-not-obliged columns (`TSPEC:1718-1719`), so the obliged literals are still exact.
 
 **(b) Did the header insertion drift any other intra-document locator?** No. The 14-line insertion
 shifts every line below it, so I enumerated every `` `:NNNN` ``-style locator in the document (29
@@ -115,8 +115,62 @@ in the cell now contradicts anything else in it.
 
 ## Findings
 
+None. No High, no Medium, no Low.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | No findings this round | — |
+
+My v14 F-01 (Low, both sub-findings) is **closed** by hunks 2 and 3.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| — | None. I raised no question this round; the delta answered the one it was routed to answer. |
 
 ## Positive Observations
 
+- **The erratum fixed the shape, not the symptom.** The three ⊕ verbs are spelled out, but the row's
+  operative clause is "§6.5's frozen set ∪ every widening TSPEC has recorded against it under
+  DEC-LAYER-01". A fifth recorded read widening extends the set the row already points at instead of
+  falsifying the row. This is the difference between a repair and a recurrence, and it is the reason
+  I have no residual finding here.
+- **The layering held under pressure.** The cheap fix — restating §6.5's literal to include the
+  widenings — was available and was declined, with the reason stated in the erratum note ("§6.5 is
+  unchanged: it remains the frozen statement TSPEC inherits and widens by recorded decision"). That
+  is DEC-LAYER-01 being obeyed at the moment obeying it costs something.
+- **The falsifying power of AT-Q7c is intact.** Widening an upper bound normally weakens an oracle.
+  Here the three additions are all non-mutating reads; no merge verb and no branch verb entered any
+  permitted set, so AC-3.7's "merge verb ∉ any permitted set" and AC-3.8's branch prohibition are
+  carried exactly as before. The row's two named counterexamples (universal set-equality; a
+  `= {add, commit}` invoking-tree bound) are both still red on correct behaviour.
+- **The scope discipline is worth noting for harvest.** Three reviewers raised one defect seven ways;
+  the edit is 18 lines across four hunks, none of them speculative. An erratum round that only
+  touches what the errata named is the cheap case for a delta confirmation, and this is one.
+
+**One observation, deliberately not filed as a finding.** §6.5's closing worked example (`:1058`)
+still reads "…and contained in `{add, commit, read-branch, read-status}`" — the pre-widening literal,
+in the frozen layer's own prose. That is **correct as written**: §6.5 is by construction the frozen
+statement, and the same paragraph says widening is a recorded TSPEC decision against it, so the
+literal is the frozen datum the reader is told to widen, not a stale bound. Editing it would put the
+FSPEC in the business of tracking the implementing layer, which is exactly what DEC-LAYER-01
+forbids. I record it only so a future reader who greps the literal knows it was seen and left
+standing on purpose, and so the harvest has the reason on record.
+
 ## Recommendation
+
+**Approved.**
+
+The delta resolves the routed erratum — the premise is true at HEAD (`TSPEC:1724` widens the
+invoking-tree domain by three non-mutating reads, and `read-index` is observed on AT-Q7c's own
+`promoted` Given via §7.1's corpus enumeration), the fix states the bound as a shape rather than a
+literal, and it does so without editing the frozen §6.5. It breaks nothing I approved in v14: AT-Q7
+is correctly out of scope because it references the set rather than inlining it, no intra-document
+locator drifted (the FSPEC has exactly two self-locators and both were repaired), and the two Low
+locator findings of my v14 review are closed against HEAD. My v14 approval stands, extended to
+v11.5.
+
+## Verdict
+
+VERDICT: Approved
