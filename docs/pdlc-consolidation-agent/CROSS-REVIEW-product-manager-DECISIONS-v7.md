@@ -44,7 +44,74 @@ All three v6 findings are resolved. The verdict turns on the new material.
 
 ## Verification of the changed sections
 
-*(pending)*
+I resolved every anchor the changed spans introduce, against the TSPEC, the FSPEC and
+`runtime-adapter.js` at HEAD, rather than taking the document's word for any of them.
+
+- **The DEC-CONS-07 supersession is fully cited and every cite lands.** `TSPEC:966-977` carries "no
+  removal verb anywhere in reach … **FSPEC §4.1's BR-14a settles the payload**" and then
+  "`releaseMarker` is `await _writeFile(markerPath, "RELEASED: {passId} {ISO-8601}")`";
+  `TSPEC:987-988` is the probe reversal verbatim; `:996-1003` states the three-outcome discrimination
+  and names the write double's last recorded contents as the observable; `:1015-1020` records that
+  FSPEC v11.3 answered and this layer adopted; `:951` has `parseMarker` total over both forms;
+  `:1036` "never empty in the steady state"; `:1040` the hand-deleted/released agreement;
+  `:1940` routes an empty marker to `reclaim` with `reclaimed-stale-lock` and id `unknown`; `:2590`
+  is §13.1 row 13; `:2443` is T-13 asserting the last recorded contents **match** the sentinel;
+  `:2640` is the four-fixture sentence quoted word-for-word. Upstream of those, `FSPEC:2585` is
+  BR-14a, `:2678` E-11 ("Reachable **because** §4.1 releases by writing a `RELEASED:` sentinel"),
+  `:2679` E-11b. Nothing in the note is asserted without a cite, and no cite misses.
+- **The consequence bullet does the harder thing: it explains why the rejection dissolved rather
+  than deleting it.** It states that the rejected "empty ⇒ `reclaim`" alternative is now the shipped
+  behaviour, and gives the reason — under an *empty* release a released marker and a truncated one
+  are the same observed state, so reclaiming on empty would fire on every steady-state pass; under
+  the sentinel there are three distinguishable observations. `TSPEC:2590` makes exactly that argument
+  in its own words ("under it a released marker and one truncated mid-take are the same observed
+  state … withdrawn on FSPEC's answer, not on taste"). Independently reached, same conclusion.
+- **The Testability rewrite is a real oracle correction, not a re-labelling.** The superseded pairing
+  ("`""` ⇒ `free`, no record") was backwards on its first member and the entry says so. The shipped
+  set is four fixtures in one case, and the document keeps the *structural* reason the pairing exists:
+  "an implementation that reclaims on every take passes the reclaim fixtures alone, and one that never
+  reclaims passes the `RELEASED:` fixtures alone, so only the pairing falsifies both." That is a
+  paired positive/negative oracle stated as such — each negative arm has a positive control on the
+  same path — and it matches `TSPEC:1940`'s own falsification note. The struck "the unreachable half
+  is **not** tested" sentence is replaced by an explicit assertion that both arms are tested, and the
+  §11.2 *unasserted* table row is withdrawn with "A PROPERTIES author must **not** read this row as
+  licence to omit it" — an absence-license removed rather than left standing.
+- **DEC-CONS-01's new lane checks out against code, not just against the TSPEC.**
+  `TSPEC:1685-1690` states the push half was wrong and why (`rtShellQuote` POSIX single-quotes every
+  `_git` argv element); I read `pdlc/workflows/runtime-adapter.js:667-669` and it does exactly that,
+  totally. `TSPEC:1693-1698` picks the credential-helper lane and `:1700-1704` records the
+  command-string-seam alternative as rejected, on the reason the document repeats (it "moves the push
+  out of §9.3's `_git`-argv classifier"). The document's claim that the push therefore stays in the
+  **clone** domain and inside AT-Q7's `push` obligation is verifiable at `TSPEC:1725`: that domain is
+  classified as "`_git` whose argv begins `["-C", cloneDir]`", the helper argv does, and `push` is in
+  its obliged column. The residual paragraph's conclusion — "the argv element that reaches the
+  transport holds the variable *name*, so there is still no credentialed value for an error message to
+  echo" — follows from the helper form and is the same claim NFR-2 needs.
+- **§11.3 item 3(b) is correctly reported as closed.** `TSPEC:1405` now reads "non-disclosure **on the
+  outbound path** is structural (§5.3) rather than reviewed. It is **not** structural inbound, **and
+  this row does not claim it is**", and carries the 300-character combined-output residual. The
+  changelog entry the document points at, `TSPEC:51-57`, records both erratum-round halves. The
+  narrower anchor-level erratum the item keeps open is still open at HEAD, re-measured rather than
+  re-asserted: `TSPEC:1405`'s tail still cites `TSPEC:1522` for `openClone` (measured `:1602`) and
+  `TSPEC:52` still spells the row as `:1325`, which is a blank line.
+- **§11.2's conjunct 4 item (i) is right, and the FSPEC defect it raises is real.** `TSPEC:1724` is
+  the invoking-tree row and its permitted column is exactly `read-branch`, `read-status`,
+  ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index`, obliged `add`, `commit` — the set the document
+  now transcribes. `FSPEC:2154` (AT-Q7c) does spell the upper bound `{add, commit, read-branch,
+  read-status}` and calls it "its permitted set", which is the pre-widening four-verb set;
+  `TSPEC:1718-1719` records "exactly four widenings", and `TSPEC:1745` maps ⊕ `read-index` to
+  "§7.1's corpus enumeration". Since AT-Q7c's Given is a `promoted` pass and every pass enumerates a
+  corpus, at least one widened verb is observed on that Given — so a property transcribing FSPEC's
+  bound is red on correct code, as the document says. Its cross-check against §5 domain 1 also holds:
+  `DECISIONS:291-297` names the same seven verbs from the same `TSPEC:1724` row.
+- **No substantive regression against anything I approved.** DEC-CONS-03's domains and verb sets,
+  DEC-CONS-05's evidence structure, DEC-CONS-06's decision and exclusion, §11.6(e)'s guard sentence,
+  and the six-status release set-equality (still sourced to
+  `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`) are all unchanged. Nothing was traded
+  away to buy the supersession.
+
+Two things in the changed spans did not verify, and both are anchor hygiene rather than contract
+defects; they are F-16 and F-17 below.
 
 ## Findings
 
