@@ -413,3 +413,9 @@ Five High and seven Medium findings are open. The blocking set, in the order I w
 The document is well built and the mechanism-per-observable discipline is real; the findings are
 concentrated in the seams the feature invents and in the places where an oracle was named but not
 specified.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 7, "low": 3}
+
