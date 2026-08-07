@@ -555,10 +555,24 @@ is also the one edit in this feature that changes behaviour for code paths this 
 in this document); the adapter gaining a first-class "write outside the repository" seam with its own
 verb accounting; the clone moving inside the repository, which would remove the need entirely.
 
-**Testability:** an adapter-source assertion pins the widened clause verbatim in **one** prompt and
-asserts the absence of any such clause in the read prompt — the negative half is what encodes "we
-measured, and there is nothing to widen", so a future symmetry edit fails a test rather than passing
-review. The additive half is covered by the existing shipped adapter assertions in
+**Testability:** an adapter-source assertion pins the widened clause verbatim in **one** prompt. The
+read-side half is **paired, not absence-only** — an assertion that merely reports "no such clause in
+the read prompt" is satisfied by `rtReadFile` being deleted, renamed, or never reached, so it is
+conjoined on the same path with two positives:
+
+- **The read prompt's actual instruction is pinned verbatim** — `rtReadProbe` (`runtime-adapter.js:369`)
+  transports its command under `"Run this exact command from the repository root and report its
+  output:"` (`:374`), a **cwd** instruction. The assertion locates that string and asserts it is a cwd
+  instruction, not a path-resolution one; the negative ("no `relative to the repository root`
+  resolution clause") then runs on a prompt the test demonstrably found.
+- **Absolute paths already resolve verbatim through the shipped shell forms** — an assertion that an
+  absolute `${path}` substituted into `rtReadProbe`'s `if [ ! -f "${path}" ] …`, `wc -c < "${path}"`,
+  `shasum -a 256 "${path}"` forms (`:374-378`) yields shell text that resolves that path verbatim.
+  This is the positive form of "we measured, and there was nothing to widen": the measurement is
+  asserted, not merely the absence of a clause.
+
+Together they mean a future "harmonise the two prompts" edit fails a test rather than passing review,
+and so does a read seam that quietly stops resolving absolute paths. The additive half is covered by the existing shipped adapter assertions in
 `__tests__/runtimeBundle.test.js`, which already pin relative-path behaviour; this feature's edits to
 that file (the await-scan source list and the seam-name set) are a single owned task per
 batch-safety rule 2. Behaviourally, the clone's writes are observed through the `_writeFile` double's
@@ -589,6 +603,17 @@ unparseable **or empty (truncated write)**" the outcome "reclaimed, recording `r
 with the abandoned id `unknown`" (`:442`), bound again by E-11 and by AT-M3's *Given*. The
 **unparseable-but-non-empty** arm behaves exactly as specified; the **empty** arm becomes
 **unreachable**. That is raised as an erratum against FSPEC, not reinterpreted here (§11).
+
+There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
+the zero-byte marker is **permanent** — one per consuming repo, from the first pass onward, because
+no seam can remove it (`TSPEC:962-966`, carried into §13.3's residue list as "one permanent zero-byte
+`docs/_decisions/.consolidation-lock` per consuming repo", `TSPEC:2522`). It is `.gitignore`d, so it
+reaches no diff, no PR and no fresh-clone bootstrap check; the only surface on which it appears is a
+literal `ls docs/_decisions/`, where a zero-byte `.consolidation-lock` means **free, not stuck**.
+That reading is the inverse of the one AC-1.3 invites when it tells the operator that deleting
+`.consolidation-lock` clears the lock — so it is stated here rather than left to the TSPEC, and the
+two manual channels agree: a hand-deleted file yields `file_missing`, a released pass yields
+`file_empty`, and §7.3 treats both as absent, so neither channel can wedge the cadence.
 
 **Alternatives considered.**
 
@@ -625,6 +650,12 @@ would restore the empty arm at the cost of making `parseMarker` total over two f
 the `IN-PROGRESS:` line during the pass, the empty string after it. Two conjuncts follow. (i) Release
 happens on **every** terminal status that took the marker: the assertion is a set-equality over the
 six-member terminal-status set rather than a spot check, so a new status cannot silently skip release.
+The six are enumerated in `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43` —
+`promoted`, `promoted-degraded`, `no-op`, `skipped-cadence`, `refused`, `failed` — and that file is
+the assertion's source of truth, so a seventh status added there fails the set-equality rather than
+being silently excluded. (`skipped-cadence` writes no log row per AC-7.2 and `refused` terminates
+before taking the marker per AC-1.3; the set-equality is between *took* and *released*, so those two
+are on both sides as non-takes rather than dropped from the enumeration.)
 (ii) The empty-marker fixture (`""`) is paired against the non-empty unparseable fixture in the same
 case: the first must produce `free` with **no** `reclaimed-stale-lock` record, the second must produce
 `reclaim` **with** one. That pairing is the only thing that keeps a future refactor from re-adopting
