@@ -1828,7 +1828,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | 2 | Log truncated mid-block | §7.1 step 3's open-span-to-EOF rule | consumption never lost |
 | 3 | Unparseable log row | `mintPassId` / `cadenceDatum` skip it | derivation never aborts |
 | 4 | Marker present and **non-empty**, unparseable | §7.3 `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown` |
-| 4a | Marker present but **empty** (a released marker, or a write truncated mid-take — indistinguishable) | `_checkFile` ⇒ `{ok:false, reason:"file_empty"}` ⇒ `present === false` ⇒ §7.3 `markerVerdict` ⇒ `free` | the pass takes the marker and proceeds; **no** `reclaimed-stale-lock`. This is a **deliberate, recorded narrowing** of FSPEC §4.2's fourth row, whose `empty (truncated write)` arm it makes unreachable (`FSPEC-…:442`, E-11 `:2592`, AT-M3's truncated *Given* `:2038`) — §7.3 argues why no seam can separate the two states and raises the erratum; §13.3 carries it. Row 4 above is the arm that **is** satisfiable |
+| 4a | Marker present but **empty** (a released marker, or a write truncated mid-take — indistinguishable) | `_checkFile` ⇒ `{ok:false, reason:"file_empty"}` ⇒ `present === false` ⇒ §7.3 `markerVerdict` ⇒ `free` | the pass takes the marker and proceeds; **no** `reclaimed-stale-lock`. This is a **deliberate, recorded narrowing** of FSPEC §4.2's fourth row, whose `empty (truncated write)` arm it makes unreachable (`FSPEC-…:442`, E-11 `:2594`, AT-M3's truncated *Given* `:2038`) — §7.3 argues why no seam can separate the two states and raises the erratum; §13.3 carries it. Row 4 above is the arm that **is** satisfiable |
 | 5 | Marker held and fresh | `refuse` | `refused` + `consolidation-in-progress`; no consumed pair, no commit |
 | 5a | **Marker take did not land** — read-back absent, unparseable, or another pass's `passId` (§7.3) | `takeMarker`'s read-back conjunct; `rtWriteFile` (`runtime-adapter.js:802-811`) reports nothing, so the write alone is not evidence | `refused` + `consolidation-in-progress`; no consumed pair, no commit; the AT asserts the terminal status **and** the marker file's content on disk |
 | 6 | Neither rung resolves | §10.2's `catch` | `failed` + `advisory-model-unresolved` |
@@ -2500,7 +2500,7 @@ re-argued on what a count-above-threshold comparison can supply.
   the adapter ships no unlink of any kind — so release is an in-place write of `""` and the file is
   permanently present-and-empty. §4.2's fourth row then assigns "unparseable **or empty (truncated
   write)**" the outcome "reclaimed, recording `reclaimed-stale-lock` with the abandoned id `unknown`"
-  (`:442`), bound again by E-11 (`:2592`) and by AT-M3's *Given* (`:2038`); the empty half of that row
+  (`:442`), bound again by E-11 (`:2594`) and by AT-M3's *Given* (`:2038`); the empty half of that row
   is unreachable under the release form, because a released marker and a truncated one are the same
   observed state. The question the FSPEC owns is **what the durable log must witness when a pass dies
   mid-take**: today's rule makes the next pass record `reclaimed-stale-lock`, which is the only signal
