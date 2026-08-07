@@ -232,8 +232,71 @@ executed differential rows is either the full fixture table or zero, so a harnes
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The hook exits at `nudge-consolidation.sh:29-30` (`if not learnings: sys.exit(0)`) **before** the point §7.1 places the `PDLC_PENDING:` line, so a fixture with no LEARNINGS at all emits no line and the harness must infer `∅` from silence — an absence-only reading of the one channel the whole differential rests on. §11.3(f)'s fixture table has no zero-corpus row today, so nothing is broken; is that deliberate, and should the debug line move above the early exit so "the hook computed ∅" and "the hook did not run" stay distinguishable? |
+| Q-02 | §11.3(e) cites `runtimeBundle.test.js:1573-1580` (and §3.3 cites `:1570-1584`) as the precedent for a source-text assertion over `runtime-adapter.js`. That range is the **C0-control-byte** scan — `runtime-adapter.js` is a member of its `SOURCES` array at `:1573-1578`, so the file is read, but the shape being cited is a byte-class check, not a prompt-text match. Nothing turns on it (the assertion is trivially writable either way) — do you want the citation to name a closer precedent, or to say plainly that this is a new shape? |
+| Q-03 | §12.2's new unnumbered row for the dropped-code arm describes "an AT-L-series row" in `consolidationReport.test.js` with two fixtures over one code. §12.3 assigns that file AT-L1…AT-L5 and AT-N1…AT-N4 exhaustively, and the traceability test asserts set equality against the FSPEC register — so this row cannot mint a new `AT-L6`. Which existing id carries it, and does that id's FSPEC text already oblige the two-fixture control? |
+| Q-04 | §11.4's `mergeProposals` property generates "a group of ≥2 proposals sharing `(failureModeId, action)`, in a random permutation". `failureModeId(phase, artifact)` is derived, so a generator that *assigns* the id independently of `(phase, artifact)` can produce inputs no pass can construct. Is the generator obliged to derive the shared id from a shared `(phase, artifact)` pair, so the property ranges over the reachable input space? |
+
 ## Positive Observations
+
+- **Every v1 finding is closed, and closed at the mechanism rather than at the wording.** F-01 is the
+  clearest case: the repair did not soften the claim, it changed the seam, and the `:(glob)` argument
+  is measured rather than asserted — I re-ran it and got exactly the 7→5 and 2→0 numbers §7.1 states.
+  F-05 and F-09 are the same shape: the hook gained an observation channel and the module gained
+  `resolveSeamDomain`, rather than the oracles being re-described.
+- **F-04's repair is stronger than what I asked for.** I asked for an explicit enumeration; §12.3
+  delivered the enumeration *and* `consolidationTraceability.test.js` asserting set equality against
+  the FSPEC's register in both directions with an injected `root`. I verified the enumeration
+  independently — 96 ids on both sides, empty difference each way. That table now fails on the next
+  suffixed AT rather than dropping it silently.
+- **The revision argues against its own earlier text by name, and gives the cost.** §9.3's withdrawal
+  of the `read-remote` fold ("that is withdrawn, and it was wrong on its own terms … a later
+  `git remote add` would classify as the already-permitted `read-object` and pass containment") and
+  §11.3(c)'s "extending only the source set leaves the scan green on exactly the seams this feature
+  invents" are both the kind of correction that survives into a LEARNINGS file. So is §12.3's
+  paragraph explaining why the range notation could not have worked.
+- **§11.3(b)'s authority leg is the reusable fix, and it is stated as one.** Three-way set equality
+  plus the `Version` pin, parser as a pure function of an injected root — and the note that "every
+  feature that transcribes a project-level shared reference has the same two-copies problem" is why
+  I tagged it Cross-Feature. It is worth harvesting in that form.
+- **§10.1's guard table is a genuine correction, not a defence.** "That is wrong twice, and both
+  errors are load-bearing", followed by three guards each tied to a named FSPEC clause and to why a
+  row-per-tick would falsify AC-1.3's datum rule — the reasoning is what makes the guards testable.
+  F-04 above is about the code block's form, not this analysis.
+- **ER-6 is raised rather than papered over,** and §12.4 says the honest thing about the earlier
+  draft: "the claim, not the gap, was this layer's defect". The `route: "degraded"` interim is
+  argued in the safe direction (`enactedByLog` does not enact on it, so the item is re-proposed) with
+  the residual loss named and a stated discriminator.
 
 ## Recommendation
 
+**Needs revision**
+
+One High and four Medium are open. The blocking set, in the order I would fix it:
+
+1. **F-01** — six of nine AT bindings in the two new traceability rows point at ATs about other
+   subjects, and the set-equality oracle that guards that table is blind to it by construction. This
+   is the one that will reach the PLAN and produce tests written to the wrong specification.
+2. **F-02** — scope the adapter widening and its pinning assertion to `rtWriteFile`; `rtReadFile`
+   carries no such clause and needs no edit. Fixing this *removes* work rather than adding it.
+3. **F-03** — decide whether AT-P7 covers the enumeration pair or only the predicate, and say so in
+   §12.2 and §13.1 row 6.
+4. **F-04** — `finishPass` must be `async` and awaited at every call site; name the after-`main()`
+   assertion that falsifies it, since neither the audit nor the sync doubles can.
+5. **F-05** — a named four-member type for the routing functions' range.
+
+The two Lows (F-06, F-07) are one-line edits and are not blocking on their own.
+
+This is a substantial revision that fixed every prior finding at the mechanism. Four of the five new
+findings are in text that did not exist at v1, and three of them (F-02, F-03, F-05) are consequences
+of the repairs themselves — the enumeration seam moved, the widening was stated one prompt too wide,
+and a new union was introduced. F-01 is the one I would not have expected: it is a mis-transcription
+of upstream ids in the section whose whole job is to bind obligations to falsifiers.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 4, "low": 2}
+
