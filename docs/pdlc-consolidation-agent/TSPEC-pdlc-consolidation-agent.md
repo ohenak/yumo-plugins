@@ -1499,7 +1499,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 |---|---|---|---|
 | **L1 — pure function** | every §7 function, called directly on literal inputs | none | `consolidationPredicate.test.js`, `consolidationIdentity.test.js`, `consolidationEffectiveness.test.js`, `consolidationParse.test.js` |
 | **L2 — orchestration** | `main()` end-to-end with doubles for every seam; the §12 acceptance tests live here | all doubled | `consolidationPass.test.js`, `consolidationRoute.test.js`, `consolidationCredential.test.js` |
-| **L3 — build & artifact** | the bundle is emitted, is in sync, carries no `import(`, and its `meta` is first and literal | none | extends the shipped `runtimeBundle.test.js` rather than adding a parallel suite |
+| **L3 — build, artifact & source text** | the bundle is emitted, is in sync, carries no `import(`, and its `meta` is first and literal; plus the source-text oracles (§3.3's `.gitignore`, §11.3(e)'s adapter prompts, §12.3's AT set-equality) | none | the **await-audit and bundle** assertions extend the shipped `runtimeBundle.test.js` in place (they edit its own `AWAIT_SCAN_SOURCES` and `AT19_SEAM_NAMES` sets); the feature-scoped source-text oracles live in `consolidationBuild.test.js` and `consolidationTraceability.test.js`, so this feature adds no row to a shipped suite that is not a set member of one it already owns |
 | **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7) |
 | **L5 — property** | the four T-09 components | none | `consolidationProperties.test.js` |
 
@@ -1531,7 +1531,7 @@ reporter's skip line plus that warning, and CI's `Unit tests` job surfaces both.
 | `_git` | `fakeGit(script)` | `mergeDoubles.js`, re-exported by `advisoryDoubles.js` as `makeGitDouble` |
 | `_ghRun` | `fakeGhRun(script)`, `passingGh` | same |
 | `_readFile` / `_writeFile` / `_appendFile` / `_checkFile` | `fakeFs(initialContents, opts)` | `__tests__/helpers/seams.js` |
-| `_listFiles` | `fakeListFiles(spec)` | same |
+| `_listFiles` | `fakeListFiles(spec)` | same — wired for protocol completeness only. **No consolidation test drives it**: the corpus is enumerated through `_git` (§7.1), precisely because the double is more capable than the seam it doubles. A test that reached for it would be re-introducing the DC-07 hazard §7.1 removes |
 | clock, sleep | `fakeNow`, `FIXED_NOW_MS`, `fakeSleep` | `mergeDoubles.js` |
 | PRNG | `seeded`, `resolveSeed` | `driftGenerators.js` — the repo's one seeded-PRNG library |
 
