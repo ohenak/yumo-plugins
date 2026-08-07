@@ -615,6 +615,29 @@ Four properties of that call, each verified against this repository at HEAD:
 `parseCorpusListing` is the pure half: split on newline, drop empty lines, and map each path to
 `{path, basename}` by its last `/`. `enumerateCorpus` **never opens a file**.
 
+**AT-P1's oracle is the argv, not the fixture.** AT-P1 (`FSPEC-…:2020`) is purely an enumeration
+claim — a LEARNINGS under `docs/completed/{feature}/` is in corpus, one under
+`docs/discarded/{feature}/` is not — and §12.3 runs it at **L1**, over the `_git` double. Run
+naively that is an implementation echo: the `docs/discarded/` exclusion would be decided by whatever
+lines the fixture author put in the double's scripted stdout, not by the pathspec, and it is the one
+exclusion the REQ calls out by name ("abandoned work is not evidence about a delivered pipeline",
+`REQ-…:113-114`). So the row's oracle is stated here and is **two conjuncts, one of them positive**:
+
+1. **Literal argv.** The array `enumerateCorpus` hands `_git` is asserted element-by-element against
+   the literal `["ls-files", "--cached", "--others", "--exclude-standard", "--",
+   ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"]`, **both `:(glob)`
+   prefixes included**, because point 2 above makes the magic prefix the thing that performs the
+   exclusion. An edit that drops a prefix, drops `--exclude-standard`, or adds a third pathspec is
+   red on this conjunct regardless of what any fixture contains.
+2. **Positive membership over the parsed listing.** Given a scripted stdout carrying one
+   `docs/completed/{f}/LEARNINGS-{f}.md` line, that basename is in the corpus — so the row is not
+   an absence-only assertion about `docs/discarded/`.
+
+The second conjunct is deliberately *not* "a `docs/discarded/` line is filtered out": nothing in the
+module filters it, and a test asserting that would pin a filter that must never exist. The
+`docs/discarded/` half of AT-P1 is discharged by conjunct 1 — the pathspec is the filter, and the
+pathspec is what the test reads.
+
 `{ok: false}` from the seam is **not** an empty corpus. `enumerateCorpus` returns
 `{unlistable: true, detail: stderr}`, and `main` dispositions it through §10.2's **`failNoReason`**
 — terminal status `failed`, **no** reason code, the pathspec and `stderr` pushed onto §8.4's
@@ -655,6 +678,27 @@ algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs b
 asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s glob gains a second
 `glob.glob` over `docs/completed/*/LEARNINGS-*.md`, and `:41`'s comprehension tests against the two
 regions computed by a short helper rather than against `logtext` whole.
+
+**Both enumerations are pinned literally, so a divergence larger than §10.4's two classes reds.**
+AT-P7 feeds both sides one basename list and therefore holds the *predicate* half only (§11.3(f)).
+That leaves the enumeration pair with no equality oracle — but it does not leave it unguarded, and
+the guard is not "inspection". Two literal pins, both L3 source-text reads in
+`consolidationHookParity.test.js` (the file that already owns the two implementations' relationship):
+
+- the JS side's argv, pinned by AT-P1's conjunct 1 above;
+- the hook side's globs, pinned by reading the tracked `pdlc/hooks/scripts/nudge-consolidation.sh`
+  and asserting that `:28`'s expression is exactly the two patterns `docs/*/LEARNINGS-*.md` and
+  `docs/completed/*/LEARNINGS-*.md`, and no third.
+
+Together they make the divergence set *derivable and closed*: the two enumerations differ only where
+`git ls-files --cached --others --exclude-standard` over those two `:(glob)` pathspecs differs from
+`glob.glob` over the same two patterns, which is exactly §10.4's two classes (git-ignored, and
+staged-but-deleted) and nothing else. An implementation that widens either side — a third pathspec,
+a dropped flag, a `**` in the hook's glob — is red on a pin rather than silently admitting a third
+divergence class. That is the compensating falsifier for the half AT-P7 cannot reach; §12.2's T-08
+row and §13.1 row 6 carry it, and §13.3 raises the relaxation itself upstream, because whether "one
+enumeration" may be held by pins rather than by an equality is a REQ/FSPEC decision, not this
+layer's.
 
 **A third hook edit exists, and it is what makes AT-P7 an oracle at all.** The shipped hook cannot
 emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count**
