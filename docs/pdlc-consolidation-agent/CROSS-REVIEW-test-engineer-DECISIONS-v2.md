@@ -39,6 +39,11 @@ half-closed. The two commits I checked hardest (`89e3aa3`, `9b05e97`) do what th
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | (Follows F-01.) Is the invoking-tree assertion meant to be containment against the **permitted-plus-obliged** set of `TSPEC:1619`, or exclusion against its **absent-always** column? The two are not equivalent under later drift: containment reds on any verb nobody has classified yet (the property §11.2 bullet 2 says it wants — "stays true for calls nobody has written yet"), exclusion greens on them. §11.2 states the property as containment, so the fix should be to the set, not to the direction |
+| Q-02 | §3's runtime type oracle pins "`rtEnvPresent`'s prompt interpolates the variable *name* only". `rtEnvPresent` does not exist at HEAD (`grep -n rtEnvPresent pdlc/workflows/runtime-adapter.js` returns nothing) — it is a seam this feature adds, so the pin is on code this feature writes, which is fine. Does the owning task's Definition of Done name that source pin, the way §11.1 row 4 names DEC-CONS-04's and DEC-CONS-07's two conjuncts? A source-pin assertion with no named owner is the one that gets dropped |
+
 ## Positive Observations
 
 ## Recommendation
