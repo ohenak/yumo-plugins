@@ -56,4 +56,30 @@ half-closed. The two commits I checked hardest (`89e3aa3`, `9b05e97`) do what th
 
 ## Recommendation
 
+**Needs revision** (1 High, 0 Medium, 3 Low).
+
+Convergence is close. Seven of nine v1 findings are closed outright and two of the three
+remaining items are citation hygiene in text that is otherwise right. Exactly what must change:
+
+1. **F-01 (the only blocker)** — restate §5 domain 1's verb set as `TSPEC:1619`'s actual
+   invoking-tree row: obliged `add`, `commit` (the pass's own pathspec-scoped log commit,
+   `REQ:288`) plus the five permitted reads (`read-branch`, `read-status`, ⊕`read-object`,
+   ⊕`read-remote`, ⊕`read-index`), and cite **TSPEC §9.3 (`:1619`)** for it rather than §13.1
+   row 9, which lists only the three widenings. The falsifying force belongs on the
+   absent-always column. As written the assertion reds on a correct pass.
+2. **F-02** — strike or restate the "admits no mutating git verb at all" clause in §5 (and the
+   sentence it cites at §6). DEC-CONS-04's rejection stands on its AC-1.3 ground alone.
+3. **F-03** — cite `TSPEC:1620` for the clone-domain verb set, and reconcile "the clone belongs
+   to no verb set" with `TSPEC:1620`'s explicit "plus the `clone` call itself".
+4. **F-04** — scope §8's read-prompt conjuncts to `rtReadProbe`'s prompt argument; the cwd
+   string occurs three times in the adapter (`:374`, `:618`, `:911`), and the negative's target
+   phrase will occur twice once this feature's own widening lands.
+
+No decision is disputed, and nothing in F-01 changes DEC-CONS-03's Decision — the clone is still
+cut from `origin`'s URL, and the three-domain partition with the positionally-pinned clone is the
+right structure. The defect is that the replacement text names the wrong set for one of the three
+domains, which is a fix to one sentence, not to the entry.
+
 ## Verdict
+
+VERDICT: Needs revision
