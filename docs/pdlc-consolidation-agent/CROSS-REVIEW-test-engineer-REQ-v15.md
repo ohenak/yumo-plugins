@@ -90,6 +90,32 @@ still print; the empty `pdlc/` diff makes that structural.
 
 ## Findings
 
+One new finding, all three carried findings re-checked at HEAD (ids are never renumbered). The
+carried two that are about `docs/_constraints/` are unchanged because `git diff 6c025bb4..HEAD --
+docs/_constraints/` is empty; F-56's *measurement* did change and its text is updated accordingly.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-57 | Low | Local | **New, introduced by the item-4 decision.** "Not consumed, retried next pass" is the right answer for evidence integrity, but it makes an unreadable on-disk LEARNINGS a *permanent* member of the un-consolidated set. Below `volumeThreshold` that is harmless — the cadence test bounds re-attempts to one per `cadenceHours`. At or above it the volume test fires on **every** tick, so `k >= volumeThreshold` permanently-unreadable files schedule a pass per tick that can consume none of them: a non-quiescing loop the REQ does not name. The retry is still correct; what is missing is one sentence saying whether an unreadable basename counts toward the volume test. Either answer is fine (excluding it from the *count* while keeping it in the *set* closes it); the REQ should pick one, because a PROPERTIES author cannot write the termination property without it. | REQ §4b (`:604-607`), REQ-CONS-01 step 2 (`:141-142`) |
+| F-54 | Low | Cross-Feature | **Open — unchanged.** `pdlc-advisory-corpus-baseline.md:7` still reads `1.0 · 2026-08-06` while the clause making an unbumped content change a defect is still at `:19`; the REQ still pins the unbumped `1.0` (now at `:226`, `:472`, and the honest-limit line). No baseline file moved this round, so the finding is exactly as v14 left it. Fix unchanged: bump to `1.1`, repin. | `docs/_constraints/pdlc-advisory-corpus-baseline.md:7`, `:19`; REQ `:226`, `:472` |
+| F-55 | Low | Local | **Open — unchanged.** §4b's ownership sentence still spans both governed files while the classification sentence names neither (`:589-593`); still decidable only through the `Version 1.4` pin (`pdlc-consolidation-vocabularies.md:7` carries `1.4`, the baseline `:7` carries `1.0`). The erratum's §4b addition sits *below* that sentence and re-uses the same `1.4` pin, so it neither worsens nor fixes it. | REQ §4b (`:589-593`) |
+| F-56 | Low | Process | **Open — measurement changed, and the hard ceiling is now crossed.** `wc -l -c` at HEAD: **674 lines / 64,397 bytes**, against `LINE_LIMIT=700` / `BYTE_LIMIT=61440` (`pdlc/hooks/scripts/check-req-size.sh:41-42`). The erratum added ~3,288 bytes to a 331-byte margin, so the REQ is now **2,957 bytes over** the byte ceiling (lines remain inside). Severity is unchanged because enforcement is unchanged: `check-req-size.sh` emits a `PostToolUse` `additionalContext` line and `exit 0` on every path — it cannot fail a build or halt the pipeline. Recorded so that whoever lands F-54/F-55 knows the budget is no longer a place to spend. The cheapest recovery is relocating REQ-CONS-01 step 1's now-lengthy justification prose into the governed vocabularies file, which the REQ already cites by version. | Whole document; `pdlc/hooks/scripts/check-req-size.sh:41-42` |
+
+**Why F-57 is Low and not Medium.** Applying `DEC-SEV-01`'s test — does this leave a downstream author
+unable to make a decision today? — the answer is no. A TSPEC or PROPERTIES author can write every
+oracle the erratum enables (consumed-pair omission, retry on the next pass, the two-enumeration
+agreement property) without knowing the volume-count answer; only the *termination* property for the
+pathological case needs it, and that case requires `>= volumeThreshold` simultaneously unreadable
+on-disk files, which no reachable state at HEAD produces (all five corpus files read fine). It is also
+strictly an addition to the erratum's decision, not a defect in it: the direction chosen is the one
+that protects AC-5.2's falsifiability, and reversing it would reintroduce the defect item 4 named. I
+am not willing to re-open a bounded erratum round over a sentence that can land with F-55.
+
+**No finding is raised against the withdrawal itself.** Withdrawing an undeliverable claim is the
+correct disposition of items 1–2, and replacing "guaranteed" with "stated, testable property" moves
+work to my layer honestly rather than hiding it. I would have raised a finding had the erratum
+retained the claim with softened wording; it does not.
+
 ## Questions
 
 ## Positive Observations
