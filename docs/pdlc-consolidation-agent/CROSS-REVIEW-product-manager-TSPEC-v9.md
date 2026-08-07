@@ -22,6 +22,12 @@ Each erratum item, checked against the diff and against the cited primary source
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **§12.2's closing paragraph (`:2417-2424`) still describes the superseded state.** The paragraph immediately below the corrected one reads "Both register gaps above describe things an operator reads directly … so each **now carries a (no FSPEC AT) case**". After this erratum both gaps carry register ids (`AT-Q13`, `AT-R7`), and §12.3's route row states in terms that "This row's `(no FSPEC AT)` clause is therefore gone". The preceding paragraph (`:2409-2415`) was correctly rewritten to record the landing; this one was not, so the section now says both things about the same two cases. No product consequence — the id-bearing rows are the ones a PLAN task reads, coverage is unchanged either way, and §12.3's set equality is unaffected — but an implementer who reads only the summary paragraph would write the two cases without claiming their ids, which is the exact state the erratum removed. Suggested repair: re-cast the paragraph in the past tense (the gaps *were* covered by local cases while the erratum was outstanding; the cases now carry the ids), preserving the principle it exists to state | AC-1.4, AC-3.2 |
+
+Nothing else. No High or Medium finding — no acceptance criterion is narrowed, dropped, or reinterpreted by this delta, and no previously approved section is contradicted on substance.
+
 ## Questions
 
 ## Positive Observations
