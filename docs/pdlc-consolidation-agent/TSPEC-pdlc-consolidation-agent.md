@@ -205,7 +205,120 @@ prelude — the mechanism `queueModule`'s prelude already uses (`build-runtime.m
 
 ## 5. Interfaces — the injected seam protocol
 
+Every service boundary is a **defaulted injection parameter of `main()`**, the shape
+`orchestrate-queue.js:1033-1046` establishes. Production wiring comes from
+`runtime-adapter.js`'s new `rtConsInjections()`; tests pass doubles. The default value of every
+seam is the module's own `default*` implementation where one is meaningful and `null` where the
+capability must be *installed* (the `_runCommand` precedent: `NO_RUN_COMMAND = null`,
+`orchestrate-dev.js:6699`, taken as the default at `:8921`).
+
+### 5.1 The protocol (T-01, T-04)
+
+```ts
+interface ConsolidationSeams {
+  // ── existing seams, contracts unchanged from runtime-adapter.js ──
+  _agent(skill: string, prompt: string, opts?: {model?: string}): Promise<string>;
+  _readFile(path: string): Promise<string | null>;          // null = absent OR unreadable
+  _writeFile(path: string, contents: string): Promise<void>;
+  _appendFile(path: string, text: string): Promise<void>;   // ONE whole record per call
+  _listFiles(dirPath: string): Promise<string[]>;
+  _git(argv: string[]): Promise<{ok: boolean; stdout: string; stderr: string}>;
+  _ghRun(command: string): Promise<{ok: boolean; stdout: string; stderr: string}>;
+  _log(message: string): void;
+  _phase(label: string): void;
+  _now(): number;                                           // injectable clock, default Date.now
+
+  // ── the two seams this feature adds (§5.3) ──
+  _envPresent(name: string): Promise<boolean>;              // NEVER returns the value
+  _makeTempDir(passId: string): Promise<string | null>;     // absolute path, or null on failure
+}
+```
+
+**Every seam call is `await`ed without exception.** The adapter's implementations are async and the
+test doubles are sync (`__tests__/helpers/seams.js` header states the asymmetry and names it the
+central hazard); a missing `await` therefore passes every unit test and fails only in production.
+§11.3 states the compensating control.
+
+### 5.2 Seam semantics this pass depends on, verified at HEAD
+
+| Seam | Property relied on | Where verified |
+|---|---|---|
+| `_readFile` | maps a missing **or unreadable** file to `null` rather than throwing | `runtime-adapter.js:493`; `orchestrate-queue.js:1056-1063`'s comment states the same for the drift gate |
+| `_appendFile` | appends the given text, no read-modify-write | `runtime-adapter.js:863` — this is what makes vocabularies §3's write-granularity rule implementable at all |
+| `_git` | argv form, so `["-C", dir, …]` reaches a **different tree** without any shell quoting concern; returns `{ok, stdout, stderr}` and never throws | `runtime-adapter.js:945-957`, parse at `:967` |
+| `_ghRun` | takes a fully built command **string**; the prompt carries an "issue AT MOST ONCE" clause because some `gh` commands mutate | `runtime-adapter.js:995-1006` |
+| `_log` | plain sink; the resolver writes `ADVISORY_MODEL_FALLBACK:` through it (`orchestrate-dev.js:1858-1860`) and nowhere else | §8.4 depends on this |
+
+`_git`'s `-C` capability is the single fact that makes FSPEC §6.5's **git-seam-split-by-tree**
+implementable without a second seam: a call is classified into the invoking-tree domain or the clone
+domain by whether its argv begins `["-C", cloneDir]`. §9.3 states the classifier; §11.3 states the
+spy that reads it.
+
+### 5.3 The two new seams, and why each must exist
+
+The runtime has no `process` and no `fs` (`build-runtime.mjs` header), so neither capability can be
+obtained in-module.
+
+**`_envPresent(name) => Promise<boolean>`.** FSPEC §7.2 resolves the credential from the environment
+variable named by `consolidation.credentialEnv`, and NFR-2 / §7.4 forbid that value from reaching any
+log, artifact, PR body or report. A seam returning the **value** would put the secret inside the JS
+process and inside the agent transcript that transported it — the transcript being a surface neither
+the FSPEC nor the REQ can redact. The seam therefore returns a **boolean only**, and the adapter's
+prompt is built so the value is never emitted:
+
+```
+rtEnvPresent(name):
+  agent: run exactly:  [ -n "${<name>:-}" ] && echo PRESENT || echo ABSENT
+         reply with that one word and nothing else.
+  → true iff the reply is exactly "PRESENT"; any other reply, including an
+    unparseable one, is false (fail-closed onto AC-4.3's degradation, never onto
+    a claimed credential).
+```
+
+The credential's **value** reaches `git` and `gh` by shell expansion inside the transported command
+(§9.2), so it is never a JS string and never an argv element the pass logs.
+
+**`_makeTempDir(passId) => Promise<string|null>`.** FSPEC §6.1 requires the guard-set edit to be
+made in a separate clone under a temporary directory. The pass cannot call `mkdtemp`. The adapter
+creates it and returns the path:
+
+```
+rtMakeTempDir(passId):
+  agent: run exactly:  mktemp -d -t pdlc-consolidation-<passId>
+         reply with the created path and nothing else.
+  → the trimmed reply when it is a single absolute POSIX path; otherwise null.
+```
+
+`null` is a §6.3 `api-failure`-class degradation input, not a halt (§10.3 row 7). The `mktemp -d -t`
+form is chosen over a hand-built `/tmp/…` literal deliberately: `/tmp` is world-writable, and a
+predictable path derived from `passId` is a symlink-attack surface and collides across two users on
+one host. `-t` is honoured on both supported platforms (macOS bash 3.2 and Linux bash 5), the same
+matrix `.github/workflows/pr-tests.yml` already runs.
+
+### 5.4 The one seam that is deliberately *not* added
+
+There is no `_runCommand`. Everything the pass does through a shell is either a `git` argv (`_git`)
+or a `gh` command string (`_ghRun`), and both are transported by adapters whose replies are already
+a closed `{ok, stdout, stderr}` contract. `rtRunCommand` (`runtime-adapter.js:1034`) returns a
+trailer plus an output tail, which is the wrong shape for a call whose stdout the pass must parse
+(a PR URL, a `gh pr list --json` payload).
+
+### 5.5 Seam defaults, and what an unwired seam does
+
+| Seam | Module default | Behaviour when the default stands |
+|---|---|---|
+| `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation |
+| `_now` | `Date.now` | ordinary operation |
+| `_ghRun` | `null` | the PR route degrades with `api-failure` before any call is attempted; the proposal file still carries the diff (§10.3) |
+| `_envPresent` | `null` | treated as "no credential variable observable" ⇒ §7.2 falls through to the `local-gh` probe, then to `absent` |
+| `_makeTempDir` | `null` | the PR route degrades with `api-failure`; the pass never falls back to working in the invoking tree, which AC-3.8 forbids outright |
+
+Each `null` default is the FSPEC's fail-safe direction, not a new branch: an uninstalled capability
+degrades the PR route and never touches the invoking tree, never halts the pass, and never reads as
+a credential the pass does not have.
+
 ## 6. Data model — types
+
 
 ## 7. Algorithms
 
