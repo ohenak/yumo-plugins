@@ -46,4 +46,21 @@ Questions Q-04, Q-05 and Q-06 are all answered. Q-04: §7.1's new paragraph rout
 
 ## Recommendation
 
+**Needs revision**
+
+All three v2 findings are resolved, and the two Lows were resolved by strengthening the mechanism rather than by editing the sentence — F-07 in particular ships a test against its own reversal, and one of my own v2 sub-claims turned out to be the mistaken one. Nothing I approved earlier is broken by this revision.
+
+The open findings all sit in material this revision introduced, and they share one shape: **the same round that opens the erratum channel twice (T-11, T-12) closes a larger question locally instead.** REQ `:115-116` promises "one enumeration as well as one predicate"; §11.3(f), §12.2's T-08 and §13.1 row 6 now concede the enumeration half, and §10.4 accepts an operator-visible consequence — a nudge no pass can ever clear — as residue. That is a product decision, and it belongs to the REQ/FSPEC, not here.
+
+Required to clear, in order of severity:
+
+1. **F-10** — either close the enumeration divergence, or raise it as a REQ/FSPEC erratum so the layer that wrote "one enumeration" decides whether it is relaxed, and record the accepted residue here. If it stays open, it needs a falsifier of the kind this revision was willing to mint twice elsewhere, not "held by inspection".
+2. **F-11** — correct §10.4's `--exclude-standard` claim. Measured at HEAD, dropping it re-admits **nothing** under `docs/discarded/` (five paths either way); it is `:(glob)` that does the excluding, as §7.1 point 2 already says. State the real cost of closing class (i) — the "an ignored file never is corpus" rule of §7.1 point 3 — and let the product choose.
+3. **F-12** — give AC-3.2's PR-body citations and FSPEC §5.3's "and only when" negative a TSPEC-added test claiming no register id, in the same shape as T-13 and the dropped-code notice, rather than leaving a REQ AC with a documented hole pending errata. (I am raising both register gaps upstream as errata; that does not discharge the coverage.)
+4. **F-13** — reconcile "the enumeration half is held by no test" with §12.3's L1 assignment of AT-P1, and state AT-P1's oracle. The literal-argv assertion §7.1 already implies is the falsifier; a fixture-decided exclusion is not.
+
+No scope creep elsewhere: every other mechanism this revision adds (T-13, `asAsync`, the zero-corpus fixture row, the ER-6 discriminator control, the §11.3(e) re-scoping) traces to an FSPEC obligation or to a finding raised against this document, and no P0 or P1 requirement is narrowed by any of them. The one narrowing is F-10's, and it is narrowing by concession rather than by oversight — which is why the fix is a channel, not a sentence.
+
 ## Verdict
+
+VERDICT: Needs revision
