@@ -654,8 +654,13 @@ recorded path arguments: every one of them is either repo-root-relative or begin
 
 ## 9. DEC-CONS-07: Release writes `""`; `file_empty` is read as absent — **both halves superseded upstream** (`TSPEC:974-977`, `:987-988`)
 
-**Context.** FSPEC §4.1's marker-lifetime row says the marker is "**Removed** at step 16"
-(`FSPEC-pdlc-consolidation-agent.md:415`). No declared seam can remove a file:
+**Context.** FSPEC §4.1's marker-lifetime row **said** the marker was "removed at step 16" at the
+revision this entry was written against. It no longer does: at HEAD the lifetime rows read "Released |
+at step 16 … an **in-place rewrite**" and "Removed | **never by the pass**"
+(`FSPEC-pdlc-consolidation-agent.md:435-436`), and `FSPEC:441-442` gives this entry's own reason for
+the change — "a lifetime that said 'removed at step 16' would state a capability the runtime does not
+have, so release is specified as the one operation available: an in-place write of the same path".
+No declared seam can remove a file:
 `grep -nc "unlink\|rm -f\|rmdir" pdlc/workflows/runtime-adapter.js` returns **0** at HEAD, and the
 marker is untracked and `.gitignore`d, so `git rm` neither applies nor is admitted to the
 invoking-tree verb set. Release must therefore be expressed with a write, and once it is, the
@@ -673,15 +678,19 @@ and why, not as live direction:**
    non-empty, and `{ok:false, reason:"file_empty"}` / `{ok:false, reason:"file_missing"}` otherwise —
    so **`file_empty` is treated exactly as absent**.
 
-The accepted cost is stated rather than absorbed: FSPEC §4.2's fourth row assigns "marker present,
-unparseable **or empty (truncated write)**" the outcome "reclaimed, recording `reclaimed-stale-lock`
-with the abandoned id `unknown`" (`:442`), bound again by E-11 and by AT-M3's *Given*. The
+The accepted cost is stated rather than absorbed: FSPEC §4.2's **empty-or-neither-form** row assigns
+"present but **empty**, or a line that is neither form" the outcome "treated as **stale and
+reclaimed**, recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown`"
+(`FSPEC:479` — the table's *fifth* row at HEAD; it was the fourth before the `RELEASED:` row at
+`FSPEC:476` was inserted, which is why this entry called it the fourth), bound again by E-11 and by
+AT-M3's *Given*. The
 **unparseable-but-non-empty** arm behaves exactly as specified; the **empty** arm becomes
 **unreachable**. That was raised as an erratum against FSPEC, not reinterpreted here (§11).
 **The erratum has since been answered and the cost is no longer paid** — FSPEC v11.3's **BR-14a**
 (`FSPEC:2585`) releases by writing a `RELEASED:` sentinel, **E-11** (`FSPEC:2678`) is reachable
 *because* of that, and **E-11b** (`FSPEC:2679`) sends a `RELEASED:` marker to `free` at any age with
-no reason code. Both arms of §4.2's fourth row are live; see the supersession note below.
+no reason code. Both arms of §4.2's empty-or-neither-form row (`FSPEC:479`) are live; see the
+supersession note below.
 
 There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
 the marker is **permanent** — one per consuming repo, from the first pass onward, because
@@ -1000,8 +1009,10 @@ erratum, stated in its own paragraph):
 
 1. ~~**FSPEC §4.1 / §4.2 — the marker's removal verb and the empty arm**~~ (DEC-CONS-07)
    — **CLOSED upstream; retained as the record of the round.** §4.1's lifetime row said "Removed at
-   step 16" (`FSPEC:415`), which no declared seam can do, and §4.2's fourth row then bound an
-   `empty (truncated write)` arm unreachable under an empty release. FSPEC v11.3 answered the product
+   step 16", which no declared seam can do, and §4.2's empty-or-neither-form row then bound an
+   `empty (truncated write)` arm unreachable under an empty release. Both rows have since been
+   rewritten: at HEAD `FSPEC:435-436` reads "Released … in-place rewrite" / "Removed | **never by the
+   pass**", `FSPEC:441-442` states why, and the empty arm now sits at `FSPEC:479`. FSPEC v11.3 answered the product
    question — *must the durable log witness a pass that dies mid-take?* — **yes**, and answered it
    with a representation rather than a removal verb: **BR-14a** releases by writing
    `RELEASED: {passId} {ISO-8601}` (`FSPEC:2585`), **E-11** is reachable *because* of that
