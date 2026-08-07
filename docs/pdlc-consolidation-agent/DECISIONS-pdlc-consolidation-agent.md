@@ -675,7 +675,11 @@ The accepted cost is stated rather than absorbed: FSPEC §4.2's fourth row assig
 unparseable **or empty (truncated write)**" the outcome "reclaimed, recording `reclaimed-stale-lock`
 with the abandoned id `unknown`" (`:442`), bound again by E-11 and by AT-M3's *Given*. The
 **unparseable-but-non-empty** arm behaves exactly as specified; the **empty** arm becomes
-**unreachable**. That is raised as an erratum against FSPEC, not reinterpreted here (§11).
+**unreachable**. That was raised as an erratum against FSPEC, not reinterpreted here (§11).
+**The erratum has since been answered and the cost is no longer paid** — FSPEC v11.3's **BR-14a**
+(`FSPEC:2585`) releases by writing a `RELEASED:` sentinel, **E-11** (`FSPEC:2678`) is reachable
+*because* of that, and **E-11b** (`FSPEC:2679`) sends a `RELEASED:` marker to `free` at any age with
+no reason code. Both arms of §4.2's fourth row are live; see the supersession note below.
 
 There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
 the marker is **permanent** — one per consuming repo, from the first pass onward, because
@@ -762,18 +766,23 @@ mechanism. And DEC-ORACLE-02's rule — an uninstrumentable or unrepresentable p
 worked around — which is why this entry ships a narrowing plus an erratum instead of a removal seam.
 
 **Reversibility:** one-way door while no removal verb exists; trivially reversible the moment one
-does, since both halves are single expressions. The *upstream* half is a live product question and is
-reversible by decision, not by code: if the FSPEC author rules that the durable log must witness a
-mid-take death, the answer is a removal verb (or a different marker representation), not a change to
-these two expressions.
+does, since both halves are single expressions. The *upstream* half **was** a live product question
+and is now decided: the FSPEC ruled that the durable log **must** witness a mid-take death, and the
+answer taken was not a removal verb but the third option listed under the triggers below — a marker
+representation that distinguishes released from truncated (`RELEASED:`), which is why both halves of
+the Decision above are superseded rather than merely re-priced.
 
-**Re-evaluation triggers.** The adapter gaining a removal verb; the FSPEC answering the erratum's
-question — *when a pass dies mid-take, must the durable log witness it?*; a marker representation
-that distinguishes "released" from "truncated" without removal (e.g. a released sentinel line), which
-would restore the empty arm at the cost of making `parseMarker` total over two forms.
+**Re-evaluation triggers.** The adapter gaining a removal verb; ~~the FSPEC answering the erratum's
+question — *when a pass dies mid-take, must the durable log witness it?*~~ (**answered: yes**,
+FSPEC v11.3 §4.2 / `FSPEC:2678`); ~~a marker representation that distinguishes "released" from
+"truncated" without removal (e.g. a released sentinel line), which would restore the empty arm at the
+cost of making `parseMarker` total over two forms~~ (**taken**: BR-14a's `RELEASED:` line,
+`FSPEC:2585` / `TSPEC:974-977`, with `parseMarker` total over the two forms at `TSPEC:951`). What
+remains live is the first trigger alone.
 
 **Testability:** the observable is the **write double's last recorded contents for the marker path** —
-the `IN-PROGRESS:` line during the pass, the empty string after it. Two conjuncts follow. (i) Release
+the `IN-PROGRESS:` line during the pass, and after it ~~the empty string~~ the
+`RELEASED: {passId} {ISO-8601}` sentinel (superseded payload; `TSPEC:974-977`, `:1001-1003`). Two conjuncts follow. (i) Release
 happens on **every** terminal status that took the marker: the assertion is a set-equality over the
 six-member terminal-status set rather than a spot check, so a new status cannot silently skip release.
 The six are enumerated in `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43` —
@@ -782,13 +791,21 @@ the assertion's source of truth, so a seventh status added there fails the set-e
 being silently excluded. (`skipped-cadence` writes no log row per AC-7.2 and `refused` terminates
 before taking the marker per AC-1.3; the set-equality is between *took* and *released*, so those two
 are on both sides as non-takes rather than dropped from the enumeration.)
-(ii) The empty-marker fixture (`""`) is paired against the non-empty unparseable fixture in the same
-case: the first must produce `free` with **no** `reclaimed-stale-lock` record, the second must produce
-`reclaim` **with** one. That pairing is the only thing that keeps a future refactor from re-adopting
-either rejected alternative, and it is a conjunct inside a case the marker file's single owning task
-already writes — it adds no file and no task to the ownership manifest. The unreachable half of
-FSPEC §4.2's row is **not** tested: writing a test for it would assert behaviour the code cannot
-have.
+(ii) A fixture pairing in one case keeps a future refactor from re-adopting either rejected
+alternative. **The pairing this entry specified is superseded along with the Decision it tested**:
+it read "`""` ⇒ `free`, no `reclaimed-stale-lock`; non-empty unparseable ⇒ `reclaim`", which under
+the shipped `RELEASED:` release is backwards on its first member. The shipped set is **four fixtures
+in the same case** (`TSPEC:2640`): `""` and the neither-verb line both `reclaim` **with** a
+`reclaimed-stale-lock` record (AT-M3), and the two `RELEASED:` fixtures produce `free` with **no**
+record, at either age (AT-M11). The structural point is unchanged and is why the pairing exists at
+all: an implementation that reclaims on every take passes the reclaim fixtures alone, and one that
+never reclaims passes the `RELEASED:` fixtures alone, so only the pairing falsifies both. It is a
+conjunct inside a case the marker file's single owning task already writes — it adds no file and no
+task to the ownership manifest. The observable in the release conjunct (i) is likewise the
+`RELEASED: {passId} {ISO-8601}` sentinel, not the empty string.
+~~The unreachable half of FSPEC §4.2's row is **not** tested: writing a test for it would assert
+behaviour the code cannot have.~~ — withdrawn: no half of that row is unreachable under BR-14a, and
+both are tested by the four fixtures above.
 
 ## 10. Alternatives considered but not recorded as decisions
 
