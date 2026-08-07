@@ -288,4 +288,118 @@ disappears rather than being disclosed.
 
 ## Best-Guess Root Cause
 
+**The erratum channel confirms a document against the *items raised against it*, never against the
+*current state of its own upstream*. When a document's parent is amended in the same erratum wave,
+the child's erratum round is scoped to whatever the downstream phase happened to be able to *count* —
+and a mechanism decision is not countable. The child therefore re-enters the pipeline correct on
+arithmetic and stale on substance, and its own approvers reject the confirmation.** Four causes, in
+decreasing confidence.
+
+### RC-1 (primary) — the erratum protocol has no upstream re-grounding step
+
+The protocol as shipped is: *reviewer/author finds a defect in an upstream document → emits
+`ERRATUM: {DOCTYPE}: {item}` → after the phase converges, that document's author makes a targeted
+edit → that document's own approvers delta-confirm.* Every arrow in that chain carries **the item**.
+No arrow carries **the upstream document's version**.
+
+That is sufficient when errata flow one layer at a time. It is insufficient here, because the Phase-D
+erratum wave amended **three** layers within eighteen minutes:
+
+| Time | Document | Change |
+|---|---|---|
+| 21:11 | `REQ` v2.1 | erratum confirmed (round 15) |
+| 21:19–21:21 | `FSPEC` **v11.3** | `RELEASED:` sentinel decided (BR-14a, E-11b, E-11 rewritten); **AT-M11, AT-Q13, AT-R7 minted** |
+| 21:27–21:28 | `FSPEC` | confirmed by both approvers |
+| 21:32 | `TSPEC` **v1.7** | erratum round **7** — NFR-2 non-disclosure qualification, §9.2 push mechanism, §5.3/§13.1 alignment |
+| 21:36–21:37 | `TSPEC` | confirmed by both approvers |
+
+**The TSPEC's own erratum round ran thirteen minutes after its parent was rewritten, and did not
+absorb one line of it.** It could not: erratum round 7's item list was the set of defects raised
+*against the TSPEC*, and nobody had yet read FSPEC v11.3 against the TSPEC — the FSPEC's confirmation
+had landed four minutes earlier. The TSPEC was then approved at v1.7 and handed to Phase P **already
+stale against a parent both of its approvers had just approved**.
+
+Phase P then did the only thing a downstream reader can do without re-reading the parent's prose: it
+diffed what is machine-comparable. Three missing ids. A count of 96 against 99. Thirteen raises, six
+defects, **all of them the countable residue of a semantic change nobody had propagated.** The
+erratum round closed all six. `te-review` — the one actor in the chain whose job is to ask whether a
+stated oracle can actually pass — read the parent and found the rest.
+
+Evidence this is the binding constraint:
+
+1. **The failure is exactly at the seam where the two halves meet.** AT-M11 is the id BR-14a minted.
+   Assigning it (countable) without adopting BR-14a (semantic) is the *only* way to produce a
+   register id with a file, a level, and no satisfiable fixture. AT-Q13 and AT-R7 — ids minted for
+   gaps that had no mechanism decision attached — landed cleanly, with positive controls, and drew no
+   finding. Same round, same author, same protocol: the two ids without a semantic partner worked.
+2. **§13.3 is the protocol gap in one paragraph.** `TSPEC:2592-2608` is a *hand-off* section — the
+   section Phase P reads for downstream obligations — and it says the removal-verb question is open
+   and that release writes `""`. Both statements were true when written and false when read. Nothing
+   in the channel re-reads a hand-off section against its upstream's current text.
+3. **The countermeasure is cheap and would have prevented the halt.** Re-reading FSPEC §4.1/§4.2 at
+   the start of erratum round 8 would have surfaced BR-14a and E-11b, made the release form the
+   round's *first* edit, and made AT-M11's assignment satisfiable rather than nominal.
+
+Confidence: **high**. The timeline is exact, the two id classes behaved differently in the same
+round, and the failing reviewer names the mechanism itself in F-02.
+
+### RC-2 (secondary) — errata are raised from the downstream document's *questions*, so only countable divergences get raised
+
+A downstream reader raises what it can falsify from where it stands. A PLAN author reading a TSPEC
+asks: does every register id have a task? does the count match? does every production edit have a
+test? Those are set operations, and set operations are what the thirteen raises are.
+
+**Nobody's job description says "re-read the grandparent's prose".** The PLAN's grounding manifest
+points it at the TSPEC; the TSPEC's approvers scope to the TSPEC's diff. The FSPEC's *decisions* are
+only reachable by an actor who deliberately walks up two layers — which is what `te-review` did at
+confirmation time, one step too late to be an erratum item and one step early enough to block.
+
+This is the same shape `DEC-LAYER-01` created and `POSTMORTEM-T` RC-1 named, seen from the opposite
+direction: `DEC-LAYER-01` moves decisions *down*, and this pipeline has good machinery for a
+downstream document that must decide. It has none for a downstream document that must **notice its
+upstream decided**.
+
+Confidence: high for the mechanism; medium for the claim that it generalises beyond a multi-layer
+erratum wave — with a single-layer erratum the child's parent does not move under it.
+
+### RC-3 (contributing) — a targeted erratum edit generates blocking surface at the same rate as a review round
+
+F-03 is a Medium the round manufactured in four minutes: a real coverage gap, a correct decision to
+close it with an oracle, and an oracle that cannot green. `POSTMORTEM-T` RC-2 predicted precisely
+this — every decided observable owes a §12.2 row and a §12.3 assignment, and each new row is a new
+place to be wrong. The erratum channel inherits that rate **without inheriting the review budget that
+absorbs it**: a phase gets five review rounds and exactly one erratum round.
+
+So an erratum round is structurally harder than a review round. It must close every raised item,
+introduce no new blocking finding, and it gets one attempt. On this feature's measured rate — every
+round of every phase has minted at least one new finding — a one-shot channel is close to
+unsatisfiable for any erratum that requires a new oracle.
+
+Confidence: high for the mechanism, medium for the "close to unsatisfiable" framing (n = 1 erratum
+failure against several erratum successes: rounds 7 and earlier all confirmed).
+
+### RC-4 (contributing) — `DEC-SEV-03` is correctly applied and does not cover a *stale* collision
+
+`DEC-SEV-03` demotes a named, priced and erratum-routed upstream collision to Low. §12.3's AT-M11 row
+does all three, and `pm-review` scored it Low accordingly. The rule has no clause for the case where
+the collision **has already been resolved upstream** — where the correct action is not to route but
+to *absorb*. Routing a settled question is not a demoted finding; it is a wrong statement about the
+world, and it sends the PLAN the losing side. The rule needs the clause; it does not need reversing.
+
+Confidence: medium-high. The gap is real and this is its first instance.
+
+### Ruled out
+
+| Hypothesis | Why not |
+|---|---|
+| Review-window exhaustion (the prior three halts) | Phase P used **2 of 5** rounds and both reviewers approved. No window was exhausted |
+| Author non-responsiveness or a stalled loop | Six targeted commits in four minutes closing 100 % of raised items; no no-progress halt; 23 minutes from first review to both approvals |
+| The erratum round was executed badly | Both confirmers marked all six raised items **Resolved**; the register fix removed the defect *class* (run-time re-derivation) rather than the instance; the `CLAUDE.md` fix was written count-free so it cannot recur |
+| Reviewer severity inflation | F-01's High is the concealment half of `DEC-SEV-03`, not the collision half — a row asserting coverage the mechanism cannot deliver. F-02 and F-03 each name a specific contradicted line and a specific oracle that cannot green |
+| Reviewer deadlock | The disagreement is decidable and `te-review` is right at HEAD (`FSPEC:2551`, `:2645` verified). `pm-review` flagged the same divergence in Q-01 rather than contradicting it |
+| A defect in the PLAN | The PLAN converged, is approved, carries anchors, and its T05 row *predicted this exact failure* as a stated precondition. It is the one document in the chain that got this right |
+| A defect in the FSPEC | FSPEC v11.3 is internally coherent and was confirmed by both its approvers. It answered a question the TSPEC had raised — the channel worked in that direction |
+| Scope drift or a contested decision | No round re-opened scope or structure; both confirmers state the diff range and that untouched sections stand approved |
+| The `RELEASED:` divergence was concealed | §12.3's AT-M11 row and §13.3 both state it plainly. The defect is that they state it as *open* when it is closed |
+
 ## Recommendation
