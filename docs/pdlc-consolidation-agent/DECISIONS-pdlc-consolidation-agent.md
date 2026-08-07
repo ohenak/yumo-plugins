@@ -53,7 +53,7 @@ DEC-CONS-07 are direct applications of DEC-DIST-01 and DEC-ORACLE-02 respectivel
 | DEC-CONS-04 | The marker take is observe-then-write (`_checkFile`, `_readFile`, `_writeFile`); no atomic take exists | one-way door at this layer (no `O_EXCL` transport) | AC-1.3 |
 | DEC-CONS-05 | Two corpus enumerations pinned literally on each side; only the **predicate** is held equal by a differential test | hard (relaxes a REQ clause; raised as an erratum) | AC-1.1, AC-1.2, NFR-5 |
 | DEC-CONS-06 | Widen `rtWriteFile`'s prompt alone to resolve an absolute path verbatim; leave `rtReadFile` untouched | hard (shipped seam every phase writes through) | AC-3.1, AC-3.8 |
-| DEC-CONS-07 | Release is `_writeFile(markerPath, "")`; `_checkFile`'s `file_empty` is read as **absent** | one-way door while no removal verb exists | AC-1.3 |
+| DEC-CONS-07 | Release is `_writeFile(markerPath, "")`; `_checkFile`'s `file_empty` is read as **absent** — **payload and probe both superseded** by `TSPEC:974-977` (release writes `RELEASED: {passId} {ISO-8601}`) and `TSPEC:987-988` (`file_missing` **alone** is absent; an empty marker is truncated and **reclaims**). Write downstream work against the TSPEC form, never against this row's | one-way door while no removal verb exists | AC-1.3 |
 
 Entries are numbered in the order the TSPEC weighed them (`TSPEC §13.1` rows 1, 2, 4, 5, 6, 11, 13);
 that section's remaining rows are dispositioned in §10 below rather than promoted here.
@@ -652,7 +652,7 @@ batch-safety rule 2. Behaviourally, the clone's writes are observed through the 
 recorded path arguments: every one of them is either repo-root-relative or begins with the string
 `_makeTempDir` returned.
 
-## 9. DEC-CONS-07: Release writes `""`; `file_empty` is read as absent
+## 9. DEC-CONS-07: Release writes `""`; `file_empty` is read as absent — **both halves superseded upstream** (`TSPEC:974-977`, `:987-988`)
 
 **Context.** FSPEC §4.1's marker-lifetime row says the marker is "**Removed** at step 16"
 (`FSPEC-pdlc-consolidation-agent.md:415`). No declared seam can remove a file:
@@ -821,7 +821,7 @@ and both are raised as errata rather than settled here.
 | DEC-CONS-01, DEC-CONS-03, DEC-CONS-06 | The `runtime-adapter.js` writers are likewise **one** task: `rtEnvPresent`, `rtMakeTempDir`, the consolidation injections object, and the single `rtWriteFile` prompt widening (`rtReadFile` is **not** edited) are one file |
 | DEC-CONS-02 | The rebuild of `pdlc/workflows/dist/` is an explicit task with `pdlc/workflows/dist/` in its pathspec, per `implementation.postWavePathspecs`. Four tracked artifacts change, not one — a partial rebuild fails CI's `Generated artifacts are in sync` job |
 | DEC-CONS-02 (§8.3) | The release note and `pdlc/RELEASE-CHECKLIST.md` must state that the first queue invocation after this feature lands is **blocked by the drift gate** until `sync-workflows.sh` runs. No AC owns this; it is the shipped gate meeting a new manifest row |
-| DEC-CONS-04, DEC-CONS-07 | The marker test file's owning task's Definition of Done must name both conjuncts — the six-status release set-equality and the empty-vs-unparseable fixture pair — so neither is read as unowned |
+| DEC-CONS-04, DEC-CONS-07 | The marker test file's owning task's Definition of Done must name both conjuncts — the six-status release set-equality, and the **four-fixture marker case** the shipped form requires (`TSPEC:2640`): AT-M3's `""` and neither-verb fixtures **reclaim**, AT-M11's two `RELEASED:` fixtures do **not**, at either age. That is the fixture set superseding this document's "empty-vs-unparseable pair", whose discrimination the `RELEASED:` sentinel re-drew as `""`-vs-`RELEASED:` (§9's supersession note). All four sit in **one** case in the marker file's single owning task, so the ownership manifest is unchanged |
 | DEC-CONS-05 | The shipped-hook edit is **three changes in one file** — the env-gated `PDLC_PENDING:` stderr write, `:28`'s single glob replaced by the two-member `CORPUS_GLOBS` comprehension, and `:41`'s predicate scoped to the two regions — and therefore **one** owned task on `pdlc/hooks/scripts/nudge-consolidation.sh`, per batch-safety rule 2. §7's alternatives bullet states the same three. The hook-parity test is a separate owned file and depends on that task by an explicit `Deps` edge |
 | All seven | Per DC-10, each entry above carries its `Testability:` line, and each names the file the oracle lives in. The canonical test doubles for the seams (`fakeFs`, the `_git` argv recorder, the `asAsync` wrapper) are created by one batch-1 task with downstream edges, per batch-safety rule 4 — no per-test ad-hoc equivalents, per DEC-ORACLE-03 |
 
@@ -926,6 +926,19 @@ must land as properties rather than as unit cases:
   `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
   take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
   satisfied by a constant function.
+  **Write the payload and the probe against the TSPEC, not against this entry's Decision half — both
+  halves are superseded (§9's supersession note).** (a) Release is an in-place write of
+  `RELEASED: {passId} {ISO-8601}` (`TSPEC:974-977`), so the set-equality's observable is the write
+  double's last recorded contents **matching that sentinel** (`TSPEC:998-1003` is the read-back
+  conjunct; `TSPEC:2443`, T-13, states the same for the terminal-status case), never "the marker is
+  empty" and never "the marker is gone". (b) `present` is **`file_missing` alone as absent**
+  (`TSPEC:987-988`): `{ok:true}` and `file_empty` are both present. An `file_empty ≡ absent` oracle
+  is **red against `TSPEC:988`** and, worse, green on a regression — it makes the empty-marker
+  fixture take as free and so cannot see `reclaimed-stale-lock`, an AC-1.3 operator-visible outcome
+  that §10.3 row 4 requires (`TSPEC:1940`). (c) The falsifying pairing is **four** fixtures in one
+  case, not two (`TSPEC:2640`): `""` and the neither-verb line must reclaim; the two `RELEASED:`
+  fixtures must not, at either age. Two fixtures alone are passed by an implementation that reclaims
+  on every take, or by one that never reclaims.
 
 **What is deliberately unasserted, and why.** The PROPERTIES author inherits these *absences* as
 explicitly as the invariants above; none of them is an oversight, and none should be closed by
