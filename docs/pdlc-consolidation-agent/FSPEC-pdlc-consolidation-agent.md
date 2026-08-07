@@ -823,7 +823,9 @@ enact. A remediation sharing the PR is enumerated there like any other, under it
 Beyond the trailers, the body carries what AC-3.2 requires and a reviewer needs to judge the edit
 without opening the corpus: the source LEARNINGS by **feature name**, the failure mode the edit
 targets (its `symptom` line, §8.1), and the pattern evidence that cleared the AC-2.3 bar — which
-features it recurred across, or the standing-invariant argument for a single occurrence.
+features it recurred across, or the standing-invariant argument for a single occurrence. These three
+are an obligation on the body, separate from the three trailers and not discharged by them, and
+**AT-Q13** asserts them; AT-Q2 sees the trailers only.
 
 ### 6.3 When the PR cannot be opened (AC-3.5)
 
@@ -2118,6 +2120,7 @@ PROPERTIES' (DC-09).
 | AT-Q10 | operator | a proposal for `docs/_constraints/DOMAIN-CONSTRAINTS.md` whose `(failure-mode-id, action)` pair is already carried by a prior pass's §8.1 failure-mode record with `route: constraints` — the `enacted` arm of §6.4's consuming-repo carrier | the pass runs | **nothing** is appended to `DOMAIN-CONSTRAINTS.md` for it (the file's bytes are unchanged); `duplicate-suppressed` is recorded and `suppressed-by:` carries **exactly one** entry whose literal text is `{failure-mode-id}:{action} → pass:{enacting passId}` — §10.3's consuming-repo spelling, not a URL and not a bare id; `pr:` is **empty**, since no PR is involved on this route. All three conjuncts are required — an implementation that suppressed the append but recorded nothing is indistinguishable from one that never derived the proposal |
 | AT-Q11 | operator | the same proposal with **no** matching record in the log — the `absent` arm — in a pass that is then re-run over an unchanged corpus | both passes run | the first pass appends **exactly once** and writes its failure-mode record with `route: constraints`; the second pass suppresses, and `DOMAIN-CONSTRAINTS.md` is **byte-identical** after the second pass to what it was after the first. The byte-identity assertion is the one this row exists for: it is the only oracle that fails an implementation which never consults the log and re-appends on every run — the exact failure §6.4's second carrier was added to prevent |
 | AT-Q12 | operator | a prior pass's failure-mode record for a pair with `route: degraded` — the promotion reached nothing but `CONSOLIDATION-PROPOSAL-{passId}.md` (§6.3, §7.3) — and a later pass deriving the same pair | the later pass runs | the pair reads **`absent`**, not `enacted`: the promotion is re-proposed and, where it can now be applied, appended. A record's existence alone must not suppress; only a landed `route` does. This row is the consuming-repo mirror of AT-Q4's closed-unmerged PR |
+| AT-Q13 | operator | **two fixtures**, each a pass that opens a PR for one promotion: (a) a promotion whose failure mode recurred across **two** named features, derived from those two source LEARNINGS; (b) a promotion with a **single** occurrence, cleared under AC-2.3's standing-invariant argument | the PR body is read | the body carries, beyond the three trailers, all three of AC-3.2's obligations: **(1)** each source LEARNINGS named by its **feature name** — set-equal to the features the promotion was derived from, so (a)'s body names both and a body naming one is red; **(2)** the targeted failure mode's `symptom` line (§8.1) verbatim; **(3)** the AC-2.3 pattern evidence in the form that fixture cleared the bar with — the recurrence features in (a), the standing-invariant argument in (b). All three are asserted on both fixtures, and fixture (b) is what stops an implementation from emitting a recurrence list unconditionally and so reporting a single-occurrence promotion as a recurrence. This is the only test that reads the PR **body** for AC-3.2: AT-Q2's oracle is the trailer set, and a body carrying nothing but the three trailers is green under AT-Q2 and red here — which is the gap this row exists to close |
 
 ### 13.6 Credential (§7)
 
@@ -2311,7 +2314,7 @@ row names a criterion the REQ does not carry.
 | AC-2.3 | §5.2, §9.4 | AT-A4 |
 | AC-2.4 | §5.2, §10.3 | AT-L3 |
 | AC-3.1 | §5.1, §6 | AT-R1 |
-| AC-3.2 | §6.2 | AT-Q2 |
+| AC-3.2 | §6.2 | AT-Q2 (the trailers), AT-Q13 (the body obligations — sources by feature name, targeted failure mode, AC-2.3 evidence) |
 | AC-3.3 | §6.2, §8.2 | AT-Q2, AT-F2 |
 | AC-3.4 | §10.2, §10.3 | AT-L1 |
 | AC-3.5 | §6.3, §5.3 | AT-Q6, AT-Q8, AT-K2, AT-K7 |
