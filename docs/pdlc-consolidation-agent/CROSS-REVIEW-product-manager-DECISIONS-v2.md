@@ -149,4 +149,39 @@ Three Low findings, all one-line carries, none gating.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My v1 High (F-01) is resolved, and resolved in the form I asked for: the residual is recorded in
+DEC-CONS-04's voice, the sentence the code contradicted is withdrawn by name, the Testability line
+says which arms observe the channel (none), and the mechanism question — whether a credentialed argv
+element can exist — is handed upstream as a TSPEC erratum rather than assumed away. Both v1 Lows are
+carried. Nothing in the changed spans broke anything I approved at v1; I re-ran every new citation and
+both new measurements and found none overstated.
+
+Three Low findings remain, all one-line carries, none of which gates:
+
+1. **F-04** — state DEC-CONS-06's negative arm as the file-wide `relative to the repository root`
+   grep (or name `rtReadRange`, `runtime-adapter.js:280`, beside `rtReadProbe`), so the oracle is
+   set-equal to the read-path prompt set.
+2. **F-05** — qualify or drop the three bare "reviewer Q-0N" references; the cross-review files they
+   point at are deleted at harvest.
+3. **F-06** — one parenthetical on §2's DEC-CONS-01 row marking the `git` half provisional pending
+   §11.3 item 3.
+
+Nothing else needs to move. Specifically, I am **not** asking for changes to DEC-CONS-01's residual
+paragraph or its three-arm Testability, to DEC-CONS-03's three-domain partition, to DEC-CONS-04's
+observability paragraph, to DEC-CONS-05's post-edit-hook baseline or three-change cost, to
+DEC-CONS-07's second accepted cost, to §11.1 row 6, or to §11.2's unasserted table. Q-04 and Q-05 are
+questions for the PLAN and the release note, not findings.
+
+Two upstream items leave this review as errata rather than as findings against this document. Both are
+raised by the document itself in §11.3 item 3; I verified both against the code and emit them so the
+orchestrator routes them to the TSPEC's author rather than leaving them to be noticed in Phase I:
+`rtShellQuote` (`runtime-adapter.js:668-670`) single-quotes every `_git` argv element, so
+`TSPEC:1595-1601`'s shell-expansion mechanism cannot carry the token on the push path; and
+`TSPEC:1325`'s traceability row still states NFR-2 non-disclosure as unqualifiedly "structural", which
+is true outbound and not true of the inbound failure-reply channel.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
