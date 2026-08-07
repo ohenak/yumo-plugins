@@ -403,3 +403,162 @@ Confidence: medium-high. The gap is real and this is its first instance.
 | The `RELEASED:` divergence was concealed | §12.3's AT-M11 row and §13.3 both state it plainly. The defect is that they state it as *open* when it is closed |
 
 ## Recommendation
+
+Ordered. Steps 1–3 close the three blocking findings; steps 4–5 are the protocol countermeasures;
+step 6 is re-entry; steps 7–9 are scope notes, non-options and the harvest signal.
+
+### 1. Settle the release form — adopt FSPEC v11.3's `RELEASED:` sentinel into §7.3
+
+This is the repair, and it closes **F-01 and F-02 together**. `te-review`'s Q-02 supplies the argument
+and it holds: §7.3's approved reasoning is *"no seam can unlink"*, and an in-place write of
+`RELEASED: {passId} {ISO-8601}` requires no unlink. Adopting the sentinel therefore does not
+contradict anything either reviewer approved at v7/v8 — it satisfies the same premise with a
+different payload, and the `file_empty ≡ absent` equivalence §7.3 currently leans on stops being
+load-bearing.
+
+Price the knock-ons **before** editing; `te-review`'s Q-01 enumerates them and each is real:
+
+| Site | Today (empty form) | Under the sentinel |
+|---|---|---|
+| §7.3 `parseMarker` | accepts exactly `IN-PROGRESS: …`; anything else ⇒ `null` | must additionally recognise `RELEASED: …` and map it to **free**, at any age, with no reason code (`FSPEC:2645` E-11b) |
+| §10.3 rows 4 / 4a | row 4a exists to record the unreachable truncated arm | the truncated arm is **reachable again** (`FSPEC:2643` E-11 says so in terms); rows 4/4a collapse back toward the register's own shape |
+| §12.2 empty-marker conjunct | `""` marker ⇒ normal terminal status, **no** `reclaimed-stale-lock` | `""` marker now means *truncated*, so it **does** record `reclaimed-stale-lock`; the conjunct inverts |
+| §12.3 AT-M3 row | "only partly satisfiable at this layer" | fully satisfiable — delete the partial-coverage disclosure rather than restate it |
+| §12.3 AT-M11 row | records a divergence and raises an erratum | records **no** divergence and raises **no** erratum; the fixtures pass |
+| §12.2 T-13 release oracle | "last recorded contents are `\"\"`" | "last recorded contents match `RELEASED: {passId} {ISO-8601}`" |
+| §13.3 marker bullet (`:2592-2608`) | hands the question downstream as open | **delete the open question**; state BR-14a / E-11b as decided and cite them |
+
+Two things this repair must **not** do: it must not raise a further erratum against the FSPEC (the
+FSPEC has answered; absorbing is the correct action — see step 4), and it must not leave §13.3's
+"Until it is answered…" text standing anywhere. F-02 is specifically that the *hand-off* section, not
+the traceability table, is what the PLAN reads.
+
+**If instead §7.3 keeps the empty form**, the fallback is `te-review`'s stated alternative: §12.3's
+AT-M11 row must state which arm is satisfiable at this layer and which is not — the shape §12.3
+already uses for AT-M3 — and §13.3 must still be corrected against BR-14a / E-11b, because the
+question is closed either way. This is strictly worse: it ships a register id whose PLAN task (T05)
+is red on arrival, which is what the erratum was raised to prevent. Prefer step 1 as written.
+
+### 2. Fix the `CLAUDE.md` ↔ manifest oracle so it can green (F-03)
+
+§12.2's new `CLAUDE.md` row asserts set equality between `CLAUDE.md`'s artifact enumeration and the
+ids in `pdlc/workflows/dist/distribution-manifest.json`. Verified at HEAD: the manifest's `rows[]` is
+`orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` — **no row for itself** — while `CLAUDE.md:57-59`
+enumerates the manifest as a shipped artifact and must keep doing so. The sets cannot be equal.
+
+Name the exclusion in the row the way the same case's `BUNDLES` half already names its own
+(`.mjs`, not `.bundle.js`): the oracle is set equality between *the enumeration minus the manifest
+itself* and *the manifest's `rows[].id`*. Do not weaken it to containment — containment is precisely
+the assertion that would have stayed green through the drift the row exists to catch.
+
+### 3. Sweep the three cosmetic Lows while the sections are open
+
+None blocks; all three are in text this repair touches anyway.
+
+| Low | Where | Repair |
+|---|---|---|
+| `pm-review` TSPEC v9 F-01 | `TSPEC:2417-2424` | the §12.2 closing paragraph still says both gaps "now carry a `(no FSPEC AT)` case"; re-cast in the past tense (they *were* covered by local cases while the erratum was outstanding) |
+| `pm-review` PLAN v2 F-08 | `PLAN:434-436` | §8.1's counting paragraph contradicts the table directly above it |
+| `te-review` PLAN v2 F-01 | `PLAN` T05 status cell | the headline label still says the opposite of T05's own precondition |
+
+### 4. Record `DEC-ERR-01` — absorb a resolved upstream question; never re-route it
+
+Add to `docs/_decisions/DECISIONS-review-severity-bars.md` (beside `DEC-SEV-03`, whose gap this
+fills):
+
+> **`DEC-ERR-01` — a collision whose upstream has already decided is absorbed, not routed.**
+> `DEC-SEV-03` demotes a named, priced and erratum-routed upstream collision to Low. That demotion
+> applies **only while the upstream question is open**. Before routing a collision, the raising
+> document must re-read the upstream artifact **at HEAD**; if the upstream has decided the question,
+> the correct action is to **absorb the decision** — restate this layer's mechanism on the decided
+> form and delete the raise. Routing a settled question is **not** a demoted finding: it is a false
+> statement in a hand-off section, and it is scored on what it costs downstream (High when a
+> downstream task is authored against the losing side).
+
+### 5. Add an upstream re-grounding step to the erratum round — the RC-1 countermeasure
+
+Amend the erratum protocol (`pdlc/skills/*/SKILL.md` authoring guidance, and the erratum routing
+described in `CLAUDE.md` → *Phase graph and the erratum channel*) so that an erratum round on document
+D **begins** by re-reading D's immediate upstream at HEAD and diffing it against the version D was
+last approved against:
+
+1. Read the upstream's `Version` cell and its erratum changelog.
+2. If it moved since D's last approval, enumerate **what it decided**, not only what it renamed or
+   added — every `BR-`, `E-`, `AC-` and vocabulary row the upstream's own changelog names.
+3. Fold those decisions into the erratum round's item list **before** the raised items, and record
+   them in the round's changelog as absorbed.
+
+The confirmation should then check the absorbed set as well as the raised set. Cheap, mechanical, and
+it is exactly what would have prevented this halt: FSPEC v11.3's changelog names BR-14a and E-11b in
+its own header note (`FSPEC:15-21`), which the PLAN even read for its version pin without reading
+what the rows said.
+
+Companion note for `docs/_decisions/DECISIONS-spec-layer-boundary.md`: a multi-layer erratum wave must
+propagate **downward in order** — a child confirmed before its parent's decision reaches it is
+approved stale, and its approval is worth less than it looks.
+
+### 6. Re-entry
+
+Once steps 1–5 are verifiably addressed on the branch:
+
+1. Append a `## Resolution` section to this file naming the evidence for each of F-01, F-02, F-03 and
+   the three Lows — **per finding, verified against the file at HEAD, not against commit messages**.
+   Re-verify every `file:line` this postmortem cites; do not trust its line numbers either.
+2. Flip the marker to `RESOLVED: yes` in the same commit and name the evidence in the commit message.
+   **The workflow never writes `yes`; an operator or agent does, after verifying.**
+3. Re-invoke forced:
+   `/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md", "forcePhases": "T,P"}`
+
+**Why `T` and not `P` alone.** Step 1 changes §7.3 — an approved section, and a mechanism change, not
+an erratum landing. A delta confirmation is the wrong instrument for it: that channel asks "did the
+raised item land", and this asks "is the new release form right". Forcing `T` re-opens the TSPEC
+window (rounds 10–14 from the on-disk `-v9` basenames) so the sentinel adoption is reviewed on its
+merits by both approvers. `P` then re-derives the PLAN against the settled TSPEC — which is cheap,
+because the PLAN already converged in two rounds and T05's version pin has to be re-taken regardless
+(`pm-review` v9 Q-02: T05 pins TSPEC `1.7`).
+
+If an operator judges the §7.3 change small enough not to warrant a window, forcing `P` alone is
+defensible — Phase P gets a fresh erratum round on its fresh invocation — but the TSPEC then ships a
+mechanism change confirmed only by a delta check.
+
+### 7. Housekeeping (not blocking)
+
+- **Re-take every upstream version pin.** `PLAN:21` pins TSPEC `1.7`; §4.2 T05 and §9's risk row pin
+  `FSPEC 11.3` / `TSPEC 1.7`. Whatever version step 1 produces, re-pin all three sites in one commit.
+  T05's oracle re-derives both sides at run time, so only the pin is hand-carried — keep it that way.
+- **The `consolidationTraceability.test.js` design is the right one and should survive the repair.**
+  Stating the register size as a reader's summary and re-deriving both sides at run time is why this
+  class of erratum (a hand-copied count going stale on the next upstream version) cannot recur. Three
+  reviewers raised the stale count independently; do not reintroduce a transcribed number.
+- **The PLAN is approved and anchored** (`0339276b`). It does not need re-authoring, only re-pinning.
+- **Queue.** The feature's row will have been rewritten to `halted`. Return it to `pending` in the
+  resolution commit.
+
+### 8. Not recommended
+
+| Option | Why not |
+|---|---|
+| Raise another erratum against the FSPEC about the release form | The FSPEC **answered** it at v11.3. A second raise is `DEC-ERR-01`'s exact anti-pattern and would burn Phase P's next erratum round on a settled question |
+| Re-open Phase F | FSPEC v11.3 is coherent, confirmed by both approvers, and correct. The stale document is the child, not the parent |
+| Re-author the PLAN | It converged in 2 of 5 rounds with 16/16 findings closed as filed, it predicted this failure in T05's precondition, and it carries approval anchors. Nothing in this halt is a PLAN defect |
+| Ship the AT-M11 assignment as bookkeeping and let Phase I discover it | That is the failure mode the register erratum existed to prevent: T05 sits in a halt-on-red wave in batch 2, so the whole wave stops on a red the spec could have removed |
+| Weaken the `CLAUDE.md` oracle to containment | Containment stays green through exactly the drift the row exists to catch (`CLAUDE.md:62`'s "Those three" is already false at HEAD, and containment would not have caught it) |
+| Raise `MAX_REVIEW_ROUNDS`, or allow a second erratum round per phase | Neither addresses RC-1. A second erratum round scoped to the same item list would close the same six items again. Fix the scoping (step 5), not the budget. (Step 5 makes a second round *unnecessary*; if a future halt shows it is still needed, that is a separate decision with its own evidence) |
+| Treat this as the feature's fourth exhausted window | It is not one. The PLAN used 2 of 5 rounds and both reviewers approved. Filing it as review-loop fatigue would hide the protocol defect, which is the only durable finding here |
+
+### 9. Phase H — the harvest signal
+
+Harvest must fold **four** halted phases into `LEARNINGS-pdlc-consolidation-agent.md`. This one
+contributes the finding the other three could not, because they were all the same halt:
+
+> **An erratum wave that amends several layers at once confirms each child against the items raised
+> against it, never against its parent's new text. The child is approved stale by approvers who just
+> approved the parent. The downstream phase then raises only the *countable* residue of the change —
+> missing ids, a stale count — because a set difference is what a downstream reader can falsify from
+> where it stands; the *semantic* half reaches nobody. The repair closes 100 % of what was asked and
+> fails confirmation anyway.**
+
+Two candidates for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at the next
+`consolidate-learnings` pass: `DEC-ERR-01` (step 4) and the upstream re-grounding step (step 5).
+Note the reflexivity for whoever harvests this — the feature being specified *is* a consolidation
+agent, and this postmortem is a worked example of the input it will be asked to distil.
