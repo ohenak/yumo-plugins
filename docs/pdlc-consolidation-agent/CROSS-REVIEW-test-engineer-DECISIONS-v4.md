@@ -36,6 +36,10 @@ it is rarer than it should be.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **The new obligation cite is one line short of the sentence it names, in all three places it appears.** §5 domain 1, §5 domain 2 and §11.2 each attribute the obligation conjunct to `TSPEC:2097`. Measured, `TSPEC:2097` is the *partition* parenthetical ("(without this, a call that falls out of the partition is exempt from containment); **containment**"); the obligation clause begins at `:2098` and completes at `:2099` ("**obligation** `obliged ⊆ observed` per domain, on / the Given that obliges it"). §11.2's range cite `TSPEC:2094-2098` has the same off-by-one at the other end: the four-assertion block runs `:2095-2100`, so the range opens on a blank line and closes before the `∅` equalities and the `Set`-not-multiset clause — both of which §11.2 goes on to quote. Nothing substantive is wrong: every transcribed conjunct is correct against the block. But this document's own standard for a pin (§5 domain 2, this round) is a transcription **with provenance whose divergence from the cited row is itself asserted**, and a provenance that lands on the neighbouring assertion is the weaker half of that. Retarget to `TSPEC:2098-2099` for obligation and `TSPEC:2095-2100` for the four-assertion block | §5, DEC-CONS-03 *Testability*, domains 1 and 2; §11.2, DEC-CONS-03 bullet |
+
 ## Questions
 
 ## Positive Observations
