@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-06 |
+| pdlc | draft | Claude | 1.5 | 2026-08-06 |
 
 > **Scope in one line.** The mechanism for one consolidation pass: one new workflow module
 > (`pdlc/workflows/consolidate-learnings.js`), the seam protocol it is injected with, the pure
@@ -971,7 +971,7 @@ other. FSPEC §4.5 / O-C3 prices
 this race and asks whether the runtime offers an atomic create-exclusive primitive. **It does
 not**: `_writeFile` is `rtWriteFile` (`runtime-adapter.js:802`), an agent-transported whole-file
 write with no exclusive-create mode, and no adapter seam exposes one. This TSPEC takes the
-read-then-write form and **records the decision** rather than inventing a lock: an
+observe-then-write form and **records the decision** rather than inventing a lock: an
 exclusive-create seam would be a new agent transport whose observation (whether the file already
 existed) is exactly as racy as the read it replaces. §13 carries it.
 
@@ -1844,7 +1844,8 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 
 ### 10.4 What is deliberately not handled
 
-- **A second pass racing the marker.** §7.3's read-then-write cannot exclude it; the blast radius is
+- **A second pass racing the marker.** §7.3's observe-then-write take (three seam calls: check, read,
+  write) cannot exclude it; the blast radius is
   bounded by append-only writes and by the PR-route carrier, and the residual consuming-repo
   duplicate is FSPEC §4.5's stated exposure. Nothing here claims to close it.
 - **Recovering a corpus consumed by a pass that died at step 8** (O-C1). No vocabularies §1 field
