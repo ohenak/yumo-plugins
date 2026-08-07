@@ -910,6 +910,136 @@ never reaches an artifact, and is not a vocabularies §1 value — so it cannot 
 
 ## 9. The pull-request route — clone, commit, credential
 
+### 9.1 The temporary clone (T-03)
+
+```ts
+openClone(passId, config, seams): Promise<{dir: string} | {failure: ReasonCode, detail: string}>
+```
+
+Three steps, all through seams, none of them touching the invoking tree's refs:
+
+1. `dir = await _makeTempDir(passId)` (§5.3). `null` ⇒ `{failure: "api-failure"}` — there is no
+   fallback into the invoking tree, because AC-3.8 forbids one outright.
+2. `remote` = the clone source. In the same-repo case (`pluginRepository == null`) it is the
+   invoking repository's **origin URL**, read with `_git(["remote", "get-url", "origin"])` — a
+   non-mutating read of the invoking tree, resolving to `read-status` in §9.3's verb table. Cloning
+   the *working tree path* is deliberately not done: it would carry the tree's local branches and
+   its possibly mid-pipeline HEAD, and FSPEC §6.1 requires the clone to be cut from the **fetched
+   default branch**. In the two-repo case it is `https://github.com/{pluginRepository}.git`. An
+   `origin` that does not resolve is `repository-unresolved`.
+3. `_git(["clone", "--depth", "1", "--single-branch", remote, dir])`. `--depth 1` because the clone
+   exists only to carry one commit per edit and be pushed; nothing here reads history. `git clone`
+   checks out the remote's default branch, which is exactly the FSPEC's "cut from the fetched
+   default branch" and needs no separate `fetch` — hence `fetch` sitting in §9.3's
+   *permitted-but-not-obliged* column rather than in the obliged one.
+
+Every subsequent call in the clone is `_git(["-C", dir, …])`. **Removal**: the pass issues no
+removal. `mktemp -d` places the directory under the OS temp root, which the OS reclaims; a removal
+step would be a mutating call in a domain whose verb set §9.3 closes, and a failed removal would
+have to be dispositioned into a vocabulary that has no row for it. The directory is small (a
+depth-1 clone) and its residue is inspectable, which matches AC-3.6's decision to leave the
+`consolidation/{passId}` branch undeleted for the same reason.
+
+### 9.2 Branch, commits, body, and the PR calls
+
+| Step | Call | Verb (§9.3) |
+|---|---|---|
+| branch | `_git(["-C", dir, "checkout", "-b", "consolidation/" + passId])` | `create-branch` |
+| per edit | write the file in the clone, then `_git(["-C", dir, "add", "--", path])` and `_git(["-C", dir, "commit", "-m", msg + trailer, "--", path])` | `add`, `commit` |
+| push | `_git(["-C", dir, "push", "origin", "consolidation/" + passId])` | `push` |
+| duplicate poll | `_ghRun(mergeCommandFor("consolidationPrs", {repo}))` | `read-pr` |
+| open | `_ghRun(mergeCommandFor("consolidationCreate", {…}))` | `create-pr` |
+
+Writing a file **inside the clone** uses the same `_writeFile` seam with a path under `dir`; the
+seam is path-addressed, so no new capability is needed. NFR-1 is untouched: the only guard-set path
+the pass ever writes is inside the throwaway clone, never in any tree the invoking repository
+checks out.
+
+`mergeCommandFor` (`orchestrate-dev.js:319`) is extended with two surfaces rather than a second
+builder being written. Its doc comment (`:310-312`) states the rule in Phase MERGE's scope — "the
+SOLE place every `gh` command string used by Phase MERGE is built, so a single audit of this
+function's body accounts for every literal command the phase can run" — and this feature **widens
+that scope rather than opening a second builder**: the audit property is worth more repo-wide than
+scoped, and the alternative puts two `gh` string builders in one bundle. The comment is edited to
+say so:
+
+```
+case "consolidationPrs":   // one call supplies §7.6's prStates
+  return `gh pr list --repo ${params.repo} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
+case "consolidationCreate":
+  return `gh pr create --repo ${params.repo} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
+```
+
+`--body-file` rather than `--body` is deliberate and load-bearing for NFR-2/§7.4: the body is
+written to a file in the clone, so no part of it is ever an argv element in a command string the
+adapter logs on failure. `--state all` with a `--json state` field is what lets §7.6 apply the FSPEC
+state table (`open`/`merged` in the key set, `closed`-unmerged not) with **one** call.
+
+**The credential never becomes a JS value.** When `_envPresent(credentialEnv)` is true, the pass
+prefixes the transported command with the variable *by name*:
+`GH_TOKEN="$PDLC_PLUGIN_REPO_TOKEN" gh pr create …` (the actual name coming from config). The shell
+inside the transport expands it; the pass holds only the name. That is what makes FSPEC §7.4's
+"never echoed back through a subprocess argument" structurally true rather than a review promise —
+there is no code path on which the value exists in the module. The same prefix form carries the push
+(`_git` takes argv, so the push uses `-c http.extraheader` only when a token is present; with
+`local-gh` it uses the ambient credential helper and no prefix at all).
+
+`credential:` resolution order is §7.2's: variable present ⇒ `present (redacted)`; else a working
+`gh` auth probe (`_ghRun("gh auth status")`) ⇒ `local-gh`; else `absent` + `credential-unavailable`.
+It runs **at the first PR-route attempt and at most once per pass**, so a pass with no guard-set
+proposal never runs it and reports `absent` as its null.
+
+### 9.3 The three seam domains and their verb sets (FSPEC §6.5, inherited)
+
+The FSPEC froze these sets and made widening a **recorded TSPEC decision**. This layer records **no
+widening**: the sets below are transcribed unchanged at FSPEC v11.1.
+
+| Domain | How a call is classified | Obliged | Permitted, not obliged | Absent always |
+|---|---|---|---|---|
+| PR seam | every `_ghRun` call | `read-pr`, `create-pr` | — | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` |
+| git, invoking tree | `_git` whose argv does **not** begin `["-C", cloneDir]` | `add`, `commit` | `read-branch`, `read-status` | `checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb |
+| git, clone | `_git` whose argv begins `["-C", cloneDir]`, plus the `clone` call itself | `clone`, `create-branch`, `add`, `commit`, `push` | `fetch`, `read-branch`, `read-status` | every merge verb |
+
+Classification is by **resolved operation**, not function name: the resolver maps an argv or a
+command string to a verb, so `checkout -b` and `switch -c` in the clone both resolve to
+`create-branch`, and a merge issued through any spelling of `_ghRun` resolves to `merge`. The
+classifier is a small exported pure function, `resolveSeamVerb(domain, argvOrCommand)`, so the spy
+in §11.3 reads the contract's own classification rather than re-implementing it — and a verb the
+classifier cannot resolve returns `"unknown"`, which is in no permitted set and therefore fails the
+containment assertion rather than passing silently.
+
+Two calls in §9.1 and §7.5 use the invoking tree's *permitted* reads: `git remote get-url origin`
+and `git cat-file -e HEAD:{path}` both resolve to `read-status`; the branch name for `branch:` comes
+from `git rev-parse --abbrev-ref HEAD` (`read-branch`), the shipped observation `readHeadBranch`
+(`orchestrate-dev.js:3520`) makes through `_git` at `:3524`.
+
+### 9.4 The consuming-repo commit (FSPEC §5.4)
+
+```ts
+commitConsumingRepoPaths(paths, message, seams): Promise<{committed: boolean, reason?: "writes-uncommitted"}>
+```
+
+Two calls, pathspec on **both**, mirroring `commitQueueRow` (`orchestrate-queue.js:1576`; add
+`:1577`, commit `:1580-1585`) and `commitAdvisoryRecord` (`:1615`):
+
+```
+git add    -- {paths}
+git commit -m {msg} -- {paths}
+```
+
+`paths` is exactly the §5.4 write set the pass actually wrote — `DOMAIN-CONSTRAINTS.md`,
+`DECISIONS-{topic}.md`, `.consolidation-log.md`, `CONSOLIDATION-PROPOSAL-{passId}.md` — and
+**never** `docs/_decisions/.consolidation-lock`, which appears in no pathspec of any pass. Never
+`-a`, never pushed. `commitPaths` (`orchestrate-dev.js:8669`) is explicitly not used: its commit is
+a plain `git commit -m` with no pathspec (`:8690`), which would sweep a mid-pipeline staged index
+into the pass's commit.
+
+Both calls go through `gitWithLockRetry` (`:8617`) for the `index.lock` class. A "nothing to commit"
+result is a **return, not a warning** — the `NOTHING_TO_COMMIT_RE` treatment
+`commitAdvisoryRecord` uses (`orchestrate-queue.js:1631-1635`) — so an empty stage records no
+`writes-uncommitted`. Any other refusal records `writes-uncommitted`, leaves the writes correct on
+disk, and **does not change the terminal status**.
+
 ## 10. Error handling
 
 ## 11. Test strategy
