@@ -30,8 +30,25 @@ Nothing else. No High or Medium finding — no acceptance criterion is narrowed,
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §12.3's `consolidationPass.test.js` row records — and deliberately does **not** settle — a divergence: `AT-M11`'s fixtures spell the released marker as FSPEC §4.1's `RELEASED: {passId} {ISO-8601}` sentinel, while §7.3 of this TSPEC decides the **empty** released form. The TSPEC raises it upstream and leaves §7.3 as approved, which is the right disposition for this layer. From the product lens the question is narrower and belongs to the FSPEC round: AC-1.3's negative half is "a released marker is taken with no `reclaimed-stale-lock` at either age", and that obligation is spelling-independent — so this is a form question, not a coverage question, and it does not hold up the TSPEC. Flagging it only so the FSPEC erratum is not lost between rounds. |
+| Q-02 | The PLAN's T05 version-pin conjunct pins TSPEC's `Version` cell at `1.7`; this edit bumps it to `1.8`. That is a PLAN-side follow-through, not a TSPEC defect, and Phase P owns it — noted here so the pin is re-taken rather than shipped one round stale. |
+
 ## Positive Observations
+
+- The register measurement is no longer a transcription. `:2440-2442` states outright that the number is a reader's summary and that `consolidationTraceability.test.js` re-derives both sides at run time — which is why this class of erratum (a hand-copied count going stale on the next upstream version) cannot recur. That is the right fix for a defect three reviewers raised independently.
+- The two closed gaps are recorded, not deleted. Keeping T-11 and T-12's history — gap named → erratum raised → id minted upstream → interim case re-labelled — is what makes the "a named gap is not a licence to ship uncovered" rule auditable rather than aspirational, and it is the reason F-01 is cosmetic rather than substantive.
+- The `CLAUDE.md` fix repairs a defect that predates this feature and does so in a form that will not recur: a count-free sentence plus a set-equality test against the manifest, rather than a `three` → `four` substitution that would be stale again on the next artifact. The same case absorbs §11.3(c)'s third-axis falsifier on the argument that both ask one question of one authority — a genuine consolidation, not a bundling of unrelated assertions.
+- E-6 and E-7 are the two items no reviewer could have caught from the documents alone; both were verified here against the shipped source (`skillFiles.test.js:12-16`, `runtimeBundle.test.js:26`) and both premises hold exactly as written.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves all seven erratum items and breaks nothing previously approved. The single Low (F-01) is a stale summary paragraph adjacent to the corrected text; it changes no obligation, no id assignment and no acceptance-criterion coverage, and can be swept in any later touch of §12.2. The TSPEC's approval stands.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
