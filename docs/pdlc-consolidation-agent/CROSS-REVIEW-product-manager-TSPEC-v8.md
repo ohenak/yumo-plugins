@@ -47,3 +47,6 @@ Both erratum items are resolved, and neither resolution disturbs anything I appr
 ## Verdict
 
 VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:0fd555518918aa16784ac446a8f5a92c6791142bc110d2f7f67f23cef82d543d
+REVIEWED-COMMIT: a3049d1f3b9820b826ee08a6e3a78814b6ae8458
