@@ -944,8 +944,17 @@ must land as properties rather than as unit cases:
   *Anchor provenance.* The v5 revision re-measured **every** `TSPEC:` anchor in this document
   against the TSPEC at the commit that carries this revision — the full enumeration, extracted
   mechanically and resolved one by one, not the subset that happened to be under edit. The
-  extraction pattern is **`grep -onE 'TSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`**, which admits both
-  spellings this document uses: the bare `TSPEC:806` form and the `TSPEC §7.1:806` form. The narrower
+  extraction pattern is **`grep -onE 'TSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`**, which admits two of
+  the three spellings this document uses: the bare `TSPEC:806` form and the `TSPEC §7.1:806` form.
+  **It does not admit the third — the file-less *continuation* anchor**, a backticked `` `:NNN` ``
+  token whose file is carried by an earlier anchor in the same sentence
+  (`` (`TSPEC:618`, `:684`) ``, `` (`TSPEC §7.1:806`, `:841-842`) ``, "restated at `:1699`").
+  **Continuation anchors are resolved by hand alongside the mechanical set**, and both counts belong to
+  any re-sweep so a re-runner can tell whether they have the whole set: at this revision the pattern
+  above returns **92** prefixed sites, while `` grep -onE '`:[0-9]+(-[0-9]+)?`' `` returns **122** bare
+  tokens — most of them `runtime-adapter.js` continuations, but `:1699`, `:2201-2202`, `:841-842` and
+  `:850` among others are TSPEC ones. That gap is not academic: the fourteenth stale site counted below
+  is the pre-sweep bare `:684`, which the published pattern cannot see. The narrower
   `grep -on 'TSPEC[^ ]*:[0-9]\+\(-[0-9]\+\)\?'` used on the first pass cannot cross the space before
   `§7.1:` and returned **40** of the **42** sites present at the sweep commit (`01624628`), missing
   exactly the two `TSPEC §7.1:806` sites; both were correct, but the recipe is published as the
@@ -958,6 +967,13 @@ must land as properties rather than as unit cases:
   `:793-796`⇒`:847`/`:850`, `:962-966`⇒`:966-970`, `:2522`⇒`:2658-2660`, `:1325`⇒`:1405`). Three of
   the stale ones were inherited by faithful quotation from the TSPEC's own stale cites and are
   raised as an erratum rather than corrected only here.
+
+  **This warranty covers `TSPEC:` anchors only.** The `FSPEC:` set was never swept mechanically, which
+  is why two stale FSPEC values survived two anchor rounds and were caught by a reviewer rather than by
+  the sweep (`FSPEC:415` for §4.1's lifetime row, retargeted to `:435-436` with `:441-442`;
+  `FSPEC:442` for §4.2's empty arm, retargeted to `:479`). The equivalent recipe is
+  `grep -onE 'FSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`, and it is stated here so the next sweep covers
+  both upstream documents rather than one.
 
   The v4 cross-reviews cite the §11.3(a) conjuncts at `TSPEC:2095-2100` / `:2098-2099`; those were
   correct at the TSPEC revision they reviewed, and the intervening TSPEC round moved them **+104**
