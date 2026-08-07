@@ -88,7 +88,29 @@ for F-03/F-04 they should ride along with it, and if none is, they are not worth
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The gitignore decision's stated reason is that the alternative leaves "a nag that never quiesces". The unreadable-entry decision accepts exactly that shape — an on-disk file that cannot be read stays un-consolidated forever, so `nudge-consolidation.sh` nags about it on every session start. I read this as deliberate and bounded rather than contradictory (the retry is the point, and the volume trigger cannot wedge: consuming the readable entries drops `\|un-consolidated\|` below `volumeThreshold` unless ≥5 files are simultaneously unreadable, after which the cadence test governs). Confirming that reading is intended, and that no AC needs to bound the retry, is a TSPEC-level note at most — not a REQ change. |
+| Q-02 | The REQ is now 64,397 bytes across 674 lines, against the pdlc REQ budget of 700 lines / 60 KB, so `check-req-size.sh` warns. The byte budget was already breached before this erratum (61,109 bytes at `6c025bb4`) and I approved it then, so this is not a delta regression; the erratum added 3.3 KB to a document already over. Flagging it only so the next author knows the line budget now has 26 lines of headroom, not that anything here should be cut. |
+
 ## Positive Observations
+
+- The withdrawal is stated as a withdrawal, in place, with the superseded wording quoted. A reader who
+  arrives via the old text finds out immediately that it was retracted and why — much better than a
+  silent rewrite, and it keeps the erratum auditable against the round that raised it.
+- Both mechanism citations are exact, not approximate: `:915` is the single-directory `ls` and
+  `:929-931` is the separator-rejecting validator. Two independent lines are needed to establish "cannot
+  walk `docs/*/`", and the REQ cites both rather than the more quotable one.
+- The relaxation is priced. "Closes this class at exactly that price and no other, because
+  `docs/discarded/*/` is excluded by the pathspec, not by the ignore rules" is a falsifiable claim about
+  mechanism, and it holds at HEAD — the ignored-file probe returns empty, so the first-run expected set
+  of 5 does not move.
+- §4b picked the repair that needs no vocabulary version bump. Choosing omission over an `unread:` field
+  keeps `Version 1.4` pinned, which means no downstream test transcribing that version has to change and
+  the §3 freeze clauses stay intact. The cheap repair was also the correct one here.
+- The `recurred`-direction argument is the right justification. It shows the defect is a *biased*
+  corruption of AC-5.2, not merely a cosmetic inaccuracy, which is what makes it worth deciding at REQ
+  level rather than deferring to TSPEC.
 
 ## Recommendation
 
