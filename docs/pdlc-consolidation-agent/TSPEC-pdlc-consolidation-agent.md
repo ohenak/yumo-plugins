@@ -1818,7 +1818,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | **L1 — pure function** | every §7 function, called directly on literal inputs | none | `consolidationPredicate.test.js`, `consolidationIdentity.test.js`, `consolidationEffectiveness.test.js`, `consolidationParse.test.js` |
 | **L2 — orchestration** | `main()` end-to-end with doubles for every seam; the §12 acceptance tests live here | all doubled | `consolidationPass.test.js`, `consolidationRoute.test.js`, `consolidationCredential.test.js` |
 | **L3 — build, artifact & source text** | the bundle is emitted, is in sync, carries no `import(`, and its `meta` is first and literal; plus the source-text oracles (§3.3's `.gitignore`, §11.3(e)'s adapter prompts, §12.3's AT set-equality) | none | the **await-audit and bundle** assertions extend the shipped `runtimeBundle.test.js` in place (they edit its own `AWAIT_SCAN_SOURCES` and `AT19_SEAM_NAMES` sets); the feature-scoped source-text oracles live in `consolidationBuild.test.js` and `consolidationTraceability.test.js`, so this feature adds no row to a shipped suite that is not a set member of one it already owns |
-| **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7). The same file also carries one **L3** source-text case — the hook-side enumeration pin over `:28`'s two globs (§7.1) — which runs whether or not the L4 rows degrade, since it shells out to nothing |
+| **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7). The same file also carries two non-AT cases: one **L3** source-text case — §7.1's pin (b), the hook-side enumeration pin over the `CORPUS_GLOBS` declaration — which runs whether or not the L4 rows degrade, since it shells out to nothing; and one **L4** pathspec-semantics case (below) |
 | **L5 — property** | the four T-09 components | none | `consolidationProperties.test.js` |
 
 L3 is a **set over two axes**: the sources scanned (`AWAIT_SCAN_SOURCES` gains
@@ -1827,10 +1827,24 @@ and `_makeTempDir`) — §11.3(c). L3 also carries §11.3(e)'s adapter-prompt as
 `.gitignore` text assertion, both source-text checks in the shape `runtimeBundle.test.js` already
 uses.
 
-L4 is the only level that shells out. It is scoped to the hook script and never touches the
-repository's own `docs/` tree — it writes its fixture
+L4 is the only level that shells out. It never touches the repository's own `docs/` tree — the
+differential harness writes its fixture
 corpus into a temp directory and points the hook at it through `CLAUDE_PROJECT_DIR` (`:26`), which
 is what makes the harness a pure function of an injected root (DC-04).
+
+**One further L4 case, and why it is worth a subprocess.** Pin (a) asserts the argv the pass hands
+`_git`; what makes *that particular* argv correct — that `:(glob)` stops `*` crossing a `/`, so
+`docs/discarded/` is excluded by the pathspec and not by a filter — is measured in §10.4's prose and
+otherwise asserted by nothing. A measurement in a document is not an oracle. So the file carries one
+`(no FSPEC AT)` L4 case that runs **exactly the argv pin (a) pins** through a real `git`, and asserts
+zero results under `docs/discarded/` and at least one under `docs/completed/`. It runs against a
+**temp repository the case builds itself** (`git init`, three LEARNINGS files under
+`docs/{f}/`, `docs/completed/{f}/`, `docs/discarded/{f}/`, `git add -A`), reached with `_git`'s
+own `["-C", dir, …]` form — never against the repository under test, so DC-04 holds here exactly as
+it does for the differential harness, and the assertion cannot drift as this repo's own `docs/` tree
+grows. It is **outside** the differential fixture table and therefore outside the executed-row counter
+below — its subject is git, not the hook, and folding it in would make `executed === TABLE.length`
+false for a reason that has nothing to do with the interpreter probe.
 
 **A skipped L4 is distinguishable from a passing one.** The hook's own `PY_BIN` probe (`:13-20`)
 degrades to a silent `exit 0` when no usable interpreter is found, and a differential test that
@@ -1856,6 +1870,15 @@ its own assertions have passed**, and an `afterAll` asserts `executed === TABLE.
 So an interpreter that dies at row 4 of six leaves `executed === 3`, which is neither, and reds; a
 row that throws and is swallowed never reaches its increment, and reds; a wholesale `test.skip` of
 the suite leaves `executed === 0`, which passes, which is the one legitimate all-skip case.
+
+**The degradation is decided once, before any row runs, and it skips every row — never a subset.**
+The `PY_BIN` probe is performed once at module scope; if it finds no usable interpreter the file
+declares each differential row through `test.skip` and emits the `console.warn` above. There is no
+"degraded probe" path on which rows still execute against a weakened comparison, which is the only
+way `executed === TABLE.length` could be reached with nothing real behind it: a row either runs the
+real interpreter or is not declared as a running test at all. The `afterAll` counter assertion itself
+is **not** skipped — it runs in both worlds, which is what makes `0` an asserted outcome rather than
+an unobserved one.
 
 ### 11.2 Test doubles — reuse first (DC-08)
 
@@ -1901,6 +1924,15 @@ a later phase of the event loop than the whole microtask queue, so the discrimin
 Recording is deferred with resolution, not performed eagerly, for the same reason: `appendTerminalRow`
 is a void write whose only observable *is* the double's accumulated text, so a wrapper that recorded
 synchronously and deferred only its result would leave the missing `await` invisible by construction.
+
+**Two hygiene constraints the wrapper's timers impose, since they change whether the suite is quiet
+rather than whether it discriminates.** On the *broken* implementation the assertions run while a
+`setTimeout` is still pending, so (i) every double instance is constructed **per case**, inside the
+case body, never at module scope — a late timer must never be able to write into a double a later
+case reads; and (ii) the case drains the loop before it returns (`await new Promise(r => setTimeout(r, 0))`
+after its assertions), so jest sees no open handle and the failure it reports is the assertion, not a
+teardown warning. Neither changes the discrimination in the table above; both are required of the
+PLAN task that writes the row.
 
 **The row owes its own mutation check.** `consolidationLifecycle.test.js` is the only oracle for an
 invariant §10.1 states nothing else guards, so the PLAN task that writes it must demonstrate it
@@ -2029,8 +2061,13 @@ nudge that disagrees with what a pass will consolidate; it is a reporting diverg
 correctness one, because the pass consumes only what its own enumeration returned.
 
 **Out of *this harness's* reach is not out of every test's reach.** The enumeration half is held by
-the two literal pins §7.1 specifies — AT-P1's argv conjunct on the JS side, and a source-text read of
-`nudge-consolidation.sh:28`'s two glob patterns on the hook's — both owned by this same file. They
+the two literal pins §7.1 specifies, and they are deliberately **not** both this file's: pin (a) is
+AT-P1's **L1** argv conjunct on the JS side, and it lives with AT-P1 in
+`consolidationPredicate.test.js`, because the thing asserted is the array `enumerateCorpus` hands
+`_git` at runtime, which a source-text read could not see. Pin (b) is the **L3** source-text read of
+the hook's `CORPUS_GLOBS` declaration, and that one is this file's, because its subject is the two
+implementations' relationship. (An earlier draft of this paragraph claimed both — the correction is
+argued in §7.1 and reflected in §11.1, §12.2's T-08 row and §12.3.) They
 do not assert the two sets are equal (they are not, in general); they assert the two *questions* are
 the ones §10.4 computed its divergence classes from, so a later edit to either side cannot introduce
 a third class silently. "Held by inspection" would have been the wrong answer and is not the one
