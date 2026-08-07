@@ -47,8 +47,25 @@ Nothing else. **No High and no Medium.** I looked specifically for the four fail
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §12.3 dates its register measurement at "**99** ids, measured at **v11.3**"; the FSPEC is now **v11.4** (`FSPEC:12`). I re-enumerated at v11.4 and the count is still 99 — v11.4's own note says it changed no AT, and set equality against §12.3's table holds both ways — so the number is not wrong and no test pins the version. Raising it only so the next touch of that paragraph re-dates the measurement rather than leaving a reader to wonder whether a version was missed. Not a finding. |
+| Q-02 | Unchanged in kind from v9: the PLAN's T05 version-pin conjunct pins the TSPEC's `Version` cell, which this delta moves **1.7 → 2.0** (two bumps since the pin was taken). Phase P's follow-through, not a TSPEC defect — noted so the pin is re-taken rather than shipped stale. |
+
 ## Positive Observations
+
+- **The delta does the harder of the two available things.** A document that had priced a narrowing honestly, argued it at length and had it approved twice had every incentive to keep it. Instead it read the upstream's answer, withdrew its own decision by name, and said in terms that "the correct action on a settled upstream question is to absorb the decision, not to route it again". The major bump is the right signal for that, and the changelog calls it a mechanism change rather than a patch.
+- **The premise/consequence separation is what makes this safe to approve without re-reviewing §7.3 from scratch.** §7.3's approved argument was "no seam can unlink"; the sentinel satisfies that premise with a different payload, and the `file_empty ≡ absent` equivalence — the only thing that actually falls — existed solely to serve the withdrawn form. The document states that distinction explicitly rather than leaving a reviewer to derive it, which is precisely what a delta re-review needs from an optimizer.
+- **The product question is answered where it belonged.** "When a pass dies mid-take, must the durable log witness it?" was raised upstream as a product judgement rather than settled by the adapter's verb set; the FSPEC answered **yes**; the TSPEC now records `reclaimed-stale-lock` on exactly that state. Three observations (released / truncated / absent) now map to three FSPEC-decided outcomes instead of two states sharing one observation — and the operator-visible payoff is concrete: a zero-byte `.consolidation-lock` changes from the routine steady state into a signal that a pass died.
+- **The `CLAUDE.md` exclusion is the observation I most wanted to see made and least expected.** Discovering that the manifest carries no row for itself, and then *naming* the exclusion instead of quietly weakening set equality to containment, is the difference between an oracle that catches the `pdlc-cli.mjs` drift and one that would have shipped red on correct code and been "fixed" by relaxing it.
+- Two v9 findings closed for the price of one: I raised the stale §12.2 paragraph; the edit found and closed the same defect in §13.3's hand-off, where it was doing real damage (it was handing the PLAN two errata as open that the PLAN must now not re-raise).
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The v2.0 re-decision is faithful to FSPEC v11.3/v11.4 on every point I could check against the register and the shipped code, it removes a narrowing rather than adding one, and it breaks nothing previously approved — §7.3's approved premise survives intact and every knock-on is priced in the changelog and verifiable in the text. My single v9 finding is resolved, and so is a second instance of it that I missed. The one open item (F-01) is **Low**: stale line locators whose ids, AC bindings and counts I verified by name and found correct, in a document whose own oracles forbid locating anything by line index. It can be swept in any later touch. The TSPEC's approval stands.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
