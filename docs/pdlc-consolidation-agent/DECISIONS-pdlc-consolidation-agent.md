@@ -581,14 +581,26 @@ read-side half is **paired, not absence-only** — an assertion that merely repo
 the read prompt" is satisfied by `rtReadFile` being deleted, renamed, or never reached, so it is
 conjoined on the same path with two positives:
 
-- **The read prompt's actual instruction is pinned verbatim** — `rtReadProbe` (`runtime-adapter.js:369`)
-  transports its command under `"Run this exact command from the repository root and report its
-  output:"` (`:374`), a **cwd** instruction. The assertion locates that string and asserts it is a cwd
-  instruction, not a path-resolution one; the negative ("no `relative to the repository root`
-  resolution clause") then runs on a prompt the test demonstrably found.
+- **The read prompt's actual instruction is pinned verbatim, and both arms are scoped to the read
+  path's prompt arguments** — not to a whole-file search. The read path interpolates `${path}` into
+  **two** prompts, and the assertion is set-equal to that pair rather than a containment check over
+  one member of it: `rtReadProbe` (`runtime-adapter.js:369`), whose prompt at `:374` reads `"Run
+  this exact command from the repository root and report its output:"`, and `rtReadChunk` (`:268`,
+  reached through `rtReadRange` at `:346`), whose prompt at `:281-283` reads `"Run these two exact
+  commands from the repository root:"` over `sed -n '{first},{last}p' "${path}" | ${RT_SHA_CMD}`.
+  Both are **cwd** instructions and neither carries a resolution clause. The scoping is
+  load-bearing in both directions: the probe's cwd sentence is not unique — measured, that exact
+  line occurs **three** times in the adapter (`:374`, `:618`, `:911`, the last in `rtListFiles`) —
+  so a whole-file positive would survive `rtReadProbe`'s deletion; and `"relative to the repository
+  root"` occurs exactly once today (`:805`, inside `rtWriteFile`), but this feature's own widening
+  puts a second such clause in that same write prompt, so a whole-file negative would be **red on
+  this feature's own correct code**. Asserted over the two prompt arguments, the negative runs on
+  prompts the test demonstrably found, and a future symmetry edit to *either* read prompt fails a
+  test.
 - **Absolute paths already resolve verbatim through the shipped shell forms** — an assertion that an
   absolute `${path}` substituted into `rtReadProbe`'s `if [ ! -f "${path}" ] …`, `wc -c < "${path}"`,
-  `shasum -a 256 "${path}"` forms (`:374-378`) yields shell text that resolves that path verbatim.
+  `shasum -a 256 "${path}"` forms (`:374-378`) — and into `rtReadChunk`'s `sed -n '…p' "${path}"`
+  forms (`:282-283`) — yields shell text that resolves that path verbatim.
   This is the positive form of "we measured, and there was nothing to widen": the measurement is
   asserted, not merely the absence of a clause.
 
