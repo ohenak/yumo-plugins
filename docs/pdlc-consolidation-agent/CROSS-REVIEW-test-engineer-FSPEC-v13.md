@@ -35,7 +35,54 @@ wrong. Three are new with this diff; L-02 is carried unchanged from v12.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-M11's older fixture asserts that a `RELEASED:` marker is free "at any age". Nothing now ages a released marker out, so the file persists in the working tree indefinitely (git-ignored, §5.4). Is a released marker older than, say, several cadence periods worth *reporting* — not refusing on, not reclaiming — as evidence of a long-idle repo? I am not asking for an AT; I am asking whether you considered and declined it, so a later reader does not read the silence as an oversight. |
+
 ## Positive Observations
+
+- **The sentinel choice is the load-bearing decision in this diff, and it is argued rather than
+  asserted.** The easy repair for erratum item 1 was "release truncates the file to empty" — it needs
+  no new vocabulary and is one seam call. Taking it would have made item 2 unanswerable: a released
+  marker and a half-written one would have been the same observed state, and §4.2's last row would
+  have become the *normal* end state of every pass rather than an error arm. §4.1 (`:437-442`) picks
+  the harder form and says exactly why, in terms of what the existence seam can distinguish
+  (`file_empty` vs `file_missing`). I checked that claim at HEAD: `rtCheckFile`
+  (`pdlc/workflows/runtime-adapter.js:817-831`) returns `{ok:false, reason:"file_empty"}` for a
+  present-but-empty path and `"file_missing"` for an absent one, exactly as cited. Two errata that
+  arrived as separate items were correctly seen as one decision.
+- **Every new AT arrived with its falsifying pair, unprompted.** AT-M3's fixture (a) would be passed
+  by an implementation that recorded `reclaimed-stale-lock` on *every* take — so AT-M11 exists and
+  says so in its own cell ("The older fixture is what stops an implementation from routing every
+  non-`IN-PROGRESS:` file through the stale-lock arm"). AT-Q13's fixture (b) exists to stop a body
+  that emits a recurrence list unconditionally. AT-R7's fixtures (a) and (b) reach "no cause" by two
+  different routes, so an implementation that wrote a proposal file on every `no-op` fails one of
+  them. This is the discipline I have been asking for since v10 applied without being asked.
+- **The two negative-half ATs close real false-green gaps, not bookkeeping ones.** AT-Q13 states its
+  own reason for existing in falsification terms — "a body carrying nothing but the three trailers is
+  green under AT-Q2 and red here" — and AT-R7 does the same ("an implementation that wrote a proposal
+  file on every pass … was green everywhere"). Both are the correct shape for an "only when"
+  obligation: the negative fixture, not a restatement of the positive.
+- **AT-P7's re-scoping names what it does *not* assert.** The row now excludes the `THRESHOLD` gate
+  and the printed line explicitly, and gives the falsifying reason ("a case whose set is smaller than
+  the threshold is still a case, and an oracle that compared the hook's stdout would be red on it
+  while the predicate agreed"). It also states what happens to the row if T-08 resolves the other way
+  — fixture table and comparison unchanged, both evaluations route to one implementation — so the
+  test survives the open decision it depends on.
+- **The erratum is scoped and declared.** The v11.3 header block (`:12-19`) enumerates the seven items
+  and asserts "nothing else is changed"; the diff bears that out — 14 hunks, every one traceable to a
+  numbered item, no new repo path, no new lexicon value, no new config key, and no edit to a section
+  outside the seven. I re-checked the set-equalities I have tracked since v10 (§8.1 cell-level rule,
+  §14.5 register, BR-33a's enumeration, AT-F19/F20/F21/Q7c) and none was touched.
+- **Nothing I previously approved is broken.** I re-derived §4.2's outcome table as a total function
+  over the observed states — absent, `RELEASED:`, `IN-PROGRESS:` young, `IN-PROGRESS:` old, empty,
+  neither-form — and all six are covered exactly once, with the two free states agreeing on outcome
+  and differing only in bookkeeping, as §4.2 `:469-471` says. §4.3's terminal-status/release table
+  (`:500-507`) needed no change and got none: `refused` and `skipped-cadence` still hold no marker,
+  and §4.3's "a process killed before step 16 leaves the marker behind, and the §4.2 stale rule is
+  what recovers it" is still true under the new release form. The AC→AT map picked up all three new
+  rows (AC-1.3 → AT-M11, AC-1.4 → AT-R7, AC-3.2 → AT-Q13), and every new AT has a BR or an E row
+  pointing at it (BR-14a and E-11b → AT-M11).
 
 ## Recommendation
 
