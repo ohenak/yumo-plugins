@@ -354,6 +354,19 @@ gaining `fs`; consolidation ceasing to be serial (today `/loop` runs one tick at
 requires an operator's manual invocation to collide with a tick); the residual duplicate write
 becoming observed in practice rather than theoretical.
 
+**On that last trigger's observability.** It is **operator-reported and un-instrumented** — no
+monitor exists and none is added by this feature — and it is named here so no reader infers one from
+the trigger's presence. What an operator or a later analyst can do *after the fact* is read the
+durable log, and the detection signature is stated so the reading is mechanical rather than
+intuitive: **two `.consolidation-log.md` records with distinct `passId`s carrying the same
+`(failure-mode-id, action)` key**, which under serial operation cannot occur (a second pass sees the
+first's record and NFR-4's duplicate suppression fires, `duplicate-suppressed`). That is a forensic
+signature over an append-only artifact, not an alarm: nothing computes it, nothing raises it, and
+nothing in this feature's test set asserts it. Instrumenting it would mean minting a log field the
+vocabularies file does not carry, which REQ §4b reserves upstream — so per DEC-ORACLE-02 the gap is
+recorded and the signature is written down, rather than a counter being invented to make the trigger
+look watched.
+
 **Testability:** the take's *shape* is asserted, since its atomicity cannot be. The seam double
 records an ordered call log, and the assertion is that a take issues exactly the three calls in that
 order with the marker path, and that `present` is read from the `_checkFile` result and never from
@@ -381,6 +394,21 @@ half:
 - The **enumerations** are held **pinned**, not equal: the JS side's `git ls-files` argv is asserted
   literally, including both `:(glob)` prefixes, and the hook's two glob patterns are asserted by a
   source-text read of its `CORPUS_GLOBS` declaration. Two literal pins, at two levels, in two files.
+
+**The decision includes a corpus widening of the shipped hook, and the divergence set below is
+stated relative to the *post-edit* hook, never to HEAD.** At HEAD the hook enumerates with a
+**single** glob, `glob.glob(os.path.join(proj,"docs","*","LEARNINGS-*.md"))`
+(`pdlc/hooks/scripts/nudge-consolidation.sh:28`), which does not reach `docs/completed/*/`. Measured
+in this repository at HEAD that glob returns **2** paths while
+`git ls-files --cached --others --exclude-standard ':(glob)docs/*/LEARNINGS-*.md'
+':(glob)docs/completed/*/LEARNINGS-*.md'` returns **5** — the three `docs/completed/*` entries plus
+`docs/orchestrate-dev-workflow` and `docs/pdlc-advisory-tier`. That gap is larger than classes (i)
+and (ii) combined, and it is **not** a residual of this decision: it is closed by the decision, by
+replacing `:28`'s single glob with the two-member `CORPUS_GLOBS` tuple and a comprehension over it
+(`TSPEC §7.1:787-788`, scoped by `TSPEC:117`). Stating the two-class divergence set against the
+pre-edit hook would be comparing the pass to a hook this feature does not ship; every claim below —
+"two classes", "closed", "derivable from the two enumerations' own text" — is asserted against the
+post-edit hook, whose two patterns are exactly the pass's two `:(glob)` pathspecs.
 
 This **relaxes** `REQ:115-116` and is therefore not settled here: it is raised upstream as an
 erratum against REQ and FSPEC (see §11), and this entry records what this layer ships if the
@@ -413,9 +441,24 @@ relaxation is accepted.
 - **Keep the hook's shipped count-above-threshold message as the differential oracle** — rejected,
   and this is what makes the predicate half real. The hook prints only when `n >= THRESHOLD`
   (`:25`, `THRESHOLD = 5`) and prints only a **count**, so it is blind on every fixture that
-  discriminates the two-region predicate. The decision therefore carries a shipped-hook edit: an
-  env-gated `PDLC_PENDING:` stderr line that emits the pending basenames. One line, in a script CI
-  already `bash -n`s.
+  discriminates the two-region predicate. The decision therefore carries a shipped-hook edit — and
+  the honest cost of that edit is **three changes in one file**, not one line, because
+  DEC-CONS-05's rejection of the shared-implementation alternative turns on relative cost and an
+  understated accepted cost would corrupt the comparison:
+
+  1. an **env-gated `PDLC_PENDING:` stderr write** — a guard plus a write, so at minimum two lines,
+     not one;
+  2. replacing `:28`'s single `os.path.join` glob with the two-member `CORPUS_GLOBS` tuple and a
+     comprehension over it (`TSPEC §7.1:787-788`) — the corpus widening stated in the Decision
+     above, which the REQ itself already lists as an in-scope edit (`REQ:115`);
+  3. scoping `:41`'s predicate to the two regions (`TSPEC:117`), which is the change that makes the
+     hook's rule the *same* rule as the pass's.
+
+  All three land in a Python heredoc inside a bash script CI already `bash -n`s and whose
+  `SessionStart` robustness budget (no git, no Python, not a repository ⇒ exit 0) is unchanged by any
+  of them, so the edit remains cheap relative to a third shared artifact — which is the comparison
+  that matters. It is not *one line*, and §11.1 row 6 states the same three, so the two sections
+  agree. (Reviewer Q-02: three changes, one file, one owning task.)
 
 **Constraints that forced this shape.** The `_listFiles` seam's structural limit above; the runtime's
 no-`import` rule, which forecloses a shared module; the hook's `SessionStart` robustness budget
@@ -442,11 +485,18 @@ chosen.
 **Testability:** three named oracles, at three levels. (1) The predicate differential: one basename
 list plus one log text through both implementations, asserting the same partition — this is the "one
 predicate" claim, and it is only observable because of the `PDLC_PENDING:` stderr edit above.
+The differential invokes the hook **end-to-end** — a real `bash`/`python3` subprocess reading the
+`PDLC_PENDING:` channel (`TSPEC §11.3`'s L4 row, `consolidationHookParity.test.js`) — never a
+re-implementation of the hook's predicate inside the test, which would make the "one predicate" claim
+unfalsifiable (reviewer Q-03).
 (2) The JS enumeration pin: a literal-argv assertion at L1, both `:(glob)` prefixes included, so any
 change to the pathspec is a deliberate test edit. (3) The hook enumeration pin: an L3 source-text read
-of the `CORPUS_GLOBS` declaration. Together they make the divergence set **derivable from the two
-enumerations' own text**, which is the property that lets §10.4's two classes be stated as closed
-rather than as "the ones we happened to think of". The residue is stated, not asserted away: class (i)
+of the `CORPUS_GLOBS` declaration — stated over the *declaration*, never a line number, plus the
+conjunct that `glob.glob(` occurs in the file exactly once and inside that comprehension, so a third
+pattern cannot enter through a second call site (`TSPEC:793-796`). Together, and **only against the
+post-edit hook**, they make the divergence set **derivable from the two enumerations' own text**,
+which is the property that lets §10.4's two classes be stated as closed rather than as "the ones we
+happened to think of". The residue is stated, not asserted away: class (i)
 leaves an operator nudged about a file no pass can consolidate, class (ii) leaves one corpus entry the
 pass reports as unreadable — neither is a correctness divergence, because the pass consumes only what
 its own enumeration returned.
