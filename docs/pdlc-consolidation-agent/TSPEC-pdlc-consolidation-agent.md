@@ -319,6 +319,160 @@ a credential the pass does not have.
 
 ## 6. Data model — types
 
+JSDoc `@typedef`s in `consolidate-learnings.js`, stated here in TS notation. Every enumerated union
+below is transcribed from `pdlc-consolidation-vocabularies.md` §1 at `Version` 1.4 — **transcribed,
+never widened**: §11.3's AT-L5 harness compares the module's frozen catalogue arrays against that
+table in both directions.
+
+### 6.1 Pass state and configuration
+
+```ts
+type TerminalStatus = "promoted" | "promoted-degraded" | "no-op"
+                    | "skipped-cadence" | "refused" | "failed";
+type ReasonCode = "consolidation-in-progress" | "reclaimed-stale-lock"
+                | "advisory-model-unresolved" | "no-cadence-datum" | "writes-uncommitted"
+                | "credential-unavailable" | "repository-unresolved" | "api-failure"
+                | "branch-exists" | "duplicate-suppressed"
+                | "no-advisory-corpus" | "advisory-corpus-empty";
+type Trigger    = "cadence" | "volume" | "manual";
+type Route      = "constraints" | "decisions" | "PR" | "degraded";
+type Action     = "promote" | "revise" | "retire";
+type Verdict    = "prevented" | "recurred" | "insufficient-evidence";
+type PromoState = "ineffective" | "unmeasurable";
+type Credential = "present (redacted)" | "absent" | "local-gh";
+type Phase = "R"|"F"|"T"|"D"|"P"|"PR"|"I"|"PT"|"CR"|"DOD"|"H"|"PUB"|"MERGE";
+
+interface ConsolidationConfig {          // §7.8 — per-key independent fallback
+  cadenceHours: number;                  // 168
+  volumeThreshold: number;               // 5
+  staleLockMinutes: number;              // 60
+  pluginRepository: string | null;       // null ⇒ the current repository
+  credentialEnv: string;                 // "PDLC_PLUGIN_REPO_TOKEN"
+  unmeasurablePasses: number;            // 3
+}
+interface ConfigParse {                  // the parseAdvisoryConfig-shaped return
+  config: ConsolidationConfig;
+  sectionMalformed: boolean;
+  invalidKeys: string[];
+}
+
+interface PassState {
+  passId: string | null;                 // null until step 5
+  trigger: Trigger | null;
+  status: TerminalStatus | null;
+  reasons: Set<ReasonCode>;              // a row may carry several (§10.1)
+  rung: string | null;                   // the model id the pass actually ran on
+  credential: Credential;                // "absent" until §7.2's resolution runs
+  consumed: string[];                    // basenames, frozen at step 2
+  proposals: Proposal[];
+  records: FailureModeRecord[];          // appended one-per-proposal as each routes
+  effectiveness: EffectivenessRow[] | null;   // null ⇒ step 11 never ran
+  suppressions: Suppression[];
+  notices: ParseNotice[];
+  prUrl: string | null;                  // this pass's own PR only
+  branch: string | null;
+  markerHeld: boolean;
+}
+```
+
+`reasons` is a `Set` because FSPEC §10.3 admits more than one code per row and vocabularies §1's
+composition rule makes the legal set a function of the recording point, not of insertion order;
+rendering sorts it into the catalogue's declaration order so the row is byte-stable across runs
+(§7.9).
+
+### 6.2 Proposals and records
+
+```ts
+interface Proposal {                 // the pass's in-flight unit, before it routes
+  failureModeId: string;             // §7.4's derivation
+  phase: Phase;
+  symptom: string;                   // one line, non-keying free text
+  artifact: string;                  // SUBJECT — canonical repo-root-relative path
+  kind: 1 | 2 | 3;                   // FSPEC §5.2: 1 constraint, 2 decision, 3 process learning
+  target: string;                    // decided by kind; the ONLY field routing reads
+  action: Action;
+  diff: string | null;               // the concrete edit; PR/proposal-file routes require it
+  elidedKinds: (1|2|3)[];            // §7.4's merge compensation, for report item 4
+  elidedArtifacts: string[];         // §7.4's tie-break compensation, same item
+}
+
+interface FailureModeRecord {        // the eight fields, exactly (FSPEC §8.1)
+  failureModeId: string; phase: Phase; symptom: string; artifact: string;
+  target: string; passId: string; action: Action; route: Route;
+}
+
+interface EffectivenessRow {
+  failureModeId: string;
+  artifact: string | null;           // null ⇒ rendered as §6.5's unavailable literal
+  verdict: Verdict;
+  state: PromoState | null;
+  remediation: "revision" | "retirement" | null;   // null ⇒ the field is ABSENT, not empty
+}
+
+interface Suppression { failureModeId: string; action: Action;
+                        evidence: {kind: "pr"; url: string}
+                                | {kind: "pass"; passId: string | null}; }
+
+interface ParseNotice { subject: string; missingField: string; detail?: string; }
+```
+
+`FailureModeRecord` is a **closed eight-field record on both sides** (DC-01): the writer emits all
+eight on every kind and on the `degraded` route (AT-F20), and the reader is total over any subset
+(§7.4's `parseLogRecords` yields a partial record plus the notice list, never a filled default). The
+two halves are separate typedefs so the reader's type cannot drift into the writer's.
+
+### 6.3 Corpus and advisory types
+
+```ts
+interface CorpusFile { path: string; basename: string; }
+interface Predicate  { consolidated: Set<string>; unconsolidated: string[];
+                       basenameCollisions: string[][]; }   // §7.1's reported collision
+interface EscalationCounts {          // §7.7
+  bySeamFeature: Map<string, Map<string, number>>;
+  totals: Map<string, number>;
+  distinctFeatures: Map<string, number>;
+  entryCount: number;
+  corpusState: "absent" | "empty" | "present";
+}
+```
+
+### 6.4 Frozen catalogues
+
+Every union above is also a module-level `Object.freeze([...])` array —
+`TERMINAL_STATUSES`, `REASON_CODES`, `TRIGGERS`, `ROUTES`, `ACTIONS`, `VERDICTS`, `PROMO_STATES`,
+`CREDENTIAL_VALUES`, `PHASE_CATALOGUE` — plus `REASON_CODE_STATUSES`, a frozen map from reason code
+to its permitted status set (vocabularies §1's third column, transcribed verbatim at `Version` 1.4).
+Freezing is the shipped discipline (`MERGE_GUARD_DEFAULTS`, `orchestrate-dev.js:48`; `MERGE_MODES`
+`:56`; `ADVISORY_SEAMS` `:1669`) and is what lets §11.3's oracle range over the module's own
+constants rather than over strings scraped from a fixture.
+
+`REASON_CODE_STATUSES` is **read, not enforced away**: the renderer checks that a code it is about
+to write is legal with the row's status and, when it is not, drops the code and emits a notice
+rather than writing an illegal row (§7.9). That is the mechanism behind FSPEC §7.3's "recorded
+**when the pass's terminal status admits that code**" and behind ER-4's named loss — the code the
+erratum would legalise is exactly the one this check drops today.
+
+### 6.5 The "unavailable" literals, pinned (T-10)
+
+The FSPEC fixes four observables and defers their spelling here. One literal serves all four, so a
+reader learns it once:
+
+```js
+export const UNAVAILABLE = "(unavailable)";
+```
+
+| Site | Rendering |
+|---|---|
+| FSPEC §8.3's effectiveness row with no `artifact` | the path cell is `(unavailable)` — never blank, never a guessed path |
+| FSPEC §10.3's `suppressed-by:` entry with a short `passId` | `{id}:{action} → pass:(unavailable)` — the `pass:` prefix is retained, so the carrier stays legible and `pass:undefined` is unproducible |
+| FSPEC §8.1's §8.4 steps 2–3 harvest question with a missing half | the missing clause renders as `… on artifact (unavailable) …`, the question still asked |
+| FSPEC §6.5's seam permitted-set widening | not a literal — a recorded TSPEC decision; §9.3 states the sets this layer inherits and the rule for changing one |
+
+`(unavailable)` is deliberately parenthesised and lower-case: it can be neither a repository path
+(no path in this repo is parenthesised), nor a `passId` (`{YYYY-MM-DD}-{n}`), nor a vocabularies §1
+value, so no reader can mistake it for data. **It is never written into a failure-mode record** —
+records are appended as written and never repaired (FSPEC §10.2); the literal is a *rendering* of a
+missing field at the point of display, in the report body and in the terminal row only.
 
 ## 7. Algorithms
 
