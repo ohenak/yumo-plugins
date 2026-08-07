@@ -106,6 +106,36 @@ both in DEC-CONS-07, plus one Low against the sweep's stated method.
 
 ## Positive Observations
 
+- **F-10 was answered with the expensive remedy rather than the cheap one.** I explicitly offered
+  the one-sentence narrowing as an acceptable fix. The revision instead swept all 40 sites, found
+  ten stale values across twelve, corrected them, and published the method and the counts. The
+  rewritten paragraph is now falsifiable — it names the extraction, the count, and the ten
+  substitutions — which is why F-15 is a one-line refinement rather than a re-litigation.
+- **§11.2's conjunct 4 corrects a reading I had approved, and shows its work.** The previous version
+  said AT-Q7c's two `∅` equalities were the two absent-always intersections; I praised that at v5
+  and I was wrong. The revision does not quietly swap the text — it names where the definition
+  actually lives (`FSPEC:2154`, `FSPEC:1060-1063`), records that `TSPEC:2203` *names* the conjuncts
+  without defining them (with the `grep` that proves it), and keeps the old intersection **labelled
+  as implied by conjunct 2** rather than deleting it, with the reason for keeping the label: "an
+  unlabelled redundant conjunct is what a later simplification deletes alongside a load-bearing
+  one." Reversing an approved reviewer position, upstream-cited, is harder than defending it.
+- **The `∅`-conjunct block teaches the trap instead of asserting the rule.** Point (ii) — that
+  `∅ ⊆ permitted` is satisfied **vacuously**, so neither equality is implied by containment — is the
+  exact reason a property author would otherwise write the weaker form and believe it carried. That
+  is a completeness-by-set-equality argument stated in the terms a test author will meet it in.
+- **F-11's fix went past the request.** I asked for the +105 claim to be scoped. The revision states
+  the conjunct shift as +104, labels it "local, not a global offset", *and* publishes the measured
+  range (+54 / +80 / +105 / +122) with the reason (the round inserted at several points). All five
+  deltas recompute correctly.
+- **The *Anchor-sweep note* is the right instinct, and half of it is exactly right.** Noticing during
+  a citation sweep that the upstream *decision* had moved — not just its line numbers — and recording
+  it in the entry rather than silently retargeting around it, is the behaviour I want. Its payload
+  half is fully cited and correct (`TSPEC:974`/`:977`, `:951`, `:1016-1018`, `:1036`,
+  `:2656-2660`, `FSPEC:2585`). F-13 is not "delete this note"; it is "finish it".
+- **Nothing was traded away.** I checked the DEC-CONS-03 verb sets, the §11.6(e) guard sentence, the
+  DEC-CONS-06 exclusion and DEC-CONS-05's evidence structure specifically for silent weakening
+  across seven commits of churn, and found none.
+
 ## Recommendation
 
 ## Verdict
