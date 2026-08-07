@@ -43,7 +43,7 @@ type that produce it, and the test level that falsifies it.
 | T-05 | The `resolveAdvisoryRung` call site, `rungState` threading, and the shape of the signature widening | §8.1 |
 | T-06 | The `ESCALATIONS.md` parse implementation | §7.7 |
 | T-07 | The `.gitignore` pattern's exact text | §3.2 |
-| T-08 | Shared code vs. two implementations for the corpus enumeration | §7.1; the decision itself is §13.1 row 6 (**two implementations**), and §10.4 records which half of the pair a test holds equal and which is accepted divergence |
+| T-08 | Shared code vs. two implementations for the corpus enumeration | §7.1; the decision itself is §13.1 row 6 (**two implementations**). The predicate half is held **equal** (AT-P7); the enumeration half is held by **two literal pins** (§7.1) with §10.4's two divergence classes as the accepted residue, and §13.3 raises the relaxation of REQ `:115-116` upstream |
 | T-09 | At least one property strategy per parameterisable component | §11.4 |
 | T-10 | The spellings of the "unavailable" observables | §6.5 |
 
@@ -666,11 +666,29 @@ empty one and would advance the cadence datum on a pass that read nothing. §10.
    basenames**; `basenameCollisions` records every group of ≥2 distinct paths sharing a basename
    (E-09), reported by §7.9 and never repaired.
 
+**An enumerated file whose body cannot be read, decided.** §10.4 class (ii) (a staged-but-deleted
+LEARNINGS) and AT-P8's IO-error case both produce an entry that is in the corpus but whose body
+`_readFile` returns `null` for. Two questions had no answer here and now do:
+
+1. **It counts toward `|un-consolidated|` for the AC-1.2 volume test.** The test is over the
+   *enumeration*, and AC-1.1 forbids reading any LEARNINGS body at tick time, so the count cannot
+   depend on readability without violating the tick contract.
+2. **It appears in the consumed pair**, and its basename is named in the report body as an entry the
+   pass could not read. This is the arm that matters: excluding it would leave it un-consolidated
+   forever, tripping the threshold on every subsequent pass and being drawn and dropped again each
+   time — the "nudged forever, never clearable" shape §10.4 already treats as the worst outcome.
+   Including it makes the pass converge, and the report says exactly what it could not read.
+
+No reason code is minted for it (REQ §4b; vocabularies §1 at `Version` 1.4 has no row), so the
+evidence is the report body's named list and nothing else. This is distinct from `{unlistable: true}`
+above, which is the *enumeration* failing and terminates `failed`; here the enumeration succeeded and
+one member of it is unreadable.
+
 The two membership tests differ deliberately — substring in the legacy region, per-line in the block
 — and that asymmetry is the point: a block must name **exactly** the consumed set (NFR-5), while the
 legacy region must reproduce the shipped predicate over prose that names full paths.
 
-**T-08 decided: two implementations, held equal by a differential test.** The pass is JavaScript in
+**T-08 decided: two implementations, whose predicates are held equal by a differential test.** The pass is JavaScript in
 a bundle that cannot import; the hook is a Python heredoc inside bash that no JS test can import
 (`nudge-consolidation.sh:22-50`). Extracting a shared implementation would need a third artifact and
 a language boundary neither side has today. The two are therefore written separately to one stated
@@ -743,6 +761,16 @@ zero corpus while making `PDLC_PENDING:` (with an empty value) a **positive** ob
 implementation task with the `:28` glob and `:41` predicate edits (one file, one task, per
 batch-safety rule 2), never to a test-helper task. The release note names it as a new,
 default-off debug channel, alongside §8.3's drift-gate notice.
+
+**One side effect of the relocated exit, named deliberately.** Removing `:29-30` means a zero-corpus
+session now reaches the log read at `:32-39`, where today the hook exits first. That is a new read on
+a `SessionStart` path in every repository that ships this plugin. It is safe — the read is already
+guarded by `os.path.isfile` and wrapped in a `try` with `errors="ignore"` — and it is deliberate,
+because the debug line must be reached on every path for `∅` to be observable. It is **in scope for
+the release note**, which names both halves of this edit rather than only the visible one: a new
+default-off `PDLC_PENDING:` stderr channel, and one additional guarded read of
+`docs/_decisions/.consolidation-log.md` on zero-corpus sessions. Stdout is byte-unchanged either way
+(`n >= THRESHOLD` at `:43` is already false for `n == 0`).
 
 ### 7.2 Trigger, datum and `passId` (FSPEC §2.3, §2.5)
 
@@ -1654,7 +1682,8 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   (ii) a LEARNINGS file **staged but deleted from the worktree** is in the **pass's** set (`--cached`
   lists it) and not the hook's — `_readFile` then returns `null` for its body, which
   `classifyCorpus` treats as an unreadable corpus entry (§7.1) and the pass reports rather than
-  crashing on.
+  crashing on — counted in the volume test, carried in the consumed pair, and named in the report
+  body, per §7.1's decision, so it cannot recur forever.
 
   **What closing each would actually cost, corrected.** An earlier draft of this bullet said that
   dropping `--exclude-standard` "re-admits the two `docs/discarded/` directories §7.1's `:(glob)`
@@ -1702,7 +1731,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | **L1 — pure function** | every §7 function, called directly on literal inputs | none | `consolidationPredicate.test.js`, `consolidationIdentity.test.js`, `consolidationEffectiveness.test.js`, `consolidationParse.test.js` |
 | **L2 — orchestration** | `main()` end-to-end with doubles for every seam; the §12 acceptance tests live here | all doubled | `consolidationPass.test.js`, `consolidationRoute.test.js`, `consolidationCredential.test.js` |
 | **L3 — build, artifact & source text** | the bundle is emitted, is in sync, carries no `import(`, and its `meta` is first and literal; plus the source-text oracles (§3.3's `.gitignore`, §11.3(e)'s adapter prompts, §12.3's AT set-equality) | none | the **await-audit and bundle** assertions extend the shipped `runtimeBundle.test.js` in place (they edit its own `AWAIT_SCAN_SOURCES` and `AT19_SEAM_NAMES` sets); the feature-scoped source-text oracles live in `consolidationBuild.test.js` and `consolidationTraceability.test.js`, so this feature adds no row to a shipped suite that is not a set member of one it already owns |
-| **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7) |
+| **L4 — differential** | the JS predicate against the shipped `nudge-consolidation.sh` over one fixture table | a real `python3`/`bash` subprocess | `consolidationHookParity.test.js` (AT-P7). The same file also carries one **L3** source-text case — the hook-side enumeration pin over `:28`'s two globs (§7.1) — which runs whether or not the L4 rows degrade, since it shells out to nothing |
 | **L5 — property** | the four T-09 components | none | `consolidationProperties.test.js` |
 
 L3 is a **set over two axes**: the sources scanned (`AWAIT_SCAN_SOURCES` gains
@@ -1732,6 +1761,14 @@ executed differential rows is either the full fixture table's length or exactly 
 unconditionally. All-or-nothing is the real invariant — a harness that silently ran *some* rows
 (a mid-table interpreter failure, a fixture that threw and was swallowed) is red, where the
 disjunction was green.
+
+**Where that count comes from, since only one of the two answers is an oracle.** It is **not** read
+from the fixture table's length — that is derivable from the table itself and would be
+self-satisfying. The harness holds a counter that each row increments **as its last statement, after
+its own assertions have passed**, and an `afterAll` asserts `executed === TABLE.length || executed === 0`.
+So an interpreter that dies at row 4 of six leaves `executed === 3`, which is neither, and reds; a
+row that throws and is swallowed never reaches its increment, and reds; a wholesale `test.skip` of
+the suite leaves `executed === 0`, which passes, which is the one legitimate all-skip case.
 
 ### 11.2 Test doubles — reuse first (DC-08)
 
@@ -1916,6 +1953,12 @@ One consequence for the fixture table: `classifyCorpus` is driven directly, not 
 `enumerateCorpus`, so **no fixture may be written that depends on git visibility** (an ignored file,
 a staged-but-deleted file). Such a fixture would assert a divergence the harness cannot observe and
 would read as coverage of the enumeration half.
+
+**That rule lives in the code, not only here.** It is written into the header of
+`consolidationDoubles.js`'s fixture builder — the same place `seams.js` and `advisoryDoubles.js`
+state their own single-canonical-double rules — because a constraint a later contributor must not
+violate is one they must be able to read where they are working. The TSPEC states the reason; the
+header states the rule.
 
 ### 11.4 Property strategies (T-09)
 
