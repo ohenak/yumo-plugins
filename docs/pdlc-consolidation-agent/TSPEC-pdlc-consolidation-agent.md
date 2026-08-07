@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-06 |
+| pdlc | draft | Claude | 1.6 | 2026-08-06 |
 
 > **Scope in one line.** The mechanism for one consolidation pass: one new workflow module
 > (`pdlc/workflows/consolidate-learnings.js`), the seam protocol it is injected with, the pure
@@ -258,7 +258,7 @@ interface ConsolidationSeams {
 // document reads WHICH reason came back, and no row asserts it. That is why the marker's
 // `present` flag comes from here and not from _readFile. Do not build on the distinction
 // between the two reasons: the two implementations disagree on where the boundary sits.
-// `rtCheckFile` decides emptiness by BYTE SIZE (`test -s`, runtime-adapter.js:820), while
+// `rtCheckFile` decides emptiness by BYTE SIZE (`test -s`, runtime-adapter.js:823), while
 // `fakeFs.checkFile` decides it by TRIMMED CONTENT (`String(self.files[path]).trim() === ""`,
 // __tests__/helpers/seams.js:298) — so a marker holding a single newline is {ok:true} in
 // production and {ok:false, reason:"file_empty"} under the double. They agree on "" and on a
@@ -383,8 +383,11 @@ mutual exclusion would be off in production, and every L2 fixture would stay gre
 `refused` path is exercised only through `fakeFs`. **`defaultCheckFile` therefore fails loudly**: it
 throws on any I/O failure and never returns a `CheckReply`. It deliberately does **not** copy the
 never-throw internal contract of the shipped `checkFileNonEmpty`, whose every catch returns
-`{ok:false, reason:"file_missing"}` (`orchestrate-dev.js:3688-3692`) — that shape is right for a
+`{ok:false, reason:"file_missing"}` (`orchestrate-dev.js:3690-3692`) — that shape is right for a
 caller deciding whether a *document* exists and wrong for one deciding whether a *lock* is held.
+That default is not separately asserted, and deliberately: §12.2's `rtConsInjections()`
+set-equality row makes the production path unable to reach it, and no suite drives a module
+default. The residual exposure is bounded to a hand-written harness that omits the seam.
 
 The load-bearing consequence is that an unwired seam must be caught by an assertion, not by a
 default: §12.2's `rtConsInjections()` set-equality row is what makes "the composition root hands over
@@ -995,7 +998,9 @@ reclaim-on-every-steady-state-pass bug. It is withdrawn by name here rather than
 `fakeFs` accumulates an ordered `calls` array whose intended use its own header advertises
 (`__tests__/helpers/seams.js:241` — `expect(fs.calls.map((c) => c.op)).toEqual([…])`), so a
 call-order oracle over `takeMarker` is a natural L2 assertion, and the expected prefix it holds is
-`["check", "read", "write", "read"]` — one expected value, not two.
+`["check", "read", "write", "read"]` — one expected value, not two. Stated to remove the
+ambiguity, not to mint a case: no §12.2 row obliges a call-order assertion, and none is added
+under the freeze.
 
 A read-back that returns `null`, an unparseable marker, or **another pass's** `passId` is a failed
 take. The pass terminates `refused` with `consolidation-in-progress` (the same disposition as an
@@ -2542,4 +2547,9 @@ re-argued on what a count-above-threshold comparison can supply.
   AT-Q2, which asserts only the trailers), and FSPEC §5.3's "when, **and only when**" negative
   direction for the proposal file. Both are raised as errata against the FSPEC rather than bound to
   a nearby id; until they land, §12.2's cells name the gap explicitly.
+
+- **Upstream (vocabularies) — ER-6**, the `Route` union's missing proposal-file member, is
+  recorded in full at §12.4 with its `route: "degraded"` interim and the two-fixture
+  discriminator §12.2 obliges. Listed here so the hand-off carries it; nothing about it is
+  decided anew.
 

@@ -46,3 +46,10 @@ equipped to check them (`POSTMORTEM-F-pdlc-consolidation-agent.md` RC-1).
 **Related.** [DEC-SEV-01](DECISIONS-review-severity-bars.md) adjudicates the severity of
 detectable governance-scope gaps; this decision adjudicates *where a mechanism belongs*. Together
 they remove the two observed one-Medium-per-round generators.
+
+**Companion (added 2026-08-06, per `POSTMORTEM-T-pdlc-consolidation-agent.md` step 3).** The
+decisions this rule moves down arrive at the receiving layer **with** the disposition rule
+[DEC-SEV-03](DECISIONS-review-severity-bars.md): when deciding one of them collides with an
+enumerated upstream artifact, the collision is named, priced and routed through the erratum
+channel at Low severity — the cost this decision priced ("TSPEC inherits four open decisions")
+is paid through that channel, not through the severity bar.

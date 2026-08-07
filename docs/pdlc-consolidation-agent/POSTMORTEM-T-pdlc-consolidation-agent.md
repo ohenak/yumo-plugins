@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 1.0 | 2026-08-06 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -487,3 +487,46 @@ layer moves its collisions down with it; a layer boundary without a collision-di
 converts every inherited decision into a blocking finding whose repair never changes the decision.*
 That is a candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at the next
 `consolidate-learnings` pass, together with `DEC-SEV-03` from step 3.
+
+## Resolution (2026-08-06)
+
+The Recommendation was carried out in full by the outer orchestrator.
+
+**Step 1 — verification (Opus agent, TSPEC v1.5 at HEAD, judged against file text, not commit
+messages).** PM F-17 (High) CLOSED — §7.3 names FSPEC §4.2's empty arm unsatisfiable and states
+what ships, §10.3 rows 4/4a split, §12.3 records AT-M3's partial coverage with no test specified
+against the unreachable Given, §13.3 carries the erratum. PM F-18 CLOSED — §12.2 release row
+set-equal over `TerminalStatus` with the step-8 `failed` arm inside the set. TE F-01 CLOSED —
+`rtConsInjections()` set-equality row assigned to `consolidationBuild.test.js`; §5.5 states the
+runtime behaviour with `defaultCheckFile` failing loudly. TE F-02 CLOSED — three-call take in
+lead-in and sequence line. TE F-03 CLOSED — drain in a `finally`. PM F-19 was **PARTIAL** solely
+on a wrong self-introduced citation (`runtime-adapter.js:820` for `test -s`, which is at `:823`).
+
+**Completion — TSPEC v1.6, five mechanical/freeze-compliant edits, no new mechanism, function,
+observable or §12 row:** the `:823` citation corrected; `orchestrate-dev.js:3690-3692` corrected
+(the `catch`, not `:3688`); §13.3 gains a pure cross-reference bullet so the hand-off list carries
+ER-6 (it was recorded in §12.4 but absent from the section Phase P reads); the §7.3 call-order
+sentence and §5.5 `defaultCheckFile` paragraph gain the two pre-emptive clauses the verifier's
+freeze-risk scan named (FR-1, FR-2), stating that no coverage row is owed or added under the
+freeze.
+
+**Step 2 — decision freeze, declared and in force for rounds 6–10.** The confirming round may
+decide nothing new: no new mechanism, function, observable, or §12.2/§12.3 row beyond those
+closing round-5 items and those a reviewer's finding directly obliges. A finding proposing new
+mechanism is filed Low/deferred.
+
+**Step 3 — disposition rule recorded.** `docs/_decisions/DECISIONS-review-severity-bars.md`
+DEC-SEV-03: a named, priced and erratum-routed upstream collision is Low; High only when the
+collision is absorbed silently. Companion note added to
+`docs/_decisions/DECISIONS-spec-layer-boundary.md`: DEC-LAYER-01's inherited decisions arrive
+with this disposition rule.
+
+**Step 4 — DEC-CONV-01, DEC-LAYER-01, DEC-SEV-01/02 kept**, with this window's evidence: an
+approval-carry rule is inert in a window with no approval, and a layer-boundary rule needs a
+collision-disposition rule beside it.
+
+**Step 5 — re-entry.** Queue row 15 back to `pending`; rounds 6–10 open from the on-disk `-v5`
+basenames. Expectation under the decision freeze plus DEC-SEV-03: one delta round confirming the
+round-5 closures and producing the window's first two approvals, which DEC-CONV-01 then holds.
+Step 8's escalation stands: if rounds 6–10 exhaust, accept the TSPEC at its then-current version
+and route the residue to Phase P / Phase PT as errata — do not open a second Phase T window.
