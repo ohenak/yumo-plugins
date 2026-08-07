@@ -139,6 +139,70 @@ verifies exactly, including the three the resolution commit repaired (`runtime-a
 
 ## Positive Observations
 
+- **The wrong take sequence was withdrawn by name instead of quietly rewritten.** "An earlier draft's
+  `read → verdict → …` line was wrong: transcribed literally it forces the `_readFile(...) !== null`
+  derivation decision 2 forbids, and re-opens the reclaim-on-every-steady-state-pass bug. It is
+  withdrawn by name here rather than silently rewritten." A document that records which of its own
+  sentences was wrong, and what a reader would have built from it, is one a later editor cannot
+  re-introduce the same clash into by accident. The repair also propagated to all four places that
+  priced a two-call take (§7.3's lead-in, §10.4 item 1's race span, §13.1 row 5's spelling, the
+  read-back paragraph) rather than to the one line I named.
+- **The `rtConsInjections()` row was widened past what I asked for and said why.** I asked for set
+  equality; the row supplies it *and* justifies the widening from `adapterProbe.test.js`'s per-name
+  containment on the right axis — "a *surplus* key is as much a drift signal as a missing one,
+  because §5.1 is an enumerated contract". It also places itself at L3 in `consolidationBuild.test.js`
+  with a stated reason (its subject is the adapter artifact, not the pass's behaviour), which is the
+  fact §12.3 feeds into the PLAN's ownership manifest.
+- **§5.5 answers the runtime question and then declines the test that would look like an answer.**
+  `defaultCheckFile` is specified to throw rather than return a legal `{ok:false}` — the right
+  direction, and argued from the consumer ("that shape is right for a caller deciding whether a
+  *document* exists and wrong for one deciding whether a *lock* is held") rather than from taste. The
+  paragraph then states that the default is deliberately **not** separately asserted, because the
+  set-equality row makes the production path unable to reach it and no suite drives a module default,
+  and bounds the residue to a hand-written harness. Declining a case with a reason is worth more than
+  adding one, and under the freeze it is the correct move.
+- **Q-02 was answered by moving the assertion, not by softening the sentence.** The counter left
+  `afterAll` for its own top-level `test()` declared last, and the paragraph states the mechanism
+  (jest does not run a block's `afterAll` when every test in it is skipped) and why the placement is
+  load-bearing in both directions — unconditional declaration for the all-skip world, last position
+  so it reads the counter after every increment. That is the repair I hoped for and not the one I
+  offered.
+- **Q-01 was answered by recording a non-coverage.** The L4 pathspec case now states what it does not
+  pin (`--exclude-standard` is inert under `git add -A` + `--cached`), why pinning it would pre-empt
+  §13.3's erratum, and what happens to the conjunct under each possible answer. A test whose gaps are
+  written down next to it is a test a later reader cannot over-trust.
+- **The `CheckReply` comment records a divergence it is not exposed to.** Byte-size (`test -s`) in
+  production vs. trimmed content in the double, agreeing on `""` and on absence, which is the whole
+  reachable state set here — stated as an instruction to future editors ("do not build on the
+  distinction between the two reasons") rather than as a caveat. That is exactly where a landmine of
+  this kind should be defused: in the protocol, once, in the doubles' own vocabulary.
+
 ## Recommendation
 
+**Needs revision**
+
+One Medium, and it is narrow: **F-01** — §10.3's new row 4a and §7.3's decision 2 have no fixture.
+The document argues at length, and correctly, that deriving `present` from `_readFile(...) !== null`
+would record `reclaimed-stale-lock` on every steady-state pass; every marker fixture §12 specifies
+gives the two implementations the same answer, so nothing in the suite would notice. The repair is
+one conjunct on a case `consolidationPass.test.js` already owns (empty marker ⇒ normal status and no
+`reclaimed-stale-lock`, paired against the non-empty unparseable fixture that *does* record it), or
+an explicit DEC-LAYER-01 hand-off of the arm to PROPERTIES. Either is one sentence, needs no new
+mechanism, function, observable, file or §12.3 row, and is therefore compliant with the round-6
+freeze — this is a coverage obligation for a decision already made, not a proposal to decide anything
+new.
+
+F-02 (the `refused` arm the release row keys on) and F-03 (BR-15's line number) are one-clause edits
+and do not block.
+
+Everything I raised at v5 is closed at the mechanism, and two of the three closures are better than
+what I asked for: the take-order repair was propagated to every place that had priced the old
+two-call form, and the injections row was widened from containment to equality with the reason
+stated. The remaining Medium is the same shape as the last two rounds' — a decision made correctly
+and completely in prose, with the one assertion that would falsify it not yet written down.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 2}
+
