@@ -443,7 +443,7 @@ Every union above is also a module-level `Object.freeze([...])` array —
 `CREDENTIAL_VALUES`, `PHASE_CATALOGUE` — plus `REASON_CODE_STATUSES`, a frozen map from reason code
 to its permitted status set (vocabularies §1's third column, transcribed verbatim at `Version` 1.4).
 Freezing is the shipped discipline (`MERGE_GUARD_DEFAULTS`, `orchestrate-dev.js:48`; `MERGE_MODES`
-`:56`; `ADVISORY_SEAMS` `:1669`) and is what lets §11.3's oracle range over the module's own
+`:55`; `ADVISORY_SEAMS` `:1669`) and is what lets §11.3's oracle range over the module's own
 constants rather than over strings scraped from a fixture.
 
 `REASON_CODE_STATUSES` is **read, not enforced away**: the renderer checks that a code it is about
@@ -475,6 +475,184 @@ records are appended as written and never repaired (FSPEC §10.2); the literal i
 missing field at the point of display, in the report body and in the terminal row only.
 
 ## 7. Algorithms
+
+Each subsection names the exported function, its signature, its purity, and the FSPEC branch it
+implements. Unless stated otherwise every function here is **pure, total and synchronous**.
+
+### 7.1 The corpus and the two-region predicate (FSPEC §3.1, §3.2, §3.4)
+
+```ts
+enumerateCorpus(_listFiles): Promise<CorpusFile[]>
+classifyCorpus(files: CorpusFile[], logText: string | null): Predicate     // pure
+renderConsumedPair(passId: string, basenames: string[]): string           // pure
+```
+
+`enumerateCorpus` issues exactly two directory walks — `docs/*` and `docs/completed/*` — through
+`_listFiles`, filters each child directory's entries by `/^LEARNINGS-.*\.md$/`, and **never opens a
+file**. `docs/discarded/` is not walked at all: exclusion is by *not enumerating*, not by filtering
+afterwards, so a widened glob cannot re-admit it by accident (the directory holds two LEARNINGS at
+HEAD, under `docs/discarded/pdlc-rcv-budget-stop/` and `docs/discarded/pdlc-review-convergence/`).
+
+`classifyCorpus` is the predicate. Its algorithm, in order:
+
+1. `boundary = logText.indexOf("<!-- pdlc:consumed")`. `-1` (or `logText == null`) ⇒ the legacy
+   region is the whole text and the block region is empty.
+2. **Legacy region** = `logText.slice(0, boundary)`; membership is bare substring containment — the
+   shipped test (`nudge-consolidation.sh:41`) applied to a bounded slice.
+3. **Block region** = the concatenation of every span from an opening `<!-- pdlc:consumed {id} -->`
+   to the next `<!-- /pdlc:consumed -->`, or to end-of-text when no closer follows (the truncated
+   append of E-04); membership is per-line equality against a trimmed line.
+4. A closer with no opener contributes nothing and moves no boundary (E-05) — it is simply never
+   reached, because a span is opened only by an opener.
+5. `unconsolidated` = enumerated basenames in neither region, de-duplicated as a **set of
+   basenames**; `basenameCollisions` records every group of ≥2 distinct paths sharing a basename
+   (E-09), reported by §7.9 and never repaired.
+
+The two membership tests differ deliberately — substring in the legacy region, per-line in the block
+— and that asymmetry is the point: a block must name **exactly** the consumed set (NFR-5), while the
+legacy region must reproduce the shipped predicate over prose that names full paths.
+
+**T-08 decided: two implementations, held equal by a differential test.** The pass is JavaScript in
+a bundle that cannot import; the hook is a Python heredoc inside bash that no JS test can import
+(`nudge-consolidation.sh:22-50`). Extracting a shared implementation would need a third artifact and
+a language boundary neither side has today. The two are therefore written separately to one stated
+algorithm and pinned by AT-P7's differential harness, which runs both over one fixture table and
+asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s glob gains a second
+`glob.glob` over `docs/completed/*/LEARNINGS-*.md`, and `:41`'s comprehension tests against the two
+regions computed by a short helper rather than against `logtext` whole.
+
+### 7.2 Trigger, datum and `passId` (FSPEC §2.3, §2.5)
+
+```ts
+cadenceDatum(logRows: LogRow[]): number | null                    // pure
+triggerFor({unconsolidated, datum, now, config, direct}): Trigger | "skipped-cadence"   // pure
+mintPassId(logText: string | null, today: string): string         // pure
+```
+
+`cadenceDatum` scans **parsed rows**, not raw text, and returns the `date` of the most recent row
+whose `status` is in `{promoted, promoted-degraded, no-op, failed}` — "most recent" by the row's own
+`date`, not by file position (AT-C5's Given puts a later `refused` row last). `null` is the empty
+datum set, which `triggerFor` counts as elapsed.
+
+`triggerFor` evaluates volume, then cadence, then `skipped-cadence`, and returns `manual`
+unconditionally when `direct` is set. `now` comes from `_now()` — no function here reads a clock.
+
+`mintPassId` scans every row's `pass:` field for the literal `{today}-` prefix, parses the suffix as
+a decimal integer, and returns `{today}-{1+max}`, or `{today}-1` when none parses. A row whose
+`pass:` field is absent or unparseable contributes no candidate and never aborts the scan (E-10).
+`today` is derived from `_now()` in the invoking environment's local calendar and passed in, so the
+function stays pure and property-testable over an arbitrary multiset of rows (T-09 row 2).
+
+### 7.3 The marker (FSPEC §4.1, §4.2)
+
+```ts
+parseMarker(text: string | null): {passId: string, at: number} | null            // pure
+markerVerdict(parsed, present, nowMs, staleLockMinutes): "free"|"refuse"|"reclaim"  // pure
+takeMarker(state, seams): Promise<…>                                             // impure
+```
+
+`parseMarker` accepts exactly `IN-PROGRESS: {passId} {ISO-8601}` on one line; anything else — empty,
+truncated, multi-line, unparseable timestamp — yields `null`. `markerVerdict` maps a **present but
+unparseable** marker to `reclaim`, never to `refuse`: an unparseable marker carries no timestamp, so
+it can never age out, and refusing on it would wedge the cadence permanently. The `present` flag is
+what separates that case from an absent file (`free`), so the two `null`s are never conflated.
+
+Take is `_readFile` then `_writeFile` — **read-then-write, not atomic**. FSPEC §4.5 / O-C3 prices
+this race and asks whether the runtime offers an atomic create-exclusive primitive. **It does
+not**: `_writeFile` is `rtWriteFile` (`runtime-adapter.js:802`), an agent-transported whole-file
+write with no exclusive-create mode, and no adapter seam exposes one. This TSPEC takes the
+read-then-write form and **records the decision** rather than inventing a lock: an
+exclusive-create seam would be a new agent transport whose observation (whether the file already
+existed) is exactly as racy as the read it replaces. §13 carries it.
+
+### 7.4 The id, proposals, and the intra-pass merge (FSPEC §8.1, §8.2, §5.2)
+
+```ts
+failureModeId(phase: Phase, artifact: string): string          // pure, total
+targetFor(kind: 1|2|3, artifact: string, id: string): string   // pure
+mergeProposals(proposals: Proposal[]): Proposal[]              // pure
+parseLogRecords(logText: string|null): {records, notices}      // pure, total
+```
+
+**The derivation**, from FSPEC §8.1, as three ordered substitutions:
+
+```js
+const slug = artifact.replace(/[/.]/g, "-").toLowerCase()
+                     .replace(/[^a-z0-9-]+/g, "-")
+                     .replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
+return `${phase.toLowerCase()}-${slug}`;
+```
+
+Order is fixed here because two orders disagree: collapsing runs **after** the separator
+substitution is what makes `pdlc/skills/a-b.md`, `pdlc/skills/a/b.md` and `pdlc/skills/a.b.md` one
+id — the collision FSPEC §8.1 prices and AT-R6b fixture 2 asserts. Collapsing first would leave
+three ids and silently falsify that fixture.
+
+`targetFor`: kind 1 ⇒ `docs/_constraints/DOMAIN-CONSTRAINTS.md`; kind 2 ⇒
+`docs/_decisions/DECISIONS-{id}.md`; kind 3 ⇒ the subject `artifact` itself. The id is passed in
+rather than recomputed, so kind 2's target can never be derived from a differently-normalised path
+than the one that keyed it.
+
+`mergeProposals` groups by `(failureModeId, action)` — never by kind, never by target — and folds
+each group of ≥2 into one:
+
+| Folded field | Rule | FSPEC |
+|---|---|---|
+| `kind` | the **numerically lowest** in the group (1 outranks 2 outranks 3) | §8.2 precedence |
+| `artifact` | the **lexicographically first** candidate, byte order over the canonical paths **as written** | §8.2 tie-break |
+| `target` | `targetFor(foldedKind, foldedArtifact, id)` — so `target` follows `artifact` exactly when the folded kind is 3 | §8.2's third note |
+| `symptom` | the group's symptoms joined into **one line** with `; ` | §8.2 consequence 1 |
+| `elidedKinds` | every distinct kind in the group other than the folded one | §10.4 item 4 |
+| `elidedArtifacts` | every candidate path other than the survivor, in byte order | §10.4 item 4, subject axis |
+
+Two properties fall out and are asserted rather than assumed: the fold emits **no** suppression and
+**no** reason code (nothing was withheld — AT-R6b's negative half), and it is a pure function of the
+group, never of proposal order (byte order is total over distinct strings, and a group's members are
+distinct by construction, identical proposals being already one).
+
+`parseLogRecords` is the receive side. It reads each failure-mode record block into a **partial**
+record and, for each field the block does not carry, appends one
+`ParseNotice{subject, missingField}`. It never fills a default, never rewrites the log, and never
+throws. **Which contract skips a partial record is not this function's business** — it hands every
+record and every notice to the readers, and each reader applies its own arm (§7.5, §7.6). That is
+FSPEC §8.1's "per field, per reader" rule made structural rather than conventional.
+
+### 7.5 Effectiveness, streaks, remediation, the open list (FSPEC §8.3 – §8.7)
+
+```ts
+phasesExercised(learningsText: string): Set<Phase>                          // pure
+effectivenessTable(records, consumedTexts, config): EffectivenessRow[]      // pure
+openPromotionList(records): string[]                                        // pure
+remediationChoice(id, records, prStates, headExists): "revision"|"retirement"|null  // pure
+```
+
+`phasesExercised` prefers the LEARNINGS' own `Phases exercised` metadata row when present;
+otherwise it applies vocabularies §2's mapping to that file's `Harvested from` row, **per file**: a
+`CROSS-REVIEW-{role}-{docType}-v{N}` basename decides that docType's phase, `CODE_REVIEW-*` decides
+`DOD`, and `POSTMORTEM-{phase}-*` decides that `{phase}` verbatim and takes precedence. Any phase
+the mapping cannot decide counts as **not exercised** — the direction that routes to
+`insufficient-evidence` and never to a guessed `prevented`.
+
+`effectivenessTable` emits **one row per distinct id in `records`**, in first-seen order, evaluating
+the three arms in FSPEC order. Two receive-side arms are structural rather than conditional: a
+record with no `failureModeId` contributes **no** row (a row cannot be keyed on an absent id), and a
+record with no `phase` contributes a row whose verdict falls to `insufficient-evidence`. Streak
+state (`ineffective`, `unmeasurable`) is computed by folding the log's rows **in file order**,
+counting only the populations FSPEC §8.5 and §8.7 name — which differ, and are therefore two
+separate folds over one row sequence rather than one fold with a flag.
+
+`openPromotionList` returns the ids for which **no** record carries `action: "retire"` with a
+`route` other than `"degraded"`. A record short of `action` or `route` cannot close an id (it stays
+open); a record short of `failureModeId` contributes **no member at all**. The list's length is what
+§7.9's report item 10 prints.
+
+`remediationChoice` evaluates FSPEC §8.5's four rows top-down. It returns `null` on row 1 (the
+ladder has ended — the caller records `duplicate-suppressed` and reports the field as `retirement`)
+and on the short-`artifact` arm (the file-existence test cannot run, so nothing is proposed).
+Row 3's `headExists` is supplied by the caller from one
+`_git(["cat-file", "-e", `HEAD:${artifact}`])` probe — a **read**, resolving to the `read-status`
+verb of §9.3's invoking-tree domain, never a checkout and never a filesystem stat the runtime
+cannot perform.
 
 ## 8. Reuse of the advisory rung ladder, and the bundle wiring
 
