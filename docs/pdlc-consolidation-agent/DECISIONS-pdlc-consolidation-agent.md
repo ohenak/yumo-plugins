@@ -537,4 +537,61 @@ and both are raised as errata rather than settled here.
 
 ## 11. Consequences for downstream layers
 
-_(pending)_
+### 11.1 What the PLAN inherits from these decisions
+
+| From | Obligation on the PLAN |
+|---|---|
+| DEC-CONS-02, and the two other edits to `orchestrate-dev.js` | The file-ownership manifest must serialise the **three** writers of `pdlc/workflows/orchestrate-dev.js` — the resolver widening, the `gitWithLockRetry` export, the `mergeCommandFor` surfaces — into **one** task. They are one physical file, and batch-safety rule 2 forbids two same-batch tasks appending to it |
+| DEC-CONS-01, DEC-CONS-03, DEC-CONS-06 | The `runtime-adapter.js` writers are likewise **one** task: `rtEnvPresent`, `rtMakeTempDir`, the consolidation injections object, and the single `rtWriteFile` prompt widening (`rtReadFile` is **not** edited) are one file |
+| DEC-CONS-02 | The rebuild of `pdlc/workflows/dist/` is an explicit task with `pdlc/workflows/dist/` in its pathspec, per `implementation.postWavePathspecs`. Four tracked artifacts change, not one — a partial rebuild fails CI's `Generated artifacts are in sync` job |
+| DEC-CONS-02 (§8.3) | The release note and `pdlc/RELEASE-CHECKLIST.md` must state that the first queue invocation after this feature lands is **blocked by the drift gate** until `sync-workflows.sh` runs. No AC owns this; it is the shipped gate meeting a new manifest row |
+| DEC-CONS-04, DEC-CONS-07 | The marker test file's owning task's Definition of Done must name both conjuncts — the six-status release set-equality and the empty-vs-unparseable fixture pair — so neither is read as unowned |
+| DEC-CONS-05 | The shipped-hook edit (`PDLC_PENDING:` stderr line, and the widened `CORPUS_GLOBS`) and the hook-parity test are separate owned files; the parity test depends on the hook edit by an explicit `Deps` edge |
+| All seven | Per DC-10, each entry above carries its `Testability:` line, and each names the file the oracle lives in. The canonical test doubles for the seams (`fakeFs`, the `_git` argv recorder, the `asAsync` wrapper) are created by one batch-1 task with downstream edges, per batch-safety rule 4 — no per-test ad-hoc equivalents, per DEC-ORACLE-03 |
+
+### 11.2 What PROPERTIES inherits
+
+Three of these decisions are stated as *invariants over a whole run*, not as single assertions, and
+must land as properties rather than as unit cases:
+
+- **DEC-CONS-01** — no credential value appears in any rendered artifact, on a path that
+  demonstrably ran (the positive `credential:` conjunct). A fixture written against absence alone is
+  satisfied by a pass that does nothing.
+- **DEC-CONS-03** — over any pass, the invoking-tree `git` argv set contains no mutating verb. This
+  is a containment property over a closed set, so it stays true for calls nobody has written yet.
+- **DEC-CONS-07** — over the six terminal statuses, marker release is set-equal to marker take. Any
+  determinism property here needs a **positive conjunct**: an invariance-only fixture is satisfied by
+  a constant function.
+
+### 11.3 Errata raised, not settled here
+
+Two of these decisions relax or contradict an upstream document, and both are handed up rather than
+absorbed. They are listed here so a reader of *this* document knows the corresponding entry is
+provisional:
+
+1. **FSPEC §4.1 / §4.2 — the marker's removal verb and the empty arm** (DEC-CONS-07). §4.1's
+   lifetime row says "Removed at step 16" (`FSPEC:415`), which no declared seam can do; §4.2's fourth
+   row (`:442`), E-11 and AT-M3's *Given* then bind an `empty (truncated write)` arm that is
+   unreachable under the release form. The product question is *what the durable log must witness
+   when a pass dies mid-take*, and it belongs to the REQ/FSPEC author.
+2. **REQ §3.1 step 1 / FSPEC AT-P7 — the enumeration relaxation** (DEC-CONS-05). `REQ:115-116`'s
+   "keeping one enumeration as well as one predicate" cannot be delivered as written, and an
+   enumeration set-equality assertion would be red on correct code. The sub-question that decides how
+   much of the divergence closes: *is a `.gitignore`d LEARNINGS file corpus?* — measured at HEAD, "yes"
+   closes divergence class (i) at exactly the price of that rule and no other, while "no" keeps it
+   open. The two answers are not symmetric and the erratum says so.
+
+A third question rides with them and is likewise not this layer's to mint: should the durable log row
+carry the **unreadable** corpus basenames (an `unread:` field beside `consumed`), given that an
+unreadable entry is currently marked consumed while contributing no evidence? That is a
+`docs/_constraints/pdlc-consolidation-vocabularies.md` §3 field-set change, and REQ §4b reserves that
+file's sections to the REQ.
+
+### 11.4 Standing consequence
+
+Six of the seven entries above exist because the shipped runtime has no `fs` and no `process`, and
+because the adapter's verb set is closed and small. If that ever changes, this document should be
+re-read in one sitting: DEC-CONS-01, DEC-CONS-04, DEC-CONS-06 and DEC-CONS-07 would each be
+re-decided the same day, and DEC-CONS-05's shared-implementation alternative would become affordable.
+Until then, every one of them is a constraint wearing a decision's clothes, and the honest record of
+that is what this document is for.
