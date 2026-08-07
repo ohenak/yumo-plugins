@@ -28,6 +28,12 @@ Questions Q-04, Q-05 and Q-06 are all answered. Q-04: §7.1's new paragraph rout
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-07 | §7.1's relocated early exit (`nudge-consolidation.sh:29-30` replaced by a `pending = []` fall-through) is correct on the stdout contract — I checked the shipped script: with `pending` empty, `n = 0`, the `n >= THRESHOLD` test at `:43` is false, nothing is printed, `sys.exit(0)` at `:49` runs, so stdout is byte-identical on a zero corpus. But the fall-through also means the log file at `:32-39` is now opened and read on **every** zero-corpus session, where today the hook exits before touching it. That is a new read on a `SessionStart` path in every repository that ships this plugin. Harmless as far as I can see (the read is already `try`-wrapped and `errors="ignore"`), but it is a shipped-behaviour change with no AC, so: is it deliberate, and does the release note's "default-off debug channel" line cover it? |
+| Q-08 | §10.4 class (ii) says a staged-but-deleted LEARNINGS file lands in the pass's corpus, `_readFile` returns `null`, and `classifyCorpus` treats it as "an unreadable corpus entry (§7.1) and the pass reports rather than crashing on". Does that entry count toward `|un-consolidated|` for the AC-1.2 volume test, and does it appear in the consumed pair? A file that can never be read but permanently inflates the volume count would trip the threshold and then be consumed-without-consolidating on every pass — I could not find where §7.1 or §6 decides it either way. |
+| Q-09 | §13.1 row 12 and §7.1 make the `PDLC_PENDING:` stderr channel the thing that "makes even the predicate half observable", i.e. AT-P7 exists only because a shipped consumer hook now carries a test-affordance. With F-10's narrowing on top, the whole of AT-P7's remaining value is a predicate differential. Is that still worth a permanent edit to a shipped `SessionStart` hook, or would the PM prefer the predicate be extracted once (row 6's rejected alternative) now that the enumeration half is conceded anyway? Not a finding — a question about where the product wants the cost. |
+
 ## Positive Observations
 
 ## Recommendation
