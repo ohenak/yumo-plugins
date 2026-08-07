@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-06 |
+| pdlc | draft | Claude | 1.1 | 2026-08-06 |
 
 > **Scope in one line.** The mechanism for one consolidation pass: one new workflow module
 > (`pdlc/workflows/consolidate-learnings.js`), the seam protocol it is injected with, the pure
@@ -89,7 +89,7 @@ constraint that shapes §9's design more than any other: the pass cannot call `m
 
 | Path | Role | Notes |
 |---|---|---|
-| `pdlc/workflows/consolidate-learnings.js` | the pass — one ES module, `export default async function main({…})`, every IO through a defaulted injection parameter | mirrors `orchestrate-queue.js`'s shape (`:1033`), so `build-runtime.mjs` can strip and wrap it with the existing `stripModuleSyntax` / `wrapModule` pair (`build-runtime.mjs:44`, `:56`) with no new build machinery |
+| `pdlc/workflows/consolidate-learnings.js` | the pass — one ES module, `export default async function main({…})`, every IO through a defaulted injection parameter | mirrors `orchestrate-queue.js`'s shape (`:1033`), so `build-runtime.mjs` can strip and wrap it with the existing `stripModuleSyntax` / `wrapModule` pair (`build-runtime.mjs:45`, `:55` — the declarations, not their doc comments at `:43` / `:54`) with no new build machinery |
 | `pdlc/workflows/dist/consolidate-learnings.bundle.js` | generated runtime artifact | §8.2 |
 | `pdlc/workflows/__tests__/helpers/consolidationDoubles.js` | the **one** canonical double module for this feature's two new seams and its log/corpus fixtures | excluded from jest by the shipped `testPathIgnorePatterns` (`package.json`); re-exports rather than re-declares every double that already exists (§11.2) |
 | `pdlc/workflows/__tests__/consolidation*.test.js` | the suites — one file per §11.1 group | §11.5 names the split |
@@ -105,9 +105,9 @@ decomposition is by **exported pure function** (§4), not by file.
 |---|---|---|
 | `pdlc/workflows/orchestrate-dev.js` | `resolveAdvisoryRung` (`:1833`) gains an optional `skill` parameter defaulting to `ADVISORY_RUNG_SKILL` (`:1797`), threaded to `dispatchAt`'s `_agent` call (`:1841`) and therefore to both the memoised path (`:1844-1849`) and the two-rung path | §8.1; FSPEC §15.3, §14.1 T-05 |
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
-| `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`) | §5.3, §9.1 |
+| `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-813`) and `rtReadFile` (`:493`), whose prompts today say "relative to the repository root" | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
-| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions | §7.1 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1) | §7.1 |
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the block/legacy predicate; `:41`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-78`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
 | `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
@@ -122,8 +122,15 @@ written without a leading slash and without `**/`. Per gitignore(5) a pattern wi
 separator is already anchored to the `.gitignore`'s own directory, which the shipped
 `/.claude/workflows/` entry documents at length in its own comment block (verified at HEAD, that
 comment is the last block of the file). A slash-free `\.consolidation-lock` or a `**/`-prefixed form
-would match at every depth and would silently swallow a fixture of the same name under
-`pdlc/workflows/__tests__/fixtures/` — which §11 does create.
+would match at every depth, so any future file of that basename anywhere in the tree would be
+ignored without anyone deciding it should be — which is what anchoring exists to prevent. The
+gitignore(5) ground is the whole argument; no fixture is claimed here, because §11 creates none of
+that name.
+
+**T-07 is falsified by a test, not by a maintainer check.** `consolidationBuild.test.js` reads the
+tracked `.gitignore` and asserts the comment line and the pattern line **verbatim and adjacent**, in
+the shape `runtimeBundle.test.js` already uses for source-text assertions (`:1570-1584`). Text that
+CI cannot read can be rewritten slash-free in one commit and nothing goes red; §12.2 names the test.
 
 ### 3.4 Consumer-visible surface
 
