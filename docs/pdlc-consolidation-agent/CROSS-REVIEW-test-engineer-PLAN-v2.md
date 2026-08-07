@@ -91,4 +91,23 @@ reports precisely these numbers, so its figures are reproducible and not transcr
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All nine v1 findings are resolved, each verified by re-measurement at HEAD rather than by reading the
+revision's account of itself. The two Highs are closed at the root: T05 reads the register instead of
+transcribing a count and carries a version pin plus a non-vacuity floor, and the three orphaned
+register ids are assigned with their FSPEC *Given*/*Then* transcribed faithfully. The gate functions
+re-run clean (34 / 34 / `{ok:true}` / 15 batches / 0 batch mismatches / 0 same-batch file collisions),
+so the T25 → T19 edge cost nothing.
+
+The single Low is a label that contradicts its own cell (F-01) and needs one clause. It does not gate
+approval.
+
+**Two upstream defects remain open and are re-emitted as errata**, not folded into this verdict —
+they are the PLAN's own §9.1 errata 4 and 5, and they are the reason T05 is red on an unrepaired
+TSPEC. The PLAN's handling of them is correct (raise, cover locally, refuse to weaken the oracle to
+containment); routing is the orchestrator's.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
