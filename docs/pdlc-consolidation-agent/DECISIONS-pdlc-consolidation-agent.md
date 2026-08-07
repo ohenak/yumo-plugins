@@ -91,15 +91,18 @@ inside the transported command (TSPEC §9.2).
   boundary, and the paragraph below records what it leaves open.
 
 **Residual: the failure-reply channel is inbound, and it is not closed.** Non-disclosure holds
-structurally on the way *out* — the value never becomes a JS string (TSPEC §9.2, `TSPEC:1595-1601`).
+structurally on the way *out* — the value never becomes a JS string (TSPEC §9.2, which begins at
+`TSPEC:1629`; the claim itself is `TSPEC:1675-1677`, "**The credential never becomes a JS value.**
+… the pass holds only the name", restated at `:1699`).
 It does **not** hold structurally on the way *in*. On a non-zero exit `rtGit` instructs the transport
 agent to return "the LAST 300 characters of its **combined output**"
 (`pdlc/workflows/runtime-adapter.js:951`), which `rtParseTransportReply` (`:967`) surfaces as the
 `stderr` field (`:977`); `rtGhRun` (`:995`) parses through the same function (`:1006`) but asks its
 agent for stderr only (`:1000`), so the combined-output arm is `rtGit`'s alone. This feature renders
-that field: `enumerateCorpus` returns `{unlistable: true, detail: stderr}` (`TSPEC:618`, `:684`) and
-§10.3 row 1a puts the "pathspec `stderr` in report body" (`TSPEC:1832`); `openClone` returns
-`{failure, detail}` (`TSPEC:1522`) on the clone/push path, which is the **credentialed** one. So
+that field: `enumerateCorpus` returns `{unlistable: true, detail: stderr}` (signature `TSPEC:672`, the exact
+phrase `TSPEC:738`) and §10.3 row 1a puts the "pathspec `stderr` in report body" (`TSPEC:1937`);
+`openClone` returns `{failure, detail}` (`TSPEC:1602`) on the clone/push path, which is the
+**credentialed** one. So
 non-disclosure on the inbound path is bounded by *what `git` prints on failure*, not by the seam's
 interface, and no arm of the Testability line below observes that channel — both arms drive
 `_envPresent` only.
