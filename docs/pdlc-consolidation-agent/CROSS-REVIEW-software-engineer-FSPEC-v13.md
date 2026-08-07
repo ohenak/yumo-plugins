@@ -57,6 +57,42 @@ property that made the old AT-M3 weak in the first place.
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Non-blocking, and I believe the answer is "no change needed": under the sentinel, a released marker persists in the working tree indefinitely, so a repo that has run one pass always has a `RELEASED:` file on disk. `.gitignore` covers the commit half (`:445`) and §4.2's first content row covers the take half, so I see no leak — but if a future operator-facing story ever asks "is a pass running?", the answer is now "read the line", not "does the file exist". Worth a sentence in TSPEC's operator notes rather than another FSPEC round |
+
 ## 5. Positive Observations
 
+- The v11.3 edit is exemplary erratum discipline: it changed §4.1's mechanism *and* then traced the
+  change through §4.2, E-11/E-11b, BR-14/BR-14a, AT-M3/AT-M11 and the AC→AT map, rather than
+  patching the offending row and leaving the readers stale. The regression pass above found nothing
+  it had missed.
+- Every added claim about the codebase is falsifiable and cited to a line, and the two that matter
+  most were written as *commands* (`grep -nc … returns 0`), not assertions. Both reproduce at HEAD.
+  That is the form that makes a spec claim cheap to re-check a year from now.
+- Item 2 was answered as a product question, not routed around. The decision "the durable log must
+  witness a pass that died mid-take" is stated with its reason (the abandoned pass appended no
+  terminal row *by construction*), which is the sort of reasoning that survives an implementer who
+  disagrees with it.
+- The choice of a sentinel over a truncation is justified by what it preserves — the separability of
+  released from half-written — rather than by taste, and the paired AT-M3/AT-M11 fixtures encode
+  exactly that separation. AT-M11's *older* fixture is a genuinely good mutation kill.
+- AT-P7's re-scoping states what it does **not** assert (the `THRESHOLD` gate, the advisory line) as
+  carefully as what it does. Under-scoped negatives are how differential tests rot; this one names
+  its boundary.
+- AT-R7 and AT-Q13 each carry the "this is the row that would otherwise be green" argument. Both are
+  correct: a body of nothing but trailers really is green under AT-Q2, and a pass that wrote a
+  proposal file unconditionally really was green everywhere before AT-R7.
+
+## Recommendation
+
+**Approved with minor changes**
+
+**Delta confirmation: PASS.** All seven erratum items are resolved on the merits, and nothing I
+previously approved is broken by the edit. F-01 is a wording repair in one justification sentence,
+carries no contract consequence (§4.2's table is normative and unambiguous), and does not warrant a
+further erratum round — fold it in opportunistically if §4.1 is touched again.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
