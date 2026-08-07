@@ -26,6 +26,41 @@ accepted on the revision's word.
 
 ## 2. New findings
 
+Scope of this scan: the changed sections only — the header's upstream-version table, §1's rewritten
+overview and vocabulary paragraph, T01, T04, T05, T09, T20, T21, T25, T32, T33, §4.2's preamble,
+§6's gate-transcript paragraph, §6.1's two new edges, §6.2, §6.3, §7's new `BUNDLES`/`ARTIFACTS`
+row, §8.1's counting paragraph, §8.3's five rewritten rows, §9.1's errata 2–5 and §9.4's two rows.
+Every count and citation introduced by the revision was re-run.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-08 | Low | Local | **§8.1's new counting paragraph contradicts the table directly above it.** §8.1 (`:434-436`) closes "…+ `consolidationReport`, which is split across L1 and L2 and so **is named in neither row's list**". The table names it in **both** rows — L1 (`:428`) ends "(+ the L1 half of `consolidationReport`)" and L2 (`:429`) ends "(+ the L2 half of `consolidationReport`)". The arithmetic is right and I verified the total independently: `grep -o 'consolidation[A-Za-z]*\.test\.js'` over the PLAN, de-duplicated, returns exactly **16** distinct suites, and §5's manifest owns all sixteen. So the number is sound and the sentence explaining it is not; "named only parenthetically, and so counted in neither row's five" would say what is true. Worth repairing only because this paragraph exists to let a reader re-derive the 16 without trusting it, and as written the re-derivation stalls on a false premise. | — (method) |
+
+Nothing else. In particular, the four claims a revision of this kind most often gets wrong were
+re-measured and all hold:
+
+- **The repo-state claim that justifies T04's rewrite.** §6.3 item 2 and T04 assert the old
+  byte-identity oracle was vacuous *on this repository* — "HEAD pending 1 of 2, widened 3 of 5,
+  both under `THRESHOLD = 5`". I re-ran the shipped hook's own predicate against
+  `docs/_decisions/.consolidation-log.md`: HEAD's globs give **1 of 2** pending, the widened globs
+  **3 of 5**. Both below 5, so both hooks print nothing and identity did hold for the wrong reason.
+  The claim is exact, and it is the reason the replacement is a genuine strengthening rather than a
+  restatement.
+- **The Phase-P gate transcript (§6, answering my Q-04).** I imported the four exports from
+  `pdlc/workflows/orchestrate-dev.js` and applied them to this PLAN:
+  `parsePlanTasks` = **34**, `parsePlanOwnership` = **34**, `validatePlanContract` = `{"ok":true}`,
+  `computeTopologicalBatches` = **15**, batch-column mismatches = **0**, same-batch file collisions
+  across §5 = **0**, `T25.dependencies` = `["T09","T13","T14","T19"]`. Every figure in the new
+  paragraph is exact.
+- **The two new §6.1 edges.** T25 → T19: T25's pre-existing closure is `{T09, T13, T14, T04, T02,
+  T01, T00}` — exactly the set the row names — and T19 is not in it, so the edge was genuinely
+  undeclared. T31 → T06/T20/T21/T22/T24: each of the four stated paths (T30 → T11 → T06;
+  T30 → T29 → T28 → T20/T21; T30 → T22; T29 → T24) resolves against the parsed graph.
+- **T32's prelude arithmetic.** `build-runtime.mjs:87` declares `devModule`'s export list; it
+  already publishes `resolveAdvisoryRung` and the queue prelude already re-binds it at `:119`, so
+  "four prelude lines, three new export names (`MERGE_GUARD_DEFAULTS`, `mergeCommandFor`,
+  `gitWithLockRetry`)" is right — none of those three is in the list today.
+
 ## 3. Questions
 
 ## 4. Positive Observations
