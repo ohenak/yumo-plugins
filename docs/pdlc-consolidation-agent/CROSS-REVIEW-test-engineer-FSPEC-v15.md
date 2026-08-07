@@ -51,8 +51,54 @@ neither would make a test author write a wrong test today.
 
 ## Questions
 
+None. The erratum is self-contained and I have nothing I would need the author to answer before
+writing AT-Q7c's property today.
+
 ## Positive Observations
+
+- **The repair fixes the shape of the bound, not the instance of it.** The failure mode a
+  literal-swap repair would have left in place is the one that produced this erratum: a bound
+  frozen at one layer, widened at another, transcribed from the wrong one. AT-Q7c now states the
+  rule ("obliged-below, permitted-above, no merge or branch verb in either") *and* names where the
+  widenings live, so the next widening is a two-word edit to a citation rather than a second erratum
+  against the same row.
+- **Nothing about the oracle's strength moved.** I re-derived what AT-Q7c can still falsify after the
+  widening: the bound grew by three **non-mutating** reads only, so every merge verb, every branch
+  verb (`checkout`, `switch`, `stash`, `reset`, `rebase`) and every mutating remote verb remains
+  outside the permitted set and still reds. The row's own worked example survives verbatim — an
+  oracle asserting `= {add, commit}` in the invoking tree is still red on a conforming pass — and so
+  do both `∅` conjuncts on the PR and clone seams, which are equalities with the empty set and are
+  untouched by a widening of a third domain. TSPEC §9.3 makes the same argument from the other side
+  at `:1747-1755`: one verb per read, so a later `git remote add` resolves to a mutating remote verb
+  in no permitted set rather than hiding inside an already-permitted `read-object`.
+- **The widening was checked against the Given, not merely against the table.** The erratum's
+  strongest claim is that `read-index` is observed on AT-Q7c's *own* `promoted` Given, which is what
+  makes the row red rather than merely under-specified. It holds: §7.1's corpus enumeration runs on
+  every pass, promoting or not, and TSPEC binds it to `git ls-files --cached --others
+  --exclude-standard` (`:1745`) — an invoking-tree `_git` call, so it lands in this exact domain.
+  The row now says so in the cell, which means a test author who doubts the seven-member bound can
+  re-derive its necessity without leaving the row.
+- **Two stale intra-document locators were repaired in the same commit, and both were repaired to
+  the right lines rather than to plausible ones.** `:557-558` is the release-after-append sentence;
+  `:2449` is §15.3's `nudge-consolidation.sh` row. My v14 L-01 noted this document cites itself by
+  line and that every edit invalidates some of those; this round fixed two and introduced none I
+  could find in the three touched hunks.
+- **The header block declares the round honestly.** v11.5 (`:14-22`) says "one erratum, plus the two
+  Low locator findings of the v14 reviews … no rule, AC, BR, AT or fixture changes shape", and the
+  diff bears that out exactly: three hunks, none of which adds or removes a rule, an AC, a BR, an AT
+  row or a fixture, and §6.5 — the section it would have been tempting to "fix" — is byte-unchanged.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves every erratum item routed into this round, and it breaks nothing I previously
+approved: AT-Q7c's oracle is unchanged in strength and structure, its two `∅` equalities and its
+obliged-below conjunct survive verbatim, and no other row, rule or fixture moved. The two Lows are
+recorded for the author's judgement and neither blocks — L-01 is a one-clause alignment of the
+sibling row's parenthetical, L-02 is a known drift point already governed by the sentence beside it.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
