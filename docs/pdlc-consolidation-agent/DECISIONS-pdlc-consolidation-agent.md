@@ -896,7 +896,8 @@ must land as properties rather than as unit cases:
      the clone seam observing `∅` and the invoking tree observing a set **bounded on both sides**").
      Three things a property author must carry with them. (i) The **invoking tree is explicitly the
      domain that is not `∅`** on this Given: it contains `{add, commit}` and is contained in that
-     domain's permitted set **as TSPEC §9.3 states it at `TSPEC:1724`** — `add`, `commit`,
+     domain's **whole verb set (obliged ∪ permitted) as TSPEC §9.3 states it at `TSPEC:1724`** —
+     obliged `add` and `commit`, plus permitted
      `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index` — containment in
      both directions, never equality, because the read verbs are permitted and neither their presence
      nor their absence is asserted. **Take the upper bound from `TSPEC:1724`, not from `FSPEC:2154`.**
