@@ -181,7 +181,58 @@ AC-1.6 report obligation is asserted on real resolver output rather than on a re
 
 ## 5. DEC-CONS-03: The clone is cut from `origin`'s URL, not from the working-tree path
 
-_(pending)_
+**Context.** AC-3.8 governs the shipping configuration, in which `consolidation.pluginRepository`
+resolves to the same repository as the consuming repo. The guard-set edit must be made in a separate
+clone under a temporary directory, and in the invoking tree the pass must perform **no branch
+operation of any kind** — the tree may be mid-pipeline on a `feat-*` branch, and its HEAD must be
+identical before and after the pass. A local clone source is available and free.
+
+**Decision.** Read the clone source with `_git(["remote", "get-url", "origin"])` — a non-mutating
+read of the invoking tree — and clone that URL:
+`_git(["clone", "--depth", "1", "--single-branch", remote, dir])`. In the two-repo configuration the
+source is `https://github.com/{pluginRepository}.git` instead. `git clone` checks out the remote's
+default branch, which is what the FSPEC's "cut from the fetched default branch" asks for, so no
+separate `fetch` is issued.
+
+**Alternatives considered.**
+
+- **`git clone {repoRoot} {dir}` — clone the working tree** — rejected, and it is the cheaper and
+  more obvious call: no `remote get-url`, no network, faster. It is wrong because a local clone
+  inherits the source's **local branches and its HEAD**, and AC-3.8's whole premise is that the
+  invoking tree may be sitting mid-pipeline on `feat-*`. The clone would then be cut from that
+  feature branch rather than from the default branch, and every promotion commit would be stacked on
+  unmerged work. The defect is invisible in any test whose fixture repo happens to be on the default
+  branch, which is precisely the fixture a first implementation writes.
+- **`git worktree add` in the invoking repository** — rejected: it is a branch operation on the
+  invoking tree's refs, which AC-3.8 forbids outright, and it shares the object store, so a failed
+  push leaves refs behind in the operator's repository.
+- **`git fetch origin` into the invoking tree, then clone/branch from `FETCH_HEAD`** — rejected: the
+  fetch writes into the invoking tree's refs. AC-3.8 enumerates `fetch into its refs` in the
+  forbidden set explicitly.
+
+**Constraints that forced this shape.** AC-3.8's "no branch operation of any kind" in the invoking
+tree; the FSPEC's requirement that the clone be cut from the *fetched default branch*; and the seam
+verb accounting — `git remote get-url` is a distinct read verb (`read-remote`) and is admitted to the
+invoking-tree verb set as its own member rather than folded into an existing one, so that a later
+`git remote add` cannot pass the containment check by inheriting a neighbour's permission.
+
+**Reversibility:** easy. It is one argument to one seam call. Recorded because the rejected
+alternative is cheaper, more obvious, and passes the naive test.
+
+**Re-evaluation triggers.** A repository with no `origin` remote becoming a supported configuration
+(today an unresolvable `origin` is `repository-unresolved` and degrades to the AC-3.5 proposal-file
+fallback); an offline/air-gapped consumer requirement, which would force a local clone source and
+with it an explicit `--branch {defaultBranch}` and a HEAD-restoration obligation; `--depth 1`
+becoming insufficient because a promotion needs history.
+
+**Testability:** L1-observable through the `_git` double as an **argv-sequence** assertion, in two
+directions. Positive: the clone argv's `remote` element is exactly the string the `remote get-url`
+double returned, never the repository root path. Negative: over a whole pass, no argv issued without
+a `-C {tempdir}` prefix is a mutating verb — the invoking-tree verb set is closed and asserted by
+containment, so a `checkout`, `switch`, `stash`, `reset`, `rebase` or bare `fetch` appearing in the
+invoking domain fails the assertion by construction rather than by enumeration of known-bad calls.
+The two-repo arm is the same assertion with `pluginRepository` set, so the URL-construction branch is
+covered without a network.
 
 ## 6. DEC-CONS-04: The marker take is observe-then-write, not atomic
 
