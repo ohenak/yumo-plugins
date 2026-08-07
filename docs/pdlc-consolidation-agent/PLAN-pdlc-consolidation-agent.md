@@ -447,4 +447,62 @@ behaviour T33 documents, not a defect.
 
 ## 9. Handed downstream and open items
 
-_placeholder_
+### 9.1 Errata raised against upstream documents
+
+Three defects were found in the TSPEC while deriving this PLAN. None is edited here; each is covered
+locally in the meantime by a task row, so the gap is falsifiable before the erratum lands.
+
+| # | Upstream defect | Measured how | Covered meanwhile by |
+|---|---|---|---|
+| 1 | TSPEC §3.2 makes `pdlc/skills/consolidate-learnings/SKILL.md` and `pdlc/skills/harvest-learnings/SKILL.md` **production edits**, and §12.2 / §12.3 assign them no falsifying test of any kind | the nearest shipped candidate is `pdlc/workflows/__tests__/skillFiles.test.js`, whose subject list is hard-coded to `se-review`, `te-review`, `pm-review` (`:13-17`) and which asserts only VERDICT-trailer text | T07 / T08's reviewer-read Definition of Done (§8.3), stated in the rows as an exemption rather than left implicit |
+| 2 | TSPEC §11.3(c) widens the L3 scan on **two** axes (`AWAIT_SCAN_SOURCES`, `AT19_SEAM_NAMES`) and misses a third: `runtimeBundle.test.js:26` declares `const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js"]`, which drives the launcher-constraint suite (`:503`), the structural suite (`:509`), the sole-output-directory assertion (`:549`), `RLH-AT-19`'s no-`process`/no-`fetch` scan (`:1044`), the drift-perturbation set (`:1290`) and the artifact list at `:1584`. A fourth bundle not added to `BUNDLES` ships **exempt from every one of them** | read at HEAD | T32, which widens the bundle lists in the same task that emits the bundle — deferred to that batch precisely because asserting an artifact that does not exist yet would red every earlier wave |
+| 3 | TSPEC §3.2's modified-files table omits `CLAUDE.md`, which enumerates the tracked runtime artifacts by name (`:58-60`) and closes "**Those three** are the tracked, shipped outputs" (`:62`). A fourth bundle makes that sentence false at the moment T32 lands | read at HEAD | T33, which is why that task is in the PLAN at all |
+
+Errata 2 and 3 are the same class — a shipped enumeration that a fourth artifact falsifies — and
+both are the reason §7's integration table cites line numbers rather than describing surfaces: an
+enumeration is only auditable if the reader can see how many members it has today.
+
+### 9.2 Handed to PROPERTIES
+
+- **§11.4's six properties**, in the files TSPEC §11.5 names, and authored under this PLAN's T19
+  block structure so each lands with its green owner. The four T-09 rows are the parameterisable
+  components; the two determinism rows each carry a **positive conjunct**, because order-invariance
+  alone is satisfied by a function returning a constant, `[]` or `null`.
+- **FSPEC §14.5's register, LD-1 … LD-5.** LD-1 (three `artifact` arms), LD-4 (the `passId` arm) and
+  LD-5 (the four remaining short-record arms) range over `parseLogRecords` and its readers ⇒
+  `consolidationParse.test.js`, beside AT-F21 (T16 authors, T26 un-skips). LD-2 (the `target`-follows
+  clause) and LD-3 (two actions, one subject) range over `mergeProposals` ⇒
+  `consolidationIdentity.test.js`, beside AT-R6b (T15 authors, T26 un-skips). This PLAN decides only
+  **which task's file** each lands in; nothing about the fixtures is decided here.
+- **One standing caution, carried forward verbatim.** No AT-A fixture may be written against REQ
+  AC-6.3's "across the consumed window" wording: FSPEC §9.5 / BR-37a is the settled contract,
+  `seamCandidates` ranges over **every** entry, and a REQ-derived fixture would red a conforming
+  implementation. T18's row repeats it where the author will be working.
+- **Coverage floors and mutation budgets** are PROPERTIES', per `DEC-LAYER-01`. This PLAN names
+  exactly one mutation (T31's `await` deletion) because TSPEC §11.2 makes it an obligation of the row
+  that writes the test, not a coverage policy.
+
+### 9.3 Known-open, decided upstream, not re-litigated here
+
+These are already recorded in TSPEC §13.3 and are listed only so a PLAN reader does not read them
+as unowned work.
+
+- **AT-M3's truncated arm is not implemented** — §7.3's release form makes a zero-byte marker
+  resolve `free`, so a test written to the register's full *Given* would be red on correct code.
+  T20's row says which arm it writes and why the id stays assigned.
+- **The enumeration relaxation** (REQ `:115-116`'s "one enumeration") and the `--exclude-standard`
+  sub-question are open upstream. T04's pathspec case pins the `:(glob)` half only, deliberately
+  leaving the flag half unpinned so the erratum decides it rather than the test.
+- **ER-6** — the `Route` union has no proposal-file member — stays interim as `route: "degraded"`,
+  and T24's two-fixture discriminator is what makes the interim falsifiable rather than merely
+  argued.
+
+### 9.4 Risks this PLAN carries, and where each is held
+
+| Risk | Held by |
+|---|---|
+| a partial rebuild of the four `dist/` artifacts fails CI's sync job | the rebuild is `postWaveCommand` over the whole `bundles` array, never four hand edits (§2, T32) |
+| `mktemp -d -t` differs between macOS and GNU coreutils | the seam returns the path the tool reported and the pass uses it verbatim; nothing constructs a path. Both platforms are already CI matrix legs |
+| the pass calls the resolver bare, so a hung dispatch is bounded only by the runtime watchdog, and a wedged pass holds the marker | §7.3's stale-lock reclaim, with `staleLockMinutes` configurable — T28 owns it |
+| an agent-transported `gh pr list --search` may return a truncated page | `--limit 100` plus the trailer key; a miss re-opens a proposal, which is the safe direction — T30 owns it |
+| the `describe.skip` discipline degrades into "green because nothing ran" | §8.3's first checklist row greps all fifteen suites for `describe.skip(` and requires zero, and the blocks are named for their green owner so a partial un-skip is visible by grep |
