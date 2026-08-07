@@ -826,9 +826,24 @@ must land as properties rather than as unit cases:
      **PR-seam observed `= ∅`** and **clone-seam observed `= ∅`** (`FSPEC:2154`: "the PR seam and
      the clone seam observing `∅` and the invoking tree observing a set **bounded on both sides**").
      Three things a property author must carry with them. (i) The **invoking tree is explicitly the
-     domain that is not `∅`** on this Given: it contains `{add, commit}` and is contained in
-     `{add, commit, read-branch, read-status}` — containment in both directions, never equality,
-     because the read verbs are permitted and neither their presence nor their absence is asserted.
+     domain that is not `∅`** on this Given: it contains `{add, commit}` and is contained in that
+     domain's permitted set **as TSPEC §9.3 states it at `TSPEC:1724`** — `add`, `commit`,
+     `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index` — containment in
+     both directions, never equality, because the read verbs are permitted and neither their presence
+     nor their absence is asserted. **Take the upper bound from `TSPEC:1724`, not from `FSPEC:2154`.**
+     `FSPEC:2154` renders it "(its permitted set)" and spells it `{add, commit, read-branch,
+     read-status}`, which is FSPEC §6.5's **pre-widening** set: TSPEC §9.3 widens this domain by three
+     non-mutating verbs (`TSPEC:1719` — "exactly four widenings … each marked ⊕ below"; the widening
+     table at `TSPEC:1743-1745` names `read-object` for `git cat-file -e HEAD:{path}`, `read-remote`
+     for `git remote get-url origin`, `read-index` for `git ls-files --cached --others
+     --exclude-standard -- :(glob)…`). At least one of the three is observed on AT-Q7c's **own**
+     Given: a `promoted` pass enumerated a corpus by definition, and §7.1's enumeration is the
+     `git ls-files` call — `read-index` — reached through `enumerateCorpus(_git)` (`TSPEC:672`,
+     `TSPEC:1745`). A property transcribing FSPEC's four-verb bound is therefore **red on correct
+     code**. This is the same defect §5 domain 1 of this document records as already withdrawn once
+     (`DECISIONS:293-297`), and the corrected five-read set there and the one here are the same set by
+     construction — if one moves, both move. `FSPEC:2154`'s parenthetical is stale and is raised as an
+     erratum against the FSPEC, not corrected here.
      (ii) Neither `∅` equality is implied by conjunct 2: `∅ ⊆ permitted` is satisfied **vacuously**
      by containment, which is exactly why `FSPEC:1060-1063` calls the two conjuncts equalities "with
      the empty set rather than with a permitted set" and warns that weakening them to containment
