@@ -915,6 +915,17 @@ should do, and is the direction AT-Q12 asserts. The loss ER-6 would recover is t
 propose-only item and a *degraded* PR attempt are indistinguishable in the record; the report body
 (§7.9 item 4) names each promotion's route in full and is the discriminator meanwhile.
 
+**And the discriminator is asserted, not merely stated.** A discriminator no test reads is not a
+discriminator. `consolidationReport.test.js` carries the two-fixture control alongside its AT-L rows:
+one pass whose promotion was *routed* propose-only (a `revise` on a `DOMAIN-CONSTRAINTS.md` target,
+§7.6's table row 2) and one whose PR attempt *degraded* (`branch-exists`). Both write
+`route: "degraded"` to the record — that is the ER-6 loss, and the test asserts it rather than hiding
+it — while the report bodies differ: the degraded one names a reason code from vocabularies §1
+(`branch-exists` / `api-failure` / `repository-unresolved`) and the routed one names none. The
+assertion is that exact difference, in both directions. Without it the interim would be a claim; with
+it, ER-6 landing is a *simplification* of a passing test rather than the repair of a silent
+ambiguity.
+
 `routeOf` normalises the target — repository-root-relative, no leading `./`, no `..` segment, `/`
 separators — and returns `"PR"` when it is prefixed by **any member of `MERGE_GUARD_DEFAULTS`**
 (imported from `orchestrate-dev.js:48-53`, never copied: a copy would silently survive a change to
@@ -1969,8 +1980,9 @@ re-argued on what a count-above-threshold comparison can supply.
 ### 13.3 Handed to the next layers
 
 - **DECISIONS** — warranted. §13.1 rows 1 (credential seam shape), 2 (resolver reuse vs. restate),
-  4 (clone source), 5 (non-atomic marker take), 6 (two predicate implementations) and 11 (widening
-  the adapter's path contract rather than routing clone writes through git) each weighed a real
+  4 (clone source), 5 (non-atomic marker take), 6 (two predicate implementations, with the
+  predicate/enumeration split named) and 11 (widening **`rtWriteFile` alone**, rather than routing
+  clone writes through git or widening both prompts for symmetry) each weighed a real
   alternative with a different reversibility profile, and each will otherwise be reconsidered
   confidently by a future agent. Each needs a `Testability:` line per DC-10.
 - **PLAN** — the file-ownership manifest must serialise the three writers of
@@ -1983,9 +1995,19 @@ re-argued on what a count-above-threshold comparison can supply.
   fixture written against invariance alone would be satisfied by a constant function.
 - **PLAN, additionally** — three obligations this revision creates. (i) The `runtime-adapter.js`
   writers are **one** task for the same reason `orchestrate-dev.js`'s three are: `rtEnvPresent`,
-  `rtMakeTempDir`, `rtConsInjections` and §5.6(a)'s two prompt widenings are one file. (ii) The
+  `rtMakeTempDir`, `rtConsInjections` and §5.6(a)'s **one** prompt widening (`rtWriteFile`; `rtReadFile`
+  is not edited) are one file. (ii) The
   `__tests__/runtimeBundle.test.js` edits — `AWAIT_SCAN_SOURCES` **and** `AT19_SEAM_NAMES`
   (§11.3(c)) — are one task in that one file. (iii) The release note and
   `pdlc/RELEASE-CHECKLIST.md` must state that the first queue invocation after this feature lands
-  is blocked by the drift gate until `sync-workflows.sh` runs (§8.3).
+  is blocked by the drift gate until `sync-workflows.sh` runs (§8.3). (iv) `consolidationLifecycle.test.js`
+  (§12.2 T-13) and `consolidationDoubles.js`'s `asAsync` wrapper (§11.2) are two more owned files in
+  the manifest; the wrapper is created by the doubles task and depended on by the lifecycle task, per
+  batch-safety rule 4.
+- **Upstream (FSPEC) — two register gaps recorded, not patched here.** §12.2's re-binding surfaced two
+  obligations with no acceptance test: AC-3.2's requirement that the PR body cite each source
+  LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the AC→AT map binds AC-3.2 to
+  AT-Q2, which asserts only the trailers), and FSPEC §5.3's "when, **and only when**" negative
+  direction for the proposal file. Both are raised as errata against the FSPEC rather than bound to
+  a nearby id; until they land, §12.2's cells name the gap explicitly.
 
