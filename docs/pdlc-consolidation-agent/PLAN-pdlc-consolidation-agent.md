@@ -505,16 +505,21 @@ behaviour T33 documents, not a defect.
 
 ### 9.1 Errata raised against upstream documents
 
-Three defects were found in the TSPEC while deriving this PLAN. None is edited here; each is covered
-locally in the meantime by a task row, so the gap is falsifiable before the erratum lands.
+**Five** defects were found in the TSPEC while deriving this PLAN — three at v1.0 and two more found
+by re-measuring against FSPEC **v11.3** for v1.1. None is edited here; each is covered locally in the
+meantime by a task row, so the gap is falsifiable before the erratum lands. Errata 4 and 5 are the
+root cause of the two High findings against v1.0 of this PLAN: v1.0 transcribed TSPEC §12.3, and
+§12.3 is itself derived from FSPEC v11.1.
 
 | # | Upstream defect | Measured how | Covered meanwhile by |
 |---|---|---|---|
 | 1 | TSPEC §3.2 makes `pdlc/skills/consolidate-learnings/SKILL.md` and `pdlc/skills/harvest-learnings/SKILL.md` **production edits**, and §12.2 / §12.3 assign them no falsifying test of any kind | the nearest shipped candidate is `pdlc/workflows/__tests__/skillFiles.test.js`, whose subject list is hard-coded to `se-review`, `te-review`, `pm-review` (`:13-17`) and which asserts only VERDICT-trailer text | T07 / T08's reviewer-read Definition of Done (§8.3), stated in the rows as an exemption rather than left implicit |
 | 2 | TSPEC §11.3(c) widens the L3 scan on **two** axes (`AWAIT_SCAN_SOURCES`, `AT19_SEAM_NAMES`) and misses a third: `runtimeBundle.test.js:26` declares `const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js"]`, which drives the launcher-constraint suite (`:503`), the structural suite (`:509`), the sole-output-directory assertion (`:549`), `RLH-AT-19`'s no-`process`/no-`fetch` scan (`:1044`), the drift-perturbation set (`:1290`) and the artifact list at `:1584`. A fourth bundle not added to `BUNDLES` ships **exempt from every one of them** | read at HEAD | T32, which widens the bundle lists in the same task that emits the bundle — deferred to that batch precisely because asserting an artifact that does not exist yet would red every earlier wave |
-| 3 | TSPEC §3.2's modified-files table omits `CLAUDE.md`, which enumerates the tracked runtime artifacts by name (`:58-60`) and closes "**Those three** are the tracked, shipped outputs" (`:62`). A fourth bundle makes that sentence false at the moment T32 lands | read at HEAD | T33, which is why that task is in the PLAN at all |
+| 3 | TSPEC §3.2's modified-files table omits `CLAUDE.md`, which enumerates the tracked runtime artifacts by name (`:58-60`) and closes "**Those three** are the tracked, shipped outputs" (`:62`). That sentence is **already false at HEAD** — `pdlc/workflows/dist/pdlc-cli.mjs` is tracked and carries a manifest row — and the third bundle makes it false a second time when T32 lands | read at HEAD; `git ls-files pdlc/workflows/dist/` returns four paths | T33, which is why that task is in the PLAN at all — and which now repairs the live error as well as the coming one |
+| 4 | **TSPEC §12.3's traceability table omits three FSPEC register ids** — `AT-M11`, `AT-Q13`, `AT-R7`. All three are register rows in FSPEC v11.3 §13 (`:2085`, `:2126`, `:2106`) and all three are traced to an AC by FSPEC §15 (AC-1.3 `:2311`, AC-3.2 `:2320`, AC-1.4 `:2312`). Two of them are the sole oracle for an acceptance criterion's negative half: AT-M11 is AT-M3's explicitly named paired negative (`FSPEC:2084`), and AT-Q13 is the only test that reads the PR **body** for AC-3.2 (`FSPEC:2126` — a body carrying nothing but the three trailers is green under AT-Q2) | `grep -c` over `TSPEC-pdlc-consolidation-agent.md` returns **0** for each of the three | T20 (AT-M11, both halves) and T21 (AT-Q13, AT-R7). T05's set equality is **red until this lands** and its row says so rather than degrading to containment |
+| 5 | **TSPEC §12.3 fixes the register size at a stale measurement.** `TSPEC:2395` reads "The FSPEC's AT register carries **96** ids, measured at v11.1". FSPEC is at **v11.3** (`:12`), whose own erratum note records the two additions that make 96 wrong (`:19-20`) | re-enumerating `AT-…` tokens over FSPEC §13 (`:2041-2191`), de-duplicated, gives **99** | T05, whose count is now **read** from the register rather than transcribed, with a version pin so a later move fails as "the register moved" |
 
-Errata 2 and 3 are the same class — a shipped enumeration that a fourth artifact falsifies — and
+Errata 2, 3 and 5 are the same class — a shipped enumeration that a fourth artifact falsifies — and
 both are the reason §7's integration table cites line numbers rather than describing surfaces: an
 enumeration is only auditable if the reader can see how many members it has today.
 
@@ -557,8 +562,9 @@ as unowned work.
 
 | Risk | Held by |
 |---|---|
-| a partial rebuild of the four `dist/` artifacts fails CI's sync job | the rebuild is `postWaveCommand` over the whole `bundles` array, never four hand edits (§2, T32) |
+| a partial rebuild of the five `dist/` files fails CI's sync job | the rebuild is `postWaveCommand` over the whole `bundles` array, never four hand edits (§2, T32) |
 | `mktemp -d -t` differs between macOS and GNU coreutils | the seam returns the path the tool reported and the pass uses it verbatim; nothing constructs a path. Both platforms are already CI matrix legs |
 | the pass calls the resolver bare, so a hung dispatch is bounded only by the runtime watchdog, and a wedged pass holds the marker | §7.3's stale-lock reclaim, with `staleLockMinutes` configurable — T28 owns it |
 | an agent-transported `gh pr list --search` may return a truncated page | `--limit 100` plus the trailer key; a miss re-opens a proposal, which is the safe direction — T30 owns it |
-| the `describe.skip` discipline degrades into "green because nothing ran" | §8.3's first checklist row greps all fifteen suites for `describe.skip(` and requires zero, and the blocks are named for their green owner so a partial un-skip is visible by grep |
+| the `describe.skip` discipline degrades into "green because nothing ran" | §8.3's first checklist row greps all sixteen suites for `describe.skip(` and requires zero, and the blocks are named for their green owner so a partial un-skip is visible by grep |
+| an FSPEC or TSPEC erratum round moves the AT register mid-implementation and reds T05 inside a halt-on-red wave | T05's **version pin** (FSPEC `11.3`, TSPEC `1.7`), which fails first and names the cause — the failure reads "the register moved", not "the code is wrong". The repair is then a one-line pin bump plus whatever task the new id belongs to, decided by a reader rather than by a hunt |
