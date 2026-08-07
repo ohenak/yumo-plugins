@@ -39,3 +39,11 @@ Not a finding, recorded so the next reviewer does not re-raise it: §12.1's CONS
 - Every code citation in the delta verified at HEAD: `runtime-adapter.js:668-670`, `:951`, `:967`, `:977`, `:995`.
 
 ## Recommendation
+
+**Approved with minor changes.**
+
+Both erratum items are resolved, and neither resolution disturbs anything I approved at v7: no acceptance criterion is narrowed or restated, no product decision migrated into the TSPEC, no seam added to the frozen FSPEC §6.5 set, and REQ NFR-2's coverage is unchanged — only the per-direction justification behind it is now stated correctly. The single open finding (F-23) is Low and is stale line pointers inside a row whose prose already names its targets; it does not warrant another round and my prior approval of this document stands.
+
+## Verdict
+
+VERDICT: Approved with minor changes
