@@ -110,6 +110,15 @@ out of the changed spans; it cannot steer a PLAN or PROPERTIES author wrong.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | *(carried unchanged from v2.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags? |
+| Q-06 | *(carried unchanged from v3.)* `REQ:288` obliges a **pathspec** on both invoking-tree calls and explicitly rejects `commitPaths`' bare `git commit -m` shape. The obligation conjunct asserts the two verbs are *observed*, but a verb-level observation still cannot see the pathspec. Which oracle owns the pathspec — an AT in the register, or an argv-shape assertion like domain 3's? |
+| Q-07 | *(carried from v5.)* A mechanical link-resolver would have caught F-10, F-16 and F-17; it would not have caught F-13, a stale *claim* whose anchors all resolved. Is there a cheaper convention that catches both — e.g. every DECISIONS entry carrying a one-line `Superseded-by:` field that the TSPEC's §13.1 row is required to match, so a supersession is a set comparison rather than a prose paragraph a reader has to find? |
+| Q-08 | *(carried from v6, answered in practice.)* The author chose "annotate in place", and with `eaf5c744` the annotation now reaches the rejected-alternatives list too — the last surface that could be read as live direction. The structural question stands for the next document: should §2's index only ever list *live* decisions, with overturned entries relocated to a short "superseded" section? Not a finding — in-place annotation has now been carried to every surface, which is the expensive way to make it work. |
+| Q-09 | *(carried from v7, untouched by this delta.)* §11.3 still holds two struck (closed) items and one live one under the title *Errata raised, not settled here*, which now describes one of its three. Does the PLAN's reader need the section partitioned (live / closed), so "what is still handed up" is a set they can read off rather than derive from strikethrough? |
+| Q-10 | *(new, and it is Q-07 arriving from the other side.)* F-15, F-17 and now F-18 are the same shape: a self-describing paragraph whose published method or count is measured at one revision and read at another. The document has now paid for this three times. Is the durable answer that a document should never publish an integer about itself — only the recipe and the invariant — with the count left to whoever runs the recipe? I would take that as a process convention rather than a finding against this document, which is why it is a question. |
+
 ## Positive Observations
 
 ## Recommendation
