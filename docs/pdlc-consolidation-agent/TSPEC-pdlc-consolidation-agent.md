@@ -96,7 +96,7 @@ constraint that shapes §9's design more than any other: the pass cannot call `m
 
 | Path | Role | Notes |
 |---|---|---|
-| `pdlc/workflows/consolidate-learnings.js` | the pass — one ES module, `export default async function main({…})`, every IO through a defaulted injection parameter | mirrors `orchestrate-queue.js`'s shape (`:1033`), so `build-runtime.mjs` can strip and wrap it with the existing `stripModuleSyntax` / `wrapModule` pair (`build-runtime.mjs:45`, `:55` — the declarations, not their doc comments at `:43` / `:54`) with no new build machinery |
+| `pdlc/workflows/consolidate-learnings.js` | the pass — one ES module, `export default async function main({…})`, every IO through a defaulted injection parameter | mirrors `orchestrate-queue.js`'s shape (`:1033`), so `build-runtime.mjs` can strip and wrap it with the existing `stripModuleSyntax` / `wrapModule` pair (`build-runtime.mjs:45`, `:55` — the declarations, not their doc comments at `:44` / `:54`) with no new build machinery |
 | `pdlc/workflows/dist/consolidate-learnings.bundle.js` | generated runtime artifact | §8.2 |
 | `pdlc/workflows/__tests__/helpers/consolidationDoubles.js` | the **one** canonical double module for this feature's two new seams and its log/corpus fixtures | excluded from jest by the shipped `testPathIgnorePatterns` (`package.json`); re-exports rather than re-declares every double that already exists (§11.2) |
 | `pdlc/workflows/__tests__/consolidation*.test.js` | the suites — one file per §11.1 group | §11.5 names the split |
@@ -112,7 +112,7 @@ decomposition is by **exported pure function** (§4), not by file.
 |---|---|---|
 | `pdlc/workflows/orchestrate-dev.js` | `resolveAdvisoryRung` (`:1833`) gains an optional `skill` parameter defaulting to `ADVISORY_RUNG_SKILL` (`:1797`), threaded to `dispatchAt`'s `_agent` call (`:1841`) and therefore to both the memoised path (`:1844-1849`) and the two-rung path | §8.1; FSPEC §15.3, §14.1 T-05 |
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
-| `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-813`) and `rtReadFile` (`:493`), whose prompts today say "relative to the repository root" | §5.3, §5.6, §9.1, §9.2 |
+| `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-811`) **alone**, whose prompt today says `relative to the repository root` (`:805`, the only occurrence of that string in the file). `rtReadFile` is **not** modified — see §5.6(a) | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
 | `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28` glob widened to include `docs/completed/*/`; `:41` predicate scoped to the two §3.2 regions; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1) | §7.1 |
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the block/legacy predicate; `:41`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
@@ -283,7 +283,8 @@ central hazard); a missing `await` therefore passes every unit test and fails on
 | `_git` | argv form, so `["-C", dir, …]` reaches a **different tree** without any shell quoting concern; returns `{ok, stdout, stderr}` and never throws | `runtime-adapter.js:945-957`, parse at `:967` |
 | `_ghRun` | takes a fully built command **string**; the prompt carries an "issue AT MOST ONCE" clause because some `gh` commands mutate | `runtime-adapter.js:995-1006` |
 | `_log` | plain sink; the resolver writes `ADVISORY_MODEL_FALLBACK:` through it (`orchestrate-dev.js:1858-1860`) and nowhere else | §8.4 depends on this |
-| `_writeFile` / `_readFile` | **repo-root-relative today, and that is a blocker this feature must clear** — `rtWriteFile`'s prompt reads "Write the following content to `"${path}"`, **relative to the repository root**" (`runtime-adapter.js:806-807`), and `rtReadFile` (`:493`) is framed the same way | §5.6 states the widening |
+| `_writeFile` | **repo-root-relative today, and that is a blocker this feature must clear** — `rtWriteFile`'s prompt reads "Write the following content to `"${path}"`, **relative to the repository root**" (`runtime-adapter.js:805`) | §5.6(a) states the widening |
+| `_readFile` | **already absolute-safe; no change** — `rtReadFile` (`:493`) reaches disk through `rtReadProbe` (`:369`) and the chunk read, both of which transport a shell command (`[ ! -f "${path}" ]`, `wc -c < "${path}"`, `sed -n`) prefixed by a *cwd* instruction ("Run this exact command from the repository root", `:374`). A cwd instruction resolves an absolute `${path}` verbatim; there is no path-resolution clause to widen. `grep -n "relative to the repository root" pdlc/workflows/runtime-adapter.js` returns exactly one line, `:805`, inside `rtWriteFile` | §5.6(a) states why nothing changes |
 | `_git` | `["-C", dir, …]` and `["ls-files", …]` are the only two forms this pass uses to reach a tree | §7.1, §9.3 |
 
 `_git`'s `-C` capability is the single fact that makes FSPEC §6.5's **git-seam-split-by-tree**
@@ -354,13 +355,30 @@ Each `null` default is the FSPEC's fail-safe direction, not a new branch: an uni
 degrades the PR route and never touches the invoking tree, never halts the pass, and never reads as
 a credential the pass does not have.
 
-### 5.6 Two adapter contracts this feature changes, and the clock it does not
+### 5.6 One adapter contract this feature changes, one it deliberately leaves alone, and the clock it does not
 
-**(a) `_writeFile` / `_readFile` gain absolute paths.** §9.2 writes the guard-set edit and the PR
-body *inside the clone*, whose directory comes from `mktemp -d` (§5.3) and is therefore **outside the
-repository**. The shipped prompts say the opposite of what that needs (`runtime-adapter.js:806-807`,
-`:493`), so this is a real capability the feature must add, not a path the shipped seam already
-serves. The widening is one clause in each prompt:
+**(a) `_writeFile` gains absolute paths; `_readFile` needs nothing.** §9.2 writes the guard-set edit
+and the PR body *inside the clone*, whose directory comes from `mktemp -d` (§5.3) and is therefore
+**outside the repository**. `rtWriteFile`'s shipped prompt says the opposite of what that needs — it
+instructs the agent to resolve the path "relative to the repository root"
+(`runtime-adapter.js:805`) — so this is a real capability the feature must add, not a path the
+shipped seam already serves.
+
+The **read** side is a different case, and an earlier draft of this section got it wrong. There is no
+read-side widening, because there is nothing to widen: `rtReadFile` (`:493`) never states a
+path-resolution rule at all. It reaches disk through `rtReadProbe` (`:369`) and the chunked line
+read, each of which transports a **shell command** — `if [ ! -f "${path}" ] || [ ! -r "${path}" ]`,
+`wc -c < "${path}"`, `shasum -a 256 "${path}"` (`:374-378`) — under the *cwd* instruction "Run this
+exact command from the repository root" (`:374`). A cwd instruction is not a path-resolution
+instruction: every one of those shell forms resolves an absolute `${path}` verbatim today. The
+measurement that settles it: `grep -n "relative to the repository root" pdlc/workflows/runtime-adapter.js`
+returns **exactly one** line at HEAD, `:805`, inside `rtWriteFile`. This is recorded positively so
+that a later reader does not "harmonise" the two prompts and add a clause with no behavioural motive.
+It is also consistent with what §7 and §9 actually do inside the clone: the clone traffic is *writes*
+(the guard-set edit, the `--body-file` body) plus `_git`; no `_readFile` call with an absolute path
+appears anywhere in this document.
+
+The widening is therefore **one clause in one prompt**, `rtWriteFile`'s:
 
 > …to `"${path}"` — relative to the repository root when the path is relative, and **verbatim when
 > the path is absolute** (a leading `/`). Do not resolve it against the repository root in that case.
@@ -369,8 +387,8 @@ Three properties keep the widening bounded: it is **additive** (every relative p
 as it does today, which `runtimeBundle.test.js`'s shipped adapter assertions still pin); it is
 **non-mutating of any tracked tree**, because the only absolute paths this pass ever forms come from
 `_makeTempDir`'s reply and are never constructed in-module (§5.3); and it is **falsified**, not
-reviewed — §11.3(e) states the adapter-source assertion that pins both prompts' widened clause
-verbatim, and §11.6 no longer exempts it. Routing the clone's writes through `_git` instead was
+reviewed — §11.3(e) states the adapter-source assertion that pins `rtWriteFile`'s widened clause
+verbatim (one prompt, not two), and §11.6 no longer exempts it. Routing the clone's writes through `_git` instead was
 rejected: git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index`,
 which is three mutating calls in the clone domain to replace one path argument.
 
