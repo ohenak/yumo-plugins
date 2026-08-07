@@ -85,6 +85,66 @@ repair itself minted.
 
 ## Iterations
 
+**Two PLAN rounds (limit 5, not reached) plus one erratum round (limit 1, reached).** Findings are
+counted from each review's `## Findings` table only; prior-finding disposition rows are closures, not
+findings.
+
+### PLAN review loop — the part that worked
+
+| Round | PLAN ver. | product-manager | test-engineer | PM verdict | TE verdict |
+|---|---|---|---|---|---|
+| 1 | 1.0 | **2 High**, 3 Medium, 2 Low | **2 High**, 4 Medium, 3 Low | Needs revision | Needs revision |
+| 2 | 1.1 | 0 High, 0 Medium, **1 Low** | 0 High, 0 Medium, **1 Low** | Approved with minor changes | Approved with minor changes |
+
+**Round 2 closed 16 of 16 prior findings as filed** — PM F-01…F-07 and TE F-01…F-09, every row of
+both disposition tables reading **Resolved** — and produced exactly one new Low each, both cosmetic
+(a stale label in T05's status cell; a stale counting paragraph in §8.1). The High population went
+4 → 0 in one round. Nothing in the feature's three prior windows looks like this: **this is the first
+document on this feature to converge inside its window at all**, and it did so in the second round.
+
+The eight commits that produced v1.1 are targeted and legible (`0832f8b0` … `1682227b`, 22:11–22:18):
+version pins re-taken, §1 counts re-measured, the `DC-07` mis-citations dropped, the T25→T19 edge
+added, the hook byte-identity claim replaced by a two-arm positive oracle, and — commit `6bf1a181` —
+**the errata raised rather than absorbed**. That last commit is the phase behaving exactly as the
+erratum channel prescribes.
+
+### Erratum round 8 — the part that failed
+
+| Stage | Time | What happened |
+|---|---|---|
+| Raise | 22:11–22:26 | 13 erratum lines across four PLAN reviews + the author's hand-off scan; 6 distinct defects |
+| Route + edit | 22:30–22:34 | TSPEC author, same session, six targeted commits `e22a3c4c` … `569578d0`; **v1.7 → v1.8**; no restructuring |
+| Confirm | 22:38–22:40 | TSPEC cross-review round 9, both approvers, delta-scoped to `a3049d1f..HEAD` |
+| Outcome | 22:40 | `pm-review` **Approved with minor changes** (1 Low); `te-review` **Needs revision** (1 High, 2 Medium) ⇒ confirmation fails ⇒ halt |
+
+**Erratum item disposition, as judged by the two confirmers:**
+
+| Item | pm-review | te-review |
+|---|---|---|
+| E-1 ids omitted | Resolved (set diffed both directions, empty) | Resolved (each id in exactly one file row) |
+| E-2 register count stale | Resolved (99 at v11.3, re-derived independently) | Resolved, **and independently confirmed** |
+| E-3 no level / no file | Resolved | **Resolved for two of three** — AT-M11 has a file and a level but no fixture that can pass (F-01) |
+| E-4 `CLAUDE.md` omitted from §3.2 | Resolved (count-free rewrite, the fix that does not recur) | Resolved for §3.2; **its new oracle cannot green** (F-03) |
+| E-5 `SKILL.md` edits untested | Resolved | Resolved — and the refusal to widen `skillFiles.test.js` is correct on the shipped source |
+| E-6 `BUNDLES` third scan axis | Resolved | Resolved; **all six cited suites checked** and all are where the document says |
+
+Six items, six resolutions on both sides. **The confirmation did not fail on any raised item.** It
+failed on F-01/F-02 — a defect the erratum round had the opportunity to fix and did not touch — plus
+F-03, which the repair itself created.
+
+### The number that matters
+
+| | |
+|---|---|
+| Erratum lines raised in Phase P | 13 |
+| Distinct defects among them | 6 |
+| Distinct defects **resolved** by the round | 6 (100 %) |
+| Blocking findings at confirmation | 3 |
+| Of those, raised by anyone in Phase P | **0** |
+
+A repair that closes 100 % of what was asked and still fails confirmation is not an execution
+failure. It is evidence that **the wrong thing was asked for**.
+
 ## Reviewers
 
 ## Pattern of Disagreement
