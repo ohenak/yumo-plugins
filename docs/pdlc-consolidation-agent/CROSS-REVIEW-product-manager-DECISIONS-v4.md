@@ -79,6 +79,15 @@ Every new claim, `file:line`, and measurement in the three commits was re-run ag
 
 ## Findings
 
+Two Lows, both citation-precision defects in spans this revision added. My v3 Medium is resolved and
+I found no substantive new issue in the changed spans — no assertion is lost, no claim is false, and
+nothing I approved earlier is weakened.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-08 | Low | Local | **The obligation conjunct is cited one line short in all three places it appears.** DEC-CONS-03 domain 1, domain 2 and §11.2's row each cite `TSPEC:2097` for "`obliged ⊆ observed` per domain, on the Given that obliges it". `TSPEC:2097` reads "(without this, a call that falls out of the partition is exempt from containment); **containment**" — the partition rationale and the start of the *containment* conjunct. Obligation is at `TSPEC:2098-2099`: "…universally; **obligation** `obliged ⊆ observed` per domain, on \| the Given that obliges it". The transcription of the conjunct itself is exact; only the anchor is off. It matters because this document is the one that hands the conjunct to the PROPERTIES author, and the author will follow the anchor: landing on the containment clause is precisely the conjunct §11.2 has just finished saying is *not* sufficient. Fix: cite `TSPEC:2098-2099` in all three places. | AC-1.3, REQ:288 |
+| F-09 | Low | Local | **§11.2 mislabels the fourth of the four set assertions, and states one `∅` equality where the TSPEC obliges two.** The row says "The oracle is **four** set assertions at `TSPEC:2094-2098` … the third is **obligation** … The fourth is **partition** (`TSPEC:2095-2096`)". `TSPEC:2095-2100` enumerates them in this order: partition (**first**), containment (second), obligation (third), "and the two `∅` equalities of AT-Q7c" (**fourth**). So partition is not the fourth, and the assertion the TSPEC calls fourth — AT-Q7c's *two* `∅` equalities, one per domain — appears in §11.2 only as the single invoking-tree "no argv carries a verb from that row's absent-always column". The clone domain's absent-always `∅` (every merge verb) is stated in §5 domain 2 but not carried into the property list. The cited span is also short at both ends: `:2094` is blank and `:2098` stops mid-sentence, so a reader following it sees three of the four. No assertion kind is lost, and the clone-domain `∅` is implied by containment against `:1620`'s permitted set, which is why this is Low and not Medium — but the enumeration is presented as complete and set-equal to the TSPEC's, and it is neither. Fix: cite `TSPEC:2095-2100`, order the four as the TSPEC does, and state the absent-always negative for **both** domains. | AC-3.8 |
+
 ## Questions
 
 ## Positive Observations
