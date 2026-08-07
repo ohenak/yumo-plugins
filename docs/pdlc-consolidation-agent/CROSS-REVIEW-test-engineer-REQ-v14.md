@@ -106,7 +106,45 @@ wrong layer for anything in this table. No rule in the intervening diff raises a
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | Process, non-blocking, and a third asking — now with the strongest available evidence. Phase R has been re-entered for a confirming round four times over a byte-identical REQ (v11–v14), and in the interval since v13 a whole Phase T window ran, halted and postmortem'd on top of that same unchanged REQ. `DEC-CONV-01` says a standing approval carries forward and is re-issued rather than re-manufactured; the `APPROVAL-HASH` still matching the bytes at HEAD is a mechanical, content-addressed check the phase gate could perform without dispatching a reviewer. Should the gate consult the anchor directly and skip dispatch when it matches? I have written the review either way, and the answer does not change this verdict. |
+
 ## Positive Observations
+
+- **The approval anchor did its job for a fourth round, and I checked it rather than trusted it.**
+  `shasum -a 256` over the REQ at HEAD returns
+  `0d2b2497235209181f0599a2ef2e25fa106d1917af8f02448a027fe969ad6f17`, identical to the
+  `APPROVAL-HASH` at `CROSS-REVIEW-test-engineer-REQ-v13.md:192`. The anchor's purpose is to say
+  *this approval covers these bytes*; the bytes are unchanged, so the approval is not stale.
+- **The REQ's claims about existing behaviour still hold, re-run against HEAD.** `ADVISORY_SEAMS` is
+  at `pdlc/workflows/orchestrate-dev.js:1669` and is still
+  `Object.freeze(["A1", "A2", "A3", "A4", "A5"])` — a frozen five-member literal, which is what makes
+  REQ-CONS-06's "widen the seam set" a real PR-able surface rather than a config edit;
+  `resolveAdvisoryRung` is at `:1833` with the signature AC-1.5 (`:202`) attributes to it; the
+  fallback notice `ADVISORY_MODEL_FALLBACK: …` is at `:1859`, as AC-1.6 (`:205-206`) says. All three
+  print on the exact lines the REQ pins, and `git diff --stat d2160dd..HEAD -- pdlc/` is empty, so no
+  citation could have drifted.
+- **A downstream layer consumed this REQ end to end, and none of my three Lows obstructed it.** The
+  interval contains a 2,555-line TSPEC plus ten TSPEC cross-reviews. `grep -l 'F-54\|F-55\|F-56'` over
+  every TSPEC cross-review returns nothing: not one of the Phase T blocking findings is any of my
+  carried findings. That is the empirical form of DEC-SEV-01's test — a real downstream author was
+  not blocked — and it is better evidence than the argument I made for the same conclusion at v12 and
+  v13.
+- **Phase T halted without leaking its findings upward.** `POSTMORTEM-T` (+532) records a five-round
+  non-convergence, and the REQ diff over the same interval is still empty. Findings that belonged to
+  the layer boundary were routed as decisions (`DEC-SEV-03`, the DEC-LAYER-01 companion), not folded
+  into the REQ by whoever noticed them — the erratum and layer-boundary machinery behaving as
+  specified, under the pressure that usually breaks it.
+- **DEC-SEV-03 is the right shape for a test author, and it strengthens rather than weakens the
+  oracle discipline.** Its demotion is *conditional on three positive acts* — name the artifact,
+  state what ships instead **with a falsifier for the satisfiable part**, raise the erratum — and it
+  keeps High for a silently absorbed collision (`DECISIONS-review-severity-bars.md:78-80`). That is a rule whose cheap path is the one
+  that produces evidence; it does not create an absence-shaped escape hatch, because "no collision
+  reported" is not one of its outcomes.
+- **`check-req-size.sh` is still non-blocking at HEAD** — the final block prints the
+  `PostToolUse`/`additionalContext` JSON and falls through to `exit 0` on every path, which is why
+  F-56 is headroom bookkeeping and not a delivery risk.
 
 ## Recommendation
 
