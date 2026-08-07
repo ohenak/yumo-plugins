@@ -147,6 +147,57 @@ failure. It is evidence that **the wrong thing was asked for**.
 
 ## Reviewers
 
+Two reviewer populations are in scope, because the erratum channel makes the *upstream* document's
+approvers the deciders of a *downstream* phase's fate.
+
+| Role | Skill | Lens | Rounds | Files |
+|---|---|---|---|---|
+| product-manager | `pdlc:pm-review` | requirements traceability, scope compliance, AC fidelity | PLAN 1–2; TSPEC 9 (erratum confirmation) | `CROSS-REVIEW-product-manager-PLAN-v{1,2}.md`, `CROSS-REVIEW-product-manager-TSPEC-v9.md` |
+| test-engineer | `pdlc:te-review` | testability, oracle strength, fixture buildability, completeness by set-equality | PLAN 1–2; TSPEC 9 (erratum confirmation) | `CROSS-REVIEW-test-engineer-PLAN-v{1,2}.md`, `CROSS-REVIEW-test-engineer-TSPEC-v9.md` |
+
+Both reviewers approved the TSPEC at v1.7 (round 8, the erratum-round-7 confirmation), so both were
+the correct deciders here, and both scoped the confirmation correctly — each names its diff range
+(`a3049d1f..HEAD`) and states that sections outside it stand approved from v8. Neither re-litigated
+§7.3, whose reasoning both had approved.
+
+**Nothing in this round impeaches either reviewer's conduct.** The record:
+
+- **Both verified against primary sources rather than the edit's own account.** Both independently
+  extracted the `AT-…` token set from FSPEC §13 (`:2041-2191`), de-duplicated it, extracted the
+  §12.3 set, and diffed them **in both directions** — empty on both sides, 99 = 99. This is the first
+  round on this feature in which §12.3's central claim was confirmed mechanically rather than by
+  inspection, and it was confirmed twice, independently.
+- **Both checked the two premises no reviewer could have taken from the documents.**
+  `__tests__/skillFiles.test.js:13-17` is a three-member `reviewSkills` literal whose every assertion
+  is about `VERDICT` trailers (so the TSPEC's refusal to widen it is right); `runtimeBundle.test.js:26`
+  is the two-member `BUNDLES` constant, and `te-review` walked all six suites it keys (`:503`, `:509`,
+  `:549`, `:1044`, `:1290`, `:1584`) and reports they are where the document says.
+- **`te-review`'s three findings are each falsifiable and each verify at HEAD.** F-01: `grep RELEASED`
+  over the TSPEC returns only prose about the divergence, and §7.3's `parseMarker` contract is as
+  quoted. F-02: `TSPEC:2592-2608` still reads "The question the FSPEC owns is…" while `FSPEC:2551`
+  (BR-14a) and `FSPEC:2645` (E-11b) decide it — I re-read all four spans. F-03: the manifest's `rows[]`
+  at HEAD is exactly `orchestrate-dev`, `orchestrate-queue`, `pdlc-cli`, and `CLAUDE.md:57-59`
+  enumerates its own manifest — set equality cannot hold.
+- **`te-review` applied the shipped bar, and applied `DEC-SEV-03` correctly *against* itself.** F-01 is
+  filed High **not** because a decision collides with an upstream row — `DEC-SEV-03` demotes that to
+  Low when it is named, priced and routed, and §12.3's AT-M11 row does name and price it. It is High
+  because the erratum's *purpose* was to unblock a PLAN task, and the task is still red on arrival:
+  the row asserts coverage the mechanism cannot deliver. That is the concealment half of
+  `DEC-SEV-03`, not the collision half.
+- **`pm-review` was not wrong on its own lens.** Its Q-01 states the divergence explicitly, judges it
+  a "form question, not a coverage question" that "belongs to the FSPEC round", and flags it so it is
+  not lost. From a product lens that is defensible: AC-1.3's negative half is spelling-independent.
+  Its one Low (a stale summary paragraph in §12.2) is real and cosmetic.
+- **The author performed the erratum round to specification.** Six targeted commits in four minutes,
+  no restructuring, every raised item addressed, the register measurement converted from a transcribed
+  number into a run-time re-derivation (`consolidationTraceability.test.js`) so the *class* of defect
+  is removed rather than the instance, and the `CLAUDE.md` fix written count-free so it does not
+  recur. Both reviewers say so in their positive observations.
+
+The one thing that did not happen is that **neither the raisers nor the author re-read the upstream
+document the erratum wave had just changed**. That is § Best-Guess Root Cause, and it is a protocol
+gap, not a conduct failure.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
