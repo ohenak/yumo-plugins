@@ -46,7 +46,40 @@ line, each upstream authority, and each oracle's falsifiability, and all of them
 
 ## 3. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T-13's conjunct (ii) and §12.2's release-set row both assert the marker's last recorded contents "match `RELEASED: {passId} {ISO-8601}`". The `{passId}` half is checkable — §7.2 derives it deterministically from the fixture log, so a test can transcribe it from the input rather than read it off the produced record. The `{ISO-8601}` half is a clock read. Is the intended oracle a **shape** match (verb + this pass's own id + any well-formed timestamp), or is `_now` pinned in those two cases? Both are fine; the two rows should say which, or the implementer will pick per-case and one of them will read the timestamp off the record it is meant to be checking. |
+| Q-02 | L-02's fail-open path — a garbled `_checkFile` reply on the marker read as absent — is invisible to every double. Is that worth one L3 source-text assertion over `rtCheckFile`'s three-branch mapping (the shape §11.3(e) already uses for `rtWriteFile`'s prompt), so at least the *adapter's* classification is pinned against a later prompt edit that drops the `EMPTY` branch? That edit would silently turn every truncated marker into an absent one and delete E-11's arm from production while all of §12's L2 fixtures stay green. |
+
 ## 4. Positive Observations
+
+- **The absorb decision is the right one and is argued from the premise rather than around it.**
+  §7.3's approved reasoning was "no seam can unlink"; the new text shows the sentinel satisfies that
+  premise unchanged and only retires the `file_empty ≡ absent` equivalence that was scaffolding on
+  top of it (`:1020-1026`). That is why a mechanism change this large needed no re-review of §7.3's
+  foundation — the load-bearing claim did not move, and I re-verified it at HEAD (`grep -c` for any
+  removal verb in `runtime-adapter.js` is still `0`).
+- **Three observations, three outcomes, one case.** §12.2's marker row (`:2446`) holds AT-M3's two
+  fixtures and AT-M11's two in a single case *because the pairing is the oracle*, and it says so.
+  That is the strongest form available here: an implementation that reclaims on every take fails
+  AT-M11, one that never reclaims fails AT-M3, and neither conjunct is absence-only — AT-M11 carries
+  "taken, a normal terminal status" alongside its two negatives, AT-M3 carries the positive
+  `reclaimed-stale-lock` with abandoned id `unknown`. The v1.8 `(no FSPEC AT)` case asserted the
+  *opposite* of what this one asserts, and it was retired rather than left to contradict the ids.
+- **The withdrawal is recorded, not erased.** §13.1 row 13, §12.3's `consolidationPass` row and
+  §12.2's marker row all keep the old decision as history and mark it superseded, and the changelog
+  annotates the v1.8 entry in place rather than rewriting it (`:39-40`). A future agent reading row
+  13 gets both arms of the trade and the reason the loser lost, which is exactly what DECISIONS is
+  for — and §13.3 already flags row 13 as DECISIONS-warranted with a `Testability:` line owed.
+- **The `CLAUDE.md` oracle's exclusion is named in the same shape as its sibling's.** The `BUNDLES`
+  half of that case already excluded `.mjs`; the manifest half now excludes the manifest's own row
+  and states *why* (the authority carries no row for itself — which I confirmed at HEAD). It stayed
+  set equality in both directions, and the row names the exact drift containment would have passed:
+  `pdlc-cli.mjs`, tracked and stamped and unadvertised.
+- **No hand-carried number was left to go stale, and I could confirm the one that remains.** 99 ids
+  on both sides, empty diff both directions, at a FSPEC one minor revision newer than the one the
+  document names. The only defect left in that area is the label (L-01), which is the difference
+  between the third erratum round on this table and this one.
 
 ## Recommendation
 
