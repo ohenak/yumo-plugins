@@ -60,7 +60,51 @@ that section's remaining rows are dispositioned in §10 below rather than promot
 
 ## 3. DEC-CONS-01: The credential seam returns a boolean, never the secret
 
-_(pending)_
+**Context.** AC-4.2 resolves the PR credential from the environment variable named by
+`consolidation.credentialEnv` (default `PDLC_PLUGIN_REPO_TOKEN`), and NFR-2 requires that its value
+"never appears in a log, PR body, artifact, or notification". The runtime has no `process`, so the
+variable can only be reached through a new adapter seam — and every adapter seam is an `agent()`
+dispatch whose prompt and reply are transcript.
+
+**Decision.** The seam is `_envPresent(name) => Promise<boolean>` (TSPEC §5.3). Its adapter,
+`rtEnvPresent`, transports `[ -n "${NAME:-}" ] && echo PRESENT || echo ABSENT` and returns `true`
+iff the reply is exactly `PRESENT`; any other reply, including an unparseable one, is `false`. The
+credential's **value** never enters the JS process: it reaches `git` and `gh` by shell expansion
+inside the transported command (TSPEC §9.2).
+
+**Alternatives considered.**
+
+- **`_readEnv(name) => Promise<string>`, the obvious shape** — rejected. Every existing adapter seam
+  returns its payload through `RT.agent(...)`'s reply string (`rtReadFile:493`, `rtGit:945`'s
+  `{ok, stdout, stderr}`, `rtGhRun:995`), so a value-returning credential seam would put the secret
+  in the agent transcript *and* in a JS string that any later `_log` call could interpolate. NFR-2
+  would then be a discipline enforced by review across every future call site, not a property of the
+  interface. The code cost of the rejected form is *lower*, not higher — it is the same one-function
+  adapter — which is exactly why it needs to be written down as rejected.
+- **Redact at the logging boundary instead** (scrub the value out of `_log` output) — rejected: the
+  transcript is written by the runtime, not by this module's `_log`, so the module has no boundary to
+  scrub. There is no shipped precedent for a redacting log in either bundle.
+
+**Constraints that forced this shape.** No `process` in the runtime (DEC-DIST-01); every seam is
+agent-transported, so *reply text is disclosure*. Fail-closed is required by AC-4.3: an unparseable
+reply must degrade to `credential-unavailable` and the AC-3.5 proposal-file fallback, never to a
+claimed credential.
+
+**Reversibility:** easy. The seam is new with this feature and has exactly one consumer; widening it
+to return a value later is a one-function change. The reason to record it is that the *rejected*
+shape is the cheaper-looking one.
+
+**Re-evaluation triggers.** A runtime that grants in-process environment access (no agent
+transport); a credential form that cannot be consumed by shell expansion (e.g. one requiring a
+signed exchange before use); NFR-2 being narrowed to permit redacted logging of the value.
+
+**Testability:** the positive and negative arms are both L1-observable through the doubled seam — a
+`fakeEnvPresent` returning `true` / `false` / an unparseable reply drives the three arms of the
+credential branch, and the assertion that no test double ever *receives* a credential value is
+structural: the protocol's type has no string channel to carry one. The disclosure property is
+asserted as absence-plus-positive per DC-10's sibling rule — every rendered log row carries a
+`credential:` field from AC-4.2's closed three-value set, so the "never logged" assertion runs on a
+path that demonstrably executed.
 
 ## 4. DEC-CONS-02: Reuse `resolveAdvisoryRung` by widening it, rather than restating the ladder
 
