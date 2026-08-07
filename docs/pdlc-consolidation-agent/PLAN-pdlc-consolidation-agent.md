@@ -9,15 +9,38 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-06 |
+| pdlc | draft | Claude | 1.1 | 2026-08-06 |
+
+**Upstream versions this PLAN is derived from** (carried in the header so a stale transcription is
+detectable by inspection rather than by re-measurement — the defect v1.0 shipped):
+
+| Upstream | Version read | Where |
+|---|---|---|
+| `REQ-pdlc-consolidation-agent.md` | 2.1 | header table `:18` |
+| `FSPEC-pdlc-consolidation-agent.md` | **11.3** | header table `:12`; erratum note `:15-21` |
+| `TSPEC-pdlc-consolidation-agent.md` | **1.7** | header table `:12` |
+| `DECISIONS-pdlc-consolidation-agent.md` | 1.1 | header table `:12` |
+| `docs/_constraints/pdlc-consolidation-vocabularies.md` | 1.4 · 2026-08-06 | `:7` |
+
+Every count, register id and "(no FSPEC AT)" claim below was re-measured against those versions on
+2026-08-06. Where a count is stated, the command that produced it is stated beside it.
 
 ## 1. Overview
 
 Build the consolidation pass specified by `TSPEC-pdlc-consolidation-agent` v1.7: **one new workflow
-module** (`pdlc/workflows/consolidate-learnings.js`), the two adapter seams it needs, a fourth
-built bundle, and fifteen jest suites that falsify it. Twenty-three of the thirty-three tasks below
-touch only files this feature creates; the remaining ten edit shipped files, and each of those is a
-**single** owning task for the reason TSPEC §13.3 gives — one physical file, one writer.
+module** (`pdlc/workflows/consolidate-learnings.js`), the two adapter seams it needs, a **third**
+built bundle, and sixteen jest suites that falsify it. Twenty-five of the thirty-four tasks below
+touch only files this feature creates; the remaining **nine** edit shipped files (T07, T08, T09, T10,
+T11, T12, T13, T32, T33), and each of those is a **single** owning task for the reason TSPEC §13.3
+gives — one physical file, one writer.
+
+**The `dist/` vocabulary, stated once and used unchanged everywhere below.** `runtimeBundle.test.js`
+keeps bundles and artifacts apart and this PLAN follows it: `BUNDLES` (`:26`) is the `*.bundle.js`
+list — two members today, **three** after T32 — and `ARTIFACTS` (`:1584`) is `[...BUNDLES,
+"pdlc-cli.mjs"]`. So after T32 `pdlc/workflows/dist/` holds **five files**: three `*.bundle.js`,
+`pdlc-cli.mjs`, and `distribution-manifest.json`; the manifest carries **four** artifact rows
+(`orchestrate-dev`, `orchestrate-queue`, `consolidate-learnings`, `pdlc-cli`) against three at HEAD.
+"Third bundle", "five `dist/` files", "four manifest rows" are the only forms used below.
 
 **What ships**
 
@@ -26,11 +49,11 @@ touch only files this feature creates; the remaining ten edit shipped files, and
 | the pass | `pdlc/workflows/consolidate-learnings.js` (new) | §3.1, §4, §7, §9, §10 |
 | two new seams + a composition root | `pdlc/workflows/runtime-adapter.js` (`rtEnvPresent`, `rtMakeTempDir`, `rtConsInjections`, `rtWriteFile`'s absolute-path widening) | §5.3, §5.6(a) |
 | the resolver widening | `pdlc/workflows/orchestrate-dev.js` (`resolveAdvisoryRung`'s optional `skill`, `gitWithLockRetry` exported, two `mergeCommandFor` surfaces) | §8.1, §4.2, §9.2 |
-| a fourth bundle | `pdlc/workflows/build-runtime.mjs` → `dist/consolidate-learnings.bundle.js` + a `distribution-manifest.json` row | §8.2, §8.3 |
+| a third bundle | `pdlc/workflows/build-runtime.mjs` → `dist/consolidate-learnings.bundle.js` + a `distribution-manifest.json` row (fourth) | §8.2, §8.3 |
 | the hook's observation channel | `pdlc/hooks/scripts/nudge-consolidation.sh` (`CORPUS_GLOBS`, the two-region predicate, the `pending` fall-through, the env-gated `PDLC_PENDING:` stderr line) | §3.2, §7.1, §13.1 row 12 |
 | the ignore rule | `.gitignore` (`docs/_decisions/.consolidation-lock`, comment line adjacent) | §3.3 |
 | two prompt contracts | `pdlc/skills/consolidate-learnings/SKILL.md`, `pdlc/skills/harvest-learnings/SKILL.md` | §3.2 |
-| fifteen suites + one doubles module | `pdlc/workflows/__tests__/consolidation*.test.js`, `__tests__/helpers/consolidationDoubles.js` | §11, §12.3 |
+| sixteen suites + one doubles module | `pdlc/workflows/__tests__/consolidation*.test.js`, `__tests__/helpers/consolidationDoubles.js` | §11, §12.3 |
 
 **Verified against HEAD before this PLAN was written.** Every file in the table above either exists
 today (confirmed by `ls`) or is declared new by the task that creates it, and the §5 manifest marks
@@ -45,10 +68,12 @@ which is which. The four reused symbols TSPEC §4.2 names are present at HEAD:
 `QUEUE_ENTRY` at `:185` and the `bundles` array at `:448`, so T32's edit lands beside existing
 declarations rather than inventing machinery.
 
-**Two coverage claims checked against the current suite layout, not assumed.**
-(a) `pdlc/workflows/__tests__/` holds 74 `*.test.js` files at HEAD and **none** is named
-`consolidation*`, so all fifteen suites in §4 are new files with no merge hazard against a shipped
-suite. (b) The two static-scan sets this feature must widen exist where TSPEC §11.3(c) says:
+**Two coverage claims checked against the current suite layout, not assumed — each with the command
+that measured it, so the next reader re-runs rather than re-derives.**
+(a) `git ls-files 'pdlc/workflows/__tests__/*.test.js' | wc -l` returns **83** at HEAD (83 on disk
+too — nothing untracked in that directory), and `ls pdlc/workflows/__tests__/ | grep -c
+'^consolidation'` returns **0**. The load-bearing half is the zero: all sixteen suites in §4 are new
+files with no merge hazard against a shipped suite. (b) The two static-scan sets this feature must widen exist where TSPEC §11.3(c) says:
 `AT19_SEAM_NAMES` is declared at `__tests__/runtimeBundle.test.js:215` and consumed at `:427`, and
 `AWAIT_SCAN_SOURCES` at `:1040` (`["orchestrate-dev.js", "orchestrate-queue.js"]`) and consumed at
 `:1054` — neither carries `consolidate-learnings.js`, `_envPresent` or `_makeTempDir` today, which is
