@@ -632,7 +632,8 @@ conjoined on the same path with two positives:
 
 **Two further adapter functions interpolate `${path}` into a transported command and are deliberately
 outside this oracle — permanently, not by oversight.** `rtHashFile` (`runtime-adapter.js:613`, prompt
-`:618`) and the `_checkFile` transport (`check:${path}`, `:823-825`) are neither read prompt, and no
+`:618`) and the `_checkFile` transport (prompt `:822-824`, its `check:${path}` label `:825`) are
+neither read prompt, and no
 absolute path reaches either one in this feature: the pass's only `_checkFile` consumer is the marker
 probe on the repo-relative `docs/_decisions/.consolidation-lock`
 (`TSPEC-pdlc-consolidation-agent.md:992-996`, `:1046-1048`), and it calls `_hashFile` nowhere — that
@@ -899,7 +900,8 @@ knows the corresponding entry is provisional:
    closes divergence class (i) at exactly the price of that rule and no other, while "no" keeps it
    open. The two answers are not symmetric and the erratum says so.
 3. **TSPEC §9.2 — the credentialed push cannot reach `git` by shell expansion** (DEC-CONS-01).
-   `TSPEC:1595-1601` says the value reaches `git`/`gh` by shell expansion inside the transported
+   `TSPEC:1675-1677` (with `:1699`) says the value reaches `git`/`gh` by shell expansion inside the
+   transported
    command, and for `gh` that holds: `rtGhRun` is handed a fully-built **command string** (`:995`),
    so a `GH_TOKEN="$VAR" gh …` prefix expands. For `git` it does not: `_git` takes **argv**, and
    `rtGit` passes every element through `rtShellQuote` (`runtime-adapter.js:668-670`), which
@@ -907,7 +909,8 @@ knows the corresponding entry is provisional:
    is transported **literally** and never expanded. Either the push must route through a
    command-string seam like `gh`'s, or the module must hold the value (which NFR-2 forbids). This is
    the TSPEC's to correct, not this document's; DEC-CONS-01's residual paragraph records the
-   consequence for the entry. Riding with it: `TSPEC:1325`'s traceability row states NFR-2
+   consequence for the entry. Riding with it: the NFR-2 / §7.4 traceability row (`TSPEC:1405`; the
+   TSPEC's own §1 pointer at `:52` still cites it as `:1325`, which is a blank line) states NFR-2
    non-disclosure as unqualifiedly "structural", which is true outbound and not true of the inbound
    failure-reply channel — that row is the TSPEC's to qualify.
 
