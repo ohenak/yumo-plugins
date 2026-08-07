@@ -74,4 +74,26 @@ in §7 remove nothing but the dangling reference.
 
 ## Recommendation
 
+**Approved with minor changes** (0 High, 0 Medium, 2 Low).
+
+All four v2 findings are closed, the single blocker (F-01) is closed at the level of the defect
+rather than the sentence, and every measurement the replacement text asserts reproduces at HEAD —
+`TSPEC:1619`, `TSPEC:1620`, `REQ:288`, `orchestrate-queue.js:1576-1585`, `runtime-adapter.js:268`,
+`:281-283`, `:346`, `:369`, `:374`, `:618`, `:805`, `:911`, `:949`, `:668-670`. Nothing in the
+revision broke an unchanged section: the §2 index row, §3's residual and §11.3 item 3 now say the
+same thing about the credentialed `git` push, where before only the last two did.
+
+The two remaining items are Low and neither disputes a decision:
+
+1. **F-01** — add the obligation conjunct (`obliged ⊆ observed`, `TSPEC:2097`) to §11.2's
+   DEC-CONS-03 property, so the containment property cannot green on a pass that issues no
+   invoking-tree `git` call at all. One clause.
+2. **F-02** — drop or restate §5 domain 2's "cited rather than restated" claim, which the same
+   sentence's inline transcription contradicts.
+
+Neither needs another review round; both are safe to fold into the optimizer pass that carries this
+document into Phase P.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
