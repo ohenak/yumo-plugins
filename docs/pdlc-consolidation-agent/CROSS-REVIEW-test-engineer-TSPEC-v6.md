@@ -35,6 +35,16 @@ are exact after this round's `:820`→`:823` correction.
 
 ## Findings
 
+Three, all in text that did not exist at v5. One Medium: the decision this whole round exists to
+confirm — decision 2, "`present` is never derived from `_readFile(...) !== null`" — has no fixture
+anywhere in §12 that can tell the two implementations apart. Neither of the other two is blocking.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | No fixture in §12.2/§12.3 puts an **empty** marker on the tree, so §10.3's new row 4a is asserted by nothing and the forbidden `_readFile(...) !== null` derivation greens the entire specified suite. This is the round's central decision and the one it names as the bug being avoided | §7.3 decision 2, §10.3 row 4a, §12.2, §12.3 |
+| F-02 | Low | Local | §12.2's new release row keys `{taken?, released?}` on the terminal status, but `refused` has **two** arms with opposite `taken` values — §7.3's failed-take arm writes `IN-PROGRESS` and releases nothing. The row's expected pair is therefore fixture-dependent and reds on correct code if the implementer picks the other arm | §12.2 release row, §7.3, §10.3 row 5a |
+| F-03 | Low | Local | `BR-15` is cited as `FSPEC-…:2500`; it is at `:2502` (`:2500` is BR-13). Every other citation in the new text verifies exactly | §12.2 release row |
+
 ## Detail
 
 ## Questions
