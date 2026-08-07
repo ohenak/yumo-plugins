@@ -284,7 +284,7 @@ positionally, never exempted:
 
 1. **Invoking-tree domain** — every argv with no `-C` prefix that is *not* the clone argv. Asserted
    by containment against that domain's **whole** verb set as TSPEC §9.3 states it
-   (`TSPEC-pdlc-consolidation-agent.md:1619`): obliged `add` and `commit` — the pass's own
+   (`TSPEC-pdlc-consolidation-agent.md:1724`): obliged `add` and `commit` — the pass's own
    pathspec-scoped log commit, `git add -- {paths}` then `git commit -m {msg} -- {paths}`, required
    by `REQ-pdlc-consolidation-agent.md:288` and mirroring `commitQueueRow`
    (`pdlc/workflows/orchestrate-queue.js:1576-1585`) — plus the five permitted reads `read-branch`,
@@ -293,32 +293,35 @@ positionally, never exempted:
    widenings; that is **withdrawn**, because §13.1 row 9 is the *widenings* row, not the domain's
    set — it understated the reads by two and omitted the two obliged mutating verbs, so the
    assertion as written was **red on correct code**, failing on the pass's own log commit. The
-   falsifying force sits on `TSPEC:1619`'s **absent-always** column — `checkout`, `switch`, `stash`,
+   falsifying force sits on `TSPEC:1724`'s **absent-always** column — `checkout`, `switch`, `stash`,
    `reset`, `rebase`, every merge verb — which is what makes "a `checkout` fails by construction"
    true; a bare `fetch` fails too, being in neither the obliged nor the permitted column of this
    domain. The direction stays **containment**, not exclusion, per §11.2: a verb nobody has
    classified yet must red rather than green. Containment alone would be vacuously satisfied by a
    pass that issued no invoking-tree `git` call at all, so it is conjoined with **obligation** —
-   `add` and `commit` must each be *observed* here on the Given that obliges them (`TSPEC:2097`) —
+   `add` and `commit` must each be *observed* here on the Given that obliges them
+   (`TSPEC:2202-2203`, the **obligation** clause; `:2201-2202` is *containment*, which is precisely
+   the conjunct this sentence has just said is insufficient) —
    which is what makes a regression that silently drops the AC-1.3 log commit red.
 2. **Clone domain** — every argv whose first two elements are `["-C", dir]` where `dir` is the string
    `_makeTempDir`'s double returned. Asserted by containment against the clone domain's verb set as
-   `TSPEC:1620` enumerates it — obliged `clone`, `create-branch`, `add`, `commit`, `push`; permitted
+   `TSPEC:1725` enumerates it — obliged `clone`, `create-branch`, `add`, `commit`, `push`; permitted
    `fetch`, `read-branch`, `read-status`; absent every merge verb. That list is a **transcription
    with provenance**, in the same form as §7's `CORPUS_GLOBS` pin and §9's six terminal statuses:
-   the test hardcodes it *and* names `TSPEC:1620` as the authority, so a later widening of that row
+   the test hardcodes it *and* names `TSPEC:1725` as the authority, so a later widening of that row
    is a divergence from a cited source rather than a silent drift past an uncited one. (An earlier
    draft called it "cited rather than restated"; that is **withdrawn** — the same sentence restates
    it inline, and a test written from an inline list without the provenance would drift past exactly
    the widening the clause claimed to catch.) Conjoined with **obligation**: `clone`,
    `create-branch`, `add`, `commit` and `push` must each be *observed* in this domain on the Given
-   that obliges them (`TSPEC:2097`). Nothing here is checked against the invoking-tree set.
+   that obliges them (`TSPEC:2202-2203`, the **obligation** clause — not `:2201-2202`, which is
+   containment). Nothing here is checked against the invoking-tree set.
 3. **The single `clone` argv** — asserted by **shape**, exactly once per pass, and pinned
    positionally: the argv equals `["clone","--depth","1","--single-branch", R, D]` where `R` is
    character-identical to the `remote get-url` double's reply (or, in the two-repo arm, to
    `https://github.com/{pluginRepository}.git`) and `D` is character-identical to `_makeTempDir`'s
    reply. Both trailing positions are pinned, so the destination cannot be a path inside the
-   repository and the source cannot be the repository root path. `TSPEC:1620` bins this call in the
+   repository and the source cannot be the repository root path. `TSPEC:1725` bins this call in the
    clone domain ("plus the `clone` call itself"), and nothing here contradicts that: domain 3 is a
    **shape assertion in addition to** that membership, not a fourth domain. It is separated out
    because verb containment is too weak for this one call — what pins its destination is
