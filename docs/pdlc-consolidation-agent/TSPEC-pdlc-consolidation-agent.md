@@ -253,9 +253,17 @@ interface ConsolidationSeams {
 // The listing seam's real, closed contract at HEAD (runtime-adapter.js:905-931;
 // the same four-member set is frozen for the doubles as LIST_FAILURE_VALUES,
 // __tests__/helpers/seams.js:58-63).
-// The presence probe's contract at HEAD (runtime-adapter.js:817-831). §7.3 depends on
-// `file_empty` being distinguishable from `file_missing` — and on both being treated as
-// absent — which is why the marker's `present` flag comes from here and not from _readFile.
+// The presence probe's contract at HEAD (runtime-adapter.js:817-831). What §7.3 depends on
+// is ONLY that BOTH `file_empty` and `file_missing` are treated as absent; nothing in this
+// document reads WHICH reason came back, and no row asserts it. That is why the marker's
+// `present` flag comes from here and not from _readFile. Do not build on the distinction
+// between the two reasons: the two implementations disagree on where the boundary sits.
+// `rtCheckFile` decides emptiness by BYTE SIZE (`test -s`, runtime-adapter.js:820), while
+// `fakeFs.checkFile` decides it by TRIMMED CONTENT (`String(self.files[path]).trim() === ""`,
+// __tests__/helpers/seams.js:298) — so a marker holding a single newline is {ok:true} in
+// production and {ok:false, reason:"file_empty"} under the double. They agree on "" and on a
+// missing file, which is the whole set of states this feature can produce (release writes "";
+// §7.3), so the divergence is unreachable here — and is recorded so it stays that way.
 type CheckReply = {ok: true} | {ok: false; reason: "file_missing" | "file_empty"};
 
 type ListReply = {ok: true; files: string[]}
