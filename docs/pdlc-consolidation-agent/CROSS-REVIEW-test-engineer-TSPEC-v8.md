@@ -24,6 +24,18 @@ I verified every code citation the delta makes against the tree rather than taki
 
 ## Erratum items — disposition
 
+The seven routed items collapse to two distinct defects (four restatements of the NFR-2 row, three of the push mechanism). Both are resolved.
+
+| Item | Raised by | Disposition | Evidence |
+|---|---|---|---|
+| NFR-2 row at `:1325` claims non-disclosure "structural" without qualification (items 1, 3, 5, 7) | pm-review ×2, se-author ×2 | **Resolved** | The row now says "structural **on the outbound path**", states explicitly "It is **not** structural inbound, and this row does not claim it is", names the mechanism (`rtGit:951` combined output → `rtParseTransportReply:967` → `stderr` at `:977`), names both render sites (§10.3 row 1a at `TSPEC:1832`, `openClone`'s `{failure, detail}` at `TSPEC:1522`), states the residual's bound ("what `git` prints on failure, not the seam's interface"), and carries it under DEC-CONS-01's existing qualification rather than inventing a second one. It records the residual **and** names the one thing that is still closed (the rendered artifacts stay credential-free because the value never becomes a JS string) — which is the "either record or close" the erratum asked for, on the correct side of the line for each half. |
+| §9.2 claims the credentialed push reaches `git` by shell expansion (items 2, 4, 6) | se-author ×2, pm-review ×1 | **Resolved** | §9.2 now states the `gh` half is exact (`_ghRun` is a command string, `:995`) and that the push half was wrong, with the mechanism cited (`rtShellQuote`, `:668-670`). A lane is picked rather than left open: the push stays on `_git` and carries `-c credential.helper=!f(){ echo username=x; echo password=$VAR; };f`, expanded by `git`'s own shell one process below the transport. Both alternatives the errata named are recorded as rejected with reasons — the command-string git seam (would move the push out of §9.3's `_git`-argv domain classifier) and `gh`-for-both (`gh` has no push verb). §5.3 (`:341-345`) and §13.1 row 1 (`:2481`) are swept to match, so the three statements of the mechanism now agree. |
+
+Two testability checks on the chosen lane, both pass:
+
+- **The helper string survives the transport.** It contains no single quote, so `rtShellQuote` wraps it cleanly and `git` receives it byte-intact; `git` treats a `credential.helper` value beginning `!` as a shell command, so the expansion the section claims is the one that actually happens. The module still holds only the variable name, so the NFR-2 outbound property the whole design rests on is unchanged — and it is asserted the same way it was at v7 (argv-shape over the seam double), so no oracle in §11.3 or §12.2 is invalidated by the change.
+- **§9.3's classifier still bins the push.** The credentialed argv begins `["-C", dir, …]`, so `resolveSeamDomain` still returns `git-clone`, and `resolveSeamVerb` must skip the `-c` element to resolve `push` — an obligation that pre-existed this delta (the withdrawn `-c http.extraheader` form had the same shape), so AT-Q7's containment assertion is unaffected.
+
 ## Findings
 
 ## Questions
