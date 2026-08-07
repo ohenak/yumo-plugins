@@ -90,8 +90,71 @@ nothing I approved earlier is weakened.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | *(carried unchanged from v2/v3, still unanswered and still not a finding against this document.)* §11.3 item 3 is a functional gap as well as a documentation one: if the credentialed push cannot reach `git` by shell expansion and the module may not hold the value, AC-4.2's `present (redacted)` path has no shipped mechanism until the TSPEC picks a lane. Does the PLAN need the erratum answered **before** the task that implements `rtEnvPresent` and the push? |
+| Q-05 | *(carried unchanged.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags? |
+| Q-06 | *(carried unchanged from v3.)* `REQ:288` obliges a **pathspec** on both invoking-tree calls and explicitly rejects `commitPaths`' bare `git commit -m` shape. The new obligation conjunct asserts the two verbs are *observed*, which is a real strengthening, but a verb-level observation still cannot see the pathspec. Which oracle owns the pathspec — an AT in the register, or an argv-shape assertion like domain 3's? I would rather that be settled before PROPERTIES than discovered at DoD. |
+
 ## Positive Observations
+
+- **The withdrawal of the false ground is the strongest thing in this revision, and it is the third
+  such self-correction in this document.** It names the clause, calls it false, states which
+  direction it pointed ("the opposite way from what the feature ships"), re-measures the count in the
+  document itself, and then adds a guard I did not ask for — "Nothing in this entry may be read as a
+  reason to weaken or drop that conjunct". My finding was that a PROPERTIES author had a documented
+  reason to weaken `TSPEC §11.6(e).2`; the revision does not merely remove the reason, it leaves a
+  standing instruction not to. That is the difference between patching a review finding and closing
+  the failure mode behind it.
+- **The obligation conjunct is a product finding dressed as a testability one, and the document says
+  so.** "Containment alone would be vacuously satisfied by a pass that issued no invoking-tree `git`
+  call at all" identifies a green-on-broken oracle whose operator-visible consequence is the AC-1.3
+  log commit silently disappearing (`REQ:288`). §11.2 states that consequence in those terms rather
+  than in set-theory terms, which is what makes it legible to whoever writes the property. This is a
+  paired positive on the same path — the exact shape §11.2's own preamble demands — arriving without
+  a reviewer having to ask for it.
+- **The `rtHashFile` / `_checkFile` exclusion is recorded as a decision with a revisit trigger, not
+  as silence.** "Deliberately outside this oracle — permanently, not by oversight", the evidence for
+  why (`_hashFile` has no consumer at `TSPEC:439`; `_checkFile`'s only consumer is a repo-relative
+  marker probe), and the condition that would reopen it ("a future consumer that hands either of them
+  a `_makeTempDir` reply"). A set-equal oracle that excludes members is only trustworthy if the
+  exclusions are enumerated and dated; these are.
+- **Domain 2 withdrew a claim about its own rigour rather than a claim about the code.** "Cited
+  rather than restated" was a statement about the *form* of the assertion, and it was wrong about a
+  sentence sitting three words away. Catching that is harder than catching a wrong line number, and
+  the replacement — transcription-with-provenance, aligned to §7's and §9's existing pins — makes the
+  document internally consistent about how it pins enumerated sets, which is a durable win beyond
+  this entry.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My v3 Medium (F-07) is resolved, and resolved past what I asked. Nothing in the three changed spans
+broke anything I approved earlier: DEC-CONS-06's decision, its two-prompt scoping and its positive
+arms survive on the ground I verified at v3; DEC-CONS-03's three domains still transcribe
+`TSPEC:1619`/`:1620` set-equally, now with an obligation conjunct that strictly strengthens them;
+§11.2's row gained assertions and lost none. Every new `file:line` and every new measurement I could
+check verified — including the two greps the document performs on itself.
+
+Two Lows remain, both citation precision in newly added text, neither changing any decision:
+
+1. **F-08** — cite `TSPEC:2098-2099` (not `:2097`) for the obligation conjunct, in all three places.
+2. **F-09** — §11.2: cite `TSPEC:2095-2100`, order the four assertions as the TSPEC orders them
+   (partition is the first, not the fourth; the fourth is AT-Q7c's two `∅` equalities), and state the
+   absent-always negative for the clone domain as well as the invoking-tree one.
+
+Both are safe to fold into the next authoring pass on any other business; neither justifies a round
+of its own, and by the approval rules Lows alone do not block. I am **not** asking for changes to
+DEC-CONS-06's decision, scoping, positive arms or new exclusion paragraph, to DEC-CONS-03's domains,
+or to any unchanged entry.
+
+No upstream errata leave this review. The two TSPEC errata I raised at v2 (`rtShellQuote`
+single-quoting every `_git` argv element; `TSPEC:1325`'s unqualified "structural" non-disclosure row)
+remain open and are already routed; I do not re-emit them. F-08 and F-09 are defects of **this**
+document — `TSPEC:2095-2100` and `§11.6(e).2` are correct and mutually consistent; it is DECISIONS
+that points at them imprecisely.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
