@@ -38,7 +38,39 @@ in §7 remove nothing but the dangling reference.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | (Follows F-01, and is not a blocker.) §5 domain 3 already carries a positive occurrence conjunct — "exactly once per pass". Is the intent that the obligation conjunct for domains 1 and 2 lives only in the TSPEC (`:2097`), with DECISIONS §11.2 summarising the containment half? If so, saying that in one clause is enough; what I want to avoid is a PROPERTIES author reading §11.2 as the whole contract |
+| Q-02 | §8 scopes the read-path oracle to `rtReadFile`'s two prompts. Two other adapter functions also interpolate `${path}` into a transported command — `rtHashFile` (`:613`, prompt `:618-620`) and the `_checkFile` transport (`check:${path}`, `:823-825`). Neither is `rtReadFile`, so excluding them from DEC-CONS-06's oracle is right; but does any absolute path (a `_makeTempDir` reply) ever reach `_checkFile` or `_hashFile` in this feature? At HEAD's spec the only `_checkFile` consumer is the marker take on a repo-relative path (`TSPEC:912-919`, `:969-971`), so the answer looks like "no" — a one-clause confirmation in §8 would close it permanently rather than leaving it to be re-derived |
+
 ## Positive Observations
+
+- **F-01 was fixed at the level of the defect, not the sentence.** The revision did not merely swap
+  the cited row — it named *why* §13.1 row 9 was the wrong authority (it is the widenings row, not
+  the domain's set), stated the consequence that made it a blocker ("red on correct code, failing on
+  the pass's own log commit"), moved the falsifying force onto the absent-always column, and settled
+  the containment-vs-exclusion direction against §11.2. Every one of those four moves reproduces
+  against `TSPEC:1619`, `REQ:288` and `orchestrate-queue.js:1576-1585`.
+- **The three sites that had to agree now agree.** F-02's "no mutating git verb at all" appeared in
+  §5, §6 and (implicitly) §11.2; all three are corrected in the same revision, and §11.2's version
+  carries the explicit warning "the property is *not* 'no mutating verb'". A correction that fixes
+  only the site the reviewer quoted is the usual outcome; this one did not.
+- **§8's F-04 fix is stronger than the finding asked for.** I asked for the conjuncts to be scoped to
+  `rtReadProbe`'s prompt argument. The revision scopes them to a *set-equal pair* of read prompts,
+  which is the right shape — it discovers `rtReadChunk` (a prompt I had not named), states the
+  scoping as load-bearing in both directions, and keeps the "red on this feature's own correct code"
+  hazard visible in the text rather than fixing it silently. The second positive is extended to
+  `rtReadChunk`'s `sed` forms too, so the measurement conjunct covers both members.
+- **The `DEC-CONS-01` index row is now honest about a half-settled entry.** Marking the `git` half
+  **provisional** in §2 — where a reader who never reaches §11.3 will see it — is the difference
+  between a decision index and a decision advertisement. The technical claim behind it holds:
+  `rtGit` maps argv through `rtShellQuote` (`:949`, `:668-670`), so shell expansion genuinely cannot
+  carry the token there.
+- **Withdrawals are still recorded rather than overwritten.** Three more this round ("an earlier
+  draft of this line cited TSPEC §13.1 row 9 … that is **withdrawn**"; "an earlier draft said 'admits
+  no mutating git verb at all'; that is withdrawn as false of the domain"; "an earlier draft's 'the
+  clone belongs to no verb set' is withdrawn as a mis-statement"). For a test author, a document that
+  says what it used to claim wrongly is worth more than one that merely reads correctly.
 
 ## Recommendation
 
