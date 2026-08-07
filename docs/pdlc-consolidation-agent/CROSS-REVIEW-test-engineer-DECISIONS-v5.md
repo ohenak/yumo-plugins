@@ -69,4 +69,38 @@ confined to conjunct 4. And the closing "Comparison is over a `Set`, never a mul
 
 ## Recommendation
 
+**Needs revision** (1 High, 0 Medium, 0 Low).
+
+The v4 finding is closed and the re-anchoring pass that accompanied it is sound — every moved anchor
+was verified individually at HEAD and every one reproduces. But the same revision that enumerated the
+four set assertions in full introduced a mis-transcription of the fourth, and it is the class of
+mis-transcription this document exists to prevent: it drops the PR-seam `∅` conjunct entirely,
+converts the clone conjunct from whole-domain emptiness into a merge-verb intersection that a
+cloning-and-pushing pass satisfies, and substitutes an invoking-tree conjunct that is redundant with
+containment. `FSPEC-…:1060-1063` anticipates exactly this weakening and says what it costs. A
+PROPERTIES author transcribing §11.2 as it stands would write a strictly weaker oracle than the TSPEC
+specifies while believing they had carried the whole contract — which is the failure mode the v4
+revision's own "are not the whole contract, and a property author must not read them as it" clause
+was added to close.
+
+One change closes it:
+
+1. **F-01** — restate §11.2 conjunct 4 as AT-Q7c's two whole-domain equalities on its `promoted` /
+   no-guard-set Given: **PR seam observed `= ∅`** and **clone seam observed `= ∅`** (`FSPEC:2154`,
+   `FSPEC:1060-1063`), noting that neither is implied by containment, since `∅ ⊆ permitted` is
+   vacuous. Keep the `TSPEC:2203` anchor — it is correct for where the conjuncts are *named* — but
+   cite the FSPEC lines for what they *are*. If the invoking-tree absent-always intersection is kept
+   at all, keep it labelled as implied by conjunct 2 (Q-01).
+
+Nothing else in the revision broke an unchanged section. §5's three domains, §6 and §8 changed only
+by anchor retarget; their transcribed content is byte-identical to what v4 verified, and I re-checked
+the two domain rows and the `rtWriteFile` blockquote against the TSPEC rather than taking that on
+trust.
+
+No upstream defects found this round — no ERRATUM lines. F-01 is a defect in this document's reading
+of AT-Q7c, not in AT-Q7c: `FSPEC:2154` and `FSPEC:1060-1063` are mutually consistent, and `TSPEC:2203`
+is a correct reference to them.
+
 ## Verdict
+
+VERDICT: Needs revision
