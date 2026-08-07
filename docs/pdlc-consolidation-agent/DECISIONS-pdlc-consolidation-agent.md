@@ -792,12 +792,33 @@ must land as properties rather than as unit cases:
   3. **obligation** (`TSPEC:2202-2203`) — `obliged ⊆ observed` per domain, on the Given that obliges
      it: `add` and `commit` observed in the invoking-tree domain, and `clone`, `create-branch`,
      `add`, `commit`, `push` observed in the clone domain.
-  4. **the two `∅` equalities of AT-Q7c** (`TSPEC:2203`) — *two*, one per `git` domain, not one. For
-     the invoking tree the absent-always set is `checkout`, `switch`, `stash`, `reset`, `rebase`,
-     every merge verb (`TSPEC:1724`); for the clone it is every merge verb (`TSPEC:1725`). Both
-     intersections with the observed set must be `∅`. The clone-domain half is *implied* by
-     containment against `:1725`'s permitted column, but AT-Q7c asserts it directly, and a property
-     that carries only the invoking-tree half is not set-equal to the TSPEC's oracle.
+  4. **the two `∅` equalities of AT-Q7c** (`TSPEC:2203` *names* the conjuncts but defines them
+     nowhere — `grep -n AT-Q7c` on the TSPEC returns `:2192`, `:2203`, `:2481`, `:2502`, none a
+     definition; the definition is upstream, at `FSPEC:2154` and `FSPEC:1060-1063`). They are
+     **whole-domain emptiness equalities on two of the three domains**, asserted on AT-Q7c's Given —
+     a pass terminating **`promoted`** with **no** guard-set proposal, so every promotion routes to
+     the consuming repo and nothing routes to a PR or a clone:
+     **PR-seam observed `= ∅`** and **clone-seam observed `= ∅`** (`FSPEC:2154`: "the PR seam and
+     the clone seam observing `∅` and the invoking tree observing a set **bounded on both sides**").
+     Three things a property author must carry with them. (i) The **invoking tree is explicitly the
+     domain that is not `∅`** on this Given: it contains `{add, commit}` and is contained in
+     `{add, commit, read-branch, read-status}` — containment in both directions, never equality,
+     because the read verbs are permitted and neither their presence nor their absence is asserted.
+     (ii) Neither `∅` equality is implied by conjunct 2: `∅ ⊆ permitted` is satisfied **vacuously**
+     by containment, which is exactly why `FSPEC:1060-1063` calls the two conjuncts equalities "with
+     the empty set rather than with a permitted set" and warns that weakening them to containment
+     "would leave that row nothing to catch" — a pass that quietly clones, branches, commits and
+     pushes, or that quietly reads a PR, when nothing routes there. (iii) **No** obligation is
+     asserted on the two empty domains. A property that carries containment and obligation but not
+     these two equalities is not set-equal to the TSPEC's oracle, and is strictly weaker than the
+     contract it appears to carry.
+
+     The invoking-tree absent-always intersection (`observed ∩ {checkout, switch, stash, reset,
+     rebase, every merge verb} = ∅`, `TSPEC:1724`) is a **separate** and useful negative, but it is
+     **implied by conjunct 2** — those verbs are by construction outside `:1724`'s permitted column —
+     so it is recorded here labelled as implied, and must stay labelled: an unlabelled redundant
+     conjunct is what a later simplification deletes alongside a load-bearing one. It is not one of
+     AT-Q7c's two `∅` equalities and must not be written in their place.
 
   Comparison is over a `Set`, never a multiset (`TSPEC:2203-2204`).
 
