@@ -51,6 +51,185 @@ Five new, all in changed sections.
 
 ## Detail
 
+### F-01 — T-11 and T-12 name ATs that assert something else (High)
+
+The two new §12.2 rows are the traceability that binds the PR body and the proposal file to
+falsifiers. I read every AT they name in the FSPEC's register (`FSPEC-…:2064-2077`). Six of the nine
+bindings are wrong — not imprecise, but attached to a Given/Then about a different subject:
+
+| Row's claim | The FSPEC's actual AT (`:line`) |
+|---|---|
+| T-11: **AT-Q3** — "body cites source LEARNINGS by feature name, the failure mode, the AC-2.3 evidence" | `:2066` AT-Q3 — a pair on an **open** PR; nothing is opened, `duplicate-suppressed` names the pair in `suppressed-by:`, `pr:` stays empty |
+| T-11: **AT-Q4** — "round-trip — `enactedByPr` reads back the trailer `renderPrBody` wrote" | `:2067` AT-Q4 — the same pair on a **closed-unmerged** PR; the proposal is re-opened as a new PR |
+| T-11: **AT-Q5** — "trailer set-equal to `enacted`, both directions" | `:2068` AT-Q5 — a merged `promote` now `ineffective`; the `revise`/`retire` proposal is **not** suppressed by it |
+| T-11: **AT-Q2** — "per-commit `PDLC-PROMOTION-ID`" | `:2065` AT-Q2 — correct, **and it is also the only AT that carries the trailer set-equality** T-11 attributes to AT-Q5 |
+| T-12: **AT-Q9** — "each degradation class writes the file with the diff inline and its reason code by name" | `:2074` AT-Q9 — a PR whose invoking branch is **deleted without merging**; the trailer survives and still suppresses. The second degradation class T-12 wants is AT-Q6 (`:2069`, `branch-exists`), not AT-Q9 |
+| T-12: **AT-Q11** — "the file is written **only** when something is not enacted" | `:2076` AT-Q11 — two runs over an unchanged corpus; `DOMAIN-CONSTRAINTS.md` is **byte-identical** after the second. Nothing about the proposal file's existence condition |
+| T-12: **AT-Q8** | `:2073` — correct |
+
+Why this is High rather than bookkeeping. §12.2's Falsified-by column is the *only* thing that says
+which test owes an obligation; §13.3 hands the PLAN a manifest keyed on the files §12.3 names, and a
+PLAN task reads these rows to know what it must assert. So the practical outcome is that AC-3.2's
+three body citations, AC-3.4's second clause and FSPEC §5.3's "when, and only when" each end up with
+a *named* falsifier that will be written to a different specification and will pass while the
+obligation is unimplemented. That is worse than an empty cell, which at least reads as a gap.
+
+And the compensating control cannot catch it. §12.3's `consolidationTraceability.test.js` asserts set
+equality between the FSPEC's register and §12.3's file table — an assertion over **ids**. AT-Q3,
+AT-Q4, AT-Q5, AT-Q9 and AT-Q11 are all in the register and all assigned to `consolidationRoute.test.js`,
+so the oracle is green over a mis-binding it was never built to see. There is no test anywhere that
+compares a §12.2 row's *description* of an AT against the register's text.
+
+**Required:** re-bind every AT in T-11 and T-12 to the register's actual text. Where the obligation
+has no AT — AC-3.2's citation clause is the clear case, since the FSPEC's own AC→AT map (`:2269`)
+binds AC-3.2 to AT-Q2, which asserts only the trailers — say so and raise it upstream rather than
+naming an id that happens to be nearby. An erratum for that gap is in my final message.
+
+### F-02 — half of §11.3(e)'s oracle pins text that does not exist (Medium)
+
+The `_writeFile` half of the v1 F-03 repair is correct and I confirm it: the clause is real, at
+`runtime-adapter.js:805`, and an absolute `dir` from `mktemp -d` genuinely contradicts it.
+
+The `_readFile` half is not. §5.6(a) says "The shipped prompts say the opposite of what that needs
+(`runtime-adapter.js:806-807`, `:493`)"; §5.5's new row says "`rtReadFile` (`:493`) is framed the
+same way"; §9.2 repeats it. I grepped the whole adapter: **`"relative to the repository root"` occurs
+exactly once, at `:805`, inside `rtWriteFile`.** `rtReadFile` (`:493`) reaches the filesystem through
+`rtReadProbe` (`:369`), whose prompt is `Run this exact command from the repository root and report
+its output:` followed by `if [ ! -f "${path}" ] || [ ! -r "${path}" ]; …` (`:374-378`) — a shell test
+on the path as given, which resolves an absolute path verbatim today. The read path needs no
+widening; it already works.
+
+The testing consequence is direct, and it lands on the oracle that answers v1 F-03. §11.3(e) says the
+assertion "pins the widened clause in **both** prompts verbatim, so a future edit that reverts them to
+'relative to the repository root' reds". For `rtReadFile` there is no clause to widen and none to
+revert. The implementer has two ways out and both are bad: assert against text that is not there
+(red on a correct tree, and it will be "fixed" by deleting the assertion), or add a gratuitous clause
+to a read prompt every shipped workflow depends on, purely so a test has something to match — a
+prompt edit to `runtime-adapter.js` with no behavioural motive, on the file §13.3 already flags as a
+serialised single-writer.
+
+**Required:** scope the widening and §11.3(e)'s assertion to `rtWriteFile` alone, and state
+positively why `_readFile` needs nothing — the probe's `[ -f "${path}" ]` form is the reason, and it
+is worth recording so a later reader does not "harmonise" the two prompts. §5.5's row, §5.6(a) and
+§9.2 all carry the same wrong claim and all three need the edit.
+
+### F-03 — T-08's two implementations now differ where AT-P7 cannot look (Medium)
+
+T-08 is "one corpus, one predicate" (§12.2), and AT-P7 is its sole falsifier. Before this revision
+both implementations enumerated the same way (a directory glob), so a differential over the predicate
+covered the pair. §7.1's repair changed the JS side's *enumeration* to
+`git ls-files --cached --others --exclude-standard`, while the hook keeps
+`glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))` (`nudge-consolidation.sh:28`) plus the
+`docs/completed/*/` arm §7.1 adds. The two now answer different questions about the same tree.
+
+The divergence is concrete, not theoretical, and runs in both directions:
+
+- A LEARNINGS file matched by `.gitignore` is in the **hook's** set (`glob.glob` does not consult
+  git) and out of the pass's (`--exclude-standard`). The operator is nudged every session about a
+  file no pass will ever consolidate, and no pass can clear the nudge.
+- A LEARNINGS file **staged but deleted from the worktree** is in the **pass's** set (`--cached`
+  lists it) and out of the hook's. The pass then carries a corpus entry whose body `_readFile`
+  returns `null` for — a state §10.3 has no row for, since row 1 is about the *log*.
+
+Neither can be caught by AT-P7 as §11.3(f) specifies it: the harness "writes one fixture corpus into
+a temp directory, points both implementations at it (the hook through `CLAUDE_PROJECT_DIR`, `:26`;
+the JS through `classifyCorpus` over the same enumerated basenames and log text)". Feeding both sides
+one basename list is exactly what makes the enumeration seam untestable — it is the same shape as the
+leaky `fakeListFiles` double v1 F-01 objected to, moved one function to the left. It is also not
+obviously runnable otherwise: the fixture temp directory is not a git repository, so
+`enumerateCorpus`'s `ls-files` cannot be pointed at it without a `git init` and an index the section
+does not mention.
+
+**Required:** either narrow T-08 to the *predicate* explicitly in §12.2 and add a separate stated
+control for the enumeration pair (the honest option — say the two enumerations are held equal by
+inspection, and record the two divergence classes above as accepted, the way §10.4 item 1 records the
+marker race), or extend AT-P7 to cover it: have the harness `git init` its fixture root, stage a
+subset, ignore another, and assert the two enumerated **sets** are equal before the predicate runs.
+Whichever is chosen, §13.1 row 6's "held equal by a differential test" must say which half is held.
+
+### F-04 — the `finishPass` sketch violates §5.1's own invariant, unfalsifiably (Medium)
+
+§10.1's normative code:
+
+```js
+function finishPass(state) {
+  if (state.status === "skipped-cadence") return report(state);
+  appendTerminalRow(state);                                       // step 14
+  if (state.status !== "refused") await commitConsumingRepoPaths(...);  // step 15
+  if (state.markerHeld) await releaseMarker(state);               // step 16
+  return report(state);
+}
+```
+
+Three defects, and they compound. The function is declared **sync** and contains two `await`
+expressions — as literally written this is a `SyntaxError`, which is the harmless part.
+`appendTerminalRow` is the step-14 `_appendFile` write and is **not** awaited, against §5.1's "Every
+seam call is `await`ed without exception". And §10.2's call sites are `return finishPass(fail(state,
+"advisory-model-unresolved"));` and `return finishPass(failNoReason(state, err));` — un-awaited, so
+once `finishPass` is made `async` (as it must be) `main()` resolves its report while the terminal
+row, the §9.4 commit and the marker release are still pending.
+
+The reason this is a finding rather than a typo is that **nothing in §11 can falsify it**. §11.3(c)'s
+audit scans call sites of *injected seam identifiers*; `finishPass`, `appendTerminalRow`,
+`commitConsumingRepoPaths` and `releaseMarker` are module functions, so the scan is green.
+Every L2 test drives sync doubles (`seams.js`'s header names this as the central hazard), under which
+an un-awaited promise settles before the assertion runs and the suite is green too. The failure
+appears only against the async adapter, in production, as a pass that returns a report claiming a
+terminal row it has not yet written — and AC-1.3's marker release is in the same tail.
+
+**Required:** make `finishPass` `async`, `await` all three steps including
+`appendTerminalRow`, and `await` it at both §10.2 call sites and at every `return finishPass(state)`
+§10.1 describes. Then state the oracle: an L2 assertion that reads the log double **after** `main()`
+resolves and finds the terminal row present is the falsifier, and it is worth naming because it is
+the only one that distinguishes "written" from "scheduled".
+
+### F-05 — `routeOf`'s outcome set is four-valued, not five (Medium)
+
+§7.6 declares:
+
+```ts
+// routeOf's outcome set is FIVE-valued; Route (6.1) has four members. See below.
+type RouteOutcome = Route | "proposal-file";
+```
+
+`Route` is `"constraints" | "decisions" | "PR" | "degraded"` (§6.1, transcribed correctly from
+`pdlc-consolidation-vocabularies.md`). So `RouteOutcome` has five members — but `routeOf`'s **range**
+has four. `"degraded"` is a *record* value describing an attempted PR that reached only the proposal
+file; §7.6's own inline comment on the very next line enumerates the range correctly as
+`"PR" | "constraints" | "decisions" | "proposal-file"`, and `routeProposal`'s three branches can
+return only those four. Two adjacent lines contradict each other, and the prose one is wrong.
+
+This matters at exactly the point this document is strictest. §6 makes every enumerated union a
+closed set with a set-equality oracle, and the review standard here requires enumerated contracts to
+be checked by set-equality over the full enumeration rather than containment. A test author writing
+that oracle for the routing functions has one named type to assert against, `RouteOutcome`, and it is
+wider than the range by a member no conforming implementation can produce — so the set-equality reds
+on correct code, and the predictable repair is to weaken it to containment, which then no longer
+fails when a route is deleted. The document needs a *named* four-member type
+(`RouteDecision = "PR" | "constraints" | "decisions" | "proposal-file"`) for the two functions'
+signatures, with `RouteOutcome`/`Route` reserved for the record field, and the comment corrected.
+
+### F-06 — `:806-807` for a clause at `:805` (Low)
+
+§5.5's new row, §5.6(a) and §9.2 each cite `runtime-adapter.js:806-807` for
+`"…relative to the repository root…"`. The clause is on **`:805`**; `:806-807` are
+`replacing the file's current contents exactly. Do not reformat, re-wrap,` and
+`summarise, or add anything.` The `:798-801` citation in §7.3 is fine (the sentence starts at `:798`;
+`:801` is the comment's closer). Same class as v1 F-15 and equally cheap.
+
+### F-07 — the L4 skip assertion cannot fail (Low)
+
+§11.1's answer to my Q-01 is mostly right and I accept it: jest's `test.skip` reports as *skipped*
+rather than *passed*, which is a real distinction in the run summary and is the falsifier that
+matters. But the sentence continues: "and additionally asserts once, unconditionally, that the probe
+either found an interpreter or recorded the notice; the notice is a `console.warn` line naming the
+probed candidates". Since the harness itself emits that `console.warn` in the branch where the probe
+found nothing, the disjunction is a tautology over its own control flow — the assertion can only
+pass, in every possible world. Treat it as no test at all (it is decorative, not harmful, hence Low)
+and either delete it or replace it with the one thing that is falsifiable: assert the count of
+executed differential rows is either the full fixture table or zero, so a harness that silently ran
+*some* rows is red.
+
 ## Questions
 
 ## Positive Observations
