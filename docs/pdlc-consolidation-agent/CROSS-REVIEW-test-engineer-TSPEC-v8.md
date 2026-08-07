@@ -38,6 +38,15 @@ Two testability checks on the chosen lane, both pass:
 
 ## Findings
 
+Nothing in the delta breaks a section I approved at v7. Two Low findings, both consistency residue from a deliberately targeted edit — neither invalidates an oracle, a test level, or a falsifier.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §12.1's traceability row for `CONS-06 Credential handling` (`:2337`) still describes the mechanism as "shell-expansion of the value", which the delta has just made half-true — expansion at transport for `gh`, expansion one process lower for `git`. The row points at §5.3 and §9.2, both of which are now correct, so a reader following the trace lands on the right mechanism; only the row's own summary is stale. Suggest "shell-expansion of the value (`gh` at transport, `git` via credential helper)". No test or oracle reads this row. | §12.1 `:2337` |
+| F-02 | Low | Local | The `push` row of §9.2's step table (`:1569`) shows `_git(["-C", dir, "push", "origin", …])` with no indication that the credentialed arm carries a preceding `-c credential.helper=…` element — the two-arm shape lives only in the prose 60 lines below (`:1628`, `:1641`). A test author transcribing the table writes one push oracle and no credentialed-arm case. This is pre-existing (the withdrawn `extraheader` form had the same table/prose split) and so not a delta regression, but the delta is the moment to close it: a parenthetical in the row, or a second row for the credentialed arm, makes the arm difference transcribable. | §9.2 `:1569` |
+
+**Noted, not filed as a finding.** The chosen lane interpolates `consolidation.credentialEnv` into a shell snippet that `git` executes, so a config value that is not a bare identifier becomes executed shell. This is the same property the already-approved `gh` prefix has (`GH_TOKEN="$VAR" gh …`, `:1611`), the config is maintainer-owned at the same trust level as the rest of `.claude/pdlc.config.json`, and the delta extends an existing surface rather than opening a new class — so it is out of scope for a delta confirmation and I am not raising it against this round. It is worth one property at the PROPERTIES layer (`credentialEnv` conforms to `^[A-Za-z_][A-Za-z0-9_]*$`, else the credential resolves `absent` + `credential-unavailable`), which would make the non-disclosure argument total over config inputs rather than over well-formed ones. Handing it to the next layer, not back to this one.
+
 ## Questions
 
 ## Positive Observations
