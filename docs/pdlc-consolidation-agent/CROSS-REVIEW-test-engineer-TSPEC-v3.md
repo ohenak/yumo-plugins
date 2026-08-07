@@ -39,7 +39,93 @@ pair, with the reason stated.
 
 ## Findings
 
+Three new, all in text that did not exist at v2.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Cross-Feature | `asAsync` defers by a **microtask**, which cannot falsify a missing `await`: the caller's own `await main()` drains the microtask queue first, so T-13 — the sole oracle for §10.1's await-discipline invariant — is green either way | §11.2, §10.1, §12.2 T-13 |
+| F-02 | Low | Local | T-13's second conjunct ("the marker is absent from the write double") passes vacuously on any fixture where the marker was never taken; it needs a take-side precondition to be a falsifier | §12.2 T-13, §10.1 |
+| F-03 | Low | Local | The ER-6 discriminator control is specified in §7.6 and relied on in §12.4, but has no §12.2 row and no §12.3 id — the one table the PLAN reads to learn which test owes an obligation does not carry it | §7.6, §12.2, §12.4 |
+
 ## Detail
+
+### F-01 — `asAsync`'s microtask deferral cannot falsify a missing `await` (Medium)
+
+§10.1 makes the strongest possible claim about T-13: it is "the only row that distinguishes *written*
+from *scheduled*", because §11.3(c)'s identifier scan cannot see a module function and every other L2
+suite drives sync doubles. I accept that framing — it is why the F-04 repair is right. But the
+mechanism the row rests on is specified in §11.2 as:
+
+> `asAsync` takes any of them and returns a function with the same recording behaviour whose result
+> is a promise resolved on a **later microtask tick**, so a caller that forgets `await` observes the
+> pre-write state.
+
+That does not hold, under either reading of "the same recording behaviour".
+
+**If the recording is synchronous and only the result is deferred**, the missing `await` is invisible
+by construction: `appendTerminalRow` is a void write whose only observable is the double's
+accumulated text, and that text is already updated at call time.
+
+**If the recording itself is deferred by one microtask**, the ordering still defeats the test. Take
+the broken implementation §10.1 exists to catch — `finishPass` calls `appendTerminalRow(state)`
+without `await`:
+
+1. The double runs, hits its `await Promise.resolve()`, queues continuation **C1**, returns a pending
+   promise that `finishPass` drops.
+2. `finishPass` proceeds and returns `report(state)`; `main()`'s promise resolves.
+3. The test's `await main()` resumes — but only on a microtask, which is queued **after C1**.
+4. C1 runs first and records the append. The assertion then sees the terminal row present. **Green.**
+
+Any subsequent `await` inside `finishPass` (step 15's commit is one) only widens the gap. The general
+fact is that a microtask deferral cannot survive a caller that awaits at all, because awaiting is
+itself microtask-scheduled.
+
+There is a second reason to be careful here, and it sharpens rather than softens the finding. Of the
+three `await`s the repair adds, the two at §10.2's call sites are **not** behaviourally observable:
+`return finishPass(...)` from an `async function` adopts the returned promise, so a caller that
+awaits `main()` already waits for `finishPass` to settle — `return p` and `return await p` differ
+only in stack/`try` semantics. So the *only* defect T-13 can catch is the intra-`finishPass` one, the
+un-awaited `appendTerminalRow` — precisely the case the microtask double greens. The row would ship
+as a test that can only pass, guarding an invariant the document itself says nothing else guards.
+
+**Required:** specify the deferral as a **macrotask** — `setTimeout(…, 0)` / `setImmediate` — or,
+better, as an explicitly held deferred the test resolves *after* it asserts. With a macrotask, the
+discrimination is exact and worth stating in the document: on a correct implementation `await
+appendTerminalRow` waits for the timer and the row is present; on a missing `await` the test's
+microtask-scheduled continuation runs before the timer fires and the row is absent. And state the
+mutation check the row deserves as its own falsifier: delete one `await` in `finishPass`, expect RED.
+
+### F-02 — T-13's marker conjunct is absence-only and can pass vacuously (Low)
+
+The row's two conjuncts are "(i) the terminal row is present in the log double's accumulated text and
+(ii) the marker is absent from the write double". (i) is a positive presence assertion and carries
+the row. (ii) is a bare absence, and absence of a marker is also what you observe from a pass that
+never took one — a `refused` fixture, a `skipped-cadence` fixture, or a take that did not land
+(§10.3 row 5a). So (ii) is satisfied by the wrong world as readily as the right one.
+
+It is Low because (i) is sufficient for the row's stated purpose and because the fixture is presumably
+a full promoting pass. But the fix is one clause and it makes the AC-1.3 half of the row real: assert
+the marker's take *and* its release on the same path — the write double records the marker's content
+during the pass, and it is gone after `main()` resolves. That is the positive-then-negative pair the
+§11.3 oracles elsewhere in this document already use.
+
+### F-03 — the ER-6 discriminator has no traceability row (Low)
+
+§7.6 adds a genuinely good control: two fixtures that both write `route: "degraded"` — one *routed*
+propose-only (a `revise` on a `DOMAIN-CONSTRAINTS.md` target), one *degraded* (`branch-exists`) —
+whose report bodies differ by the presence of a named reason code, asserted in both directions. §12.4
+then leans on it hard: "the interim is falsifiable rather than merely argued".
+
+But it appears in no §12.2 row and claims no id in §12.3, whose `consolidationReport.test.js` line is
+exhaustively AT-L1…AT-L5 + AT-N1…AT-N4. The document has just spent a revision establishing that
+§12.2's Falsified-by column is what tells a PLAN task which assertion it owes, and it solved exactly
+this problem twice in the same pass — T-13 got its own row plus a `(no FSPEC AT)` file line, and the
+dropped-code arm was bound to AT-L5. This control got neither, so the obligation lives only in §7.6's
+prose, which is the layer a PLAN task is least likely to read for assertions.
+
+**Required:** give it a §12.2 row in the same `(no FSPEC AT)` form as T-13 (or fold it into the
+dropped-code row that already sits in that file), so the traceability table and the ER-6 argument
+agree about who owes it.
 
 ## Questions
 
