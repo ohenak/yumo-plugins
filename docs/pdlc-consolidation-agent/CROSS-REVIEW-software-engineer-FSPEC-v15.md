@@ -30,6 +30,50 @@ and its release-after-append sentence is at `:557-558`; §15.3 is at `:2445` and
 
 ## 2. Erratum item — resolved?
 
+All seven routed erratum entries are the same defect, raised three ways by three reviewers: AT-Q7c
+spelled the invoking-tree upper bound as the literal `{add, commit, read-branch, read-status}` and
+called it "its permitted set", which is §6.5's **pre-widening** set, so a property transcribing the
+row was red on correct code.
+
+**The premise checks out at HEAD, independently of the erratum text.** TSPEC §9.3
+(`TSPEC-pdlc-consolidation-agent.md:1714`) records four widenings under `DEC-LAYER-01`; the
+invoking-tree row (`:1724`) reads `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`,
+⊕ `read-index`, and the widening table at `:1741-1745` attributes `read-index` to
+`git ls-files --cached --others --exclude-standard` — "§7.1's corpus enumeration". AT-Q7c's own
+Given is a **`promoted`** pass, and a pass that promotes has enumerated the corpus, so `read-index`
+is observed on this row's Given by construction. The reviewers' claim is exactly right and it is a
+red-on-correct-code defect, not a wording preference.
+
+**The fix is the right one.** The row now bounds the invoking tree above by "§6.5's frozen
+`{add, commit, read-branch, read-status}` ∪ every widening TSPEC has recorded against it under
+DEC-LAYER-01, which at TSPEC §9.3 is ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index`", and spells
+the resulting seven-member set out. Three things make this the correct shape rather than a patch:
+
+1. **It matches HEAD's TSPEC exactly** — seven members, and I diffed them member-for-member against
+   `TSPEC:1724`. No member is invented and none is missing.
+2. **It does not edit §6.5.** §6.5's own text (`:1058`) makes the permitted sets "a frozen statement
+   TSPEC inherits", with widening "a recorded TSPEC decision against this set, never a silent
+   reading of it". Restating §6.5's literal to include TSPEC's widenings would have *broken*
+   DEC-LAYER-01 by letting the FSPEC track the implementing layer. The erratum edits the AT row —
+   the surface a test author transcribes — and leaves the frozen layer frozen. That is the layering
+   the seam table asks for.
+3. **It names the invariant, not just the new members.** The row now says what it fixes is the
+   *shape* of the bound — obliged-below, permitted-above, no merge or branch verb in either — "not
+   a literal frozen ahead of the widenings the seam table's own DEC-LAYER-01 clause invites". That
+   is what stops this erratum recurring on the next recorded widening: a fifth ⊕ read does not
+   falsify the row, it extends the set the row already points at. A patch that had simply inlined
+   the three new verbs would have been red again at widening five.
+
+The row's falsifying half survives the edit intact and is still load-bearing: it still asserts
+containment in both directions on all three domains, still refuses set-equality (an oracle asserting
+`= {add, commit}` in the invoking tree is still named as red on a conforming pass), and still pins
+the Given to `promoted` so the containment reading is not satisfiable vacuously by `∅` everywhere.
+Widening the upper bound weakens the assertion only by three non-mutating read verbs — no merge
+verb, no branch verb, nothing AC-3.7 or AC-3.8 depends on entered the set. AC-3.7's prohibition is
+carried by "merge verb ∉ any permitted set", and that is unchanged.
+
+**Item resolved.**
+
 ## 3. Regression check against the v14 approval
 
 ## Findings
