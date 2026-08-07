@@ -33,6 +33,47 @@ empty and the line numbers above are current.
 
 ## Standing-Decision Check
 
+Five project-level decisions now bind reviewer scoring; one is new since v13 and one gained a
+companion clause. All are read against the document before scoring, not after.
+
+**`DEC-SEV-03`** (`DECISIONS-review-severity-bars.md:60-84`, new at HEAD) demotes to **Low** a
+downstream document's collision with an *enumerated* upstream artifact, provided the collision is
+named, priced and routed through the `ERRATUM:` channel. I checked whether it reaches either open
+finding and it does **not**: both F-02 and F-03 are findings by a reviewer against the *upstream*
+document itself, not a downstream layer's absorbed collision, so the rule's subject does not match.
+It changes neither score. I record the check because the rule is new and its non-application should
+be explicit rather than assumed.
+
+**`DEC-LAYER-01`'s new companion clause** (`DECISIONS-spec-layer-boundary.md:50-55`) states that
+decisions this rule moves down arrive at the receiving layer *with* DEC-SEV-03 — i.e. the cost it
+priced ("TSPEC inherits four open decisions") is paid through the erratum channel, not through the
+severity bar. That is a statement about Phase T's disposition, not about the REQ. §5a's routing
+sentence — "fixture construction and oracle mechanics belong to FSPEC, TSPEC and PROPERTIES"
+(`:602-603`) — still names all three receiving layers rather than the next hop, which is exactly
+what the companion clause presumes upstream documents do.
+
+**`DEC-CONV-01`** (`DECISIONS-review-convergence.md`) makes an approval **stand** into later rounds
+of the same phase, re-openable only by the reviewer who issued it, and only when the intervening
+diff touches a section that approval's `Scope` named or the reviewer scores a new Medium-or-higher
+against that diff. I hold standing `Approved with minor changes` verdicts from v11, v12 and v13; the
+intervening diff on this document is empty; I have no new finding of any severity. The decision's
+own re-issue clause describes this round exactly. It governs the verdict, not the diligence — the
+sweeps below are the same ones I ran at v13.
+
+**`DEC-SEV-02`** scores a falsified bookkeeping-completeness assertion as Low where no observable,
+rule, arm or downstream artefact is wrong and the repair is deleting or narrowing the assertion.
+F-03 is squarely of that class and holds at Low on that ground independently of DEC-SEV-01.
+
+**`DEC-SEV-01`** scores a REQ-layer finding about the scope of a governance rule over a shared
+normative file as Low when the governed file carries a version-pin obligation whose breach is itself
+a defect. Both governed files still carry it (`pdlc-consolidation-vocabularies.md:27-28`,
+`pdlc-advisory-corpus-baseline.md:19-20`), so both findings stay Low. A Low surviving another
+unaddressed round is not grounds to escalate: the bar keys on detectability, and neither became less
+detectable by going unfixed.
+
+No violation of `docs/_constraints/DOMAIN-CONSTRAINTS.md`. DC-09 (REQ altitude, `:245`) is satisfied
+for the reason given above; DC-13 (accurate Scope tags, `:356`) is why F-02 remains `Cross-Feature`.
+
 ## Findings
 
 ## Existing-Code Claim Verification (changed sections)
