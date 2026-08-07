@@ -1223,4 +1223,103 @@ beside AT-R6b. Nothing about their fixtures is decided here.
 
 ## 12. Traceability
 
+### 12.1 FSPEC unit → TSPEC mechanism
+
+Every `FSPEC-CONS-0N` unit appears exactly once; no row names a unit the FSPEC does not carry.
+
+| FSPEC unit | § | Mechanism | § |
+|---|---|---|---|
+| CONS-01 Tick evaluation and pass lifecycle | §2 | `triggerFor`, `mintPassId`, the single-exit `finishPass` | §7.2, §10.1 |
+| CONS-02 Consumed predicate and corpus | §3 | `enumerateCorpus`, `classifyCorpus`, `renderConsumedPair`; hook parity by differential test | §7.1 |
+| CONS-03 The in-progress marker | §4 | `parseMarker`, `markerVerdict`, `takeMarker`; `.gitignore` text | §7.3, §3.3 |
+| CONS-04 Routing and consuming-repo writes | §5 | `routeOf` over the imported `MERGE_GUARD_DEFAULTS`; `commitConsumingRepoPaths` | §7.6, §9.4 |
+| CONS-05 The pull-request route | §6 | `openClone`, `mergeCommandFor`'s two new surfaces, `resolveSeamVerb` | §9.1 – §9.3 |
+| CONS-06 Credential handling | §7 | `_envPresent` (boolean-only seam), shell-expansion of the value, resolution order | §5.3, §9.2 |
+| CONS-07 Falsifiability | §8 | `failureModeId`, `mergeProposals`, `effectivenessTable`, `openPromotionList`, `remediationChoice` | §7.4, §7.5 |
+| CONS-08 Advisory-corpus input | §9 | `parseEscalations` (table rows, never the heading), `seamCandidates` | §7.7 |
+| CONS-09 Reporting and the log grammar | §10 | four one-record appends, `renderTerminalRow`'s dropped-code return, `renderReportBody` | §7.9 |
+| Configuration parse | §11 | `parseConsolidationConfig`, parity-tested against `parseAdvisoryConfig` | §7.8 |
+
+### 12.2 FSPEC obligation → discharge → falsifying test
+
+| # | Obligation | Discharged | Falsified by |
+|---|---|---|---|
+| T-01 | names, signatures, placement | §3.1, §4, §5.1 | the suites compile against the named exports; L3 asserts the module's shape |
+| T-02 | build entry, manifest row, resolver reach | §8.2, §8.3 | L3: `build-runtime.mjs --check` clean, four rows stamped, no `import(` in the bundle |
+| T-03 | the temporary clone | §9.1 | AT-Q1 (clone under a temp dir, invoking tree untouched) |
+| T-04 | seams + `_log` capture | §5.1, §8.4 | AT-M7 (the `ADVISORY_MODEL_FALLBACK:` line verbatim), AT-M6/AT-M9 (the error message verbatim) |
+| T-05 | the resolver widening | §8.1 | AT-M10 (default unchanged on every path) |
+| T-06 | `ESCALATIONS.md` parse | §7.7 | AT-A7 (missing `Feature` row), the §11.4 count property |
+| T-07 | the `.gitignore` text | §3.3 | AT-M5's accompanying maintainer check |
+| T-08 | one corpus, one predicate | §7.1 | AT-P7 (differential, L4) |
+| T-09 | a property per component | §11.4 | the four properties themselves; the PLAN carries them as tasks, not as prose |
+| T-10 | the unavailable spellings | §6.5 | AT-Q10's literal-text conjunct; LD-1/LD-4's PROPERTIES fixtures |
+
+### 12.3 Acceptance test → level and file
+
+| ATs | Level | File |
+|---|---|---|
+| AT-C1 … AT-C8 | L2 | `consolidationPass.test.js` |
+| AT-P1 … AT-P6, AT-P8 … AT-P11 | L1 | `consolidationPredicate.test.js` |
+| AT-P7 | L4 | `consolidationHookParity.test.js` |
+| AT-M1 … AT-M6b, AT-M9 | L2 | `consolidationPass.test.js` |
+| AT-M7, AT-M8, AT-M10 | L2 | `consolidationRung.test.js` (AT-M10 is a regression over the shipped call site and lives beside the existing `advisoryRung.test.js` assertions) |
+| AT-R1 … AT-R6b | L1 + L2 | `consolidationIdentity.test.js` (derivation, merge), `consolidationRoute.test.js` (routing, commit) |
+| AT-Q1 … AT-Q12 | L2 | `consolidationRoute.test.js` |
+| AT-K1 … AT-K7 | L2 | `consolidationCredential.test.js` |
+| AT-F1 … AT-F21 | L1 | `consolidationEffectiveness.test.js`, `consolidationParse.test.js` |
+| AT-A1 … AT-A7 | L1 | `consolidationAdvisory.test.js` |
+| AT-L1 … AT-L5, AT-N1 … AT-N4 | L1 + L2 | `consolidationReport.test.js` |
+
+The split is by **subject, not by AT id range**: a file owns one group of §7 functions, which is
+what keeps the single-writer-per-file rule satisfiable when the PLAN parallelises authoring.
+
+### 12.4 Vocabulary conformance
+
+No value used in this document lacks a `pdlc-consolidation-vocabularies.md` §1 row at `Version` 1.4.
+The three known gaps are the FSPEC's errata and are **not** patched here: `rung:` has no §1 row
+(ER-1) and stays free-form; FSPEC §2.6 row 4 has no reason code (ER-2) and `failNoReason` records
+none; `suppressed-by:`'s value grammar is wider here than §1's (ER-5) and §7.9 writes the wider
+grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's narrower
+`May accompany status` column from producing an illegal row in the meantime.
+
 ## 13. Risks and open items handed downstream
+
+### 13.1 Decisions recorded here, with alternatives rejected
+
+| # | Decision | Rejected alternative | Why |
+|---|---|---|---|
+| 1 | The credential seam returns a **boolean**, and the value reaches `git`/`gh` by shell expansion | a `_readEnv(name) => string` seam | the value would enter the JS process **and** the agent transcript that transported it — a surface NFR-2 cannot redact. The boolean form makes non-disclosure structural |
+| 2 | Reuse `resolveAdvisoryRung` by adding an optional `skill` parameter | restate the two rungs behind a drift observable (which corpus baseline §3 sanctions) | it would create the second copy of the ladder the resolver's own doc comment forbids (`:1800`) |
+| 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
+| 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
+| 5 | Take the marker read-then-write | an exclusive-create seam | no adapter transport offers `O_EXCL`, and an agent's report of prior existence is exactly as racy as the read |
+| 6 | Two predicate implementations, held equal by AT-P7 | one shared implementation | the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has |
+| 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
+| 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
+
+Rows 1, 2, 4, 5 and 6 are load-bearing and reversible only at cost; §13.3 records that DECISIONS is
+warranted for them.
+
+### 13.2 Risks
+
+| Risk | Exposure | Mitigation held here |
+|---|---|---|
+| The widened resolver's bytes live in **four** tracked artifacts | a commit that rebuilds three fails CI's sync job, and a partial rebuild is easy to make by hand | §8.3 states the count; the PLAN carries the rebuild as an explicit task with `pdlc/workflows/dist/` in its pathspec, per `implementation.postWavePathspecs` |
+| `mktemp -d -t` behaviour differs subtly between macOS and GNU coreutils | a clone that lands somewhere unexpected | the seam returns the path the tool reported and the pass uses it verbatim; nothing constructs the path itself. The CI matrix already runs both platforms |
+| The pass calls the resolver **bare**, so a hung dispatch is bounded only by the runtime watchdog | a wedged pass holds the marker | §7.3's stale-lock reclaim is the recovery, and `staleLockMinutes` is configurable |
+| An agent-transported `gh pr list --search` may return a truncated page | a duplicate PR opened despite a matching open one | `--limit 100` and the trailer key are the FSPEC's mechanism; a miss re-opens a proposal, which is the safe direction (a second PR the operator can close), never a lost one |
+
+### 13.3 Handed to the next layers
+
+- **DECISIONS** — warranted. §13.1 rows 1 (credential seam shape), 2 (resolver reuse vs. restate),
+  4 (clone source), 5 (non-atomic marker take) and 6 (two predicate implementations) each weighed a
+  real alternative with a different reversibility profile, and each will otherwise be reconsidered
+  confidently by a future agent. Each needs a `Testability:` line per DC-10.
+- **PLAN** — the file-ownership manifest must serialise the three writers of
+  `pdlc/workflows/orchestrate-dev.js` (the resolver widening, the `gitWithLockRetry` export, the
+  `mergeCommandFor` surfaces) into **one** task: they are one file, and FSPEC §5.2 rule 2 forbids two
+  same-batch tasks appending to it. The four `dist/` artifacts are a per-wave chore commit, not a
+  task's owned files.
+- **PROPERTIES** — §11.4's six properties and FSPEC §14.5's LD-1 … LD-5, in the files §11.5 names.
+
