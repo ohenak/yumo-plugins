@@ -1602,7 +1602,7 @@ async function finishPass(state) {
   if (state.status === "skipped-cadence") return report(state);   // no row, no commit, no marker, no git call
   await appendTerminalRow(state);                                 // step 14 — _appendFile
   if (state.status !== "refused") await commitConsumingRepoPaths(...);  // step 15 — _git
-  if (state.markerHeld) await releaseMarker(state);               // step 16 — _writeFile / _git
+  if (state.markerHeld) await releaseMarker(state);               // step 16 — _writeFile only (§7.3)
   return report(state);
 }
 ```
@@ -1625,12 +1625,19 @@ claiming a terminal row that is still pending and a marker (AC-1.3) still held.
 So the oracle is stated explicitly, because it is the only shape that distinguishes *written* from
 *scheduled*: **an L2 assertion that reads the log double and the marker double after `main()`'s
 promise resolves** — not inside the pass, not from the report — and finds (i) the terminal row
-present in the log double's accumulated text and (ii) the marker, **observed present in the write
-double during the pass**, gone after `main()` resolves. Conjunct (ii) carries that take-side
-precondition because a bare "marker absent" is equally true of a pass that never took one (a
+present in the log double's accumulated text and (ii) the marker **released**, stated against the
+observable §7.3 decides: the write double's last recorded contents for
+`docs/_decisions/.consolidation-lock` are the **released form — the empty string** — having been the
+`IN-PROGRESS: {passId} …` line at an earlier point in the same double's recorded history. An earlier
+draft said "gone"; that describes a state no declared seam produces, since §7.3's release is an
+in-place `_writeFile` of empty content and the protocol has no removal verb. Conjunct (ii) carries
+the take-side half because a bare "no marker" is equally true of a pass that never took one (a
 `refused` or `skipped-cadence` fixture, or a take that did not land — §10.3 row 5a); asserting the
 take and then the release is the positive-then-negative pair the §11.3 oracles already use, and it
-is what makes this row cover AC-1.3 rather than merely coexist with it.
+is what makes this row cover AC-1.3 rather than merely coexist with it. `fakeFs` supports the
+history half directly — it accumulates `writes`/`calls` rather than only a current-state map
+(`__tests__/helpers/seams.js:243-251` declares `writes`/`calls`; `:281` pushes every write, and
+`:292` is the `checkFile` half §7.3's `present` reads through).
 
 Driven by the **macrotask-deferring** variants of the doubles (`consolidationDoubles.js`'s `asAsync`
 wrapper; §11.2 states why a microtask deferral could not falsify anything), a missing `await` inside
