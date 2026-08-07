@@ -47,7 +47,7 @@ DEC-CONS-07 are direct applications of DEC-DIST-01 and DEC-ORACLE-02 respectivel
 
 | ID | Decision, in one line | Reversibility | Load-bearing on |
 |---|---|---|---|
-| DEC-CONS-01 | The credential seam returns `boolean`, and the secret reaches `git`/`gh` only by shell expansion (the `gh` half is settled; the `git` half is **provisional** pending §11.3 item 3 — `rtShellQuote` single-quotes every `_git` argv element, so shell expansion cannot carry it there) | easy (seam is new; nothing consumes a value) | NFR-2, AC-4.2, **AC-4.3, AC-3.5** |
+| DEC-CONS-01 | The credential seam returns `boolean`, and the secret reaches `git`/`gh` only by expansion outside the module — for `gh`, by the transport's shell (`_ghRun` takes a command string); for `git`, by **`git`'s own shell** expanding a credential-helper element that `rtShellQuote` transports intact (`TSPEC:1693-1698`, the lane picked when §11.3 item 3 closed). Both halves are settled | easy (seam is new; nothing consumes a value) | NFR-2, AC-4.2, **AC-4.3, AC-3.5** |
 | DEC-CONS-02 | Reuse `resolveAdvisoryRung` (`orchestrate-dev.js:1833`) by adding an optional `skill` parameter | hard (edits a guard-set file every advisory dispatch reads) | AC-1.5, AC-1.6 |
 | DEC-CONS-03 | Clone from `git remote get-url origin`, never from the working-tree path | easy (one seam argument) | AC-3.8 |
 | DEC-CONS-04 | The marker take is observe-then-write (`_checkFile`, `_readFile`, `_writeFile`); no atomic take exists | one-way door at this layer (no `O_EXCL` transport) | AC-1.3 |
@@ -69,8 +69,9 @@ dispatch whose prompt and reply are transcript.
 **Decision.** The seam is `_envPresent(name) => Promise<boolean>` (TSPEC §5.3). Its adapter,
 `rtEnvPresent`, transports `[ -n "${NAME:-}" ] && echo PRESENT || echo ABSENT` and returns `true`
 iff the reply is exactly `PRESENT`; any other reply, including an unparseable one, is `false`. The
-credential's **value** never enters the JS process: it reaches `git` and `gh` by shell expansion
-inside the transported command (TSPEC §9.2).
+credential's **value** never enters the JS process: it is expanded outside the module, by the
+transport's shell for `gh` (a command string) and by **`git`'s own shell** for the push (a
+credential-helper element transported literally), TSPEC §9.2 / `TSPEC:1693-1698`.
 
 **Alternatives considered.**
 
@@ -111,11 +112,13 @@ Two things bound it, and neither closes it:
 
 - The credential is passed to `git`/`gh` by *name*, not by value, so a credentialed argv element
   should not exist to be echoed back in a usage or error message. That is an obligation on the
-  implementation, not a property of the seam — and it is not currently satisfied on one path, which
-  is why the TSPEC erratum in §11.3 item 3 exists: `rtShellQuote` single-quotes every argv element
+  implementation, not a property of the seam. On the push path it is now discharged by a specific
+  mechanism rather than left open: `rtShellQuote` single-quotes every argv element
   (`runtime-adapter.js:668-670`), so a `$VAR` written into a `_git` argv element is passed
-  **literally** and never expanded. A push that needs the token in argv therefore cannot get it by
-  shell expansion through `_git`.
+  **literally** and never expanded — which is why the push carries the credential as a **git
+  credential helper** whose text `git` expands through its own shell one process below the transport
+  (`TSPEC:1693-1698`; §11.3 item 3, closed). The argv element that reaches the transport holds the
+  variable *name*, so there is still no credentialed value for an error message to echo.
 - The channel is truncated to 300 characters and only opens on a non-zero exit.
 
 Recorded, per DEC-ORACLE-02, as a stated residual rather than asserted away — the same treatment
@@ -898,12 +901,14 @@ writing a test that appears to cover it:
 |---|---|---|
 | The two-pass take race (`_checkFile`/`_readFile`/`_writeFile` window) | No oracle exists at any level available here; a test that appeared to cover it would assert a property the code does not have (DEC-ORACLE-02). The take's *shape* is asserted instead. Detection after the fact is operator-reported and un-instrumented, with a stated forensic signature | DEC-CONS-04 |
 | FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm | Unreachable under the release form; raised as an erratum rather than tested | DEC-CONS-07 |
-| The inbound failure-reply channel (`rtGit`'s 300-character combined output reaching a rendered report body) | Bounded by what `git` prints, not by the seam interface; recorded as a residual, and the credentialed-argv question is handed upstream as a TSPEC erratum | DEC-CONS-01 |
+| The inbound failure-reply channel (`rtGit`'s 300-character combined output reaching a rendered report body) | Bounded by what `git` prints, not by the seam interface; recorded as a residual. (The credentialed-argv question that once rode with it is **closed** — the push carries a credential helper, `TSPEC:1693-1698`, §11.3 item 3 — but the inbound channel itself stays unasserted for the reason in this row) | DEC-CONS-01 |
 
 ### 11.3 Errata raised, not settled here
 
-Three items are handed up rather than absorbed. They are listed here so a reader of *this* document
-knows the corresponding entry is provisional:
+Three items were handed up rather than absorbed. They are listed here so a reader of *this* document
+knows the corresponding entry is provisional — **item 3 is now closed upstream and is kept, struck
+through, as the record of a settled round; only items 1 and 2 are live**, and item 3 leaves behind
+one narrower, anchor-level erratum stated in its own paragraph:
 
 1. **FSPEC §4.1 / §4.2 — the marker's removal verb and the empty arm** (DEC-CONS-07). §4.1's
    lifetime row says "Removed at step 16" (`FSPEC:415`), which no declared seam can do; §4.2's fourth
@@ -916,20 +921,32 @@ knows the corresponding entry is provisional:
    much of the divergence closes: *is a `.gitignore`d LEARNINGS file corpus?* — measured at HEAD, "yes"
    closes divergence class (i) at exactly the price of that rule and no other, while "no" keeps it
    open. The two answers are not symmetric and the erratum says so.
-3. **TSPEC §9.2 — the credentialed push cannot reach `git` by shell expansion** (DEC-CONS-01).
-   `TSPEC:1675-1677` (with `:1699`) says the value reaches `git`/`gh` by shell expansion inside the
-   transported
-   command, and for `gh` that holds: `rtGhRun` is handed a fully-built **command string** (`:995`),
-   so a `GH_TOKEN="$VAR" gh …` prefix expands. For `git` it does not: `_git` takes **argv**, and
-   `rtGit` passes every element through `rtShellQuote` (`runtime-adapter.js:668-670`), which
-   single-quotes it — so `-c http.extraheader=…$PDLC_PLUGIN_REPO_TOKEN…` written as an argv element
-   is transported **literally** and never expanded. Either the push must route through a
-   command-string seam like `gh`'s, or the module must hold the value (which NFR-2 forbids). This is
-   the TSPEC's to correct, not this document's; DEC-CONS-01's residual paragraph records the
-   consequence for the entry. Riding with it: the NFR-2 / §7.4 traceability row (`TSPEC:1405`; the
-   TSPEC's own §1 pointer at `:52` still cites it as `:1325`, which is a blank line) states NFR-2
-   non-disclosure as unqualifiedly "structural", which is true outbound and not true of the inbound
-   failure-reply channel — that row is the TSPEC's to qualify.
+3. ~~**TSPEC §9.2 — the credentialed push cannot reach `git` by shell expansion**~~ (DEC-CONS-01)
+   — **CLOSED upstream; retained as a record, not as a live erratum.** Both halves this item raised
+   have been applied by the TSPEC and re-measured at HEAD, so nothing is handed up here any more.
+   (a) §9.2 no longer claims shell expansion for the push: `TSPEC:1685-1687` states "**The push half
+   is different, and an earlier draft of this section was wrong about it** … `rtShellQuote`
+   (`pdlc/workflows/runtime-adapter.js:668-670`) … POSIX single-quotes it", and `TSPEC:1675-1677` is
+   now scoped to the `gh` half explicitly ("That statement is exact for the `gh` half"). **The lane
+   picked is neither of the two this item offered** (`TSPEC:1693-1698`): the push **stays on `_git`**
+   and carries the credential as a **git credential helper**
+   (`_git(["-C", dir, "-c", "credential.helper=!f(){ echo username=x; echo password=$VAR; };f",
+   "push", …])`), whose text `rtShellQuote` transports intact and `git` expands through **its own**
+   shell one process below the transport — so the module still holds only the name, and the push
+   stays inside §9.3's **clone-domain** classifier and therefore inside AT-Q7's `push` obligation.
+   The command-string-seam alternative is recorded as **rejected** at `TSPEC:1699+`. A PLAN or
+   PROPERTIES task must be written against the credential-helper lane; a task written against a
+   command-string push seam targets the losing side. (b) The NFR-2 / §7.4 traceability row already
+   carries the qualification this item asked for: `TSPEC:1405` reads "non-disclosure **on the
+   outbound path** is structural (§5.3) rather than reviewed. It is **not** structural inbound, **and
+   this row does not claim it is**", with the inbound residual (the 300-character combined-output
+   reply, §10.3 row 1a, `openClone`'s `{failure, detail}`) carried under DEC-CONS-01's qualification.
+   Both rounds are recorded in the TSPEC's own changelog, erratum round 1.7(a)/(b), `TSPEC:51-60`.
+   **What is still open is narrower and is anchor-level, not contract-level**, and is raised as an
+   erratum in its own right: `TSPEC:1405` cites `TSPEC:1832` for §10.3 row 1a and `TSPEC:1522` for
+   `openClone` (measured at HEAD: `:1937` and `:1602`), and the changelog entry at `TSPEC:52` points
+   at the row as `:1325`, which is a blank line. This document's inherited copies of those anchors
+   were corrected in the v5 sweep; the TSPEC is the only remaining carrier.
 
 A fourth question rides with them and is likewise not this layer's to mint: should the durable log row
 carry the **unreadable** corpus basenames (an `unread:` field beside `consumed`), given that an
