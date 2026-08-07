@@ -48,4 +48,18 @@ Questions Q-01, Q-02 and Q-03 are all answered in the document. Q-01: §12.2 row
 
 ## Recommendation
 
+**Needs revision**
+
+All four v1 High findings are resolved, and resolved at the mechanism level rather than by prose — each one now names a function, a guard or a table row that an implementer can transcribe and a test can falsify. The one open Medium is narrow and local to material this revision added.
+
+Required to clear, in order of severity:
+
+1. **F-07** — reduce §5.6(a)'s widening to `rtWriteFile` alone, or name the `_readFile` call inside the clone that motivates widening the read side. Whichever way it lands, §5.5's row, §9.2's paragraph, §11.3(e)'s "both prompts", §11.6's un-exemption and §13.1 row 11 (with §13.3's DECISIONS hand-off) must all say the same thing, and the quoted shipped clause must read `relative to repository root` — the bytes at `runtime-adapter.js:805` — since §11.3(e) is a verbatim source-text assertion.
+2. **F-08** — correct the six pointers listed. The claims are right; the line numbers are not.
+3. **F-09** — make §10.1's `finishPass` snippet `async` and await its three seam calls, or label it non-normative.
+
+No scope creep beyond F-07's read-side widening: every other new mechanism traces to an FSPEC section or a REQ AC, no P0 or P1 requirement is narrowed by the revision, and §1.3's altitude self-check now correctly separates the two in-module control values (`"proposal-file"`, `{unlistable: true}`) from vocabulary rather than claiming there are none — which is the honest form of the claim it replaces. Q-04 and Q-05 are the two changes I would want an operator to have seen before this ships; neither blocks.
+
 ## Verdict
+
+VERDICT: Needs revision
