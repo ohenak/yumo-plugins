@@ -72,8 +72,48 @@ than the weakest, which is what v5 asked for.
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision** (2 High, 0 Medium, 1 Low).
+
+The v5 finding is closed properly — the two `∅` equalities are now transcribed as AT-Q7c states them,
+with the non-implication argument that makes them load-bearing rather than decorative, and the
+redundant invoking-tree conjunct is kept but labelled. The sweep that accompanied it is genuine work:
+eleven stale anchors found and retargeted, each verified individually here, and the global-offset
+fiction replaced with a measured range.
+
+Two defects in the changed text block approval, and they are the same defect twice: a sentence whose
+*anchor* was re-measured but whose *claim* was not re-read against what that anchor now says.
+
+1. **F-01** — §11.2 conjunct 4 item (i) states the invoking-tree upper bound as
+   `{add, commit, read-branch, read-status}`, quoting `FSPEC:2154`. `TSPEC:1724` widens that domain
+   by three verbs (`read-object`, `read-remote`, `read-index`; `TSPEC:1719`, `:1743-1745`), and
+   `read-index` is observed on AT-Q7c's own `promoted` Given, since `enumerateCorpus(_git)`
+   (`TSPEC:672`) runs `git ls-files` in the invoking tree. The transcribed bound is red on correct
+   code — the exact failure this document's own §5 domain 1 records as already withdrawn once
+   (`DECISIONS:293-297`), and the document now carries both the corrected bound at `:294` and the
+   stale one at §11.2. Restate against `TSPEC:1724`'s five-read set, cite the TSPEC for it, and
+   cross-reference §5 domain 1.
+2. **F-02** — §12 item 3 raises two errata the TSPEC has already applied. §9.2's shell-expansion
+   claim was corrected and a lane chosen (credential helper on `_git`, `TSPEC:1685-1698`), and the
+   NFR-2 / §7.4 row already reads "structural **on the outbound path** … It is **not** structural
+   inbound, and this row does not claim it is" with the inbound residual carried (`TSPEC:1405`);
+   both rounds are recorded in the TSPEC's own changelog at `:51-60`. `TSPEC:1675-1677` is also
+   mis-transcribed — at HEAD it is scoped to the `gh` half explicitly. Retire item 3 to a
+   resolved/superseded note and state the chosen lane, which §9.3's `push` obligation depends on.
+3. **F-03** (Low) — the sweep's self-reported "ten distinct stale values, across twelve citation
+   sites" is 11/14 by my count of the same diff; restate or explain the collapsing of `:618`/`:684`.
+
+Nothing else in the revision broke an unchanged section. §4's residual, §7.1, the Alternatives block
+and §8's exclusion paragraph changed by anchor retarget only; I re-resolved each new anchor and each
+one lands on the content the surrounding sentence describes. DEC-CONS-04's supersession note is
+correct throughout and is the pattern F-01 and F-02 should be fixed into.
+
+One upstream defect found this round, emitted as an ERRATUM in my final message: `FSPEC:2154`'s
+AT-Q7c row states the invoking-tree upper bound as "(its permitted set)" using FSPEC §6.5's
+pre-widening set, which TSPEC §9.3 has since widened by three ⊕ read verbs; the FSPEC row is stale
+and an AT written from it as it stands is red on correct code. That is FSPEC's to correct, not this
+document's — but this document must stop transcribing it (F-01) either way. The §12 item-3 staleness
+is **not** an erratum: it is this document's reading of a TSPEC that has already been fixed.
 
 ## Verdict
 
-_(filled below)_
+VERDICT: Needs revision
