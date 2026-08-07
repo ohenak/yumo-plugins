@@ -228,18 +228,36 @@ interface ConsolidationSeams {
   _readFile(path: string): Promise<string | null>;          // null = absent OR unreadable
   _writeFile(path: string, contents: string): Promise<void>;
   _appendFile(path: string, text: string): Promise<void>;   // ONE whole record per call
-  _listFiles(dirPath: string): Promise<string[]>;
+  _listFiles(dirPath: string): Promise<ListReply>;          // NOT string[] — see below
   _git(argv: string[]): Promise<{ok: boolean; stdout: string; stderr: string}>;
   _ghRun(command: string): Promise<{ok: boolean; stdout: string; stderr: string}>;
   _log(message: string): void;
   _phase(label: string): void;
-  _now(): number;                                           // injectable clock, default Date.now
 
   // ── the two seams this feature adds (§5.3) ──
   _envPresent(name: string): Promise<boolean>;              // NEVER returns the value
   _makeTempDir(passId: string): Promise<string | null>;     // absolute path, or null on failure
 }
+
+// The listing seam's real, closed contract at HEAD (runtime-adapter.js:905-931;
+// the same four-member set is frozen for the doubles as LIST_FAILURE_VALUES,
+// __tests__/helpers/seams.js:58-63).
+type ListReply = {ok: true; files: string[]}
+               | {ok: false; reason: "dir_missing" | "not_a_directory"
+                                   | "unreadable" | "bad_argument"};
+
+// NOT a seam. A module-level default, the shipped pattern (orchestrate-dev.js:1396,
+// `_now = () => Date.now()`) — see §5.6.
+_now(): number;
 ```
+
+**`_listFiles` is transcribed, not simplified.** An earlier draft of this section declared it
+`Promise<string[]>`, which is the shape the *doubles* have and not the shape the adapter has: an
+implementation that reads `{ok:false,…}` as truthy and iterates it yields zero files with no error,
+so the bug is silent and no absence-only assertion can see it. DC-01 obliges the closed/total form on
+both sides. This pass does not in fact call `_listFiles` (§7.1 enumerates through `_git`), but the
+seam stays in the protocol because `main()` threads the standard injection bundle, and a contract
+stated wrongly in a protocol is a contract a future edit will code against.
 
 **Every seam call is `await`ed without exception.** The adapter's implementations are async and the
 test doubles are sync (`__tests__/helpers/seams.js` header states the asymmetry and names it the
@@ -255,6 +273,8 @@ central hazard); a missing `await` therefore passes every unit test and fails on
 | `_git` | argv form, so `["-C", dir, …]` reaches a **different tree** without any shell quoting concern; returns `{ok, stdout, stderr}` and never throws | `runtime-adapter.js:945-957`, parse at `:967` |
 | `_ghRun` | takes a fully built command **string**; the prompt carries an "issue AT MOST ONCE" clause because some `gh` commands mutate | `runtime-adapter.js:995-1006` |
 | `_log` | plain sink; the resolver writes `ADVISORY_MODEL_FALLBACK:` through it (`orchestrate-dev.js:1858-1860`) and nowhere else | §8.4 depends on this |
+| `_writeFile` / `_readFile` | **repo-root-relative today, and that is a blocker this feature must clear** — `rtWriteFile`'s prompt reads "Write the following content to `"${path}"`, **relative to the repository root**" (`runtime-adapter.js:806-807`), and `rtReadFile` (`:493`) is framed the same way | §5.6 states the widening |
+| `_git` | `["-C", dir, …]` and `["ls-files", …]` are the only two forms this pass uses to reach a tree | §7.1, §9.3 |
 
 `_git`'s `-C` capability is the single fact that makes FSPEC §6.5's **git-seam-split-by-tree**
 implementable without a second seam: a call is classified into the invoking-tree domain or the clone
@@ -315,7 +335,7 @@ trailer plus an output tail, which is the wrong shape for a call whose stdout th
 | Seam | Module default | Behaviour when the default stands |
 |---|---|---|
 | `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation |
-| `_now` | `Date.now` | ordinary operation |
+| `_now` | `Date.now` — a **module-level default, not an adapter seam** (§5.6) | ordinary operation |
 | `_ghRun` | `null` | the PR route degrades with `api-failure` before any call is attempted; the proposal file still carries the diff (§10.3) |
 | `_envPresent` | `null` | treated as "no credential variable observable" ⇒ §7.2 falls through to the `local-gh` probe, then to `absent` |
 | `_makeTempDir` | `null` | the PR route degrades with `api-failure`; the pass never falls back to working in the invoking tree, which AC-3.8 forbids outright |
@@ -323,6 +343,40 @@ trailer plus an output tail, which is the wrong shape for a call whose stdout th
 Each `null` default is the FSPEC's fail-safe direction, not a new branch: an uninstalled capability
 degrades the PR route and never touches the invoking tree, never halts the pass, and never reads as
 a credential the pass does not have.
+
+### 5.6 Two adapter contracts this feature changes, and the clock it does not
+
+**(a) `_writeFile` / `_readFile` gain absolute paths.** §9.2 writes the guard-set edit and the PR
+body *inside the clone*, whose directory comes from `mktemp -d` (§5.3) and is therefore **outside the
+repository**. The shipped prompts say the opposite of what that needs (`runtime-adapter.js:806-807`,
+`:493`), so this is a real capability the feature must add, not a path the shipped seam already
+serves. The widening is one clause in each prompt:
+
+> …to `"${path}"` — relative to the repository root when the path is relative, and **verbatim when
+> the path is absolute** (a leading `/`). Do not resolve it against the repository root in that case.
+
+Three properties keep the widening bounded: it is **additive** (every relative path behaves exactly
+as it does today, which `runtimeBundle.test.js`'s shipped adapter assertions still pin); it is
+**non-mutating of any tracked tree**, because the only absolute paths this pass ever forms come from
+`_makeTempDir`'s reply and are never constructed in-module (§5.3); and it is **falsified**, not
+reviewed — §11.3(e) states the adapter-source assertion that pins both prompts' widened clause
+verbatim, and §11.6 no longer exempts it. Routing the clone's writes through `_git` instead was
+rejected: git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index`,
+which is three mutating calls in the clone domain to replace one path argument.
+
+**(b) `_now` is a module-level default, not a seam.** `rtDevInjections` (`runtime-adapter.js:1086-1110`)
+supplies no clock: its members are `_agent`, `_parallel`, `_pipeline`, `_phase`, `_log`, `_checkFile`,
+`_readFile`, `_hashFile`, `_checkCi`, `_mergeWorktree`, `_writeFile`, `_appendFile`, `_listFiles`,
+`_git`, `_ghRun`, `_runCommand` and the probe seams. The shipped pattern is the module-level default
+`_now = () => Date.now()` (`orchestrate-dev.js:1396`), and this pass takes it.
+
+The consequence is observable and is stated so a test author knows what to pin: `Date.now()` in the
+bundle runs in the **workflow host process's** timezone, not in an operator-chosen one. §7.2's
+`today` — the `{YYYY-MM-DD}` half of `passId` — and `cadenceDatum`'s day comparisons therefore both
+read the host's local calendar, and a pass minted either side of host-local midnight lands on
+different dates. Every `today` is passed *into* the pure functions, so no L1 test needs a clock; the
+L2 suites pin `TZ` explicitly (`fakeNow` / `FIXED_NOW_MS`, `mergeDoubles.js`) rather than inheriting
+the runner's.
 
 ## 6. Data model — types
 
