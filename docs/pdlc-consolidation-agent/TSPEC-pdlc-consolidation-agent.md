@@ -191,7 +191,7 @@ main({ …seams })                       ← the only impure function
 **Dependency direction is one-way.** No pure function calls another module's impure helper, and no
 pure function closes over `main`'s scope. `main` threads a single `PassState` (§6.1) through the
 sequence, which is what makes FSPEC §2.2's "terminates = a jump to step 14" implementable as an
-early `return finishPass(state, …)` rather than as an exception (§10.2).
+early `return await finishPass(state, …)` rather than as an exception (§10.1, §10.2).
 
 ### 4.2 Where each function lives
 
@@ -1921,8 +1921,8 @@ what keeps the single-writer-per-file rule satisfiable when the PLAN parallelise
 Every value used in this document is a `pdlc-consolidation-vocabularies.md` §1 row at `Version` 1.4
 **except the four recorded below**, each of which is an upstream gap, none of which is patched here.
 
-**ER-6 (new, raised by this layer).** §7.6's `routeOf` has a fifth outcome the `Route` union cannot
-express: FSPEC §5.1 row 4 routes "any other consuming-repo path" to the proposal file, and AC-5.4
+**ER-6 (new, raised by this layer).** §7.6's routing functions have an outcome — `"proposal-file"`,
+a member of `RouteDecision` — that the `Route` union cannot express: FSPEC §5.1 row 4 routes "any other consuming-repo path" to the proposal file, and AC-5.4
 diverts every `revise`/`retire` of a consuming-repo promotion there too — but `Route` is
 `"constraints" | "decisions" | "PR" | "degraded"` (`docs/_constraints/pdlc-consolidation-vocabularies.md:57`, inside §1's `:38-65` table, transcribed exactly),
 so `FailureModeRecord.route` (§6.2, a closed eight-field record required on every kind) has no
@@ -1935,8 +1935,11 @@ promotion reached nothing but `CONSOLIDATION-PROPOSAL-{passId}.md`" — and it f
 direction: §7.6's `enactedByLog` does not enact on a `degraded` record, so the item is re-proposed
 next pass, which is what an item awaiting operator approval should do. The residual loss is that a
 *routed* propose-only item and a *degraded* PR attempt read alike in the record; the report body
-(§7.9 item 4) names the route in full and is the discriminator meanwhile. §12.2's T-12 row carries
-the test.
+(§7.9 item 4) names the route in full and is the discriminator meanwhile — and the discrimination is
+**asserted**, by the two-fixture control §7.6 specifies in `consolidationReport.test.js` (routed
+propose-only vs. `branch-exists`-degraded: identical `route: "degraded"` in the record, a reason code
+present in one report body and absent in the other, both directions). So the interim is falsifiable
+rather than merely argued, and ER-6 landing simplifies a passing test.
 
 The other three gaps are the FSPEC's errata and are likewise **not** patched here: `rung:` has no §1 row
 (ER-1) and stays free-form; FSPEC §2.6 row 4 has no reason code (ER-2) and `failNoReason` records
