@@ -296,7 +296,91 @@ the `refused` path writing its row and committing nothing.
 
 ## 7. DEC-CONS-05: Two enumerations, held by literal pins; one predicate, held by a differential
 
-_(pending)_
+**Context.** REQ-CONS-01 adopts one "un-consolidated" predicate for both readers of the LEARNINGS
+corpus — the `SessionStart` nudge hook and the pass — and closes step 1 with "keeping one enumeration
+as well as one predicate" (`REQ-pdlc-consolidation-agent.md:115-116`). Two readers, one rule. The
+shipped hook is a Python heredoc executed from bash (`pdlc/hooks/scripts/nudge-consolidation.sh:22`),
+enumerating with `glob.glob(.../docs/*/LEARNINGS-*.md)` (`:28`) and testing with a bare substring
+against the whole log (`:41`). The pass is a JavaScript workflow bundle.
+
+**Decision.** Ship **one predicate, two enumerations**, with different kinds of evidence for each
+half:
+
+- The **predicate** (the two-region rule: consumed-block membership, or the legacy region preceding
+  the first `<!-- pdlc:consumed` marker) is held **equal** by a differential test that feeds both
+  implementations one basename list and one log text and asserts the same partition.
+- The **enumerations** are held **pinned**, not equal: the JS side's `git ls-files` argv is asserted
+  literally, including both `:(glob)` prefixes, and the hook's two glob patterns are asserted by a
+  source-text read of its `CORPUS_GLOBS` declaration. Two literal pins, at two levels, in two files.
+
+This **relaxes** `REQ:115-116` and is therefore not settled here: it is raised upstream as an
+erratum against REQ and FSPEC (see §11), and this entry records what this layer ships if the
+relaxation is accepted.
+
+**Alternatives considered.**
+
+- **One shared implementation** — the plain reading of "one enumeration", and rejected on cost
+  measured against the actual files: the hook is Python inside a bash heredoc invoked by
+  `${CLAUDE_PLUGIN_ROOT}` on `SessionStart`, and the pass is a bundle the runtime loads with no
+  `import`. Sharing needs a **third** artifact plus a language boundary neither side has today, and
+  it puts that artifact on a `SessionStart` path that must survive a machine with no Python (the hook
+  already probes three interpreter candidates and exits 0 when none is found).
+- **Assert enumeration set-equality** — rejected because it would be **red on correct code**. The two
+  enumerations answer different questions about the same tree, and the divergence set is measured, not
+  hypothesised: (i) a `.gitignore`d LEARNINGS file is in the hook's set and not the pass's
+  (`glob.glob` sees ignored files unconditionally; the pass passes `--exclude-standard`); (ii) a file
+  staged but deleted from the worktree is in the pass's set (`--cached` lists it) and not the hook's.
+  The differential harness also feeds both sides one basename list, so it never observes an
+  enumeration at all.
+- **Enumerate with the `_listFiles` seam and walk `docs/*` and `docs/completed/*`** — rejected on a
+  structural property of the shipped adapter, not on taste: `rtListFiles` filters directories out of
+  its own output (`runtime-adapter.js:915`, `ls -p -A | grep -v '/$'`) and then rejects any reply line
+  containing a `/` as unparseable (`:929-931`). The seam therefore **cannot** return a subdirectory
+  name, so the walk finds an empty corpus in production while an in-memory `fakeListFiles` double
+  hides it in every unit test — the production-path-≠-unit-path failure DC-07 names. `git ls-files`
+  also returns the repository-root-relative paths the corpus type needs.
+- **Leave the enumeration half to inspection** — an earlier draft's answer, withdrawn: with no pin on
+  either side, a third divergence class could arise silently and no reader could derive the set.
+- **Keep the hook's shipped count-above-threshold message as the differential oracle** — rejected,
+  and this is what makes the predicate half real. The hook prints only when `n >= THRESHOLD`
+  (`:25`, `THRESHOLD = 5`) and prints only a **count**, so it is blind on every fixture that
+  discriminates the two-region predicate. The decision therefore carries a shipped-hook edit: an
+  env-gated `PDLC_PENDING:` stderr line that emits the pending basenames. One line, in a script CI
+  already `bash -n`s.
+
+**Constraints that forced this shape.** The `_listFiles` seam's structural limit above; the runtime's
+no-`import` rule, which forecloses a shared module; the hook's `SessionStart` robustness budget
+(no git on `PATH`, no Python, not a repository — it must exit 0 in all three); and DC-07's rule that a
+test double must not make a production-impossible path look green.
+
+**Reversibility:** hard, and the hard part is upstream, not in code. Closing divergence class (i) is
+**one flag**: drop `--exclude-standard`, and an ignored LEARNINGS file becomes corpus. Measured at
+HEAD, that flag is *not* what excludes `docs/discarded/` — `git ls-files --cached --others` with the
+two `:(glob)` pathspecs returns the same five paths with or without it, while dropping `:(glob)`
+returns seven and re-admits `docs/discarded/pdlc-rcv-budget-stop/` and
+`docs/discarded/pdlc-review-convergence/`. So the price of closing class (i) is exactly "an ignored
+LEARNINGS file is corpus", and nothing else. The two directions are **not** symmetric: the hook has
+no `--exclude-standard` to drop, so answering the upstream question "yes, an ignored LEARNINGS file
+is corpus" strictly *reduces* the divergence set, while "no" keeps it. Class (ii) is not closable at
+this layer — closing it means putting a `git` invocation on the `SessionStart` path.
+
+**Re-evaluation triggers.** REQ/FSPEC answering the ignored-file question (a "yes" makes this entry
+obsolete for class (i)); a third divergence class being observed, which would falsify the claim that
+the pins make the set derivable and closed; the hook being rewritten in a language the bundle can
+share; `_listFiles` gaining directory enumeration, which would remove the reason `git ls-files` was
+chosen.
+
+**Testability:** three named oracles, at three levels. (1) The predicate differential: one basename
+list plus one log text through both implementations, asserting the same partition — this is the "one
+predicate" claim, and it is only observable because of the `PDLC_PENDING:` stderr edit above.
+(2) The JS enumeration pin: a literal-argv assertion at L1, both `:(glob)` prefixes included, so any
+change to the pathspec is a deliberate test edit. (3) The hook enumeration pin: an L3 source-text read
+of the `CORPUS_GLOBS` declaration. Together they make the divergence set **derivable from the two
+enumerations' own text**, which is the property that lets §10.4's two classes be stated as closed
+rather than as "the ones we happened to think of". The residue is stated, not asserted away: class (i)
+leaves an operator nudged about a file no pass can consolidate, class (ii) leaves one corpus entry the
+pass reports as unreadable — neither is a correctness divergence, because the pass consumes only what
+its own enumeration returned.
 
 ## 8. DEC-CONS-06: Widen `rtWriteFile` alone to accept an absolute path
 
