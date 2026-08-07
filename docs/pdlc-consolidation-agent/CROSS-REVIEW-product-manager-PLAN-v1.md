@@ -56,7 +56,58 @@ places where re-measurement **disagreed** with the document.
 
 ## 3. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Which FSPEC version is this PLAN derived from? The header table says `Version 1.0 · 2026-08-06` and cites `TSPEC … v1.7` (`:16`), but the register facts in T05 and T21 are v11.1's while FSPEC on disk is v11.3. Naming the upstream versions in the header table — as the TSPEC citation already does — would make F-02 and F-03 detectable by inspection on the next erratum round rather than by re-measurement. |
+| Q-02 | F-01's three ids need homes. AT-M11 reads as `consolidationPass.test.js` beside AT-M3 (T20 authors, T31 un-skips) and AT-R7 / AT-Q13 as `consolidationRoute.test.js` (T21 authors, T31 un-skips) — i.e. all three land in files that already exist in the table, and none forces a new task, a new batch or a new ownership row. Is that the intended placement, or does AT-M11's *released-marker* fixture belong with T23's terminal-status release table instead? |
+| Q-03 | §8.3's mechanical DoD requires zero `describe.skip(` across the fifteen suites. T04's `T25 — AT-P7` block is additionally gated on `PY_BIN` and is declared `test.skip` per row when no interpreter is found (`:175`). On a CI leg without `python3`, does the DoD row read as satisfied (no `describe.skip(` text remains) even though the differential never ran? §8.3's "T04's counter is observed in the all-skip world too" checkbox suggests yes-and-that-is-intended; confirming it in the row would stop a future reader treating a green all-skip run as coverage. |
+| Q-04 | §6 reports that `parsePlanTasks` / `parsePlanOwnership` return **34** each, and that `validatePlanContract` returns `{ok: true}`. §4's two tables carry T00–T33 = 34 rows and §5's manifest carries 34. That is self-consistent, but the numbers are asserted rather than shown; given F-03 and F-04, is there a transcript of that run, or should Phase P's own gate be treated as the confirming observation? |
+
 ## 4. Positive Observations
+
+- **The document is measured, not asserted, almost everywhere.** Roughly forty distinct line
+  citations across seven shipped files were re-checked and all but the two in F-07 were exact —
+  including the six `BUNDLES` consumers behind §9.1's erratum 2, the uniqueness of
+  `"relative to the repository root"` in `runtime-adapter.js`, and `gitWithLockRetry`'s
+  *absence* of an `export`. Citing an enumeration by the lines that consume it, so a reader can
+  count its members today, is the right technique for exactly the class of defect (a fourth
+  artifact falsifying a shipped enumeration) this feature keeps hitting.
+- **§9.1 raises upstream defects instead of absorbing them, and covers each locally in the
+  meantime.** All three errata were re-measured and all three are real. Erratum 2 in particular
+  is a genuine coverage hole the TSPEC missed: a fourth bundle not added to `BUNDLES` would ship
+  exempt from six shipped assertions, and T32 closes it in the task that emits the bundle.
+- **T07/T08's review-gated Definition of Done is declared as an exemption rather than hidden.**
+  `skillFiles.test.js:13-17` really does hard-code three review skills, so the two `SKILL.md`
+  edits really have no oracle. Stating that in the row, with the erratum beside it, is the
+  honest handling of a gap that a lesser PLAN would have papered over with a vacuous assertion.
+- **The negative-control discipline is unusually consistent, and it is the product-relevant
+  kind.** T20's unreadable-corpus fixture carries a *readable* control member so the count and
+  the report body cannot pass vacuously; T24's dropped-code arm carries `no-cadence-datum` as
+  the code that must **not** be dropped; T23's release table pairs four taken-and-released
+  statuses against `refused`/`skipped-cadence` in the same table so neither arm can pass
+  vacuously; T19 pairs every order-invariance property with a positive conjunct because
+  "order-invariant" alone is satisfied by a constant function. Each of these is an
+  absence-only oracle being deliberately refused.
+- **Set-equality is demanded where an enumeration is the contract.** T03's `rtConsInjections`
+  case is specified as set equality "never containment, because containment is the assertion
+  that still passes with `_checkFile` missing"; T21's seam partition is four set assertions;
+  T24's AT-L5 vocabulary oracle carries a fourth leg that reads the authority file itself,
+  "without [which] the first three are two transcriptions compared with each other". That is
+  the correct reading of the completeness rule, and §8.3 turns the `_checkFile` case into a
+  demonstrated falsification rather than a claim.
+- **Expected values are transcribed from the spec, not derived from the code under test.** T21
+  requires AC-3.2's PR-body citations to be transcribed "from the fixture LEARNINGS corpus the
+  pass was handed and never read off the produced record", and T19 requires `mergeProposals`'
+  shared id to be *derived by calling* `failureModeId` rather than assigned — the two
+  directions of the implementation-echo rule, both stated for the right reason.
+- **Scope is respected in both directions.** Nothing in the task table implements behaviour the
+  REQ does not ask for; §6.3 item 2 explicitly forbids widening the hook's user-visible output
+  (env-gated, stderr, byte-identical when unset), which keeps AC-1.2's advisory-only posture
+  intact; and §8.3 correctly places the `plugin.json` version bump **outside** this PLAN's Done.
+- **The `describe.skip` discipline is justified from the shipped gate, not from convention.**
+  §2 derives it from `orchestrate-dev.js:10136-10143` — verified exact — and pairs it with the
+  §8.3 grep that requires zero surviving skips, which is the only thing separating "the gate is
+  green" from "the gate is green and the cases ran".
 
 ## 5. Errata raised against upstream documents
 
