@@ -39,6 +39,66 @@ Both v7 findings are resolved. The verdict turns on the new material.
 
 ## Verification of the changed sections
 
+I resolved every anchor the changed spans introduce, and re-ran every number they publish, against
+the TSPEC, the FSPEC and `runtime-adapter.js` at HEAD (`d8a297e1`) rather than taking the document's
+word for any of them.
+
+- **The §9 *Context* rewrite is correct in both tenses and its new cites land.** `FSPEC:435-436` and
+  `FSPEC:441-442` resolve exactly as quoted (see F-16 above). The paragraph keeps the mechanical
+  claim that carried the entry — the deletion-verb `grep -nc` over
+  `pdlc/workflows/runtime-adapter.js` returns **0** at HEAD — and I re-ran it: **0**. The entry's
+  conclusion (release must be a write) is now stated on the FSPEC's *current* words rather than on
+  the ones it was written against, which is the stronger form: the document and its upstream now
+  agree instead of the document recording a disagreement it had already won.
+- **The accepted-cost paragraph's row renumbering is explained, not laundered.** It now names the row
+  by content ("**empty-or-neither-form** row") rather than by ordinal, cites `FSPEC:479`, and says in
+  parentheses why the ordinal moved. That is the right repair for an ordinal cite: content-addressed
+  first, position second, with the drift on the record.
+- **The rejected-alternative annotation is a correct product warning, and every cite in it resolves.**
+  The bullet keeps the historical rejection and appends "Rejected on a premise the `RELEASED:`
+  sentinel removes — and this alternative is now the shipped behaviour. Do **not** transcribe this
+  bullet as current direction." Then it says which sentence of its own text is false at HEAD ("a
+  *released* marker **is** an empty file"), gives the shipped outcome, and names the oracle a naive
+  transcriber would write and why it is red: "`"" ⇒ free`, no `reclaimed-stale-lock` — is red against
+  `TSPEC:1940` and blind to an AC-1.3 operator-visible outcome". I resolved both anchors:
+  `TSPEC:1940` is §10.3 row 4 — an empty marker is `present` (§7.3 decision 2) ⇒ `markerVerdict` ⇒
+  `reclaim`, `reclaimed-stale-lock`, abandoned id `unknown` — and `TSPEC:2640` is the four-fixture
+  sentence (AT-M3's `""` and neither-verb fixtures reclaim, AT-M11's two `RELEASED:` fixtures do not,
+  at either age). `TSPEC:974-977` and `:987-988`, the two supersession anchors the bullet leans on,
+  both still resolve verbatim. This is the last surface in the entry that could still have been read
+  as live direction; it is now flagged at the point of reading, which is where it matters — a
+  PROPERTIES author who lands on the alternatives list without reading the note above it is caught.
+- **§11.2 conjunct 4 item (i) is now exactly the TSPEC's row, and it agrees with §5.** The revision
+  changes "that domain's permitted set" to "that domain's **whole verb set (obliged ∪ permitted)**"
+  and splits the enumeration accordingly — "obliged `add` and `commit`, plus permitted `read-branch`,
+  `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index`". `TSPEC:1724` is the invoking-tree
+  row and its columns are precisely that: Obliged `add`, `commit`; Permitted-not-obliged
+  `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index`. The prior wording
+  transcribed the right seven verbs under the wrong column name, which a property author copying the
+  phrase "permitted set" could have turned into a containment bound that excludes `add` and `commit`
+  — the two verbs AT-Q7c's Given *requires* to be present. `DECISIONS:291-297` (§5 domain 1) already
+  used the "whole verb set" framing with the same split; the two surfaces now match, so a reader who
+  consults either arrives at the same bound. The "**Take the upper bound from `TSPEC:1724`, not from
+  `FSPEC:2154`**" instruction is unchanged and still correct — `FSPEC:2154` still spells
+  `{add, commit, read-branch, read-status}` and still calls it "its permitted set".
+- **The continuation-anchor paragraph is right about the mechanism.** I confirmed the published
+  `grep` patterns behave as described against the file: the widened `TSPEC` pattern does not match a
+  bare `` `:NNN` `` token, and the bare-token pattern does. The three worked examples are real sites
+  in the document. The warranty-scope paragraph's FSPEC recipe
+  (`grep -onE 'FSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`) runs and returns the document's FSPEC set —
+  I ran it and resolved all thirteen distinct values at HEAD; every one lands except the two the
+  paragraph itself declares retargeted-from.
+- **No regression against anything I approved.** I re-checked DEC-CONS-07's supersession note,
+  Reversibility, the re-evaluation triggers and both Testability conjuncts, DEC-CONS-01's
+  credential-helper lane (`pdlc/workflows/runtime-adapter.js:668` — `rtShellQuote` is still the POSIX
+  single-quote wrapper the entry claims, and `:714` still maps it over every argv element),
+  DEC-CONS-03's domains and verb sets, DEC-CONS-05's evidence structure, DEC-CONS-06's exclusion,
+  §11.6(e)'s guard sentence and the six-status set-equality. All unchanged; nothing traded for these
+  four commits.
+
+One thing in the changed spans did not verify: the two counts the new *Anchor provenance* sentence
+publishes. That is F-18 below.
+
 ## Findings
 
 ## Questions
