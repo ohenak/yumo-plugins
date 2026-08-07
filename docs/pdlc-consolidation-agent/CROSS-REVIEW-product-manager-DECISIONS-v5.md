@@ -121,4 +121,46 @@ anchors** that is refuted by counterexample. Two Lows follow from it.
 
 ## Recommendation
 
+**Needs revision**
+
+Both v4 Lows are resolved, and F-09 is resolved past what I asked. Nothing in the three changed
+commits broke anything I approved earlier — I checked the verb-set transcriptions, the §11.6(e)
+guard, the exclusion paragraph and the rewritten §11.2 row specifically for silent weakening and
+found none. On the substance of every decision in this document I am unchanged: approve.
+
+The verdict turns on one Medium, and I want to be precise about why, because it is not "another
+wrong line number":
+
+1. **F-10 (Medium)** — the revision adds a paragraph certifying that *every* `TSPEC:` anchor in
+   this document was re-measured at this commit, and tells the PROPERTIES author no re-measurement
+   is needed now. Six anchors outside the retargeted spans are stale, two of them (`TSPEC:1832`,
+   `:1522`) on the NFR-2 inbound-residual path. The defect is the warranty, not the anchors: an
+   uncertified stale anchor is a Low that a careful author catches, whereas a **certified** stale
+   anchor is one the author is told not to check. Either complete the sweep, or narrow the sentence
+   to the three sections that were actually swept. The narrowed form is one sentence and is true.
+
+Two Lows ride with it and should be folded into the same pass:
+
+2. **F-11** — scope "roughly +105 lines" to the conjuncts it describes; the actual shift ranges
+   from +54 to +122 across the file, so a reader applying it as a global offset is misled.
+3. **F-12** — cite `runtime-adapter.js:822-824` for the `_checkFile` transport prompt and `:825`
+   for its `check:${path}` label (currently `:823-825` for both); the substantive exclusion claim is
+   correct and needs no change.
+
+I am **not** asking for changes to any decision, to DEC-CONS-03's domains or verb sets, to
+DEC-CONS-06's scoping, positive arms or exclusion, or to §11.2's four-assertion enumeration — that
+enumeration is now correct and I would keep it exactly as written. F-10 is a defect of **this**
+document: the sentence is this revision's own, and the remedy is entirely within it.
+
+One upstream erratum leaves this review. Three of F-10's six stale anchors are stale in the
+**TSPEC** first — `TSPEC:1405`'s NFR-2 traceability row cites `TSPEC:1832` and `TSPEC:1522` for §10.3
+row 1a and `openClone` (actually `:1937` and `:1602`), and `TSPEC:52` cites `:1325` for that same
+NFR-2 row (actually `:1405`). DECISIONS inherited them by faithful quotation, so correcting DECISIONS
+alone would leave the TSPEC pointing at a blank line. I do not edit the TSPEC and I do not fold this
+into the verdict above; it is emitted as an erratum. The two TSPEC errata I raised at v2
+(`rtShellQuote` single-quoting every `_git` argv element; `TSPEC:1325`'s unqualified "structural"
+non-disclosure row) remain open and already routed; I do not re-emit them.
+
 ## Verdict
+
+VERDICT: Needs revision
