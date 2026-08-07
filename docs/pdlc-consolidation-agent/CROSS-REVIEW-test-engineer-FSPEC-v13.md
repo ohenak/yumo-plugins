@@ -86,4 +86,38 @@ wrong. Three are new with this diff; L-02 is carried unchanged from v12.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+**The delta resolves all seven errata and breaks nothing I previously approved.** Both items I
+raised myself are answered at the width I asked for: §4.1 no longer claims a removal the runtime
+cannot perform (grep re-run at HEAD, still `0`), and the empty-marker arm is no longer unreachable —
+because the release form was changed to a sentinel, which is the repair that makes the arm mean
+something, rather than the deletion of the arm, which would have been the cheap one. The product
+question I put behind that arm is **answered in the document**, in the affirmative, with the reason
+stated: the durable log must witness a pass that died mid-take, because that pass wrote no row of its
+own and the reclamation record is its only trace. That is an FSPEC answering a product question at
+the layer it belongs to.
+
+The five se-author items are equally clean. AT-P7 is re-scoped from the hook's output to the
+predicate, with the excluded surface named rather than left implied; AC-3.2's body obligation and
+§5.3's "only when" half each gained a test whose negative fixture is the reason it exists; and the
+two v12 Lows were taken as narrowings, not rewrites.
+
+Four **Low** findings are open — L-01, L-03 and L-04 new, L-02 carried from v12. None blocks: no
+test is missing and no test would be written wrong on any of them. L-01 and L-02 are one-register
+disagreements whose normative counterpart is correct and whose repair is a word or a deletion; L-03
+is a sentence of new rationale that over-claims a single producer for a state that has two, where
+the behaviour is right and fails safe in both; L-04 asks AT-P7 to name `pending` as the channel its
+comparison reads, which I can supply myself if it is not spelled.
+
+Per `DEC-CONV-01`, this approval **stands** into subsequent rounds of Phase F. I will re-open it only
+if a later diff touches a section this review's Scope named, or if I score something Medium-or-higher
+against a later delta. Suggested disposition for the optimizer: if a revision is opened for any other
+reason, take **L-03** first — a rationale sentence that states a falsehood about a failure mode is
+the one of the four a later reader is most likely to build on — then L-01, then L-04's one-clause
+addition. Carry L-02 as a tracked deferral. Do not open a revision solely for any of them.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 4}
