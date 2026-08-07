@@ -83,4 +83,23 @@ line, each upstream authority, and each oracle's falsifiability, and all of them
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+All three v9 findings are resolved, and F-01 is resolved at the mechanism rather than by the
+disclosure I would also have accepted: §7.3 adopts FSPEC BR-14a's `RELEASED:` sentinel, so AT-M3's
+truncated arm and both of AT-M11's fixtures are satisfiable against this layer's own behaviour and
+the PLAN task that writes them is no longer red on arrival. The revision broke nothing I previously
+approved — I traced every consumer of the old release form (T-13, §12.2's release-set row, §10.1's
+step-16 comment, §10.3, §12.3, §13.1 row 13, §13.3) and each reads the sentinel; §12.3's register is
+still 99-for-99 set-equal to FSPEC §13 with an empty diff in both directions; §7.3's load-bearing
+premise is unchanged and still true at HEAD.
+
+The three Lows are corrections, not blockers: re-pin the FSPEC version label (L-01), disclose the
+presence probe's catch-all conflation now that its reason decides a verdict (L-02), and either add a
+`parseMarker` property strategy or exempt it by name (L-03). Q-01 is worth answering in the same
+pass — it costs one clause in two cells and removes the only place an implementer could accidentally
+read an expected value off the record under test.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
