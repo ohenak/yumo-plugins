@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-06 |
+| pdlc | draft | Claude | 1.1 | 2026-08-06 |
 
 ## 1. Context
 
@@ -696,7 +696,7 @@ and both are raised as errata rather than settled here.
 | DEC-CONS-02 | The rebuild of `pdlc/workflows/dist/` is an explicit task with `pdlc/workflows/dist/` in its pathspec, per `implementation.postWavePathspecs`. Four tracked artifacts change, not one — a partial rebuild fails CI's `Generated artifacts are in sync` job |
 | DEC-CONS-02 (§8.3) | The release note and `pdlc/RELEASE-CHECKLIST.md` must state that the first queue invocation after this feature lands is **blocked by the drift gate** until `sync-workflows.sh` runs. No AC owns this; it is the shipped gate meeting a new manifest row |
 | DEC-CONS-04, DEC-CONS-07 | The marker test file's owning task's Definition of Done must name both conjuncts — the six-status release set-equality and the empty-vs-unparseable fixture pair — so neither is read as unowned |
-| DEC-CONS-05 | The shipped-hook edit (`PDLC_PENDING:` stderr line, and the widened `CORPUS_GLOBS`) and the hook-parity test are separate owned files; the parity test depends on the hook edit by an explicit `Deps` edge |
+| DEC-CONS-05 | The shipped-hook edit is **three changes in one file** — the env-gated `PDLC_PENDING:` stderr write, `:28`'s single glob replaced by the two-member `CORPUS_GLOBS` comprehension, and `:41`'s predicate scoped to the two regions — and therefore **one** owned task on `pdlc/hooks/scripts/nudge-consolidation.sh`, per batch-safety rule 2. §7's alternatives bullet states the same three. The hook-parity test is a separate owned file and depends on that task by an explicit `Deps` edge |
 | All seven | Per DC-10, each entry above carries its `Testability:` line, and each names the file the oracle lives in. The canonical test doubles for the seams (`fakeFs`, the `_git` argv recorder, the `asAsync` wrapper) are created by one batch-1 task with downstream edges, per batch-safety rule 4 — no per-test ad-hoc equivalents, per DEC-ORACLE-03 |
 
 ### 11.2 What PROPERTIES inherits
@@ -705,19 +705,32 @@ Three of these decisions are stated as *invariants over a whole run*, not as sin
 must land as properties rather than as unit cases:
 
 - **DEC-CONS-01** — no credential value appears in any rendered artifact, on a path that
-  demonstrably ran (the positive `credential:` conjunct). A fixture written against absence alone is
-  satisfied by a pass that does nothing.
+  demonstrably ran. The positive conjunct is a **set-equality over AC-4.2's three values**
+  (`present (redacted)` / `absent` / `local-gh`), not a membership check: each observed at least once
+  and the observed set exactly equal to the declared set, so a deleted or renamed value fails rather
+  than shrinking coverage. A fixture written against absence alone is satisfied by a pass that does
+  nothing.
 - **DEC-CONS-03** — over any pass, the invoking-tree `git` argv set contains no mutating verb. This
   is a containment property over a closed set, so it stays true for calls nobody has written yet.
-- **DEC-CONS-07** — over the six terminal statuses, marker release is set-equal to marker take. Any
-  determinism property here needs a **positive conjunct**: an invariance-only fixture is satisfied by
-  a constant function.
+- **DEC-CONS-07** — over the six terminal statuses enumerated at
+  `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
+  take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
+  satisfied by a constant function.
+
+**What is deliberately unasserted, and why.** The PROPERTIES author inherits these *absences* as
+explicitly as the invariants above; none of them is an oversight, and none should be closed by
+writing a test that appears to cover it:
+
+| Not asserted | Why | Where recorded |
+|---|---|---|
+| The two-pass take race (`_checkFile`/`_readFile`/`_writeFile` window) | No oracle exists at any level available here; a test that appeared to cover it would assert a property the code does not have (DEC-ORACLE-02). The take's *shape* is asserted instead. Detection after the fact is operator-reported and un-instrumented, with a stated forensic signature | DEC-CONS-04 |
+| FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm | Unreachable under the release form; raised as an erratum rather than tested | DEC-CONS-07 |
+| The inbound failure-reply channel (`rtGit`'s 300-character combined output reaching a rendered report body) | Bounded by what `git` prints, not by the seam interface; recorded as a residual, and the credentialed-argv question is handed upstream as a TSPEC erratum | DEC-CONS-01 |
 
 ### 11.3 Errata raised, not settled here
 
-Two of these decisions relax or contradict an upstream document, and both are handed up rather than
-absorbed. They are listed here so a reader of *this* document knows the corresponding entry is
-provisional:
+Three items are handed up rather than absorbed. They are listed here so a reader of *this* document
+knows the corresponding entry is provisional:
 
 1. **FSPEC §4.1 / §4.2 — the marker's removal verb and the empty arm** (DEC-CONS-07). §4.1's
    lifetime row says "Removed at step 16" (`FSPEC:415`), which no declared seam can do; §4.2's fourth
@@ -730,8 +743,20 @@ provisional:
    much of the divergence closes: *is a `.gitignore`d LEARNINGS file corpus?* — measured at HEAD, "yes"
    closes divergence class (i) at exactly the price of that rule and no other, while "no" keeps it
    open. The two answers are not symmetric and the erratum says so.
+3. **TSPEC §9.2 — the credentialed push cannot reach `git` by shell expansion** (DEC-CONS-01).
+   `TSPEC:1595-1601` says the value reaches `git`/`gh` by shell expansion inside the transported
+   command, and for `gh` that holds: `rtGhRun` is handed a fully-built **command string** (`:995`),
+   so a `GH_TOKEN="$VAR" gh …` prefix expands. For `git` it does not: `_git` takes **argv**, and
+   `rtGit` passes every element through `rtShellQuote` (`runtime-adapter.js:668-670`), which
+   single-quotes it — so `-c http.extraheader=…$PDLC_PLUGIN_REPO_TOKEN…` written as an argv element
+   is transported **literally** and never expanded. Either the push must route through a
+   command-string seam like `gh`'s, or the module must hold the value (which NFR-2 forbids). This is
+   the TSPEC's to correct, not this document's; DEC-CONS-01's residual paragraph records the
+   consequence for the entry. Riding with it: `TSPEC:1325`'s traceability row states NFR-2
+   non-disclosure as unqualifiedly "structural", which is true outbound and not true of the inbound
+   failure-reply channel — that row is the TSPEC's to qualify.
 
-A third question rides with them and is likewise not this layer's to mint: should the durable log row
+A fourth question rides with them and is likewise not this layer's to mint: should the durable log row
 carry the **unreadable** corpus basenames (an `unread:` field beside `consumed`), given that an
 unreadable entry is currently marked consumed while contributing no evidence? That is a
 `docs/_constraints/pdlc-consolidation-vocabularies.md` §3 field-set change, and REQ §4b reserves that
