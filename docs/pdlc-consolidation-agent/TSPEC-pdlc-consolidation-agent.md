@@ -690,6 +690,19 @@ evidence is the report body's named list and nothing else. This is distinct from
 above, which is the *enumeration* failing and terminates `failed`; here the enumeration succeeded and
 one member of it is unreadable.
 
+**Answering the reviewer directly on the durability of that evidence.** The consequence was put
+plainly: a LEARNINGS file can be permanently marked consumed while contributing zero evidence to any
+promotion, and the only trace is one pass's transient report body. That is real, and this layer still
+does **not** add an `unread:` field beside `consumed` in the log row — not because it would be
+useless, but because the log record's field set is a `pdlc-consolidation-vocabularies.md` §3
+contract, and minting a field here is the same REQ §4b breach as minting a reason code. The three
+observables above are what this document decides; whether the durable record should carry the
+unreadable basenames is a product question about the log's field set, and §13.3 hands it upstream
+with the rest of the enumeration/corpus batch rather than settling it in a technical spec.
+
+These three obligations are not left to inspection either: §12.2 carries a `(no FSPEC AT)` row for
+them and §12.3 assigns it a file.
+
 The two membership tests differ deliberately — substring in the legacy region, per-line in the block
 — and that asymmetry is the point: a block must name **exactly** the consumed set (NFR-5), while the
 legacy region must reproduce the shipped predicate over prose that names full paths.
@@ -699,27 +712,61 @@ a bundle that cannot import; the hook is a Python heredoc inside bash that no JS
 (`nudge-consolidation.sh:22-50`). Extracting a shared implementation would need a third artifact and
 a language boundary neither side has today. The two are therefore written separately to one stated
 algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs both over one fixture table and
-asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s glob gains a second
-`glob.glob` over `docs/completed/*/LEARNINGS-*.md`, and `:41`'s comprehension tests against the two
-regions computed by a short helper rather than against `logtext` whole.
+asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s single
+`os.path.join` glob becomes the two-literal `CORPUS_GLOBS` tuple and the comprehension over it given
+below, and `:41`'s comprehension tests against the two regions computed by a short helper rather than
+against `logtext` whole.
 
 **Both enumerations are pinned literally, so a divergence larger than §10.4's two classes reds.**
 AT-P7 feeds both sides one basename list and therefore holds the *predicate* half only (§11.3(f)).
 That leaves the enumeration pair with no equality oracle — but it does not leave it unguarded, and
-the guard is not "inspection". Two literal pins, both L3 source-text reads in
-`consolidationHookParity.test.js` (the file that already owns the two implementations' relationship):
+the guard is not "inspection". Two literal pins, **at two different levels and in two different
+files**, because the two sides are observable by different means and pretending otherwise would
+weaken the stronger of them:
 
-- the JS side's argv, pinned by AT-P1's conjunct 1 above;
-- the hook side's globs, pinned by reading the tracked `pdlc/hooks/scripts/nudge-consolidation.sh`
-  and asserting that `:28`'s expression is exactly the two patterns `docs/*/LEARNINGS-*.md` and
-  `docs/completed/*/LEARNINGS-*.md`, and no third.
+| Pin | What it asserts | Level | File |
+|---|---|---|---|
+| (a) **JS side** | the argv `enumerateCorpus` **hands `_git`**, element-by-element, per AT-P1's conjunct 1 above | **L1**, over the `_git` double | `consolidationPredicate.test.js` (§12.3, where AT-P1 lives) |
+| (b) **hook side** | the tracked `pdlc/hooks/scripts/nudge-consolidation.sh` declares **exactly two** corpus glob patterns and no third | **L3**, a source-text read | `consolidationHookParity.test.js` (the file that owns the two implementations' relationship) |
+
+An earlier draft of this paragraph placed **both** in `consolidationHookParity.test.js` as L3
+source-text reads. That was wrong and is withdrawn on both axes. On **level**: a source-text grep of
+the JS module's own text cannot see a call site that builds a different array at runtime, where an
+assertion on the array actually handed `_git` can — and this pair is the compensating falsifier a
+REQ relaxation is being conceded against, so the weaker reading is not the one to ship. On **file**:
+§12.3's table is the input to the PLAN's file-ownership manifest (batch-safety rule 2), so which file
+owns an assertion is a PLAN-level fact, not prose. §11.1's level table, §12.2's T-08 row and §12.3's
+file table all state the split above; this paragraph now agrees with them.
+
+**Pin (b) needs a form the shipped script does not have, so this feature's edit gives it one.** At
+HEAD `:28` reads `learnings = glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))` — the
+pattern exists only as three `os.path.join` components, neither literal `docs/*/LEARNINGS-*.md` nor
+`docs/completed/*/LEARNINGS-*.md` occurs anywhere in the file, and a pin written over a line index is
+anyway invalidated by this feature's own edits to the same heredoc (a second glob, the relocated
+early exit, the `PDLC_PENDING:` line all shift it). Both problems are closed by one edit: the two
+patterns become **single string literals in one named module-level tuple**, and the enumeration
+ranges over that tuple:
+
+```python
+CORPUS_GLOBS = ("docs/*/LEARNINGS-*.md", "docs/completed/*/LEARNINGS-*.md")
+learnings = [p for g in CORPUS_GLOBS for p in glob.glob(os.path.join(proj, *g.split("/")))]
+```
+
+The `*g.split("/")` keeps the shipped `os.path.join` portability (the separator is still the
+platform's, never a hardcoded `/`) while making the pattern itself readable as one literal. Pin (b)
+is then stated over the **declaration, never a line number**: locate the `CORPUS_GLOBS = (…)`
+assignment by name, extract its string literals, and assert the set is **exactly**
+`{"docs/*/LEARNINGS-*.md", "docs/completed/*/LEARNINGS-*.md"}` — plus one conjunct that
+`glob.glob(` occurs in the file exactly once and inside the comprehension over `CORPUS_GLOBS`, so a
+third pattern cannot be added through a second call site the set assertion would not see. "Exactly
+two, no third" is the falsifier and it is unchanged; only the anchor and the literal form move.
 
 Together they make the divergence set *derivable and closed*: the two enumerations differ only where
 `git ls-files --cached --others --exclude-standard` over those two `:(glob)` pathspecs differs from
-`glob.glob` over the same two patterns, which is exactly §10.4's two classes (git-ignored, and
-staged-but-deleted) and nothing else. An implementation that widens either side — a third pathspec,
-a dropped flag, a `**` in the hook's glob — is red on a pin rather than silently admitting a third
-divergence class. That is the compensating falsifier for the half AT-P7 cannot reach; §12.2's T-08
+`glob.glob` over the same two patterns in `CORPUS_GLOBS`, which is exactly §10.4's two classes
+(git-ignored, and staged-but-deleted) and nothing else. An implementation that widens either side —
+a third pathspec, a dropped flag, a third `CORPUS_GLOBS` member, a `**` in one of them — is red on a
+pin rather than silently admitting a third divergence class. That is the compensating falsifier for the half AT-P7 cannot reach; §12.2's T-08
 row and §13.1 row 6 carry it, and §13.3 raises the relaxation itself upstream, because whether "one
 enumeration" may be held by pins rather than by an equality is a REQ/FSPEC decision, not this
 layer's.
