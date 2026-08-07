@@ -85,6 +85,13 @@ anchors** that is refuted by counterexample. Two Lows follow from it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | *(carried unchanged from v2/v3/v4, still unanswered and still not a finding against this document.)* §11.3 item 3 is a functional gap as well as a documentation one: if the credentialed push cannot reach `git` by shell expansion and the module may not hold the value, AC-4.2's `present (redacted)` path has no shipped mechanism until the TSPEC picks a lane. Does the PLAN need the erratum answered **before** the task that implements `rtEnvPresent` and the push? |
+| Q-05 | *(carried unchanged.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags? |
+| Q-06 | *(carried unchanged from v3/v4.)* `REQ:288` obliges a **pathspec** on both invoking-tree calls and explicitly rejects `commitPaths`' bare `git commit -m` shape. The obligation conjunct asserts the two verbs are *observed*, which is a real strengthening, but a verb-level observation still cannot see the pathspec. Which oracle owns the pathspec — an AT in the register, or an argv-shape assertion like domain 3's? I would rather that be settled before PROPERTIES than discovered at DoD. |
+| Q-07 | *(new, and a process question rather than a document one.)* Three rounds running, the highest-value defect in this document has been an anchor that no longer resolves, and the TSPEC has now moved under it twice. F-10's six stale anchors include two the **TSPEC itself** carries staleley (see the erratum below), so DECISIONS inherited them by faithful quotation. Is there a mechanical check — a link-resolver over `{DOC}:{line}` citations run at phase convergence — that would retire this whole class before PROPERTIES? I raise it as a question, not a finding, because it is not this document's job to build one. |
+
 ## Positive Observations
 
 ## Recommendation
