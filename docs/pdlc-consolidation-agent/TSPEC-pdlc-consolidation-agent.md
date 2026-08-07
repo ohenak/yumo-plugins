@@ -1645,11 +1645,44 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   (ii) a LEARNINGS file **staged but deleted from the worktree** is in the **pass's** set (`--cached`
   lists it) and not the hook's — `_readFile` then returns `null` for its body, which
   `classifyCorpus` treats as an unreadable corpus entry (§7.1) and the pass reports rather than
-  crashing on. Neither is closable without making one side ask the other's question: teaching the
-  hook `git ls-files` puts a git invocation in a `SessionStart` hook that must work in a
-  non-repository, and dropping `--exclude-standard` re-admits the two `docs/discarded/` directories
-  §7.1's `:(glob)` anchoring exists to exclude. This is why T-08 is narrowed to the **predicate**
-  (§12.2) and why §13.1 row 6 says which half AT-P7 holds equal.
+  crashing on.
+
+  **What closing each would actually cost, corrected.** An earlier draft of this bullet said that
+  dropping `--exclude-standard` "re-admits the two `docs/discarded/` directories §7.1's `:(glob)`
+  anchoring exists to exclude". That is **false, and it contradicted §7.1 point 2 of this same
+  document**, which says correctly that the exclusion is performed by `:(glob)`. Measured at HEAD:
+  `git ls-files --cached --others -- ':(glob)docs/*/LEARNINGS-*.md'
+  ':(glob)docs/completed/*/LEARNINGS-*.md'` — the same call with `--exclude-standard` dropped —
+  returns the **same five** paths and **zero** under `docs/discarded/`; it is dropping `:(glob)`
+  that re-admits them (seven paths). The two flags are independent, and only one of them excludes
+  `docs/discarded/`.
+
+  So the real costs are asymmetric, and are stated rather than merged into one impossibility claim:
+
+  - **Class (ii) is genuinely not closable at this layer.** Closing it means teaching the hook
+    `git ls-files`, i.e. putting a git invocation on a `SessionStart` path that must also work in a
+    non-repository and on a machine with no git on `PATH`. That is a shipped-hook robustness cost
+    this feature declines to take.
+  - **Class (i) is closable, at one stated price**: drop `--exclude-standard`, and a `.gitignore`d
+    LEARNINGS file becomes corpus. `:(glob)` still excludes `docs/discarded/` either way, so the
+    price is exactly §7.1 point 3's rule — "an ignored file never is [corpus]" — and nothing else.
+
+  **The choice made here, and why it is provisional.** `--exclude-standard` is **kept**: a
+  `.gitignore`d LEARNINGS file is a file its own repository has said is not part of its record, and
+  consolidating it would promote evidence into `DOMAIN-CONSTRAINTS.md` from a source no reviewer
+  will ever see in a diff. That is the safe direction for a pass that writes to shared project-level
+  artifacts. But it is a **product** trade — "is an ignored LEARNINGS file corpus?" is a question
+  about evidence, not about mechanism — so it is not settled here alone: §13.3 raises it upstream
+  with the enumeration relaxation it belongs to, and if the REQ answers "yes, ignored files are
+  corpus", the change is one flag and one line of §7.1, with AT-P1's literal-argv conjunct going red
+  until it is updated deliberately.
+
+  The residue accepted meanwhile, stated exactly: class (i) leaves an operator nudged about a file no
+  pass will consolidate and no pass can clear; class (ii) leaves a corpus entry the pass reports as
+  unreadable. Neither is a correctness divergence — the pass consumes only what its own enumeration
+  returned — and no *third* class can arise silently, because §7.1's two literal pins make the
+  divergence set derivable from the two enumerations' own text. This is why T-08 is narrowed to the
+  **predicate** (§12.2) and why §13.1 row 6 says which half AT-P7 holds equal.
 
 ## 11. Test strategy
 
