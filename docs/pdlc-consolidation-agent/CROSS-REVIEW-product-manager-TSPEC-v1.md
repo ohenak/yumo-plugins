@@ -19,12 +19,36 @@
 
 ## Questions
 
-<!-- filled below -->
+| ID | Question |
+|----|---------|
+| Q-01 | AC-3.4 requires the PR URL in **both** `.consolidation-log.md` and `CONSOLIDATION-PROPOSAL-{passId}.md`. §7.9 renders `pr:` in the terminal row only, and FSPEC §5.3 writes the proposal file only when there is something the pass did *not* enact — so on the success path there is no proposal file to carry the URL. Is the second clause of AC-3.4 satisfied by the log row alone, and if so should this document say so where it discharges AC-3.4? |
+| Q-02 | §7.7's `seamCandidates` "ranges over **every entry in the file**: no filter on `Feature`, none on date, no relation to the consumed set (BR-37a)". AC-6.3 states both conjuncts "across the consumed window". The FSPEC settled this at §9.5 and this TSPEC transcribes the FSPEC faithfully, so it is not a finding here — but the REQ text still reads the other way (see the ERRATUM line). Confirm no PROPERTIES fixture will be written against the REQ's wording. |
+| Q-03 | §6.4's `REASON_CODE_STATUSES` legality check "drops the code and emits a notice rather than writing an illegal row". For `no-cadence-datum` the vocabulary permits `refused` (REQ-CONS-01 decides it at step 3/4, before the marker check), so the drop should never fire for it. Is the notice channel the report body only, and is the dropped-code set asserted empty on the ordinary paths, so a silent narrowing of the row's evidence is a red test rather than a notice nobody reads? |
 
 ## Positive Observations
 
-<!-- filled below -->
+- **Enumerated-contract fidelity is exact.** Every union in §6.1 — `TerminalStatus` (6), `ReasonCode` (12), `Trigger`, `Route`, `Action`, `Verdict`, `PromoState`, `Credential`, the 13-member `Phase` catalogue — is set-equal to `pdlc-consolidation-vocabularies.md` §1 at `Version` 1.4, member for member, with no unmarked internal variant added. §11.3(b)'s two-directional set-equality harness (plus the catalogue-array check) is the right oracle shape for the REQ §4b obligation, and excluding the free-form class **by name** is what keeps the domain from being narrowed silently.
+- **Every `file:line` claim about existing code verified at HEAD**, including the load-bearing ones: `MERGE_GUARD_DEFAULTS` `orchestrate-dev.js:48-53`, `resolveAdvisoryRung` `:1833` with its sole `_agent` dispatch at `:1841` and `ADVISORY_RUNG_SKILL = "se-review"` at `:1797`, the `ADVISORY_MODEL_FALLBACK:` emission at `:1858-1859`, `commitPaths`'s pathspec-free commit at `:8690` (correctly rejected), `commitQueueRow`'s two-call form at `orchestrate-queue.js:1576-1585`, `renderEscalationEntry`'s `| Feature |` / `| Seam |` rows at `:2782-2783` versus the ambiguous em-dash heading at `:2776`, and `devModule`'s export list at `build-runtime.mjs:86-105` (which does publish `resolveAdvisoryRung` and `commitPaths` and does **not** publish the other three, exactly as §8.2 says).
+- **NFR-1 and AC-3.7 are made structural rather than promised.** The guard-set edit exists only inside a throwaway clone (§9.1, §9.2), `_git`'s three-domain classifier with an explicit *absent-always* merge-verb column (§9.3), and a `resolveSeamVerb` that returns `"unknown"` — which is in no permitted set and therefore fails the containment assertion — together give AC-3.7(b) an oracle that fails closed. The two widenings are recorded, non-mutating, and argued rather than assumed.
+- **AC-4.2 / NFR-2 non-disclosure is closed by construction**, not by review discipline: `_envPresent` returns a boolean only, the value reaches `git`/`gh` by shell expansion inside the transport, and `--body-file` keeps the body out of any logged argv (§5.3, §9.2, §13.1 row 1). "There is no code path on which the value exists in the module" is the strongest available form of that requirement.
+- **The falsifiability loop's determinism is preserved where the REQ put it.** The id derivation's substitution *order* is pinned with the collision it decides (§7.4), `phasesExercised` routes every undecidable phase to "not exercised" (§7.5) — never to a guessed `prevented` — and the two streak populations (AC-5.3 `counted` vs AC-5.5 `evaluated`) are implemented as two separate folds rather than one fold with a flag, which is exactly the distinction AC-5.3/AC-5.5 spend paragraphs keeping apart.
+- **§11.6 states what is not tested and why**, including the producing side of the `failure-mode-id` convention, rather than leaving an untested surface to be discovered at DoD.
 
 ## Recommendation
 
-<!-- filled below -->
+**Needs revision**
+
+Required to clear, in order of severity:
+
+1. **F-01** — state the `skipped-cadence` exception to the single exit: no terminal row, no §9.4 commit, no marker touch, no git call (FSPEC §2.2, §2.4; AC-7.2, AC-1.1). Name where in `main()` that branch returns.
+2. **F-02** — guard §9.4's commit on the `refused` path so a refused pass writes its row and commits nothing (AC-1.3, FSPEC §4.3/§4.4).
+3. **F-03** — state the mechanism by which a `revise` / `retire` proposal whose promotion landed in `DOMAIN-CONSTRAINTS.md` or `DECISIONS-{topic}.md` reaches `CONSOLIDATION-PROPOSAL-{passId}.md` instead of being appended (AC-5.4, FSPEC §8.6). Either `routeOf` takes the action, or a named function ahead of it does — but it must be a stated function, not an implication.
+4. **F-04** — name the renderer for the PR body (with AC-3.2's three citations and the vocabularies §4 trailers, `PDLC-CONSOLIDATION-PROMOTIONS` set-equal to the proposals the PR enacts) and for the proposal file (AC-3.5's inline diff plus the named failure class), give each a §12.2 row and a §12.3 test file.
+5. **F-05** — record the missing `route` value as an erratum in §12.4 alongside ER-1/ER-2/ER-5, and state which value the pass writes into `FailureModeRecord.route` for a proposal-file promotion until it lands.
+6. **F-06** — correct the two `build-runtime.mjs` line citations.
+
+No scope creep was found: every mechanism traces to an FSPEC section or a REQ AC, and §1.3's altitude self-check ("no new status, reason code, route, verdict or field name appears here") holds for every value I checked.
+
+## Verdict
+
+VERDICT: Needs revision
