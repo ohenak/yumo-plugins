@@ -46,7 +46,48 @@ reports precisely these numbers, so its figures are reproducible and not transcr
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | v1's Q-02 is answered — §8.3's grep row now scopes itself to `consolidation*.test.js` and to the token `describe.skip(`, and carves out T04's `PY_BIN`-gated `test.skip` by name. One residue: the carve-out says the runtime skip's "non-vacuity is the counter row below", but the counter row asserts `executed ∈ {TABLE.length, 0}`, so a CI leg with no interpreter satisfies it at 0 and the whole L4 level can be green-because-nothing-ran on both legs at once without any row failing. Should the DoD carry a one-line record of which CI leg actually executed the differential rows (the `console.warn` is already emitted), so "0 on both legs" is visible rather than silent? |
+| Q-02 | v1's Q-03 is unanswered — T00 still branches on `.claude/pdlc.config.json` presence, and CI's fresh clone always takes the absent arm, so the arm asserting `postWavePathspecs` / `postWaveCommand` never runs on either matrix leg. §2's whole "the `dist/` rebuild is a wave concern, not a task concern" rule rests on those two settings. Is a tracked fixture config, parsed through the same shipped parser at an injected root, not the stronger form? Not raised as a finding because the branch is a pre-flight existence gate rather than a behavioural oracle, but the asymmetry is worth a sentence in the row. |
+| Q-03 | T04's fixture (a) is the *positive-identity* arm: ≥ 5 pending under `docs/*/` only, edited hook's `additionalContext` byte-equal to HEAD's. Edit (2) also rescopes the pending predicate to the two §3.2 regions, so identity holds only if the fixture's `.consolidation-log.md` is written so the rescoping does not move `n`. That is constructible and the PLAN's intent is unambiguous, but the constraint is implicit. Worth one clause in the row ("the log fixture is written so edit (2) does not move `n` on (a) — the divergence that arm (b) owns"), so an implementer does not build a fixture on which correct code fails (a). |
+
 ## Positive Observations
+
+- The two High findings were repaired at the **root**, not at the symptom. Rather than re-transcribing
+  99 in place of 96, T05 was rebuilt to *read* the register, with a version pin (`FSPEC 11.3`,
+  `TSPEC 1.7`) and a non-vacuity floor beside it — and the actual defect was pushed upstream as
+  §9.1 errata 4 and 5 with the measurement that produced each. That is the correct direction of travel:
+  the PLAN now fails legibly ("the register moved") instead of failing arbitrarily, and the upstream
+  table gets fixed once instead of being worked around in every derived document.
+- AT-M11's assignment is better than the minimum I asked for. I asked for an owning task; the revision
+  split it into a pure half (`markerVerdict` returns `free` on **both** register fixtures, the older
+  one being what defeats an implementation routing every non-`IN-PROGRESS:` file through the reclaim
+  arm) and a pass-level half placed **in the same block as AT-M3**, which is the pairing `FSPEC:2084`
+  names as the reason AT-M11 exists at all. The PLAN then notices, unprompted, that two halves in one
+  file keeps T05's one-file-per-id contract intact.
+- The `dist/` vocabulary section is the right shape for this class of defect. Instead of correcting the
+  four wrong sentences, §1 declares one vocabulary ("third bundle", "five `dist/` files", "four
+  manifest rows"), grounds it in the shipped distinction `runtimeBundle.test.js` already makes between
+  `BUNDLES:26` and `ARTIFACTS:1584`, and says those are the only forms used below. The subsequent
+  edits to §4.2, §6.2, §8.3, §9.1 and §10 are then mechanical, and a future reader can check the whole
+  document against one definition rather than against arithmetic done five times.
+- §6.1's new run block converts §6's numbers from assertions into a reproducible measurement, and
+  volunteers the parser fact that produced this round's own regression — a raw `|` in a description
+  cell shifts every column to its right, turning the `Deps` cell into the `Batch` cell and reporting a
+  phantom cycle. Recording the failure mode beside the numbers is worth more than the numbers.
+- The `_listFiles` hazard was restated rather than re-cited. Rather than swapping one DC id for
+  another, the revision states the hazard in full — `fakeListFiles` returns whatever the fixture hands
+  it while shipped `rtListFiles` pipes `ls -p -A` through `grep -v '/$'` (`:915`) and rejects any line
+  with a separator (`:929-931`), so a directory walk greens under the double and finds zero feature
+  subdirectories in production — and explains why no id is cited (this repo's DC-07 at
+  `DOMAIN-CONSTRAINTS.md:184` is unrelated; the header caveat at `:11-16` records the cross-repo
+  numbering collision). A constraint the reader can check beats a pointer they cannot.
+- The hook no-regression repair is a textbook conversion of an absence-only oracle: the vacuous arm is
+  kept (identity) but forced above threshold and paired with a transcribed expected value, and a second
+  arm requires the widening to actually change `n`. Both arms in one block, with the failure mode of
+  each named — "an implementation that widened nothing fails (b), and one that broke the message fails
+  (a)".
 
 ## Recommendation
 
