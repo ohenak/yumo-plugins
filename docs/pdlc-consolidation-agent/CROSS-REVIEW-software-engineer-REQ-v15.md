@@ -129,3 +129,6 @@ them blocks TSPEC, PLAN or implementation, and I will not open a further round o
 ## Verdict
 
 VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:c21f8a42bd766aa28deec9f5de1488c194452c0e7e3c52c5c0b8f26b34d9ffd0
+REVIEWED-COMMIT: 7c1e0cfb224e2f2d45b81fb1f1c912c6037cdc75
