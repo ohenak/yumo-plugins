@@ -98,7 +98,48 @@ new issue in the changed spans.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | *(carried unchanged from v2, still unanswered and still not a finding against this document.)* §11.3 item 3 is a functional gap as well as a documentation one: if the credentialed push cannot reach `git` by shell expansion and the module may not hold the value, AC-4.2's `present (redacted)` path has no shipped mechanism until the TSPEC picks a lane. Does the PLAN need the erratum answered **before** the task that implements `rtEnvPresent` and the push, or can that task be written against either lane? I would rather the dependency sit in the ownership manifest than be discovered in Phase I. |
+| Q-05 | *(carried unchanged from v2.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags, so the one human who could notice it knows what to look for? |
+| Q-06 | DEC-CONS-03 domain 1 now asserts containment against a verb set that includes the pass's obliged `add`/`commit`. Those two verbs are obliged in **both** domains (`TSPEC:1619` and `:1620`). Domain membership is decided by the `["-C", cloneDir]` prefix, so the classification is unambiguous — but is the *pathspec* asserted anywhere for the invoking-tree pair? `REQ:288` obliges the pathspec on both calls and explicitly rejects `commitPaths`' bare `git commit -m` shape; a containment-over-verbs assertion cannot see the difference. Not a finding against DECISIONS — the verb-domain property is not the place for it — but I want to know which oracle owns it before PROPERTIES is written. |
+
 ## Positive Observations
+
+- **The revision found its own testability line red on correct code, for the second entry running,
+  and said which citation misled it.** DEC-CONS-03 domain 1 previously cited `TSPEC §13.1 row 9` for
+  "the closed invoking-tree read-verb set". Row 9 is the *widenings* row. The revision names the
+  mistake, quantifies it ("understated the reads by two and omitted the two obliged mutating verbs"),
+  and states the consequence ("**red on correct code**, failing on the pass's own log commit"). I
+  verified all three parts. A revision that had merely swapped the citation would have left a future
+  reader unable to tell a corrected error from a re-worded one.
+- **It corrected a claim I had endorsed.** My v2 positives quoted "the clone belongs to no verb set
+  — it is its own case" approvingly. `TSPEC:1620`'s classification cell says "plus the `clone` call
+  itself", so that sentence contradicted the TSPEC and I did not catch it. The revision withdrew it
+  against my own recorded approval and replaced it with the distinction that actually holds — domain
+  3 is a shape assertion *in addition to* clone-domain membership, separated out because verb
+  containment is too weak for that one call. Correcting a reviewer's endorsed error is the harder
+  direction and it is the one that keeps AC-3.8 honest.
+- **The DEC-CONS-04 strike removes a false clause without weakening the rejection.** "Admits no
+  mutating git verb at all" was load-bearing-looking but was in fact the *second* of two independent
+  grounds; the revision strikes it, states what the domain actually admits (`:1619`'s obliged
+  column, `REQ:288`), and says in terms that the rejection "stands on its first ground alone in any
+  case". The rejected alternative stays rejected on AC-1.3, which is where it always should have
+  rested.
+- **§11.2's DEC-CONS-03 row was updated in the same pass as the entry it summarises.** The
+  deliberately-unasserted table and the property list are exactly the places a corrected claim
+  usually fails to propagate — §11.2 previously said "contains no mutating verb", which the strike
+  falsifies. It now carries the containment form, the absent-always negative, and an explicit "note
+  the property is *not* 'no mutating verb'" so the next reader cannot re-derive the withdrawn shape.
+- **The three bare `Q-0N` references were dropped rather than qualified, and every host sentence
+  survives as an assertion.** "…so the two sections agree: three changes, one file, one owning task."
+  reads better than it did with the citation. Nothing now points at a `CROSS-REVIEW-*` file that
+  harvest deletes.
+- **DEC-CONS-06's oracle is now genuinely set-equal to the read-path prompt set**, with the
+  measurement that forces the scoping stated and reproducible. I asked for either the file-wide grep
+  or `rtReadRange` named beside `rtReadProbe`; the revision took the second and showed why the first
+  is the weaker choice on the *positive* arm. That argument is correct and verified; only the
+  parallel argument about the negative arm (F-07) does not survive checking.
 
 ## Recommendation
 
