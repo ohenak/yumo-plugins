@@ -114,4 +114,18 @@ for F-03/F-04 they should ride along with it, and if none is, they are not worth
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+All four routed erratum items close. Every mechanism claim the delta introduces verifies against HEAD
+(`runtime-adapter.js:915`, `:929-931`, `rtGit` at `:945`; the ignored-file and symlink probes both
+empty; the 5-file expected set unchanged). Nothing outside REQ-CONS-01 step 1 and §4b was touched, and
+neither edit re-scopes anything downstream — the enumeration relaxation is a no-op on today's tree, and
+the §4b decision is the one that leaves `Version 1.4` pinned.
+
+My v14 approval stands, extended to this revision. The four open findings are all Low and all
+single-clause wording repairs (F-01 and F-02 new, F-03 and F-04 carried forward untouched); none of
+them blocks TSPEC, PLAN or implementation, and I will not open a further round on any of their account.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
