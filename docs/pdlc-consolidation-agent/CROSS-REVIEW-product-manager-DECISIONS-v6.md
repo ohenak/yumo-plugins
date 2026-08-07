@@ -39,6 +39,50 @@ same commits introduced.
 
 ## Verification of the changed sections
 
+I re-ran the sweep myself rather than taking the paragraph's word for it, and resolved every
+`TSPEC:` anchor in the document at HEAD.
+
+- **The sweep's own arithmetic checks out.** The paragraph claims "**ten** distinct stale values,
+  across **twelve** citation sites". The listed ten are `:618`, `:1832`, `:1522`, `:1595-1601`,
+  `:787-788`, `:117`, `:793-796`, `:962-966`, `:2522`, `:1325`; two of them (`:1595-1601`,
+  `:787-788`) occur at two sites each, giving twelve. Consistent, and every replacement resolves.
+- **The newly-corrected anchors land where they claim.** `TSPEC:806` is the `CORPUS_GLOBS` decision
+  line and `:841-842` the code form (`CORPUS_GLOBS = ("docs/*/LEARNINGS-*.md", "docs/completed/*/LEARNINGS-*.md")`
+  and the comprehension over it); `:807` is the two-region predicate scoping; `:847` is
+  "stated over **declaration, never line number**" and `:850` the `glob.glob(` exactly-once
+  conjunct; `:966-970` carries the no-removal-verb sentence quoted verbatim. Each is the clause
+  named, not a neighbour.
+- **The anchors the v5 pass had already moved all still reproduce**, as the paragraph asserts:
+  `:479-480`, `:493`, `:992-996`, `:1046-1048`, `:1724`, `:1725`, `:2199-2204` and its four
+  sub-anchors, `:2282-2284`. I spot-resolved all of them; none has drifted.
+- **§11.2's conjunct-4 rewrite is a correction, and it is the right one — including against my own
+  v5 approval.** At v5 I praised the reading that AT-Q7c's two `∅` equalities are the two
+  *absent-always intersections* (`TSPEC:1724`/`:1725`). That reading was wrong and the revision says
+  so. I verified the new one against the upstream definitions: `FSPEC:2154` states AT-Q7c's oracle
+  as "the PR seam and the clone seam observing `∅` and the invoking tree observing a set **bounded
+  on both sides**", and `FSPEC:1060-1063` says the two `∅` conjuncts "*are* equalities, with the
+  empty set rather than with a permitted set … weakening them to containment (which `∅ ⊆ permitted`
+  satisfies vacuously) would leave that row nothing to catch." The document's three carry-with-you
+  points transcribe that faithfully, including "**No** obligation is asserted on the two empty
+  domains" (`FSPEC:2154` says exactly that). Its claim that `grep -n AT-Q7c` on the TSPEC returns
+  `:2192`, `:2203`, `:2481`, `:2502` and none is a definition is true — I ran it. And relabelling
+  the invoking-tree absent-always intersection as **implied by conjunct 2** is correct:
+  `TSPEC:1724`'s permitted column is `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`,
+  ⊕ `read-index`, which is disjoint from `checkout`/`switch`/`stash`/`reset`/`rebase`/the merge
+  verbs, so `observed ⊆ permitted` forces that intersection to `∅`. This is a strictly better
+  handoff than the one I approved.
+- **§9's new *Anchor-sweep note* is right about the payload and wrong about the probe.** Its payload
+  half verifies: `TSPEC:974` and `:977` both carry `RELEASED: {passId} {ISO-8601}` (matching FSPEC
+  `BR-14a` at `FSPEC:2585`), `parseMarker` recognises the form at `:951`, `E-11b` maps it to `free`
+  at any age at `:1016-1018`, the residue line reads "never empty in the steady state" at `:1036`
+  and `:2658-2660`, and `:2656-2657` does say a PLAN task written against the empty form "would be
+  written against the losing side". Its **probe** half does not verify — see F-13.
+- **No substantive regression against anything I approved.** DEC-CONS-03's three domains and verb
+  sets are untouched and still set-equal to `TSPEC:1724`/`:1725` in both directions; DEC-CONS-06's
+  decision, scoping, positive arms and exclusion are unchanged apart from the F-12 cite;
+  §11.6(e) conjunct 2's guard sentence is intact; DEC-CONS-05's evidence structure is unchanged
+  apart from anchors. This revision corrected citations, corrected one reading, and added one note.
+
 ## Findings
 
 ## Questions
