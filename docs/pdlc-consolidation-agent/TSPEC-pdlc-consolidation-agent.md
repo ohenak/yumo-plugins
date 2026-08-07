@@ -2107,8 +2107,10 @@ next pass, which is what an item awaiting operator approval should do. The resid
 (§7.9 item 4) names the route in full and is the discriminator meanwhile — and the discrimination is
 **asserted**, by the two-fixture control §7.6 specifies in `consolidationReport.test.js` (routed
 propose-only vs. `branch-exists`-degraded: identical `route: "degraded"` in the record, a reason code
-present in one report body and absent in the other, both directions). So the interim is falsifiable
-rather than merely argued, and ER-6 landing simplifies a passing test.
+present in one report body and absent in the other, both directions). That control carries a **§12.2
+row of its own** — an unnumbered `(no FSPEC AT)` row, in the same class as T-13 — so the obligation
+reaches a PLAN task through the traceability table rather than through §7.6's prose alone. So the
+interim is falsifiable rather than merely argued, and ER-6 landing simplifies a passing test.
 
 The other three gaps are the FSPEC's errata and are likewise **not** patched here: `rung:` has no §1 row
 (ER-1) and stays free-form; FSPEC §2.6 row 4 has no reason code (ER-2) and `failNoReason` records
@@ -2127,7 +2129,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
 | 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
 | 5 | Take the marker read-then-write | an exclusive-create seam | no adapter transport offers `O_EXCL`, and an agent's report of prior existence is exactly as racy as the read |
-| 6 | Two predicate implementations, whose **predicate** half is held equal by AT-P7 and whose **enumeration** half is not held by any test | one shared implementation | the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. The split is stated exactly because §7.1's repair moved the JS enumeration to `git ls-files` while the hook keeps `glob.glob` (`:28`): AT-P7 feeds both sides one basename list, so it holds the predicate and cannot see the enumeration. §10.4 records the two divergence classes as accepted exposure, §11.3(f) states what the harness cannot falsify, and §12.2's T-08 is narrowed to match. Row 12's stderr channel is what makes even the predicate half observable |
+| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's two classes make an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct, both `:(glob)` prefixes literal) and the hook's two glob patterns (a source-text read of `:28`), which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **This decision relaxes REQ `:115-116`'s "keeping one enumeration as well as one predicate", so it is not settled here**: §13.3 raises it as a REQ/FSPEC erratum, and this row records what this layer would ship if the relaxation is accepted |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
 | 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
@@ -2176,7 +2178,26 @@ re-argued on what a count-above-threshold comparison can supply.
   (§12.2 T-13) and `consolidationDoubles.js`'s `asAsync` wrapper (§11.2) are two more owned files in
   the manifest; the wrapper is created by the doubles task and depended on by the lifecycle task, per
   batch-safety rule 4.
-- **Upstream (FSPEC) — two register gaps recorded, not patched here.** §12.2's re-binding surfaced two
+- **Upstream (REQ and FSPEC) — the enumeration relaxation, raised rather than absorbed.** REQ §3.1
+  step 1 closes with "Widening makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one
+  enumeration as well as one predicate" (`REQ-…:115-116`), and FSPEC AT-P7's *When* is "**both the
+  pass's enumeration** and `pdlc/hooks/scripts/nudge-consolidation.sh` are run over each case", its
+  *Then* the two sets are set-equal (`FSPEC-…:2026`; BR-09 binds it at `:2489`). This layer cannot
+  deliver that as written: §7.1's repair moved the JS enumeration to `git ls-files` (because the
+  `_listFiles` seam structurally cannot walk directories — §13.1 row 10), and §10.4 measures two
+  classes in which a git-based enumeration and `glob.glob` **must** disagree, so a set-equality
+  assertion would be red on correct code. What this layer ships instead is stated above: predicates
+  held equal by AT-P7, enumerations held by two literal pins with a derivable, closed divergence
+  set. **Whether that satisfies "one enumeration" is a REQ/FSPEC decision, not this document's**, so
+  it is raised as an erratum against both, together with the sub-question §10.4 isolates — is a
+  `.gitignore`d LEARNINGS file corpus? (keeping `--exclude-standard` says no; dropping it closes
+  divergence class (i) at exactly that price, and at no other). Accepted residue if the relaxation
+  stands: one operator-visible nudge that no pass can clear (class (i)) and one corpus entry the
+  pass reports as unreadable (class (ii)) — never a correctness divergence, since the pass consumes
+  only what its own enumeration returned.
+- **Upstream (FSPEC) — two register gaps recorded, not patched here** (and, unlike the relaxation
+  above, **covered locally in the meantime** — §12.2's two `(no FSPEC AT)` cases in
+  `consolidationRoute.test.js`). §12.2's re-binding surfaced two
   obligations with no acceptance test: AC-3.2's requirement that the PR body cite each source
   LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the AC→AT map binds AC-3.2 to
   AT-Q2, which asserts only the trailers), and FSPEC §5.3's "when, **and only when**" negative
