@@ -38,13 +38,13 @@ What did change in the interval, and is therefore the only material this round h
 The two decision deltas are project-level rules a reviewer is instructed to read at dispatch, so I
 read and applied them rather than noting their existence:
 
-- **DEC-SEV-03** (`DECISIONS-review-severity-bars.md:59-84`) is a *demotion* rule: a downstream
+- **DEC-SEV-03** (`DECISIONS-review-severity-bars.md:62-84`) is a *demotion* rule: a downstream
   document that makes a layer-owned decision colliding with an enumerated upstream artifact drops
   from High to **Low** provided it names the artifact, states what it ships instead, and raises the
   erratum; it stays High only when the collision is absorbed silently. It can only lower a severity,
   never raise one, and its subject is *downstream* documents (TSPEC, PROPERTIES, PLAN) — not the root
   REQ. Doubly inert here: wrong layer, and all three carried findings are already Low.
-- **DEC-LAYER-01's companion** (`DECISIONS-spec-layer-boundary.md:50-55`) only routes the cost DEC-
+- **DEC-LAYER-01's companion** (`DECISIONS-spec-layer-boundary.md:49-55`) only routes the cost DEC-
   LAYER-01 already priced through the DEC-SEV-03 channel. It adds no obligation to the REQ layer and
   moves no finding.
 
@@ -70,6 +70,39 @@ constraints file moved. I record that as a re-verification, not a carry-over —
 re-read at HEAD this round, and each cited line was printed rather than recalled.
 
 ## Findings
+
+No new findings — there is no changed text in the document under review for a new finding to be
+about. The three carried forward are restated so this table stands on its own; ids are never
+renumbered across rounds.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-54 | Low | Cross-Feature | The baseline file's content changed under a frozen `Version`, and the clause making that a defect is the paragraph the same commit added, so the file breaches its own rule; the REQ pins the unbumped `1.0` in three places. Fix: `1.0` → `1.1` in the baseline header and repin the REQ's two version-pinned citations. | `docs/_constraints/pdlc-advisory-corpus-baseline.md:7`, `:19`; REQ `:202`, `:448`, `:474` |
+| F-55 | Low | Local | §4b's ownership sentence spans both governed files, but the classification sentence and the set-equality oracle range built on it were written for one. Read literally it puts the baseline file's §1 under a row oracle at a `Version` that file does not carry. Decidable today only via the `Version 1.4` pin. Fix: name the vocabularies file in the classification sentence, and add to §5 that the baseline's four owned sections carry no row oracle. | REQ §4b (`:558-565`), §5 (`:585-586`); `pdlc-advisory-corpus-baseline.md:17-19` |
+| F-56 | Low | Process | The REQ sits at 61,109 / 61,440 bytes — a 331-byte margin against a warn-only budget; the trend across rounds 9→14 is 387 → 344 → 331 → 331 → 331 → 331. Not a delivery risk: `check-req-size.sh` emits a `PostToolUse` `additionalContext` line and `exit 0` on every path. Filed to keep the headroom visible to whoever lands F-54/F-55 (~44 bytes together, which fit). | Whole document; `pdlc/hooks/scripts/check-req-size.sh:41-42`, `:47-48` |
+
+**Why no finding moved on a fourth no-change round.** Severity is a property of the defect, not of
+how many rounds it has survived. I re-applied `DEC-SEV-01`'s test
+(`DECISIONS-review-severity-bars.md:24-30`) — "does this leave a downstream author unable to make a
+decision today?" — and, this round, checked it against a real downstream author's output rather than
+against my own reasoning: the TSPEC (+2555 lines) was authored in this interval on top of exactly
+these three open Lows, and none of the five TSPEC review rounds' blocking findings is any of them.
+That is direct evidence, not argument, that none blocks a downstream layer.
+
+- **F-54.** A TSPEC or PROPERTIES author transcribing an expected value from the baseline file
+  transcribes §1's fate table, §2's absent-at-HEAD facts, §3's ladder or §4's limit. All are
+  byte-identical across the diff that broke the version rule, and the file declares itself outside
+  any row oracle (`:17-19`), so no expected value is wrong today. A governance self-breach, not
+  observable drift.
+- **F-55.** The range clause pins `Version 1.4`; only the vocabularies file carries 1.4 (`:7`), and
+  the baseline states the answer in its own words (`:17-19`). The oracle's subject is recoverable by
+  cross-reading two documents — friction, not a block. The TSPEC landing without tripping on it
+  corroborates that.
+- **F-56.** A headroom measurement inside a budget that cannot fail a build.
+
+`DEC-SEV-03` (`:62-84`), new since v13, is inert on all three: it demotes findings from High and its
+subject is a downstream document colliding with an enumerated upstream artifact. Wrong direction and
+wrong layer for anything in this table. No rule in the intervening diff raises any severity.
 
 ## Questions
 
