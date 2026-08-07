@@ -18,6 +18,12 @@ The seven routed items collapse to two distinct defects (four restatements of th
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-23 | Low | Local | **Two internal line pointers in the new NFR-2 row are stale by the edit that introduced them.** The row cites §10.3 row 1a as `TSPEC:1832` and `openClone`'s `{failure, detail}` as `TSPEC:1522`; after this erratum's own +25-line insertion the actual lines are **1872** and **1536** (`:1832` now lands in §8.4's `teeLog` paragraph, `:1522` in a fenced block). Both citations also name their target in prose (§10.3 row 1a; `openClone`), so nothing is unfindable and no claim is wrong — this is citation drift, not a content defect, and it is the same class of sweep the v7 round closed for BR-15 and E-11. Fix on the next touch of §12.1/§8; not worth a round of its own. | NFR-2 |
+
+Not a finding, recorded so the next reviewer does not re-raise it: §12.1's CONS-06 row (`:2337`) still summarises the mechanism as "shell-expansion of the value". I considered flagging it as inconsistent with the corrected §9.2 and decided it is not — the chosen lane *is* shell expansion of the value, performed by `git`'s own shell rather than the transport's, and the row's own § pointers (§5.3, §9.2) lead to the two places that now state which shell does it. A one-word qualifier there would read better but changes nothing a reader could get wrong.
+
 ## Questions
 
 ## Positive Observations
