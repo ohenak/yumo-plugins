@@ -361,7 +361,7 @@ FSPEC states as a known exposure.
   independent grounds: AC-1.3 requires the marker to live in the working tree only and never be
   committed by any pass (it is `.gitignore`d for exactly this reason), and the invoking-tree verb set
   admits no mutating git verb **other than the pathspec-scoped `add`/`commit` of the enumerated log
-  paths** (`TSPEC:1619`'s obliged column, `REQ:288`) — a locking commit is not among them. An
+  paths** (`TSPEC:1724`'s obliged column, `REQ:288`) — a locking commit is not among them. An
   earlier draft said "admits no mutating git verb at all"; that is withdrawn as false of the
   domain, and this rejection stands on its first ground alone in any case: AC-1.3 requires the
   marker never to be committed by any pass, and it is `.gitignore`d.
@@ -608,11 +608,11 @@ conjoined on the same path with two positives:
   second ground — that this feature's own widening "puts a second such clause in that same write
   prompt", making a whole-file negative red on correct code; **that is withdrawn as false, and it
   pointed the opposite way from what the feature ships.** The widened prompt is stated verbatim at
-  `TSPEC-pdlc-consolidation-agent.md:425-426` and contains the tracked string `"relative to the
+  `TSPEC-pdlc-consolidation-agent.md:479-480` and contains the tracked string `"relative to the
   repository root"` exactly **once** (its second sentence reads "against the repository root", a
   different string), so the post-widening whole-file count is still 1 — the count it is today
   (`grep -n` returns the single line `runtime-adapter.js:805`). That count is not incidental: it is
-  a **shipped test assertion**, `TSPEC §11.6(e)` conjunct 2 (`TSPEC:2160`), whose falsifying job is
+  a **shipped test assertion**, `TSPEC §11.6(e)` conjunct 2 (`TSPEC:2282-2284`), whose falsifying job is
   the opposite mistake — someone "harmonising" `rtReadFile` by adding the clause there. Nothing in
   this entry may be read as a reason to weaken or drop that conjunct; it is the only falsifier this
   feature has for the read/write harmonisation mistake §5.6(a) exists to prevent. Asserted over the
@@ -630,8 +630,8 @@ outside this oracle — permanently, not by oversight.** `rtHashFile` (`runtime-
 `:618`) and the `_checkFile` transport (`check:${path}`, `:823-825`) are neither read prompt, and no
 absolute path reaches either one in this feature: the pass's only `_checkFile` consumer is the marker
 probe on the repo-relative `docs/_decisions/.consolidation-lock`
-(`TSPEC-pdlc-consolidation-agent.md:912-919`, `:969-971`), and it calls `_hashFile` nowhere — that
-seam appears in the TSPEC only as a member of the injection surface (`TSPEC:439`), with no consumer.
+(`TSPEC-pdlc-consolidation-agent.md:992-996`, `:1046-1048`), and it calls `_hashFile` nowhere — that
+seam appears in the TSPEC only as a member of the injection surface (`TSPEC:493`), with no consumer.
 So the exclusion is sound at this feature's spec, and a future consumer that hands either of them a
 `_makeTempDir` reply is the trigger to revisit it.
 
@@ -800,6 +800,13 @@ must land as properties rather than as unit cases:
      that carries only the invoking-tree half is not set-equal to the TSPEC's oracle.
 
   Comparison is over a `Set`, never a multiset (`TSPEC:2203-2204`).
+
+  *Anchor provenance.* Every `TSPEC:` line number in this document was re-measured against the TSPEC
+  at the commit that carries this revision. The v4 cross-reviews cite the same conjuncts at
+  `TSPEC:2095-2100` / `:2098-2099`; those were correct at the TSPEC revision they reviewed, and the
+  subsequent TSPEC round shifted the file by roughly +105 lines. The **content** of every conjunct is
+  unchanged and matches both readings — only the anchors moved, so a PROPERTIES author should trust
+  the transcribed set assertions above and re-measure the anchors if the TSPEC moves again.
 - **DEC-CONS-07** — over the six terminal statuses enumerated at
   `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`, marker release is set-equal to marker
   take. Any determinism property here needs a **positive conjunct**: an invariance-only fixture is
