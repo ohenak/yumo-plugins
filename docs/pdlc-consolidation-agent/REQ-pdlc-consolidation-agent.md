@@ -592,6 +592,19 @@ rule is symmetric, a value used here with no row there **and** a row there namin
 never uses being equally defects. The symmetry is what makes a *deleted* row a breach; the version
 pin is what gives a downstream test a fixed expected value to transcribe.
 
+**Unreadable corpus entries add no field (erratum, v2.1).** Because this section reserves
+`pdlc-consolidation-vocabularies.md` §3's record grammar to this REQ, the question is answered here and
+not at TSPEC or DECISIONS: **the consumed pair gains no `unread:` field beside `consumed`, and §3 stays
+at `Version` 1.4.** An enumerated basename whose body cannot be read is instead **not consumed** — it is
+omitted from the `<!-- pdlc:consumed {passId} -->` pair, so it stays un-consolidated and the next pass
+retries it. That removes the defect the question named, an entry marked consumed while contributing no
+evidence: under AC-5.2 such an entry can only ever push a verdict toward `prevented` or
+`insufficient-evidence` and never toward `recurred`, which corrupts REQ-CONS-05's falsifiability loop in
+one direction. Omission needs no new field, no new reason code and no vocabulary row, and it is not
+silent: the basename remains in the un-consolidated set that both the hook and the next tick compute.
+Enumeration-level unreadability is already closed by REQ-CONS-01 step 1's working-tree restriction, so
+the residual case is an on-disk file that cannot be read — permissions or an IO error.
+
 ## 5. Scope
 
 **In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass, in the
