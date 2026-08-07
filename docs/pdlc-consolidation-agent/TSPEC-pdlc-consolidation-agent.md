@@ -1556,6 +1556,20 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 - **Recovering a corpus consumed by a pass that died at step 8** (O-C1). No vocabularies §1 field
   can express "re-consume these", and inventing a record type would breach REQ §4b.
 - **Clone removal failure.** §9.1 issues no removal, so there is no failure to handle.
+- **The two enumerations disagreeing on a git-visibility edge case.** §7.1 enumerates the pass's
+  corpus with `git ls-files --cached --others --exclude-standard`; the hook keeps `glob.glob`
+  (`nudge-consolidation.sh:28`), which does not consult git. The two therefore answer different
+  questions about the same tree in exactly two classes, both accepted here rather than closed:
+  (i) a LEARNINGS file matched by `.gitignore` is in the **hook's** set and not the pass's — the
+  operator is nudged about a file no pass will consolidate, and no pass can clear the nudge;
+  (ii) a LEARNINGS file **staged but deleted from the worktree** is in the **pass's** set (`--cached`
+  lists it) and not the hook's — `_readFile` then returns `null` for its body, which
+  `classifyCorpus` treats as an unreadable corpus entry (§7.1) and the pass reports rather than
+  crashing on. Neither is closable without making one side ask the other's question: teaching the
+  hook `git ls-files` puts a git invocation in a `SessionStart` hook that must work in a
+  non-repository, and dropping `--exclude-standard` re-admits the two `docs/discarded/` directories
+  §7.1's `:(glob)` anchoring exists to exclude. This is why T-08 is narrowed to the **predicate**
+  (§12.2) and why §13.1 row 6 says which half AT-P7 holds equal.
 
 ## 11. Test strategy
 
@@ -1725,6 +1739,23 @@ the basename collision (E-09), the legacy/block boundary, and one row above the 
 shipped `additionalContext` count is also compared. L4 degrades exactly as the hook does when no
 usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recorded notice.
 
+**What this harness does not falsify, stated rather than implied.** Feeding both sides the same
+basename list holds the **predicate** equal and holds the **enumeration** equal by construction —
+so the enumeration pair (`git ls-files --cached --others --exclude-standard` on the JS side,
+`glob.glob` on the hook's, `:28`) is outside AT-P7's reach entirely. That is deliberate, and it is
+the reason the fixtures are fed rather than enumerated: the fixture temp directory is not a git
+repository, so `enumerateCorpus` could not run there without a `git init` and a staged index, and
+even with one the two enumerations are **not** equal in general — §10.4 records the two divergence
+classes that make an equality assertion red on correct code. §12.2's T-08 row is narrowed to the
+predicate to match, and §13.1 row 6 names which half is held. The residual exposure is an operator
+nudge that disagrees with what a pass will consolidate; it is a reporting divergence, never a
+correctness one, because the pass consumes only what its own enumeration returned.
+
+One consequence for the fixture table: `classifyCorpus` is driven directly, not through
+`enumerateCorpus`, so **no fixture may be written that depends on git visibility** (an ignored file,
+a staged-but-deleted file). Such a fixture would assert a divergence the harness cannot observe and
+would read as coverage of the enumeration half.
+
 ### 11.4 Property strategies (T-09)
 
 One strategy per parameterisable component, all drawn from `driftGenerators.js`'s `seeded`/`resolveSeed`
@@ -1863,6 +1894,7 @@ The FSPEC's AT register carries **96** ids, measured at v11.1 by enumerating the
 | `consolidationAdvisory.test.js` | L1 | AT-A1, AT-A2, AT-A3, AT-A4, AT-A5, AT-A6, AT-A7 |
 | `consolidationReport.test.js` | L1 + L2 | AT-L1, AT-L2, AT-L3, AT-L4, AT-L5, AT-N1, AT-N2, AT-N3, AT-N4 |
 | `consolidationBuild.test.js` | L3 | (no FSPEC AT) T-02's build assertions, §3.3's `.gitignore` text, §11.3(e)'s adapter-prompt text |
+| `consolidationLifecycle.test.js` | L2 | (no FSPEC AT) T-13's await-discipline case (§10.1, §11.2's `asAsync`). It claims **no** register id, so `consolidationTraceability.test.js`'s set equality is unaffected: the equality is asserted over the ids this table's rows *carry*, and a row carrying none contributes nothing to either side |
 
 **The enumeration is asserted, not maintained by hand.** `consolidationTraceability.test.js` (L3)
 parses the FSPEC's AT register and this table's own rows and asserts **set equality in both
@@ -1912,12 +1944,12 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
 | 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
 | 5 | Take the marker read-then-write | an exclusive-create seam | no adapter transport offers `O_EXCL`, and an agent's report of prior existence is exactly as racy as the read |
-| 6 | Two predicate implementations, held equal by AT-P7 | one shared implementation | the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has |
+| 6 | Two predicate implementations, whose **predicate** half is held equal by AT-P7 and whose **enumeration** half is not held by any test | one shared implementation | the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. The split is stated exactly because §7.1's repair moved the JS enumeration to `git ls-files` while the hook keeps `glob.glob` (`:28`): AT-P7 feeds both sides one basename list, so it holds the predicate and cannot see the enumeration. §10.4 records the two divergence classes as accepted exposure, §11.3(f) states what the harness cannot falsify, and §12.2's T-08 is narrowed to match. Row 12's stderr channel is what makes even the predicate half observable |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
 | 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
 | 10 | Enumerate the corpus with one `_git(["ls-files", …])` read, `:(glob)`-anchored | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:915`, `:929-931`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
-| 11 | Widen `rtWriteFile` / `rtReadFile` to accept an absolute path | route the clone's writes through `_git` | git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index` — three mutating calls in the clone domain to replace one path argument (§5.6(a)) |
+| 11 | Widen **`rtWriteFile` alone** to accept an absolute path, and leave `rtReadFile` untouched | (a) route the clone's writes through `_git`; (b) widen both prompts "for symmetry", as an earlier draft of §5.6(a) proposed | (a) git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index` — three mutating calls in the clone domain to replace one path argument. (b) was withdrawn on measurement, not taste: `rtReadFile` carries **no** path-resolution clause to widen — the string "relative to the repository root" occurs exactly once in `runtime-adapter.js`, at `:805` inside `rtWriteFile` — and its shell-command transport already resolves an absolute path verbatim (§5.6(a)). Widening it would have been a prompt edit to a shipped seam every pipeline phase reads through, with no behavioural motive, purely so §11.3(e) had a second thing to match |
 | 12 | Add an env-gated `PDLC_PENDING:` stderr line to the hook | keep the count-above-threshold message as AT-P7's oracle | the shipped hook emits a count and only above `THRESHOLD = 5`, which is blind on every fixture that discriminates the two-region predicate — so T-08's "held equal by a differential test" would not be true (§7.1) |
 
 Rows 1, 2, 4, 5, 6 and 11 are load-bearing and reversible only at cost; §13.3 records that DECISIONS
