@@ -46,4 +46,18 @@ Q-07, Q-08 and Q-09 are all answered. Q-07: §7.1 names the relocated exit's sid
 
 ## Recommendation
 
+**Needs revision**
+
+All four v3 findings are resolved, including the High. F-10 in particular was cleared the expensive way — the relaxation of REQ `:115-116` is raised upstream as a REQ/FSPEC erratum instead of being absorbed, *and* the enumeration half gained a compensating falsifier rather than a sentence. F-11's correction is independently re-measured and right, F-12's two register gaps are now covered locally as well as raised, and F-13's contradiction is reconciled in the stronger direction. Nothing I approved in earlier rounds is broken by this revision, and no P0 or P1 requirement is narrowed by anything it adds.
+
+What holds approval back is one defect, and it sits inside the very mechanism that discharged the High:
+
+1. **F-14 (Medium)** — §7.1 (`:703-704`) and §11.3(f) (`:1943-1949`) place **both** enumeration pins in `consolidationHookParity.test.js` as **L3 source-text reads**; §11.1's level table (`:1734`), §12.2's T-08 row (`:2057`) and §12.3's file table (`:2099`, `:2102`) place the JS-side pin as AT-P1's **L1 argv conjunct** in `consolidationPredicate.test.js` and give hook-parity exactly one extra case. The two readings are different oracles (a grep of the module's text vs. an assertion on the array `_git` was handed) and different PLAN file owners. Reconcile — §12.2/§12.3's reading is the one the rest of the document supports.
+
+Two Lows to fold in while the file is open: **F-15**, the hook-side pin quotes two literal glob strings that do not exist in the shipped `:28` (`os.path.join` components), so the pin's own form is unspecified; and **F-16**, T-11's new case does not say whether its three expected strings come from the fixture corpus or from the produced record — only the first is a valid oracle at L2.
+
+I am raising two errata upstream in my final message. The first duplicates §13.3's own request deliberately: the enumeration relaxation is a REQ/FSPEC decision and should reach those authors through the channel regardless of which document asked. The second is the FSPEC-side consequence for AT-P7's *Then*.
+
 ## Verdict
+
+VERDICT: Needs revision
