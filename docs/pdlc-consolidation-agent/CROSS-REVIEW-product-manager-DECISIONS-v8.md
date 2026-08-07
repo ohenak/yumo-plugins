@@ -121,6 +121,36 @@ out of the changed spans; it cannot steer a PLAN or PROPERTIES author wrong.
 
 ## Positive Observations
 
+- **The rejected-alternative annotation closes the last hole a PROPERTIES author could have fallen
+  into.** A reader who skips the supersession note and goes straight to "Alternatives considered" —
+  which is exactly what someone hunting for "what did they decide about empty markers" does — was,
+  until `eaf5c744`, told that empty ⇒ `reclaim` was *rejected*, when it is what ships. The bullet now
+  catches that reader in place, names the false sentence in its own text, gives the shipped outcome
+  with its reason code and abandoned id, and spells the wrong oracle out so it can be recognised
+  rather than merely avoided. Flagging the entry at the index, the heading, the Decision block and
+  now the alternatives list is four surfaces for one supersession, and that is the correct cost.
+- **F-16 was answered past its own scope.** I asked for two retargets, a tense fix and a warranty
+  sentence. The revision also explains *why* the §4.2 ordinal moved — the `RELEASED:` row inserted at
+  `FSPEC:476` pushed the empty arm from fourth to fifth — and publishes the FSPEC sweep recipe so the
+  next pass covers both upstream documents. That converts a one-off reviewer catch into a repeatable
+  method, which is the difference between fixing a defect and closing a class.
+- **The document names its own blind spot rather than quietly widening around it.** F-17 offered two
+  exits and the harder-to-write one was chosen: instead of stretching the pattern until the counts
+  agreed, the paragraph says plainly that a third spelling exists, that the pattern cannot see it,
+  that those anchors are resolved by hand, and that its own fourteenth stale site was one of them.
+  Publishing the limit of your tool is more useful to a re-runner than publishing a tool that looks
+  complete.
+- **The invoking-tree fix removed a real trap, not a wording nit.** "Permitted set" naming a set that
+  contains two *obliged* verbs is the kind of phrase a property author transcribes literally; the
+  resulting containment bound would have excluded `add` and `commit`, which AT-Q7c's own Given
+  guarantees are present. The correction also reconciles §11.2 with §5 domain 1 word for word, so the
+  two places a reader might look no longer differ.
+- **Nothing was weakened across four commits.** I checked the supersession note, both testability
+  conjuncts, the reversibility and trigger paragraphs, DEC-CONS-01's credential-helper lane against
+  `runtime-adapter.js` at HEAD, DEC-CONS-03's verb sets, DEC-CONS-05's evidence structure,
+  DEC-CONS-06's exclusion, §11.6(e) and the six-status set-equality, specifically for silent
+  weakening. Found none.
+
 ## Recommendation
 
 ## Verdict
