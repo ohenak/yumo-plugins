@@ -132,6 +132,11 @@ verifies exactly, including the three the resolution commit repaired (`runtime-a
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §12.2's release row keys its table on "§6.1's `TerminalStatus`, not a literal list retyped in the test" — i.e. at runtime on §6.4's frozen `TERMINAL_STATUSES`, which is a constant of the module under test. Taken alone that is an implementation echo: a maintainer who deletes a status from the catalogue *and* its behaviour arm shrinks the table and stays green. It is in fact safe, because §11.3(b)'s fourth leg asserts three-way set equality (module catalogue ≡ doubles' transcription ≡ the authority file's §1 table, both directions) and I confirmed the six terminal statuses are §1 rows in `docs/_constraints/pdlc-consolidation-vocabularies.md` — so the catalogue itself cannot shrink unobserved. Should the row cite §11.3(b) as the pin that makes ranging over the module's own constant legitimate? Without the cross-reference the row reads as deriving its expected value from the code under test, which is the thing every other row in §12.2 is careful not to do. |
+| Q-02 | §7.3 states the expected call prefix `["check", "read", "write", "read"]` and then declines to mint a row for it ("no §12.2 row obliges a call-order assertion, and none is added under the freeze"). I agree with the freeze compliance. But note that F-01's empty-marker conjunct, if taken, subsumes the call-order oracle's purpose entirely — it falsifies the forbidden derivation by *behaviour* rather than by call shape, which is the stronger form. Is the call-order paragraph then intended to survive into the PLAN as guidance only, or should it be marked as superseded if the F-01 conjunct lands? |
+
 ## Positive Observations
 
 ## Recommendation
