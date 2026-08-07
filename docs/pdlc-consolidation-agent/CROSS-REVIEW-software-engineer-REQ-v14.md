@@ -125,6 +125,40 @@ Q-01 to Q-03 and Q-05 are carried; Q-05 is materially stronger this round. No ne
 
 ## Positive Observations
 
+- **The REQ has now survived a full TSPEC review window without an erratum, on top of two FSPEC
+  windows.** Between v13 and HEAD a TSPEC was authored and reviewed five times by two reviewers, hit
+  the round limit, produced `POSTMORTEM-T`, and was resolved (`:14` `RESOLVED: yes`). Phase T is the
+  first layer that must actually *decide* the decisions DEC-LAYER-01 pushed down, so it is the layer
+  most likely to discover that an upstream requirement was underdetermined. `grep -n ERRATUM
+  POSTMORTEM-T` returns nothing, and `git diff 1cebcce..HEAD -- .../REQ-*.md` is empty across 145
+  commits. Twenty-five cross-reviews and three root-cause analyses have now read this REQ without
+  routing a single erratum to it.
+
+- **DEC-SEV-03 is evidence *for* this REQ, read carefully.** Both of Phase T's blocking Highs were
+  one class: a TSPEC-layer decision rendering an *enumerated upstream artifact* unreachable. That is
+  a finding about the TSPEC's collision-disclosure discipline, not about the enumerations. Had the
+  REQ's enumerations been underspecified, the postmortem's repair would have been to change them;
+  instead every repair was "name the artifact, state what ships instead, raise the erratum" and
+  "neither repair changed the decision the finding named" (`DECISIONS-review-severity-bars.md:66-68`).
+  The upstream enumerations survived contact with the layer that had to implement them.
+
+- **§5a's three-layer routing paid off a second time.** DEC-LAYER-01's new companion clause
+  (`DECISIONS-spec-layer-boundary.md:50-55`) assumes upstream documents route to the receiving layer
+  *and* hand down a disposition rule with the decision. §5a already routes "fixture construction and
+  oracle mechanics" to "FSPEC, TSPEC and PROPERTIES" (`:602-603`) — all three, not the next hop —
+  which is why Phase T inherited the decisions with a named owner rather than discovering them.
+
+- **The two governed files did not drift across a third window.** `git diff 1cebcce..HEAD --
+  docs/_constraints/` is empty. A shared reference file cited by an actively-revised TSPEC is exactly
+  what a downstream author adjusts in passing; the ownership paragraphs this REQ wrote into both
+  files (`pdlc-consolidation-vocabularies.md:18-28`, `pdlc-advisory-corpus-baseline.md:15-20`) are
+  what made that temptation legible as a violation, and they have now held through 257 commits.
+
+- **No code claim went stale, and it is provable rather than sampled.** The exclusion diff over
+  everything outside `docs/` is empty, converting a spot-check into a proof — and the five anchors I
+  re-derived anyway all match, with no version pin regressed. Eighth consecutive round with no defect
+  row.
+
 ## Recommendation
 
 ## Verdict
