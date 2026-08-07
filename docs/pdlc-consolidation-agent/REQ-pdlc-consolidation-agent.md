@@ -117,8 +117,27 @@ reads a LEARNINGS **body**:
    `docs/completed/pdlc-workflow-distribution/` each hold one LEARNINGS — so depth-1 hides 3 of the 5 at HEAD
    and biases AC-5.2's phase population toward `insufficient-evidence`. `docs/discarded/*/` is
    deliberately **excluded** — abandoned work is not evidence about a delivered pipeline. Widening
-   makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one enumeration as well as one
-   predicate.
+   makes `nudge-consolidation.sh:28` an in-scope edit (§5).
+
+   **One predicate, two enumerations (erratum, v2.1).** This step previously closed with "keeping one
+   enumeration as well as one predicate". The second half is not deliverable and is **withdrawn**. The
+   hook enumerates with Python `glob.glob` (`nudge-consolidation.sh:28`); the pass cannot, because the
+   `_listFiles` seam lists exactly one directory and drops directory entries (`runtime-adapter.js:915`,
+   `:929-931`), so it cannot walk `docs/*/` at all and must enumerate through the git seam. **One
+   predicate remains guaranteed by construction** — both sides run the same block-scoped basename test
+   stated above — while the two enumerations are separate mechanisms whose agreement is a stated,
+   testable property rather than a shared code path. The two classes on which those mechanisms would
+   otherwise disagree are decided here, not left to TSPEC:
+
+   - **A `.gitignore`d LEARNINGS file *is* corpus.** Membership is presence on disk under the two globs,
+     not tracked-ness: a LEARNINGS file that exists has a body to read, and the hook — which cannot see
+     `.gitignore` — would otherwise nag about a file the pass is forbidden to consume, a nag that never
+     quiesces. The pass's enumeration therefore does **not** apply `--exclude-standard`. That closes this
+     class at exactly that price and no other, because `docs/discarded/*/` is excluded by the pathspec,
+     not by the ignore rules.
+   - **An index entry with no working-tree file is *not* corpus.** A staged-but-deleted LEARNINGS has no
+     body, so it is not evidence about anything; the pass's enumeration is restricted to paths present in
+     the working tree, which closes the second class.
 2. **Volume test** — if `|un-consolidated| >= consolidation.volumeThreshold`, the pass runs, trigger
    `volume` (AC-1.2).
 3. **Cadence test** — otherwise, if `consolidation.cadenceHours` has elapsed since the cadence datum
