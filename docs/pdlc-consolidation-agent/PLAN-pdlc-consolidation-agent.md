@@ -63,7 +63,56 @@ erratum; T07/T08 carry a review-only Definition of Done in the meantime and say 
 
 ## 2. Ground rules — status key, RED discipline, batch derivation
 
-_placeholder_
+**Status key.** ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
+
+**Batch derivation is mechanical.** `Batch == max(batch of Deps) + 1`; a task with no `Deps` is
+batch 1. The dispatcher validates the column against the `Deps` edges and halts on a mismatch, so
+the number is a contract, not a lane label. Every number in §4 was re-derived from the row's own
+`Deps` cell after the table was written.
+
+**Single-writer-per-batch, source and test alike.** No two tasks carrying the same `Batch` number
+create or append to the same physical file. Where a file has several writers — most of all
+`pdlc/workflows/consolidate-learnings.js`, which nine tasks write — they are serialised by real
+`Deps` edges, which forces the batch split by the rule above. §5's manifest is what makes the
+disjointness mechanically auditable.
+
+**How red is carried without a red wave, and why it has to be.** Phase I's gate is script-owned and
+unconditional: after every wave the script runs `.claude/pdlc.config.json` →
+`implementation.testCommand` and throws a halt when it does not pass
+(`pdlc/workflows/orchestrate-dev.js:10136-10143` — `const gate = await
+runCommandFn(implConfig.testCommand); if (!gate || gate.ok !== true) { throw haltError(…) }`; the
+V-wave repeats it at `:10225-10234`). `testCommand` is one string covering the whole suite — this
+repo's is `cd pdlc/workflows && npm test -- --testPathIgnorePatterns …` — so a wave that ends with
+any red test **ends the run**, and a genuinely RED-terminal batch is unavailable here.
+
+The discipline is therefore the one this repo already shipped for the advisory tier
+(`docs/pdlc-advisory-tier/PLAN-pdlc-advisory-tier.md:207-216`): a 🔴 task **authors its cases inside
+`describe.skip` blocks**, one block per green owner, named for that owner
+(`describe.skip("T25 — corpus and predicate", …)`). Skipped cases are *reported as skipped*, not as
+passed, so the wave gate stays green and truthful. The 🟢 owner's **first** obligation is to
+un-skip its own block, and its **last** is that the block passes. A 🟢 task that un-skips a block it
+does not own is a rule violation, because that block's symbols do not exist yet.
+
+Red-before-green is therefore still real and still an explicit edge: **every 🟢 row lists its 🔴 row
+in `Deps`**, and the 🔴 row references the same test file and names the ATs it authors. The
+falsification is observed at un-skip time — the green owner un-skips before implementing, sees the
+block fail, then implements. Where a row owes a stronger demonstration (T23's mutation check) the
+row says so.
+
+**`[Fake first]`.** Test-double and skeleton creation precede every production-implementation task
+for the same component. T01 (the doubles module) and T02 (the module's export surface, frozen
+catalogues and throwing stubs) are batch 1 and are edges of everything downstream, per batch-safety
+rule 4.
+
+**Paths are subpackage-qualified.** Every `Test File` / `Source File` / manifest cell is written
+from the repository root (`pdlc/workflows/__tests__/consolidationPass.test.js`, never
+`consolidationPass.test.js`), so the cells are machine-parseable and no bare basename appears.
+
+**The four `dist/` artifacts are not owned by any task.** `pdlc/workflows/dist/` is a per-wave chore
+commit driven by `.claude/pdlc.config.json` → `implementation.postWavePathspecs`
+(`["pdlc/workflows/dist/"]`, with `postWaveCommand` = `node pdlc/workflows/build-runtime.mjs`), which
+is exactly what TSPEC §13.3 asks for. Putting them in a task's `files` cell would double-commit them,
+since the wave commit stages `task.files` pathspec-scoped (`orchestrate-dev.js:10151`).
 
 ## 3. Pre-flight gate and baseline status
 
