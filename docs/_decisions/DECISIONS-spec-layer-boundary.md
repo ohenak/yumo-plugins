@@ -53,3 +53,10 @@ decisions this rule moves down arrive at the receiving layer **with** the dispos
 enumerated upstream artifact, the collision is named, priced and routed through the erratum
 channel at Low severity — the cost this decision priced ("TSPEC inherits four open decisions")
 is paid through that channel, not through the severity bar.
+
+**Companion (added 2026-08-06, per `POSTMORTEM-P-pdlc-consolidation-agent.md` step 5).** A
+multi-layer erratum wave must propagate **downward in order**: a child document confirmed before
+its parent's decision reaches it is approved stale, and its approval is worth less than it looks.
+An erratum round on document D therefore begins by re-reading D's immediate upstream at HEAD and
+absorbing every decision the upstream's changelog names since D's last approval — before the
+raised items are touched (see [DEC-ERR-01](DECISIONS-review-severity-bars.md)).

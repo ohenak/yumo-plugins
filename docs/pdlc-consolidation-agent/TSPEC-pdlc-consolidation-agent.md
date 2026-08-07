@@ -9,7 +9,25 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.8 | 2026-08-06 |
+| pdlc | draft | Claude | 2.0 | 2026-08-06 |
+
+> **2.0 (mechanism change, not a patch — hence the major bump).** The marker's **release form** is
+> re-decided on FSPEC v11.3, which answered the question v1.8 was still routing upstream. §7.3 now
+> adopts **BR-14a**'s in-place write of `RELEASED: {passId} {ISO-8601}`; `parseMarker` recognises the
+> `RELEASED:` form and `markerVerdict` maps it to `free` at any age with no reason code (**E-11b**);
+> `present` reads `file_missing` **alone** as absent, so an empty marker is a *truncated* one and is
+> reclaimed with `reclaimed-stale-lock` (**E-11**). §7.3's approved premise is untouched — no seam can
+> unlink, and a sentinel write needs no unlink — and the `file_empty ≡ absent` equivalence it leaned
+> on stops being load-bearing. Knock-ons, all priced: §5.1's `CheckReply` probe comment, §10.3 rows 4/4a collapsed
+> into one reclaim row matching the register, §12.2's marker row inverted (`""` ⇒ reclaimed) and
+> retired into **AT-M3**/**AT-M11**, T-13's and the release-set case's oracle re-stated against the
+> sentinel, §12.3's AT-M3 partial-coverage disclosure and AT-M11 divergence both **withdrawn**,
+> §13.1 row 13 re-decided, §13.3's marker bullet closed. **No erratum is raised against the FSPEC
+> about the release form: the upstream decided, so this layer absorbs.** Two further repairs in the
+> same pass: §12.2's `CLAUDE.md` ↔ manifest oracle names its one exclusion (the manifest carries no
+> row for itself) so set equality is achievable without weakening to containment, and §12.2's closing
+> paragraph is re-cast into the past tense now that both register gaps have landed as `AT-Q13` /
+> `AT-R7`.
 
 > **1.8 (erratum round 8, targeted edit — no restructuring).** Five Phase-P errata, nothing else:
 > (a) §12.3's register measurement re-taken — **99 ids at FSPEC v11.3**, not "96 at v11.1" — with the
@@ -25,7 +43,8 @@
 > `runtimeBundle.test.js:26`'s two-member `BUNDLES`, which drives six L3 suites a new bundle would
 > otherwise ship exempt from. One divergence is **raised, not settled**: AT-M11 spells the released
 > marker as FSPEC §4.1's `RELEASED:` sentinel while §7.3 decides the empty form (§12.3's AT-M11 note).
-> §7.3 is left as approved.
+> §7.3 is left as approved. **— superseded at 2.0: that divergence is settled, the sentinel adopted,
+> and the raise withdrawn. This entry is retained as the decision record, not as a live statement.**
 
 > **1.7 (erratum round 7, targeted edit — no restructuring).** Two Phase-D errata, nothing else:
 > (a) the NFR-2 traceability row (§8, `:1325`) no longer states non-disclosure as unqualifiedly
@@ -282,16 +301,18 @@ interface ConsolidationSeams {
 // the same four-member set is frozen for the doubles as LIST_FAILURE_VALUES,
 // __tests__/helpers/seams.js:58-63).
 // The presence probe's contract at HEAD (runtime-adapter.js:817-831). What §7.3 depends on
-// is ONLY that BOTH `file_empty` and `file_missing` are treated as absent; nothing in this
-// document reads WHICH reason came back, and no row asserts it. That is why the marker's
-// `present` flag comes from here and not from _readFile. Do not build on the distinction
-// between the two reasons: the two implementations disagree on where the boundary sits.
+// is ONLY the `file_missing` reason: it is the sole absent state. `{ok:true}` and
+// `{ok:false, reason:"file_empty"}` are BOTH present — the first a held or RELEASED: marker,
+// the second a truncated one (FSPEC E-11) — and that is why the marker's `present` flag comes
+// from here and not from _readFile, whose single `null` cannot name a reason. Do not build on
+// the emptiness boundary itself: the two implementations disagree on where it sits.
 // `rtCheckFile` decides emptiness by BYTE SIZE (`test -s`, runtime-adapter.js:823), while
 // `fakeFs.checkFile` decides it by TRIMMED CONTENT (`String(self.files[path]).trim() === ""`,
 // __tests__/helpers/seams.js:298) — so a marker holding a single newline is {ok:true} in
-// production and {ok:false, reason:"file_empty"} under the double. They agree on "" and on a
-// missing file, which is the whole set of states this feature can produce (release writes "";
-// §7.3), so the divergence is unreachable here — and is recorded so it stays that way.
+// production and {ok:false, reason:"file_empty"} under the double. Under §7.3 that divergence
+// cannot change a verdict: both replies are present, so both reach `markerVerdict` through
+// `parseMarker` over the same text. The two agree exactly on the one state this layer reads,
+// a missing file — recorded so it stays that way.
 type CheckReply = {ok: true} | {ok: false; reason: "file_missing" | "file_empty"};
 
 type ListReply = {ok: true; files: string[]}
@@ -917,85 +938,108 @@ function stays pure and property-testable over an arbitrary multiset of rows (T-
 ### 7.3 The marker (FSPEC §4.1, §4.2)
 
 ```ts
-parseMarker(text: string | null): {passId: string, at: number} | null            // pure
+parseMarker(text: string | null): {state: "in-progress" | "released",
+                                   passId: string, at: number} | null            // pure
 markerVerdict(parsed, present, nowMs, staleLockMinutes): "free"|"refuse"|"reclaim"  // pure
 takeMarker(state, seams): Promise<…>                                             // impure
 releaseMarker(state, seams): Promise<void>                                       // impure — step 16
 ```
 
-`parseMarker` accepts exactly `IN-PROGRESS: {passId} {ISO-8601}` on one line; anything else — empty,
-truncated, multi-line, unparseable timestamp — yields `null`. `markerVerdict` maps a **present but
-unparseable** marker to `reclaim`, never to `refuse`: an unparseable marker carries no timestamp, so
-it can never age out, and refusing on it would wedge the cadence permanently. The `present` flag is
-what separates that case from an absent file (`free`), so the two `null`s are never conflated.
+`parseMarker` accepts exactly **two** one-line forms and nothing else: `IN-PROGRESS: {passId}
+{ISO-8601}` ⇒ `{state: "in-progress", …}`, and `RELEASED: {passId} {ISO-8601}` ⇒
+`{state: "released", …}` — the released form FSPEC §4.1 decides (**BR-14a**) and FSPEC §4.2 gives its
+own outcome row (**E-11b**). Anything else — empty, truncated, multi-line, a third verb, an
+unparseable timestamp — yields `null`.
+
+`markerVerdict` maps a **released** marker to `free` **without consulting its age**: staleness is a
+property of a *held* marker and a released one is not held, so neither the refusal arm nor the
+reclamation arm may fire and **no reason code is written**, at either side of `staleLockMinutes`
+(E-11b; AT-M11 is its oracle, and its two fixtures — one seconds old, one older than
+`staleLockMinutes` — are exactly the pair that catches an implementation routing every
+non-`IN-PROGRESS:` file through the stale-lock arm). It maps a **present but unparseable** marker to
+`reclaim`, never to `refuse`: an unparseable marker carries no timestamp, so it can never age out,
+and refusing on it would wedge the cadence permanently. The `present` flag is what separates that
+case from an absent file (`free`), so the two `null`s are never conflated.
 
 **What release does, and where `present` comes from — both decided, because the two answers must
-agree or every steady-state pass reclaims a lock nobody holds.** There is no removal verb anywhere
+agree or a steady-state pass either reclaims a lock nobody holds or steps silently over a pass that
+died inside its own take.** There is no removal verb anywhere
 in reach: §5.1's protocol declares none, and the adapter ships `rtWriteFile` (`runtime-adapter.js:802`),
 `rtAppendFile` (`:863`), `rtListFiles` (`:905`), `rtGit` (`:945`) and no unlink of any kind; `git rm`
 is outside §9.3's invoking-tree verb set and would not apply anyway, since the marker is untracked
 and `.gitignore`d by §3.3. AC-1.3 also settles the shape upstream — taking and releasing it "are
-in-place rewrites of a whole small file" (`REQ-…:155-156`). So:
+in-place rewrites of a whole small file" (`REQ-…:155-156`) — and **FSPEC §4.1's BR-14a settles the
+payload**: the marker "is released by an **in-place write** of `RELEASED: {passId} {ISO-8601}` —
+never by removing the file, which no seam can do". So:
 
-1. **`releaseMarker` is `await _writeFile(markerPath, "")`** — one seam call, no git call, the file
-   left **present and empty** on disk. It is the only write step 16 makes; §10.1's comment naming a
-   `_git` alternative was wrong and is corrected there.
-2. **`present` is `(await _checkFile(markerPath)).ok === true`**, and *only* that. `rtCheckFile`
+1. **`releaseMarker` is `await _writeFile(markerPath, "RELEASED: {passId} {ISO-8601}")`** — one seam
+   call, no git call, carrying this pass's own `passId` and the instant of the release, leaving the
+   file **present and parseable** on disk. It is the only write step 16 makes; §10.1's comment naming
+   a `_git` alternative was wrong and is corrected there. The released form is a **sentinel line, not
+   an empty file**, and BR-14a states why in the FSPEC's own words: truncating would make a released
+   marker and a marker whose write died mid-flush the same observed state, collapsing the two
+   outcomes §4.2 keeps apart as E-11b (released ⇒ free, no reason code) and E-11 (truncated ⇒
+   reclaimed, `reclaimed-stale-lock`, abandoned id `unknown`).
+2. **`present` is true unless the presence probe reports the file *missing*.** `rtCheckFile`
    (`runtime-adapter.js:817-831`) returns `{ok:true}` for a file that exists and is non-empty, and
-   `{ok:false, reason:"file_empty"}` / `{ok:false, reason:"file_missing"}` otherwise — so **`file_empty`
-   is treated exactly as absent**. `takeMarker` therefore probes with `_checkFile` for `present` and
-   reads with `_readFile` for the content `parseMarker` consumes; `present` is never derived from
-   `_readFile(...) !== null`, which would read the empty released form as present-and-unparseable and
-   send `markerVerdict` down the `reclaim` arm on a completely normal pass, recording
-   `reclaimed-stale-lock` on every steady-state run after the first. `_checkFile` is in §5.1's
-   protocol for this reason and is doubled by `fakeFs` already (§11.2).
+   `{ok:false, reason:"file_empty"}` / `{ok:false, reason:"file_missing"}` otherwise; this layer reads
+   **`file_missing` alone as absent**, and treats `{ok:true}` and `file_empty` alike as **present**.
+   That is the discrimination the sentinel release makes necessary and possible: under it a zero-byte
+   marker is no longer the normal end state of a pass but a **truncated** one, so it must reach
+   `markerVerdict`'s `reclaim` arm and record `reclaimed-stale-lock` (E-11), which it can do only with
+   `present` true. `takeMarker` therefore probes with `_checkFile` for `present` and reads with
+   `_readFile` for the content `parseMarker` consumes; `present` is never derived from
+   `_readFile(...) !== null`, whose single `null` conflates *missing* with *unreadable* and so cannot
+   name the one reason that decides this arm. `_checkFile` is in §5.1's protocol for this reason and
+   is doubled by `fakeFs` already (§11.2).
 
-The two decisions are one decision read from both ends: an empty file is what release leaves, and an
-empty file is what the presence probe calls absent. The observable a test can hold is the **write
+The two decisions are one decision read from both ends: release leaves a parseable `RELEASED:` line,
+and the presence probe calls absent only what is not there at all — so *released*, *truncated* and
+*absent* are three distinguishable states with three FSPEC-decided outcomes (E-11b, E-11, §4.2 row 1)
+rather than two states sharing one observation. The observable a test can hold is the **write
 double's last recorded contents for the marker path** — the `IN-PROGRESS:` line during the pass, the
-empty string after it — which is how §10.1 restates T-13's conjunct (ii).
+`RELEASED: {passId} {ISO-8601}` line after it — which is how §10.1 restates T-13's conjunct (ii).
 
-**What that costs upstream, stated rather than absorbed: FSPEC §4.2's fourth row is not satisfiable
-on its `empty` arm, and this layer says so instead of pretending otherwise.** That row enumerates
-"Marker present, **unparseable or empty (truncated write)**" ⇒ "treated as **stale and reclaimed**,
-recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown`"
-(`FSPEC-…:442`), and the FSPEC binds it twice more — E-11 ("Marker file **truncated** or unparseable
-⇒ reclaimed, not refused") and **AT-M3**, whose *Given* is "truncated or unparseable marker file"
-(`FSPEC-…:2038`). Under the decisions above the **unparseable-but-non-empty** arm behaves exactly as
-the FSPEC requires; the **empty** arm does not, and cannot: `present` is false for a zero-byte file,
-so `markerVerdict` returns `free`, the pass proceeds, and **no `reclaimed-stale-lock` is recorded**.
-The row is not narrowed or reinterpreted — that half of it is unreachable.
+**What this cost upstream, and how it was settled — the record is kept because the reasoning is
+still load-bearing, not because the question is still open.** An earlier revision of this section
+decided release as an in-place write of `""` and treated `file_empty` as absent, and priced the
+consequence honestly: FSPEC §4.2's `empty (truncated write)` arm, E-11 and AT-M3's truncated *Given*
+became unreachable, because an empty file was then precisely what a *successful release* left on
+disk, so *released* and *truncated mid-take* were the same observed state and no probe could separate
+them. That narrowing was **raised upstream as an erratum against FSPEC §4.1/§4.2** rather than
+absorbed, carrying the product question that decides it — *when a pass dies mid-take, must the
+durable log witness it?*
 
-The collision is not a choice this layer made and is not one it can undo. An empty marker is
-precisely what a *successful release* leaves on disk, because no declared seam removes a file
-(§5.1's protocol has no unlink; the adapter ships none — verified above), so *released* and
-*truncated mid-take* are the same observed state and no probe can separate them. Preserving the
-FSPEC row would mean reclaiming — and recording `reclaimed-stale-lock` on — **every** steady-state
-pass after the first, which is a louder, more frequent falsehood than the one it prevents.
-
-So this layer ships the narrowing and **raises it upstream as an erratum against FSPEC §4.1/§4.2**
-rather than settling it: the erratum names §4.1's lifetime row ("**Removed** at step 16", `FSPEC-…:415`,
-which no declared seam can do), §4.2's fourth row, E-11 and AT-M3, and carries the product question
-that decides them — *when a pass dies mid-take, must the durable log witness it?* Under the FSPEC as
-written, the next pass records `reclaimed-stale-lock` and an operator can see that a pass died; under
-this release form the next pass proceeds silently. That is a judgement about what the log must
-witness, not about which write verb the adapter happens to ship, and it belongs to the REQ/FSPEC
-author. This document's local disposition, pending that answer: §10.3 row 4 is corrected to the
-unparseable-non-empty arm and row 4a records the empty arm's actual behaviour, and §12.3 states which
-arm of AT-M3 is satisfiable here. It is the same disposition this document applies to the enumeration
-relaxation and to the `unread:` log field — name the row, ship what is buildable, hand the decision to
-its owner.
+**FSPEC v11.3 answered, and this layer adopts the answer rather than re-routing the question.**
+`BR-14a` decides the release form (an in-place write of `RELEASED: {passId} {ISO-8601}`, never a
+removal); `E-11b` decides that a `RELEASED:` marker is taken like an absent one at any age with no
+reason code; and `E-11` now reads "Reachable **because** §4.1 releases by writing a `RELEASED:`
+sentinel and never by truncating" — the empty arm is reachable again, and §4.2 answers the product
+question in terms: the durable log **must** witness a pass that died inside its own take, so the
+reclaiming pass records `reclaimed-stale-lock` with the abandoned id `unknown`. Nothing in the
+approved argument above is contradicted by that: **§7.3's premise is "no seam can unlink", and an
+in-place write of a non-empty sentinel needs no unlink either** — it satisfies the same premise with
+a different payload. What stops being load-bearing is the `file_empty ≡ absent` equivalence, which
+existed only to keep a released marker from reading as present-and-unparseable; with the sentinel
+there is nothing empty to mistake, so decision 2 above reads `file_missing` alone as absent and the
+FSPEC's three outcomes land on three distinguishable observations. **No erratum is raised here**:
+the upstream has decided, so the correct action is to absorb.
 
 Two consequences worth stating once, because they will be asked again at DoD. (1) `parseMarker`
-still returns `null` for empty text, but on an empty *file* that `null` is never the deciding input:
-`present` is already false, and `markerVerdict`'s `free` arm is reached on the presence flag alone —
-the two `null`s (absent file, unparseable content) are still never conflated, because only the
-non-empty one can reach `reclaim`. (2) **The zero-byte marker is permanent**, one per consuming repo,
-from the first pass onward. §3.3 `.gitignore`s it, so it never reaches a diff, a PR or a
-fresh-clone bootstrap check; the only surface on which it appears is a literal `ls docs/_decisions/`,
-where a zero-byte `.consolidation-lock` means *free*, not *stuck*. An operator deleting the file by
-hand produces `file_missing` where a released pass produces `file_empty`, and §7.3 treats both as
-absent — so the manual channel and the pass channel agree, and neither can wedge the cadence.
+still returns `null` for empty text, and on an empty *file* that `null` **is** now the deciding
+input: `present` is true, so `markerVerdict` reaches `reclaim` and the pass records
+`reclaimed-stale-lock` with the abandoned id `unknown` — E-11 exactly, and AT-M3's fixture (a). The
+two `null`s are still never conflated, because the absent file never reaches `parseMarker`'s result
+at all: its `free` arm is decided on the presence flag. (2) **The marker file is permanent but never
+empty in the steady state**, one per consuming repo, carrying the last pass's `RELEASED:` line from
+the first pass onward. §3.3 `.gitignore`s it, so it never reaches a diff, a PR or a fresh-clone
+bootstrap check; the only surface on which it appears is a literal `ls docs/_decisions/`, where a
+`RELEASED:`-carrying `.consolidation-lock` means *free*, not *stuck*. An operator deleting the file by
+hand produces `file_missing`, which §7.3 treats as absent and which takes exactly as a released marker
+does (FSPEC §4.1: "an absent file and a `RELEASED:` file are the same free state to §4.2") — so the
+manual channel and the pass channel agree, and neither can wedge the cadence. A zero-byte file on that
+same listing is the one state that is *not* routine: it means a pass died mid-write, and the next pass
+says so in the log.
 
 Take is `_checkFile`, then `_readFile`, then `_writeFile` — **observe-then-write, not atomic** — three seam calls on the
 take path, not two, and §10.4 item 1's race window is the span across all three. The
@@ -1018,28 +1062,31 @@ all sixteen steps believing it holds a lock it does not hold, which is precisely
 AC-1.3 rests on. `takeMarker` closes it with the re-read the adapter's comment names:
 
 ```
-check → read → verdict → write → read back → parseMarker → confirm parsed.passId === state.passId
+check → read → verdict → write → read back → parseMarker
+      → confirm parsed.state === "in-progress" && parsed.passId === state.passId
 ```
 
 **That order is the spec of record, and it is testable text rather than prose.** `verdict` is
 `markerVerdict(parsed, present, …)`, so `present` must already exist when it runs — which is why
 `check` is first and why an earlier draft's `read → verdict → …` line was wrong: transcribed
-literally it forces the `_readFile(...) !== null` derivation decision 2 forbids, and re-opens the
-reclaim-on-every-steady-state-pass bug. It is withdrawn by name here rather than silently rewritten.
+literally it forces the `_readFile(...) !== null` derivation decision 2 forbids, which cannot name the
+one probe reason — `file_missing` — that decides the absent arm, and so cannot tell a file that is not
+there from one that could not be read. It is withdrawn by name here rather than silently rewritten.
 `fakeFs` accumulates an ordered `calls` array whose intended use its own header advertises
 (`__tests__/helpers/seams.js:241` — `expect(fs.calls.map((c) => c.op)).toEqual([…])`), so a
 call-order oracle over `takeMarker` is a natural L2 assertion, and the expected prefix it holds is
 `["check", "read", "write", "read"]` — one expected value, not two. Stated to remove the
 ambiguity, not to mint a case: no §12.2 row obliges a call-order assertion, and none is added
-under the freeze. It stays **authoring guidance only**, and deliberately so now that §12.2 carries
-the empty-marker discriminator: that row falsifies the forbidden derivation by *behaviour* — an
-empty marker resolves `free` and records no `reclaimed-stale-lock`, paired against AT-M3's
-non-empty unparseable fixture, which does — which is the stronger oracle, since it fails on any
+under the freeze. It stays **authoring guidance only**, and deliberately so now that the register
+itself carries the discriminator: AT-M3's fixture (a) and AT-M11 falsify a wrong verdict by
+*behaviour* — an **empty** marker resolves `reclaim` and records `reclaimed-stale-lock`, paired
+against AT-M11's **`RELEASED:`** fixtures, which resolve `free` and record nothing at either age —
+which is the stronger oracle, since it fails on any
 implementation that reaches the wrong verdict however it ordered its calls. A later editor who
 wants the call-order case should know it would add nothing this suite has not already got.
 
-A read-back that returns `null`, an unparseable marker, or **another pass's** `passId` is a failed
-take. The pass terminates `refused` with `consolidation-in-progress` (the same disposition as an
+A read-back that returns `null`, an unparseable marker, a `RELEASED:` line, or **another pass's**
+`passId` is a failed take. The pass terminates `refused` with `consolidation-in-progress` (the same disposition as an
 observed fresh marker — from the pass's own vantage the lock is not its own either way), records no
 consumed pair, and commits nothing, per §4.4. §10.3 row 5a carries it. The read-back costs one seam
 call on the one path where a wrong answer is unrecoverable, and it is a *positive* post-condition —
@@ -1829,10 +1876,10 @@ So the oracle is stated explicitly, because it is the only shape that distinguis
 promise resolves** — not inside the pass, not from the report — and finds (i) the terminal row
 present in the log double's accumulated text and (ii) the marker **released**, stated against the
 observable §7.3 decides: the write double's last recorded contents for
-`docs/_decisions/.consolidation-lock` are the **released form — the empty string** — having been the
+`docs/_decisions/.consolidation-lock` **match the released form — `RELEASED: {passId} {ISO-8601}`** — having been the
 `IN-PROGRESS: {passId} …` line at an earlier point in the same double's recorded history. An earlier
 draft said "gone"; that describes a state no declared seam produces, since §7.3's release is an
-in-place `_writeFile` of empty content and the protocol has no removal verb. Conjunct (ii) carries
+in-place `_writeFile` of the `RELEASED:` sentinel and the protocol has no removal verb. Conjunct (ii) carries
 the take-side half because a bare "no marker" is equally true of a pass that never took one (a
 `refused` or `skipped-cadence` fixture, or a take that did not land — §10.3 row 5a); asserting the
 take and then the release is the positive-then-negative pair the §11.3 oracles already use, and it
@@ -1888,8 +1935,7 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 | 1a | **Corpus unlistable** — `_git(["ls-files", …])` returns `{ok:false}` (§7.1) | `enumerateCorpus` ⇒ `{unlistable: true, detail}`; `main` calls `failNoReason` | `failed`, **no** reason code (vocabularies §1 at 1.4 has no row for it, and §1.3 forbids minting one), the pathspec and `stderr` in the report body. Never `no-op`: an unlistable corpus and an empty one are different claims, and only the latter may advance the cadence datum |
 | 2 | Log truncated mid-block | §7.1 step 3's open-span-to-EOF rule | consumption never lost |
 | 3 | Unparseable log row | `mintPassId` / `cadenceDatum` skip it | derivation never aborts |
-| 4 | Marker present and **non-empty**, unparseable | §7.3 `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown` |
-| 4a | Marker present but **empty** (a released marker, or a write truncated mid-take — indistinguishable) | `_checkFile` ⇒ `{ok:false, reason:"file_empty"}` ⇒ `present === false` ⇒ §7.3 `markerVerdict` ⇒ `free` | the pass takes the marker and proceeds; **no** `reclaimed-stale-lock`. This is a **deliberate, recorded narrowing** of FSPEC §4.2's fourth row, whose `empty (truncated write)` arm it makes unreachable (`FSPEC-…:442`, E-11 `:2594`, AT-M3's truncated *Given* `:2038`) — §7.3 argues why no seam can separate the two states and raises the erratum; §13.3 carries it. Row 4 above is the arm that **is** satisfiable. **This row's falsifier is §12.2's empty-marker discriminator** — an `""` marker fixture in `consolidationPass.test.js` asserting a normal terminal status and **no** `reclaimed-stale-lock`, paired in the same case against row 4's non-empty unparseable fixture, which does record it; without that pair the row and §7.3 decision 2 are argued and not falsifiable, and the forbidden `_readFile(...) !== null` derivation greens every other marker fixture |
+| 4 | Marker present and **unparseable** — either **empty** (a write truncated mid-take) or a line that is neither `IN-PROGRESS:` nor `RELEASED:` | `_checkFile` ⇒ `{ok:true}` or `{ok:false, reason:"file_empty"}`, both of which are `present` (§7.3 decision 2) ⇒ `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown`. This is FSPEC §4.2's fourth row and **E-11** in full — **both** arms reachable, because §4.1's `RELEASED:` sentinel (**BR-14a**) is what keeps a released marker out of this row: it parses, and **E-11b** sends it to `free` with no reason code. Falsified by **AT-M3**'s two fixtures — (a) the empty marker, (b) the non-`IN-PROGRESS:`/non-`RELEASED:` line — held in the same case against **AT-M11**'s two `RELEASED:` fixtures, which must record neither reason code at either age; without that pairing an implementation that reclaims on every take passes AT-M3, and one that never reclaims passes AT-M11 |
 | 5 | Marker held and fresh | `refuse` | `refused` + `consolidation-in-progress`; no consumed pair, no commit |
 | 5a | **Marker take did not land** — read-back absent, unparseable, or another pass's `passId` (§7.3) | `takeMarker`'s read-back conjunct; `rtWriteFile` (`runtime-adapter.js:802-811`) reports nothing, so the write alone is not evidence | `refused` + `consolidation-in-progress`; no consumed pair, no commit; the AT asserts the terminal status **and** the marker file's content on disk |
 | 6 | Neither rung resolves | §10.2's `catch` | `failed` + `advisory-model-unresolved` |
@@ -2392,14 +2438,14 @@ Every `FSPEC-CONS-0N` unit appears exactly once; no row names a unit the FSPEC d
 | T-11 | **the PR body** — AC-3.2's three citations, AC-3.7(c)/REQ-CONS-03's three vocabularies §4 trailers, `PDLC-CONSOLIDATION-PROMOTIONS` set-equal to the proposals the PR enacts (the NFR-4 duplicate key) | §7.9 `renderPrBody`, `renderPromotionCommitMessage` | `consolidationRoute.test.js`, re-bound to the register's actual text (`FSPEC-…:2064-2077`): **AT-Q2** — three promotions in one pass, one PR ⇒ three commits each carrying a distinct `PDLC-PROMOTION-ID: {id}:{action}` **and** `PDLC-CONSOLIDATION-PROMOTIONS` **set-equal** to the three pairs. AT-Q2 carries *both* trailer obligations; an earlier draft split them across AT-Q5, which is about a merged `promote` not suppressing a `revise`/`retire`. **AT-Q3** and **AT-Q9** — the writer↔reader round-trip: each supplies a prior PR carrying the trailer `renderPrBody` writes and asserts `enactedByPr` reads it back (AT-Q3 on an open PR ⇒ `duplicate-suppressed`, `suppressed-by:` naming the pair, `pr:` empty; AT-Q9 on a PR whose branch was deleted unmerged ⇒ the trailer survives and still suppresses). **AC-3.2's three body citations are now `AT-Q13`, and the gap this row recorded is closed.** The gap was real when this row was written: the FSPEC's own AC→AT map bound AC-3.2 to AT-Q2, which asserts only the trailers. It was recorded here rather than papered over by naming a nearby id, and raised upstream as an erratum; FSPEC v11.3 answered it by minting **AT-Q13** (`FSPEC-…:2126`, traced to AC-3.2 at `:2320`), which asserts exactly the three citations over two fixtures. **The case below is that id, not a duplicate of it** — as this row anticipated, the erratum landing turns the interim case into an id-bearing row, so it is written once and labelled `AT-Q13` in §12.3: `consolidationRoute.test.js` carries it as **AT-Q13** — one pass over two source LEARNINGS, asserting that `renderPrBody`'s output contains, for each promotion, the source feature name, the failure mode's name, and the AC-2.3 evidence string. **Where those three expected values come from is the whole oracle, so it is stated without ambiguity: they are transcribed from the fixture LEARNINGS corpus the pass was handed, never from `state.promotions[i]` or any other field of the produced record.** The case runs at L2, where the record is produced by the pass under test; reading the expected strings off the record would green it even when the pass and the renderer drop the same field together — which is exactly the AC-3.2 failure an operator sees (a PR body citing nothing). Reading them from the input corpus makes it a relational oracle between input and output. It now claims **AT-Q13**, the erratum having landed, so §12.3's set equality counts it on both sides |
 | T-12 | **the proposal file** — AC-3.5's full inline diff plus the failure class recorded by name; AC-3.4's second clause | §7.9 `renderProposalFile` | `consolidationRoute.test.js`, re-bound: the two degradation classes in the register are **AT-Q6** (`branch-exists` — "fallback proposal file carries the full diff, the existing branch and any PR for it are named") and **AT-Q8** (`api-failure` — "the API's status text recorded verbatim; fallback proposal file carries the full diff; the pass does not halt"). AT-Q9 is **not** a degradation class (it is the deleted-branch trailer-survival case) and AT-Q11 is **not** about the file's existence condition (it is the two-run byte-identity of `DOMAIN-CONSTRAINTS.md`); both were mis-bound in an earlier draft. **FSPEC §5.3's "when, and only when" is now `AT-R7`, and the gap this row recorded is closed.** The register carried the positive direction through AT-Q6/AT-Q8 and asserted the *negative* nowhere — that a pass which enacts everything writes no proposal file. It was recorded as a gap and raised upstream rather than bound to an id that asserts something else; FSPEC v11.3 answered with **AT-R7** (`FSPEC-…:2106`, traced to AC-1.4 at `:2312`), whose three fixtures list `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` before and after the pass. **The case below is that id, not a duplicate**: `consolidationRoute.test.js` carries it as **AT-R7** — a pass whose every promotion is enacted (the PR merged, or every target written) writes **no** `CONSOLIDATION-PROPOSAL-{passId}.md`, and so does an all-suppressed `no-op` pass (AT-R7's fixture (b), which reaches "no cause" by the other route), asserted through the write double's recorded path set, with the positive control in the same case that a one-degraded-promotion fixture *does* write exactly one named for that `passId` — so the negative cannot pass on a fixture that wrote nothing at all. It claims **AT-R7**, so §12.3's set equality counts it on both sides. **AC-3.4 answered explicitly:** the file carries `state.prUrl` when a PR was also opened; when the pass enacts everything there is no proposal file (FSPEC §5.3's "when, and only when") and AC-3.4's second clause is **vacuous** — the URL lives in the terminal row's `pr:` field alone |
 | — | `renderTerminalRow`'s **dropped**-code arm (§6.4, §7.9) | §7.9 | `consolidationReport.test.js`, under **AT-L5** — its "no enumerated value without a §1 row" direction is exactly what the illegal fixture discharges, so this mints no new id and §12.3's set equality is undisturbed. The report-body **notice** naming the dropped code is a TSPEC-added observable with no register id, in the same class as T-13's row. Two fixtures over one code: one whose `(status, code)` pair is legal at `Version` 1.4 and appears in the row, one whose pair is illegal and is dropped — the drop is then *observed* against a control rather than assumed. The AT asserts the row's field set **and** the report body's notice naming the dropped code. `no-cadence-datum` is deliberately not that code: vocabularies §1 permits it with `refused`, and REQ-CONS-01 decides it at step 3/4 before the marker check, so the drop must never fire for it — which the same test asserts as its control |
-| T-13 | **await discipline across `finishPass`** (§10.1) — the three terminal steps are seam writes reached through module functions, so neither §11.3(c)'s identifier scan nor any sync-double suite can see a missing `await` | §10.1 | `consolidationLifecycle.test.js`: one case driving `asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` / `asAsync(fakeGit)` (§11.2) and asserting, **after `main()`'s promise resolves**, that (i) the terminal row is present in the log double's accumulated text and (ii) the marker is **released** — the write double's **last** recorded contents for `docs/_decisions/.consolidation-lock` are the empty released form §7.3 decides, having been the `IN-PROGRESS: {passId} …` line **earlier in the same double's recorded write history**. Conjunct (ii) is stated against that observable and not against "gone", because §7.3's release is an in-place `_writeFile` and no seam in this protocol removes a file. Its take-side precondition is load-bearing: a bare absence is equally true of a `refused` / `skipped-cadence` fixture or a take that never landed, so without it the AC-1.3 half passes vacuously. `asAsync` defers on a **macrotask** (§11.2): a microtask deferral is drained by the test's own `await main()` and would green both conjuncts on the broken implementation. Both conjuncts fail on a missing `await` inside `finishPass` and pass on an awaited one; this is the only row that distinguishes *written* from *scheduled*, so the PLAN task that writes it owes the mutation check §11.2 states (delete one `await`, expect RED) |
+| T-13 | **await discipline across `finishPass`** (§10.1) — the three terminal steps are seam writes reached through module functions, so neither §11.3(c)'s identifier scan nor any sync-double suite can see a missing `await` | §10.1 | `consolidationLifecycle.test.js`: one case driving `asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` / `asAsync(fakeGit)` (§11.2) and asserting, **after `main()`'s promise resolves**, that (i) the terminal row is present in the log double's accumulated text and (ii) the marker is **released** — the write double's **last** recorded contents for `docs/_decisions/.consolidation-lock` **match `RELEASED: {passId} {ISO-8601}`** (the sentinel §7.3 decides on FSPEC BR-14a, carrying this pass's own `passId`), having been the `IN-PROGRESS: {passId} …` line **earlier in the same double's recorded write history**. Conjunct (ii) is stated against that observable and not against "gone", because §7.3's release is an in-place `_writeFile` and no seam in this protocol removes a file. Its take-side precondition is load-bearing: a bare absence is equally true of a `refused` / `skipped-cadence` fixture or a take that never landed, so without it the AC-1.3 half passes vacuously. `asAsync` defers on a **macrotask** (§11.2): a microtask deferral is drained by the test's own `await main()` and would green both conjuncts on the broken implementation. Both conjuncts fail on a missing `await` inside `finishPass` and pass on an awaited one; this is the only row that distinguishes *written* from *scheduled*, so the PLAN task that writes it owes the mutation check §11.2 states (delete one `await`, expect RED) |
 | — | **an enumerated file whose body cannot be read** (§7.1, §10.4 class (ii)) — the decision mints three observables (it counts toward `\|un-consolidated\|`, it appears in the consumed pair, its basename is named in the report body) and no register AT reaches any of them: AT-P8 is the unreadable **log** file, not an unreadable LEARNINGS body | §7.1, §10.4 | `consolidationPass.test.js`, **(no FSPEC AT)** — **one fixture carrying both an unreadable and a readable corpus member**, so every conjunct has its control in the same case: the corpus enumerates two basenames, `_readFile` returns `null` for one and a body for the other, and the case asserts (1) `\|un-consolidated\|` counts **both** (the volume trigger fires on the same count it would with two readable members — a count that silently drops the unreadable one makes the trigger fire late and nothing else reds); (2) the consumed pair rendered by `renderConsumedPair` contains **both** basenames (the convergence argument §7.1 rests on: an implementation that drops the unreadable one from the pair passes every other row in this table and re-offers the file on every subsequent pass forever); (3) the report body **names the unreadable basename** as an entry the pass could not read, and does **not** name the readable one in that list. Stated as a pair rather than as an absence throughout — the readable member is the control that keeps (1) and (3) from passing on a fixture where nothing was readable |
 | — | **the ER-6 interim's discriminator** (§7.6, §12.4) — a *routed* propose-only promotion and a *degraded* PR attempt both write `route: "degraded"`, so the report body is the only thing that tells them apart until ER-6 lands | §7.6, §7.9 item 4 | `consolidationReport.test.js`, **(no FSPEC AT)** — the two-fixture control: a `revise` on a `DOMAIN-CONSTRAINTS.md` target (routed propose-only, §7.6 table row 2) and a `branch-exists` degradation. Asserts the *sameness* that is the ER-6 loss (`route: "degraded"` in both records, asserted rather than hidden) **and** the *difference* that stands in for it (the degraded body names a vocabularies §1 reason code, the routed body names none), in both directions. It claims no register id, in the same class as T-13's row and the dropped-code notice, so §12.3's set equality is undisturbed. Recorded here because §12.4 leans on it as a mechanism, and a mechanism that lives only in §7.6's prose is one a PLAN task will not know it owes |
-| — | **an empty marker resolves `free`** (§7.3 decision 2, §10.3 row 4a) — the decision that `present` is `_checkFile(...).ok === true` and is **never** derived from `_readFile(...) !== null`. Until this row the decision was argued and not falsifiable: every marker fixture §12 specifies (AT-M1 fresh, AT-M2 stale, AT-M3 unparseable-non-empty, AT-M4/AT-M6 absent, T-13 and the release row absent) gives both implementations the same verdict, because the two diverge on exactly one input — a marker file that exists and is empty — and no case constructed one. That input is not exotic: §7.3's release form makes the zero-byte marker **permanent**, so it is the steady state of every consuming repo from its first pass onward, and the forbidden derivation would record `reclaimed-stale-lock` on **every** pass after the first | §7.3 decision 2, §10.3 row 4a, §12.1 CONS-03 | `consolidationPass.test.js`, **(no FSPEC AT)** — a conjunct on the marker case this file already owns, not a new case and not a new observable: **one fixture whose `docs/_decisions/.consolidation-lock` is `""`** asserts (i) the terminal status is a normal one, **not** `refused`, and (ii) `reclaimed-stale-lock` is **absent** from the pass's reasons — asserted **in the same case, paired against AT-M3's non-empty unparseable fixture, which *does* record it**, so neither conjunct is an absence-only oracle and neither can pass on a fixture where no marker logic ran at all. `fakeFs` already supports the input unchanged: an own property whose value trims to `""` returns `{ok:false, reason:"file_empty"}` (`__tests__/helpers/seams.js:296-299`) and `_readFile` returns `""` for it — which is precisely what makes the pair discriminate, since the forbidden derivation reads that `""` as present-and-unparseable and sends both fixtures down the `reclaim` arm. It claims **no** register id, in the same class as T-13's row, so §12.3's set equality is undisturbed. This subsumes the call-order oracle §7.3 declines to mint: it falsifies the forbidden derivation by **behaviour** rather than by call shape, which is the stronger form — §7.3's `["check", "read", "write", "read"]` prefix survives as authoring guidance only, and no §12 row obliges it |
-| — | **release across the whole terminal-status set** (§7.3, FSPEC §4.3). `releaseMarker` became a named function with a decided observable in this document, and no register AT walks the set: FSPEC §4.3's table is a **six-member closed enumeration** (`FSPEC-…:458-465`) stating, per status, whether the marker was taken and whether this pass releases it — `promoted`, `promoted-degraded`, `no-op`, `failed` ⇒ taken **and** released at step 16; `refused` and `skipped-cadence` ⇒ **neither** (BR-15 `FSPEC-…:2502` restates the positive half). **Which `refused` this table keys on is stated, because there are two arms and they disagree**: the modelled one is the observed-fresh-marker refusal (§10.3 row 5, AT-M1), which takes nothing and releases nothing; §10.3 row 5a's **failed-take** `refused` wrote its `IN-PROGRESS` line and correctly releases nothing, so its observed pair is `{taken: true, released: false}` and it is row 5a's own obligation, not this table's. Keying on the status alone without that clause makes the row red on correct code for an implementer who reaches for the row-5a fixture. AT-M4 and AT-M6 each assert release on **one** `failed` fixture, which is containment, not the set | §7.3, §10.1, §12.1 CONS-03 | `consolidationLifecycle.test.js`, **(no FSPEC AT)** — one case per terminal status over a table **keyed on the module's own frozen catalogue** — §6.4's `TERMINAL_STATUSES` (`Object.freeze([...])`, a runtime value), **not a literal list retyped in the test** and not §6.1's `TerminalStatus`, which is a `ts`-fence type with no runtime existence in these plain ES modules. Ranging over a constant of the module under test would ordinarily be an implementation echo; it is legitimate here **only because §11.3(b) independently pins that catalogue** — its fourth leg asserts three-way set equality (module catalogue ≡ the doubles' literal transcription ≡ `docs/_constraints/pdlc-consolidation-vocabularies.md` §1's table, both directions, plus the `Version` 1.4 pin), so a maintainer who deletes a status from the catalogue reds there before this table can shrink with it. Cite that chain when writing the case. It asserts for each the pair `{taken?, released?}` against the write double's recorded write history for `docs/_decisions/.consolidation-lock`: `taken` iff the `IN-PROGRESS: {passId} …` line was written at some point, `released` iff the **last** recorded contents are the empty form §7.3 decides. The oracle is **set equality over the catalogue**, not containment: the table's key set is asserted set-equal to `TERMINAL_STATUSES`, so deleting a status arm reds rather than passing on the survivors — which is the whole point, since the arm most likely to be dropped is `failed`, the only one reached from step 8 rather than step 14. The operator-visible failure this row exists to catch is AC-1.3's: a marker left behind blocks every later pass until `staleLockMinutes` elapses. It claims **no** register id (§12.3's set equality is undisturbed), and its two negative rows are stated against a positive control in the same table — `refused` and `skipped-cadence` must show **neither** write, which cannot pass vacuously because the four positive rows in the same table show both |
+| — | **three marker observations, three outcomes** (§7.3 decision 2, §10.3 row 4) — the decision that `present` reads `file_missing` **alone** as absent, so an **empty** marker is a *truncated* one and reclaims (**E-11**) while a **`RELEASED:`** marker is *free* and records nothing at any age (**E-11b**). This row was written when §7.3 decided the empty released form, and it then asserted the opposite of what it asserts now — an empty marker resolving `free` — as a local `(no FSPEC AT)` case, because under that form the zero-byte marker was the steady state of every consuming repo and no register id reached it. **FSPEC v11.3's BR-14a settled the release form as the `RELEASED:` sentinel and the register now covers both arms itself**, so the local case is retired into the ids rather than written twice; the decision it guarded is unchanged in substance — the presence probe, not the read, decides the absent arm | §7.3 decision 2, §10.3 row 4, §12.1 CONS-03 | `consolidationPass.test.js` — **one case holding the discriminating fixtures together**, because the pairing *is* the oracle: `""` ⇒ a normal terminal status (**not** `refused`) **and** `reclaimed-stale-lock` recorded with the abandoned id `unknown` (**AT-M3** fixture (a)); a line that is neither `IN-PROGRESS:` nor `RELEASED:` ⇒ the same (**AT-M3** fixture (b)); `RELEASED: {passId} {ISO-8601}` at **both** ages ⇒ taken, a normal terminal status, and **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress` (**AT-M11**). So neither the positive nor the negative is an absence-only assertion and neither can pass on a fixture where no marker logic ran at all: an implementation that reclaims on every take fails AT-M11, one that never reclaims fails AT-M3. `fakeFs` supports every input unchanged — an own property whose value trims to `""` returns `{ok:false, reason:"file_empty"}` (`__tests__/helpers/seams.js:296-299`) and `_readFile` returns `""` for it, which is exactly the present-but-unparseable state decision 2 routes to `reclaim`. It claims **AT-M3** and **AT-M11**, both already assigned to this file by §12.3, so that table's set equality is undisturbed. This subsumes the call-order oracle §7.3 declines to mint: it falsifies a wrong verdict by **behaviour** rather than by call shape, which is the stronger form — §7.3's `["check", "read", "write", "read"]` prefix survives as authoring guidance only, and no §12 row obliges it |
+| — | **release across the whole terminal-status set** (§7.3, FSPEC §4.3). `releaseMarker` became a named function with a decided observable in this document, and no register AT walks the set: FSPEC §4.3's table is a **six-member closed enumeration** (`FSPEC-…:458-465`) stating, per status, whether the marker was taken and whether this pass releases it — `promoted`, `promoted-degraded`, `no-op`, `failed` ⇒ taken **and** released at step 16; `refused` and `skipped-cadence` ⇒ **neither** (BR-15 `FSPEC-…:2502` restates the positive half). **Which `refused` this table keys on is stated, because there are two arms and they disagree**: the modelled one is the observed-fresh-marker refusal (§10.3 row 5, AT-M1), which takes nothing and releases nothing; §10.3 row 5a's **failed-take** `refused` wrote its `IN-PROGRESS` line and correctly releases nothing, so its observed pair is `{taken: true, released: false}` and it is row 5a's own obligation, not this table's. Keying on the status alone without that clause makes the row red on correct code for an implementer who reaches for the row-5a fixture. AT-M4 and AT-M6 each assert release on **one** `failed` fixture, which is containment, not the set | §7.3, §10.1, §12.1 CONS-03 | `consolidationLifecycle.test.js`, **(no FSPEC AT)** — one case per terminal status over a table **keyed on the module's own frozen catalogue** — §6.4's `TERMINAL_STATUSES` (`Object.freeze([...])`, a runtime value), **not a literal list retyped in the test** and not §6.1's `TerminalStatus`, which is a `ts`-fence type with no runtime existence in these plain ES modules. Ranging over a constant of the module under test would ordinarily be an implementation echo; it is legitimate here **only because §11.3(b) independently pins that catalogue** — its fourth leg asserts three-way set equality (module catalogue ≡ the doubles' literal transcription ≡ `docs/_constraints/pdlc-consolidation-vocabularies.md` §1's table, both directions, plus the `Version` 1.4 pin), so a maintainer who deletes a status from the catalogue reds there before this table can shrink with it. Cite that chain when writing the case. It asserts for each the pair `{taken?, released?}` against the write double's recorded write history for `docs/_decisions/.consolidation-lock`: `taken` iff the `IN-PROGRESS: {passId} …` line was written at some point, `released` iff the **last** recorded contents match `RELEASED: {passId} {ISO-8601}`, the sentinel §7.3 decides. The oracle is **set equality over the catalogue**, not containment: the table's key set is asserted set-equal to `TERMINAL_STATUSES`, so deleting a status arm reds rather than passing on the survivors — which is the whole point, since the arm most likely to be dropped is `failed`, the only one reached from step 8 rather than step 14. The operator-visible failure this row exists to catch is AC-1.3's: a marker left behind blocks every later pass until `staleLockMinutes` elapses. It claims **no** register id (§12.3's set equality is undisturbed), and its two negative rows are stated against a positive control in the same table — `refused` and `skipped-cadence` must show **neither** write, which cannot pass vacuously because the four positive rows in the same table show both |
 | — | **the composition root actually hands over §5.1's protocol** (§5.1, §5.3, §5.5, §8.2). `rtConsInjections()` is named in §3's file-touch table, §5.1, §8.2 and §13.2's PLAN list, and until this row nothing asserted its **contents**. The failure it guards is not hypothetical: this repo shipped an adapter function that existed and was never wired, and `runtime-adapter.js:1098-1100` says so in its own words. `_checkFile` is the member whose omission is silent — §5.5 argues why an unwired presence probe can read as "no marker present" and turn AC-1.3's mutual exclusion off in production while every L2 fixture stays green, because the `refused` path is exercised only through `fakeFs` | §5.1, §5.5, §8.2 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the **key set of `rtConsInjections()` asserted set-equal to §5.1's declared seam names**, minus the members §5.6 excludes by name (`_now`, which is a module-level default and not a seam). **Set equality, not containment**: containment is exactly the assertion that would still pass with `_checkFile` missing, which is the failure. `adapterProbe.test.js:253-258` ("wires all three into `rtDevInjections`") is the shape; it is widened from per-name identity to an equality here because §5.1 is an enumerated contract and a *surplus* key is as much a drift signal as a missing one. It claims no register id |
 | — | **the two `SKILL.md` production edits** (§3.2 rows 6 and 7). `pdlc/skills/consolidate-learnings/SKILL.md` and `pdlc/skills/harvest-learnings/SKILL.md` are shipped prompt files this feature edits — the block/legacy predicate and the `{topic} = failure-mode-id` route on one, the `Phases exercised` metadata row and the `failure-mode-id` Open-Items line on the other — and until this row **no test named either file**. The shipped `__tests__/skillFiles.test.js` covers only `se-review`, `te-review` and `pm-review` (`:13-17`, a three-member `reviewSkills` literal), so both edits would ship with no oracle: a later prompt rewrite could drop the `failure-mode-id` route and every suite in the repo would stay green while §5.2's derivation silently lost the topic it keys on | §3.2, FSPEC §3.2, §5.2, §8.3, §8.4 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3 source text, in the shape §11.3(e) establishes for `rtWriteFile`'s prompt: four verbatim conjuncts, two per file, each **located by the surrounding named heading and never by line index** (these files are edited by hand and line numbers drift). The conjuncts are the strings the FSPEC obliges, not paraphrases of them, and each is asserted to occur **exactly once** so a "harmonising" second copy reds too. It lives in this feature's own suite rather than as a fourth member of `skillFiles.test.js`'s `reviewSkills` list because these are **authoring** skills, not review skills, and that list's every existing assertion is about `VERDICT` trailers these two files do not and must not carry — widening it would force a per-member conditional, which is the shape §11.1 keeps out of shipped suites. It claims no register id, so §12.3's set equality is undisturbed |
-| — | **`CLAUDE.md`'s tracked-artifact enumeration** (§3.2's `CLAUDE.md` row, §8.3). The repo's own onboarding document enumerates the generated runtime artifacts and then counts them in prose; the count is already wrong at HEAD (three bullets, four tracked paths, `pdlc-cli.mjs` missing) and this feature adds a fifth. A prose count no test reads is a document that drifts once per artifact, forever | §3.2, §8.3 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the artifact paths `CLAUDE.md` enumerates under the build-runtime paragraph, parsed from its own source text, asserted **set-equal** to the artifact ids in `pdlc/workflows/dist/distribution-manifest.json`. Set equality in both directions — a manifest row with no bullet is the drift that already happened, a bullet with no manifest row is a deleted artifact left advertised. Both are read at run time from the tracked files, so nothing here is a transcription that can itself go stale. The same case carries §11.3(c)'s third-axis falsifier — `runtimeBundle.test.js`'s `BUNDLES` constant, read from that file's source text, set-equal to the manifest's `.bundle.js` ids — because both are the same question (does the repo's own bookkeeping still name every shipped artifact?) held against the same authority, and splitting them across two files would duplicate the manifest parser. The prose count itself is **not** asserted: §3.2's edit removes it in favour of a count-free sentence, precisely so there is no number left for a test to pin. It claims no register id |
+| — | **`CLAUDE.md`'s tracked-artifact enumeration** (§3.2's `CLAUDE.md` row, §8.3). The repo's own onboarding document enumerates the generated runtime artifacts and then counts them in prose; the count is already wrong at HEAD (three bullets, four tracked paths, `pdlc-cli.mjs` missing) and this feature adds a fifth. A prose count no test reads is a document that drifts once per artifact, forever | §3.2, §8.3 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the artifact paths `CLAUDE.md` enumerates under the build-runtime paragraph, parsed from its own source text, **minus `pdlc/workflows/dist/distribution-manifest.json` itself**, asserted **set-equal** to the manifest's own `rows[]`, each row's `pluginPath` read as the repo-relative path (`pdlc/` + `workflows/dist/…`). **The exclusion is named rather than absorbed, in the shape the `BUNDLES` half of this same case already uses for its own** (`.mjs`, not `.bundle.js`): the manifest is the *authority* this oracle reads and carries **no row for itself** — verified at HEAD, where `rows[].id` is exactly `orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` — while the enumeration must keep advertising it as a shipped artifact. Without the exclusion the two sets are structurally unequal and the case is red on correct code. It stays **set equality, never containment**, in both directions — a manifest row with no bullet is the drift that already happened (`pdlc-cli.mjs`, tracked and stamped and unadvertised, which containment would pass), a bullet with no manifest row is a deleted artifact left advertised. Both are read at run time from the tracked files, so nothing here is a transcription that can itself go stale. The same case carries §11.3(c)'s third-axis falsifier — `runtimeBundle.test.js`'s `BUNDLES` constant, read from that file's source text, set-equal to the manifest's `.bundle.js` ids — because both are the same question (does the repo's own bookkeeping still name every shipped artifact?) held against the same authority, and splitting them across two files would duplicate the manifest parser. The prose count itself is **not** asserted: §3.2's edit removes it in favour of a count-free sentence, precisely so there is no number left for a test to pin. It claims no register id |
 
 **Why the Falsified-by column quotes rather than paraphrases.** Every AT named above is described in
 the register's own words, taken from `FSPEC-…:2064-2077`, because §12.3's
@@ -2414,14 +2460,17 @@ the landing rather than being quietly deleted, because the round trip (gap named
 → id minted upstream → interim case re-labelled) is the evidence that naming a gap is a working
 channel and not a shipping licence.
 
-**A named gap is not a licence to ship uncovered, and this table no longer treats it as one.** Both
+**A named gap was not a licence to ship uncovered, and this table did not treat it as one.** Both
 register gaps above describe things an operator reads directly — the PR body an approver reviews, and
-the absence of a proposal file when nothing needed proposing — so each now carries a **(no FSPEC AT)**
-case in the file that owns its subject, in exactly the shape T-13 and the dropped-code notice
-established. The erratum and the local case are complementary, not alternatives: the erratum asks the
-FSPEC to decide whether the register should carry an id, and the local case makes the obligation
-falsifiable in the meantime. Rows carrying no id contribute to neither side of §12.3's set equality,
-so adding them cannot perturb it.
+the absence of a proposal file when nothing needed proposing — so while the erratum was outstanding
+each **was** covered by a **(no FSPEC AT)** case in the file that owns its subject, in exactly the
+shape T-13 and the dropped-code notice established. Both errata have since landed — `AT-Q13` and
+`AT-R7` — and those two cases now carry their ids rather than being written twice, so no
+`(no FSPEC AT)` case remains for either. The erratum and the local case were complementary, not
+alternatives: the erratum asked the FSPEC to decide whether the register should carry an id, and the
+local case made the obligation falsifiable in the meantime. Rows carrying no id contribute to neither
+side of §12.3's set equality, so adding them could not perturb it — which is why the interim was
+affordable.
 
 ### 12.3 Acceptance test → level and file
 
@@ -2443,7 +2492,7 @@ falsifies if it drifts again. Every register id has exactly one file below:
 
 | File | Level | ATs owned (exhaustive) |
 |---|---|---|
-| `consolidationPass.test.js` | L2 | AT-C1, **AT-C1b**, AT-C2, AT-C3, AT-C4, AT-C5, AT-C6, AT-C7, AT-C8, AT-M1, AT-M2, AT-M3, AT-M4, AT-M5, AT-M6, AT-M6b, AT-M9, **AT-M11**. Plus **(no FSPEC AT)** the unreadable-corpus-entry case §12.2 records — §7.1's three observables (counted, in the consumed pair, named in the report body) against a readable control. It lives here because its subject is the pass's own corpus handling end-to-end, which is this file's. **AT-M3 is owned here but is only partly satisfiable at this layer**: its *Given* is "truncated **or** unparseable marker file", and §7.3's release form makes the truncated (zero-byte) arm unreachable — that state resolves `free`, not `reclaim` (§10.3 row 4a). The case written here asserts the **unparseable-but-non-empty** arm, which does behave as the register requires; the truncated arm is the erratum §7.3/§13.3 raise against FSPEC §4.2/E-11/AT-M3, and a test written to the register's full *Given* would be red on correct code. The id stays assigned to this file so §12.3's set equality is undisturbed, and the partial coverage is stated here rather than implied by the assignment. **The AT-M3 case additionally carries §12.2's empty-marker conjunct** — the `""`-marker fixture asserting a normal terminal status and no `reclaimed-stale-lock`, paired against AT-M3's own non-empty unparseable fixture, which does record it. It sits in this case rather than in one of its own precisely because the pairing is the oracle: the two fixtures must be compared inside one case, and the non-empty half is already here. It mints no id and no new file, so this row's assignment set is unchanged. **AT-M11 is owned here because it is AT-M3's paired negative** — a marker in the *released* state, in two fixtures (written seconds ago, and older than `staleLockMinutes`), must be taken with **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress`, at either age. It is the sole register oracle for AC-1.3's negative half: without it an implementation that records `reclaimed-stale-lock` on every take passes AT-M1 through AT-M6b. It belongs beside AT-M3 rather than in a file of its own precisely because the pairing is the oracle, which is the same argument the empty-marker conjunct above makes. **One divergence is recorded rather than settled here**: AT-M11's fixtures spell the released state as the `RELEASED: {passId} {ISO-8601}` sentinel FSPEC §4.1 now decides, while §7.3 of this document decides the **empty** released form (the string `RELEASED` occurs nowhere in this TSPEC). The two cannot both be the release form, and the choice is the FSPEC's to make, not this layer's — so it is raised as an erratum against FSPEC §4.1/§4.2 alongside the AT-M3 raise above, and §7.3 is left as approved. The id stays assigned either way, since §12.3's set equality is over ids and is indifferent to which spelling the fixture carries |
+| `consolidationPass.test.js` | L2 | AT-C1, **AT-C1b**, AT-C2, AT-C3, AT-C4, AT-C5, AT-C6, AT-C7, AT-C8, AT-M1, AT-M2, AT-M3, AT-M4, AT-M5, AT-M6, AT-M6b, AT-M9, **AT-M11**. Plus **(no FSPEC AT)** the unreadable-corpus-entry case §12.2 records — §7.1's three observables (counted, in the consumed pair, named in the report body) against a readable control. It lives here because its subject is the pass's own corpus handling end-to-end, which is this file's. **AT-M3 is owned here and is fully satisfiable at this layer**: its two fixtures — (a) the marker that is present but **empty**, and (b) the marker carrying a line that is neither `IN-PROGRESS:` nor `RELEASED:` — both reclaim, and both record `reclaimed-stale-lock` with the abandoned id `unknown` (§10.3 row 4). Fixture (a) is reachable precisely because FSPEC §4.1's **BR-14a** releases by writing a `RELEASED:` sentinel rather than by truncating, which §7.3 adopts, and **E-11** says so in the register's own terms. An earlier revision of this document decided the empty released form, which made that arm unreachable, and disclosed the partial coverage here rather than implying coverage it did not have; **that disclosure is withdrawn**, the FSPEC having decided the release form at v11.3. **The AT-M3 case is written together with AT-M11** (§12.2's marker row), because the pairing is the oracle: fixture (a) must be compared inside one case against a `RELEASED:` fixture that does *not* reclaim, or an implementation that reclaims on every take passes it. It mints no id and no new file, so this row's assignment set is unchanged. **AT-M11 is owned here because it is AT-M3's paired negative** — a marker in the *released* state, in two fixtures (written seconds ago, and older than `staleLockMinutes`), must be taken with **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress`, at either age. It is the sole register oracle for AC-1.3's negative half: without it an implementation that records `reclaimed-stale-lock` on every take passes AT-M1 through AT-M6b. It belongs beside AT-M3 rather than in a file of its own precisely because the pairing is the oracle, which is the same argument fixture (a) above makes. **No divergence remains to record here**: AT-M11's fixtures spell the released state as the `RELEASED: {passId} {ISO-8601}` sentinel FSPEC §4.1 decides, and §7.3 now decides **the same form** (BR-14a; E-11b gives it its outcome — free at any age, no reason code), so both fixtures pass against this layer's own mechanism rather than against a spelling it does not use. The erratum an earlier revision raised from this cell is **withdrawn**: the FSPEC answered the question at v11.3, and the correct action on a settled upstream question is to absorb the decision, not to route it again |
 | `consolidationRung.test.js` | L2 | AT-M7, AT-M8, AT-M10 (AT-M10 is a regression over the shipped call site and lives beside the existing `advisoryRung.test.js` assertions) |
 | `consolidationPredicate.test.js` | L1 | **AT-P1** — whose first conjunct *is* §7.1's pin (a), the literal-argv assertion over the `_git` double — AT-P2, AT-P3, AT-P4, AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11 |
 | `consolidationHookParity.test.js` | L4 (+ L3) | AT-P7. Plus two **(no FSPEC AT)** cases: (1) §7.1's **pin (b)** — an L3 source-text read asserting the hook's `CORPUS_GLOBS` declaration carries exactly the two glob-pattern literals and no third (located by name, not by line index); (2) an L4 pathspec-semantics case running pin (a)'s exact argv through a real `git` in a temp repository the case builds (§11.1). Both live here because their subject is the two implementations' relationship, which is this file's. §7.1's **pin (a)** does **not** live here — it is AT-P1's L1 argv conjunct in `consolidationPredicate.test.js`, one row above |
@@ -2536,7 +2585,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 10 | Enumerate the corpus with one `_git(["ls-files", …])` read, `:(glob)`-anchored | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:915`, `:929-931`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
 | 11 | Widen **`rtWriteFile` alone** to accept an absolute path, and leave `rtReadFile` untouched | (a) route the clone's writes through `_git`; (b) widen both prompts "for symmetry", as an earlier draft of §5.6(a) proposed | (a) git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index` — three mutating calls in the clone domain to replace one path argument. (b) was withdrawn on measurement, not taste: `rtReadFile` carries **no** path-resolution clause to widen — the string "relative to the repository root" occurs exactly once in `runtime-adapter.js`, at `:805` inside `rtWriteFile` — and its shell-command transport already resolves an absolute path verbatim (§5.6(a)). Widening it would have been a prompt edit to a shipped seam every pipeline phase reads through, with no behavioural motive, purely so §11.3(e) had a second thing to match |
 | 12 | Add an env-gated `PDLC_PENDING:` stderr line to the hook | keep the count-above-threshold message as AT-P7's oracle | the shipped hook emits a count and only above `THRESHOLD = 5`, which is blind on every fixture that discriminates the two-region predicate — so T-08's "held equal by a differential test" would not be true (§7.1). **Still worth the shipped-hook edit after row 6's narrowing**, and the question was asked directly: a predicate differential is not a consolation prize for the enumeration equality — the two-region predicate is where every edge case the FSPEC enumerates lives (E-04, E-05, E-09, the region boundary), and it is the half a maintainer will actually change. Extracting the predicate into a third shared artifact (row 6's rejected alternative (a)) remains more expensive than one env-gated stderr line in a script CI already `bash -n`s, and it would still leave the enumeration pair exactly where it is |
-| 13 | **Release is `_writeFile(markerPath, "")` and `present` is `_checkFile(...).ok === true`, so an empty marker is absent** (§7.3) | (a) preserve FSPEC §4.2's fourth row by treating an empty marker as `reclaim`; (b) derive `present` from `_readFile(...) !== null`; (c) add a removal seam so release deletes the file | (a) and (b) are the same bug from two ends: a released marker *is* an empty file, so either one records `reclaimed-stale-lock` on **every** steady-state pass after the first — a louder and far more frequent falsehood than the truncated-marker case it preserves. (c) is a new agent-transported mutation verb (no adapter ships an unlink — `rtWriteFile` `:802`, `rtAppendFile` `:863`, `rtListFiles` `:905`, `rtGit` `:945`) whose failure mode is deleting a lock another pass holds; AC-1.3 also settles the shape upstream as "in-place rewrites of a whole small file" (`REQ-…:155-156`). The accepted cost is stated, not absorbed: FSPEC §4.2's `empty (truncated write)` arm becomes unreachable and is raised as an erratum (§7.3, §10.3 row 4a, §13.3) |
+| 13 | **Release is an in-place `_writeFile` of `RELEASED: {passId} {ISO-8601}`, and `present` reads `file_missing` *alone* as absent, so an empty marker is a truncated one** (§7.3, FSPEC **BR-14a**) | (a) release by truncating to `""`, with `file_empty ≡ absent`; (b) derive `present` from `_readFile(...) !== null`; (c) add a removal seam so release deletes the file | (a) was this document's own decision through v1.8 and is **withdrawn on the FSPEC's answer, not on taste**: under it a released marker and one truncated mid-take are the same observed state, so E-11's empty arm is unreachable and the choice is between a log that loses every pass which died inside its own take and one that records `reclaimed-stale-lock` on every steady-state pass. FSPEC v11.3 decided that trade — BR-14a fixes the sentinel, E-11b makes a `RELEASED:` marker free at any age, E-11 makes the empty arm mean *truncated* — and the sentinel needs **no unlink**, so §7.3's load-bearing premise ("no seam can remove a file") is satisfied unchanged rather than contradicted. (b) cannot name the one probe reason that decides the absent arm (`file_missing`) and conflates a missing file with an unreadable one. (c) is a new agent-transported mutation verb (no adapter ships an unlink — `rtWriteFile` `:802`, `rtAppendFile` `:863`, `rtListFiles` `:905`, `rtGit` `:945`) whose failure mode is deleting a lock another pass holds; AC-1.3 also settles the shape upstream as "in-place rewrites of a whole small file" (`REQ-…:155-156`). **No cost is carried upstream**: FSPEC §4.2's fourth row, E-11 and AT-M3 are satisfiable in full at this layer (§10.3 row 4), and AT-M11 passes against this document's own mechanism |
 
 Rows 1, 2, 4, 5, 6, 11 and 13 are load-bearing and reversible only at cost; §13.3 records that
 DECISIONS is warranted for them. Row 6's decision is now **conditional on row 12**: without the hook's
@@ -2557,9 +2606,9 @@ re-argued on what a count-above-threshold comparison can supply.
 - **DECISIONS** — warranted. §13.1 rows 1 (credential seam shape), 2 (resolver reuse vs. restate),
   4 (clone source), 5 (non-atomic marker take), 6 (two predicate implementations, with the
   predicate/enumeration split named), 11 (widening **`rtWriteFile` alone**, rather than routing
-  clone writes through git or widening both prompts for symmetry) and 13 (release as an empty write
-  with `file_empty ≡ absent`, over preserving FSPEC §4.2's empty-reclaim arm or minting a removal
-  seam) each weighed a real
+  clone writes through git or widening both prompts for symmetry) and 13 (release as an in-place
+  write of FSPEC BR-14a's `RELEASED:` sentinel, with `file_missing` alone read as absent, over
+  truncating to `""` or minting a removal seam) each weighed a real
   alternative with a different reversibility profile, and each will otherwise be reconsidered
   confidently by a future agent. Each needs a `Testability:` line per DC-10.
 - **PLAN** — the file-ownership manifest must serialise the three writers of
@@ -2585,27 +2634,28 @@ re-argued on what a count-above-threshold comparison can supply.
   `consolidationBuild.test.js` owes a fourth, §12.2's `rtConsInjections()` ↔ §5.1 set equality. Each
   file stays a **single** task per batch-safety rule 2; the build file's new case is an edge from the
   `runtime-adapter.js` task of (i), since it reads the object that task creates. (vi) `consolidationPass.test.js`'s
-  marker case gains §12.2's empty-marker conjunct (the `""` fixture paired against AT-M3's non-empty
-  unparseable one). It adds **no** file and **no** task — it is a conjunct inside a case that file's
-  single owning task already writes — so the ownership manifest is unchanged; it is recorded here only
-  so the task's Definition of Done names it and a PLAN reader does not read §10.3 row 4a as unowned.
-- **Upstream (FSPEC) — the marker's removal verb and the empty-marker arm.** §7.3 raises one erratum
-  against FSPEC §4.1/§4.2, and it is a product judgement rather than a technical one. §4.1's lifetime
-  row says the marker is "**Removed** at step 16" (`FSPEC-…:415`), which no declared seam can do —
-  the adapter ships no unlink of any kind — so release is an in-place write of `""` and the file is
-  permanently present-and-empty. §4.2's fourth row then assigns "unparseable **or empty (truncated
-  write)**" the outcome "reclaimed, recording `reclaimed-stale-lock` with the abandoned id `unknown`"
-  (`:442`), bound again by E-11 (`:2594`) and by AT-M3's *Given* (`:2038`); the empty half of that row
-  is unreachable under the release form, because a released marker and a truncated one are the same
-  observed state. The question the FSPEC owns is **what the durable log must witness when a pass dies
-  mid-take**: today's rule makes the next pass record `reclaimed-stale-lock`, which is the only signal
-  an operator gets that a pass died; the shipped behaviour lets the next pass proceed silently. Both
-  are defensible — a truncated marker is weak evidence of anything actionable — but the choice belongs
-  to the REQ/FSPEC author and not to the adapter's verb set. Until it is answered, §10.3 rows 4/4a
-  state both arms, §12.3 states which arm of AT-M3 is satisfiable, and no test is written to the
-  unreachable half. Accepted residue if the narrowing stands: one class of pass death that leaves no
-  log trace, and one permanent zero-byte `docs/_decisions/.consolidation-lock` per consuming repo —
-  `.gitignore`d by §3.3, so invisible to every git-mediated surface.
+  marker case carries **AT-M3's two fixtures and AT-M11's two in one case** (§12.2's marker row): the
+  `""` and the neither-verb fixtures reclaim, the two `RELEASED:` fixtures do not, at either age. It
+  adds **no** file and **no** task — it is one case that file's single owning task already writes —
+  so the ownership manifest is unchanged; it is recorded here only so the task's Definition of Done
+  names the pairing and a PLAN reader does not read §10.3 row 4 as covered by half a case.
+- **Upstream (FSPEC) — the marker's removal verb and the empty-marker arm: decided upstream,
+  absorbed here, nothing handed on.** This bullet previously handed the PLAN an open question. It is
+  **closed**, and the closure is the FSPEC's: **BR-14a** decides that the marker is released by an
+  in-place write of `RELEASED: {passId} {ISO-8601}` and never by removing the file, which no seam can
+  do; **E-11b** decides that a `RELEASED:` marker is taken like an absent one at any age, recording no
+  reason code; and **E-11** decides the empty marker — reachable exactly *because* release writes a
+  sentinel rather than truncating — as reclaimed, recording `reclaimed-stale-lock` with the abandoned
+  id `unknown`, which is the FSPEC's answer to the product question this bullet used to carry (*must
+  the durable log witness a pass that died inside its own take?* — **yes**). §7.3 adopts all three:
+  release writes the sentinel, `present` reads `file_missing` alone as absent, §10.3 row 4 states the
+  single reclaim arm the register describes, and §12.3 assigns AT-M3 and AT-M11 with no divergence and
+  no partial-coverage disclosure. **No erratum is raised against FSPEC §4.1/§4.2 from this document**,
+  and none should be re-raised downstream: the question is settled, and a PLAN task written against
+  the empty release form would be written against the losing side. Residue, stated once and small: one
+  permanent `docs/_decisions/.consolidation-lock` per consuming repo carrying the last pass's
+  `RELEASED:` line — `.gitignore`d by §3.3, so invisible to every git-mediated surface — and a
+  zero-byte file at that path is now a *signal* (a pass died mid-write) rather than the steady state.
 - **Upstream (REQ and FSPEC) — the enumeration relaxation, raised rather than absorbed.** REQ §3.1
   step 1 closes with "Widening makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one
   enumeration as well as one predicate" (`REQ-…:115-116`), and FSPEC AT-P7's *When* is "**both the

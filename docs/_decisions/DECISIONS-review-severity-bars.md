@@ -82,3 +82,19 @@ to the concealment, never to the collision.
 **What this does not do.** The decision itself remains reviewable on its merits at full severity,
 and the erratum channel is not weakened — this rule is its enforcement mechanism, since the only
 way to earn the demotion is to use it.
+
+---
+
+## DEC-ERR-01: A collision whose upstream has already decided is absorbed, not routed
+
+**Context.** Recorded per `POSTMORTEM-P-pdlc-consolidation-agent.md` Recommendation step 4, which
+names the gap in DEC-SEV-03: the TSPEC kept routing the marker-release question upstream after
+FSPEC v11.3's erratum round had decided it (BR-14a, E-11b), so the hand-off section carried a
+false "still open" statement that the PLAN's task was authored against.
+
+**Decision.** DEC-SEV-03's demotion applies **only while the upstream question is open**. Before
+routing a collision, the raising document must re-read the upstream artifact **at HEAD**; if the
+upstream has decided the question, the correct action is to **absorb the decision** — restate
+this layer's mechanism on the decided form and delete the raise. Routing a settled question is
+**not** a demoted finding: it is a false statement in a hand-off section, and it is scored on
+what it costs downstream (High when a downstream task is authored against the losing side).

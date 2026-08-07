@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 1.0 | 2026-08-06 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -562,3 +562,61 @@ Two candidates for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at the
 `consolidate-learnings` pass: `DEC-ERR-01` (step 4) and the upstream re-grounding step (step 5).
 Note the reflexivity for whoever harvests this — the feature being specified *is* a consolidation
 agent, and this postmortem is a worked example of the input it will be asked to distil.
+
+## Resolution (2026-08-06)
+
+The Recommendation was carried out in full by the outer orchestrator, with an implementing agent
+(Opus) and an independent adversarial verifier (Opus), both judging file text at HEAD.
+
+**Step 1 — the sentinel, adopted (closes F-01 + F-02).** TSPEC v2.0: §7.3's release is the
+in-place `RELEASED: {passId} {ISO-8601}` write; `parseMarker` recognises both verbs and carries a
+state discriminant; a released marker resolves free at any age with no reason code (E-11b); an
+empty marker means truncated and is reclaimed with `reclaimed-stale-lock`, id `unknown` (E-11);
+`present` reads `file_missing` alone as absent. Every knock-on site in step 1's table landed:
+§10.3 rows 4/4a collapsed to the register's shape, §12.2's empty-marker conjunct inverted and
+T-13/release oracles restated over the sentinel, §12.3's AT-M3 partial-coverage disclosure and
+AT-M11 divergence/erratum withdrawn, §13.3's open question deleted with BR-14a/E-11b cited as
+decided and an explicit "no erratum is raised, none should be re-raised". The verifier confirmed
+the adoption matches FSPEC v11.3 verb-for-verb on all five load-bearing clauses and that no live
+text anywhere still states the old form (residue grep: zero live hits; history retained in an
+explicitly superseded block). The prior §7.3 reasoning's premise ("no seam can unlink") is
+preserved and said to be preserved.
+
+**Step 2 — CLAUDE.md ↔ manifest oracle (closes F-03).** §12.2's row is set equality between the
+enumeration **minus the manifest itself** and the manifest's `rows[]`, path-to-path (also fixing
+an id-vs-path type mismatch the v1.8 row carried), never containment; red at today's HEAD by
+design, green after T33.
+
+**Step 3 — the three Lows.** §12.2's closing paragraph past-tensed; PLAN §8.1's counting
+paragraph agrees with its table; PLAN T05's headline agrees with its precondition.
+
+**Verifier findings, fixed before re-entry (all in the PLAN):** §9.1's premise and rows 1/3/4/5
+re-stamped as landed (T05 is green, not "red until this lands" — the incompatible-expected-values
+class); the two TSPEC §12.2 oracles that no task owned are now T03 blocks (`T07/T08 — skill
+prompts`, `T33 — CLAUDE.md ↔ manifest`) with T07/T08/T33's test cells re-pointed and T07/T08
+re-deped on T03; T20's "two unregistered obligations" lead corrected. PLAN v1.2; re-pins verified
+at TSPEC 2.0 / FSPEC 11.3 across all five sites, register re-derived 99 = 99 both directions, no
+transcribed count anywhere.
+
+**Step 4 — DEC-ERR-01 recorded** in `docs/_decisions/DECISIONS-review-severity-bars.md` (absorb a
+resolved upstream question; routing a settled one is scored on what it costs downstream), with the
+downward-in-order companion note on `docs/_decisions/DECISIONS-spec-layer-boundary.md`.
+
+**Step 5 — upstream re-grounding, wired into the protocol surfaces this repo owns:** CLAUDE.md's
+erratum-channel section now requires the erratum-round author to re-read the document's immediate
+upstream at HEAD, enumerate what its changelog decided, and absorb those decisions ahead of the
+raised items (confirmation checks both sets); the same instruction is added to
+`pdlc/skills/{pm,se,te}-author/SKILL.md` ("Erratum Rounds — Re-ground Upstream First"). The
+orchestrator-side dispatch prompts in `pdlc/workflows/orchestrate-dev.js` are deliberately not
+edited in this resolution (a bundle rebuild mid-run is its own risk); the SKILL/CLAUDE.md surfaces
+are the ones the authoring agents load.
+
+**Known residue, routed:** `DECISIONS-pdlc-consolidation-agent.md` DEC-CONS-07 still records the
+old empty-marker form — its own re-evaluation trigger has fired verbatim. Deliberately left for
+the forced Phase T (which absorbs D) to re-author; nothing in TSPEC/PLAN cites it as current
+authority for the release form.
+
+**Step 6 — re-entry.** Queue row 15 back to `pending`. Re-invoked as a direct
+`orchestrate-dev` run with `forcePhases: "T,P"` per this Recommendation — the sentinel adoption is
+a mechanism change and gets a reviewed TSPEC window (rounds 10-14), then the PLAN re-derives
+against the settled TSPEC.
