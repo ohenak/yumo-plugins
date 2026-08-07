@@ -344,3 +344,146 @@ not by delay.
 | Document bloat | The TSPEC is **smaller** than its FSPEC (215 KB vs 277 KB) and grew ~11 % across the window. Unlike Phase F, size is not a symptom here |
 
 ## Recommendation
+
+Ordered. Steps 1–4 are the resolution; step 5 is re-entry; steps 6–8 are scope notes and the
+escalation this feature has now earned.
+
+### 1. Verify the v1.5 tree against the six open round-5 items — against the tree, not the commit messages
+
+Commits `5396cb5` … `ff0a94a` claim closure of PM F-17/F-18/F-19 and TE F-01/F-02/F-03. Verify each
+**per finding, at the file at HEAD**:
+
+- **PM F-17 (High)** — §7.3 names FSPEC §4.2's fourth row's *empty* arm as unsatisfiable under the
+  release form, states what ships instead, and raises the erratum; §10.3 carries rows 4 and 4a with
+  the empty arm's behaviour spelled out; §12.3's `consolidationPass.test.js` row states that AT-M3 is
+  **partly** satisfiable and which arm is written; §13.3 carries the erratum. Confirm no §12 row or
+  §10.3 row still claims the truncated arm, and that **no test is specified against the register's
+  full *Given*** (a test written to it would be red on correct code).
+- **PM F-18 (Medium)** — §12.2 carries a release row asserting the six terminal statuses against
+  `{taken?, released?}` by **set equality over the enumeration, not containment**, and §12.3 assigns
+  it to a file. Check the `failed` arm — the one reached from step 8 rather than step 14 — is inside
+  the asserted set.
+- **TE F-01 (Medium)** — §12.2's `rtConsInjections()` row asserts **set equality** (not containment)
+  between the injection object's key set and §5.1's declared seam names minus §5.6's named
+  exclusions, §12.3 assigns it to `consolidationBuild.test.js`, and §5.5 states what the module
+  defaults do **in the runtime** rather than under jest, with `defaultCheckFile` failing loudly.
+- **TE F-02 (Medium)** — §7.3's lead-in and its sequence line both begin with the `_checkFile` probe,
+  and the `read-then-write` race paragraph that follows prices a **three**-call take.
+- **PM F-19 (Low)** — §4's `CheckReply` comment states only the decision (both reasons are absent)
+  and records the byte-vs-trim divergence between `rtCheckFile` and `fakeFs.checkFile`.
+- **TE F-03 (Low)** — §11.2's drain is inside a `finally` (or replaced by fake timers in an
+  `afterEach`), so it runs on the failing path.
+
+Re-verify every `file:line` the repair introduced **at HEAD**, and do not trust this postmortem's
+line numbers either. Record the verification per finding in a `## Resolution` section appended to
+this file. Any finding that does not verify is remediated **before** re-entry, not deferred into the
+confirming round.
+
+### 2. Decision freeze for the confirming round
+
+Declare, in the resolution commit, that rounds 6–10 may **decide nothing new**: no new mechanism, no
+new function, no new observable, and no new §12.2/§12.3 row beyond those closing round-5 items and
+those a reviewer's finding directly obliges. This is the direct countermeasure to RC-2 and the
+analogue of the mechanism freeze that measurably worked in Phase F (its target class disappeared and
+the Medium rate fell ~75 %). It removes the manufacture surface for one round so the loop can observe
+its own fixed point. Reviewers should be told the freeze is in force, so that a finding proposing new
+mechanism is filed Low/deferred rather than as a blocking Medium.
+
+### 3. Record the disposition rule for an upstream collision — this is the RC-1 countermeasure, and the one that ends the halt
+
+Add `DEC-SEV-03` to `docs/_decisions/DECISIONS-review-severity-bars.md`:
+
+> **A named, priced and routed upstream collision is Low, not High.** When a downstream document
+> (TSPEC, PROPERTIES, PLAN) makes a decision its own layer owns, and that decision renders an
+> *enumerated* upstream artifact — an AC, an AT, an `E-` row, a vocabulary row, a lifetime row —
+> unreachable or narrowed, the finding is **Low** provided the document (a) **names** the upstream
+> artifact it cannot satisfy, (b) **states what it ships instead**, with a falsifier for the part
+> that is satisfiable, and (c) **raises the erratum** through the sanctioned channel so the owning
+> layer re-decides. It is **High** only when one of those three is missing — i.e. when the collision
+> is *absorbed silently*. Severity attaches to the concealment, never to the collision.
+
+Two things this does not do: it does not let a wrong decision through (the decision itself remains
+reviewable on its merits at full severity), and it does not weaken the erratum channel — it is the
+channel's enforcement mechanism, since the only way to earn the demotion is to use it.
+
+On this window's evidence the ruling is decisive. Both blocking Highs (rounds 3 and 5) were of
+exactly this class, both were repaired to exactly the shape the rule prescribes, and neither changed
+the decision it named. Under `DEC-SEV-03` round 5's open set is **three Mediums and three Lows**, and
+round 3's is three Mediums — which does not by itself converge the window, but it stops the *High*
+population being regenerated by the act of specifying, which is what RC-1 identifies as the cause.
+
+Companion note for `docs/_decisions/DECISIONS-spec-layer-boundary.md`: record that `DEC-LAYER-01`'s
+inherited decisions arrive at the receiving layer **with** this disposition rule, so the cost the
+decision priced ("TSPEC inherits four open decisions") is paid through the erratum channel rather
+than through the severity bar.
+
+### 4. Keep `DEC-CONV-01`, `DEC-LAYER-01` and `DEC-SEV-01/02` — and record that this window tested them
+
+None of them failed. `DEC-LAYER-01` did what it promised one layer up; `DEC-CONV-01` was decisive for
+the window it was written for and was simply inert here, because a window with no approval has none
+to carry. Add this window's evidence to both records: an approval-carry rule cannot rescue a window
+whose blocking rate never reaches zero, and a layer-boundary rule needs a collision-disposition rule
+beside it.
+
+### 5. Re-entry
+
+Once steps 1–4 are verifiably addressed on the branch:
+
+1. Append a `## Resolution` section naming the evidence for each addressed finding.
+2. Flip the marker to `RESOLVED: yes` in the same commit, and name the evidence in the commit
+   message. **The workflow never writes `yes`; an operator or agent does, after verifying.**
+3. Re-invoke the phase forced:
+   `/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md", "forcePhases": "T"}`
+
+Re-entry opens rounds 6–10 (`deriveRoundWindow` derives the window from the `-v5` basenames present,
+so the append-only review history is preserved). The expectation under the decision freeze **and**
+`DEC-SEV-03` is **one delta round that confirms the round-5 closures and produces the window's first
+two approvals**; with `DEC-CONV-01` in force those approvals then hold.
+
+### 6. Not recommended
+
+| Option | Why not |
+|---|---|
+| Rewrite or restructure the TSPEC | Five rounds found no structural defect; every open finding is local and named. A rewrite discards five rounds of verified convergence and re-opens the High population. The document is also *smaller* than its FSPEC — there is no bloat to cut |
+| Lower the approval bar, or force past the reviews without step 3 | The bar is being applied correctly. The fix is to stop *generating* blocking findings for a class whose repair never changes a decision, not to stop requiring approval |
+| Raise `MAX_REVIEW_ROUNDS` | Buys rounds at an unchanged manufacture rate (RC-1, RC-2). It would not have converged this window either |
+| Re-open the REQ or the FSPEC, or split the feature | Those two documents cost four windows and 40 reviews between them. The open upstream items are already routed as errata and are the right size for that channel |
+| Reverse `DEC-LAYER-01` | It worked on its target class. Reversing it returns these decisions to the FSPEC, which is precisely what consumed both Phase F windows |
+| Expect `DEC-CONV-01` to help | It cannot act until a first approval exists. Step 3 is what makes one reachable |
+
+### 7. Housekeeping (not blocking)
+
+Three errata are open at the phase boundary and **must not be lost**; §13.3 carries all three:
+
+- **ER-6** — the `Route` union in `docs/_constraints/pdlc-consolidation-vocabularies.md` has no
+  member for a proposal-file promotion. Interim: the pass writes `route: "degraded"`, with a
+  two-fixture discriminator control asserting both the loss and the compensating difference.
+- **The enumeration relaxation** — against REQ `:115-116` and FSPEC AT-P7/BR-09. The erratum ranks
+  its own options (an answer of "yes, an ignored LEARNINGS file is corpus" strictly reduces the
+  divergence set), which is the information the upstream reviewer needs.
+- **The marker lifetime/reclaim erratum** — against FSPEC §4.1's "Removed at step 16" (no declared
+  seam can remove a file) and §4.2's fourth row / E-11 / AT-M3. This is PM F-17's upstream half and
+  is a product judgement about what the durable log must witness when a pass dies mid-take.
+
+Also: the TSPEC's §12.3 file table is the input to the PLAN's file-ownership manifest (batch-safety
+rule 2). Phase P will parse it, so any row added during the confirming round must name a file.
+
+### 8. Escalation — the decision an operator should take if this window is repeated
+
+This feature has now consumed **five** review windows and 50 reviews across three phases. Phase F's
+postmortem set the precedent (its step 8) and it applies here with one phase's more evidence: if
+rounds 6–10 also close without both approvals, do **not** open a second Phase T window. Accept the
+TSPEC at its then-current version, route the open items to Phase P and Phase PT as errata through
+the erratum channel, and record the acceptance and its reasoning in this file. The findings will be
+checked one layer down by the reviewers `DEC-LAYER-01` says are equipped to check them — which is,
+in the end, the same argument that moved them here.
+
+### 9. Phase H
+
+Harvest must fold **three** halted phases into `LEARNINGS-pdlc-consolidation-agent.md`: 20 REQ
+cross-reviews, 20 FSPEC cross-reviews, 10 TSPEC cross-reviews, and all three post-mortems. The
+durable signal from this window is § Pattern of Disagreement 1 and RC-1 — *moving a decision down a
+layer moves its collisions down with it; a layer boundary without a collision-disposition rule
+converts every inherited decision into a blocking finding whose repair never changes the decision.*
+That is a candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at the next
+`consolidate-learnings` pass, together with `DEC-SEV-03` from step 3.
