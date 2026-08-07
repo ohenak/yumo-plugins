@@ -32,6 +32,16 @@ and by bounding the residual exposure, rather than by inventing a parser that re
 
 ## Findings
 
+Three, all in text that did not exist at v4, and all three are consequences of the same good repair:
+`_checkFile` was promoted to a protocol seam, and the document has not finished following that
+promotion through to the composition root and to the take sequence.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | Nothing asserts that `rtConsInjections()` supplies `_checkFile` — or any other §5.1 member. §5.3 says the module default gives "ordinary operation", which is false in the runtime for every one of these seams, and this is the one omission the repo has already shipped once | §5.1, §5.3, §8.2, §12.2, §12.3 |
+| F-02 | Medium | Local | §7.3's take sequence — the line an implementer and any call-order oracle will transcribe — is still `read → verdict → write → read back`, with no `_checkFile` probe, and `verdict` is exactly where `present` is consumed. The one paragraph above it forbids deriving `present` from the read | §7.3, §4 call graph |
+| F-03 | Low | Local | §11.2's timer drain is specified to run *after* the case's assertions, so it is skipped on precisely the failing path (the mutation check) it exists to keep quiet | §11.2 |
+
 ## Detail
 
 ## Questions
