@@ -947,6 +947,9 @@ renderFailureModeRecord(record): string                // one whole record
 renderEffectivenessTable(rows): string                 // one whole record
 renderTerminalRow(state): {text: string, dropped: ReasonCode[]}
 renderReportBody(state): string
+renderPrBody(state, enacted: Proposal[]): string        // the PR body file (AC-3.2, AC-3.7)
+renderProposalFile(state, deferred: Proposal[]): string // CONSOLIDATION-PROPOSAL-{passId}.md (AC-3.5)
+renderPromotionCommitMessage(proposal, passId): string  // PDLC-PROMOTION-ID trailer (AC-3.3)
 ```
 
 Four appends in a fixed order (consumed pair → failure-mode records → effectiveness table →
@@ -969,8 +972,54 @@ and maps `null` to the literal.
 
 `renderReportBody` emits the ten items of FSPEC §10.4 in order, each **present even when empty**
 (DC-01 receive-side totality: a reader must be able to tell "no promotions" from "the section was
-dropped"). Item 4 names each promotion's route and, for a merged promotion, its `elidedKinds` and
-`elidedArtifacts`; item 10 prints `openPromotionList(...).length` as a number.
+dropped"). Item 4 names each promotion's route — including, for a `revise`/`retire` diversion, that
+its record's `route` reads `degraded` under ER-6 (§7.6) — and, for a merged promotion, its
+`elidedKinds` and `elidedArtifacts`; item 10 prints `openPromotionList(...).length` as a number.
+
+**The two operator-facing artifacts are renderers like every other surface**, not prose an agent
+composes. Both are pure functions of `PassState` plus a proposal list, so both are L1-testable
+without standing up a pass, and both are written through a seam by `main` — never by a dispatched
+agent (the id and the trailers are the pass's own data, and an LLM cannot be relied on to reproduce
+a set-equality).
+
+**`renderPrBody(state, enacted)`** produces the bytes `--body-file` reads (§9.2). Three obligations
+land on it:
+
+| Obligation | What the renderer emits |
+|---|---|
+| AC-3.2 | one section per enacted promotion naming (i) the **source LEARNINGS by feature name**, derived from `state.consumed`'s basenames rather than restated, (ii) the failure mode the edit targets — its `failureModeId` and one-line `symptom` — and (iii) the AC-2.3 pattern evidence that cleared the bar, carried verbatim from the clustering reply |
+| AC-3.7(c), REQ-CONS-03 | the three vocabularies §4 trailers, last, in that section's order: `PDLC-CONSOLIDATION-PASS: {passId}`; `PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`; `PDLC-CONSOLIDATION-PROMOTIONS: {sorted `{failure-mode-id}:{action}` pairs}` |
+| NFR-2 / §7.4 | nothing derived from the credential. The renderer takes no credential argument at all, which is why non-disclosure here is structural (§5.3) rather than reviewed |
+
+`PDLC-CONSOLIDATION-PROMOTIONS` is the NFR-4 duplicate key and is **derived from `enacted`, not
+assembled beside it**: the renderer computes the pair set from the same array it renders sections
+from, so the trailer is set-equal to the proposals the PR enacts by construction rather than by
+discipline. That closure matters because §7.6's `enactedByPr` *reads* this trailer — the pass's own
+idempotence depends on this writer, so writer and reader are pinned to one another by AT-Q4's
+round-trip (§12.2). Sorting is byte order over the pair strings, so the trailer is stable across
+runs and a diff of two passes is readable. A revision or retirement sharing the PR (AC-3.3) joins
+the set under the **retired promotion's own** `failure-mode-id` — no second id is minted (AC-5.1).
+
+`renderPromotionCommitMessage` emits one commit's subject plus `PDLC-PROMOTION-ID: {id}:{action}`,
+the per-commit trailer of vocabularies §4, so commit → proposal is readable without counting
+(AC-3.3). It is a separate one-line function because §9.2's per-edit commit is the only caller and
+its output is the one thing in the clone that must be exactly transcribable.
+
+**`renderProposalFile(state, deferred)`** produces
+`docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, written **when and only when** the pass has
+something to propose that it does not enact (FSPEC §5.3) — so a pass that enacts everything writes
+no file, and one is never created empty. Per deferred item it emits: the `failureModeId`, the
+`action`, the target, **the full proposed diff inline** (AC-3.5 — the `Proposal.diff` field, never a
+summary of it), and the **failure class recorded by name** — the reason code (`credential-unavailable`,
+`repository-unresolved`, `api-failure`, `branch-exists`) for a degraded PR attempt, or the
+propose-only cause for an AC-5.4 diversion. When the pass also opened a PR, the file's header
+carries `state.prUrl`, which is AC-3.4's second clause; when there is no proposal file, AC-3.4's
+second clause is vacuous and the URL lives in the terminal row's `pr:` field alone (§12.2 row T-11
+records that reading).
+
+A deferred item whose `diff` is `null` renders the diff block as §6.5's `(unavailable)` and still
+emits every other field: a proposal short of its edit is a worse artifact than one that says so, and
+dropping the item would lose the promotion — the AC-3.5 failure this fallback exists to prevent.
 
 ## 8. Reuse of the advisory rung ladder, and the bundle wiring
 
