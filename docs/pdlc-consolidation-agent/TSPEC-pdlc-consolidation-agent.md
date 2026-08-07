@@ -650,9 +650,9 @@ open); a record short of `failureModeId` contributes **no member at all**. The l
 ladder has ended — the caller records `duplicate-suppressed` and reports the field as `retirement`)
 and on the short-`artifact` arm (the file-existence test cannot run, so nothing is proposed).
 Row 3's `headExists` is supplied by the caller from one
-`_git(["cat-file", "-e", `HEAD:${artifact}`])` probe — a **read**, resolving to the `read-status`
-verb of §9.3's invoking-tree domain, never a checkout and never a filesystem stat the runtime
-cannot perform.
+`_git(["cat-file", "-e", "HEAD:" + artifact])` probe — a **read**, resolving to the `read-object`
+verb §9.3 adds to the invoking-tree domain as a recorded widening, never a checkout and never a
+filesystem stat the runtime cannot perform.
 
 ### 7.6 Routing and suppression (FSPEC §5.1, §6.4)
 
@@ -922,7 +922,7 @@ Three steps, all through seams, none of them touching the invoking tree's refs:
    fallback into the invoking tree, because AC-3.8 forbids one outright.
 2. `remote` = the clone source. In the same-repo case (`pluginRepository == null`) it is the
    invoking repository's **origin URL**, read with `_git(["remote", "get-url", "origin"])` — a
-   non-mutating read of the invoking tree, resolving to `read-status` in §9.3's verb table. Cloning
+   non-mutating read of the invoking tree, resolving to `read-object` in §9.3's verb table. Cloning
    the *working tree path* is deliberately not done: it would carry the tree's local branches and
    its possibly mid-pipeline HEAD, and FSPEC §6.1 requires the clone to be cut from the **fetched
    default branch**. In the two-repo case it is `https://github.com/{pluginRepository}.git`. An
@@ -991,14 +991,39 @@ proposal never runs it and reports `absent` as its null.
 
 ### 9.3 The three seam domains and their verb sets (FSPEC §6.5, inherited)
 
-The FSPEC froze these sets and made widening a **recorded TSPEC decision**. This layer records **no
-widening**: the sets below are transcribed unchanged at FSPEC v11.1.
+The FSPEC froze these sets and made widening a **recorded TSPEC decision** under `DEC-LAYER-01`
+("a widening is a recorded TSPEC decision against this set, never a silent reading of it"). This
+layer records **exactly two widenings**, both in permitted-but-not-obliged columns, both
+non-mutating, and both marked ⊕ below. Every other cell is transcribed unchanged at FSPEC v11.1.
 
 | Domain | How a call is classified | Obliged | Permitted, not obliged | Absent always |
 |---|---|---|---|---|
-| PR seam | every `_ghRun` call | `read-pr`, `create-pr` | — | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` |
-| git, invoking tree | `_git` whose argv does **not** begin `["-C", cloneDir]` | `add`, `commit` | `read-branch`, `read-status` | `checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb |
+| PR seam | every `_ghRun` call | `read-pr`, `create-pr` | ⊕ `read-auth` | `merge`, `enable-auto-merge`, `merge-pr`, `squash-merge`, `close-pr`, `update-pr` |
+| git, invoking tree | `_git` whose argv does **not** begin `["-C", cloneDir]` | `add`, `commit` | `read-branch`, `read-status`, ⊕ `read-object` | `checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb |
 | git, clone | `_git` whose argv begins `["-C", cloneDir]`, plus the `clone` call itself | `clone`, `create-branch`, `add`, `commit`, `push` | `fetch`, `read-branch`, `read-status` | every merge verb |
+
+**Widening 1 — `read-auth` on the PR seam.** AC-4.4 makes local `gh` authentication the *shipping*
+credential for the same-repo case, and §9.2 observes it with `gh auth status`. That call touches no
+pull request, so under FSPEC §6.5's domain definition ("every call that reads or mutates a pull
+request in the target repository") it would fall into **no domain at all** and be invisible to
+AT-Q7's oracle — the precise blindness §6.5 exists to remove. Binning it into the PR seam under its
+own read verb keeps every `_ghRun` call classified, so the spy's containment assertion still ranges
+over the whole seam. It is non-mutating and is no merge verb, so the assertion loses no strength.
+An erratum against the FSPEC asks §6.5 to state the domain by transport (`_ghRun`) rather than by
+subject (a pull request).
+
+**Widening 2 — `read-object` in the invoking tree.** §7.5's `remediationChoice` needs FSPEC §8.5
+row 3's file-existence test at HEAD, and the runtime has no filesystem: the only way to ask is
+`git cat-file -e HEAD:{path}` through the git seam. `read-status` would be a mis-classification
+(the verb reads an object from the object database, not the working tree's status), and §6.5
+forbids reading a third verb into the closed two-member set silently. `git remote get-url origin`
+(§9.1 step 2) resolves to `read-remote`, which this layer folds into `read-object` rather than
+adding a third verb: both are non-mutating reads of repository metadata, neither is a branch
+operation AC-3.8 forbids, and a two-verb widening is easier for a test author to transcribe exactly
+than a three-verb one.
+
+Both widenings are **permitted, never obliged**, so no Given asserts their presence and an
+implementation that resolves the branch name or the file's existence some other way still conforms.
 
 Classification is by **resolved operation**, not function name: the resolver maps an argv or a
 command string to a verb, so `checkout -b` and `switch -c` in the clone both resolve to
@@ -1008,10 +1033,8 @@ in §11.3 reads the contract's own classification rather than re-implementing it
 classifier cannot resolve returns `"unknown"`, which is in no permitted set and therefore fails the
 containment assertion rather than passing silently.
 
-Two calls in §9.1 and §7.5 use the invoking tree's *permitted* reads: `git remote get-url origin`
-and `git cat-file -e HEAD:{path}` both resolve to `read-status`; the branch name for `branch:` comes
-from `git rev-parse --abbrev-ref HEAD` (`read-branch`), the shipped observation `readHeadBranch`
-(`orchestrate-dev.js:3520`) makes through `_git` at `:3524`.
+The branch name for `branch:` comes from `git rev-parse --abbrev-ref HEAD` (`read-branch`), the
+shipped observation `readHeadBranch` (`orchestrate-dev.js:3520`) makes through `_git` at `:3524`.
 
 ### 9.4 The consuming-repo commit (FSPEC §5.4)
 
@@ -1297,6 +1320,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 6 | Two predicate implementations, held equal by AT-P7 | one shared implementation | the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
+| 9 | Widen two §6.5 permitted sets (`read-auth`, `read-object`) rather than mis-classify into an existing verb | fold `gh auth status` and `git cat-file -e` into `read-pr` / `read-status` | §6.5 forbids reading a third verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards (§9.3) |
 
 Rows 1, 2, 4, 5 and 6 are load-bearing and reversible only at cost; §13.3 records that DECISIONS is
 warranted for them.
