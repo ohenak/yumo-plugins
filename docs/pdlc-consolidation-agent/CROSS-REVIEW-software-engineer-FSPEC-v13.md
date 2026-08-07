@@ -1,0 +1,101 @@
+# Cross-Review: software-engineer — FSPEC (delta confirmation, erratum round v11.3)
+
+**Reviewer:** software-engineer
+**Document reviewed:** docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md
+**Date:** 2026-08-06
+**Iteration:** 13
+**Scope:** Delta confirmation only. Diff reviewed: `5d3765ce..HEAD` (commits `b68dddea`,
+`fcb8a4bc`, `858797f6`, `838868e3`, `b9f66cb4`, `0499e532`) against the FSPEC I approved at v12
+(`369c323e`, anchors `37feef64`). No section outside that diff was re-reviewed.
+
+## 1. Erratum item disposition
+
+Seven errata were routed to this document (two pairs are the same defect raised by two roles).
+Every one is resolved. I re-verified each codebase claim the edit added rather than accepting it.
+
+| # | Erratum (raised by) | Disposition | Evidence |
+|---|---|---|---|
+| 1 | §4.1 marker lifetime says "Removed at step 16", but no seam can remove a file (te-review, se-author — same defect) | **Resolved** | `:424-425` replaces the `Removed` row with **`Released`** — "an **in-place rewrite** of the same file to a single line, `RELEASED: {passId} {ISO-8601}`" — and a new `Removed` row reading "**never by the pass.** Only an operator removes the file". `:431-435` states the reason and carries the falsifiable claim. I re-ran it: `grep -nc "unlink\|rm -f\|rmdir" pdlc/workflows/runtime-adapter.js` → **`0`** at HEAD. The adapter ships `rtReadFile` / `rtWriteFile` (`runtime-adapter.js:802-811`) / `rtCheckFile` (`:817-838`) and no deletion, so the spec now names the one operation that exists |
+| 2 | §4.2's fourth row / E-11 / AT-M3 bind an unreachable "empty (truncated write)" arm; and the product question — must the durable log witness a pass that dies mid-take? (te-review, se-author — same defect) | **Resolved, and the product question is answered** | The release form is now a **sentinel line, not a truncation** (`:437-442`), which is what makes the arm reachable *and* keeps released ≠ half-written distinguishable. The FSPEC states the mechanism it relies on and cites it: `rtCheckFile` maps present-but-empty → `file_empty` and absent → `file_missing`. Verified at `runtime-adapter.js:817-838` — `test -f && test -s` ⇒ `OK`, `test -f` alone ⇒ `EMPTY`, else `MISSING`; the cited `:817-831` range covers the function's decision. `:479-491` answers the question explicitly and in the product's voice: **yes, the log must witness it** — "a take that stepped over an empty marker silently would erase the only trace of an abandonment", because the abandoned pass appended no terminal row by construction. `unknown` is justified as the honest id rather than a placeholder |
+| 2b | Consequences of (2) propagated | **Resolved** | §4.2 becomes **four** outcomes (`:456-471`): a new `RELEASED:` row taken like an absent file **at any age, recording nothing**, with the explicit statement that age is not consulted on a released marker ("staleness is a property of a *held* marker"). New **E-11b** (`:2645`), new **BR-14a** (`:2551`), BR-14 narrowed to `IN-PROGRESS:` (`:2550`), E-11 re-Given onto empty/neither-form (`:2644`). AT-M3 gains two explicit fixtures (`:2084`) and the new **AT-M11** (`:2085`) is its paired negative — two fixtures, one fresh and one older than `staleLockMinutes`. The older fixture is the one that falsifies "route every non-`IN-PROGRESS:` file through the stale-lock arm", which was the real mutation risk. AC-1.3's map row gains AT-M11 (`:2311`) |
+| 3 | AT-P7's *When* ("run the hook") and set-equality *Then* would be red on correct code (se-author) | **Resolved** | `:2069` re-scopes the *When* from executing the hook to evaluating **the two predicates** over a materialised fixture root, and states the exclusion that caused the false red: the hook's `THRESHOLD` gate and its advisory line "govern whether the hook *speaks*, not what it counts, and are asserted neither way here". Citations verified against the shipped script: `THRESHOLD = 5` at `nudge-consolidation.sh:25`, the corpus glob at `:28`, the read-and-membership block at `:36-41` (`pending = [p for p in learnings if os.path.basename(p) not in logtext]` is `:41`). The oracle is now the decided set, which is the thing §3.1 actually constrains. The forward-compatibility clause (if T-08 resolves to shared code, the fixture table is unchanged) is correct and keeps T-08 genuinely open |
+| 4 | AC-3.2's PR-body obligation has no acceptance test; the map binds it to AT-Q2, which asserts only the trailers (se-author) | **Resolved** | New **AT-Q13** (`:2126`) reads the PR **body** and asserts all three obligations — sources by feature name (set-equality, so a body naming one of two is red), the `symptom` line verbatim, and the AC-2.3 evidence in the form the fixture cleared the bar with. Two fixtures, recurrence and single-occurrence-under-standing-invariant; fixture (b) is what stops an unconditional recurrence list. The AC→AT map row is updated with both bindings and their division of labour (`:2320`), and §6.2 now says the three body obligations are "separate from the three trailers and not discharged by them" (`:828-830`) |
+| 5 | §5.3's "when, and only when" has no test binding the "only when" half (se-author) | **Resolved** | New **AT-R7** (`:2106`): three fixtures, two negative — (a) a `promoted` pass with no §5.3 cause, (b) a `no-op` pass whose promotions were all duplicate-suppressed — plus (c) a positive control. The oracle is the `CONSOLIDATION-PROPOSAL-*` file set before and after, so "unchanged" is asserted positively rather than as an absence-only check on one path. Fixture (b) is well chosen: it reaches "no cause" by a different route *and* a different terminal status than (a), which is what pins §5.3's decision to causes rather than status. §5.3 now names both halves and their tests (`:688-690`); AC-1.4's map row gains AT-R7 (`:2312`) |
+| 6-7 | Two Low repairs from my v12 (T-10 and BR-33a `phase`-arm subjects) | **Resolved** | T-10 (`:2211`) now excludes **§8.3's** `phase` arm rather than "§8.1's `phase` … arms", and states why: §8.4 steps 2-3's `phase` half *is* collected by the cell's first clause, field-agnostically. BR-33a (`:2197`) adds the matching conjunct — "§8.4 steps 2-3's question is still asked, with the `phase` half stated unavailable". Both now agree with E-12b's reader enumeration (`:2649`, `phase` for §8.3 / §8.4's harvest question), which is the three-way consistency that was off by one arm |
+
+## 2. Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §4.1's justification sentence overloads "the existence seam alone": *"they stay distinguishable through the existence seam alone … `RELEASED:` is a parseable line, empty is not, and neither is `IN-PROGRESS:`."* The existence seam separates absent / empty / non-empty; it cannot separate `RELEASED:` from `IN-PROGRESS:` — that needs the read §4.2 already performs ("Read the file … parse its single line"). The intended reading (the *pair* the paragraph is arguing about — released vs. mid-flush-empty — is separable by existence alone, and neither empty nor `IN-PROGRESS:` is a `RELEASED:` line) is recoverable and correct, and §4.2's table is normative and unambiguous, so nothing is under-specified. It is prose imprecision at a spot an implementer will read closely. Suggested: "…the two are separable by the existence seam alone: a released marker is non-empty, a half-written one is `file_empty`. Which of the two non-empty forms is present is decided by §4.2's read of the line." | §4.1, `:437-442` |
+
+No High or Medium findings. Nothing in the delta blocks implementation.
+
+## 3. Regression check — did the delta break anything previously approved?
+
+The marker-lifetime change is the only one with reach beyond its own row, so I traced every
+downstream reader of the old "removed at step 16" statement.
+
+| Previously approved surface | Still holds? | Why |
+|---|---|---|
+| §4.3 terminal-status table (`:500-507`) — every marker-holding arm "Released by this pass? yes, at 16" | **Yes** | The table says *released*, never *removed*, so its cells are unchanged in meaning by the sentinel. `refused` and `skipped-cadence` still release nothing, which is still correct: neither took the marker |
+| §4.3's recovery statement (`:509-512`) — "a process killed before step 16 leaves the marker behind, and the §4.2 stale rule is what recovers it" | **Yes, and it is now stronger** | Under the sentinel the abandoned marker is an aged `IN-PROGRESS:` line, which §4.2's third row reclaims; the pathological sub-case (killed *inside* the take) is now the empty row rather than an unstated gap. The "no cleanup handler needed" claim survives — indeed it had to, since no seam could have run one |
+| BR-15 (`:2552`) "every marker-holding terminal arm releases the marker — `failed` included", AT-M4 | **Yes** | Unchanged; "release" now denotes a write it can actually perform |
+| BR-16 / AT-M5 (`:2087`) — the marker is never committed; §5.4 pathspec set-equality | **Yes** | The lock path is still outside every pathspec and still git-ignored (`:445`, `:2406`). A sentinel write leaves the file present at end of pass where a removal would have left it absent — which is precisely why the `.gitignore` entry, already specified, is load-bearing rather than belt-and-braces. Nothing in AT-M5's oracle changes |
+| §12.1 S-11 / S-11b / S-11c and AT-M4 / AT-M6 / AT-M9 — "the marker is released" on the failure paths | **Yes** | All three assert release, not absence; no oracle in them observes the marker's post-pass content |
+| §2.6 rows 3-4 (`:224-225`) — release on the model-resolution arms | **Yes** | Same: they name §4.3, which is consistent |
+| AT-M1 / AT-M2 / BR-13 / BR-14 — refusal on a fresh marker, reclaim on a stale one | **Yes** | Both Givens are now explicitly `IN-PROGRESS:` markers, which is what they always meant; the narrowing is a tightening, not a change of behaviour, and BR-14a carries the new arm rather than overloading BR-14 |
+| §5.3's proposal-file rule and its "when" half (AT-K3, the per-status rows) | **Yes** | The paragraph gained a citation clause only; the rule text ("decided by the three rows above and by nothing else — never by the terminal status") is byte-identical, and AT-R7 is consistent with it — fixture (b) is a `no-op` with no cause and fixture (a) a `promoted` with no cause, which is the same rule read in both directions |
+| §6.2 trailers and AT-Q2 | **Yes** | AT-Q13 is additive and explicitly disjoint: AT-Q2 owns the trailer set, AT-Q13 the body. Neither oracle now subsumes the other, and the map row says so |
+| AT-P1…AT-P6, AT-P8…AT-P10 (the fixture table AT-P7 ranges over) | **Yes** | AT-P7's Given still names "the same table AT-P2…AT-P5 range over"; only the *When* and the scope note changed. I checked the region hazard specifically: the re-scoped AT-P7 executes the **shipped** hook predicate, and §3.2 / `:2401` put the `docs/completed/*/` glob widening at `nudge-consolidation.sh:28` inside this feature's write set — so the two predicates range over the same two regions and set-equality is satisfiable, not a false red by construction |
+| T-10 / BR-33a / E-12b arm enumeration | **Yes** | The two edits move BR-33a and T-10 *onto* E-12b's existing enumeration rather than away from it; the `failure-mode-id` arm, which genuinely emits no row, is untouched in all three |
+
+No previously approved statement is contradicted, and no AT that was green before the delta becomes
+unstateable after it. The four new/rewritten ATs (AT-M3, AT-M11, AT-R7, AT-Q13) are all reachable
+with fixtures the document itself specifies, and each carries a paired negative — which is the
+property that made the old AT-M3 weak in the first place.
+
+## 4. Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Non-blocking, and I believe the answer is "no change needed": under the sentinel, a released marker persists in the working tree indefinitely, so a repo that has run one pass always has a `RELEASED:` file on disk. `.gitignore` covers the commit half (`:445`) and §4.2's first content row covers the take half, so I see no leak — but if a future operator-facing story ever asks "is a pass running?", the answer is now "read the line", not "does the file exist". Worth a sentence in TSPEC's operator notes rather than another FSPEC round |
+
+## 5. Positive Observations
+
+- The v11.3 edit is exemplary erratum discipline: it changed §4.1's mechanism *and* then traced the
+  change through §4.2, E-11/E-11b, BR-14/BR-14a, AT-M3/AT-M11 and the AC→AT map, rather than
+  patching the offending row and leaving the readers stale. The regression pass above found nothing
+  it had missed.
+- Every added claim about the codebase is falsifiable and cited to a line, and the two that matter
+  most were written as *commands* (`grep -nc … returns 0`), not assertions. Both reproduce at HEAD.
+  That is the form that makes a spec claim cheap to re-check a year from now.
+- Item 2 was answered as a product question, not routed around. The decision "the durable log must
+  witness a pass that died mid-take" is stated with its reason (the abandoned pass appended no
+  terminal row *by construction*), which is the sort of reasoning that survives an implementer who
+  disagrees with it.
+- The choice of a sentinel over a truncation is justified by what it preserves — the separability of
+  released from half-written — rather than by taste, and the paired AT-M3/AT-M11 fixtures encode
+  exactly that separation. AT-M11's *older* fixture is a genuinely good mutation kill.
+- AT-P7's re-scoping states what it does **not** assert (the `THRESHOLD` gate, the advisory line) as
+  carefully as what it does. Under-scoped negatives are how differential tests rot; this one names
+  its boundary.
+- AT-R7 and AT-Q13 each carry the "this is the row that would otherwise be green" argument. Both are
+  correct: a body of nothing but trailers really is green under AT-Q2, and a pass that wrote a
+  proposal file unconditionally really was green everywhere before AT-R7.
+
+## Recommendation
+
+**Approved with minor changes**
+
+**Delta confirmation: PASS.** All seven erratum items are resolved on the merits, and nothing I
+previously approved is broken by the edit. F-01 is a wording repair in one justification sentence,
+carries no contract consequence (§4.2's table is normative and unambiguous), and does not warrant a
+further erratum round — fold it in opportunistically if §4.1 is touched again.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+
+APPROVAL-HASH: sha256:ba91e4c9877edac47b253a96412ba15fdd4295cd9d34f1cc525d4fd9d77f8363
+REVIEWED-COMMIT: 0499e5325b35bc4f7f147e90f098e25f237459a0

@@ -252,6 +252,24 @@ A continuation dispatch whose round is already fully applied should write nothin
 
 ---
 
+## Erratum Rounds — Re-ground Upstream First
+
+When you are dispatched to land erratum items against a document you authored (the targeted
+versioned edit of the erratum channel), do this **before** touching the raised items:
+
+1. Re-read the document's immediate upstream at HEAD. Diff its `Version` cell and erratum
+   changelog against the version your document was last approved against.
+2. If the upstream moved, enumerate **what it decided** — every `BR-`, `E-`, `AC-` and vocabulary
+   row its changelog names — not only what it renamed or added.
+3. **Absorb** those decisions into this round's item list ahead of the raised items: restate your
+   layer's mechanism on the decided form, delete any text that still routes or hands the question
+   downstream as open, and record the absorption in your changelog. The delta-confirmation will
+   check the absorbed set as well as the raised set.
+
+Never re-raise a question the upstream has already decided — that is DEC-ERR-01's anti-pattern
+(`docs/_decisions/DECISIONS-review-severity-bars.md`): routing a settled question is a false
+statement in a hand-off section, scored on what it costs downstream.
+
 ## Communication Style
 
 - Direct and technical. Lead with action, not rationale.

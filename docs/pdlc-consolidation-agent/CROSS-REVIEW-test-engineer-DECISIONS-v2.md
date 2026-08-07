@@ -1,0 +1,85 @@
+# Cross-Review: test-engineer — DECISIONS
+
+**Reviewer:** test-engineer
+**Document reviewed:** `docs/pdlc-consolidation-agent/DECISIONS-pdlc-consolidation-agent.md`
+**Date:** 2026-08-06
+**Iteration:** 2
+**Scope:** Delta re-review against `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`. Diff base
+`f54d4e6` (the commit at which v1 was written) → HEAD; five revision commits touched this
+document (`7e9044b`, `ab84ce7`, `89e3aa3`, `c60b3d2`, `9b05e97`), +218/−43 lines. Testing lens
+only: whether each v1 finding is closed, and whether the *changed* text introduced a new oracle
+that cannot fail or a claim the code contradicts. Unchanged sections approved at v1 are not
+re-litigated.
+
+## Disposition of v1 findings
+
+| v1 ID | Severity | Status | Evidence checked at HEAD |
+|---|---|---|---|
+| F-01 | High | **Partially resolved** — the clone half is closed, a second instance of the same defect is now visible in the replacement text. See F-01 below | §5 now partitions three domains and pins the clone positionally (`["clone","--depth","1","--single-branch",R,D]`, both trailing positions character-identical to the `remote get-url` and `_makeTempDir` replies). That answers Q-01 exactly. The *invoking-tree* domain's verb set is the new problem |
+| F-02 | High | **Resolved** | §7 now states the `CORPUS_GLOBS` widening inside the Decision and asserts the divergence set "**only against the post-edit hook**". The HEAD measurement it quotes reproduces: `nudge-consolidation.sh:28` is still the single `glob.glob(os.path.join(proj,"docs","*","LEARNINGS-*.md"))`, and the replacement is exactly `TSPEC:787-788` (`CORPUS_GLOBS = ("docs/*/LEARNINGS-*.md", "docs/completed/*/LEARNINGS-*.md")` + comprehension) |
+| F-03 | Medium | **Resolved** | §7's alternatives bullet now states **three changes in one file** — env-gated `PDLC_PENDING:` write, `:28`'s glob → `CORPUS_GLOBS`, `:41`'s predicate scoped to two regions — and §11.1 row 6 states the same three and the same single owning task. The two sections agree; the pre-condition of DEC-CONS-05's cost comparison is now honest. Q-02 answered |
+| F-04 | Medium | **Resolved** | The type claim is withdrawn in terms. `git ls-files 'pdlc/**/*.ts' 'pdlc/**/tsconfig.json'` returns **nothing** — the document's parenthetical is exactly right — and the replacement is a real runtime oracle (`typeof` every recorded `_envPresent` return is `"boolean"`) plus a source pin on the transported command text |
+| F-05 | Medium | **Resolved** | §3 conjunct 3 and §11.2 bullet 1 both now say set-equality over AC-4.2's three values, "observed set **exactly** equal to the declared set". The cited enumeration resolves: `REQ:320-322` carries `present (redacted)` / `absent` / `local-gh` |
+| F-06 | Medium | **Resolved** (one scoping wrinkle, filed Low as F-03 below) | §8's read-side half is now paired with two positives, one of which (the absolute-`${path}` resolution through `rtReadProbe`'s `if [ ! -f "${path}" ]`, `wc -c < "${path}"`, `shasum -a 256 "${path}"` forms) is anchored to text unique to that function and therefore dies if the function does. Line cites resolve: `rtReadProbe` at `runtime-adapter.js:369`, the forms at `:374-378` |
+| F-07 | Medium | **Resolved** | §6 now says the trigger is "**operator-reported and un-instrumented** — no monitor exists and none is added by this feature", and states the forensic signature (two `.consolidation-log.md` records, distinct `passId`s, same `(failure-mode-id, action)` key) while explicitly saying nothing computes or asserts it. That is the right shape: a named observable *plus* an explicit disclaimer that it is not watched |
+| F-08 | Low | **Resolved** | §9 and §11.2 now cite `docs/_constraints/pdlc-consolidation-vocabularies.md:38-43`. Verified: lines 38–43 are exactly `promoted`, `promoted-degraded`, `no-op`, `skipped-cadence`, `refused`, `failed`, all tagged `terminal status`, in a file whose own §1 says downstream completeness is checkable "by **set-equality against this table**" |
+| F-09 | Low | **Resolved** | `ADVISORY_RUNG_SKILL = "se-review"` is at `pdlc/workflows/orchestrate-dev.js:1797` and "there is no second, private copy of this ladder anywhere" at `:1802`; both citations now read that way |
+
+Seven of nine closed outright, one Low closed with a residue filed below, and one High
+half-closed. The two commits I checked hardest (`89e3aa3`, `9b05e97`) do what their messages say.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **The replacement partition moves the "red on correct code" defect from the clone to the pass's own log commit.** §5 domain 1 is now "every argv with no `-C` prefix that is *not* the clone argv … asserted by containment against the closed invoking-tree **read-verb** set (`read-object`, `read-remote`, `read-index`, per TSPEC §13.1 row 9)". Against the actual contract, that set is wrong in two ways. (a) It is a strict subset of the permitted column: `TSPEC:1619`'s invoking-tree row permits `read-branch`, `read-status`, ⊕`read-object`, ⊕`read-remote`, ⊕`read-index` — five, not three; §13.1 row 9 is the *widenings* decision row and lists only the three new verbs, so citing it as "the closed invoking-tree read-verb set" understates the set by two. (b) Far worse, the same `TSPEC:1619` row makes `add` and `commit` **obliged** in that domain, and `REQ:288` requires exactly that: the pass issues `git add -- {paths}` and `git commit -m {msg} -- {paths}` in the invoking tree, mirroring `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1576-1585`). Those argvs carry no `-C` prefix and are not the clone, so they land in domain 1 and fail a read-verb containment assertion. This is the identical failure mode v1's F-01 named, one call over: **the assertion is red on correct code**. The partition needs the invoking-tree domain's *whole* §9.3 set — obliged `add`, `commit` plus the five permitted reads — with the falsifying force carried by `TSPEC:1619`'s **absent-always** column (`checkout`, `switch`, `stash`, `reset`, `rebase`, every merge verb), which is the column that actually makes "a `checkout` fails by construction" true | §5, DEC-CONS-03 *Testability*, domain 1 |
+| F-02 | Low | Local | **A claim carried over into the new text that the same table contradicts.** §5 closes domain 1 with "DEC-CONS-04's 'admits no mutating git verb at all' continues to hold of *this* domain exactly". It does not: `TSPEC:1619` obliges `add` and `commit` there, and `REQ:288` requires them. The original sentence at §6 (`:334`) is v1 text I did not flag, but §5 now *cites* it, which makes it load-bearing in a changed section. DEC-CONS-04's rejection of `git`-mediated locking survives on its first ground alone (AC-1.3 requires the marker never to be committed, and it is `.gitignore`d), so no decision changes — but the second ground is false as written and should be struck or restated as "admits no mutating verb **other than the pathspec-scoped `add`/`commit` of the enumerated log paths**" | §5 domain 1, last clause; §6 alternatives bullet 2 |
+| F-03 | Low | Local | **Two citation/enumeration residues in the new §5, of the class the author just fixed elsewhere.** (i) Domain 2 says "Its verb set is the closed clone-domain set" and neither enumerates nor cites it — the same defect v1's F-08 raised about the six terminal statuses, which §9 fixed by citing `pdlc-consolidation-vocabularies.md:38-43`. The set lives at `TSPEC:1620` (obliged `clone`, `create-branch`, `add`, `commit`, `push`; permitted `fetch`, `read-branch`, `read-status`; absent every merge verb) and should be cited there. (ii) §5 says "the clone belongs to no verb set — it is its own case", while `TSPEC:1620` explicitly bins it: "`_git` whose argv begins `["-C", cloneDir]`, **plus the `clone` call itself**". The DECISIONS partition is *stronger* (full-argv equality rather than verb containment) so no coverage is lost, but a test author holding both documents gets two different classifications of the same call. Reconcile the wording, or say plainly that domain 3 is a shape assertion *in addition to* TSPEC's clone-domain membership | §5, DEC-CONS-03 *Testability*, domains 2 and 3 |
+| F-04 | Low | Local | **The read-prompt positive conjunct pins a string that is not unique to the read prompt.** §8's first positive locates `"Run this exact command from the repository root and report its output:"` and asserts it is a cwd instruction. Measured: that exact line occurs **three** times in `pdlc/workflows/runtime-adapter.js` — `:374` (`rtReadProbe`), `:618`, `:911` (`rtListFiles`) — so a whole-file search finds it whether or not `rtReadProbe` still exists. The pairing is not defeated, because the *second* positive (the `if [ ! -f "${path}" ] … wc -c < "${path}" … shasum -a 256 "${path}"` forms, `:374-378`) is anchored to text unique to that function and dies with it. But the conjunct as stated should say the assertion is scoped to `rtReadProbe`'s prompt argument, and the same scoping applies to the negative — `"relative to the repository root"` occurs exactly once today (`:805`, inside `rtWriteFile`) and this feature's own widening puts a second such clause in the write prompt, so a file-wide negative would be red on this feature's own correct code | §8, DEC-CONS-06 *Testability*, first positive bullet |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | (Follows F-01.) Is the invoking-tree assertion meant to be containment against the **permitted-plus-obliged** set of `TSPEC:1619`, or exclusion against its **absent-always** column? The two are not equivalent under later drift: containment reds on any verb nobody has classified yet (the property §11.2 bullet 2 says it wants — "stays true for calls nobody has written yet"), exclusion greens on them. §11.2 states the property as containment, so the fix should be to the set, not to the direction |
+| Q-02 | §3's runtime type oracle pins "`rtEnvPresent`'s prompt interpolates the variable *name* only". `rtEnvPresent` does not exist at HEAD (`grep -n rtEnvPresent pdlc/workflows/runtime-adapter.js` returns nothing) — it is a seam this feature adds, so the pin is on code this feature writes, which is fine. Does the owning task's Definition of Done name that source pin, the way §11.1 row 4 names DEC-CONS-04's and DEC-CONS-07's two conjuncts? A source-pin assertion with no named owner is the one that gets dropped |
+
+## Positive Observations
+
+- **The revision does not paper over a finding anywhere it was easier to.** F-04's type claim is not softened, it is *withdrawn in terms* ("an earlier draft's … is withdrawn: nothing would fail if a double returned a string"), and the same is done for F-01's two-domain form and for §3's "the module has no boundary to scrub". A document that records what it used to say wrongly is far more useful to a test author than one that quietly reads correctly.
+- **§11.2's new "What is deliberately unasserted, and why" table is the best thing in this revision** and is durable process signal, not local cleanup. Three named absences, each with a reason and a home entry — the take race, FSPEC §4.2's unreachable empty arm, and the inbound failure-reply channel. It pre-empts the exact failure mode where a PROPERTIES author closes a stated gap by writing a test that appears to cover it. Every DECISIONS document that records a DEC-ORACLE-02 gap should carry this table.
+- **The inbound-residual paragraph in §3 was not asked for and is the most valuable addition.** It is correct at HEAD in every particular I checked: `rtGit:951` really does ask for "the LAST 300 characters of its combined output" where `rtGhRun:1000` asks for stderr only; both parse through `rtParseTransportReply` (`:967`), whose `stderr` field is `:977`; `rtShellQuote` (`:668-670`) really does single-quote every argv element, so a `$VAR` in a `_git` argv is transported literally and never expands. The conclusion — that NFR-2 holds "by construction outbound and by implementation discipline inbound", and that the two must not be conflated — is exactly the distinction a reviewer of the eventual credential tests will need, and raising the consequence as a TSPEC erratum (§11.3 item 3) rather than absorbing it is the right routing.
+- **§9's new operator paragraph converts a spec fact into an operational one.** "A zero-byte `.consolidation-lock` means **free**, not **stuck**" is the inverse of what AC-1.3's delete-to-clear instruction invites, and stating that both manual channels agree (`file_missing` from a hand delete, `file_empty` from a release, §7.3 treats both as absent) closes the wedge question before an operator meets it. Both citations resolve (`TSPEC:962-966`, `TSPEC:2522`).
+- **F-07's fix models how to close an unobservable trigger honestly**: name the forensic signature so the reading is mechanical, then say in the same breath that nothing computes it, nothing raises it, and no test asserts it — rather than inventing a counter to make the trigger look watched.
+- **The Q-03 answer is the one that mattered.** §7 now says the differential invokes the hook **end-to-end** through a real `bash`/`python3` subprocess reading the `PDLC_PENDING:` channel, never a re-implementation of the predicate inside the test. That is what makes the "one predicate" claim falsifiable rather than circular, and `TSPEC:766-768` / `:1926` carry the matching L4 row and file name.
+- **The `CORPUS_GLOBS` pin is stated over the declaration, never a line number**, with the extra conjunct that `glob.glob(` occurs in the file exactly once and inside that comprehension (`TSPEC:793-796`). That closes the second-call-site hole a naive set assertion would leave, and it is the pattern the rest of this feature's source pins should copy.
+
+## Recommendation
+
+**Needs revision** (1 High, 0 Medium, 3 Low).
+
+Convergence is close. Seven of nine v1 findings are closed outright and two of the three
+remaining items are citation hygiene in text that is otherwise right. Exactly what must change:
+
+1. **F-01 (the only blocker)** — restate §5 domain 1's verb set as `TSPEC:1619`'s actual
+   invoking-tree row: obliged `add`, `commit` (the pass's own pathspec-scoped log commit,
+   `REQ:288`) plus the five permitted reads (`read-branch`, `read-status`, ⊕`read-object`,
+   ⊕`read-remote`, ⊕`read-index`), and cite **TSPEC §9.3 (`:1619`)** for it rather than §13.1
+   row 9, which lists only the three widenings. The falsifying force belongs on the
+   absent-always column. As written the assertion reds on a correct pass.
+2. **F-02** — strike or restate the "admits no mutating git verb at all" clause in §5 (and the
+   sentence it cites at §6). DEC-CONS-04's rejection stands on its AC-1.3 ground alone.
+3. **F-03** — cite `TSPEC:1620` for the clone-domain verb set, and reconcile "the clone belongs
+   to no verb set" with `TSPEC:1620`'s explicit "plus the `clone` call itself".
+4. **F-04** — scope §8's read-prompt conjuncts to `rtReadProbe`'s prompt argument; the cwd
+   string occurs three times in the adapter (`:374`, `:618`, `:911`), and the negative's target
+   phrase will occur twice once this feature's own widening lands.
+
+No decision is disputed, and nothing in F-01 changes DEC-CONS-03's Decision — the clone is still
+cut from `origin`'s URL, and the three-domain partition with the positionally-pinned clone is the
+right structure. The defect is that the replacement text names the wrong set for one of the three
+domains, which is a fix to one sentence, not to the entry.
+
+## Verdict
+
+VERDICT: Needs revision

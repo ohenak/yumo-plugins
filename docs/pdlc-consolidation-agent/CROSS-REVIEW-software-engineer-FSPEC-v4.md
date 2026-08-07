@@ -1,0 +1,133 @@
+# Cross-Review: software-engineer — FSPEC
+
+**Reviewer:** software-engineer
+**Document reviewed:** `docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` (v4.0)
+**Date:** 2026-08-06
+**Iteration:** 4
+**Scope:** Local unless tagged otherwise
+**Protocol:** delta re-review. Baseline `15f1ef0` (the commit `CROSS-REVIEW-software-engineer-FSPEC-v3.md` reviewed); diff `15f1ef0..HEAD` — 217 insertions, 118 deletions across 10 commits. Only the changed sections were re-read for new issues.
+
+## Prior findings — disposition
+
+Every v3 finding was re-checked against the revision and, where it made a claim about HEAD, against
+the code. **All six are closed as filed.** As in the previous two rounds, two of the repairs create
+new checkable defects in the sections they rewrote; those are filed below on their own merits, not as
+reopenings.
+
+| v3 | Verdict | Evidence |
+|---|---|---|
+| F-01 (High) — `{topic}` was circular and §5.2's worked example routed to the PR route under §5.1's own predicate | **Resolved, and by the harder path.** §8.1 is now an **eight**-field record: `artifact` is the failure mode's *subject* and a new `target` is "the one canonical repository path this promotion's write touches", the only field §5.1 routes on. §5.1's lead sentence, §5.2's table header, §8.2's opening, §8.5 rows 3–4, §8.6, BR-18, BR-33, BR-35a, AT-R6b, AT-F17, AT-F18 and the §15.1 rows for AC-5.1 / NFR-1 all moved to the split in the same round. The three consequences are stated where a future editor will read them (§8.1: the derivation terminates; an AC-2.2 promotion never routes to the PR route; AC-2.1 promotions stay distinct because each keys on its own subject) — including the AC-2.1 consequence I asked to be checked, which is answered rather than deferred. §5.1's new paragraph ("a guard-set subject does not imply the PR route") and §5.1 row 4 together make the predicate total over all three §5.2 kinds. `MERGE_GUARD_DEFAULTS` re-verified at `orchestrate-dev.js:48-53` |
+| F-02 (Medium) — the `credential:` biconditional was falsified by S-11c | **Resolved as filed.** §10.3 now carries **three** readings, not two, and the third — `failed` without the code — is named as a **loss of row-level decidability** rather than asserted away; §7.3 item 1 is scoped ("when the pass's terminal status admits that code"); §12.1 S-11c, BR-41a, E-20b and E-20c all moved with it; AT-K6 grows from five rows to six, and rows (iv)/(v) are the pair the row now exists for, discriminated in the report body (§10.4 item 4, whose receive-side-totality rule at `:1626-1628` makes the rendering present on a `failed` pass too). ER-4 routes the enumeration gap upstream, and its argument is exact: I verified `credential-unavailable` / `repository-unresolved` / `api-failure` / `branch-exists` all carry `promoted-degraded`, `no-op` only (`pdlc-consolidation-vocabularies.md:49-52`) while §1's own composition rule at `:72-76` derives a wider set. "Recording the code anyway is not an option" is the right ruling and it is stated |
+| F-03 (Medium) — §8.3's lead sentence contradicted §10.2 order 3, and the negative arm had no test | **Resolved.** §8.3's opening is re-worded to §10.2's condition verbatim ("Every pass that **reaches step 11**… That condition is §10.2 order 3's, verbatim and not a second one"), §2.6's observables row for the step-8 arm is corrected to "**not** emitted", AT-M6 gains the absent-table conjunct on the same path as AT-M9's positive, and **AT-M6b** is added for the `refused` arm no row asserted. E-16 now names both tests and what each covers |
+| F-04 (Medium) — BR-28 generalised AT-Q7's set-equality past its Given | **Resolved as filed, and generalised further than I asked.** §6.5 now enumerates **three** domains (the git seam split by tree, so AC-3.8's invoking-tree scope is statable), the universal rule is `observed ⊆ permitted`, the obliged column is asserted present only on a PR-opening Given, and **AT-Q7c** is added as the row that pins the universal rule as containment. `fetch` moving to "permitted but not obliged" is the right call for the reason given. The new table's permitted sets are, however, narrower than the pass's own obligations — filed as F-01 |
+| F-05 (Low) — §12.1's `Log row` column changed meaning in S-11c | **Resolved.** A preamble above the table declares the column counts terminal rows only in every row, and S-11c's extra detail moved into its Scenario cell |
+| F-06 (Low) — two presentation defects | **Resolved.** §5.2's collapse sentence parses ("three of the fifteen skill directories at HEAD — would share one decision file…"), and AT-Q9 is back in sequence ahead of AT-Q10 |
+
+## Findings
+
+All findings below are in sections the revision changed. Nothing unchanged since v3 is re-litigated.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **§6.5's new per-tree permitted sets are narrower than the pass's own obligations, so the newly-universal containment assertion is red on a conforming pass.** The repair to v3 F-04 replaced a set-equality with `observed ⊆ permitted` asserted **on every pass** (BR-28; AT-Q7 assertion (1); AT-Q7c), and defines the permitted set of a domain as "its obliged column ∪ its permitted-but-not-obliged column". For the **git seam, invoking tree** those columns are `add`, `commit` and `—`: the permitted set is exactly `{add, commit}`. But the spy is defined over "the **resolved verb** of every call routed through it" — reads included — and the pass is obliged to make at least one git read in that tree: AC-3.8b/REQ `:300` requires the report to name "the branch the commit landed on", and §10.4 item 9 and §10.3's `branch:` row carry it, on **every** row-writing pass including the `git add`-stages-nothing path (§5.4 `:708-711`) where no commit output exists to parse it out of. The document never says where that branch name comes from; the shipped precedent for the same observation is a `git rev-parse --abbrev-ref HEAD` (CLAUDE.md's branch-guard rule; `gitWithLockRetry`/`commitPaths` at `orchestrate-dev.js:8617`, `:8669` are the neighbouring git-seam users). An implementer who reads it through the git seam observes a verb outside `{add, commit}` and fails assertion (1) on correct behaviour — the same shape of defect as v2 F-02 and v3 F-04, one domain over. Repair is cheap and belongs in §6.5, not in TSPEC: either add the read verb(s) to the invoking tree's *permitted but not obliged* column (as `fetch` was added to the clone's), or state that the branch name is resolved off a non-git seam and that the git domain is mutating verbs only — but then say so, because "every call routed through it" is what makes the oracle strong. Check the clone domain for the same class while you are there. | §6.5, BR-28, AT-Q7, AT-Q7c, §10.4 item 9 |
+| F-02 | Medium | Local | **`suppressed-by:`'s new two-spelling grammar contradicts the REQ-owned vocabularies row it is pinned to, and no erratum is routed.** This round makes §10.3 "normative for the grammar" of `suppressed-by:` and admits a second evidence form — `pass:{passId}` on the consuming-repo carrier (§10.3 `:1554`, BR-26, §12.2 P-04, §6.4 `:822`, and AT-Q10, which asserts the **literal** text `{failure-mode-id}:{action} → pass:{enacting passId}`). Vocabularies §1, which this FSPEC pins at `Version` 1.4 and does not own, spells that field's value as `` `{id}:{action} → PR URL` entries, or empty `` (`docs/_constraints/pdlc-consolidation-vocabularies.md:63`; change control at `:27`, "REQ-pdlc-consolidation-agent owns every section of this file" — verified at HEAD). Two documents now state incompatible grammars for one field, and the one this layer does not own is the one an implementer will read first. §10.3's free-form-class argument does not dispose of it: the class rule says "the **field name** has a §1 row where §1 defines one; the **value** is outside the compared set", but §1's row *does* define the value grammar, so the exemption is asserted over a case §1 did not leave open. AT-L5 stays green either way — which is exactly why this will not be caught downstream. §14.4 routes three §1 gaps of *lesser* consequence (ER-1 a missing field row, ER-2 a missing reason code, ER-4 a status column); this one changes the shape of an existing row and is unrouted. Route it as ER-5 (or state, in §10.3 and §15.2 both, why a value grammar §1 spells out is nevertheless free-form). I have emitted the corresponding erratum. | §10.3 `:1536`/`:1554`, §6.4, BR-26, §12.2 P-04, AT-Q10, §14.4, §15.2 |
+| F-03 | Medium | Local | **§8.2's new "one `target`" merge observable is undetermined when the merged failure modes have different §5.2 kinds — and the merged promotion's route is then undefined.** The intra-pass merge is keyed on `(failure-mode-id, action)`, i.e. on `(phase, subject artifact, action)` and on nothing else (§8.2 `:1141-1145`). The new paragraph at `:1147-1153` asserts the merge's observables are "exactly: one failure-mode record for the id, one `symptom`, one `target`, one write", and AT-R6b's second fixture asserts that set. But `target` is a function of the promotion's **kind** (§5.2's table, restated in §5.1 `:523-524`), and the merge rule reads no kind: two distinct failure modes in one phase about one file — precisely the case §8.2 says is the accepted cost of a path-level key — can be a domain invariant and a process learning, whose targets are `docs/_constraints/DOMAIN-CONSTRAINTS.md` and the subject file itself. Those route to *different* §5.1 rows, and where the subject is guard-set, one of them is the PR route. So the merged promotion has two candidate targets, the document says it has one, and nothing decides which. AT-R6b cannot see it: both of its fixtures are AC-2.2 promotions, so the kinds coincide by construction and the "one `target`" conjunct is satisfied vacuously. Either state the kind-precedence rule (and give AT-R6b a mixed-kind fixture), or scope the merge to same-kind proposals and say what happens to a colliding proposal of a different kind — it cannot silently disappear, since §8.2's own argument for the merge is that nothing is withheld. | §8.2 `:1141-1153`, §5.2, §5.1, AT-R6b |
+| F-04 | Low | Local | **Two of this round's new line citations are off by one at the start of the range.** §14.1 T-02 and §15.3 cite the `bundles` array as `build-runtime.mjs:448-470` — it is `:448-471` (`];` closes at `:471`) — and the third entry as `:465-470`, where `:465` is the `file:` key and the entry's opening brace is `:464`. Every other citation added this round is exact (see Positive Observations), which is why the two are worth correcting rather than ignoring: §15.3 is the row a TSPEC author greps from. | §14.1 T-02, §15.3 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §8.1's `target` is now a recorded **field** of the failure-mode record, and §6.4's consuming-repo carrier reads records off `.consolidation-log.md` written by *earlier* passes. Records written before this feature ships do not exist, so there is no migration — but records written by a pass at one `{topic}` convention and read by a pass at another do: §5.2 declares the `{topic}` convention change and §15.3 lists the three hand-named `DECISIONS-*.md` files at HEAD. Is a record whose `target` field is absent (a log line written by any future writer that predates a field addition) a parse notice, a skipped row, or a halt? §8.4 step 1 and §6.4 both index into fields of records they did not write, and §10.2's append-only grammar guarantees old records are never rewritten. This is the same question §8.1's "normative for the record's shape" ruling settled for *writers*; it is not settled for readers. |
+| Q-02 | AT-Q7c's Then reads "the containment assertion (1) holds on all three domains with the PR seam and the clone seam observing `∅`, and the invoking tree observing `{add, commit}`". Is that last clause a containment assertion or an equality? Read as an equality it is the strongest form of the row and it is what makes AT-Q7c falsify a pass that quietly clones on a no-guard-set corpus — but it is also the form F-01 makes red. If F-01 is repaired by widening the invoking tree's permitted set, this cell needs to say which of the two it means, because "observing `{add, commit}`" will then be neither the permitted set nor obviously a subset claim. |
+| Q-03 | O-C7 accepts unbounded growth of the harvest question list and rules out both a recency window and a cap, on the ground that either would drop a promotion silently. Agreed as far as it goes — but §8.4 step 1's list is now computed **by the pass** and handed to the harvest prompt (this round's change, and the right one). Does that make the list a *prompt-size* obligation on the harvest dispatch — i.e. is there a size at which the pass should report the list's length in §10.4 rather than only emit it, so the growth is observable before it becomes a truncation? O-C7 bounds the cost by the promotion rate; it does not say who notices when the bound is exceeded. |
+
+## Positive Observations
+
+- **The subject/target split is the right repair and it was carried through the whole document in one
+  round.** v3 F-01 could have been closed by re-wording §5.2's worked example; instead the field was
+  split at §8.1 and then chased into §5.1, §5.2, §8.2, §8.5, §8.6, §10.2, BR-18, BR-33, BR-35a,
+  AT-R6, AT-R6b, AT-F17, AT-F18 and two §15.1 traceability rows. The three numbered consequences in
+  §8.1 are the durable part: they say *why* the fields must stay two, so a later editor who wants to
+  collapse them can see what breaks (a non-terminating derivation, an AC-2.2 promotion routed to the
+  PR route, and NFR-4 suppressing every domain invariant after the first).
+- **Every code citation added this round is exact, and I re-verified all of them at HEAD.** The
+  `bundles` array is `build-runtime.mjs:448`, its third entry is `{ file: "pdlc-cli.mjs", id:
+  "pdlc-cli", contents: cliArtifact }` and `cliArtifact` is composed at `:291` wrapping the dev
+  module as `__dev`; `resolveAdvisoryRung` is defined at `dist/orchestrate-dev.bundle.js:1994`,
+  `dist/orchestrate-queue.bundle.js:1970` **and** `dist/pdlc-cli.mjs:1843`; all three are
+  `git ls-files`-tracked and `distribution-manifest.json` carries one `pluginSha1` row per artifact
+  under exactly the ids `orchestrate-dev` / `orchestrate-queue` / `pdlc-cli`.
+  `MERGE_GUARD_DEFAULTS` is `orchestrate-dev.js:48-53`; `ADVISORY_RUNG_SKILL` `:1797`; the export
+  `:1833`; the single `_agent` call `:1841`; the memo short-circuit `:1844-1849`; the `_log` template
+  literal `:1859`. The one thing I did not take on trust — §15.3's claim that CI fails a commit
+  rebuilding two of the three artifacts — is true for the reason given: `pr-tests.yml:97-101` rebuilds
+  and then runs `git diff --exit-code -- pdlc/workflows/dist/` over the whole directory.
+- **§15.3's third-artifact correction is the most valuable line added this round.** v3's Q-03 asked
+  only whether the manifest row was singular; the answer found a *third* tracked artifact carrying the
+  widened resolver that nobody had named, and then stated why the count is load-bearing rather than
+  bookkeeping. T-02 inherits it correctly ("inlining makes the consolidation bundle a **fourth**").
+  That is a finding the document made against itself, from a question that did not ask for it.
+- **§10.3's third reading is an honest answer to a question with no clean one.** The easy repairs
+  were available — move the credential resolution, or record the code anyway — and both were rejected
+  for stated reasons (the second would breach REQ §4b and turn AT-L5 red). Naming the case as a *loss
+  of row-level decidability*, pointing the reader at the report body, routing ER-4 with the exact
+  composition-rule argument, and giving AT-K6 the (iv)/(v) pair whose only discriminator is the report
+  body, is the shape a spec should take when the upstream vocabulary is the thing that is wrong.
+  ER-4's shipping assumption ("implementation does not wait; if the widened column lands, AT-K6 rows
+  (iv)/(v) gain the reason-code assertion **in addition to** the report-body one") reuses ER-2's
+  ruling instead of inventing a second policy.
+- **The negative arms added this round are paired, not absence-only.** AT-M6's "no effectiveness table
+  and no failure-mode record" is asserted on the same path as AT-M9's positive and the row says so;
+  AT-M6b adds the `refused` arm no row covered and asserts *exactly one* appended record rather than
+  the absence of a table; AT-R6b's merge fixture asserts a four-element observable set **and** the two
+  things that must not appear, with the reason the negative half exists ("an implementation that
+  reported the merge as a suppression would be indistinguishable, in the log, from one that dropped a
+  promotion"). AT-Q7c exists purely to falsify the wrong reading of AT-Q7's oracle — a test whose job
+  is to keep another test honest.
+- **T-04 answers v3's Q-01 by widening an obligation rather than by arguing.** The `_log` capture is
+  now named as TSPEC's obligation, both report-body assertions (`ADVISORY_MODEL_FALLBACK:` and §2.6
+  row 4's error message) are folded into one capture, and the row is explicit that TSPEC chooses the
+  mechanism and not whether the capture exists. O-C7 does the same for Q-02: the growth is accepted,
+  the two obvious mitigations are rejected with the failure direction each would introduce, and the
+  successor's repair is named as a *reported* cap.
+
+## Recommendation
+
+**Needs revision**
+
+All six v3 findings are closed as filed — the third consecutive round in which every prior finding
+was addressed rather than argued with, and the High was closed by the structural repair (splitting
+`artifact` into subject and target across fourteen sections) rather than by re-wording the example
+that exposed it. **No High finding remains.** What is open is three Mediums, all of them defects
+created by this round's repairs, and none of them touching the document's scope or structure.
+
+1. **F-01 — widen §6.5's invoking-tree permitted set, or scope the domain.** The pass must observe
+   the branch it committed on (AC-3.8b, §10.4 item 9); `{add, commit}` admits no verb that can, so
+   the universal containment assertion the F-04 repair introduced is red on a conforming pass. Add
+   the read verb to the permitted-but-not-obliged column exactly as `fetch` was added to the clone's,
+   or say the git domains are mutating verbs only — and then AT-Q7c's invoking-tree cell needs to say
+   whether it asserts containment or equality (Q-02).
+2. **F-02 — route the `suppressed-by:` grammar change as an erratum.** §10.3 now declares itself
+   normative for a value grammar vocabularies §1 spells differently at `:63`, and §1 is REQ-owned.
+   Three lesser §1 gaps are routed; this one is not. Either route it or state in §10.3 and §15.2 both
+   why a grammar §1 writes out is nevertheless outside the compared set.
+3. **F-03 — decide the merged promotion's kind.** §8.2's merge keys on `(phase, subject, action)` and
+   reads no kind, yet the new paragraph asserts the merge yields one `target` — which is a function of
+   kind. Two failure modes of different kinds on one file in one phase are exactly the case §8.2 calls
+   the accepted cost, and their targets route differently. State the precedence rule and give AT-R6b a
+   mixed-kind fixture, or scope the merge to same-kind proposals and say where the odd one goes.
+
+F-04 is a correction of record, not a blocker.
+
+One erratum is emitted with this review, against the REQ-owned vocabularies file (F-02's other half):
+the `suppressed-by:` row admits only a PR URL, while NFR-4's consuming-repo carrier — a route the REQ
+itself requires to be idempotent — has no PR to name.
+
+## Verdict
+
+No High finding remains. Three Medium findings (F-01, F-02, F-03) are open, plus one Low (F-04).
+Per the approval rule — any High or Medium finding means the document is not approved — this
+iteration does not approve `FSPEC-pdlc-consolidation-agent.md`.
+
+VERDICT: Needs revision

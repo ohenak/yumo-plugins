@@ -1,0 +1,174 @@
+# Cross-Review: software-engineer — REQ
+
+**Reviewer:** software-engineer
+**Document reviewed:** `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md`
+**Date:** 2026-08-06
+**Iteration:** 9
+**Scope:** Local (delta re-review — v8 findings + changed sections only)
+**Baseline diffed:** `a2abdb9..HEAD` (5 REQ commits, +63/−112; 634 lines / 61,053 bytes, down from 683 / 65,492), plus the two `docs/_constraints/` files those commits created
+
+## Prior-Finding Disposition
+
+All three v8 findings, checked against the revision and against the code or precedent each cites.
+
+| v8 | Severity | Status | Evidence in the revision |
+|---|---|---|---|
+| F-01 | Medium | **Resolved — the promise was made total rather than repriced, and Q-01 was answered in the same edit** | AC-5.3 gains "A spent alternative, and the terminal remediation" (`:430-435`): "**when the pass's chosen alternative is already on a PR in state open or merged, it proposes the other one**", `retire` is declared **terminal** ("a retired promotion is gone, so no successor is owed and the ladder cannot run out"), and the AC-7.1 field "names the alternative actually proposed, never the one displaced". That is option (a) from my finding — the one that keeps the guarantee instead of pricing its loss. Q-01 is answered explicitly and in the direction that makes my case a corner rather than the main line: "a **merged** revision resets that promotion's `ineffective` streak to zero — the reset AC-5.5 makes explicit for `unmeasurable`, made explicit here too — so a revision that lands is re-judged on two fresh `recurred` counted passes rather than re-flagged on the next one" (`:434-435`). The asymmetry I flagged with AC-5.5 is gone. AC-5.1's `action` paragraph was corrected to agree rather than left contradicting: remediations reach the AC-3.1 route "unimpeded **by it**", and "can still be suppressed by an *earlier remediation of the same kind* — each action fires at most once per id — which is why AC-5.3 routes the pass to the other alternative when its first choice is spent, and makes `retire` terminal" (`:390-392`). Both sentences now say the same thing. I replayed the fixture: promote merged → `ineffective` → `revise` merged → streak 0 → two fresh `recurred` → `ineffective` → `revise` spent → `retire`. Terminates. |
+| F-02 | Medium | **Resolved, and the case I said must be decidable is decided by name** | AC-5.1 gains "**One promotion is one authored file**" (`:371-378`), which states the split direction as a requirement rather than leaving it to inference: "a remedy spanning two authored files is **two** proposals — two ids, two AC-3.3 commits, two AC-5.2 rows, two AC-5.3 streaks — which may share one PR (AC-3.3 already permits that shape); they share nothing else and are measured separately". That is my option (a), and it took option (b)'s hardest case with it: "A **generated** path is never an `artifact` and never mints an id: the tracked outputs of `pdlc/workflows/build-runtime.mjs` under `pdlc/workflows/dist/` … ride the authored file's commit. So the likeliest promotion this feature will make — an edit to `pdlc/workflows/orchestrate-dev.js` plus its rebuilt bundles — is **one** promotion whose `artifact` is `pdlc/workflows/orchestrate-dev.js`". I checked the exclusion for totality against the guard set rather than taking it on faith (row 3 of the verification table below): within `MERGE_GUARD_DEFAULTS` the only tracked generated paths are the four under `pdlc/workflows/dist/`, and `.claude/workflows/` is gitignored and can never appear in a PR — so the carve-out is closed, not illustrative, and the derivation is total on every edit shape a promotion can have. |
+| F-03 | Low | **Resolved, and hardened past what I asked for — by relocation, in the moved table** | Both cells are fixed in the table's new home: `promote`/`revise`/`retire` now reads `promoted`, `promoted-degraded`, `no-op` (`pdlc-consolidation-vocabularies.md:48`), matching `duplicate-suppressed` (`:41`) exactly as I asked, and both "as above" cells — `ineffective`/`unmeasurable` (`:47`) and `revision`/`retirement` (`:49`) — were replaced by their intended referent, "any status emitting the AC-5.2 table". The optional half of the finding was taken too: the file carries the standing rule at the top, above both tables — "**No cell in either table below may use a positional back-reference.** Every *May accompany status* cell names its permitted set explicitly, so inserting a row can never silently re-point a neighbour" (`:15-16`). That converts my one-time fix into an invariant that also covers §2's table. |
+
+Three of three resolved, no v8 fix regressed, and two of the three were closed by adopting the
+argument rather than the minimum patch. Both new findings below are consequences of the **relocation**
+this round performed (v8 TE F-46) — not of the three fixes above, which are clean.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Cross-Feature | **§4b now imposes set-equality against a table the REQ does not own, held in a file the same round declares shared with successor features and explicitly unreviewed — so a successor adding one row either breaks this feature's tests or changes its contract with no review.** §4b's obligation is unchanged in force and now points outward: the vocabularies "are stated once … in `docs/_constraints/pdlc-consolidation-vocabularies.md` §1", and "downstream completeness is checkable by **set-equality against it**" (`:563-570`). The destination file declares its own kind as "**Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` **and its successors**; **not** a pipeline artifact, **not reviewed**, not queue-eligible" (`pdlc-consolidation-vocabularies.md:5`). Those two sentences are in tension in a way that is mechanical, not philosophical: PROPERTIES will transcribe 28 rows under a set-equality oracle (that is the point of the obligation — a deleted or added case must fail), the table is declared extensible by `pdlc-engineering-loop` and any other successor, and no gate exists that would notice. The REQ's approval anchors pin REQ bytes; nothing pins this file's. The repo has already solved exactly this, in the shipped family this file's own header imitates: `docs/_constraints/pdlc-rcv-baseline.md` carries **fact ids** (`M-*`, `N-*`), each consuming REQ carries a `Shared baseline` header row saying "**Read it first.** Facts are cited by id (`M-2a`) and are not restated here" (`docs/discarded/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md:11`), and — the part that matters here — each consumer states its **ownership** of the shared table explicitly: "This REQ **owns** two of its rows and changes none of the others; a threshold used here and absent there is a defect" (`docs/discarded/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md:223`; the same sentence at `docs/discarded/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md:417`). The relocation adopted the *shape* of that precedent (a `Cited by` row, a version, a "why this file exists" preamble) but not the two mechanisms that make a shared normative table safe to depend on. This is REQ-layer because set-equality is the REQ's own obligation and ownership of an enumeration is a requirement, not a mechanism; and it is Cross-Feature because the file names its successors as readers. Fix, one sentence, two shapes: (a) state in §4b that **this REQ owns every row of §1 and §2**, and that a successor adding a row for its own vocabulary must do so in its own section or its own file — cheapest, and true today; or (b) follow the precedent literally: give §1/§2 rows stable ids, cite them by id, and scope the set-equality obligation to the ids this REQ owns. Either way §4b must say *which* rows the oracle ranges over, because today it says "the table". | §4b, `pdlc-consolidation-vocabularies.md:5`, AC-5.2 |
+| F-02 | Low | Local | **One of the five new cross-file citations points at the wrong section, and it is the one carrying an honest limit — the class of sentence a downstream author is least able to reconstruct.** REQ-CONS-06 closes with "The honest limit (baseline §3): `ESCALATIONS.md` records escalations, not resolutions — a resolution-rate input is D-CONS-06" (`:484`). In `pdlc-advisory-corpus-baseline.md`, §3 is "The two-rung model ladder, and that it is reusable" (`:39`); the honest limit is **§4** (`:55-60`). A reader following the pointer lands on unrelated but plausible content — the ladder — and finds no limit there. The other four pointers check out: AC-1.3 → vocabularies §3 (record grammar, `:90`), AC-1.3's write-granularity → §3 (`:111`), AC-5.2 → §2 (phase observable, `:66`), §4b → §1 (`:18`), AC-1.5 → baseline §3 (ladder, `:39`) — all correct. Second, smaller instance in the moved text: vocabularies §3 cites the shipped predicate as "`nudge-consolidation.sh:41`, read at `:32`" (`:96`), but `:32` composes the log path (`log = os.path.join(...)`); the read is at `:36-37` (`with open(log …) as fh: logtext = fh.read()`). `:41` is right (`pending = [p for p in learnings if os.path.basename(p) not in logtext]` — the bare substring test the REQ describes). Both are one-token fixes. I raise them at Low and together because they are the predictable cost of the citation scheme F-01 asks you to reconsider: a bare section number is a positional reference into a file whose sections will move — the exact failure the vocabularies file itself forbids *inside* its tables (`:15-16`) but not *into* them. | REQ-CONS-06 `:484`, `pdlc-consolidation-vocabularies.md:96` |
+| F-03 | Low | Local | **The two `docs/_constraints/` files are deliverables of this feature's own diff and §5 does not name them; §5's one reference to the moved content still points at the pointer.** Both files were created on this branch this round (`4f0f64b`, `02bd20b`, `3504aeb`), are tracked, and carry normative content every downstream layer must read — yet §5's in-scope list (`:574-585`) enumerates nine work items and none of them is "the two project-level reference files this feature authors and thereafter owns". The list is otherwise scrupulous about naming even one-line work ("the one-line `.gitignore` entry for `docs/_decisions/.consolidation-lock`"), which is what makes the omission conspicuous rather than pedantic. Related, same clause: §5 still says "reporting against **§4b's** vocabularies" (`:585`) — §4b is now four sentences of pointer, so the scoped work reads as reporting against a cross-reference. Fix: add the two paths to the in-scope list (with F-01's ownership sentence, they are also the natural place to say who owns them), and repoint that clause at the vocabularies file. Cheap, but it is the difference between a shared file this feature owns and a shared file that appeared. | §5 `:574-585` |
+
+## Existing-Code Claim Verification (changed sections)
+
+This round moved four blocks of already-verified text out of the REQ and added one new paragraph, so
+the verification surface is (a) whether the move was lossless, (b) the new paragraph's claims, and
+(c) every `file:line` in the two new files, since text in a new file is new text whatever its
+provenance. All checked in a single pass at HEAD.
+
+| # | New/changed claim | Where | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | The relocated §1 table is the old §4b table (relocation is lossless, not a rewrite) | `pdlc-consolidation-vocabularies.md:24-53` | **Confirmed — row-for-row identical, 4 cells changed, all of them my v8 F-03** | I diffed the old table (`git show a2abdb9:…REQ… | sed -n '/^## 4b/,/^## 5\./p'`) against the new one. Both are 28 value rows; truncating each line to its first 45 characters makes the two files **byte-identical**, so no value was added, dropped, renamed or reordered. Exactly four lines differ in full: the three *May accompany status* cells F-03 named (`ineffective`/`unmeasurable`, `promote`/`revise`/`retire`, `revision`/`retirement`) and the phase row's category cell ("AC-5.1's catalogue" → "the closed 13-member catalogue AC-5.1 keys on" — a strengthening, since the cardinality is now stated where the oracle reads it). Both joins and the composition paragraph moved verbatim (`:55-64`) |
+| 2 | AC-5.1: a **generated** path never mints an id, the class being "the tracked outputs of `pdlc/workflows/build-runtime.mjs` under `pdlc/workflows/dist/`" — **new this round** | AC-5.1 `:373-378` | **Confirmed, and the carve-out is closed over the guard set — because it is keyed on the producer, not on a path glob** | I enumerated the tracked generated paths inside `MERGE_GUARD_DEFAULTS` (`orchestrate-dev.js:48-53`): `git ls-files pdlc/workflows pdlc/skills pdlc/hooks` yields exactly four build-runtime outputs under `pdlc/workflows/dist/` (`distribution-manifest.json`, `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`, `pdlc-cli.mjs`); `pdlc/skills/` and `pdlc/hooks/` carry none; and the fourth guard member `.claude/workflows/` is gitignored (`/.claude/workflows/`, `.gitignore`) so it can never appear in a PR at all. So "generated" is a finite, closed set here, not an open class needing judgment. One detail worth recording because it makes the wording load-bearing rather than incidental: `git ls-files` also returns **authored** files whose path contains `pdlc/workflows/dist/` — the four under `pdlc/workflows/__tests__/fixtures/covered-violations/pdlc/workflows/dist/`. A path-glob wording would have wrongly exempted them from minting an id; "the tracked **outputs of `build-runtime.mjs`**" does not. The rule is total and correctly keyed |
+| 3 | The rebuild-in-the-same-commit rule AC-5.1 attributes to `CLAUDE.md` | AC-5.1 `:376` | **Confirmed** | `CLAUDE.md` states that `pdlc/workflows/dist/` "must be rebuilt in the same commit" as a workflow source edit, and CI enforces it independently (`Generated artifacts are in sync`, `.github/workflows/pr-tests.yml`). The REQ attributes to the file what the file says |
+| 4 | Every `file:line` in `pdlc-advisory-corpus-baseline.md` (14 anchors, all newly written into this file) | baseline `:19-53` | **Confirmed — 14/14** | `advisorySummaryRows` `:2708` (export), report fields `:10663` / `:10695` (both `advisory: advisoryTierOn ? advisorySummaryRows(…) : undefined`), `renderAdvisoryEntry` `:2642`, the ADVISORY path built at `:10499`, `advisoryDistilPrompt` `:7585`, `ESCALATIONS_PATH` `:2750` (`= "docs/_queue/ESCALATIONS.md"`), appended `:2812` (`await _appendFile(ESCALATIONS_PATH, entry)`), `renderEscalationEntry` `:2763`, `advisoryTierOn` `:9653`, `parseAdvisoryConfig` `:1682`, default `enabled: false` `:1663`, `MODEL_ADVISORY` `:1652` / `MODEL_ADVISORY_FALLBACK` `:1653`, `resolveAdvisoryRung` `:1833` under the doc comment at `:1800`. `ADVISORY_MODEL_FALLBACK:` `:1859` also holds. `docs/_queue/` still holds `QUEUE.md` alone |
+| 5 | Every `file:line` in `pdlc-consolidation-vocabularies.md` §2/§3 | vocabularies `:75-118` | **Confirmed but for one imprecision, filed as F-02** | §2's three mapping rows and their shipped-naming citations moved verbatim from a table verified in earlier rounds. §3's predicate citation is right where it matters — `nudge-consolidation.sh:41` is `pending = [p for p in learnings if os.path.basename(p) not in logtext]`, a bare substring test over the whole file, exactly as described — but "read at `:32`" names the `os.path.join` that composes the path; the read is `:36-37` |
+| 6 | The size claim implied by the relocation (that it brought the REQ back inside the shipped budget) | — | **Confirmed, with 387 bytes of headroom** | HEAD: 634 lines / 61,053 bytes, against `LINE_LIMIT=700` / `BYTE_LIMIT=61440` (`pdlc/hooks/scripts/check-req-size.sh:41-42`). Before the round: 683 / 65,492 — i.e. **over** the hard byte ceiling. The relocation cleared a real breach. It is still above both soft thresholds (`SOFT_LINE_LIMIT=630`, `SOFT_BYTE_LIMIT=55296`, `:47-48`), which is the mechanism's own way of saying the next round must relocate before it adds. See Q-02 |
+
+No claim added or changed this round is factually wrong about the codebase — the third consecutive
+round with no defect row. F-02's two items are citation *precision* against documents, not falsehoods
+about code, which is why they are Low and not a row here.
+
+## Questions
+
+v8's Q-01 is answered in AC-5.3's own text (a merged revision resets the `ineffective` streak) and
+that answer is what makes the F-01 fix terminate. Q-02 is answered by "One promotion is one authored
+file" — atomicity, plus a generated-path carve-out I did not ask for and which turns out to be the
+part that makes the rule total. Q-03 is answered by AC-5.3's "and **absent** for an ordinary
+`promote`, which chose nothing" (`:423`), which closes the enumeration exactly as offered. No prior
+question is left open.
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: is `pdlc-engineering-loop` expected to **extend** §1 and §2, or to hold its own vocabulary file? The vocabularies file names successors as readers (`:5`) but says nothing about writers, and the answer decides which of F-01's two fixes is right — an ownership sentence is enough if this REQ owns the whole file for its lifetime; ids are needed if a successor will interleave rows. D-CONS-02/-06/-07 all bind to that successor, so this is not hypothetical. |
+| Q-02 | Not blocking, but it constrains *how* this round's fixes land: the REQ has **387 bytes** of headroom under the hard ceiling and is above both soft thresholds. F-01 and F-03 both add text to §5/§4b. `pm-author` §5e says the relocation must happen **before** the round's findings are addressed, never as per-round byte scavenging inside the fix — so is there a further block earmarked for relocation (§3's problem narrative and §7's deferral rationales are the two obvious candidates), or is the intent that F-01's ownership sentence displaces existing prose in place? I raise it because the cheapest way to absorb three findings inside 387 bytes is to delete a reason, and this document's reasons are the reason it converged. |
+| Q-03 | Not blocking: the two new files are `docs/_constraints/` reference documents, which the harvest phase does not touch and no pipeline gate reads. When this feature ships, what keeps their `Cited by` rows true — is that a `consolidate-learnings` responsibility (this feature's own subject matter), or purely manual? A stale `Cited by` is harmless; a stale *table* is not, which is F-01's point from the other direction. |
+
+## Positive Observations
+
+- **The relocation is lossless, and I can say that mechanically rather than impressionistically.**
+  Moving a 28-row normative table out of a document at review round 9 is the kind of edit that
+  usually costs a row. This one cost none: truncated to their first 45 characters the old and new
+  tables are byte-identical, so no value was added, dropped, renamed or reordered, and the only four
+  full-line differences are the three cells v8 F-03 asked for plus a strengthening of the phase
+  row's category. The joins and the composition paragraph came across verbatim. A reviewer can
+  verify that in one command, which is the property that made me willing to approve a move of this
+  size on its own terms.
+
+- **The fix went past the finding and closed the class.** F-03 asked for two cells. The revision
+  fixed three and then wrote the invariant above both tables — "**No cell in either table below may
+  use a positional back-reference.** Every *May accompany status* cell names its permitted set
+  explicitly, so inserting a row can never silently re-point a neighbour"
+  (`pdlc-consolidation-vocabularies.md:15-16`). That is the optional half of my finding, taken, and
+  it now protects §2's table as well as §1's — a table my finding never mentioned.
+
+- **The generated-path carve-out is keyed on the producer, not on the path, and that distinction is
+  live in this repo.** AC-5.1 says "the tracked outputs of `pdlc/workflows/build-runtime.mjs` under
+  `pdlc/workflows/dist/`". I checked what a path glob would have caught instead: `git ls-files`
+  returns four **authored** fixture files whose paths contain `pdlc/workflows/dist/`, under
+  `pdlc/workflows/__tests__/fixtures/covered-violations/`. A glob-worded rule would have exempted
+  them from minting an id — silently, and only for the one feature whose subject is exempting
+  things. The wording that shipped does not. I doubt that was an accident given how the round wrote
+  everything else, and it is the difference between a rule that is total and a rule that looks
+  total.
+
+- **AC-5.3's remediation ladder is now a terminating argument, written as one.** The paragraph does
+  not just add the routing clause I asked for; it says *why* the ladder cannot run out ("`retire` is
+  the **terminal** remediation — a retired promotion is gone, so no successor is owed"), answers the
+  open question about the streak in the same breath, and adds the sentence that keeps the report
+  honest under the new routing ("The AC-7.1 field then names the alternative actually proposed,
+  never the one displaced"). Three rounds ago this region needed a reviewer to replay a fixture to
+  find the hole; now the document replays it for you.
+
+- **The round fixed a shipped-budget breach that no finding of mine had raised, and fixed it by the
+  sanctioned mechanism.** The REQ was at 65,492 bytes against a 61,440-byte hard ceiling — over, and
+  I did not catch it; `pm-author` §5e's remedy (relocate to `docs/_constraints/` **before**
+  addressing the round's findings) is exactly what was done, in that order, in its own commits,
+  before the three fixes landed. My F-01 is a complaint about the *terms* of that relocation, not
+  about the decision, which was right.
+
+## Recommendation
+
+**Needs revision.** 0 High, 1 Medium, 2 Low. All three v8 findings closed, no v8 fix regressed, the
+relocation verified lossless row-for-row, and no defect row in the code-claim table for the third
+consecutive round.
+
+The trajectory: v1→v2 closed 8H, v2→v3 2H+5M, v3→v4 2H+2M+3L, v4→v5 2 of 3, v5→v6 4 of 4, v6→v7 5 of
+5, v7→v8 5 of 5 including the High, v8→v9 **3 of 3**. Four consecutive clean sweeps, and the count
+fell 2M+1L → 1M+2L. More telling than the count: v8's two Mediums were both *state* defects — an
+unreachable remediation, an underivable id. This round's Medium is not about a state the machine can
+enter; it is about **who owns a table**. The two Lows are a wrong section number and a missing line
+in a scope list. On this repo's own harvested heuristic — "a state machine stops generating findings
+when its enumeration closes, not when its prose improves, and a reviewer can tell which regime they
+are in by whether the new findings are about *states* or about *strings*"
+(`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md:32`) — this round is
+the first in which I found **zero** state defects. That is the transition that document calls the
+only reliable convergence signal it observed in nine rounds.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream. None of mine is
+of that class, so I apply the positive test — does each belong *here*?
+
+- **F-01 (Medium)** belongs here. The set-equality obligation is stated in this REQ (§4b), and what
+  an enumeration's oracle ranges over is the contract itself, not a mechanism for testing it. An
+  FSPEC resolving it would be choosing the scope of a REQ-level obligation. It also matches §5a's
+  own "must be fixed here" list under *deferral with no bound successor* in spirit: the file names
+  successors as readers and binds none as writer.
+- **F-02, F-03 (Low)** would not hold the document alone. Take them in the same pass; they are a
+  section number, a line number and one clause.
+
+### On the TE panel's F-48, since it overlaps my F-01 region
+
+I looked at the "both alternatives spent" state independently and do **not** file it. NFR-4 reads
+state at poll time and excludes closed-unmerged explicitly — "a **closed-unmerged** PR is *not* [a
+key] — the operator rejected that proposal, and a later pass re-proposing it is intended behaviour"
+(`:525-526`). So the only way both actions are simultaneously spent is a `retire` that is open (the
+retirement is already before the operator — the AC-5.3 promise is discharged, nothing further is
+owed) or merged (the promotion is gone — AC-5.3's population is empty for it). An operator rejection
+frees the key. I could not construct a state where a promotion is both live and unremediable. Noted
+here rather than argued in the REQ, so the author is not asked to fix a hole two reviewers disagree
+about existing.
+
+### What must change for approval
+
+1. **F-01** — one sentence in §4b saying which rows the set-equality oracle ranges over. Cheapest
+   true version: "This REQ owns every row of `pdlc-consolidation-vocabularies.md` §1 and §2; a
+   successor's vocabulary belongs in its own section or its own file, and a value used here and
+   absent there is a defect" — the shipped precedent's sentence
+   (`docs/discarded/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md:223`) with the names
+   changed. If the answer to Q-01 is that `pdlc-engineering-loop` will interleave rows, use ids
+   instead and scope the obligation to the owned ids.
+2. **F-02** — REQ `:484` "baseline §3" → **§4**; vocabularies `:96` "read at `:32`" → `:36-37`.
+3. **F-03** — add the two `docs/_constraints/` paths to §5's in-scope list, and repoint §5's
+   "reporting against §4b's vocabularies" at the vocabularies file.
+
+All three fit in well under the 387 bytes of headroom **if** (1) is written as a replacement for
+§4b's current last sentence rather than an addition — which it can be, since that sentence already
+tries to say this and says it about "the table" instead of about the owned rows. If it cannot,
+Q-02's relocation question has to be answered first: do not buy these three fixes by deleting a
+reason.
+
+## Verdict
+
+VERDICT: Needs revision

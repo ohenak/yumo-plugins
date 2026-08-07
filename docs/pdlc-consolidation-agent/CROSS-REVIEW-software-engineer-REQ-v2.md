@@ -1,0 +1,172 @@
+# Cross-Review: software-engineer — REQ
+
+**Reviewer:** software-engineer
+**Document reviewed:** `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md`
+**Date:** 2026-08-05
+**Iteration:** 2
+**Scope:** Local + Cross-Feature (delta re-review — v1 findings + changed sections only)
+**Baseline diffed:** `cb72752..d2b93d7` (8 revision commits, +317/−91)
+
+## Prior-Finding Disposition
+
+All sixteen v1 findings, checked against the revision. Nothing below is re-litigated.
+
+| v1 | Severity | Status | Evidence in the revision |
+|---|---|---|---|
+| F-01 | High | **Resolved** | AC-3.7 no longer claims inheritance. It asserts three of the pass's *own* observables (no merge rights, never calls a merge API, carries an identifying trailer) and states plainly that "No code path in this repository evaluates an inbound PR raised by another process". Every citation checks out: `guardVerdict` `orchestrate-dev.js:732`, `effectiveGuardPaths` `:709`, MERGE ladder `:899-900`, envelope check `:2143`, `mergeMode: "off"` `:61`, refusal `:838`. Repo-side enforcement is bound as BL-05. |
+| F-02 | High | **Resolved** | AC-3.1 now says "**exactly** `MERGE_GUARD_DEFAULTS`" and enumerates all four members verbatim against `orchestrate-dev.js:48-53`, with the `pdlc/hooks/` case called out explicitly. NFR-1 restates the same constant. Set-equality obligation is stated, not implied. |
+| F-03 | High | **Resolved** | AC-3.8 specifies the same-repo configuration as primary and pins the mechanism: a separate clone under a temporary directory, cut from the fetched default branch. §1 states the topology. (See v2 F-03 for a residue.) |
+| F-04 | High | **Resolved** | REQ-CONS-01's preamble names `/loop run /pdlc:consolidate-learnings` (the vehicle CLAUDE.md:215 already documents for the queue) and states correctly that nothing in `pdlc/hooks/hooks.json` can start a pass — `PreToolUse` `:3`, `PostToolUse` `:14`, `SessionStart` `:29`, all session-triggered. The hook's advisory-only role is preserved, not repurposed. Session-free execution is D-CONS-04/07. |
+| F-05 | High | **Resolved** | AC-1.3 gives the marker a form (`IN-PROGRESS: {passId} {ISO-8601}`), a location (`docs/_decisions/.consolidation-log.md`), a writer, a release-on-every-terminal-outcome rule, a stale reclaim keyed to `consolidation.staleLockMinutes`, and an operator escape. Crash recovery is explicit. |
+| F-06 | High | **Resolved** | §4a declares all six keys with defaults, malformed/absent behavior, consuming AC, and a named owner ("the repo operator"), shaped after `parseAdvisoryConfig`'s per-key independent fallback. Every AC that cites a configured value has a row. |
+| F-07 | High | **Resolved as scoped** | REQ-CONS-06 narrowed off the destroyed artifact onto `ESCALATIONS.md`, with the persistence gap bound as D-CONS-06. The narrowing is the right call; the new input has its own problem — v2 F-01, a new finding, not this one reopened. |
+| F-08 | High | **Resolved** | §5a is a stopping rule pasted into the artifact, per DC-09 (`docs/_constraints/DOMAIN-CONSTRAINTS.md:245`), and it names both the approve-and-route case and the fix-here case. |
+| F-09 | Medium | **Resolved** | `docs/_queue/ESCALATIONS.md` is now the named input of REQ-CONS-06, with `ESCALATIONS_PATH` `:2750`, append site `:2812` and `renderEscalationEntry` `:2763` cited. The `Feature`/`Seam` field claim is accurate (`:2782-2783`). |
+| F-10 | Medium | **Resolved** | AC-1.5 states both rungs; AC-1.6 states the fallback-with-notice path and the neither-resolves path (`failed` / `advisory-model-unresolved`, no default-model fallthrough). The module-privacy of both constants is acknowledged and the restatement is flagged as a risk rather than an inherited guarantee. |
+| F-11 | Medium | **Resolved** | AC-5.2 replaces the quality adjective with a three-arm deterministic rule over the consumed set, plus a set-equality obligation on the table and an explicit pre-convention-LEARNINGS carve-out. NFR-4 now derives its truth from that determinism. |
+| F-12 | Medium | **Resolved** | The REQ-CONS-03 preamble defines `passId`, the branch name, and two PR trailers; NFR-4 keys idempotence on `PDLC-CONSOLIDATION-SOURCES` and states the leave-it-alone rule for a partial PR. |
+| F-13 | Medium | **Resolved** | AC-3.5 carries a five-class failure table with reason codes and per-class recording; AC-3.6 pins branch lifecycle (never reused, not deleted by the pass). |
+| F-14 | Medium | **Resolved** | NFR-5 is paired with the positive on the same path — appending consumed basenames to `.consolidation-log.md` — and adds an exactness obligation ("neither more nor fewer"). NFR-2 gets the same treatment via AC-4.2's closed-set `credential:` field. |
+| F-15 | Low | **Resolved** | §1 transcribes the four-column table verbatim and cites `pdlc/skills/consolidate-learnings/SKILL.md:54`. |
+| F-16 | Low | **Resolved** | `docs/_decisions/` prefixes now appear on every mention of `.consolidation-log.md` and `CONSOLIDATION-PROPOSAL-{passId}.md`. |
+
+Sixteen of sixteen resolved. The findings below are **new**, and all arise in sections the
+revision changed.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **BL-01 asserts `docs/_queue/ESCALATIONS.md` exists. It does not — not at HEAD, not in any branch — and the tier that would write it ships off.** `ls docs/_queue/` returns `QUEUE.md` alone; `git log --all -- docs/_queue/ESCALATIONS.md` is empty. The path is a constant in a code path gated on `advisoryTierOn` (`ESCALATIONS_PATH`, `pdlc/workflows/orchestrate-dev.js:2750`; appended at `:2812`), and `advisoryTierOn = advisoryConfigResult.config.enabled` (`:9653`) resolves from `parseAdvisoryConfig` (`:1682`), whose default is `enabled: false` (`:1663`). This repo's `.claude/pdlc.config.json` carries only an `implementation` section — no `advisory` key — so the tier has never run and the file has never been created. Three consequences, all inside the changed REQ-CONS-06: (a) BL-01's resolution-form claim "**Met**" is false as to `ESCALATIONS.md`; (b) AC-6.1 states no behavior for an absent or empty file, and this is the shipping state, not an edge case; (c) AC-6.3 — "Given a seam with escalations from no feature across the consumed window, Then the pass may propose an envelope widening" — fires for **all five** `ADVISORY_SEAMS` on day one, on a corpus that is empty because the tier is disabled, not because the seams work. Absence-of-escalation is not evidence of adequacy when nothing could have escalated. REQ-CONS-06 needs a precondition (the tier must have run) that distinguishes an empty corpus from a quiet one, and BL-01 must be split: the model ladder is delivered, the escalation corpus is not. | BL-01, AC-6.1, AC-6.3 |
+| F-02 | High | Local | **AC-5.5 is unsatisfiable under AC-5.3's definition of "counted pass", and AC-1.4's parenthetical is false as a consequence.** AC-5.3 defines the term exactly once: "only passes that returned `prevented` or `recurred` for that promotion are counted: an `insufficient-evidence` verdict and an AC-1.4 `no-op` pass are skipped entirely". AC-5.5 then requires a promotion to have "returned `insufficient-evidence` for `consolidation.unmeasurablePasses` consecutive **counted** passes". A counted pass never returns `insufficient-evidence` — by AC-5.3's own definition — so the `unmeasurable` state can never be reached, and `consolidation.unmeasurablePasses` (§4a) is a config key with no reachable effect. AC-1.4 compounds it: "A `no-op` pass still emits the AC-5.2 effectiveness table (it can observe that a prior promotion has aged into `unmeasurable` per AC-5.5)" — but AC-5.3 skips no-op passes "entirely", so a no-op pass advances no counter at all and cannot age anything into anything. This is a contradiction among three ACs, not a testing question: `unmeasurable` is the state US-05's pruning story rests on, and as written it is dead. AC-5.5 needs its own counting population, stated separately from AC-5.3's streak. | AC-5.5, AC-5.3, AC-1.4 |
+| F-03 | Medium | Local | **AC-3.8's isolation clause contradicts AC-2.1/2.2/2.4, and the disposition of the consuming-repo writes is undefined.** AC-3.8 says the pass "never checks out, stashes, or **otherwise disturbs** the working tree it was invoked from, which may be mid-pipeline on a `feat-*` branch". But AC-2.1 appends to `docs/_constraints/DOMAIN-CONSTRAINTS.md`, AC-2.2 writes `docs/_decisions/DECISIONS-{topic}.md`, AC-2.4 and AC-1.3 and AC-3.4 and AC-5.1 all write `docs/_decisions/.consolidation-log.md` — every one of them "in the consuming repo", i.e. that same working tree. As written the two ACs cannot both hold. The intent is presumably "no branch switch, no stash", but the REQ owes the narrower wording *and* the missing half: who commits those writes, on what branch, and what happens when the pass lands them in a tree the pipeline is about to commit pathspec-scoped for an unrelated feature. AC-3.6 forbids pushing to the default branch, so the consuming-repo writes have no stated destination at all. | AC-3.8, AC-2.1, AC-2.2, AC-2.4 |
+| F-04 | Medium | Local | **AC-3.5's reason codes do not map onto AC-7.1's terminal-status closed set.** AC-7.1 pins status to `promoted` / `no-op` / `skipped-cadence` / `refused` / `failed` and requires each report to carry "terminal status **and** reason code" as if the pairing were determined. It is not. A pass that consumed LEARNINGS, promoted a constraint, and fell back to a proposal file with `credential-unavailable` is explicitly *not* `failed` (AC-4.3: "does not halt the whole pass") and is not `no-op` (AC-1.4 is defined by an empty consumed set) — so it is `promoted`, which reads as success on the exact path AC-4.3 calls `degraded`. `duplicate-suppressed` is worse: it promoted nothing, consumed a non-empty set, and did not fail. Two closed sets meeting at an undefined join is not a TSPEC detail — it decides what an operator reads in the one report AC-7.2 emits. Either give the status set a `degraded` member, or state the code→status mapping as a table. | AC-7.1, AC-3.5, AC-4.3 |
+| F-05 | Medium | Local | **The AC-1.1 predicate is a whole-file substring test, and the REQ now writes five other record types into the file it tests against.** The adopted predicate is `pending = [p for p in learnings if os.path.basename(p) not in logtext]` (`pdlc/hooks/scripts/nudge-consolidation.sh:41`) — a bare substring match over the entire text of `docs/_decisions/.consolidation-log.md` (`:32`). That was sound when the file held only AC-2.4's pass rows. This REQ additionally writes into it: the AC-1.3 `IN-PROGRESS` marker, AC-3.4's PR URLs, AC-5.1's structured failure-mode records including an `artifact` field defined as "a path or glob the symptom appears in", and AC-5.2's effectiveness table. A failure-mode record whose `artifact` is `docs/{feature}/LEARNINGS-{feature}.md` — an entirely ordinary value, since LEARNINGS is where symptoms are recorded — silently marks that LEARNINGS consolidated without it ever having been consumed, and NFR-5's exactness obligation ("neither more nor fewer") is then violated by a write the REQ itself mandates. Either scope the predicate to a delimited region of the log, or forbid the other record types from containing a LEARNINGS basename. | AC-1.1, AC-5.1, NFR-5 |
+| F-06 | Medium | Local | **AC-1.1's "without reading LEARNINGS" and AC-1.2's volume count cannot both hold on the same tick.** AC-1.1: "given the interval has not elapsed, Then the tick exits `skipped-cadence` **without reading LEARNINGS**." AC-1.2: "Given the count of un-consolidated LEARNINGS (the AC-1.1 predicate) is at least `consolidation.volumeThreshold`, Then the pass runs on this tick **even if `consolidation.cadenceHours` has not elapsed**." Evaluating AC-1.2 requires enumerating `docs/*/LEARNINGS-*.md` and diffing basenames against the log — which is exactly the not-elapsed branch AC-1.1 says exits first. The likely intent is that "reading" means reading file *contents* while enumeration of basenames is permitted (which is all `nudge-consolidation.sh` does), but the REQ does not say so, and the trigger-evaluation order is precisely what F-04 (v1) forced this section to nail down. State the order: enumerate → volume test → cadence test → `skipped-cadence`. | AC-1.1, AC-1.2 |
+| F-07 | Medium | Local | **NFR-3a's closed trigger set has no member for the tick AC-7.2 nonetheless makes it report.** NFR-3a: "the pass's log row records its trigger over the closed set `cadence` / `volume` / `manual`". AC-7.2: "Given a pass completes **on any path**, Then exactly one report is emitted … written as the pass's row in `docs/_decisions/.consolidation-log.md`". A `skipped-cadence` tick completes on a path, so it writes a row, so NFR-3a demands a trigger value it cannot supply — no trigger fired. Add a fourth member (`none`), or exempt `skipped-cadence` from AC-7.2's row obligation. The second option is the one to prefer for a separate reason worth stating: under a `/loop` cadence the skipped tick is the *common* case, so as written the log grows a row per tick indefinitely, and per F-05 that log is also the corpus a substring predicate runs over. | NFR-3a, AC-7.2 |
+| F-08 | Low | Local | **Two trailers are attributed to the wrong AC.** NFR-4 cites "the `PDLC-CONSOLIDATION-SOURCES` trailer of AC-3.1" and AC-3.7(c) cites "the `PDLC-CONSOLIDATION-PASS` trailer of AC-3.1". Both trailers are defined in the REQ-CONS-03 preamble ("Pass identity and artifact naming"), not in AC-3.1, which defines only the routing predicate. AC-3.5's `duplicate-suppressed` row gets the attribution right (it cites NFR-4). Point both at the preamble so the identity contract has one citable home. | NFR-4, AC-3.7 |
+| F-09 | Low | Local | **One line citation is off by one.** REQ-CONS-01 says `nudge-consolidation.sh` "only prints `hookSpecificOutput.additionalContext` and exits 0 (`:47`, header `:4`)". The `additionalContext` key is at `:48`; `:47` is the opening of the same `print(json.dumps(...))` call, so the claim is true but the anchor points at the wrong half of the statement. `:44-49` (as v1 used) or `:47-48` is exact. The `header :4` citation is correct — `# pass, nudge the user to run /pdlc:consolidate-learnings. Never blocks (always exit 0).` | REQ-CONS-01 |
+
+## Existing-Code Claim Verification (changed sections)
+
+The revision added roughly two dozen new `file:line` citations. Every one checked against HEAD on
+`feat-pdlc-consolidation-agent`, in a single pass. Only the last two rows are wrong.
+
+| # | New REQ claim | Section | Verdict | Evidence |
+|---|---|---|---|---|
+| 1 | `MERGE_GUARD_DEFAULTS` is exactly `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` at `:48-53` | AC-3.1, NFR-1 | **Confirmed, set-equal** | `orchestrate-dev.js:48-53` |
+| 2 | `guardVerdict` at `:732` over `effectiveGuardPaths` at `:709` | AC-3.7 | **Confirmed** (v1 cited `:731`/`:708`; the revision's numbers are the correct ones) | `orchestrate-dev.js:709`, `:732` |
+| 3 | Guard reachable only from the MERGE ladder `:899-900` and the advisory-envelope check `:2143` | AC-3.7 | **Confirmed** — those are the only two call sites | `orchestrate-dev.js:899-900`, `:2143` |
+| 4 | Phase MERGE ships `mergeMode: "off"` at `:61`, refusal at `:838` | AC-3.7 | **Confirmed** | `orchestrate-dev.js:61`, `:838` (`if (config.mergeMode === "off")`) |
+| 5 | No code path in this repository evaluates an inbound PR from another process | AC-3.7 | **Confirmed** | both `guardVerdict` call sites are inside an `orchestrate-dev` run's own-PR decision |
+| 6 | `hooks.json` registers only `PreToolUse` `:3`, `PostToolUse` `:14`, `SessionStart` `:29` | REQ-CONS-01 | **Confirmed, exact lines** | `pdlc/hooks/hooks.json:3`, `:14`, `:29` |
+| 7 | The hook's basename predicate is at `nudge-consolidation.sh:41`, log path at `:32` | REQ-CONS-01, NFR-5 | **Confirmed, exact lines** | `:41` `pending = [p for p in learnings if os.path.basename(p) not in logtext]`; `:32` |
+| 8 | Threshold `5` lives at `nudge-consolidation.sh:25` | AC-1.2, §4a | **Confirmed** | `:25` `THRESHOLD = 5` |
+| 9 | The skill's competing predicate is the `Date Completed` boundary at `SKILL.md:35` | REQ-CONS-01 | **Confirmed, and the two do disagree** | `consolidate-learnings/SKILL.md:35` |
+| 10 | `.consolidation-log.md` pass record is `SKILL.md:43` | AC-2.4 | **Confirmed** | `consolidate-learnings/SKILL.md:43` |
+| 11 | `CONSOLIDATION-PROPOSAL-{date}.md` is written at `SKILL.md:49`; four-column table at `:54` | §1, REQ-CONS-03 | **Confirmed verbatim** | `consolidate-learnings/SKILL.md:49`, `:54` |
+| 12 | `MODEL_ADVISORY` `:1652`, `MODEL_ADVISORY_FALLBACK` `:1653`, `ADVISORY_MODEL_FALLBACK:` notice `:1859` | AC-1.5, AC-1.6 | **Confirmed, all three** | `orchestrate-dev.js:1652`, `:1653`, `:1859` |
+| 13 | Both constants are module-private and `orchestrate-queue.js` imports neither | AC-1.5 | **Confirmed** — neither carries `export`; the queue has its own `MODEL_QUEUE` | `orchestrate-dev.js:1652-1653` (no `export`) |
+| 14 | `advisorySummaryRows` at `:2708`, driven by `ADVISORY_SEAMS`, surfaced only at `:10663` / `:10695` | REQ-CONS-06, D-CONS-06 | **Confirmed** — both surfacings are report fields, never a write | `orchestrate-dev.js:2708`, `:10663`, `:10695` |
+| 15 | `renderAdvisoryEntry` schema at `:2642`; the record is deleted after distil at `:10499` | REQ-CONS-06 | **Confirmed** | `orchestrate-dev.js:2642`; `:10499` `const advisoryPath = ...` inside the `advisoryTierOn` H2 block |
+| 16 | `advisoryDistilPrompt` `:7585-7594` asks only for a prose summary with no schema | REQ-CONS-06 | **Confirmed verbatim** — step 2 is `Append a summary of its entries to …LEARNINGS…`, no schema | `orchestrate-dev.js:7585-7594` |
+| 17 | `ESCALATIONS_PATH` `:2750`, appended at `:2812`, `renderEscalationEntry` `:2763` | AC-6.1 | **Confirmed** | `orchestrate-dev.js:2750`, `:2763`, `:2812` |
+| 18 | Every escalation entry carries named `Feature` and `Seam` fields | AC-6.1 | **Confirmed** — emitted as table rows | `orchestrate-dev.js:2782-2783` |
+| 19 | DC-09 is at `docs/_constraints/DOMAIN-CONSTRAINTS.md:245` | §5a | **Confirmed** | `DOMAIN-CONSTRAINTS.md:245` |
+| 20 | `/loop run /pdlc:{skill}` is the shipped cadence vehicle | REQ-CONS-01 | **Confirmed** as a documented entry form | `CLAUDE.md:215` |
+| 21 | `QUEUE.md:11` states this is the pipeline's own queue; `:279` that every PR trips REQ-MERGE-03 | §1 | **Confirmed, both lines** | `docs/_queue/QUEUE.md:11`, `:279` |
+| 22 | `docs/_queue/ESCALATIONS.md` **exists** (BL-01 "Met") | BL-01, AC-6.1 | **False** (F-01) | `docs/_queue/` contains `QUEUE.md` only; `git log --all -- docs/_queue/ESCALATIONS.md` returns nothing; the writer is gated on `advisoryTierOn` (`:9653`) whose default is `enabled: false` (`:1663`) and this repo's `.claude/pdlc.config.json` has no `advisory` section |
+| 23 | `additionalContext` is emitted at `nudge-consolidation.sh:47` | REQ-CONS-01 | **Off by one** (F-09) — true statement, wrong anchor; the key is at `:48` | `nudge-consolidation.sh:47-48` |
+
+## Questions
+
+Only questions arising from the changed sections. v1's Q-01…Q-07 are answered by the revision
+(Q-01 by AC-3.8, Q-02 by AC-5.2, Q-03 by AC-3.3, Q-04 by AC-5.3, Q-05 by AC-6.3, Q-06 by AC-7.2,
+Q-07 by AC-1.4) and are not re-asked.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does REQ-CONS-06 ship at all if the advisory tier stays disabled (F-01)? A precondition — "the pass reports `no-advisory-corpus` and makes no seam proposal when `ESCALATIONS.md` is absent" — would keep the requirement honest and buildable without waiting on an operator opt-in. Which is intended: gate on the file's existence, or gate on `advisory.enabled`? |
+| Q-02 | For AC-5.5 (F-02), is the intended population "consecutive passes in which this promotion was evaluated at all" (i.e. every pass with a non-empty consumed set, regardless of verdict)? If so AC-5.5 needs that phrase rather than AC-5.3's `counted`, and AC-1.4's no-op parenthetical still needs deleting or re-grounding. |
+| Q-03 | AC-3.8 puts the promotion in a temp clone but leaves AC-2.1/2.2/2.4's writes in the invocation tree (F-03). Are those writes expected to be left uncommitted for the operator, committed pathspec-scoped by the pass, or also routed through the PR? The third would be a different feature; the first two are both defensible but only one can be the contract. |
+| Q-04 | The REQ says the pass "ships as a workflow script invoked as `/pdlc:consolidate-learnings`" while `consolidate-learnings` exists today only as a skill. Is the intent the `orchestrate-queue` shape — a skill and a bundled workflow sharing a name, with the bundle added to `build-runtime.mjs` and the distribution manifest? If so, that is a new tracked artifact and BL-02's distribution machinery applies to this feature's own output, which is worth one line in §5 Scope. |
+| Q-05 | AC-1.3's marker lives in `.consolidation-log.md`, which is a tracked file. Does writing and removing the marker produce two commits per pass in the consuming repo, or is the marker expected to live only in the working tree? The answer interacts with F-03 and with the AC-1.1 predicate's substring corpus (F-05). |
+
+## Positive Observations
+
+- **The revision did the hard thing on AC-3.7 rather than the easy thing.** It would have been
+  cheaper to soften v1's F-01 into "the guard is expected to apply". Instead the REQ states flatly
+  that no code path evaluates an inbound PR, replaces the inherited claim with three of the pass's
+  own observables, and books the repo-side belt as an operator dependency (BL-05) rather than
+  pretending it exists. That is the correct response to "you asserted a control nothing enforces",
+  and the citations behind it are all exact.
+- **AC-5.2's three-arm rule is a genuine oracle, not a restatement.** The `prevented` arm's second
+  conjunct — "at least one consumed LEARNINGS comes from a feature that exercised the promotion's
+  recorded `phase`" — is the part that makes the verdict falsifiable rather than optimistic, and
+  it is what lets NFR-4 claim determinism honestly. The pre-convention-LEARNINGS carve-out
+  ("names no id and is therefore evidence only for the `phase` population test") closes the one
+  hole that would otherwise have made every historical file look like a `prevented`.
+- **§4a is the right shape, not merely present.** Modelling it on `parseAdvisoryConfig`'s per-key
+  independent fallback — rather than inventing a new config contract — is exactly the
+  cite-and-reuse discipline DC-08 asks for, and the "Malformed / absent" column means the
+  degradation behavior is specified per key instead of left to the implementer.
+- **REQ-CONS-06's preamble explains the narrowing instead of just performing it.** It shows the
+  work: the rows exist, they are in-memory only, the durable record is deleted, the distil prompt
+  has no schema — therefore consume `ESCALATIONS.md`, and book the rest as D-CONS-06. A future
+  reader can tell why the requirement is the shape it is. The honest-limit paragraph
+  ("`ESCALATIONS.md` records escalations, not resolutions") is the same virtue.
+- **The stopping rule is written to be usable by a reviewer, not to end the argument.** §5a names
+  the four classes that must be fixed at REQ layer — false claim about HEAD, unconfigured
+  threshold, unbound deferral, unprovidable topology — which is a checkable list rather than an
+  appeal to altitude. It is worth noting that both High findings in this round fall squarely inside
+  that list, by the REQ's own test.
+
+## Recommendation
+
+**Needs revision.** 2 High, 5 Medium, 2 Low. All nine are new; all sixteen v1 findings are resolved.
+
+This is a substantially better document than v1 — the revision closed eight High findings without
+inflating the REQ past requirements altitude, and its new citations are accurate in 21 of 23 cases.
+The bar is nonetheless unchanged, and two High findings are open.
+
+### The stopping rule, applied against itself
+
+§5a says a round is done when its blocking findings are **all** "this cannot be tested as written"
+or "this needs an oracle", and names four classes that must be fixed at this layer. Both High
+findings land inside that list, by the REQ's own test:
+
+- **F-01** is "a false or under-stated claim about code at HEAD" — BL-01 records `ESCALATIONS.md`
+  as delivered and it has never existed — *and* "a topology or trigger the shipped architecture
+  cannot provide", since the file is produced only by a tier that ships disabled. It is not an
+  oracle question: it decides whether REQ-CONS-06 has an input at all.
+- **F-02** is an internal contradiction that makes an AC unreachable and a declared config key
+  inert. Nothing downstream can test its way out of `unmeasurable` being unsatisfiable.
+
+The five Mediums are closer to the boundary. F-04, F-06 and F-07 are closed-set reconciliations
+that a careful FSPEC would otherwise have to invent; F-03 and F-05 are contract contradictions
+between ACs. None is an oracle question, and all five are one or two sentences of requirements
+prose. I would not hold the REQ for the two Lows alone.
+
+### What must change for approval
+
+1. **F-01** — split BL-01 (model ladder delivered; escalation corpus not), and give REQ-CONS-06 a
+   precondition that distinguishes "no escalations because the seams work" from "no escalations
+   because nothing could escalate". AC-6.3 must not fire on an empty-because-disabled corpus.
+2. **F-02** — give AC-5.5 its own counting population, distinct from AC-5.3's `counted` streak, and
+   fix or delete AC-1.4's no-op parenthetical.
+3. **F-03** — narrow AC-3.8's isolation clause to branch/stash operations, and state where the
+   AC-2.1/2.2/2.4 writes land and who commits them.
+4. **F-04** — reconcile AC-3.5's reason codes with AC-7.1's status set (a `degraded` status member
+   or an explicit code→status mapping).
+5. **F-05** — scope the AC-1.1 predicate to a delimited region of the log, or forbid the other
+   record types from carrying a LEARNINGS basename.
+6. **F-06** — state the trigger-evaluation order explicitly (enumerate → volume → cadence →
+   `skipped-cadence`), so AC-1.1 and AC-1.2 stop contradicting each other.
+7. **F-07** — either add a `none` member to NFR-3a's trigger set or exempt `skipped-cadence` ticks
+   from AC-7.2's log-row obligation; prefer the exemption, since under `/loop` the skipped tick is
+   the common case.
+8. **F-08, F-09** — two citation corrections, cheap.
+
+## Verdict
+
+VERDICT: Needs revision

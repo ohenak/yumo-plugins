@@ -1,0 +1,74 @@
+# Cross-Review: test-engineer — DECISIONS
+
+**Reviewer:** test-engineer
+**Document reviewed:** `docs/pdlc-consolidation-agent/DECISIONS-pdlc-consolidation-agent.md`
+**Date:** 2026-08-06
+**Iteration:** 1
+**Scope:** DECISIONS document for feature `pdlc-consolidation-agent`, testing lens only —
+re-evaluation-trigger observability, whether any decision forecloses a testing approach
+PROPERTIES will need, and whether each `Testability:` line names an oracle that can actually fail.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **DEC-CONS-03's domain-partition predicate misclassifies the pass's own `git clone`.** The negative oracle is "over a whole pass, no argv issued without a `-C {tempdir}` prefix is a mutating verb", asserted by containment against a closed invoking-tree verb set that DEC-CONS-04 states "admits no mutating git verb at all". But this entry's own Decision issues `_git(["clone","--depth","1","--single-branch",remote,dir])` — no `-C` prefix, and `clone` is a mutating verb. As written the assertion is **red on correct code**; the only ways out are an unstated exemption for `clone` (which reopens the hole the oracle exists to close, since the oracle can then no longer see *where* a clone writes) or a third domain. The predicate must partition on three cases — invoking-tree reads, `-C {tempdir}` clone-domain calls, and the single argv-shape-pinned `clone` whose **last two arguments** are the `remote get-url` reply and the `_makeTempDir` reply — and the `clone` case must be pinned positionally, not exempted | §5, DEC-CONS-03 *Testability* |
+| F-02 | High | Local | **DEC-CONS-05's divergence set is not closed at HEAD, so its central testability claim ("derivable from the two enumerations' own text") is unverified.** Measured: `pdlc/hooks/scripts/nudge-consolidation.sh:28` enumerates with **one** glob, `os.path.join(proj,"docs","*","LEARNINGS-*.md")`, which does not match `docs/completed/*/` — it sees 2 files at HEAD, while `git ls-files --cached --others --exclude-standard ':(glob)docs/*/LEARNINGS-*.md' ':(glob)docs/completed/*/LEARNINGS-*.md'` returns **5** (the three `docs/completed/*` entries plus `docs/orchestrate-dev-workflow` and `docs/pdlc-advisory-tier`). That is a third divergence class, larger than (i) and (ii) combined, and it closes only via a `CORPUS_GLOBS` widening that the entry's body never mentions — `CORPUS_GLOBS` does not exist anywhere in the shipped tree, and appears in this document only once, in §11.1's PLAN obligation ("the widened `CORPUS_GLOBS`"). The body must state the widening as part of the decision and state the divergence set **relative to the post-edit hook**, or the "two classes, closed" claim is an artifact of comparing the pass against a hook that does not exist yet | §7, DEC-CONS-05 *Decision* / *Testability*; §11.1 |
+| F-03 | Medium | Local | **Claimed code cost of the shipped-hook edit is understated and internally inconsistent.** §7 says the edit is "an env-gated `PDLC_PENDING:` stderr line that emits the pending basenames. One line, in a script CI already `bash -n`s." Against the actual file it is: a guarded (env-gated ⇒ `if` + write, ≥2 lines) stderr write, **plus** replacing the single `glob.glob` at `:28` with a two-member `CORPUS_GLOBS` tuple and a comprehension (`TSPEC §7.1:787-788`), **plus** a corpus-semantics widening the REQ itself already calls an in-scope edit (`REQ-pdlc-consolidation-agent.md:115`). §11.1 of this same document describes the edit as two things. Since DEC-CONS-05's rejection of the shared-implementation alternative turns on relative cost, the cost of the accepted branch has to be stated honestly | §7 *Alternatives*, last bullet; §11.1 row 6 |
+| F-04 | Medium | Local | **DEC-CONS-01's key disclosure oracle is a type claim in an untyped codebase.** "the assertion that no test double ever *receives* a credential value is structural: the protocol's type has no string channel to carry one" — there is no TypeScript under `pdlc/workflows/` (no `*.ts`, no `tsconfig.json`); every module is plain ES-module JS checked only by jest. Nothing fails if a `fakeEnvPresent` returns `"ghp_…"`. A structural claim no test can execute is not a testability line. Replace with a runtime oracle: assert `typeof` of every recorded `_envPresent` return is `"boolean"` across the whole case set, **and** assert the seam's transported command text never interpolates the value (source pin on `rtEnvPresent`'s prompt) | §3, DEC-CONS-01 *Testability* |
+| F-05 | Medium | Local | **Containment where set-equality is required.** "every rendered log row carries a `credential:` field from AC-4.2's closed three-value set" pins membership only. AC-4.2's three values are an enumerated contract: the oracle must be a set-equality over the full enumeration — each of the three observed at least once across the case set, and the observed value set exactly equal to the declared set — so that deleting or renaming a value fails a test rather than silently shrinking coverage | §3, DEC-CONS-01 *Testability*; §11.2 bullet 1 |
+| F-06 | Medium | Local | **Absence-only oracle on the read prompt.** DEC-CONS-06's negative half "asserts the absence of any such clause in the read prompt" has no positive conjunct on the same path — an assertion satisfied by `rtReadFile` being deleted, renamed, or never reached. Pair it: pin `rtReadProbe`'s actual cwd instruction verbatim (`"Run this exact command from the repository root"`, `pdlc/workflows/runtime-adapter.js:374`) and assert an **absolute** `${path}` resolves verbatim through the shell forms at `:374-378`, so the "there was nothing to widen" measurement is asserted positively rather than only as an absence | §8, DEC-CONS-06 *Testability* |
+| F-07 | Medium | Local | **A re-evaluation trigger that nothing can detect.** DEC-CONS-04 lists "the residual duplicate write becoming observed in practice rather than theoretical" as a trigger, while the same entry states the race "is deliberately **not** tested: there is no oracle for it at any level available here". No log field, counter, or record shape is named that would let an operator or a monitor notice a duplicate consuming-repo write after the fact. Per the DECISIONS review bar, a trigger must be observable: either name the observable (e.g. two `.consolidation-log.md` records with distinct `passId`s and the same `(failure-mode-id, action)` key inside one window is the detection signature) or mark the trigger explicitly operator-reported and un-instrumented, so no reader believes a monitor exists | §6, DEC-CONS-04 *Re-evaluation triggers* |
+| F-08 | Low | Local | **A set-equality oracle whose set the document does not carry.** DEC-CONS-07 conjunct (i) and §11.2 both mandate set-equality "over the six-member terminal-status set", but neither names the six members nor cites where they are enumerated (`TSPEC §12.2` refers to "the six terminal statuses"). A reader cannot write the assertion without asking. Add the citation, or the enumeration | §9, DEC-CONS-07 *Testability*; §11.2 bullet 3 |
+| F-09 | Low | Local | **Two line citations are off by one.** `ADVISORY_RUNG_SKILL = "se-review"` is at `orchestrate-dev.js:1797` (cited `:1796`); the "there is no second, private copy of this ladder anywhere" sentence is at `:1802` (cited `:1800-1801`). Every other line citation I checked resolves exactly | §4, DEC-CONS-02 *Context* / *Alternatives* |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Which domain does the `git clone` argv belong to for the DEC-CONS-03 containment assertion (F-01)? If it is exempted from the invoking-tree set, what pins the fact that its destination is the `_makeTempDir` reply and not a path inside the repository? |
+| Q-02 | Is the shipped-hook edit one line or two changes (F-02, F-03)? §7 and §11.1 of this document give different answers, and the PLAN's ownership manifest is derived from §11.1 |
+| Q-03 | DEC-CONS-05's differential feeds "one basename list and one log text" to both implementations. The hook's shipped predicate is a bare substring test against the whole log (`nudge-consolidation.sh:41`); does the differential harness call the hook's *predicate* in isolation, or the hook end-to-end via the `PDLC_PENDING:` channel? Only the second observes the production path — the first is a re-implementation of the hook inside the test, which would make the "one predicate" claim unfalsifiable |
+| Q-04 | DEC-CONS-02's testability conjunct (iii) asserts "the module declares exactly one rung ladder". Which artifact is scanned — the source module, or the built `consolidate-learnings` bundle? The ladder is inlined into four artifacts once this lands, so a source-only scan cannot see a second copy introduced by the build |
+
+## Positive Observations
+
+- Every measurement the document leans on reproduces exactly. `grep -nc "unlink\|rm -f\|rmdir" pdlc/workflows/runtime-adapter.js` returns `0`; `grep -n "relative to the repository root"` returns exactly one line, `:805`, inside `rtWriteFile` (`:802`); `rtCheckFile` (`:817-831`) maps a present-but-empty file to `{ok:false, reason:"file_empty"}` exactly as DEC-CONS-07 states; `rtListFiles` (`:905`) filters directories and rejects any reply line containing `/` (`:929-931`); `rtReadProbe` (`:369`) transports shell commands under a **cwd** instruction (`:374`), not a path-resolution instruction. DEC-CONS-06's distinction between the two is real and was clearly measured, not asserted.
+- The `git ls-files` reversibility measurement in DEC-CONS-05 is exact: five paths with **and** without `--exclude-standard`, seven without the `:(glob)` prefixes, re-admitting `docs/discarded/pdlc-rcv-budget-stop/` and `docs/discarded/pdlc-review-convergence/`. Stating the price of closing divergence class (i) as "an ignored LEARNINGS file is corpus, and nothing else" is a genuinely useful, falsifiable claim.
+- DEC-CONS-02's four-artifact reversibility claim checks out — `pdlc/workflows/dist/` ships `orchestrate-dev`, `orchestrate-queue` and `pdlc-cli` at HEAD, per `distribution-manifest.json`.
+- DEC-CONS-04 refusing to test the race is the right call and is argued the right way: an oracle that cannot fail is worse than a recorded gap (DEC-ORACLE-02). Testing the take's *shape* — the ordered three-call log — instead is a legitimate substitute, and the "`present` is read from `_checkFile`, never from `_readFile`" conjunct is given a real falsifier by DEC-CONS-07's empty-vs-unparseable fixture pair rather than left as an absence claim.
+- DEC-CONS-07's conjunct (ii) is the model the rest of this document should follow: a paired fixture where the empty marker must yield `free` **with no** `reclaimed-stale-lock` record and the non-empty unparseable one must yield `reclaim` **with** one. Negative and positive on the same path, in the same case.
+- Declining to test the unreachable half of FSPEC §4.2's row, and raising it as an erratum instead of reinterpreting it, is correct on both counts.
+- §11.2 correctly identifies that three of these are run-level invariants rather than unit cases, and pre-empts the two classic false-greens (absence-only credential fixtures; invariance-only determinism fixtures satisfied by a constant function).
+
+## Recommendation
+
+**Needs revision** (2 High, 5 Medium, 2 Low).
+
+Exactly what must change:
+
+1. **F-01** — restate DEC-CONS-03's containment oracle over three domains, with the `clone` argv pinned
+   positionally (last two arguments are the `remote get-url` reply and the `_makeTempDir` reply), not
+   exempted.
+2. **F-02** — state the `CORPUS_GLOBS` widening inside DEC-CONS-05's Decision, and state the divergence
+   set explicitly relative to the *post-edit* hook; the current two-class claim is measured against a
+   hook that sees `docs/*` only.
+3. **F-03** — correct the "one line" cost claim for the shipped-hook edit, and reconcile §7 with §11.1.
+4. **F-04** — replace DEC-CONS-01's structural type claim with a runtime oracle (`typeof` over recorded
+   seam returns, plus a source pin on `rtEnvPresent`'s transported command).
+5. **F-05** — make the `credential:` field oracle a set-equality over AC-4.2's three values.
+6. **F-06** — pair DEC-CONS-06's read-prompt absence assertion with a positive conjunct on the same path.
+7. **F-07** — make DEC-CONS-04's residual-duplicate-write trigger observable, or mark it explicitly
+   un-instrumented and operator-reported.
+8. **F-08, F-09** — cite the six-member terminal-status enumeration; fix the two off-by-one line
+   citations.
+
+Nothing here disputes any of the seven decisions themselves. Every finding is about whether the
+`Testability:` line under a decision names an oracle that can fail, and whether a claimed cost survives
+contact with the file it is claimed against. The document is unusually well-measured; the defects are
+concentrated in the two places where a measurement was made against HEAD and then described as if the
+feature's own edits were already in the tree (F-02) or as if a type system existed (F-04).
+
+## Verdict
+
+VERDICT: Needs revision
