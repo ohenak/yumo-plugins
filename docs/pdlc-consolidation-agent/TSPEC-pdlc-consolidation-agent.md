@@ -921,6 +921,48 @@ empty file is what the presence probe calls absent. The observable a test can ho
 double's last recorded contents for the marker path** — the `IN-PROGRESS:` line during the pass, the
 empty string after it — which is how §10.1 restates T-13's conjunct (ii).
 
+**What that costs upstream, stated rather than absorbed: FSPEC §4.2's fourth row is not satisfiable
+on its `empty` arm, and this layer says so instead of pretending otherwise.** That row enumerates
+"Marker present, **unparseable or empty (truncated write)**" ⇒ "treated as **stale and reclaimed**,
+recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown`"
+(`FSPEC-…:442`), and the FSPEC binds it twice more — E-11 ("Marker file **truncated** or unparseable
+⇒ reclaimed, not refused") and **AT-M3**, whose *Given* is "truncated or unparseable marker file"
+(`FSPEC-…:2038`). Under the decisions above the **unparseable-but-non-empty** arm behaves exactly as
+the FSPEC requires; the **empty** arm does not, and cannot: `present` is false for a zero-byte file,
+so `markerVerdict` returns `free`, the pass proceeds, and **no `reclaimed-stale-lock` is recorded**.
+The row is not narrowed or reinterpreted — that half of it is unreachable.
+
+The collision is not a choice this layer made and is not one it can undo. An empty marker is
+precisely what a *successful release* leaves on disk, because no declared seam removes a file
+(§5.1's protocol has no unlink; the adapter ships none — verified above), so *released* and
+*truncated mid-take* are the same observed state and no probe can separate them. Preserving the
+FSPEC row would mean reclaiming — and recording `reclaimed-stale-lock` on — **every** steady-state
+pass after the first, which is a louder, more frequent falsehood than the one it prevents.
+
+So this layer ships the narrowing and **raises it upstream as an erratum against FSPEC §4.1/§4.2**
+rather than settling it: the erratum names §4.1's lifetime row ("**Removed** at step 16", `FSPEC-…:415`,
+which no declared seam can do), §4.2's fourth row, E-11 and AT-M3, and carries the product question
+that decides them — *when a pass dies mid-take, must the durable log witness it?* Under the FSPEC as
+written, the next pass records `reclaimed-stale-lock` and an operator can see that a pass died; under
+this release form the next pass proceeds silently. That is a judgement about what the log must
+witness, not about which write verb the adapter happens to ship, and it belongs to the REQ/FSPEC
+author. This document's local disposition, pending that answer: §10.3 row 4 is corrected to the
+unparseable-non-empty arm and row 4a records the empty arm's actual behaviour, and §12.3 states which
+arm of AT-M3 is satisfiable here. It is the same disposition this document applies to the enumeration
+relaxation and to the `unread:` log field — name the row, ship what is buildable, hand the decision to
+its owner.
+
+Two consequences worth stating once, because they will be asked again at DoD. (1) `parseMarker`
+still returns `null` for empty text, but on an empty *file* that `null` is never the deciding input:
+`present` is already false, and `markerVerdict`'s `free` arm is reached on the presence flag alone —
+the two `null`s (absent file, unparseable content) are still never conflated, because only the
+non-empty one can reach `reclaim`. (2) **The zero-byte marker is permanent**, one per consuming repo,
+from the first pass onward. §3.3 `.gitignore`s it, so it never reaches a diff, a PR or a
+fresh-clone bootstrap check; the only surface on which it appears is a literal `ls docs/_decisions/`,
+where a zero-byte `.consolidation-lock` means *free*, not *stuck*. An operator deleting the file by
+hand produces `file_missing` where a released pass produces `file_empty`, and §7.3 treats both as
+absent — so the manual channel and the pass channel agree, and neither can wedge the cadence.
+
 Take is `_checkFile`, then `_readFile`, then `_writeFile` — **observe-then-write, not atomic** — three seam calls on the
 take path, not two, and §10.4 item 1's race window is the span across all three. The
 probe is a third call, not a substitute for the read: `_checkFile` produces `present` and `_readFile`
