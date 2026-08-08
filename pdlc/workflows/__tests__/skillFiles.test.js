@@ -25,11 +25,13 @@ describe("Review SKILL.md VERDICT trailers (TSPEC-SKILL-01)", () => {
         content = readFileSync(filePath, "utf8");
       });
 
-      // PROP-SKILL-01/02/03: VERDICT Trailer section header present
-      it("contains the VERDICT Trailer section header", () => {
-        expect(content).toContain(
-          "## VERDICT Trailer (required — workflow data contract)"
-        );
+      // PROP-SKILL-01/02/03: consolidated Verdict section header present.
+      // Anchored at the start of a line so the in-prose cross-reference to this section
+      // (which names it inside backticks) is not mistaken for the heading itself.
+      const VERDICT_HEADING = /^## Verdict \(required — workflow data contract\)$/m;
+
+      it("contains the consolidated Verdict section header", () => {
+        expect(content).toMatch(VERDICT_HEADING);
       });
 
       // PROP-SKILL-04: VERDICT format block present
@@ -53,24 +55,20 @@ describe("Review SKILL.md VERDICT trailers (TSPEC-SKILL-01)", () => {
       // PROP-COMPAT-09: trailer appears after "Communication Style" section
       it('has the VERDICT trailer after the "Communication Style" section', () => {
         const commIdx = content.indexOf("## Communication Style");
-        const verdictIdx = content.indexOf(
-          "## VERDICT Trailer (required — workflow data contract)"
-        );
+        const verdictIdx = content.search(VERDICT_HEADING);
         expect(commIdx).toBeGreaterThan(-1);
         expect(verdictIdx).toBeGreaterThan(-1);
         expect(verdictIdx).toBeGreaterThan(commIdx);
       });
 
       // PROP-COMPAT-09: trailer preceded by a --- separator
-      it("has a --- separator before the VERDICT Trailer section", () => {
-        const verdictIdx = content.indexOf(
-          "## VERDICT Trailer (required — workflow data contract)"
-        );
+      it("has a --- separator before the Verdict section", () => {
+        const verdictIdx = content.search(VERDICT_HEADING);
         const beforeVerdict = content.slice(
           Math.max(0, verdictIdx - 10),
           verdictIdx
         );
-        // There should be a --- somewhere between Communication Style and VERDICT Trailer
+        // There should be a --- somewhere between Communication Style and the Verdict section
         const commToVerdict = content.slice(
           content.indexOf("## Communication Style"),
           verdictIdx
@@ -86,8 +84,11 @@ describe("Review SKILL.md VERDICT trailers (TSPEC-SKILL-01)", () => {
         expect(content).not.toMatch(/hostile|burden of proof/i);
         // The shared team principles are present
         expect(content).toContain("## Team Principles");
-        // The mechanical approval rule is intact: any High or Medium finding → Needs revision
-        expect(content).toContain("| Any High or Medium finding | Needs revision |");
+        // The mechanical approval rule is intact, at the 2026-08-08 High-only bar
+        // (DEC-BAR-01): High blocks, Medium and Low do not.
+        expect(content).toContain("| Any High finding | Needs revision |");
+        expect(content).toContain("| Medium or Low findings only | Approved with minor changes |");
+        expect(content).not.toContain("Any High or Medium finding");
       });
     });
   }
@@ -115,8 +116,9 @@ describe("SKILL prompt amendments (TSPEC §7.4)", () => {
     it(`${id}: ${name}/SKILL.md documents the trailing "## Verdict" section in TSPEC §4.4 grammar`, () => {
       const content = readSkill(file);
 
-      // The `## Verdict` heading itself (distinct from the pre-existing, case-different
-      // "## VERDICT Trailer (required — workflow data contract)" section).
+      // The bare `## Verdict` heading of the cross-review *file* (distinct from the SKILL's own
+      // consolidated "## Verdict (required — workflow data contract)" documentation section, which
+      // carries a parenthetical suffix and so does not match this anchored pattern).
       const headingMatch = /^## Verdict$/m.exec(content);
       expect(headingMatch).not.toBeNull();
 

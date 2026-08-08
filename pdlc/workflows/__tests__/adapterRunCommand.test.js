@@ -65,7 +65,10 @@ describe("rtRunCommand — the trailer contract", () => {
   });
 
   it("fails closed when a SECOND trailer arrives inside the output tail", async () => {
-    // Read fail-closed, exactly as `extractFileVerdict` reads a second VERDICT.
+    // Read fail-closed. (Unlike `extractFileVerdict`, which since DEC-BAR-01 reads
+    // the LAST verdict line: a command trailer is an observation of one process
+    // exit, not a reviewer's editable judgment, so "the last one wins" would be
+    // adopting whichever line the output happened to end with.)
     const { rtRunCommand } = load(
       replyingAgent("COMMAND_EXIT: 0\nlog line\nCOMMAND_EXIT: nonzero\n")
     );

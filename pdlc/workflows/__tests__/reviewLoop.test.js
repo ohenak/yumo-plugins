@@ -763,6 +763,54 @@ describe("reviewLoop returns lastOptimizerResult on convergence", () => {
   });
 });
 
+// ─── DEC-BAR-01: the convergence gate is High-only ────────────────────────────
+//
+// Operator decision, 2026-08-08. The gate reads the parsed *result*, not the
+// verdict string alone: `high === 0` on a readable parse is enough to move
+// forward, whatever the Medium and Low counts say. A single High still blocks,
+// and a malformed parse still fails closed (covered by "failed recovery falls
+// back to Needs revision" below — its zero counts are a fallback, not an
+// observation, so they must not be admitted by the counts limb).
+describe("DEC-BAR-01: only High findings block convergence", () => {
+  const runWith = async (pmResults) => {
+    let optimizerCount = 0;
+    let pmCount = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "pm-review") return pmResults[Math.min(pmCount++, pmResults.length - 1)];
+      if (skill === "te-review") return makeApproveResult();
+      if (skill === "se-author") {
+        optimizerCount++;
+        return makeOptimizerResult();
+      }
+      return "";
+    };
+    const result = await reviewLoop({
+      ...baseParams,
+      _agent: mockAgent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: existsGuard,
+    });
+    return { result, optimizerCount };
+  };
+
+  it('converges on iteration 1 when "Needs revision" carries high:0 with open Mediums', async () => {
+    const { result, optimizerCount } = await runWith([makeNeedsRevisionResult(0, 2)]);
+    expect(result.converged).toBe(true);
+    expect(result.iterations).toBe(1);
+    expect(optimizerCount).toBe(0);
+  });
+
+  it("does NOT converge on iteration 1 when a single High is open", async () => {
+    const { result, optimizerCount } = await runWith([
+      makeNeedsRevisionResult(1, 0),
+      makeApproveResult(),
+    ]);
+    expect(result.converged).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(optimizerCount).toBe(1);
+  });
+});
+
 // ─── Delta re-review prompt (iteration ≥2) ────────────────────────────────────
 describe("Delta re-review: iteration ≥2 reviewer prompts", () => {
   it("iteration-1 prompt has no delta instructions; iteration-2 references prior cross-review and diff-only scanning", async () => {

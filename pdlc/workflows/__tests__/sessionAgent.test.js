@@ -543,7 +543,11 @@ describe("SESSION-07: delta-scoped prompt clauses", () => {
     expect(pmPrompts[1]).toContain(
       "judge only whether your own blocking findings are resolved and whether the revision broke anything"
     );
-    expect(pmPrompts[1]).toContain("The approval bar is unchanged");
+    // The bar the clause states is the 2026-08-08 High-only one (DEC-BAR-01): the
+    // narrowed *attention* of a delta re-review is still not a lowered standard,
+    // but Medium and Low no longer gate.
+    expect(pmPrompts[1]).toContain("not a lower standard");
+    expect(pmPrompts[1]).toContain("Only High findings block approval");
     // The four-step protocol and the VERDICT contract survive the addition.
     expect(pmPrompts[1]).toContain("This is a re-review");
     expect(pmPrompts[1]).toContain(`docs/${FEATURE}/CROSS-REVIEW-product-manager-TSPEC-v1.md`);

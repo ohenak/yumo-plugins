@@ -80,7 +80,7 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 1. Read your own previous cross-review file (`CROSS-REVIEW-product-manager-{DOC-TYPE}-v{N-1}.md`) to recall your prior findings.
 2. Run `git diff` on the document against the commit you last reviewed to see exactly what changed.
 3. Verify each prior finding is resolved; scan **only** the changed sections for new issues. Do not re-litigate unchanged sections you already approved.
-4. The rigour bar is unchanged: any open High or Medium finding — old or new, anywhere in the document — means **Needs revision**. Write your new cross-review as v{N} and emit the same VERDICT trailer contract.
+4. The rigour bar: any open **High** finding — old or new, anywhere in the document — means **Needs revision**. Medium and Low findings are recorded, not gating. Write your new cross-review as v{N} and emit the same VERDICT trailer contract.
 
 ---
 
@@ -169,7 +169,7 @@ Write to `docs/{feature-name}/CROSS-REVIEW-product-manager-{DOCUMENT-TYPE}[-v{N}
 
 **Approved** / **Approved with minor changes** / **Needs revision**
 
-> Any High or Medium finding → Needs revision (mandatory).
+> Any High finding → Needs revision (mandatory). Medium or Low findings only → Approved with minor changes.
 
 ## Verdict
 
@@ -177,7 +177,7 @@ VERDICT: <verdict-value>
 {"high": N, "medium": N, "low": N}
 ```
 
-The `## Verdict` section is the **last section** of the cross-review file — nothing follows it, and it is written after every other section is complete. Its grammar is fixed; see the `## Verdict` section at the end of this SKILL.
+The `## Verdict` section is the **last section** of the cross-review file — nothing follows it, and it is written after every other section is complete. Its grammar is fixed; see the `## Verdict (required — workflow data contract)` section at the end of this SKILL.
 
 ---
 
@@ -185,8 +185,8 @@ The `## Verdict` section is the **last section** of the cross-review file — no
 
 | Finding severity | Recommendation |
 |-----------------|---------------|
-| Any High or Medium finding | Needs revision |
-| Low findings only | Approved with minor changes |
+| Any High finding | Needs revision |
+| Medium or Low findings only | Approved with minor changes |
 | No findings | Approved |
 
 ---
@@ -201,27 +201,22 @@ The `## Verdict` section is the **last section** of the cross-review file — no
 
 ---
 
-## VERDICT Trailer (required — workflow data contract)
+## Verdict (required — workflow data contract)
 
-After writing your cross-review file and before ending your final message, append the following two lines as the last content of your response:
+This is the last section of this SKILL. Your verdict travels on **two channels** — the trailing `## Verdict` section of your cross-review file, and the VERDICT trailer at the end of your response. Both are required, and both carry the same two lines in the same grammar:
 
 ```
 VERDICT: <verdict-value>
 {"high": N, "medium": N, "low": N}
 ```
 
-- `<verdict-value>` is exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision`
-- The JSON object appears on the immediately following line with no intervening text
-- N values are the count of High / Medium / Low findings in your cross-review
-- Trailing newline after the JSON object is permitted
+- `<verdict-value>` is exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision` — the same catalogue and the same mapping as `## Approval Rules` above.
+- The counts JSON appears on the immediately following non-empty line with no intervening text: a single object with exactly the keys `high`, `medium`, `low` in that order, each a non-negative integer. The N values are the count of High / Medium / Low findings in your `## Findings` table.
+- A trailing newline after the JSON object is permitted.
 
-**Still required — and not an either/or with the file field.** You emit this trailer in your response *and* the `VERDICT:` field in the trailing `## Verdict` section of your cross-review file. The response trailer feeds the convergence gate inside this invocation; the file field feeds the next invocation. Omitting either one breaks a different mechanism.
+### Channel 1 — the file field
 
----
-
-## Verdict
-
-This is the last section of this SKILL, and it describes the **last section of your cross-review file**. After `## Recommendation` — and only once every other section of `docs/{feature-name}/CROSS-REVIEW-product-manager-{DOCUMENT-TYPE}[-v{N}].md` is written — append a `## Verdict` section in exactly this grammar:
+This channel is the **last section of your cross-review file**. After `## Recommendation` — and only once every other section of `docs/{feature-name}/CROSS-REVIEW-product-manager-{DOCUMENT-TYPE}[-v{N}].md` is written — append a `## Verdict` section in exactly this grammar:
 
 ```markdown
 ## Verdict
@@ -232,8 +227,19 @@ VERDICT: Approved with minor changes
 
 Rules:
 
-- The heading is exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line.
-- `VERDICT: ` starts the line, followed by exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision` — the same catalogue and the same mapping as `## Approval Rules` above.
-- The counts JSON is on the immediately following non-empty line: a single object with exactly the keys `high`, `medium`, `low` in that order, each a non-negative integer, matching your `## Findings` table.
-- Write **exactly one** `VERDICT:` line in this section. A second one is read as fail-closed and your approval will not be honoured.
+- Write the heading as exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line, and never this SKILL section's longer title. The heading and its position are **convention, not a parse requirement**: the workflow accepts any non-fenced `VERDICT:` line anywhere in the file and reads the **last** one. Be strict in what you emit anyway — the convention is what keeps these files readable.
+- Write **exactly one** `VERDICT:` line. If more than one appears, the workflow reads the last one — so a stray earlier line is not fatal, but it is not what you intend either.
 - This section is the **last section** of the file: nothing follows it. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. Write it last, in one edit, after everything else.
+
+### Channel 2 — the response trailer
+
+After writing your cross-review file and before ending your final message, append the same two lines as the last content of your response:
+
+```
+VERDICT: <verdict-value>
+{"high": N, "medium": N, "low": N}
+```
+
+### Both are required — not an either/or
+
+You emit this trailer in your response *and* the `VERDICT:` field in the trailing `## Verdict` section of your cross-review file. The response trailer feeds the convergence gate inside this invocation; the file field feeds the next invocation. Omitting either one breaks a different mechanism.

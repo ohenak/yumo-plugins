@@ -3859,19 +3859,13 @@ function extractFileVerdict(fileText, roleSlug) {
   const text = String(fileText ?? "");
   const lines = text.split("\n");
 
-  let headingIndex = -1;
+  let verdictIndex = -1;
   scanLines(text, (line, index) => {
-    if (/^\s*##\s+Verdict\s*$/.test(line)) headingIndex = index;
+    if (line.trim().startsWith("VERDICT: ")) verdictIndex = index;
   });
-  if (headingIndex === -1) return { ok: false, reason: "no_verdict_section" };
+  if (verdictIndex === -1) return { ok: false, reason: "no_verdict_line" };
 
-  const section = lines.slice(headingIndex).join("\n");
-
-  let trailers = 0;
-  scanLines(section, (line) => {
-    if (line.trim().startsWith("VERDICT: ")) trailers += 1;
-  });
-  if (trailers > 1) return { ok: false, reason: "duplicated" };
+  const section = lines.slice(verdictIndex).join("\n");
 
   return { ok: true, ...parseVerdict(section, roleSlug) };
 }
@@ -4148,6 +4142,12 @@ function isPass(verdict) {
   return verdict === "Approved" || verdict === "Approved with minor changes";
 }
 
+function isPassResult(parsed) {
+  if (!parsed) return false;
+  if (isPass(parsed.verdict)) return true;
+  return parsed.malformed !== true && parsed.high === 0;
+}
+
 function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex }) {
 
   if (dispatchKind !== "authoring") {
@@ -4180,7 +4180,7 @@ function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
     roles.length > 0 &&
     roles.every((role) => {
       const rec = files.get(`${role}:${round}`);
-      return !!rec && rec.verdictReadable === true && isPass(rec.verdict);
+      return !!rec && rec.verdictReadable === true && isPassResult(rec);
     });
 
   const descending = [...rounds].sort((a, b) => b - a);
@@ -4234,7 +4234,7 @@ function checkConverged(
   let reviewerDetail = "";
   if (Array.isArray(loopResult.lastResults) && loopResult.lastResults.length > 0) {
     const details = loopResult.lastResults
-      .filter((r) => !isPass(r.verdict))
+      .filter((r) => !isPassResult(r))
       .map((r) => `${r.skill} (high:${r.high}, medium:${r.medium}, low:${r.low})`)
       .join("; ");
     reviewerDetail = details ? ` — non-approving reviewers: [${details}]` : "";
@@ -4585,7 +4585,7 @@ async function reviewLoop({
       if (recovered) verdict2 = recovered;
     }
 
-    const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);
+    const gatePass = isPassResult(verdict1) && isPassResult(verdict2);
 
     if (gatePass) {
       await appendApprovalAnchors({
@@ -4955,6 +4955,8 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
     const anchor = parseApprovalHash(text);
     reviewFiles.set(`${parsed.role}:${parsed.round}`, {
       verdict: parsedVerdict.ok ? parsedVerdict.verdict : null,
+
+      high: parsedVerdict.ok ? parsedVerdict.high : null,
       verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
       anchorHash: anchor.ok ? anchor.hash : null,
       anchorReason: anchor.ok ? null : anchor.reason,
@@ -5092,7 +5094,7 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
   if (records.some((r) => r === null)) return noApprovalRecord(candidate);
 
   const unevaluable = records.filter((r) => !r.anchorHash).map((r) => r.path);
-  const verdictsPass = records.every((r) => r.verdictReadable && isPass(r.verdict));
+  const verdictsPass = records.every((r) => r.verdictReadable && isPassResult(r));
   if (!verdictsPass || unevaluable.length) return noApprovalRecord(candidate, unevaluable);
 
   const hashes = records.map((r) => r.anchorHash);
@@ -5363,8 +5365,8 @@ const ORACLE_QUALITY_CLAUSE = [
 
 const REVIEW_CONVERGENCE_CLAUSE =
   "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
-  "whether the revision broke anything. The approval bar is unchanged — this is a narrower " +
-  "scope of attention, not a lower standard.";
+  "whether the revision broke anything — a narrower scope of attention, not a lower standard. " +
+  "Only High findings block approval; Medium and Low are recorded, not gating.";
 
 const CONTINUING_AUTHOR_CLAUSE =
   "You are the continuing author of this document, not a fresh reader of it. " +
@@ -5412,7 +5414,8 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `2. Run \`git diff\` on ${doc} against the commit you last reviewed to see exactly what changed.\n` +
     `3. Verify each of your previous findings is resolved; scan ONLY the changed sections for new issues. ` +
     `Do not re-review unchanged sections you already approved.\n` +
-    `4. The approval bar is unchanged: any open High or Medium finding anywhere in the document — old or new — means Needs revision.\n` +
+    `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
+    `Medium and Low findings do not block; file them and approve with minor changes.\n` +
     `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
     oraclePart
   );
@@ -6776,7 +6779,7 @@ async function main({
     );
 
     const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
-    const nonApproving = reviewers.filter((_, i) => !isPass(verdicts[i].verdict));
+    const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
     if (nonApproving.length > 0) {
       await erratumPostmortemHalt({
         phaseId,

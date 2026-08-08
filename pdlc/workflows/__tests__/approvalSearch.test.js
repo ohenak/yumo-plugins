@@ -152,7 +152,11 @@ const NEEDS_REVISION = "Needs revision";
  *   hash?: string|null,          // omit/null ⇒ no APPROVAL-HASH: line at all (§6.2 row 6)
  *   commit?: string,
  *   counts?: {high: number, medium: number, low: number},
- *   duplicateVerdict?: boolean,  // emit a SECOND `VERDICT:` line (E-09, AT-11)
+ *   duplicateVerdict?: boolean,  // emit a SECOND `VERDICT:` block (E-09, AT-11)
+ *   secondVerdict?: string,      // its value; defaults to the first one's
+ *   secondCounts?: {high: number, medium: number, low: number},
+ *   noHeading?: boolean,         // omit the `## Verdict` heading entirely (DEC-BAR-01)
+ *   fencedVerdict?: boolean,     // precede everything with a FENCED `VERDICT:` line
  * }} spec
  * @returns {string}
  */
@@ -162,6 +166,10 @@ function crossReviewFile({
   commit = "unavailable",
   counts = { high: 0, medium: 0, low: 0 },
   duplicateVerdict = false,
+  secondVerdict = null,
+  secondCounts = null,
+  noHeading = false,
+  fencedVerdict = false,
 }) {
   const countsLine = JSON.stringify(counts);
   const lines = [
@@ -169,20 +177,19 @@ function crossReviewFile({
     "",
     "Scope: whole document.",
     "",
-    "## Findings",
-    "",
-    "- No blocking findings.",
-    "",
-    "## Verdict",
-    "",
-    `VERDICT: ${verdict}`,
-    countsLine,
   ];
+  if (fencedVerdict) {
+    // DEC-BAR-01: fences are still skipped. A block that QUOTES the grammar — as
+    // this family's own TSPEC §4.4 does — must never be read as a verdict.
+    lines.push("## Grammar", "", "```", "VERDICT: Needs revision", '{"high": 9, "medium": 0, "low": 0}', "```", "");
+  }
+  lines.push("## Findings", "", "- No blocking findings.", "");
+  if (!noHeading) lines.push("## Verdict", "");
+  lines.push(`VERDICT: ${verdict}`, countsLine);
   if (duplicateVerdict) {
-    // E-09 / AT-11: a second trailer in the SAME trailing section. `parseVerdict`
-    // scans from the end and would happily return this one; §5.1 step 2's
-    // pre-count must fail closed before it is ever consulted.
-    lines.push("", `VERDICT: ${verdict}`, countsLine);
+    // E-09 / AT-11: a second trailer after the first. Since DEC-BAR-01 the LAST
+    // non-fenced verdict line wins — this one — rather than failing closed.
+    lines.push("", `VERDICT: ${secondVerdict ?? verdict}`, JSON.stringify(secondCounts ?? counts));
   }
   if (hash) {
     lines.push("", `APPROVAL-HASH: ${hash}`, `REVIEWED-COMMIT: ${commit}`);
@@ -473,8 +480,18 @@ describe("RLH-AT-09: cross-round approvals never combine", () => {
   ];
   const files = {
     [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
-    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: NEEDS_REVISION, hash: FSPEC_HASH }),
-    [crossReviewPath(SE_SLUG, 3)]: crossReviewFile({ verdict: NEEDS_REVISION, hash: FSPEC_HASH }),
+    // The non-approving halves carry a High: since DEC-BAR-01 only a High blocks,
+    // so a `Needs revision` with zero counts would itself read as approving.
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({
+      verdict: NEEDS_REVISION,
+      hash: FSPEC_HASH,
+      counts: { high: 1, medium: 0, low: 0 },
+    }),
+    [crossReviewPath(SE_SLUG, 3)]: crossReviewFile({
+      verdict: NEEDS_REVISION,
+      hash: FSPEC_HASH,
+      counts: { high: 1, medium: 0, low: 0 },
+    }),
     [crossReviewPath(TE_SLUG, 3)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
   };
 
@@ -494,37 +511,117 @@ describe("RLH-AT-09: cross-round approvals never combine", () => {
   });
 });
 
-// ─── RLH-AT-11: a duplicated verdict field fails closed (E-09, TSPEC §5.1) ────
+// ─── RLH-AT-11: a duplicated verdict field — the LAST one wins (DEC-BAR-01) ───
 //
-// Round 2's SE cross-review carries TWO `VERDICT: Approved` lines inside its
-// trailing `## Verdict` section; the TE file is a clean single approval. Both
-// anchors are the FSPEC's real digest, so **every other input says "skip"** — the
-// only thing standing between this fixture and a wrongly-skipped phase is §5.1
-// step 2's duplicate pre-count, which fails closed *before* `parseVerdict` is
-// consulted. `parseVerdict` scans from the end and would return `Approved`, so an
-// implementation that relied on its result would skip Phase F.
-describe("RLH-AT-11: duplicated verdict field fails closed", () => {
+// Superseded behaviour: this fixture used to prove that a second `VERDICT:` line
+// failed closed. The 2026-08-08 operator decision made parsing lenient — the
+// workflow reads the last non-fenced verdict line in the file — so the property
+// under test is now *which* line governs, in BOTH directions. Both anchors are the
+// FSPEC's real digest, so the verdict is the only free variable.
+describe("RLH-AT-11: a duplicated verdict field is read last-one-wins", () => {
   const listing = [crossReviewBasename(SE_SLUG, 2), crossReviewBasename(TE_SLUG, 2)];
-  const files = {
+
+  /** Earlier line blocks, later line approves ⇒ the round is approving. */
+  const approvingLast = {
     [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({
-      verdict: APPROVED,
+      verdict: NEEDS_REVISION,
+      counts: { high: 2, medium: 0, low: 0 },
       hash: FSPEC_HASH,
       duplicateVerdict: true,
+      secondVerdict: APPROVED,
+      secondCounts: { high: 0, medium: 0, low: 0 },
     }),
     [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
   };
 
-  test("RLH-AT-11: Phase F runs even though scan-from-end would read Approved", async () => {
-    const { result, fs, agentCalls } = await runPipeline({ files, listing });
+  /** Earlier line approves, later line blocks ⇒ the round is NOT approving. */
+  const blockingLast = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({
+      verdict: APPROVED,
+      hash: FSPEC_HASH,
+      duplicateVerdict: true,
+      secondVerdict: NEEDS_REVISION,
+      secondCounts: { high: 2, medium: 0, low: 0 },
+    }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+  };
 
-    // The pre-count reported unparseable: no approval, so the phase runs.
+  test("RLH-AT-11: the later approving line governs — Phase F is skipped", async () => {
+    const { result, fs } = await runPipeline({ files: approvingLast, listing });
+
+    expect(phaseRecord(result, "F")).not.toBeNull();
+    expect(phaseRecord(result, "F").status).toBe("⏭");
+    // The verdict was extracted from the file's bytes, not inferred from its existence.
+    expect(readPaths(fs)).toContain(crossReviewPath(SE_SLUG, 2));
+  });
+
+  test("RLH-AT-11: the later blocking line governs — Phase F runs", async () => {
+    const { result, agentCalls } = await runPipeline({ files: blockingLast, listing });
+
     expect(phaseRecord(result, "F")).not.toBeNull();
     expect(phaseRecord(result, "F").status).not.toBe("⏭");
     expect(reviewerDispatchesFor(agentCalls, FSPEC_PATH).length).toBeGreaterThan(0);
+  });
+});
 
-    // The offending file was actually read — the verdict was extracted from the
-    // file's bytes (§5.1), not inferred from its existence.
-    expect(readPaths(fs)).toContain(crossReviewPath(SE_SLUG, 2));
+// ─── DEC-BAR-01: lenient verdict parsing, and the High-only bar, from a FILE ───
+//
+// The three parse relaxations and the two ends of the severity bar, each read
+// through the same pipeline gate: an approving candidate round skips Phase F, a
+// blocking one runs it.
+describe("DEC-BAR-01: lenient file-verdict parsing and the High-only bar", () => {
+  const listing = [crossReviewBasename(SE_SLUG, 2), crossReviewBasename(TE_SLUG, 2)];
+  const pair = (seSpec) => ({
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ hash: FSPEC_HASH, ...seSpec }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+  });
+  const skipped = async (files) => {
+    const { result } = await runPipeline({ files, listing });
+    expect(phaseRecord(result, "F")).not.toBeNull();
+    return phaseRecord(result, "F").status === "⏭";
+  };
+
+  test("a VERDICT line with NO `## Verdict` heading is still read", async () => {
+    expect(await skipped(pair({ verdict: APPROVED, noHeading: true }))).toBe(true);
+  });
+
+  test("a FENCED VERDICT line is never read as the verdict", async () => {
+    // The fence quotes a blocking `Needs revision` with 9 Highs; the real,
+    // non-fenced verdict below it approves. Reading the fence would run the phase.
+    expect(await skipped(pair({ verdict: APPROVED, fencedVerdict: true }))).toBe(true);
+    // …and with the fence as the ONLY verdict-shaped text, there is no verdict at
+    // all: no approval to skip on, so the phase runs.
+    const fenceOnly = {
+      [crossReviewPath(SE_SLUG, 2)]:
+        "# Cross-review\n\nScope: whole document.\n\n```\nVERDICT: Approved\n" +
+        '{"high": 0, "medium": 0, "low": 0}\n```\n',
+      [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    };
+    expect(await skipped(fenceOnly)).toBe(false);
+  });
+
+  test("high:0 with open Mediums approves; a single High blocks", async () => {
+    // `Needs revision` filed over Mediums alone no longer gates (DEC-BAR-01).
+    expect(
+      await skipped(pair({ verdict: NEEDS_REVISION, counts: { high: 0, medium: 2, low: 4 } }))
+    ).toBe(true);
+    // One High does.
+    expect(
+      await skipped(pair({ verdict: NEEDS_REVISION, counts: { high: 1, medium: 0, low: 0 } }))
+    ).toBe(false);
+  });
+
+  test("a malformed verdict still fails closed", async () => {
+    // A value outside the closed catalogue ⇒ `parseVerdict` returns its
+    // `malformed: true` fallback, whose zero counts are a fallback and not an
+    // observation — so the counts limb of the bar must not admit it.
+    const malformed = {
+      [crossReviewPath(SE_SLUG, 2)]:
+        `# Cross-review\n\nScope: whole document.\n\n## Verdict\n\nVERDICT: LGTM\n` +
+        `{"high": 0, "medium": 0, "low": 0}\n\nAPPROVAL-HASH: ${FSPEC_HASH}\nREVIEWED-COMMIT: unavailable\n`,
+      [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    };
+    expect(await skipped(malformed)).toBe(false);
   });
 });
 
