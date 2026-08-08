@@ -6,7 +6,8 @@
   "bin": {
     "pdlc": "bin/pdlc.mjs"
   },
-  "description": "Headless engine skeleton for pdlc (Phase 0: CLI skeleton + Agent SDK auth spike).",
+  "description": "Headless engine for pdlc (Phase 2: plugin-skill adapter, version handshake, doctor).",
+  "pdlcPluginCompat": "^0.22.0",
   "license": "UNLICENSED",
   "scripts": {
     "test": "node --test __tests__/"
