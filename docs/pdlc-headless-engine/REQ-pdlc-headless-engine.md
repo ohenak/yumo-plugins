@@ -15,7 +15,13 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.3 | 2026-08-08 |
+| pdlc | draft — awaiting operator review | Claude | 0.4 | 2026-08-08 |
+
+*Change note (0.4, 2026-08-08):* Phase-0 spike (`SPIKE-agent-sdk-auth.md`) supersedes the
+docs-derived §1.3 ruling — the Claude Agent SDK runs under subscription auth on the operator's
+machine (`apiKeySource: "none"`), so the SDK becomes the primary dispatch transport with
+headless `claude -p` as the declared fallback, both behind the unchanged `_agent` seam; C-1,
+NG-6, O-1 and R-1 updated to match.
 
 *Change note (0.3, 2026-08-08):* skills are no longer packaged inside the engine; the pdlc
 plugin remains their sole delivery vehicle, the engine resolves and inlines `SKILL.md` from
@@ -23,8 +29,9 @@ the installed plugin at dispatch time, and a version-compatibility handshake aga
 plugin is now a hard constraint (operator decision, 2026-08-08).
 
 > **Scope in one line.** A standalone Node CLI (`pdlc dev`, `pdlc queue`) that executes the
-> canonical workflow modules **unmodified** and dispatches every agent via **headless Claude
-> Code (`claude -p`)** under **subscription auth**, resolving each skill's `SKILL.md` from the
+> canonical workflow modules **unmodified** and dispatches every agent via **the Claude Agent
+> SDK (headless `claude -p` as declared fallback)** under **subscription auth**, resolving each
+> skill's `SKILL.md` from the
 > locally installed pdlc plugin at dispatch time and inlining it — eliminating the per-project
 > workflow copy (and therefore drift) by construction, not by detection, while the plugin
 > remains the sole delivery vehicle for skill prompts.
@@ -80,19 +87,41 @@ measured from; the values below are the record, not a recollection):
    prose-chunked, SHA-256-verified file transport built after four measured corruption modes.
    Hosted in Node, that workaround is not ported; it is deleted.
 
-### 1.3 Transport decision (verified 2026-08-08)
+### 1.3 Transport decision (superseded 2026-08-08 by Phase-0 spike)
 
-The Claude **Agent SDK is ruled out as the dispatch transport**: Anthropic's authentication
-docs state the SDK must use `ANTHROPIC_API_KEY` (pay-per-token) — it does not read
-`CLAUDE_CODE_OAUTH_TOKEN`, and offering claude.ai subscription auth through SDK-built agents
-is disallowed by policy. **Headless Claude Code (`claude -p`) accepts subscription auth**
-(interactive `/login` state or a `claude setup-token` OAuth token via
+The docs-derived ruling below — that the Claude **Agent SDK is ruled out as the dispatch
+transport** because Anthropic's authentication docs state the SDK must use
+`ANTHROPIC_API_KEY` — is **superseded by empirical measurement**. A Phase-0 spike
+(`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`) ran the installed
+`@anthropic-ai/claude-agent-sdk` on the operator's machine with `ANTHROPIC_API_KEY` verified
+absent from the process environment and both Claude Code settings files. The SDK's
+`system/init` message reported **`apiKeySource: "none"`**; the call completed with no
+exception and no key prompt; a `rate_limit_event` message carried `rateLimitType: "five_hour"`
+with `overageStatus: "rejected"` — the shape associated with subscription-plan rate limiting,
+not a pay-as-you-go key. **Architectural decision: the Agent SDK is the primary dispatch
+transport; headless `claude -p` is the declared fallback, both behind the same unchanged
+`_agent` seam** (G-2). The engine asserts the SDK's reported `apiKeySource` is `"none"` at
+startup and at each dispatch, refusing otherwise absent an explicit opt-in flag (C-1).
+
+**Policy-risk caveat, kept from the superseded ruling:** the docs' third-party-product
+language ("the SDK requires `ANTHROPIC_API_KEY`") and the spike's observed behavior could
+diverge again — a future SDK release could start requiring a key, or an org-level policy
+change could disable the subscription path the proxy currently permits. The spike does not
+prove *why* subscription auth works (whether the local `headroom` proxy itself performs
+auth translation invisible to the SDK client, versus the SDK having a genuine subscription
+path) — only that it does, on this machine, today. The `apiKeySource` assertion is the
+tripwire: any dispatch where the SDK reports a source other than `"none"` fails closed rather
+than silently billing pay-per-token.
+
+Headless Claude Code (`claude -p`) remains available as the declared fallback: it also accepts
+subscription auth (interactive `/login` state or a `claude setup-token` OAuth token via
 `CLAUDE_CODE_OAUTH_TOKEN`) and honors `ANTHROPIC_BASE_URL` / `ANTHROPIC_CUSTOM_HEADERS` from
 the environment. The operator runs the most expensive Claude subscription and routes all
 traffic through the local `headroom` proxy (`ANTHROPIC_BASE_URL=http://127.0.0.1:8787`,
-ambient in the shell environment); both are hard constraints (§4), so the `_agent` seam is
-implemented over `claude -p`. Sources: code.claude.com authentication, env-vars and
-network-config docs, retrieved 2026-08-08.
+ambient in the shell environment); both remain hard constraints (§4). Sources:
+`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md` (2026-08-08, empirical); code.claude.com
+authentication, env-vars and network-config docs, retrieved 2026-08-08 (the superseded
+docs-derived claim, kept as the policy-risk baseline above).
 
 ## 2. Goals
 
@@ -159,7 +188,12 @@ network-config docs, retrieved 2026-08-08.
   execution engine is explicitly rejected).
 - **NG-5** No interactive-session UX (watching phases inside a Claude Code session). A thin
   plugin front-door that shells out to the engine may come with `pdlc-plugin-retirement`.
-- **NG-6** No Agent SDK usage, even optionally, while the policy in §1.3 stands.
+- **NG-6** *(superseded 2026-08-08 — see §1.3 change note 0.4)* No engine transport work
+  beyond the Agent-SDK-primary / `claude -p`-fallback design already decided in §1.3: no third
+  transport, no model-routing logic, no transport auto-selection heuristic beyond the
+  `apiKeySource` fail-closed check (C-1). The prior wording of this non-goal ("no Agent SDK
+  usage, even optionally") depended on the docs-derived ruling §1.3 has since superseded and no
+  longer applies.
 - **NG-7** No new copy of anything into a consumer project. The engine ships no installer,
   writes no engine-owned file into a consumer repo, and does not read, repair, or report on
   `.claude/workflows/`. A project's existing copy is simply irrelevant to an engine run.
@@ -175,7 +209,12 @@ network-config docs, retrieved 2026-08-08.
   unavailable and an API key is present, the engine refuses to start unless the operator
   passes an explicit opt-in flag; the startup banner names the auth source in use. The
   refusal is at **startup**, before any dispatch — a run that has already billed a phase to
-  the wrong account has already failed.
+  the wrong account has already failed. **Mechanical form (§1.3):** for the primary Agent-SDK
+  transport, the engine asserts the SDK-reported `apiKeySource` (from the `system/init`
+  message) is exactly `"none"` at startup and at each dispatch; any other value is a startup
+  refusal naming the reported source, absent the explicit opt-in flag (`auth.allowApiKeyBilling`,
+  §4.1). The same fail-closed check applies to the `claude -p` fallback via its own reported
+  auth source.
 - **C-2 — Environment passthrough is contractual.** *(operator hard constraint)* Every
   spawned `claude` process inherits the parent environment, headroom's
   `ANTHROPIC_BASE_URL` (`http://127.0.0.1:8787`) and `ANTHROPIC_CUSTOM_HEADERS` included.
@@ -363,10 +402,13 @@ C-10)*
 
 ## 6. Risks
 
-- **R-1 — `claude -p` output contract.** The engine depends on headless output
-  (`--output-format json` / stream) staying parseable; a CLI upgrade could shift it.
-  Mitigation: one thin transport module owns invocation + parsing; a version probe at
-  startup; transport covered by fixtures.
+- **R-1 — Transport output contract.** *(now primarily the SDK message schema, per §1.3)* The
+  engine depends on the Agent SDK's message stream (`system/init`, `rate_limit_event`, terminal
+  `result`) staying parseable, and on the `claude -p` fallback's headless output
+  (`--output-format json` / stream) staying parseable when it is used; an SDK or CLI upgrade
+  could shift either shape independently. Mitigation: one thin transport module owns invocation
+  + parsing for both paths; a version/`apiKeySource` probe at startup; both transports covered
+  by fixtures.
 - **R-2 — Subscription limits under unattended load.** A cron'd loop can exhaust weekly Max
   limits invisibly. Mitigation: AC-4.1 pause/resume, run-report pause records, optional
   headroom stats surfaced in the report.
@@ -395,9 +437,12 @@ C-10)*
 
 ## 7. Obligations / Open Questions
 
-- **O-1** Probe and record the exact `claude -p` flag surface used (output format, model,
-  settings/hook injection, `--resume`, permission flags) against the installed CLI version
-  before TSPEC; treat it as an interface contract with fixtures.
+- **O-1** *(fallback-path obligation, per §1.3's transport swap)* Probe and record the exact
+  `claude -p` flag surface used (output format, model, settings/hook injection, `--resume`,
+  permission flags) against the installed CLI version before TSPEC, as the fallback transport's
+  interface contract with fixtures — the primary Agent-SDK transport's message-stream shape
+  (system/init, rate_limit_event, terminal result — per `SPIKE-agent-sdk-auth.md`) is probed and
+  fixtured the same way, and both are exercised behind the one `_agent` seam.
 - **O-2** Decide the guard-parity mechanism (C-5): per-dispatch `--settings` carrying the
   PreToolUse hook vs. an engine-side pre-flight. Must be sourced from the engine's own
   dispatch configuration, not from whatever hooks the plugin install happens to register
