@@ -8,6 +8,9 @@
   },
   "description": "Headless engine skeleton for pdlc (Phase 0: CLI skeleton + Agent SDK auth spike).",
   "license": "UNLICENSED",
+  "scripts": {
+    "test": "node --test __tests__/"
+  },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.226"
   }
