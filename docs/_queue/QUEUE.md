@@ -33,17 +33,17 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 14 | done | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
-| 15 | halted | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
-| 16 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
-| 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
-| 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
+| 1 | done | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
+| 2 | halted | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
+| 3 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
+| 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
+| 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
+| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
+| 7 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
+| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
-| 19 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
-| 20 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
-| 21 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
 
-**Rows 19–21 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
+**Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
 bytes against a 0.22.0 plugin; the versions differ in review-gate semantics): the per-project
 workflow copy is replaced by a standalone CLI that executes `pdlc/workflows/*.js` unmodified
