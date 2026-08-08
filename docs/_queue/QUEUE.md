@@ -51,13 +51,17 @@ in plain Node and dispatches agents via **headless Claude Code (`claude -p`)** u
 subscription auth (the Agent SDK was verified 2026-08-08 to require API-key billing by
 policy, so it is ruled out as transport; `ANTHROPIC_BASE_URL` passthrough keeps the headroom
 proxy in the path on either transport). All three REQs carry `ready: false` until the
-operator reviews them — the queue must not pick them up as drafted. Sequencing: 19 (engine)
-→ 20 (packaging/publish) → 21 (retire bundles + sync/drift machinery, slim plugin to an
-interactive front-door). **Pending operator decisions recorded in the REQs:** row 6's
-deferrals D-DIST-01/02/03/05 are proposed **superseded** by this family (they improve the
-copy mechanism; the family removes the copy) and D-DIST-07 closes by construction; row 7's
-D-DIST-06 release-automation remainder is proposed absorbed or renarrowed by row 20
-(`REQ-pdlc-engine-distribution` §7 O-3). Rows 6 and 7 are left untouched until that
+operator reviews them — the queue must not pick them up as drafted. Sequencing:
+`pdlc-headless-engine` (engine) → `pdlc-engine-distribution` (packaging/publish) →
+`pdlc-plugin-retirement` (retire bundles + sync/drift machinery). **Operator direction
+2026-08-08:** the plugin remains the delivery vehicle for the skills — users keep `/pdlc:*`
+standalone, and the CLI reads SKILL.md from the installed plugin behind a version handshake —
+so retirement slims the plugin's *workflow* machinery only, never its skills.
+**Pending operator decisions recorded in the REQs:** `pdlc-install-mechanism`'s deferrals
+D-DIST-01/02/03/05 are proposed **superseded** by this family (they improve the copy
+mechanism; the family removes the copy) and D-DIST-07 closes by construction;
+`pdlc-release-ci`'s D-DIST-06 release-automation remainder is proposed absorbed or renarrowed
+by `pdlc-engine-distribution` (its §Obligations). Those two rows are left untouched until the
 decision is recorded here.
 
 **Rows 0, 10, 11, 12, 17 and 18 removed 2026-08-02 by operator direction.** The `pdlc-rcv` family
