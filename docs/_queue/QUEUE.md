@@ -39,6 +39,26 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+| 19 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
+| 20 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
+| 21 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
+
+**Rows 19–21 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
+pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
+bytes against a 0.22.0 plugin; the versions differ in review-gate semantics): the per-project
+workflow copy is replaced by a standalone CLI that executes `pdlc/workflows/*.js` unmodified
+in plain Node and dispatches agents via **headless Claude Code (`claude -p`)** under
+subscription auth (the Agent SDK was verified 2026-08-08 to require API-key billing by
+policy, so it is ruled out as transport; `ANTHROPIC_BASE_URL` passthrough keeps the headroom
+proxy in the path on either transport). All three REQs carry `ready: false` until the
+operator reviews them — the queue must not pick them up as drafted. Sequencing: 19 (engine)
+→ 20 (packaging/publish) → 21 (retire bundles + sync/drift machinery, slim plugin to an
+interactive front-door). **Pending operator decisions recorded in the REQs:** row 6's
+deferrals D-DIST-01/02/03/05 are proposed **superseded** by this family (they improve the
+copy mechanism; the family removes the copy) and D-DIST-07 closes by construction; row 7's
+D-DIST-06 release-automation remainder is proposed absorbed or renarrowed by row 20
+(`REQ-pdlc-engine-distribution` §7 O-3). Rows 6 and 7 are left untouched until that
+decision is recorded here.
 
 **Rows 0, 10, 11, 12, 17 and 18 removed 2026-08-02 by operator direction.** The `pdlc-rcv` family
 (rows 10–12, 17, 18 — the five-way split of the superseded row 0, `pdlc-review-convergence`) is
