@@ -98,3 +98,36 @@ upstream has decided the question, the correct action is to **absorb the decisio
 this layer's mechanism on the decided form and delete the raise. Routing a settled question is
 **not** a demoted finding: it is a false statement in a hand-off section, and it is scored on
 what it costs downstream (High when a downstream task is authored against the losing side).
+
+---
+
+## DEC-BAR-01: Lenient verdict parsing and a High-only convergence bar (experiment, 2026-08-08)
+
+**Context.** Two mechanisms were costing rounds without catching defects. (1) `extractFileVerdict`
+required a `## Verdict` heading and failed closed on a second `VERDICT:` line in the section, so a
+substantively-approved review was discarded on formatting alone. (2) The convergence bar counted
+Medium as blocking, and the windows recorded in DEC-SEV-01…03 are largely the story of Mediums
+that were repaired by deleting or narrowing an assertion — a per-round Medium generator that the
+severity-demotion rules above were written to drain one class at a time.
+
+**Decision.** Operator decision, taken on **2026-08-08** as an **experiment**:
+
+1. **Verdict parsing is lenient.** The workflow reads the **last non-fenced `VERDICT:` line in the
+   file** and parses from there to EOF. No heading is required; the `## Verdict` trailing section
+   stays the recommended emit format. Several verdict lines no longer fail closed — the last one
+   wins. Fenced blocks are still skipped, so a quoted grammar is never read as a verdict. An
+   unparseable verdict still fails closed.
+2. **The convergence bar is High-only.** A readable parse with `high === 0` is eligible to move
+   forward regardless of its Medium and Low counts. Reviewers should still file Mediums and Lows,
+   and authors should still address them; they no longer gate the phase.
+
+**Supersedes.** This entry **supersedes the approval-bar clauses** of the entries above wherever
+they state the old bar — notably DEC-SEV-01's *Scope* ("any open High/Medium still blocks") and
+every "the approval bar (any open Medium ⇒ Needs revision)" framing in their *Context* sections.
+Those entries are left as written: their severity-classification rules (what is Low vs Medium vs
+High) are unchanged and still authoritative, and the history of why they were needed is worth
+keeping. Only the statement of what blocks is replaced.
+
+**Review.** Deliberately provisional — "we'll learn from the next few iterations if it's too
+relaxed." Revisit after a few full pipeline runs: if Medium-severity defects start reaching
+implementation, restore Medium as blocking (or gate it per phase) and record that here.

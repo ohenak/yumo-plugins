@@ -4603,48 +4603,48 @@ export function parseApprovalHash(fileText) {
 // ─── TSPEC §5.1 — verdict extraction from a FILE ──────────────────────────────
 
 /**
- * Read a reviewer's verdict out of a cross-review **file** (§5.1), in the three
- * steps the spec fixes, reusing `parseVerdict` unmodified.
+ * Read a reviewer's verdict out of a cross-review **file** (§5.1), reusing
+ * `parseVerdict` unmodified.
  *
- * 1. **Locate the trailing section.** `scanLines` over the whole file, recording
- *    the index of the LAST visited `## Verdict` heading; the section is that line
- *    to EOF. A heading inside a fence is never visited, so it can neither become
- *    the boundary nor contribute a `VERDICT:` line. No such heading ⇒ no verdict
- *    ⇒ the phase runs.
- * 2. **Duplicate pre-count** over the section. More than one `VERDICT: ` line
- *    fails closed — and it fails closed *before* step 3, because `parseVerdict`
- *    scans from the end and would happily return the last of them.
- * 3. **`parseVerdict(section, roleSlug)`**, unchanged. Feeding it file text
- *    instead of a response string requires no change to it whatsoever.
+ * **Lenient contract** (operator decision, 2026-08-08 — see
+ * `docs/_decisions/DECISIONS-review-severity-bars.md`). The strict reading — a
+ * mandatory trailing `## Verdict` heading plus a fail-closed duplicate pre-count
+ * — rejected substantively-approved reviews on formatting alone and cost whole
+ * extra rounds. Both rejections are gone:
  *
- * The scan is scoped to the trailing section rather than the whole file on
- * purpose: "exactly one `VERDICT:` line in the file" misclassifies any
- * cross-review that *quotes* the grammar — including a review of this very
- * feature, whose TSPEC §4.4 fenced block contains a literal `VERDICT:` line.
+ * 1. **No heading is required.** `scanLines` runs over the whole file and records
+ *    the index of the LAST non-fenced `VERDICT: ` line; the section handed to
+ *    `parseVerdict` is that line to EOF. The `## Verdict` heading remains the
+ *    recommended format — it is convention, not a parse requirement.
+ * 2. **Fences are still skipped.** `scanLines` never visits a fenced line, so a
+ *    block that *quotes* the grammar — as this feature's own TSPEC §4.4 does —
+ *    can never be mistaken for a verdict.
+ * 3. **Last one wins.** Several `VERDICT: ` lines no longer fail closed; the last
+ *    non-fenced one is authoritative, which is also what `parseVerdict`'s own
+ *    reverse scan would pick.
+ * 4. **`parseVerdict(section, roleSlug)`**, unchanged. It still returns
+ *    `malformed: true` for a value outside the catalogue or an unparseable counts
+ *    line, and that still fails closed at the callers.
+ *
+ * No non-fenced `VERDICT: ` line anywhere ⇒ no verdict ⇒ the phase runs.
  *
  * @param {string|null|undefined} fileText
  * @param {string} roleSlug - for `parseVerdict`'s warning text only.
  * @returns {{ok: true, verdict: string, high: number, medium: number,
  *            low: number, malformed?: boolean}
- *          |{ok: false, reason: "no_verdict_section"|"duplicated"}}
+ *          |{ok: false, reason: "no_verdict_line"}}
  */
 function extractFileVerdict(fileText, roleSlug) {
   const text = String(fileText ?? "");
   const lines = text.split("\n");
 
-  let headingIndex = -1;
+  let verdictIndex = -1;
   scanLines(text, (line, index) => {
-    if (/^\s*##\s+Verdict\s*$/.test(line)) headingIndex = index;
+    if (line.trim().startsWith("VERDICT: ")) verdictIndex = index;
   });
-  if (headingIndex === -1) return { ok: false, reason: "no_verdict_section" };
+  if (verdictIndex === -1) return { ok: false, reason: "no_verdict_line" };
 
-  const section = lines.slice(headingIndex).join("\n");
-
-  let trailers = 0;
-  scanLines(section, (line) => {
-    if (line.trim().startsWith("VERDICT: ")) trailers += 1;
-  });
-  if (trailers > 1) return { ok: false, reason: "duplicated" };
+  const section = lines.slice(verdictIndex).join("\n");
 
   return { ok: true, ...parseVerdict(section, roleSlug) };
 }
@@ -5204,6 +5204,35 @@ function isPass(verdict) {
   return verdict === "Approved" || verdict === "Approved with minor changes";
 }
 
+/**
+ * The convergence bar over a *parsed verdict record* — `{verdict, high, medium,
+ * low, malformed?}`, as `parseVerdict` / `extractFileVerdict` return it.
+ *
+ * **High-only** (operator decision, 2026-08-08 — an experiment to speed
+ * convergence, to be revisited after a few pipeline iterations; see
+ * `docs/_decisions/DECISIONS-review-severity-bars.md`). A round moves forward
+ * when either
+ *
+ *   - the verdict string itself approves (`isPass`), or
+ *   - the parse is readable and reports **no High findings** — Medium and Low
+ *     counts no longer block, so a "Needs revision" filed over Mediums alone
+ *     still converges.
+ *
+ * Fail-closed is preserved: a `malformed: true` record never passes on the counts
+ * limb, because its zero counts are a fallback, not an observation.
+ *
+ * Sites that only need the verdict *string* (report prose, the tier-2 approval
+ * record table, which carries no counts) keep using `isPass`.
+ *
+ * @param {{verdict?: string, high?: number, malformed?: boolean}|null|undefined} parsed
+ * @returns {boolean}
+ */
+function isPassResult(parsed) {
+  if (!parsed) return false;
+  if (isPass(parsed.verdict)) return true;
+  return parsed.malformed !== true && parsed.high === 0;
+}
+
 // ─── TSPEC §5.6.1 — selectMode; §5.6.2 — isTerminal ───────────────────────────
 
 /**
@@ -5245,7 +5274,7 @@ function isPass(verdict) {
  *
  * @param {{dispatchKind: string, docType: string,
  *          present: Map<string, number[]>,
- *          reviewFiles: Map<string, {verdict: string, verdictReadable: boolean, anchorHash: string|null}>,
+ *          reviewFiles: Map<string, {verdict: string, high: number|null, verdictReadable: boolean, anchorHash: string|null}>,
  *          startIndex: number}} arg
  * @returns {{mode: "authoring"|"revision", round: number|null, reason: string}}
  */
@@ -5283,7 +5312,7 @@ export function selectMode({ dispatchKind, docType, present, reviewFiles, startI
     roles.length > 0 &&
     roles.every((role) => {
       const rec = files.get(`${role}:${round}`);
-      return !!rec && rec.verdictReadable === true && isPass(rec.verdict);
+      return !!rec && rec.verdictReadable === true && isPassResult(rec);
     });
 
   const descending = [...rounds].sort((a, b) => b - a);
@@ -5418,7 +5447,7 @@ function checkConverged(
   let reviewerDetail = "";
   if (Array.isArray(loopResult.lastResults) && loopResult.lastResults.length > 0) {
     const details = loopResult.lastResults
-      .filter((r) => !isPass(r.verdict))
+      .filter((r) => !isPassResult(r))
       .map((r) => `${r.skill} (high:${r.high}, medium:${r.medium}, low:${r.low})`)
       .join("; ");
     reviewerDetail = details ? ` — non-approving reviewers: [${details}]` : "";
@@ -5978,7 +6007,7 @@ export async function reviewLoop({
     }
 
     // (e) Evaluate gate
-    const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);
+    const gatePass = isPassResult(verdict1) && isPassResult(verdict2);
 
     // (f) PASS branch — t4. The round is terminal, so §5.3 t5 appends the anchor
     // pair to each reviewer's cross-review file and t6 commits. A failed or
@@ -6607,6 +6636,9 @@ export async function refreshReviewState({ feature, docType, _listFiles, _readFi
     const anchor = parseApprovalHash(text);
     reviewFiles.set(`${parsed.role}:${parsed.round}`, {
       verdict: parsedVerdict.ok ? parsedVerdict.verdict : null,
+      // The High count rides on the record so the high-only bar (`isPassResult`)
+      // is decidable from it; `null` whenever the verdict itself is unreadable.
+      high: parsedVerdict.ok ? parsedVerdict.high : null,
       verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
       anchorHash: anchor.ok ? anchor.hash : null,
       anchorReason: anchor.ok ? null : anchor.reason,
@@ -6856,10 +6888,11 @@ function noApprovalRecord(candidate, unevaluable = []) {
  *   - single-highest-round candidate, **no descending walk** (`RLH-AT-57`);
  *   - a role's absent `-v{candidate}` is **not approving**, not partially
  *     approving (`RLH-AT-10`);
- *   - unanimity is `isPass` on every role AND identical anchor hashes — a
+ *   - unanimity is `isPassResult` on every role AND identical anchor hashes — a
  *     partial or disagreeing anchor pair adopts neither value (`RLH-AT-56`);
- *   - a duplicated `VERDICT:` line already failed closed upstream, in §5.1
- *     (`RLH-AT-11`).
+ *   - a duplicated `VERDICT:` line no longer fails closed upstream: since the
+ *     2026-08-08 lenient-parse decision §5.1 reads the LAST non-fenced verdict
+ *     line, so the record here is whatever that line said (`RLH-AT-11`).
  *
  * @param {{reviewers: string[], startIndex: number, reviewFiles: Map}} arg
  * @returns {{approving: boolean, candidate: number, hash: string|null,
@@ -6883,7 +6916,7 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
   // the offending file is named in the report. Adopting the *other* file's value
   // is the failure FSPEC §19 calls out.
   const unevaluable = records.filter((r) => !r.anchorHash).map((r) => r.path);
-  const verdictsPass = records.every((r) => r.verdictReadable && isPass(r.verdict));
+  const verdictsPass = records.every((r) => r.verdictReadable && isPassResult(r));
   if (!verdictsPass || unevaluable.length) return noApprovalRecord(candidate, unevaluable);
 
   const hashes = records.map((r) => r.anchorHash);
@@ -7231,8 +7264,10 @@ async function advisoryPacingCheck({ wroteBytes, targetPath, _git, emit }) {
  * that answered the old ones. A reviewer re-reading a revised document from
  * scratch has no reason not to; one told that convergence is the goal, and that
  * its job is its own blocking findings plus regressions, does. The approval bar
- * itself is deliberately untouched — the clause scopes the reviewer's ATTENTION,
- * never its standard, and step 4 below still refuses any open High or Medium.
+ * itself is deliberately untouched by THIS clause — it scopes the reviewer's
+ * ATTENTION, never its standard. The standard is step 4 below: since the
+ * 2026-08-08 operator decision it refuses any open **High** finding, and Medium
+ * and Low no longer block.
  */
 /**
  * §3.4's grounding manifest, rendered into prompt text. Every `PHASE_DISPATCH`
@@ -7275,8 +7310,8 @@ const ORACLE_QUALITY_CLAUSE = [
 
 const REVIEW_CONVERGENCE_CLAUSE =
   "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
-  "whether the revision broke anything. The approval bar is unchanged — this is a narrower " +
-  "scope of attention, not a lower standard.";
+  "whether the revision broke anything — a narrower scope of attention, not a lower standard. " +
+  "Only High findings block approval; Medium and Low are recorded, not gating.";
 
 /**
  * M-2's continuing-author framing, added to EVERY optimizer dispatch.
@@ -7350,7 +7385,8 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `2. Run \`git diff\` on ${doc} against the commit you last reviewed to see exactly what changed.\n` +
     `3. Verify each of your previous findings is resolved; scan ONLY the changed sections for new issues. ` +
     `Do not re-review unchanged sections you already approved.\n` +
-    `4. The approval bar is unchanged: any open High or Medium finding anywhere in the document — old or new — means Needs revision.\n` +
+    `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
+    `Medium and Low findings do not block; file them and approve with minor changes.\n` +
     `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
     oraclePart
   );
@@ -9305,7 +9341,7 @@ export default async function main({
     );
 
     const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
-    const nonApproving = reviewers.filter((_, i) => !isPass(verdicts[i].verdict));
+    const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
     if (nonApproving.length > 0) {
       await erratumPostmortemHalt({
         phaseId,
