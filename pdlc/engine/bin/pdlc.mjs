@@ -15,6 +15,10 @@ const [, , cmd] = process.argv;
 
 async function cmdHello() {
   console.log(`pdlc-engine v${pkg.version}`);
+  console.log(
+    "transport: Claude Agent SDK (primary), headless `claude -p` fallback declared; " +
+      'requires apiKeySource "none" at dispatch (fail-closed, subscription-first).'
+  );
 }
 
 async function cmdSpikeSdk() {
