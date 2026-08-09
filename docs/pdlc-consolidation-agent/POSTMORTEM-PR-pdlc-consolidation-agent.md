@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Kane Ho (operator, via outer orchestrator) | 1.0 | 2026-08-06 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -55,3 +55,18 @@ To resume the pipeline later (author PROPERTIES, then implement):
 
 Until then, this file failing closed at Phase PR's gate is the intended behaviour: no run of the
 pipeline can reach implementation for this feature while the stop order stands.
+
+## Resolution
+
+**Stop order lifted 2026-08-09 by Kane Ho (operator).** `RESOLVED:` flipped to `yes` per step 1 of
+the Recommendation above. Nothing was "addressed" because nothing was outstanding — this was never
+a defect record. The 2026-08-06 decision to ship specification-only has been served: that work
+merged as PR #39.
+
+What this changes, stated plainly because the stop order existed precisely to prevent it: Phase PR
+now runs, PROPERTIES is authored, and **Phase I (Implementation) follows**. The pipeline will write
+code for this feature. Phases R, F, T, D skip on recorded approvals (all four verified FRESH on the
+2026-08-09 run); Phase P re-converged in that same run after its approval went stale, and now
+parses to 34 tasks in 15 waves.
+
+To re-impose the stop, set `RESOLVED: no` again — the gate is the marker, and nothing else.
