@@ -538,7 +538,7 @@ cites the obligation rather than the id, because the id belongs to `consolidatio
 `TSPEC:928`.*
 
 **PROP-TRG-06** — *`passId` is derived from the log, never from a counter or a clock.* Three
-conjuncts, one fixture each: a log already carrying `{today}-1` mints `{today}-2` (AT-C6); a log
+conjuncts, one fixture each: a log already carrying `{today}-1` mints `{today}-2`; a log
 whose newest rows carry a **previous** date and no `{today}` row mints `{today}-1` — the counter
 restarts per date rather than continuing the previous date's `n` — and an **unparseable** row among
 them contributes no `m`. Its L2 whole-pass arm is PROP-PASS-04, which discharges the **AT-C6** and
