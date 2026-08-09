@@ -144,6 +144,21 @@ test("`pdlc hello` reports the canonical workflow module paths", () => {
   assert.ok(r.stdout.includes(path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js")));
 });
 
+// ─── Phase 4: --max-iterations validation (no dispatch reached) ───────────────
+
+test("`pdlc queue --loop --max-iterations 0` is refused before any dispatch", () => {
+  const r = run(["queue", "--loop", "--max-iterations", "0", "--plugin-root", PLUGIN_ROOT]);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /--max-iterations must be a positive number/);
+  assert.equal(/queue --loop: \d+ pass/.test(r.out), false, "the loop must never have started");
+});
+
+test("`pdlc queue --loop --max-iterations not-a-number` is refused before any dispatch", () => {
+  const r = run(["queue", "--loop", "--max-iterations", "abc", "--plugin-root", PLUGIN_ROOT]);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /--max-iterations must be a positive number/);
+});
+
 test("an unknown command prints the usage block naming dev and queue", () => {
   const r = run(["frobnicate"]);
   assert.equal(r.status, 1);

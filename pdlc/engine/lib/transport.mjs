@@ -83,8 +83,16 @@ function classifyThrown(err, { timedOut, timeoutMs }) {
     return new TimeoutError(`dispatch exceeded timeoutMs=${timeoutMs}`, { timeoutMs });
   }
   if (looksLikeRateLimit(err)) {
+    // Forward whatever retry-relevant fields the thrown error itself carried
+    // (e.g. an SDK/HTTP error object exposing `status`, `retryAfterMs`,
+    // `resetsAt`, `rateLimitType`) — the adapter's pause/resume policy
+    // (lib/adapter.mjs) prefers these over its own exponential backoff.
     return new RateLimitedError(err && err.message ? err.message : "rate limited", {
       cause: err,
+      status: err && err.status,
+      rateLimitType: err && err.rateLimitType,
+      resetsAt: err && err.resetsAt,
+      retryAfterMs: err && err.retryAfterMs,
     });
   }
   return new TransportError(err && err.message ? err.message : String(err), { cause: err });
@@ -112,7 +120,7 @@ export function createTransport({
    * @param {string} [dispatchOpts.cwd]
    * @param {number} [dispatchOpts.timeoutMs]
    * @param {number} [dispatchOpts.maxTurns]
-   * @returns {Promise<{text: string, sessionId: string, costUsd: number, usage: object, rateLimitEvents: object[]}>}
+   * @returns {Promise<{text: string, sessionId: string, costUsd: number, usage: object, rateLimitEvents: object[], apiKeySource: string|null}>}
    */
   async function dispatch(prompt, dispatchOpts = {}) {
     const { model, cwd, timeoutMs = defaultTimeoutMs, maxTurns } = dispatchOpts;
@@ -191,6 +199,7 @@ export function createTransport({
       costUsd: terminalResult.total_cost_usd,
       usage: terminalResult.usage,
       rateLimitEvents,
+      apiKeySource,
     };
   }
 
