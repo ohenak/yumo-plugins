@@ -34,8 +34,10 @@ single-writer-per-batch rules); and the two project-level authority files
 (`docs/_decisions/DECISIONS-spec-layer-boundary.md:10`) puts **fixture construction and set-equality
 domains** here. So this document decides fixtures, expected literals, oracle shapes and coverage
 floors; it does **not** re-decide a rule the FSPEC or TSPEC settled. FSPEC §14.5's five deferrals
-(LD-1 … LD-5) are named here explicitly, each with the fixture the FSPEC declined to carry: LD-1 and
-LD-5 in §6, LD-2 and LD-3 in §5, LD-4 in §5. Every other property below pins an FSPEC acceptance
+(LD-1 … LD-5) are named here explicitly, each with the fixture the FSPEC declined to carry, in the
+homes TSPEC §11.5 assigns: **LD-1, LD-4 and LD-5** range over `parseLogRecords` and its readers, so
+they land in `consolidationParse.test.js` (§5.4); **LD-2 and LD-3** range over `mergeProposals` and
+land in `consolidationIdentity.test.js` (§5.3). Every other property below pins an FSPEC acceptance
 test's oracle rather than inventing an obligation.
 
 **Grounding.** Every claim about *existing* behaviour cites the working tree, re-measured while
@@ -425,6 +427,225 @@ fallback to the current repository (AT-N4). *L2 · `consolidationReport.test.js`
 `consolidationPass.test.js` · T24/T20 → T25/T31 · REQ §4a, AC-3.5 · AT-N1, AT-N3, AT-N4.*
 
 ## 5. Properties — trigger, identity, merge, and the record reader
+
+Subjects: `cadenceDatum`, `triggerFor`, `mintPassId`, `failureModeId`, `targetFor`, `mergeProposals`,
+`parseLogRecords` (TSPEC §7.2, §7.4). Owner: PLAN **T26** (batch 5), red owners **T15** (identity),
+**T16** (parse), **T19** (properties), **T20** (pass-level trigger cases). Files:
+`consolidationIdentity.test.js` (L1), `consolidationParse.test.js` (L1),
+`consolidationPass.test.js` (L2), `consolidationProperties.test.js` (L5).
+
+### 5.1 Trigger and the cadence datum
+
+**PROP-TRG-01** — *The tick evaluation order is observable, and the volume test precedes the cadence
+test.* One constructed corpus family parameterised on `(n, k, volumeThreshold)`. At `(5, 2, 5)` the
+un-consolidated set has `n − k = 3` members, `3 < 5` so the volume test does **not** fire, the
+cadence test fires on the empty-datum branch, and the row records trigger `cadence` with reason code
+`no-cadence-datum`. At `(6, 0, 5)` the **volume** test fires and the row records trigger `volume`.
+One family exercises both sides of the threshold, so the property does not depend on which side the
+repository happens to be on (PROP-FIX-02). *L2 · `consolidationPass.test.js` · T20 → T26/T31 ·
+AC-1.1, AC-1.2 · AT-C1, AT-C1b, AT-C2.*
+
+**PROP-TRG-02** — *An empty datum counts as elapsed, and the bootstrap tick is distinguishable.* When
+no log row carries one of the datum's four statuses, the cadence test **fires**, the pass runs, and
+the row carries trigger `cadence` **plus** reason code `no-cadence-datum`. The reason code is the
+positive conjunct: without it a bootstrap tick is indistinguishable from an ordinary cadence tick,
+and "empty means not elapsed" would make cadence unreachable until someone ran a manual pass. *L2 ·
+`consolidationPass.test.js` · T20 → T26/T31 · AC-1.1 · AT-C1.*
+
+**PROP-TRG-03** — *The datum is the newest row carrying a datum status, not the newest row.* Fixture:
+a `promoted` row dated D1, then a **later** `refused` row dated D2 (D2 > D1), the `refused` row being
+last in the file. The datum is **D1**. `refused` is not one of the four datum statuses, so the
+ordering is exactly what falsifies an implementation taking the last row unconditionally. *L1 ·
+`consolidationParse.test.js` · T16 → T26 · AC-1.1, AC-1.3 · AT-C5.*
+
+**PROP-TRG-04** — *The manual entry point is never gated by cadence.* With `cadenceHours` not elapsed
+by any measure, a direct `/pdlc:consolidate-learnings` invocation runs the pass with trigger
+`manual`. *L2 · `consolidationPass.test.js` · T20 → T26/T31 · AC-1.1 · AT-C4.*
+
+**PROP-TRG-05** — *The trigger decides whether a pass runs, never what clears the promotion bar.* One
+fixed corpus and one fixed configuration, run twice — once where the volume test fires, once where
+only the cadence test fires. The two promotion sets are **set-equal by `(failure-mode-id, action)`**
+and the AC-2.3 evidence is identical in both reports. NFR-3 is comparative, so a trigger-sensitive
+promotion set is precisely the failure this property exists to catch. *L2 ·
+`consolidationPass.test.js` · T20 → T26/T31 · NFR-3, NFR-3a · AT-C8.*
+
+**PROP-TRG-06** — *`passId` is derived from the log, never from a counter or a clock.* Three
+conjuncts, one fixture each: a log already carrying `{today}-1` mints `{today}-2` (AT-C6); a log
+whose newest rows carry a **previous** date and no `{today}` row mints `{today}-1` — the counter
+restarts per date rather than continuing the previous date's `n` — and an **unparseable** row among
+them contributes no `m` (AT-C7). *L1 · `consolidationParse.test.js` · T16 → T26 · REQ-CONS-03
+preamble, vocabularies §4 · AT-C6, AT-C7.*
+
+### 5.2 The id derivation
+
+**PROP-ID-01** — *The id is a function of `phase` and `artifact` and of nothing else.* Two passes
+deriving a promotion with the same `phase` and `artifact` from **different consumed sets** and with
+**different `symptom` wording** produce **identical** ids. `symptom` is explicitly non-keying and the
+consumed set is time-dependent, so an id that varied with either would make NFR-4's suppression key
+unstable across passes. *L1 · `consolidationIdentity.test.js` · T15 → T26 · AC-5.1, NFR-4 · AT-F1.*
+
+**PROP-ID-02** — *One promotion is one authored file, and a generated path never mints an id.* Three
+fixtures. A remedy spanning **two authored files** yields **two** proposals with two ids, two
+commits and two effectiveness rows — sharing one PR is permitted (AT-F2). An edit to
+`pdlc/workflows/orchestrate-dev.js` **plus** the rebuilt `pdlc/workflows/dist/` bundles yields **one**
+proposal whose `artifact` is the **source** file (AT-F3). An edit to a
+`pdlc/workflows/__tests__/fixtures/` file **whose path contains `dist/`** yields an id, because the
+predicate is keyed on the **producer** (`build-runtime.mjs`'s four tracked outputs) and never on a
+path glob (AT-F4). AT-F4 is the arm that falsifies a `path.includes("dist/")` implementation, which
+is green on AT-F3 alone. *L1 · `consolidationIdentity.test.js` · T15 → T26 · AC-5.1 · AT-F2, AT-F3,
+AT-F4.*
+
+**PROP-ID-03** — *`targetFor` is a pure function of the two keying fields, and the write is an append
+on a second pass.* An AC-2.2 promotion at `phase = P`, `artifact = pdlc/skills/se-author/SKILL.md`
+yields `docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md` in **both** a tree with no such
+file and a tree already carrying one; in the first the file is **created**, in the second it is
+**appended to, never replaced**; the write is in the invoking tree and inside the §5.4 commit, and the
+route is never the PR route. *L1 + L2 · `consolidationIdentity.test.js`, `consolidationRoute.test.js`
+· T15/T21 → T26/T28 · AC-2.2 · AT-R6.*
+
+### 5.3 The intra-pass merge — including LD-2 and LD-3
+
+**PROP-MRG-01** — *Sibling subjects write two files; colliding subjects merge into one promotion, and
+the merge is not reported as a suppression.* Two of AT-R6b's five fixtures, five separate passes over
+five separate logs. **(1) Siblings**, both AC-2.2, subjects `pdlc/skills/se-author/SKILL.md` and
+`pdlc/skills/te-review/SKILL.md`: two promotions write **two distinct** files, one per subject.
+**(2) Colliding subjects**, both AC-2.2, `pdlc/skills/a-b.md` and `pdlc/skills/a/b.md`, two paths
+that slug to one id: the two are **one** promotion, and the observable set is **one** failure-mode
+record, **one** `symptom`, **one** `target`, **one** file written, **and no** `duplicate-suppressed`
+reason code and **no** `suppressed-by:` entry. The negative half is the half fixture 2 exists for: an
+implementation reporting the merge as a suppression is, in the log alone, indistinguishable from one
+that dropped a promotion. Fixture 2 additionally asserts **which** path survives — the
+lexicographically first canonical path, here `pdlc/skills/a-b.md` (`-` = 0x2D precedes `/` = 0x2F) —
+and the **compensation**: the report body names the elided subject path `pdlc/skills/a/b.md` beside
+the surviving `artifact`. *L2 · `consolidationRoute.test.js` (writes), `consolidationIdentity.test.js`
+(fold) · T21/T15 → T26/T28 · AC-5.1, §8.2 · AT-R6b fixtures 1–2.*
+
+**PROP-MRG-02** — *Kind precedence is pinned over every ordered pair the three-member order admits.*
+AT-R6b's fixtures 3, 4 and 5, each one pass at `phase = P` merging one promotion out of two kinds
+over **one shared subject**. **(3) kinds 1 + 3** (`pdlc/workflows/orchestrate-dev.js` as a process
+learning **and** as an AC-2.1 domain invariant): the single `target` is
+`docs/_constraints/DOMAIN-CONSTRAINTS.md`, `route` is `constraints`, **no** guard-set path is written
+and **no** PR is opened — the process learning's own `target` would have taken the PR route, and
+precedence removes it. **(4) kinds 2 + 3**: the single `target` is
+`docs/_decisions/DECISIONS-{failure-mode-id}.md`, `route` is `decisions`, again no guard-set write and
+no PR — the rank-2 half of "a mixed-kind merge never takes the PR route", on which an implementation
+whose rule is "constraints wins, otherwise keep whichever arrived first" is green everywhere else and
+red only here. **(5) kinds 1 + 2**: the single `target` is `DOMAIN-CONSTRAINTS.md`, `route` is
+`constraints`, and **no** `DECISIONS-*` file is created or appended — which pins the (1, 2) ordering
+rather than leaving it inferred. On all three, the one `symptom` names **both** failure modes and the
+report body names the elided kind. Sampled at one pair the enumeration is not covered; the three
+together range over (1,3), (2,3) and (1,2), so a deleted or transposed rank fails at least one.
+Fixtures 1 and 2 cannot see any of this — their kinds coincide by construction, so their "one
+`target`" conjunct is satisfied vacuously. *L2 · `consolidationRoute.test.js` · T21 → T28 · AC-5.1,
+§8.2 · AT-R6b fixtures 3–5.*
+
+**PROP-MRG-03 (LD-2)** — *`target` follows the surviving `artifact`, and the elided set names more
+than one member.* FSPEC §14.5 defers this fixture here. Two **process learnings** (kind 3 on both
+sides, so §8.2's kind precedence is not in play and only the subject tie-break decides) with
+colliding subjects: the surviving `artifact` is the lexicographically first canonical path **and the
+surviving `target` is that same proposal's `target`** — never one proposal's `artifact` paired with
+the other's `target`, which would make the merged record's write touch a file the record is not
+about. Second fixture, the **>2-candidate case**: three failure modes under one key, `elidedKinds` and
+`elidedArtifacts` are **set-equal** to the two non-surviving members' values, and the report body's
+item 4 names **both** elided paths — not one member of a set of two, which is the defect a
+one-elided-path implementation would leave. *L1 + L2 · `consolidationIdentity.test.js` (fold),
+`consolidationReport.test.js` (item 4) · T15/T24 → T26 · AC-5.1 · FSPEC §14.5 LD-2, §8.2 third note,
+BR-33b.*
+
+**PROP-MRG-04 (LD-3)** — *Two actions over one subject in one phase are two keys, and no merge fires.*
+FSPEC §14.5 defers this fixture here. One pass carrying a `promote` and a `revise` proposal over the
+**same** subject in the **same** phase: the pair `(failure-mode-id, action)` differs, so
+`mergeProposals` folds nothing, **both** writes happen, and a guard-set subject yields **one** PR
+carrying **two** commits with two distinct `PDLC-PROMOTION-ID` trailers whose
+`PDLC-CONSOLIDATION-PROMOTIONS` set is **set-equal** to the two pairs. An implementation folding two
+actions into one key makes one write, which is §8.2's consequence 2 read the wrong way. *L1 + L2 ·
+`consolidationIdentity.test.js`, `consolidationRoute.test.js` · T15/T21 → T26 · AC-5.1, NFR-4 · FSPEC
+§14.5 LD-3, §8.2.*
+
+### 5.4 The record reader — including LD-1, LD-4 and LD-5
+
+Every property in this subsection satisfies **O-6**'s four conjuncts on one path. The rule is one
+sentence: `parseLogRecords` is **total over any subset** of §8.1's eight field names, returning
+`{records, notices}` — a **partial record plus a notice**, never a filled default — so the reader's
+type cannot drift into the writer's.
+
+**PROP-REC-01** — *Every record carries all eight field names on every kind and on the degraded
+route.* Fixture: one failure-mode record on **each** of §5.2's three kinds (process learning, AC-2.2
+decision, AC-2.1 domain invariant) **plus** one `degraded` record from the §6.3 fallback. Each
+record's **field-name set** is **set-equal** to `{failure-mode-id, phase, symptom, artifact, target,
+passId, action, route}` — no field missing on any kind, no ninth field invented. Both directions are
+load-bearing: a dropped `target` or `route` on one path is otherwise invisible until §6.4's
+consuming-repo carrier misreads it two passes later. *L1 · `consolidationParse.test.js` · T16 → T26 ·
+AC-5.1 · AT-F20.*
+
+**PROP-REC-02** — *The open-promotion list is computed by set-equality over all four arms, and its
+cardinality is asserted as a literal.* Fixture spanning all four arms of §8.4 step 1's predicate in
+one run: id `A` with a `retire` record at `route: constraints` (a landed retirement), id `B` with a
+`retire` record at `route: degraded` (proposal only), id `C` with `promote` records only, id `D` with
+a `revise` record only. The computed list is **set-equal to `{B, C, D}`** in both directions —
+containment is satisfied by an implementation returning every id ever recorded. `A`'s absence pins the
+`route != degraded` conjunct; `B`'s presence pins that a degraded retirement does **not** close an id.
+The list's **length** is asserted in the report body as the literal **`3`** — the cardinality of
+`{B, C, D}` on this fixture — not merely "present", since a report emitting a constant, or the count
+of every recorded id (`4` here), would otherwise pass. *L1 · `consolidationParse.test.js` · T16 → T26
+· AC-5.3, AC-5.4 · AT-F19.*
+
+**PROP-REC-03 (LD-5, the `action` and `route` arms)** — *A short record does not halt the pass, is
+reported, blocks exactly what it should, and is never repaired.* Fixture: two short records written by
+an earlier pass — id `E` with **`action: retire`** and **no `route` field**, id `F` with
+**`action: promote`, `route: degraded`** and **no `target` field** — plus one well-formed record `W`
+with `action: retire`, `route: constraints`. All three carry `passId` and `failure-mode-id`. A later
+pass derives a `retire` proposal for `E` (the same pair, so §6.4's carrier is actually consulted) and
+re-derives `F`'s promotion. **Five conjuncts, all required, on one path:** (1) the pass reaches a
+terminal status and does **not** halt; (2) a parse notice is reported **naming the short record and
+the missing field**, in the report body; (3) `E`'s `retire` proposal is **re-proposed, not
+suppressed** — §6.4 reads `absent` on a record it cannot index — and `E` is **present** in the
+open-promotion list, asserted as set-equality against the literal **`{E, F}`** (`W` excluded, its
+landed retirement closing it); and for `F`, §8.6 routes **no** remediation and **no** `target` is
+guessed on the stored record; (4) the **log is unchanged** — no default written back, no in-place
+repair; (5) the well-formed record `W` is unaffected. The conjunct-to-defect mapping is deliberately
+asymmetric and worth stating: a halt on `undefined` is red on (1); `route ?? "constraints"` is red on
+(3) — it closes `E` and reads the pair `enacted`, suppressing the re-proposal, the unsafe direction;
+`route ?? "degraded"` is **not** unsafe on the reader and is caught by **(2) alone**, the
+implementation defaulting silently without reporting a notice; a silent rewrite is red on (4). *L1 ·
+`consolidationParse.test.js` · T16 → T26 · AC-5.1, NFR-4 · AT-F21, FSPEC §14.5 LD-5, BR-25, BR-33a,
+BR-33c.*
+
+**PROP-REC-04 (LD-5, the `phase`, `failure-mode-id` and `symptom` arms)** — *The three remaining short
+arms, one fixture each, each asserting the one reader §8.1's table names.* AT-F21's fixture stays at
+two arms deliberately; these three are the register's own home. **`phase` short:** §8.3 **emits the
+row** with verdict `insufficient-evidence` — never dropped, never guessed `prevented`.
+**`failure-mode-id` short:** §8.3 emits **no** row (a row cannot be keyed on an absent id), §8.4 step
+1's list takes **no** member from that record, and §8.4 steps 2–3 ask **no** question about it — with
+the parse notice reported, so the record does not vanish from the report as well as from the table.
+**`symptom` short:** §8.4's harvest question is **still asked**, on the fields that are present. On
+all three, O-6's conjunct (4) holds — the log is unchanged. *L1 · `consolidationParse.test.js` · T16 →
+T26 · AC-5.2 · FSPEC §14.5 LD-5, §8.1's reader table.*
+
+**PROP-REC-05 (LD-1)** — *An unavailable `artifact` renders as `(unavailable)` and never as a guess,
+and three readers each state what they do with it.* FSPEC §14.5 defers these three fixtures here.
+(i) **§8.3** emits the effectiveness row on the unavailable path rather than dropping it, and the
+`artifact` cell renders the pinned literal `(unavailable)` — never blank, never a path. (ii) **§8.5**
+**refuses to propose `retirement`** when the file-existence test cannot run, because the subject is
+unknown; the remediation choice falls to the other arm and the report says which. (iii) **§8.4 steps
+2–3** still put the promotion to the harvest agent on the fields it **does** carry, with the
+`artifact` half stated **unavailable** rather than guessed. The three failure directions this pins:
+dropping the §8.3 row silently moves the verdict, proposing `retirement` on an `artifact` that could
+not be tested acts on an undetermined subject, and dropping the promotion from §8.4's question list
+makes `recurred` unreachable for that id — which drifts it to `unmeasurable` under §8.7 for a reason
+that is not about the promotion at all. *L1 · `consolidationParse.test.js` (reader), with the §8.3 and
+§8.5 halves driven in `consolidationEffectiveness.test.js` · T16/T17 → T26/T27 · AC-5.2, AC-5.3 ·
+FSPEC §14.5 LD-1, BR-33a, E-12b.*
+
+**PROP-REC-06 (LD-4)** — *A record short of `passId` leaves NFR-4's key un-derivable, and the pass
+says so.* FSPEC §14.5 defers this fixture here. A record missing `passId` — a field **outside** the
+`(failure-mode-id, action)` suppression key but inside §6.4's carrier — must not be re-appended with
+a synthesised id, must not render `pass:undefined` in any `suppressed-by:` entry, and must not
+contribute a `suppressed-by:` entry at all: an entry naming an enacting pass that cannot be named is
+unevidenced suppression. The positive conjunct: the parse notice names the record, and the pair reads
+`absent`, so the promotion is **re-proposed** rather than suppressed on evidence the log cannot
+supply. *L1 · `consolidationParse.test.js` · T16 → T26 · NFR-4, AC-5.1 · FSPEC §14.5 LD-4, §6.4,
+BR-33a.*
 
 ## 6. Properties — effectiveness, remediation, and the advisory corpus
 
