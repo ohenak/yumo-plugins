@@ -15,7 +15,11 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.1 | 2026-08-06 |
+| pdlc | draft | Claude | 2.2 | 2026-08-09 |
+
+> **Erratum round (v2.2, Phase PR).** Two targeted corrections, nothing else changed: AC-6.3's population is stated as the
+> whole of `ESCALATIONS.md` rather than "the consumed window", matching FSPEC §9.2/§9.5 and BR-37a; AC-3.4 no longer
+> requires the opened PR's URL in `CONSOLIDATION-PROPOSAL-{passId}.md`, which FSPEC §5.3 does not write on that path.
 
 > **Erratum round (v2.1, Phase D).** Three targeted corrections, nothing else changed: REQ-CONS-01 step 1 withdraws its
 > "one enumeration as well as one predicate" claim and decides the two classes on which the hook's and the pass's
@@ -264,8 +268,10 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   revision or retirement (AC-5.3, AC-5.4) may share that PR, in its own commit; it carries the **retired promotion's own `failure-mode-id`** under the
   `revise` or `retire` action — AC-5.1 mints no second id for it — and that pair joins `PDLC-CONSOLIDATION-PROMOTIONS` like any other, so the trailer
   stays set-equal to the proposals the PR enacts.
-- **AC-3.4** — Given the PR is opened, Then its URL is recorded in `docs/_decisions/.consolidation-log.md` and in
-  `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, so a later reader can tell which promotions landed and which are still open. In the log it is
+- **AC-3.4** — Given the PR is opened, Then its URL is recorded in `docs/_decisions/.consolidation-log.md`, so a later reader can tell which promotions
+  landed and which are still open. It is **not** also recorded in `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`: that file is written when, and
+  only when, the pass has something to propose that it does not enact (AC-3.5, AC-5.4, AC-6.3), and an opened PR is enacted, so on this path no proposal
+  file exists to record into. In the log it is
   **not** an in-place edit of an earlier record — that shape is forbidden (AC-1.3): it is the `pr:` field of the pass's single terminal row, appended
   once (AC-7.2). "Exactly one report" there counts reports, and the log gains exactly one row per pass on this path.
 - **AC-3.5** — Given the PR cannot be opened, Then the pass **still** writes
@@ -488,8 +494,9 @@ destroyed artifact, so no count is ever derived from LEARNINGS advisory text. **
 - **AC-6.2** — Given a seam whose escalation count in `docs/_queue/ESCALATIONS.md` spans at least two distinct features and exceeds the other seams'
   counts (the AC-2.3 pattern bar applied to this corpus), Then the pass surfaces it as a candidate for envelope revision or upstream-phase repair,
   bound to the relevant deferral.
-- **AC-6.3** — Given a **non-empty** corpus (AC-6.1 row 3) in which at least one *other* seam escalated across the consumed window, and a seam with
-  escalations from no feature across that same window, Then the pass may propose an envelope widening for that seam — never enacted. Both conjuncts are
+- **AC-6.3** — Given a **non-empty** corpus (AC-6.1 row 3) in which at least one *other* seam escalated anywhere in `docs/_queue/ESCALATIONS.md`, and a
+  seam with escalations from no feature anywhere in that same file, Then the pass may propose an envelope widening for that seam — never enacted. Both
+  conjuncts range over the **whole** file — no filter on `Feature`, none on date, no relation to the pass's consumed set. Both conjuncts are
   required: with an absent or empty corpus there is no widening proposal at all, so a first pass on a stock repo cannot propose widening all five
   `ADVISORY_SEAMS` (`pdlc/workflows/orchestrate-dev.js:1669`) on the strength of a corpus no run could have written. The proposal targets the **shipped
   defaults** in `pdlc/workflows/`, so it routes as a PR under AC-3.1. A consumer's `.claude/pdlc.config.json` is untracked and is not a PR-able
