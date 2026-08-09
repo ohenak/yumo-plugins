@@ -364,14 +364,14 @@ AC-1.1, REQ §4b · (no FSPEC AT), TSPEC §12.2.*
 sharing a basename under `docs/{f}/` and `docs/completed/{g}/` yield **one** member for the pair, and
 the report names the collision explicitly. The report conjunct is the one this property exists for:
 the set-size assertion alone cannot distinguish "reported" from "silently resolved". *L2 ·
-`consolidationPass.test.js` · T20 → T25/T31 · AC-1.1 · AT-P10.*
+`consolidationPass.test.js` · T20 → T31 · AC-1.1 · AT-P10.*
 
 **PROP-COR-11** — *The consumed pair is emitted complete, in one append, even when empty.* On an
 empty un-consolidated set the pair is **still** appended, empty, **before** any other record the pass
 writes. Positive conjunct on the same path: the appended text is one whole record in one
 `_appendFile` call, never a read-modify-write — the write-granularity obligation
 (`pdlc-consolidation-vocabularies.md` §3 at `Version` 1.4) is what makes NFR-5 implementable at all.
-*L2 · `consolidationPass.test.js` · T20 → T25/T31 · NFR-5, AC-2.4 · AT-P6.*
+*L2 · `consolidationPass.test.js` · T20 → T31 · NFR-5, AC-2.4 · AT-P6.*
 
 ### 4.3 The differential against the shipped hook
 
@@ -460,8 +460,9 @@ T09 renumbers that file — asserted by transcription in both directions), `stal
 `consolidation` key present but **not an object** defaults every key and the report distinguishes
 this from an absent section (AT-N3); a resolvable-looking `pluginRepository` that **does not resolve**
 records reason `repository-unresolved` **and the configured value verbatim** — never a silent
-fallback to the current repository (AT-N4). *L2 · `consolidationReport.test.js`,
-`consolidationPass.test.js` · T24/T20 → T25/T31 · REQ §4a, AC-3.5 · AT-N1, AT-N3, AT-N4.*
+fallback to the current repository (AT-N4). *L2 · `consolidationReport.test.js` (T24 → T29/T31) and
+`consolidationPass.test.js` (T20 → T31) — paired file-to-task, per §12.2's spanning convention ·
+REQ §4a, AC-3.5 · AT-N1, AT-N3, AT-N4.*
 
 ## 5. Properties — trigger, identity, merge, and the record reader
 
@@ -845,7 +846,7 @@ property here runs `main()` end to end with the seams doubled (§2), never the i
 present and younger than `staleLockMinutes`: terminal `refused`, reason `consolidation-in-progress`,
 the held `passId` and timestamp named in the row; **no** consumed pair, **no** commit — and one log
 row **is** still written. The written row is the positive conjunct: a refusal that left no trace is
-indistinguishable from a pass that never ran. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.3
+indistinguishable from a pass that never ran. *L2 · `consolidationPass.test.js` · T20 → T31 · AC-1.3
 · AT-M1.*
 
 **PROP-MRK-02** — *The three unheld marker states each reclaim, and the released state reclaims
@@ -860,7 +861,7 @@ paired negative, **two** `RELEASED:` fixtures — one written seconds ago, one *
 `reclaimed-stale-lock` and **no** `consolidation-in-progress`. A released marker is free at any age;
 the aged fixture is what stops an implementation routing every non-`IN-PROGRESS:` file through the
 stale-lock arm, and without (d) an implementation recording `reclaimed-stale-lock` on *every* take
-passes (a)–(c) (AT-M11). *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.3 · AT-M2, AT-M3,
+passes (a)–(c) (AT-M11). *L2 · `consolidationPass.test.js` · T20 → T31 · AC-1.3 · AT-M2, AT-M3,
 AT-M11.*
 
 **PROP-MRK-03** — *Every way of leaving the pass early releases the marker, and leaves behind only
@@ -874,14 +875,14 @@ step 6 (S-09): **exactly one** appended record — the terminal row — **no** t
 pair (AT-M6b). The three share one mechanism (§10.2 order 3: step 11 never ran) and are asserted
 separately because their Givens differ and an implementation can special-case one. Each negative is
 paired with §9's PROP-PASS positives on the same path, so none is absence-only. *L2 ·
-`consolidationPass.test.js` · T20 → T28/T31 · AC-1.3, AC-5.1 · AT-M4, AT-M6, AT-M6b.*
+`consolidationPass.test.js` · T20 → T31 · AC-1.3, AC-5.1 · AT-M4, AT-M6, AT-M6b.*
 
 **PROP-MRK-04** — *The lock is never committed, asserted positively.* With the git seam under a spy,
 the **observed pathspec set** of every commit a terminal pass makes is **set-equal** to the §5.4
 write set — which does not contain the lock path. The maintainer-side check that `.gitignore` carries
 a pattern matching `docs/_decisions/.consolidation-lock` (§10, PROP-SRC) accompanies it and **cannot
 stand alone**: a pass making no commit at all satisfies an absence-only reading. *L2 ·
-`consolidationPass.test.js` · T20 → T28/T31 · AC-1.3, AC-3.8b · AT-M5.*
+`consolidationPass.test.js` · T20 → T31 · AC-1.3, AC-3.8b · AT-M5.*
 
 ### 7.2 Routing and the invoking tree
 
@@ -1259,7 +1260,7 @@ test fires on the empty-datum branch, and the row records trigger `cadence` with
 `volume` (AT-C1b). One family, both sides, so the property does not depend on which side the
 repository happens to be on. The fixture is **constructed, never the live repository** (PROP-FIX-02):
 the corpus grows with every delivered feature — this one included — so a Given pinned to HEAD inverts
-on its own PR. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.1, AC-1.2 · AT-C1, AT-C1b.*
+on its own PR. *L2 · `consolidationPass.test.js` · T20 → T31 · AC-1.1, AC-1.2 · AT-C1, AT-C1b.*
 
 **PROP-PASS-02** — *Each of the three triggers is reachable, and the skipped tick is observable.*
 Volume threshold met with `cadenceHours` **not** elapsed ⇒ the pass runs with trigger `volume`
@@ -1269,14 +1270,14 @@ not elapsed ⇒ the invocation **returns a report body carrying terminal status 
 (§10.1 row 3) — and no log row appended, no LEARNINGS body read, no `passId` minted, no git call made
 (AT-C3). The returned body is the **positive conjunct** and is required: the four absences alone are
 satisfied by a pass that crashed at step 3 or never ran. *L2 · `consolidationPass.test.js` ·
-T20 → T28/T31 · AC-1.1, AC-1.2, AC-7.2 · AT-C2, AT-C3, AT-C4.*
+T20 → T31 · AC-1.1, AC-1.2, AC-7.2 · AT-C2, AT-C3, AT-C4.*
 
 **PROP-PASS-03** — *The cadence datum is the latest row of a datum **status**, not the latest row.* A
 log whose rows in file order are a `promoted` row dated D1 then a **later** `refused` row dated D2 (D2
 > D1, the `refused` row last in the file): the datum is **D1**. `refused` is not one of §2.3's four
 datum statuses, and the ordering is what falsifies an implementation taking the last row
 unconditionally — a fixture whose last row is already a datum row cannot see the defect. *L2 ·
-`consolidationPass.test.js` · T20 → T28/T31 · AC-1.1 · AT-C5.*
+`consolidationPass.test.js` · T20 → T31 · AC-1.1 · AT-C5.*
 
 **PROP-PASS-04** — *`passId` counts within a date and restarts across dates.* A log already carrying
 `{today}-1` ⇒ the next id is `{today}-2` (AT-C6). A log whose newest rows all carry a **previous**
@@ -1284,7 +1285,7 @@ date (e.g. `{today-1}-3`), no row for `{today}`, and one of those rows **unparse
 is `{today}-1`: the counter restarts per date rather than continuing the previous date's `n`, and the
 unparseable row contributes **no** `m`. The unparseable row is the conjunct separating "restarts per
 date" from "takes the max of whatever parsed" (AT-C7). *L2 · `consolidationPass.test.js` · T20 →
-T28/T31 · §8.1 · AT-C6, AT-C7.*
+T31 · §8.1 · AT-C6, AT-C7.*
 
 **PROP-PASS-05** — *The trigger decides whether a pass runs, never what clears the bar.* One fixed
 corpus and one fixed configuration, run **twice** — once where the volume test fires (trigger
@@ -1295,7 +1296,7 @@ to catch, and set-equality rather than containment is what makes a promotion dro
 visible. The trigger recorded on each arm is the closed-set value NFR-3a requires (`cadence` on one,
 `volume` on the other), which is what makes "the bar held on both" checkable rather than asserted —
 this is the sole home of the invariant, PROP-TRG-05 having been retired into it (§5.1). *L2 ·
-`consolidationPass.test.js` · T20 → T28/T31 · NFR-3, NFR-3a · AT-C8.*
+`consolidationPass.test.js` · T20 → T31 · NFR-3, NFR-3a · AT-C8.*
 
 **PROP-PASS-11** — *A `no-op` pass still reports, still restates, and still releases — on both of its
 causes.* AC-1.4's obligations are **positive** and none of them is discharged by the absences other
@@ -1314,7 +1315,7 @@ is produced and neither the `ineffective` nor the `unmeasurable` streak advances
 pass **is** an evaluated pass and the `unmeasurable` streak **does** advance (AC-5.5). Pooling them
 into one `no-op` fixture is precisely the defect REQ warns against, and an implementation keying
 either streak on the label rather than on the consumed set passes a single-fixture version of this
-property. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.4, AC-5.3, AC-5.5 · (no FSPEC
+property. *L2 · `consolidationPass.test.js` · T20 → T31 · AC-1.4, AC-5.3, AC-5.5 · (no FSPEC
 AT), REQ AC-1.4 third and fourth sentences.*
 
 ### 9.2 The model ladder
@@ -1351,7 +1352,7 @@ for the unrouted one; the §5.4 commit runs and the already-made append is **dur
 marker is released; and the report body carries the error message **verbatim** **and** the
 routed/unrouted split. Distinct from PROP-MRK-03(ii), whose Given fails the **first** dispatch and so
 has no table and no records to leave behind — the two are the positive and negative halves of §10.2
-order 3 and neither may be dropped. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-7.1, AC-7.2, §12.1
+order 3 and neither may be dropped. *L2 · `consolidationPass.test.js` · T20 → T31 · AC-7.1, AC-7.2, §12.1
 S-11c · AT-M9.*
 
 ### 9.4 Two whole-pass disciplines
