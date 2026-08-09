@@ -7125,9 +7125,24 @@ async function main({
         creatorPromptExtra: decisionsWarrantedTrailerRequirement(),
       });
 
-      const decisionsWarranted = parseDecisionsWarranted(
-        (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
-      );
+      let decisionsWarranted;
+      if (tResult.skipped) {
+
+        const decisionsProbe = await checkFileFn(
+          `docs/${featureName}/DECISIONS-${featureName}.md`
+        );
+        decisionsWarranted = decisionsProbe.ok === true;
+        emit(
+          `DECISIONS_WARRANTED: ${decisionsWarranted} — Phase T skipped on recorded ` +
+            `approval, so no trailer was emitted; read from the DECISIONS document ` +
+            `on disk instead (${decisionsWarranted ? "present" : decisionsProbe.reason}).`
+        );
+      } else {
+
+        decisionsWarranted = parseDecisionsWarranted(
+          (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
+        );
+      }
 
       let decisionsPath = null;
       if (!decisionsWarranted) {

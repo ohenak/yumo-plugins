@@ -9847,8 +9847,7 @@ export default async function main({
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
       // The result is read below whether or not the phase ran: the
       // `DECISIONS_WARRANTED` read is downstream of the TSPEC's convergence and
-      // must survive a skipped Phase T, where the trailer was never re-emitted
-      // and the conservative answer is "no".
+      // must survive a skipped Phase T, where the trailer was never re-emitted.
       const tResult = await converge({
         phaseId: "T",
         docType: "TSPEC",
@@ -9861,9 +9860,49 @@ export default async function main({
       // prompts, so its answer arrives inside the convergence loop — no separate
       // post-PASS agent session. The last optimizer result carries it; if the loop
       // converged on iteration 1 (no optimizer run) the creator result does.
-      const decisionsWarranted = parseDecisionsWarranted(
-        (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
-      );
+      //
+      // DEC-DW-01 (2026-08-09): a SKIPPED Phase T is not a missing trailer.
+      // `converge` returns a bare `{skipped: true}` (:9502) — no `loop`, no
+      // `creatorResult` — so this read used to collapse to `null` and take
+      // `parseDecisionsWarranted`'s absent/malformed branch: a warning claiming
+      // the field was "absent or malformed" when no agent had been asked for it,
+      // and a default of `true` that contradicted this call site's own stated
+      // intent. Two different situations arriving as one value.
+      //
+      // Skipping means TSPEC was already approved, so the answer was settled on
+      // a previous run — and unlike the trailer, it left a durable trace. The
+      // DECISIONS document either exists or it does not. Reading that is exact
+      // where re-guessing was not: present ⇒ warranted (Phase D's own gate then
+      // decides whether it still needs work), absent ⇒ a previous run judged it
+      // unwarranted and there is nothing to author.
+      //
+      // This matters for idempotence, not cost. Defaulting `true` on a skip made
+      // a re-run of a fully-approved pipeline author a DECISIONS document for a
+      // feature that had correctly been judged not to need one — a new artifact
+      // on a run that should have been a no-op.
+      let decisionsWarranted;
+      if (tResult.skipped) {
+        // `checkFileFn` is the same existence probe the phase gates use, and it
+        // returns `{ok, reason}` — not a boolean. Read `.ok`: the object itself
+        // is always truthy, which would make every skip "warranted" and quietly
+        // reintroduce the defect this branch exists to remove.
+        const decisionsProbe = await checkFileFn(
+          `docs/${featureName}/DECISIONS-${featureName}.md`
+        );
+        decisionsWarranted = decisionsProbe.ok === true;
+        emit(
+          `DECISIONS_WARRANTED: ${decisionsWarranted} — Phase T skipped on recorded ` +
+            `approval, so no trailer was emitted; read from the DECISIONS document ` +
+            `on disk instead (${decisionsWarranted ? "present" : decisionsProbe.reason}).`
+        );
+      } else {
+        // The phase ran. A missing trailer here IS a real omission by an agent
+        // that was explicitly asked for one, and `true` is the right
+        // conservative default: author DECISIONS rather than silently lose them.
+        decisionsWarranted = parseDecisionsWarranted(
+          (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
+        );
+      }
 
       // ─── DECISIONS (conditional), inside Phase T ─────────────────────────
       // The `Phase D:` banners and the `D` report row are preserved verbatim:
