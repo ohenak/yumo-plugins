@@ -131,3 +131,56 @@ keeping. Only the statement of what blocks is replaced.
 **Review.** Deliberately provisional — "we'll learn from the next few iterations if it's too
 relaxed." Revisit after a few full pipeline runs: if Medium-severity defects start reaching
 implementation, restore Medium as blocking (or gate it per phase) and record that here.
+
+---
+
+## DEC-BAR-02: Approval anchors are skipped when locating the counts line (2026-08-09)
+
+**Context.** DEC-BAR-01 relaxed two rejection paths in verdict parsing and left a third standing:
+"an unparseable verdict still fails closed." That clause turned out to fire on the very files it
+was never meant to touch, through an interaction neither mechanism could see on its own.
+
+`parseVerdict` requires the counts JSON — `{"high": N, "medium": N, "low": N}` — to be the next
+non-empty line after `VERDICT:`. A reviewer who omits it entirely is already tolerated: with
+nothing following the verdict, the truncated-output case (TSPEC-PARSE-03) returns the verdict with
+zero counts, which converges under the High-only bar. But once a round is approved, the workflow
+appends tier-1 approval anchors beneath the `## Verdict` section — the one write to a cross-review
+file this system sanctions after its verdict, which CLAUDE.md instructs agents to perform
+"verbatim without hesitation" and which harvest copies into the Approval Record. `APPROVAL-HASH:
+sha256:…` then occupies the slot the parser insists is JSON, `JSON.parse` throws, and the whole
+review reads `malformed: true` — an approval already granted, re-run as "Needs revision".
+
+Measured across all 102 cross-review files under `docs/` on 2026-08-09: 29 failed to parse. All 29
+failed on an anchor line sitting in the counts slot, and all 29 carried an **approved** verdict
+(27 "Approved with minor changes", 2 "Approved"). In every one the counts line was absent rather
+than pushed below the anchors, so nothing was being overwritten — the anchor was simply filling a
+slot the reviewer had left empty. No file failed for any other reason.
+
+This stayed invisible until the engine. The response trailer feeds the convergence loop *inside*
+an invocation; `extractFileVerdict` is what decides approval on a *later* one. Runs that converged
+in a single invocation never re-read the files. `pdlc dev` re-invoked on `pdlc-consolidation-agent`
+was the first thing to lean on the cross-invocation half, and found 16 rounds of accumulated
+approval unreadable.
+
+**Decision.** `parseVerdict` skips lines matching `/^(APPROVAL-HASH|REVIEWED-COMMIT):/` when
+scanning for the counts line. Keyed on the field name, not the value grammar: a malformed anchor
+is still an anchor, and is still emphatically not a counts line to be fed to `JSON.parse`. Anchor
+well-formedness remains `readApprovalRecord`'s job (§4.4).
+
+**This does not relax the bar**, and is not a further step in DEC-BAR-01's experiment. The verdict
+value still governs and a real counts line is still read and validated wherever it sits relative
+to the anchors: "Needs revision" stays Needs revision, and a non-zero High count still blocks. Of
+the 102 files, 57 still parse as "Needs revision" after the change. Non-anchor prose in the counts
+slot still fails closed, exactly as DEC-BAR-01 says it should. What changes is only that the
+parser now recognises the one line the system itself is entitled to put there.
+
+**Also.** The three review SKILLs (`pm-review`, `se-review`, `te-review`) said the `## Verdict`
+section was "the last section of the file: nothing follows it" — false since anchors were
+introduced, and a reviewer reconciling that sentence against a file with anchors below it has been
+given a contradiction to resolve on its own. They now describe the append explicitly and warn
+against letting an anchor stand in for the counts line.
+
+**Review.** The counts-line omission rate (29/102, concentrated entirely in approvals) is a SKILL
+compliance signal worth watching. The parser change makes it non-fatal; it does not make it
+correct. If the rate does not fall, treat the counts line itself as the thing to reconsider —
+either enforce it at write time or drop it in favour of counting the `## Findings` table.

@@ -279,4 +279,77 @@ describe("parseVerdict malformed flag", () => {
     expect(truncated.verdict).toBe("Needs revision");
     expect(truncated.malformed).toBeUndefined();
   });
+  // ── DEC-BAR-02: tier-1 approval anchors are skipped, not parsed as counts ──
+  //
+  // The anchors are the one sanctioned write to a cross-review file after its
+  // verdict. Before this, an anchor landing in the counts slot made the whole
+  // review read as malformed — measured on 29 of 102 real cross-review files,
+  // every one of them an APPROVED verdict being re-run as "Needs revision".
+
+  it("DEC-BAR-02: an approval anchor in the counts slot does not make the verdict malformed", () => {
+    const result = parseVerdict(
+      "VERDICT: Approved with minor changes\n" +
+        "\n" +
+        "APPROVAL-HASH: sha256:" + "c".repeat(64) + "\n" +
+        "REVIEWED-COMMIT: 760ae1c64cf3c6152838d2928bac89422f8623fd\n",
+      "se-review"
+    );
+
+    expect(result.malformed).toBeUndefined();
+    expect(result.verdict).toBe("Approved with minor changes");
+    // No counts line at all => the truncated-output case, exactly as if the
+    // anchors had never been appended.
+    expect(result).toMatchObject({ high: 0, medium: 0, low: 0 });
+    expect(lastWarning()).toBeUndefined();
+  });
+
+  it("DEC-BAR-02: a real counts line below the anchors is still read and honoured", () => {
+    const result = parseVerdict(
+      "VERDICT: Approved with minor changes\n" +
+        "APPROVAL-HASH: sha256:" + "a".repeat(64) + "\n" +
+        "REVIEWED-COMMIT: 760ae1c\n" +
+        '{"high": 0, "medium": 3, "low": 7}\n',
+      "se-review"
+    );
+
+    expect(result.malformed).toBeUndefined();
+    expect(result).toMatchObject({ verdict: "Approved with minor changes", high: 0, medium: 3, low: 7 });
+  });
+
+  it("DEC-BAR-02: skipping anchors does NOT relax the bar — a High count still comes through", () => {
+    const result = parseVerdict(
+      "VERDICT: Needs revision\n" +
+        "APPROVAL-HASH: sha256:" + "b".repeat(64) + "\n" +
+        '{"high": 2, "medium": 0, "low": 1}\n',
+      "se-review"
+    );
+
+    expect(result.malformed).toBeUndefined();
+    expect(result).toMatchObject({ verdict: "Needs revision", high: 2, medium: 0, low: 1 });
+  });
+
+  it("DEC-BAR-02: a MALFORMED anchor is still skipped, never fed to JSON.parse", () => {
+    // Anchor well-formedness is readApprovalRecord's job (§4.4). Here the only
+    // question is whether the line is one JSON.parse should choke on. It is not.
+    const result = parseVerdict(
+      "VERDICT: Approved\nAPPROVAL-HASH: not-a-hash\n",
+      "se-review"
+    );
+
+    expect(result.malformed).toBeUndefined();
+    expect(result.verdict).toBe("Approved");
+  });
+
+  it("DEC-BAR-02: non-anchor prose after the verdict still fails closed", () => {
+    // The skip is narrow: it names two keys. Anything else in the counts slot
+    // is still an unparseable verdict, and DEC-BAR-01 says those fail closed.
+    const result = parseVerdict(
+      "VERDICT: Approved\nSome trailing commentary that is not a counts line.\n",
+      "se-review"
+    );
+
+    expect(result.malformed).toBe(true);
+    expect(result.verdict).toBe("Needs revision");
+    expect(lastWarning()).toContain("returned no VERDICT");
+  });
 });
