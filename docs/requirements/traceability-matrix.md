@@ -113,6 +113,19 @@ per-criterion mapping lives in FSPEC §15.1; roll-up below.
 | US-04 | REQ-CONS-05, REQ-CONS-07 | §8 FSPEC-CONS-07, §10 FSPEC-CONS-09 |
 | US-05 | REQ-CONS-05, REQ-CONS-06 | §8.5, §8.7, §9 FSPEC-CONS-08 |
 
+## pdlc-advisory-wave-gate
+
+Upstream: `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (v1.0). Downstream: FSPEC
+not yet authored — the REQ carries `ready: false` pending operator review.
+
+| User Story | Requirement | FSPEC |
+|---|---|---|
+| US-01 | REQ-AWG-01, REQ-AWG-03, REQ-AWG-05 | — (pending) |
+| US-02 | REQ-AWG-01, REQ-AWG-02, REQ-AWG-05, REQ-AWG-06 | — (pending) |
+| US-03 | REQ-AWG-01, REQ-AWG-02, REQ-AWG-03, REQ-AWG-04 | — (pending) |
+| US-04 | REQ-AWG-02, REQ-AWG-03, REQ-AWG-05 | — (pending) |
+| US-05 | REQ-AWG-01, REQ-AWG-02, REQ-AWG-06 | — (pending) |
+
 ## pdlc-wave-resume
 
 | User story | Requirements | FSPEC |

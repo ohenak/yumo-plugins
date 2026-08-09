@@ -38,11 +38,25 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 3 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
 | 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
-| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
+| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 7 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
+
+**Row 19 — the sixth advisory seam — added 2026-08-09 (draft REQ, `ready: false`, operator review
+pending).** Motivated by a live Phase I failure on `pdlc-consolidation-agent` the same day: a wave-2
+task imported a symbol whose promotion the PLAN scheduled for a wave-4 task, the module graph failed
+to link, and the wave gate correctly refused to commit — but the pipeline had no way to attempt the
+one-keyword repair, so an unattended run became an operator turn. Seam **A6** gives a red wave gate
+one bounded, reversible, gate-verified remediation attempt inside the wave's own declared file
+ownership before the halt. **Operator direction 2026-08-09:** taken up *after* `pdlc-consolidation-agent`
+lands, which is why that feature is in the `Depends-On` column rather than only in the REQ's prose.
+`Order 19` because values are allocated and never reused and 18 is the highest ever issued; the row
+carries `ready: false` so the driver cannot pick it up as drafted. Its five deferrals (D-AWG-01…05)
+all bind to row 6, which is why row 6 gains a `Depends-On` edge on it below — the engineering loop is
+the integration row that would inherit them.
 
 **Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
