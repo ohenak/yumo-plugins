@@ -649,6 +649,150 @@ BR-33a.*
 
 ## 6. Properties — effectiveness, remediation, and the advisory corpus
 
+Subjects: `phasesExercised`, `effectivenessTable`, `openPromotionList`, `remediationChoice`,
+`parseEscalations`, `seamCandidates` (TSPEC §7.5, §7.7). Owner: PLAN **T27** (batch 6), red owners
+**T17** (effectiveness), **T18** (advisory), **T19** (properties). Files:
+`consolidationEffectiveness.test.js` (L1), `consolidationAdvisory.test.js` (L1),
+`consolidationProperties.test.js` (L5).
+
+### 6.1 The effectiveness table
+
+**PROP-EFF-01** — *The table is set-equal to the distinct ids recorded in prior passes — one row per
+id, never one per record.* Given prior passes recording N distinct `failure-mode-id`s with **two
+records sharing one id**, the table has exactly **one** row per distinct id: N rows, none missing and
+none for a promotion never made. Records sharing an id are one promotion carrying one standing
+verdict, so a dropped row is a failure rather than a smaller table. *L1 ·
+`consolidationEffectiveness.test.js` · T17 → T27 · AC-5.2 · AT-F5.*
+
+**PROP-EFF-02** — *The three verdict arms are total, decided by rule, and none is reachable by guess.*
+Three fixtures, one per arm, each distinguished by exactly one changed input:
+
+| Given | Verdict | The arm it stops |
+|---|---|---|
+| a consumed LEARNINGS naming the promotion's `failure-mode-id` | `recurred` | — |
+| **no** consumed LEARNINGS naming the id, but at least one whose `Phases exercised` (or the §2 mapping) covers the promotion's `phase` | `prevented` | — |
+| no consumed LEARNINGS decided to have exercised the phase | `insufficient-evidence` | never guessed `prevented` — the undecidable input falls here, which is what makes the split total |
+
+The rule is deterministic and takes no model judgment: two runs over the same inputs cannot disagree,
+which is the precondition NFR-4's idempotence rests on. *L1 · `consolidationEffectiveness.test.js` ·
+T17 → T27 · AC-5.2 · AT-F6, AT-F7, AT-F8.*
+
+**PROP-EFF-03** — *A `failure-mode-id` line in a consumed LEARNINGS attributes `recurred` to exactly
+one promotion.* Constructed corpus fixture: a LEARNINGS whose §5 Open Item carries **one**
+`failure-mode-id` line **byte-equal** to one of three recorded promotions' ids, the other two
+recorded promotions being unnamed by any corpus file. The verdict is `recurred` for **exactly** the
+named promotion; the other two are decided on §8.3's remaining arms without reference to the id. This
+is the **receive** side only — the producing side (a harvest agent placing the id) is an LLM
+invocation with no reproducible output and is carried as FSPEC O-C6, not as a property (§13.2). *L1 ·
+`consolidationEffectiveness.test.js` · T17 → T27 · AC-5.2 · AT-F15.*
+
+**PROP-EFF-04** — *An id matching no record contributes a notice and no verdict.* A LEARNINGS
+carrying a `failure-mode-id` that matches no record in the log yields a reported parse notice, **no**
+verdict, and **no** promotion invented for it. The notice is the positive conjunct — without it the
+property is an absence check over a value that was never there. *L1 ·
+`consolidationEffectiveness.test.js` · T17 → T27 · AC-5.2 · AT-F16.*
+
+**PROP-EFF-05** — *`phasesExercised` is total over the corpus, and its undecidable half routes to
+`insufficient-evidence`.* The decidable and undecidable halves are **set-equal** to the corpus: the
+three basename-class rows of `pdlc-consolidation-vocabularies.md` §2 at `Version` 1.4 (with its
+per-file, never fixed-partition split and its POSTMORTEM precedence) catalogue every file, so the
+mapping is total. Any file the mapping cannot decide counts as **not** exercised and routes its
+promotion to `insufficient-evidence` — never guessed `prevented`. *L1 ·
+`consolidationEffectiveness.test.js` · T17 → T27 · AC-5.2 · vocabularies §2.*
+
+### 6.2 Streaks and remediation
+
+**PROP-EFF-06** — *The `ineffective` streak counts **counted** passes, and the `unmeasurable` streak
+counts **evaluated** passes — two different populations, asserted apart.* A pass returning
+`insufficient-evidence` for a promotion is skipped entirely by the `ineffective` streak; a pass with
+an **empty consumed set** produces no verdict at all and advances neither streak. A
+duplicate-suppressed `no-op` pass, whose consumed set is **non-empty**, **is** an evaluated pass and
+**does** advance the `unmeasurable` streak: a promotion at `insufficient-evidence` for
+`unmeasurablePasses` (default 3) consecutive evaluated passes, one of which was such a `no-op`, is
+reported `unmeasurable`. The two populations are keyed on **consumed-set emptiness, never on the
+`no-op` label**, which is exactly the distinction this property exists to hold. *L1 ·
+`consolidationEffectiveness.test.js` · T17 → T27 · AC-5.3, AC-5.5, AC-1.4 · AT-F9, AT-F13.*
+
+**PROP-EFF-07** — *A merged revision resets the streak to zero, and re-flagging costs two fresh
+counted passes.* Given a merged `revise` PR for an id, the promotion's `ineffective` streak is
+**zero**; two fresh `recurred` verdicts on counted passes are required to re-flag it. *L1 ·
+`consolidationEffectiveness.test.js` · T17 → T27 · AC-5.3 · AT-F12.*
+
+**PROP-EFF-08** — *`remediationChoice` is deterministic and its predicate is a file-existence test,
+not a free-text match.* Run twice over one fixture at HEAD, the choice is **identical**. The
+determinism is paired with the positive conjunct that the predicate consulted is the existence of the
+subject `artifact`, so a constant-returning implementation is caught by PROP-EFF-09's arms rather
+than passing here (O-3). *L1 · `consolidationEffectiveness.test.js` · T17 → T27 · AC-5.3 · AT-F17.*
+
+**PROP-EFF-09** — *`retirement` is the terminal remediation, and the report names which alternative
+was proposed.* Three fixtures. **(a)** An `ineffective` promotion whose subject `artifact` has been
+**deleted** since the promotion landed: `retirement` is proposed — nothing is left to revise — and the
+report field names `retirement` (AT-F18). **(b)** An `ineffective` promotion whose `retire` proposal
+is already on an **open or merged** PR: **nothing** is proposed, `duplicate-suppressed` is recorded
+against that PR, and the field still names `retirement` — the ladder has **ended**, so a later
+`ineffective` tick proposes nothing rather than pointing back into a spent pair (AT-F11). **(c)** An
+`ineffective` promotion whose chosen alternative is already on a PR in state open or merged: the
+**other** alternative is proposed, which is what makes AC-5.3's promise guaranteed rather than merely
+achievable (AT-F10). The report field is **absent**, not empty-valued, on an ordinary `promote` where
+nothing was chosen (AT-F14) — asserted as key absence, since an empty string is a different
+observable. *L1 · `consolidationEffectiveness.test.js` · T17 → T27 · AC-5.3, AC-5.4 · AT-F10, AT-F11,
+AT-F14, AT-F18.*
+
+### 6.3 The advisory corpus
+
+**Standing caution, carried down from TSPEC §11.5 and stated here so no fixture author has to
+rediscover it:** **no AT-A fixture may be written against REQ AC-6.3's "across the consumed window"
+wording.** FSPEC §9.5 / BR-37a is the settled contract — `seamCandidates` ranges over **every** entry
+in `ESCALATIONS.md` — and a REQ-derived fixture would red a conforming implementation. PROP-ADV-05
+pins the settled form directly.
+
+**PROP-ADV-01** — *The three corpus states are distinguished, and absence is not read as zero.*
+`docs/_queue/ESCALATIONS.md` is **absent** at HEAD (§1's grounding table: `docs/_queue/` holds
+`QUEUE.md` only), which is the shipping first state. **Absent** ⇒ reason code `no-advisory-corpus`,
+**no** seam proposal of any kind, and the pass proceeds normally (AT-A1). **Present with zero
+entries** ⇒ reason code `advisory-corpus-empty`, no over-escalation candidate and no widening
+proposal (AT-A2). **Present with ≥ 1 entry** ⇒ both AC-6.2 and AC-6.3 are live. The two reason codes
+are distinct because absence of the file is never absence of escalations: the tier could not
+escalate, which is not the same as the seams having worked. *L1 · `consolidationAdvisory.test.js` ·
+T18 → T27 · AC-6.1 · AT-A1, AT-A2.*
+
+**PROP-ADV-02** — *A stock repository cannot propose widening.* On a repo where the tier never ran,
+the pass does **not** propose widening any of the five `ADVISORY_SEAMS`
+(`pdlc/workflows/orchestrate-dev.js:1669`). Paired with PROP-ADV-05's positive, so this is not an
+absence-only oracle: the same function proposes a widening on a non-empty corpus in the same file.
+*L1 · `consolidationAdvisory.test.js` · T18 → T27 · AC-6.3 · AT-A3.*
+
+**PROP-ADV-03** — *Over-escalation is counted per `Seam` per `Feature`, from table rows only.*
+`parseEscalations` counts the entry fields `renderEscalationEntry` emits and **never** the heading. A
+seam whose escalation count spans at least two distinct features and exceeds the other seams' counts
+(AC-2.3's pattern bar applied to this corpus) surfaces as an over-escalation candidate; one that does
+not, does not. Advisory prose folded into LEARNINGS is a **corroborating, non-numeric** input only —
+the pass may cite it as evidence and **never** derives a count from it. *L1 ·
+`consolidationAdvisory.test.js` · T18 → T27 · AC-6.1, AC-6.2 · AT-A4, AT-A5.*
+
+**PROP-ADV-04** — *A malformed entry is skipped with a notice, attributes no count, and does not abort
+the read.* An entry whose `Feature` row is missing is skipped, a parse notice is reported, **no** count
+is attributed to a guessed key, and the read continues. The notice and the continued read are the
+positive conjuncts. *L1 · `consolidationAdvisory.test.js` · T18 → T27 · AC-6.1 · AT-A7.*
+
+**PROP-ADV-05** — *`seamCandidates` ranges over every entry, so its verdict is invariant under the
+consumed set.* One non-empty corpus in which seam B has escalations, run **twice**: once where the
+entries' `Feature` values are **disjoint** from the pass's consumed set, once where they **match**.
+The widening verdict for B is **identical** in both runs. This is the property that pins §9.2's
+population: an implementation filtering escalation entries by the consumed set disagrees across the
+two runs. Positive conjuncts on the same path: the widening is **proposed, never enacted**; because
+it targets shipped defaults under `pdlc/workflows/` it routes to the **PR** route; and a consumer's
+`.claude/pdlc.config.json` value — untracked and not a PR-able surface — is reported as **operator
+action** in the AC-7.1 report and never as a PR. *L1 · `consolidationAdvisory.test.js` · T18 → T27 ·
+AC-6.3, BR-37a · AT-A6.*
+
+**PROP-ADV-06** — *The attributed total equals the entries carrying both rows, and nothing is
+attributed to an absent key.* Generator-driven (§11, PROP-GEN-04): over a random entry sequence with
+a random subset missing `Feature` or `Seam`, the total attributed count equals the number of entries
+carrying **both** rows, and no count is attributed to a key absent from the input. The second half is
+the positive conjunct that stops a function attributing everything to one bucket from satisfying the
+first. *L5 · `consolidationProperties.test.js` · T19 → T27 · AC-6.1 · TSPEC §11.4 row 4.*
+
 ## 7. Properties — the marker, routing, and the credential
 
 ## 8. Properties — rendering and the report
