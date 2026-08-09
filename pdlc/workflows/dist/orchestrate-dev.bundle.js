@@ -8638,8 +8638,11 @@ async function main({
     rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
 
   phaseFn("Queue: Drift gate");
-  const driftRaw = await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH);
-  const driftGate = mapDriftState(validateDriftRecord(driftRaw));
+
+  const distributionConfigRaw = await readAdvisoryConfigSafely(readFileFn, ADVISORY_CONFIG_PATH);
+  const driftGate = parseDistributionCheckEnabledOptOut(distributionConfigRaw)
+    ? distributionOptOutGate()
+    : mapDriftState(validateDriftRecord(await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH)));
   if (driftGate.outcome === "blocked") {
     emit(
       `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
@@ -9329,6 +9332,34 @@ async function readDriftStateSafely(readFileFn, path) {
   } catch {
     return null;
   }
+}
+
+function parseDistributionCheckEnabledOptOut(raw) {
+  if (typeof raw !== "string") return false;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+  const distribution = parsed.distribution;
+  if (distribution === null || typeof distribution !== "object" || Array.isArray(distribution)) {
+    return false;
+  }
+  return distribution.checkEnabled === false;
+}
+
+const DISTRIBUTION_OPT_OUT_NOTICE =
+  `drift check skipped by operator opt-out (${ADVISORY_CONFIG_PATH} distribution.checkEnabled: false)`;
+
+function distributionOptOutGate() {
+  return {
+    outcome: "proceed",
+    row: 0,
+    reasons: [DISTRIBUTION_OPT_OUT_NOTICE],
+    report: { manifest: [DISTRIBUTION_OPT_OUT_NOTICE], row: [], run: [] },
+  };
 }
 
 return { main, meta, DEFAULT_QUEUE_PATH, rewriteStatus, updateQueueStatus };
