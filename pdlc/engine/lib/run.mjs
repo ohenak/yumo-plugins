@@ -16,14 +16,25 @@
 // 2. **Only the seams that MUST be overridden are passed.** Every workflow seam
 //    whose default is a working plain-Node implementation — `_readFile`,
 //    `_writeFile`, `_appendFile`, `_listFiles`, `_checkFile`, `_hashFile`,
-//    `_git`, `_ghRun`, `_checkCi`, `_mergeWorktree`, `_recordQueueRow`,
+//    `_ghRun`, `_checkCi`, `_mergeWorktree`, `_recordQueueRow`,
 //    `_rebaseOntoDefault`, the advisory seams, the probe seams — is left alone,
 //    so the engine exercises the same code paths the module tests cover. What
 //    must be overridden is exactly the set the Claude Code *runtime* used to
 //    provide and plain Node does not: `_agent` (the module stub throws outside
-//    the runtime), `_parallel`, `_pipeline`, `_phase`, `_log`, and `_runCommand`
+//    the runtime), `_parallel`, `_pipeline`, `_phase`, `_log`, `_runCommand`
 //    (whose module default `NO_RUN_COMMAND` is null and would silently degrade
-//    Phase I's script-owned gate).
+//    Phase I's script-owned gate) — and `_git`.
+//
+//    `_git` is the one exception to the "leave working defaults alone" rule, and
+//    it is not a style choice. The module's `defaultGit` works fine in plain
+//    Node, but the branch guard tests seam IDENTITY, not behaviour:
+//    `branchGuardTransport` (orchestrate-dev.js:3487) hands back a transport
+//    only when `_git !== defaultGit`, because the guard will not mutate a
+//    checkout through a seam nobody explicitly chose. Leaving the default in
+//    place therefore made the guard announce itself INERT and skip — and the
+//    pipeline ran a whole phase on whatever branch the tree happened to be on,
+//    which is the precise failure the guard exists to prevent. Injecting the
+//    engine's own `createGit` is how the engine opts in.
 //
 // 3. **The modules address the filesystem consumer-relative.** They never call
 //    `process.cwd()`; they hand bare relative paths ("docs/{f}/REQ-{f}.md") to
@@ -75,6 +86,7 @@ export function devInjection(adapter) {
     _phase: adapter._phase,
     _log: adapter._log,
     _runCommand: adapter._runCommand,
+    _git: adapter._git,
   };
 }
 
@@ -82,8 +94,10 @@ export function devInjection(adapter) {
  * The queue's overrides.
  *
  * `orchestrate-queue.js`'s `main()` declares NO `_parallel`, `_pipeline` or
- * `_runCommand` parameter, so only four seams apply — and the fourth,
- * `_runPipeline`, is a **necessity, not a preference**:
+ * `_runCommand` parameter, so only five seams apply. `_git` is here for the
+ * reason rule 2 gives above, and because the queue itself shells git directly
+ * (the A2 seam's citation grep at orchestrate-queue.js:818, the queue-row
+ * commit); the fifth, `_runPipeline`, is a **necessity, not a preference**:
  *
  *   orchestrate-queue.js:1415 calls `runPipelineFn({ reqPath: entry.reqPath })`
  *   with NO seams at all. Its default (`realMain`, the imported orchestrate-dev
@@ -103,6 +117,7 @@ export function queueInjection(adapter, runPipeline) {
     _agent: adapter._agent,
     _log: adapter._log,
     _phase: adapter._phase,
+    _git: adapter._git,
     _runPipeline: runPipeline,
   };
 }

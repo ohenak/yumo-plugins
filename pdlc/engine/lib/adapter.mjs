@@ -94,6 +94,52 @@ export function computeRateLimitWaitMs(
 }
 
 /**
+ * Default `_git` implementation.
+ *
+ * Contract, taken from the modules' own `defaultGit`
+ * (orchestrate-dev.js:8609) — `_git(argv) => Promise<{ok, stdout, stderr}>`,
+ * argv being an argument array, never a shell string.
+ *
+ * This seam MUST be injected even though the modules ship a working
+ * `defaultGit`, and that is not a preference. `branchGuardTransport`
+ * (orchestrate-dev.js:3487) returns a transport only when
+ * `typeof _git === "function" && _git !== defaultGit`, so a run that leaves the
+ * default in place makes the branch guard report itself **inert** and skip:
+ * the pipeline then commits onto whatever branch the tree happened to be on —
+ * the exact failure the guard was written for. The guard refuses to mutate a
+ * checkout through a seam nobody chose; supplying our own is how the engine
+ * chooses. Distinct function identity is therefore load-bearing.
+ *
+ * Unlike `_runCommand` this never goes near a shell: git argv is passed to
+ * execFile directly, so no argument is word-split or glob-expanded.
+ */
+export function createGit({
+  cwd = process.cwd(),
+  env = process.env,
+  maxBuffer = 32 * 1024 * 1024,
+  timeoutMs = 10 * 60 * 1000,
+  execFileFn = execFile,
+} = {}) {
+  return function git(argv) {
+    const args = Array.isArray(argv) ? argv.map(String) : [];
+    return new Promise((resolve) => {
+      execFileFn(
+        "git",
+        args,
+        { cwd, env: { ...env }, maxBuffer, timeout: timeoutMs, encoding: "utf8" },
+        (err, stdout, stderr) => {
+          resolve({
+            ok: !err,
+            stdout: String(stdout ?? ""),
+            stderr: String(stderr ?? (err && err.message) ?? ""),
+          });
+        }
+      );
+    });
+  };
+}
+
+/**
  * Default `_runCommand` implementation.
  *
  * Contract, taken verbatim from the modules' own declaration at
@@ -174,6 +220,7 @@ export function createAdapter({
   env = process.env,
   loadSkillFn = loadSkill,
   runCommandFn = null,
+  gitFn = null,
   maxRateLimitPauses = DEFAULT_MAX_RATE_LIMIT_PAUSES,
   retryBackoffBaseMs = DEFAULT_RETRY_BACKOFF_BASE_MS,
   retryBackoffCapMs = DEFAULT_RETRY_BACKOFF_CAP_MS,
@@ -193,6 +240,7 @@ export function createAdapter({
   // adapter instance makes (one adapter per run — see bin/pdlc.mjs). Consumed
   // by the CLI's report-provenance stamp (REQ AC-4.5 / G-7), never reset mid-run.
   const pauseLog = [];
+  const denialLog = [];
   const dispatchCounts = new Map();
   let lastApiKeySource = null;
 
@@ -270,6 +318,27 @@ export function createAdapter({
         continue; // retry the SAME dispatch
       }
       if (result && result.apiKeySource != null) lastApiKeySource = result.apiKeySource;
+      // A dispatch whose tool calls were denied still terminates as `success`
+      // with fluent prose claiming the work is done — the agent is not told the
+      // denial happened. That is how a whole review round once "passed" having
+      // written no cross-review file at all: every downstream oracle then reads
+      // a document that does not exist. Denials are never silent here; they are
+      // logged per dispatch and tallied for the run report.
+      const denials = (result && result.permissionDenials) || [];
+      if (denials.length > 0) {
+        const names = denials.map((d) => (d && d.tool_name) || "?");
+        const counts = {};
+        for (const n of names) counts[n] = (counts[n] || 0) + 1;
+        const summary = Object.entries(counts)
+          .map(([n, c]) => (c > 1 ? `${n}×${c}` : n))
+          .join(", ");
+        log(
+          `[warning] ${tag}: ${denials.length} tool call(s) DENIED (${summary}) — ` +
+            `the agent was not told, so its output may claim work it never performed. ` +
+            `Check permissionMode.`
+        );
+        denialLog.push({ skill, label: tag, tools: names, count: denials.length });
+      }
       return result && result.text != null ? result.text : "";
     }
   }
@@ -300,9 +369,12 @@ export function createAdapter({
     _phase,
     _log,
     _runCommand: runCommandFn || createRunCommand({ cwd, env }),
+    _git: gitFn || createGit({ cwd, env }),
     composePrompt,
     /** Append-only pause log accumulated across every `_agent` call so far (REQ AC-4.5). */
     getPauseLog: () => pauseLog.slice(),
+    /** Append-only record of dispatches whose tool calls were denied — see `_agent`. */
+    getDenialLog: () => denialLog.slice(),
     /** `{skill: count}` — a per-skill dispatch tally, the engine's proxy for "per-phase" (AC-4.5). */
     getDispatchCounts: () => Object.fromEntries(dispatchCounts),
     /** The most recently observed SDK `apiKeySource`, or null if no dispatch has completed yet. */

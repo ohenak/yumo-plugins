@@ -63,6 +63,31 @@ export class TransportError extends Error {
 const DEFAULT_API_KEY_SOURCE_POLICY = ["none"];
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 min, matches REQ dispatch.timeoutMinutes default
 
+/**
+ * The permission mode every dispatch runs under, unless the caller overrides it.
+ *
+ * Measured, 2026-08-09, SDK `query()` with the option omitted: the session
+ * reports `permissionMode: "default"`, and with no `canUseTool` handler an
+ * "ask" decision is TERMINAL — the tool call is denied outright (sdk.d.ts:4337:
+ * "Without one (bare -p / SDK query() with no canUseTool), 'ask' decisions are
+ * terminal"). A `Write` was denied, the run still ended `subtype: "success"`
+ * with the model replying "DONE", and no file existed afterwards.
+ *
+ * That is fatal for this pipeline specifically: every pdlc agent's real output
+ * is a FILE (REQ/FSPEC/cross-review/PROPERTIES), not its final message, and
+ * every gate downstream reads those files. Denied silently, a reviewer
+ * "completes" without writing its cross-review, and `extractFileVerdict` then
+ * finds no verdict — the "reviewer returned no VERDICT" failure, one layer down.
+ *
+ * So the mode is set EXPLICITLY rather than inherited from ambient settings, and
+ * it is set to bypass: an unattended pipeline has no human to answer a prompt,
+ * and a half-permissioned run is worse than either extreme because it fails
+ * silently. `allowDangerouslySkipPermissions` is the SDK's required paired
+ * acknowledgement (sdk.d.ts:1772). Overridable per REQ, and always printed in
+ * the startup banner — this is not a setting that should ever be a surprise.
+ */
+export const DEFAULT_PERMISSION_MODE = "bypassPermissions";
+
 function looksLikeRateLimit(err) {
   if (!err || typeof err !== "object") return false;
   if (err.status === 429) return true;
@@ -112,6 +137,7 @@ export function createTransport({
   env = process.env,
   apiKeySourcePolicy = DEFAULT_API_KEY_SOURCE_POLICY,
   defaultTimeoutMs = DEFAULT_TIMEOUT_MS,
+  permissionMode = DEFAULT_PERMISSION_MODE,
 } = {}) {
   /**
    * @param {string} prompt
@@ -140,6 +166,13 @@ export function createTransport({
     }, timeoutMs);
 
     const options = { abortController, env: dispatchEnv };
+    // Set explicitly, never left to the SDK default — see DEFAULT_PERMISSION_MODE.
+    if (permissionMode !== undefined && permissionMode !== null) {
+      options.permissionMode = permissionMode;
+      // The SDK requires this paired acknowledgement for bypass, and rejects the
+      // combination without it (sdk.d.ts:1772).
+      if (permissionMode === "bypassPermissions") options.allowDangerouslySkipPermissions = true;
+    }
     if (model !== undefined) options.model = model;
     if (cwd !== undefined) options.cwd = cwd;
     if (maxTurns !== undefined) options.maxTurns = maxTurns;
@@ -193,11 +226,33 @@ export function createTransport({
       throw new TransportError("SDK stream ended without a terminal result message");
     }
 
+    // Only `SDKResultSuccess` carries a `result` field; every error subtype
+    // (`error_during_execution`, `error_max_turns`, `error_max_budget_usd`,
+    // `error_max_structured_output_retries`) omits it entirely (sdk.d.ts:4440).
+    // Reading it unconditionally yielded `undefined`, which the adapter turned
+    // into "" — so a dispatch that died on max-turns was indistinguishable from
+    // one that answered with nothing, and surfaced far downstream as "reviewer
+    // returned no VERDICT". A failed dispatch is a thrown dispatch.
+    if (terminalResult.subtype !== "success") {
+      const errs = Array.isArray(terminalResult.errors) ? terminalResult.errors : [];
+      throw new TransportError(
+        `SDK dispatch failed: ${terminalResult.subtype}` +
+          (errs.length ? ` — ${errs.join("; ")}` : ""),
+        { cause: terminalResult }
+      );
+    }
+
     return {
       text: terminalResult.result,
       sessionId: terminalResult.session_id,
       costUsd: terminalResult.total_cost_usd,
       usage: terminalResult.usage,
+      // Denied tool calls on an OTHERWISE SUCCESSFUL dispatch. The agent is never
+      // told a call was denied, so it reports success regardless; this is the
+      // only channel through which the caller can find out. See adapter's _agent.
+      permissionDenials: Array.isArray(terminalResult.permission_denials)
+        ? terminalResult.permission_denials
+        : [],
       rateLimitEvents,
       apiKeySource,
     };

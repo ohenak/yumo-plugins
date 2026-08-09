@@ -4,7 +4,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createAdapter, createRunCommand, computeRateLimitWaitMs } from "../lib/adapter.mjs";
+import {
+  createAdapter,
+  createRunCommand,
+  createGit,
+  computeRateLimitWaitMs,
+} from "../lib/adapter.mjs";
 import { RateLimitedError } from "../lib/transport.mjs";
 
 function fakeTransport(text = "AGENT-REPLY") {
@@ -378,4 +383,89 @@ test("getApiKeySource reflects the most recently observed SDK apiKeySource", asy
   assert.equal(adapter.getApiKeySource(), null, "no dispatch has completed yet");
   await adapter._agent("pm-author", "a");
   assert.equal(adapter.getApiKeySource(), "none");
+});
+
+// ─── the `_git` seam (branch guard) ───────────────────────────────────────────
+
+test("createGit runs argv through execFile and normalises ok/stdout/stderr", async () => {
+  const seen = [];
+  const git = createGit({
+    cwd: "/repo",
+    env: { PATH: "/usr/bin" },
+    execFileFn: (file, args, opts, cb) => {
+      seen.push({ file, args, cwd: opts.cwd });
+      cb(null, "feat-x\n", "");
+    },
+  });
+
+  const out = await git(["rev-parse", "--abbrev-ref", "HEAD"]);
+
+  assert.equal(seen[0].file, "git", "git argv must never go through a shell");
+  assert.deepEqual(seen[0].args, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  assert.equal(seen[0].cwd, "/repo");
+  assert.deepEqual(out, { ok: true, stdout: "feat-x\n", stderr: "" });
+});
+
+test("createGit reports a failed command as ok:false with stderr, never throwing", async () => {
+  const git = createGit({
+    execFileFn: (file, args, opts, cb) => {
+      const err = new Error("exit 128");
+      cb(err, "", "fatal: not a git repository");
+    },
+  });
+
+  const out = await git(["status"]);
+
+  assert.equal(out.ok, false);
+  assert.equal(out.stderr, "fatal: not a git repository");
+});
+
+test("the adapter exposes a _git seam distinct from the module's defaultGit", async () => {
+  const { adapter } = makeAdapter();
+  const { defaultGit, branchGuardTransport } = await import("../../workflows/orchestrate-dev.js");
+
+  assert.equal(typeof adapter._git, "function");
+  assert.notEqual(adapter._git, defaultGit);
+  // The guard accepts it as actionable — this identity check is the whole point.
+  assert.equal(branchGuardTransport(adapter._git), adapter._git);
+});
+
+// ─── silent tool-permission denials ───────────────────────────────────────────
+
+test("a dispatch with permission denials warns and is recorded, without failing", async () => {
+  // The failure mode this exists for: the SDK denies a Write, does NOT tell the
+  // agent, the agent replies "done", and the pipeline believes it. Live 2026-08-09.
+  const transport = {
+    dispatch: async () => ({
+      text: "Cross-review written.",
+      permissionDenials: [
+        { tool_name: "Write", tool_use_id: "t1" },
+        { tool_name: "Write", tool_use_id: "t2" },
+        { tool_name: "Bash", tool_use_id: "t3" },
+      ],
+    }),
+  };
+  const { adapter, logs } = makeAdapter({ transport });
+
+  const text = await adapter._agent("pm-author", "go");
+
+  assert.equal(text, "Cross-review written.", "the dispatch itself still succeeds");
+  const warning = logs.find((l) => l.includes("[warning]"));
+  assert.ok(warning, "a denial must never be silent");
+  assert.match(warning, /3 tool call\(s\) DENIED/);
+  assert.match(warning, /Write×2/);
+  assert.match(warning, /Bash/);
+
+  assert.deepEqual(adapter.getDenialLog(), [
+    { skill: "pm-author", label: "pm-author", tools: ["Write", "Write", "Bash"], count: 3 },
+  ]);
+});
+
+test("a clean dispatch logs no denial warning and leaves the denial log empty", async () => {
+  const { adapter, logs } = makeAdapter();
+
+  await adapter._agent("pm-author", "go");
+
+  assert.equal(logs.some((l) => l.includes("[warning]")), false);
+  assert.deepEqual(adapter.getDenialLog(), []);
 });
