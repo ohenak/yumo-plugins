@@ -409,7 +409,15 @@ fixture corpora, each run against the **pre-widening baseline hook** and against
 
 **The baseline is a checked-in fixture, never a git query.** It is a verbatim copy of the shipped
 pre-T09 script at `pdlc/workflows/__tests__/fixtures/nudge-consolidation.pre-widening.sh`, written
-by T04 and copied into the temp tree per case. A `git show HEAD:pdlc/hooks/scripts/nudge-consolidation.sh`
+by T04 and copied into the temp tree per case. **This fixture path is owed to PLAN §5's ownership
+manifest, which does not yet carry it:** T04's manifest row (`PLAN:307`) names only
+`pdlc/workflows/__tests__/consolidationHookParity.test.js`, and no row anywhere in §5 names anything
+under `pdlc/workflows/__tests__/fixtures/` — a directory that does not exist at HEAD. Phase I commits
+each task's work **pathspec-scoped to the files that task owns**, so on the manifest as written T04
+would author this baseline and the wave commit would drop it, leaving PROP-COR-12 and PROP-COR-13 red
+on correct code for a reason no test names. §13.3 erratum 3 carries the correction to PLAN: the
+fixture path belongs in T04's ownership-manifest row as well as in T04's task text.
+A `git show HEAD:pdlc/hooks/scripts/nudge-consolidation.sh`
 baseline — which PLAN T04 currently specifies, and which §13.3 erratum 3 routes upstream — is
 **self-invalidating**: T09 commits the widening to that exact path, so from the first commit after
 T09 onward `git show HEAD:` returns the *edited* hook, arm (a)'s byte-identity becomes a tautology
@@ -1790,7 +1798,12 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    checked-in pre-widening copy — `pdlc/workflows/__tests__/fixtures/nudge-consolidation.pre-widening.sh`
    — pinned by a fixture-validity assertion. PROP-COR-12 is written against the fixture form and
    PROP-COR-13 pins the fixture's own validity, so this document is safe; PLAN T04's task text is
-   still the defect.
+   still the defect. **The correction has a second half, in PLAN §5's ownership manifest.** T04's
+   manifest row (`PLAN:307`) names only `pdlc/workflows/__tests__/consolidationHookParity.test.js`,
+   and no row in §5 names any path under `pdlc/workflows/__tests__/fixtures/`. Since Phase I commits
+   each task's work pathspec-scoped to that task's owned files, adding the baseline to T04's task
+   text alone would leave it authored but uncommitted — the two properties would be red on correct
+   code. Both halves of PLAN T04 need the fixture path: the task text **and** the manifest row.
 4. **REQ AC-3.4's second carrier has no reachable Given on the happy path.** AC-3.4 requires the PR
    URL in both `.consolidation-log.md` and `CONSOLIDATION-PROPOSAL-{passId}.md`, while FSPEC §5.3 —
    which PROP-RTE-06 pins — writes the proposal file **only** when a §5.3 cause exists. A pass where
