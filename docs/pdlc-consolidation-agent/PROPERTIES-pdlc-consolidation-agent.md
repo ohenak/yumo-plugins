@@ -460,44 +460,38 @@ fallback to the current repository (AT-N4). *L2 · `consolidationReport.test.js`
 
 Subjects: `cadenceDatum`, `triggerFor`, `mintPassId`, `failureModeId`, `targetFor`, `mergeProposals`,
 `parseLogRecords` (TSPEC §7.2, §7.4). Owner: PLAN **T26** (batch 5), red owners **T15** (identity),
-**T16** (parse), **T19** (properties), **T20** (pass-level trigger cases). Files:
+**T16** (parse), **T19** (properties cases), **T21** (routing and merge). Files:
 `consolidationIdentity.test.js` (L1), `consolidationParse.test.js` (L1),
-`consolidationPass.test.js` (L2), `consolidationProperties.test.js` (L5).
+`consolidationRoute.test.js` (L2), `consolidationProperties.test.js` (L5). The whole-pass trigger
+arms this section formerly restated now live once in §9.1 (`consolidationLifecycle.test.js`, T23).
 
 ### 5.1 Trigger and the cadence datum
 
-**PROP-TRG-01** — *The tick evaluation order is observable, and the volume test precedes the cadence
-test.* One constructed corpus family parameterised on `(n, k, volumeThreshold)`. At `(5, 2, 5)` the
-un-consolidated set has `n − k = 3` members, `3 < 5` so the volume test does **not** fire, the
-cadence test fires on the empty-datum branch, and the row records trigger `cadence` with reason code
-`no-cadence-datum`. At `(6, 0, 5)` the **volume** test fires and the row records trigger `volume`.
-One family exercises both sides of the threshold, so the property does not depend on which side the
-repository happens to be on (PROP-FIX-02). *L2 · `consolidationPass.test.js` · T20 → T26/T31 ·
-AC-1.1, AC-1.2 · AT-C1, AT-C1b, AT-C2.*
+**One home per invariant.** The whole-pass (L2) trigger invariants live **once**, in §9.1, owned by
+`consolidationLifecycle.test.js` (T23). This section keeps only the **L1** properties over the parse
+and datum functions, which are layered coverage rather than duplicated work (O-4). Four ids minted in
+v1.0 — **PROP-TRG-01, PROP-TRG-02, PROP-TRG-04 and PROP-TRG-05** — specified the same invariants at
+the same level as PROP-PASS-01, PROP-PASS-02 and PROP-PASS-05, in a file owned by a different task;
+under PLAN §5's file-ownership manifest that is two waves writing one test, and a later change to the
+trigger rule would have had two homes to update. They are **retired into §9.1** and their ids are
+**not reused**:
 
-**PROP-TRG-02** — *An empty datum counts as elapsed, and the bootstrap tick is distinguishable.* When
-no log row carries one of the datum's four statuses, the cadence test **fires**, the pass runs, and
-the row carries trigger `cadence` **plus** reason code `no-cadence-datum`. The reason code is the
-positive conjunct: without it a bootstrap tick is indistinguishable from an ordinary cadence tick,
-and "empty means not elapsed" would make cadence unreachable until someone ran a manual pass. *L2 ·
-`consolidationPass.test.js` · T20 → T26/T31 · AC-1.1 · AT-C1.*
+| Retired id | Invariant now stated once at | Why it was a collision, not a layer |
+|---|---|---|
+| PROP-TRG-01 | PROP-PASS-01 (L2, T23) | same `(n, k, volumeThreshold)` family at the same `(5,2,5)` and `(6,0,5)` |
+| PROP-TRG-02 | PROP-PASS-01's empty-datum arm (L2, T23) | same `no-cadence-datum` bootstrap conjunct |
+| PROP-TRG-04 | PROP-PASS-02's manual arm (L2, T23) | same AT-C4 obligation |
+| PROP-TRG-05 | PROP-PASS-05 (L2, T23) | verbatim the same property, differing only in file and owner |
+
+PROP-TRG-03 and PROP-TRG-06 stay here: both are **L1** over `parseLogRecords` / `mintPassId` against
+the L2 whole-pass arms in PROP-PASS-03 and PROP-PASS-04, which is the L1-vs-L2 layering O-4 sanctions.
 
 **PROP-TRG-03** — *The datum is the newest row carrying a datum status, not the newest row.* Fixture:
 a `promoted` row dated D1, then a **later** `refused` row dated D2 (D2 > D1), the `refused` row being
 last in the file. The datum is **D1**. `refused` is not one of the four datum statuses, so the
-ordering is exactly what falsifies an implementation taking the last row unconditionally. *L1 ·
-`consolidationParse.test.js` · T16 → T26 · AC-1.1, AC-1.3 · AT-C5.*
-
-**PROP-TRG-04** — *The manual entry point is never gated by cadence.* With `cadenceHours` not elapsed
-by any measure, a direct `/pdlc:consolidate-learnings` invocation runs the pass with trigger
-`manual`. *L2 · `consolidationPass.test.js` · T20 → T26/T31 · AC-1.1 · AT-C4.*
-
-**PROP-TRG-05** — *The trigger decides whether a pass runs, never what clears the promotion bar.* One
-fixed corpus and one fixed configuration, run twice — once where the volume test fires, once where
-only the cadence test fires. The two promotion sets are **set-equal by `(failure-mode-id, action)`**
-and the AC-2.3 evidence is identical in both reports. NFR-3 is comparative, so a trigger-sensitive
-promotion set is precisely the failure this property exists to catch. *L2 ·
-`consolidationPass.test.js` · T20 → T26/T31 · NFR-3, NFR-3a · AT-C8.*
+ordering is exactly what falsifies an implementation taking the last row unconditionally. Its L2
+whole-pass arm is PROP-PASS-03. *L1 ·
+`consolidationParse.test.js` · T16 → T26 · AC-1.1 · AT-C5.*
 
 **PROP-TRG-06** — *`passId` is derived from the log, never from a counter or a clock.* Three
 conjuncts, one fixture each: a log already carrying `{today}-1` mints `{today}-2` (AT-C6); a log
@@ -1225,7 +1219,10 @@ corpus and one fixed configuration, run **twice** — once where the volume test
 **set-equal** by `(failure-mode-id, action)` and the AC-2.3 evidence is **identical** in both reports.
 NFR-3 is comparative: a trigger-sensitive promotion set is exactly the failure this property exists
 to catch, and set-equality rather than containment is what makes a promotion dropped on one arm
-visible. *L2 · `consolidationLifecycle.test.js` · T23 → T31 · NFR-3 · AT-C8.*
+visible. The trigger recorded on each arm is the closed-set value NFR-3a requires (`cadence` on one,
+`volume` on the other), which is what makes "the bar held on both" checkable rather than asserted —
+this is the sole home of the invariant, PROP-TRG-05 having been retired into it (§5.1). *L2 ·
+`consolidationLifecycle.test.js` · T23 → T31 · NFR-3, NFR-3a · AT-C8.*
 
 ### 9.2 The model ladder
 
