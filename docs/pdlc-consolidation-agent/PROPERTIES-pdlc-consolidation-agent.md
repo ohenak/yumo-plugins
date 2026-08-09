@@ -154,8 +154,12 @@ FSPEC §13.5 AT-Q13, PLAN §4.1 T21.*
 corpus is 5 files (§1's grounding table) and grows with every delivered feature — this one included
 — so a Given pinned to HEAD inverts on its own PR. AT-C1's `(n, k, volumeThreshold)` family is
 instantiated at `(5, 2, 5)` and `(6, 0, 5)` so that both sides of the threshold are exercised by one
-builder regardless of where the repository happens to sit. *Level: L2 · File:
-`consolidationPass.test.js` · Task: T20 · Source: FSPEC §13.1 AT-C1, AT-C1b.*
+builder regardless of where the repository happens to sit. The **builder** lives in
+`helpers/consolidationDoubles.js` (T01), which is why the discipline is stated here and not inside
+§9.1; the **instantiation** it constrains is PROP-PASS-01's, in `consolidationPass.test.js`, the file
+TSPEC §12.3 gives the AT-C register. *Level: L2 · `helpers/consolidationDoubles.js` (T01) and
+`consolidationPass.test.js` (T20 → T31) — paired file-to-task, per §12.2's spanning convention ·
+Source: FSPEC §13.1 AT-C1, AT-C1b, discharged as register ids by PROP-PASS-01.*
 
 ### 2.3 The generator and the seeding discipline
 
@@ -1656,7 +1660,7 @@ another task's file, that is the spanning convention at work, not a contradictio
 | `consolidationEffectiveness.test.js` | L1 | T17 | T27 | PROP-EFF-01…09, PROP-REC-05 (§8.3/§8.5 halves) |
 | `consolidationAdvisory.test.js` | L1 | T18 | T27 | PROP-ADV-01…05 |
 | `consolidationProperties.test.js` | L5 | T19 | T25, T26, T27 | PROP-GEN-00…06, PROP-ADV-06, PROP-COR-03, PROP-CFG-01 (L5 halves) |
-| `consolidationPass.test.js` | L2 | T20 | T28, T31 | PROP-MRK-01…04, PROP-PASS-01…05, PROP-PASS-08, PROP-PASS-11, PROP-COR-09, PROP-COR-10, PROP-COR-11, PROP-CFG-03 |
+| `consolidationPass.test.js` | L2 | T20 | T28, T31 | PROP-MRK-01…04, PROP-PASS-01…05, PROP-PASS-08, PROP-PASS-11, PROP-COR-09, PROP-COR-10, PROP-COR-11, PROP-CFG-03, PROP-FIX-02 (spanning) |
 | `consolidationRoute.test.js` | L2 | T21 | T28, T30, T31 | PROP-RTE-01…06, PROP-PR-01…11, PROP-ID-03, PROP-MRG-01, PROP-MRG-02, PROP-MRG-04 |
 | `consolidationCredential.test.js` | L2 | T22 | T30, T31 | PROP-CRED-01…04 |
 | `consolidationLifecycle.test.js` | L2 | T23 | T31 | PROP-PASS-09, PROP-PASS-10, PROP-DBL-03 |
@@ -1676,7 +1680,7 @@ Rows read `{RED owner} → {green un-skippers}`, matching the trailers exactly.
 | Task | Properties it owes |
 |---|---|
 | T00 pre-flight | PROP-PRE-01, PROP-PRE-02 |
-| T01 doubles | PROP-DBL-01…03, PROP-FIX-01…03 |
+| T01 doubles | PROP-DBL-01…03, PROP-FIX-01, PROP-FIX-02 (PROP-FIX-03 **consumes** T01's harness but is declared in T04's file, so it is filed under T04 on both axes) |
 | T03 → T07/T08/T10/T12/T32/T33 | PROP-SRC-01…04, PROP-BLD-01, PROP-BLD-02 |
 | T04 → T09/T25 | PROP-COR-07, PROP-COR-08, PROP-COR-12, PROP-COR-13, PROP-FIX-03 |
 | T05 traceability | PROP-TRC-01 |
@@ -1688,7 +1692,7 @@ Rows read `{RED owner} → {green un-skippers}`, matching the trailers exactly.
 | T17 → T27 | PROP-EFF-01…09, PROP-REC-05 |
 | T18 → T27 | PROP-ADV-01…05 |
 | T19 → T25/T26/T27 | PROP-GEN-00…06, PROP-ADV-06, PROP-COR-03, PROP-CFG-01 |
-| T20 → T28/T31 | PROP-MRK-01…04, PROP-PASS-01…05, PROP-PASS-08, PROP-PASS-11, PROP-COR-09…11, PROP-CFG-03 |
+| T20 → T28/T31 | PROP-MRK-01…04, PROP-PASS-01…05, PROP-PASS-08, PROP-PASS-11, PROP-COR-09…11, PROP-CFG-03, PROP-FIX-02 (spanning) |
 | T21 → T28/T30/T31 | PROP-RTE-01…06, PROP-PR-01…11, PROP-ID-03, PROP-MRG-01, PROP-MRG-02, PROP-MRG-04 |
 | T22 → T30/T31 | PROP-CRED-01…04 |
 | T23 → T31 | PROP-PASS-09, PROP-PASS-10, PROP-DBL-03 |
