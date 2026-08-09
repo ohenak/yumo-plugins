@@ -344,7 +344,7 @@ list is created and never committed.
 | `pdlc/workflows/__tests__/consolidationRoute.test.js` | T21 → T28 → T30 → T31 | the module chain, which each un-skipper already sits on |
 | `pdlc/workflows/__tests__/runtimeBundle.test.js` | T13 → T32 | T32 deps T31, which transitively deps T13 through T25 |
 
-Three further test files carry two or three writers each — `consolidationHookParity` (T04 → T09 →
+Eleven further test files carry two to four writers each — `consolidationHookParity` (T04 → T09 →
 T25), `consolidationPass` (T20 → T28 → T31), `consolidationCredential` (T22 → T30 → T31),
 `consolidationReport` (T24 → T29 → T31), `consolidationRung` (T06 → T11 → T31),
 `consolidationPredicate` (T14 → T25), `consolidationIdentity` (T15 → T26), `consolidationParse`
