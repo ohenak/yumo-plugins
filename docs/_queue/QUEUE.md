@@ -42,129 +42,19 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > says "row 1", "row 2" or "row 3" is historical record and keeps its meaning: the feature name,
 > not the row, is the identity.
 
-> **Row 7 (`pdlc-install-mechanism`) removed from the table on 2026-08-13 — closed as superseded,
-> not delivered.** Its deferrals D-DIST-01/02/03/05 are absorbed by `pdlc-engine-distribution`'s
-> renarrowed REQ-EDIST-03: once the engine is installed as a package, the per-project copy
-> mechanism they wanted to improve no longer exists to improve. D-DIST-07 (per-worktree consumer
-> state) dissolves for the same reason — it is a property of the `.claude/workflows/` consumer copy,
-> which row 5 `pdlc-plugin-retirement` removes. **Conditional, recorded so it cannot vanish
-> silently:** if plugin retirement does not land, D-DIST-07 re-opens against row 6
-> `pdlc-engineering-loop`. No REQ was ever authored at the row's `REQ Path` — the row was a
-> placeholder holding the deferrals, so closing it deletes no document and nothing moves to
-> `docs/completed/`. `Order` value 7 is retired and is not reused. Decision:
-> `pdlc-engine-distribution` REQ v0.6, O-3.
->
-> **Row 8 (`pdlc-release-ci`) kept, renarrowed on 2026-08-13.** Its PR-test half was discharged out
-> of band in `3ef6ac7`; what remains is release automation for the public npm package chosen in
-> DEC-DIST-05 — tag, publish, and the rendered version lines. It therefore now depends on
-> `pdlc-engine-distribution` as well, and stays `blocked` until that feature's FSPEC settles the
-> package name and pin mechanism. Its `REQ Path` is likewise still a placeholder: no REQ exists at
-> that path yet, and one must be authored before the row can be picked up. Decision: same, O-3.
-
-> **Row 4 (`pdlc-engine-distribution`) removed from this table on 2026-08-16.** Merged as
-> `a9885dc8` (#63, 2026-08-16) — per-feature docs moved to
-> `docs/completed/pdlc-engine-distribution/`, LEARNINGS included. `Order` value 4 stays
-> allocated, never reused. Rows still naming the feature in `Depends-On` (5, 8, 23) resolve
-> through Phase-0 readiness triage — the dependency is absent from the table but checked
-> against the base branch, exactly as the existing notes above describe for other retired
-> features. Row 23's `REQ Path` cell was updated to the new
-> `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` path; row 23's
-> prose note below still names the old REQ/TSPEC paths for historical context.
-
-
-| Order | Status | Feature | REQ Path | Depends-On | Engine |
-|-------|--------|---------|----------|------------| --- |
-| 5 | done | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution | pdlc engine 0.2.0 / plugin 0.23.0 |
-| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
-| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
-| 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
-| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |  |
-| 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
-| 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |  |
-| 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
-| 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |  |
-| 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
-| 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
-
-**Row 25 (`pdlc-retirement-operator-verification`) added 2026-08-18 to bind
-`pdlc-plugin-retirement`'s nine `PENDING-OPERATOR` acceptance criteria to a successor.**
-CODE_REVIEW-pdlc-plugin-retirement-v1.md §3 finding 6(b) found that AC-3.1 (transcript
-half), AC-3.2, AC-3.4, AC-3.5, AC-3.6, AC-4.4, AC-5.3, and the two P0 criteria AC-5.1 and
-AC-5.2 were bound only to prose in two ledger documents
-(`docs/pdlc-plugin-retirement/POSTSWEEP-RUN-*.md`,
-`docs/pdlc-plugin-retirement/OPERATOR-OBSERVATIONS-*.md`) — not to a queue row or successor
-REQ, so a runbook step or bare prose mention was not a successor per the same criterion's own
-rule. This row and its (not yet authored) REQ own the operator-acceptance run that discharges
-AC-5.1, AC-5.2, and AC-4.4, and the AT-3.1/AT-3.2/AT-3.4/AT-3.5/AT-3.6/AT-5.3 live-dispatch
-observations that back them; the two ledger documents remain the evidence template the run
-fills in, not the successor itself. `Order` 25 is next free after 24; the row stays `blocked`
-until `pdlc-plugin-retirement`'s sweep lands and an operator run is scheduled.
-
-**Row 24 (`pdlc-consolidation-rehost`) added 2026-08-18 to bind `pdlc-plugin-retirement`
-REQ O-8's successor obligation.** O-8 records the operator's choice of option (a) —
-accept the in-session loss of the unattended, machinery-backed consolidation pass, and
-bind its re-hosting under `@kaneho/pdlc-engine` to a queue row plus a named successor
-REQ, both raised before that feature's first deletion commit. This row and
-`docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md` are that binding. The
-REQ carries `ready: false` pending operator review, per this queue's draft rule (§ intro);
-nothing executes against it until the operator flips that flag, preserving the veto O-8
-describes. `Order` 24 is next free after 23.
-
-**Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
-(CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,
-and `TSPEC-pdlc-engine-distribution.md` all disclose that until a successor tag is cut, `npm i -g
-@kaneho/pdlc-engine@latest` keeps resolving the pre-feature `0.1.0` bytes published from `engine-v0.1.0`
-— but named that successor tag nowhere binding (no queue row, no successor REQ; a `grep` for
-`engine-v0.2.0` across `docs/`, `pdlc/`, and `.github/` returned zero hits before this row). Evidence
-that discharges this row: post-merge, cut the `engine-v0.2.0` tag on the merge commit and verify
-`.github/workflows/publish.yml` runs green and `npm view @kaneho/pdlc-engine version` resolves to
-`0.2.0` — this is the act that discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stay
-narrowed-YES until the tag is cut. Status `blocked`, `Depends-On pdlc-engine-distribution`: the tag
-cannot be cut before that feature's branch merges. `REQ Path` reuses the feature's own REQ (the
-successor-tag cut is a release act on an already-approved REQ, not a new feature requiring its own
-REQ). Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds if this row
-or the `pdlc/RELEASE-CHECKLIST.md` §7 engine-channel section is removed while the README/REQ/TSPEC
-successor-tag caveat is still present.
-
-**Row 23 set to `done` on 2026-08-16.** The `engine-v0.2.0` tag was cut at the merge commit
-`a9885dc86bc52b3ac5e55e1aa5d32da3046e2c3e` (PR #63) and published: `.github/workflows/publish.yml`
-ran green, `npm view @kaneho/pdlc-engine version` resolves to `0.2.0`, and `pdlcPairing` reports
-the matching `engine-v0.2.0` / `a9885dc8` pairing. Evidence:
-`docs/completed/pdlc-engine-distribution/EVIDENCE-ENGINE-V0.2.0.md`. This discharges REQ
-AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2) and the README's successor-tag caveat, which was
-removed from `pdlc/README.md` in the same change — `deferral-binding.test.js`'s row-23 binding
-assertion is conditioned on that caveat text and now no-ops once it is gone.
-
-**Row 22 (`pdlc-halt-hardening-followups`) added 2026-08-16 to bind an unbound deferral
-(CODE_REVIEW v4 §3-3, `pdlc-engine-distribution`).** `docs/ideas/halt-hardening-followups.md`
-landed on `feat-pdlc-engine-distribution` (commit `75782278`) as self-declared "ideas only — not
-built" field findings from live 0.23.0 consumer runs: (1) an inverted/mislabeled qualifying
-ownership table poisoning `parsePlanOwnership`'s manifest union, and (2) the second item that
-file records. A prose backlog file is not a successor, so those two items were deferred work with
-no owner. This row is that owner, and the file is its input. `Order 22` because values are
-allocated and never reused and 21 is the highest ever issued. Status `blocked`, `Depends-On —`:
-nothing gates it but the REQ itself, whose `REQ Path` above is still a placeholder — no REQ exists
-at that path yet, and one must be authored before the row can be picked up (row 8's precedent).
-Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds on any
-tracked `docs/ideas/*.md` file that no queue row and no REQ names.
-
-**Row 21 (`pdlc-learnings-injection`) added 2026-08-10 from consumer-run feedback.** The
-`regime-ledger` consumer completed a full end-to-end run of `wheel-paper-portfolio` (~40 review
-rounds, 49 implementation tasks, 3 DoD rounds, PR #261 green) while executing a stale 0.21.0
-workflow copy against a 0.22.x plugin, and the operator relayed its pain points on 2026-08-10.
-Checked against `pdlc/workflows/orchestrate-dev.js` at HEAD, almost all of them are already
-answered by the 0.22.x modules — the verdict vocabulary, verdict-trailer recovery, per-phase
-model routing and wave-mode's script-owned pathspec-scoped commits behind a foreground test
-gate — so the staleness itself is the story, and it belongs to the headless-engine family (rows
-3–5, whose REQ now records the incident as corroborating evidence at v0.5). **One genuine gap
-survived that check:** no mechanism injects a sibling feature's harvested LEARNINGS into an
-authoring dispatch, so a lesson the pipeline paid a feature to learn does not reach the next
-feature's authors in-run. Row 21 is that gap and only that gap. `Order` values are allocated and
-never reused; 21 is the next free after 20. Its `Depends-On` is `—`: it composes with
-`pdlc-consolidation-agent` (row 2) but consumes nothing the consolidation pass produces — the
-distinction is stated in the REQ's §1.3 and §4.2 BL-03 — and it needs no other row to land
-first. `ready: false` until the operator reviews the draft, so the queue does not pick it up as
-drafted.
+| Order | Status | Feature | REQ Path | Depends-On |
+|-------|--------|---------|----------|------------|
+| 1 | done | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
+| 2 | halted | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
+| 3 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
+| 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
+| 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
+| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
+| 7 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
+| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
+| 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
+| 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 
 **Row 19 — the sixth advisory seam — added 2026-08-09 (draft REQ, `ready: false`, operator review
 pending).** Motivated by a live Phase I failure on `pdlc-consolidation-agent` the same day: a wave-2
@@ -177,14 +67,7 @@ lands, which is why that feature is in the `Depends-On` column rather than only 
 `Order 19` because values are allocated and never reused and 18 is the highest ever issued; the row
 carries `ready: false` so the driver cannot pick it up as drafted. Its five deferrals (D-AWG-01…05)
 all bind to row 6, which is why row 6 gains a `Depends-On` edge on it below — the engineering loop is
-the integration row that would inherit them. **Update 2026-08-11:** a second live instance, from
-consumer repo `regime-ledger` (`iv-snapshot-store-postgres`, direct `pdlc dev` run), corroborates the
-seam: a wave-2 task delivered its owned NEW test file but never touched its owned MOD implementation
-file, and the gate died at pytest collection (ImportError, zero tests run) — the first live
-`wave-internal-defect` instance, repairable under E-5 alone. REQ revised to v1.1 with the incident,
-two new operator questions (Q-4 per-task ownership-delivery check, Q-5 collection-error evidence
-signal) and a sixth deferral D-AWG-06 (mode-aware Phase I halt reporting), which binds to row 6 like
-the other five.
+the integration row that would inherit them.
 
 **Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
