@@ -58,6 +58,24 @@ the 681-line document moved, and no other file moved with it.
 
 ## Reviewers
 
+**PROPERTIES (Phase PR's own document):** `pm-review`, `se-review`. Both approved at round 4;
+`se-review`'s round-4 file records 0 findings.
+
+**REQ erratum delta confirmation (where the halt lands):** `se-review` and `te-review` — REQ's own
+approvers, dispatched by `erratumRound` step 4c into REQ's append-only window at round 17.
+
+| Reviewer | File | Verdict line in the file | Counts | Anchors appended |
+|---|---|---|---|---|
+| `se-review` | `CROSS-REVIEW-software-engineer-REQ-v17.md:60` | `VERDICT: Approved with minor changes` | `{"high": 0, "medium": 0, "low": 2}` | **no** (workflow's `appendApprovalAnchors` never ran — the halt preempts it) |
+| `te-review` | `CROSS-REVIEW-test-engineer-REQ-v17.md:130` | `VERDICT: Approved with minor changes` | `{"high": 0, "medium": 0, "low": 7}` | yes — `APPROVAL-HASH: sha256:cac4eac81935b3218ac9389538b5fe4b99415bae3daeea5a325f7af9c0c00254`, `REVIEWED-COMMIT: 54a464331c8b0ef120d27bc0ef8627833e044071` (self-appended by the reviewer) |
+
+**Both files are approving, and both are approving under the High-only convergence bar** — one
+non-fenced `VERDICT:` line each, both `Approved with minor changes`, both `high === 0`. The reviewer
+the orchestrator named as non-approving, `te-review`, wrote the *more* affirmative of the two files:
+it verified each item against the downstream oracle rather than against the prose (AT-A6's disjoint
+arm for AC-6.3; the `AC-3.4 → AT-L1` trace row and FSPEC §5.3 for AC-3.4), and its Recommendation
+answers the delta-confirmation question in terms — *"Yes, on both halves."*
+
 ## Pattern / Disagreement
 
 ## Best-Guess Root Cause
