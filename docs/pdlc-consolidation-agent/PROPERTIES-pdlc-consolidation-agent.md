@@ -1711,6 +1711,16 @@ them in a file no RED task creates them in.
 
 Rows read `{RED owner} → {green un-skippers}`, matching the trailers exactly.
 
+**Green lists here are a union over the row's properties, so they may exceed the §12.2 row for the
+same task's file.** A task's green list is the union of the greens carried by every property filed
+under it, including spanning properties whose other home is in another task's file; a file's green
+list in §12.2 is the union of the blocks PLAN's RED task declares *in that file*. The two therefore
+differ exactly where a spanning property brings a foreign green in. `T24 → T26/T29/T31` (below)
+exceeds `consolidationReport.test.js`'s `T29, T31` (§12.2) by T26, which PROP-MRG-03 brings from
+`consolidationIdentity.test.js`; `T15 → T26/T28/T31` exceeds that file's `T26, T31` by T28, which
+PROP-ID-03 brings from `consolidationRoute.test.js`. Neither is a residue of re-derivation: a §12.3
+green absent from the matching §12.2 row must be traceable to a named spanning property, and both are.
+
 | Task | Properties it owes |
 |---|---|
 | T00 pre-flight | PROP-PRE-01, PROP-PRE-02 |
