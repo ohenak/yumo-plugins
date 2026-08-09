@@ -101,3 +101,6 @@ rests on. I emit no errata.
 VERDICT: Approved with minor changes
 
 {"high": 0, "medium": 1, "low": 1}
+
+APPROVAL-HASH: sha256:fd181b0b9b080fa742f98204085c9ed113dd97346685cc0c35893c9beca85398
+REVIEWED-COMMIT: d57808bacb44f7b0501ad6d1ca2d18f540ab20f6
