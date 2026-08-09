@@ -905,6 +905,140 @@ is green — and (a) and (b) sit side by side because they reach "no cause" by d
 §5.3 decides on causes rather than on terminal status, which differs between them. *L2 ·
 `consolidationRoute.test.js` · T28 → T31 · AC-3.4 · AT-R7.*
 
+### 7.3 The PR carrier
+
+**PROP-PR-01** — *The PR is cut in a clone, and the invoking tree sees no branch operation.* With
+`pluginRepository` resolving to the current repository, a guard-set promotion's edit is committed in
+a **separate clone under a temporary directory**, cut from the fetched default branch; the invoking
+tree's HEAD, branch and index are unchanged. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-3.1 ·
+AT-Q1.*
+
+**PROP-PR-02** — *The promotions trailer is set-equal to the commits' pairs.* Three promotions in one
+pass sharing one PR: **three** commits, each carrying a distinct `PDLC-PROMOTION-ID: {id}:{action}`,
+and `PDLC-CONSOLIDATION-PROMOTIONS` **set-equal** to those three pairs — a dropped pair is invisible
+to a containment check, which is the whole reason the trailer exists (NFR-4). *L2 ·
+`consolidationPass.test.js` · T28 → T31 · AC-3.3, NFR-4 · AT-Q2.*
+
+**PROP-PR-03** — *Suppression is keyed on a landed carrier, never on a record's existence.* Four
+fixtures over one `(failure-mode-id, action)` pair. **Open PR** ⇒ nothing opened, `duplicate-suppressed`
+naming the pair with the PR in `suppressed-by:`, `pr:` empty, that PR **not amended** (AT-Q3).
+**Closed-unmerged PR** ⇒ re-opened as a new PR: a rejected proposal is re-proposable (AT-Q4). A
+**merged `promote`** PR for an id now `ineffective` ⇒ the `revise`/`retire` proposal is **not**
+suppressed by it — the action half of the key is load-bearing (AT-Q5). A prior record with `route:
+degraded` ⇒ the pair reads **`absent`**, not `enacted`, and is re-proposed (AT-Q12). The last is the
+consuming-repo mirror of the closed-unmerged arm and is what stops a record's mere existence from
+suppressing. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-3.5, NFR-4 · AT-Q3, AT-Q4, AT-Q5,
+AT-Q12.*
+
+**PROP-PR-04** — *The consuming-repo carrier suppresses idempotently, and says so in §10.3's
+spelling.* Given a prior record for the pair with `route: constraints` — the `enacted` arm —
+`DOMAIN-CONSTRAINTS.md`'s bytes are **unchanged**, `duplicate-suppressed` is recorded, `suppressed-by:`
+carries **exactly one** entry whose literal text is `{failure-mode-id}:{action} → pass:{enacting
+passId}` (not a URL, not a bare id), and `pr:` is **empty** — all three conjuncts required, since a
+suppression recording nothing is indistinguishable from a proposal never derived (AT-Q10). Paired with
+the `absent` arm re-run over an unchanged corpus: the first pass appends **exactly once** and writes
+its record with `route: constraints`; the second suppresses; and `DOMAIN-CONSTRAINTS.md` is
+**byte-identical** after the second pass to after the first. The byte-identity is the only oracle that
+fails an implementation which never consults the log and re-appends on every run (AT-Q11). *L2 ·
+`consolidationRoute.test.js` · T28 → T31 · AC-3.5, NFR-4, §6.4 · AT-Q10, AT-Q11.*
+
+**PROP-PR-05** — *The PR seam's verbs are bounded on both sides, per domain, and the bound is
+containment.* The three enumerated seam domains of §6.5 — the PR seam, the git seam in the invoking
+tree, the git seam in the §6.1 clone — each behind its **own** spy recording the **resolved verb** of
+every call routed through it, including calls made through a generic entry point (a `_gh([…])` argv,
+a shell string, a URL built at runtime), classified by **operation performed** and not by function
+name (`checkout -b` and `switch -c` both resolve to `create-branch`). Two Givens. On a **PR-opening**
+pass: containment on every domain (observed ⊆ that domain's permitted set — which alone falsifies
+every merge verb), obligation on each (`{read-pr, create-pr}`; `{add, commit}`; `{clone,
+create-branch, add, commit, push}`), and the PR in state `open` — not `merged`, not
+`auto-merge-enabled` — after the pass returns; `fetch` and the non-mutating reads are permitted and
+asserted in neither direction (AT-Q7). On a **`promoted` pass with no guard-set proposal**: the PR and
+clone domains observe `∅` with **no** obligation asserted on them, and the invoking tree is bounded
+below by `{add, commit}` and above by §6.5's frozen set **∪ every widening TSPEC §9.3 has recorded
+under DEC-LAYER-01** (⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index`, all non-mutating). The Given
+is pinned to `promoted` on purpose: a pass promoting nothing observes `∅` everywhere and satisfies
+containment vacuously (AT-Q7c). Neither pooling the domains nor asserting set-equality universally is
+admissible — both are red on conforming passes — and an absence-only "no merge call exists" is
+satisfied by a pass making no calls, by a renamed route, and cannot see a merge issued through a
+generic seam. Comparison is over **sets**, never multisets: PROP-PR-02's three commits are three
+occurrences of one verb. The HEAD source-text scan for merge and enable-auto-merge calls (§10) is
+**supplementary** and never the sole evidence for AC-3.7 (AT-Q7b). *L2 · `consolidationPass.test.js` ·
+T28 → T31 · AC-3.7, §6.5 · AT-Q7, AT-Q7b, AT-Q7c.*
+
+**PROP-PR-06** — *Each PR failure class names its own reason code and degrades rather than halting.*
+The remote head branch `consolidation/{passId}` already existing ⇒ reason `branch-exists`, the
+fallback proposal file carrying the **full diff**, and the existing branch and any PR for it named
+(AT-Q6). The PR API failing with a network, rate-limit or 5xx error ⇒ reason `api-failure` with the
+API's status text recorded **verbatim**, the fallback carrying the full diff, and the pass **not**
+halting (AT-Q8). Two Givens, two codes, asserted apart because E-23 and E-24 are different failure
+classes and a collapsed code loses the distinction the report is read for. *L2 ·
+`consolidationPass.test.js` · T28 → T31 · AC-3.6 · AT-Q6, AT-Q8.*
+
+**PROP-PR-07** — *The PR trailer outlives the branch, and the cost of the loss is reported rather than
+hidden.* A pass opens a PR and records its promotion on an invoking branch which is then **deleted
+without merging**: the PR and its `PDLC-CONSOLIDATION-PROMOTIONS` trailer survive and still suppress a
+duplicate proposal on a later pass; that later pass **re-mints** the promotion's effectiveness record
+from scratch — exactly the §5.5 cost — and **reports** it rather than pretending the record was never
+lost. The reporting conjunct is the positive one; suppression alone would be green on an
+implementation that silently forgot. *L2 · `consolidationPass.test.js` · T28 → T31 · NFR-4, §5.5 ·
+AT-Q9.*
+
+**PROP-PR-08** — *The PR body carries AC-3.2's three obligations, and the single-occurrence fixture
+stops an unconditional recurrence list.* Two fixtures, each a pass opening a PR for one promotion:
+**(a)** a failure mode recurred across **two** named features, derived from those two source
+LEARNINGS; **(b)** a **single** occurrence cleared under AC-2.3's standing-invariant argument. On
+**both**, the body carries: each source LEARNINGS named by its **feature name**, **set-equal** to the
+features derived from (so (a) names both and a body naming one is red); the `symptom` line verbatim;
+and the AC-2.3 pattern evidence in the form that fixture cleared the bar with. This is the only
+property reading the PR **body** — PROP-PR-02's oracle is the trailer set, and a body carrying nothing
+but the three trailers is green there and red here. *L2 · `consolidationPass.test.js` · T28 → T31 ·
+AC-3.2 · AT-Q13.*
+
+### 7.4 The credential
+
+**PROP-CRED-01** — *The three credential values are distinguished, and none is inferred from another
+field.* No `credentialEnv` variable with working local `gh` auth ⇒ `credential: local-gh` and the PR
+route attempted (AT-K1). Neither variable nor `gh` auth ⇒ `credential: absent`, reason
+`credential-unavailable`, the §6.3 fallback fires, the promotion appears under the `degraded` route,
+and the pass does **not** halt (AT-K2). A credential **present but rejected** by the repository ⇒
+`credential: present (redacted)` **and** reason `credential-unavailable` — the two fields are **not
+collapsed**, which is the conjunct that separates "we had none" from "the one we had was refused".
+*L2 · `consolidationCredential.test.js` · T30 → T31 · AC-4.1, AC-4.2 · AT-K1, AT-K2, AT-K4.*
+
+**PROP-CRED-02** — *`absent` is one value with three readings, decided by the row and by the report,
+never by `status:`.* Six rows spanning every shape §10.3 admits: (i) `refused` at step 6, (ii) a
+`no-op`/`promoted` pass whose proposals were all consuming-repo ones so no PR route was attempted,
+(iii) `failed` at step 8 that never reached a PR-route attempt, (iv) `failed` at step 12/13 that
+**did** attempt the route and resolved nothing, (v) `failed` at step 12/13 that never attempted it,
+(vi) a genuine finding on a `promoted-degraded` row. **All six** carry `credential: absent`. Rows
+(i)–(ii) carry **no** `credential-unavailable` and read "not attempted"; (vi) carries it and reads
+"attempted and found nothing"; (iii)–(v) are `failed` and carry **no** `credential-unavailable`,
+asserted as an absence in its own right because vocabularies §1 at `Version` 1.4
+(`docs/_constraints/pdlc-consolidation-vocabularies.md:7`) bars the code from a `failed` row and
+recording it would breach REQ §4b. Rows (iv) and (v) are **indistinguishable in the row** and are
+distinguished **in the report body**: (iv)'s §10.4 item 4 names a degraded promotion with the
+`credential-unavailable` failure class and (v)'s does not. Both directions asserted; the (iv)/(v) pair
+is the one this property exists for — an implementation keying the reading on `status:`, or emitting
+the reason code on a `failed` row to make it decidable, fails on it. *L2 ·
+`consolidationCredential.test.js` · T30 → T31 · AC-4.2, §10.3 · AT-K6.*
+
+**PROP-CRED-03** — *The credential value appears in nothing the pass writes, and the field is drawn
+from a closed set.* Every artifact the pass produces and the report body are searched: the credential
+value appears in **none** of them, and the row carries **exactly one** `credential:` value from the
+three-member closed set. The set-membership conjunct is the positive half — a pass writing no
+`credential:` field at all satisfies the search alone. *L2 · `consolidationCredential.test.js` · T30 →
+T31 · AC-4.3, NFR-3 · AT-K5.*
+
+**PROP-CRED-04** — *Partial success has its own terminal status, asserted behaviourally.* A pass with
+**≥ 2** promotions of which exactly one hits a §6.3 failure class terminates verbatim
+**`promoted-degraded`** — neither `promoted` nor `no-op` — with the landed promotions carrying their
+observables (`pr:` populated, their ids in the log) and the failed one under the `degraded` route
+naming its failure class (AT-K7). Its paired negative: a pass that promoted nothing else and degraded
+its **only** promotion terminates `no-op`, never a bare `promoted` (AT-K3). The pair is what pins the
+status to the *shape* of the outcome rather than to the presence of a degradation; §8's rendering
+property sees the string, this one sees the behaviour. *L2 · `consolidationCredential.test.js` · T30 →
+T31 · AC-4.2, §12.1 · AT-K3, AT-K7.*
+
 ## 8. Properties — rendering and the report
 
 ## 9. Properties — the pass end to end
