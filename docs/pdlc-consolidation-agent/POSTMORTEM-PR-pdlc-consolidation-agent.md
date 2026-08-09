@@ -38,6 +38,24 @@ quietly picking a reading in the test layer.
 
 ## Iterations
 
+**Four review rounds on PROPERTIES, then one erratum round on REQ. Neither exhausted its budget.**
+
+| Round | Document | Author commit(s) | Reviewers | Outcome |
+|---|---|---|---|---|
+| 1 | PROPERTIES v1.0 | (initial authoring) | pm, se | Needs revision |
+| 2 | PROPERTIES v1.1 | `de788bca` … `05c07075` | pm (approved w/ minor), se (Needs revision) | not converged |
+| 3 | PROPERTIES v1.2 | `d090ef08` … `fab33844` | pm (approved w/ minor), se (**Needs revision, 1 High**) | not converged |
+| 4 | PROPERTIES v1.3 | `f0efc6a4` … `c568c4c3` | pm (**Approved**), se (**Approved**, 0 findings) | **converged**, anchors at `00c9028f` |
+| erratum (REQ) | REQ v2.2 | `202441d0` | se v17 (`54a46433`), te v17 (`33fbc907`) | **halt recorded** |
+
+Round budget: **4 of 5** consumed on PROPERTIES. Erratum budget: **1 of 1** consumed on REQ
+(`MAX_ERRATUM_ROUNDS_PER_DOC = 1` per upstream doc per phase). Elapsed for the erratum round: 09:12 →
+09:17, **five minutes**, one file touched.
+
+The erratum edit itself is scope-exact: `git diff 809dd114..202441d0` over the REQ is three hunks —
+the version row plus erratum note (`:15-22`), AC-3.4 (`:271-274`), AC-6.3 (`:497-499`). Nothing else in
+the 681-line document moved, and no other file moved with it.
+
 ## Reviewers
 
 ## Pattern / Disagreement
