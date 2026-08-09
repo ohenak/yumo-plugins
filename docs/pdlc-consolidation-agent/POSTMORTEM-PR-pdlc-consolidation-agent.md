@@ -219,3 +219,20 @@ the REQ is **3,704 bytes over** `check-req-size.sh`'s 61,440-byte advisory ceili
 spent erratum note would fix.
 
 ## Superseded Record — the 2026-08-06 stop order
+
+This file previously held a **v1.0 record of a different event at the same phase**, kept here so the
+history is not lost to the overwrite.
+
+On **2026-08-06** the operator (Kane Ho) ordered the pipeline stopped **before Phase I**, to ship the
+specification work (REQ v2.1, FSPEC v11.3, TSPEC v2.0, DECISIONS v1.1, PLAN v1.2) and no further. That
+was an operator stop order, not a review failure: zero iterations ran, no reviewer was dispatched, no
+PROPERTIES existed, and `RESOLVED: no` was used as the gate that held Phase PR closed. The
+specification work merged as PR #39.
+
+On **2026-08-09** the stop order was lifted and that record flipped to `RESOLVED: yes`. Phase PR then
+ran for real — PROPERTIES authored and converged in four rounds — and halted on the erratum channel
+described above. The two events share a file name and nothing else: the first was a deliberate gate,
+this one is a defect at a seam.
+
+`RESOLVED: no` at the top of this file now governs **the erratum halt only**. Flipping it re-opens
+Phase PR under §Recommendation step 1.
