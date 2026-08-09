@@ -45,8 +45,58 @@ which is the part of a re-home most likely to rot.
 
 ## 3. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | My v2 Q-01 (PROP-PR-09's second arm) is **answered**, and answered better than the question deserved: §13.1 (`:1832`) now argues that the reconciled REQ wording is the property as written, that the "no proposal file on a fully-`promoted` pass" half is already PROP-RTE-06(a)'s, and that duplicating it here would re-home that invariant. I accept it; nothing owed. |
+| Q-02 | My v2 Q-02 (PROP-PR-10(b)'s "still on remote") — is the answer at `:1213` intended to mean the git double records refs, or that the oracle is the verb pair (`push` issued, `delete-branch` not)? If the latter, the property's own sentence still reads as an observation of remote state, and an implementer will look for a seam that cannot see it. One clause naming the observable would close it; not gating. |
+
 ## 4. Positive Observations
+
+- **The re-home was done as a derivation, not as a search-and-replace.** The thing that usually
+  breaks when five properties change file is the summary tables, and they did not break: §12.2's
+  file row, §12.3's task row and §12.4's family row all moved together and all still match the
+  trailers I re-extracted independently. The v1.1 round proved the derivation worked; this round
+  proved it survives a move, which is the stronger claim.
+- **The revision fixed the *class*, not just the instance, in the direction it could see.** I asked
+  for PROP-PASS-01…05 and PROP-PASS-11; the revision also converted PROP-TRG-03/06's L1 arms to cite
+  the TSPEC §7.2 obligation instead of AT-C5/C6/C7, and then a follow-up commit (`05c07075`) removed
+  the inline AT-C6 claim left in PROP-TRG-06's *body* — a second citation channel that would have
+  quietly re-broken the single-file rule while the trailer looked clean. That the two remaining
+  violations are in a different AT family (F-01) is a reasonable place for the sweep to have stopped.
+- **§5.1's new paragraph pre-empts the question the retirement table invites.** It states that
+  PROP-TRC-01's parser ranges over the `AT-…` token grammar and not over `PROP-…` ids, so the four
+  retired ids need no exclusion rule. That is checkable and I checked it: `PLAN:250` describes T05's
+  parser exactly that way. Answering "why does this dead id not break the traceability property"
+  before a reviewer asks is what makes a spec cheap to review twice.
+- **Erratum 3's second half is the right kind of upstream finding.** It is not a documentation nit:
+  it names a mechanism (Phase I commits pathspec-scoped to the manifest), a consequence (the fixture
+  is authored and dropped) and an observable (two properties red on correct code), and it routes the
+  fix to both halves of PLAN T04 rather than to the one that is easier to write.
 
 ## 5. Recommendation
 
+**Needs revision**
+
+One High (F-01), and it is narrow: two register ids, AT-P6 and AT-P10, are still claimed in a file
+TSPEC §12.3 and PLAN T14 do not give them, while §12.4 now asserts in new text that no such case
+exists. Everything I raised in round 2 is closed, and the §12 tables survived the move intact.
+
+The next revision needs:
+
+1. **F-01** — add a §13.3 erratum routing AT-P6/AT-P10's TSPEC §12.3 assignment and PLAN T14's block
+   upstream (erratum 5 is the template), keep PROP-COR-10/PROP-COR-11 at L2 where their conjuncts
+   are reachable, and qualify §12.4's "each id is claimed in exactly one file" to name the pending
+   erratum. Both errata are emitted in this response, so the routing is already in flight.
+2. **F-02** — delete or correct §4.3's "a directory that does not exist at HEAD"; the directory is
+   tracked at HEAD and only the fixture file and the manifest row are new.
+3. **F-03** — add the erratum for PLAN T20's block text, which declares (i) as its only unregistered
+   obligation while PROPERTIES homes AC-1.4's no-op case (PROP-PASS-11) in the same file. Emitted in
+   this response.
+
+No property needs to move and no id needs to be reassigned inside this document — the three fixes
+are one erratum entry each plus one sentence of prose.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
