@@ -3544,10 +3544,11 @@ function parseVerdict(result, skillName) {
 
   let nextNonEmpty = null;
   for (let j = verdictLineIndex + 1; j < lines.length; j++) {
-    if (lines[j].trim() !== "") {
-      nextNonEmpty = lines[j].trim();
-      break;
-    }
+    const candidate = lines[j].trim();
+    if (candidate === "") continue;
+    if (APPROVAL_ANCHOR_LINE.test(candidate)) continue;
+    nextNonEmpty = candidate;
+    break;
   }
 
   if (nextNonEmpty === null) {
@@ -3802,6 +3803,8 @@ function approvalHashOf(text) {
 }
 
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
+
+const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH|REVIEWED-COMMIT):/;
 
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
 

@@ -4190,13 +4190,42 @@ function parseVerdict(result, skillName) {
     return fallback;
   }
 
-  // Find next non-empty line after the VERDICT line
+  // Find the next non-empty line after the VERDICT line, SKIPPING the tier-1
+  // approval anchors (DEC-BAR-02, 2026-08-09).
+  //
+  // The anchors are the one write this system sanctions to a cross-review file
+  // after its verdict: CLAUDE.md instructs agents to append them "verbatim
+  // without hesitation", and harvest copies them into the Approval Record. So
+  // they are not foreign matter between the verdict and its counts — they are
+  // expected matter, and the parser has to know that.
+  //
+  // Left unskipped they were destructive out of all proportion to the defect.
+  // A reviewer who omits the counts line entirely is already TOLERATED: with
+  // nothing after the verdict, the truncated-output case below returns the
+  // verdict with zero counts, which converges under the High-only bar. Append
+  // the anchors to that same file and `APPROVAL-HASH: sha256:…` lands in the
+  // slot this scan insists is JSON — `JSON.parse` throws, the whole review
+  // reads as malformed, and an approval already granted is re-run as "Needs
+  // revision". Two individually sound mechanisms, mutually destructive.
+  //
+  // Measured across all 102 cross-review files in docs/ (2026-08-09): 29 failed
+  // to parse, ALL 29 on an anchor line sitting where counts should be, and ALL
+  // 29 carrying an APPROVED verdict — 16 rounds of accumulated approval on
+  // pdlc-consolidation-agent alone, invisible. In every one the counts line was
+  // absent rather than pushed below, so this skip is not recovering a displaced
+  // line; it is declining to be broken by a line that belongs there.
+  //
+  // This does NOT relax the bar. The verdict VALUE still governs and a real
+  // counts line, wherever the anchors sit relative to it, is still read and
+  // still validated: "Needs revision" stays Needs revision, and a High count
+  // still blocks.
   let nextNonEmpty = null;
   for (let j = verdictLineIndex + 1; j < lines.length; j++) {
-    if (lines[j].trim() !== "") {
-      nextNonEmpty = lines[j].trim();
-      break;
-    }
+    const candidate = lines[j].trim();
+    if (candidate === "") continue;
+    if (APPROVAL_ANCHOR_LINE.test(candidate)) continue;
+    nextNonEmpty = candidate;
+    break;
   }
 
   // Truncated-output special case (TSPEC-PARSE-03)
@@ -4564,6 +4593,17 @@ function approvalHashOf(text) {
  * silently teaching the operator the old five-token set.
  */
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
+
+/**
+ * A tier-1 approval anchor LINE, by key alone (DEC-BAR-02).
+ *
+ * Deliberately keyed on the field name and not on the value grammar: this is
+ * used by `parseVerdict` to recognise "a line the append step is allowed to put
+ * here", and a MALFORMED anchor is still an anchor — it is emphatically not a
+ * counts line, and must not be fed to `JSON.parse` as if it were. Anchor
+ * well-formedness is `readApprovalRecord`'s job (§4.4), and it keeps it.
+ */
+const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH|REVIEWED-COMMIT):/;
 
 /** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
