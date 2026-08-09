@@ -1227,7 +1227,9 @@ unnumbered §12.2 row).*
 
 Subject: `main()` driven end to end with every seam doubled (§2), never the internals. Owner: PLAN
 **T31** (batch 7), across `consolidationPass.test.js`, `consolidationRoute.test.js`,
-`consolidationLifecycle.test.js` and `consolidationCredential.test.js`. These are the L2 properties
+`consolidationLifecycle.test.js`, `consolidationCredential.test.js` and — for §9.2's two ladder
+properties, whose red owner is **T06** and whose call-site arm is un-skipped by **T11** — 
+`consolidationRung.test.js`. These are the L2 properties
 no unit-level oracle can reach: the trigger's effect on the whole pass, the model ladder's report
 obligations, what a late failure leaves behind, and the two disciplines (release, `await`) that only
 a whole-pass run exercises.
@@ -1253,14 +1255,14 @@ not elapsed ⇒ the invocation **returns a report body carrying terminal status 
 (§10.1 row 3) — and no log row appended, no LEARNINGS body read, no `passId` minted, no git call made
 (AT-C3). The returned body is the **positive conjunct** and is required: the four absences alone are
 satisfied by a pass that crashed at step 3 or never ran. *L2 · `consolidationLifecycle.test.js` ·
-T23 → T31 · AC-1.1, AC-1.2, AC-1.3 · AT-C2, AT-C3, AT-C4.*
+T23 → T31 · AC-1.1, AC-1.2, AC-7.2 · AT-C2, AT-C3, AT-C4.*
 
 **PROP-PASS-03** — *The cadence datum is the latest row of a datum **status**, not the latest row.* A
 log whose rows in file order are a `promoted` row dated D1 then a **later** `refused` row dated D2 (D2
 > D1, the `refused` row last in the file): the datum is **D1**. `refused` is not one of §2.3's four
 datum statuses, and the ordering is what falsifies an implementation taking the last row
 unconditionally — a fixture whose last row is already a datum row cannot see the defect. *L2 ·
-`consolidationLifecycle.test.js` · T23 → T31 · AC-1.2 · AT-C5.*
+`consolidationLifecycle.test.js` · T23 → T31 · AC-1.1 · AT-C5.*
 
 **PROP-PASS-04** — *`passId` counts within a date and restarts across dates.* A log already carrying
 `{today}-1` ⇒ the next id is `{today}-2` (AT-C6). A log whose newest rows all carry a **previous**
@@ -1281,6 +1283,26 @@ visible. The trigger recorded on each arm is the closed-set value NFR-3a require
 this is the sole home of the invariant, PROP-TRG-05 having been retired into it (§5.1). *L2 ·
 `consolidationLifecycle.test.js` · T23 → T31 · NFR-3, NFR-3a · AT-C8.*
 
+**PROP-PASS-11** — *A `no-op` pass still reports, still restates, and still releases — on both of its
+causes.* AC-1.4's obligations are **positive** and none of them is discharged by the absences other
+properties assert (no PR: PROP-RPT-01; no proposal file: PROP-RTE-06(b); terminal status:
+PROP-CRED-04). Two Givens, because AC-1.4 has two causes that differ exactly where AC-5.3 and AC-5.5
+count: **(i)** the un-consolidated set is **empty**, and **(ii)** every promotion the pass would have
+made was **duplicate-suppressed** (NFR-4), so the consumed set is non-empty. On **both**: terminal
+status is verbatim **`no-op`** in the pass's single appended log row; the **AC-5.2 effectiveness
+table is present** in the report, restating each prior promotion's **standing** verdict and state —
+including an `unmeasurable` already reached, which is the conjunct that fails an implementation
+emitting the table only when it has a fresh verdict to put in it; and the AC-1.3 marker is
+**released** (PROP-PASS-09's set-equality ranges over `no-op`, and this property pins the two causes
+that reach it). The two Givens are asserted apart, not pooled, because **which streaks a pass
+advances is decided by consumed-set emptiness, never by the `no-op` label**: on (i) no AC-5.2 verdict
+is produced and neither the `ineffective` nor the `unmeasurable` streak advances, while on (ii) the
+pass **is** an evaluated pass and the `unmeasurable` streak **does** advance (AC-5.5). Pooling them
+into one `no-op` fixture is precisely the defect REQ warns against, and an implementation keying
+either streak on the label rather than on the consumed set passes a single-fixture version of this
+property. *L2 · `consolidationLifecycle.test.js` · T23 → T31 · AC-1.4, AC-5.3, AC-5.5 · (no FSPEC
+AT), REQ AC-1.4 third and fourth sentences.*
+
 ### 9.2 The model ladder
 
 **PROP-PASS-06** — *A fallback is never silent, and the primary is never over-reported.* A primary
@@ -1292,7 +1314,7 @@ downgrade passes any two taken alone, which is why this is the only property tha
 recording the primary rung while running on the fallback (AT-M7). Paired negative: a primary that
 resolves (§2.6 row 1) ⇒ `rung:` names the **primary** and the body carries **no**
 `ADVISORY_MODEL_FALLBACK:` line — without it, a pass that always reports the fallback satisfies the
-positive (AT-M8). *L2 · `consolidationPass.test.js` · T28 → T31 · AC-1.5, AC-1.6, §2.6 · AT-M7,
+positive (AT-M8). *L2 · `consolidationRung.test.js` · T06 → T31 · AC-1.5, AC-1.6, §2.6 · AT-M7,
 AT-M8.*
 
 **PROP-PASS-07** — *Widening the resolver's signature changes nothing at the shipped call site.*
@@ -1301,8 +1323,8 @@ site unchanged — dispatches `ADVISORY_RUNG_SKILL` (`"se-review"`,
 `pdlc/workflows/orchestrate-dev.js:1797`) on **both** ladder rungs **and** on the memoised path, and
 every observable of the existing call site is unchanged. This is the regression property for the one
 edit this feature makes to already-shipped behaviour; the pass's own call, which passes a `skill`, is
-covered by PROP-MRK-03 and PROP-PASS-06. *L2 · `consolidationPass.test.js` · T28 → T31 · §15.3 ·
-AT-M10.*
+covered by PROP-MRK-03 and PROP-PASS-06. *L2 · `consolidationRung.test.js` · T06 → T11/T31 · AC-1.5,
+TSPEC §15.3 · AT-M10.*
 
 ### 9.3 A late failure
 
@@ -1315,7 +1337,7 @@ for the unrouted one; the §5.4 commit runs and the already-made append is **dur
 marker is released; and the report body carries the error message **verbatim** **and** the
 routed/unrouted split. Distinct from PROP-MRK-03(ii), whose Given fails the **first** dispatch and so
 has no table and no records to leave behind — the two are the positive and negative halves of §10.2
-order 3 and neither may be dropped. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-5.4, §12.1
+order 3 and neither may be dropped. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-7.1, AC-7.2, §12.1
 S-11c · AT-M9.*
 
 ### 9.4 Two whole-pass disciplines
@@ -1328,7 +1350,7 @@ defect (PROP-MRK-01) — and minus `skipped-cadence`, where no marker was taken 
 Set-equality rather than a per-status assertion list, because a status added to the vocabulary and
 forgotten by the release path is invisible to a list; PROP-RPT-04's fourth leg pins the vocabulary
 this equality ranges over, so the two cannot drift apart silently. *L2 · `consolidationPass.test.js` ·
-T28 → T31 · AC-1.4, §12.1.*
+T28 → T31 · AC-1.3, §12.1.*
 
 **PROP-PASS-10** — *The `await` discipline is asserted by mutation, not by inspection.* The doubles'
 `asAsync` resolves recordings on a **macrotask** (PROP-DBL-02), so a missing `await` on an
@@ -1338,7 +1360,7 @@ check, discharged once at implementation time and recorded in the test's comment
 property is a claim about the doubles rather than about the pass — and a source-text scan for `await`
 (the `AWAIT_SCAN_SOURCES` idiom at `pdlc/workflows/__tests__/runtimeBundle.test.js:1040`) is
 supplementary only, since it cannot see an `await` that is present but on the wrong expression. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · NFR-1, TSPEC §7.3.*
+`consolidationPass.test.js` · T28 → T31 · NFR-5, AC-7.2, TSPEC §7.3.*
 
 ## 10. Properties — build, source text, and traceability
 
