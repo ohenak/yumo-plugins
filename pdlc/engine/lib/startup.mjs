@@ -14,6 +14,7 @@
 
 import { resolvePluginRoot, loadSkill, PLUGIN_ROOT_ENV } from "./skills.mjs";
 import { readPluginVersion, checkCompat, buildBanner } from "./handshake.mjs";
+import { DEFAULT_PERMISSION_MODE } from "./transport.mjs";
 
 /** The 17 prompt files a full pipeline can dispatch (15 skills + 2 supplements). */
 export const EXPECTED_SKILLS = Object.freeze([
@@ -46,6 +47,8 @@ export const EXPECTED_SKILLS = Object.freeze([
  * @param {string} opts.engineVersion package.json → version.
  * @param {string} opts.engineCompat package.json → pdlcPluginCompat.
  * @param {string[]} [opts.apiKeyPolicy] Banner's auth policy row. Default ["none"].
+ * @param {string} [opts.permissionMode] Banner's tool-permission row. Default: the
+ *   transport's `DEFAULT_PERMISSION_MODE`.
  * @param {Function} [opts.resolveFn] Injected `resolvePluginRoot` (tests).
  * @param {Function} [opts.readVersionFn] Injected `readPluginVersion` (tests).
  * @param {Function} [opts.loadSkillFn] Injected `loadSkill` (tests).
@@ -60,6 +63,7 @@ export function runStartupChecks({
   engineVersion,
   engineCompat,
   apiKeyPolicy = ["none"],
+  permissionMode = DEFAULT_PERMISSION_MODE,
   resolveFn = resolvePluginRoot,
   readVersionFn = readPluginVersion,
   loadSkillFn = loadSkill,
@@ -117,6 +121,7 @@ export function runStartupChecks({
     pluginRoot: resolution.root,
     pluginCompat: engineCompat,
     apiKeyPolicy,
+    permissionMode,
     baseUrl: env && env.ANTHROPIC_BASE_URL,
   });
 
