@@ -40,7 +40,34 @@ measured at HEAD before I accepted it. None was taken from the document's own pr
 
 ## 3. Findings
 
+None. No High, Medium or Low finding is open against this document.
+
+The two defects that remain true of the tree are **upstream**, in TSPEC §12.3 / PLAN T14 and in
+PLAN T20's block text, and this document handles them correctly for its own layer: it declines to
+absorb them, routes each as a §13.3 erratum with both halves named, and marks the affected cells as
+pending rather than asserting an invariant it cannot honour. That is the behaviour the erratum
+mechanism exists for, so it is not a finding against PROPERTIES. Both are re-emitted as ERRATUM
+lines in my response so the orchestrator routes them to the owning authors.
+
+I also checked the revision against the three oracle-quality bars, since the new text touches
+oracle-bearing tables:
+
+- **No implementation echoes.** The new prose adds no expected value derived from code. §12.4's
+  AT-P cell and errata 6/7 quote FSPEC *Then* text and TSPEC declarations as literals with
+  file:line, which is transcription from spec, not derivation from the subject.
+- **No absence-only oracles.** Erratum 7's disclosure does not weaken PROP-PASS-11: the property
+  still pairs its negative arm (no PR, no proposal file) with the positive one (terminal `no-op`,
+  consumed pair written, the `unmeasurable` streak advancing) on the same path (`:1360-1367`).
+- **Completeness by set-equality.** §12.3's new union rule is itself stated as a set-equality claim
+  ("a §12.3 green absent from the matching §12.2 row must be traceable to a named spanning
+  property"), and it survives the mechanical difference of the two tables — exactly two exceptions,
+  both named. A third undeclared exception would have falsified the sentence; there is none.
+
 ## 4. Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | My v3 Q-02 stands unanswered and stays non-gating: PROP-PR-10(b)'s "still on remote" (`:1213`) is in an unchanged section, so the delta protocol keeps me out of it. If it is ever revisited, one clause naming the observable — the `_git` double's recorded verb pair, `push` issued and `delete-branch` not — would spare the implementer looking for a seam that cannot see remote state. Not owed in this round. |
 
 ## 5. Positive Observations
 
