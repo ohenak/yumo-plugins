@@ -1254,6 +1254,128 @@ supplementary only, since it cannot see an `await` that is present but on the wr
 
 ## 10. Properties — build, source text, and traceability
 
+Subjects: the pre-flight gate, the shipped source text this feature edits, the third bundle, and the
+two-direction traceability equality. Files: `consolidationPreflight.test.js` (T00),
+`consolidationBuild.test.js` (red T03, greens T10, T12, T07, T08, T32, T33),
+`runtimeBundle.test.js` (T13, **exists at HEAD**), `consolidationTraceability.test.js` (T05, green on
+write). All L3 — they read tracked source text and build outputs, never behaviour.
+
+### 10.1 The pre-flight gate
+
+**PROP-PRE-01** — *Every §3 prerequisite is asserted to exist at HEAD, by the strongest means each
+admits, and existence only.* Exported symbols by **import**; `gitWithLockRetry`, the seven
+`runtime-adapter.js` functions, the five `build-runtime.mjs` declarations and the two scan sets by
+**source-text presence**; the vocabularies `Version` cell by **read**. Never the shape a later task
+creates — a pre-flight that asserted post-condition shape would be red on every wave before the one
+that satisfies it, which is the opposite of a gate. `gitWithLockRetry`'s missing `export` is recorded
+as **scheduled-blocking** (owned by T11), not as promoted work: the gate reports the gap it cannot
+close rather than failing on it. *L3 · `consolidationPreflight.test.js` · T00 · PLAN §3 BL-PREREQ.*
+
+**PROP-PRE-02** — *The config branch carries a positive assertion in both arms.* The gate branches on
+`.claude/pdlc.config.json` presence, and **each** arm asserts something true of that arm — the file's
+parse in the present arm, the documented defaulting in the absent arm. A branch with an assertion in
+one arm only is a conditional skip wearing a test's clothes, and the untested arm is the one every
+fresh clone takes. *L3 · `consolidationPreflight.test.js` · T00 · PLAN §3.*
+
+### 10.2 Source text this feature edits
+
+**PROP-SRC-01** — *The ignore rule is present verbatim, adjacent, and in the anchored form.* The
+tracked `.gitignore` carries the comment line `# pdlc consolidation in-progress marker — working tree
+only (AC-1.3)` and, **adjacent** to it, the single pattern `docs/_decisions/.consolidation-lock` —
+both **verbatim**, in the shape `runtimeBundle.test.js` already uses for source-text reads. The
+pattern **contains a separator** and is written without a leading slash and without `**/`: per
+gitignore(5) such a pattern is already anchored to its own `.gitignore`'s directory, while a
+slash-free or `**/`-prefixed form would match at every depth. Adjacency is asserted because a comment
+that has drifted away from its rule explains nothing. Paired with PROP-MRK-04's behavioural
+assertion, which is the half that cannot be satisfied by a pass making no commit. *L3 ·
+`consolidationBuild.test.js` · T03 → T10 · AC-1.3 · TSPEC §3.3.*
+
+**PROP-SRC-02** — *The adapter's one widened clause is present, and its old wording occurs exactly
+once.* The widened absolute-path clause appears **verbatim** inside `rtWriteFile`
+(`pdlc/workflows/runtime-adapter.js:802-811`), **and** the string `relative to the repository root`
+occurs in `runtime-adapter.js` **exactly once** — the occurrence at `:805`. Exactly-once is the
+conjunct that makes the edit auditable: a containment check is green after a second copy of the old
+wording is pasted in elsewhere. **No assertion is made over `rtReadFile`**, which carries no such
+clause and gains none — it reaches disk through `rtReadProbe` (`:369`) under a *cwd* instruction
+(`:374`) that resolves an absolute path verbatim, so an assertion there could only pin text that does
+not exist. *L3 · `consolidationBuild.test.js` · T03 → T12 · TSPEC §11.3(e), §5.6(a).*
+
+**PROP-SRC-03** — *The injection protocol is set-equal to §5.1's seam names, never merely contained.*
+The key set of `rtConsInjections()` is **set-equal** to §5.1's seam names **minus `_now`**. Equality
+and not containment: containment is the assertion that still passes with `_checkFile` missing — the
+exact failure `adapterProbe.test.js:253-258` shapes but does not reach — and a missing seam is
+invisible to a subset check (O-2). *L3 · `consolidationBuild.test.js` · T03 → T12 · TSPEC §12.2.*
+
+**PROP-SRC-04** — *The two SKILL.md prompts carry their four obligations verbatim, in two blocks, one
+per owner.* In `consolidate-learnings/SKILL.md`: the block/legacy predicate sentence and the `{topic}
+= failure-mode-id` route. In `harvest-learnings/SKILL.md`: the `Phases exercised` row and the
+verbatim-copy `failure-mode-id` line. Each asserted **verbatim**, in the shape the other source-text
+blocks use. Written as **two** blocks with two conjuncts each rather than one block carrying all
+four, because a single block holds two green owners hostage to each other and neither can un-skip it
+alone. These prompts are the **producing** side of PROP-EFF-03's receive-side property: source text is
+the only observable an LLM-authored artifact offers, which is why the coverage here is textual by
+construction and the residue is carried as O-C6 (§13.2). *L3 · `consolidationBuild.test.js` · T03 →
+T07, T08 · AC-5.2, AC-6.1 · TSPEC §12.2.*
+
+### 10.3 The build
+
+**PROP-BLD-01** — *The third bundle is buildable, stamped, import-free, and shaped like the other
+two.* After the build: `build-runtime.mjs --check` is **clean**, `consolidate-learnings.bundle.js`
+carries its **manifest row stamped**, the emitted bundle contains **no `import(`**, and `meta` is the
+**first statement and a pure literal**. The bundle cannot `import`, which is why the four
+`const X = __dev.X;` prelude lines that re-bind `resolveAdvisoryRung`, `MERGE_GUARD_DEFAULTS`,
+`mergeCommandFor` and `gitWithLockRetry` are the only available mechanism — the shape `queueModule`'s
+prelude already uses (`build-runtime.mjs:113-123`). All five `dist/` files are re-stamped in the same
+wave, because the widened resolver's bytes live in every tracked artifact and a partial rebuild fails
+CI's sync job. *L3 · `consolidationBuild.test.js` · T03 → T32 · TSPEC T-02 · PLAN §5's
+`postWavePathspecs`.*
+
+**PROP-BLD-02** — *`CLAUDE.md`'s tracked-outputs list is set-equal to the manifest, in both
+directions.* The set of artifacts `CLAUDE.md`'s runtime-build section names is **set-equal** to the
+set of tracked files under `pdlc/workflows/dist/`, and the manifest's row count agrees with it. This
+case is **red at today's HEAD by design**: `CLAUDE.md` names three outputs and closes "**Those
+three** are the tracked, shipped outputs", a sentence already false because
+`pdlc/workflows/dist/pdlc-cli.mjs` is tracked (`git ls-files pdlc/workflows/dist/`) and carries a
+manifest row. After T33 the equality reads **five** tracked files and **four** manifest rows — §1's
+vocabulary — and greens. Set-equality in both directions is what makes the pre-existing error visible
+at all: a containment check in either direction alone is green on the false sentence. *L3 ·
+`consolidationBuild.test.js` · T03 → T33 · TSPEC §12.2, §9.1 erratum 3.*
+
+**PROP-BLD-03** — *Both static-scan axes widen together, in one commit.* `AWAIT_SCAN_SOURCES`
+(`pdlc/workflows/__tests__/runtimeBundle.test.js:1040`) gains `"consolidate-learnings.js"` **and**
+`AT19_SEAM_NAMES` (`:215`) gains `_envPresent` and `_makeTempDir`, in the **same** commit. Widening
+only the source set leaves the scan green on exactly the seams this feature invents, and
+`RLH-SCAN-01` (`:626`) would report green over them — a scan that has been taught to look at a file
+but not at its seams is worse than no scan, because it reports coverage it does not have. `_now` is
+deliberately **not** added: it is sync by contract and awaiting a number is noise. The widened scan
+passes immediately (T02's skeleton makes no seam call) and is the standing guard for every module
+task from batch 4 on, which is why it lands before the first behaviour. *L3 · `runtimeBundle.test.js`
+(**exists at HEAD**) · T13 · TSPEC §13.3(ii), §11.3(c).*
+
+### 10.4 Traceability
+
+**PROP-TRC-01** — *The FSPEC register and TSPEC §12.3 are set-equal in both directions, and the count
+is read rather than transcribed.* Parse the FSPEC's AT register and TSPEC §12.3's table and assert
+**set equality both ways**: every register id has **exactly one** file, and no file claims an id the
+register does not carry. Ids are extracted by matching the `AT-…` token grammar over the **whole
+cell** and **de-duplicated**, so `(no FSPEC AT)` prose contributes nothing unless it names an id, and
+the report row's deliberate citation of AT-L5 is idempotent. The parser takes an **injected `root`**
+(DC-04) and consults no ambient state. **The count is read, never hard-coded** — a transcribed count
+is a second source of truth that goes stale on the next erratum round. Two conjuncts sit beside the
+equality to make a failure legible rather than merely red:
+
+1. a **version pin** — FSPEC's `Version` cell reads `11.5` and TSPEC's reads `2.0`, in the shape
+   PROP-RPT-04's fourth leg pins the vocabularies cell at `1.4` — so a later erratum round fails as
+   *"the register moved"* rather than as *"the code is wrong"*; and
+2. a **non-vacuity floor** — the parsed register is non-empty and its size is reported in the failure
+   message, so **two empty parses cannot agree perfectly** (O-2's degenerate case).
+
+Measurement of record, 2026-08-06: enumerating `AT-…` tokens over FSPEC §13's register range
+(`:2089-2239`), de-duplicated, gives **99** ids at FSPEC v11.5. The task's stated precondition — §9.1
+erratum 4, which assigns `AT-M11`, `AT-Q13` and `AT-R7` — has **landed** at TSPEC v2.0, so this
+property is **green on write** and carries no `describe.skip`. *L3 ·
+`consolidationTraceability.test.js` · T05 · NFR-5 · PLAN §4 T05.*
+
 ## 11. Generator-driven properties
 
 ## 12. Coverage matrix
