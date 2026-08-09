@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pluginVersion": "0.22.1",
+  "pluginVersion": "0.22.2",
   "rows": [
     {
       "id": "orchestrate-dev",
       "pluginPath": "workflows/dist/orchestrate-dev.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-dev.bundle.js",
-      "artifactVersion": "0.22.1",
-      "pluginSha1": "8a75fa72b633db3f130305db5e7ea7969fc97eec",
+      "artifactVersion": "0.22.2",
+      "pluginSha1": "374534769180f50cf0c390dc6d9357bf15490e3a",
       "retires": [
         ".claude/workflows/orchestrate-dev.js"
       ]
@@ -16,8 +16,8 @@
       "id": "orchestrate-queue",
       "pluginPath": "workflows/dist/orchestrate-queue.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-queue.bundle.js",
-      "artifactVersion": "0.22.1",
-      "pluginSha1": "d495680c4efb71c441bf982b5c4e1e1ae2f26526",
+      "artifactVersion": "0.22.2",
+      "pluginSha1": "6f00e7252c09f7ac0593fe978af8e9410eb748e2",
       "retires": [
         ".claude/workflows/orchestrate-queue.js"
       ]
@@ -26,8 +26,8 @@
       "id": "pdlc-cli",
       "pluginPath": "workflows/dist/pdlc-cli.mjs",
       "consumerPath": ".claude/workflows/pdlc-cli.mjs",
-      "artifactVersion": "0.22.1",
-      "pluginSha1": "270e29060a51f12415b82b9fe616d5e4081e3aec",
+      "artifactVersion": "0.22.2",
+      "pluginSha1": "d8b9175b852486c13affe81bc30f6e266700db9a",
       "retires": []
     }
   ],
