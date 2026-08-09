@@ -78,8 +78,9 @@ wave, and cites the REQ criterion and FSPEC acceptance id it discharges. A prope
 falsifier is not a property; §3 states the six oracle rules every row below satisfies, and each row
 that could be read as absence-only names its positive conjunct in the row itself.
 
-**Counts, measured not assumed.** This document states **113** properties across the five levels —
-measured 2026-08-09 by enumerating the `PROP-{DOMAIN}-{NUMBER}` ids §§2, 4–11 mint;
+**Counts, measured not assumed.** This document states **114** properties across the five levels —
+re-measured 2026-08-09 after the §5.1 retirements and the §7.3/§8.1/§9.1 additions, by enumerating
+the `PROP-{DOMAIN}-{NUMBER}` ids §§2, 4–11 mint;
 §12's four matrices re-derive the mapping from REQ, FSPEC, PLAN and the test-file index, and every
 count in §12 is the length of the list beside it rather than a transcribed total.
 
@@ -1721,6 +1722,7 @@ this document as promising.
 | **A real advisory corpus** | `docs/_queue/ESCALATIONS.md` is absent at HEAD and BL-01a is *not expected to be met* (REQ-CONS-06 preamble) | PROP-ADV-01 makes the absent and empty states first-class and asserts distinct reason codes for each; PROP-ADV-02/05 run on constructed corpora, never on the repository |
 | **Cross-repository operation (the two-repo configuration)** | BL-03's fine-grained token is operator-provisioned and not available to CI | PROP-CRED-01 covers the credential ladder's three values through the seam; the shipping configuration is same-repo (AC-3.8/AC-4.4) and is the one exercised end to end |
 | **`Route`'s missing proposal-file member (ER-6)** | The vocabulary is upstream and the interim is deliberate | PROP-RPT-08 asserts both the loss and the report-body discriminator that stands in for it, in both directions |
+| **AC-3.4's second carrier on a fully-`promoted` pass** | The obligation is vacuous by construction: a pass where every promotion landed writes no `CONSOLIDATION-PROPOSAL-{passId}.md` at all (§5.3, PROP-RTE-06(a)), so there is no file for the URL to reach. Asserting one into existence would contradict PROP-RTE-06 | PROP-PR-09 asserts the two-carrier string equality on the `promoted-degraded` Given, where both carriers exist; §13.3 erratum 4 routes the REQ/FSPEC tension upstream rather than resolving it here |
 
 ### 13.2 Negative space — what these properties deliberately do not assert
 
@@ -1767,3 +1769,24 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    sentence is still the defect, and it is the one document an operator reads first. PROP-ADV-05 pins
    the settled form and asserts the invariance under the consumed set explicitly, so this document is
    safe either way — but the REQ should say what the system does.
+3. **PLAN T04's no-regression baseline is self-invalidating.** The differential asserts the widened
+   predicate against `HEAD:pdlc/hooks/scripts/nudge-consolidation.sh` — but T09 edits that very file,
+   so from the moment T09 lands the "baseline" is the widened script and the differential compares a
+   thing to itself, green on every implementation including a broken one. The baseline must be a
+   checked-in pre-widening copy — `pdlc/workflows/__tests__/fixtures/nudge-consolidation.pre-widening.sh`
+   — pinned by a fixture-validity assertion. PROP-COR-12 is written against the fixture form and
+   PROP-COR-13 pins the fixture's own validity, so this document is safe; PLAN T04's task text is
+   still the defect.
+4. **REQ AC-3.4's second carrier has no reachable Given on the happy path.** AC-3.4 requires the PR
+   URL in both `.consolidation-log.md` and `CONSOLIDATION-PROPOSAL-{passId}.md`, while FSPEC §5.3 —
+   which PROP-RTE-06 pins — writes the proposal file **only** when a §5.3 cause exists. A pass where
+   every promotion landed on the PR therefore satisfies AC-3.4's second conjunct vacuously. The two
+   are reconcilable (read AC-3.4 as "in each carrier that exists"), but the reconciliation belongs in
+   REQ, not in a test that quietly picks one reading. PROP-PR-09 asserts the conjunct on the
+   `promoted-degraded` Given where both carriers exist, and §13.1 records the vacuous half as a gap.
+5. **PLAN T21's `T31 — routes end to end` block omits AT-R6 and AT-R6b.** It enumerates AT-R1 … AT-R5
+   and AT-R7, leaving the decision-path and merge obligations to T15's unit-level `T26` block alone —
+   but AC-2.2's "appends rather than replaces" and §8.2's precedence ranking are only observable
+   through a whole pass's writes, which is what PROP-RTE-03 and PROP-RTE-04 assert. Their trailers
+   name `T15/T21 → T26/T31` on that reading; PLAN should carry the same split so the RED task that
+   creates the workflow-level arms is named.
