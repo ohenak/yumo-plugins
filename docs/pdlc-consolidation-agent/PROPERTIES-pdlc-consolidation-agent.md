@@ -184,6 +184,92 @@ PLAN §4.1 T04.*
 
 ## 3. Oracles — the falsifiability rules every property below obeys
 
+Six rules. Every property in §§4–11 satisfies all six that apply to it, and a row that could be
+misread as violating one names its compliance in the row.
+
+### O-1 — No absence-only oracle; every negative carries a positive conjunct on the same path
+
+An assertion of the form "no merge call was made", "no proposal file exists", "the credential does
+not appear" is satisfied vacuously by a pass that did nothing. Every such property here pairs the
+absence with a positive observed on the **same** run:
+
+- AT-Q7's "no merge verb" is a **containment** assertion (`observed ⊆ permitted`) paired with an
+  **obligation** assertion (`obliged ⊆ observed`) — §7, PROP-RTE-04.
+- AT-M5's "the lock path is in no pathspec" is stated as **set-equality of the observed pathspec set
+  to the §5.4 write set**, not as an absence — §7, PROP-RTE-10.
+- AT-R7's "no proposal file" negatives (a `promoted` pass, an all-suppressed `no-op` pass) sit in one
+  case beside a **positive control** whose one degraded promotion writes exactly one file — §7,
+  PROP-RTE-06.
+- AT-C3's four `skipped-cadence` absences sit beside the **returned report body carrying the terminal
+  status**, which is what distinguishes a tick that evaluated and chose the branch from one that
+  crashed at step 3 — §9, PROP-PASS-03.
+- AT-K5's non-disclosure is asserted over the **accumulated output of every write double in the
+  case**, on a pass that demonstrably produced output, beside the positive that the row carries
+  exactly one `credential:` value from the closed set — §7, PROP-CRD-06.
+
+### O-2 — Set-equality, never containment, wherever a dropped member would be invisible
+
+Containment is the assertion that still passes with a member missing. Every enumeration this feature
+owns is compared by **equality in both directions**, with the domain named rather than left to "the
+table": the eight record field names (AT-F20), the open-promotion list `{B, C, D}` and `{E, F}`
+(AT-F19, AT-F21), the effectiveness table's one-row-per-distinct-id rule (AT-F5), the
+`PDLC-CONSOLIDATION-PROMOTIONS` trailer against the proposals a PR enacts (AT-Q2), `rtConsInjections()`
+against §5.1's seam names minus `_now` (§10, PROP-BLD-03), `routeOf`'s predicate against the imported
+`MERGE_GUARD_DEFAULTS` (AT-R1), the vocabularies §1 enumerated-class values (AT-L5), the FSPEC
+register against TSPEC §12.3's table (§10, PROP-BLD-07), and `CLAUDE.md`'s artifact list against the
+manifest's `rows[]` (§10, PROP-BLD-08). Where equality would be red on correct code — the seam
+verb sets, which the read verbs legitimately widen — the bound is **two-sided containment**
+(obliged-below, permitted-above) and the row says so (AT-Q7c, §7 PROP-RTE-05).
+
+### O-3 — Determinism is never asserted by invariance alone
+
+Order-invariance, idempotence and "two runs agree" are all satisfied by a function returning a
+constant, `[]` or `null`. Each such property here pairs the invariance with a **positive conjunct on
+the same path**: `mergeProposals`'s fold is invariant under permutation **and**, for at least one
+ordering, its `kind` / `artifact` / `target` / `elidedKinds` / `elidedArtifacts` equal values
+transcribed literally from TSPEC §7.4's fold table (§11, PROP-GEN-05); `effectivenessTable` is
+order-invariant **and** its row count equals the number of distinct ids **and** each row's verdict
+equals the arm §7.5 assigns (§11, PROP-GEN-06); AT-F17's "run twice, choice identical" is paired with
+the predicate being the file-existence test rather than a free-text match (§6, PROP-EFF-08).
+
+### O-4 — A routing branch gets a workflow-level property, not only a guard unit test
+
+`routeOf` is a pure predicate over a path, and a unit test over it proves only that the predicate is
+right — not that the pass consults it. Every routing branch this feature introduces therefore carries
+at least one **L2 property through `main()`** asserting the terminal observable: the PR route
+(PROP-RTE-01 pairs the L1 predicate with AT-Q1's clone observation), the consuming-repo route
+(PROP-RTE-07, AT-R2/AT-R6), the degraded route (PROP-RTE-06, AT-R7's positive control), and the
+suppression route (PROP-RTE-11, AT-Q10's three required conjuncts). The same rule puts the
+unreadable-corpus-entry obligation at L2 in `consolidationPass.test.js` rather than at L1 over
+`classifyCorpus` (§4, PROP-COR-09).
+
+### O-5 — Precedence-defeating fixtures, and paired negatives
+
+An oracle for a new branch is worthless if an earlier branch preempts it. Three pairings carry this
+weight and none may be written alone:
+
+| Positive | Its paired negative | What the pairing defeats |
+|---|---|---|
+| AT-M3 — empty marker and neither-verb marker both **reclaim** and record `reclaimed-stale-lock` with id `unknown` | AT-M11 — a `RELEASED:` marker at **two ages** is taken with **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress` | an implementation recording `reclaimed-stale-lock` on every take passes AT-M1 … AT-M6b alone |
+| AT-M7 — the fallback rung is reported and `ADVISORY_MODEL_FALLBACK:` appears verbatim | AT-M8 — the primary rung resolves and **no** such line appears | a pass that always reports the fallback |
+| AT-M9 — the effectiveness table **is** appended when step 11 completed | AT-M6 / AT-M6b — **no** table when step 8 or step 6 terminated the pass | a pass emitting a table unconditionally passes both halves taken singly |
+
+The unreadable-corpus fixture obeys the same rule from the other direction: it carries **both** an
+unreadable and a **readable control** member, so the three observables (counted, in the consumed
+pair, named in the report body) cannot pass on a fixture where nothing was readable (§4,
+PROP-COR-09).
+
+### O-6 — A short or missing field is exercised through a reader that must not repair it
+
+FSPEC §14.5's LD-1, LD-4 and LD-5 are all about `parseLogRecords` being **total over any subset**
+while its readers stay honest. Every property in that family asserts **four** things on one path:
+(1) the pass reaches a terminal status and does **not** halt; (2) a parse notice names the short
+record and the missing field, in the report body; (3) the positive downstream state each short field
+actually blocks — an id left **open** in §8.4 step 1's list, a remediation **not** routed, a pair read
+`absent` rather than `enacted`; and (4) the **log is unchanged** — no guessed default written back,
+no in-place repair. Conjunct (4) is not decorative: `route ?? "constraints"` is caught by (3),
+`route ?? "degraded"` is caught by **(2) alone**, and a silent rewrite is caught only by (4).
+
 ## 4. Properties — corpus, predicate, configuration
 
 ## 5. Properties — trigger, identity, merge, and the record reader
