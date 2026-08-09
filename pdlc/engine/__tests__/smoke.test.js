@@ -355,21 +355,16 @@ test("pdlc queue is blocked by the drift gate in a repo with no .claude/workflow
 });
 
 test("pdlc queue runs its own Phase-0 triage once the drift gate is opted out", async (t) => {
-  // The opt-out the gate honours lives INSIDE the drift-state record
-  // (`.claude/workflows/.pdlc-drift-state.json` → `checkEnabled: false`), which
-  // is the one file an engine-only consumer would otherwise never have.
+  // The opt-out the gate honours here lives in `.claude/pdlc.config.json`'s
+  // `distribution.checkEnabled: false` (CLAUDE.md's documented consumer opt-out) — the
+  // config-side gate added to reach exactly this arrangement: an engine-only consumer with
+  // no `.claude/workflows/` tree at all, and therefore no drift-state record ever written,
+  // could not previously reach ANY opt-out (the record-based one requires the record to
+  // exist). The config read is checked before the drift-state record is even attempted.
   const root = makeConsumerRepo({
     files: {
-      ".claude/workflows/.pdlc-drift-state.json": JSON.stringify({
-        schemaVersion: 1,
-        generatedBy: "sync",
-        pluginVersion: null,
-        checkEnabled: false,
-        baselineStatus: "resolved",
-        baselineReason: null,
-        rows: [],
-        retiredPresent: [],
-        writeFailures: [],
+      ".claude/pdlc.config.json": JSON.stringify({
+        distribution: { checkEnabled: false },
       }),
       "docs/_queue/QUEUE.md": [
         "| Order | Status | Feature | REQ Path | Depends-On |",
