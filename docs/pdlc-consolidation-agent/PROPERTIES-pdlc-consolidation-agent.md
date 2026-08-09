@@ -795,6 +795,116 @@ first. *L5 · `consolidationProperties.test.js` · T19 → T27 · AC-6.1 · TSPE
 
 ## 7. Properties — the marker, routing, and the credential
 
+Subjects: the `docs/_decisions/.consolidation-lock` marker lifecycle (§4.1–§4.4), the route decision
+(§5.2, §5.4, §6.4), the PR carrier (§6.1, §6.2, §6.5), and the credential ladder (§7.3). Owners: PLAN
+**T28** (pass and route, L2), **T30** (credential, L2), green **T31**. Files:
+`consolidationPass.test.js`, `consolidationRoute.test.js`, `consolidationCredential.test.js`. Every
+property here runs `main()` end to end with the seams doubled (§2), never the internals.
+
+### 7.1 The marker
+
+**PROP-MRK-01** — *A held, fresh marker refuses the second pass, and the refusal is durable.* Marker
+present and younger than `staleLockMinutes`: terminal `refused`, reason `consolidation-in-progress`,
+the held `passId` and timestamp named in the row; **no** consumed pair, **no** commit — and one log
+row **is** still written. The written row is the positive conjunct: a refusal that left no trace is
+indistinguishable from a pass that never ran. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-1.4
+· AT-M1.*
+
+**PROP-MRK-02** — *The three unheld marker states each reclaim, and the released state reclaims
+nothing.* Four fixtures against one predicate. **(a)** A marker older than `staleLockMinutes`:
+reclaimed, `reclaimed-stale-lock` recording the abandoned `passId`, pass proceeds (AT-M2). **(b)** A
+marker present but **empty** — the state the existence seam reports as `file_empty`, never
+`file_missing` (`__tests__/helpers/seams.js:296-299`), reachable only because §4.1 releases by
+writing a `RELEASED:` sentinel rather than truncating: reclaimed, abandoned id reported `unknown`.
+**(c)** A marker whose line is neither `IN-PROGRESS:` nor `RELEASED:`: same (AT-M3). **(d)** The
+paired negative, **two** `RELEASED:` fixtures — one written seconds ago, one **older** than
+`staleLockMinutes`: on **both** the marker is taken, and the row carries **no**
+`reclaimed-stale-lock` and **no** `consolidation-in-progress`. A released marker is free at any age;
+the aged fixture is what stops an implementation routing every non-`IN-PROGRESS:` file through the
+stale-lock arm, and without (d) an implementation recording `reclaimed-stale-lock` on *every* take
+passes (a)–(c) (AT-M11). *L2 · `consolidationPass.test.js` · T28 → T31 · AC-1.4 · AT-M2, AT-M3,
+AT-M11.*
+
+**PROP-MRK-03** — *Every way of leaving the pass early releases the marker, and leaves behind only
+what had already been appended.* Three terminal fixtures, asserted on both directions. **(i)** Failed
+at step 8 because neither model rung resolves (S-11): marker released, terminal row with reason
+`advisory-model-unresolved`, the step-7 consumed pair **present**, and **no** §8.3 effectiveness
+table (AT-M4). **(ii)** Failed at step 8 on a `{kind: "dispatch-error"}` return (§2.6 row 4): marker
+released, terminal `failed` with **no** reason code, the error message verbatim in the report body,
+consumed pair present, and **no** table and **no** failure-mode record (AT-M6). **(iii)** `refused` at
+step 6 (S-09): **exactly one** appended record — the terminal row — **no** table and **no** consumed
+pair (AT-M6b). The three share one mechanism (§10.2 order 3: step 11 never ran) and are asserted
+separately because their Givens differ and an implementation can special-case one. Each negative is
+paired with §9's PROP-PASS positives on the same path, so none is absence-only. *L2 ·
+`consolidationPass.test.js` · T28 → T31 · AC-1.4, AC-5.1 · AT-M4, AT-M6, AT-M6b.*
+
+**PROP-MRK-04** — *The lock is never committed, asserted positively.* With the git seam under a spy,
+the **observed pathspec set** of every commit a terminal pass makes is **set-equal** to the §5.4
+write set — which does not contain the lock path. The maintainer-side check that `.gitignore` carries
+a pattern matching `docs/_decisions/.consolidation-lock` (§10, PROP-SRC) accompanies it and **cannot
+stand alone**: a pass making no commit at all satisfies an absence-only reading. *L2 ·
+`consolidationPass.test.js` · T28 → T31 · AC-1.4 · AT-M5.*
+
+### 7.2 Routing and the invoking tree
+
+**PROP-RTE-01** — *The guard-set predicate is set-equal to `MERGE_GUARD_DEFAULTS`, not a subset.* A
+promotion targeting `pdlc/hooks/scripts/nudge-consolidation.sh` takes the **PR** route; the four
+frozen members (`pdlc/workflows/orchestrate-dev.js:48-53`) are each exercised and no fifth prefix
+routes to PR. Set-equality, because a dropped member is invisible to a subset check (O-2). *L2 ·
+`consolidationRoute.test.js` · T28 → T31 · AC-3.1 · AT-R1.*
+
+**PROP-RTE-02** — *A consuming-repo target is appended in the invoking tree and lands inside the
+§5.4 commit.* A promotion targeting `docs/_constraints/DOMAIN-CONSTRAINTS.md` is appended in the
+invoking tree and the append is inside the commit — not merely on disk. *L2 ·
+`consolidationRoute.test.js` · T28 → T31 · AC-3.1 · AT-R2.*
+
+**PROP-RTE-03** — *The decision path is a pure function of `(phase, artifact)`, stable across passes,
+and appends rather than replaces.* An AC-2.2 promotion with `phase = P` and `artifact =
+pdlc/skills/se-author/SKILL.md` derives `docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md`
+in **both** a tree with no such file and a tree already carrying one: created in the first,
+**appended to** — never replaced — in the second, inside the §5.4 commit, and never on the PR route.
+*L2 · `consolidationRoute.test.js` · T28 → T31 · AC-2.2 · AT-R6.*
+
+**PROP-RTE-04** — *The merge rules are asserted over five separate passes, and the kind precedence is
+enumerated, not sampled.* Five fixtures, five passes, five logs (fixtures 3–5 share one subject and
+phase and so derive one id; building them as one pass would collide all three merges onto a single
+record). **(1) Siblings**, two AC-2.2 subjects: **two distinct** files, one per subject — the row that
+falsifies the withdrawn basename derivation. **(2) Colliding subjects** (`pdlc/skills/a-b.md`,
+`pdlc/skills/a/b.md`): **one** promotion under §8.2's intra-pass rule — one record, one `symptom`,
+one `target`, one file — **and no** `duplicate-suppressed` and **no** `suppressed-by:` entry, since
+nothing was withheld; the surviving `artifact` is the **lexicographically first** canonical path,
+`pdlc/skills/a-b.md` (`-` = 0x2D precedes `/` = 0x2F); and the report body **names the elided**
+subject path, which is what stops the loss being silent. **(3) kinds 1 + 3**, **(4) kinds 2 + 3**,
+**(5) kinds 1 + 2**: one `target` each — `DOMAIN-CONSTRAINTS.md` / `DECISIONS-{id}.md` /
+`DOMAIN-CONSTRAINTS.md` — routes `constraints` / `decisions` / `constraints`, **no** guard-set path
+written and **no** PR opened on any of them, the one `symptom` naming **both** failure modes, and the
+report naming the elided kind. The three pairs exhaust the order the three-member ranking admits, so
+a deleted or transposed rank fails at least one; sampled at one pair the enumeration is uncovered.
+Fixtures 1 and 2 are vacuous on precedence by construction — their kinds coincide — which is why they
+cannot substitute for 3–5. *L2 · `consolidationRoute.test.js` · T28 → T31 · AC-2.2, §8.2 · AT-R6b.
+The `target`-follows-subject half of the tie-break, and the >2-candidate elided set, are
+PROPERTIES-owned under DEC-LAYER-01 and land in §5.3 (**LD-2**).*
+
+**PROP-RTE-05** — *The commit is pathspec-scoped, and the empty stage is a return rather than a
+warning.* Three fixtures. On a `feat-*` branch with a **partially staged index**, HEAD and branch are
+identical before and after, the commit contains **exactly** the §5.4 pathspec, and the pre-staged
+files are not swept in — the property that makes `git add -- {paths}` observable rather than assumed
+(AT-R3). When git refuses the commit after the lock retries, the terminal status is **unchanged**,
+`writes-uncommitted` is recorded, and the writes remain correct on disk (AT-R4). When the tree already
+matches and nothing stages, there is **no** failure and **no** `writes-uncommitted` (AT-R5). *L2 ·
+`consolidationRoute.test.js` · T28 → T31 · AC-3.1, NFR-2 · AT-R3, AT-R4, AT-R5.*
+
+**PROP-RTE-06** — *A proposal file exists when, and only when, §5.3 names a cause.* Three fixtures,
+`docs/_decisions/` listed before and after each pass. **(a)** A `promoted` pass where everything
+landed and **(b)** a `no-op` pass where everything was duplicate-suppressed: the set of
+`CONSOLIDATION-PROPOSAL-*.md` files is **unchanged**, and in particular none exists for that pass's
+`passId`. **(c)** The positive control, a pass whose only promotion degraded on an absent credential:
+**exactly one** exists, named for that `passId`. The two negatives are the half this property exists
+for — asserted in the *when* direction alone, an implementation writing a proposal file on every pass
+is green — and (a) and (b) sit side by side because they reach "no cause" by different routes while
+§5.3 decides on causes rather than on terminal status, which differs between them. *L2 ·
+`consolidationRoute.test.js` · T28 → T31 · AC-3.4 · AT-R7.*
+
 ## 8. Properties — rendering and the report
 
 ## 9. Properties — the pass end to end
