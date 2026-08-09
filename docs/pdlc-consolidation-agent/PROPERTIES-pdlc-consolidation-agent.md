@@ -1041,6 +1041,104 @@ T31 · AC-4.2, §12.1 · AT-K3, AT-K7.*
 
 ## 8. Properties — rendering and the report
 
+Subjects: the seven render functions and the configuration reader (§10.3, §10.4, §11). File:
+`consolidationReport.test.js` (L1 + L2), red owner **T24** (batch 3) in two blocks — `T29 — renderers`
+and `T31 — ER-6 discriminator` — green owners **T29** and **T31**.
+
+### 8.1 The log row
+
+**PROP-RPT-01** — *`pr:` and `suppressed-by:` are two fields, never one.* A pass that opened a PR
+**and** suppressed another proposal: `pr:` carries this pass's PR and `suppressed-by:` carries the
+suppressed pair — **both present, neither merged into the other** (AT-L1). Its paired negative: a pass
+that opened nothing and suppressed everything has `pr:` **empty**, its evidence in `suppressed-by:`,
+and terminal `no-op` (AT-L2). Without the pair, a renderer folding one field into the other is green
+on whichever fixture is written alone. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.1 ·
+AT-L1, AT-L2.*
+
+**PROP-RPT-02** — *The log is append-only, one row per pass, and no earlier record is edited in
+place.* Any pass other than `skipped-cadence`: **exactly one** log row appended, **one** report body
+returned, and every prior record **byte-identical** before and after. The byte-identity over the
+prefix is the conjunct that makes "append-only" falsifiable — counting rows alone is green on a
+whole-file rewrite that happens to preserve the count. *L2 · `consolidationReport.test.js` · T24 →
+T31 · AC-7.1, NFR-1 · AT-L3.*
+
+**PROP-RPT-03** — *An empty promotions section is present and empty; omission is a failure.* A report
+with no promotions carries the promotions section **explicitly empty** — the reader must be able to
+tell "nothing was promoted" from "this report does not say". Asserted as section presence plus empty
+contents, never as a substring absence. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.1 ·
+AT-L4.*
+
+### 8.2 The vocabulary oracle
+
+**PROP-RPT-04** — *Enumerated-class values are set-equal to the authority file, in both directions,
+over a fixture set spanning §12.1.* The domain is §10.3's **first class only**: `status:`, `trigger:`,
+`reason:`, `credential:`, the `promotions:` route names, and the per-promotion verdict / state /
+action / phase values. The **free-form class is excluded by name** — `pass:`, `date:`, `consumed:`,
+`branch:`, `deferred:`, `pr:`, `suppressed-by:`, `rung:` — because those carry URLs, dates, branch
+names and model ids, and comparing them against §1 would red a conforming implementation. Four legs,
+each load-bearing:
+
+1. Values observed across the fixture set ≡ the doubles' transcription of §1, **both directions**.
+2. The free-form class excluded **by name**, so narrowing the domain later cannot silently drop a
+   direction.
+3. §6.4's frozen catalogues ⊆ and ⊇ that transcription.
+4. The leg that reads the **authority file itself**: a three-way set equality against
+   `docs/_constraints/pdlc-consolidation-vocabularies.md` §1's table, plus a pin that its `Version`
+   cell still reads **`1.4`** (`:7`). Without leg 4 the first three compare two transcriptions with
+   each other and are green while the shipped vocabulary drifts underneath them.
+
+Both directions of leg 1 are load-bearing and neither may be dropped when the domain is narrowed:
+**no enumerated value without a §1 row** catches an invented status; **no §1 row unused across the
+fixture set** catches a deleted branch — which is why the fixture set must span every §12.1 scenario
+rather than one happy path. The parser takes an injected `root` (DC-04), never `process.cwd()`. *L1 +
+L3 · `consolidationReport.test.js` · T24 → T29 · AC-7.2, NFR-5 · AT-L5.*
+
+**PROP-RPT-05** — *An illegal `(status, reason)` pair is dropped and the drop is announced; a legal
+one is not.* Two fixtures over one code: the pair legal at `Version` 1.4 **appears** in the row; the
+pair illegal at 1.4 is **dropped** and the report body carries a notice **naming** it. The control is
+`no-cadence-datum`, which must **never** be dropped — §1 permits it with `refused`, and REQ-CONS-01
+decides it **before** the marker check, so a filter keyed on the wrong precedence loses it. The notice
+is the positive conjunct: a silent drop and a code that was never derived are indistinguishable in
+the row. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.2 · AT-L5 (dropped-code arm).*
+
+### 8.3 Configuration
+
+**PROP-RPT-06** — *Every configuration key defaults, and the three absent-section shapes are
+distinguished.* No `.claude/pdlc.config.json` ⇒ every key takes its documented default and the pass
+runs (AT-N1). A configured key ⇒ that key **keeps its value** and the others still default, so
+defaulting is per key and not whole-object (AT-N2). A `consolidation` value present but **not an
+object** ⇒ every key defaults **and the report distinguishes this from an absent section** — the
+distinguishing conjunct is the property, since defaulting alone is identical in the two cases and a
+malformed section is an operator error the report must surface (AT-N3). *L2 ·
+`consolidationReport.test.js` · T24 → T31 · AC-7.1, §11 · AT-N1, AT-N2, AT-N3.*
+
+**PROP-RPT-07** — *An unresolvable `pluginRepository` is reported, never silently replaced.*
+`pluginRepository` set to a name that does not resolve ⇒ reason `repository-unresolved` and the
+**configured value recorded verbatim** — **not** a silent fallback to the current repository. Verbatim
+recording is what lets an operator see the typo; a reason code alone leaves the wrong value invisible.
+*L2 · `consolidationReport.test.js` · T24 → T31 · AC-7.1 · AT-N4.*
+
+### 8.4 The ER-6 discriminator
+
+**PROP-RPT-08** — *The ER-6 loss is asserted rather than hidden, and the report body stands in for the
+missing union member.* `routeOf`'s `"proposal-file"` outcome is an in-module control value that is
+never rendered; until **ER-6** lands (the `Route` union in the vocabularies file has no proposal-file
+member) the record carries `route: "degraded"`. That fails safe — `enactedByLog` does not enact on a
+`degraded` record, so the item is re-proposed, which is the right behaviour for something awaiting
+operator approval — but it makes a **routed propose-only** item and a **degraded PR attempt** read
+alike in the record. Two fixtures, one control: a `revise` on a `DOMAIN-CONSTRAINTS.md` target (routed
+propose-only) against a `branch-exists` degradation. Assert **both**:
+
+- the **sameness** that is the loss — `route: "degraded"` in **both** records, asserted explicitly
+  rather than left unmentioned; and
+- the **difference** that stands in for it — the degraded body names a vocabularies §1 reason code and
+  the routed body names **none**, asserted in **both** directions.
+
+When ER-6 lands, this control **simplifies a passing test** rather than exposing a silent
+divergence — which is the test of whether the interim was specified honestly. *L2 ·
+`consolidationReport.test.js` · T24 → T31 · TSPEC §7.6, §12.4 · no FSPEC AT (registered as an
+unnumbered §12.2 row).*
+
 ## 9. Properties — the pass end to end
 
 ## 10. Properties — build, source text, and traceability
