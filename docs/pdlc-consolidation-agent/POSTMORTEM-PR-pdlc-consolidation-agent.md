@@ -78,6 +78,31 @@ answers the delta-confirmation question in terms — *"Yes, on both halves."*
 
 ## Pattern / Disagreement
 
+**There is no reviewer disagreement to record. The disagreement is between the orchestrator's read of
+a dispatch and the artifact that dispatch committed.**
+
+- **The two confirmers agree with each other, item by item.** Both judged AC-6.3 resolved against
+  BR-37a (`FSPEC:2648`) and AC-3.4 resolved against FSPEC §5.3. Where their residual findings overlap
+  they reconciled them explicitly rather than filing twice: te F-59 ≡ se F-01 (AC-3.8b's cause list is
+  one short of AC-3.4's), te F-60 ≡ se F-02 (downstream cautions still cite the *old* AC-6.3 wording).
+  te tagged the second `Process` deliberately, se `Local`; that is a lens difference, agreed in text.
+- **They agree with the author.** The erratum edit did not soften a test to fit the document — it moved
+  the document to meet BR-37a, leaving AT-A6's differential arm, the strongest oracle in the advisory
+  suite, untouched.
+- **Nine Low findings stand between them, none gating.** Under the High-only bar (`isPassResult`:
+  `high === 0` on a non-malformed parse), Lows are recorded, not gating.
+- **The only conflict is channel-shaped.** The `VERDICT:` bytes committed to
+  `CROSS-REVIEW-test-engineer-REQ-v17.md` say `Approved with minor changes`. The verdict the
+  orchestrator attributed to the same reviewer, in the same round, says non-approving. Both cannot be
+  descriptions of the same evidence, and only one of them is on the branch.
+
+The recurring pattern worth naming — this is the **second consecutive phase halted by the erratum
+channel rather than by the review loop** (`POSTMORTEM-P`, TSPEC erratum round 8, 2026-08-06; this one,
+REQ erratum round 17, 2026-08-09). In Phase P the halt was substantive: te genuinely wrote
+`Needs revision` with 1 High. Here it is not. The channel's cost profile is asymmetric — one
+confirmation dispatch is the only thing standing between a converged phase and a halt, and it is the
+one dispatch in the loop with no second reading of its own artifact.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
