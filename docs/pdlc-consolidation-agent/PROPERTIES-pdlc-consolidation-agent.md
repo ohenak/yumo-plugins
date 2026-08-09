@@ -1581,7 +1581,7 @@ property lists are derived from the per-property trailers in §§4–11, not mai
 
 | Obligation (REQ v2.1) | Properties |
 |---|---|
-| AC-1.1 cadence trigger — `cadenceHours` elapsed since the datum | PROP-PASS-01, PROP-PASS-02, PROP-PASS-03, PROP-TRG-03, PROP-COR-01…13 (the predicate the trigger counts) |
+| AC-1.1 cadence trigger — `cadenceHours` elapsed since the datum | PROP-PASS-01, PROP-PASS-02, PROP-PASS-03, PROP-TRG-03, PROP-COR-01…11 (the predicate the trigger counts). PROP-COR-12 and PROP-COR-13 are **not** trigger coverage: they are the L4 differential's pre-widening fixture and its validity pin, and their trailers cite `(no FSPEC AT), TSPEC §7.1 pin (b)` rather than an AC-1.1 obligation |
 | AC-1.2 volume trigger — un-consolidated count at threshold | PROP-PASS-01, PROP-PASS-02 |
 | AC-1.3 one pass at a time — the in-progress marker | PROP-MRK-01…04, PROP-PASS-09, PROP-RPT-02, PROP-SRC-01 |
 | AC-1.4 a no-op pass still reports | PROP-PASS-11, PROP-RTE-06, PROP-EFF-06 |
@@ -1627,7 +1627,19 @@ obligation is discharged through the properties that consume it, named in §12.2
 ### 12.2 Test files → level, owners, properties
 
 Red owner and green owners are read from PLAN §4's task table, and each property row is the set of
-properties whose §§4–11 trailer names that file. A property spanning two files appears in both rows.
+properties whose §§4–11 trailer names that file. Green owners are listed **per file**, so a file's
+row carries the union of the blocks PLAN's RED task declares in it — `consolidationPass.test.js`
+carries T28 and T31 because PLAN T20 writes exactly two blocks there (`T28 — marker predicates` and
+`T31 — pass lifecycle`, `PLAN:264`) — while a *property* trailer names only the block that un-skips
+that property. A per-property green is therefore a subset of its file's green list, never a
+disagreement with it.
+
+**Spanning convention.** A property spanning two files appears in **both** rows here, and in **both**
+task rows of §12.3. Its trailer pairs each file with that file's own task — `{file} (RED → greens)`,
+as PROP-CFG-03 and PROP-FIX-02 do — because the two axes do not factor: the file axis and the task
+axis are the same relation read two ways, and a reader deriving what a task owes must be able to
+recover the file it owes it in. Where §12.3 shows one task row spanning a property that lives in
+another task's file, that is the spanning convention at work, not a contradiction.
 
 | File | Level | Red | Green | Properties |
 |---|---|---|---|---|
@@ -1644,10 +1656,10 @@ properties whose §§4–11 trailer names that file. A property spanning two fil
 | `consolidationEffectiveness.test.js` | L1 | T17 | T27 | PROP-EFF-01…09, PROP-REC-05 (§8.3/§8.5 halves) |
 | `consolidationAdvisory.test.js` | L1 | T18 | T27 | PROP-ADV-01…05 |
 | `consolidationProperties.test.js` | L5 | T19 | T25, T26, T27 | PROP-GEN-00…06, PROP-ADV-06, PROP-COR-03, PROP-CFG-01 (L5 halves) |
-| `consolidationPass.test.js` | L2 | T20 | T25, T28, T31 | PROP-MRK-01…04, PROP-PASS-08, PROP-COR-09, PROP-COR-10, PROP-COR-11, PROP-CFG-03 |
+| `consolidationPass.test.js` | L2 | T20 | T28, T31 | PROP-MRK-01…04, PROP-PASS-01…05, PROP-PASS-08, PROP-PASS-11, PROP-COR-09, PROP-COR-10, PROP-COR-11, PROP-CFG-03 |
 | `consolidationRoute.test.js` | L2 | T21 | T28, T30, T31 | PROP-RTE-01…06, PROP-PR-01…11, PROP-ID-03, PROP-MRG-01, PROP-MRG-02, PROP-MRG-04 |
 | `consolidationCredential.test.js` | L2 | T22 | T30, T31 | PROP-CRED-01…04 |
-| `consolidationLifecycle.test.js` | L2 | T23 | T31 | PROP-PASS-01…05, PROP-PASS-09, PROP-PASS-10, PROP-PASS-11, PROP-DBL-03 |
+| `consolidationLifecycle.test.js` | L2 | T23 | T31 | PROP-PASS-09, PROP-PASS-10, PROP-DBL-03 |
 | `consolidationReport.test.js` | L1 + L2 | T24 | T29, T31 | PROP-RPT-01…09, PROP-MRG-03 (item 4), PROP-CFG-03 |
 | `helpers/seams.js`, `helpers/driftGenerators.js` (**exist at HEAD**) | — | — | — | reused by PROP-DBL-*, PROP-GEN-* (DC-08: reuse, never re-declare) |
 
@@ -1676,10 +1688,10 @@ Rows read `{RED owner} → {green un-skippers}`, matching the trailers exactly.
 | T17 → T27 | PROP-EFF-01…09, PROP-REC-05 |
 | T18 → T27 | PROP-ADV-01…05 |
 | T19 → T25/T26/T27 | PROP-GEN-00…06, PROP-ADV-06, PROP-COR-03, PROP-CFG-01 |
-| T20 → T25/T28/T31 | PROP-MRK-01…04, PROP-PASS-08, PROP-COR-09…11, PROP-CFG-03 |
+| T20 → T28/T31 | PROP-MRK-01…04, PROP-PASS-01…05, PROP-PASS-08, PROP-PASS-11, PROP-COR-09…11, PROP-CFG-03 |
 | T21 → T28/T30/T31 | PROP-RTE-01…06, PROP-PR-01…11, PROP-ID-03, PROP-MRG-01, PROP-MRG-02, PROP-MRG-04 |
 | T22 → T30/T31 | PROP-CRED-01…04 |
-| T23 → T31 | PROP-PASS-01…05, PROP-PASS-09…11, PROP-DBL-03 |
+| T23 → T31 | PROP-PASS-09, PROP-PASS-10, PROP-DBL-03 |
 | T24 → T26/T29/T31 | PROP-RPT-01…09, PROP-MRG-03, PROP-CFG-03 |
 
 Tasks carrying **no** property row are production-only or docs-only and are named here so the absence
@@ -1697,7 +1709,7 @@ version and re-reads the count rather than transcribing it).
 
 | Family | Register ids | Properties |
 |---|---|---|
-| AT-C (trigger, cadence datum, determinism) | AT-C1, AT-C1b, AT-C2…AT-C8 | PROP-PASS-01…05, PROP-TRG-03, PROP-TRG-06 |
+| AT-C (trigger, cadence datum, determinism) | AT-C1, AT-C1b, AT-C2…AT-C8 | PROP-PASS-01…05 (all in `consolidationPass.test.js`, the file TSPEC §12.3 gives the AT-C register; PROP-TRG-03 and PROP-TRG-06 are the L1 arms of AT-C5/C6/C7 and cite the TSPEC §7.2 obligation rather than the ids, so each id is claimed in exactly one file) |
 | AT-P (predicate, corpus, hook parity) | AT-P1…AT-P11 | PROP-COR-01, PROP-COR-04…07, PROP-COR-10, PROP-COR-11 |
 | AT-M (marker, model ladder, late failure) | AT-M1…AT-M11 | PROP-MRK-01…04, PROP-PASS-06…08 |
 | AT-R (routing, merge, commit, proposal file) | AT-R1…AT-R7, AT-R6b | PROP-RTE-01…06, PROP-ID-03, PROP-MRG-01, PROP-MRG-02 |
