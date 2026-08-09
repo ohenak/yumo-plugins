@@ -13,7 +13,21 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-09 |
+| pdlc | draft | Claude | 1.3 | 2026-08-09 |
+
+**v1.3** — addresses the round-3 cross-reviews. Three fixes, no property moved and no id reassigned.
+The single-file rule v1.2 asserted is **not yet true of two ids**: AT-P6 and AT-P10 are registered to
+`consolidationPredicate.test.js` by TSPEC §12.3 and PLAN T14, while PROP-COR-11 and PROP-COR-10
+assert them at L2 where their whole-pass conjuncts are reachable — §13.3 **erratum 6** routes the
+re-registration upstream and §12.4's AT-C and AT-P cells now name the pending erratum instead of
+claiming the invariant unqualified (SE F-01). §13.3 **erratum 7** routes the fact that no PLAN block
+declares AC-1.4's no-op pass, and PROP-PASS-11's trailer carries a placement note saying its file is
+derived from its subject rather than licensed by PLAN text; §12.2's preamble names both derived rows
+(SE F-03, PM F-08). §4.3 and erratum 3's false parenthetical are corrected: the fixtures directory
+exists and is tracked at HEAD, so only the file and the manifest row are new (SE F-02). §12.3's
+preamble states the task-axis union rule, so a §12.3 green absent from the matching §12.2 row reads
+as a named spanning property rather than as re-derivation residue (PM F-09). The id set is unchanged
+at 118.
 
 **v1.2** — addresses the round-2 cross-reviews. The AT-C register moves to the file TSPEC §12.3 and
 PLAN T20 actually give it: PROP-PASS-01…05 and PROP-PASS-11 re-home from
@@ -1892,7 +1906,8 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    should move AT-P6 and AT-P10 to the `consolidationPass.test.js` row, and PLAN T14's `T25` block
    should drop them from its enumeration so PLAN's RED task list matches. Until both land, the
    single-file invariant §12.4 states holds for every family **except** these two ids, which is why
-   §12.4's AT-C cell names this erratum rather than asserting the invariant unqualified. Absorbing it
+   §12.4's AT-P cell names this erratum rather than asserting the invariant unqualified, and its AT-C
+   cell now scopes its own claim to the AT-C ids it can speak for. Absorbing it
    here instead — citing the obligation the way PROP-TRG-03/06 cite TSPEC §7.2 — would leave AT-P6 and
    AT-P10 with **no** property discharging them at T14 (PROP-COR-01/04/05/06 cover AT-P1…P5, P8, P9,
    P11 only) and would owe two new L1 arms for cases their unit subject cannot observe.
