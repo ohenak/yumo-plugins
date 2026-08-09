@@ -71,6 +71,45 @@ oracle-bearing tables:
 
 ## 5. Positive Observations
 
+- **The fix chose disclosure over convenience, and the harder half was the right one.** The cheap
+  way to close F-01 was to re-home PROP-COR-10/11 onto `consolidationPredicate.test.js` and make
+  §12.4's sentence true again. That would have put two properties in a file whose subject cannot
+  observe their *Then*s — green tables, dead oracles. Instead the document kept the properties where
+  they are assertable, said plainly that the invariant does not yet hold for two ids, and routed the
+  register correction upstream with both halves named. A spec that tells you which of its own claims
+  is pending is worth more than one that is uniformly confident.
+- **Erratum 7 sharpened the finding I filed rather than merely accepting it.** I reported that
+  PROP-PASS-11 lands in a file PLAN's block text excludes. The document went further and checked
+  whether the v1.2 re-home caused it: it did not — no PLAN block ever declared AC-1.4's no-op case,
+  and the previous (wrong) home merely hid the gap. That distinction changes who owes the fix, and
+  it is the kind of thing an author only finds by re-reading upstream instead of patching locally.
+- **§12.3's union rule turns a table into a checkable oracle.** Before this revision, a §12.3 green
+  that exceeded its §12.2 row was indistinguishable from re-derivation residue — a reviewer had to
+  guess. The new paragraph states the rule, names both exceptions, and attributes each to a specific
+  spanning property. I differenced the two tables mechanically and found exactly those two. A future
+  round can now re-run that check in seconds instead of re-reading 120 trailers.
+- **Three sections rewritten, 118 ids untouched.** The symmetric difference against the previous
+  blob is empty. Revisions that rewrite summary tables usually renumber something by accident; this
+  one has now survived a re-home (round 3) and a disclosure pass (round 4) without moving an id.
+
 ## 6. Recommendation
 
+**Approved**
+
+The single High from round 3 is closed, and closed by routing rather than by weakening the
+document: AT-P6 and AT-P10 stay at L2 where their conjuncts are observable, §12.4 no longer claims
+an invariant that two ids violate, and §13.3 erratum 6 carries both halves of the upstream
+correction with citations I verified exactly at HEAD. Both Mediums are closed too — the false
+fixtures-directory claim is replaced by the measured fact, and PROP-PASS-11's placement is disclosed
+as judgment pending erratum 7. The new text introduced no new claim I could falsify: every
+citation checked out, the id set is unchanged, and the §12.3 union rule holds by set-equality rather
+than by containment.
+
+Nothing is owed from this document. The two open defects belong to TSPEC §12.3 / PLAN T14 and
+PLAN T20, and travel as errata 6 and 7; PROPERTIES has already recorded both, so approving here does
+not bless the upstream text — it accepts a layer that named its own limits accurately.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
