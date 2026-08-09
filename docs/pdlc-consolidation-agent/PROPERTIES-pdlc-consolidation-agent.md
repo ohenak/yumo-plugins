@@ -1735,8 +1735,8 @@ version and re-reads the count rather than transcribing it).
 
 | Family | Register ids | Properties |
 |---|---|---|
-| AT-C (trigger, cadence datum, determinism) | AT-C1, AT-C1b, AT-C2…AT-C8 | PROP-PASS-01…05 (all in `consolidationPass.test.js`, the file TSPEC §12.3 gives the AT-C register; PROP-TRG-03 and PROP-TRG-06 are the L1 arms of AT-C5/C6/C7 and cite the TSPEC §7.2 obligation rather than the ids, so each id is claimed in exactly one file) |
-| AT-P (predicate, corpus, hook parity) | AT-P1…AT-P11 | PROP-COR-01, PROP-COR-04…07, PROP-COR-10, PROP-COR-11 |
+| AT-C (trigger, cadence datum, determinism) | AT-C1, AT-C1b, AT-C2…AT-C8 | PROP-PASS-01…05 (all in `consolidationPass.test.js`, the file TSPEC §12.3 gives the AT-C register; PROP-TRG-03 and PROP-TRG-06 are the L1 arms of AT-C5/C6/C7 and cite the TSPEC §7.2 obligation rather than the ids, so each AT-C id is claimed in exactly one file) |
+| AT-P (predicate, corpus, hook parity) | AT-P1…AT-P11 | PROP-COR-01, PROP-COR-04…07, PROP-COR-10, PROP-COR-11. **Two ids are claimed here in a file the approved upstream does not give them:** PROP-COR-10 (AT-P10) and PROP-COR-11 (AT-P6) sit in `consolidationPass.test.js`, while TSPEC §12.3 (`TSPEC:2499`) and PLAN T14 (`PLAN:258`) place both in `consolidationPredicate.test.js`. Their *Then*s are whole-pass writes that a pure `classifyCorpus` cannot produce, so the properties stay at L2 and **§13.3 erratum 6 routes the re-registration upstream**. The single-file rule therefore holds for every family except these two ids, pending that erratum |
 | AT-M (marker, model ladder, late failure) | AT-M1…AT-M11 | PROP-MRK-01…04, PROP-PASS-06…08 |
 | AT-R (routing, merge, commit, proposal file) | AT-R1…AT-R7, AT-R6b | PROP-RTE-01…06, PROP-ID-03, PROP-MRG-01, PROP-MRG-02 |
 | AT-Q (the PR carrier and suppression) | AT-Q1…AT-Q13, AT-Q7b, AT-Q7c | PROP-PR-01…08, PROP-PR-11 (AT-Q2's trailer-set arm) |
@@ -1857,3 +1857,20 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    through a whole pass's writes, which is what PROP-RTE-03 and PROP-RTE-04 assert. Their trailers
    name `T15/T21 → T26/T31` on that reading; PLAN should carry the same split so the RED task that
    creates the workflow-level arms is named.
+6. **AT-P6 and AT-P10 are registered to a file whose subject cannot reach them.** TSPEC §12.3 gives
+   both ids to `consolidationPredicate.test.js` (`TSPEC:2499`, the L1 row carrying AT-P1…AT-P6,
+   AT-P8…AT-P11) and PLAN T14 enumerates them in the same place (`PLAN:258`, block
+   `T25 — corpus and predicate`). Neither *Then* is observable there. AT-P6's is *"the consumed pair
+   is still appended, empty, before any other record"* (`FSPEC:2119`) and AT-P10's is *"the §10.4
+   report names the collision explicitly"* (`FSPEC:2123`) — both are whole-pass writes, while
+   `classifyCorpus` is declared pure and returns `basenameCollisions` without appending anything or
+   rendering a report (`TSPEC:674`, `:750-770`). PROP-COR-10 and PROP-COR-11 therefore assert them at
+   L2 in `consolidationPass.test.js`, where the conjuncts are reachable, and this document keeps them
+   there. The correction is upstream and has two halves, exactly as erratum 5's does: TSPEC §12.3
+   should move AT-P6 and AT-P10 to the `consolidationPass.test.js` row, and PLAN T14's `T25` block
+   should drop them from its enumeration so PLAN's RED task list matches. Until both land, the
+   single-file invariant §12.4 states holds for every family **except** these two ids, which is why
+   §12.4's AT-C cell names this erratum rather than asserting the invariant unqualified. Absorbing it
+   here instead — citing the obligation the way PROP-TRG-03/06 cite TSPEC §7.2 — would leave AT-P6 and
+   AT-P10 with **no** property discharging them at T14 (PROP-COR-01/04/05/06 cover AT-P1…P5, P8, P9,
+   P11 only) and would owe two new L1 arms for cases their unit subject cannot observe.
