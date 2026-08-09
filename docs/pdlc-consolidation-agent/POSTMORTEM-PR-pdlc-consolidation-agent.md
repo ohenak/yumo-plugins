@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (te-author) | 2.0 | 2026-08-09 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -236,3 +236,56 @@ this one is a defect at a seam.
 
 `RESOLVED: no` at the top of this file now governs **the erratum halt only**. Flipping it re-opens
 Phase PR under §Recommendation step 1.
+
+## Resolution
+
+**Halt cleared 2026-08-09 by Kane Ho (operator), per §Recommendation steps 1 and 2.**
+
+### Step 1 — verified, then flipped
+
+Both checks the Recommendation named were run, and both pass.
+
+The delta confirmation passed on the record. Each v17 file carries exactly one `VERDICT:` line, both
+approving, both with zero High findings — so the confirmation cleared the High-only bar (DEC-BAR-01)
+on the file channel at the moment the orchestrator declared it failed:
+
+| File | Verdict | Counts |
+|---|---|---|
+| `CROSS-REVIEW-software-engineer-REQ-v17.md:60` | Approved with minor changes | `{"high": 0, "medium": 0, "low": 2}` |
+| `CROSS-REVIEW-test-engineer-REQ-v17.md:130` | Approved with minor changes | `{"high": 0, "medium": 0, "low": 7}` |
+
+`git log --oneline 00c9028f..HEAD -- docs/pdlc-consolidation-agent/` shows the erratum edit
+(`202441d0`), the two confirmations (`54a46433`, `33fbc907`) and this POSTMORTEM's own sections.
+Nothing else touched the feature's documents.
+
+What is being cleared is therefore a **defect in the orchestrator's read, not an unaddressed
+finding**. The work this halt interrupted was complete and approved when it was interrupted.
+
+### Step 2 — half-recorded approval repaired
+
+`se-review`'s v17 file had no approval anchors: `appendApprovalAnchors` runs only on PASS, and the
+halt preempted it. The pair recorded in `te-review`'s v17 has been appended verbatim beneath
+`se-review`'s `## Verdict` section — the one write to a cross-review file this system sanctions
+after its verdict, and it adds no second `VERDICT:` line.
+
+The hash was not copied on trust. It was recomputed independently — canonicalise REQ's bytes at
+`REVIEWED-COMMIT` `54a46433` (CRLF→LF, exactly one trailing newline), SHA-256 — and reproduces
+`sha256:cac4eac81935b3218ac9389538b5fe4b99415bae3daeea5a325f7af9c0c00254` exactly. `git diff
+54a46433 HEAD` over REQ is empty, so those bytes are still REQ's bytes at HEAD and the anchor is
+current, not merely well-formed. The same pair is correct for both reviewers because the hash pins
+**the document reviewed**, not the reviewer. REQ's recorded approval now points at v2.2, so the
+staleness gate will not re-open Phase R over a document its approvers just re-confirmed.
+
+### Step 3 — deferred until the seam is closed
+
+Re-invocation is deliberately **not** part of this resolution. The Recommendation's §Prevention
+item — the file-side fallback at `orchestrate-dev.js:9383` — is being implemented first, as
+**DEC-ERR-02**. Re-invoking before it lands would re-run the same erratum channel through the same
+single-channel read, and any reviewer whose response trailer is dropped would halt the pipeline
+again on work that is, once more, already approved on disk.
+
+The two smaller companions the Recommendation names (reporting which channel the erratum halt read
+its verdict from; sweeping the six now-falsified cautions across TSPEC, PLAN and PROPERTIES) remain
+open and are not gated by this flip.
+
+To re-impose the halt, set `RESOLVED: no` again — the gate is the marker, and nothing else.

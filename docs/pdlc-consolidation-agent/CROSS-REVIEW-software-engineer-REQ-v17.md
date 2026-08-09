@@ -59,3 +59,6 @@ The delta resolves both errata against their cited authorities and breaks nothin
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:cac4eac81935b3218ac9389538b5fe4b99415bae3daeea5a325f7af9c0c00254
+REVIEWED-COMMIT: 54a464331c8b0ef120d27bc0ef8627833e044071
