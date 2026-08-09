@@ -831,7 +831,7 @@ property here runs `main()` end to end with the seams doubled (§2), never the i
 present and younger than `staleLockMinutes`: terminal `refused`, reason `consolidation-in-progress`,
 the held `passId` and timestamp named in the row; **no** consumed pair, **no** commit — and one log
 row **is** still written. The written row is the positive conjunct: a refusal that left no trace is
-indistinguishable from a pass that never ran. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-1.3
+indistinguishable from a pass that never ran. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.3
 · AT-M1.*
 
 **PROP-MRK-02** — *The three unheld marker states each reclaim, and the released state reclaims
@@ -846,7 +846,7 @@ paired negative, **two** `RELEASED:` fixtures — one written seconds ago, one *
 `reclaimed-stale-lock` and **no** `consolidation-in-progress`. A released marker is free at any age;
 the aged fixture is what stops an implementation routing every non-`IN-PROGRESS:` file through the
 stale-lock arm, and without (d) an implementation recording `reclaimed-stale-lock` on *every* take
-passes (a)–(c) (AT-M11). *L2 · `consolidationPass.test.js` · T28 → T31 · AC-1.3 · AT-M2, AT-M3,
+passes (a)–(c) (AT-M11). *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.3 · AT-M2, AT-M3,
 AT-M11.*
 
 **PROP-MRK-03** — *Every way of leaving the pass early releases the marker, and leaves behind only
@@ -860,14 +860,14 @@ step 6 (S-09): **exactly one** appended record — the terminal row — **no** t
 pair (AT-M6b). The three share one mechanism (§10.2 order 3: step 11 never ran) and are asserted
 separately because their Givens differ and an implementation can special-case one. Each negative is
 paired with §9's PROP-PASS positives on the same path, so none is absence-only. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · AC-1.3, AC-5.1 · AT-M4, AT-M6, AT-M6b.*
+`consolidationPass.test.js` · T20 → T28/T31 · AC-1.3, AC-5.1 · AT-M4, AT-M6, AT-M6b.*
 
 **PROP-MRK-04** — *The lock is never committed, asserted positively.* With the git seam under a spy,
 the **observed pathspec set** of every commit a terminal pass makes is **set-equal** to the §5.4
 write set — which does not contain the lock path. The maintainer-side check that `.gitignore` carries
 a pattern matching `docs/_decisions/.consolidation-lock` (§10, PROP-SRC) accompanies it and **cannot
 stand alone**: a pass making no commit at all satisfies an absence-only reading. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · AC-1.3, AC-3.8b · AT-M5.*
+`consolidationPass.test.js` · T20 → T28/T31 · AC-1.3, AC-3.8b · AT-M5.*
 
 ### 7.2 Routing and the invoking tree
 
@@ -875,19 +875,19 @@ stand alone**: a pass making no commit at all satisfies an absence-only reading.
 promotion targeting `pdlc/hooks/scripts/nudge-consolidation.sh` takes the **PR** route; the four
 frozen members (`pdlc/workflows/orchestrate-dev.js:48-53`) are each exercised and no fifth prefix
 routes to PR. Set-equality, because a dropped member is invisible to a subset check (O-2). *L2 ·
-`consolidationRoute.test.js` · T28 → T31 · AC-3.1 · AT-R1.*
+`consolidationRoute.test.js` · T21 → T28/T31 · AC-3.1 · AT-R1.*
 
 **PROP-RTE-02** — *A consuming-repo target is appended in the invoking tree and lands inside the
 §5.4 commit.* A promotion targeting `docs/_constraints/DOMAIN-CONSTRAINTS.md` is appended in the
 invoking tree and the append is inside the commit — not merely on disk. *L2 ·
-`consolidationRoute.test.js` · T28 → T31 · AC-3.1 · AT-R2.*
+`consolidationRoute.test.js` · T21 → T28/T31 · AC-3.1 · AT-R2.*
 
 **PROP-RTE-03** — *The decision path is a pure function of `(phase, artifact)`, stable across passes,
 and appends rather than replaces.* An AC-2.2 promotion with `phase = P` and `artifact =
 pdlc/skills/se-author/SKILL.md` derives `docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md`
 in **both** a tree with no such file and a tree already carrying one: created in the first,
 **appended to** — never replaced — in the second, inside the §5.4 commit, and never on the PR route.
-*L2 · `consolidationRoute.test.js` · T28 → T31 · AC-2.2 · AT-R6.*
+*L2 · `consolidationIdentity.test.js`, `consolidationRoute.test.js` · T15/T21 → T26/T31 · AC-2.2 · AT-R6.*
 
 **PROP-RTE-04** — *The merge rules are asserted over five separate passes, and the kind precedence is
 enumerated, not sampled.* Five fixtures, five passes, five logs (fixtures 3–5 share one subject and
@@ -905,7 +905,7 @@ written and **no** PR opened on any of them, the one `symptom` naming **both** f
 report naming the elided kind. The three pairs exhaust the order the three-member ranking admits, so
 a deleted or transposed rank fails at least one; sampled at one pair the enumeration is uncovered.
 Fixtures 1 and 2 are vacuous on precedence by construction — their kinds coincide — which is why they
-cannot substitute for 3–5. *L2 · `consolidationRoute.test.js` · T28 → T31 · AC-2.2, §8.2 · AT-R6b.
+cannot substitute for 3–5. *L2 · `consolidationIdentity.test.js`, `consolidationRoute.test.js` · T15/T21 → T26/T31 · AC-2.2, §8.2 · AT-R6b.
 The `target`-follows-subject half of the tie-break, and the >2-candidate elided set, are
 PROPERTIES-owned under DEC-LAYER-01 and land in §5.3 (**LD-2**).*
 
@@ -916,7 +916,7 @@ files are not swept in — the property that makes `git add -- {paths}` observab
 (AT-R3). When git refuses the commit after the lock retries, the terminal status is **unchanged**,
 `writes-uncommitted` is recorded, and the writes remain correct on disk (AT-R4). When the tree already
 matches and nothing stages, there is **no** failure and **no** `writes-uncommitted` (AT-R5). *L2 ·
-`consolidationRoute.test.js` · T28 → T31 · AC-3.8b, §5.4 · AT-R3, AT-R4, AT-R5.*
+`consolidationRoute.test.js` · T21 → T28/T31 · AC-3.8b, §5.4 · AT-R3, AT-R4, AT-R5.*
 
 **PROP-RTE-06** — *A proposal file exists when, and only when, §5.3 names a cause.* Three fixtures,
 `docs/_decisions/` listed before and after each pass. **(a)** A `promoted` pass where everything
@@ -927,7 +927,7 @@ landed and **(b)** a `no-op` pass where everything was duplicate-suppressed: the
 for — asserted in the *when* direction alone, an implementation writing a proposal file on every pass
 is green — and (a) and (b) sit side by side because they reach "no cause" by different routes while
 §5.3 decides on causes rather than on terminal status, which differs between them. *L2 ·
-`consolidationRoute.test.js` · T28 → T31 · AC-3.5, AC-1.4 · AT-R7.*
+`consolidationRoute.test.js` · T21 → T28/T31 · AC-3.5, AC-1.4 · AT-R7.*
 
 ### 7.3 The PR carrier
 
@@ -936,14 +936,14 @@ is green — and (a) and (b) sit side by side because they reach "no cause" by d
 a **separate clone under a temporary directory**, cut from the fetched default branch; the invoking
 tree's HEAD, branch and index are unchanged. This is the **same-repo** configuration AC-3.8 names —
 "consuming repo" and "plugin repo" are one repository in the shipping configuration — so the clone,
-not a branch operation, is what keeps the invoking tree untouched. *L2 · `consolidationPass.test.js`
-· T28 → T31 · AC-3.1, AC-3.8 · AT-Q1.*
+not a branch operation, is what keeps the invoking tree untouched. *L2 · `consolidationRoute.test.js`
+· T21 → T30 · AC-3.1, AC-3.8 · AT-Q1.*
 
 **PROP-PR-02** — *The promotions trailer is set-equal to the commits' pairs.* Three promotions in one
 pass sharing one PR: **three** commits, each carrying a distinct `PDLC-PROMOTION-ID: {id}:{action}`,
 and `PDLC-CONSOLIDATION-PROMOTIONS` **set-equal** to those three pairs — a dropped pair is invisible
 to a containment check, which is the whole reason the trailer exists (NFR-4). *L2 ·
-`consolidationPass.test.js` · T28 → T31 · AC-3.3, NFR-4 · AT-Q2.*
+`consolidationRoute.test.js` · T21 → T31 · AC-3.3, NFR-4 · AT-Q2.*
 
 **PROP-PR-03** — *Suppression is keyed on a landed carrier, never on a record's existence.* Four
 fixtures over one `(failure-mode-id, action)` pair. **Open PR** ⇒ nothing opened, `duplicate-suppressed`
@@ -953,7 +953,7 @@ naming the pair with the PR in `suppressed-by:`, `pr:` empty, that PR **not amen
 suppressed by it — the action half of the key is load-bearing (AT-Q5). A prior record with `route:
 degraded` ⇒ the pair reads **`absent`**, not `enacted`, and is re-proposed (AT-Q12). The last is the
 consuming-repo mirror of the closed-unmerged arm and is what stops a record's mere existence from
-suppressing. *L2 · `consolidationPass.test.js` · T28 → T31 · NFR-4 · AT-Q3, AT-Q4, AT-Q5,
+suppressing. *L2 · `consolidationRoute.test.js` · T21 → T31 · NFR-4 · AT-Q3, AT-Q4, AT-Q5,
 AT-Q12.*
 
 **PROP-PR-04** — *The consuming-repo carrier suppresses idempotently, and says so in §10.3's
@@ -966,7 +966,7 @@ the `absent` arm re-run over an unchanged corpus: the first pass appends **exact
 its record with `route: constraints`; the second suppresses; and `DOMAIN-CONSTRAINTS.md` is
 **byte-identical** after the second pass to after the first. The byte-identity is the only oracle that
 fails an implementation which never consults the log and re-appends on every run (AT-Q11). *L2 ·
-`consolidationRoute.test.js` · T28 → T31 · NFR-4, §6.4 · AT-Q10, AT-Q11.*
+`consolidationRoute.test.js` · T21 → T31 · NFR-4, §6.4 · AT-Q10, AT-Q11.*
 
 **PROP-PR-05** — *The PR seam's verbs are bounded on both sides, per domain, and the bound is
 containment.* The three enumerated seam domains of §6.5 — the PR seam, the git seam in the invoking
@@ -988,8 +988,8 @@ admissible — both are red on conforming passes — and an absence-only "no mer
 satisfied by a pass making no calls, by a renamed route, and cannot see a merge issued through a
 generic seam. Comparison is over **sets**, never multisets: PROP-PR-02's three commits are three
 occurrences of one verb. The HEAD source-text scan for merge and enable-auto-merge calls (§10) is
-**supplementary** and never the sole evidence for AC-3.7 (AT-Q7b). *L2 · `consolidationPass.test.js` ·
-T28 → T31 · AC-3.7, §6.5 · AT-Q7, AT-Q7b, AT-Q7c.*
+**supplementary** and never the sole evidence for AC-3.7 (AT-Q7b). *L2 · `consolidationRoute.test.js` ·
+T21 → T30 · AC-3.7, §6.5 · AT-Q7, AT-Q7b, AT-Q7c.*
 
 **PROP-PR-06** — *Each PR failure class names its own reason code and degrades rather than halting.*
 The remote head branch `consolidation/{passId}` already existing ⇒ reason `branch-exists`, the
@@ -998,7 +998,7 @@ fallback proposal file carrying the **full diff**, and the existing branch and a
 API's status text recorded **verbatim**, the fallback carrying the full diff, and the pass **not**
 halting (AT-Q8). Two Givens, two codes, asserted apart because E-23 and E-24 are different failure
 classes and a collapsed code loses the distinction the report is read for. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · AC-3.5 · AT-Q6, AT-Q8.*
+`consolidationRoute.test.js` · T21 → T31 · AC-3.5 · AT-Q6, AT-Q8.*
 
 **PROP-PR-07** — *The PR trailer outlives the branch, and the cost of the loss is reported rather than
 hidden.* A pass opens a PR and records its promotion on an invoking branch which is then **deleted
@@ -1006,7 +1006,7 @@ without merging**: the PR and its `PDLC-CONSOLIDATION-PROMOTIONS` trailer surviv
 duplicate proposal on a later pass; that later pass **re-mints** the promotion's effectiveness record
 from scratch — exactly the §5.5 cost — and **reports** it rather than pretending the record was never
 lost. The reporting conjunct is the positive one; suppression alone would be green on an
-implementation that silently forgot. *L2 · `consolidationPass.test.js` · T28 → T31 · NFR-4, §5.5 ·
+implementation that silently forgot. *L2 · `consolidationRoute.test.js` · T21 → T31 · NFR-4, §5.5 ·
 AT-Q9.*
 
 **PROP-PR-08** — *The PR body carries AC-3.2's three obligations, and the single-occurrence fixture
@@ -1017,7 +1017,7 @@ LEARNINGS; **(b)** a **single** occurrence cleared under AC-2.3's standing-invar
 features derived from (so (a) names both and a body naming one is red); the `symptom` line verbatim;
 and the AC-2.3 pattern evidence in the form that fixture cleared the bar with. This is the only
 property reading the PR **body** — PROP-PR-02's oracle is the trailer set, and a body carrying nothing
-but the three trailers is green there and red here. *L2 · `consolidationPass.test.js` · T28 → T31 ·
+but the three trailers is green there and red here. *L2 · `consolidationRoute.test.js` · T21 → T31 ·
 AC-3.2 · AT-Q13.*
 
 **PROP-PR-09** — *The PR URL reaches both carriers AC-3.4 names, asserted where both exist.* The
@@ -1033,7 +1033,7 @@ the defect a reader of the proposal file would be misled by. On the happy path A
 conjunct is **vacuous** — a fully-`promoted` pass writes no proposal file at all (PROP-RTE-06(a)) —
 which is a REQ/FSPEC tension this layer notices rather than resolves; §13.3 erratum 4 routes it, and
 §13.1 records that no property asserts a proposal file into existence merely because a PR opened.
-*L2 · `consolidationPass.test.js` · T28 → T31 · AC-3.4 · (no FSPEC AT), REQ AC-3.4 second conjunct.*
+*L2 · `consolidationRoute.test.js` · T21 → T31 · AC-3.4 · (no FSPEC AT), REQ AC-3.4 second conjunct.*
 
 **PROP-PR-10** — *The branch is unique per pass and survives the pass, asserted positively.* Two
 conjuncts over the git seam in the §6.1 clone (PROP-PR-05's third domain) plus the branch state after
@@ -1046,7 +1046,7 @@ pass returns. (b) is the positive half of AC-3.6's "not deleted by the pass — 
 half-failed pass stays inspectable"; PROP-PR-05's containment bound excludes a `delete-branch` verb
 from the permitted set, but containment alone is satisfied by a pass that never created a branch, so
 the surviving-ref observation is required and cannot be replaced by the verb bound. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · AC-3.6 · (no FSPEC AT), FSPEC BR-24.*
+`consolidationRoute.test.js` · T21 → T31 · AC-3.6 · (no FSPEC AT), FSPEC BR-24.*
 
 **PROP-PR-11** — *The PR body carries the pass trailer that makes it machine-recognisable.* On any
 pass that opens a PR, the body carries the `PDLC-CONSOLIDATION-PASS` trailer whose value is **this
@@ -1057,7 +1057,7 @@ three FSPEC §13 names — `PDLC-CONSOLIDATION-PASS`, `PDLC-CONSOLIDATION-SOURCE
 This is AC-3.7's conjunct **(c)**: (a) is PROP-CRED-01's scoped credential and (b) is PROP-PR-05's
 verb bound, and without (c) the feature's third stated auto-merge control has no observable at all —
 a repo-side control cannot recognise a PR by a trailer nothing asserts. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · AC-3.7(c) · FSPEC BR-24, AT-Q2 (trailer-set arm).*
+`consolidationRoute.test.js` · T21 → T31 · AC-3.7(c) · FSPEC BR-24, AT-Q2 (trailer-set arm).*
 
 ### 7.4 The credential
 
@@ -1069,7 +1069,7 @@ required (AT-K1). Neither variable nor `gh` auth ⇒ `credential: absent`, reaso
 and the pass does **not** halt (AT-K2). A credential **present but rejected** by the repository ⇒
 `credential: present (redacted)` **and** reason `credential-unavailable` — the two fields are **not
 collapsed**, which is the conjunct that separates "we had none" from "the one we had was refused".
-*L2 · `consolidationCredential.test.js` · T30 → T31 · AC-4.1, AC-4.2, AC-4.4 · AT-K1, AT-K2, AT-K4.*
+*L2 · `consolidationCredential.test.js` · T22 → T30 · AC-4.1, AC-4.2, AC-4.4 · AT-K1, AT-K2, AT-K4.*
 
 **PROP-CRED-02** — *`absent` is one value with three readings, decided by the row and by the report,
 never by `status:`.* Six rows spanning every shape §10.3 admits: (i) `refused` at step 6, (ii) a
@@ -1086,13 +1086,13 @@ distinguished **in the report body**: (iv)'s §10.4 item 4 names a degraded prom
 `credential-unavailable` failure class and (v)'s does not. Both directions asserted; the (iv)/(v) pair
 is the one this property exists for — an implementation keying the reading on `status:`, or emitting
 the reason code on a `failed` row to make it decidable, fails on it. *L2 ·
-`consolidationCredential.test.js` · T30 → T31 · AC-4.2, §10.3 · AT-K6.*
+`consolidationCredential.test.js` · T22 → T30 · AC-4.2, §10.3 · AT-K6.*
 
 **PROP-CRED-03** — *The credential value appears in nothing the pass writes, and the field is drawn
 from a closed set.* Every artifact the pass produces and the report body are searched: the credential
 value appears in **none** of them, and the row carries **exactly one** `credential:` value from the
 three-member closed set. The set-membership conjunct is the positive half — a pass writing no
-`credential:` field at all satisfies the search alone. *L2 · `consolidationCredential.test.js` · T30 →
+`credential:` field at all satisfies the search alone. *L2 · `consolidationCredential.test.js` · T22 →
 T31 · AC-4.2, NFR-2 · AT-K5.*
 
 **PROP-CRED-04** — *Partial success has its own terminal status, asserted behaviourally.* A pass with
@@ -1102,8 +1102,8 @@ observables (`pr:` populated, their ids in the log) and the failed one under the
 naming its failure class (AT-K7). Its paired negative: a pass that promoted nothing else and degraded
 its **only** promotion terminates `no-op`, never a bare `promoted` (AT-K3). The pair is what pins the
 status to the *shape* of the outcome rather than to the presence of a degradation; §8's rendering
-property sees the string, this one sees the behaviour. *L2 · `consolidationCredential.test.js` · T30 →
-T31 · AC-4.3, §12.1 · AT-K3, AT-K7.*
+property sees the string, this one sees the behaviour. *L2 · `consolidationCredential.test.js` · T22 →
+T30 · AC-4.3, §12.1 · AT-K3, AT-K7.*
 
 ## 8. Properties — rendering and the report
 
@@ -1337,7 +1337,7 @@ for the unrouted one; the §5.4 commit runs and the already-made append is **dur
 marker is released; and the report body carries the error message **verbatim** **and** the
 routed/unrouted split. Distinct from PROP-MRK-03(ii), whose Given fails the **first** dispatch and so
 has no table and no records to leave behind — the two are the positive and negative halves of §10.2
-order 3 and neither may be dropped. *L2 · `consolidationPass.test.js` · T28 → T31 · AC-7.1, AC-7.2, §12.1
+order 3 and neither may be dropped. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-7.1, AC-7.2, §12.1
 S-11c · AT-M9.*
 
 ### 9.4 Two whole-pass disciplines
@@ -1349,8 +1349,8 @@ reached, minus `refused` — where the marker belongs to the *other* pass and re
 defect (PROP-MRK-01) — and minus `skipped-cadence`, where no marker was taken (PROP-PASS-02).
 Set-equality rather than a per-status assertion list, because a status added to the vocabulary and
 forgotten by the release path is invisible to a list; PROP-RPT-04's fourth leg pins the vocabulary
-this equality ranges over, so the two cannot drift apart silently. *L2 · `consolidationPass.test.js` ·
-T28 → T31 · AC-1.3, §12.1.*
+this equality ranges over, so the two cannot drift apart silently. *L2 · `consolidationLifecycle.test.js` ·
+T23 → T31 · AC-1.3, §12.1.*
 
 **PROP-PASS-10** — *The `await` discipline is asserted by mutation, not by inspection.* The doubles'
 `asAsync` resolves recordings on a **macrotask** (PROP-DBL-02), so a missing `await` on an
@@ -1360,7 +1360,7 @@ check, discharged once at implementation time and recorded in the test's comment
 property is a claim about the doubles rather than about the pass — and a source-text scan for `await`
 (the `AWAIT_SCAN_SOURCES` idiom at `pdlc/workflows/__tests__/runtimeBundle.test.js:1040`) is
 supplementary only, since it cannot see an `await` that is present but on the wrong expression. *L2 ·
-`consolidationPass.test.js` · T28 → T31 · NFR-5, AC-7.2, TSPEC §7.3.*
+`consolidationLifecycle.test.js` · T23 → T31 · NFR-5, AC-7.2, TSPEC §7.3.*
 
 ## 10. Properties — build, source text, and traceability
 
