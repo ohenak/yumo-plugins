@@ -183,6 +183,42 @@ test("dispatch env spreads the provided env rather than replacing it", async () 
   assert.notEqual(capturedEnv, baseEnv, "must be a spread copy, not the same object reference");
 });
 
+test("success path also returns the apiKeySource observed at system/init (Phase 4 provenance)", async () => {
+  async function* stream() {
+    yield initMessage("none");
+    yield resultMessage();
+  }
+  const queryFn = async () => stream();
+  const { dispatch } = createTransport({ queryFn, env: {} });
+
+  const out = await dispatch("hi");
+  assert.equal(out.apiKeySource, "none");
+});
+
+test("a thrown rate-limit error forwards status/rateLimitType/resetsAt/retryAfterMs onto RateLimitedError", async () => {
+  const queryFn = async () => {
+    const err = new Error("Rate limit exceeded");
+    err.status = 429;
+    err.rateLimitType = "five_hour";
+    err.resetsAt = 1786248000;
+    err.retryAfterMs = 12345;
+    throw err;
+  };
+  const { dispatch } = createTransport({ queryFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof RateLimitedError);
+      assert.equal(err.status, 429);
+      assert.equal(err.rateLimitType, "five_hour");
+      assert.equal(err.resetsAt, 1786248000);
+      assert.equal(err.retryAfterMs, 12345);
+      return true;
+    }
+  );
+});
+
 test("apiKeySourcePolicy is configurable to allow a wider set", async () => {
   async function* stream() {
     yield initMessage("ANTHROPIC_API_KEY");

@@ -3,7 +3,7 @@
 //
 // Commands:
 //   pdlc dev <docs/{f}/REQ-{f}.md> [--force-phases <list>] [--dry-run]
-//   pdlc queue [--queue-path <p>] [--loop] [--dry-run]
+//   pdlc queue [--queue-path <p>] [--loop [--max-iterations <n>]] [--dry-run]
 //   pdlc doctor
 //   pdlc hello | pdlc spike:sdk
 //
@@ -28,6 +28,7 @@ import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
 import { runDev, runQueue, runQueueLoop, workflowModulePath } from "../lib/run.mjs";
+import { buildEngineBlock, stampReport } from "../lib/report.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
@@ -35,7 +36,7 @@ const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), 
 const USAGE = [
   "Usage:",
   "  pdlc dev <docs/{feature}/REQ-{feature}.md> [--force-phases <R,F,T,P,D,PR|all>] [--dry-run]",
-  "  pdlc queue [--queue-path <path>] [--loop] [--dry-run]",
+  "  pdlc queue [--queue-path <path>] [--loop [--max-iterations <n>]] [--dry-run]",
   "  pdlc doctor",
   "  pdlc hello | pdlc spike:sdk",
   "",
@@ -73,7 +74,14 @@ function positionals(argv, valueFlags) {
   return out;
 }
 
-const VALUE_FLAGS = ["plugin-root", "cwd", "force-phases", "queue-path", "dry-run-skill"];
+const VALUE_FLAGS = [
+  "plugin-root",
+  "cwd",
+  "force-phases",
+  "queue-path",
+  "dry-run-skill",
+  "max-iterations",
+];
 
 // ─── shared startup ──────────────────────────────────────────────────────────
 
@@ -197,11 +205,35 @@ function liveAdapter(argv, startup) {
   return { adapter: createAdapter({ transport, pluginRoot: startup.pluginRoot, cwd }), cwd };
 }
 
-function reportOutcome(report) {
-  if (!report) return 1;
+/**
+ * Report-provenance stamping (Phase 4): wrap the module's own final report
+ * with the engine's `engine` block and print it as ONE JSON line — the
+ * convention this CLI commits to is "human-readable progress lines on stdout
+ * above it, the stamped report is always the LAST line of stdout, and it is
+ * always exactly one line" so an unattended caller (a cron job, `pdlc queue
+ * --loop`'s own driver) can reliably take the last line of output and
+ * `JSON.parse` it without scanning for a multi-line block.
+ *
+ * Exit-code convention unchanged from before stamping (REQ AC-1.4): 2 for a
+ * recorded pipeline halt/block, 0 otherwise; `!report` (the engine refused or
+ * crashed before any module ran) is 1, handled by callers before this is
+ * reached in practice, but guarded here too since it stamps and returns 1.
+ */
+function emitReport(report, { adapter, startup, startedAt, finishedAt }) {
+  const engine = buildEngineBlock({
+    engineVersion: pkg.version,
+    pluginVersion: startup ? startup.pluginVersion : null,
+    pluginRoot: startup ? startup.pluginRoot : null,
+    apiKeySource: adapter ? adapter.getApiKeySource() : null,
+    baseUrl: process.env.ANTHROPIC_BASE_URL || null,
+    pauses: adapter ? adapter.getPauseLog() : [],
+    startedAt,
+    finishedAt,
+  });
+  const stamped = stampReport(report, engine);
   console.log("");
-  console.log("--- run report ---");
-  console.log(JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(stamped));
+  if (!report) return 1;
   if (report.outcome === "halted" || report.outcome === "blocked") return 2;
   return 0;
 }
@@ -232,6 +264,7 @@ async function cmdDev(argv) {
 
   for (const line of formatStartup(startup)) console.log(line);
   const { adapter, cwd } = liveAdapter(argv, startup);
+  const startedAt = new Date().toISOString();
   const { report } = await runDev({
     reqPath,
     forcePhases: readFlag(argv, "force-phases"),
@@ -239,7 +272,8 @@ async function cmdDev(argv) {
     adapter,
     startup,
   });
-  process.exitCode = reportOutcome(report);
+  const finishedAt = new Date().toISOString();
+  process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt });
 }
 
 async function cmdQueue(argv) {
@@ -263,17 +297,31 @@ async function cmdQueue(argv) {
 
   if (hasFlag(argv, "loop")) {
     // AC-1.3 / `queue.loopIdleExit`: one feature per pass until no ready row
-    // remains, then exit 0.
-    const { passes, outcome } = await runQueueLoop({ queuePath, cwd, adapter, startup });
+    // remains, then exit 0. `--max-iterations` bounds the number of passes for
+    // unattended endurance (G-7); omitted, the loop is unbounded and relies on
+    // the queue itself running dry (`idle` / `no-queue`) or halting/blocking.
+    const maxIterationsFlag = readFlag(argv, "max-iterations");
+    const maxPasses =
+      maxIterationsFlag != null && maxIterationsFlag !== "" ? Number(maxIterationsFlag) : Infinity;
+    if (maxIterationsFlag != null && maxIterationsFlag !== "" && !(maxPasses > 0)) {
+      console.error(`pdlc queue --loop: --max-iterations must be a positive number, got "${maxIterationsFlag}"`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const startedAt = new Date().toISOString();
+    const { passes, outcome } = await runQueueLoop({ queuePath, cwd, adapter, startup, maxPasses });
+    const finishedAt = new Date().toISOString();
     const last = passes[passes.length - 1];
     console.log(`\nqueue --loop: ${passes.length} pass(es), final outcome "${outcome}".`);
-    process.exitCode =
-      outcome === "idle" || outcome === "no-queue" ? 0 : reportOutcome(last && last.report);
+    process.exitCode = emitReport(last && last.report, { adapter, startup, startedAt, finishedAt });
     return;
   }
 
+  const startedAt = new Date().toISOString();
   const { report } = await runQueue({ queuePath, cwd, adapter, startup });
-  process.exitCode = reportOutcome(report);
+  const finishedAt = new Date().toISOString();
+  process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt });
 }
 
 // ─── entry ───────────────────────────────────────────────────────────────────

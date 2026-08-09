@@ -20,6 +20,78 @@
 
 import { execFile } from "node:child_process";
 import { loadSkill, composeDispatchPrompt } from "./skills.mjs";
+import { RateLimitedError } from "./transport.mjs";
+
+// ─── rate-limit pause/resume (REQ AC-4.1, Phase 4) ─────────────────────────────
+//
+// Decision ladder, applied on every `_agent` dispatch that throws
+// `RateLimitedError` (the transport already classifies it — see
+// lib/transport.mjs — carrying `rateLimitType` / `status` / `resetsAt` /
+// `retryAfterMs`):
+//
+//   1. Has this dispatch already paused `maxRateLimitPauses` times (default 3,
+//      REQ `dispatch.retryAttempts` = "3 retries after first attempt")?
+//      Yes -> rethrow the RateLimitedError as-is. The module that called
+//      `_agent` sees an ordinary dispatch failure and applies its own halt
+//      semantics (REQ: "exhausting bound rethrows RateLimitedError — module
+//      then handles it as an ordinary dispatch failure"). The engine process
+//      itself never crashes here.
+//   2. Otherwise compute how long to wait, in this priority order:
+//        a. `retryAfterMs` if the error carries a finite, positive value.
+//        b. else `resetsAt - now()` (clamped to >= 0) if `resetsAt` is present.
+//        c. else exponential backoff: `retryBackoffBaseMs * 2^attempt`
+//           (attempt is 0-indexed: first pause = base, second = 2x, ...).
+//      Whatever the source, the wait is capped at `retryBackoffCapMs` and then
+//      has a small amount of jitter added (never subtracted, so the cap is a
+//      floor for the capped case, not a hard ceiling breached by jitter is
+//      fine — jitter only ever delays a little further, it never reduces
+//      below any computed floor).
+//   3. Append one row to the run's pause log: timestamp (via the injected
+//      clock), the attempt number (1-indexed, i.e. "this is pause #N"),
+//      waitedMs, and the rate-limit fields the error carried.
+//   4. Sleep for the computed duration (via the injected sleep function) and
+//      retry the SAME dispatch (same composed prompt, same dispatch options).
+//
+// Clock and sleep are both injectable so tests never touch a real timer.
+
+const DEFAULT_MAX_RATE_LIMIT_PAUSES = 3;
+const DEFAULT_RETRY_BACKOFF_BASE_MS = 30 * 1000; // 30s, per REQ dispatch.retryBackoff
+const DEFAULT_RETRY_BACKOFF_CAP_MS = 15 * 60 * 1000; // 15min cap, per REQ dispatch.retryBackoff
+const DEFAULT_JITTER_MS = 1000;
+
+function defaultSleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function defaultJitter(jitterMs) {
+  return Math.floor(Math.random() * (jitterMs + 1));
+}
+
+/**
+ * Compute the wait, in ms, before the Nth pause (attempt is 0-indexed: 0 for
+ * the first pause). Exported for direct unit testing of the decision ladder
+ * without going through a full dispatch.
+ */
+export function computeRateLimitWaitMs(
+  err,
+  attempt,
+  { now = Date.now, baseMs = DEFAULT_RETRY_BACKOFF_BASE_MS, capMs = DEFAULT_RETRY_BACKOFF_CAP_MS, jitterMs = DEFAULT_JITTER_MS, jitterFn = defaultJitter } = {}
+) {
+  let waitMs;
+  if (Number.isFinite(err && err.retryAfterMs) && err.retryAfterMs > 0) {
+    waitMs = err.retryAfterMs;
+  } else if (err && err.resetsAt != null) {
+    // resetsAt may be a unix-epoch-seconds or -ms number; the SDK's
+    // rate_limit_event carries seconds (see transport.test.js's fixture), so
+    // treat anything that looks like seconds (< 10^12) as seconds.
+    const resetsAtMs = err.resetsAt < 1e12 ? err.resetsAt * 1000 : err.resetsAt;
+    waitMs = Math.max(0, resetsAtMs - now());
+  } else {
+    waitMs = baseMs * Math.pow(2, attempt);
+  }
+  waitMs = Math.min(waitMs, capMs);
+  return waitMs + jitterFn(jitterMs);
+}
 
 /**
  * Default `_runCommand` implementation.
@@ -83,8 +155,16 @@ export function createRunCommand({
  * @param {object} [args.env] Environment for `_runCommand`; spread, never replaced.
  * @param {Function} [args.loadSkillFn] Injected skill reader (tests).
  * @param {Function} [args.runCommandFn] Injected command runner (tests).
+ * @param {number} [args.maxRateLimitPauses] Bounded pauses per dispatch (REQ AC-4.1). Default 3.
+ * @param {number} [args.retryBackoffBaseMs] Exponential-backoff base. Default 30_000.
+ * @param {number} [args.retryBackoffCapMs] Exponential-backoff / resetsAt cap. Default 900_000.
+ * @param {number} [args.jitterMs] Upper bound of the jitter added to every wait. Default 1000.
+ * @param {Function} [args.now] Injectable clock (`() => ms`). Default `Date.now`.
+ * @param {Function} [args.sleep] Injectable sleep (`(ms) => Promise<void>`). Test seam.
+ * @param {Function} [args.jitterFn] Injectable jitter (`(jitterMs) => ms`). Test seam.
  * @returns {{_agent, _parallel, _pipeline, _phase, _log, _runCommand,
- *            composePrompt: Function}}
+ *            composePrompt: Function, getPauseLog: Function,
+ *            getDispatchCounts: Function, getApiKeySource: Function}}
  */
 export function createAdapter({
   transport,
@@ -94,6 +174,13 @@ export function createAdapter({
   env = process.env,
   loadSkillFn = loadSkill,
   runCommandFn = null,
+  maxRateLimitPauses = DEFAULT_MAX_RATE_LIMIT_PAUSES,
+  retryBackoffBaseMs = DEFAULT_RETRY_BACKOFF_BASE_MS,
+  retryBackoffCapMs = DEFAULT_RETRY_BACKOFF_CAP_MS,
+  jitterMs = DEFAULT_JITTER_MS,
+  now = Date.now,
+  sleep = defaultSleep,
+  jitterFn = defaultJitter,
 } = {}) {
   if (!transport || typeof transport.dispatch !== "function") {
     throw new Error("createAdapter: a transport with a dispatch() function is required");
@@ -101,6 +188,13 @@ export function createAdapter({
   if (!pluginRoot) {
     throw new Error("createAdapter: pluginRoot is required (resolve it before building seams)");
   }
+
+  // Run-lifetime provenance state, accumulated across every `_agent` call this
+  // adapter instance makes (one adapter per run — see bin/pdlc.mjs). Consumed
+  // by the CLI's report-provenance stamp (REQ AC-4.5 / G-7), never reset mid-run.
+  const pauseLog = [];
+  const dispatchCounts = new Map();
+  let lastApiKeySource = null;
 
   // One read per skill per process. The plugin tree is immutable for the life of
   // a run (it is a version-pinned install), and a pipeline dispatches the same
@@ -138,8 +232,46 @@ export function createAdapter({
     if (timeoutMs !== undefined) dispatchOpts.timeoutMs = timeoutMs;
     if (maxTurns !== undefined) dispatchOpts.maxTurns = maxTurns;
 
-    const result = await transport.dispatch(composed, dispatchOpts);
-    return result && result.text != null ? result.text : "";
+    dispatchCounts.set(skill, (dispatchCounts.get(skill) || 0) + 1);
+
+    let attempt = 0; // number of pauses already taken for THIS dispatch
+    for (;;) {
+      let result;
+      try {
+        result = await transport.dispatch(composed, dispatchOpts);
+      } catch (err) {
+        if (!(err instanceof RateLimitedError) || attempt >= maxRateLimitPauses) {
+          throw err;
+        }
+        const waitedMs = computeRateLimitWaitMs(err, attempt, {
+          now,
+          baseMs: retryBackoffBaseMs,
+          capMs: retryBackoffCapMs,
+          jitterMs,
+          jitterFn,
+        });
+        attempt += 1;
+        pauseLog.push({
+          timestamp: now(),
+          skill,
+          label: tag,
+          attempt,
+          waitedMs,
+          rateLimitType: err.rateLimitType ?? null,
+          status: err.status ?? null,
+          resetsAt: err.resetsAt ?? null,
+          retryAfterMs: err.retryAfterMs ?? null,
+        });
+        log(
+          `[rate-limit] ${tag}: pause ${attempt}/${maxRateLimitPauses}, waiting ${waitedMs}ms` +
+            (err.rateLimitType ? ` (${err.rateLimitType})` : "")
+        );
+        await sleep(waitedMs);
+        continue; // retry the SAME dispatch
+      }
+      if (result && result.apiKeySource != null) lastApiKeySource = result.apiKeySource;
+      return result && result.text != null ? result.text : "";
+    }
   }
 
   /** Modules hand `parallel()` already-started promises, not thunks (runtime-adapter.js:67). */
@@ -169,5 +301,11 @@ export function createAdapter({
     _log,
     _runCommand: runCommandFn || createRunCommand({ cwd, env }),
     composePrompt,
+    /** Append-only pause log accumulated across every `_agent` call so far (REQ AC-4.5). */
+    getPauseLog: () => pauseLog.slice(),
+    /** `{skill: count}` — a per-skill dispatch tally, the engine's proxy for "per-phase" (AC-4.5). */
+    getDispatchCounts: () => Object.fromEntries(dispatchCounts),
+    /** The most recently observed SDK `apiKeySource`, or null if no dispatch has completed yet. */
+    getApiKeySource: () => lastApiKeySource,
   };
 }

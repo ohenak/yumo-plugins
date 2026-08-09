@@ -4,7 +4,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createAdapter, createRunCommand } from "../lib/adapter.mjs";
+import { createAdapter, createRunCommand, computeRateLimitWaitMs } from "../lib/adapter.mjs";
+import { RateLimitedError } from "../lib/transport.mjs";
 
 function fakeTransport(text = "AGENT-REPLY") {
   const calls = [];
@@ -218,4 +219,163 @@ test("createAdapter wires a _runCommand by default and honours an injected one",
 
   const injected = makeAdapter({ runCommandFn: async () => ({ ok: true, output: "stub" }) });
   assert.deepEqual(await injected.adapter._runCommand("x"), { ok: true, output: "stub" });
+});
+
+// ── rate-limit pause/resume decision ladder (REQ AC-4.1, Phase 4) ─────────────
+
+test("computeRateLimitWaitMs prefers retryAfterMs when present and positive", () => {
+  const wait = computeRateLimitWaitMs(
+    new RateLimitedError("x", { retryAfterMs: 5000, resetsAt: 999999999 }),
+    0,
+    { jitterFn: () => 0 }
+  );
+  assert.equal(wait, 5000);
+});
+
+test("computeRateLimitWaitMs falls back to resetsAt - now() when retryAfterMs is absent", () => {
+  const nowMs = 1_700_000_000_000;
+  const resetsAtSeconds = nowMs / 1000 + 10; // 10s ahead, SDK-style epoch seconds
+  const wait = computeRateLimitWaitMs(new RateLimitedError("x", { resetsAt: resetsAtSeconds }), 0, {
+    now: () => nowMs,
+    jitterFn: () => 0,
+  });
+  assert.equal(wait, 10_000);
+});
+
+test("computeRateLimitWaitMs clamps a resetsAt in the past to zero, not negative", () => {
+  const nowMs = 1_700_000_000_000;
+  const resetsAtSeconds = nowMs / 1000 - 10; // already passed
+  const wait = computeRateLimitWaitMs(new RateLimitedError("x", { resetsAt: resetsAtSeconds }), 0, {
+    now: () => nowMs,
+    jitterFn: () => 0,
+  });
+  assert.equal(wait, 0);
+});
+
+test("computeRateLimitWaitMs falls back to exponential backoff when neither field is present", () => {
+  const err = new RateLimitedError("x", {});
+  const w0 = computeRateLimitWaitMs(err, 0, { baseMs: 30_000, jitterFn: () => 0 });
+  const w1 = computeRateLimitWaitMs(err, 1, { baseMs: 30_000, jitterFn: () => 0 });
+  const w2 = computeRateLimitWaitMs(err, 2, { baseMs: 30_000, jitterFn: () => 0 });
+  assert.equal(w0, 30_000);
+  assert.equal(w1, 60_000);
+  assert.equal(w2, 120_000);
+});
+
+test("computeRateLimitWaitMs caps the wait at capMs before adding jitter", () => {
+  const err = new RateLimitedError("x", { retryAfterMs: 999_999_999 });
+  const wait = computeRateLimitWaitMs(err, 0, { capMs: 900_000, jitterMs: 500, jitterFn: (j) => j });
+  assert.equal(wait, 900_000 + 500, "capped wait plus the injected jitter");
+});
+
+test("computeRateLimitWaitMs adds jitter via the injected jitterFn, never subtracting", () => {
+  const err = new RateLimitedError("x", { retryAfterMs: 1000 });
+  const wait = computeRateLimitWaitMs(err, 0, { jitterMs: 200, jitterFn: (j) => j / 2 });
+  assert.equal(wait, 1100);
+});
+
+function fakeRateLimitedTransport({ failTimes, text = "OK" }) {
+  const calls = [];
+  let n = 0;
+  return {
+    calls,
+    dispatch: async (prompt, opts) => {
+      calls.push({ prompt, opts });
+      if (n < failTimes) {
+        n += 1;
+        throw new RateLimitedError("rate limited", {
+          rateLimitType: "five_hour",
+          status: 429,
+          retryAfterMs: 1000 * n,
+        });
+      }
+      return { text, sessionId: "s", costUsd: 0, usage: {}, rateLimitEvents: [], apiKeySource: "none" };
+    },
+  };
+}
+
+test("_agent pauses, records the pause, and retries the SAME dispatch on RateLimitedError", async () => {
+  const transport = fakeRateLimitedTransport({ failTimes: 2 });
+  const sleeps = [];
+  const { adapter } = makeAdapter({
+    transport,
+    extra: {
+      sleep: async (ms) => sleeps.push(ms),
+      jitterFn: () => 0,
+      now: () => 1000,
+    },
+  });
+
+  const out = await adapter._agent("pm-author", "Write REQ-foo.md", { label: "R:author" });
+
+  assert.equal(out, "OK");
+  assert.equal(transport.calls.length, 3, "2 failures + 1 success = 3 dispatch attempts");
+  // Every attempt dispatches the SAME composed prompt.
+  assert.equal(transport.calls[0].prompt, transport.calls[1].prompt);
+  assert.equal(transport.calls[0].prompt, transport.calls[2].prompt);
+
+  assert.deepEqual(sleeps, [1000, 2000]);
+
+  const pauses = adapter.getPauseLog();
+  assert.equal(pauses.length, 2);
+  assert.equal(pauses[0].attempt, 1);
+  assert.equal(pauses[0].waitedMs, 1000);
+  assert.equal(pauses[0].skill, "pm-author");
+  assert.equal(pauses[0].label, "R:author");
+  assert.equal(pauses[0].rateLimitType, "five_hour");
+  assert.equal(pauses[0].status, 429);
+  assert.equal(pauses[0].timestamp, 1000);
+  assert.equal(pauses[1].attempt, 2);
+  assert.equal(pauses[1].waitedMs, 2000);
+});
+
+test("_agent exhausting maxRateLimitPauses rethrows RateLimitedError rather than crashing", async () => {
+  const transport = fakeRateLimitedTransport({ failTimes: 10 });
+  const sleeps = [];
+  const { adapter } = makeAdapter({
+    transport,
+    extra: {
+      maxRateLimitPauses: 3,
+      sleep: async (ms) => sleeps.push(ms),
+      jitterFn: () => 0,
+    },
+  });
+
+  await assert.rejects(() => adapter._agent("se-implement", "task"), RateLimitedError);
+  assert.equal(sleeps.length, 3, "exactly maxRateLimitPauses pauses are taken, no more");
+  assert.equal(transport.calls.length, 4, "3 paused attempts + the 4th that is not retried");
+  assert.equal(adapter.getPauseLog().length, 3);
+});
+
+test("_agent never pauses for a non-RateLimitedError failure", async () => {
+  const transport = {
+    calls: [],
+    dispatch: async () => {
+      throw new Error("boom");
+    },
+  };
+  const sleeps = [];
+  const { adapter } = makeAdapter({ transport, extra: { sleep: async (ms) => sleeps.push(ms) } });
+
+  await assert.rejects(() => adapter._agent("pm-author", "x"), /boom/);
+  assert.deepEqual(sleeps, []);
+  assert.deepEqual(adapter.getPauseLog(), []);
+});
+
+test("getDispatchCounts tallies one entry per _agent call, per skill", async () => {
+  const { adapter } = makeAdapter();
+  await adapter._agent("pm-author", "a");
+  await adapter._agent("pm-author", "b");
+  await adapter._agent("se-implement", "c");
+  assert.deepEqual(adapter.getDispatchCounts(), { "pm-author": 2, "se-implement": 1 });
+});
+
+test("getApiKeySource reflects the most recently observed SDK apiKeySource", async () => {
+  const transport = {
+    dispatch: async () => ({ text: "x", apiKeySource: "none" }),
+  };
+  const { adapter } = makeAdapter({ transport });
+  assert.equal(adapter.getApiKeySource(), null, "no dispatch has completed yet");
+  await adapter._agent("pm-author", "a");
+  assert.equal(adapter.getApiKeySource(), "none");
 });
