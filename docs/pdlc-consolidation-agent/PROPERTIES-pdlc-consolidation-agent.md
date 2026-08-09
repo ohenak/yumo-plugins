@@ -505,6 +505,12 @@ trigger rule would have had two homes to update. They are **retired into §9.1**
 | PROP-TRG-04 | PROP-PASS-02's manual arm (L2, T20) | same AT-C4 obligation |
 | PROP-TRG-05 | PROP-PASS-05 (L2, T20) | verbatim the same property, differing only in file and owner |
 
+The retired ids stay visible in the table above and need **no exclusion rule** when PROP-TRC-01 runs:
+that property's parser ranges over the **`AT-…` token grammar** in the FSPEC register and TSPEC
+§12.3's table, not over `PROP-…` ids in this document, so a retired id appearing here contributes
+nothing to either side of its set equality. The count claimed in §1 is the separate figure, and it
+excludes these four by construction.
+
 PROP-TRG-03 and PROP-TRG-06 stay here: both are **L1** over `parseLogRecords` / `mintPassId` against
 the L2 whole-pass arms in PROP-PASS-03 and PROP-PASS-04, which is the L1-vs-L2 layering O-4 sanctions.
 
@@ -1760,7 +1766,7 @@ this document as promising.
 | **A real advisory corpus** | `docs/_queue/ESCALATIONS.md` is absent at HEAD and BL-01a is *not expected to be met* (REQ-CONS-06 preamble) | PROP-ADV-01 makes the absent and empty states first-class and asserts distinct reason codes for each; PROP-ADV-02/05 run on constructed corpora, never on the repository |
 | **Cross-repository operation (the two-repo configuration)** | BL-03's fine-grained token is operator-provisioned and not available to CI | PROP-CRED-01 covers the credential ladder's three values through the seam; the shipping configuration is same-repo (AC-3.8/AC-4.4) and is the one exercised end to end |
 | **`Route`'s missing proposal-file member (ER-6)** | The vocabulary is upstream and the interim is deliberate | PROP-RPT-08 asserts both the loss and the report-body discriminator that stands in for it, in both directions |
-| **AC-3.4's second carrier on a fully-`promoted` pass** | The obligation is vacuous by construction: a pass where every promotion landed writes no `CONSOLIDATION-PROPOSAL-{passId}.md` at all (§5.3, PROP-RTE-06(a)), so there is no file for the URL to reach. Asserting one into existence would contradict PROP-RTE-06 | PROP-PR-09 asserts the two-carrier string equality on the `promoted-degraded` Given, where both carriers exist; §13.3 erratum 4 routes the REQ/FSPEC tension upstream rather than resolving it here |
+| **AC-3.4's second carrier on a fully-`promoted` pass** | The obligation is vacuous by construction: a pass where every promotion landed writes no `CONSOLIDATION-PROPOSAL-{passId}.md` at all (§5.3, PROP-RTE-06(a)), so there is no file for the URL to reach. Asserting one into existence would contradict PROP-RTE-06 | PROP-PR-09 asserts the two-carrier string equality on the `promoted-degraded` Given, where both carriers exist; §13.3 erratum 4 routes the REQ/FSPEC tension upstream rather than resolving it here. **If the erratum lands as "in each carrier that exists", PROP-PR-09 is unchanged** — its Given already quantifies over carriers that exist, so the reconciled wording is the property as written, and no second arm is owed: the "no proposal file on a fully-`promoted` pass" half is already asserted by PROP-RTE-06(a), and duplicating it here would re-home that invariant. Only a reconciliation that made the proposal file **mandatory** on the happy path would reopen this property, and that reading contradicts FSPEC §5.3 |
 
 ### 13.2 Negative space — what these properties deliberately do not assert
 
