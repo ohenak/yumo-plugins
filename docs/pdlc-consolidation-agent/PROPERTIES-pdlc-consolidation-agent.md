@@ -1378,6 +1378,63 @@ property is **green on write** and carries no `describe.skip`. *L3 ·
 
 ## 11. Generator-driven properties
 
+Six strategies, one per parameterisable component, all drawn from `driftGenerators.js`'s
+`seeded`/`resolveSeed` (`pdlc/workflows/__tests__/helpers/driftGenerators.js:76`, `:134`) — **no
+property-testing dependency is added**, matching the shipped decision recorded in that file's header.
+Red owner **T19**, file `consolidationProperties.test.js` (L5); greens **T25**, **T26**, **T27**.
+Every generator is bounded (PROP-GEN-00): a failing seed is reported in the failure message so the
+case is reproducible without re-running the suite.
+
+**PROP-GEN-01** — *The two-region predicate is total, and its two sets partition the corpus.* Over
+random interleavings of openers, closers, stray basenames and prose, against a random enumerated
+corpus: every basename **inside any block** is consolidated; the predicate **never throws**; and every
+enumerated file lands in **exactly one** of the two sets. The partition is the positive conjunct — a
+predicate returning `∅` for both sets satisfies totality alone. *L5 · T19 → T25 · §7.1 · TSPEC §11.4
+row 1.*
+
+**PROP-GEN-02** — *The minted `passId` dominates, ignores garbage, and does not depend on row order.*
+Over a random multiset of rows with a random subset made unparseable: the minted id is **strictly
+greater** than every parseable `{today}` id; unparseable rows change **nothing**; and the result is
+**invariant under row permutation**. Strict dominance is the positive conjunct that stops a constant
+from satisfying the invariance (O-3). Its worked examples are PROP-PASS-04. *L5 · T19 → T26 · §7.2 ·
+TSPEC §11.4 row 2.*
+
+**PROP-GEN-03** — *Config corruption is per key, and `invalidKeys` is set-equal to the corrupted
+subset.* Over a random subset of keys corrupted **by type**: every uncorrupted key **keeps its
+configured value**; every corrupted key takes its **documented default**; and `invalidKeys` is
+**set-equal** to the corrupted subset. Set-equality in both directions is what catches both a
+silently swallowed corruption and a key reported invalid that was not. Its worked examples are
+PROP-RPT-06. *L5 · T19 → T25 · §7.8 · TSPEC §11.4 row 3.*
+
+**PROP-GEN-04** — *Escalation counting attributes exactly the well-formed entries and invents no
+key.* Over a random entry sequence with a random subset missing `Feature` or `Seam`: the **total
+attributed count equals** the number of entries carrying **both** rows, and **no count is attributed
+to a key absent from the input**. The second half is the positive conjunct that stops a function
+attributing everything to one bucket. Stated once here and cross-referenced from §6 as PROP-ADV-06.
+*L5 · T19 → T27 · §7.7 · TSPEC §11.4 row 4.*
+
+**PROP-GEN-05** — *The merge fold is permutation-invariant, and one ordering matches §7.4's table
+literally.* Over a group of **≥ 2** proposals sharing `(failureModeId, action)` in a random
+permutation — the shared id **derived, never assigned**: the generator draws one random `(phase,
+artifact)` pair and **computes** `failureModeId(phase, artifact)` from it (PROP-GEN-00), because
+assigning the id independently would admit `(id, phase, artifact)` triples no pass produces and a
+counterexample there is not a defect. The fold is **invariant under permutation**, **and** for at
+least one ordering the folded proposal's `kind`, `artifact`, `target`, `elidedKinds` and
+`elidedArtifacts` equal values **transcribed literally from §7.4's fold table** — not read back off
+the fold's own output, which would be an implementation echo. Order-invariance alone is **not** an
+oracle: a function returning a constant, `[]` or `null` satisfies it (O-3). The subject is
+`mergeProposals`, **not** `failureModeId`: §7.4's invariance argument is about the **fold**, and
+`failureModeId(phase, artifact)` takes no proposals at all, so order cannot be a variable of it (an
+earlier TSPEC draft named the wrong function). Its worked examples are PROP-RTE-04. *L5 · T19 → T26 ·
+§7.4 · TSPEC §11.4.*
+
+**PROP-GEN-06** — *The effectiveness table is order-invariant, one row per distinct id, each verdict
+on its assigned arm.* Over two passes' records appended in a **random order**, dates unchanged: the
+table is **invariant** under that order, **and** the row count equals the number of **distinct ids**,
+**and** each row's `verdict` equals the arm §7.5 assigns it. The two positive conjuncts are what make
+this more than an invariance claim — an empty table is order-invariant. Its worked examples are
+PROP-EFF-01 and PROP-EFF-02. *L5 · T19 → T27 · §7.5 · TSPEC §11.4.*
+
 ## 12. Coverage matrix
 
 ## 13. Gaps, negative space, and errata
