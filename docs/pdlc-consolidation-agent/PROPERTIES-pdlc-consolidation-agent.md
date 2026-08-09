@@ -429,7 +429,10 @@ pre-T09 script at `pdlc/workflows/__tests__/fixtures/nudge-consolidation.pre-wid
 by T04 and copied into the temp tree per case. **This fixture path is owed to PLAN §5's ownership
 manifest, which does not yet carry it:** T04's manifest row (`PLAN:307`) names only
 `pdlc/workflows/__tests__/consolidationHookParity.test.js`, and no row anywhere in §5 names anything
-under `pdlc/workflows/__tests__/fixtures/` — a directory that does not exist at HEAD. Phase I commits
+under `pdlc/workflows/__tests__/fixtures/`. The directory itself **exists and is tracked at HEAD**
+(`git ls-files pdlc/workflows/__tests__/fixtures/` returns 20+ files, including `completeness/`,
+`covered-violations/` and `digest-vectors.js`), and it is not ignored — so the new thing is the
+**file**, and the missing thing is the **manifest row**, not the directory. Phase I commits
 each task's work **pathspec-scoped to the files that task owns**, so on the manifest as written T04
 would author this baseline and the wave commit would drop it, leaving PROP-COR-12 and PROP-COR-13 red
 on correct code for a reason no test names. §13.3 erratum 3 carries the correction to PLAN: the
@@ -1835,7 +1838,9 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    PROP-COR-13 pins the fixture's own validity, so this document is safe; PLAN T04's task text is
    still the defect. **The correction has a second half, in PLAN §5's ownership manifest.** T04's
    manifest row (`PLAN:307`) names only `pdlc/workflows/__tests__/consolidationHookParity.test.js`,
-   and no row in §5 names any path under `pdlc/workflows/__tests__/fixtures/`. Since Phase I commits
+   and no row in §5 names any path under `pdlc/workflows/__tests__/fixtures/` — a directory that
+   **does exist and is tracked** at HEAD, so only the fixture file and the manifest row are new.
+   Since Phase I commits
    each task's work pathspec-scoped to that task's owned files, adding the baseline to T04's task
    text alone would leave it authored but uncommitted — the two properties would be red on correct
    code. Both halves of PLAN T04 need the fixture path: the task text **and** the manifest row.
