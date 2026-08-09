@@ -1350,7 +1350,11 @@ pass **is** an evaluated pass and the `unmeasurable` streak **does** advance (AC
 into one `no-op` fixture is precisely the defect REQ warns against, and an implementation keying
 either streak on the label rather than on the consumed set passes a single-fixture version of this
 property. *L2 · `consolidationPass.test.js` · T20 → T31 · AC-1.4, AC-5.3, AC-5.5 · (no FSPEC
-AT), REQ AC-1.4 third and fourth sentences.*
+AT), REQ AC-1.4 third and fourth sentences.* **Placement note:** the file is derived from the
+property's subject — a whole pass — not from a PLAN block that declares it. PLAN T20's `T31` block
+names (i) as its only remaining unregistered obligation and PLAN T23 declares two cases that are not
+this one, so no PLAN block currently declares AC-1.4's no-op case; §13.3 erratum 7 routes that gap
+upstream. The trailer's `T20 → T31` is this document's judgment pending that erratum.
 
 ### 9.2 The model ladder
 
@@ -1660,6 +1664,14 @@ carries T28 and T31 because PLAN T20 writes exactly two blocks there (`T28 — m
 that property. A per-property green is therefore a subset of its file's green list, never a
 disagreement with it.
 
+**Two rows are derived from subject rather than from PLAN text, and both are routed upstream.**
+PROP-PASS-01…05's `consolidationPass.test.js` row *is* read from PLAN — T20's `T31` block enumerates
+AT-C1 … AT-C8 there (`PLAN:264`) — but PROP-PASS-11 is not: no PLAN block declares AC-1.4's no-op
+case, so its file is derived from the property being a whole-pass property (§13.3 erratum 7).
+Likewise PROP-COR-10 and PROP-COR-11 sit here because their AT-P10/AT-P6 conjuncts are whole-pass
+writes, while TSPEC §12.3 and PLAN T14 register those ids on `consolidationPredicate.test.js`
+(§13.3 erratum 6). Every other row in this table is read from PLAN §4 directly.
+
 **Spanning convention.** A property spanning two files appears in **both** rows here, and in **both**
 task rows of §12.3. Its trailer pairs each file with that file's own task — `{file} (RED → greens)`,
 as PROP-CFG-03 and PROP-FIX-02 do — because the two axes do not factor: the file axis and the task
@@ -1874,3 +1886,17 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    here instead — citing the obligation the way PROP-TRG-03/06 cite TSPEC §7.2 — would leave AT-P6 and
    AT-P10 with **no** property discharging them at T14 (PROP-COR-01/04/05/06 cover AT-P1…P5, P8, P9,
    P11 only) and would owe two new L1 arms for cases their unit subject cannot observe.
+7. **No PLAN block declares AC-1.4's no-op pass.** PROP-PASS-11 carries `(no FSPEC AT)` and cites
+   AC-1.4, AC-5.3 and AC-5.5, and it is a whole-pass property, so `consolidationPass.test.js` is the
+   right **file** — but PLAN T20's `T31 — pass lifecycle` block closes its unregistered list
+   explicitly, stating that after AT-M11's assignment "(i) below is the only remaining unregistered
+   obligation in this row" (`PLAN:264`), where (i) is the unreadable-corpus-entry case that
+   PROP-COR-09 owns. PLAN T23 declares "two cases, no register id" (`PLAN:267`) and neither is the
+   no-op pass. So the gap is not created by this document's homing — **no PLAN block declares
+   AC-1.4's no-op case at all**, before or after the v1.2 re-home; the earlier homing merely hid it
+   behind a file that was wrong for other reasons. PLAN T20's block text should name a third
+   unregistered obligation — the no-op pass: an otherwise-eligible pass with nothing to consolidate
+   reaches terminal status `no-op`, writes the consumed pair, and raises no PR and no proposal file —
+   and its "only remaining" sentence should be restated to cover both. This document keeps
+   PROP-PASS-11 where it is; the placement is a **judgment pending this erratum**, not a claim that
+   PLAN already licenses it, and §12.2/§12.3's derivation sentences are qualified accordingly.
