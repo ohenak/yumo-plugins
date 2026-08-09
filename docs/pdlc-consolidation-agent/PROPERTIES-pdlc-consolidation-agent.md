@@ -272,6 +272,158 @@ no in-place repair. Conjunct (4) is not decorative: `route ?? "constraints"` is 
 
 ## 4. Properties — corpus, predicate, configuration
 
+Subjects: `enumerateCorpus`, `parseCorpusListing`, `classifyCorpus`, `renderConsumedPair`,
+`parseConsolidationConfig` (TSPEC §7.1, §7.8). Owner: PLAN **T25** (batch 4), red owner **T14**
+(predicate, batch 3), **T04** (hook parity, batch 2), **T19** (properties, batch 3). Files:
+`consolidationPredicate.test.js` (L1), `consolidationHookParity.test.js` (L4 + L3),
+`consolidationProperties.test.js` (L5).
+
+### 4.1 Enumeration
+
+**PROP-COR-01** — *The corpus is one `_git` read, and its argv is pinned element by element.* The
+call is exactly
+`_git(["ls-files", "--cached", "--others", "--exclude-standard", "--", ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"])`,
+asserted as a literal array comparison — **both** `:(glob)` prefixes included — not as a substring
+match and not as "an `ls-files` call was made". This is TSPEC §7.1's pin (a) and it is AT-P1's first
+conjunct. Its positive half is the membership assertion: a LEARNINGS under `docs/completed/{feature}/`
+**is** in the corpus. *L1 · `consolidationPredicate.test.js` · T14 → T25 · AC-1.1 step 1 · AT-P1.*
+
+**PROP-COR-02** — *No property drives a directory walk.* The exclusion of `docs/discarded/` is
+decided **by the pathspec**, never by a post-filter over enumerated lines, and no fixture asserts
+"a discarded line is filtered out" — that assertion is green against an implementation that walks
+directories and would hide the production failure `rtListFiles` guarantees
+(`runtime-adapter.js:915`, `:929-931`). Negative space, stated so a later reader does not add the
+missing case as an improvement. *L1 · `consolidationPredicate.test.js` · T14 → T25 · TSPEC §7.1.*
+
+**PROP-COR-08** — *The pinned argv means under a real `git` what the document claims it means.* An
+L4 case builds its **own** temp repository (`git init`; one LEARNINGS under each of `docs/{f}/`,
+`docs/completed/{f}/`, `docs/discarded/{f}/`; `git add -A`), reaches it through `_git`'s own
+`["-C", dir, …]` form — never the repository under test, so the assertion cannot drift as this
+repo's `docs/` tree grows — and runs **exactly** PROP-COR-01's argv: **zero** results under
+`docs/discarded/`, **at least one** under `docs/completed/`. It pins the `:(glob)` half only.
+`--exclude-standard` is inert under `--cached` in a fixture built by `git add -A`, and the
+ignored-LEARNINGS question REQ-CONS-01's erratum decided (a `.gitignore`d LEARNINGS **is** corpus,
+so the flag is dropped) leaves no flag behaviour to pin. Outside the fixture table and outside
+PROP-FIX-03's counter. *L4 · `consolidationHookParity.test.js` · T04 → T25 · TSPEC §11.1 · (no FSPEC
+AT).*
+
+### 4.2 The two-region predicate
+
+**PROP-COR-03** — *The predicate is total, and every enumerated file lands in exactly one set.* For
+any log text and any enumerated basename set, `classifyCorpus` returns without throwing and the
+consolidated and un-consolidated sets **partition** the input — neither overlapping nor dropping a
+member. The partition half is the positive conjunct that stops totality being satisfied by a
+function returning two empty sets. *L1 + L5 · `consolidationPredicate.test.js`,
+`consolidationProperties.test.js` · T14/T19 → T25 · AC-1.1 · TSPEC §11.4 row 1.*
+
+**PROP-COR-04** — *The four region shapes, one fixture each, each distinct from its neighbours.*
+Four rows, none of which subsumes another:
+
+| Fixture | Expected | AT | Why it is not another row's Given |
+|---|---|---|---|
+| a basename occurring **outside** any block and **after** the first marker (e.g. in an `artifact` field) | **un-consolidated**; the stray occurrence marks nothing | AT-P2 | a stray *basename*, against AT-P9's stray *closer* |
+| a log with **no** `<!-- pdlc:consumed` marker at all | the whole file is legacy region; a basename anywhere in it is consolidated | AT-P3 | no marker at all, against AT-P11's basename in **both** regions |
+| an opening marker with **no** closer | the unterminated block extends to EOF; its basenames are consumed | AT-P5 | — |
+| a closing `<!-- /pdlc:consumed -->` with **no** opener, beside a real block elsewhere | the dangling closer opens no block and moves no boundary; adjacent basenames are un-consolidated and the real block is unaffected | AT-P9 | the "real block unaffected" conjunct is what stops a parser that resets state on any closer |
+
+*L1 · `consolidationPredicate.test.js` · T14 → T25 · AC-1.1 · AT-P2, AT-P3, AT-P5, AT-P9.*
+
+**PROP-COR-05** — *A double membership is not a double count.* A basename appearing **both** in the
+legacy region and inside a `<!-- pdlc:consumed -->` block is consolidated exactly once and appears
+once in every set the pass derives — the two clauses are a disjunction over a set. *L1 ·
+`consolidationPredicate.test.js` · T14 → T25 · AC-1.1 · AT-P11.*
+
+**PROP-COR-06** — *Absent and unreadable are two input states, each with its own fixture.* An
+**absent** log yields every enumerated basename un-consolidated with no error (AT-P4); a log
+**present but unreadable** (permission or IO error) is treated as **empty text** — same outcome, no
+error raised, and the pass proceeds (AT-P8). Written as two rows because E-01 and E-02 are different
+states and one fixture cannot exercise both. *L1 · `consolidationPredicate.test.js` · T14 → T25 ·
+AC-1.1 · AT-P4, AT-P8.*
+
+**PROP-COR-09** — *An unreadable corpus **entry** is omitted from the consumed pair, counted as
+un-consolidated, and named.* One fixture carries **both** an unreadable member and a **readable
+control**. Three conjuncts: (1) the un-consolidated count counts **both** members; (2)
+`renderConsumedPair`'s output contains **both** basenames; (3) the report body names the
+**unreadable** basename and **not** the readable one. The control is what stops (1) and (3) passing
+on a fixture where nothing was readable. This is REQ §4b's erratum decision — no `unread:` field, no
+new reason code, no vocabulary row — asserted rather than assumed. Placed at L2 per O-4, because its
+subject is the pass's corpus handling end to end. *L2 · `consolidationPass.test.js` · T20 → T31 ·
+AC-1.1, REQ §4b · (no FSPEC AT), TSPEC §12.2.*
+
+**PROP-COR-10** — *A basename collision is resolved to one member **and reported**.* Two LEARNINGS
+sharing a basename under `docs/{f}/` and `docs/completed/{g}/` yield **one** member for the pair, and
+the report names the collision explicitly. The report conjunct is the one this property exists for:
+the set-size assertion alone cannot distinguish "reported" from "silently resolved". *L2 ·
+`consolidationPass.test.js` · T20 → T25/T31 · AC-1.1 · AT-P10.*
+
+**PROP-COR-11** — *The consumed pair is emitted complete, in one append, even when empty.* On an
+empty un-consolidated set the pair is **still** appended, empty, **before** any other record the pass
+writes. Positive conjunct on the same path: the appended text is one whole record in one
+`_appendFile` call, never a read-modify-write — the write-granularity obligation
+(`pdlc-consolidation-vocabularies.md` §3 at `Version` 1.4) is what makes NFR-5 implementable at all.
+*L2 · `consolidationPass.test.js` · T20 → T25/T31 · NFR-5, AC-2.4 · AT-P6.*
+
+### 4.3 The differential against the shipped hook
+
+**PROP-COR-07** — *One corpus, one predicate: the JS and the hook decide the same un-consolidated
+set on every case.* The shared fixture table spans both §3.2 regions, an unterminated block, a
+dangling closer, a stray basename, the legacy/block boundary, one case above `THRESHOLD = 5`
+(`nudge-consolidation.sh:25`) and a zero-corpus case. Each case is materialised as a fixture root and
+reached by the hook through `CLAUDE_PROJECT_DIR`; the hook's set is read as the block's **`pending`
+binding** (`:41`, before the threshold comparison at `:43`), never from stdout, which is
+threshold-gated. **Three conjuncts per row**, all required: JS ⊆ hook, hook ⊆ JS, **and** each side
+equals the **literally transcribed** expected set — without the third, two implementations both
+returning `∅` agree perfectly. The zero-corpus row additionally asserts `PDLC_PENDING:` is emitted
+with an **empty value**, which is only reachable because PLAN T09 replaces the hook's early
+`sys.exit(0)` (`:29-30`) with a `pending = []` fall-through. Scope is the predicate and only the
+predicate: the `THRESHOLD` gate governs whether the hook *speaks*, not what it counts. *L4 ·
+`consolidationHookParity.test.js` · T04 → T25 (dep on T09) · AC-1.1, NFR-5 · AT-P7.*
+
+**PROP-COR-12** — *Widening the hook's corpus changes what it says, and changes nothing else.* Two
+fixture corpora, each run against **HEAD's hook** (a `git show HEAD:pdlc/hooks/scripts/nudge-consolidation.sh`
+copy written into the temp tree) and against the edited hook. **(a) Positive identity:** ≥ 5 pending
+under `docs/*/` alone and none under `docs/completed/*/`; the emitted `additionalContext` **text** is
+byte-identical between the two hooks **and** equals the message transcribed literally from the
+shipped template (`:43-48`) at that `n`. **(b) Divergence:** pending members under
+`docs/completed/*/` that only the widened `CORPUS_GLOBS` reaches, crossing the threshold; the two
+outputs must **differ** and the edited hook's output equals the transcribed message at the **new**
+`n` — never "whatever HEAD printed". The two arms sit in one block: an implementation that widened
+nothing fails (b), one that broke the message fails (a). This replaces a byte-identity claim that
+was absence-only and passed vacuously on this repo, where HEAD's pending count is 1 of 2 and the
+widened count 3 of 5 — both below `THRESHOLD = 5`, so both sides printed the empty string and
+identity held for the wrong reason. `PY_BIN`-gated and counted exactly like the AT-P7 rows. *L4 ·
+`consolidationHookParity.test.js` · T04 → T09 · AC-1.1 · (no FSPEC AT), TSPEC §7.1 pin (b).*
+
+**PROP-COR-13** — *The hook's `CORPUS_GLOBS` declaration carries exactly two glob literals and no
+third.* An L3 source-text read locating the declaration **by name, never by line index**, with the
+conjunct that `glob.glob(` occurs **once** and inside the comprehension over `CORPUS_GLOBS` — so a
+third glob smuggled in as a second call is caught. *L3 · `consolidationHookParity.test.js` · T04 →
+T09 · AC-1.1 · (no FSPEC AT), TSPEC §7.1 pin (b).*
+
+### 4.4 Configuration
+
+**PROP-CFG-01** — *Per-key independent fallback: one malformed key never retunes another.* Given a
+`consolidation` section with a random subset of keys corrupted by type, every **uncorrupted** key
+keeps its configured value, every **corrupted** key takes its documented default, and `invalidKeys`
+is **set-equal** to the corrupted subset. The set-equality is the positive conjunct: an
+implementation reporting every key as invalid, or none, satisfies the first two clauses on a
+single-key fixture. *L1 + L5 · `consolidationPredicate.test.js`, `consolidationProperties.test.js` ·
+T14/T19 → T25 · REQ §4a · AT-N2, TSPEC §11.4 row 3.*
+
+**PROP-CFG-02** — *The defaults are the transcribed literals, and each is exercised.* `cadenceHours`
+`168`, `volumeThreshold` `5` (which must equal `nudge-consolidation.sh:25`'s `THRESHOLD`, asserted by
+transcription in both directions), `staleLockMinutes` `60`, `pluginRepository` `null`,
+`credentialEnv` `"PDLC_PLUGIN_REPO_TOKEN"`, `unmeasurablePasses` `3`. *L1 ·
+`consolidationPredicate.test.js` · T14 → T25 · REQ §4a.*
+
+**PROP-CFG-03** — *Three absent-or-malformed shapes, three distinguishable reports.* An **absent**
+`.claude/pdlc.config.json` leaves every key at default and the pass does not terminate (AT-N1); a
+`consolidation` key present but **not an object** defaults every key and the report distinguishes
+this from an absent section (AT-N3); a resolvable-looking `pluginRepository` that **does not resolve**
+records reason `repository-unresolved` **and the configured value verbatim** — never a silent
+fallback to the current repository (AT-N4). *L2 · `consolidationReport.test.js`,
+`consolidationPass.test.js` · T24/T20 → T25/T31 · REQ §4a, AC-3.5 · AT-N1, AT-N3, AT-N4.*
+
 ## 5. Properties — trigger, identity, merge, and the record reader
 
 ## 6. Properties — effectiveness, remediation, and the advisory corpus
