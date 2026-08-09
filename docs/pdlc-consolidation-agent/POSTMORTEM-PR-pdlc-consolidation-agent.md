@@ -156,4 +156,66 @@ seam either way — **a converged phase should not halt on a signal that the tre
 
 ## Recommendation
 
+**Clear the halt on evidence, then close the seam that produced it. In that order — the second is not a
+precondition for the first.**
+
+### 1. Verify, then flip the marker (operator judgment, not a mechanical step)
+
+Two checks, both decidable from the branch at `33fbc907`:
+
+```bash
+grep -n '^VERDICT:' docs/pdlc-consolidation-agent/CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v17.md
+# both must print exactly one approving line, and the counts line beneath must read "high": 0
+git log --oneline 00c9028f..HEAD -- docs/pdlc-consolidation-agent/
+# the erratum edit and both confirmations, nothing else
+```
+
+If both confirmations read approving with zero High — as they do at the time of writing — the delta
+confirmation **passed on the record**, and the halt reflects a reading of the run, not of the work. Set
+`RESOLVED: yes` in this file and commit, naming the two verdict lines as the evidence.
+
+### 2. Repair the half-recorded approval before re-invoking
+
+`se-review`'s v17 file has no approval anchors because the workflow's `appendApprovalAnchors` was
+preempted by the halt. Append the same pair `te-review` recorded, beneath its `## Verdict` section —
+`APPROVAL-HASH: sha256:cac4eac81935b3218ac9389538b5fe4b99415bae3daeea5a325f7af9c0c00254`,
+`REVIEWED-COMMIT: 54a464331c8b0ef120d27bc0ef8627833e044071` — so REQ's recorded approval points at
+v2.2's bytes rather than v2.1's. Without this, the next invocation may judge REQ's approval stale and
+re-open Phase R over a document its approvers just re-confirmed.
+
+### 3. Re-invoke
+
+```
+/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md"}
+```
+
+Phases R, F, T, D, P skip on recorded approvals. Phase PR re-enters, finds PROPERTIES v1.3 converged
+and anchored at `00c9028f`, and should route **no** REQ erratum this time — both items are landed in
+v2.2, so the condition that raised them is gone. **Phase I (Implementation) follows.** The queue row is
+already back to `pending`; leave it there.
+
+### 4. Durable fix — the finding worth carrying past this feature
+
+Give the erratum delta confirmation the **file-side second reading the review loop already has**: when
+`parseVerdict(responses[i])` returns `malformed: true`, fall back to `extractFileVerdict` over
+`confirmPaths[i]` before halting, exactly as `:6675` does for cross-invocation reads. This preserves
+fail-closed behaviour — an unreadable verdict in *both* channels still halts — while removing the case
+this postmortem documents, where a phase halts on a transcript that the branch contradicts.
+
+Two smaller companions, cheap and in the same area:
+
+- **Report which channel decided.** When the erratum halt fires, state whether the verdict was read
+  from the response or the file. This postmortem cost an hour of forensics that one clause would have
+  answered.
+- **Sweep cautions the erratum falsified** (te F-60 / se F-02, `Process`). Six lines across TSPEC
+  (`:1328`, `:2382`), PLAN (`:262`, `:616`) and PROPERTIES (`:831`, `:1861`) still assert that REQ
+  AC-6.3 reads "across the consumed window". The *instruction* in each is still correct; the *premise*
+  is false as of v2.2. The erratum wave's downward propagation should retire cautions that cite
+  corrected wording, not only consumers of corrected behaviour.
+
+Non-gating residue to land whenever the REQ next opens: te F-58 (one qualifier in AC-3.4's
+justification), te F-59 / se F-01 (`, AC-6.3` in AC-3.8b's list), F-54/F-55/F-57 in §4b, and F-56 —
+the REQ is **3,704 bytes over** `check-req-size.sh`'s 61,440-byte advisory ceiling, which retiring a
+spent erratum note would fix.
+
 ## Superseded Record — the 2026-08-06 stop order
