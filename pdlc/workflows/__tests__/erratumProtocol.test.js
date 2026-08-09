@@ -252,7 +252,7 @@ const PARSEABLE_PLAN = [
 ].join("\n");
 
 /** A structurally complete cross-review: a trailing `## Verdict` with one verdict line. */
-function crossReviewText(verdict = "Approved") {
+function crossReviewText(verdict = "Approved", high = 0) {
   return [
     "# Cross-review",
     "",
@@ -263,7 +263,7 @@ function crossReviewText(verdict = "Approved") {
     "## Verdict",
     "",
     `VERDICT: ${verdict}`,
-    '{"high": 0, "medium": 0, "low": 0}',
+    `{"high": ${high}, "medium": 0, "low": 0}`,
     "",
   ].join("\n");
 }
@@ -284,6 +284,18 @@ async function runPipeline(opts = {}) {
     confirmationErratum = null,
     absentPaths = [],
     seedFspecRoundOne = true,
+    // DEC-ERR-02. The confirmation's two channels, separable. Both default to
+    // agreeing with `confirmationVerdict`, so every test written before this
+    // decision keeps the single-channel reviewer it was written against.
+    //
+    // `confirmationFileVerdict` / `confirmationFileHigh`: what the reviewer
+    // WRITES. A verdict outside the catalogue makes the FILE unreadable too.
+    // `confirmationTrailer`: what the reviewer RETURNS. `"omitted"` returns
+    // prose with no trailer — the live 2026-08-09 failure; `"garbled"` returns
+    // a verdict outside the catalogue, which `parseVerdict` also calls malformed.
+    confirmationFileVerdict = null,
+    confirmationFileHigh = 0,
+    confirmationTrailer = "verdict",
   } = opts;
 
   const seeded = {
@@ -307,8 +319,18 @@ async function runPipeline(opts = {}) {
     // The delta confirmation writes its cross-review file, as a reviewer does.
     if (text.includes("DELTA CONFIRMATION")) {
       const match = /(docs\/\S*CROSS-REVIEW-\S+\.md)/.exec(text);
-      if (match) fs.files[match[1]] = crossReviewText(confirmationVerdict);
+      const fileVerdict = confirmationFileVerdict ?? confirmationVerdict;
+      // The file is written BEFORE the response is returned, which is the real
+      // ordering: a reviewer commits its cross-review during its episode, so the
+      // file is on disk by the time the orchestrator reads any trailer.
+      if (match) fs.files[match[1]] = crossReviewText(fileVerdict, confirmationFileHigh);
       const extra = confirmationErratum ? `ERRATUM: ${confirmationErratum}\n` : "";
+      if (confirmationTrailer === "omitted") {
+        return `Delta confirmed. I wrote my review to ${match ? match[1] : "the review file"}.\n${extra}`;
+      }
+      if (confirmationTrailer === "garbled") {
+        return `Delta confirmed.\n${extra}VERDICT: Looks fine to me\n`;
+      }
       return (
         `Delta confirmed.\n${extra}VERDICT: ${confirmationVerdict}\n` +
         `{"high": ${confirmationVerdict === "Approved" ? 0 : 1}, "medium": 0, "low": 0}\n`
@@ -496,6 +518,125 @@ describe("converge(): erratum routing (§3.1 step 4)", () => {
     // confirmation that did not approve, while the phase row records the failure.
     expect(fs.appends).toEqual([]);
     expect(report.phases.find((p) => p.phase === "T").status).toBe("❌");
+  });
+
+  // ─── DEC-ERR-02: the file is consulted when the trailer is unreadable ────────
+  //
+  // Recorded 2026-08-09 from a live run. `te-review` confirmed a REQ erratum,
+  // wrote an approving, anchored cross-review, and returned a response with no
+  // trailer. The confirmation read only the response, so the phase halted naming
+  // that reviewer non-approving — seconds after it had committed its approval to
+  // a file the orchestrator never opened.
+  //
+  // The fallback's whole content is WHEN it fires, so the four cases below are
+  // the decision table, not four variations on one case.
+
+  test("PROP-ERR-24a: a confirmation whose response carries no trailer is read from the file it wrote, and passes", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationTrailer: "omitted",
+    });
+
+    // The defect was a halt. The positive half is that the run did not merely
+    // avoid halting — it recorded the erratum round and carried on.
+    expect(report.outcome).toBe("success");
+    expect(report.notices).toContain(
+      "Phase T: erratum round for FSPEC — 1 item, confirmed at round v2 by se-review, te-review."
+    );
+
+    // An approval read from the file is a real approval: it anchors, exactly as
+    // one read from a trailer does. Without this the upstream document's
+    // recorded approval would point at pre-erratum bytes and the staleness gate
+    // would re-open a phase its approvers had just re-confirmed.
+    expect(fs.appends.map((a) => a.path)).toEqual([
+      `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`,
+      `${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v2.md`,
+    ]);
+    expect(fs.appends.every((a) => a.text.includes("APPROVAL-HASH: sha256:"))).toBe(true);
+
+    // Which channel decided is reported. An operator forensicating one of these
+    // halts has to answer exactly this question, and the first time it happened
+    // the log did not say.
+    expect(
+      logMessages.some(
+        (m) =>
+          m.includes("Erratum confirmation (FSPEC, te-review)") &&
+          m.includes("response trailer unreadable") &&
+          m.includes(`${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v2.md`) &&
+          m.includes("Approved")
+      )
+    ).toBe(true);
+  });
+
+  test("PROP-ERR-24b: a file that does not approve still halts, so the fallback is not a way through", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationTrailer: "omitted",
+      // A High finding, not merely the words "Needs revision". Under DEC-BAR-01
+      // the bar is High-only, so a "Needs revision" carrying zero High is a PASS
+      // — and reading it from the file must not change that either.
+      confirmationFileVerdict: "Needs revision",
+      confirmationFileHigh: 1,
+    });
+
+    // The fallback reads the file; it does not assume the file says yes.
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.haltReason).toContain("non-approving: [se-review, te-review]");
+    expect(fs.appends).toEqual([]);
+  });
+
+  test("PROP-ERR-24c: a legible non-approving trailer is never overturned by an approving file", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationVerdict: "Needs revision",
+      confirmationFileVerdict: "Approved",
+    });
+
+    // This is the boundary the narrowness buys. The trailer is READABLE and says
+    // no; the file says yes. A fallback that fired on any non-pass — rather than
+    // only on `malformed` — would let the file overturn a reviewer's explicit
+    // rejection, which is a far worse failure than the one being fixed.
+    expect(report.outcome).toBe("halted");
+    expect(report.haltReason).toContain(
+      "Phase T halted: the delta confirmation of the FSPEC erratum round did not pass"
+    );
+    expect(fs.appends).toEqual([]);
+    // And the file was never consulted, so nothing was reported about it.
+    expect(logMessages.some((m) => m.includes("Erratum confirmation (FSPEC,"))).toBe(false);
+  });
+
+  test("PROP-ERR-24d: an unreadable FILE is stopped by the dispatch watchdog, before the verdict is ever read", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationTrailer: "garbled",
+      // A verdict outside the catalogue, in BOTH channels.
+      confirmationFileVerdict: "Looks fine to me",
+    });
+
+    // This is where the fallback's fail-closed guarantee actually lives, and it
+    // is not in the fallback. `dispatchAndVerify` will not accept a cross-review
+    // whose verdict it cannot read: it re-dispatches, and after
+    // MAX_AUTHORING_ATTEMPTS it halts on no-progress. So the confirmation never
+    // returns an unreadable file to the verdict read at all — which is why
+    // widening that read to consult the file cannot widen what gets through.
+    //
+    // The `else` branch there (both channels unreadable ⇒ keep the trailer's
+    // Needs revision) is therefore defence in depth against a future caller, not
+    // a reachable state on this path. Asserted as the halt that really happens
+    // rather than the one the fallback would have produced, because a test that
+    // claimed the latter would be describing code that never runs.
+    expect(report.outcome).toBe("halted");
+    // The watchdog is not the erratum halt and does not claim to be: it records
+    // no `haltPhase`, which is itself how the two are told apart in a report.
+    expect(report.haltPhase).toBeNull();
+    expect(report.haltReason).toContain("Phase F: se-review");
+    expect(report.haltReason).toContain("made no progress across 3 consecutive attempts");
+    expect(report.haltReason).toContain(
+      `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`
+    );
+    // Nothing was approved on the way to that halt.
+    expect(fs.appends).toEqual([]);
   });
 
   test("PROP-ERR-25: a second erratum batch for the same document in the same phase exhausts the bound and halts", async () => {

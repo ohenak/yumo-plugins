@@ -9390,7 +9390,78 @@ async function main({
       )
     );
 
-    const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+    // ─── DEC-ERR-02 (2026-08-09): read the file when the trailer is unreadable ──
+    //
+    // This read used to be `parseVerdict(responses[i], skill)` and nothing else,
+    // which made it the ONLY verdict read in the pipeline with no recovery at
+    // all — and also the one whose failure mode is an immediate POSTMORTEM halt
+    // rather than another round. `reviewLoop` at least re-asks on Haiku
+    // (`recoverVerdict`, :7494). Here a single dropped trailer line ended the
+    // run, on work that was already approved and anchored on disk.
+    //
+    // That is not hypothetical: on 2026-08-09 `te-review` confirmed the REQ
+    // erratum for pdlc-consolidation-agent, wrote
+    // `CROSS-REVIEW-test-engineer-REQ-v17.md` with `VERDICT: Approved with minor
+    // changes`, zero High and both approval anchors, and returned a response
+    // without a trailer. The orchestrator halted the phase naming that reviewer
+    // as non-approving, seconds after that reviewer had committed its approval
+    // to a file the orchestrator never opened.
+    //
+    // The two channels already have defined roles (CLAUDE.md, "Two parts of a
+    // cross-review file are read as data"): the response trailer feeds the loop
+    // inside the current invocation, and the FILE is what decides approval on a
+    // later one. The file is the durable channel. Consulting it here is not a
+    // new tolerance — it is the same authority `approvalSearch` reads at :6675,
+    // through the same lenient parser (DEC-BAR-01/-02).
+    //
+    // The fallback is deliberately narrow, and the narrowness is the design:
+    //
+    //   - It fires ONLY when the trailer is `malformed` — absent, truncated, or
+    //     outside the verdict catalogue. A trailer that legibly says "Needs
+    //     revision" is a reviewer's decision and still halts; the file must
+    //     never be able to overturn an explicit rejection.
+    //   - Unreadable in BOTH channels still halts. Fail-closed is preserved:
+    //     what is removed is the case where the orchestrator halts on a verdict
+    //     that was legible the whole time, in the place it did not look.
+    const verdicts = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      const skill = reviewers[i];
+      const trailer = parseVerdict(responses[i], skill);
+      if (trailer.malformed !== true) {
+        verdicts.push(trailer);
+        continue;
+      }
+
+      // `readFileFn` may reject on a missing path (the default throws); a
+      // fallback that cannot read is just the trailer's verdict, not an error.
+      let fileText = null;
+      try {
+        fileText = await readFileFn(confirmPaths[i]);
+      } catch {
+        fileText = null;
+      }
+      const fromFile = extractFileVerdict(fileText, reviewerRoleSlug(skill) || skill);
+
+      if (fromFile.ok && fromFile.malformed !== true) {
+        emit(
+          `Erratum confirmation (${target}, ${skill}): response trailer unreadable, ` +
+            `verdict read from ${confirmPaths[i]} instead — ${fromFile.verdict} ` +
+            `(high ${fromFile.high}).`
+        );
+        verdicts.push(fromFile);
+      } else {
+        // Reported even on failure, because "which channel decided" is the one
+        // question an operator forensicating this halt has to answer, and it
+        // cost an hour the first time it was not written down.
+        emit(
+          `Erratum confirmation (${target}, ${skill}): response trailer unreadable and ` +
+            `${confirmPaths[i]} carries no readable verdict ` +
+            `(${fromFile.ok ? "malformed" : fromFile.reason}) — failing closed.`
+        );
+        verdicts.push(trailer);
+      }
+    }
+
     const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
     if (nonApproving.length > 0) {
       await erratumPostmortemHalt({
