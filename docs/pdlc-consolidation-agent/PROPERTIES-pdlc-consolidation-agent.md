@@ -13,7 +13,20 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-09 |
+| pdlc | draft | Claude | 1.2 | 2026-08-09 |
+
+**v1.2** — addresses the round-2 cross-reviews. The AT-C register moves to the file TSPEC §12.3 and
+PLAN T20 actually give it: PROP-PASS-01…05 and PROP-PASS-11 re-home from
+`consolidationLifecycle.test.js`/T23 — which PLAN T23 states carries **no register id** — onto
+`consolidationPass.test.js`/T20, and the L1 arms PROP-TRG-03/PROP-TRG-06 now cite the TSPEC §7.2
+obligation instead of AT-C5/C6/C7, so each register id is claimed in exactly one file (SE F-01). T25
+is dropped from the pass-file green lists, since PLAN §5's manifest does not give it that file (PM
+F-06). §12.2 states the spanning convention on both axes and the per-block green rule; §12.2/§12.3/
+§12.4 are re-derived from the corrected trailers (SE F-03). Erratum 3 gains its ownership-manifest
+half — the pre-widening fixture path is owed to PLAN T04's §5 row, not only its task text, or Phase I
+would drop it uncommitted (SE F-02). §12.1's AC-1.1 row narrows to PROP-COR-01…11 (PM F-07). No
+property was added, removed or renumbered: the id set is byte-identical to v1.1's 118, and the
+claimed 114 is unchanged.
 
 **v1.1** — addresses the round-1 cross-reviews: dangling `PROP-*` ids re-keyed to live ones (§1, §3),
 the §5.1 trigger duplicates retired into their L2 homes with a retirement table, per-property REQ and
@@ -483,7 +496,7 @@ Subjects: `cadenceDatum`, `triggerFor`, `mintPassId`, `failureModeId`, `targetFo
 **T16** (parse), **T19** (properties cases), **T21** (routing and merge). Files:
 `consolidationIdentity.test.js` (L1), `consolidationParse.test.js` (L1),
 `consolidationRoute.test.js` (L2), `consolidationProperties.test.js` (L5). The whole-pass trigger
-arms this section formerly restated now live once in §9.1 (`consolidationLifecycle.test.js`, T23).
+arms this section formerly restated now live once in §9.1 (`consolidationPass.test.js`, T20).
 
 ### 5.1 Trigger and the cadence datum
 
