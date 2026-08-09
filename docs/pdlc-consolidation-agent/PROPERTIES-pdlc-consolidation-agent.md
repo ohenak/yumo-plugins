@@ -1553,103 +1553,117 @@ gap, never a blank.
 
 ### 12.1 REQ acceptance criteria and NFRs → properties
 
-| Obligation | Properties |
+Obligation labels are re-read from REQ **v2.1 §3/§4** rather than transcribed from an earlier draft;
+property lists are derived from the per-property trailers in §§4–11, not maintained by hand.
+
+| Obligation (REQ v2.1) | Properties |
 |---|---|
-| AC-1.1 volume trigger | PROP-PASS-01, PROP-PASS-02 |
-| AC-1.2 cadence trigger | PROP-PASS-01, PROP-PASS-02, PROP-PASS-03 |
-| AC-1.3 marker is working-tree only | PROP-MRK-04, PROP-SRC-01 |
-| AC-1.4 one pass at a time | PROP-MRK-01, PROP-MRK-02, PROP-MRK-03, PROP-MRK-04, PROP-PASS-09, PROP-EFF-06 |
+| AC-1.1 cadence trigger — `cadenceHours` elapsed since the datum | PROP-PASS-01, PROP-PASS-02, PROP-PASS-03, PROP-TRG-03, PROP-COR-01…13 (the predicate the trigger counts) |
+| AC-1.2 volume trigger — un-consolidated count at threshold | PROP-PASS-01, PROP-PASS-02 |
+| AC-1.3 one pass at a time — the in-progress marker | PROP-MRK-01…04, PROP-PASS-09, PROP-RPT-02, PROP-SRC-01 |
+| AC-1.4 a no-op pass still reports | PROP-PASS-11, PROP-RTE-06, PROP-EFF-06 |
 | AC-1.5 runs on the advisory rung and records it | PROP-PASS-06, PROP-PASS-07 |
 | AC-1.6 falls back and says so | PROP-PASS-06 |
-| AC-2.1 domain invariants | PROP-COR-01…13 (predicate), PROP-RTE-04 (kind 1) |
-| AC-2.2 architectural decisions | PROP-RTE-03, PROP-RTE-04, PROP-ID-01…03 |
-| AC-2.3 pattern bar | PROP-ADV-03, PROP-PR-08, PROP-PASS-05 |
-| AC-2.4 process learnings | PROP-RTE-04 (kinds 3 pairs) |
-| AC-3.1 routing | PROP-RTE-01, PROP-RTE-02, PROP-RTE-05, PROP-PR-01 |
+| AC-2.1 domain invariants append to `DOMAIN-CONSTRAINTS.md` | PROP-RTE-02, PROP-RTE-04 (kind 1 arms), PROP-PR-04 |
+| AC-2.2 decisions write to `DECISIONS-{topic}.md` | PROP-RTE-03, PROP-RTE-04, PROP-ID-03, PROP-MRG-01, PROP-MRG-02 |
+| AC-2.3 pattern-vs-coincidence bar | PROP-PR-08 (the bar's evidence in the PR body), PROP-PASS-05 (the bar unchanged under cadence) |
+| AC-2.4 the log records date, consumed basenames, promotions | PROP-COR-11, PROP-RPT-01, PROP-RPT-02, PROP-PR-09 |
+| AC-3.1 guard-set routing | PROP-RTE-01, PROP-RTE-02, PROP-PR-01 |
 | AC-3.2 PR body obligations | PROP-PR-08 |
-| AC-3.3 promotions trailer | PROP-PR-02 |
-| AC-3.4 proposal file when and only when | PROP-RTE-06 |
-| AC-3.5 duplicate suppression | PROP-PR-03, PROP-PR-04 |
-| AC-3.6 PR failure classes | PROP-PR-06 |
-| AC-3.7 never merges | PROP-PR-05 (runtime), §10's supplementary source scan |
-| AC-3.8 / AC-3.8b same-repo, no branch operation | PROP-PR-01, PROP-RTE-05, PROP-MRK-04 |
+| AC-3.3 promotions share a PR, one commit each | PROP-PR-02 |
+| AC-3.4 the PR URL is recorded in both carriers | PROP-PR-09 |
+| AC-3.5 the PR cannot be opened — proposal fallback and reason codes | PROP-PR-06, PROP-RTE-06, PROP-RPT-07, PROP-CFG-03 |
+| AC-3.6 pull request only, from `consolidation/{passId}` | PROP-PR-10 |
+| AC-3.7 this feature's own controls never merge | PROP-PR-05 (runtime verb bound), PROP-PR-11 (conjunct (c)), §10's supplementary source scan |
+| AC-3.8 / AC-3.8b same-repo clone, pathspec-scoped commit | PROP-PR-01, PROP-RTE-05, PROP-MRK-04 |
 | AC-4.1 scoped credential | PROP-CRED-01 |
-| AC-4.2 degradation, never halt | PROP-CRED-01, PROP-CRED-02, PROP-CRED-04 |
-| AC-4.3 never leaks the value | PROP-CRED-03 |
-| AC-4.4 local `gh` is supported | PROP-CRED-01 |
-| AC-5.1 the pass records what it did | PROP-MRK-03, PROP-RPT-01…03 |
-| AC-5.2 effectiveness verdicts | PROP-EFF-01…05, PROP-GEN-06 |
-| AC-5.3 remediation ladder | PROP-EFF-06…09 |
-| AC-5.4 late failure reporting | PROP-EFF-09, PROP-PASS-08 |
-| AC-5.5 unmeasurable streak | PROP-EFF-06 |
-| AC-6.1 advisory corpus states | PROP-ADV-01, PROP-ADV-03, PROP-ADV-04, PROP-ADV-06 |
+| AC-4.2 read at runtime from the named variable, redacted in the row | PROP-CRED-01, PROP-CRED-02, PROP-CRED-03 |
+| AC-4.3 absent or invalid ⇒ degrades to AC-3.5's fallback | PROP-CRED-04 |
+| AC-4.4 the operator's own `gh` is supported | PROP-CRED-01 |
+| AC-5.1 every promotion records a structured failure mode | PROP-ID-01, PROP-ID-02, PROP-MRG-01…04, PROP-MRK-03, PROP-REC-01, PROP-REC-03, PROP-REC-06 |
+| AC-5.2 effectiveness verdicts for every recorded promotion | PROP-EFF-01…05, PROP-REC-04, PROP-REC-05, PROP-SRC-04, PROP-GEN-06 |
+| AC-5.3 the remediation ladder | PROP-EFF-06…09, PROP-REC-02, PROP-REC-05, PROP-PASS-11 |
+| AC-5.4 retiring an `ineffective` promotion takes the same route | PROP-EFF-09, PROP-REC-02 |
+| AC-5.5 the `insufficient-evidence` streak | PROP-EFF-06, PROP-PASS-11 |
+| AC-6.1 advisory corpus states | PROP-ADV-01, PROP-ADV-03, PROP-ADV-04, PROP-ADV-06, PROP-SRC-04 |
 | AC-6.2 over-escalation | PROP-ADV-03 |
-| AC-6.3 seam widening proposals | PROP-ADV-02, PROP-ADV-05 |
-| AC-7.1 the report | PROP-RPT-01…03, PROP-RPT-06, PROP-RPT-07 |
-| AC-7.2 the vocabularies | PROP-RPT-04, PROP-RPT-05 |
-| NFR-1 append-only, no in-place edit | PROP-RPT-02, PROP-PASS-10 |
-| NFR-2 no secret in any artifact | PROP-CRED-03, PROP-RTE-05 |
-| NFR-3 trigger-independence | PROP-PASS-05, PROP-CRED-03 (closed set) |
-| NFR-4 idempotence on `(failure-mode-id, action)` | PROP-ID-01…03, PROP-PR-02…04, PROP-PR-07, PROP-REC-06 |
-| NFR-5 traceability | PROP-TRC-01, PROP-RPT-04 |
+| AC-6.3 seam-widening proposals | PROP-ADV-02, PROP-ADV-05 |
+| AC-7.1 what the report contains | PROP-RPT-03, PROP-RPT-04, PROP-RPT-05, PROP-RPT-09, PROP-PASS-08 |
+| AC-7.2 exactly one report on every path but `skipped-cadence` | PROP-RPT-01, PROP-RPT-02, PROP-PASS-02, PROP-PASS-08, PROP-PASS-10 |
+| NFR-1 no promotion applied directly to a guard-set path | PROP-RTE-01, PROP-PR-01, PROP-PR-05 |
+| NFR-2 the credential never appears in an artifact | PROP-CRED-03 |
+| NFR-3 / NFR-3a the bar is trigger-independent, and the two triggers are distinguishable | PROP-PASS-05 |
+| NFR-4 idempotence per `(failure-mode-id, action)` | PROP-ID-01, PROP-MRG-04, PROP-PR-02…04, PROP-PR-07, PROP-REC-03, PROP-REC-06, PROP-RPT-01 |
+| NFR-5 never modifies a consumed LEARNINGS; records what it consumed | PROP-COR-07, PROP-COR-11, PROP-PASS-10, PROP-RPT-04, PROP-RPT-09, PROP-TRC-01 |
 
-Both directions hold: every property in §§4–11 appears in at least one row above or in §12.4's
-"no FSPEC AT" list with its TSPEC citation, and no row above is empty.
+Both directions hold. No row is empty. Every property in §§4–11 appears above, in §12.4's
+"no register id" list with its TSPEC or FSPEC citation, or — for the L5 generators and the shared
+doubles and fixtures (PROP-GEN-00…06, PROP-DBL-01…03, PROP-FIX-01…03) — as infrastructure whose
+obligation is discharged through the properties that consume it, named in §12.2's rows.
 
 ### 12.2 Test files → level, owners, properties
+
+Red owner and green owners are read from PLAN §4's task table, and each property row is the set of
+properties whose §§4–11 trailer names that file. A property spanning two files appears in both rows.
 
 | File | Level | Red | Green | Properties |
 |---|---|---|---|---|
 | `consolidationPreflight.test.js` | L3 | — (T00, green on write) | — | PROP-PRE-01, PROP-PRE-02 |
-| `helpers/consolidationDoubles.js` | — | — (T01) | — | PROP-DBL-01…03 |
-| `consolidationBuild.test.js` | L3 | T03 | T10, T12, T07, T08, T32, T33 | PROP-SRC-01…04, PROP-BLD-01, PROP-BLD-02 |
-| `consolidationHookParity.test.js` | L4 + L3 | T04 | T09, T25 | PROP-COR-11, PROP-COR-12 |
+| `helpers/consolidationDoubles.js` | — | — (T01) | T31 (the mutation check) | PROP-DBL-01…03, PROP-FIX-01, PROP-FIX-02 |
+| `consolidationBuild.test.js` | L3 | T03 | T07, T08, T10, T12, T32, T33 | PROP-SRC-01…04, PROP-BLD-01, PROP-BLD-02 |
+| `consolidationHookParity.test.js` | L4 + L3 | T04 | T09, T25 | PROP-COR-07, PROP-COR-08, PROP-COR-12, PROP-COR-13, PROP-FIX-03 |
 | `consolidationTraceability.test.js` | L3 | — (T05, green on write) | — | PROP-TRC-01 |
-| `consolidationRung.test.js` | L2 | T06 | T11, T31 | PROP-PASS-07 (call-site regression) |
+| `consolidationRung.test.js` | L2 | T06 | T11, T31 | PROP-PASS-06, PROP-PASS-07 |
 | `runtimeBundle.test.js` (**exists at HEAD**) | L3 | — | T13 | PROP-BLD-03 |
-| `consolidationPredicate.test.js` | L1 | T14 | T25 | PROP-COR-01…10, PROP-COR-13, PROP-CFG-01…03 |
-| `consolidationIdentity.test.js` | L1 | T15 | T26 | PROP-ID-01…03, PROP-MRG-01…04 |
-| `consolidationParse.test.js` | L1 | T16 | T26 | PROP-REC-01…06 |
-| `consolidationEffectiveness.test.js` | L1 | T17 | T27 | PROP-EFF-01…09 |
+| `consolidationPredicate.test.js` | L1 | T14 | T25 | PROP-COR-01…06, PROP-CFG-01, PROP-CFG-02 |
+| `consolidationIdentity.test.js` | L1 + L2 (folds) | T15 | T26, T31 | PROP-ID-01…03, PROP-MRG-01, PROP-MRG-03, PROP-MRG-04, PROP-RTE-03, PROP-RTE-04 |
+| `consolidationParse.test.js` | L1 | T16 | T26 | PROP-REC-01…06, PROP-TRG-03, PROP-TRG-06 |
+| `consolidationEffectiveness.test.js` | L1 | T17 | T27 | PROP-EFF-01…09, PROP-REC-05 (§8.3/§8.5 halves) |
 | `consolidationAdvisory.test.js` | L1 | T18 | T27 | PROP-ADV-01…05 |
-| `consolidationProperties.test.js` | L5 | T19 | T25, T26, T27 | PROP-GEN-00…06, PROP-ADV-06 |
-| `consolidationPass.test.js` | L2 | T20 | T28, T31 | PROP-MRK-01…04, PROP-PR-01…03, PROP-PR-05…08, PROP-PASS-06…10 |
-| `consolidationRoute.test.js` | L2 | T21 | T28, T30, T31 | PROP-RTE-01…06, PROP-PR-04 |
+| `consolidationProperties.test.js` | L5 | T19 | T25, T26, T27 | PROP-GEN-00…06, PROP-ADV-06, PROP-COR-03, PROP-CFG-01 (L5 halves) |
+| `consolidationPass.test.js` | L2 | T20 | T25, T28, T31 | PROP-MRK-01…04, PROP-PASS-08, PROP-COR-09, PROP-COR-10, PROP-COR-11, PROP-CFG-03 |
+| `consolidationRoute.test.js` | L2 | T21 | T28, T30, T31 | PROP-RTE-01…06, PROP-PR-01…11, PROP-ID-03, PROP-MRG-01, PROP-MRG-02, PROP-MRG-04 |
 | `consolidationCredential.test.js` | L2 | T22 | T30, T31 | PROP-CRED-01…04 |
-| `consolidationLifecycle.test.js` | L2 | T23 | T31 | PROP-PASS-01…05 |
-| `consolidationReport.test.js` | L1 + L2 | T24 | T29, T31 | PROP-RPT-01…08 |
+| `consolidationLifecycle.test.js` | L2 | T23 | T31 | PROP-PASS-01…05, PROP-PASS-09, PROP-PASS-10, PROP-PASS-11, PROP-DBL-03 |
+| `consolidationReport.test.js` | L1 + L2 | T24 | T29, T31 | PROP-RPT-01…09, PROP-MRG-03 (item 4), PROP-CFG-03 |
 | `helpers/seams.js`, `helpers/driftGenerators.js` (**exist at HEAD**) | — | — | — | reused by PROP-DBL-*, PROP-GEN-* (DC-08: reuse, never re-declare) |
 
 Every file named above is either **explicitly planned new** by PLAN §4 or **exists at HEAD** and is
-marked so; no property names a file that is neither.
+marked so; no property names a file that is neither. The AT-Q properties sit in
+`consolidationRoute.test.js` because PLAN T21 owns AT-Q1 … AT-Q13 in its `T30 — clone and seams` and
+`T31 — routes end to end` blocks; a trailer placing them in `consolidationPass.test.js` would put
+them in a file no RED task creates them in.
 
 ### 12.3 PLAN §4 tasks → properties
+
+Rows read `{RED owner} → {green un-skippers}`, matching the trailers exactly.
 
 | Task | Properties it owes |
 |---|---|
 | T00 pre-flight | PROP-PRE-01, PROP-PRE-02 |
 | T01 doubles | PROP-DBL-01…03, PROP-FIX-01…03 |
 | T03 → T07/T08/T10/T12/T32/T33 | PROP-SRC-01…04, PROP-BLD-01, PROP-BLD-02 |
-| T04 → T09/T25 | PROP-COR-11, PROP-COR-12 |
+| T04 → T09/T25 | PROP-COR-07, PROP-COR-08, PROP-COR-12, PROP-COR-13, PROP-FIX-03 |
 | T05 traceability | PROP-TRC-01 |
-| T06 → T11 | PROP-PASS-07 |
+| T06 → T11/T31 | PROP-PASS-06, PROP-PASS-07 |
 | T13 scan widening | PROP-BLD-03 |
-| T14 → T25 | PROP-COR-01…10, PROP-COR-13, PROP-CFG-01…03 |
-| T15 → T26 | PROP-ID-01…03, PROP-MRG-01…04 |
-| T16 → T26 | PROP-REC-01…06 |
-| T17 → T27 | PROP-EFF-01…09 |
+| T14 → T25 | PROP-COR-01…06, PROP-CFG-01, PROP-CFG-02 |
+| T15 → T26/T28/T31 | PROP-ID-01…03, PROP-MRG-01, PROP-MRG-03, PROP-MRG-04, PROP-RTE-03, PROP-RTE-04 |
+| T16 → T26 | PROP-REC-01…06, PROP-TRG-03, PROP-TRG-06 |
+| T17 → T27 | PROP-EFF-01…09, PROP-REC-05 |
 | T18 → T27 | PROP-ADV-01…05 |
-| T19 → T25/T26/T27 | PROP-GEN-00…06, PROP-ADV-06 |
-| T20 → T28/T31 | PROP-MRK-01…04, PROP-PR-01…03, PROP-PR-05…08, PROP-PASS-06…10 |
-| T21 → T28/T30/T31 | PROP-RTE-01…06, PROP-PR-04 |
+| T19 → T25/T26/T27 | PROP-GEN-00…06, PROP-ADV-06, PROP-COR-03, PROP-CFG-01 |
+| T20 → T25/T28/T31 | PROP-MRK-01…04, PROP-PASS-08, PROP-COR-09…11, PROP-CFG-03 |
+| T21 → T28/T30/T31 | PROP-RTE-01…06, PROP-PR-01…11, PROP-ID-03, PROP-MRG-01, PROP-MRG-02, PROP-MRG-04 |
 | T22 → T30/T31 | PROP-CRED-01…04 |
-| T23 → T31 | PROP-PASS-01…05 |
-| T24 → T29/T31 | PROP-RPT-01…08 |
+| T23 → T31 | PROP-PASS-01…05, PROP-PASS-09…11, PROP-DBL-03 |
+| T24 → T26/T29/T31 | PROP-RPT-01…09, PROP-MRG-03, PROP-CFG-03 |
 
 Tasks carrying **no** property row are production-only or docs-only and are named here so the absence
-is deliberate rather than missed: **T02** (module skeleton), **T30** (credential and PR carriers,
-whose properties are asserted through T22's file), **T33**'s `RELEASE-CHECKLIST.md` half (a
-distribution commitment owned by no AC — §13.1), and the batch-2 helper rows. Every **🔴 RED** task in
+is deliberate rather than missed: **T02** (module skeleton), **T33**'s `RELEASE-CHECKLIST.md` half (a
+distribution commitment owned by no AC — §13.1), and the batch-2 helper rows. The green un-skippers
+**T25 … T33** own no property of their own: each turns a RED block above green, which is why every
+one of them appears on the right of an arrow rather than in a row of its own. Every **🔴 RED** task in
 PLAN §4 appears above with at least one property, and every property above names a green owner: no
 property can be left in a permanently-red block.
 
@@ -1660,28 +1674,38 @@ version and re-reads the count rather than transcribing it).
 
 | Family | Register ids | Properties |
 |---|---|---|
-| AT-C (trigger, identity, determinism) | AT-C1, AT-C1b, AT-C2…AT-C8 | PROP-PASS-01…05 |
-| AT-P (predicate, corpus) | AT-P1…AT-P11 | PROP-COR-01…13, PROP-CFG-01…03 |
+| AT-C (trigger, cadence datum, determinism) | AT-C1, AT-C1b, AT-C2…AT-C8 | PROP-PASS-01…05, PROP-TRG-03, PROP-TRG-06 |
+| AT-P (predicate, corpus, hook parity) | AT-P1…AT-P11 | PROP-COR-01, PROP-COR-04…07, PROP-COR-10, PROP-COR-11 |
 | AT-M (marker, model ladder, late failure) | AT-M1…AT-M11 | PROP-MRK-01…04, PROP-PASS-06…08 |
-| AT-R (routing, merge, commit, proposal file) | AT-R1…AT-R7, AT-R6b | PROP-RTE-01…06 |
-| AT-Q (the PR carrier and suppression) | AT-Q1…AT-Q13, AT-Q7b, AT-Q7c | PROP-PR-01…08 |
+| AT-R (routing, merge, commit, proposal file) | AT-R1…AT-R7, AT-R6b | PROP-RTE-01…06, PROP-ID-03, PROP-MRG-01, PROP-MRG-02 |
+| AT-Q (the PR carrier and suppression) | AT-Q1…AT-Q13, AT-Q7b, AT-Q7c | PROP-PR-01…08, PROP-PR-11 (AT-Q2's trailer-set arm) |
 | AT-K (the credential) | AT-K1…AT-K7 | PROP-CRED-01…04 |
-| AT-F (identity, effectiveness, remediation, the record) | AT-F1…AT-F4 | PROP-ID-01…03, PROP-MRG-01…04 |
-| " | AT-F5…AT-F18 | PROP-EFF-01…09 |
-| " | AT-F19, AT-F20, AT-F21 | PROP-REC-02, PROP-REC-01, PROP-REC-03…06 |
+| AT-F (identity) | AT-F1…AT-F4 | PROP-ID-01, PROP-ID-02 |
+| " (effectiveness, remediation) | AT-F5…AT-F18 | PROP-EFF-01…09 |
+| " (the record reader) | AT-F19, AT-F20, AT-F21 | PROP-REC-02, PROP-REC-01, PROP-REC-03 |
 | AT-A (advisory corpus) | AT-A1…AT-A7 | PROP-ADV-01…05 |
-| AT-L (rendering and vocabularies) | AT-L1…AT-L5 | PROP-RPT-01…05 |
-| AT-N (configuration) | AT-N1…AT-N4 | PROP-RPT-06, PROP-RPT-07 |
+| AT-L (rendering and vocabularies) | AT-L1…AT-L5 | PROP-RPT-01…05, PROP-RPT-09 (AT-L4's shape) |
+| AT-N (configuration) | AT-N1…AT-N4 | PROP-CFG-01, PROP-CFG-03, PROP-RPT-06, PROP-RPT-07 |
 
-Six properties carry **no** register id and are traceable to a TSPEC obligation instead, each named
-here so the traceability parser's `(no FSPEC AT)` cells are accounted for rather than merely allowed:
-**PROP-RPT-08** (the ER-6 discriminator, TSPEC §7.6/§12.4, registered as an unnumbered §12.2 row),
-**PROP-SRC-03** (`rtConsInjections`, §12.2), **PROP-BLD-02** (`CLAUDE.md` ↔ manifest, §12.2 / §9.1
-erratum 3), **PROP-BLD-03** (the two scan axes, §13.3(ii)), **PROP-PASS-09** (release across terminal
-statuses, §12.1) and **PROP-PASS-10** (the `await` discipline, §7.3). Five properties discharge
-FSPEC §14.5's layer-deferral register — **LD-1** (PROP-REC-05), **LD-2** (PROP-MRG-03), **LD-3**
-(PROP-MRG-04), **LD-4** (PROP-REC-06) and **LD-5** (PROP-REC-03, PROP-REC-04) — set-equal to the five
-names FSPEC records, neither more nor fewer.
+`PROP-CFG-01…03` discharge **AT-N**, not AT-P: they are configuration-reader properties, and the
+AT-P register covers the corpus predicate. The AT-N row therefore names them beside PROP-RPT-06 and
+PROP-RPT-07 rather than leaving the four register ids to two properties.
+
+Properties whose trailer ends `(no FSPEC AT)` carry a TSPEC, FSPEC-body or REQ citation in the same
+position instead, and are named here so the traceability parser's empty cells are accounted for
+rather than merely allowed: **PROP-COR-02, PROP-COR-08, PROP-COR-09, PROP-COR-12, PROP-COR-13**
+(TSPEC §7.1, §11.1, §12.2), **PROP-CFG-02** (REQ §4a), **PROP-MRG-03, PROP-MRG-04, PROP-REC-04,
+PROP-REC-05, PROP-REC-06** (FSPEC §14.5's LD register), **PROP-EFF-05** (vocabularies §2),
+**PROP-ADV-06**, **PROP-COR-03** and **PROP-GEN-00…06** (TSPEC §11.4), **PROP-PR-09** (REQ AC-3.4's
+second conjunct), **PROP-PR-10** (FSPEC BR-24), **PROP-RPT-08** (TSPEC §7.6/§12.4, an unnumbered
+§12.2 row), **PROP-RPT-09** (AT-L4's shape, asserted set-equally), **PROP-PASS-09** (release across
+terminal statuses, §12.1), **PROP-PASS-10** (the `await` discipline, §7.3), **PROP-PASS-11** (REQ
+AC-1.4's third and fourth sentences), **PROP-PRE-01, PROP-PRE-02** (PLAN §3), **PROP-SRC-01…04,
+PROP-BLD-01…03** (TSPEC §3.3, §11.3(e), §12.2, T-02), **PROP-TRC-01** (PLAN §4 T05) and
+**PROP-DBL-01…03, PROP-FIX-01…03** (TSPEC §11.1/§11.2). Five properties discharge FSPEC §14.5's
+layer-deferral register — **LD-1** (PROP-REC-05), **LD-2** (PROP-MRG-03), **LD-3** (PROP-MRG-04),
+**LD-4** (PROP-REC-06) and **LD-5** (PROP-REC-03, PROP-REC-04) — set-equal to the five names FSPEC
+records, neither more nor fewer.
 
 ## 13. Gaps, negative space, and errata
 
