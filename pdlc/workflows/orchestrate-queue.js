@@ -1063,8 +1063,15 @@ export default async function main({
   // `blocked` verdict, which is the wrong failure mode for something that must
   // fail closed onto row 1 (FSPEC §6.2 row 1 — "hook never ran").
   phaseFn("Queue: Drift gate");
-  const driftRaw = await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH);
-  const driftGate = mapDriftState(validateDriftRecord(driftRaw));
+  // Config-side opt-out FIRST (the fix): checked before the drift-state record is even read, so
+  // a consumer with no `.claude/workflows/` tree — and therefore no drift-state record ever
+  // written — can still reach the documented `distribution.checkEnabled: false` opt-out. A
+  // config that carries no opinion (absent, unparseable, wrong shape) changes nothing below;
+  // the record-based gate (rows 1-10, `mapDriftState`) runs exactly as it always has.
+  const distributionConfigRaw = await readAdvisoryConfigSafely(readFileFn, ADVISORY_CONFIG_PATH);
+  const driftGate = parseDistributionCheckEnabledOptOut(distributionConfigRaw)
+    ? distributionOptOutGate()
+    : mapDriftState(validateDriftRecord(await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH)));
   if (driftGate.outcome === "blocked") {
     emit(
       `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
@@ -2037,4 +2044,57 @@ export async function readDriftStateSafely(readFileFn, path) {
   } catch {
     return null;
   }
+}
+
+// ─── Config-side drift-gate opt-out (fix: the documented `.claude/pdlc.config.json` →
+// `distribution.checkEnabled: false` opt-out, CLAUDE.md's "Artifact convention" section) ────
+//
+// The gate's ONLY opt-out before this fix lived inside the drift-state RECORD
+// (`record.checkEnabled === false`, row 2 below) — a field a hook/sync/check run writes. A
+// consumer repo with no `.claude/workflows/` tree at all (the pdlc-headless-engine arrangement:
+// no hook has ever run there, so no record exists) could never reach that opt-out; it always
+// landed on row 1 (missing record) and blocked, with no way out short of fabricating a
+// `.claude/workflows/` directory the engine has no other reason to create. This reads the
+// config directly, BEFORE the drift-state record is even read, so that opt-out is reachable on
+// its own. Pure and total, mirroring `parseAdvisoryConfig`/`parseMergeConfig`'s independent,
+// fail-soft posture: a missing file, unparseable JSON, or any `distribution` shape other than a
+// plain object all mean "no opinion" — the record-based gate proceeds exactly as it did before
+// this fix. Only a STRICT boolean `false` at `distribution.checkEnabled` opts out.
+//
+// @param {string|null} raw - result of the injected read at ADVISORY_CONFIG_PATH (same file the
+//   record-based opt-out's config already shares with advisory/merge config — CLAUDE.md's
+//   `.claude/pdlc.config.json`)
+// @returns {boolean} true only for a strict `{"distribution":{"checkEnabled":false}}`
+export function parseDistributionCheckEnabledOptOut(raw) {
+  if (typeof raw !== "string") return false;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+  const distribution = parsed.distribution;
+  if (distribution === null || typeof distribution !== "object" || Array.isArray(distribution)) {
+    return false;
+  }
+  return distribution.checkEnabled === false;
+}
+
+// The config-side opt-out's own gate verdict — bypasses `mapDriftState`/`validateDriftRecord`
+// entirely (no drift-state record is read at all), but shares their `{outcome, row, reasons,
+// report}` shape so every downstream consumer (the `driftGate.row === 9 ? null : ...` notice
+// funnel, `finish`'s `driftReport` field) treats it exactly like a record-based proceeding row.
+// `row: 0` is deliberately outside `mapDriftState`'s 1-10 range: it names a distinct gate path
+// without colliding with any record-based row number.
+const DISTRIBUTION_OPT_OUT_NOTICE =
+  `drift check skipped by operator opt-out (${ADVISORY_CONFIG_PATH} distribution.checkEnabled: false)`;
+
+function distributionOptOutGate() {
+  return {
+    outcome: "proceed",
+    row: 0,
+    reasons: [DISTRIBUTION_OPT_OUT_NOTICE],
+    report: { manifest: [DISTRIBUTION_OPT_OUT_NOTICE], row: [], run: [] },
+  };
 }

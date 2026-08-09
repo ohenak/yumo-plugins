@@ -52,6 +52,7 @@ import main, {
   validateDriftRecord,
   mapDriftState,
   readDriftStateSafely,
+  parseDistributionCheckEnabledOptOut,
 } from "../orchestrate-queue.js";
 import { runScript, readDriftState } from "./helpers/driftHarness.js";
 import { makeConsumerTree, makePluginTree, setRowState } from "./helpers/driftFixtures.js";
@@ -318,14 +319,26 @@ describe("readDriftStateSafely — §12.3's three-way _readFile injection table"
   );
 });
 
-// ─── §12.4 — gate placement: exactly one read, before QUEUE.md ──────────────
+// ─── §12.4 — gate placement: the config-side opt-out read, then the record read, before
+// QUEUE.md ────────────────────────────────────────────────────────────────────────────────
+//
+// Updated for the config-side drift-gate opt-out fix (CLAUDE.md's documented
+// `.claude/pdlc.config.json` → `distribution.checkEnabled: false`): the gate now reads
+// `ADVISORY_CONFIG_PATH` (the same `.claude/pdlc.config.json` file) FIRST, to see whether the
+// operator opted out at the config level, before it ever reads the drift-state record. A config
+// read that carries no opinion (absent here — `recordingReadFile` returns `null` for every
+// path) changes nothing: the record-based gate still runs next, over the drift-state path, and
+// still blocks exactly as before this fix. This asserts the ADDED read lands before the
+// pre-existing one, and that both land before any queue read.
+const ADVISORY_CONFIG_PATH = ".claude/pdlc.config.json";
+
 describe("main() — §12.4 gate placement", () => {
-  it("performs exactly one _readFile call, for the drift-state path, before any queue read", async () => {
+  it("reads the config-side opt-out, then the drift-state path, before any queue read", async () => {
     const calls = [];
     const recordingReadFile = async (path) => {
       calls.push(path);
       // A blocked (absent) drift state on every path asked about — the
-      // assertion below is about *which* path is asked about, and how many.
+      // assertion below is about *which* paths are asked about, and in what order.
       return null;
     };
 
@@ -337,8 +350,81 @@ describe("main() — §12.4 gate placement", () => {
       _phase: () => {},
     });
 
-    expect(calls).toEqual([DRIFT_STATE_PATH]);
+    expect(calls).toEqual([ADVISORY_CONFIG_PATH, DRIFT_STATE_PATH]);
     expect(report.outcome).toBe("blocked");
+  });
+});
+
+// ─── Fix — the config-side drift-gate opt-out (CLAUDE.md's `.claude/pdlc.config.json` →
+// `distribution.checkEnabled: false`, reachable even with NO `.claude/workflows/` tree and
+// therefore no drift-state record — the pdlc-headless-engine arrangement) ───────────────────
+describe("parseDistributionCheckEnabledOptOut — pure, fail-soft parse", () => {
+  it("strict {\"distribution\":{\"checkEnabled\":false}} opts out", () => {
+    expect(
+      parseDistributionCheckEnabledOptOut(JSON.stringify({ distribution: { checkEnabled: false } }))
+    ).toBe(true);
+  });
+
+  it.each([
+    ["null raw (file absent)", null],
+    ["non-string raw", 42],
+    ["unparseable JSON", "{not json"],
+    ["parsed value is an array", "[1,2,3]"],
+    ["no distribution section", JSON.stringify({ advisory: { enabled: true } })],
+    ["distribution is not an object", JSON.stringify({ distribution: "false" })],
+    ["distribution is an array", JSON.stringify({ distribution: [] })],
+    ["checkEnabled true, not false", JSON.stringify({ distribution: { checkEnabled: true } })],
+    ["checkEnabled the string \"false\", not the boolean", JSON.stringify({ distribution: { checkEnabled: "false" } })],
+    ["checkEnabled absent from distribution", JSON.stringify({ distribution: {} })],
+  ])("no opinion (false) — %s", (_label, raw) => {
+    expect(parseDistributionCheckEnabledOptOut(raw)).toBe(false);
+  });
+});
+
+describe("main() — the config-side opt-out proceeds with no drift-state record at all", () => {
+  const QUEUE_PATH = "docs/_queue/QUEUE.md";
+
+  it("no .claude/workflows/ tree (no record), distribution.checkEnabled:false in .claude/pdlc.config.json ⇒ proceeds, naming the config path in the notice", async () => {
+    const files = {
+      [ADVISORY_CONFIG_PATH]: JSON.stringify({ distribution: { checkEnabled: false } }),
+      [QUEUE_PATH]: ["| Order | Status | Feature | REQ Path | Depends-On |", "|---|---|---|---|---|", ""].join("\n"),
+      // DRIFT_STATE_PATH deliberately absent — never read once the config opts out.
+    };
+    const readCalls = [];
+    const logs = [];
+
+    const report = await main({
+      queuePath: QUEUE_PATH,
+      _readFile: async (path) => {
+        readCalls.push(path);
+        return path in files ? files[path] : null;
+      },
+      _writeFile: async () => {},
+      _agent: async () => "",
+      _log: (line) => logs.push(String(line)),
+      _phase: () => {},
+    });
+
+    expect(readCalls).not.toContain(DRIFT_STATE_PATH);
+    expect(report.outcome).not.toBe("blocked");
+    expect(report.driftReport).toBeDefined();
+    expect(report.driftReport.manifest[0]).toMatch(/distribution\.checkEnabled: false/);
+    expect(report.driftReport.manifest[0]).toContain(ADVISORY_CONFIG_PATH);
+    expect(logs.join("\n")).toMatch(/drift check skipped by operator opt-out/);
+  });
+
+  it("no config, no record ⇒ still blocked at row 1 (documents the default posture: config opt-out does not create ambient trust)", async () => {
+    const report = await main({
+      queuePath: QUEUE_PATH,
+      _readFile: async () => null,
+      _writeFile: async () => {},
+      _agent: async () => "",
+      _log: () => {},
+      _phase: () => {},
+    });
+
+    expect(report.outcome).toBe("blocked");
+    expect(report.reason).toMatch(/Drift gate row 1/);
   });
 });
 
