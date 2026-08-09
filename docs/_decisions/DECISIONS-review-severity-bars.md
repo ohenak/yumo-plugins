@@ -184,3 +184,61 @@ against letting an anchor stand in for the counts line.
 compliance signal worth watching. The parser change makes it non-fatal; it does not make it
 correct. If the rate does not fall, treat the counts line itself as the thing to reconsider —
 either enforce it at write time or drop it in favour of counting the `## Findings` table.
+
+---
+
+## DEC-ERR-02: The erratum delta confirmation reads the file when the response trailer is unreadable
+
+Recorded 2026-08-09 from a live `pdlc dev` run of `pdlc-consolidation-agent`, and from
+`POSTMORTEM-PR-pdlc-consolidation-agent.md` (v2.0), which halted on this seam.
+
+**Context.** A cross-review's verdict travels on two channels with settled, different roles: the
+reviewer's **response trailer** feeds the convergence loop inside the current invocation, and the
+**file** is what decides approval on a later one. The erratum delta confirmation
+(`orchestrate-dev.js:9383`) read only the trailer:
+
+```js
+const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
+if (nonApproving.length > 0) { await erratumPostmortemHalt({ ... }); }
+```
+
+That made it the only verdict read in the pipeline with no recovery of any kind — `reviewLoop` at
+least re-asks on Haiku (`recoverVerdict`) — and simultaneously the one whose failure mode is an
+immediate POSTMORTEM halt rather than another round. The least tolerant read was attached to the
+most expensive consequence.
+
+**What happened.** `te-review` confirmed the REQ erratum, wrote
+`CROSS-REVIEW-test-engineer-REQ-v17.md` with `VERDICT: Approved with minor changes`, zero High and
+both approval anchors, and returned a response with no trailer. The orchestrator halted Phase PR
+naming that reviewer as non-approving, seconds after that reviewer had committed its approval to a
+file the orchestrator never opened. `se-review`'s v17 was left without anchors, because
+`appendApprovalAnchors` runs only on PASS — so the halt also left REQ's recorded approval pointing
+at pre-erratum bytes, which would have re-opened Phase R on the next invocation.
+
+**Decision.** When the trailer is unreadable, read the file the reviewer just wrote —
+`extractFileVerdict` over `confirmPaths[i]`, the same authority and the same lenient parser
+(DEC-BAR-01, DEC-BAR-02) that `approvalSearch` uses at `:6675`.
+
+The fallback is narrow, and the narrowness is the decision:
+
+- It fires **only** when `parseVerdict` reports `malformed` — absent, truncated, or a value outside
+  the catalogue. A trailer that legibly says "Needs revision" is a reviewer's decision and still
+  halts. **The file may never overturn an explicit rejection**; that would be a worse failure than
+  the one being fixed, and it is pinned by `PROP-ERR-24c`.
+- It does not assume the file approves. A file carrying a High finding halts exactly as before
+  (`PROP-ERR-24b`).
+- Which channel decided is reported either way. The first occurrence cost an hour of forensics
+  precisely because the log did not say.
+
+**On fail-closed.** Widening this read cannot widen what gets through, and the reason is worth
+recording because it is not obvious from the call site. `dispatchAndVerify` will not accept a
+cross-review whose verdict it cannot read: it re-dispatches, and after `MAX_AUTHORING_ATTEMPTS`
+halts on no-progress. So an unreadable *file* never reaches this read at all (`PROP-ERR-24d`). The
+"both channels unreadable" branch is defence in depth against a future caller, not a reachable
+state on this path.
+
+**Evidence.** `PROP-ERR-24a` in `__tests__/erratumProtocol.test.js` reproduces the live failure —
+a confirmation whose response carries no trailer and whose file approves — and is red on the
+pre-decision read. `24b`, `24c` and `24d` are green in both directions by design: they exist to
+show the fix let nothing new through.

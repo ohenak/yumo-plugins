@@ -6781,7 +6781,41 @@ async function main({
       )
     );
 
-    const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+    const verdicts = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      const skill = reviewers[i];
+      const trailer = parseVerdict(responses[i], skill);
+      if (trailer.malformed !== true) {
+        verdicts.push(trailer);
+        continue;
+      }
+
+      let fileText = null;
+      try {
+        fileText = await readFileFn(confirmPaths[i]);
+      } catch {
+        fileText = null;
+      }
+      const fromFile = extractFileVerdict(fileText, reviewerRoleSlug(skill) || skill);
+
+      if (fromFile.ok && fromFile.malformed !== true) {
+        emit(
+          `Erratum confirmation (${target}, ${skill}): response trailer unreadable, ` +
+            `verdict read from ${confirmPaths[i]} instead — ${fromFile.verdict} ` +
+            `(high ${fromFile.high}).`
+        );
+        verdicts.push(fromFile);
+      } else {
+
+        emit(
+          `Erratum confirmation (${target}, ${skill}): response trailer unreadable and ` +
+            `${confirmPaths[i]} carries no readable verdict ` +
+            `(${fromFile.ok ? "malformed" : fromFile.reason}) — failing closed.`
+        );
+        verdicts.push(trailer);
+      }
+    }
+
     const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
     if (nonApproving.length > 0) {
       await erratumPostmortemHalt({
