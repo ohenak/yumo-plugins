@@ -197,18 +197,18 @@ not appear" is satisfied vacuously by a pass that did nothing. Every such proper
 absence with a positive observed on the **same** run:
 
 - AT-Q7's "no merge verb" is a **containment** assertion (`observed ⊆ permitted`) paired with an
-  **obligation** assertion (`obliged ⊆ observed`) — §7, PROP-RTE-04.
+  **obligation** assertion (`obliged ⊆ observed`) — §7, PROP-PR-05.
 - AT-M5's "the lock path is in no pathspec" is stated as **set-equality of the observed pathspec set
-  to the §5.4 write set**, not as an absence — §7, PROP-RTE-10.
+  to the §5.4 write set**, not as an absence — §7, PROP-MRK-04.
 - AT-R7's "no proposal file" negatives (a `promoted` pass, an all-suppressed `no-op` pass) sit in one
   case beside a **positive control** whose one degraded promotion writes exactly one file — §7,
   PROP-RTE-06.
 - AT-C3's four `skipped-cadence` absences sit beside the **returned report body carrying the terminal
   status**, which is what distinguishes a tick that evaluated and chose the branch from one that
-  crashed at step 3 — §9, PROP-PASS-03.
+  crashed at step 3 — §9, PROP-PASS-02.
 - AT-K5's non-disclosure is asserted over the **accumulated output of every write double in the
   case**, on a pass that demonstrably produced output, beside the positive that the row carries
-  exactly one `credential:` value from the closed set — §7, PROP-CRD-06.
+  exactly one `credential:` value from the closed set — §7, PROP-CRED-03.
 
 ### O-2 — Set-equality, never containment, wherever a dropped member would be invisible
 
@@ -219,10 +219,10 @@ table": the eight record field names (AT-F20), the open-promotion list `{B, C, D
 `PDLC-CONSOLIDATION-PROMOTIONS` trailer against the proposals a PR enacts (AT-Q2), `rtConsInjections()`
 against §5.1's seam names minus `_now` (§10, PROP-BLD-03), `routeOf`'s predicate against the imported
 `MERGE_GUARD_DEFAULTS` (AT-R1), the vocabularies §1 enumerated-class values (AT-L5), the FSPEC
-register against TSPEC §12.3's table (§10, PROP-BLD-07), and `CLAUDE.md`'s artifact list against the
-manifest's `rows[]` (§10, PROP-BLD-08). Where equality would be red on correct code — the seam
+register against TSPEC §12.3's table (§10, PROP-TRC-01), and `CLAUDE.md`'s artifact list against the
+manifest's `rows[]` (§10, PROP-BLD-02). Where equality would be red on correct code — the seam
 verb sets, which the read verbs legitimately widen — the bound is **two-sided containment**
-(obliged-below, permitted-above) and the row says so (AT-Q7c, §7 PROP-RTE-05).
+(obliged-below, permitted-above) and the row says so (AT-Q7c, §7 PROP-PR-05).
 
 ### O-3 — Determinism is never asserted by invariance alone
 
@@ -241,8 +241,8 @@ the predicate being the file-existence test rather than a free-text match (§6, 
 right — not that the pass consults it. Every routing branch this feature introduces therefore carries
 at least one **L2 property through `main()`** asserting the terminal observable: the PR route
 (PROP-RTE-01 pairs the L1 predicate with AT-Q1's clone observation), the consuming-repo route
-(PROP-RTE-07, AT-R2/AT-R6), the degraded route (PROP-RTE-06, AT-R7's positive control), and the
-suppression route (PROP-RTE-11, AT-Q10's three required conjuncts). The same rule puts the
+(PROP-RTE-02 and PROP-RTE-03, AT-R2/AT-R6), the degraded route (PROP-RTE-06, AT-R7's positive
+control), and the suppression route (PROP-PR-04, AT-Q10's three required conjuncts). The same rule puts the
 unreadable-corpus-entry obligation at L2 in `consolidationPass.test.js` rather than at L1 over
 `classifyCorpus` (§4, PROP-COR-09).
 
