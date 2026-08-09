@@ -8690,7 +8690,7 @@ export const GIT_LOCK_RETRY_DELAY_MS = 5000;
  * @param {{ _git: function, _sleep: function, emit: function, label: string }} seams
  * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>} the LAST attempt's result
  */
-async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
+export async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
   let result = null;
   for (let attempt = 0; attempt <= GIT_LOCK_RETRIES; attempt++) {
     result = await _git(argv);

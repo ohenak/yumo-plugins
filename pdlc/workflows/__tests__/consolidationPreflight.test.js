@@ -52,11 +52,21 @@ describe("T00 — BL-PREREQ: orchestrate-dev.js exported symbols", () => {
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: orchestrate-dev.js source-text presence", () => {
-  test("gitWithLockRetry is declared, without export (T11 adds the keyword)", () => {
+  test("gitWithLockRetry is declared and exported (T11's promotion, applied early)", () => {
     expect(DEV_SOURCE).toMatch(/\basync function gitWithLockRetry\s*\(/);
-    // Scheduled-blocking, recorded here rather than promoted: no `export`
-    // keyword precedes the declaration today.
-    expect(DEV_SOURCE).not.toMatch(/\bexport\s+async function gitWithLockRetry\s*\(/);
+    // Was recorded here as scheduled-blocking, un-promoted, with T11 (wave 4)
+    // owning the keyword. A wave-2 task then authored `consolidate-learnings.js`
+    // importing the symbol anyway — three waves before the promotion that makes
+    // the import resolvable. ESM links before it runs, so this took down every
+    // suite that transitively imported the new module, and the wave gate
+    // correctly refused to commit.
+    //
+    // The operator applied T11's one-word change by hand on 2026-08-09 to
+    // unblock the run. This assertion is inverted to match the tree rather than
+    // deleted: it still pins the symbol's linkage, which is what the BL-PREREQ
+    // was recording. T11 is now a no-op the pipeline will re-verify.
+    expect(DEV_SOURCE).toMatch(/\bexport\s+async function gitWithLockRetry\s*\(/);
+    expect(devModule.gitWithLockRetry).toBeDefined();
   });
 
   test("ADVISORY_RUNG_SKILL is declared", () => {
