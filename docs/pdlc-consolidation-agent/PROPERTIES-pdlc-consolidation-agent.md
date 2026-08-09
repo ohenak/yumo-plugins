@@ -13,7 +13,13 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-09 |
+| pdlc | draft | Claude | 1.1 | 2026-08-09 |
+
+**v1.1** — addresses the round-1 cross-reviews: dangling `PROP-*` ids re-keyed to live ones (§1, §3),
+the §5.1 trigger duplicates retired into their L2 homes with a retirement table, per-property REQ and
+FSPEC trailers re-grounded, file/task trailers re-keyed to PLAN's RED owners across §§7 and 9, §12
+rebuilt from those trailers and from REQ v2.1, and five properties added (PROP-PR-09…11, PROP-RPT-09,
+PROP-PASS-11). Errata 3–5 route the upstream defects found while grounding.
 
 ## 1. Overview — scope, sources, and how to read this document
 
