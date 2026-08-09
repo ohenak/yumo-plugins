@@ -1118,7 +1118,7 @@ and `T31 — ER-6 discriminator` — green owners **T29** and **T31**.
 suppressed pair — **both present, neither merged into the other** (AT-L1). Its paired negative: a pass
 that opened nothing and suppressed everything has `pr:` **empty**, its evidence in `suppressed-by:`,
 and terminal `no-op` (AT-L2). Without the pair, a renderer folding one field into the other is green
-on whichever fixture is written alone. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.1 ·
+on whichever fixture is written alone. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.2, NFR-4 ·
 AT-L1, AT-L2.*
 
 **PROP-RPT-02** — *The log is append-only, one row per pass, and no earlier record is edited in
@@ -1126,13 +1126,31 @@ place.* Any pass other than `skipped-cadence`: **exactly one** log row appended,
 returned, and every prior record **byte-identical** before and after. The byte-identity over the
 prefix is the conjunct that makes "append-only" falsifiable — counting rows alone is green on a
 whole-file rewrite that happens to preserve the count. *L2 · `consolidationReport.test.js` · T24 →
-T31 · AC-7.1, NFR-1 · AT-L3.*
+T31 · AC-7.2, AC-1.3 · AT-L3.*
 
 **PROP-RPT-03** — *An empty promotions section is present and empty; omission is a failure.* A report
 with no promotions carries the promotions section **explicitly empty** — the reader must be able to
 tell "nothing was promoted" from "this report does not say". Asserted as section presence plus empty
 contents, never as a substring absence. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.1 ·
 AT-L4.*
+
+**PROP-RPT-09** — *The report names what it consumed and what it deferred, both populated on a path
+where both are non-empty.* AC-7.1 enumerates six report obligations; four are discharged elsewhere
+(terminal status and reason by PROP-RPT-04/05, the rung by PROP-PASS-06, promotions by route by
+PROP-RPT-01/03, the effectiveness table by PROP-EFF-01…05). The two with no other home are asserted
+here, on **one** pass whose consumed set is non-empty and which deferred at least one item to human
+judgment: **(a)** `consumed:` names the LEARNINGS **by basename**, **set-equal** to the set the pass
+froze at step 1 — the same set NFR-5's `<!-- pdlc:consumed {passId} -->` block names, and asserted
+equal to that block's contents, so the report and the log cannot disagree about what was consumed;
+**(b)** `deferred:` is **present and non-empty**, naming the propose-only items awaiting operator
+approval (an AC-5.4 consuming-repo retirement is the fixture's, since it is written to the proposal
+file and **never** applied by the pass). Both fields are in PROP-RPT-04's **free-form** class, which
+that property excludes from its vocabulary equality **by name** — so without this property they are
+asserted by nothing at all, and a pass rendering neither field is green everywhere else. The paired
+negative: on a pass with an **empty** consumed set and nothing deferred, both fields are **present and
+explicitly empty**, never omitted (PROP-RPT-03's rule applied to these two fields — "nothing was
+consumed" must be distinguishable from "this report does not say"). *L1 ·
+`consolidationReport.test.js` · T24 → T29 · AC-7.1, NFR-5 · (no FSPEC AT), AT-L4 shape.*
 
 ### 8.2 The vocabulary oracle
 
@@ -1157,7 +1175,7 @@ Both directions of leg 1 are load-bearing and neither may be dropped when the do
 **no enumerated value without a §1 row** catches an invented status; **no §1 row unused across the
 fixture set** catches a deleted branch — which is why the fixture set must span every §12.1 scenario
 rather than one happy path. The parser takes an injected `root` (DC-04), never `process.cwd()`. *L1 +
-L3 · `consolidationReport.test.js` · T24 → T29 · AC-7.2, NFR-5 · AT-L5.*
+L3 · `consolidationReport.test.js` · T24 → T29 · AC-7.1, NFR-5 · AT-L5.*
 
 **PROP-RPT-05** — *An illegal `(status, reason)` pair is dropped and the drop is announced; a legal
 one is not.* Two fixtures over one code: the pair legal at `Version` 1.4 **appears** in the row; the
@@ -1165,7 +1183,7 @@ pair illegal at 1.4 is **dropped** and the report body carries a notice **naming
 `no-cadence-datum`, which must **never** be dropped — §1 permits it with `refused`, and REQ-CONS-01
 decides it **before** the marker check, so a filter keyed on the wrong precedence loses it. The notice
 is the positive conjunct: a silent drop and a code that was never derived are indistinguishable in
-the row. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.2 · AT-L5 (dropped-code arm).*
+the row. *L1 · `consolidationReport.test.js` · T24 → T29 · AC-7.1 · AT-L5 (dropped-code arm).*
 
 ### 8.3 Configuration
 
@@ -1176,13 +1194,13 @@ defaulting is per key and not whole-object (AT-N2). A `consolidation` value pres
 object** ⇒ every key defaults **and the report distinguishes this from an absent section** — the
 distinguishing conjunct is the property, since defaulting alone is identical in the two cases and a
 malformed section is an operator error the report must surface (AT-N3). *L2 ·
-`consolidationReport.test.js` · T24 → T31 · AC-7.1, §11 · AT-N1, AT-N2, AT-N3.*
+`consolidationReport.test.js` · T24 → T31 · REQ §4a, §11 · AT-N1, AT-N2, AT-N3.*
 
 **PROP-RPT-07** — *An unresolvable `pluginRepository` is reported, never silently replaced.*
 `pluginRepository` set to a name that does not resolve ⇒ reason `repository-unresolved` and the
 **configured value recorded verbatim** — **not** a silent fallback to the current repository. Verbatim
 recording is what lets an operator see the typo; a reason code alone leaves the wrong value invisible.
-*L2 · `consolidationReport.test.js` · T24 → T31 · AC-7.1 · AT-N4.*
+*L2 · `consolidationReport.test.js` · T24 → T31 · REQ §4a, AC-3.5 · AT-N4.*
 
 ### 8.4 The ER-6 discriminator
 
