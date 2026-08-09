@@ -78,7 +78,8 @@ wave, and cites the REQ criterion and FSPEC acceptance id it discharges. A prope
 falsifier is not a property; §3 states the six oracle rules every row below satisfies, and each row
 that could be read as absence-only names its positive conjunct in the row itself.
 
-**Counts, measured not assumed.** This document states **96** properties across the six levels;
+**Counts, measured not assumed.** This document states **113** properties across the five levels —
+measured 2026-08-09 by enumerating the `PROP-{DOMAIN}-{NUMBER}` ids §§2, 4–11 mint;
 §12's four matrices re-derive the mapping from REQ, FSPEC, PLAN and the test-file index, and every
 count in §12 is the length of the list beside it rather than a transcribed total.
 
@@ -1578,3 +1579,62 @@ FSPEC §14.5's layer-deferral register — **LD-1** (PROP-REC-05), **LD-2** (PRO
 names FSPEC records, neither more nor fewer.
 
 ## 13. Gaps, negative space, and errata
+
+### 13.1 Named gaps — obligations no property discharges
+
+A named gap is not a licence to ship uncovered; it is a statement of what an operator must not read
+this document as promising.
+
+| Gap | Why no property | What stands in its place |
+|---|---|---|
+| **O-C6 — the producing side of `failure-mode-id`** | A harvest agent placing the id in a LEARNINGS §5 Open Item is an LLM invocation with no reproducible output; a property over it would assert the model, not the code | PROP-SRC-04 pins the prompt's four verbatim obligations, and PROP-EFF-03/04 assert the **receive** side exhaustively — including the unmatched-id notice |
+| **The drift-gate interruption on the first queue invocation after this feature lands** | Owned by no AC: it is a consequence of the shipped `distribution.checkEnabled` gate, not a behaviour of this feature | TSPEC §13.3(iii)'s release-note obligation, discharged by T33's `pdlc/RELEASE-CHECKLIST.md` edit — a docs commitment, deliberately not a test |
+| **A real advisory corpus** | `docs/_queue/ESCALATIONS.md` is absent at HEAD and BL-01a is *not expected to be met* (REQ-CONS-06 preamble) | PROP-ADV-01 makes the absent and empty states first-class and asserts distinct reason codes for each; PROP-ADV-02/05 run on constructed corpora, never on the repository |
+| **Cross-repository operation (the two-repo configuration)** | BL-03's fine-grained token is operator-provisioned and not available to CI | PROP-CRED-01 covers the credential ladder's three values through the seam; the shipping configuration is same-repo (AC-3.8/AC-4.4) and is the one exercised end to end |
+| **`Route`'s missing proposal-file member (ER-6)** | The vocabulary is upstream and the interim is deliberate | PROP-RPT-08 asserts both the loss and the report-body discriminator that stands in for it, in both directions |
+
+### 13.2 Negative space — what these properties deliberately do not assert
+
+- **No property asserts an implementation echo.** Expected values are transcribed from the normative
+  source or from the fixture input, never read back off the produced artifact (PROP-FIX-01). Where a
+  test runs at L2 and the record under assertion is produced by the pass itself, the expected strings
+  come from the **fixture corpus** — this is the rule PROP-PR-08 turns on.
+- **No property is absence-only.** Every negative names the positive conjunct on the same path (O-1),
+  and the paired-fixture discipline is stated per property rather than assumed: PROP-MRK-02(d),
+  PROP-RPT-01, PROP-RTE-06(a)(b), PROP-EFF-09(c), PROP-ADV-02, PROP-PASS-06(AT-M8).
+- **No property asserts invariance alone.** Every order- or determinism-invariance carries a positive
+  conjunct (O-3): PROP-GEN-02's strict dominance, PROP-GEN-05's literal fold row, PROP-GEN-06's row
+  count and per-arm verdicts, PROP-EFF-08's file-existence predicate.
+- **No property compares two transcriptions with each other.** PROP-RPT-04's fourth leg and
+  PROP-TRC-01's version pin both read the **authority file**, which is what stops a matched pair of
+  stale copies from agreeing perfectly.
+- **No property is timed, network-dependent, or ordered against another property.** Every seam is
+  doubled (§2); `PY_BIN`-dependent rows are gated by PROP-FIX-03, whose `executed === 0` assertion
+  sits in its **own top-level `test()` last** rather than in an `afterAll`, so a skipped-everything
+  run is red rather than silently green.
+- **No property reads the live repository as a fixture.** PROP-FIX-02 forbids it, and PROP-PASS-01
+  states the reason concretely: the corpus grows with every delivered feature, this one included, so
+  a Given pinned to HEAD inverts on its own PR.
+
+### 13.3 Errata — defects found in upstream documents
+
+Found while grounding this document, **not** fixed here (this layer does not edit its inputs) and
+**not** folded into any property above. Each is emitted as an `ERRATUM:` line in the hand-off.
+
+1. **Stale `orchestrate-dev.js` locators, uniform +36-line drift**, in FSPEC §5.4/§6.5, TSPEC
+   §4.2/§9.4 and PLAN §3/§4.1-T11/§4.2/§7. Measured against `HEAD:pdlc/workflows/orchestrate-dev.js`
+   with a clean working tree (`git status --porcelain` empty for that path, 2026-08-09):
+   `gitWithLockRetry` is at **`:8653`**, cited as `:8617`; `commitPaths` at **`:8705`**, cited as
+   `:8669`; its unscoped `git commit -m` at **`:8726`**, cited as `:8690`. The same offset lands on
+   PLAN §2's Phase I citations: the wave gate is at **`:10172`**, cited as `:10136-10143`, and the
+   pathspec-scoped stage at **`:10187`**, cited as `:10151`. Every cited *symbol* is correct and
+   every claim about it holds — this is a locator defect, not a substance defect, which is why it is
+   an erratum rather than a finding. Two corrections of record travelling with it: `commitPaths` **is
+   exported** at HEAD (`:8705`), and FSPEC's branch-guard citation `:3580` is **exact**.
+2. **REQ AC-6.3's "across the consumed window" wording contradicts the settled contract.** FSPEC §9.5
+   / BR-37a specifies `seamCandidates` as ranging over **every** entry in `ESCALATIONS.md`, and TSPEC
+   §11.5 carries a standing caution that no AT-A fixture may be written against the REQ's wording
+   because it would red a conforming implementation. The caution is the right containment; the REQ
+   sentence is still the defect, and it is the one document an operator reads first. PROP-ADV-05 pins
+   the settled form and asserts the invariance under the consumed set explicitly, so this document is
+   safe either way — but the REQ should say what the system does.
