@@ -105,6 +105,55 @@ one dispatch in the loop with no second reading of its own artifact.
 
 ## Best-Guess Root Cause
 
+**Best guess, stated as such: the erratum confirmation was judged from the reviewer's *response text*,
+which lacked a parseable trailer, while the reviewer's *file* — the artifact of record — carried an
+approving verdict. The halt is a channel defect, not a review outcome.**
+
+The mechanism is visible in three lines of the shipped runtime:
+
+1. `erratumRound` step 4c reads the verdict **only** from the dispatch return value —
+   `const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill))`
+   (`pdlc/workflows/orchestrate-dev.js:9383`), then halts on
+   `!isPassResult(...)` (`:9384`). No path in that function reads `confirmPaths[i]` back off disk.
+2. `parseVerdict` (`:4136`) scans the response's lines in reverse for one beginning `VERDICT: `. If it
+   finds none — or finds a value outside `VALID_VERDICTS` — it returns the fail-closed fallback
+   `{ verdict: "Needs revision", high: 0, …, malformed: true }` (`:4137-4172`).
+3. `isPassResult` (`:5270`) refuses a malformed parse **before** it ever looks at the High count:
+   `return parsed.malformed !== true && parsed.high === 0`. So a missing trailer is indistinguishable
+   from a High-bearing rejection, by design — "not read" is never "no findings".
+
+Every one of those three behaviours is correct in isolation and load-bearing where the review loop
+uses it. What makes this halt possible is what the erratum path *lacks*: the review loop has a
+**second, file-side reading** — `extractFileVerdict` (`:4677`, used at `:6675`) — precisely so that a
+verdict written to the branch survives a response that did not carry it across the invocation
+boundary. The erratum confirmation has no such fallback. It is single-channel, and the channel it
+trusts is the transcript, not the tree.
+
+Consistent with that account, and checkable on the branch:
+
+- `CROSS-REVIEW-test-engineer-REQ-v17.md` exists, is committed (`33fbc907`, 09:17), and carries exactly
+  one non-fenced `VERDICT:` line, approving, with `high: 0`. Under file-side parsing it passes; under
+  response-side parsing it passes **only if the response repeated the trailer**.
+- `te-review` self-appended `APPROVAL-HASH` / `REVIEWED-COMMIT` to its own file — the sanctioned write
+  that a reviewer performs *after* reaching a terminal approving verdict. A reviewer that had concluded
+  "Needs revision" would not have appended approval anchors. The reviewer's own behaviour contradicts
+  the verdict attributed to it.
+- The workflow-side `appendApprovalAnchors` (`:9398`) did **not** run: `se-review`'s v17 file has no
+  anchors. That is the halt's signature, not an independent defect.
+
+Alternatives considered and judged less likely, in order:
+
+| Candidate | Why it is less likely |
+|---|---|
+| te-review genuinely rejected and the file was written to say otherwise | The file's reasoning, its per-item resolutions, its Recommendation and its self-appended anchors are internally consistent and consistent with se's independent read. No text anywhere on the branch argues for rejection. |
+| A High finding is hiding in the file | Zero rows are severity High; the counts JSON says `"high": 0`. Both reviewers' Lows are itemised and explicitly non-gating. |
+| Round-index collision (v17 already existed, review overwrote history) | `deriveRoundWindow` is content-addressed over basenames present; v16 was the highest before this round, and both v17 files are new. Append-only history is intact. |
+| Dispatch transport failure (empty response) | Possible, and it collapses into the same root cause: `parseVerdict(null)` returns the same fallback. The remedy is identical. |
+
+The residual uncertainty is honest and narrow: the run's transcript is not on the branch, so what
+`responses[1]` actually contained cannot be recovered from the repository. The defect is located at the
+seam either way — **a converged phase should not halt on a signal that the tree contradicts.**
+
 ## Recommendation
 
 ## Superseded Record — the 2026-08-06 stop order
