@@ -475,7 +475,9 @@ arms this section formerly restated now live once in §9.1 (`consolidationLifecy
 ### 5.1 Trigger and the cadence datum
 
 **One home per invariant.** The whole-pass (L2) trigger invariants live **once**, in §9.1, owned by
-`consolidationLifecycle.test.js` (T23). This section keeps only the **L1** properties over the parse
+`consolidationPass.test.js` (T20) — the file TSPEC §12.3 and PLAN T20 give the AT-C register, not
+`consolidationLifecycle.test.js`, which PLAN T23 states carries **no register id**. This section
+keeps only the **L1** properties over the parse
 and datum functions, which are layered coverage rather than duplicated work (O-4). Four ids minted in
 v1.0 — **PROP-TRG-01, PROP-TRG-02, PROP-TRG-04 and PROP-TRG-05** — specified the same invariants at
 the same level as PROP-PASS-01, PROP-PASS-02 and PROP-PASS-05, in a file owned by a different task;
@@ -485,10 +487,10 @@ trigger rule would have had two homes to update. They are **retired into §9.1**
 
 | Retired id | Invariant now stated once at | Why it was a collision, not a layer |
 |---|---|---|
-| PROP-TRG-01 | PROP-PASS-01 (L2, T23) | same `(n, k, volumeThreshold)` family at the same `(5,2,5)` and `(6,0,5)` |
-| PROP-TRG-02 | PROP-PASS-01's empty-datum arm (L2, T23) | same `no-cadence-datum` bootstrap conjunct |
-| PROP-TRG-04 | PROP-PASS-02's manual arm (L2, T23) | same AT-C4 obligation |
-| PROP-TRG-05 | PROP-PASS-05 (L2, T23) | verbatim the same property, differing only in file and owner |
+| PROP-TRG-01 | PROP-PASS-01 (L2, T20) | same `(n, k, volumeThreshold)` family at the same `(5,2,5)` and `(6,0,5)` |
+| PROP-TRG-02 | PROP-PASS-01's empty-datum arm (L2, T20) | same `no-cadence-datum` bootstrap conjunct |
+| PROP-TRG-04 | PROP-PASS-02's manual arm (L2, T20) | same AT-C4 obligation |
+| PROP-TRG-05 | PROP-PASS-05 (L2, T20) | verbatim the same property, differing only in file and owner |
 
 PROP-TRG-03 and PROP-TRG-06 stay here: both are **L1** over `parseLogRecords` / `mintPassId` against
 the L2 whole-pass arms in PROP-PASS-03 and PROP-PASS-04, which is the L1-vs-L2 layering O-4 sanctions.
@@ -497,15 +499,20 @@ the L2 whole-pass arms in PROP-PASS-03 and PROP-PASS-04, which is the L1-vs-L2 l
 a `promoted` row dated D1, then a **later** `refused` row dated D2 (D2 > D1), the `refused` row being
 last in the file. The datum is **D1**. `refused` is not one of the four datum statuses, so the
 ordering is exactly what falsifies an implementation taking the last row unconditionally. Its L2
-whole-pass arm is PROP-PASS-03. *L1 ·
-`consolidationParse.test.js` · T16 → T26 · AC-1.1 · AT-C5.*
+whole-pass arm is PROP-PASS-03, which is where the **AT-C5** register id is discharged; this L1 arm
+cites the obligation rather than the id, because the id belongs to `consolidationPass.test.js`
+(TSPEC §12.3) and one register id is claimed in exactly one file. *L1 ·
+`consolidationParse.test.js` · T16 → T26 · AC-1.1 · TSPEC §7.2 (datum by status, not by position),
+`TSPEC:928`.*
 
 **PROP-TRG-06** — *`passId` is derived from the log, never from a counter or a clock.* Three
 conjuncts, one fixture each: a log already carrying `{today}-1` mints `{today}-2` (AT-C6); a log
 whose newest rows carry a **previous** date and no `{today}` row mints `{today}-1` — the counter
 restarts per date rather than continuing the previous date's `n` — and an **unparseable** row among
-them contributes no `m` (AT-C7). *L1 · `consolidationParse.test.js` · T16 → T26 · REQ-CONS-03
-preamble, vocabularies §4 · AT-C6, AT-C7.*
+them contributes no `m`. Its L2 whole-pass arm is PROP-PASS-04, which discharges the **AT-C6** and
+**AT-C7** register ids; this L1 arm cites the obligation rather than the ids, for the same
+single-file rule. *L1 · `consolidationParse.test.js` · T16 → T26 · REQ-CONS-03
+preamble, vocabularies §4 · TSPEC §7.2 (`passId` derived from the log, per-date counter).*
 
 ### 5.2 The id derivation
 
