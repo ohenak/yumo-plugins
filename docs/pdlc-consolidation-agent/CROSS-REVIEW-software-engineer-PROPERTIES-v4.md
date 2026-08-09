@@ -21,6 +21,23 @@ rather than trusted from the document.
 
 ## 2. Independent re-measurement of the new claims
 
+Every factual claim the revision added is a claim about a file other than this one, so each was
+measured at HEAD before I accepted it. None was taken from the document's own prose.
+
+| New claim | Verdict at HEAD |
+|---|---|
+| TSPEC §12.3 registers AT-P6 and AT-P10 on `consolidationPredicate.test.js` (`TSPEC:2499`) | **Exact.** `TSPEC:2499` is the L1 row `AT-P1 … AT-P2, AT-P3, AT-P4, AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11` |
+| PLAN T14 enumerates them in block `T25 — corpus and predicate` (`PLAN:258`) | **Exact.** `PLAN:258` lists `… AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11` against `consolidationPredicate.test.js` **(new)** |
+| AT-P6's *Then* is "the consumed pair is still appended, empty, before any other record" (`FSPEC:2119`) | **Exact**, verbatim |
+| AT-P10's *Then* names the §10.4 report explicitly (`FSPEC:2123`) | **Exact**, and the FSPEC row itself says the report assertion "is the one this row exists for" — which strengthens the erratum rather than weakening it |
+| `classifyCorpus` is declared pure and returns `basenameCollisions` without appending or rendering (`TSPEC:674`, `:750-770`) | **Exact.** `TSPEC:674` is `classifyCorpus(files, logText): Predicate // pure`; `:762` records collisions as a returned field. Neither *Then* is reachable at that subject, so keeping the two properties at L2 is the correct call and the register is what is wrong |
+| The fixtures directory exists and is tracked at HEAD (§4.3) | **Exact.** 36 tracked files, including `completeness/`, `covered-violations/` and `digest-vectors.js`; not ignored |
+| `PLAN:307` names only the parity test in T04's ownership row | **Exact** — the manifest half of erratum 3 stands |
+| PLAN T20's `T31` block closes its unregistered list at (i) (`PLAN:264`); PLAN T23 declares two cases, no register id (`PLAN:267`) | **Exact** on both, so erratum 7's premise holds: no PLAN block declares AC-1.4's no-op pass |
+| "The id set is unchanged at 118" (changelog `:25`) | **Exact.** Distinct `PROP-*` ids at HEAD = 118, and the symmetric difference against `d090ef08`'s blob is empty — nothing renamed, added or dropped while three sections were rewritten |
+| §12.3's union rule: the only two task rows exceeding their file's §12.2 green list are `T24 → T26/T29/T31` (T26 from PROP-MRG-03) and `T15 → T26/T28/T31` (T28 from PROP-ID-03) | **Exact, and set-equal rather than merely containing.** I extracted both tables mechanically and differenced them: those two rows are the *only* two with a §12.3 green absent from the matching §12.2 row. PROP-MRG-03's trailer reads `T15/T24 → T26` with `consolidationIdentity.test.js` as its fold home (`:638-640`), and PROP-ID-03's reads `T15/T21 → T26/T28` across identity and route (`:590-591`) — both attributions are the right way round |
+| "Every other row in this table is read from PLAN §4 directly" (§12.2 preamble) | **Holds on spot-check of the rows most likely to falsify it**: the `helpers/consolidationDoubles.js` row traces to PLAN T01 (`PLAN:246`, `:304`) and the `runtimeBundle.test.js` row to PLAN T13 (`PLAN:257`, `:316`) — the two rows that are not new RED suites are still PLAN-sourced |
+
 ## 3. Findings
 
 ## 4. Questions
