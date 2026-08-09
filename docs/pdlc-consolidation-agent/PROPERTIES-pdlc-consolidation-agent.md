@@ -372,22 +372,50 @@ writes. Positive conjunct on the same path: the appended text is one whole recor
 set on every case.* The shared fixture table spans both §3.2 regions, an unterminated block, a
 dangling closer, a stray basename, the legacy/block boundary, one case above `THRESHOLD = 5`
 (`nudge-consolidation.sh:25`) and a zero-corpus case. Each case is materialised as a fixture root and
-reached by the hook through `CLAUDE_PROJECT_DIR`; the hook's set is read as the block's **`pending`
-binding** (`:41`, before the threshold comparison at `:43`), never from stdout, which is
-threshold-gated. **Three conjuncts per row**, all required: JS ⊆ hook, hook ⊆ JS, **and** each side
+reached by the hook through `CLAUDE_PROJECT_DIR`.
+
+**The hook's set is read from the env-gated `PDLC_PENDING:` stderr line, and the row fails when that
+line is absent.** The case runs the hook with **`PDLC_CONSOLIDATION_DEBUG=1`** in its environment;
+the hook's set is the comma-separated value of the `PDLC_PENDING:` line it writes to **stderr**
+(TSPEC §7.1, `:875-877`; PLAN T09 item (4)), never stdout, which carries only the
+threshold-gated `additionalContext` message. Naming the variable is load-bearing in the **passing**
+direction: with it unset the hook writes no `PDLC_PENDING:` line at all, and a harness that parses a
+missing line into `∅` gets JS `∅ ⊆ hook ∅` on every discriminating row — green for the reason the
+property exists to catch. So **"a `PDLC_PENDING:` line was observed on stderr" is a per-row
+precondition that fails the row rather than emptying it**, and it is counted through PROP-FIX-03's
+`executed` counter, whose all-or-nothing assertion then covers this degradation too (PROP-FIX-03
+otherwise guards only the `PY_BIN` probe). The declaration read is located **by name** — the
+`pending` comprehension and the `n >= THRESHOLD` comparison — never by line index, since T09's items
+(3) and (4) move both.
+
+**Three conjuncts per row**, all required: JS ⊆ hook, hook ⊆ JS, **and** each side
 equals the **literally transcribed** expected set — without the third, two implementations both
 returning `∅` agree perfectly. The zero-corpus row additionally asserts `PDLC_PENDING:` is emitted
-with an **empty value**, which is only reachable because PLAN T09 replaces the hook's early
-`sys.exit(0)` (`:29-30`) with a `pending = []` fall-through. Scope is the predicate and only the
-predicate: the `THRESHOLD` gate governs whether the hook *speaks*, not what it counts. *L4 ·
+with an **empty value** — a positive observation of `∅`, distinct from the unobserved line above —
+which is only reachable because PLAN T09 replaces the hook's early
+`sys.exit(0)` with a `pending = []` fall-through. Scope is the predicate and only the
+predicate: the `THRESHOLD` gate governs whether the hook *speaks* on stdout, not what it counts. *L4 ·
 `consolidationHookParity.test.js` · T04 → T25 (dep on T09) · AC-1.1, NFR-5 · AT-P7.*
 
 **PROP-COR-12** — *Widening the hook's corpus changes what it says, and changes nothing else.* Two
-fixture corpora, each run against **HEAD's hook** (a `git show HEAD:pdlc/hooks/scripts/nudge-consolidation.sh`
-copy written into the temp tree) and against the edited hook. **(a) Positive identity:** ≥ 5 pending
+fixture corpora, each run against the **pre-widening baseline hook** and against the edited hook.
+
+**The baseline is a checked-in fixture, never a git query.** It is a verbatim copy of the shipped
+pre-T09 script at `pdlc/workflows/__tests__/fixtures/nudge-consolidation.pre-widening.sh`, written
+by T04 and copied into the temp tree per case. A `git show HEAD:pdlc/hooks/scripts/nudge-consolidation.sh`
+baseline — which PLAN T04 currently specifies, and which §13.3 erratum 3 routes upstream — is
+**self-invalidating**: T09 commits the widening to that exact path, so from the first commit after
+T09 onward `git show HEAD:` returns the *edited* hook, arm (a)'s byte-identity becomes a tautology
+and arm (b)'s required divergence is **red on correct code**. That is the same failure mode §2.2 and
+PROP-FIX-02 name for the corpus fixture ("a Given pinned to HEAD inverts on its own PR"), and it
+applies to a baseline exactly as it applies to a corpus. Because a fixture can rot in the opposite
+direction — someone "fixes" a failing suite by refreshing the fixture from the edited hook, restoring
+the tautology — the block carries a **fixture-validity conjunct**: the baseline fixture's glob
+declaration reaches `docs/*/` **only**, located by name, so a fixture updated to the widened form
+fails loudly rather than passing vacuously. **(a) Positive identity:** ≥ 5 pending
 under `docs/*/` alone and none under `docs/completed/*/`; the emitted `additionalContext` **text** is
 byte-identical between the two hooks **and** equals the message transcribed literally from the
-shipped template (`:43-48`) at that `n`. **(b) Divergence:** pending members under
+shipped template — located by name, not by line index — at that `n`. **(b) Divergence:** pending members under
 `docs/completed/*/` that only the widened `CORPUS_GLOBS` reaches, crossing the threshold; the two
 outputs must **differ** and the edited hook's output equals the transcribed message at the **new**
 `n` — never "whatever HEAD printed". The two arms sit in one block: an implementation that widened
@@ -414,8 +442,9 @@ single-key fixture. *L1 + L5 · `consolidationPredicate.test.js`, `consolidation
 T14/T19 → T25 · REQ §4a · AT-N2, TSPEC §11.4 row 3.*
 
 **PROP-CFG-02** — *The defaults are the transcribed literals, and each is exercised.* `cadenceHours`
-`168`, `volumeThreshold` `5` (which must equal `nudge-consolidation.sh:25`'s `THRESHOLD`, asserted by
-transcription in both directions), `staleLockMinutes` `60`, `pluginRepository` `null`,
+`168`, `volumeThreshold` `5` (which must equal the `THRESHOLD` declaration in
+`nudge-consolidation.sh` — located **by name, never by line index**, as PROP-COR-13 requires, since
+T09 renumbers that file — asserted by transcription in both directions), `staleLockMinutes` `60`, `pluginRepository` `null`,
 `credentialEnv` `"PDLC_PLUGIN_REPO_TOKEN"`, `unmeasurablePasses` `3`. *L1 ·
 `consolidationPredicate.test.js` · T14 → T25 · REQ §4a.*
 
