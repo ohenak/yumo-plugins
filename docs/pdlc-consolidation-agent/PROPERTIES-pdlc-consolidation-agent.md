@@ -1252,7 +1252,7 @@ test fires on the empty-datum branch, and the row records trigger `cadence` with
 `volume` (AT-C1b). One family, both sides, so the property does not depend on which side the
 repository happens to be on. The fixture is **constructed, never the live repository** (PROP-FIX-02):
 the corpus grows with every delivered feature — this one included — so a Given pinned to HEAD inverts
-on its own PR. *L2 · `consolidationLifecycle.test.js` · T23 → T31 · AC-1.1, AC-1.2 · AT-C1, AT-C1b.*
+on its own PR. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.1, AC-1.2 · AT-C1, AT-C1b.*
 
 **PROP-PASS-02** — *Each of the three triggers is reachable, and the skipped tick is observable.*
 Volume threshold met with `cadenceHours` **not** elapsed ⇒ the pass runs with trigger `volume`
@@ -1261,23 +1261,23 @@ trigger `manual`: the manual entry is **never** gated by cadence (AT-C4). Under 
 not elapsed ⇒ the invocation **returns a report body carrying terminal status `skipped-cadence`**
 (§10.1 row 3) — and no log row appended, no LEARNINGS body read, no `passId` minted, no git call made
 (AT-C3). The returned body is the **positive conjunct** and is required: the four absences alone are
-satisfied by a pass that crashed at step 3 or never ran. *L2 · `consolidationLifecycle.test.js` ·
-T23 → T31 · AC-1.1, AC-1.2, AC-7.2 · AT-C2, AT-C3, AT-C4.*
+satisfied by a pass that crashed at step 3 or never ran. *L2 · `consolidationPass.test.js` ·
+T20 → T28/T31 · AC-1.1, AC-1.2, AC-7.2 · AT-C2, AT-C3, AT-C4.*
 
 **PROP-PASS-03** — *The cadence datum is the latest row of a datum **status**, not the latest row.* A
 log whose rows in file order are a `promoted` row dated D1 then a **later** `refused` row dated D2 (D2
 > D1, the `refused` row last in the file): the datum is **D1**. `refused` is not one of §2.3's four
 datum statuses, and the ordering is what falsifies an implementation taking the last row
 unconditionally — a fixture whose last row is already a datum row cannot see the defect. *L2 ·
-`consolidationLifecycle.test.js` · T23 → T31 · AC-1.1 · AT-C5.*
+`consolidationPass.test.js` · T20 → T28/T31 · AC-1.1 · AT-C5.*
 
 **PROP-PASS-04** — *`passId` counts within a date and restarts across dates.* A log already carrying
 `{today}-1` ⇒ the next id is `{today}-2` (AT-C6). A log whose newest rows all carry a **previous**
 date (e.g. `{today-1}-3`), no row for `{today}`, and one of those rows **unparseable** ⇒ the next id
 is `{today}-1`: the counter restarts per date rather than continuing the previous date's `n`, and the
 unparseable row contributes **no** `m`. The unparseable row is the conjunct separating "restarts per
-date" from "takes the max of whatever parsed" (AT-C7). *L2 · `consolidationLifecycle.test.js` · T23 →
-T31 · §8.1 · AT-C6, AT-C7.*
+date" from "takes the max of whatever parsed" (AT-C7). *L2 · `consolidationPass.test.js` · T20 →
+T28/T31 · §8.1 · AT-C6, AT-C7.*
 
 **PROP-PASS-05** — *The trigger decides whether a pass runs, never what clears the bar.* One fixed
 corpus and one fixed configuration, run **twice** — once where the volume test fires (trigger
@@ -1288,7 +1288,7 @@ to catch, and set-equality rather than containment is what makes a promotion dro
 visible. The trigger recorded on each arm is the closed-set value NFR-3a requires (`cadence` on one,
 `volume` on the other), which is what makes "the bar held on both" checkable rather than asserted —
 this is the sole home of the invariant, PROP-TRG-05 having been retired into it (§5.1). *L2 ·
-`consolidationLifecycle.test.js` · T23 → T31 · NFR-3, NFR-3a · AT-C8.*
+`consolidationPass.test.js` · T20 → T28/T31 · NFR-3, NFR-3a · AT-C8.*
 
 **PROP-PASS-11** — *A `no-op` pass still reports, still restates, and still releases — on both of its
 causes.* AC-1.4's obligations are **positive** and none of them is discharged by the absences other
@@ -1307,7 +1307,7 @@ is produced and neither the `ineffective` nor the `unmeasurable` streak advances
 pass **is** an evaluated pass and the `unmeasurable` streak **does** advance (AC-5.5). Pooling them
 into one `no-op` fixture is precisely the defect REQ warns against, and an implementation keying
 either streak on the label rather than on the consumed set passes a single-fixture version of this
-property. *L2 · `consolidationLifecycle.test.js` · T23 → T31 · AC-1.4, AC-5.3, AC-5.5 · (no FSPEC
+property. *L2 · `consolidationPass.test.js` · T20 → T28/T31 · AC-1.4, AC-5.3, AC-5.5 · (no FSPEC
 AT), REQ AC-1.4 third and fourth sentences.*
 
 ### 9.2 The model ladder
