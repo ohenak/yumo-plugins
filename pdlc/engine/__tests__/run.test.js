@@ -28,6 +28,7 @@ function fakeAdapter() {
     _phase: () => {},
     _log: () => {},
     _runCommand: async () => ({ ok: true, output: "" }),
+    _git: async () => ({ ok: true, stdout: "", stderr: "" }),
     composePrompt: () => "",
   };
 }
@@ -68,10 +69,11 @@ test("module URLs are file: URLs inside the repo, not package specifiers", () =>
 
 // ─── Rule 2: only the seams that MUST be overridden are passed ────────────────
 
-test("devInjection overrides exactly the six runtime-only seams", () => {
+test("devInjection overrides exactly the seven runtime-only seams", () => {
   const keys = Object.keys(devInjection(fakeAdapter())).sort();
   assert.deepEqual(keys, [
     "_agent",
+    "_git",
     "_log",
     "_parallel",
     "_phase",
@@ -80,9 +82,35 @@ test("devInjection overrides exactly the six runtime-only seams", () => {
   ]);
 });
 
-test("queueInjection overrides exactly the four seams the queue declares", () => {
+test("queueInjection overrides exactly the five seams the queue declares", () => {
   const keys = Object.keys(queueInjection(fakeAdapter(), async () => ({}))).sort();
-  assert.deepEqual(keys, ["_agent", "_log", "_phase", "_runPipeline"]);
+  assert.deepEqual(keys, ["_agent", "_git", "_log", "_phase", "_runPipeline"]);
+});
+
+// The branch guard tests seam IDENTITY, not behaviour: `branchGuardTransport`
+// (orchestrate-dev.js:3487) returns a transport only when `_git !== defaultGit`,
+// so an injection that omits `_git` — or forwards the module's own default —
+// makes the guard announce itself inert and skip, and the pipeline then commits
+// onto whatever branch the tree happened to be on. Observed live 2026-08-09.
+test("devInjection's _git is a function distinct from the module's defaultGit", async () => {
+  const injection = devInjection(fakeAdapter());
+  const { defaultGit } = await import("../../workflows/orchestrate-dev.js");
+
+  assert.equal(typeof injection._git, "function");
+  assert.notEqual(injection._git, defaultGit, "must not forward the module default");
+
+  const { branchGuardTransport } = await import("../../workflows/orchestrate-dev.js");
+  assert.equal(
+    branchGuardTransport(injection._git),
+    injection._git,
+    "the branch guard must accept the engine's git seam as an actionable transport"
+  );
+});
+
+test("queueInjection's _git is likewise an actionable transport", async () => {
+  const injection = queueInjection(fakeAdapter(), async () => ({}));
+  const { branchGuardTransport } = await import("../../workflows/orchestrate-dev.js");
+  assert.equal(branchGuardTransport(injection._git), injection._git);
 });
 
 test("an adapter without an _agent seam is refused", () => {
@@ -160,9 +188,11 @@ test("runDev forwards reqPath and forcePhases verbatim and returns the module's 
   assert.equal(seen.reqPath, "docs/x/REQ-x.md");
   assert.equal(seen.forcePhases, "R,F");
   assert.equal(typeof seen._agent, "function");
+  // `_git` IS forwarded — the branch guard skips itself unless the seam is
+  // explicitly injected (see the identity tests above).
+  assert.equal(typeof seen._git, "function");
   // Every other seam is left to the module's own Node default.
   assert.equal("_readFile" in seen, false);
-  assert.equal("_git" in seen, false);
   assert.equal("_checkFile" in seen, false);
   assert.equal(result.ok, true);
   assert.equal(result.report.outcome, "success");

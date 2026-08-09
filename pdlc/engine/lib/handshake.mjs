@@ -187,6 +187,7 @@ export function buildBanner({
   pluginCompat,
   apiKeyPolicy,
   baseUrl,
+  permissionMode,
 } = {}) {
   const policy = Array.isArray(apiKeyPolicy) ? apiKeyPolicy.join(", ") : String(apiKeyPolicy ?? "");
   const policyNote =
@@ -200,5 +201,11 @@ export function buildBanner({
     `          root: ${pluginRoot ?? "not found"}`,
     `base URL: ${baseUrl ? baseUrl : "direct (no ANTHROPIC_BASE_URL set)"}`,
     `auth:     apiKeySource policy [${policy}]${policyNote}`,
+    // Never silent: agents that cannot write files still report success, so the
+    // mode that governs their tool calls is banner-level information.
+    `tools:    permissionMode ${permissionMode ?? "(SDK default)"}` +
+      (permissionMode === "bypassPermissions"
+        ? " — agents may write files and run commands in this repo"
+        : ""),
   ];
 }
