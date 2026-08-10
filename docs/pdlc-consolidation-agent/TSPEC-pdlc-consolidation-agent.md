@@ -9,7 +9,31 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.4 | 2026-08-10 |
+| pdlc | draft | Claude | 2.5 | 2026-08-10 |
+
+> **v2.5 (REQ §4b's consumed-pair decision absorbed — behaviour change).** pm-review v14 F-01
+> (**High**): §7.1's arm 2 decided an unreadable corpus entry **into** the consumed pair on a
+> convergence argument, while REQ §4b (erratum, REQ v2.1) had already decided the opposite remedy —
+> the entry is **omitted** from the pair, stays un-consolidated and is **retried next pass**, because
+> a consumed-but-unread entry can only push a verdict toward `prevented`/`insufficient-evidence` and
+> never toward `recurred`, corrupting REQ-CONS-05's falsifiability loop in one direction. **Absorbed,
+> not re-litigated** (DEC-ERR-01): §7.1's arm 2 rewritten to omission with REQ's reason quoted and
+> this layer's superseded convergence argument answered rather than deleted; §12.2's `(no FSPEC AT)`
+> row and §12.3's `consolidationPass.test.js` row now assert conjunct (2) as *the pair names the
+> readable basename and **not** the unreadable one*, keeping the readable member as the positive
+> control so the conjunct cannot pass on an empty pair; §13.3 re-cast from *answered here* to
+> **answered upstream and absorbed**, keeping only the falsifier (the same basename reported
+> unreadable on two consecutive passes) as the trigger to re-raise upstream; §10.4 gains the retried
+> entry as a third, explicitly **retryable** residue class beside the nested repository, set-equal
+> with §13.3's list, and records the `no-op` terminal status REQ §4b fixes for a pass that consumed
+> nothing. One **ERRATUM: PROPERTIES** emitted — PROP-COR-09's title and its conjunct (2) already
+> disagree across the boundary. te-review v14 F-01 (**Medium**): §11.1's ignored-fixture build-order
+> guard named `git status --ignored --porcelain`, which (measured) collapses the ignored member to
+> `!! docs/ign/`; the guard now specifies **`-uall`**, with `git check-ignore -v {path}` as the stated
+> alternative. F-02 (Low): `ls-files --error-unmatch` is an **exit-status probe** (measured: exit 1),
+> not a listing, and the bullet now says so. F-03 / pm-review F-02 (Low): §11.2's `seams.js` anchors
+> corrected — function form `:405-406`, array form `:407-408`, and `mergeDoubles.js`'s fall-through
+> `{ok:true, stdout:"", stderr:""}` at `:209`.
 
 > **2.4 (the new oracles made runnable; the round trip recorded as closed everywhere).** v2.3's
 > mechanism stands; this round repairs its own partial sweep. **te-review v13 F-01 (High) — the
