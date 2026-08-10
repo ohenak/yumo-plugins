@@ -74,7 +74,40 @@ roles named, so the next round can re-find them without a grep.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-06 | **New, and it is the generalisation of F-65.** F-65 is not a spelling mistake; it is a *class*. Any future round that names a new status, reason code, verdict, state or field in the REQ can breach the same set-equality without anyone noticing, because the only thing checking today is a reviewer grepping by hand. The check is mechanical and cheap: extract every `` `backticked-kebab-value` `` the REQ uses in a reason-code/status position, extract §1's `Value` column at the pinned version, assert **set-equality both ways**, and fail naming the offending value and direction. That is the same oracle §4b already specifies for downstream consumers — it just is not run against the REQ itself. Worth a PROPERTIES row (or a DoD-time script alongside `consolidationSkillAnchors.test.js`, which already mechanises the anchor half of this problem). Process-scoped; non-blocking on its own, but F-65 is what it would have caught. |
+| Q-05 | **Carried from v19, half-answered.** The preamble now decides *when* a shifted anchor is a defect, which was the open half. The remaining half is still mechanical: a grep over `` `path:NN` `` in `docs/{feature}/*.md` that resolves each at HEAD and fails where the line is blank, is a comment, or does not contain the named role token. The v2.4 preamble makes this implementable for the first time — the role token is now promised to be present beside every number, so the check has something to match against. Non-blocking. |
+| Q-03 | Carried, still non-blocking, still PROPERTIES-layer. AC-3.4's "on this path no proposal file exists to record into" (`:276-277`) is absence-shaped; a fixture asserting `not exists(CONSOLIDATION-PROPOSAL-…)` would pass on any accidental early exit. Pair it with a positive conjunct on the same path (which artifact *is* written, and its terminal row). |
+| Q-02 | Carried unchanged from v15–v19: the hook's enumeration and the pass's enumeration deserve one generator-driven **set-equality** property over a synthetic `docs/` tree (tracked, untracked, gitignored, staged-but-deleted, nested, `docs/discarded/`). REQ-CONS-01 step 1 states two mechanisms that must agree; the expected set is transcribable from the spec, never derived from either implementation. Containment cannot see the failure mode that matters (one enumeration dropping a basename the other keeps). |
+
 ## Positive Observations
+
+- **The re-measurement cadence clause is the best thing in this delta, and it generalises past
+  this feature.** "The role name is the durable locator; the number is the convenience …
+  re-measured at review rounds, not on every commit" (`:22-26`) does something F-60 asked for
+  across four rounds and no previous revision achieved: it makes the anchor obligation
+  *decidable*. Before it, every round could reopen every anchor and no answer was ever final.
+  After it, an anchor is defective only when its named role stops resolving — a condition a
+  script can evaluate. That is a Process-scoped win worth carrying to harvest even though I
+  have filed it as a question rather than a finding.
+- **F-64 was fixed better than I specified it.** I predicted `899-900 → 1064-1065`; the author
+  measured `:1126-1127` instead — `decideMerge`'s resolver/verdict *call pair*, which is the
+  line pair that actually constitutes "Phase MERGE's ladder reaches the guard", where my
+  coordinates would have pointed at the surrounding conditional. The revision did not take the
+  reviewer's number on trust, which is exactly the discipline the preamble asks for.
+- **§4b's new sentence turns the last soft spot into an oracle.** "Terminal status is `no-op`
+  … its row carries the reason code `corpus-unreadable`" replaces "reports its terminal row
+  with nothing consumed" with two literal values a test can assert, and it explicitly refuses
+  to mint a seventh status ("taken from the six-member set above, so no status is added"),
+  which keeps AC-7.1's closed set closed and PROP-PASS-09's set-equality over statuses intact.
+  The decision is right; only its registration is missing.
+- **The three-cause propagation was done as a set, not paragraph by paragraph.** Adding a third
+  cause to AC-1.4 obliged matching edits wherever "AC-1.4's first cause" was quoted; both sites
+  moved (`:454` AC-5.3, `:479` AC-5.5), each to "first or third cause", and each is
+  substantively correct — causes one and three consume nothing, cause two consumes. The
+  consumed-set-emptiness invariant that both streaks key on survives the change unbroken, which
+  is the thing I most expected a third cause to break.
 
 ## Recommendation
 
