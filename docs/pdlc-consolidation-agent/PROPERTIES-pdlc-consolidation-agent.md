@@ -419,14 +419,28 @@ new reason code, no vocabulary row — asserted rather than assumed. A second fi
 carries the **all-unreadable corpus** (TSPEC §10.3 row 1b): terminal status is exactly `no-op` —
 **not** `failed`, the adjacent branch an implementer is most likely to reach for, and not `refused` —
 the rendered pair's basename list is **empty**, `|un-consolidated|` is **2**, and both basenames are
-named as unread in the report body. The two fixtures are each other's controls: the all-unreadable
+named as unread in the report body. That second fixture **is `AT-K3b`'s oracle** (`FSPEC:2210`, minted
+in FSPEC v11.7): its Given — *"a corpus whose enumerated basenames are all unreadable on disk…, with
+nothing else to promote"* — and its Then — terminal `no-op`, the consumed pair appended **empty**, and
+**no** reason code minted for the condition — are the four observables above, so the register id is
+claimed here rather than left carrier-less. Its `no CONSOLIDATION-PROPOSAL-*.md for that passId`
+conjunct is PROP-RTE-06(b)'s, on the same terminal status, and is not restated here. The two fixtures are each other's controls: the all-unreadable
 fixture keeps *"pair empty"* from passing on a pass that enumerated nothing at all, and the mixed
 fixture keeps the all-unreadable fixture's status assertion from passing on an implementation that
 terminates every unreadable-touching pass `failed`. This is AC-1.4's **third** cause (REQ §4b: the
 consumed list empty **while** the un-consolidated set is non-empty — a pairing, not a reason code).
+What the third cause does **not** need is a third fixture in PROP-PASS-11: it leaves `finishPass`
+through the same exit as that property's cause (i) — consumed set empty, so no AC-5.2 verdict is
+produced and neither streak advances — so AC-1.4's restate-and-release obligations on this path are
+the ones cause (i)'s fixture already pins, and this property asserts only what **distinguishes** the
+third cause from it (status, empty pair, `|un-consolidated|`, the named unread basenames). Stated
+rather than left to inference, since §12.1 names this property AC-1.4's third-cause carrier.
 Placed at L2 per O-4, because its
-subject is the pass's corpus handling end to end. *L2 · `consolidationPass.test.js` · T20 → T31 ·
-AC-1.1, AC-1.4, REQ §4b · (no FSPEC AT), TSPEC §12.2.*
+subject is the pass's corpus handling end to end — **and `AT-K3b` stays in this file with it**, not in
+`consolidationCredential.test.js` where AT-K1…AT-K7 sit today (`TSPEC:2929`): §12.3's one-file rule
+forces the choice, and the id's subject is a whole pass's corpus handling, not the credential. The
+re-registration is routed as §13.3 erratum 8. *L2 · `consolidationPass.test.js` · T20 → T31 ·
+AC-1.1, AC-1.4, REQ §4b · AT-K3b, TSPEC §12.2.*
 
 **PROP-COR-10** — *A basename collision is resolved to one member **and reported**.* Two LEARNINGS
 sharing a basename under `docs/{f}/` and `docs/completed/{g}/` yield **one** member for the pair, and
