@@ -74,12 +74,48 @@ asymmetry is still deliberate and still correct.
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | M-01 has now survived two rounds in which the citing sites themselves moved. Is the intent to re-measure the `nudge-consolidation.sh` family once at the end of Phase T (so it is done against a settled line map), or is it waiting on something? If the former, say so in the header note — a reader who finds eight stale anchors and no statement of intent cannot tell deferral from oversight, and the next reviewer will file it a third time. |
 
 ## Positive Observations
 
-_(filled below)_
+- **The erratum was absorbed at exactly the three sites it named, and no further.** No AT expected
+  value, fixture, oracle strength, BR, NFR or vocabulary pin moved. That is what makes this
+  confirmable in a delta pass rather than requiring a re-read, and it is the behaviour the erratum
+  protocol is for.
+- **AT-K3b is the finding's real answer, not a paper one.** The erratum could have been closed by
+  editing "two" to "three" in one paragraph. Instead the round added a row for the cause, wrote an
+  acceptance test that can fail, and bound it in §15's map — so the third cause is now *provable*,
+  not merely *mentioned*. From this lens that distinction is the whole point of the round.
+- **The discriminator is stated as a pairing.** "Consumed-by-basename list empty **while** the
+  un-consolidated set is non-empty" is what separates the third cause from the first, and stating it
+  as one conjoined assertion rather than two facts is what stops an implementation collapsing the
+  two causes from passing. This is the second time this document has chosen a positively-asserted
+  discriminator over an absence oracle without being asked to.
+- **ER-3 was kept open rather than closed.** Recording "partially absorbed" with the remainder named,
+  and routing the rest to the REQ's author with a stated reason, is the correct handling. Closing
+  ER-3 outright would have been the easy and wrong move.
+- **AT-R7's ordinal locator was converted to a name in the same edit that would have invalidated it.**
+  Nobody asked for that. It is exactly the class of second-order breakage that erratum rounds
+  usually ship, and it was seen and handled.
 
 ## Recommendation
 
-_(filled below)_
+**Approved with minor changes**
+
+The erratum is fully and correctly absorbed at all four raised framings, which are one item. The
+new AT row is falsifiable, positively discriminated against its nearest sibling, and consistent with
+REQ v2.5 word for word on the no-reason-code point. Nothing seventeen prior rounds approved was
+broken, and the round proactively repaired a locator its own insertion would have invalidated.
+
+Nothing blocks. The one new Low is a two-line-off re-derivation claim in the header; the two carried
+Mediums are the same mechanical anchor sweep v17 asked for, which no longer gets cheaper by waiting.
+Fold L-01 into that sweep, answer Q-01 in the header note, and the citation surface is settled for
+the rest of Phase T.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+
+{"high": 0, "medium": 2, "low": 2}
