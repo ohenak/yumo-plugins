@@ -3033,26 +3033,30 @@ re-argued on what a count-above-threshold comparison can supply.
     the one reasoning error the old bullet contained. The divergence set is now one class (a nested
     git repository), not two.
 
-  One question from that batch is now **closed here, with a recommendation rather than a hand-off**:
-  §7.1 puts an unreadable corpus entry **in the consumed pair**, so a LEARNINGS file can be
-  permanently marked consumed while contributing no evidence to any promotion, and the only trace is
-  one pass's transient report body. Should the durable log row itself carry the unreadable basenames
-  (an `unread:` field beside `consumed`)? **This layer's answer is no, and nothing is handed up.** The
-  absorption did not merely narrow the question, it narrowed it past the case that motivated it: the
-  staged-but-deleted entry — the population that made "silently consumed forever" a *routine* outcome
-  — is no longer a trigger for this class at all, since the `--deleted` subtraction means such a path
-  is never enumerated (§7.1). What survives is files present in the working tree whose bodies cannot
-  be read: a permissions error or a mid-pass unlink, each of which is an operator-visible fault in its
-  own right and each of which the report body names. Minting a vocabulary field for that population
-  buys a durable record of a transient fault, at the cost of a
-  `pdlc-consolidation-vocabularies.md` §3 field-set change this layer may not make anyway (REQ §4b) —
-  so the report body suffices and the field is declined, not deferred. **Re-evaluation trigger**, so
-  the reasoning is checkable rather than final: if a pass is ever observed reporting the same
-  unreadable basename on two consecutive passes, the fault is not transient, the argument above fails,
-  and the field question should be re-raised upstream with that observation as its evidence.
-  Accepted residue meanwhile: one operator-visible nudge that no pass can clear (the nested-repository
-  class, §10.4) and one corpus entry the pass reports as unreadable — never a correctness divergence,
-  since the pass consumes only what its own enumeration returned.
+  One question from that batch was **answered upstream, and is absorbed here — not answered here**:
+  the `unread:` field. This document raised it because an earlier revision of §7.1 put an unreadable
+  corpus entry **in** the consumed pair, so a LEARNINGS file could be permanently marked consumed
+  while contributing no evidence to any promotion, the only trace being one pass's transient report
+  body. **REQ §4b (erratum, REQ v2.1) decided it, and decided it by removing the premise rather than
+  by declining a field**: an enumerated basename whose body cannot be read *"is instead **not
+  consumed** — it is omitted from the `<!-- pdlc:consumed {passId} -->` pair, so it stays
+  un-consolidated and the next pass retries it"*, and *"Omission needs no new field, no new reason
+  code and no vocabulary row, and it is not silent: the basename remains in the un-consolidated set
+  that both the hook and the next tick compute"*. REQ's reason for refusing inclusion is the
+  falsifiability loop, not economy: a consumed-but-unread entry can only push a verdict toward
+  `prevented` or `insufficient-evidence` and never toward `recurred`, corrupting REQ-CONS-05 in one
+  direction. §7.1 now carries that decision, including the convergence argument this layer had used
+  to justify the opposite arm — the retry is bounded by its population, since the `--deleted`
+  subtraction removed the staged-but-deleted case and what remains is a permissions error or a
+  mid-pass unlink, each an operator-visible fault with a fix at the source. **Nothing is handed up,
+  and nothing is decided here.** **Re-evaluation trigger**, so the premise this absorption rests on
+  stays checkable rather than final: if a pass is ever observed reporting the same unreadable
+  basename on two consecutive passes, the fault is not transient, the bounded-retry argument fails,
+  and the question should be re-raised upstream with that observation as its evidence. Accepted
+  residue meanwhile, set-equal with §10.4's list: one operator-visible nudge that no pass can clear
+  (the nested-repository class) and one retryable unreadable corpus entry, re-offered and re-reported
+  each pass until the operator clears it — never a correctness divergence, since the pass consumes
+  only what its own enumeration returned and could read.
 - **Upstream (FSPEC) — two register gaps: raised, answered, closed. Nothing is handed on.** §12.2's
   re-binding surfaced two obligations that carried no acceptance test — AC-3.2's requirement that the
   PR body cite each source LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the
