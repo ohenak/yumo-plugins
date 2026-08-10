@@ -15,7 +15,7 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.4 | 2026-08-10 |
+| pdlc | draft | Claude | 2.5 | 2026-08-10 |
 
 > **Code anchors: one epoch.** Every `file:line` below was measured at the v2.4 sweep, and names the *role* the line
 > plays. **The role name is the durable locator; the number is the convenience.** Anchors are re-measured at review
@@ -23,10 +23,11 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 > Where an anchor supports a statement about pre-feature
 > behaviour, the sentence is past tense and the anchor points at today's line for that role.
 
-> **Erratum round (v2.4, Phase R).** Citation set re-derived by grep over the whole REQ rather than by family: the
-> `orchestrate-dev.js` guard anchors and `build-runtime.mjs` are re-measured, each with its role named. Also: §4b names the
-> terminal status and reason code an all-unreadable corpus takes, and AC-1.4 carries that as its third cause. The v2.1–v2.3
-> notes are retired — their corrections now stand in the ACs themselves.
+> **Erratum round (v2.5, Phase R).** §4b's all-unreadable pass keeps terminal status `no-op` (AC-1.4's third cause) but mints
+> **no** reason code: the condition is distinguishable in already-enumerated values — AC-7.1's consumed-by-basename list empty
+> while the un-consolidated set is non-empty. No pin, no vocabulary row and no shipped catalogue entry moves;
+> `pdlc-consolidation-vocabularies.md` stays at `Version` 1.4. The v2.1–v2.4 notes are retired — their corrections, including
+> the v2.4 anchor sweep, now stand in the ACs and anchors themselves.
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -223,7 +224,7 @@ pass — the never-fires failure this datum prevents.
 - **AC-1.4** — Given a pass that makes **no new promotion** — because the un-consolidated set
   under the AC-1.1 predicate is empty, because every promotion it would have made was suppressed
   as a duplicate (NFR-4), or because every enumerated basename was unreadable and so nothing was
-  consumed (§4b, reason code `corpus-unreadable`) — Then it records `no-op` in `docs/_decisions/.consolidation-log.md` and
+  consumed (§4b) — Then it records `no-op` in `docs/_decisions/.consolidation-log.md` and
   exits successfully without opening a PR or writing a proposal file. A `no-op` pass still emits the
   AC-5.2 effectiveness table, restating each prior promotion's **standing** verdict and state
   (including an `unmeasurable` already reached), and still releases the AC-1.3 marker. **Which
@@ -622,9 +623,9 @@ the residual case is an on-disk file that cannot be read — permissions or an I
 **stays in the un-consolidated set and so still counts toward AC-1.2's volume trigger**; only the consumed
 pair omits it. A corpus that is entirely unreadable therefore still fires the trigger and still terminates,
 each pass reporting its terminal row with nothing consumed. **That pass's terminal status is `no-op`** — AC-1.4's
-third cause, taken from the six-member set above, so no status is added — **and its row carries the reason code
-`corpus-unreadable`**, so a repeating series of such rows reads as a corpus nothing can read rather than as
-ordinary quiet weeks.
+third cause, taken from the six-member set above, so no status is added — **and no reason code is added either**:
+AC-7.1's *LEARNINGS consumed by basename* is empty while the un-consolidated set is non-empty, whereas a quiet
+week has both empty. That pairing already distinguishes a corpus nothing can read, in values enumerated here.
 
 ## 5. Scope
 
