@@ -690,7 +690,10 @@ interface PassState {
   reasons: Set<ReasonCode>;              // a row may carry several (§10.1)
   rung: string | null;                   // the model id the pass actually ran on
   credential: Credential;                // "absent" until §7.2's resolution runs
-  consumed: string[];                    // basenames, frozen at step 2
+  consumed: string[];                    // basenames the pass actually read: the step-2
+                                         // enumeration minus any entry whose body `_readFile`
+                                         // returned `null` for (REQ §4b, §7.1). Frozen once the
+                                         // bodies are read; it is what step 7's pair renders.
   proposals: Proposal[];
   records: FailureModeRecord[];          // appended one-per-proposal as each routes
   effectiveness: EffectivenessRow[] | null;   // null ⇒ step 11 never ran
