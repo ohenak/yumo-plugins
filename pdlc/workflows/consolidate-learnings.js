@@ -1230,6 +1230,11 @@ async function finishPass(state, seams) {
     // (PROPERTIES §O-2, AT-M5); without it on the result, a caller — a test included — can only
     // check the pathspec for members it already thought to name, which is containment, and a
     // dropped member is invisible to containment.
+    //
+    // TE F-14, recorded so a later reader does not take it for load-bearing: at HEAD the only
+    // reader of this RESULT field is AT-M5. Step 15's commit reads `state.writeSet` directly, not
+    // this snapshot. It is a lineage field on an operator-facing return, not dead config — but if
+    // report item 8 or the terminal row ever names the write set, that is the wiring to add here.
     writeSet: [...state.writeSet],
     body: reportBody,
     reportBody,
