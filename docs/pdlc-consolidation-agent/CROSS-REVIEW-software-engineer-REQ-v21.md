@@ -28,8 +28,26 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does the next tick's retry of an unreadable basename have any bound? §4b leaves it "the next pass retries it", which is right for a transient IO error and unbounded for a permissions fault that never clears — such a corpus fires the volume trigger forever, each pass writing a `no-op` row. That may well be the intended behaviour (the log series *is* the signal, which is F-01's point), but if it is, saying so in one clause turns an unbounded retry from an omission into a decision. |
+
 ## Positive Observations
+
+- **The fix took the cheap exit whole, not partly.** The round-20 High offered two ways out and warned that a partial take would be worse than either; v2.5 took exit (b) completely. The value is gone from the tracked tree, `pdlc-consolidation-vocabularies.md` stays at `Version` 1.4 with twelve reason codes, `REASON_CODES` stays frozen at the same twelve, and no downstream pin or test expectation had to move. A ten-line diff closed a High and a Medium together and left the shipped catalogue untouched.
+- **The self-contradiction closed by deleting the newer sentence, not by amending the older one.** REQ:618's "no new field, no new reason code and no vocabulary row" was the standing promise; keeping it intact and retracting the eight-lines-later exception is the direction that leaves the section readable in one pass, with no clause the reader has to rank against another.
+- **The erratum block stayed one block.** v2.5 replaces v2.1–v2.4 rather than accumulating a fifth note, and it states the substance — no code minted, distinguishability by already-enumerated values, no pin moved — so a reader arriving at the REQ cold gets the decision without reading four rounds of history.
+- **AC-1.4's third cause survived the retraction intact.** Dropping the reason code left the cause itself in place with a bare `(§4b)` cross-reference, so the three-cause enumeration and the AC-5.3/AC-5.5 streak populations keyed on it — the substance of round 19 — did not have to be re-opened to fix round 20's defect.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The one High from round 20 is resolved at HEAD and verified against the vocabulary file, the shipped `REASON_CODES` freeze and a repo-wide grep, not against the document's own account of itself. The Medium is resolved too. Nothing in the delta broke a section that was already approved: the diff touches four spots, all of them prose, and no code moved on the branch since the round-20 anchor verification, so the whole citation set stands as measured.
+
+Neither remaining finding gates. F-01 is a completeness clause on an argument that is already true — the pairing does distinguish the case, and it does so on the row's face whenever the trigger was `volume`; only the cadence-triggered small-corpus row needs the tree to disambiguate, and one parenthetical closes it. F-02 is hygiene on the anchor-epoch label that costs nothing now and prevents a stale preamble two rounds out. Both are better folded into the next edit this REQ takes for another reason than paid for with a round of their own.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
