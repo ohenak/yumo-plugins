@@ -30,6 +30,27 @@ that already agreed.
 
 ## 2. Is the corrected claim true at HEAD?
 
+Both halves of the new sentence are line-checked against the shipped skill at HEAD, not against the
+FSPEC's own account of it.
+
+| Claim in the delta | HEAD evidence | Verdict |
+|---|---|---|
+| `:103-108` is the §5 Open Items convention | `pdlc/skills/harvest-learnings/SKILL.md:103` is `## 5. Open Items for Consolidation`; `:104` carries the convention prose ("copy that list's id verbatim onto the item — never re-slug, abbreviate, or mint a new id"); `:106-108` is the fenced `failure-mode-id: {id}` block that closes it | exact — the span opens on the heading and closes on the fence, with nothing of another section inside |
+| `:70-78` is the metadata table, and is where `Phases exercised` lands | `SKILL.md:70-71` is the `| Field | Detail |` header and separator; `:78` is `| Phases exercised | {list of phases this feature's pipeline ran, …} |` | exact — `:78` is the `Phases exercised` row itself, so the span's upper bound is load-bearing rather than approximate |
+| The convention is a *lookup*, "never a re-derivation" | `SKILL.md:104` conditions the copy on the failure mode having been "named in the handed open-promotion list (FSPEC §8.3, §8.4)" and forbids minting — i.e. the id's provenance is the handed list, never the agent | agrees with §8.4's four-step table (steps 1–4, `:1529-1534`), in particular step 3's "copy the id **verbatim** … character-for-character from the log row" |
+
+The two spans are disjoint (`70-78` ∩ `103-108` = ∅), so the *not*-clause is a true statement about
+HEAD and not merely a restatement of intent: there is no region of the skill that could satisfy both
+citations, which is exactly why the pre-delta text was wrong rather than loosely worded.
+
+The correction also protects a real oracle. §8.4's whole argument is that `recurred` is reachable
+only because a *producing* side writes the id, and AT-F15 (`:2207`) is a receive-side test over "a
+LEARNINGS whose §5 Open Item carries one `failure-mode-id` line". Had the FSPEC continued to name
+the metadata table as the convention's home, an implementer following the FSPEC would have put the
+line in a region AT-F15's fixture does not read, and the fixture would have been red on code that
+followed the spec. This is the same defect class as the v11.5 erratum (a document sentence that
+would make a conforming implementation fail its own AT), caught one layer earlier.
+
 ## 3. Regression check against the v15 approval
 
 ## Findings
