@@ -289,7 +289,41 @@ someone will look first.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Were F-02 and F-03 conscious deferrals for a later slice? If so I could not find the record — PLAN's task table names no task for wiring `remediationChoice` or `seamCandidates` into `main()`, and neither appears in REQ §7's deferral table. If they were deferred, they need a D-CONS row and a bound successor; if they were missed, the fixes are small and belong here. |
+| Q-02 | For F-01's fix: is reading prior passes' LEARNINGS bodies acceptable cost per pass? The corpus is small today, but the fold is over *all* prior passes and grows monotonically. If not, the alternative is persisting the standing state as a ninth record field — which would need a vocabularies §1 row and so a change-controlled edit to `pdlc-consolidation-vocabularies.md`. I have no product preference between them; I flag it because one is a code change and the other is a contract change, and only the second needs a document round. |
+| Q-03 | On F-06, what *is* the supported set of consuming repos? If the answer is "this repository only, forever", the hardcode is defensible with a comment saying so and the finding drops to Low. AC-3.8's two-repo configuration reads as though it is not. |
+
 ## Positive Observations
+
+- **The falsifiability machinery is genuinely well built.** `effectivenessTable` (`:1514`),
+  `effectivenessVerdict` (`:1498`) and `remediationChoice` (`:1631`) implement FSPEC §8.3/§8.5/§8.7
+  faithfully, including the parts that are easy to get wrong — the three verdict arms evaluated in
+  order and total, `insufficient-evidence` skipped by the `ineffective` streak but counted by the
+  `unmeasurable` one, empty-consumed passes advancing neither, and `revise` resetting the streak. My
+  High findings are about wiring, not about this logic, and none of them requires rewriting it.
+- **The set-equality obligations were taken seriously where they were taken.** The effectiveness
+  table is one row per distinct id with first-seen keying and an explicit sort so the table is
+  invariant under record order (`:1587-1589`); `routeOf` ranges over the *imported*
+  `MERGE_GUARD_DEFAULTS` rather than a local copy (`:1661`), which is exactly what AC-3.1's
+  "**exactly** `MERGE_GUARD_DEFAULTS`" asks for; and the PR trailer is derived from `enacted` itself
+  rather than assembled beside it (`:2085-2088`), so AC-3.3's set-equality holds by construction
+  instead of by discipline.
+- **The credential never becomes a string.** AC-4.2 and NFR-2 are met in a way I did not expect to
+  see done properly: only the variable's *name* is held, the boolean crosses the seam (`:797`),
+  expansion happens one process below the transport in git's own credential helper (`:816-819`), and
+  `--body-file` is used instead of `--body` specifically so the body is never an argv element a
+  failure log could capture (`orchestrate-dev.js:376-379`). That is careful work.
+- **AC-3.8's "no branch operation in the invoking tree" is honoured literally.** The clone is cut
+  with `--single-branch` from the remote's own HEAD (`:2195`) rather than from a named branch, and
+  the invoking tree sees no checkout, switch, stash or reset anywhere in the module.
+- **`skipped-cadence` really is cheap.** It exits before minting a passId, before the marker, and
+  before any body read (`:553-557`) — which is what makes AC-7.2's no-log-row exemption honest under
+  `/loop` rather than a log that grows once per tick.
+- **The empty-datum bootstrap is right.** `triggerFor` treats a null datum as elapsed and the caller
+  adds `no-cadence-datum` (`:1199-1200`, `:559-561`), so a fresh repo's first tick runs and is
+  distinguishable from an ordinary one — the never-fires failure AC-1.1 names is closed.
 
 ## Recommendation
 
