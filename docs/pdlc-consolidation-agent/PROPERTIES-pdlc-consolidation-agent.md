@@ -13,7 +13,22 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-10 |
+| pdlc | draft | Claude | 1.6 | 2026-08-10 |
+
+**v1.6** — closes iteration 6's findings; no property added, removed or renumbered (the set stays
+118) and no fixture changed. `PROP-COR-09` claims **`AT-K3b`** (`FSPEC:2210`, minted by FSPEC v11.7)
+in place of `(no FSPEC AT)` — the all-unreadable fixture v1.5 added *is* that register row's oracle —
+answers pm-review's Q-01 by keeping the id in `consolidationPass.test.js` (subject, per O-4) rather
+than in `consolidationCredential.test.js` where AT-K1…AT-K7 sit, and states why AC-1.4's third cause
+needs no third fixture in `PROP-PASS-11` (it exits `finishPass` by cause (i)'s path, so the
+restate-and-release conjuncts pinned there range over it) — se-review F-02 / Q-01. `PROP-PASS-11`'s
+title and body stop claiming AC-1.4 has **two** causes and stop claiming closure over "both" of them:
+REQ has three (`REQ:224-233`), this property pins the two that differ where AC-5.3/AC-5.5 count, and
+the third points at `PROP-COR-09` — se-review F-01, pm-review F-02. §12.4 registers AT-K3b in the
+AT-K row, drops `PROP-COR-09` from the `(no FSPEC AT)` roll, and names AT-K3b as the one id
+post-dating the v11.5 measurement. Two errata routed: TSPEC §12.2/§12.3/§12.4 (item 8) and PLAN T20
+(item 9). `POSTMORTEM-T` Episode 2's body reconciled with its `RESOLVED: yes` marker — se-review
+F-03.
 
 **v1.5** — closes SE F-01 from the v5 delta confirmation (POSTMORTEM-T episode 2). `PROP-COR-09`
 gains TSPEC §12.2's **second** fixture — the all-unreadable corpus (§10.3 row 1b): status exactly
