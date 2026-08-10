@@ -47,10 +47,10 @@
 > a **rule** rather than as a reconciliation that would drift again by the next wave: §2 now states
 > that the column is a Phase-P baseline owned by nobody during Phase I, and §4's four out-of-band
 > cells are reverted to a uniform `⬚`. The rule is grounded, not asserted — `parsePlanTasks`
-> (`orchestrate-dev.js:3761`) reads the id, `Deps` and batch cells and nothing else (the description
-> and batch columns are marked "LOOSE … cosmetic" at `:3764`; the id/deps headers match exactly at
-> `:3797-3798`), and resume is already owned by the wave ledger at `WAVE_STATE_PATH` (`:8860`,
-> `parseWaveLedger` `:8916`). A second hand-kept ledger could only disagree with the first. This
+> (`orchestrate-dev.js:3963`) reads the id, `Deps` and batch cells and nothing else (the description
+> and batch columns are marked "LOOSE … cosmetic" at `:3966`; the id/deps headers match exactly at
+> `:4047-4048`), and resume is already owned by the wave ledger at `WAVE_STATE_PATH` (`:9104`,
+> `parseWaveLedger` `:9157`). A second hand-kept ledger could only disagree with the first. This
 > answers PM Q-08 and TE Q-01 with the same sentence. (ii) **T13's "both axes in the same commit" rule
 > now survives finding the work already done** (PM F-14). Re-measured at HEAD through `git show HEAD:`,
 > *both* halves are present — `runtimeBundle.test.js:230` carries `"_envPresent", "_makeTempDir"` and
@@ -217,12 +217,12 @@ reviewer read of the semantics against the FSPEC, and §8.3 lists the two obliga
 It is authored once, uniformly `⬚`, and it is never reconciled against the tree afterwards. Landed
 state is read from git and from the wave ledger, never from this table. This is a rule and not a
 description of neglect, for two measured reasons. (i) **No runtime reads it.** `parsePlanTasks`
-(`pdlc/workflows/orchestrate-dev.js:3761`) consumes only the id cell, the `Deps` cell and the batch
+(`pdlc/workflows/orchestrate-dev.js:3963`) consumes only the id cell, the `Deps` cell and the batch
 cell — the id and deps headers are matched exactly against `PLAN_ID_HEADER_CELLS` /
-`PLAN_DEPS_HEADER_CELLS` (`:3797-3798`) while the description and batch columns are explicitly
-"LOOSE … cosmetic" (`:3764`); no parser, gate or dispatcher reads a `Status` cell at all. (ii)
+`PLAN_DEPS_HEADER_CELLS` (`:4047-4048`) while the description and batch columns are explicitly
+"LOOSE … cosmetic" (`:3966`); no parser, gate or dispatcher reads a `Status` cell at all. (ii)
 **Something else already owns resume.** Phase I resumes from the wave ledger at `WAVE_STATE_PATH`
-= `.claude/pdlc-wave-state.json` (`:8860`), parsed by `parseWaveLedger` (`:8916`) — a file the waves
+= `.claude/pdlc-wave-state.json` (`:9104`), parsed by `parseWaveLedger` (`:9157`) — a file the waves
 write, against a table they do not. A hand-maintained second ledger could only ever disagree with
 the first, and a *selectively* maintained one is worse than a blank one: a uniformly `⬚` column
 honestly reports "no ledger is kept here", whereas a column with some rows filled invites the reader
