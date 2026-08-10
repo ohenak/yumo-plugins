@@ -6480,8 +6480,6 @@ function formatUnskipViolations(waveNum, violations) {
 
 const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
 
-const WAVE_LEDGER_CLEARED = "{}\n";
-
 function computePlanHash(waves) {
   const canonical = (Array.isArray(waves) ? waves : [])
     .map((wave) =>
@@ -7770,6 +7768,7 @@ async function main({
 
       const planHash = computePlanHash(waves);
       let ledgerResume = false;
+      let allWavesRecorded = false;
       if (!explicitPointer) {
         const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
         const ledger = parseWaveLedger(ledgerRaw);
@@ -7789,10 +7788,21 @@ async function main({
             );
           } else if (recorded.planHash !== planHash) {
             ignore("the PLAN's wave layout has changed since it was written");
-          } else if (recorded.lastGreenWave >= waves.length) {
+          } else if (recorded.lastGreenWave > waves.length) {
             ignore(
               `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
-                `${waves.length}`
+                `only ${waves.length}`
+            );
+          } else if (recorded.lastGreenWave === waves.length) {
+
+            startWave = waves.length + 1;
+            ledgerResume = true;
+            allWavesRecorded = true;
+            emit(
+              `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
+                `${waves.length} waves of this plan were committed and recorded ` +
+                `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
+                `full run.`
             );
           } else {
             startWave = recorded.lastGreenWave + 1;
@@ -7823,6 +7833,7 @@ async function main({
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
+        if (allWavesRecorded) break;
         if (waveNum < startWave) {
           emit(
             `Wave ${waveNum}/${waves.length}: skipped (` +
@@ -7927,17 +7938,23 @@ async function main({
         }
       }
 
-      if (waveGit) {
-        await writeWaveLedger(WAVE_LEDGER_CLEARED, "clear");
+      if (allWavesRecorded) {
+        recordPhase(
+          "I",
+          "Implementation",
+          "⏭",
+          `Skipped — all ${waves.length} waves previously committed and ` +
+            `recorded green (wave ledger)`
+        );
+      } else {
+        recordPhase(
+          "I",
+          "Implementation",
+          "✅",
+          `All ${waves.length} waves complete (wave mode, ` +
+            `${scriptGate ? "script-owned gate" : "self-report gate"})`
+        );
       }
-
-      recordPhase(
-        "I",
-        "Implementation",
-        "✅",
-        `All ${waves.length} waves complete (wave mode, ` +
-          `${scriptGate ? "script-owned gate" : "self-report gate"})`
-      );
 
       phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)");
       const vWaveNum = waves.length + 1;
