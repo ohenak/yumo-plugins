@@ -353,8 +353,14 @@ interface ConsolidationSeams {
 // __tests__/helpers/seams.js:298) — so a marker holding a single newline is {ok:true} in
 // production and {ok:false, reason:"file_empty"} under the double. Under §7.3 that divergence
 // cannot change a verdict: both replies are present, so both reach `markerVerdict` through
-// `parseMarker` over the same text. The two agree exactly on the one state this layer reads,
-// a missing file — recorded so it stays that way.
+// `parseMarker` over the same text. On the one state this layer reads — a missing file — the two
+// agree on the STATE but NOT on its provenance: the shipped adapter's catch-all routes any
+// unrecognised probe reply to `file_missing` (runtime-adapter.js:830), so in production that
+// reason has a wider producer than a genuinely absent file, while the double emits it only on a
+// genuinely absent key (__tests__/helpers/seams.js:292-306). Read this comment as scoping the
+// agreement to the state, never to the reason's provenance — §11.6 states the consequence in
+// full, including that AC-1.3's mutual exclusion is fail-open on that path and that no L2
+// fixture can reach it.
 type CheckReply = {ok: true} | {ok: false; reason: "file_missing" | "file_empty"};
 
 type ListReply = {ok: true; files: string[]}
@@ -1044,6 +1050,19 @@ releaseMarker(state, seams): Promise<void>                                      
 `{state: "released", …}` — the released form FSPEC §4.1 decides (**BR-14a**) and FSPEC §4.2 gives its
 own outcome row (**E-11b**). Anything else — empty, truncated, multi-line, a third verb, an
 unparseable timestamp — yields `null`.
+
+**Surrounding whitespace is tolerated; interior structure is not.** `parseMarker` applies `.trim()`
+to the whole text before matching, so a leading or trailing newline — which an ordinary `_writeFile`
+of a one-line file leaves behind — parses exactly as the bare line does. What "exactly two one-line
+forms and nothing else" excludes is *interior* structure: a second non-empty line, an embedded
+newline, or padding **within** the line (between the verb, the `passId` and the instant, where the
+separator is a single space). This has to be decided here rather than left to the implementer,
+because §11.4's property generator draws "leading/trailing junk" as a near-miss expected to yield
+`null`: without this sentence an implementer who trims and a generator author who counts whitespace
+as junk produce a property that reds on conforming code. Whitespace is **not** junk; it is the
+adjacent boundary the `file_empty` probe already treats the same way (the double's
+`String(...).trim() === ""`, `__tests__/helpers/seams.js:298`), so trimming here keeps the two
+boundaries consistent rather than introducing a third convention.
 
 `markerVerdict` maps a **released** marker to `free` **without consulting its age**: staleness is a
 property of a *held* marker and a released one is not held, so neither the refusal arm nor the
@@ -2470,7 +2489,7 @@ header.
 | §7.2 `passId` | a random multiset of rows, a random subset made unparseable | the minted id is strictly greater than every parseable `{today}` id; unparseable rows change nothing; the result is invariant under row permutation |
 | §7.8 config parse | a random subset of keys corrupted by type | every uncorrupted key keeps its configured value; every corrupted key takes its documented default; `invalidKeys` is set-equal to the corrupted subset |
 | §7.7 escalation count | a random entry sequence with a random subset missing `Feature` or `Seam` | the total attributed count equals the number of entries carrying both rows; no count is attributed to a key absent from the input |
-| §7.3 `parseMarker` | random text: a random mix of (i) well-formed lines built from a drawn verb ∈ {`IN-PROGRESS:`, `RELEASED:`}, a drawn `passId` and a drawn ISO-8601 instant, (ii) near-misses — right verb wrong arity, wrong verb, a well-formed line plus a second line, leading/trailing junk — and (iii) arbitrary strings, plus the two edge inputs `""` and `null` | the parser is **total** (never throws, on any input including `null`); it returns non-`null` **iff** the text is exactly one line matching one of the two accepted forms — so the property carries both directions and cannot be satisfied by a parser that returns `null` always or one that accepts everything; and on a well-formed line the returned `state`, `passId` and `at` **round-trip the generated triple**, which is what stops the two verbs being conflated |
+| §7.3 `parseMarker` | random text: a random mix of (i) well-formed lines built from a drawn verb ∈ {`IN-PROGRESS:`, `RELEASED:`}, a drawn `passId` and a drawn ISO-8601 instant, (ii) near-misses — right verb wrong arity, wrong verb, a well-formed line plus a second line, leading/trailing **non-whitespace** junk, interior padding within the line — and (iii) arbitrary strings, plus the two edge inputs `""` and `null`. **Surrounding whitespace is drawn deliberately into the *well-formed* arm (i), not the near-miss arm**, per §7.3: a well-formed line wrapped in leading/trailing newlines or spaces must still parse, which is what stops the property reding on a conforming trimming implementation | the parser is **total** (never throws, on any input including `null`); it returns non-`null` **iff** the text, once trimmed, is exactly one line matching one of the two accepted forms — so the property carries both directions and cannot be satisfied by a parser that returns `null` always or one that accepts everything; and on a well-formed line the returned `state`, `passId` and `at` **round-trip the generated triple**, which is what stops the two verbs being conflated |
 
 The fifth row is `parseMarker`, added at v2.2 on the te-review round-10 finding: v2.0 widened its
 grammar from one accepted line to two plus a `state` discriminant (§7.3), which made "anything else
