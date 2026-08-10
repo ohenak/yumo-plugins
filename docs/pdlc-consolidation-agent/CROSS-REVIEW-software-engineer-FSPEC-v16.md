@@ -142,4 +142,21 @@ Prior-round findings: v15 raised none. v14's F-01a/F-01b were closed in v11.5 an
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+The delta corrects a genuine self-contradiction in §8.4 and corrects it in the right direction: both
+line spans are exact at HEAD (`SKILL.md:103` is the §5 heading, `:106-108` the fenced
+`failure-mode-id` block; `:78` is the `Phases exercised` row), the two spans are disjoint, and all
+four of the FSPEC's citations of that skill now agree. Nothing I approved in v15 changed meaning —
+the AT-Q7c erratum's subject is untouched, and every AC, BR, NFR, E-row, AT row and fixture is
+byte-identical across the diff.
+
+Two Low findings, neither gating and both mechanical: AT-P7's self-locator slipped one line to
+`:2450` under this delta's +1 insertion (F-01), and the header's version and erratum notes do not
+record the edit (F-02). Fix both in the next touch of the document; neither blocks Phase F. My v15
+approval stands, extended to the post-`76476315` state.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
