@@ -835,6 +835,7 @@ const IMPLEMENTATION_DEFAULTS = Object.freeze({
   testCommand: null,
   postWaveCommand: null,
   postWavePathspecs: Object.freeze([]),
+  startWave: 1,
 });
 
 function parseImplementationConfig(text) {
@@ -878,11 +879,22 @@ function parseImplementationConfig(text) {
     }
   }
 
+  let startWave = IMPLEMENTATION_DEFAULTS.startWave;
+  if ("startWave" in section) {
+    const v = section.startWave;
+    if (Number.isInteger(v) && v >= 1) {
+      startWave = v;
+    } else {
+      invalidKeys.push("startWave");
+    }
+  }
+
   return {
     config: {
       testCommand: nonEmptyString("testCommand"),
       postWaveCommand: nonEmptyString("postWaveCommand"),
       postWavePathspecs,
+      startWave,
     },
     sectionMalformed: false,
     invalidKeys,
@@ -966,6 +978,12 @@ function mergeCommandFor(surface, params = {}) {
       }
       return cmd;
     }
+    case "consolidationPrs":
+
+      return `gh pr list --repo ${params.repo} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
+    case "consolidationCreate":
+
+      return `gh pr create --repo ${params.repo} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
     default:
       throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
   }
@@ -1967,11 +1985,11 @@ function isModelResolutionError(err) {
 
 const ADVISORY_RUNG_SKILL = "se-review";
 
-function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+function resolveAdvisoryRung({ _agent, _log, _state, prompt, skill = ADVISORY_RUNG_SKILL }) {
   const log = typeof _log === "function" ? _log : () => {};
 
   function dispatchAt(model) {
-    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+    return _agent(skill, prompt, { model });
   }
 
   if (_state.resolved != null) {
@@ -7391,9 +7409,31 @@ async function main({
           `(same tree, file-ownership disjoint)`
       );
 
+      let startWave = implConfig.startWave;
+      if (startWave > waves.length) {
+        emit(
+          `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
+            `last wave of this plan (${waves.length}) — running every wave from 1.`
+        );
+        startWave = 1;
+      }
+      if (startWave > 1) {
+
+        emit(
+          `Resuming at wave ${startWave} of ${waves.length} (implementation.startWave). ` +
+            `Waves 1–${startWave - 1} are skipped as previously completed; the first ` +
+            `executed wave's gate still verifies the whole tree. Clear ` +
+            `implementation.startWave before the next fresh run.`
+        );
+      }
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
+        if (waveNum < startWave) {
+          emit(`Wave ${waveNum}/${waves.length}: skipped (implementation.startWave=${startWave})`);
+          continue;
+        }
         phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
 
         const waveResults = await parallelFn(

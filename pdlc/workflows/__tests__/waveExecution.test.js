@@ -176,6 +176,7 @@ describe("parseImplementationConfig — the `implementation` config section", ()
       testCommand: null,
       postWaveCommand: null,
       postWavePathspecs: [],
+      startWave: 1,
     });
     expect(r.sectionMalformed).toBe(false);
     expect(r.invalidKeys).toEqual([]);
@@ -191,15 +192,17 @@ describe("parseImplementationConfig — the `implementation` config section", ()
     const r = parseImplementationConfig(JSON.stringify({ implementation: "npm test" }));
     expect(r.sectionMalformed).toBe(true);
     expect(r.config).toEqual(IMPLEMENTATION_DEFAULTS);
+    expect(r.config.startWave).toBe(1);
   });
 
-  it("reads all three keys when every one is well formed", () => {
+  it("reads every key when every one is well formed", () => {
     const r = parseImplementationConfig(
       JSON.stringify({
         implementation: {
           testCommand: "npm test",
           postWaveCommand: "node build.mjs",
           postWavePathspecs: ["dist/"],
+          startWave: 3,
         },
       })
     );
@@ -207,8 +210,41 @@ describe("parseImplementationConfig — the `implementation` config section", ()
       testCommand: "npm test",
       postWaveCommand: "node build.mjs",
       postWavePathspecs: ["dist/"],
+      startWave: 3,
     });
     expect(r.invalidKeys).toEqual([]);
+  });
+
+  it("an absent `startWave` is the resume pointer's default of 1, and is not reported", () => {
+    const r = parseImplementationConfig(
+      JSON.stringify({ implementation: { testCommand: "npm test" } })
+    );
+    expect(r.config.startWave).toBe(1);
+    expect(r.invalidKeys).toEqual([]);
+  });
+
+  it("a well-formed `startWave` is read verbatim", () => {
+    const r = parseImplementationConfig(
+      JSON.stringify({ implementation: { startWave: 4 } })
+    );
+    expect(r.config.startWave).toBe(4);
+    expect(r.invalidKeys).toEqual([]);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["a negative", -1],
+    ["a fraction", 2.5],
+    ["a numeric string", "4"],
+    ["null", null],
+  ])("%s `startWave` falls back to 1 and is named", (_label, value) => {
+    const r = parseImplementationConfig(
+      JSON.stringify({ implementation: { testCommand: "npm test", startWave: value } })
+    );
+    expect(r.config.startWave).toBe(1);
+    expect(r.invalidKeys).toEqual(["startWave"]);
+    // Independence: the sibling key is untouched by its neighbour's degradation.
+    expect(r.config.testCommand).toBe("npm test");
   });
 
   it("each key degrades INDEPENDENTLY, and the degraded key is named", () => {
@@ -1096,5 +1132,154 @@ describe("Phase I's V-wave — PROPERTIES tests as the last wave (§3.2 row 2)",
     );
     expect(failing.outcome).toBe("halted");
     expect(failing.haltReason).toBe("Error: Phase PT failed — Tests: 2 failed");
+  });
+});
+
+// ─── Phase I: `implementation.startWave`, the resume pointer ──────────────────
+//
+// A wave-gate halt leaves the earlier waves' work committed on the branch. The
+// re-invocation used to re-enter Wave 1 and re-dispatch agents over that work;
+// `implementation.startWave` lets an operator point the run at the wave that
+// actually needs doing. It skips DISPATCH only — the first executed wave's
+// script-owned gate still runs the whole suite over the whole tree.
+
+/** Three chained tasks with disjoint ownership — one task per wave, three waves. */
+const PLAN_THREE_WAVES = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | First task | 1 | - |",
+  "| T2 | Second task | 2 | T1 |",
+  "| T3 | Third task | 3 | T2 |",
+  "",
+  "| Task | Files |",
+  "|---|---|",
+  "| T1 | `src/one.js` |",
+  "| T2 | `src/two.js` |",
+  "| T3 | `src/three.js` |",
+].join("\n");
+
+const configWithStartWave = (startWave) =>
+  JSON.stringify({ implementation: { testCommand: "npm test", startWave } });
+
+/** The task ids Phase I actually dispatched, in dispatch order. */
+const dispatchedTaskIds = (record) =>
+  record
+    .filter((c) => c.skill === "se-implement")
+    .map((c) => /^Implement task (T\d+):/.exec(c.prompt))
+    .filter(Boolean)
+    .map((m) => m[1]);
+
+describe("Phase I — implementation.startWave resumes a halted run", () => {
+  it("skips the waves before the pointer entirely — no dispatch, no gate, no commit", async () => {
+    const record = [];
+    const gitCalls = [];
+    const logs = [];
+    const ran = [];
+    const result = await main(
+      makeArgs({
+        plan: PLAN_THREE_WAVES,
+        config: configWithStartWave(2),
+        record,
+        logs,
+        git: makeGit(gitCalls),
+        runCommand: async (cmd) => {
+          ran.push(cmd);
+          return { ok: true, output: "Tests: 40 passed\n" };
+        },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    // Waves 2 and 3 ran; wave 1 did not. Set equality over the whole dispatch
+    // enumeration, so an extra T1 dispatch anywhere would fail this.
+    expect(dispatchedTaskIds(record)).toEqual(["T2", "T3"]);
+    // Two wave gates (waves 2 and 3) plus the V-wave's — never a third wave gate.
+    expect(ran).toEqual(["npm test", "npm test", "npm test"]);
+    // Nothing of wave 1's is committed by this run; waves 2 and 3 are.
+    expect(gitCalls.filter((a) => a[0] === "add")).toEqual([
+      ["add", "--", "src/two.js"],
+      ["add", "--", "src/three.js"],
+    ]);
+
+    // The operator is told, in the log, exactly which wave was skipped and why …
+    expect(logs).toContain("Wave 1/3: skipped (implementation.startWave=2)");
+    // … and told once, up front, that the run is a resume and that the pointer
+    // has to be cleared before the next fresh run.
+    const banner = logs.filter((m) => m.startsWith("Resuming at wave 2 of 3"));
+    expect(banner.length).toBe(1);
+    expect(banner[0]).toContain("Clear implementation.startWave before the next fresh run.");
+    // The report row still counts the plan's waves, not the executed ones.
+    expect(phaseDetail(result, "I")).toBe(
+      "All 3 waves complete (wave mode, script-owned gate)"
+    );
+  });
+
+  it("a pointer past the last wave runs every wave, and says so", async () => {
+    const record = [];
+    const logs = [];
+    const result = await main(
+      makeArgs({
+        plan: PLAN_THREE_WAVES,
+        config: configWithStartWave(9),
+        record,
+        logs,
+        git: makeGit([]),
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+    expect(logs).toContain(
+      `Notice: implementation.startWave=9 in ${CONFIG_PATH} is past the last wave of ` +
+        `this plan (3) — running every wave from 1.`
+    );
+    // Paired positive for "runs every wave": nothing was announced as skipped.
+    expect(logs.some((m) => m.includes("skipped (implementation.startWave"))).toBe(false);
+  });
+
+  it("the default pointer changes nothing an operator can see", async () => {
+    const record = [];
+    const logs = [];
+    const result = await main(
+      makeArgs({
+        plan: PLAN_THREE_WAVES,
+        config: CONFIG_WITH_TEST_COMMAND,
+        record,
+        logs,
+        git: makeGit([]),
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+    // No resume banner, no skip lines, and no complaint about the absent key.
+    expect(logs.some((m) => m.startsWith("Resuming at wave"))).toBe(false);
+    expect(logs.some((m) => m.includes("implementation.startWave"))).toBe(false);
+    // Paired positive: the wave plan itself was still announced.
+    expect(logs).toContain("Implementation wave plan:");
+  });
+
+  it("an invalid pointer degrades to wave 1 and is named in the run's notices", async () => {
+    const record = [];
+    const logs = [];
+    const result = await main(
+      makeArgs({
+        plan: PLAN_THREE_WAVES,
+        config: configWithStartWave(0),
+        record,
+        logs,
+        git: makeGit([]),
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+    expect(logs).toContain(
+      `Notice: implementation.startWave in ${CONFIG_PATH} is not a valid value — ` +
+        `using the default.`
+    );
   });
 });

@@ -168,10 +168,15 @@ function parseMergeConfig(text) {
 // "the suite" in this repo, which is per-repo knowledge the script cannot guess —
 // so `testCommand` has NO default. Its absence is not an error: it degrades the
 // wave gate to the legacy self-report scan, announced once per run.
+//
+// `startWave` is the resume pointer: after a wave-gate halt, an operator sets it
+// so the re-invocation does not re-dispatch agents over waves whose work is
+// already committed. Default 1 — every fresh run starts at the first wave.
 const IMPLEMENTATION_DEFAULTS = Object.freeze({
   testCommand: null,
   postWaveCommand: null,
   postWavePathspecs: Object.freeze([]),
+  startWave: 1,
 });
 
 /**
@@ -230,11 +235,25 @@ function parseImplementationConfig(text) {
     }
   }
 
+  // A resume pointer is a wave NUMBER: 1-indexed, integral. Anything else (0, a
+  // negative, a fraction, a numeric string, null) falls back to 1 — starting
+  // from the first wave is the only safe reading of an unreadable pointer.
+  let startWave = IMPLEMENTATION_DEFAULTS.startWave;
+  if ("startWave" in section) {
+    const v = section.startWave;
+    if (Number.isInteger(v) && v >= 1) {
+      startWave = v;
+    } else {
+      invalidKeys.push("startWave");
+    }
+  }
+
   return {
     config: {
       testCommand: nonEmptyString("testCommand"),
       postWaveCommand: nonEmptyString("postWaveCommand"),
       postWavePathspecs,
+      startWave,
     },
     sectionMalformed: false,
     invalidKeys,
@@ -317,12 +336,15 @@ const MERGE_STATE_STATUS_VALUES = [
 const UNRECOGNISED_SENTINEL = "__unrecognised__";
 
 /**
- * `mergeCommandFor` — TSPEC §4.1: the SOLE place every `gh` command string
- * used by Phase MERGE is built, so a single audit of this function's body
- * accounts for every literal command the phase can run.
+ * `mergeCommandFor` — TSPEC §4.1/§9.2: the SOLE place every `gh` command string
+ * used by Phase MERGE **and** the consolidation pass's PR route is built, so a
+ * single audit of this function's body accounts for every literal command
+ * either surface can run. Widened by TSPEC §9.2 rather than a second builder
+ * being written, to keep that audit property repo-wide.
  *
  * @param {string} surface - one of prState, ci, repoCaps, changedFiles,
- *   changedFilesFallback, merge, mergeReadback, reviewThreads
+ *   changedFilesFallback, merge, mergeReadback, reviewThreads,
+ *   consolidationPrs, consolidationCreate
  * @param {object} params - surface-specific parameters (see call sites)
  * @returns {string}
  */
@@ -356,6 +378,15 @@ function mergeCommandFor(surface, params = {}) {
       }
       return cmd;
     }
+    case "consolidationPrs":
+      // §9.2's duplicate poll: one call supplies §7.6's prStates. `--state all` with a
+      // `--json state` field is what lets §7.6 apply the FSPEC state table with one call.
+      return `gh pr list --repo ${params.repo} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
+    case "consolidationCreate":
+      // `--body-file` rather than `--body` is deliberate and load-bearing for NFR-2/§7.4: the
+      // body is written to a file in the clone, so no part of it is ever an argv element in a
+      // command string the adapter logs on failure.
+      return `gh pr create --repo ${params.repo} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
     default:
       throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
   }
@@ -1835,12 +1866,12 @@ const ADVISORY_RUNG_SKILL = "se-review";
  * depth as the deadline. An `async`/`await` body here would add hops and let the deadline win a
  * race on hop-count alone rather than on elapsed time.
  *
- * @param {{ _agent: Function, _log: Function, prompt: string,
+ * @param {{ _agent: Function, _log: Function, prompt: string, skill?: string,
  *           _state: { resolved: {model: string, fallback: boolean}|null } }} deps
  * @returns {Promise<{kind: "response", raw: string} | {kind: "dispatch-error", err: unknown}>}
  * @throws  haltError (as a rejection) when neither rung resolves (M-3)
  */
-function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+function resolveAdvisoryRung({ _agent, _log, _state, prompt, skill = ADVISORY_RUNG_SKILL }) {
   const log = typeof _log === "function" ? _log : () => {};
 
   // `dispatchAt` exists for §8.5's returned-promise ruling: `return _agent(…);` is a classified
@@ -1848,7 +1879,7 @@ function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
   // the hop-count note above), so the seam call moves into a body the ruling covers and the chain
   // hangs off the returned promise, adding no microtask hop.
   function dispatchAt(model) {
-    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+    return _agent(skill, prompt, { model });
   }
 
   if (_state.resolved != null) {
@@ -10290,9 +10321,38 @@ async function main({
           `(same tree, file-ownership disjoint)`
       );
 
+      // Resume pointer (`implementation.startWave`). A pointer past the end of
+      // the plan is not a halt: the plan may have been re-derived since the
+      // halted run, and the safe reading of an out-of-range resume point is to
+      // run everything rather than to run nothing.
+      let startWave = implConfig.startWave;
+      if (startWave > waves.length) {
+        emit(
+          `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
+            `last wave of this plan (${waves.length}) — running every wave from 1.`
+        );
+        startWave = 1;
+      }
+      if (startWave > 1) {
+        // Safety property: skipping a wave skips only its DISPATCH. The first
+        // executed wave's script-owned gate runs the full suite over the whole
+        // tree, so the skipped waves' already-committed work is verified by that
+        // gate before this run commits anything new.
+        emit(
+          `Resuming at wave ${startWave} of ${waves.length} (implementation.startWave). ` +
+            `Waves 1–${startWave - 1} are skipped as previously completed; the first ` +
+            `executed wave's gate still verifies the whole tree. Clear ` +
+            `implementation.startWave before the next fresh run.`
+        );
+      }
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
+        if (waveNum < startWave) {
+          emit(`Wave ${waveNum}/${waves.length}: skipped (implementation.startWave=${startWave})`);
+          continue;
+        }
         phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
 
         // SAME TREE, in parallel: no `isolation: "worktree"`. Disjoint ownership
