@@ -232,11 +232,11 @@ pass — the never-fires failure this datum prevents.
   causes differ exactly there, and AC-5.3 and AC-5.5 state each population in those terms.
 - **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it actually ran on in its report and in the log row.
   The rung ladder — its two constants, its exported resolver `resolveAdvisoryRung`
-  (`pdlc/workflows/orchestrate-dev.js:1833`), its shipped second consumer, and the drift-observable fallback if reuse proves impossible — is stated in
+  (`pdlc/workflows/orchestrate-dev.js:2060`), its shipped second consumer, and the drift-observable fallback if reuse proves impossible — is stated in
   **`docs/_constraints/pdlc-advisory-corpus-baseline.md` §3** (at `Version` 1.0) and is binding here. **This feature reuses that ladder; it does not restate it.**
 - **AC-1.6** — Given the primary rung does not resolve, Then the pass runs on the fallback rung and
   reports the downgrade explicitly (mirroring `ADVISORY_MODEL_FALLBACK:`,
-  `pdlc/workflows/orchestrate-dev.js:1859`) — never a silent downgrade. Given **neither** rung
+  `pdlc/workflows/orchestrate-dev.js:2086` — the fallback log line) — never a silent downgrade. Given **neither** rung
   resolves, Then the pass makes no promotion, releases the AC-1.3 marker, and exits with status
   `failed` and reason code `advisory-model-unresolved`; it does not fall through to a default model.
 
@@ -304,7 +304,7 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   `PDLC-CONSOLIDATION-PASS` trailer (vocabularies §4, cited by the REQ-CONS-03 preamble), so a
   repo-side control can recognise it.
 
-  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:732`) over
+  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:959`) over
   `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both deciding
   about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`, refusal `:838`). Nothing there evaluates an inbound PR, so claiming
   inheritance would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
@@ -321,9 +321,9 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   AC-7.2) and `CONSOLIDATION-PROPOSAL-{passId}.md` (AC-3.5, AC-5.4) — Then those writes land in the
   **invoking tree on whatever branch it is already on** (AC-3.8 forbids changing it), and the pass
   commits them **itself, exactly once, at its terminal outcome** (AC-1.3's Commits column), never pushed, with the **pathspec on both git calls** —
-  `git add -- {paths}` *and* `git commit -m {msg} -- {paths}`. The precedent is `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1576`: add
-  `:1577`, commit `:1580-1585`) and the advisory-record commit mirroring its exact two-call shape (`:1615`). It is explicitly **not** `commitPaths`
-  (`pdlc/workflows/orchestrate-dev.js:8669`), whose commit is a plain `git commit -m` with no pathspec (`:8690`): that shape would sweep a staged index
+  `git add -- {paths}` *and* `git commit -m {msg} -- {paths}`. The precedent is `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1583`: add
+  `:1584`, commit `:1587-1592`) and the advisory-record commit mirroring its exact two-call shape (`commitAdvisoryRecord`, `:1622`). It is explicitly **not** `commitPaths`
+  (`pdlc/workflows/orchestrate-dev.js:9476`), whose commit is a plain `git commit -m` with no pathspec (`:9497`): that shape would sweep a staged index
   into the pass's commit, and AC-3.8's shipping tree may be mid-pipeline with one. Consequences the REQ commits to:
   the AC-1.3 marker is written and removed inside the pass and is **never committed** — it is not one of the enumerated paths, and
   `docs/_decisions/.consolidation-lock` appears in no pathspec of any pass; an unrelated pathspec-scoped
@@ -504,7 +504,7 @@ destroyed artifact, so no count is ever derived from LEARNINGS advisory text. **
   seam with escalations from no feature anywhere in that same file, Then the pass may propose an envelope widening for that seam — never enacted. Both
   conjuncts range over the **whole** file — no filter on `Feature`, none on date, no relation to the pass's consumed set. Both conjuncts are
   required: with an absent or empty corpus there is no widening proposal at all, so a first pass on a stock repo cannot propose widening all five
-  `ADVISORY_SEAMS` (`pdlc/workflows/orchestrate-dev.js:1669`) on the strength of a corpus no run could have written. The proposal targets the **shipped
+  `ADVISORY_SEAMS` (`pdlc/workflows/orchestrate-dev.js:1896`) on the strength of a corpus no run could have written. The proposal targets the **shipped
   defaults** in `pdlc/workflows/`, so it routes as a PR under AC-3.1. A consumer's `.claude/pdlc.config.json` is untracked and is not a PR-able
   surface; a widening a consumer must adopt locally is reported as an operator action in the AC-7.1 report, never as a PR.
 
@@ -666,7 +666,7 @@ fault-injection vocabularies, coverage floors, fixture construction and oracle m
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | `pdlc-advisory-tier`'s two-rung model ladder delivered — `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1652-1653`) and the exported resolver `resolveAdvisoryRung` (`:1833`) | PR merged | **Met** — queue row 14 `done`, merged `bb99f89` (#38). Gates AC-1.5/AC-1.6 |
+| BL-01 | `pdlc-advisory-tier`'s two-rung model ladder delivered — `MODEL_ADVISORY` / `MODEL_ADVISORY_FALLBACK` (`orchestrate-dev.js:1879-1880`) and the exported resolver `resolveAdvisoryRung` (`:2060`) | PR merged | **Met** — queue row 14 `done`, merged `bb99f89` (#38). Gates AC-1.5/AC-1.6 |
 | BL-01a | An advisory **escalation corpus** — `docs/_queue/ESCALATIONS.md` with ≥1 entry | Operator sets `.claude/pdlc.config.json` → `advisory.enabled: true`, and a run escalates | **Not met, and not expected to be** (REQ-CONS-06 preamble). Does **not** gate FSPEC: AC-6.1 specifies the absent and empty states as first-class, and AC-6.2/AC-6.3 are inert without a corpus |
 | BL-02 | `pdlc-workflow-distribution` delivered. A promotion that lands in `yumo-plugins` and never reaches a consumer's `.claude/workflows/` is not a promotion | PR merged | **Met** — archived to `docs/completed/pdlc-workflow-distribution/` |
 | BL-03 | Fine-grained token per AC-4.1 provisioned, and the env var of `consolidation.credentialEnv` populated | Operator action + config value | Required only for the two-repo configuration; the same-repo shipping configuration (AC-3.8) runs on local `gh` auth (AC-4.4), so this does **not** gate FSPEC |
@@ -682,6 +682,6 @@ fault-injection vocabularies, coverage floors, fixture construction and oracle m
 | D-CONS-03 | Automatic prompt-size budgeting / pruning by age | Effectiveness-based retirement (AC-5.3) is the honest mechanism; age is a proxy | — |
 | D-CONS-04 | Running the cadence as a cloud Routine | Routines run on a fresh clone with no working tree; viable for consolidation but needs its own design | `pdlc-engineering-loop` |
 | D-CONS-05 | A/B measuring a promotion against a control | No control population exists in a serial single-pipeline setup | — |
-| D-CONS-06 | Persisting the advisory per-seam summary (`advisorySummaryRows`, `orchestrate-dev.js:2708`) in a defined LEARNINGS section, so resolution *rates* — not only escalations — are consumable | Adding a schema to `advisoryDistilPrompt` is an `orchestrate-dev` change, not a consolidation change (REQ-CONS-06 preamble) | `pdlc-engineering-loop` |
+| D-CONS-06 | Persisting the advisory per-seam summary (`advisorySummaryRows`, `orchestrate-dev.js:2935`) in a defined LEARNINGS section, so resolution *rates* — not only escalations — are consumable | Adding a schema to `advisoryDistilPrompt` is an `orchestrate-dev` change, not a consolidation change (REQ-CONS-06 preamble) | `pdlc-engineering-loop` |
 | D-CONS-07 | Session-free execution and a notification channel that survives without a Claude Code session | Same vehicle as D-CONS-04; AC-7.2 names the in-session report until then | `pdlc-engineering-loop` |
 | D-CONS-08 | A `failure-mode-id` key finer than `(phase, canonical path)` — discriminating two failure modes in one phase touching one file | AC-5.1 states that merge as an accepted cost; a finer key needs a stable sub-file location identity LEARNINGS does not carry today | `pdlc-engineering-loop` |
