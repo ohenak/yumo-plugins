@@ -17,10 +17,11 @@
 //   accumulated text every double this pass writes through records
 //   (TSPEC §10.5).
 //
-// Both blocks are `describe.skip` today: `main()` is still PLAN T02's
-// throwing skeleton (every §7/§9 export is `notImplemented`), so nothing
-// here can pass yet. Bodies are written to the target behaviour now so the
-// un-skip is a flip, not a re-author (PLAN §13.3 rule 2).
+// Both blocks are un-skipped: T30 and T31 have landed `main()`'s behaviour.
+// Bodies were written to the target behaviour at T22 (PLAN §13.3 rule 2);
+// fixtures were later repaired against the landed clustering-reply grammar
+// (consolidationRoute.test.js's header) where the RED-time placeholders were
+// internally contradictory.
 //
 // Per TSPEC §11.6, the adapter transport behind `_envPresent` (the agent
 // prompt `rtEnvPresent` runs) is reviewed, not executed here — this file's
@@ -75,6 +76,30 @@ const LEARNINGS_TEXT = [
 const SECOND_LEARNINGS_PATH = "docs/other-feature/LEARNINGS-other-feature.md";
 const SECOND_LEARNINGS_TEXT = LEARNINGS_TEXT.replace("sample-feature", "other-feature");
 
+// The clustering-reply grammar (documented assumption, consolidationRoute.test.js's
+// header): JSON `{clusters: […]}`, one member per promotion. The default fixture
+// carries one guard-set promotion (kind 3, a MERGE_GUARD_DEFAULTS path) so §9.2's
+// credential resolution is actually reached; a case whose premise is
+// "consuming-repo only" overrides `clusters` with `CONSUMING_CLUSTER`.
+const GUARD_CLUSTER = {
+  phase: "I",
+  artifact: "pdlc/hooks/scripts/sample.sh",
+  kind: 3,
+  action: "promote",
+  symptom: "sample.sh recurs across features",
+  diff: "--- a/pdlc/hooks/scripts/sample.sh\n+++ b/pdlc/hooks/scripts/sample.sh\n",
+  evidence: { recurrence: ["sample-feature"] },
+};
+const CONSUMING_CLUSTER = {
+  phase: "T",
+  artifact: "docs/_constraints/DOMAIN-CONSTRAINTS.md",
+  kind: 1,
+  action: "promote",
+  symptom: "a process learning (AC-2.2 target)",
+  diff: "+ a bullet",
+  evidence: { standingInvariant: "stated once, holds always" },
+};
+
 /**
  * Wires every seam `main()` needs to reach the §6 PR-route attempt: a
  * `direct` pass over one (or, with `paths`, several) unconsumed LEARNINGS
@@ -89,7 +114,14 @@ const SECOND_LEARNINGS_TEXT = LEARNINGS_TEXT.replace("sample-feature", "other-fe
  * @param {object} [opts.ghExtra] - extra `matchKey`-keyed `_ghRun` replies
  * @param {string[]} [opts.paths] - corpus paths (defaults to the one fixture)
  */
-function buildPromotableSeams({ envPresent = new Set(), ghExtra = {}, paths = [LEARNINGS_PATH] } = {}) {
+function buildPromotableSeams({
+  envPresent = new Set(),
+  ghExtra = {},
+  gitExtra = {},
+  paths = [LEARNINGS_PATH],
+  clusters = [GUARD_CLUSTER],
+  script,
+} = {}) {
   const files = { "docs/_decisions/.consolidation-log.md": buildConsolidationLog({}) };
   for (const path of paths) {
     files[path] = path === LEARNINGS_PATH ? LEARNINGS_TEXT : SECOND_LEARNINGS_TEXT;
@@ -97,13 +129,14 @@ function buildPromotableSeams({ envPresent = new Set(), ghExtra = {}, paths = [L
   const fs = fakeFs(files);
   const git = fakeGit({
     "ls-files": { ok: true, stdout: buildCorpusListing(paths) },
+    ...gitExtra,
   });
   const ghRun = fakeGhRun({
     "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]), stderr: "" },
     ...ghExtra,
   });
   const agent = makeAgentDouble({
-    script: new Array(8).fill("well-formed trailer"),
+    script: script ?? [JSON.stringify({ clusters })],
   });
   const envPresentDouble = fakeEnvPresent(envPresent);
   const tempDir = fakeMakeTempDir("/tmp/pdlc-consolidation-T22");
@@ -145,7 +178,7 @@ function accumulatedText({ fs, git, ghRun, agent }) {
 // ─── T30 AT-K1 … AT-K7 ──────────────────────────────────────────────────────
 
 describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh auth status / absent", () => {
-  describe.skip("credential: present / local-gh / absent, and the fail-closed direction", () => {
+  describe("credential: present / local-gh / absent, and the fail-closed direction", () => {
     test("AT-K1: no credentialEnv variable, working local gh auth ⇒ credential: local-gh, PR route attempted", async () => {
       const { seams, ghRun } = buildPromotableSeams({
         envPresent: new Set(),
@@ -212,7 +245,7 @@ describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh 
   // OBSERVABLE — whether `credential-unavailable` rides with it, and, for a
   // `failed` row, by the report body — never by `status:` alone. Six rows,
   // spanning every shape the reading admits.
-  describe.skip("AT-K6: credential: absent, read by observable across all six row shapes (BR-41a)", () => {
+  describe("AT-K6: credential: absent, read by observable across all six row shapes (BR-41a)", () => {
     test("(i) refused at step 6 (marker held) ⇒ absent, not attempted, no credential-unavailable", async () => {
       const { seams, fs } = buildPromotableSeams({ envPresent: new Set() });
       // A fresh, held marker (§7.3's `refuse` arm) — the pass never reaches
@@ -230,7 +263,7 @@ describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh 
       // A consuming-repo-only promotion (process learning / AC-2.2 target,
       // TSPEC §7.4) never reaches §6's routeOf("PR") arm, so §9.2's
       // resolution never runs regardless of what _envPresent/_ghRun answer.
-      const { seams, ghRun } = buildPromotableSeams({ envPresent: new Set() });
+      const { seams, ghRun } = buildPromotableSeams({ envPresent: new Set(), clusters: [CONSUMING_CLUSTER] });
 
       const result = await main(seams);
 
@@ -257,18 +290,19 @@ describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh 
     });
 
     test("(iv) failed at step 12/13, DID attempt the PR route and resolved nothing ⇒ absent, no code on the row, report body names it", async () => {
+      // A guard-set promotion WITHOUT a diff: the PR route is entered (the
+      // clone is opened, the branch cut) and the per-edit authoring dispatch
+      // (§9.2) fires — and fails with a row-4 dispatch error (S-11c) BEFORE
+      // §9.2's credential resolution ever runs, so the pass terminates
+      // `failed` having attempted the route and resolved nothing.
       const { seams } = buildPromotableSeams({
         envPresent: new Set(),
-        ghExtra: {
-          // The pass attempts and finds nothing (AT-K2's shape), then a
-          // later dispatch-error (S-11c) terminates it `failed`.
-        },
+        clusters: [{ ...GUARD_CLUSTER, diff: undefined }],
+        script: [JSON.stringify({ clusters: [{ ...GUARD_CLUSTER, diff: undefined }] }), "dispatch failed: network error"],
       });
-      // Force a row-4 dispatch error on the LAST scripted dispatch (proposal
-      // authoring, step 13) so the PR-route attempt already happened.
       seams._agent = makeAgentDouble({
-        script: new Array(7).fill("well-formed trailer").concat(["dispatch failed: network error"]),
-        throwOn: new Set([7]),
+        script: [JSON.stringify({ clusters: [{ ...GUARD_CLUSTER, diff: undefined }] }), "dispatch failed: network error"],
+        throwOn: new Set([1]),
       });
 
       const result = await main(seams);
@@ -278,11 +312,10 @@ describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh 
       expect(result.credential).toBe("absent");
     });
 
-    test("(v) failed at step 12/13, NEVER attempted the PR route ⇒ absent, no code, report body does not name it", async () => {
-      const { seams } = buildPromotableSeams({ envPresent: new Set(), paths: [] });
-      // No unconsumed corpus at all — nothing to route — but the clustering
-      // dispatch (step 8) itself fails after resolving a rung, terminating
-      // the pass before any routing decision exists.
+    test("(v) failed at step 8, NEVER attempted the PR route ⇒ absent, no code, report body does not name it", async () => {
+      const { seams } = buildPromotableSeams({ envPresent: new Set() });
+      // The clustering dispatch (step 8) itself fails after resolving a rung,
+      // terminating the pass before any routing decision exists.
       seams._agent = makeAgentDouble({
         script: ["dispatch failed: network error"],
         throwOn: new Set([0]),
@@ -305,29 +338,28 @@ describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh 
     });
   });
 
-  test.skip("AT-K7: >=2 promotions, exactly one hits a §6.3 failure class ⇒ promoted-degraded, never promoted or no-op", async () => {
-    const { seams, ghRun } = buildPromotableSeams({
+  test("AT-K7: >=2 promotions, exactly one hits a §6.3 failure class ⇒ promoted-degraded, never promoted or no-op", async () => {
+    // Two promotions on different routes: the consuming-repo one enacts in the
+    // invoking tree, while the guard-set one's push is rejected — the head
+    // branch already exists remotely (§10.3 row 11), a failure class distinct
+    // from AT-K1..AT-K4's credential rows, deliberately, since §9.2 resolves
+    // credential AT MOST ONCE per pass and this row exists to prove partial
+    // success, not to re-test resolution.
+    const { seams } = buildPromotableSeams({
       envPresent: new Set(),
       paths: [LEARNINGS_PATH, SECOND_LEARNINGS_PATH],
+      clusters: [CONSUMING_CLUSTER, GUARD_CLUSTER],
       ghExtra: {
         "gh auth status": { ok: true, stdout: "Logged in to github.com as pdlc-bot", stderr: "" },
-        "gh pr create": { ok: true, stdout: "https://github.com/example/repo/pull/2\n", stderr: "" },
+      },
+      gitExtra: {
+        push: {
+          ok: false,
+          stdout: "",
+          stderr: "! [rejected]        consolidation/x -> consolidation/x (already exists)",
+        },
       },
     });
-    // The second promotion's head branch already exists remotely (§10.3 row
-    // 11) — a failure class distinct from AT-K1..AT-K4's credential rows,
-    // deliberately, since §9.2 resolves credential AT MOST ONCE per pass and
-    // this row exists to prove partial success, not to re-test resolution.
-    ghRun._ghRun; // reference kept for clarity; scripted below via matchKey
-    seams._ghRun = fakeGhRun({
-      "gh pr list --json url,state,body": {
-        ok: true,
-        stdout: JSON.stringify([{ url: "https://github.com/example/repo/pull/9", state: "OPEN", body: "" }]),
-        stderr: "",
-      },
-      "gh auth status": { ok: true, stdout: "Logged in to github.com as pdlc-bot", stderr: "" },
-      "gh pr create": { ok: true, stdout: "https://github.com/example/repo/pull/2\n", stderr: "" },
-    })._ghRun;
 
     const result = await main(seams);
 
@@ -341,7 +373,7 @@ describe("T30 resolution order: §9.2's credential ladder over _envPresent / gh 
 // ─── T31 AT-K5 — non-disclosure ─────────────────────────────────────────────
 
 describe("T31 non-disclosure: the credential value reaches no log, artifact, PR body or report field (NFR-2, §7.4)", () => {
-  describe.skip("AT-K5: on every path, the value appears in none of them, and the row carries exactly one credential: value", () => {
+  describe("AT-K5: on every path, the value appears in none of them, and the row carries exactly one credential: value", () => {
     // NFR-2 / FSPEC §7.4 is honoured **structurally, outbound** (TSPEC §5.3):
     // `_envPresent` returns a boolean, never the value, so `SECRET_VALUE`
     // above is never actually handed to any seam these doubles wrap — this

@@ -43,7 +43,11 @@ export const MERGE_PROP_SEED = 0x5ed;
 // fallback and `gh pr merge` are recognised structurally instead, since
 // none of them carry `--json` at all.
 export function matchKey(command) {
-  const str = normalizeCommand(command).trim();
+  // A leading environment-assignment prefix (TSPEC §9.2's credentialed
+  // `GH_TOKEN="$VAR" gh pr create …` shape) is not part of the operation.
+  const str = normalizeCommand(command)
+    .trim()
+    .replace(/^(?:\w+=(?:"[^"]*"|\S+)\s+)+/, "");
 
   if (/^gh api graphql\b/.test(str)) return "gh api graphql";
   if (/^gh api --paginate --slurp\b/.test(str)) return "gh api --paginate --slurp";
@@ -190,7 +194,15 @@ export function fakeGit(script = {}) {
   const calls = [];
   const _git = async (argv) => {
     calls.push(argv);
-    const key = Array.isArray(argv) ? argv[0] : argv;
+    // The script key is the git OPERATION, so a clone-domain call (argv led by
+    // `-C dir`, possibly with `-c key=value` config pairs — TSPEC §9.2's table)
+    // is scriptable by the same key as its invoking-tree spelling.
+    let key = Array.isArray(argv) ? argv[0] : argv;
+    if (Array.isArray(argv)) {
+      let i = 0;
+      while (argv[i] === "-C" || argv[i] === "-c") i += 2;
+      key = argv[i];
+    }
     if (Object.prototype.hasOwnProperty.call(script, key)) {
       return script[key];
     }

@@ -66,6 +66,7 @@ import {
   makeAgentDouble,
   fakeEnvPresent,
   fakeMakeTempDir,
+  FIXED_NOW_MS,
   buildConsolidationLog,
   buildCorpusListing,
 } from "./helpers/consolidationDoubles.js";
@@ -498,6 +499,9 @@ function runPass(overrides = {}) {
     [CONSTRAINTS_PATH]: overrides.constraintsText !== undefined ? overrides.constraintsText : "",
     ...overrides.files,
   };
+  for (const key of Object.keys(files)) {
+    if (files[key] === null) delete files[key];
+  }
   const fs = fakeFs(files);
   const git = overrides.git ?? fakeGit({ "ls-files": { ok: true, stdout: overrides.corpusListing ?? "" } });
   const ghRun = overrides.ghRun ?? fakeGhRun({});
@@ -507,11 +511,11 @@ function runPass(overrides = {}) {
   const now = overrides.now ?? (() => FIXED_NOW_MS);
 
   const seams = {
-    _agent: agent._agent,
-    _readFile: fs._readFile,
-    _writeFile: fs._writeFile,
-    _appendFile: fs._appendFile,
-    _checkFile: fs._checkFile,
+    _agent: agent,
+    _readFile: fs.readFile,
+    _writeFile: fs.writeFile,
+    _appendFile: fs.appendFile,
+    _checkFile: fs.checkFile,
     _git: git._git,
     _ghRun: ghRun._ghRun,
     _log: overrides.log ?? (() => {}),
@@ -525,7 +529,7 @@ function runPass(overrides = {}) {
   return { run: () => main(seams), fs, git, ghRun, agent, makeTempDir, envPresent };
 }
 
-describe.skip("T31 — AT-R1, AT-R2: routing takes effect for a guard-set path and a constraints append", () => {
+describe("T31 — AT-R1, AT-R2: routing takes effect for a guard-set path and a constraints append", () => {
   test("AT-R1: a promotion targeting a MERGE_GUARD_DEFAULTS path takes the PR route (set-equal to the constant, not a subset)", async () => {
     const pass = runPass({
       corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
@@ -590,7 +594,7 @@ describe.skip("T31 — AT-R1, AT-R2: routing takes effect for a guard-set path a
   });
 });
 
-describe.skip("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixtures", () => {
+describe("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixtures", () => {
   test("AT-R3: HEAD and branch are unchanged; the commit contains exactly the §5.4 pathspec; pre-staged files are not swept in", async () => {
     const git = fakeGit({
       "rev-parse": { ok: true, stdout: "feat-pdlc-consolidation-agent\n" },
@@ -627,13 +631,15 @@ describe.skip("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixture
     // The pathspec after "--" is exactly the §5.4 set — the one path this promotion touched —
     // never widened to sweep in a pre-staged, unrelated file the fixture's index also carries.
     const dashIndex = commitCall.indexOf("--");
-    expect(commitCall.slice(dashIndex + 1)).toEqual([CONSTRAINTS_PATH]);
+    // FSPEC §5.4's write-set table names the log alongside the promotion
+    // target, so the pathspec is set-equal to exactly those two paths.
+    expect(new Set(commitCall.slice(dashIndex + 1))).toEqual(new Set([CONSTRAINTS_PATH, LOG_PATH]));
   });
 
   test("AT-R4: git refuses the commit after the lock retries — the terminal status is unchanged, writes-uncommitted is recorded, and the writes remain correct on disk", async () => {
     const git = fakeGit({
       "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
-      commit: { ok: false, stdout: "", stderr: "index.lock: File exists" },
+      commit: { ok: false, stdout: "", stderr: "fatal: unable to write new index file" },
     });
     const pass = runPass({
       git,
@@ -680,7 +686,7 @@ describe.skip("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixture
   });
 });
 
-describe.skip("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/branch-exists fixtures", () => {
+describe("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/branch-exists fixtures", () => {
   test("AT-Q2: three promotions sharing one PR — three commits, each a distinct PDLC-PROMOTION-ID, and PDLC-CONSOLIDATION-PROMOTIONS set-equal to those three pairs", async () => {
     const git = fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } });
     const ghRun = fakeGhRun({
@@ -711,7 +717,12 @@ describe.skip("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediatio
     const result = await pass.run();
 
     expect(result.prUrl).toBe("https://github.com/kaneho/yumo-plugins/pull/12");
-    const commitMessages = git.calls.filter((argv) => argv[0] === "commit").map((argv) => argv[argv.indexOf("-m") + 1]);
+    // The per-edit promotion commits carry §9.2's `-C dir` prefix; the §5.4
+    // consuming-repo commit (argv[0] === "commit") is a different call and not
+    // counted here.
+    const commitMessages = git.calls
+      .filter((argv) => argv[0] === "-C" && argv.includes("commit"))
+      .map((argv) => argv[argv.indexOf("-m") + 1]);
     expect(commitMessages).toHaveLength(3);
     const promotionIds = commitMessages.map((msg) => msg.match(/PDLC-PROMOTION-ID: (\S+)/)?.[1]).filter(Boolean);
     expect(new Set(promotionIds).size).toBe(3);
@@ -732,7 +743,7 @@ describe.skip("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediatio
       "gh pr list --json url,state,body": {
         ok: true,
         stdout: JSON.stringify([
-          { url: openPrUrl, state: "OPEN", body: "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: pdlc-hooks-scripts-a-sh:promote" },
+          { url: openPrUrl, state: "OPEN", body: "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: i-pdlc-hooks-scripts-a-sh:promote" },
         ]),
       },
     });
@@ -763,7 +774,7 @@ describe.skip("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediatio
     expect(result.prUrl).toBeNull();
     expect(ghRun.calls.some((c) => matchKey(c) === "gh pr create")).toBe(false);
     expect(Array.from(result.reasons ?? [])).toContain("duplicate-suppressed");
-    const suppression = (result.suppressions ?? []).find((s) => s.failureModeId === "pdlc-hooks-scripts-a-sh");
+    const suppression = (result.suppressions ?? []).find((s) => s.failureModeId === "i-pdlc-hooks-scripts-a-sh");
     expect(suppression).toBeDefined();
     expect(suppression.evidence).toEqual({ kind: "pr", url: openPrUrl });
   });
@@ -776,7 +787,7 @@ describe.skip("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediatio
           {
             url: "https://github.com/kaneho/yumo-plugins/pull/21",
             state: "CLOSED",
-            body: "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: pdlc-hooks-scripts-a-sh:promote",
+            body: "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: i-pdlc-hooks-scripts-a-sh:promote",
           },
         ]),
       },
@@ -817,7 +828,7 @@ describe.skip("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediatio
           {
             url: "https://github.com/kaneho/yumo-plugins/pull/23",
             state: "MERGED",
-            body: "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: pdlc-hooks-scripts-a-sh:promote",
+            body: "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: i-pdlc-hooks-scripts-a-sh:promote",
           },
         ]),
       },
@@ -905,7 +916,7 @@ function routeAwareId(artifact) {
   return `i-${slug}`;
 }
 
-describe.skip("T31 — AT-Q8, AT-Q9: the PR API failure and the deleted-branch trailer-survival cases", () => {
+describe("T31 — AT-Q8, AT-Q9: the PR API failure and the deleted-branch trailer-survival cases", () => {
   test("AT-Q8: the PR API fails with a network/rate-limit/5xx error — reason code api-failure with the status text recorded verbatim; the fallback proposal file carries the full diff; the pass does not halt", async () => {
     const diffText = "--- a/pdlc/hooks/scripts/a.sh\n+++ b/pdlc/hooks/scripts/a.sh\n";
     const ghRun = fakeGhRun({
@@ -948,7 +959,7 @@ describe.skip("T31 — AT-Q8, AT-Q9: the PR API failure and the deleted-branch t
   });
 
   test("AT-Q9: a pass that opened a PR and recorded its promotion on an invoking branch which is then deleted without merging — the PR and its trailer survive; a later pass re-mints the effectiveness record from scratch and reports it", async () => {
-    const priorPassBody = "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: pdlc-hooks-scripts-a-sh:promote";
+    const priorPassBody = "PDLC-CONSOLIDATION-PASS: 2025-12-01-1\nPDLC-CONSOLIDATION-PROMOTIONS: i-pdlc-hooks-scripts-a-sh:promote";
     const ghRun = fakeGhRun({
       "gh pr list --json url,state,body": {
         ok: true,
@@ -989,10 +1000,10 @@ describe.skip("T31 — AT-Q8, AT-Q9: the PR API failure and the deleted-branch t
 // `passId`) is present by name. If T31's implementer ships a different literal grammar, only this
 // comment and these three fixture strings need to change — no assertion below depends on the
 // grammar being JSON, only on `parseLogRecords` recovering the same eight fields from it.
-describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier", () => {
+describe("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier", () => {
   test("AT-Q10: a proposal already carried by a prior pass's route:constraints record — nothing appended; duplicate-suppressed, suppressed-by names exactly one consuming-repo entry; pr: stays empty", async () => {
     const priorRecord = {
-      failureModeId: "t-docs-_constraints-domain-constraints-md",
+      failureModeId: "t-docs-constraints-domain-constraints-md",
       phase: "T",
       symptom: "a spec omits a boundary case",
       artifact: "docs/_constraints/DOMAIN-CONSTRAINTS.md",
@@ -1042,13 +1053,13 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
     let currentConstraints = initialConstraints;
 
     function makeFsForRun() {
-      const fs = fakeFs({
+      const files = {
         [CONFIG_PATH]: buildConfig(),
         [LOG_PATH]: currentLogText,
-        [MARKER_PATH]: null,
         [CONSTRAINTS_PATH]: currentConstraints,
-      });
-      return fs;
+      };
+      if (files[LOG_PATH] === null) delete files[LOG_PATH];
+      return fakeFs(files);
     }
 
     const clusterFixture = agentReply({
@@ -1067,11 +1078,11 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
 
     const firstFs = makeFsForRun();
     const firstResult = await main({
-      _agent: makeAgentDouble({ script: [clusterFixture] })._agent,
-      _readFile: firstFs._readFile,
-      _writeFile: firstFs._writeFile,
-      _appendFile: firstFs._appendFile,
-      _checkFile: firstFs._checkFile,
+      _agent: makeAgentDouble({ script: [clusterFixture] }),
+      _readFile: firstFs.readFile,
+      _writeFile: firstFs.writeFile,
+      _appendFile: firstFs.appendFile,
+      _checkFile: firstFs.checkFile,
       _git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } })._git,
       _ghRun: fakeGhRun({})._ghRun,
       _log: () => {},
@@ -1079,6 +1090,7 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
       _envPresent: fakeEnvPresent(new Set())._envPresent,
       _makeTempDir: fakeMakeTempDir(CLONE_DIR)._makeTempDir,
       _now: () => FIXED_NOW_MS,
+      direct: true,
     });
 
     expect(Array.from(firstResult.reasons ?? [])).not.toContain("duplicate-suppressed");
@@ -1091,11 +1103,11 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
 
     const secondFs = makeFsForRun();
     const secondResult = await main({
-      _agent: makeAgentDouble({ script: [clusterFixture] })._agent,
-      _readFile: secondFs._readFile,
-      _writeFile: secondFs._writeFile,
-      _appendFile: secondFs._appendFile,
-      _checkFile: secondFs._checkFile,
+      _agent: makeAgentDouble({ script: [clusterFixture] }),
+      _readFile: secondFs.readFile,
+      _writeFile: secondFs.writeFile,
+      _appendFile: secondFs.appendFile,
+      _checkFile: secondFs.checkFile,
       _git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } })._git,
       _ghRun: fakeGhRun({})._ghRun,
       _log: () => {},
@@ -1103,6 +1115,7 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
       _envPresent: fakeEnvPresent(new Set())._envPresent,
       _makeTempDir: fakeMakeTempDir(CLONE_DIR)._makeTempDir,
       _now: () => FIXED_NOW_MS,
+      direct: true,
     });
 
     expect(Array.from(secondResult.reasons ?? [])).toContain("duplicate-suppressed");
@@ -1113,7 +1126,7 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
 
   test("AT-Q12: a prior pass's record for the pair with route:degraded — the later pass reads it as absent, not enacted; the promotion is re-proposed and, where it can now be applied, appended", async () => {
     const priorRecord = {
-      failureModeId: "t-docs-_constraints-domain-constraints-md",
+      failureModeId: "t-docs-constraints-domain-constraints-md",
       phase: "T",
       symptom: "a spec omits a boundary case",
       artifact: "docs/_constraints/DOMAIN-CONSTRAINTS.md",
@@ -1154,7 +1167,7 @@ describe.skip("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression ca
   });
 });
 
-describe.skip("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligations, beyond the three trailers", () => {
+describe("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligations, beyond the three trailers", () => {
   test("fixture (a) — recurrence across two named features: the body names both source LEARNINGS by feature name, the symptom line verbatim, and the recurrence evidence", async () => {
     const symptom = "the seam-verb spy's classifiers disagree at the clone-call boundary";
     const ghRun = fakeGhRun({
@@ -1249,7 +1262,7 @@ describe.skip("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligat
   });
 });
 
-describe.skip("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, written when and only when §5.3 has a cause", () => {
+describe("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, written when and only when §5.3 has a cause", () => {
   test("(a) a fully-promoted pass — the guard-set promotion opened a PR, the rest landed in the §5.4 commit, nothing degraded or suppressed — the proposal-file set is unchanged, and none exists for this pass's passId", async () => {
     const ghRun = fakeGhRun({
       "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
@@ -1294,7 +1307,7 @@ describe.skip("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, writt
 
   test("(b) a no-op pass whose promotions were all duplicate-suppressed — also no cause, and no proposal file", async () => {
     const priorRecord = {
-      failureModeId: "t-docs-_constraints-domain-constraints-md",
+      failureModeId: "t-docs-constraints-domain-constraints-md",
       phase: "T",
       symptom: "a spec omits a boundary case",
       artifact: "docs/_constraints/DOMAIN-CONSTRAINTS.md",

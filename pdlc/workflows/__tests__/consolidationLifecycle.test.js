@@ -147,7 +147,7 @@ function makeSeams({ fs, git = fakeGit(), agent = unresolvedAgent(), deferred = 
     _appendFile: defer(fs.appendFile),
     _checkFile: fs.checkFile,
     _listFiles: fakeListFiles({ ok: true, files: [] }),
-    _git: deferred ? asAsync(git) : git,
+    _git: deferred ? asAsync(git._git) : git._git,
     _ghRun: fakeGhRun(),
     _log: () => {},
     _phase: () => {},
@@ -161,7 +161,7 @@ function makeSeams({ fs, git = fakeGit(), agent = unresolvedAgent(), deferred = 
 
 // ─── Block 1 — T-13 ─────────────────────────────────────────────────────────────────
 describe("T31 — await discipline across finishPass (T-13, TSPEC §10.1/§11.2)", () => {
-  describe.skip("main() not implemented yet (PLAN T02 skeleton; behaviour lands at T31)", () => {
+  describe("T31 — landed", () => {
     test("after main()'s promise resolves: terminal row logged AND marker released, under macrotask-deferred writes/git", async () => {
       // Given: a blank consuming repo (no prior log, no prior marker) and an empty
       // corpus, so the pass reaches the simplest guarded terminal branch that still
@@ -203,7 +203,7 @@ describe("T31 — await discipline across finishPass (T-13, TSPEC §10.1/§11.2)
 
 // ─── Block 2 — release across the six terminal statuses ───────────────────────────────
 describe("T31 — release across the six terminal statuses (FSPEC §4.3, TSPEC §7.3/§10.1)", () => {
-  describe.skip("main() not implemented yet (PLAN T02 skeleton; behaviour lands at T31)", () => {
+  describe("T31 — landed", () => {
     test("{taken, released} per status matches FSPEC §4.3's table, keyed on the module's own TERMINAL_STATUSES", async () => {
       // Each fixture builder returns the seam set for one terminal status. Every
       // builder is self-contained (fresh doubles per call, never module-scoped) so one
@@ -270,9 +270,42 @@ describe("T31 — release across the six terminal statuses (FSPEC §4.3, TSPEC �
         return { ...makeSeams({ fs, git }), fs };
       };
 
+      // `promoted`: one consuming-repo promotion (kind 1) enacted in the
+      // invoking tree. `promoted-degraded`: the same enacted promotion beside
+      // a guard-set one that degrades on `_makeTempDir` ⇒ null (§5.5's
+      // api-failure arm) — one enacted, one degraded.
+      const CONSUMING_CLUSTER = {
+        phase: "T",
+        artifact: "docs/_constraints/DOMAIN-CONSTRAINTS.md",
+        kind: 1,
+        action: "promote",
+        symptom: "a recurring spec gap",
+        diff: "+ a bullet",
+        evidence: { standingInvariant: "stated once, holds always" },
+      };
+      const GUARD_CLUSTER = {
+        phase: "I",
+        artifact: "pdlc/hooks/scripts/sample.sh",
+        kind: 3,
+        action: "promote",
+        symptom: "sample.sh recurs",
+        diff: "--- a/pdlc/hooks/scripts/sample.sh\n",
+        evidence: { recurrence: ["some-feature"] },
+      };
+      const promotionFixture = (clusters) => () => {
+        const fs = fakeFs({
+          "docs/some-feature/LEARNINGS-some-feature.md": "## 1. Failure mode\n\nsomething recurring\n",
+        });
+        const git = fakeGit({
+          "ls-files": { ok: true, stdout: "docs/some-feature/LEARNINGS-some-feature.md\n" },
+        });
+        const agent = makeAgentDouble({ script: [JSON.stringify({ clusters })] });
+        return { ...makeSeams({ fs, git, agent }), fs };
+      };
+
       const fixtures = {
-        promoted: advisoryUnresolvedFixture, // placeholder pending a real promotion fixture (T31)
-        "promoted-degraded": advisoryUnresolvedFixture, // placeholder pending a real degraded fixture (T31)
+        promoted: promotionFixture([CONSUMING_CLUSTER]),
+        "promoted-degraded": promotionFixture([CONSUMING_CLUSTER, GUARD_CLUSTER]),
         "no-op": emptyCorpusFixture,
         failed: advisoryUnresolvedFixture,
         refused: freshMarkerFixture,

@@ -551,7 +551,7 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
 // ─── T31 — the ER-6 interim's discriminator (§7.6, §12.4; no FSPEC AT) ──────
 
 describe("T31 — the ER-6 interim's discriminator (§7.6, §12.4)", () => {
-  describe.skip("a routed propose-only promotion and a degraded PR attempt both write route: degraded — the report body is what still tells them apart", () => {
+  describe("a routed propose-only promotion and a degraded PR attempt both write route: degraded — the report body is what still tells them apart", () => {
     test("sameness: both records carry route: degraded (asserted, not hidden)", () => {
       const routed = makeState({
         status: "no-op",

@@ -461,8 +461,8 @@ export default async function main({
   _envPresent: envPresentFn = NO_ENV_PRESENT,
   _makeTempDir: makeTempDirFn = NO_MAKE_TEMP_DIR,
   _now: nowFn = () => Date.now(),
+  direct = false,
 } = {}) {
-  // eslint-disable-next-line no-unused-vars
   const seams = {
     agentFn,
     readFileFn,
@@ -478,8 +478,586 @@ export default async function main({
     makeTempDirFn,
     nowFn,
   };
-  throw new Error("consolidate-learnings: main() not implemented yet (PLAN T02 skeleton)");
+
+  const nowMs = nowFn();
+  const markerPath = "docs/_decisions/.consolidation-lock";
+  const logPath = "docs/_decisions/.consolidation-log.md";
+
+  const state = {
+    passId: null,
+    trigger: null,
+    status: null,
+    reasons: new Set(),
+    rung: null,
+    credential: "absent",
+    consumed: [],
+    proposals: [],
+    records: [],
+    effectiveness: null,
+    suppressions: [],
+    notices: [],
+    deferred: [],
+    prUrl: null,
+    branch: null,
+    markerHeld: false,
+    markerPath,
+    logPath,
+    nowMs,
+    heldPassId: null,
+    abandonedPassId: null,
+    // §8.4 — the tee's report-body-only buffer: every resolver line and every
+    // dispatch failure message lands here and is rendered into `body`.
+    dispatchLog: [],
+    writeSet: new Set([logPath]),
+  };
+
+  // The §8.4 tee: forwards to the caller's sink AND retains the text.
+  const tee = (line) => {
+    state.dispatchLog.push(String(line));
+    try {
+      logFn(line);
+    } catch {
+      // the caller's sink is best-effort; retention is the obligation
+    }
+  };
+
+  // Step 1 — configuration (§7.8): per-key independent fallback, never a halt.
+  const configText = await readFileFn(".claude/pdlc.config.json");
+  const { config, sectionMalformed, invalidKeys } = parseConsolidationConfig(configText);
+  if (sectionMalformed) {
+    state.notices.push({ subject: "config", detail: "consolidation section malformed — defaults used" });
+  }
+  for (const key of invalidKeys) {
+    state.notices.push({ subject: "config", detail: `${key} invalid — fell back to ${config[key]}` });
+  }
+  state.config = config;
+
+  // Step 2 — enumerate the corpus (basenames only, no body read) and classify.
+  const logText = await readFileFn(logPath);
+  const corpusReply = await enumerateCorpus(gitFn);
+  if (corpusReply.unlistable) {
+    // §10.3 row 1a — `failed`, NO reason code (vocabularies §1 has no row for it),
+    // the pathspec and stderr in the report body. Never `no-op`.
+    state.dispatchLog.push(`corpus unlistable: ${LS_FILES_ARGV.join(" ")} — ${corpusReply.detail}`);
+    state.status = "failed";
+    return await finishPass(state, seams);
+  }
+  const corpusFiles = corpusReply.files;
+  const predicate = classifyCorpus(corpusFiles, logText);
+  state.consumed = [...predicate.unconsolidated];
+  for (const collision of predicate.basenameCollisions) {
+    state.notices.push({ subject: "corpus", detail: `basename collision: ${collision.join(", ")}` });
+  }
+
+  // Steps 3/4 — volume then cadence (§7.2). `skipped-cadence` is the one terminal
+  // branch that is not a jump: no row, no marker, no passId, no further git call.
+  const datum = cadenceDatum(parseTerminalRows(logText));
+  const trigger = triggerFor({ unconsolidated: predicate.unconsolidated, datum, now: nowMs, config, direct });
+  if (trigger === "skipped-cadence") {
+    state.status = "skipped-cadence";
+    return await finishPass(state, seams);
+  }
+  state.trigger = trigger;
+  if (trigger === "cadence" && (datum === null || datum === undefined)) {
+    state.reasons.add("no-cadence-datum");
+  }
+
+  // Step 5 — mint the passId (§7.2): derived from the log, never a counter or clock.
+  const todayPrefix = new Date(nowMs).toISOString().slice(0, 10);
+  state.passId = mintPassId(logText, todayPrefix);
+
+  // Step 6 — take the marker (§7.3): observe-then-write, three seam calls.
+  const take = await takeMarker(
+    { markerPath, passId: state.passId, nowMs, staleLockMinutes: config.staleLockMinutes },
+    { checkFileFn, readFileFn, writeFileFn }
+  );
+  if (take.verdict === "refuse") {
+    state.status = "refused";
+    state.reasons.add("consolidation-in-progress");
+    state.heldPassId = take.parsed ? take.parsed.passId : "unknown";
+    return await finishPass(state, seams);
+  }
+  if (take.verdict === "reclaim") {
+    state.reasons.add("reclaimed-stale-lock");
+    state.abandonedPassId = take.parsed && take.parsed.passId ? take.parsed.passId : "unknown";
+  }
+  state.markerHeld = take.taken;
+
+  // Step 7 — the consumed pair (§3.3, NFR-5): complete, in one append, even when empty.
+  await appendFileFn(logPath, renderConsumedPair(state.passId, state.consumed));
+
+  // Step 8 — read the consumed LEARNINGS bodies and issue the first advisory
+  // dispatch (the clustering call) through `resolveAdvisoryRung`. An empty
+  // corpus has nothing to cluster and no rung to observe (FSPEC §12.1 S-05).
+  const rungState = { resolved: null };
+  let clusterReplyText = null;
+  const consumedBodies = [];
+  if (corpusFiles.length > 0) {
+    const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
+    for (const basename of state.consumed) {
+      const path = basenameToPath.get(basename);
+      const text = path ? await readFileFn(path) : null;
+      // An unreadable member is still counted, still named (TSPEC §12.2).
+      consumedBodies.push({ basename, text });
+    }
+    let clusterResult;
+    try {
+      clusterResult = await resolveAdvisoryRung({
+        _agent: agentFn,
+        _log: tee,
+        _state: rungState,
+        prompt:
+          "Cluster recurring failure modes across the consumed LEARNINGS corpus. " +
+          "Reply with JSON {\"clusters\": [{phase, artifact, kind, action, symptom, diff, evidence}]}.\n\n" +
+          consumedBodies.map((b) => `## ${b.basename}\n${b.text ?? "(unreadable)"}`).join("\n\n"),
+      });
+    } catch (err) {
+      // §10.2's one caught exception — neither rung resolved (M-3).
+      state.rung = rungState.resolved ? rungState.resolved.model : null;
+      state.dispatchLog.push(String(err && err.message));
+      state.status = "failed";
+      state.reasons.add("advisory-model-unresolved");
+      return await finishPass(state, seams);
+    }
+    state.rung = rungState.resolved ? rungState.resolved.model : null;
+    if (clusterResult && clusterResult.kind === "dispatch-error") {
+      // §2.6 row 4 — `failed`, NO reason code, the message in the report body.
+      state.dispatchLog.push(String(clusterResult.err && clusterResult.err.message));
+      state.status = "failed";
+      return await finishPass(state, seams);
+    }
+    clusterReplyText = clusterResult ? clusterResult.raw : null;
+  }
+
+  // Step 10 — the advisory corpus (§7.7). Absent folds to `no-advisory-corpus`;
+  // a present-but-entryless file to `advisory-corpus-empty` (§10.3 rows 15–16).
+  const escText = await readFileFn("docs/_queue/ESCALATIONS.md");
+  const escalations = parseEscalations(escText);
+  if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
+  else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
+  state.advisory = escalations;
+
+  // Step 11 — the effectiveness table over prior passes (§7.5). Records come from
+  // both grammars the log admits: `renderFailureModeRecord`'s field lines and the
+  // `<!-- pdlc:record {…} -->` JSON comment form.
+  const parsedLog = parseLogRecords(logText);
+  const priorRecords = [
+    ...jsonCommentRecords(logText),
+    ...parsedLog.records.filter((r) => typeof r.failureModeId === "string"),
+  ];
+  for (const notice of parsedLog.notices) {
+    if (notice.subject !== undefined) state.notices.push(notice);
+  }
+  state.effectiveness = effectivenessTable(
+    priorRecords,
+    [{ passId: state.passId, consumed: consumedBodies.map((b) => b.text).filter((t) => typeof t === "string") }],
+    config
+  );
+
+  // Step 12 — derive proposals from the clustering reply (§7.4) and apply NFR-4
+  // suppression (§7.6). Free prose derives nothing.
+  const proposals = clusterReplyText === null ? [] : deriveProposals(clusterReplyText);
+  state.proposals = proposals;
+
+  let prStates = [];
+  if (typeof ghRunFn === "function") {
+    const repo = config.pluginRepository ?? "unknown/unknown";
+    const pollReply = await ghRunFn(mergeCommandFor("consolidationPrs", { repo }));
+    if (pollReply && pollReply.ok === true) {
+      try {
+        const parsed = JSON.parse(pollReply.stdout);
+        if (Array.isArray(parsed)) prStates = parsed;
+      } catch {
+        state.notices.push({ subject: "pr-poll", detail: "unparseable gh pr list reply" });
+      }
+    } else {
+      state.notices.push({ subject: "pr-poll", detail: "duplicate poll unavailable" });
+    }
+  }
+
+  const active = [];
+  for (const p of proposals) {
+    const pair = { failureModeId: p.failureModeId, action: p.action };
+    const byLog = enactedByLog(pair, priorRecords);
+    if (byLog.enacted) {
+      state.reasons.add("duplicate-suppressed");
+      state.suppressions.push({
+        failureModeId: p.failureModeId,
+        action: p.action,
+        evidence: { kind: "pass", passId: byLog.passId },
+      });
+      continue;
+    }
+    const byPr = enactedByPr(pair, prStates);
+    if (byPr.enacted) {
+      state.reasons.add("duplicate-suppressed");
+      state.suppressions.push({
+        failureModeId: p.failureModeId,
+        action: p.action,
+        evidence: { kind: "pr", url: byPr.url },
+      });
+      continue;
+    }
+    active.push(p);
+  }
+
+  // Step 13 — route each surviving proposal (§5, §6). Every failure-mode record
+  // is appended as its proposal routes (§7.9), one whole record per call.
+  const enacted = [];
+  const deferred = [];
+
+  const recordFor = (p, route) => ({
+    failureModeId: p.failureModeId,
+    phase: p.phase,
+    symptom: p.symptom,
+    artifact: p.artifact,
+    target: p.target,
+    passId: state.passId,
+    action: p.action,
+    route,
+  });
+  const appendRecord = async (record) => {
+    state.records.push(record);
+    await appendFileFn(logPath, `${renderFailureModeRecord(record)}\n\n`);
+  };
+
+  const consumingProposals = [];
+  const prProposals = [];
+  for (const p of active) {
+    const route = routeProposal(p);
+    if (route === "PR") prProposals.push(p);
+    else if (route === "constraints" || route === "decisions") consumingProposals.push({ p, route });
+    else deferred.push({ ...p, reason: null, detail: "propose-only (AC-5.4 diversion)" });
+  }
+
+  for (const { p, route } of consumingProposals) {
+    const current = await readFileFn(p.target);
+    await writeFileFn(
+      p.target,
+      `${current ?? ""}\n<!-- pdlc:promotion ${p.failureModeId}:${p.action} (${state.passId}) -->\n${p.diff ?? p.symptom}\n`
+    );
+    state.writeSet.add(p.target);
+    enacted.push(p);
+    await appendRecord(recordFor(p, route));
+  }
+
+  if (prProposals.length > 0) {
+    const degradeAll = async (reason, detail) => {
+      if (reason) state.reasons.add(reason);
+      for (const p of prProposals) {
+        deferred.push({ ...p, reason, detail });
+        await appendRecord(recordFor(p, "degraded"));
+      }
+    };
+
+    const clone = await openClone(state.passId, config, { _makeTempDir: makeTempDirFn, _git: gitFn });
+    if (clone.failure) {
+      await degradeAll(clone.failure, clone.detail);
+    } else {
+      const dir = clone.dir;
+      const head = `consolidation/${state.passId}`;
+      await gitFn(["-C", dir, "checkout", "-b", head]);
+
+      // Per edit: write in the clone, add, commit — one PDLC-PROMOTION-ID each
+      // (§9.2). A proposal short of its diff is authored through the same
+      // resolver ladder; a dispatch error there is §2.6 row 4's terminal.
+      let authoringFailed = false;
+      for (const p of prProposals) {
+        if (p.diff === null || p.diff === undefined) {
+          let authored;
+          try {
+            authored = await resolveAdvisoryRung({
+              _agent: agentFn,
+              _log: tee,
+              _state: rungState,
+              prompt: `Author the promotion diff for ${p.failureModeId} (${p.action}): ${p.symptom ?? ""}`,
+            });
+          } catch (err) {
+            state.dispatchLog.push(String(err && err.message));
+            state.status = "failed";
+            state.reasons.add("advisory-model-unresolved");
+            return await finishPass(state, seams);
+          }
+          if (!authored || authored.kind === "dispatch-error") {
+            state.dispatchLog.push(String(authored && authored.err && authored.err.message));
+            state.status = "failed";
+            return await finishPass(state, seams);
+          }
+          p.diff = authored.raw;
+        }
+        if (authoringFailed) break;
+        await writeFileFn(`${dir}/${p.artifact}`, p.diff);
+        await gitFn(["-C", dir, "add", "--", p.artifact]);
+        await gitFn(["-C", dir, "commit", "-m", renderPromotionCommitMessage(p, state.passId), "--", p.artifact]);
+      }
+
+      // §9.2 — credential resolution: at the first PR-route attempt, at most
+      // once per pass. The value never becomes a JS string; only the NAME is
+      // held, and only the boolean crosses the seam.
+      const envOk = typeof envPresentFn === "function" ? await envPresentFn(config.credentialEnv) : null;
+      if (envOk === true) {
+        state.credential = "present (redacted)";
+      } else if (typeof ghRunFn === "function") {
+        const authReply = await ghRunFn("gh auth status");
+        // The probe's reply text is never forwarded anywhere (AT-K5): only the
+        // boolean outcome is read.
+        state.credential = authReply && authReply.ok === true ? "local-gh" : "absent";
+      } else {
+        state.credential = "absent";
+      }
+
+      if (typeof ghRunFn !== "function") {
+        await degradeAll("api-failure", "no PR transport available");
+      } else {
+        const pushArgv = ["-C", dir];
+        if (state.credential === "present (redacted)") {
+          // Expansion happens one process below the transport (git's own shell
+          // runs the helper); the module holds only the variable's name.
+          pushArgv.push(
+            "-c",
+            `credential.helper=!f(){ echo username=x; echo password=$${config.credentialEnv}; };f`
+          );
+        }
+        pushArgv.push("push", "origin", head);
+        const pushReply = await gitFn(pushArgv);
+        if (!pushReply || pushReply.ok !== true) {
+          const stderr = String((pushReply && pushReply.stderr) || "");
+          await degradeAll(classifyPrFailure(stderr, state.credential), stderr || "push failed");
+        } else {
+          const repo = config.pluginRepository ?? "unknown/unknown";
+          const bodyPath = `${dir}/.pdlc-pr-body.md`;
+          await writeFileFn(bodyPath, renderPrBody(state, prProposals));
+          let createCmd = mergeCommandFor("consolidationCreate", {
+            repo,
+            head,
+            base: "main",
+            title: `consolidation: ${state.passId}`,
+            bodyFile: bodyPath,
+          });
+          if (state.credential === "present (redacted)") {
+            createCmd = `GH_TOKEN="$${config.credentialEnv}" ${createCmd}`;
+          }
+          const createReply = await ghRunFn(createCmd);
+          if (createReply && createReply.ok === true) {
+            state.prUrl = typeof createReply.stdout === "string" ? createReply.stdout.trim() : null;
+            for (const p of prProposals) {
+              enacted.push(p);
+              await appendRecord(recordFor(p, "PR"));
+            }
+          } else {
+            const stderr = String((createReply && createReply.stderr) || "");
+            await degradeAll(classifyPrFailure(stderr, state.credential), stderr || "gh pr create failed");
+          }
+        }
+      }
+    }
+  }
+
+  state.deferred = deferred;
+
+  // §5.3 — the proposal file, written when and only when there is a cause.
+  if (deferred.length > 0) {
+    const proposalPath = `docs/_decisions/CONSOLIDATION-PROPOSAL-${state.passId}.md`;
+    await writeFileFn(proposalPath, renderProposalFile(state, deferred));
+    state.writeSet.add(proposalPath);
+  }
+
+  // Step 14's status (§10.3): promoted / promoted-degraded / no-op.
+  if (enacted.length > 0) {
+    state.status = deferred.length > 0 ? "promoted-degraded" : "promoted";
+  } else {
+    state.status = "no-op";
+  }
+  return await finishPass(state, seams);
 }
+
+// §10.3 rows 10–12 — a failed push/create classified by observation: a branch
+// collision, an auth rejection, an explicit API failure; otherwise the resolved
+// credential decides between `credential-unavailable` and `api-failure`.
+function classifyPrFailure(stderr, credential) {
+  if (/already exists|non-fast-forward|\[rejected\]/i.test(stderr)) return "branch-exists";
+  if (/401|bad credentials|not logged in|authentication|permission denied \(publickey\)/i.test(stderr)) {
+    return "credential-unavailable";
+  }
+  if (/HTTP 5\d\d|rate limit|timed out|ECONNREFUSED|ENOTFOUND|503|502|500/i.test(stderr)) return "api-failure";
+  return credential === "absent" ? "credential-unavailable" : "api-failure";
+}
+
+// §7.2 — the terminal-row fields `cadenceDatum` reads, recovered from the log's
+// own blocks: any blank-line-delimited chunk carrying `status:`/`date:` lines.
+function parseTerminalRows(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const rows = [];
+  for (const chunk of text.split(/\n\s*\n/)) {
+    const fields = {};
+    for (const line of chunk.split("\n")) {
+      const match = /^(pass|date|status|trigger):\s*(.*)$/.exec(line.trim());
+      if (match) fields[match[1]] = match[2];
+    }
+    if (fields.status !== undefined || fields.date !== undefined) rows.push(fields);
+  }
+  return rows;
+}
+
+// §7.4's second on-disk record grammar — one full FailureModeRecord as JSON
+// inside an HTML comment, `<!-- pdlc:record {…} -->`. Unparseable JSON is
+// skipped, never an abort (DC-01 receive side).
+const RECORD_COMMENT_RE = /<!--\s*pdlc:record\s+(\{.*?\})\s*-->/g;
+function jsonCommentRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const records = [];
+  RECORD_COMMENT_RE.lastIndex = 0;
+  let match;
+  while ((match = RECORD_COMMENT_RE.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && typeof parsed === "object" && typeof parsed.failureModeId === "string") {
+        records.push(parsed);
+      }
+    } catch {
+      // skipped — a malformed comment contributes no record
+    }
+  }
+  return records;
+}
+
+// §7.4 — pure over the clustering reply. The adopted wire grammar is JSON
+// `{clusters: [{phase, artifact, kind, action, symptom, diff, evidence}]}`;
+// free prose (or any unparseable reply) derives nothing — "no recurring
+// failure mode found" is a no-promotions pass, not an error.
+function deriveProposals(replyText) {
+  let parsed;
+  try {
+    parsed = JSON.parse(replyText);
+  } catch {
+    return [];
+  }
+  if (!isPlainObjectLocal(parsed) || !Array.isArray(parsed.clusters)) return [];
+
+  const proposals = [];
+  for (const c of parsed.clusters) {
+    if (!c || typeof c !== "object") continue;
+    if (typeof c.phase !== "string" || typeof c.artifact !== "string") continue;
+    const kind = c.kind === 1 || c.kind === 2 || c.kind === 3 ? c.kind : 3;
+    const action = ACTIONS.includes(c.action) ? c.action : "promote";
+    const id = failureModeId(c.phase, c.artifact);
+    proposals.push({
+      failureModeId: id,
+      phase: c.phase,
+      symptom: typeof c.symptom === "string" ? c.symptom : "",
+      artifact: c.artifact,
+      kind,
+      target: targetFor(kind, c.artifact, id),
+      action,
+      diff: c.diff === undefined ? null : c.diff,
+      evidence: c.evidence === undefined ? null : c.evidence,
+      elidedKinds: [],
+      elidedArtifacts: [],
+    });
+  }
+  return mergeProposals(proposals);
+}
+
+/**
+ * §10.1 — the single exit: every terminating branch of `main()` returns through here. Steps 14–16
+ * (terminal row, §9.4 commit, marker release), each guarded exactly as the lifecycle table
+ * requires: `skipped-cadence` skips all three; `refused` skips the commit; only a held marker is
+ * released. Every step and every call site is awaited (T-13).
+ */
+async function finishPass(state, seams) {
+  const { appendFileFn, gitFn, logFn, phaseFn } = seams;
+
+  if (state.status !== "skipped-cadence") {
+    // AC-3.8b — the invoking branch is named on the row via a non-mutating read.
+    if (typeof gitFn === "function" && state.branch === null) {
+      const branchReply = await gitFn(["rev-parse", "--abbrev-ref", "HEAD"]);
+      if (branchReply && branchReply.ok === true && typeof branchReply.stdout === "string") {
+        const name = branchReply.stdout.trim();
+        state.branch = name.length > 0 ? name : null;
+      }
+    }
+
+    // §7.9 order — effectiveness table (step 11's output, when it ran and has
+    // rows), then the terminal row. One whole record per append.
+    if (Array.isArray(state.effectiveness) && state.effectiveness.length > 0) {
+      try {
+        await appendFileFn(state.logPath, `${renderEffectivenessTable(state.effectiveness)}\n\n`);
+      } catch {
+        // best-effort; the table is report material, not the terminal outcome
+      }
+    }
+
+    const { text } = renderTerminalRow(state);
+    const extraLines = [];
+    if (state.heldPassId) extraLines.push(`held: ${state.heldPassId}`);
+    if (state.abandonedPassId) extraLines.push(`abandoned: ${state.abandonedPassId}`);
+    try {
+      await appendFileFn(state.logPath, `${text}${extraLines.length > 0 ? `\n${extraLines.join("\n")}` : ""}\n\n`);
+    } catch {
+      // best-effort; the log append is not this pass's terminal outcome
+    }
+
+    // Step 15 — the §5.4 commit, pathspec-scoped on both calls, never on a
+    // `refused` pass (FSPEC §4.3's Commits column).
+    if (state.status !== "refused" && typeof gitFn === "function") {
+      const commitResult = await commitConsumingRepoPaths(
+        [...state.writeSet],
+        `chore(consolidation): pass ${state.passId}`,
+        { _git: gitFn, _log: logFn }
+      );
+      if (commitResult.reason === "writes-uncommitted") {
+        state.reasons.add("writes-uncommitted");
+      }
+    }
+
+    // Step 16 — release, only what this pass holds.
+    if (state.markerHeld) {
+      await releaseMarker(state, { writeFileFn: seams.writeFileFn });
+    }
+  }
+
+  const reportBody =
+    renderReportBody(state) +
+    (state.dispatchLog.length > 0 ? `\ndispatch log:\n${state.dispatchLog.join("\n")}` : "");
+  state.body = reportBody;
+
+  if (typeof phaseFn === "function") {
+    try {
+      phaseFn(state.status);
+    } catch {
+      // phase reporting is best-effort
+    }
+  }
+  if (typeof logFn === "function") {
+    try {
+      logFn(reportBody);
+    } catch {
+      // logging is best-effort
+    }
+  }
+
+  return {
+    status: state.status,
+    trigger: state.trigger,
+    credential: state.credential,
+    reasons: state.reasons,
+    passId: state.passId,
+    rung: state.rung,
+    consumed: state.consumed,
+    proposals: state.proposals,
+    records: state.records,
+    effectiveness: state.effectiveness,
+    suppressions: state.suppressions,
+    notices: state.notices,
+    deferred: state.deferred,
+    prUrl: state.prUrl,
+    branch: state.branch,
+    markerHeld: state.markerHeld,
+    body: reportBody,
+    reportBody,
+  };
+}
+
 
 // ─── §7/§9 exports — one throwing stub per name, so every downstream suite ────
 // ─── can import the name it will drive (PLAN T02). No behaviour yet. ─────────
@@ -1518,6 +2096,14 @@ export function renderPrBody(state, enacted) {
     lines.push(`## ${item.failureModeId}:${item.action}`);
     lines.push(`source: ${consumed.join(", ")}`);
     lines.push(`failure mode: ${item.failureModeId} — ${item.symptom ?? ""}`);
+    // AC-3.2(iii) — the AC-2.3 pattern evidence that cleared the bar, in
+    // whichever of its two forms the clustering reply carried.
+    const evidence = item.evidence;
+    if (evidence && Array.isArray(evidence.recurrence)) {
+      lines.push(`evidence: recurrence across ${evidence.recurrence.join(", ")}`);
+    } else if (evidence && typeof evidence.standingInvariant === "string") {
+      lines.push(`evidence: standing invariant — ${evidence.standingInvariant}`);
+    }
     lines.push("");
   }
 
@@ -1550,6 +2136,11 @@ export function renderProposalFile(state, deferred) {
     lines.push("");
     lines.push(`## ${item.failureModeId}:${item.action}`);
     lines.push(`target: ${item.target ?? ""}`);
+    // The failure class recorded BY NAME (FSPEC §5.3 row 1), plus the
+    // observed detail (§10.3's "the API's status text" / "the existing
+    // branch … named") for a degraded PR attempt.
+    if (item.reason) lines.push(`failure: ${item.reason}`);
+    if (item.detail) lines.push(`detail: ${item.detail}`);
     lines.push(`diff:`);
     lines.push(item.diff === null || item.diff === undefined ? UNAVAILABLE : item.diff);
   }

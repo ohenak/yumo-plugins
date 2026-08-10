@@ -130,7 +130,7 @@ describe("T20 — the pass, end to end (L2)", () => {
   // ═══════════════════════════════════════════════════════════════════════
   // Block 2 — T31: the pass lifecycle, through `main()`, every seam doubled
   // ═══════════════════════════════════════════════════════════════════════
-  describe.skip("T31 — pass lifecycle", () => {
+  describe("T31 — pass lifecycle", () => {
     // ─── Fixture plumbing ────────────────────────────────────────────────
     //
     // `main()` has no `config`/`root` parameter (TSPEC §7.8): configuration comes from
@@ -243,7 +243,10 @@ describe("T20 — the pass, end to end (L2)", () => {
         expect(seams.fs.appends).toHaveLength(0); // no log row appended
         expect(seams.fs.reads.some((r) => /LEARNINGS-/.test(r.path))).toBe(false); // no body read
         expect(result.passId).toBeNull(); // no passId minted
-        expect(seams.git.calls).toHaveLength(0); // no git call (enumeration is itself a git call it never reaches)
+        // FSPEC §2.4 permits the basename enumeration itself ("reads … the
+        // corpus basenames"); what a skipped tick may not do is any further
+        // git activity — no branch read, no add, no commit.
+        expect(seams.git.calls.filter((argv) => argv[0] !== "ls-files")).toHaveLength(0);
       });
     });
 
@@ -364,8 +367,8 @@ describe("T20 — the pass, end to end (L2)", () => {
           // this refusal is the log row `finishPass` still writes (§10.1's `refused` guard gates
           // only the commit and the marker release, never the terminal row).
           expect(seams.fs.appends).toHaveLength(1);
-          expect(seams.fs.appends[0].contents).toContain(HELD_PASS_ID);
-          expect(seams.fs.appends[0].contents).not.toContain("pdlc:consumed"); // no consumed pair
+          expect(seams.fs.appends[0].text).toContain(HELD_PASS_ID);
+          expect(seams.fs.appends[0].text).not.toContain("pdlc:consumed"); // no consumed pair
           // No commit: no `add`/`commit` argv reached `_git` (enumeration's own `ls-files` call is
           // not a commit call, so this is never satisfied vacuously by "git was never called").
           expect(seams.git.calls.some((argv) => argv[0] === "add" || argv[0] === "commit")).toBe(false);
@@ -379,7 +382,7 @@ describe("T20 — the pass, end to end (L2)", () => {
         return main({ ...seams, direct: true }).then((result) => {
           expect(result.status).not.toBe("refused");
           expect(Array.from(result.reasons ?? [])).toContain("reclaimed-stale-lock");
-          expect(seams.fs.appends.some((a) => a.contents.includes(HELD_PASS_ID))).toBe(true);
+          expect(seams.fs.appends.some((a) => a.text.includes(HELD_PASS_ID))).toBe(true);
         });
       });
 
@@ -392,7 +395,7 @@ describe("T20 — the pass, end to end (L2)", () => {
             expect(result.status).not.toBe("refused");
             expect(Array.from(result.reasons ?? [])).toContain("reclaimed-stale-lock");
             expect(Array.from(result.reasons ?? [])).not.toContain("consolidation-in-progress");
-            expect(seams.fs.appends.some((a) => /reclaimed-stale-lock/.test(a.contents) && /unknown/.test(a.contents))).toBe(true);
+            expect(seams.fs.appends.some((a) => /reclaimed-stale-lock/.test(a.text) && /unknown/.test(a.text))).toBe(true);
           });
         });
 
@@ -402,7 +405,7 @@ describe("T20 — the pass, end to end (L2)", () => {
           return main({ ...seams, direct: true }).then((result) => {
             expect(result.status).not.toBe("refused");
             expect(Array.from(result.reasons ?? [])).toContain("reclaimed-stale-lock");
-            expect(seams.fs.appends.some((a) => /reclaimed-stale-lock/.test(a.contents) && /unknown/.test(a.contents))).toBe(true);
+            expect(seams.fs.appends.some((a) => /reclaimed-stale-lock/.test(a.text) && /unknown/.test(a.text))).toBe(true);
           });
         });
       });
@@ -440,7 +443,7 @@ describe("T20 — the pass, end to end (L2)", () => {
           // Step 7 (consumed pair) ran before step 8 (dispatch); step 11 (effectiveness table)
           // never ran — exactly two appends: the consumed pair and the terminal row.
           expect(seams.fs.appends).toHaveLength(2);
-          expect(seams.fs.appends[0].contents).toContain("pdlc:consumed");
+          expect(seams.fs.appends[0].text).toContain("pdlc:consumed");
         });
       });
 
@@ -467,7 +470,7 @@ describe("T20 — the pass, end to end (L2)", () => {
           expect(Array.from(result.reasons ?? [])).toHaveLength(0);
           expect(result.body).toContain("boom: transient network failure");
           expect(seams.fs.appends).toHaveLength(2); // consumed pair + terminal row, nothing else
-          expect(seams.fs.appends[0].contents).toContain("pdlc:consumed");
+          expect(seams.fs.appends[0].text).toContain("pdlc:consumed");
           // Marker released: the write double's last recorded marker content is the RELEASED: form.
           const markerWrites = seams.fs.writes.filter((w) => w.path === MARKER_PATH);
           expect(markerWrites.length).toBeGreaterThan(0);
@@ -482,7 +485,7 @@ describe("T20 — the pass, end to end (L2)", () => {
         return main({ ...seams, direct: true }).then((result) => {
           expect(result.status).toBe("refused");
           expect(seams.fs.appends).toHaveLength(1);
-          expect(seams.fs.appends[0].contents).not.toContain("pdlc:consumed");
+          expect(seams.fs.appends[0].text).not.toContain("pdlc:consumed");
         });
       });
 
@@ -531,7 +534,7 @@ describe("T20 — the pass, end to end (L2)", () => {
 
       return main({ ...seams, direct: true }).then((result) => {
         expect(seams.fs.appends.length).toBeGreaterThan(0);
-        const consumedPair = seams.fs.appends[0].contents;
+        const consumedPair = seams.fs.appends[0].text;
         expect(consumedPair).toContain("pdlc:consumed");
         expect(consumedPair).toContain("LEARNINGS-feat-a.md");
         expect(consumedPair).toContain("LEARNINGS-feat-b.md");

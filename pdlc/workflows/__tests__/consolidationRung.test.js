@@ -116,7 +116,7 @@ describe("T11 — AT-M10: resolveAdvisoryRung's shipped call site is unchanged b
 
 // ─── T31 — AT-M7/AT-M8 ──────────────────────────────────────────────────────
 describe("T31 — AT-M7/AT-M8: the §8.4 _log tee captures the resolver's text verbatim, and forwards it", () => {
-  describe.skip("ADVISORY_MODEL_FALLBACK: and the unresolved-model halt message, through the tee main() will build", () => {
+  describe("ADVISORY_MODEL_FALLBACK: and the unresolved-model halt message, through the tee main() builds", () => {
     test("AT-M7 — fallback resolves: the tee retains ADVISORY_MODEL_FALLBACK verbatim AND still forwards it to the caller's sink", async () => {
       const agent = makeAgentDouble({
         script: [`unrecognised model alias "${MODEL_ADVISORY}"`, "well-formed trailer"],
