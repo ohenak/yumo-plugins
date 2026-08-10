@@ -2807,34 +2807,48 @@ re-argued on what a count-above-threshold comparison can supply.
   permanent `docs/_decisions/.consolidation-lock` per consuming repo carrying the last pass's
   `RELEASED:` line — `.gitignore`d by §3.3, so invisible to every git-mediated surface — and a
   zero-byte file at that path is now a *signal* (a pass died mid-write) rather than the steady state.
-- **Upstream (REQ and FSPEC) — the enumeration relaxation, raised rather than absorbed.** REQ §3.1
-  step 1 closes with "Widening makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one
-  enumeration as well as one predicate" (`REQ-…:115-116`), and FSPEC AT-P7's *When* is "**both the
-  pass's enumeration** and `pdlc/hooks/scripts/nudge-consolidation.sh` are run over each case", its
-  *Then* the two sets are set-equal (FSPEC §13.7 register, AT-P7; **BR-09** binds it in FSPEC §18). This layer cannot
-  deliver that as written: §7.1's repair moved the JS enumeration to `git ls-files` (because the
-  `_listFiles` seam structurally cannot walk directories — §13.1 row 10), and §10.4 measures two
-  classes in which a git-based enumeration and `glob.glob` **must** disagree, so a set-equality
-  assertion would be red on correct code. What this layer ships instead is stated above: predicates
-  held equal by AT-P7, enumerations held by two literal pins with a derivable, closed divergence
-  set. **Whether that satisfies "one enumeration" is a REQ/FSPEC decision, not this document's**, so
-  it is raised as an erratum against both, together with the sub-question §10.4 isolates — is a
-  `.gitignore`d LEARNINGS file corpus? (keeping `--exclude-standard` says no; dropping it closes
-  divergence class (i) at exactly that price, and at no other). **The two directions are not
-  symmetric, and the REQ reviewer should be told which is which**: the hook has no
-  `--exclude-standard` to drop — `glob.glob` sees ignored files unconditionally — so an answer of
-  "yes, an ignored LEARNINGS file is corpus" *closes* class (i) by making the two sides agree, while
-  "no" keeps it open. One of the two answers strictly reduces the divergence set the relaxation is
-  being requested for; the erratum says so rather than presenting them as neutral alternatives.
-  A third question rides with the batch, raised by the same reviewer: §7.1 puts an unreadable corpus
+- **Upstream (REQ and FSPEC) — the enumeration relaxation, absorbed and closed.** This bullet raised
+  an erratum against both documents; **both halves came back answered, and §7.1 and §10.4 now carry
+  the answers.** It is kept in the past tense as the record of a closed round trip, not as a live
+  dependency — a PLAN reader owes nothing here.
+
+  - **"One enumeration as well as one predicate" was withdrawn, not granted.** REQ §3.1 step 1
+    previously closed with that clause; REQ v2.1 struck it and says so in place — *"The second half
+    is not deliverable and is **withdrawn**"* — on this document's own reasoning: the `_listFiles`
+    seam structurally cannot walk directories (§13.1 row 10), so the pass must enumerate through git
+    while the hook keeps `glob.glob`. REQ now states the settled shape directly: *"**One predicate
+    remains guaranteed by construction** … while the two enumerations are separate mechanisms whose
+    agreement is a stated, testable property rather than a shared code path."* That is exactly what
+    this layer ships — predicates held equal by AT-P7, enumerations held by literal pins over a
+    derivable divergence set.
+  - **FSPEC re-scoped AT-P7 to match.** Its *When* no longer reads "both the pass's enumeration and
+    `nudge-consolidation.sh` are run over each case"; FSPEC v11.6's row (FSPEC §13.2 register, *The
+    consumed predicate and the corpus*, AT-P7; **BR-09** binds it in FSPEC §18) reads that *"the two
+    **predicates** are evaluated over each case"* and scopes itself to "the predicate, and only the
+    predicate". The set-equality assertion that would have been red on correct code is gone from the
+    register, so §12.2's T-08 row and §11.1's harness no longer compensate for a claim upstream still
+    makes.
+  - **The `.gitignore`d-corpus sub-question was decided against this document's provisional choice.**
+    REQ §3.1 step 1 decided that an ignored LEARNINGS *is* corpus and that the pass therefore does
+    **not** apply `--exclude-standard`; it decided in the same paragraph that an index entry with no
+    working-tree file is *not* corpus. §7.1 absorbs both, §10.4 records the argument that lost and
+    the one reasoning error the old bullet contained. The divergence set is now one class (a nested
+    git repository), not two.
+
+  One question from that batch **is** still open, and it is the only thing here a later round owes
+  anything to: §7.1 puts an unreadable corpus
   entry **in the consumed pair**, so a LEARNINGS file can be permanently marked consumed while
   contributing no evidence to any promotion, and the only trace is one pass's transient report body.
   Should the durable log row itself carry the unreadable basenames (an `unread:` field beside
   `consumed`)? That is a `pdlc-consolidation-vocabularies.md` §3 field-set change, so this layer
-  declines to mint it (REQ §4b) and hands the question up with the rest. Accepted residue if the relaxation
-  stands: one operator-visible nudge that no pass can clear (class (i)) and one corpus entry the
-  pass reports as unreadable (class (ii)) — never a correctness divergence, since the pass consumes
-  only what its own enumeration returned.
+  declines to mint it (REQ §4b) and hands that one question up. Note that the absorption **narrowed**
+  it without answering it: the staged-but-deleted entry is no longer a trigger for this class at all
+  (§7.1), so the population is now only files present in the working tree whose bodies cannot be
+  read. The question survives on that population — permissions and IO errors reach it — but it is a
+  smaller class than when it was first raised, and a reader should not size it from the old bullet.
+  Accepted residue meanwhile: one operator-visible nudge that no pass can clear (the nested-repository
+  class, §10.4) and one corpus entry the pass reports as unreadable — never a correctness divergence,
+  since the pass consumes only what its own enumeration returned.
 - **Upstream (FSPEC) — two register gaps: raised, answered, closed. Nothing is handed on.** §12.2's
   re-binding surfaced two obligations that carried no acceptance test — AC-3.2's requirement that the
   PR body cite each source LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the
