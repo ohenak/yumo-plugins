@@ -6,40 +6,24 @@
 // Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this
 // bundle exists (the workflow runtime allows no imports, exports past meta, or fs).
 export const meta = {
-  name: "orchestrate-dev",
+  name: "consolidate-learnings",
   description:
-    "Full PDLC pipeline for one REQ — spec authoring, reviews, TDD implementation, DoD, harvest, PR.",
-  whenToUse: "Run the pipeline for a single named REQ path.",
-
+    "Consolidation pass — clusters recurring failure modes across the LEARNINGS corpus and promotes durable patterns into DOMAIN-CONSTRAINTS.md, DECISIONS-*.md, or a guard-set PR.",
+  whenToUse:
+    "Run periodically (or on demand) to consolidate accumulated LEARNINGS into durable, project-level guidance.",
   inputs: [
     {
-      name: "reqPath",
-      description:
-        "Path to the approved REQ document, e.g. docs/{feature}/REQ-{feature}.md",
-      type: "string",
-      required: true,
-    },
-    {
-      name: "forcePhases",
-      description:
-        "Optional comma- or space-separated phases to re-run despite a recorded approval. Valid: R, F, T, P, D, PR, all.",
-      type: "string",
+      name: "direct",
+      description: "Optional manual entry point — forces a pass outside the cadence/volume trigger.",
+      type: "boolean",
       required: false,
     },
   ],
   phases: [
-    { title: "Phase R", detail: "REQ review" },
-    { title: "Phase F", detail: "FSPEC author + review" },
-    { title: "Phase T", detail: "TSPEC author + review" },
-    { title: "Phase D", detail: "PLAN author + review" },
-    { title: "Phase P", detail: "PROPERTIES author + review" },
-    { title: "Phase I", detail: "implementation batches (sonnet)" },
-    { title: "Phase CR", detail: "final codebase review" },
-    { title: "Phase DOD", detail: "definition-of-done verify + remediate" },
-    { title: "Phase H", detail: "harvest learnings" },
-    { title: "Phase PUB", detail: "raise PR + verify CI" },
-
-    { title: "Phase MERGE", detail: "merge the PR + advance the queue row" },
+    { title: "Enumerate", detail: "read the LEARNINGS corpus and the consolidation log" },
+    { title: "Trigger", detail: "decide whether this pass runs (cadence, volume, or direct)" },
+    { title: "Promote", detail: "cluster failure modes and route durable patterns" },
+    { title: "Report", detail: "render the report body and append log records" },
   ],
 };
 
@@ -8203,639 +8187,130 @@ function buildFinalReport({
 return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry };
 })();
 
-const __queue = (function () {
-const realMain = __dev.main;
-const runAdvisorySeam = __dev.runAdvisorySeam;
-const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;
-const parseAdvisoryConfig = __dev.parseAdvisoryConfig;
-const defaultAppendFile = __dev.defaultAppendFile;
-const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;
+const __cons = (function () {
 const resolveAdvisoryRung = __dev.resolveAdvisoryRung;
-const advisorySummaryRows = __dev.advisorySummaryRows;
-const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;
-const commitPaths = __dev.commitPaths;
+const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;
+const mergeCommandFor = __dev.mergeCommandFor;
+const gitWithLockRetry = __dev.gitWithLockRetry;
 
 const meta = {
-  name: "orchestrate-queue",
+  name: "consolidate-learnings",
   description:
-    "Serial PDLC queue driver — picks the next ready REQ from docs/_queue/QUEUE.md and runs orchestrate-dev for it. Designed to be driven by /loop.",
-  inputs: [
-    {
-      name: "queuePath",
-      description:
-        "Path to the queue file. Defaults to docs/_queue/QUEUE.md.",
-      type: "string",
-      required: false,
-    },
-  ],
+    "Consolidation pass — clusters recurring failure modes across the LEARNINGS corpus and promotes durable patterns into DOMAIN-CONSTRAINTS.md, DECISIONS-*.md, or a guard-set PR.",
+  inputs: [],
 };
 
-const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
+const UNAVAILABLE = "(unavailable)";
 
-const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
-
-const MODEL_QUEUE = "sonnet";
-
-const QUEUE_STATUSES = [
-  "pending",
-  "in-progress",
-  "awaiting-merge",
-  "done",
-  "blocked",
-  "halted",
-];
-
-const QUEUE_ROW_DISPOSITIONS = Object.freeze([
-  "recorded",
-  "recorded (uncommitted)",
-  "none",
-  "error",
+const TERMINAL_STATUSES = Object.freeze([
+  "promoted",
+  "promoted-degraded",
+  "no-op",
+  "skipped-cadence",
+  "refused",
+  "failed",
 ]);
 
-function haltError(message) {
-  const err = new Error(message);
-  err.isHalt = true;
-  return err;
-}
-
-function parseQueue(markdown) {
-  if (markdown == null || typeof markdown !== "string") return [];
-
-  const rows = markdown
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith("|"));
-
-  if (rows.length === 0) return [];
-
-  let headerIdx = -1;
-  let cols = null;
-  for (let i = 0; i < rows.length; i++) {
-    const cells = splitRow(rows[i]).map((c) => c.toLowerCase());
-    if (cells.includes("status") && cells.some((c) => c.includes("req"))) {
-      headerIdx = i;
-      cols = cells;
-      break;
-    }
-  }
-
-  const colIndex = (names) => {
-    if (!cols) return -1;
-    for (let i = 0; i < cols.length; i++) {
-      if (names.some((n) => cols[i].includes(n))) return i;
-    }
-    return -1;
-  };
-
-  const idxOrder = colIndex(["order", "#"]);
-  const idxStatus = colIndex(["status"]);
-  const idxFeature = colIndex(["feature"]);
-  const idxReq = colIndex(["req path", "req", "path"]);
-  const idxDeps = colIndex(["depends", "depends-on", "deps"]);
-
-  const entries = [];
-  const startIdx = headerIdx === -1 ? 0 : headerIdx + 1;
-
-  for (let i = startIdx; i < rows.length; i++) {
-    const cells = splitRow(rows[i]);
-
-    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
-    if (cells.length === 0) continue;
-
-    const rawStatus = pick(cells, idxStatus, 1);
-    const status = (rawStatus || "").toLowerCase();
-    const feature = pick(cells, idxFeature, 2);
-    const reqPath = pick(cells, idxReq, 3);
-    if (!feature && !reqPath) continue; 
-
-    const orderRaw = pick(cells, idxOrder, 0);
-    const order = /^\d+$/.test(orderRaw) ? parseInt(orderRaw, 10) : null;
-
-    entries.push({
-      order,
-      status,
-      rawStatus: rawStatus || "",
-      feature,
-      reqPath,
-      dependsOn: parseDepsCell(pick(cells, idxDeps, 4)),
-    });
-  }
-
-  return entries;
-}
-
-function splitRow(row) {
-
-  return row
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((c) => c.trim());
-}
-
-function pick(cells, idx, fallbackIdx) {
-  const i = idx >= 0 ? idx : fallbackIdx;
-  return i >= 0 && i < cells.length ? cells[i] : "";
-}
-
-function parseDepsCell(cell) {
-  if (!cell) return [];
-  const cleaned = cell.replace(/[—–-]/g, (m) => (m === "-" ? "-" : "")).trim();
-  if (cleaned === "" || cleaned === "-" || cleaned.toLowerCase() === "none") {
-    return [];
-  }
-  return cell
-    .split(/[\s,]+/)
-    .map((d) => d.trim())
-    .filter((d) => d && d !== "-" && d !== "—" && d !== "–" && d.toLowerCase() !== "none");
-}
-
-const FRONTMATTER_SCAN_LIMIT = 4000;
-
-function parseReqFrontmatter(text) {
-  const empty = { ready: false, dependsOn: [], feature: null };
-  if (text == null || typeof text !== "string") return empty;
-
-  const head = text.slice(0, FRONTMATTER_SCAN_LIMIT);
-  const fm = /(?:^|\n)\s*---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(head);
-  if (!fm) return empty;
-
-  const body = fm[1];
-  const lines = body.split("\n");
-
-  let ready = false;
-  let feature = null;
-  let dependsOn = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const m = /^([A-Za-z0-9_-]+)\s*:\s*(.*)$/.exec(line.trim());
-    if (!m) continue;
-    const key = m[1].toLowerCase();
-    const value = m[2].trim();
-
-    if (key === "ready") {
-      ready = value.toLowerCase() === "true";
-    } else if (key === "feature") {
-      feature = value || null;
-    } else if (key === "depends-on" || key === "dependson" || key === "deps") {
-      if (value.startsWith("[")) {
-
-        dependsOn = value
-          .replace(/^\[/, "")
-          .replace(/\]$/, "")
-          .split(/[\s,]+/)
-          .map((d) => d.trim().replace(/['"]/g, ""))
-          .filter(Boolean);
-      } else if (value === "" ) {
-
-        for (let j = i + 1; j < lines.length; j++) {
-          const item = /^\s*-\s*(.+)$/.exec(lines[j]);
-          if (!item) break;
-          dependsOn.push(item[1].trim().replace(/['"]/g, ""));
-        }
-      } else if (value !== "-" && value.toLowerCase() !== "none") {
-        dependsOn = value
-          .split(/[\s,]+/)
-          .map((d) => d.trim().replace(/['"]/g, ""))
-          .filter((d) => d && d !== "-");
-      }
-    }
-  }
-
-  return { ready, dependsOn, feature };
-}
-
-function parseTriageVerdict(result) {
-  const fallback = {
-    verdict: "needs-human",
-    reason: "triage agent returned no TRIAGE verdict — treating as needs-human",
-    seamToken: null,
-  };
-  if (result == null || (typeof result === "string" && result.trim() === "")) {
-    return fallback;
-  }
-
-  const lines = result.split("\n");
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const trimmed = lines[i].trim();
-    const m = /^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(.*)$/i.exec(trimmed);
-    if (m) {
-      const verdict = m[1].toLowerCase();
-      const rest = m[2].trim();
-
-      let seamToken = null;
-      let reason = rest;
-      const tokenMatch = /^\[SEAM:(A1|A2)\]\s*(.*)$/i.exec(rest);
-      if (tokenMatch) {
-        if (/^\[SEAM:/i.test(tokenMatch[2].trim())) {
-          seamToken = null;
-          reason = rest;
-        } else {
-          seamToken = tokenMatch[1].toUpperCase();
-          reason = tokenMatch[2].trim();
-        }
-      }
-
-      return {
-        verdict,
-        seamToken,
-        reason: reason || "(no reason given)",
-      };
-    }
-  }
-  return fallback;
-}
-
-function hasResidualSeamToken(reason) {
-  return typeof reason === "string" && /^\[SEAM:/i.test(reason.trim());
-}
-
-function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
-  if (typeof markdown !== "string" || !feature) {
-    return { markdown, matched: false };
-  }
-
-  const lines = markdown.split("\n");
-
-  let statusCol = 1;
-  let featureCol = 2;
-  for (const line of lines) {
-    if (!line.trim().startsWith("|")) continue;
-    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
-    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
-      const s = cells.findIndex((c) => c.includes("status"));
-      const f = cells.findIndex((c) => c.includes("feature"));
-      if (s >= 0) statusCol = s;
-      if (f >= 0) featureCol = f;
-      break;
-    }
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim().startsWith("|")) continue;
-    const cells = splitRow(line.trim());
-    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
-    if ((cells[featureCol] || "").trim() !== feature) continue;
-
-    if (evidence == null) {
-      const newCells = cells.slice();
-      newCells[statusCol] = newStatus;
-      lines[i] = `| ${newCells.join(" | ")} |`;
-      return { markdown: lines.join("\n"), matched: true };
-    }
-
-    const foundStatus = (cells[statusCol] || "").trim();
-    if (!EVIDENCE_OVERWRITABLE_STATUSES.includes(foundStatus)) {
-      return { markdown, matched: true, written: false, foundStatus };
-    }
-
-    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
-      statusCol,
-      featureCol,
-    });
-  }
-
-  return { markdown, matched: false }; 
-}
-
-const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"];
-
-function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
-  const { markdown: migrated } = ensureEvidenceColumn(markdown);
-  const lines = migrated.split("\n");
-
-  let statusCol = hint.statusCol;
-  let featureCol = hint.featureCol;
-  let evidenceCol = -1;
-  for (const line of lines) {
-    if (!line.trim().startsWith("|")) continue;
-    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
-    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
-      const s = cells.findIndex((c) => c.includes("status"));
-      const f = cells.findIndex((c) => c.includes("feature"));
-      const e = cells.findIndex((c) => c.includes("evidence"));
-      if (s >= 0) statusCol = s;
-      if (f >= 0) featureCol = f;
-      if (e >= 0) evidenceCol = e;
-      break;
-    }
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim().startsWith("|")) continue;
-    const cells = splitRow(line.trim());
-    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
-    if ((cells[featureCol] || "").trim() !== feature) continue;
-
-    const newCells = cells.slice();
-    newCells[statusCol] = newStatus;
-    if (evidenceCol >= 0) {
-      const prevEvidence = (newCells[evidenceCol] || "").trim();
-      newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
-    }
-    lines[i] = `| ${newCells.join(" | ")} |`;
-    return { markdown: lines.join("\n"), matched: true, written: true };
-  }
-
-  return { markdown, matched: false };
-}
-
-function ensureEvidenceColumn(markdown) {
-  if (typeof markdown !== "string") return { markdown, migrated: false };
-
-  const lines = markdown.split("\n");
-  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
-  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
-
-  let headerIdx = -1;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim().startsWith("|")) continue;
-    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
-    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
-      headerIdx = i;
-      break;
-    }
-  }
-  if (headerIdx === -1) return { markdown, migrated: false }; 
-
-  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
-  if (headerCells.some((c) => c.includes("evidence"))) {
-    return { markdown, migrated: false }; 
-  }
-
-  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Evidence");
-
-  const sepIdx = headerIdx + 1;
-  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
-    const sepLine = lines[sepIdx].trim();
-    if (isSeparatorRow(splitRow(sepLine))) {
-      lines[sepIdx] = appendCell(sepLine, "---");
-    }
-  }
-
-  for (let i = sepIdx + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim().startsWith("|")) continue;
-    const trimmed = line.trim();
-    if (isSeparatorRow(splitRow(trimmed))) continue; 
-    lines[i] = appendCell(trimmed, "");
-  }
-
-  return { markdown: lines.join("\n"), migrated: true };
-}
-
-function mergeEvidenceCell(prev, next) {
-  if (typeof prev === "string" && prev !== "" && /^merged #/.test(next)) {
-    return prev;
-  }
-  return next;
-}
-
-function selectNextPending(entries) {
-  if (!Array.isArray(entries) || entries.length === 0) {
-    return { kind: "empty", reason: "queue is empty" };
-  }
-
-  const active = entries.find((e) => e.status === "in-progress");
-  if (active) {
-    return { kind: "blocked-active", entry: active };
-  }
-
-  const candidates = entries.filter((e) => e.status === "pending");
-  if (candidates.length === 0) {
-    return {
-      kind: "empty",
-      reason: "no pending entries (all done, awaiting-merge, blocked, or halted)",
-    };
-  }
-
-  candidates.sort((a, b) => {
-    if (a.order != null && b.order != null) return a.order - b.order;
-    return 0;
-  });
-
-  return { kind: "candidates", candidates };
-}
-
-function precheckDependencies(dependsOn, entries) {
-  if (!Array.isArray(dependsOn) || dependsOn.length === 0) {
-    return { blocked: false };
-  }
-  const rows = Array.isArray(entries) ? entries : [];
-
-  for (const dep of dependsOn) {
-    const match = rows.find((e) => e.feature === dep);
-
-    if (match && match.status !== "done") {
-      return {
-        blocked: true,
-        reason: `dependency ${dep} is ${match.status} in queue (not done)`,
-      };
-    }
-
-  }
-
-  return { blocked: false };
-}
-
-function honourA1Verdict(verdict, precheck) {
-  const p = precheck || {};
-  if (p.blocked) {
-    return "escalate";
-  }
-  const dependsOn = Array.isArray(p.dependsOn) ? p.dependsOn : [];
-  const entries = Array.isArray(p.entries) ? p.entries : [];
-  const unsettled = dependsOn.some((dep) => !entries.some((e) => e.feature === dep));
-  if (unsettled) {
-    return "escalate";
-  }
-  return verdict;
-}
-
-function buildA1SeamOps({ feature, reqPath, dependsOn, triageReason, precheck }) {
-  const unreachable = (member) => async () => {
-    throw new Error(
-      `A1 SeamOps.${member} is unreachable: permittedActions is empty (TSPEC §6.3, A1-4)`
-    );
-  };
-  return {
-    gatherEvidence: async () =>
-      `Feature: ${feature}\nREQ: ${reqPath}\n` +
-      `Phase-0 triage abstained: ${triageReason}\n` +
-      `Declared dependencies: ${dependsOn.length ? dependsOn.join(", ") : "(none)"}\n` +
-      `Pre-check: ${JSON.stringify(precheck)}`,
-    prompt: (evidence) =>
-      `A1 triage-abstention adjudication for "${feature}".\n${evidence}\n\n` +
-      `Decide whether the pipeline should run for this candidate now. Reply with your verdict ` +
-      `trailer; proposedAction must be exactly one of "run-candidate", "hold", or "escalate".`,
-    conditionHolds: async () => true,
-    apply: unreachable("apply"),
-    producedPaths: unreachable("producedPaths"),
-    revert: unreachable("revert"),
-    verifyGate: null,
-    declaredScope: [],
-    permittedActions: [],
-  };
-}
-
-const CITATION_RE = /([\w./-]+\.[A-Za-z0-9]+):(\d+)/g;
-
-function extractCitations(reqText) {
-  const citations = [];
-  const re = new RegExp(CITATION_RE.source, "g");
-  let m;
-  while ((m = re.exec(reqText || "")) !== null) {
-    citations.push({ location: `${m[1]}:${m[2]}`, file: m[1], line: Number(m[2]) });
-  }
-  return citations;
-}
-
-function buildA2SeamOps({
-  feature,
-  reqPath,
-  originalReqText,
-  _readFile,
-  _writeFile,
-  _git,
-  _appendFile,
-  _commitPaths,
-}) {
-  const recordPath = `docs/${feature}/ADVISORY-${feature}.md`;
-  let capturedRows = null;
-
-  return {
-    gatherEvidence: async () => {
-      const citations = extractCitations(originalReqText);
-      const lines = [
-        `Feature: ${feature}`,
-        `REQ: ${reqPath}`,
-        `Citations found: ${citations.length}`,
-      ];
-      for (const citation of citations) {
-        let resolves = "unknown";
-        try {
-          const grep = await _git(["grep", "-n", "-F", citation.location, "--", citation.file]);
-          resolves = grep && grep.ok && String(grep.stdout || "").trim() ? "resolves" : "drifted";
-        } catch {
-          resolves = "drifted";
-        }
-        lines.push(`  ${citation.location}: ${resolves}`);
-      }
-      lines.push("", originalReqText);
-      return lines.join("\n");
-    },
-    prompt: (evidence) =>
-      `A2 stale-REQ re-grounding for "${feature}".\n\n${evidence}\n\n` +
-      `For each drifted citation, propose { oldLocation, newLocation, symbol, symbolStillExists }. ` +
-      `Reply with your verdict trailer whose proposedAction is exactly ` +
-      `JSON.stringify([{ oldLocation, newLocation, symbol, symbolStillExists }, …]). ` +
-      `Rewrite citation location text ONLY — never the frontmatter region or any requirements ` +
-      `sentence (P-2, A2-3).`,
-    conditionHolds: async () => (await _readFile(reqPath)) === originalReqText,
-    apply: async (verdict) => {
-      let rows;
-      try {
-        rows = JSON.parse(verdict && verdict.proposedAction);
-      } catch {
-        return { ok: false, why: "proposedAction was not valid JSON (expected an array of re-grounding rows)" };
-      }
-      if (!Array.isArray(rows)) {
-        return { ok: false, why: "proposedAction did not parse to an array of re-grounding rows" };
-      }
-      capturedRows = rows;
-      let text = originalReqText;
-      for (const row of rows) {
-        if (row && typeof row.oldLocation === "string" && typeof row.newLocation === "string") {
-          text = text.split(row.oldLocation).join(row.newLocation);
-        }
-      }
-      await _writeFile(reqPath, text);
-      return { ok: true };
-    },
-    producedPaths: async () => {
-      const diff = await _git(["diff", "--name-only"]);
-      return diff && diff.ok && diff.stdout
-        ? String(diff.stdout)
-            .split("\n")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [];
-    },
-    revert: async () => {
-      await _git(["checkout", "--", reqPath]);
-    },
-    verifyGate: async () => {
-      const entry =
-        `\n## ${new Date().toISOString()} — A2 — re-grounded\n\n` +
-        `Feature: ${feature}\nREQ: ${reqPath}\n` +
-        `Rows: ${JSON.stringify(capturedRows || [])}\n`;
-      try {
-        await _appendFile(recordPath, entry);
-      } catch (err) {
-        return { passed: false, detail: `record write failed: ${err && err.message}` };
-      }
-
-      let commitResult;
-      try {
-        commitResult = await _commitPaths({
-          paths: [reqPath, recordPath],
-          message: `chore(advisory): A2 re-grounded citations for ${feature}`,
-          what: `A2 re-grounding for ${feature}`,
-          _git,
-          emit: () => {},
-        });
-      } catch (err) {
-        return { passed: false, detail: `commit failed: ${err && err.message}` };
-      }
-
-      const reqAtHead = await _git(["show", `HEAD:${reqPath}`]);
-      const recordAtHead = await _git(["show", `HEAD:${recordPath}`]);
-      const confirmed = Boolean(reqAtHead && reqAtHead.ok && recordAtHead && recordAtHead.ok);
-      return confirmed
-        ? { passed: true, detail: `${commitResult}` }
-        : { passed: false, detail: "branch head does not carry both the REQ and the advisory record" };
-    },
-    declaredScope: [reqPath],
-    permittedActions: ["E-4"],
-  };
-}
-
-function triagePrompt(feature, reqPath, dependsOn) {
-  const depList = dependsOn.length ? dependsOn.join(", ") : "(none declared)";
-  return (
-    `Phase-0 readiness triage for feature "${feature}".\n` +
-    `REQ: ${reqPath}\n` +
-    `Declared dependencies (must already be merged into the base branch): ${depList}\n\n` +
-    `Determine whether the PDLC pipeline can author correct FSPEC/TSPEC/PLAN for this REQ NOW, ` +
-    `given the current state of the codebase. Specifically verify, using git history and the ` +
-    `working tree, that every declared dependency's implementation is present in the base. ` +
-    `Also flag if the REQ references subsystems that do not yet exist.\n\n` +
-    `Also check whether the REQ's file:line citations still resolve at HEAD. If some have drifted ` +
-    `but every cited symbol still exists, return needs-human [SEAM:A2].\n\n` +
-    `Do NOT modify any files. End your final message with exactly one line:\n` +
-    `TRIAGE: ready        <one-line reason>   — dependencies satisfied, safe to run\n` +
-    `TRIAGE: blocked      <one-line reason>   — a dependency is not yet in the base; skip for now\n` +
-    `TRIAGE: needs-human [SEAM:A1] <one-line reason>   — ambiguous; a human must decide\n` +
-    `TRIAGE: needs-human [SEAM:A2] <one-line reason>   — the REQ's file:line citations have drifted`
-  );
-}
+const REASON_CODES = Object.freeze([
+  "consolidation-in-progress",
+  "reclaimed-stale-lock",
+  "advisory-model-unresolved",
+  "no-cadence-datum",
+  "writes-uncommitted",
+  "credential-unavailable",
+  "repository-unresolved",
+  "api-failure",
+  "branch-exists",
+  "duplicate-suppressed",
+  "no-advisory-corpus",
+  "advisory-corpus-empty",
+]);
+
+const TRIGGERS = Object.freeze(["cadence", "volume", "manual"]);
+
+const ROUTES = Object.freeze(["constraints", "decisions", "PR", "degraded"]);
+
+const ACTIONS = Object.freeze(["promote", "revise", "retire"]);
+
+const VERDICTS = Object.freeze(["prevented", "recurred", "insufficient-evidence"]);
+
+const PROMO_STATES = Object.freeze(["ineffective", "unmeasurable"]);
+
+const CREDENTIAL_VALUES = Object.freeze(["present (redacted)", "absent", "local-gh"]);
+
+const PHASE_CATALOGUE = Object.freeze([
+  "R",
+  "F",
+  "T",
+  "D",
+  "P",
+  "PR",
+  "I",
+  "PT",
+  "CR",
+  "DOD",
+  "H",
+  "PUB",
+  "MERGE",
+]);
+
+const REASON_CODE_STATUSES = Object.freeze({
+  "consolidation-in-progress": Object.freeze(["refused"]),
+  "reclaimed-stale-lock": Object.freeze([
+    "promoted",
+    "promoted-degraded",
+    "no-op",
+    "failed",
+  ]),
+  "advisory-model-unresolved": Object.freeze(["failed"]),
+  "no-cadence-datum": Object.freeze([
+    "promoted",
+    "promoted-degraded",
+    "no-op",
+    "failed",
+    "refused",
+  ]),
+  "writes-uncommitted": Object.freeze([
+    "promoted",
+    "promoted-degraded",
+    "no-op",
+    "failed",
+  ]),
+  "credential-unavailable": Object.freeze(["promoted-degraded", "no-op"]),
+  "repository-unresolved": Object.freeze(["promoted-degraded", "no-op"]),
+  "api-failure": Object.freeze(["promoted-degraded", "no-op"]),
+  "branch-exists": Object.freeze(["promoted-degraded", "no-op"]),
+  "duplicate-suppressed": Object.freeze([
+    "promoted",
+    "promoted-degraded",
+    "no-op",
+  ]),
+  "no-advisory-corpus": Object.freeze([
+    "promoted",
+    "promoted-degraded",
+    "no-op",
+    "failed",
+  ]),
+  "advisory-corpus-empty": Object.freeze([
+    "promoted",
+    "promoted-degraded",
+    "no-op",
+    "failed",
+  ]),
+});
 
 async function agent(skill, prompt, opts) {
   throw new Error("agent() not available outside Claude Code runtime");
 }
 
-function phase(label) {
-
-}
-
 function log(message) {
   if (typeof console !== "undefined") {
-    console.log("[orchestrate-queue]", message);
+    console.log("[consolidate-learnings]", message);
   }
+}
+
+function phase(label) {
+
 }
 
 async function defaultReadFile(path) {
@@ -8852,14 +8327,39 @@ async function defaultWriteFile(path, contents) {
   writeFileSync(path, contents, "utf8");
 }
 
+async function defaultAppendFile(path, text) {
+  const { appendFileSync } = await Promise.reject(new Error("Node module " + "fs" + " is unavailable in the workflow runtime; this seam must be injected"));
+  appendFileSync(path, text, "utf8");
+}
+
+async function defaultCheckFile(path) {
+  throw new Error("defaultCheckFile() not available outside Claude Code runtime");
+}
+
+async function defaultListFiles(dirPath) {
+  const { readdirSync } = await Promise.reject(new Error("Node module " + "fs" + " is unavailable in the workflow runtime; this seam must be injected"));
+  if (typeof dirPath !== "string" || dirPath.trim() === "") {
+    return { ok: false, reason: "bad_argument" };
+  }
+  try {
+    const entries = readdirSync(dirPath, { withFileTypes: true });
+    return {
+      ok: true,
+      files: entries.filter((e) => !e.isDirectory()).map((e) => e.name),
+    };
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "ENOENT") return { ok: false, reason: "dir_missing" };
+    if (code === "ENOTDIR") return { ok: false, reason: "not_a_directory" };
+    return { ok: false, reason: "unreadable" };
+  }
+}
+
 async function defaultGit(argv, { execFn } = {}) {
   const { execFileSync: realExecFileSync } = await Promise.reject(new Error("Node module " + "child_process" + " is unavailable in the workflow runtime; this seam must be injected"));
-  const exec =
-    execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
-
+  const exec = execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
   const args = Array.isArray(argv) ? argv : [];
   const execOpts = { stdio: "pipe", encoding: "utf8" };
-
   try {
     const stdout = exec("git", args, execOpts);
     return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
@@ -8872,785 +8372,1041 @@ async function defaultGit(argv, { execFn } = {}) {
   }
 }
 
-async function defaultReadAdvisoryConfig(readFileFn, path) {
-  const raw = await readAdvisoryConfigSafely(readFileFn, path);
-  return parseAdvisoryConfig(raw);
-}
+const NO_GH_RUN = null;
+
+const NO_ENV_PRESENT = null;
+
+const NO_MAKE_TEMP_DIR = null;
 
 async function main({
-  queuePath = DEFAULT_QUEUE_PATH,
-  _agent: rawAgentFn = agent,
+  _agent: agentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
   _appendFile: appendFileFn = defaultAppendFile,
+  _checkFile: checkFileFn = defaultCheckFile,
+  _listFiles: listFilesFn = defaultListFiles,
   _git: gitFn = defaultGit,
-  _runPipeline: runPipelineFn = realMain,
-  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
-  _readAdvisoryConfig: readAdvisoryConfigFn = defaultReadAdvisoryConfig,
-  _commitPaths: commitPathsFn = commitPaths,
+  _ghRun: ghRunFn = NO_GH_RUN,
   _log: logFn = log,
   _phase: phaseFn = phase,
+  _envPresent: envPresentFn = NO_ENV_PRESENT,
+  _makeTempDir: makeTempDirFn = NO_MAKE_TEMP_DIR,
+  _now: nowFn = () => Date.now(),
 } = {}) {
-  const emit = logFn;
 
-  const agentFn = (skill, prompt, opts) =>
-    rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
+  const seams = {
+    agentFn,
+    readFileFn,
+    writeFileFn,
+    appendFileFn,
+    checkFileFn,
+    listFilesFn,
+    gitFn,
+    ghRunFn,
+    logFn,
+    phaseFn,
+    envPresentFn,
+    makeTempDirFn,
+    nowFn,
+  };
+  throw new Error("consolidate-learnings: main() not implemented yet (PLAN T02 skeleton)");
+}
 
-  phaseFn("Queue: Drift gate");
+function notImplemented(name) {
+  throw new Error(`consolidate-learnings: ${name}() not implemented yet (PLAN T02 skeleton)`);
+}
 
-  const distributionConfigRaw = await readAdvisoryConfigSafely(readFileFn, ADVISORY_CONFIG_PATH);
-  const driftGate = parseDistributionCheckEnabledOptOut(distributionConfigRaw)
-    ? distributionOptOutGate()
-    : mapDriftState(validateDriftRecord(await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH)));
-  if (driftGate.outcome === "blocked") {
-    emit(
-      `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
-    );
-    return buildQueueReport({
-      outcome: "blocked",
-      reason: `Drift gate row ${driftGate.row}: ${driftGate.reasons.join("; ")}`,
-      remaining: 0,
-      driftReport: driftGate.report,
-    });
+const LS_FILES_ARGV = Object.freeze([
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "--",
+  ":(glob)docs/*/LEARNINGS-*.md",
+  ":(glob)docs/completed/*/LEARNINGS-*.md",
+]);
+
+async function enumerateCorpus(_git) {
+  const reply = await _git([...LS_FILES_ARGV]);
+  if (!reply || !reply.ok) {
+    return { unlistable: true, detail: (reply && reply.stderr) || "" };
   }
+  return { files: parseCorpusListing(reply.stdout) };
+}
 
-  const driftNotice = driftGate.row === 9 ? null : driftGate.report;
-  if (driftNotice) {
-    emit(
-      `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
-    );
-  }
-
-  const advisoryDispositions = [];
-  const finish = (fields) =>
-    buildQueueReport({
-      ...fields,
-      driftReport: driftNotice,
-      advisory:
-        advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
-          ? advisorySummaryRows(advisoryDispositions)
-          : undefined,
+function parseCorpusListing(stdout) {
+  const text = typeof stdout === "string" ? stdout : "";
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((path) => {
+      const slash = path.lastIndexOf("/");
+      return { path, basename: slash === -1 ? path : path.slice(slash + 1) };
     });
+}
 
-  const advisoryConfig = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
-  const rungState = { resolved: null };
+function classifyCorpus(files, logText) {
+  const entries = Array.isArray(files) ? files : [];
 
-  phaseFn("Queue: Load");
-  const queueText = await readFileFn(queuePath);
-  if (queueText == null) {
-    return finish({
-      outcome: "no-queue",
-      reason: `Queue file not found at ${queuePath}`,
-      remaining: 0,
-    });
-  }
+  const boundary = typeof logText === "string" ? logText.indexOf("<!-- pdlc:consumed") : -1;
+  const legacyRegion = boundary === -1 ? (typeof logText === "string" ? logText : "") : logText.slice(0, boundary);
+  const rest = boundary === -1 ? "" : logText.slice(boundary);
 
-  const entries = parseQueue(queueText);
-  const remainingPending = entries.filter((e) => e.status === "pending").length;
-
-  phaseFn("Queue: Select");
-  const selection = selectNextPending(entries);
-
-  if (selection.kind === "blocked-active") {
-    emit(
-      `Queue blocked: "${selection.entry.feature}" is still in-progress. ` +
-        `Resolve it (mark done/awaiting-merge or reset to pending) before new work is picked up.`
-    );
-    return finish({
-      outcome: "blocked",
-      reason: `An entry is in-progress: ${selection.entry.feature}`,
-      remaining: remainingPending,
-      active: selection.entry.feature,
-    });
-  }
-
-  if (selection.kind === "empty") {
-    emit(`Nothing to pick up — ${selection.reason}.`);
-    return finish({
-      outcome: "idle",
-      reason: selection.reason,
-      remaining: 0,
-    });
-  }
-
-  phaseFn("Queue: Triage");
-  const skipped = [];
-
-  for (const entry of selection.candidates) {
-
-    let reqText;
-    try {
-      reqText = await readFileFn(entry.reqPath);
-    } catch {
-      reqText = null;
+  const OPENER = "<!-- pdlc:consumed";
+  const CLOSER = "<!-- /pdlc:consumed -->";
+  const blockLines = new Set();
+  let pos = 0;
+  while (true) {
+    const start = rest.indexOf(OPENER, pos);
+    if (start === -1) break;
+    const end = rest.indexOf(CLOSER, start);
+    const span = end === -1 ? rest.slice(start) : rest.slice(start, end);
+    for (const line of span.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed.length > 0) blockLines.add(trimmed);
     }
-    if (reqText == null) {
-      emit(`Skip "${entry.feature}": REQ not found at ${entry.reqPath}.`);
-      skipped.push({ feature: entry.feature, reason: "REQ file missing" });
+    if (end === -1) break; 
+    pos = end + CLOSER.length;
+  }
+
+  const consolidated = new Set();
+  const unconsolidatedSet = new Set();
+  const seenBasenames = new Map(); 
+
+  for (const { path, basename } of entries) {
+    if (!seenBasenames.has(basename)) seenBasenames.set(basename, []);
+    seenBasenames.get(basename).push(path);
+
+    const inLegacy = legacyRegion.includes(basename);
+    const inBlock = blockLines.has(basename);
+    if (inLegacy || inBlock) {
+      consolidated.add(basename);
+    } else {
+      unconsolidatedSet.add(basename);
+    }
+  }
+
+  const basenameCollisions = [];
+  for (const [, paths] of seenBasenames) {
+    const distinctPaths = [...new Set(paths)];
+    if (distinctPaths.length >= 2) basenameCollisions.push(distinctPaths);
+  }
+
+  return {
+    consolidated,
+    unconsolidated: [...unconsolidatedSet],
+    basenameCollisions,
+  };
+}
+
+function renderConsumedPair(passId, basenames) {
+  const list = Array.isArray(basenames) ? basenames : [];
+  const lines = [`<!-- pdlc:consumed ${passId} -->`, ...list, `<!-- /pdlc:consumed -->`];
+  return `${lines.join("\n")}\n`;
+}
+
+const CADENCE_RELEVANT_STATUSES = new Set(["promoted", "promoted-degraded", "no-op", "failed"]);
+
+function cadenceDatum(logRows) {
+  const rows = Array.isArray(logRows) ? logRows : [];
+  let latest = null;
+  for (const row of rows) {
+    if (!row || !CADENCE_RELEVANT_STATUSES.has(row.status)) continue;
+    const at = typeof row.date === "number" ? row.date : Date.parse(row.date);
+    if (!Number.isFinite(at)) continue;
+    if (latest === null || at > latest) latest = at;
+  }
+  return latest;
+}
+
+function triggerFor({ unconsolidated, datum, now, config, direct } = {}) {
+  if (direct) return "manual";
+
+  const n = Array.isArray(unconsolidated)
+    ? unconsolidated.length
+    : typeof unconsolidated === "number"
+      ? unconsolidated
+      : 0;
+  const volumeThreshold = config && typeof config.volumeThreshold === "number" ? config.volumeThreshold : 5;
+  if (n >= volumeThreshold) return "volume";
+
+  if (datum === null || datum === undefined) return "cadence";
+
+  const cadenceHours = config && typeof config.cadenceHours === "number" ? config.cadenceHours : 168;
+  const cadenceMs = cadenceHours * 60 * 60 * 1000;
+  return now - datum >= cadenceMs ? "cadence" : "skipped-cadence";
+}
+
+function mintPassId(logText, today) {
+  const text = typeof logText === "string" ? logText : "";
+  const prefix = `${today}-`;
+  let found = false;
+  let max = 0;
+
+  const re = /pass:\s*(\S+)/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    const value = match[1];
+    if (!value.startsWith(prefix)) continue; 
+    const suffix = value.slice(prefix.length);
+    if (!/^\d+$/.test(suffix)) continue;
+    const n = Number.parseInt(suffix, 10);
+    found = true;
+    if (n > max) max = n;
+  }
+
+  return found ? `${prefix}${max + 1}` : `${prefix}1`;
+}
+
+const MARKER_LINE = /^(IN-PROGRESS|RELEASED):\s*(\S+)\s+(\S+)$/;
+
+function parseMarker(text) {
+  if (typeof text !== "string") return null;
+  if (text.includes("\n")) return null;
+  const match = MARKER_LINE.exec(text);
+  if (!match) return null;
+  const [, verb, passId, timestamp] = match;
+  const at = Date.parse(timestamp);
+  if (!Number.isFinite(at)) return null;
+  return { state: verb === "IN-PROGRESS" ? "in-progress" : "released", passId, at };
+}
+
+function markerVerdict(parsed, present, nowMs, staleLockMinutes) {
+  if (!present) return "free";
+  if (parsed === null) return "reclaim"; 
+  if (parsed.state === "released") return "free"; 
+  const staleMs = staleLockMinutes * 60 * 1000;
+  return nowMs - parsed.at >= staleMs ? "reclaim" : "refuse";
+}
+
+async function takeMarker(state, seams) {
+  const { markerPath, passId, nowMs, staleLockMinutes } = state;
+  const { checkFileFn, readFileFn, writeFileFn } = seams;
+  const checkReply = await checkFileFn(markerPath);
+  const present = !(checkReply && checkReply.ok === false && checkReply.reason === "file_missing");
+  const text = await readFileFn(markerPath);
+  const parsed = parseMarker(text);
+  const verdict = markerVerdict(parsed, present, nowMs, staleLockMinutes);
+  if (verdict === "refuse") {
+    return { verdict, parsed, taken: false };
+  }
+  await writeFileFn(markerPath, `IN-PROGRESS: ${passId} ${new Date(nowMs).toISOString()}`);
+  return { verdict, parsed, taken: true };
+}
+
+async function releaseMarker(state, seams) {
+  const { markerPath, passId, nowMs } = state;
+  const { writeFileFn } = seams;
+  await writeFileFn(markerPath, `RELEASED: ${passId} ${new Date(nowMs).toISOString()}`);
+}
+
+function failureModeId(phase, artifact) {
+
+  const slug = String(artifact)
+    .replace(/[/.]/g, "-")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${String(phase).toLowerCase()}-${slug}`;
+}
+
+function targetFor(kind, artifact, id) {
+  if (kind === 1) return "docs/_constraints/DOMAIN-CONSTRAINTS.md";
+  if (kind === 2) return `docs/_decisions/DECISIONS-${id}.md`;
+  return artifact; 
+}
+
+function mergeProposals(proposals) {
+  const list = Array.isArray(proposals) ? proposals : [];
+
+  const order = [];
+  const groups = new Map();
+  for (const p of list) {
+    const key = `${p.failureModeId}\0${p.action}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    groups.get(key).push(p);
+  }
+
+  const byteCompare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+  const result = [];
+  for (const key of order) {
+    const group = groups.get(key);
+    if (group.length === 1) {
+      result.push(group[0]);
       continue;
     }
 
-    const fm = parseReqFrontmatter(reqText);
-    if (!fm.ready) {
-      emit(`Skip "${entry.feature}": REQ not marked ready: true (still a draft).`);
-      skipped.push({ feature: entry.feature, reason: "REQ not marked ready" });
-      continue;
+    const sortedByArtifact = [...group].sort((a, b) => byteCompare(a.artifact, b.artifact));
+    const foldedArtifact = sortedByArtifact[0].artifact;
+    const foldedKind = Math.min(...group.map((p) => p.kind));
+    const id = sortedByArtifact[0].failureModeId;
+
+    const elidedKinds = [...new Set(group.map((p) => p.kind))]
+      .filter((k) => k !== foldedKind)
+      .sort((a, b) => a - b);
+    const elidedArtifacts = group
+      .map((p) => p.artifact)
+      .filter((a) => a !== foldedArtifact)
+      .sort(byteCompare);
+
+    result.push({
+      failureModeId: id,
+      phase: sortedByArtifact[0].phase,
+      symptom: sortedByArtifact.map((p) => p.symptom).join("; "),
+      artifact: foldedArtifact,
+      kind: foldedKind,
+      target: targetFor(foldedKind, foldedArtifact, id),
+      action: sortedByArtifact[0].action,
+      diff: sortedByArtifact[0].diff === undefined ? null : sortedByArtifact[0].diff,
+      elidedKinds,
+      elidedArtifacts,
+    });
+  }
+
+  return result;
+}
+
+const LOG_RECORD_FIELD_MAP = [
+  ["failure-mode-id", "failureModeId"],
+  ["phase", "phase"],
+  ["symptom", "symptom"],
+  ["artifact", "artifact"],
+  ["target", "target"],
+  ["passId", "passId"],
+  ["action", "action"],
+  ["route", "route"],
+];
+
+function parseLogRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  const records = [];
+  const notices = [];
+
+  for (const block of blocks) {
+    const fieldValues = {};
+    for (const line of block.split("\n")) {
+      const colon = line.indexOf(":");
+      if (colon === -1) continue;
+      fieldValues[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
     }
 
-    const dependsOn = Array.from(
-      new Set([...(entry.dependsOn || []), ...(fm.dependsOn || [])])
-    );
-
-    const precheck = precheckDependencies(dependsOn, entries);
-    if (precheck.blocked) {
-      emit(`Skip "${entry.feature}": blocked (pre-check) — ${precheck.reason}.`);
-      skipped.push({
-        feature: entry.feature,
-        reason: `blocked (pre-check): ${precheck.reason}`,
-      });
-      continue;
+    const record = {};
+    for (const [textKey, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (Object.prototype.hasOwnProperty.call(fieldValues, textKey)) {
+        record[propKey] = fieldValues[textKey];
+      }
     }
 
-    const triageResult = await agentFn(
-      "se-author",
-      triagePrompt(entry.feature, entry.reqPath, dependsOn)
-    );
-    const triage = parseTriageVerdict(triageResult);
-
-    if (triage.verdict === "blocked") {
-      emit(`Skip "${entry.feature}": blocked — ${triage.reason}.`);
-      skipped.push({ feature: entry.feature, reason: `blocked: ${triage.reason}` });
-      continue;
+    const subject = record.failureModeId;
+    for (const [, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (!Object.prototype.hasOwnProperty.call(record, propKey)) {
+        notices.push({ subject, missingField: propKey });
+      }
     }
-    if (triage.verdict === "needs-human") {
 
-      const seam = triage.seamToken === "A2" ? "A2" : "A1";
-      const seamOps =
-        seam === "A2"
-          ? buildA2SeamOps({
-              feature: entry.feature,
-              reqPath: entry.reqPath,
-              originalReqText: reqText,
-              _readFile: readFileFn,
-              _writeFile: writeFileFn,
-              _git: gitFn,
-              _appendFile: appendFileFn,
-              _commitPaths: commitPathsFn,
-            })
-          : buildA1SeamOps({
-              feature: entry.feature,
-              reqPath: entry.reqPath,
-              dependsOn,
-              triageReason: triage.reason,
-              precheck,
-            });
+    records.push(record);
+  }
 
-      const advisoryDisposition = await runAdvisorySeamFn({
-        seam,
-        feature: entry.feature,
-        seamOps,
-        config: advisoryConfig.config,
-        rungState,
-        _agent: rawAgentFn,
-        _appendFile: appendFileFn,
-        _writeFile: writeFileFn,
-        _readFile: readFileFn,
-        _git: gitFn,
-        _log: emit,
+  return { records, notices };
+}
 
-        _notice: emit,
-      });
+const DOCTYPE_OWNING_PHASE = Object.freeze({
+  REQ: "R",
+  FSPEC: "F",
+  TSPEC: "T",
+  DECISIONS: "D",
+  PLAN: "P",
+  PROPERTIES: "PR",
+});
 
-      advisoryDispositions.push({ ...advisoryDisposition, seam });
+const CROSS_REVIEW_BASENAME = new RegExp(
+  `^CROSS-REVIEW-.+-(${Object.keys(DOCTYPE_OWNING_PHASE).join("|")})-v\\d+\\.md$`
+);
+const CODE_REVIEW_BASENAME = /^CODE_REVIEW-.+-v\d+\.md$/;
+const POSTMORTEM_BASENAME = /^POSTMORTEM-([A-Za-z]+)-.+\.md$/;
 
-      await commitAdvisoryRecord(
-        `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
-        entry.feature,
-        gitFn,
-        emit
-      );
+function phasesExercised(learningsText) {
+  const text = typeof learningsText === "string" ? learningsText : "";
 
-      if (seam === "A1") {
+  const phasesRow = text.match(/^\|\s*Phases exercised\s*\|\s*(.*?)\s*\|\s*$/m);
+  if (phasesRow) {
+    const phases = phasesRow[1]
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    return new Set(phases);
+  }
 
-        const action =
-          advisoryDisposition.reason === "out-of-envelope" && advisoryDisposition.verdict
-            ? honourA1Verdict(advisoryDisposition.verdict.proposedAction, {
-                blocked: precheck.blocked,
-                dependsOn,
-                entries,
-              })
-            : "escalate";
+  const harvestedRow = text.match(/^\|\s*Harvested from\s*\|\s*(.*?)\s*\|\s*$/m);
+  const basename = harvestedRow ? harvestedRow[1].trim() : "";
 
-        if (action === "run-candidate") {
-          return runPicked({
-            entry,
-            dependsOn,
-            triageReason: triage.reason,
-            queuePath,
-            queueText,
-            remainingPending,
-            skipped,
-            runPipelineFn,
-            writeFileFn,
-            readFileFn,
-            gitFn,
-            phaseFn,
-            emit,
-            finish,
-          });
-        }
+  const postmortemMatch = basename.match(POSTMORTEM_BASENAME);
+  if (postmortemMatch) return new Set([postmortemMatch[1]]);
 
-        emit(`Skip "${entry.feature}": A1 adjudicated ${action} — ${triage.reason}.`);
-        skipped.push({
-          feature: entry.feature,
-          reason: `needs-human (A1 ${action}): ${triage.reason}`,
-        });
-        continue;
+  const crossReviewMatch = basename.match(CROSS_REVIEW_BASENAME);
+  if (crossReviewMatch) return new Set([DOCTYPE_OWNING_PHASE[crossReviewMatch[1]]]);
+
+  if (CODE_REVIEW_BASENAME.test(basename)) return new Set(["DOD"]);
+
+  return new Set();
+}
+
+const FAILURE_MODE_ID_LINE = /^-\s*failure-mode-id:\s*(.+)$/gm;
+
+function consumedNamesId(consumedList, id) {
+  for (const text of consumedList) {
+    if (typeof text !== "string") continue;
+    FAILURE_MODE_ID_LINE.lastIndex = 0;
+    let match;
+    while ((match = FAILURE_MODE_ID_LINE.exec(text)) !== null) {
+      if (match[1].trim() === id) return true;
+    }
+  }
+  return false;
+}
+
+function consumedExercisedPhase(consumedList, phase) {
+  if (phase === undefined || phase === null) return false;
+  for (const text of consumedList) {
+    if (typeof text !== "string") continue;
+    if (phasesExercised(text).has(phase)) return true;
+  }
+  return false;
+}
+
+function effectivenessVerdict(id, phase, consumedList) {
+  if (consumedNamesId(consumedList, id)) return "recurred";
+  if (consumedExercisedPhase(consumedList, phase)) return "prevented";
+  return "insufficient-evidence";
+}
+
+function effectivenessTable(records, consumedTexts, config) {
+  const recordList = Array.isArray(records) ? records : [];
+  const passes = Array.isArray(consumedTexts) ? consumedTexts : [];
+  const cfg = config && typeof config === "object" ? config : {};
+  const unmeasurablePasses =
+    typeof cfg.unmeasurablePasses === "number" ? cfg.unmeasurablePasses : 3;
+
+  const order = [];
+  const firstRecordById = new Map();
+  for (const r of recordList) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!firstRecordById.has(r.failureModeId)) {
+      firstRecordById.set(r.failureModeId, r);
+      order.push(r.failureModeId);
+    }
+  }
+
+  const revisePassIdsById = new Map();
+  for (const r of recordList) {
+    if (!r || typeof r.failureModeId !== "string" || r.action !== "revise") continue;
+    if (!revisePassIdsById.has(r.failureModeId)) revisePassIdsById.set(r.failureModeId, new Set());
+    if (typeof r.passId === "string") revisePassIdsById.get(r.failureModeId).add(r.passId);
+  }
+
+  const rows = [];
+  for (const id of order) {
+    const source = firstRecordById.get(id);
+    const phase = source.phase;
+    const artifact = source.artifact !== undefined ? source.artifact : null;
+    const resetPassIds = revisePassIdsById.get(id) ?? new Set();
+
+    let ineffectiveStreak = 0;
+    let unmeasurableStreak = 0;
+
+    for (const pass of passes) {
+      if (!pass || !Array.isArray(pass.consumed)) continue;
+
+      if (typeof pass.passId === "string" && resetPassIds.has(pass.passId)) {
+        ineffectiveStreak = 0;
       }
 
-      emit(`Skip "${entry.feature}": needs human decision (A2) — ${triage.reason}.`);
-      skipped.push({
-        feature: entry.feature,
-        reason: `needs-human (A2): ${triage.reason}`,
-      });
-      continue;
+      if (pass.consumed.length === 0) continue; 
+
+      const verdict = effectivenessVerdict(id, phase, pass.consumed);
+
+      if (verdict === "recurred") ineffectiveStreak += 1;
+      else if (verdict === "prevented") ineffectiveStreak = 0;
+
+      if (verdict === "insufficient-evidence") unmeasurableStreak += 1;
+      else unmeasurableStreak = 0;
     }
 
-    return runPicked({
-      entry,
-      dependsOn,
-      triageReason: triage.reason,
-      queuePath,
-      queueText,
-      remainingPending,
-      skipped,
-      runPipelineFn,
-      writeFileFn,
-      readFileFn,
-      gitFn,
+    const lastPass = passes.length > 0 ? passes[passes.length - 1] : null;
+    const lastConsumed = lastPass && Array.isArray(lastPass.consumed) ? lastPass.consumed : [];
+    const verdict = effectivenessVerdict(id, phase, lastConsumed);
 
-      phaseFn,
-      emit,
-      finish,
+    let state = null;
+    if (ineffectiveStreak >= 2) state = "ineffective";
+    else if (unmeasurableStreak >= unmeasurablePasses) state = "unmeasurable";
+
+    rows.push({
+      failureModeId: id,
+      artifact,
+      verdict,
+      state,
+      remediation: null,
     });
   }
 
-  emit(`No ready REQ this pass (${skipped.length} candidate(s) skipped).`);
-  return finish({
-    outcome: "idle",
-    reason: "no candidate passed the readiness gate",
-    remaining: remainingPending,
-    skipped,
-  });
+  rows.sort((a, b) => (a.failureModeId < b.failureModeId ? -1 : a.failureModeId > b.failureModeId ? 1 : 0));
+
+  return rows;
 }
 
-async function runPicked({
-  entry,
-  dependsOn,
-  triageReason,
-  queuePath,
-  remainingPending,
-  skipped,
-  runPipelineFn,
-  writeFileFn,
-  readFileFn,
-  gitFn,
-  phaseFn,
-  emit,
+function openPromotionList(records) {
+  const list = Array.isArray(records) ? records : [];
+  const order = [];
+  const seen = new Set();
+  const closed = new Set();
 
-  finish,
-}) {
-  phaseFn(`Pipeline: ${entry.feature}`);
-  emit(
-    `Picked "${entry.feature}" (deps: ${
-      dependsOn.length ? dependsOn.join(", ") : "none"
-    }) — ${triageReason}. Running orchestrate-dev.`
-  );
+  for (const r of list) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!seen.has(r.failureModeId)) {
+      seen.add(r.failureModeId);
+      order.push(r.failureModeId);
+    }
+    if (r.action === "retire" && r.route !== undefined && r.route !== "degraded") {
+      closed.add(r.failureModeId);
+    }
+  }
 
-  await rewriteStatus(
-    queuePath,
-    entry.feature,
-    "in-progress",
-    readFileFn,
-    writeFileFn,
-    gitFn
-  );
+  return order.filter((id) => !closed.has(id));
+}
 
-  let report;
-  try {
-    report = await runPipelineFn({ reqPath: entry.reqPath });
-  } catch (err) {
-    await rewriteStatus(
-      queuePath,
-      entry.feature,
-      "halted",
-      readFileFn,
-      writeFileFn,
-      gitFn
+function remediationChoice(id, records, prStates, headExists) {
+  const states = Array.isArray(prStates) ? prStates : [];
+
+  const hasSpentPair = (action) =>
+    states.some(
+      (pr) =>
+        pr &&
+        (pr.state === "open" || pr.state === "merged") &&
+        Array.isArray(pr.pairs) &&
+        pr.pairs.some((p) => p && p.failureModeId === id && p.action === action)
     );
-    return finish({
-      outcome: "halted",
-      reason: `Pipeline threw for ${entry.feature}: ${err && err.message}`,
-      remaining: remainingPending - 1,
-      picked: entry.feature,
-    });
-  }
 
-  const succeeded = report && report.outcome === "success";
-
-  const merged = succeeded && report.mergeStatus === "merged";
-  const newStatus = merged ? "done" : succeeded ? "awaiting-merge" : "halted";
-  await rewriteStatus(
-    queuePath,
-    entry.feature,
-    newStatus,
-    readFileFn,
-    writeFileFn,
-    gitFn
-  );
-
-  emit(
-    merged
-      ? `"${entry.feature}" complete and merged (${report.mergeSha ?? "sha unknown"}) — status set to done.`
-      : succeeded
-      ? `"${entry.feature}" complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents.`
-      : `"${entry.feature}" halted: ${report && report.haltReason}. Status set to halted.`
-  );
-
-  return finish({
-    outcome: succeeded ? "ran" : "halted",
-    reason: succeeded
-      ? `Pipeline succeeded for ${entry.feature}`
-      : `Pipeline halted for ${entry.feature}: ${report && report.haltReason}`,
-    remaining: remainingPending - 1,
-    picked: entry.feature,
-    pipelineReport: report,
-    skipped,
-  });
+  if (hasSpentPair("retire")) return null;
+  if (hasSpentPair("revise")) return "retirement";
+  if (headExists) return "revision";
+  return "retirement";
 }
 
-async function rewriteStatus(
-  queuePath,
-  feature,
-  status,
-  readFileFn,
-  writeFileFn,
-  gitFn = defaultGit,
-  evidence = null
-) {
-  const current = await readFileFn(queuePath);
+const DECISIONS_TARGET = /^docs\/_decisions\/DECISIONS-.+\.md$/;
 
-  if (current === null || current === undefined) {
-    return { queueRow: "none" };
+function routeOf(target) {
+  const path = String(target);
+  for (const prefix of MERGE_GUARD_DEFAULTS) {
+    if (path.startsWith(prefix)) return "PR";
+  }
+  if (path === "docs/_constraints/DOMAIN-CONSTRAINTS.md") return "constraints";
+  if (DECISIONS_TARGET.test(path)) return "decisions";
+  return "proposal-file";
+}
+
+function routeProposal(p) {
+  const r = routeOf(p.target);
+  if (r === "PR") return "PR";
+  if (p.action === "promote" && (r === "constraints" || r === "decisions")) return r;
+  return "proposal-file";
+}
+
+function enactedByLog(pair, records) {
+  const list = Array.isArray(records) ? records : [];
+  for (const r of list) {
+    if (!r || typeof r !== "object") continue;
+    if (!("failureModeId" in r) || !("action" in r) || !("route" in r)) continue;
+    if (r.failureModeId !== pair.failureModeId || r.action !== pair.action) continue;
+    if (r.route === "degraded") continue;
+    return { enacted: true, passId: typeof r.passId === "string" ? r.passId : null };
+  }
+  return { enacted: false, passId: null };
+}
+
+const CONSOLIDATION_PROMOTIONS_TRAILER = /^PDLC-CONSOLIDATION-PROMOTIONS:\s*(.*)$/m;
+const ENACTING_PR_STATES = new Set(["OPEN", "MERGED"]);
+
+function enactedByPr(pair, prStates) {
+  const list = Array.isArray(prStates) ? prStates : [];
+  const key = `${pair.failureModeId}:${pair.action}`;
+  for (const pr of list) {
+    if (!pr || !ENACTING_PR_STATES.has(pr.state)) continue;
+    const body = typeof pr.body === "string" ? pr.body : "";
+    const match = CONSOLIDATION_PROMOTIONS_TRAILER.exec(body);
+    if (!match) continue;
+    const entries = match[1].split(",").map((e) => e.trim());
+    if (entries.includes(key)) return { enacted: true, url: pr.url ?? null };
+  }
+  return { enacted: false, url: null };
+}
+
+const ESCALATION_FEATURE_ROW = /^\|\s*Feature\s*\|\s*(.+?)\s*\|\s*$/m;
+const ESCALATION_SEAM_ROW = /^\|\s*Seam\s*\|\s*(.+?)\s*\|\s*$/m;
+
+function parseEscalations(text) {
+  const bySeamFeature = new Map();
+  const totals = new Map();
+  const distinctFeatures = new Map();
+
+  if (text === null || text === undefined) {
+    return { bySeamFeature, totals, distinctFeatures, entryCount: 0, corpusState: "absent" };
   }
 
-  const { markdown, matched, written, foundStatus } = updateQueueStatus(
-    current,
-    feature,
-    status,
-    evidence
+  const raw = typeof text === "string" ? text : "";
+  const blocks = raw
+    .split(/^## /m)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+  let entryCount = 0;
+  for (const block of blocks) {
+    const featureMatch = block.match(ESCALATION_FEATURE_ROW);
+    const seamMatch = block.match(ESCALATION_SEAM_ROW);
+    if (!featureMatch || !seamMatch) continue; 
+
+    const feature = featureMatch[1].trim();
+    const seam = seamMatch[1].trim();
+    entryCount += 1;
+
+    if (!bySeamFeature.has(seam)) bySeamFeature.set(seam, new Map());
+    const perFeature = bySeamFeature.get(seam);
+    perFeature.set(feature, (perFeature.get(feature) ?? 0) + 1);
+
+    totals.set(seam, (totals.get(seam) ?? 0) + 1);
+    distinctFeatures.set(seam, perFeature.size);
+  }
+
+  const corpusState = blocks.length === 0 ? "empty" : "present";
+
+  return { bySeamFeature, totals, distinctFeatures, entryCount, corpusState };
+}
+
+function seamCandidates(counts) {
+  const c = counts && typeof counts === "object" ? counts : {};
+  if (c.corpusState !== "present") return { over: null, tie: [], under: [] };
+
+  const totals = c.totals instanceof Map ? c.totals : new Map();
+  const distinctFeatures = c.distinctFeatures instanceof Map ? c.distinctFeatures : new Map();
+  const escalatingSeams = [...totals.keys()].filter((seam) => (totals.get(seam) ?? 0) > 0);
+
+  let over = null;
+  const tie = [];
+  if (escalatingSeams.length > 0) {
+    const maxTotal = Math.max(...escalatingSeams.map((seam) => totals.get(seam) ?? 0));
+    const topSeams = escalatingSeams.filter((seam) => (totals.get(seam) ?? 0) === maxTotal);
+    if (topSeams.length === 1) {
+      const [seam] = topSeams;
+      if ((distinctFeatures.get(seam) ?? 0) >= 2) over = seam;
+    } else {
+      tie.push(...topSeams.sort());
+    }
+  }
+
+  const under = [];
+  if (escalatingSeams.length > 0) {
+    for (const seam of ADVISORY_SEAMS) {
+      if ((totals.get(seam) ?? 0) === 0) under.push(seam);
+    }
+  }
+
+  return { over, tie, under };
+}
+
+const CONSOLIDATION_DEFAULTS = Object.freeze({
+  cadenceHours: 168,
+  volumeThreshold: 5,
+  staleLockMinutes: 60,
+  pluginRepository: null,
+  credentialEnv: "PDLC_PLUGIN_REPO_TOKEN",
+  unmeasurablePasses: 3,
+});
+
+function isPlainObjectLocal(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function parseConsolidationConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: CONSOLIDATION_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObjectLocal(parsed) || !("consolidation" in parsed)) return degraded(false);
+
+  const section = parsed.consolidation;
+  if (!isPlainObjectLocal(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const positiveInt = (key) => {
+    if (!(key in section)) return CONSOLIDATION_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 1) return v;
+    invalidKeys.push(key);
+    return CONSOLIDATION_DEFAULTS[key];
+  };
+
+  const nullableRepository = (key) => {
+    if (!(key in section)) return CONSOLIDATION_DEFAULTS[key];
+    const v = section[key];
+    if (v === null || (typeof v === "string" && v.trim() !== "")) return v;
+    invalidKeys.push(key);
+    return CONSOLIDATION_DEFAULTS[key];
+  };
+
+  const nonEmptyString = (key) => {
+    if (!(key in section)) return CONSOLIDATION_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "string" && v.trim() !== "") return v;
+    invalidKeys.push(key);
+    return CONSOLIDATION_DEFAULTS[key];
+  };
+
+  const config = {
+    cadenceHours: positiveInt("cadenceHours"),
+    volumeThreshold: positiveInt("volumeThreshold"),
+    staleLockMinutes: positiveInt("staleLockMinutes"),
+    pluginRepository: nullableRepository("pluginRepository"),
+    credentialEnv: nonEmptyString("credentialEnv"),
+    unmeasurablePasses: positiveInt("unmeasurablePasses"),
+  };
+
+  return { config, sectionMalformed: false, invalidKeys };
+}
+
+function classifyReasons(status, reasonsSet) {
+  const reasons = reasonsSet instanceof Set ? reasonsSet : new Set(reasonsSet || []);
+  const legal = [];
+  const dropped = [];
+  for (const code of REASON_CODES) {
+    if (!reasons.has(code)) continue;
+    const permitted = REASON_CODE_STATUSES[code] || [];
+    if (permitted.includes(status)) legal.push(code);
+    else dropped.push(code);
+  }
+  return { legal, dropped };
+}
+
+function renderSuppressionEntry(s) {
+  const entry = s || {};
+  const evidence = entry.evidence || {};
+  const rendered =
+    evidence.kind === "pr"
+      ? evidence.url
+      : `pass:${typeof evidence.passId === "string" ? evidence.passId : UNAVAILABLE}`;
+  return `${entry.failureModeId}:${entry.action} → ${rendered}`;
+}
+
+function renderFailureModeRecord(record) {
+  const r = record || {};
+  return [
+    `failure-mode-id: ${r.failureModeId ?? ""}`,
+    `phase: ${r.phase ?? ""}`,
+    `symptom: ${r.symptom ?? ""}`,
+    `artifact: ${r.artifact ?? ""}`,
+    `target: ${r.target ?? ""}`,
+    `passId: ${r.passId ?? ""}`,
+    `action: ${r.action ?? ""}`,
+    `route: ${r.route ?? ""}`,
+  ].join("\n");
+}
+
+function renderEffectivenessTable(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (list.length === 0) return "none";
+  return list
+    .map((row) => {
+      const artifact =
+        row.artifact === null || row.artifact === undefined ? UNAVAILABLE : row.artifact;
+      const parts = [`- ${row.failureModeId}`, `artifact: ${artifact}`, `verdict: ${row.verdict}`];
+      if (row.state) parts.push(`state: ${row.state}`);
+      if (row.remediation) parts.push(`remediation: ${row.remediation}`);
+      return parts.join(", ");
+    })
+    .join("\n");
+}
+
+function renderTerminalRow(state) {
+  const s = state || {};
+  const { legal, dropped } = classifyReasons(s.status, s.reasons);
+  const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+  const suppressions = Array.isArray(s.suppressions) ? s.suppressions : [];
+  const records = Array.isArray(s.records) ? s.records : [];
+
+  const datePrefix =
+    typeof s.passId === "string" ? s.passId.split("-").slice(0, -1).join("-") : "";
+  const promotions = records
+    .filter((r) => r && r.action === "promote")
+    .map((r) => `${r.failureModeId}:${r.route}`);
+
+  const lines = [];
+  lines.push(`pass: ${s.passId ?? ""}`);
+  lines.push(`date: ${datePrefix}`);
+  lines.push(`status: ${s.status ?? ""}`);
+  lines.push(`trigger: ${s.trigger ?? ""}`);
+  lines.push(`reason: ${legal.join(", ")}`);
+  lines.push(`rung: ${s.rung ?? ""}`);
+  lines.push(`credential: ${s.credential ?? ""}`);
+  lines.push(`consumed: ${consumed.join(", ")}`);
+  lines.push(`promotions: ${promotions.length > 0 ? promotions.join(", ") : "none"}`);
+  if (typeof s.prUrl === "string" && s.prUrl.length > 0) {
+    lines.push(`pr: ${s.prUrl}`);
+  }
+  lines.push(`suppressed-by: ${suppressions.map(renderSuppressionEntry).join(", ")}`);
+  lines.push(`branch: ${s.branch ?? ""}`);
+  lines.push(`deferred: none`);
+
+  return { text: lines.join("\n"), dropped };
+}
+
+function renderReportBody(state) {
+  const s = state || {};
+  const { legal, dropped } = classifyReasons(s.status, s.reasons);
+  const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+  const records = Array.isArray(s.records) ? s.records : [];
+  const suppressions = Array.isArray(s.suppressions) ? s.suppressions : [];
+  const effectiveness = Array.isArray(s.effectiveness) ? s.effectiveness : [];
+  const notices = Array.isArray(s.notices) ? s.notices : [];
+
+  const lines = [];
+
+  lines.push(`1. status: ${s.status ?? ""}`);
+  lines.push(`reason: ${legal.length > 0 ? legal.join(", ") : "none"}`);
+  for (const code of dropped) {
+    lines.push(`dropped (illegal for status ${s.status}): ${code}`);
+  }
+
+  lines.push(`2. rung: ${s.rung ?? ""}`);
+
+  lines.push(`3. consumed: ${consumed.length > 0 ? consumed.join(", ") : "none"}`);
+
+  if (records.length === 0) {
+    lines.push(`4. promotions: none`);
+  } else {
+    lines.push(`4. promotions:`);
+    for (const r of records) {
+      lines.push(`  - ${r.failureModeId}: ${r.route} (${r.action})`);
+    }
+  }
+
+  lines.push(
+    `5. effectiveness: ${effectiveness.length > 0 ? renderEffectivenessTable(effectiveness) : "none"}`
   );
 
-  if (!matched) {
-    return {
-      queueRow: "error",
-      detail:
-        `no row for ${feature} in ${queuePath}; ` +
-        `status "${status}" was not recorded`,
-    };
+  if (suppressions.length === 0) {
+    lines.push(`6. duplicate-suppressed: none`);
+  } else {
+    lines.push(`6. duplicate-suppressed:`);
+    for (const sup of suppressions) {
+      lines.push(`  - ${renderSuppressionEntry(sup)}`);
+    }
   }
 
-  if (written === false) {
-    return {
-      queueRow: "recorded",
-      detail: `row for ${feature} left unchanged: found status "${foundStatus}", not overwritable`,
-    };
+  lines.push(`7. advisory: none`);
+  lines.push(`8. deferred: none`);
+  lines.push(`9. branch: ${s.branch ? s.branch : "writes-uncommitted"}`);
+  lines.push(`10. open promotions: ${openPromotionList(records).length}`);
+
+  if (notices.length > 0) {
+    lines.push(`notices:`);
+    for (const n of notices) {
+      const notice = n || {};
+      const detail = notice.detail ? notice.detail : notice.missingField ? notice.missingField : "";
+      lines.push(`notice: ${notice.subject}: ${detail}`);
+    }
   }
 
-  await writeFileFn(queuePath, markdown);
-  return await commitQueueRow(queuePath, feature, status, gitFn);
+  return lines.join("\n");
+}
+
+function renderPrBody(state, enacted) {
+  const s = state || {};
+  const items = Array.isArray(enacted) ? enacted : [];
+  const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+
+  const lines = [];
+  for (const item of items) {
+    lines.push(`## ${item.failureModeId}:${item.action}`);
+    lines.push(`source: ${consumed.join(", ")}`);
+    lines.push(`failure mode: ${item.failureModeId} — ${item.symptom ?? ""}`);
+    lines.push("");
+  }
+
+  const sortedConsumed = [...consumed].sort();
+  const sortedPairs = items.map((i) => `${i.failureModeId}:${i.action}`).sort();
+
+  lines.push(`PDLC-CONSOLIDATION-PASS: ${s.passId ?? ""}`);
+  lines.push(`PDLC-CONSOLIDATION-SOURCES: ${sortedConsumed.join(", ")}`);
+  lines.push(`PDLC-CONSOLIDATION-PROMOTIONS: ${sortedPairs.join(", ")}`);
+
+  return lines.join("\n");
+}
+
+function renderProposalFile(state, deferred) {
+  const s = state || {};
+  const items = Array.isArray(deferred) ? deferred : [];
+
+  const lines = [`# CONSOLIDATION-PROPOSAL-${s.passId ?? ""}`];
+  if (typeof s.prUrl === "string" && s.prUrl.length > 0) {
+    lines.push(`pr: ${s.prUrl}`);
+  }
+  for (const item of items) {
+    lines.push("");
+    lines.push(`## ${item.failureModeId}:${item.action}`);
+    lines.push(`target: ${item.target ?? ""}`);
+    lines.push(`diff:`);
+    lines.push(item.diff === null || item.diff === undefined ? UNAVAILABLE : item.diff);
+  }
+
+  return lines.join("\n");
+}
+
+function renderPromotionCommitMessage(proposal, passId) {
+  const p = proposal || {};
+  const subject = `${p.action ?? ""}: ${p.symptom ?? ""}`;
+  return [subject, "", `PDLC-PROMOTION-ID: ${p.failureModeId ?? ""}:${p.action ?? ""}`].join("\n");
+}
+
+async function openClone(passId, config, seams) {
+  const { _makeTempDir, _git } = seams || {};
+  const cfg = config || {};
+
+  const dir = await _makeTempDir(passId);
+  if (typeof dir !== "string" || dir.length === 0) {
+    return { failure: "api-failure", detail: "temporary directory creation failed" };
+  }
+
+  let remote;
+  if (cfg.pluginRepository == null) {
+    const reply = await _git(["remote", "get-url", "origin"]);
+    if (!reply || reply.ok !== true) {
+      return { failure: "repository-unresolved", detail: (reply && reply.stderr) || "origin did not resolve" };
+    }
+    remote = typeof reply.stdout === "string" ? reply.stdout.trim() : "";
+  } else {
+    remote = `https://github.com/${cfg.pluginRepository}.git`;
+  }
+
+  const cloneReply = await _git(["clone", "--depth", "1", "--single-branch", remote, dir]);
+  if (!cloneReply || cloneReply.ok !== true) {
+    return { failure: "api-failure", detail: (cloneReply && cloneReply.stderr) || "clone failed" };
+  }
+
+  return { dir };
+}
+
+function resolveSeamDomain(seam, argvOrCommand, cloneDir) {
+  if (seam === "_ghRun") return "pr";
+  const argv = Array.isArray(argvOrCommand) ? argvOrCommand : [];
+  if (argv[0] === "clone") return "git-clone";
+  if (typeof cloneDir === "string" && argv[0] === "-C" && argv[1] === cloneDir) return "git-clone";
+  return "git-invoking";
+}
+
+const PR_VERB_PATTERNS = [
+  [/^gh\s+pr\s+list\b/, "read-pr"],
+  [/^gh\s+pr\s+create\b/, "create-pr"],
+  [/^gh\s+auth\s+status\b/, "read-auth"], 
+];
+
+function resolveSeamVerb(domain, argvOrCommand) {
+  if (domain === "pr") {
+    const command = typeof argvOrCommand === "string" ? argvOrCommand : "";
+    for (const [pattern, verb] of PR_VERB_PATTERNS) {
+      if (pattern.test(command)) return verb;
+    }
+    return "unknown";
+  }
+
+  if (domain === "git-invoking" || domain === "git-clone") {
+    let argv = Array.isArray(argvOrCommand) ? argvOrCommand : [];
+    if (argv[0] === "-C") argv = argv.slice(2);
+    const op = argv[0];
+    if (op === "clone") return "clone";
+    if (op === "checkout" && argv.includes("-b")) return "create-branch";
+    if (op === "switch" && argv.includes("-c")) return "create-branch";
+    if (op === "add") return "add";
+    if (op === "commit") return "commit";
+    if (op === "push") return "push";
+    if (op === "fetch") return "fetch";
+    if (op === "rev-parse") return "read-branch"; 
+    if (op === "cat-file") return "read-object"; 
+    if (op === "remote") return "read-remote"; 
+    if (op === "ls-files") return "read-index"; 
+    if (op === "status") return "read-status";
+    return "unknown";
+  }
+
+  return "unknown";
 }
 
 const NOTHING_TO_COMMIT_RE = /nothing to commit/i;
 
-function firstLine(text) {
-  return String(text ?? "").split("\n")[0].trim();
+async function realSleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function commitQueueRow(queuePath, feature, status, gitFn) {
-  const added = await gitFn(["add", "--", queuePath]);
-  if (!added.ok) return uncommitted(added, queuePath);
+async function commitConsumingRepoPaths(paths, message, seams) {
+  const list = Array.isArray(paths) ? paths : [];
+  const gitFn = seams && seams._git;
+  const emit = seams && typeof seams._log === "function" ? seams._log : () => {};
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(queue): ${feature} → ${status}`,
-    "--",
-    queuePath,
-  ]);
-  if (committed.ok) return { queueRow: "recorded" };
-
-  if (
-    NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
-    NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
-  ) {
-    return { queueRow: "recorded" };
-  }
-
-  return uncommitted(committed, queuePath);
-}
-
-async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
-  const added = await gitFn(["add", "--", recordPath]);
+  const added = await gitWithLockRetry(["add", "--", ...list], {
+    _git: gitFn,
+    _sleep: realSleep,
+    emit,
+    label: "consolidate: git add",
+  });
   if (!added || added.ok !== true) {
-    emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
-    return;
+    return { committed: false, reason: "writes-uncommitted" };
   }
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(advisory): record ${feature} (queue)`,
-    "--",
-    recordPath,
-  ]);
-  if (committed && committed.ok === true) return;
+  const committed = await gitWithLockRetry(["commit", "-m", message, "--", ...list], {
+    _git: gitFn,
+    _sleep: realSleep,
+    emit,
+    label: "consolidate: git commit",
+  });
+  if (committed && committed.ok === true) return { committed: true };
 
   if (
     NOTHING_TO_COMMIT_RE.test((committed && committed.stdout) ?? "") ||
     NOTHING_TO_COMMIT_RE.test((committed && committed.stderr) ?? "")
   ) {
-    return;
+    return { committed: false };
   }
-  emit(`Advisory record for "${feature}" left uncommitted: git commit failed.`);
+
+  return { committed: false, reason: "writes-uncommitted" };
 }
 
-function uncommitted(result, queuePath) {
-  const reason = firstLine(result && result.stderr);
-  return {
-    queueRow: "recorded (uncommitted)",
-    detail:
-      `queue row written but not committed` +
-      (reason ? `: ${reason}` : "") +
-      `; commit ${queuePath} manually`,
-  };
-}
-
-function buildQueueReport({
-  outcome,
-  reason,
-  remaining,
-  picked,
-  active,
-  pipelineReport,
-  skipped,
-  driftReport,
-  advisory,
-}) {
-  return {
-    outcome,
-    reason,
-    remaining: typeof remaining === "number" ? Math.max(0, remaining) : 0,
-    ...(picked ? { picked } : {}),
-    ...(active ? { active } : {}),
-    ...(pipelineReport ? { pipelineReport } : {}),
-    ...(skipped && skipped.length ? { skipped } : {}),
-    ...(driftReport ? { driftReport } : {}),
-    ...(advisory ? { advisory } : {}),
-  };
-}
-
-const DRIFT_CLOSED_ROW_STATES = ["in-sync", "missing", "stale", "local-edit", "unverified", "unknown"];
-
-const DRIFT_CLOSED_ROW_REASONS = [
-  "hash-tool-absent",
-  "plugin-artifact-missing",
-  "plugin-artifact-unreadable",
-  "consumer-artifact-unreadable",
-];
-
-const DRIFT_CLOSED_BASELINE_REASONS = [
-  "drift-state-invalidated",
-  "manifest-empty",
-  "json-tool-absent",
-  "manifest-malformed",
-  "manifest-absent",
-  "repo-root-unresolved",
-  "plugin-root-unreadable",
-  "plugin-root-unset",
-];
-
-const DRIFT_CLOSED_GENERATED_BY = ["hook", "check", "sync"];
-
-function isDriftPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function failsD3(record) {
-  return !(typeof record.schemaVersion === "number" && Number.isInteger(record.schemaVersion) && record.schemaVersion === 1);
-}
-
-function failsD4(record) {
-  if (record.baselineStatus !== "resolved" && record.baselineStatus !== "unresolved") {
-    return true;
-  }
-  return record.baselineReason !== null && !DRIFT_CLOSED_BASELINE_REASONS.includes(record.baselineReason);
-}
-
-function failsD5(record) {
-  return typeof record.checkEnabled !== "boolean";
-}
-
-function failsD6(record) {
-  return (
-    !Array.isArray(record.rows) ||
-    !Array.isArray(record.retiredPresent) ||
-    !Array.isArray(record.writeFailures)
-  );
-}
-
-function failsD7(record) {
-  const rowsOk = record.rows.every(
-    (row) =>
-      isDriftPlainObject(row) &&
-      typeof row.id === "string" &&
-      row.id.length > 0 &&
-      DRIFT_CLOSED_ROW_STATES.includes(row.state) &&
-      (row.reason === null || DRIFT_CLOSED_ROW_REASONS.includes(row.reason))
-  );
-  if (!rowsOk) return true;
-
-  const retiredOk = record.retiredPresent.every(
-    (entry) =>
-      isDriftPlainObject(entry) &&
-      typeof entry.path === "string" &&
-      entry.path.length > 0 &&
-      typeof entry.supersededBy === "string" &&
-      entry.supersededBy.length > 0 &&
-      DRIFT_CLOSED_ROW_STATES.includes(entry.supersedingState)
-  );
-  if (!retiredOk) return true;
-
-  return !record.writeFailures.every(
-    (failure) =>
-      isDriftPlainObject(failure) &&
-      typeof failure.path === "string" &&
-      typeof failure.operation === "string"
-  );
-}
-
-function failsD8(record) {
-  if (!DRIFT_CLOSED_GENERATED_BY.includes(record.generatedBy)) return true;
-  if (!(record.pluginVersion === null || typeof record.pluginVersion === "string")) return true;
-  if ("syncCommand" in record) {
-    if (!(record.syncCommand === null || typeof record.syncCommand === "string")) return true;
-  }
-  return false;
-}
-
-const DRIFT_CLAUSE_CHECKS = [
-  ["D3", failsD3],
-  ["D4", failsD4],
-  ["D5", failsD5],
-  ["D6", failsD6],
-  ["D7", failsD7],
-  ["D8", failsD8],
-];
-
-function firstFailingDriftClause(record) {
-  for (const [clauseId, fails] of DRIFT_CLAUSE_CHECKS) {
-    if (fails(record)) return clauseId;
-  }
-  return null;
-}
-
-function validateDriftRecord(value) {
-
-  let parsed;
-  if (typeof value === "string") {
-
-    try {
-      parsed = JSON.parse(value);
-    } catch {
-      return { ok: false, clause: "D2" };
-    }
-  } else if (isDriftPlainObject(value)) {
-    parsed = value;
-  } else {
-    return { ok: false, clause: "D1" };
-  }
-
-  if (!isDriftPlainObject(parsed)) {
-    return { ok: false, clause: "D2" };
-  }
-
-  const keys = Object.keys(parsed);
-  if (
-    keys.length === 1 &&
-    keys[0] === "result" &&
-    isDriftPlainObject(parsed.result) &&
-    firstFailingDriftClause(parsed.result) === null
-  ) {
-    return { ok: false, clause: "D2" };
-  }
-
-  const clause = firstFailingDriftClause(parsed);
-  if (clause) {
-    return { ok: false, clause };
-  }
-
-  return {
-    ok: true,
-    record: {
-      ...parsed,
-      syncCommand: "syncCommand" in parsed ? parsed.syncCommand : null,
-    },
-  };
-}
-
-function emptyReport() {
-  return { manifest: [], row: [], run: [] };
-}
-
-function gate(outcome, row, reasons, report) {
-  return { outcome, row, reasons, report };
-}
-
-function mapDriftState(validated) {
-
-  if (!validated || validated.ok !== true) {
-    const clause = validated && typeof validated.clause === "string" ? validated.clause : "D1";
-    const reasons = [`drift state did not yield a usable record (${clause})`];
-    return gate("blocked", 1, reasons, { manifest: reasons, row: [], run: [] });
-  }
-
-  const record = validated.record;
-
-  if (record.checkEnabled === false) {
-    const reasons = ["checkEnabled is false — drift check skipped by operator opt-out (AC-4.3)"];
-    return gate("proceed", 2, reasons, { manifest: reasons, row: [], run: [] });
-  }
-
-  if (Array.isArray(record.writeFailures) && record.writeFailures.length > 0) {
-    const run = record.writeFailures.map(
-      (failure) => `write failure: ${failure.path} (${failure.operation})`
-    );
-    const manifest =
-      record.baselineReason === "drift-state-invalidated" ? ["drift-state-invalidated"] : [];
-    return gate("blocked", 3, [...manifest, ...run], { manifest, row: [], run });
-  }
-
-  if (record.baselineStatus === "unresolved") {
-    const manifest = [String(record.baselineReason)];
-    return gate("blocked", 4, manifest, { manifest, row: [], run: [] });
-  }
-
-  if (record.rows.some((row) => row.state === "unknown")) {
-    const row = record.rows
-      .filter((r) => r.state === "unknown")
-      .map((r) => `${r.id}: unknown${r.reason ? ` (${r.reason})` : ""}`);
-    return gate("blocked", 5, row, { manifest: [], row, run: [] });
-  }
-
-  if (record.rows.some((row) => row.state === "missing" || row.state === "stale")) {
-    const row = record.rows
-      .filter((r) => r.state === "missing" || r.state === "stale")
-      .map((r) => `${r.id}: ${r.state}`);
-    return gate("blocked", 6, row, { manifest: [], row, run: [] });
-  }
-
-  if (Array.isArray(record.retiredPresent) && record.retiredPresent.length > 0) {
-    const row = record.retiredPresent.map((entry) => `retired artifact present: ${entry.path}`);
-    return gate("blocked", 7, row, { manifest: [], row, run: [] });
-  }
-
-  if (record.rows.some((row) => row.state === "local-edit" || row.state === "unverified")) {
-    const run = record.rows
-      .filter((r) => r.state === "local-edit" || r.state === "unverified")
-      .map((r) => `${r.id}: ${r.state}`);
-    return gate("proceed", 8, run, { manifest: [], row: [], run });
-  }
-
-  if (
-    record.baselineStatus === "resolved" &&
-    record.rows.length > 0 &&
-    record.rows.every((row) => row.state === "in-sync") &&
-    record.retiredPresent.length === 0 &&
-    record.writeFailures.length === 0
-  ) {
-    return gate("proceed", 9, [], emptyReport());
-  }
-
-  const reasons = ["drift state does not describe a recognised outcome"];
-  return gate("blocked", 10, reasons, { manifest: reasons, row: [], run: [] });
-}
-
-async function readDriftStateSafely(readFileFn, path) {
-  try {
-    return await readFileFn(path);
-  } catch {
-    return null;
-  }
-}
-
-function parseDistributionCheckEnabledOptOut(raw) {
-  if (typeof raw !== "string") return false;
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return false;
-  }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
-  const distribution = parsed.distribution;
-  if (distribution === null || typeof distribution !== "object" || Array.isArray(distribution)) {
-    return false;
-  }
-  return distribution.checkEnabled === false;
-}
-
-const DISTRIBUTION_OPT_OUT_NOTICE =
-  `drift check skipped by operator opt-out (${ADVISORY_CONFIG_PATH} distribution.checkEnabled: false)`;
-
-function distributionOptOutGate() {
-  return {
-    outcome: "proceed",
-    row: 0,
-    reasons: [DISTRIBUTION_OPT_OUT_NOTICE],
-    report: { manifest: [DISTRIBUTION_OPT_OUT_NOTICE], row: [], run: [] },
-  };
-}
-
-return { main, meta, DEFAULT_QUEUE_PATH, rewriteStatus, updateQueueStatus };
+return { main, meta };
 })();
 
-const __reqPath =
-  typeof args === "string" && args.trim()
-    ? args.trim()
-    : args && typeof args === "object" && args.reqPath
-      ? args.reqPath
-      : null;
+const __direct =
+  args && typeof args === "object" && typeof args.direct === "boolean" ? args.direct : false;
 
-const __forcePhases =
-  args && typeof args === "object" && args.forcePhases ? args.forcePhases : null;
-
-if (!__reqPath) {
-  return { outcome: "halted", haltReason: "No reqPath supplied — pass the REQ path as args." };
-}
-
-return await __dev.main({
-  reqPath: __reqPath,
-  forcePhases: __forcePhases,
-  ...rtDevInjections(__dev),
-
-  _recordQueueRow: async ({ feature, status, evidence }) =>
-    __queue.rewriteStatus(
-      __queue.DEFAULT_QUEUE_PATH,
-      feature,
-      status,
-      rtReadFile,
-      rtWriteFile,
-      rtGit,
-      evidence
-    ),
+return await __cons.main({
+  direct: __direct,
+  ...rtConsInjections(),
 });
