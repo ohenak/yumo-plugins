@@ -1,6 +1,6 @@
 ---
 feature: pdlc-headless-engine
-ready: false
+ready: true
 depends-on: []
 ---
 
@@ -15,7 +15,11 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.5 | 2026-08-10 |
+| pdlc | approved — ready | Claude | 0.6 | 2026-08-10 |
+
+*Change note (0.6, 2026-08-10):* `ready` flipped to `true` by operator review 2026-08-10; no
+queue-row reference in this document needed repointing (the D-DIST-07 citation in §1 names row 6
+and is left as-is, matching CLAUDE.md and the queue prose). No requirement content changed.
 
 *Change note (0.5, 2026-08-10):* §1 records a **second measured staleness incident** — the
 consumer `regime-ledger`'s `wheel-paper-portfolio` run, relayed by operator handoff 2026-08-10 —

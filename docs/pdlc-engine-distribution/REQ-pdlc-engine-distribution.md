@@ -1,6 +1,6 @@
 ---
 feature: pdlc-engine-distribution
-ready: false
+ready: true
 depends-on: [pdlc-headless-engine]
 ---
 
@@ -8,14 +8,17 @@ depends-on: [pdlc-headless-engine]
 
 | Field | Value |
 |---|---|
-| Upstream | `pdlc-headless-engine`; proposes superseding queue row 6 deferrals D-DIST-01/02/03/05; proposes absorbing/renarrowing row 7 (D-DIST-06 release remainder) |
+| Upstream | `pdlc-headless-engine`; proposes superseding the `pdlc-install-mechanism` deferrals D-DIST-01/02/03/05; proposes absorbing/renarrowing `pdlc-release-ci` (D-DIST-06 release remainder) |
 | Downstream | `pdlc-plugin-retirement` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.3 | 2026-08-08 |
+| pdlc | approved — ready | Claude | 0.4 | 2026-08-10 |
+
+*0.4 (2026-08-10): queue-row references repointed to feature names (stale Order numbers from a
+pre-renumbering table draft); ready flipped by operator review 2026-08-10.*
 
 > **v0.3 change (2026-08-08, operator decision).** The engine package no longer snapshots
 > `pdlc/skills/**`; it ships CLI + modules + adapter only and reads skills from the installed
@@ -33,7 +36,7 @@ depends-on: [pdlc-headless-engine]
 
 ## 1. Problem / Context
 
-`pdlc-headless-engine` (queue row 19) removes the per-project workflow copy: the engine
+`pdlc-headless-engine` removes the per-project workflow copy: the engine
 executes the canonical modules from its own install location. It deliberately says nothing
 about **how the engine reaches a machine** — its NG-2 hands packaging, publishing, version
 channels and install UX to this REQ. Without this feature, the engine exists only as a
@@ -63,13 +66,13 @@ files, never from the run's own output. O-F is why.
 
 ### 1.2 The queue rows this REQ touches
 
-| Row | Binds | This REQ proposes |
+| Queue row (by feature) | Binds | This REQ proposes |
 |---|---|---|
-| 6 `pdlc-install-mechanism` (blocked, REQ never authored) | D-DIST-01 (full `pdlc install`), D-DIST-02 (load workflows from the plugin path with no copy), D-DIST-03 (auto-sync), D-DIST-05 (plugin-cache detection) | **Close as superseded.** All four improve the *copy*; row 19 removes the copy and this row replaces the install story wholesale. Operator decision — O-3. |
-| 6, cont. | D-DIST-07 (per-worktree consumer state) | **Closes by construction** once row 19 ships: the engine reads no worktree-local `.claude/workflows/`. Recording that closure is part of O-3. |
-| 7 `pdlc-release-ci` (blocked, REQ never authored) | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Absorb or renarrow.** The tag → build → publish pipeline this REQ needs (§5, REQ-EDIST-03) *is* that remainder. Operator decision — O-3. |
+| `pdlc-install-mechanism` (blocked, REQ never authored) | D-DIST-01 (full `pdlc install`), D-DIST-02 (load workflows from the plugin path with no copy), D-DIST-03 (auto-sync), D-DIST-05 (plugin-cache detection) | **Close as superseded.** All four improve the *copy*; `pdlc-headless-engine` removes the copy and this row replaces the install story wholesale. Operator decision — O-3. |
+| `pdlc-install-mechanism`, cont. | D-DIST-07 (per-worktree consumer state) | **Closes by construction** once `pdlc-headless-engine` ships: the engine reads no worktree-local `.claude/workflows/`. Recording that closure is part of O-3. |
+| `pdlc-release-ci` (blocked, REQ never authored) | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Absorb or renarrow.** The tag → build → publish pipeline this REQ needs (§5, REQ-EDIST-03) *is* that remainder. Operator decision — O-3. |
 
-Rows 6 and 7 stay exactly as they are — `blocked`, untouched — until the operator records
+Both rows stay exactly as they are — `blocked`, untouched — until the operator records
 the decision in `docs/_queue/QUEUE.md`. This REQ does not retire them; it argues for it.
 
 ### 1.3 User stories
@@ -87,7 +90,7 @@ the decision in `docs/_queue/QUEUE.md`. This REQ does not retire them; it argues
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | `pdlc-headless-engine` (queue row 19) delivered: a CLI entry that executes the canonical modules and dispatches via headless Claude Code | PR merged to the default branch, queue row `done` | Must hold at HEAD before FSPEC authoring — there is no engine to package otherwise |
+| BL-01 | `pdlc-headless-engine` delivered: a CLI entry that executes the canonical modules and dispatches via headless Claude Code | PR merged to the default branch, queue row `done` | Must hold at HEAD before FSPEC authoring — there is no engine to package otherwise |
 | BL-02 | Distribution channel chosen (O-1), against the privacy posture in NG-1 | Decision recorded in `docs/_decisions/DECISIONS-plugin-distribution.md` | Must exist before FSPEC authoring; every install/upgrade criterion in §5 is stated over "the chosen channel" |
 | BL-03 | Version-of-record settled (T-1) — whether the plugin manifest stays the sole source or the package manifest becomes it | Decision recorded in `docs/_decisions/DECISIONS-plugin-distribution.md` | Must exist before FSPEC authoring; provenance (REQ-EDIST-04) and publish gating (REQ-EDIST-03) both read it |
 | BL-04 | Operator decision on rows 6 and 7 (O-3) | Prose recorded in `docs/_queue/QUEUE.md` per its conventions | Must exist before this REQ is accepted; otherwise this REQ silently duplicates two bound deferrals |
@@ -130,7 +133,7 @@ the decision in `docs/_queue/QUEUE.md`. This REQ does not retire them; it argues
   a channel that can only work by publishing it publicly is disqualified unless the operator
   chooses otherwise in O-1.
 - **NG-2 — Retiring the plugin, the bundles, or the sync/drift machinery.** That is
-  `pdlc-plugin-retirement` (queue row 21), and only after the engine is proven in a real
+  `pdlc-plugin-retirement` (its own queue row), and only after the engine is proven in a real
   consumer repo. Bound deferral, not prose intent.
 - **NG-3 — In-engine auto-update.** Upgrading is an operator action. The engine may
   *notice* that a newer version exists and say so, but never fetches or applies one. This is
@@ -383,7 +386,7 @@ which pipeline decided it.
   own version (T-1) for any behaviour-affecting skill edit is the discipline this REQ assumes
   but does not enforce; recorded here as a known residual risk, not closed by any AC in §5.
 - **R-4 — Two live distribution channels coexist through the whole transition window.**
-  Until `pdlc-plugin-retirement` (NG-2, queue row 21) lands, the bundle/sync path
+  Until `pdlc-plugin-retirement` (NG-2) lands, the bundle/sync path
   (`pdlc/workflows/dist/` → `.claude/workflows/`) and the engine path both run in parallel,
   possibly on the same machine (C-9, AC-6.2). Two channels double the surface an operator
   must reason about when a run behaves unexpectedly — "which channel produced this?" is a
@@ -406,9 +409,9 @@ is their single point of resolution, plus O-6, new for the compat-range handshak
   operator-authored one is not writing), an environment variable, or a CLI flag supplied at
   invocation. Shapes AC-5.1–AC-5.5. *Owner:* operator, informed by TSPEC. *Resolution form:*
   `docs/_decisions/DECISIONS-plugin-distribution.md` or the TSPEC directly.
-- **O-3 — Disposition of queue rows 6 and 7.** Whether `pdlc-install-mechanism` (row 6,
-  D-DIST-01/02/03/05/07) is closed as superseded and `pdlc-release-ci` (row 7, D-DIST-06
-  remainder) is absorbed or renarrowed into REQ-EDIST-03, per §1.2. Required before this REQ
+- **O-3 — Disposition of the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows.**
+  Whether `pdlc-install-mechanism` (D-DIST-01/02/03/05/07) is closed as superseded and
+  `pdlc-release-ci` (D-DIST-06 remainder) is absorbed or renarrowed into REQ-EDIST-03, per §1.2. Required before this REQ
   is accepted (BL-04), so it does not silently duplicate two bound deferrals. *Owner:*
   operator. *Resolution form:* prose recorded in `docs/_queue/QUEUE.md` per its conventions.
 - **O-4 — Fate of `pdlc/workflows/dist/pdlc-cli.mjs`.** Whether the existing state-probe CLI

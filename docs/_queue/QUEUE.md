@@ -67,11 +67,16 @@ drafted.
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
 bytes against a 0.22.0 plugin; the versions differ in review-gate semantics): the per-project
 workflow copy is replaced by a standalone CLI that executes `pdlc/workflows/*.js` unmodified
-in plain Node and dispatches agents via **headless Claude Code (`claude -p`)** under
-subscription auth (the Agent SDK was verified 2026-08-08 to require API-key billing by
-policy, so it is ruled out as transport; `ANTHROPIC_BASE_URL` passthrough keeps the headroom
-proxy in the path on either transport). All three REQs carry `ready: false` until the
-operator reviews them — the queue must not pick them up as drafted. Sequencing:
+in plain Node and dispatches agents under subscription auth. The Phase-0 spike
+(`SPIKE-agent-sdk-auth.md`, 2026-08-08) verified the **Claude Agent SDK** runs under
+subscription auth on the operator's machine (`apiKeySource: "none"`), so the SDK is the
+**primary dispatch transport with headless `claude -p` as the declared fallback** — both
+behind the unchanged `_agent` seam and a fail-closed `apiKeySource` check, with
+`ANTHROPIC_BASE_URL` passthrough keeping the headroom proxy in the path on either transport.
+All three REQs carried `ready: false` until the operator reviewed them — the queue must not
+pick up drafts. **Update 2026-08-10:** the operator reviewed all three and flipped them
+`ready: true`; the same review repointed stale queue-row references (19/20/21, left over from
+a pre-renumbering table draft) to feature names in the two downstream REQs. Sequencing:
 `pdlc-headless-engine` (engine) → `pdlc-engine-distribution` (packaging/publish) →
 `pdlc-plugin-retirement` (retire bundles + sync/drift machinery). **Operator direction
 2026-08-08:** the plugin remains the delivery vehicle for the skills — users keep `/pdlc:*`

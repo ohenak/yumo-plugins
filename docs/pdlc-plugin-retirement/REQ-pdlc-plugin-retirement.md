@@ -1,6 +1,6 @@
 ---
 feature: pdlc-plugin-retirement
-ready: false
+ready: true
 depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 ---
 
@@ -15,7 +15,10 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.3 | 2026-08-08 |
+| pdlc | approved — ready | Claude | 0.4 | 2026-08-10 |
+
+*0.4 (2026-08-10): queue-row references repointed to feature names (stale Order numbers from a
+pre-renumbering table draft); ready flipped by operator review 2026-08-10.*
 
 *0.3 (2026-08-08): operator decision — the plugin is retained permanently, not slimmed to
 optional, as the engine's skills carrier and a hard runtime dependency behind a version
@@ -88,16 +91,18 @@ authoritative and untouched.
 
 ## 2. Prerequisites
 
-Every row is a **hard** gate, checkable at Phase R time. This REQ ships `ready: false`; an
-operator flips it only when every row below reads satisfied.
+Every row is a **hard** gate, checkable at Phase R time. The operator flipped this REQ to
+`ready: true` on 2026-08-10; what holds pickup until BL-01/BL-02 are satisfied is its queue
+row's `Depends-On` edge (`pdlc-headless-engine`, `pdlc-engine-distribution`). No work starts
+until every row below reads satisfied.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | `pdlc-headless-engine` delivered (queue row 19 `done`) | Merged PR + queue row status | Must hold at HEAD before FSPEC authoring |
-| BL-02 | `pdlc-engine-distribution` delivered (queue row 20 `done`) — the engine is installable and versioned | Merged PR + queue row status | Must hold at HEAD before FSPEC authoring |
+| BL-01 | `pdlc-headless-engine` delivered (queue row `done`) | Merged PR + queue row status | Must hold at HEAD before FSPEC authoring |
+| BL-02 | `pdlc-engine-distribution` delivered (queue row `done`) — the engine is installable and versioned | Merged PR + queue row status | Must hold at HEAD before FSPEC authoring |
 | BL-03 | Adoption evidence per C-1 (≥2 features end-to-end, ≥1 outside `yumo-plugins`, reports showing subscription auth and headroom routing) | Run reports cited by path/commit in this feature's FSPEC | Must hold before **any** deletion commit |
 | BL-04 | Guard parity on the engine path (`pdlc-headless-engine` C-5 / AC-5.1 demonstrated) | Passing engine test + one observed unattended run | Must hold before the plugin's hook wiring is treated as optional (C-2) |
-| BL-05 | Operator decision on queue rows 6 (`pdlc-install-mechanism`) and 7 (`pdlc-release-ci`), recorded per `pdlc-engine-distribution` O-3 | Queue prose + row status change | Must hold before AC-1.2 can be true — both rows describe the retired copy channel |
+| BL-05 | Operator decision on the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows, recorded per `pdlc-engine-distribution` O-3 | Queue prose + row status change | Must hold before AC-1.2 can be true — both rows describe the retired copy channel |
 | BL-06 | `docs/_decisions/DECISIONS-plugin-distribution.md` reviewed for decisions that mandate the sync channel | Superseding entry in the same decision file | Must hold before AC-1.2 — a live decision doc outranks a deleted script |
 
 ## 3. Goals
