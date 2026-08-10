@@ -259,7 +259,11 @@ describe("T17 — AT-F6…AT-F18: effectiveness and remediation (blocks T27)", (
           passesThroughReset,
           defaultConfig()
         );
-        expect(oneFresh.find((r) => r.failureModeId === id).state).not.toBe("ineffective");
+        // Positive, not absence-only: after the reset one fresh recurred pass leaves the
+        // `ineffective` streak at 1 and the `unmeasurable` streak at 0, so §8.5's state is `null`
+        // outright. `not.toBe("ineffective")` would also pass on `"unmeasurable"`, or on a state
+        // field that had stopped being computed at all.
+        expect(oneFresh.find((r) => r.failureModeId === id).state).toBeNull();
 
         const twoFresh = cons.effectivenessTable(
           [promoteRec, reviseRec],
@@ -299,8 +303,10 @@ describe("T17 — AT-F6…AT-F18: effectiveness and remediation (blocks T27)", (
           defaultConfig({ unmeasurablePasses: 3 })
         );
         const row = rows.find((r) => r.failureModeId === id);
-        expect(row.state).not.toBe("unmeasurable");
-        expect(row.state).not.toBe("ineffective");
+        // Neither streak moved, so the state is `null` — asserted positively. The two
+        // `not.toBe(...)` checks this replaces were jointly satisfiable by a third state value,
+        // and each was satisfiable by the row simply not carrying the field.
+        expect(row.state).toBeNull();
       });
     });
 
