@@ -13,7 +13,24 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-10 |
+| pdlc | draft | Claude | 1.7 | 2026-08-10 |
+
+**v1.7** — closes iteration 7's findings; no property added, removed or renumbered (the set stays
+118) and no fixture is dropped. `PROP-COR-09` now asserts `AT-K3b`'s fourth Then-conjunct — no
+`CONSOLIDATION-PROPOSAL-{passId}.md` — **on its own all-unreadable fixture**, through the write
+double's recorded path set, and the v1.6 sentence delegating that conjunct to `PROP-RTE-06(b)` is
+deleted: that fixture's Given is the duplicate-suppressed pass (AC-1.4's *second* cause), and
+PROP-RTE-06's own body rejects the shared-terminal-status bridge (*"§5.3 decides on causes, not on
+terminal status"*), so all four conjuncts now rest on AT-K3b's Given (pm-review F-01). `PROP-TRC-01`'s
+version pin is re-pinned to FSPEC **11.7** / TSPEC **2.7** and its measurement of record re-taken —
+**100** ids over `FSPEC:2116-2267`, the delta from 99 being `AT-K3b` — with the pin-and-measurement
+contract stated (they move together, so the pin never certifies a count it did not produce), and the
+green-on-write claim qualified as conditional on §13.3 erratum 8 (pm-review F-02, se-review F-01).
+§12.4's preamble is re-based on the v11.7 measurement, and its AT-K row plus §11's file table now
+record the consequence se-review F-02 asked to see written down: PROP-TRC-01's set-equality is short
+exactly `AT-K3b` in the register→file direction until erratum 8 lands, so a red at T05 is diagnosed as
+the routed erratum rather than a parser defect. Errata 8 and 9 are unchanged and still route upstream;
+no new erratum is raised.
 
 **v1.6** — closes iteration 6's findings; no property added, removed or renumbered (the set stays
 118) and no fixture changed. `PROP-COR-09` claims **`AT-K3b`** (`FSPEC:2210`, minted by FSPEC v11.7)
@@ -91,8 +108,8 @@ implementer must be able to falsify, stated precisely enough that each of PLAN �
 which properties its test file carries and what a failing one would mean.
 
 **Sources.** REQ §3 (AC-1.1 … AC-7.2) and §4 (NFR-1 … NFR-5); FSPEC's eight units
-(`FSPEC-CONS-01` … `FSPEC-CONS-09`), its business rules (`BR-*`), its edge cases (`E-*`), its 99-id
-acceptance register (§13) and its §14.5 layer-deferral register (LD-1 … LD-5); TSPEC §§5–11 (the
+(`FSPEC-CONS-01` … `FSPEC-CONS-09`), its business rules (`BR-*`), its edge cases (`E-*`), its 100-id
+acceptance register (§13, at FSPEC v11.7) and its §14.5 layer-deferral register (LD-1 … LD-5); TSPEC §§5–11 (the
 seam protocol, the algorithms, the levels, the oracle mechanisms, the property strategies); PLAN §4
 (the task table), §5 (the file-ownership manifest) and §2 (the red-before-green and
 single-writer-per-batch rules); and the two project-level authority files
@@ -445,7 +462,7 @@ write contains no `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` bearing this pas
 *not* delegated to PROP-RTE-06(b): that fixture's Given is a **duplicate-suppressed** pass, AC-1.4's
 second cause, so it can only witness the obligation on its own Given, and PROP-RTE-06's own body
 records why the shared terminal status does not bridge them — *"§5.3 decides on causes, not on
-terminal status"* (`:1057-1058`). All four of AT-K3b's Then-conjuncts therefore rest on AT-K3b's
+terminal status"* (`:1082`). All four of AT-K3b's Then-conjuncts therefore rest on AT-K3b's
 Given. The two fixtures are each other's controls: the all-unreadable
 fixture keeps *"pair empty"* from passing on a pass that enumerated nothing at all, and the mixed
 fixture keeps the all-unreadable fixture's status assertion from passing on an implementation that
