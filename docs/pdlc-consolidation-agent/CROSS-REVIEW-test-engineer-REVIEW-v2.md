@@ -62,3 +62,40 @@ moved with their sources. Three residual Lows remain, none gating.
 | F-12 | Low | Local | **`REPOSITORY_UNRESOLVED_RE` is broader than the E-22/E-23 boundary it draws.** The alternation carries a bare `/not found/`, which subsumes the specific `repository not found` beside it and also matches transport stderr that happens to contain the phrase (`fatal: unable to access …: server not found`, a DNS failure git reports on the `unable to access` path). That misclassifies an E-23 network blip as E-22 `repository-unresolved` — the direction the comment at `:2456-2458` explicitly says it wants to avoid. The AT-N4 control proves only that *one* transport phrasing (`Could not resolve proxy`) stays `api-failure`; it cannot fail on a phrasing containing "not found". Suggest dropping the bare alternative and adding a control whose stderr is transport-class but contains "not found". | `consolidate-learnings.js:2459-2460`; `consolidationReport.test.js:459-467` |
 | F-13 | Low | Local | **F-10's residual: four suite headers still describe deleted behaviour.** `79e304af` corrected the Lifecycle/Report/Route/Rung comments, but four files still state that their subjects "throw `notImplemented`" — a symbol `4fdc7fac` removed from the module entirely. Same failure mode F-10 named: a comment that reads as a standing justification for a weaker oracle, now naming a function that does not exist. | `consolidationProperties.test.js:13`; `consolidationIdentity.test.js:14`; `consolidationPredicate.test.js:13`; `consolidationPass.test.js:18-19` |
 | F-14 | Low | Local | **`result.writeSet` has no production reader.** It was added to give AT-M5 the domain PROPERTIES §O-2 names — the right fix for F-04 — but at HEAD the only consumer of the returned field is the test (`state.writeSet` itself is read by step 15's commit; the *result* field is not). It is defensible as a lineage field on an operator-facing return and is documented as one at `:1193-1197`, so this is not the dead-config pattern proper; recording it so a later reader does not mistake it for load-bearing. If item 8 or the terminal row ever wants to name the write set, that is the wiring that would retire this finding. | `consolidate-learnings.js:1193-1198`; `consolidationPass.test.js:504` |
+
+## Questions
+
+All four of round 1's questions are answered by the remediation wave; recorded here so the answers
+are durable rather than buried in commit bodies.
+
+| ID | Question |
+|----|---------|
+| Q-01 | *Answered* (`36707bd7`). A configured-but-unresolvable repository is `repository-unresolved`, discriminated on the clone's own stderr rather than an `ls-remote` probe — because `ls-remote` resolves to `unknown` in `resolveSeamVerb` and sits outside the git-clone permitted verb set (TSPEC §9.3), so probing would have failed AT-Q7's containment conjunct. That constraint is worth remembering: the seam vocabulary limits which oracles are even available here. |
+| Q-02 | *Answered* (`f2af78f7`). The `ParseNotice`-conforming shape (`{subject, missingField, detail}`) is authoritative; it lives in production as `configNotices` and the tests import it. |
+| Q-03 | *Answered* (`155b8f46`). A step-13-reaching fixture does exist: `deriveProposals`' `{clusters:[…]}` grammar, a cluster with no `diff`, and a `pdlc/workflows/` artifact at kind 3 routing PR via `MERGE_GUARD_DEFAULTS`. |
+| Q-04 | *Answered by the timestamps.* Remediation did reach the branch — nine commits, 09:32–09:52 — after the 09:28 draft of this file was committed. Round 3 does not need to spend a budget slot on the "nothing is landing" hypothesis. |
+| Q-05 | **New, and outside this feature's diff.** `pdlc/hooks/scripts/sync-workflows.sh --check` exits 1 here while printing only `…/.claude/pdlc.config.json could not be read for distribution.checkEnabled; assuming true` — no per-row drift verdict at all. On a tree with no `.claude/workflows/` that may be intended, but a non-zero exit with no row named is hard to act on, and the drift gate in `orchestrate-queue` reads this. No hooks script is in this feature's diff, so I am not filing it as a finding against this branch; flagging it in case it is a real gap in the drift ladder's reporting. |
+
+## Positive Observations
+
+- **The remediation answered the findings at the level they were filed.** F-02 and F-03 were
+  production-path findings and were fixed in production, not in the oracle — `openClone` now
+  *produces* the reason code, and `configNotices` is now a production builder with `main()` as its
+  only caller. The lazy fix for both was available (widen the test, keep the shape) and was not
+  taken.
+- **Every strengthened oracle carries a negative control.** AT-N4's `api-failure` leg keeps E-22
+  and E-23 uncollapsed; AT-M5's non-vacuity floor keeps the set-equality from passing on ∅; the
+  new operator-channel suite pairs each `not.toContain("… none")` with the positive it replaces
+  *and* a `none`-is-reserved-for-empty control (`consolidationOperatorChannels.test.js:157-166`).
+  That is the exact shape the falsifiability bar asks for, applied without being asked twice.
+- **F-01's fix included the reachability conjunct I did not ask for.** Conjunct (0) — two dispatches,
+  the second matching `Author the promotion diff` — makes the other seven non-vacuous. The comment
+  explaining why the prior record's `(failureModeId, action)` pair must differ is the kind of note
+  that stops a future edit from silently re-vacuating the row.
+- **F-08's guard is the durable one.** The §12.2 property→file map is now checked by set-equality
+  in both directions plus on-disk existence — a mechanical descendant of the two findings that
+  needed a human to spot them.
+- **The per-section source narrowing (`a1a96513`, `4878bb23`) is asserted structurally,** splitting
+  the body on `^## ` and asserting per-section rather than whole-body containment, with an explicit
+  comment that a whole-body `toContain` would pass on the very defect the row is about
+  (`consolidationOperatorChannels.test.js:340-365`).
