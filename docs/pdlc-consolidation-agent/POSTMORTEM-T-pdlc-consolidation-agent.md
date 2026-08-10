@@ -16,13 +16,16 @@ RESOLVED: yes
 **Two episodes, one marker.** Episode 1 (Phase T TSPEC round exhaustion, 2026-08-06) was resolved
 on 2026-08-06 and its resolution is recorded below; its own marker has been folded into that prose
 because `parseResolvedMarker` fails closed on a file carrying two markers (`duplicated`). The single
-marker above governs the file and is currently open on **Episode 2** — the erratum-confirmation halt
-of 2026-08-10. Do not flip it while Episode 2’s Recommendation is unaddressed.
+marker above governs the file and covers **both** episodes. It was flipped to `yes` on 2026-08-10,
+after Episode 2's Recommendation was addressed: PROPERTIES v1.5 landed the all-unreadable arm
+(`PROP-COR-09`) that `se-review`'s non-approving delta confirmation named, and iteration 6's review
+of that revision found no High. The rule that produced this record stands for any future episode —
+do not flip the marker while an episode's Recommendation is unaddressed.
 
 | Episode | Halt | Document | Date | State |
 |---|---|---|---|---|
 | 1 | Review-round exhaustion (rounds 1–5, no approval) | `TSPEC` v1.4 | 2026-08-06 | resolved 2026-08-06 |
-| 2 | Erratum delta-confirmation non-approving (`se-review`), on round 5 of 5 | `PROPERTIES` v1.4 | 2026-08-10 | **open** |
+| 2 | Erratum delta-confirmation non-approving (`se-review`), on round 5 of 5 | `PROPERTIES` v1.4 | 2026-08-10 | resolved 2026-08-10 (PROPERTIES v1.5 landed the named arm; iteration 6 found no High) |
 
 ---
 
