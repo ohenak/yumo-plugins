@@ -27,7 +27,7 @@ import { seeded, resolveSeed, buildEscalationsFixture } from "./helpers/consolid
 describe("T19 — the property suite (L5)", () => {
   // ─────────────────────────── T25 — corpus and predicate ───────────────────────────
 
-  describe.skip("T25 — corpus and predicate", () => {
+  describe("T25 — corpus and predicate", () => {
     const SEED_01 = resolveSeed(1900001);
 
     // PROP-GEN-01 — the two-region predicate is total, and its two sets partition the corpus.

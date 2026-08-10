@@ -490,24 +490,101 @@ function notImplemented(name) {
 
 // §7.1 — the corpus and the two-region predicate
 
+// The literal argv (TSPEC §7.1 pin (a)) — one `_git` read, never a directory walk (see the
+// module-header note on `rtListFiles`'s reply validator, `runtime-adapter.js:915`, `:929-931`).
+const LS_FILES_ARGV = Object.freeze([
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "--",
+  ":(glob)docs/*/LEARNINGS-*.md",
+  ":(glob)docs/completed/*/LEARNINGS-*.md",
+]);
+
 /** @returns {Promise<{files: CorpusFile[]}|{unlistable: true, detail: string}>} */
 export async function enumerateCorpus(_git) {
-  return notImplemented("enumerateCorpus");
+  const reply = await _git([...LS_FILES_ARGV]);
+  if (!reply || !reply.ok) {
+    return { unlistable: true, detail: (reply && reply.stderr) || "" };
+  }
+  return { files: parseCorpusListing(reply.stdout) };
 }
 
 /** @returns {CorpusFile[]} */
 export function parseCorpusListing(stdout) {
-  return notImplemented("parseCorpusListing");
+  const text = typeof stdout === "string" ? stdout : "";
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((path) => {
+      const slash = path.lastIndexOf("/");
+      return { path, basename: slash === -1 ? path : path.slice(slash + 1) };
+    });
 }
 
 /** @returns {Predicate} */
 export function classifyCorpus(files, logText) {
-  return notImplemented("classifyCorpus");
+  const entries = Array.isArray(files) ? files : [];
+
+  // §7.1's algorithm, in order.
+  const boundary = typeof logText === "string" ? logText.indexOf("<!-- pdlc:consumed") : -1;
+  const legacyRegion = boundary === -1 ? (typeof logText === "string" ? logText : "") : logText.slice(0, boundary);
+  const rest = boundary === -1 ? "" : logText.slice(boundary);
+
+  const OPENER = "<!-- pdlc:consumed";
+  const CLOSER = "<!-- /pdlc:consumed -->";
+  const blockLines = new Set();
+  let pos = 0;
+  while (true) {
+    const start = rest.indexOf(OPENER, pos);
+    if (start === -1) break;
+    const end = rest.indexOf(CLOSER, start);
+    const span = end === -1 ? rest.slice(start) : rest.slice(start, end);
+    for (const line of span.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed.length > 0) blockLines.add(trimmed);
+    }
+    if (end === -1) break; // truncated block extends to EOF (E-04)
+    pos = end + CLOSER.length;
+  }
+
+  const consolidated = new Set();
+  const unconsolidatedSet = new Set();
+  const seenBasenames = new Map(); // basename -> [paths]
+
+  for (const { path, basename } of entries) {
+    if (!seenBasenames.has(basename)) seenBasenames.set(basename, []);
+    seenBasenames.get(basename).push(path);
+
+    const inLegacy = legacyRegion.includes(basename);
+    const inBlock = blockLines.has(basename);
+    if (inLegacy || inBlock) {
+      consolidated.add(basename);
+    } else {
+      unconsolidatedSet.add(basename);
+    }
+  }
+
+  const basenameCollisions = [];
+  for (const [, paths] of seenBasenames) {
+    const distinctPaths = [...new Set(paths)];
+    if (distinctPaths.length >= 2) basenameCollisions.push(distinctPaths);
+  }
+
+  return {
+    consolidated,
+    unconsolidated: [...unconsolidatedSet],
+    basenameCollisions,
+  };
 }
 
 /** @returns {string} */
 export function renderConsumedPair(passId, basenames) {
-  return notImplemented("renderConsumedPair");
+  const list = Array.isArray(basenames) ? basenames : [];
+  const lines = [`<!-- pdlc:consumed ${passId} -->`, ...list, `<!-- /pdlc:consumed -->`];
+  return `${lines.join("\n")}\n`;
 }
 
 // §7.2 — trigger, datum and passId
@@ -627,9 +704,84 @@ export function seamCandidates(counts) {
 
 // §7.8 — configuration
 
-/** @returns {ConfigParse} */
+// §6 typedef ConsolidationConfig's defaults, transcribed.
+const CONSOLIDATION_DEFAULTS = Object.freeze({
+  cadenceHours: 168,
+  volumeThreshold: 5,
+  staleLockMinutes: 60,
+  pluginRepository: null,
+  credentialEnv: "PDLC_PLUGIN_REPO_TOKEN",
+  unmeasurablePasses: 3,
+});
+
+function isPlainObjectLocal(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * §7.8 — structurally identical to `parseAdvisoryConfig` (orchestrate-dev.js:1682), reproduced
+ * key-for-key: pure, total, never throws, every key falls back INDEPENDENTLY.
+ *
+ * @param {string|null} text
+ * @returns {ConfigParse}
+ */
 export function parseConsolidationConfig(text) {
-  return notImplemented("parseConsolidationConfig");
+  const degraded = (sectionMalformed) => ({
+    config: CONSOLIDATION_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObjectLocal(parsed) || !("consolidation" in parsed)) return degraded(false);
+
+  const section = parsed.consolidation;
+  if (!isPlainObjectLocal(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const positiveInt = (key) => {
+    if (!(key in section)) return CONSOLIDATION_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 1) return v;
+    invalidKeys.push(key);
+    return CONSOLIDATION_DEFAULTS[key];
+  };
+
+  const nullableRepository = (key) => {
+    if (!(key in section)) return CONSOLIDATION_DEFAULTS[key];
+    const v = section[key];
+    if (v === null || (typeof v === "string" && v.trim() !== "")) return v;
+    invalidKeys.push(key);
+    return CONSOLIDATION_DEFAULTS[key];
+  };
+
+  const nonEmptyString = (key) => {
+    if (!(key in section)) return CONSOLIDATION_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "string" && v.trim() !== "") return v;
+    invalidKeys.push(key);
+    return CONSOLIDATION_DEFAULTS[key];
+  };
+
+  const config = {
+    cadenceHours: positiveInt("cadenceHours"),
+    volumeThreshold: positiveInt("volumeThreshold"),
+    staleLockMinutes: positiveInt("staleLockMinutes"),
+    pluginRepository: nullableRepository("pluginRepository"),
+    credentialEnv: nonEmptyString("credentialEnv"),
+    unmeasurablePasses: positiveInt("unmeasurablePasses"),
+  };
+
+  return { config, sectionMalformed: false, invalidKeys };
 }
 
 // §7.9 — rendering: the log records and the report body

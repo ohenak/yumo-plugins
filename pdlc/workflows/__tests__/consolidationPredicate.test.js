@@ -31,7 +31,7 @@ const LS_FILES_ARGV = [
 ];
 
 describe("T14 — the predicate suite (L1)", () => {
-  describe.skip("T25 — corpus and predicate", () => {
+  describe("T25 — corpus and predicate", () => {
     // ─── AT-P1 — enumeration: the literal argv, and positive membership ─────
 
     test("AT-P1 conjunct 1: enumerateCorpus hands _git the literal ls-files argv, both :(glob) prefixes included", async () => {

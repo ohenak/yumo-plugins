@@ -123,6 +123,17 @@ function writeHeadHookCopy(destDir) {
   return dest;
 }
 
+// Whether HEAD's hook already carries T09's widened corpus. The divergence row's
+// premise — HEAD still enumerates only docs/*/ — is git-state-dependent: it holds
+// while T09's edit is uncommitted (the wave gate runs before the wave's commits)
+// and is permanently false from the commit onward. The row's oracle branches on
+// this probe rather than the row skipping, so the executed-row counter's
+// membership set is the same in both states.
+const HEAD_HOOK_WIDENED = execSync("git show HEAD:pdlc/hooks/scripts/nudge-consolidation.sh", {
+  cwd: REPO_ROOT,
+  encoding: "utf8",
+}).includes("docs/completed");
+
 /** Runs a hook script against `root` through CLAUDE_PROJECT_DIR, optionally debug-gated. */
 function runHook(hookPath, root, { debug = false } = {}) {
   const env = { ...process.env, CLAUDE_PROJECT_DIR: root };
@@ -233,9 +244,17 @@ describe("T09 — CORPUS_GLOBS and the no-regression pair", () => {
       const headOut = additionalContextOf(runHook(headHook, root).stdout);
       const editedOut = additionalContextOf(runHook(HOOK_PATH, root).stdout);
 
-      expect(editedOut).not.toBe(headOut);
-      expect(headOut).toBe("");
-      expect(editedOut).toBe(expectedMessage(5));
+      if (HEAD_HOOK_WIDENED) {
+        // T09 has landed in HEAD: both hooks enumerate the widened corpus, so
+        // there is no divergence left to observe — the pair degenerates into a
+        // second identity check over this split fixture.
+        expect(editedOut).toBe(headOut);
+        expect(editedOut).toBe(expectedMessage(5));
+      } else {
+        expect(editedOut).not.toBe(headOut);
+        expect(headOut).toBe("");
+        expect(editedOut).toBe(expectedMessage(5));
+      }
 
       rmSync(workDir, { recursive: true, force: true });
       executed += 1; // last statement
@@ -319,7 +338,7 @@ const AT_P7_TABLE = [
   },
 ];
 
-describe.skip("T25 — AT-P7", () => {
+describe("T25 — AT-P7", () => {
   AT_P7_TABLE.forEach((row) => {
     (canRunDifferential ? test : test.skip)(row.name, () => {
       const workDir = makeTempRoot("pdlc-atp7-");
@@ -359,7 +378,7 @@ describe.skip("T25 — AT-P7", () => {
 // table and outside the executed-row counter (PLAN T04).
 // ---------------------------------------------------------------------------
 
-describe.skip("T25 — pathspec semantics", () => {
+describe("T25 — pathspec semantics", () => {
   (hasBash ? test : test.skip)(
     "pin (a)'s exact argv, through a real git in a temp repository the case builds",
     () => {
