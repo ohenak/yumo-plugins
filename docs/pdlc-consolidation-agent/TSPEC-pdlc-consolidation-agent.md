@@ -2408,6 +2408,23 @@ the REQ text would red a conforming implementation.
 - **`_envPresent`'s adapter transport.** It is an agent prompt; the module-side contract (a boolean,
   fail-closed on anything unparseable) is tested with a double, and the prompt itself is reviewed,
   not executed — the same posture every other `runtime-adapter.js` transport takes.
+- **`_checkFile`'s garbled-reply arm, and it is disclosed as fail-open rather than left implied.**
+  §7.3 decision 2 makes `file_missing` *verdict-deciding*: it is the sole absent state, and absence
+  means the marker is free. In production that reason has **two producers**, not one. `rtCheckFile`
+  (`pdlc/workflows/runtime-adapter.js:817-831`) maps the agent's reply `OK` ⇒ `{ok:true}`,
+  `EMPTY` ⇒ `file_empty`, and **everything else** — including a garbled, truncated or failed reply —
+  to `file_missing` by fall-through (`:830`). The double does not: `fakeFs.checkFile`
+  (`pdlc/workflows/__tests__/helpers/seams.js:292-306`) returns `file_missing` only when the key is
+  genuinely absent. So a probe that *fails* reads at this layer as *no marker*, the pass takes the
+  lock, and AC-1.3's mutual exclusion is **fail-open on that one path**. No L2 fixture can construct
+  it — §5.1's `CheckReply` is a three-value union with no failure member, by design — so this is
+  named here rather than tested. Two things bound the exposure and are why it is disclosed rather
+  than repaired: the conflation is **pre-existing** (it is the shipped adapter's behaviour, which
+  this feature drives and does not change), and it is the same posture §11.6 already takes for
+  `_envPresent` — an agent-transported reply is reviewed, not executed. **What §5.1's comment does
+  and does not claim:** the two implementations agree exactly on the three *file states* this layer
+  reads, which is what decision 2 rests on; they do **not** agree on the provenance of the
+  `file_missing` reason, and the comment is not to be read as claiming they do.
 
 **No longer on this list: the clone's writes.** An earlier draft exempted the whole PR route on the
 "real `gh` and the real network" ground, which also swept up `_writeFile`'s behaviour on an absolute
