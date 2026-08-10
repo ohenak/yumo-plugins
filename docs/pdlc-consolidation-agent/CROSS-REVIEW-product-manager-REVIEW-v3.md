@@ -76,6 +76,12 @@ This gap predates round 2; it is not something `d0e19888` introduced. I did not 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v2 Q-01, still open and still not a blocker. If a prior pass's corpus reconstruction comes back empty — members `.gitignore`d or moved since — `:1727` skips the empty consumed set and the streak silently stops accruing. Should item 5 flag that, so the operator can tell "no promotion recurred" from "the evidence of the passes is gone"? Answered as a design question this round: the code's comment at `:673-679` states the deleted-member case deliberately, so the behaviour is chosen rather than accidental. The reporting half is what remains. |
+| Q-02 | Carried from v2 Q-03. AC-6.3's consumer-local operator action is re-rendered on every pass where a widening candidate exists (`:2202-2206`). Under `/loop`, that is the same sentence on every tick until the operator edits an untracked config file. Should a later pass mark it "already recommended"? Not a blocker in three rounds now; recording it so it survives into harvest rather than lapsing. |
+| Q-03 | New, and purely a product-policy question for the queue owner rather than for this branch. With G-01 landed, a pass that promotes two patterns and declines five coincidences reads `promoted` with a seven-line `deferred:` field. That is the correct status by the rule we just fixed. Is there a count at which the *volume* of declined items is itself a signal worth surfacing — a prompt that is over-clustering, say — or is the proposal file the right and only place for that judgment? I lean to the latter, which is why it is a question and not a finding. |
+
 ## Positive Observations
 
 ## Recommendation
