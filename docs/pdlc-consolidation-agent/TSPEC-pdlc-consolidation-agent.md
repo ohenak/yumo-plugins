@@ -576,8 +576,8 @@ in the options object** — `_now = () => Date.now()` at `orchestrate-dev.js:162
 *overridable by a caller*, which is exactly what lets §12.2's T-13 pin the clock and assert a literal
 `{ISO-8601}` rather than shape-match a regex, in the same way three shipped suites already do
 (`advisoryDodSeams.test.js:129`, `:1116`; `advisoryDisabled.test.js:276`). An earlier draft called
-this a "module-level default" and cited `orchestrate-dev.js:1396`, which at HEAD is a blank JSDoc
-continuation line — a line-drift of exactly the class §12.3's citation rule exists to prevent, under
+this a "module-level default" and cited `orchestrate-dev.js:1396`, which does not name a `_now`
+default at HEAD — a line-drift of exactly the class §12.3's citation rule exists to prevent, under
 the very mechanism T-13 leans on.
 
 The consequence is observable and is stated so a test author knows what to pin: `Date.now()` in the
@@ -986,9 +986,10 @@ sets, a staged-but-deleted one in neither — and what remains is the single cla
 (a LEARNINGS inside a nested git repository). An implementation that widens either side —
 a third pathspec, a dropped flag, a third `CORPUS_GLOBS` member, a `**` in one of them — is red on a
 pin rather than silently admitting a third divergence class. That is the compensating falsifier for the half AT-P7 cannot reach; §12.2's T-08
-row and §13.1 row 6 carry it, and §13.3 raises the relaxation itself upstream, because whether "one
-enumeration" may be held by pins rather than by an equality is a REQ/FSPEC decision, not this
-layer's.
+row and §13.1 row 6 carry it. Whether "one enumeration" may be held by pins rather than by an
+equality was a REQ/FSPEC decision rather than this layer's, and it has been made: REQ §3.1 step 1
+**withdrew** the "one enumeration" half and FSPEC v11.6 re-scoped AT-P7 to the predicate alone, which
+is exactly the shape pinned here. §13.3 records that round trip as closed.
 
 **A third hook edit exists, and it is what makes AT-P7 an oracle at all.** The shipped hook cannot
 emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count**
