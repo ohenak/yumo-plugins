@@ -49,6 +49,19 @@ I applied the three oracle demands to the four rows `d0e19888` added, since the 
 
 ## Findings
 
+**No High findings.** My one blocker is closed on the production path, no approved surface regressed, and the two items below are both consequences of the G-02 fix landing in the code before the enumeration it widens landed upstream. Neither gates.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| H-01 | Low | Local | **The proposal file now separates declined from degraded; the report and the terminal row still do not.** `renderProposalFile` gained the `DECLINED_HEADING` split (`consolidate-learnings.js:2481-2488`), but `renderDeferredEntry` (`:2192-2200`) renders one flat comma-joined list into both report item 8 and the terminal row's `deferred:` field (`:2322-2327`), and its own docblock states the design intent that "both operator channels render from `state.deferred` through this one function, so the row and the report can never disagree" (`:2186-2188`). With the file now a third channel that *does* discriminate, an operator reading `status: promoted` beside `deferred: X:promote (…), Y:promote (…)` has to parse detail prose to learn that one was declined and one degraded. The information is present — `pattern bar unmet (AC-2.3)` versus a reason code — so this is legibility, not loss. | AC-7.1, AC-3.4 |
+| H-02 | Low | Local | **`matchesFeatureToken`'s docblock understates its own boundary class.** The comment says the fallback is a `` `[a-z0-9]`-bounded token match `` (`:1082`), while the regex it describes is `` `(^|[^a-z0-9-])…([^a-z0-9-]|$)` `` (`:1093`) — hyphen included. The hyphen is exactly what makes the fix work on this feature's own naming grammar (`feat-a` vs `feat-alpha` turns on it), and it matches the word-boundary discipline the pipeline already applies to heading concepts. The code is right and the sentence describing it is not, which is the direction that misleads a later maintainer into "simplifying" the class. | AC-3.2(i) |
+
+### H-01 — why I am filing it Low rather than asking for a change now
+
+I am not asking for the row format to change in this pass. The v2 ask was that the operator be able to tell the two causes apart, and on the artifact where the two causes are *acted on* — the proposal file, the thing a human opens to judge — they now are. The terminal row is a one-line index, and the detail string already carries the discriminator verbatim.
+
+The reason I file it at all is that the design comment at `:2186-2188` now asserts a symmetry the feature no longer has, and this feature's whole product claim (REQ §1) is that an operator can read a pass's outcome without reconstructing it. If a later change makes the row terser — dropping `detail` in favour of `reason`, say — the declined items would become indistinguishable from degraded ones on both the row and the report at once, silently. A `(declined)` marker on the entry, or a sentence in that docblock recording that the proposal file is deliberately the discriminating channel, would close it. Either is a one-line change; neither is worth another round on its own.
+
 ## Errata routed upstream
 
 ## Questions
