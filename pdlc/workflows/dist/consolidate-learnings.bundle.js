@@ -9183,10 +9183,6 @@ async function finishPass(state, seams) {
   };
 }
 
-function notImplemented(name) {
-  throw new Error(`consolidate-learnings: ${name}() not implemented yet (PLAN T02 skeleton)`);
-}
-
 const LS_FILES_ARGV = Object.freeze([
   "ls-files",
   "--cached",

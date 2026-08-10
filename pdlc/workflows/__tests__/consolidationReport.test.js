@@ -1,4 +1,5 @@
-// consolidationReport.test.js — PLAN T24 (RED, describe.skip).
+// consolidationReport.test.js — PLAN T24. Authored RED; both blocks are un-skipped and green
+// as of T29 and T31.
 //
 // Two blocks, each un-skipped by its own owning task — never rewritten by it, per PLAN §13.3's
 // batch-safety rule 2:
@@ -6,7 +7,8 @@
 //   T29 — renderers (L1): AT-L1 … AT-L5 and AT-N1 … AT-N4, over the seven §7.9 render functions —
 //     `renderFailureModeRecord`, `renderEffectivenessTable`, `renderTerminalRow`, `renderReportBody`,
 //     `renderPrBody`, `renderProposalFile`, `renderPromotionCommitMessage` — driven directly, never
-//     through `main()` (which does not exist until T31). AT-L5 carries §11.3(b)'s vocabulary
+//     through `main()` — the renderers are pure over a state, and driving them directly is what
+//     keeps a render defect from hiding behind a pass fixture. AT-L5 carries §11.3(b)'s vocabulary
 //     set-equality in four legs (module catalogue ≡ doubles' transcription, both directions; the
 //     free-form class excluded by name; the module's own frozen arrays ⊆/⊇ that transcription; and
 //     the fourth leg, which reads `docs/_constraints/pdlc-consolidation-vocabularies.md` §1 itself,
@@ -21,8 +23,7 @@
 //     that still tells them apart: the degraded one names a vocabularies §1 §6.3 reason code beside
 //     its promotion, the routed one names none. Asserted in both directions.
 //
-// Neither block exists as behaviour yet (PLAN T02 skeleton — every renderer throws
-// `notImplemented`), so both are wrapped in `describe.skip` until their owning task lands.
+// Both blocks drive real, landed renderers; neither is skipped.
 
 import { readFileSync } from "fs";
 import { dirname, join } from "path";

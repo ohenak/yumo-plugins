@@ -1,10 +1,9 @@
-// consolidationLifecycle.test.js — PLAN T23 (RED, describe.skip).
+// consolidationLifecycle.test.js — PLAN T23. Authored RED; both blocks are un-skipped and green
+// as of T31.
 //
-// Two blocks, both owned by T31 (`main()` does not exist yet — T02's skeleton throws
-// "not implemented yet" unconditionally, PLAN batch 2; T31 lands in batch 10). PLAN
-// un-skips both blocks as-is, per the convention `consolidationRung.test.js` states at
-// its own header: the owning task does not rewrite these cases, it removes the
-// `describe.skip` wrapper.
+// Two blocks, both owned by T31, which landed `main()`. T31 un-skipped both as-is, per the
+// convention `consolidationRung.test.js` states at its own header: the owning task does not
+// rewrite these cases, it removes the `describe.skip` wrapper.
 //
 // ── Block 1 — T-13, await discipline across `finishPass` (TSPEC §10.1, §11.2; §12.2's
 //    T-13 row) ────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
-// consolidationRung.test.js — PLAN T06 (RED, describe.skip).
+// consolidationRung.test.js — PLAN T06. Authored RED; both blocks are un-skipped and green
+// as of T11 and T31.
 //
 // Two blocks, each un-skipped by its own owning task — never rewritten by it, per PLAN §13.3's
 // batch-safety rule 2:
@@ -12,20 +13,17 @@
 //     defaults to the constant, so the call shape below — no `skill` passed — is unchanged by T11's
 //     edit; only the signature grows).
 //
-//   T31 — AT-M7/AT-M8: the §8.4 `_log` tee that `consolidate-learnings.js`'s `main()` will build
-//     around the resolver captures the resolver's `ADVISORY_MODEL_FALLBACK:` line verbatim while
-//     still forwarding it to the caller's sink (nothing swallowed), and captures the resolver's
-//     unresolved-model halt message verbatim too (§8.4's "one capture serving both report-body
-//     obligations"). `main()` does not exist yet (T31 lands it, batch 10) and neither does the
-//     corpus/marker/config fixture vocabulary a full pass would need, so this block drives the tee
-//     exactly as TSPEC §8.4 spells it — `const dispatchLog = []; const teeLog = (msg) => {
-//     dispatchLog.push(String(msg)); _log(msg); };` — wrapped around the REAL, shipped
-//     `dev.resolveAdvisoryRung`, which is the one piece of this obligation that is already
-//     production code today. What T31 owns and this block does not yet reach: threading `teeLog`
-//     as the resolver's `_log` inside `main()` itself, and folding `dispatchLog` into
-//     `renderReportBody`'s output. T31's PLAN row un-skips this block as-is; if `main()`'s eventual
-//     shape needs a different assertion surface than the one below, that is T31's PLAN-documented
-//     prerogative as the row that first makes `main()` real, not a licence taken here.
+//   T31 — AT-M7/AT-M8: the §8.4 `_log` tee captures the resolver's `ADVISORY_MODEL_FALLBACK:`
+//     line verbatim while still forwarding it to the caller's sink (nothing swallowed), and
+//     captures the resolver's unresolved-model halt message verbatim too (§8.4's "one capture
+//     serving both report-body obligations"). This block isolates the tee itself — TSPEC §8.4's
+//     `const dispatchLog = []; const teeLog = (msg) => { dispatchLog.push(String(msg)); _log(msg); };`
+//     — wrapped around the REAL, shipped `dev.resolveAdvisoryRung`, with no corpus/marker/config
+//     fixture in the way. The end-to-end half of the same obligation — `main()` threading its
+//     `state.dispatchLog` sink through the resolver (`consolidate-learnings.js:510-516`) and
+//     `renderReportBody` folding that log into the body (`:1018`) — is landed, and is asserted
+//     through a full pass by `consolidationPass.test.js`'s AT-M7. Kept separate on purpose: this
+//     block still falsifies the tee's forward-and-capture shape if the pass-level fixture changes.
 
 import * as dev from "../orchestrate-dev.js";
 import { makeAgentDouble } from "./helpers/consolidationDoubles.js";

@@ -1,4 +1,5 @@
-// consolidationRoute.test.js — PLAN T21 (RED, describe.skip).
+// consolidationRoute.test.js — PLAN T21. Authored RED; every block is un-skipped and green
+// as of T28, T30 and T31.
 //
 // Three blocks, each un-skipped by its own owning task — never rewritten by it, per PLAN §13.3's
 // batch-safety rule 2:
@@ -7,35 +8,31 @@
 //     copied — TSPEC §7.6), `routeProposal` (the only caller of `routeOf`), `enactedByLog`,
 //     `enactedByPr`. All four are pure, driven directly on literal inputs.
 //
-//   T30 — clone and seams: AT-Q1, AT-Q7, AT-Q7b, AT-Q7c, under §11.3(a)'s seam-verb spy. `main()`
-//     does not exist yet when T30 lands (it is T31's row, batch 10), so this block drives the PR
-//     route's own composed pieces directly — `openClone`, `resolveSeamDomain`/`resolveSeamVerb`,
-//     `commitConsumingRepoPaths`, and the two `mergeCommandFor` surfaces T11 adds — hand-sequencing
-//     exactly the calls TSPEC §9.1/§9.2/§9.4 specify a pass would make, rather than driving them
-//     through the not-yet-real driver. The spy is the mechanism §11.3(a) states; this block is what
-//     falsifies it once T30 lands.
+//   T30 — clone and seams: AT-Q1, AT-Q7, AT-Q7b, AT-Q7c, under §11.3(a)'s seam-verb spy. This
+//     block drives the PR route's own composed pieces directly — `openClone`,
+//     `resolveSeamDomain`/`resolveSeamVerb`, `commitConsumingRepoPaths`, and the two
+//     `mergeCommandFor` surfaces — hand-sequencing exactly the calls TSPEC §9.1/§9.2/§9.4 specify
+//     a pass makes. Deliberately not driven through `main()` even now that `main()` is real: the
+//     containment conjunct AT-Q7 asserts is over the seam verbs these pieces emit, and a pass
+//     fixture that happened not to reach one of them would weaken it silently.
 //
 //   T31 — routes end to end: AT-R1 … AT-R5, AT-R7, AT-Q2 … AT-Q13, driven through the real
 //     `main()` (default export) with every seam doubled, exactly as FSPEC's own Given/Then states
-//     each ("a pass runs", "the pass returns"). `main()` throws "not implemented yet" today, which
-//     is why every test in this block is inside `describe.skip` — the throw would fail every case
-//     if it ran, and `describe.skip` is precisely what defers that.
+//     each ("a pass runs", "the pass returns").
 //
-// ─── The clustering-reply grammar this suite adopts (a documented assumption) ───────────────────
+// ─── The clustering-reply grammar this suite drives ─────────────────────────────────────────────
 //
-// TSPEC §4.1 names `deriveProposals` as "pure over the clustering reply" (§7.4) but does not fix a
-// wire grammar for that reply anywhere reachable from this task's inputs (TSPEC, FSPEC, PROPERTIES
-// for pdlc-consolidation-agent) — `deriveProposals` and `dispatchClustering` are not yet exported
-// from `consolidate-learnings.js` (T02's skeleton stub) and there is no register row that pins their
-// text format. Per the role's "spec ambiguous, stop and ask rather than guess" rule, this is
-// recorded rather than silently invented: this suite scripts `makeAgentDouble`'s reply as a JSON
-// object, `{ clusters: [{ phase, artifact, kind, action, symptom, diff, evidence }] }`, one member
-// per promotion, `evidence` being `{ recurrence: string[] }` (AC-2.3's cross-feature recurrence
-// direction) or `{ standingInvariant: string }` (AC-2.3's single-occurrence direction) — the two
-// forms AT-Q13 itself names. This is the minimum shape TSPEC's own data model (§6.2's `Proposal`)
-// requires a reply to carry losslessly. If T25/T31 lands a different grammar, only this file's
-// fixture bodies change — no assertion here depends on the grammar being JSON, only on `main()`
-// producing FSPEC-shaped `Proposal`s from whatever `_agent` returns for the clustering skill.
+// TSPEC §4.1 names `deriveProposals` as "pure over the clustering reply" (§7.4) without fixing a
+// wire grammar. This suite was authored against a proposed one and T31 landed it: the shipped
+// `deriveProposals` (`consolidate-learnings.js:925`, module-private — driven here through `main()`,
+// not imported) parses a JSON object, `{ clusters: [{ phase, artifact, kind, action, symptom, diff,
+// evidence }] }`, one member per promotion, `evidence` being `{ recurrence: string[] }` (AC-2.3's
+// cross-feature recurrence direction) or `{ standingInvariant: string }` (AC-2.3's single-occurrence
+// direction) — the two forms AT-Q13 itself names, and the minimum shape TSPEC's own data model
+// (§6.2's `Proposal`) requires a reply to carry losslessly. The fixtures below are therefore
+// transcriptions of the shipped grammar, not an assumption about it. No assertion here depends on
+// the grammar being JSON, only on `main()` producing FSPEC-shaped `Proposal`s from whatever
+// `_agent` returns for the clustering skill; a future grammar change touches fixture bodies only.
 //
 // ─── The `PassState` field this suite reads off `main()`'s resolved value ───────────────────────
 //
@@ -238,11 +235,12 @@ describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enac
 // T30 — clone and seams (AT-Q1, AT-Q7, AT-Q7b, AT-Q7c)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// `main()` is not real until T31 (batch 10); T30 (batch 9) lands `openClone`, the two
-// `mergeCommandFor` surfaces, `resolveSeamDomain`/`resolveSeamVerb` and `commitConsumingRepoPaths`
-// — the composed pieces a pass's PR route and §9.4 commit are built from — but not the driver that
-// sequences them. This block therefore hand-sequences exactly the calls TSPEC §9.1/§9.2/§9.4 name,
-// through the spy, rather than through `main()`.
+// T30 lands `openClone`, the two `mergeCommandFor` surfaces, `resolveSeamDomain`/`resolveSeamVerb`
+// and `commitConsumingRepoPaths` — the composed pieces a pass's PR route and §9.4 commit are built
+// from. This block hand-sequences exactly the calls TSPEC §9.1/§9.2/§9.4 name, through the spy,
+// rather than through `main()`. It stays that way now that `main()` is real: AT-Q7's containment
+// conjunct is over the verbs these pieces emit, and routing it through a pass fixture that need
+// not reach every piece would weaken the assertion without changing its text.
 
 const CLONE_DIR = "/tmp/pdlc-consolidation-fixture-dir";
 const PASS_ID = "2026-01-01-1";
@@ -445,9 +443,7 @@ describe("T30 — AT-Q7/AT-Q7c: the seam-verb spy's four set assertions (TSPEC �
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // Every case below drives the default export, `main({...seams})`, exactly as FSPEC's own Given/Then
-// states it ("a pass runs", "the pass returns") — the shape T30's block deliberately did not reach.
-// `main()` throws "not implemented yet" today (T02's skeleton); that is what `describe.skip` exists
-// to defer, per this file's header.
+// states it ("a pass runs", "the pass returns") — the shape T30's block deliberately does not reach.
 //
 // ─── Literal paths, an adopted assumption (TSPEC does not pin these in one place) ────────────────
 // TSPEC §7.3/§7.1 name `docs/_decisions/.consolidation-lock` and `docs/_decisions/.consolidation-log.md`
