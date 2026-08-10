@@ -55,6 +55,18 @@ change — re-measured above, every gate number is identical to v1.4's.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The v1.6 header miscounts its own diff: it reverts three cells, not four, and names a fourth row that was already `⬚`.** The header's headline reads "four cells reverted" and its body says "T03 and T17 read `🔴` **and T27 and T28 read `✅`**". Measured at the base commit this revision was cut from: `git show 6a5d6aa0:…PLAN….md` carries exactly **three** non-`⬚` cells — T03 `🔴`, T17 `🔴`, T27 `✅` — and **T28 already read `⬚`**. The `git diff 6a5d6aa0..HEAD` confirms it from the other side: it touches four task rows, of which one (T13) is a prose rewrite and only three are `Status` reverts; T28's row appears in the diff as unchanged context. This is not a design or graph defect — every gate number is unmoved and no runtime reads the column — but it is a **false measurement claim inside the block whose entire job is to record measurements**, and it is the one paragraph a later harvest or post-mortem reads to reconstruct what round 6 changed. It also happens to be exactly the failure mode §2's new rule exists to prevent, one level up: a hand-maintained count of hand-maintained cells. The fix is two edits — "three cells" in the headline, and drop `T28` from the enumeration — and the falsifier is the command above. | Version header block, `:12-13` (headline and enumeration) |
+| F-02 | Low | Local | **§2's status key still enumerates five values the rule two paragraphs below forbids any row from carrying.** `:187` reads "**Status key.** ⬚ Not Started \| 🔴 Red \| 🟢 Green \| 🔵 Refactored \| ✅ Done", and `:189` then states the column is authored once, uniformly `⬚`, and is never reconciled. A key defining four values that may never legally appear is an open invitation to fill one in — the reader who wants to mark T25 green now finds both the permission and the glyph on the same screen as the prohibition. Not gating, and the key does carry residual value (the `🔴` / `🟢` glyphs are used *inside* task descriptions to label RED and GREEN tasks, which is a different axis from the column). But the two uses want distinguishing: either scope the key explicitly to the description prefix — "these glyphs label a task's TDD role in the description; the `Status` column carries only `⬚`" — or drop the key's non-`⬚` members. As it stands the rule's enforcement rests entirely on a reader having read `:189-204` before reaching for `:187`. | §2 status key `:187` against the rule at `:189-204` |
+
+Neither finding is High. Both are prose-level and neither touches the DAG, the ownership
+manifest, the un-skip chain or a single oracle. Applying the *review-oracle* standard to
+this revision's own claims: the §2 rule is stated with positive grounding (two named
+symbols at exact lines, both re-derived), not as an absence claim ("nothing seems to read
+it"), and I falsified the absence half myself through the column predicates rather than
+accepting it — which is what the finding table would have demanded of a test.
+
 ## Questions
 
 ## Positive Observations
