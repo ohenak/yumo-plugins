@@ -932,9 +932,11 @@ third pattern cannot be added through a second call site the set assertion would
 two, no third" is the falsifier and it is unchanged; only the anchor and the literal form move.
 
 Together they make the divergence set *derivable and closed*: the two enumerations differ only where
-`git ls-files --cached --others --exclude-standard` over those two `:(glob)` pathspecs differs from
-`glob.glob` over the same two patterns in `CORPUS_GLOBS`, which is exactly §10.4's two classes
-(git-ignored, and staged-but-deleted) and nothing else. An implementation that widens either side —
+`git ls-files --cached --others` minus `--deleted`, over those two `:(glob)` pathspecs, differs from
+`glob.glob` over the same two patterns in `CORPUS_GLOBS`. Since §7.1 absorbed REQ §3.1 step 1, the
+two classes this document previously accepted are **closed** — an ignored LEARNINGS is now in both
+sets, a staged-but-deleted one in neither — and what remains is the single class §10.4 names
+(a LEARNINGS inside a nested git repository). An implementation that widens either side —
 a third pathspec, a dropped flag, a third `CORPUS_GLOBS` member, a `**` in one of them — is red on a
 pin rather than silently admitting a third divergence class. That is the compensating falsifier for the half AT-P7 cannot reach; §12.2's T-08
 row and §13.1 row 6 carry it, and §13.3 raises the relaxation itself upstream, because whether "one
@@ -2053,16 +2055,22 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   can express "re-consume these", and inventing a record type would breach REQ §4b.
 - **Clone removal failure.** §9.1 issues no removal, so there is no failure to handle.
 - **The two enumerations disagreeing on a git-visibility edge case.** §7.1 enumerates the pass's
-  corpus with `git ls-files --cached --others --exclude-standard`; the hook keeps `glob.glob`
-  (`nudge-consolidation.sh:28`, over §7.1's `CORPUS_GLOBS`), which does not consult git. The two therefore answer different
-  questions about the same tree in exactly two classes, both accepted here rather than closed:
-  (i) a LEARNINGS file matched by `.gitignore` is in the **hook's** set and not the pass's — the
-  operator is nudged about a file no pass will consolidate, and no pass can clear the nudge;
-  (ii) a LEARNINGS file **staged but deleted from the worktree** is in the **pass's** set (`--cached`
-  lists it) and not the hook's — `_readFile` then returns `null` for its body, which
-  `classifyCorpus` treats as an unreadable corpus entry (§7.1) and the pass reports rather than
-  crashing on — counted in the volume test, carried in the consumed pair, and named in the report
-  body, per §7.1's decision, so it cannot recur forever.
+  corpus with `git ls-files --cached --others` minus `ls-files --deleted`; the hook keeps `glob.glob`
+  (`CORPUS_GLOBS`, `nudge-consolidation.sh:60-61`), which does not consult git. **The two classes this
+  section previously accepted are now closed, by REQ §3.1 step 1 rather than by this layer** — see
+  *What the REQ decided, and what it cost* below. One class survives and is accepted here:
+
+  **A LEARNINGS file inside a nested git repository** is in the **hook's** set and not the pass's.
+  `glob.glob` walks the filesystem and sees it; `ls-files` does not descend into another repository's
+  worktree, and reports neither its tracked nor its untracked contents (measured on a scratch tree: a
+  `docs/nested/` holding its own `git init` and one `LEARNINGS-nested.md` is returned by `glob.glob`
+  and by neither `--cached` nor `--others`). The operator-visible residue is the same shape class (i)
+  used to have — a nudge no pass can clear — but the population is far smaller and is not something
+  the REQ's evidence argument reaches: a LEARNINGS inside a vendored or nested repository is not this
+  repository's record of its own work. Closing it would mean teaching the hook to *exclude* nested
+  repositories, i.e. putting a `git` invocation on a `SessionStart` path that must also work in a
+  non-repository and with no git on `PATH` — the same shipped-hook robustness cost this feature
+  declined before, and declines again, for a rarer class.
 
   **What closing each would actually cost, corrected.** An earlier draft of this bullet said that
   dropping `--exclude-standard` "re-admits the two `docs/discarded/` directories §7.1's `:(glob)`
@@ -2074,36 +2082,37 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   that re-admits them (seven paths). The two flags are independent, and only one of them excludes
   `docs/discarded/`.
 
-  So the real costs are asymmetric, and are stated rather than merged into one impossibility claim:
+  **What the REQ decided, and what it cost.** Both former classes were handed upstream as an erratum,
+  and REQ v2.1 answered both in §3.1 step 1. The answers, and this document's absorption of them:
 
-  - **Class (ii) is genuinely not closable at this layer.** Closing it means teaching the hook
-    `git ls-files`, i.e. putting a git invocation on a `SessionStart` path that must also work in a
-    non-repository and on a machine with no git on `PATH`. That is a shipped-hook robustness cost
-    this feature declines to take.
-  - **Class (i) is closable, at one stated price**: drop `--exclude-standard`, and a `.gitignore`d
-    LEARNINGS file becomes corpus. `:(glob)` still excludes `docs/discarded/` either way, so the
-    price is exactly §7.1 point 3's rule — "an ignored file never is [corpus]" — and nothing else.
-    Note the asymmetry, because it decides which way the upstream question should be answered if
-    convergence is the goal: the hook has **no** `--exclude-standard` to drop (`glob.glob` sees
-    ignored files unconditionally), so dropping it on the JS side is the one edit that makes the two
-    sides agree. §13.3 carries that to the REQ rather than presenting both directions as neutral.
+  - **Former class (i) — the ignored LEARNINGS — is closed by dropping `--exclude-standard`.** REQ
+    decided that a `.gitignore`d LEARNINGS *is* corpus, on the nag-that-never-quiesces argument: the
+    hook cannot see `.gitignore`, so keeping the flag left an operator nudged forever about a file
+    the pass was forbidden to consume. §7.1 drops the flag.
 
-  **The choice made here, and why it is provisional.** `--exclude-standard` is **kept**: a
-  `.gitignore`d LEARNINGS file is a file its own repository has said is not part of its record, and
-  consolidating it would promote evidence into `DOMAIN-CONSTRAINTS.md` from a source no reviewer
-  will ever see in a diff. That is the safe direction for a pass that writes to shared project-level
-  artifacts. But it is a **product** trade — "is an ignored LEARNINGS file corpus?" is a question
-  about evidence, not about mechanism — so it is not settled here alone: §13.3 raises it upstream
-  with the enumeration relaxation it belongs to, and if the REQ answers "yes, ignored files are
-  corpus", the change is one flag and one line of §7.1, with AT-P1's literal-argv conjunct going red
-  until it is updated deliberately.
+    **The argument that lost, kept as history because it is the real price.** An ignored LEARNINGS is
+    a file its own repository has said is not part of its record, and consolidating it promotes
+    evidence into `DOMAIN-CONSTRAINTS.md` from a source no reviewer will ever see in a diff. That
+    cost is now *paid*, not avoided, and it is worth a reader knowing it was weighed rather than
+    overlooked. REQ weighed it and chose convergence, and the asymmetry this section identified is
+    why that direction was the convergent one: the hook has **no** `--exclude-standard` to drop, so
+    dropping it on the JS side was the only edit that could make the two sides agree.
+  - **Former class (ii) — the staged-but-deleted LEARNINGS — is closed by the `--deleted`
+    subtraction.** REQ decided that an index entry with no working-tree file is *not* corpus, since
+    it has no body and is therefore evidence about nothing. This section previously called the class
+    "genuinely not closable at this layer", reasoning that closing it meant teaching the hook
+    `git ls-files`. **That reasoning was wrong in one direction and is corrected here:** it assumed
+    convergence had to be reached by widening the *hook*, when the class is closed by narrowing the
+    *pass* instead — one extra `ls-files --deleted` read on a side that already shells out to git,
+    at no cost to the hook's `SessionStart` robustness at all. The cost that argument correctly
+    identified applies to the surviving nested-repository class, where the hook really is the side
+    that would have to change; it did not apply here.
 
-  The residue accepted meanwhile, stated exactly: class (i) leaves an operator nudged about a file no
-  pass will consolidate and no pass can clear; class (ii) leaves a corpus entry the pass reports as
-  unreadable. Neither is a correctness divergence — the pass consumes only what its own enumeration
-  returned — and no *third* class can arise silently, because §7.1's two literal pins make the
-  divergence set derivable from the two enumerations' own text. This is why T-08 is narrowed to the
-  **predicate** (§12.2) and why §13.1 row 6 says which half AT-P7 holds equal.
+  The residue accepted meanwhile is now one class, not two, and it is stated above. It is not a
+  correctness divergence — the pass consumes only what its own enumeration returned — and no *further*
+  class can arise silently, because §7.1's literal pins make the divergence set derivable from the two
+  enumerations' own text. This is why T-08 is narrowed to the **predicate** (§12.2) and why §13.1
+  row 6 says which half AT-P7 holds equal.
 
 ## 11. Test strategy
 
