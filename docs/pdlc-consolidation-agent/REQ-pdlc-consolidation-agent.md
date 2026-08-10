@@ -119,20 +119,21 @@ second exemption, since it lives in its own file. **On this repo today** (the st
 reads a LEARNINGS **body**:
 
 1. **Enumerate** LEARNINGS basenames and diff them against the predicate above — this yields the
-   un-consolidated set. Enumeration is basenames only, which is all `nudge-consolidation.sh:41` does.
-   The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md`. The shipped glob
-   is depth-1 only (`nudge-consolidation.sh:28`), but this repo archives completed features one level
+   un-consolidated set. Enumeration is basenames only, which is all the hook's pending filter
+   (`nudge-consolidation.sh:73-74`) does.
+   The corpus is `docs/*/LEARNINGS-*.md` **and** `docs/completed/*/LEARNINGS-*.md` (`CORPUS_GLOBS`, `:60`).
+   The glob was depth-1 only when this REQ was written, but this repo archives completed features one level
    deeper — `docs/completed/pdlc-merge-phase/`, `docs/completed/pdlc-review-loop-hardening/` and
    `docs/completed/pdlc-workflow-distribution/` each hold one LEARNINGS — so depth-1 hides 3 of the 5 at HEAD
    and biases AC-5.2's phase population toward `insufficient-evidence`. `docs/discarded/*/` is
    deliberately **excluded** — abandoned work is not evidence about a delivered pipeline. Widening
-   makes `nudge-consolidation.sh:28` an in-scope edit (§5).
+   `CORPUS_GLOBS` is an in-scope edit (§5).
 
    **One predicate, two enumerations (erratum, v2.1).** This step previously closed with "keeping one
    enumeration as well as one predicate". The second half is not deliverable and is **withdrawn**. The
-   hook enumerates with Python `glob.glob` (`nudge-consolidation.sh:28`); the pass cannot, because the
-   `_listFiles` seam lists exactly one directory and drops directory entries (`runtime-adapter.js:915`,
-   `:929-931`), so it cannot walk `docs/*/` at all and must enumerate through the git seam. **One
+   hook enumerates with Python `glob.glob` (`CORPUS_GLOBS`, `nudge-consolidation.sh:60-61`); the pass cannot, because the
+   `_listFiles` seam lists exactly one directory and drops directory entries (`rtListFiles`,
+   `runtime-adapter.js:941`; the `ls -p -A … | grep -v '/$'` it transcribes, `:951`), so it cannot walk `docs/*/` at all and must enumerate through the git seam. **One
    predicate remains guaranteed by construction** — both sides run the same block-scoped basename test
    stated above — while the two enumerations are separate mechanisms whose agreement is a stated,
    testable property rather than a shared code path. The two classes on which those mechanisms would
