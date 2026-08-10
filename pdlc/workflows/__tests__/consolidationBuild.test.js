@@ -53,7 +53,7 @@ const readDist = (file) => readFileSync(resolve(DIST, file), "utf8");
 // the gitignore(5) ground is the whole argument.
 // ---------------------------------------------------------------------------
 
-describe.skip("T10 — gitignore text (TSPEC §3.3)", () => {
+describe("T10 — gitignore text (TSPEC §3.3)", () => {
   const COMMENT = "# pdlc consolidation in-progress marker — working tree only (AC-1.3)";
   const PATTERN = "docs/_decisions/.consolidation-lock";
 

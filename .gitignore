@@ -27,3 +27,6 @@ node_modules/
 # un-`git add`-able without `-f`, so a future fixture file would go missing at authoring time
 # rather than loudly failing. Measured on git 2.50.1 (TSPEC §10.1).
 /.claude/workflows/
+
+# pdlc consolidation in-progress marker — working tree only (AC-1.3)
+docs/_decisions/.consolidation-lock
