@@ -2179,6 +2179,17 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   duplicate is FSPEC §4.5's stated exposure. Nothing here claims to close it.
 - **Recovering a corpus consumed by a pass that died at step 8** (O-C1). No vocabularies §1 field
   can express "re-consume these", and inventing a record type would breach REQ §4b.
+- **An enumerated LEARNINGS whose body cannot be read is re-offered on every pass until the
+  operator fixes it.** REQ §4b decides it is omitted from the consumed pair (§7.1), so it stays in
+  the un-consolidated set, keeps counting toward AC-1.2's volume trigger and is drawn again next
+  pass. That is a **retryable** residue, not a cleared one, and it is operator-visible twice over:
+  the hook nudges on the basename, and every pass's report body names it as an entry it could not
+  read. It is accepted rather than closed because the remaining population — a permissions error or
+  a mid-pass unlink — has a fix at the source that no pass can perform, and the alternative
+  (consuming it anyway) biases REQ-CONS-05's falsifiability loop in one direction, which REQ §4b
+  refuses. §13.3 carries the observation that would falsify the "transient fault" premise this
+  acceptance rests on. Corpus-wide, the terminal status of a pass that could read nothing is
+  `no-op` — AC-1.4's third cause, no status and no reason code added (REQ §4b).
 - **Clone removal failure.** §9.1 issues no removal, so there is no failure to handle.
 - **The two enumerations disagreeing on a git-visibility edge case.** §7.1 enumerates the pass's
   corpus with `git ls-files --cached --others` minus `ls-files --deleted`; the hook keeps `glob.glob`
@@ -2296,8 +2307,18 @@ members** and **two conjuncts**:
   committed as a *tracked* file, `--cached` returns it, and the conjunct passes for the wrong reason —
   green while `--exclude-standard` is once again inert, which is precisely the state this member was
   added to escape. The case therefore takes one guard conjunct alongside the membership one: the
-  ignored path is reported by `git status --ignored --porcelain` as ignored (`!!`) and appears in
-  **neither** `ls-files --cached` nor `ls-files --error-unmatch`. A fixture whose premise is untested
+  ignored path is reported as ignored (`!!`) by **`git status --ignored --porcelain -uall`**, and does
+  not appear in `ls-files --cached` output. The `-uall` is load-bearing: measured on a scratch tree
+  built exactly as this fixture is (`.gitignore` naming the directory, written before `git add -A`),
+  plain `git status --ignored --porcelain` — and `--ignored=matching` — collapses the ignored member to
+  its **directory**, printing `!! docs/ign/`, and only `-uall` prints the file path
+  `!! docs/ign/LEARNINGS-ign.md`. Transcribing the flagless command reds the guard on a correct build,
+  and the cheapest wrong repair is to weaken it back to the state this member was added to escape.
+  `git check-ignore -v {path}` is the equally acceptable alternative, and answers for the exact path:
+  exit 0, naming the matching pattern (`.gitignore:1:docs/ign/`). `git ls-files --error-unmatch {path}`
+  may also be used, but it is an **exit-status probe, not a listing** — measured, it exits **1** and
+  writes `error: pathspec … did not match any file(s) known to git` to stderr — so a conjunct using it
+  asserts the non-zero status, never an absence from stdout. A fixture whose premise is untested
   is an oracle that reports on the fixture rather than on the code.
 - **A staged-but-deleted LEARNINGS.** One fixture file is `git add`-ed and then unlinked from the
   worktree. The conjunct: that basename is **not** in the result. This is the only oracle anywhere
