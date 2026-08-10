@@ -161,6 +161,24 @@ reviewer read of the semantics against the FSPEC, and §8.3 lists the two obliga
 
 **Status key.** ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
 
+**The `Status` column is a Phase-P baseline, not a live ledger — nobody owns it during Phase I.**
+It is authored once, uniformly `⬚`, and it is never reconciled against the tree afterwards. Landed
+state is read from git and from the wave ledger, never from this table. This is a rule and not a
+description of neglect, for two measured reasons. (i) **No runtime reads it.** `parsePlanTasks`
+(`pdlc/workflows/orchestrate-dev.js:3761`) consumes only the id cell, the `Deps` cell and the batch
+cell — the id and deps headers are matched exactly against `PLAN_ID_HEADER_CELLS` /
+`PLAN_DEPS_HEADER_CELLS` (`:3797-3798`) while the description and batch columns are explicitly
+"LOOSE … cosmetic" (`:3764`); no parser, gate or dispatcher reads a `Status` cell at all. (ii)
+**Something else already owns resume.** Phase I resumes from the wave ledger at `WAVE_STATE_PATH`
+= `.claude/pdlc-wave-state.json` (`:8860`), parsed by `parseWaveLedger` (`:8916`) — a file the waves
+write, against a table they do not. A hand-maintained second ledger could only ever disagree with
+the first, and a *selectively* maintained one is worse than a blank one: a uniformly `⬚` column
+honestly reports "no ledger is kept here", whereas a column with some rows filled invites the reader
+to conclude the unfilled rows are untouched. That is the failure mode this rule closes. Editing a
+`Status` cell mid-flight is therefore **out of band** and is to be reverted, not extended — the
+question "is T*n* landed?" is answered by `git cat-file -e HEAD:{path}` and the ledger, both of which
+are current by construction.
+
 **Batch derivation is mechanical.** `Batch == max(batch of Deps) + 1`; a task with no `Deps` is
 batch 1. The dispatcher validates the column against the `Deps` edges and halts on a mismatch, so
 the number is a contract, not a lane label. Every number in §4 was re-derived from the row's own
