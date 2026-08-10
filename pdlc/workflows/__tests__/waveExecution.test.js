@@ -23,8 +23,10 @@ import main, {
   GIT_LOCK_RETRY_DELAY_MS,
   IMPLEMENTATION_DEFAULTS,
   WAVE_STATE_PATH,
+  checkWaveUnskips,
   computePlanHash,
   evaluateWaveDispatch,
+  scanSkipTokens,
   parseImplementationConfig,
 } from "../orchestrate-dev.js";
 
@@ -592,6 +594,219 @@ describe("Phase I — the script-owned test gate", () => {
     );
     expect(result.outcome).toBe("halted");
     expect(result.haltReason).toContain("Tests: 2 failed");
+  });
+});
+
+// ─── Phase I: the un-skip guard (no vacuous green) ────────────────────────────
+
+/**
+ * Two waves, and a test file the manifest gives to BOTH the 🔴 author (T1, wave
+ * 1) and the 🟢 owner (T2, wave 2) — the shape a PLAN needs for the un-skip to
+ * be written and committed by the task that owes it.
+ */
+const PLAN_TWO_WAVES_ONE_TEST_FILE = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | First task | 1 | - |",
+  "| T2 | Second task | 2 | T1 |",
+  "",
+  "| Task | Files |",
+  "|---|---|",
+  "| T1 | `src/one.js` `src/one.test.js` |",
+  "| T2 | `src/two.js` `src/one.test.js` |",
+].join("\n");
+
+const TEST_FILE = "src/one.test.js";
+
+/** The same suite body, parameterised on the title the skipped block carries. */
+const testFileSkipping = (title) =>
+  [
+    'describe("the block that really runs", () => {',
+    '  it("asserts something", () => {});',
+    "});",
+    "",
+    `describe.skip("${title}", () => {`,
+    '  it("never ran", () => {});',
+    "});",
+    "",
+  ].join("\n");
+
+const unskipArgs = (fileText, overrides = {}) =>
+  makeArgs({
+    plan: PLAN_TWO_WAVES_ONE_TEST_FILE,
+    config: CONFIG_WITH_TEST_COMMAND,
+    runCommand: async () => ({ ok: true, output: "Tests: 40 passed\n" }),
+    ...overrides,
+    extra: {
+      _readFile: (path) => {
+        const p = String(path);
+        if (p === CONFIG_PATH) return CONFIG_WITH_TEST_COMMAND;
+        if (p.includes("/PLAN-")) return PLAN_TWO_WAVES_ONE_TEST_FILE;
+        if (p === TEST_FILE) return fileText;
+        return null;
+      },
+      ...(overrides.extra || {}),
+    },
+  });
+
+describe("Phase I — the un-skip guard: a green gate over tests that never ran", () => {
+  it("halts the wave whose completed task still owns a skipped block, naming file, line and task", async () => {
+    const gitCalls = [];
+    const result = await main(
+      unskipArgs(testFileSkipping("T1 — the completed owner's block"), {
+        git: makeGit(gitCalls),
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
+    // File, line and owning task, all three, on the row an operator reads.
+    expect(result.haltReason).toContain(`${TEST_FILE}:5 describe.skip`);
+    expect(result.haltReason).toContain("T1 — the completed owner's block");
+    expect(result.haltReason).toContain("owned by T1");
+    // Nothing was committed — the guard sits before the commits, like a red gate.
+    expect(gitCalls.filter((a) => a[0] === "commit")).toEqual([]);
+  });
+
+  it("leaves a LATER wave's block alone in wave 1, and catches it once that wave completes", async () => {
+    const logs = [];
+    const result = await main(
+      unskipArgs(testFileSkipping("T2 — the later wave's block"), { logs })
+    );
+
+    // Wave 1 scanned the file and passed it: T2 has not run yet, so its block is
+    // legitimately still skipped.
+    expect(
+      logs.filter((m) => m.includes("Wave 1 un-skip guard: 1 owned test file(s) scanned")).length
+    ).toBe(1);
+    expect(result.haltReason).not.toContain("Wave 1 un-skip guard failed");
+    // Wave 2 completes T2 and the very same block is now owed.
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 2 un-skip guard failed");
+    expect(result.haltReason).toContain("owned by T2");
+  });
+
+  it("ignores skip tokens that are commented out, quoted, or environment-gated", async () => {
+    const logs = [];
+    const decoys = [
+      '// describe.skip("T1 — a comment, not a block", () => {});',
+      "/*",
+      ' * it.skip("T1 — a block comment") stays a comment',
+      " */",
+      'const sample = "describe.skip(\\"T1 — a string\\")";',
+      "const gated = process.env.CI ? 1 : 0;",
+      'describe("real suite", () => {',
+      "  (gated ? it : it.skip)(\"T1 — environment-gated, a sanctioned skip\", () => {});",
+      "  it(\"asserts\", () => { expect(sample).toContain(\"describe\"); });",
+      "});",
+      "",
+    ].join("\n");
+
+    const result = await main(unskipArgs(decoys, { logs }));
+
+    expect(result.outcome).toBe("success");
+    // The positive half: the file WAS read and scanned, so the absence of a
+    // violation is a judgement, not a file that never got looked at.
+    expect(
+      logs.filter((m) => m.includes("un-skip guard: 1 owned test file(s) scanned")).length
+    ).toBe(2);
+  });
+
+  it("degrades to a notice when an owned test file cannot be read", async () => {
+    const logs = [];
+    const result = await main(unskipArgs(null, { logs }));
+
+    expect(result.outcome).toBe("success");
+    const notices = logs.filter((m) => m.includes("un-skip guard:") && m.includes("could not be read"));
+    expect(notices.length).toBe(2);
+    expect(notices[0]).toBe(
+      `Notice: Wave 1 un-skip guard: ${TEST_FILE} could not be read — not scanned`
+    );
+  });
+});
+
+describe("checkWaveUnskips / scanSkipTokens — the guard's decision rule in isolation", () => {
+  const waves = [
+    [{ id: "T1", files: ["src/one.js", "src/one.test.js"] }],
+    [{ id: "T2", files: ["src/two.js"] }],
+  ];
+  const reader = (text) => async (path) =>
+    String(path) === "src/one.test.js" ? text : null;
+
+  it("attributes an untitled block to the file's owners, and owes it only when all are complete", async () => {
+    const text = 'describe.skip("no task named here", () => {});\n';
+    // Wave 1: T2 also owns the file in this plan, and T2 has not run.
+    const bothOwn = [
+      [{ id: "T1", files: ["src/one.test.js"] }],
+      [{ id: "T2", files: ["src/one.test.js"] }],
+    ];
+    const early = await checkWaveUnskips({
+      waves: bothOwn,
+      waveIndex: 0,
+      _readFile: reader(text),
+    });
+    expect(early.violations).toEqual([]);
+    expect(early.scanned).toEqual(["src/one.test.js"]);
+
+    const late = await checkWaveUnskips({
+      waves: bothOwn,
+      waveIndex: 1,
+      _readFile: reader(text),
+    });
+    expect(late.violations.map((v) => v.owners)).toEqual([["T1", "T2"]]);
+  });
+
+  it("matches task ids as whole tokens — T1 in the title is not T10", async () => {
+    const plan = [
+      [{ id: "T10", files: ["src/one.test.js"] }],
+      [{ id: "T1", files: ["src/two.js"] }],
+    ];
+    const result = await checkWaveUnskips({
+      waves: plan,
+      waveIndex: 0,
+      _readFile: reader('describe.skip("T1 — owned by the later task", () => {});\n'),
+    });
+    expect(result.violations).toEqual([]);
+  });
+
+  it("reports an empty wave plan and a missing transport as notices, not violations", async () => {
+    const noPlan = await checkWaveUnskips({ waves: [], waveIndex: 0, _readFile: reader("") });
+    expect(noPlan.violations).toEqual([]);
+    expect(noPlan.notices).toEqual(["no wave plan to scan"]);
+
+    const noTransport = await checkWaveUnskips({ waves, waveIndex: 0 });
+    expect(noTransport.violations).toEqual([]);
+    expect(noTransport.notices).toEqual([
+      "no _readFile transport — owned test files were not scanned",
+    ]);
+
+    const noTestFiles = await checkWaveUnskips({
+      waves: [[{ id: "T1", files: ["src/one.js"] }]],
+      waveIndex: 0,
+      _readFile: reader(""),
+    });
+    expect(noTestFiles.violations).toEqual([]);
+    expect(noTestFiles.notices).toEqual([
+      "no completed task owns a test file in the PLAN's manifest — nothing to scan",
+    ]);
+  });
+
+  it("finds statement-position tokens only, and reports line, token and title", () => {
+    const source = [
+      "describe.skip('A — first', () => {});",
+      "(cond ? test : test.skip)('B — gated', () => {});",
+      "// it.skip('C — commented')",
+      "const s = `describe.skip('D — templated')`;",
+      "if (x) { it.skip('E — mid-line, not a block', () => {}); }",
+      "const re = /it\\.skip\\(/;",
+      "function f() {}",
+      "describe.skip('G — after a closing brace', () => {});",
+    ].join("\n");
+
+    expect(scanSkipTokens(source)).toEqual([
+      { line: 1, token: "describe.skip", title: "A — first" },
+      { line: 8, token: "describe.skip", title: "G — after a closing brace" },
+    ]);
   });
 });
 
