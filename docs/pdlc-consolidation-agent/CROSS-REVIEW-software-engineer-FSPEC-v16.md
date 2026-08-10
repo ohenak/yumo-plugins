@@ -106,9 +106,39 @@ unexplained hunk.
 
 ## Findings
 
+No High findings. Two Low, neither gating.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | AT-P7's self-locator for §15.3's change register drifted by one with this delta's +1 net insertion: `:2449` is now the table's `\|---\|---\|---\|` separator, and the `nudge-consolidation.sh` row it was repaired to name in v11.5 is `:2450`. The reference still lands inside the named table, so no AT goes red — but the fix is `:2449` → `:2450`. Recurrence of v14 F-01b; the durable fix is to cite the row by name rather than by number, which the sibling citation at `:527` already does for §4.3 | §13.5 AT-P7 (`:2121`) |
+| F-02 | Low | Local | The header still reads version `11.5` / `2026-08-07` and carries no erratum note for this edit, so the document's change history does not account for the §8.4 hunk that landed in `76476315`. Fix: bump to `11.6` and add a one-line note naming the corrected citation | Header (`:12`), erratum notes (`:14-27`) |
+
+Prior-round findings: v15 raised none. v14's F-01a/F-01b were closed in v11.5 and remain closed
+(F-01a exactly; F-01b re-opened by one line, re-filed above as F-01).
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| — | None. The delta answers the question its own *not*-clause raises (which SKILL region receives which edit), and no new ambiguity is introduced. |
+
 ## Positive Observations
+
+- **The edit fixes a would-be red-on-correct-code defect, not a typo.** AT-F15's fixture reads a
+  `failure-mode-id` line out of a LEARNINGS **§5 Open Item**. An implementer following the pre-delta
+  §8.4 would have added the convention to the metadata table and failed that AT while conforming to
+  the spec. The correction is the same defect class the v11.5 erratum caught in AT-Q7c, found one
+  layer earlier and at lower cost.
+- **It resolved the contradiction in favour of the two sites that already agreed.** `:1508` and
+  `:2454` both put the line in §5; only `:1525` said otherwise. Changing the outlier rather than the
+  pair is the cheaper and the safer direction, and it left the change register — the site an
+  implementer actually works from — untouched.
+- **The *not*-clause is a cross-reference, not a duplicated literal.** Naming the metadata table as
+  §8.3's home points at `:1497`'s existing claim instead of restating `:70-78`'s contents, so a future
+  edit to the metadata table does not create a second stale site here. This is the same discipline
+  that kept AT-Q7 out of the v11.5 erratum's blast radius.
+- **Scope held.** A three-line citation repair inside a 2,734-line document, with zero AC, BR, NFR,
+  AT or fixture changes riding along. Verified by diff, not by assertion.
 
 ## Recommendation
 
