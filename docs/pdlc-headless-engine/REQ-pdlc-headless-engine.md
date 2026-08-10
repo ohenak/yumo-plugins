@@ -15,7 +15,13 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.4 | 2026-08-08 |
+| pdlc | draft — awaiting operator review | Claude | 0.5 | 2026-08-10 |
+
+*Change note (0.5, 2026-08-10):* §1 records a **second measured staleness incident** — the
+consumer `regime-ledger`'s `wheel-paper-portfolio` run, relayed by operator handoff 2026-08-10 —
+as corroborating evidence for the same copy-hop failure §1 already describes. Evidence only: no
+new goal, non-goal, constraint, requirement, acceptance criterion or obligation is added, and no
+section is restructured.
 
 *Change note (0.4, 2026-08-08):* Phase-0 spike (`SPIKE-agent-sdk-auth.md`) supersedes the
 docs-derived §1.3 ruling — the Claude Agent SDK runs under subscription auth on the operator's
@@ -48,6 +54,26 @@ REQs addresses is a property of that hop:
   plugin 0.21.0 while the plugin was at 0.22.0 — versions that differ in review-gate
   semantics. Drift *detection* (the drift-state record, the SessionStart reporter, the queue
   drift gate) patches the symptom; the copy is the wound.
+
+  *Second measured incident — 2026-08-10, operator handoff.* The same consumer completed a full
+  end-to-end pipeline run for the feature `wheel-paper-portfolio` (~40 review rounds, 49
+  implementation tasks, 3 DoD rounds, PR #261 green) while still executing engine bytes built at
+  plugin **0.21.0** against an installed plugin at **0.22.x**. The cost was not an outage but a
+  tax the operator paid across the whole run: a review gate mis-gated the PR, four or more
+  verdict trailers were repaired by hand, background waits and repository-index contention
+  needed manual intervention, and tracked-copy ride-alongs from the sync chain landed in the
+  feature PR's diff. Each of those pain points is already answered by the 0.22.x modules at HEAD
+  — `"Approved with minor changes"` is a recognised verdict (`orchestrate-dev.js:4116-4118`),
+  verdict-trailer recovery already exists (`recoverVerdict`, `:7494`), per-phase model routing is
+  already module policy, and wave-mode implementation already produces script-owned,
+  pathspec-scoped commits behind a foreground test gate. The operator paid the cost anyway,
+  because the copy hop — not the plugin version installed — decides which bytes run.
+
+  **Read this as evidence, not as scope.** The remediations these pain points call for have
+  already shipped in the modules; G-6 (pipeline semantics preserved) is what keeps them shipped
+  when the host changes. A reviewer should not reopen verdict vocabulary, trailer recovery, model
+  routing or commit/test-gate mechanics as engine work on the strength of this incident.
+
 - **Session-cache staleness on top of file staleness.** The workflow launcher snapshots
   scripts at session start, so even a freshly synced copy is not what a live session runs.
 - **Per-worktree gaps.** A self-created worktree has an empty `.claude/workflows/` while the
