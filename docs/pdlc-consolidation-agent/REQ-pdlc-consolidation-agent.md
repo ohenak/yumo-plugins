@@ -17,8 +17,10 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|---|---|---|
 | pdlc | draft | Claude | 2.4 | 2026-08-10 |
 
-> **Code anchors: one epoch.** Every `file:line` below is measured after this feature's T09 commit `b22834b7`, and
-> names the *role* the line plays so it stays re-findable. Where an anchor supports a statement about pre-feature
+> **Code anchors: one epoch.** Every `file:line` below was measured at the v2.4 sweep, and names the *role* the line
+> plays. **The role name is the durable locator; the number is the convenience.** Anchors are re-measured at review
+> rounds, not on every commit, so a number that has shifted is a defect only where the named role no longer resolves.
+> Where an anchor supports a statement about pre-feature
 > behaviour, the sentence is past tense and the anchor points at today's line for that role.
 
 > **Erratum round (v2.4, Phase R).** Citation set re-derived by grep over the whole REQ rather than by family: the
@@ -302,11 +304,11 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   `PDLC-CONSOLIDATION-PASS` trailer (vocabularies §4, cited by the REQ-CONS-03 preamble), so a
   repo-side control can recognise it.
 
-  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (the guard verdict, `pdlc/workflows/orchestrate-dev.js:959`)
-  over `effectiveGuardPaths` (the guard-path resolver, `:936`) is reachable only from Phase MERGE's ladder (`decideMerge`'s resolver/verdict call pair,
+  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:959`) over
+  `effectiveGuardPaths` (the guard-path resolver, `:936`) is reachable only from Phase MERGE's ladder (`decideMerge`'s resolver/verdict call pair,
   `:1126-1127`) and the advisory-envelope check (`:2370`) — both deciding about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"`
-  (the default, `:61`; `decideMerge`'s guard-1 refusal `:1065`, its reason string `:1070`; the phase's own early return `:1659`). Nothing there
-  evaluates an inbound PR, so claiming
+  (default `:61`; `decideMerge`'s guard-1 refusal `:1065`, reason string `:1070`; the phase's early return `:1659`). Nothing there evaluates an
+  inbound PR, so claiming
   inheritance would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
 - **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
   consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
@@ -621,9 +623,8 @@ the residual case is an on-disk file that cannot be read — permissions or an I
 pair omits it. A corpus that is entirely unreadable therefore still fires the trigger and still terminates,
 each pass reporting its terminal row with nothing consumed. **That pass's terminal status is `no-op`** — AC-1.4's
 third cause, taken from the six-member set above, so no status is added — **and its row carries the reason code
-`corpus-unreadable`**. The reason code is what makes the repeating case legible: without it, a permanently
-unreadable corpus produces an unbroken series of ordinary empty-set `no-op` rows, and an operator reading the
-log cannot tell a quiet week from a corpus nothing can read.
+`corpus-unreadable`**, so a repeating series of such rows reads as a corpus nothing can read rather than as
+ordinary quiet weeks.
 
 ## 5. Scope
 
