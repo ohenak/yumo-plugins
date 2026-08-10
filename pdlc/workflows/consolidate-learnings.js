@@ -1062,12 +1062,8 @@ async function finishPass(state, seams) {
 }
 
 
-// ─── §7/§9 exports — one throwing stub per name, so every downstream suite ────
-// ─── can import the name it will drive (PLAN T02). No behaviour yet. ─────────
-
-function notImplemented(name) {
-  throw new Error(`consolidate-learnings: ${name}() not implemented yet (PLAN T02 skeleton)`);
-}
+// ─── §7/§9 exports — the composed pieces `main()` above sequences. Each is ────
+// ─── real; the T02 skeleton's throwing stubs are gone as of PLAN T30/T31. ─────
 
 // §7.1 — the corpus and the two-region predicate
 
