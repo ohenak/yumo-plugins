@@ -49,7 +49,7 @@ carries the proposal across that boundary: no `gh pr create` and no cross-repo p
 correct — agents changing the prompts that govern agents must pass through human judgment — but *propose-only* and *hand-transcribed* are different
 requirements, and the skill enforces the second while intending only the first.
 
-**Today's only consumer is `yumo-plugins` itself.** `docs/_queue/QUEUE.md:11` states that this queue is the pipeline's own queue, and `:279` that every
+**Today's only consumer is `yumo-plugins` itself.** `docs/_queue/QUEUE.md:11` states that this queue is the pipeline's own queue, and `:304` that every
 PR in it trips the self-modification guard: "consuming repo" and "plugin repo" are one repository in the shipping configuration, which is why AC-3.8 is
 the primary case rather than a two-repo topology that does not yet exist.
 
@@ -562,7 +562,7 @@ The honest limit (baseline §4): `ESCALATIONS.md` records escalations, not resol
   one append** — AC-1.3's write-granularity obligation — before any other record the pass writes,
   and **even when the consumed set is empty**, as an empty pair, freezing the legacy-region boundary
   unconditionally) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
-  (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
+  (the hook's pending filter, `nudge-consolidation.sh:73-74`, scoped to that block by this feature). Those
   blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
   may be written inside one (vocabularies §3), so a basename appearing elsewhere in the log never
   marks a LEARNINGS consolidated.
@@ -623,9 +623,9 @@ the residual case is an on-disk file that cannot be read — permissions or an I
 **In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass, in the
 stated tick order, including the empty-datum bootstrap; the single un-consolidated predicate over
 the delimited consumed block plus the legacy region — including the matching edits to
-`pdlc/skills/consolidate-learnings/SKILL.md:56`, to `pdlc/hooks/scripts/nudge-consolidation.sh:41`
-(predicate) and to `:28` (the corpus glob widened to `docs/completed/*/`); reuse of the shipped two-rung advisory ladder
-(`resolveAdvisoryRung`, `orchestrate-dev.js:1833`) with reported fallback; PR promotion with scoped
+`pdlc/skills/consolidate-learnings/SKILL.md:56`, to `pdlc/hooks/scripts/nudge-consolidation.sh:73-74`
+(the pending filter) and to `:60` (`CORPUS_GLOBS`, widened to `docs/completed/*/`); reuse of the shipped two-rung advisory ladder
+(`resolveAdvisoryRung`, `orchestrate-dev.js:2060`) with reported fallback; PR promotion with scoped
 credential, in both the same-repo (AC-3.8) and two-repo configurations, plus the pathspec-scoped
 commit of the consuming-repo writes (AC-3.8b); the effectiveness/falsifiability loop, including the
 two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-5.2) and
