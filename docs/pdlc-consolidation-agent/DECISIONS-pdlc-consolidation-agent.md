@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-06 |
+| pdlc | draft | Claude | 1.2 | 2026-08-10 |
 
 ## 1. Context
 
@@ -55,8 +55,12 @@ DEC-CONS-07 are direct applications of DEC-DIST-01 and DEC-ORACLE-02 respectivel
 | DEC-CONS-06 | Widen `rtWriteFile`'s prompt alone to resolve an absolute path verbatim; leave `rtReadFile` untouched | hard (shipped seam every phase writes through) | AC-3.1, AC-3.8 |
 | DEC-CONS-07 | Release is `_writeFile(markerPath, "")`; `_checkFile`'s `file_empty` is read as **absent** — **payload and probe both superseded** by `TSPEC:974-977` (release writes `RELEASED: {passId} {ISO-8601}`) and `TSPEC:987-988` (`file_missing` **alone** is absent; an empty marker is truncated and **reclaims**). Write downstream work against the TSPEC form, never against this row's | one-way door while no removal verb exists | AC-1.3 |
 
-Entries are numbered in the order the TSPEC weighed them (`TSPEC §13.1` rows 1, 2, 4, 5, 6, 11, 13);
-that section's remaining rows are dispositioned in §10 below rather than promoted here.
+| DEC-CONS-08 | The two mid-phase `orchestrate-dev.js` changes (`202f92e1` reviewer-prompt path, `98b7429e` complete-ledger Phase I skip) **stay on this branch** and ship in this feature's PR, rather than being split out | easy (both are additive, separately revertable commits) | none of this feature's ACs — pipeline scope (TE CR F-05 / Q-03) |
+
+Entries DEC-CONS-01…07 are numbered in the order the TSPEC weighed them (`TSPEC §13.1` rows 1, 2, 4,
+5, 6, 11, 13); that section's remaining rows are dispositioned in §10 below rather than promoted here.
+DEC-CONS-08 was taken later, in Phase CR, and is recorded in §12 — appended after §10 and §11 rather
+than renumbering sections whose anchors downstream documents already cite.
 
 ## 3. DEC-CONS-01: The credential seam returns a boolean, never the secret
 
