@@ -9,7 +9,36 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.3 | 2026-08-10 |
+| pdlc | draft | Claude | 2.4 | 2026-08-10 |
+
+> **2.4 (the new oracles made runnable; the round trip recorded as closed everywhere).** v2.3's
+> mechanism stands; this round repairs its own partial sweep. **te-review v13 F-01 (High) — the
+> mandated `_git` double could not express the mechanism it was mandated for.** §7.1 issues two
+> `ls-files` reads, but §11.2 bound `_git` to `mergeDoubles.js`'s `fakeGit`, which keys its script by
+> git *subcommand* (`mergeDoubles.js:200-207`) and so answers both calls identically — making the
+> `--deleted` set equal the enumeration set, the corpus **always empty**, AT-P1's conjuncts 2–3 red on
+> correct code, and every L2 corpus fixture silently green. §11.2 is re-pointed at `seams.js`'s
+> `fakeGit` (`:389`), whose script may be a per-call function or array and which records
+> `.calls`/`.invocations` — the capability already ships, so no factory is added and no helper is
+> widened; the map form is ruled out for corpus and clone fixtures, with the reason stated. (This also
+> reconciles T-13, which already drove `asAsync(fakeGit)` over a **sync** double.) **§13.1 row 6
+> (pm-review F-01 High, te-review F-02)** no longer presents a settled decision as erratum-pending:
+> REQ §3.1 step 1 withdrew the "one enumeration" half, §13.3 records the trip closed, and the
+> document's last surviving `REQ-…:NNN` pointer is re-cast per §12.3's own widened rule. **Row 10
+> (pm-review F-02)** now states two `_git` reads rather than one, naming the subtraction, since it is
+> what a PLAN task sizes the enumeration from. **te-review F-03:** the hook's line pointers were stale
+> in the same revision that forbade them — `:28`/`:41`/`:43`/`:29-30`/`:44-48` are re-anchored by
+> symbol (`CORPUS_GLOBS`, `region_split`, `pending`, `THRESHOLD`, `PDLC_PENDING:`, the `PY_BIN` probe)
+> across §7.1, §11.1, §11.3(f) and §12.2, and §7.1 stops narrating a landed edit in the future tense;
+> the quoted debug snippet is corrected to HEAD's `sorted(set(…))`. **te-review F-04:** `ls-files`
+> output is unordered (measured), so §7.1 now states that every corpus oracle is a **set** oracle and
+> binds §11.1's real-git case. **pm-review F-03:** §3.2's hook row keeps its ownership claim and adds
+> the landed-at-HEAD note (`b22834b7`) §10.4 already carried, so the two sections agree in tense.
+> Questions closed: the `unread:` field question is **answered no and no longer handed upstream** —
+> the subtraction removed the population that motivated it, leaving transient faults the report body
+> names, with the observation that would reverse it recorded (§13.3, §7.1); §11.1's ignored fixture
+> member gains the build-order guard (`.gitignore` written *before* `git add -A`, asserted) that keeps
+> it from passing for the wrong reason.
 
 > **2.3 (REQ v2.5's two corpus rules absorbed — a behaviour change, not bookkeeping).** v2.2 asserted
 > a re-pin to `REQ v2.5` without performing it; pm-review v12 F-01/F-02 caught that §7.1 still shipped
@@ -25,8 +54,8 @@
 > the hook. (c) The divergence set falls from two classes to **one** (a LEARNINGS inside a nested git
 > repository, measured on a scratch tree), which §10.4 now names and accepts. (d) §13.3's enumeration
 > erratum is rewritten as **absorbed-and-closed** on both halves — REQ withdrew "one enumeration",
-> FSPEC v11.6 re-scoped AT-P7 to the predicate — keeping only the genuinely open `unread:` field
-> question, now narrowed by (b). (e) §11.1's L4 git case gains the two fixture members and conjuncts
+> FSPEC v11.6 re-scoped AT-P7 to the predicate — keeping only the then-open `unread:` field
+> question, narrowed by (b) and closed at v2.4. (e) §11.1's L4 git case gains the two fixture members and conjuncts
 > it previously declined to add while the question was open, so the flag and the subtraction are
 > pinned against real git and not only against a scripted double. Lows folded in: AT-P7 re-cited to
 > FSPEC §13.2; §12.3's citation rule widened to **every** upstream document with the four stale REQ
@@ -236,7 +265,7 @@ decomposition is by **exported pure function** (§4), not by file.
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
 | `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-811`) **alone**, whose prompt today says `relative to the repository root` (`:805`, the only occurrence of that string in the file). `rtReadFile` is **not** modified — see §5.6(a) | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
-| `pdlc/hooks/scripts/nudge-consolidation.sh` | The single `os.path.join` glob replaced by a named two-literal **`CORPUS_GLOBS`** tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; the basename predicate scoped to the two §3.2 regions via **`region_split`**; the early exit replaced by a **`pending`** fall-through; **and** one env-gated **`PDLC_PENDING:`** debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). Located by symbol, never by line index — the same rule §7.1 imposes on pin (b)'s oracle, and for the same reason: this feature's own edits to the heredoc shift every line in it. All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | The single `os.path.join` glob replaced by a named two-literal **`CORPUS_GLOBS`** tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; the basename predicate scoped to the two §3.2 regions via **`region_split`**; the early exit replaced by a **`pending`** fall-through; **and** one env-gated **`PDLC_PENDING:`** debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). Located by symbol, never by line index — the same rule §7.1 imposes on pin (b)'s oracle, and for the same reason: this feature's own edits to the heredoc shift every line in it. All four are **production** edits in one shipped file ⇒ one owning task. **All four have since landed** (commit `b22834b7`; §10.4, §7.1) — `CORPUS_GLOBS` and its comprehension, `region_split` and its use, the `pending` fall-through with no early exit above it, and the `PDLC_PENDING:` line are all at HEAD. The row stays because the *ownership* claim is what the PLAN's manifest derives from and that is unchanged: this file is still one task's, and its remaining work is the oracles that pin these edits, not the edits | §7.1, §10.4 |
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:56` (was the `Date Completed` date boundary) now carries the block/legacy predicate; `:62`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-79`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
 | `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
@@ -926,8 +955,11 @@ does **not** add an `unread:` field beside `consumed` in the log row — not bec
 useless, but because the log record's field set is a `pdlc-consolidation-vocabularies.md` §3
 contract, and minting a field here is the same REQ §4b breach as minting a reason code. The three
 observables above are what this document decides; whether the durable record should carry the
-unreadable basenames is a product question about the log's field set, and §13.3 hands it upstream
-with the rest of the enumeration/corpus batch rather than settling it in a technical spec.
+unreadable basenames is a product question about the log's field set. §13.3 now **closes** that
+question rather than handing it up: since the `--deleted` subtraction removed the staged-but-deleted
+population from this class, what remains is transient, operator-visible faults that the report body
+already names, so the recommendation is that no field be minted — recorded there with the observation
+that would reverse it.
 
 These three obligations are not left to inspection either: §12.2 carries a `(no FSPEC AT)` row for
 them and §12.3 assigns it a file.
@@ -2529,7 +2561,8 @@ the basename collision (E-09), the legacy/block boundary, one row above the thre
 shipped `additionalContext` count is also compared, and a **zero-corpus** row that asserts
 `PDLC_PENDING:` is emitted with an empty value (§7.1's relocated early exit) — so `∅` is read
 positively rather than inferred from silence. L4 degrades exactly as the hook does when no
-usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recorded notice.
+usable Python interpreter is found (the `PY_BIN` probe loop and its guard); §11.1 states the recorded
+notice.
 
 **What this harness does not falsify, stated rather than implied.** Feeding both sides the same
 basename list holds the **predicate** equal and holds the **enumeration** equal by construction —
@@ -2963,17 +2996,23 @@ re-argued on what a count-above-threshold comparison can supply.
     the one reasoning error the old bullet contained. The divergence set is now one class (a nested
     git repository), not two.
 
-  One question from that batch **is** still open, and it is the only thing here a later round owes
-  anything to: §7.1 puts an unreadable corpus
-  entry **in the consumed pair**, so a LEARNINGS file can be permanently marked consumed while
-  contributing no evidence to any promotion, and the only trace is one pass's transient report body.
-  Should the durable log row itself carry the unreadable basenames (an `unread:` field beside
-  `consumed`)? That is a `pdlc-consolidation-vocabularies.md` §3 field-set change, so this layer
-  declines to mint it (REQ §4b) and hands that one question up. Note that the absorption **narrowed**
-  it without answering it: the staged-but-deleted entry is no longer a trigger for this class at all
-  (§7.1), so the population is now only files present in the working tree whose bodies cannot be
-  read. The question survives on that population — permissions and IO errors reach it — but it is a
-  smaller class than when it was first raised, and a reader should not size it from the old bullet.
+  One question from that batch is now **closed here, with a recommendation rather than a hand-off**:
+  §7.1 puts an unreadable corpus entry **in the consumed pair**, so a LEARNINGS file can be
+  permanently marked consumed while contributing no evidence to any promotion, and the only trace is
+  one pass's transient report body. Should the durable log row itself carry the unreadable basenames
+  (an `unread:` field beside `consumed`)? **This layer's answer is no, and nothing is handed up.** The
+  absorption did not merely narrow the question, it narrowed it past the case that motivated it: the
+  staged-but-deleted entry — the population that made "silently consumed forever" a *routine* outcome
+  — is no longer a trigger for this class at all, since the `--deleted` subtraction means such a path
+  is never enumerated (§7.1). What survives is files present in the working tree whose bodies cannot
+  be read: a permissions error or a mid-pass unlink, each of which is an operator-visible fault in its
+  own right and each of which the report body names. Minting a vocabulary field for that population
+  buys a durable record of a transient fault, at the cost of a
+  `pdlc-consolidation-vocabularies.md` §3 field-set change this layer may not make anyway (REQ §4b) —
+  so the report body suffices and the field is declined, not deferred. **Re-evaluation trigger**, so
+  the reasoning is checkable rather than final: if a pass is ever observed reporting the same
+  unreadable basename on two consecutive passes, the fault is not transient, the argument above fails,
+  and the field question should be re-raised upstream with that observation as its evidence.
   Accepted residue meanwhile: one operator-visible nudge that no pass can clear (the nested-repository
   class, §10.4) and one corpus entry the pass reports as unreadable — never a correctness divergence,
   since the pass consumes only what its own enumeration returned.
