@@ -74,4 +74,39 @@ FSPEC row claim it asserts.** Because the AT register is the completeness gate, 
 
 ## Recommendation
 
+**Needs revision**
+
+Four High findings. This is not a verdict on the body of work — the suite is large, the discipline held where
+it is hardest to hold, and the oracle rules are written down and mostly obeyed. It is a verdict on four
+specific rows that read green and are not.
+
+Exactly what to change, in the order I would do it:
+
+1. **F-02 first, because it is the only one where production is wrong.** Either add a resolve probe to
+   `openClone`'s non-null branch so a configured-but-unresolvable repository returns
+   `{failure: "repository-unresolved", detail: <the configured value verbatim>}`, or route the erratum and
+   change BR-23/E-22. Then drive it: an `openClone` test with `{pluginRepository: "some-owner/does-not-exist"}`
+   and a failing clone reply, asserting the reason code and the verbatim value — not through `renderReportBody`.
+2. **F-01: give AT-M9 a fixture that reaches step 13**, and assert its seven conjuncts. If Q-03's answer is
+   that the fixture is genuinely out of reach, the row must say so and the register must stop claiming AT-M9 —
+   a documented gap in PROPERTIES §13.1 is honest; a green row asserting `not.toBe("refused")` is not.
+3. **F-03: reconcile the notice shape, then drive one report assertion through `main()`.** Answer Q-02, fix
+   whichever side is wrong, and add a single case that runs `main()` with a malformed `consolidation` section
+   and asserts the resulting `result.body` — one production-path case retires the whole fabrication.
+4. **F-04: replace AT-M5's exclusion with the set-equality its title promises** — compare the union of observed
+   commit pathspecs against `state.writeSet`, keeping the marker-exclusion conjunct alongside it.
+5. **F-05, F-06, F-07** are one-line-each strengthenings: `toBeNull()` on `state`; a positive terminal status
+   and a marker-taken assertion on AT-M11; one `main()`-level assertion that the `ADVISORY_MODEL_FALLBACK:`
+   line reaches `result.body`.
+6. **F-08** is the durable one — a §12.2 table guard in the shape of PROP-TRC-01 would have caught F-01 and
+   F-04 mechanically, and will catch their successors. Worth doing even though nothing blocks on it.
+7. **F-09, F-10** are cleanup, but do F-10 with the rest: those comments are load-bearing in the wrong
+   direction, and leaving them invites the next reader to re-justify a weak oracle.
+
+Nothing here requires re-litigating a settled design decision. Every fix is additive to work that is already
+structurally sound.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 4, "low": 2}
