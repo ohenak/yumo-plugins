@@ -1572,26 +1572,162 @@ export function renderPromotionCommitMessage(proposal, passId) {
 
 // §9.1 — the temporary clone
 
-/** @returns {Promise<{dir: string}|{failure: ReasonCode, detail: string}>} */
+/**
+ * §9.1 — three steps, all through seams, none touching the invoking tree's refs. `null` from
+ * `_makeTempDir` degrades `api-failure` with no fallback into the invoking tree (AC-3.8). The
+ * same-repo clone source is `origin`'s URL, never the working-tree path — the working tree may be
+ * mid-pipeline on a `feat-*` branch, and FSPEC §6.1 requires the clone cut from the fetched
+ * default branch.
+ *
+ * @returns {Promise<{dir: string}|{failure: ReasonCode, detail: string}>}
+ */
 export async function openClone(passId, config, seams) {
-  return notImplemented("openClone");
+  const { _makeTempDir, _git } = seams || {};
+  const cfg = config || {};
+
+  const dir = await _makeTempDir(passId);
+  if (typeof dir !== "string" || dir.length === 0) {
+    return { failure: "api-failure", detail: "temporary directory creation failed" };
+  }
+
+  let remote;
+  if (cfg.pluginRepository == null) {
+    const reply = await _git(["remote", "get-url", "origin"]);
+    if (!reply || reply.ok !== true) {
+      return { failure: "repository-unresolved", detail: (reply && reply.stderr) || "origin did not resolve" };
+    }
+    remote = typeof reply.stdout === "string" ? reply.stdout.trim() : "";
+  } else {
+    remote = `https://github.com/${cfg.pluginRepository}.git`;
+  }
+
+  const cloneReply = await _git(["clone", "--depth", "1", "--single-branch", remote, dir]);
+  if (!cloneReply || cloneReply.ok !== true) {
+    return { failure: "api-failure", detail: (cloneReply && cloneReply.stderr) || "clone failed" };
+  }
+
+  return { dir };
 }
 
 // §9.3 — the three seam domains and their verb sets
 
-/** @returns {"pr"|"git-invoking"|"git-clone"} total — never null */
+/**
+ * §9.3 — total, never null. Every `_ghRun` call is the PR seam. A `_git` call is `git-clone` when
+ * its argv begins `["-C", cloneDir]` OR is the `clone` call itself (which carries no `-C` prefix —
+ * `cloneDir` is what the call *establishes*, so it is classified by name, never by a special case
+ * in test code); every other `_git` call is `git-invoking`.
+ *
+ * @returns {"pr"|"git-invoking"|"git-clone"}
+ */
 export function resolveSeamDomain(seam, argvOrCommand, cloneDir) {
-  return notImplemented("resolveSeamDomain");
+  if (seam === "_ghRun") return "pr";
+  const argv = Array.isArray(argvOrCommand) ? argvOrCommand : [];
+  if (argv[0] === "clone") return "git-clone";
+  if (typeof cloneDir === "string" && argv[0] === "-C" && argv[1] === cloneDir) return "git-clone";
+  return "git-invoking";
 }
 
-/** @returns {string} "unknown" when unresolvable */
+// The PR-seam command-string verbs, matched by resolved operation, never by function name.
+const PR_VERB_PATTERNS = [
+  [/^gh\s+pr\s+list\b/, "read-pr"],
+  [/^gh\s+pr\s+create\b/, "create-pr"],
+  [/^gh\s+auth\s+status\b/, "read-auth"], // ⊕ widening 1, §9.3
+];
+
+/**
+ * §9.3 — classification by resolved operation, not function name: `checkout -b` and `switch -c`
+ * both resolve to `create-branch` in either git domain. The PR domain here recognises only the
+ * three verbs this route ever emits (§9.2's PR-route table); an unrecognised PR command, or any
+ * other unresolvable input, returns `"unknown"`, which is in no permitted set and therefore fails
+ * containment rather than passing silently.
+ *
+ * @returns {string} "unknown" when unresolvable
+ */
 export function resolveSeamVerb(domain, argvOrCommand) {
-  return notImplemented("resolveSeamVerb");
+  if (domain === "pr") {
+    const command = typeof argvOrCommand === "string" ? argvOrCommand : "";
+    for (const [pattern, verb] of PR_VERB_PATTERNS) {
+      if (pattern.test(command)) return verb;
+    }
+    return "unknown";
+  }
+
+  if (domain === "git-invoking" || domain === "git-clone") {
+    let argv = Array.isArray(argvOrCommand) ? argvOrCommand : [];
+    if (argv[0] === "-C") argv = argv.slice(2);
+    const op = argv[0];
+    if (op === "clone") return "clone";
+    if (op === "checkout" && argv.includes("-b")) return "create-branch";
+    if (op === "switch" && argv.includes("-c")) return "create-branch";
+    if (op === "add") return "add";
+    if (op === "commit") return "commit";
+    if (op === "push") return "push";
+    if (op === "fetch") return "fetch";
+    if (op === "rev-parse") return "read-branch"; // readHeadBranch, orchestrate-dev.js:3524
+    if (op === "cat-file") return "read-object"; // ⊕ widening 2, §9.3
+    if (op === "remote") return "read-remote"; // ⊕ widening 3, §9.3
+    if (op === "ls-files") return "read-index"; // ⊕ widening 4, §9.3
+    if (op === "status") return "read-status";
+    return "unknown";
+  }
+
+  return "unknown";
 }
 
 // §9.4 — the consuming-repo commit
 
-/** @returns {Promise<{committed: boolean, reason?: "writes-uncommitted"}>} */
+// Shares `commitQueueRow`'s idempotence treatment (orchestrate-queue.js:1554) — transcribed, not
+// imported: that module does not export it.
+const NOTHING_TO_COMMIT_RE = /nothing to commit/i;
+
+// A wall-clock sleep for `gitWithLockRetry`'s retry delay. This module has no `_sleep` seam of its
+// own (§5.1's protocol lists none); the retry path is exercised only on a transient `index.lock`
+// refusal, which no test in this pass's suite drives, so a real timer here costs nothing under
+// jest's fake-free doubles (they resolve before any retry is ever attempted).
+async function realSleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * §9.4, FSPEC §5.4 — two calls, pathspec on both, mirroring `commitQueueRow`
+ * (`orchestrate-queue.js:1576-1595`; add then commit, both pathspec-scoped) over the imported
+ * `gitWithLockRetry` for the `index.lock` retry class — never `commitPaths`
+ * (`orchestrate-dev.js:8669`), whose commit carries no pathspec and would sweep a mid-pipeline
+ * staged index into this pass's commit. Never `-a`, never pushed. A "nothing to commit" result is
+ * a return, not a warning; any other refusal records `writes-uncommitted` and leaves the writes
+ * correct on disk.
+ *
+ * @returns {Promise<{committed: boolean, reason?: "writes-uncommitted"}>}
+ */
 export async function commitConsumingRepoPaths(paths, message, seams) {
-  return notImplemented("commitConsumingRepoPaths");
+  const list = Array.isArray(paths) ? paths : [];
+  const gitFn = seams && seams._git;
+  const emit = seams && typeof seams._log === "function" ? seams._log : () => {};
+
+  const added = await gitWithLockRetry(["add", "--", ...list], {
+    _git: gitFn,
+    _sleep: realSleep,
+    emit,
+    label: "consolidate: git add",
+  });
+  if (!added || added.ok !== true) {
+    return { committed: false, reason: "writes-uncommitted" };
+  }
+
+  const committed = await gitWithLockRetry(["commit", "-m", message, "--", ...list], {
+    _git: gitFn,
+    _sleep: realSleep,
+    emit,
+    label: "consolidate: git commit",
+  });
+  if (committed && committed.ok === true) return { committed: true };
+
+  if (
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stdout) ?? "") ||
+    NOTHING_TO_COMMIT_RE.test((committed && committed.stderr) ?? "")
+  ) {
+    return { committed: false };
+  }
+
+  return { committed: false, reason: "writes-uncommitted" };
 }

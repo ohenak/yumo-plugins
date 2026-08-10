@@ -296,7 +296,7 @@ async function runPrRouteSequence({ _git, _ghRun, cloneDir, passId, artifact }) 
   await _ghRun(mergeCommandFor("consolidationCreate", { repo: REPO, head: branch, base: "main", title: "t", bodyFile: "/tmp/body.md" }));
 }
 
-describe.skip("T30 — AT-Q1: the guard-set edit is committed in a separate clone; the invoking tree sees no branch operation", () => {
+describe("T30 — AT-Q1: the guard-set edit is committed in a separate clone; the invoking tree sees no branch operation", () => {
   test("openClone cuts from origin's URL and clones into the temp directory, never the working tree", async () => {
     const git = fakeGit({ remote: { ok: true, stdout: `${ORIGIN_URL}\n` } });
     const makeTempDir = fakeMakeTempDir(CLONE_DIR);
@@ -336,7 +336,7 @@ describe.skip("T30 — AT-Q1: the guard-set edit is committed in a separate clon
   });
 });
 
-describe.skip("T30 — AT-Q7/AT-Q7c: the seam-verb spy's four set assertions (TSPEC §11.3(a), §9.3)", () => {
+describe("T30 — AT-Q7/AT-Q7c: the seam-verb spy's four set assertions (TSPEC §11.3(a), §9.3)", () => {
   test("AT-Q7: a PR-opening pass — partition, containment, obligation, and PR state open, over all three domains", async () => {
     const git = fakeGit({});
     const ghRun = fakeGhRun({
