@@ -394,7 +394,7 @@ procedural — it holds even if every other control failed.
   is **two** proposals — two ids, two AC-3.3 commits, two AC-5.2 rows, two AC-5.3 streaks — which may share one PR (AC-3.3 already permits that shape);
   they share nothing else and are measured separately. A **generated** path is never an `artifact` and never mints an id. *Generated* is a predicate, not
   an example, and is keyed on the **producer**, never on a path glob: a path a tracked build step of this repo writes — at HEAD exactly the four tracked
-  outputs of `pdlc/workflows/build-runtime.mjs` (`:465` mints the fourth), all under `pdlc/workflows/dist/`, which `CLAUDE.md` requires to be rebuilt
+  outputs of `pdlc/workflows/build-runtime.mjs` (its artifact table; the fourth row, `pdlc-cli.mjs`, is `:564-567`), all under `pdlc/workflows/dist/`, which `CLAUDE.md` requires to be rebuilt
   "in the same commit" as their source, so they ride the authored file's commit. An authored file whose path merely *contains* `dist/` — the
   `pdlc/workflows/__tests__/fixtures/` copies — is authored and does mint an id. So an edit to `pdlc/workflows/orchestrate-dev.js` plus its rebuilt
   bundles is **one** promotion whose `artifact` is that source file, and the derivation stays total on every edit shape.
