@@ -1376,3 +1376,133 @@ describe("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, written wh
     expect(proposalWrites[0].path).toContain(result.passId);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The SHIPPED default configuration — `pluginRepository: null` (CODE_REVIEW v1 F1)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// REQ:575 / FSPEC:1990 define the shipped default `null` as "the current repository", and
+// `openClone` already honours it (it clones `origin`). The two `gh` surfaces are the other half
+// of that contract, and this block is their oracle: on the configuration this repo actually
+// ships, neither command may carry a substituted repository slug of any kind — `gh` targets the
+// current repository precisely when `--repo` is absent. A placeholder here is not a cosmetic
+// defect: it would point NFR-4's duplicate poll and AC-3.1's `gh pr create` at a repository that
+// does not exist, which is unobservable from any assertion that only reads the pass's status.
+
+describe("the shipped default (pluginRepository: null) — both gh surfaces target the current repository", () => {
+  const GUARD_CLUSTER = {
+    phase: "I",
+    artifact: "pdlc/hooks/scripts/nudge-consolidation.sh",
+    kind: 3,
+    action: "promote",
+    symptom: "the hook mis-detects the corpus boundary",
+    diff: "--- a/pdlc/hooks/scripts/nudge-consolidation.sh\n+++ b/pdlc/hooks/scripts/nudge-consolidation.sh\n",
+    evidence: { recurrence: ["pdlc-consolidation-agent", "pdlc-rcv-budget-stop"] },
+  };
+
+  function defaultConfigPass() {
+    return runPass({
+      // `config` is left entirely at `buildConfig`'s shipped defaults — `pluginRepository: null`.
+      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      agent: makeAgentDouble({ script: [agentReply({ clusters: [GUARD_CLUSTER] })] }),
+      ghRun: fakeGhRun({
+        "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
+        "gh pr create": { ok: true, stdout: "https://github.com/kaneho/yumo-plugins/pull/31\n" },
+      }),
+    });
+  }
+
+  test("no gh command issued on the default config carries a --repo flag or any placeholder slug", async () => {
+    const pass = defaultConfigPass();
+
+    const result = await pass.run();
+
+    // The PR route really ran — otherwise the assertions below would pass vacuously.
+    expect(result.prUrl).toBe("https://github.com/kaneho/yumo-plugins/pull/31");
+    const poll = pass.ghRun.calls.filter((c) => /^gh pr list/.test(c));
+    const create = pass.ghRun.calls.filter((c) => /gh pr create/.test(c));
+    expect(poll).toHaveLength(1);
+    expect(create).toHaveLength(1);
+    for (const cmd of pass.ghRun.calls) {
+      expect(cmd).not.toMatch(/--repo\b/);
+      expect(cmd).not.toMatch(/unknown\/unknown/);
+    }
+  });
+
+  test("a CONFIGURED pluginRepository is still named on both surfaces — the null arm is a branch, not a removal", async () => {
+    const pass = runPass({
+      config: { pluginRepository: "acme/widgets" },
+      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      agent: makeAgentDouble({ script: [agentReply({ clusters: [GUARD_CLUSTER] })] }),
+      ghRun: fakeGhRun({
+        "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
+        "gh pr create": { ok: true, stdout: "https://github.com/acme/widgets/pull/7\n" },
+      }),
+    });
+
+    const result = await pass.run();
+
+    expect(result.prUrl).toBe("https://github.com/acme/widgets/pull/7");
+    const poll = pass.ghRun.calls.find((c) => /^gh pr list/.test(c));
+    const create = pass.ghRun.calls.find((c) => /gh pr create/.test(c));
+    expect(poll).toMatch(/--repo acme\/widgets/);
+    expect(create).toMatch(/--repo acme\/widgets/);
+  });
+
+  test("the module's own source contains no placeholder repository literal on any path", () => {
+    const source = readFileSync(new URL("../consolidate-learnings.js", import.meta.url), "utf8");
+    expect(source).not.toMatch(/unknown\/unknown/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Report item 10 on the FINAL artifact — the report body `main()` returns (CODE_REVIEW v1 F3)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The renderer's own population is pinned as a unit in `consolidationReport.test.js`. This block
+// is the production-path half: it reads the number off the body a real pass emits, so a correct
+// renderer fed the wrong population from `main()` still fails here.
+
+describe("item 10 on the report body a real pass returns", () => {
+  function openRecord(id) {
+    return {
+      failureModeId: id,
+      phase: "T",
+      symptom: "a spec omits a boundary case",
+      artifact: `docs/foo/${id}.md`,
+      target: "docs/_constraints/DOMAIN-CONSTRAINTS.md",
+      passId: "2025-12-01-1",
+      action: "promote",
+      route: "constraints",
+    };
+  }
+
+  test("a no-op pass over a log carrying two open promotions reports 2 — not 0", async () => {
+    const pass = runPass({
+      logText: buildConsolidationLog({
+        legacy:
+          `<!-- pdlc:record ${JSON.stringify(openRecord("t-a-md"))} -->\n` +
+          `<!-- pdlc:record ${JSON.stringify(openRecord("t-b-md"))} -->\n`,
+      }),
+      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      agent: makeAgentDouble({ script: [agentReply({ clusters: [] })] }),
+    });
+
+    const result = await pass.run();
+
+    // The pass promoted nothing of its own — the number can only come from the log.
+    expect(result.records ?? []).toHaveLength(0);
+    expect(result.body).toContain("10. open promotions: 2");
+  });
+
+  test("an empty log reports 0 — the count is a real reading, not a constant", async () => {
+    const pass = runPass({
+      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      agent: makeAgentDouble({ script: [agentReply({ clusters: [] })] }),
+    });
+
+    const result = await pass.run();
+
+    expect(result.body).toContain("10. open promotions: 0");
+  });
+});

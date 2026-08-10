@@ -119,6 +119,11 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "MERGE_GUARD_DEFAULTS",
   "mergeCommandFor",
   "gitWithLockRetry",
+  // FSPEC §8.4 — the consolidation-log record readers live here so both sides of the hand-off
+  // share one implementation; consSource imports them, so the bundle must republish them.
+  "parseLogRecords",
+  "jsonCommentRecords",
+  "openPromotionList",
 ]);
 
 const queueModule = wrapModule(
@@ -150,7 +155,10 @@ const consModule = wrapModule(
   ["const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
    "const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;",
    "const mergeCommandFor = __dev.mergeCommandFor;",
-   "const gitWithLockRetry = __dev.gitWithLockRetry;"].join("\n")
+   "const gitWithLockRetry = __dev.gitWithLockRetry;",
+   "const parseLogRecords = __dev.parseLogRecords;",
+   "const jsonCommentRecords = __dev.jsonCommentRecords;",
+   "const openPromotionList = __dev.openPromotionList;"].join("\n")
 );
 
 // `meta` must be a pure literal and the first statement, so each bundle carries

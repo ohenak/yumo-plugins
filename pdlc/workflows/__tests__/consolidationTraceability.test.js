@@ -258,3 +258,66 @@ describe("T05 — PROPERTIES §12.2 property→file map (CR F-08)", () => {
     expect(missing).toEqual([]);
   });
 });
+
+// ─── FSPEC §8.4's citations of the harvest skill resolve to the lines they name ───────────────
+// A `path:line` citation is a claim about a file that ships in this repo, so it is checkable, and
+// checking it is the only thing that keeps it true as the cited file moves. Two citations are in
+// play: the `Phases exercised` metadata row, and the `failure-mode-id` line the §5 Open Items
+// convention adds. They live in different parts of the skill; a citation naming one location for
+// both is false for whichever it is not.
+describe("FSPEC §8.4 cites the harvest skill accurately", () => {
+  const HARVEST_SKILL = join(REPO_ROOT, "pdlc", "skills", "harvest-learnings", "SKILL.md");
+  const skillLines = readFileSync(HARVEST_SKILL, "utf8").split("\n");
+  const fspec = readFileSync(join(REPO_ROOT, FSPEC_PATH), "utf8");
+
+  /** 1-based line numbers of every line matching `re`. */
+  const linesMatching = (re) =>
+    skillLines.reduce((acc, line, i) => (re.test(line) ? [...acc, i + 1] : acc), []);
+
+  /** Every `harvest-learnings/SKILL.md`-anchored `:{n}` or `:{n}-{m}` citation in the FSPEC. */
+  const citations = [...fspec.matchAll(/harvest-learnings\/SKILL\.md[^\n]*?`?:(\d+)(?:-(\d+))?/g)]
+    .map((m) => ({ from: Number(m[1]), to: Number(m[2] ?? m[1]), context: m[0] }));
+
+  it("every cited range is a real range of lines in the skill", () => {
+    expect(citations.length).toBeGreaterThan(0);
+    for (const c of citations) {
+      expect(c.to).toBeGreaterThanOrEqual(c.from);
+      expect(c.to).toBeLessThanOrEqual(skillLines.length);
+    }
+  });
+
+  it("the `Phases exercised` row is inside the range the FSPEC cites for the metadata table", () => {
+    const rows = linesMatching(/\|\s*Phases exercised\s*\|/);
+    expect(rows).toHaveLength(1);
+    const [row] = rows;
+    const metadataCitations = citations.filter((c) => c.to > c.from && c.from < row + 1 && c.to >= row);
+    expect(metadataCitations.length).toBeGreaterThan(0);
+    for (const c of metadataCitations) {
+      expect(row).toBeGreaterThanOrEqual(c.from);
+      expect(row).toBeLessThanOrEqual(c.to);
+    }
+  });
+
+  it("the sentence introducing the `failure-mode-id` convention cites where the convention actually is", () => {
+    const conventionLines = linesMatching(/^failure-mode-id:/);
+    expect(conventionLines).toHaveLength(1);
+    const [convention] = conventionLines;
+    const metadataRow = linesMatching(/\|\s*Phases exercised\s*\|/)[0];
+    // The two are genuinely in different places — the premise of the finding.
+    expect(convention).toBeGreaterThan(metadataRow);
+
+    // The FSPEC paragraph that introduces the convention (§8.4's producing-side obligation).
+    const fspecLines = fspec.split("\n");
+    const anchor = fspecLines.findIndex((l) => /The convention this feature adds to/.test(l));
+    expect(anchor).toBeGreaterThan(-1);
+    const sentence = fspecLines.slice(anchor, anchor + 4).join("\n");
+
+    const cited = [...sentence.matchAll(/harvest-learnings\/SKILL\.md[^\n]*?`?:(\d+)(?:-(\d+))?/g)]
+      .map((m) => ({ from: Number(m[1]), to: Number(m[2] ?? m[1]) }));
+    expect(cited.length).toBeGreaterThan(0);
+    for (const c of cited) {
+      expect(convention).toBeGreaterThanOrEqual(c.from);
+      expect(convention).toBeLessThanOrEqual(c.to);
+    }
+  });
+});

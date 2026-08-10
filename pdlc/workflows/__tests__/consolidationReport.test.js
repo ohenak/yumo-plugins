@@ -52,6 +52,8 @@ import {
   REASON_CODE_STATUSES,
   UNAVAILABLE,
 } from "../consolidate-learnings.js";
+// FSPEC §8.4 — one implementation of the log readers, in orchestrate-dev.js (both sides import it).
+import { openPromotionList } from "../orchestrate-dev.js";
 import { VOCABULARY_VERSION, VOCABULARY_TRANSCRIPTION } from "./helpers/consolidationDoubles.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -196,6 +198,86 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
       // two bodies are not merely different, the empty one carries its own explicit statement that
       // the populated one does not.
       expect(withPromotions).not.toMatch(/promotions?:?[^\n]*\bnone\b/i);
+    });
+
+    // ─── Item 10 — the population, not merely the presence (CODE_REVIEW v1 F3) ──────────────
+    //
+    // FSPEC §10.4 item 10 is "the number of open promotions in the list §8.4 step 1 hands to the
+    // harvest prompt", and §8.4 step 1's list is computed from `.consolidation-log.md` — i.e.
+    // over ALL recorded promotions, prior passes included, plus this pass's own (which are
+    // appended to that same log before the harvest reads it). A count taken over this pass's
+    // records alone can never exceed this pass's promotion count and reads `0` on every `no-op`
+    // pass regardless of the real backlog — inverting the number's purpose. These tests pin the
+    // POPULATION: they fail if item 10 is fed the wrong one, not merely if the line is missing.
+
+    describe("item 10 counts the log's open promotions, not this pass's records", () => {
+      test("a no-op pass over a log with open promotions reports them — the count is not bounded by this pass", () => {
+        const state = makeState({
+          status: "no-op",
+          records: [],
+          priorRecords: [
+            makeRecord({ failureModeId: "t-a-md", action: "promote", route: "constraints" }),
+            makeRecord({ failureModeId: "t-b-md", action: "promote", route: "decisions" }),
+          ],
+        });
+
+        expect(renderReportBody(state)).toContain("10. open promotions: 2");
+      });
+
+      test("a landed retire in the log closes its id; a degraded one does not", () => {
+        const base = [
+          makeRecord({ failureModeId: "t-a-md", action: "promote", route: "constraints" }),
+          makeRecord({ failureModeId: "t-b-md", action: "promote", route: "constraints" }),
+        ];
+
+        const landedRetire = renderReportBody(
+          makeState({
+            status: "no-op",
+            priorRecords: [...base, makeRecord({ failureModeId: "t-a-md", action: "retire", route: "constraints" })],
+          })
+        );
+        const degradedRetire = renderReportBody(
+          makeState({
+            status: "no-op",
+            priorRecords: [...base, makeRecord({ failureModeId: "t-a-md", action: "retire", route: "degraded" })],
+          })
+        );
+
+        expect(landedRetire).toContain("10. open promotions: 1");
+        expect(degradedRetire).toContain("10. open promotions: 2");
+      });
+
+      test("this pass's own promotions are counted too, and an id recorded in both halves counts once", () => {
+        const state = makeState({
+          status: "promoted",
+          priorRecords: [makeRecord({ failureModeId: "t-a-md", action: "promote", route: "constraints" })],
+          records: [
+            makeRecord({ failureModeId: "t-a-md", action: "revise", route: "constraints" }),
+            makeRecord({ failureModeId: "t-c-md", action: "promote", route: "constraints" }),
+          ],
+        });
+
+        // {t-a-md, t-c-md} — the union of both halves, de-duplicated by id.
+        expect(renderReportBody(state)).toContain("10. open promotions: 2");
+      });
+
+      test("the count agrees with openPromotionList over the same population — a runtime oracle, not a transcribed number", () => {
+        const priorRecords = [
+          makeRecord({ failureModeId: "t-a-md", action: "promote", route: "constraints" }),
+          makeRecord({ failureModeId: "t-b-md", action: "retire", route: "constraints" }),
+        ];
+        const records = [makeRecord({ failureModeId: "t-d-md", action: "promote", route: "pr" })];
+        const expected = openPromotionList([...priorRecords, ...records]).length;
+
+        expect(renderReportBody(makeState({ priorRecords, records }))).toContain(
+          `10. open promotions: ${expected}`
+        );
+      });
+
+      test("a state with no priorRecords at all still renders the item from its own records (no throw, no blank)", () => {
+        const body = renderReportBody(makeState({ records: [makeRecord()] }));
+        expect(body).toContain("10. open promotions: 1");
+      });
     });
 
     // ─── AT-L5(a) — the vocabulary set-equality, four legs ────────────────────

@@ -1,6 +1,6 @@
 ---
 name: consolidate-learnings
-description: Consolidation ritual. Reads every feature-level LEARNINGS file produced since the last pass and promotes recurring patterns into project-level DOMAIN-CONSTRAINTS and DECISIONS, and proposes (never auto-commits) updates to skill prompts. Manually invoked, periodically. A human approves every promotion.
+description: Consolidation ritual. Reads every feature-level LEARNINGS file produced since the last pass and promotes recurring patterns into project-level DOMAIN-CONSTRAINTS and DECISIONS, and proposes (never auto-commits) updates to skill prompts. Fires on cadence or corpus volume, and on demand. A human approves every promotion.
 ---
 
 # Consolidate — Cross-Feature Learning Promotion
@@ -9,7 +9,13 @@ Per-feature LEARNINGS files are write-only until something promotes their recurr
 
 **Scope:** Read LEARNINGS files; promote durable patterns into `docs/_constraints/` and `docs/_decisions/`; propose skill-prompt changes as a reviewable artifact. You do NOT autonomously edit skill files, and you do NOT promote a signal seen in only one feature unless it is unambiguously a standing constraint.
 
-**Cadence:** Manually invoked. A `SessionStart` nudge hook reminds when ≥5 un-consolidated LEARNINGS exist, but you may be run any time.
+**Cadence:** the pass is *not* manual-only. It fires on three occasions, and the workflow decides which applies before you are asked to do anything:
+
+- **Elapsed interval** — `consolidation.cadenceHours` has passed since the last recorded pass, with no per-pass operator invocation (AC-1.1).
+- **Corpus volume** — un-consolidated LEARNINGS reach `consolidation.volumeThreshold`, even if `cadenceHours` has not elapsed (AC-1.2).
+- **On demand** — an operator sets the `direct` input, which bypasses both gates (AC-1.1's final clause).
+
+A `SessionStart` nudge hook additionally reminds when un-consolidated LEARNINGS accumulate.
 
 ---
 
@@ -19,14 +25,22 @@ Per-feature LEARNINGS files are write-only until something promotes their recurr
 /pdlc:consolidate-learnings
 ```
 
-No argument — operates across the whole repo's `docs/`.
+No positional argument — the pass operates across the whole repo's `docs/`. One optional input:
+
+| Input | Type | Default | Effect |
+|---|---|---|---|
+| `direct` | boolean | `false` | Run unconditionally, bypassing the cadence and volume triggers. A bare invocation is cadence-gated. |
 
 ---
 
 ## Git Workflow
 
-1. **Before starting:** check out or create `chore-consolidate-learnings-{date}`. Pull latest.
-2. **After completing:** commit promoted constraints/decisions, the proposal artifact, and the updated log; push. Open for human review — do not merge skill-prompt changes yourself.
+**Do not create, check out, or switch a branch, and do not open a PR for the promotions themselves.** The pass writes in the **invoking tree, on whatever branch it is already on** (AC-3.8, AC-3.8b) — changing the branch is forbidden.
+
+1. **Before starting:** nothing. You are already where the writes belong.
+2. **After completing:** commit the promoted constraints/decisions, the proposal artifact, and the updated log with a **pathspec-scoped** commit naming exactly those files (never `git commit -a`). If a commit is not possible, leave the writes in the working tree — the run reports `writes-uncommitted`, which is an honest outcome, not a failure to hide.
+
+Skill-prompt changes remain proposals for a human to apply — you never apply them yourself.
 
 ---
 

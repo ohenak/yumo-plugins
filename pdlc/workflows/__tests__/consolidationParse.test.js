@@ -24,7 +24,7 @@
 // arms — `phase`, `failure-mode-id`, `symptom` (PROP-REC-04) — land in: PROPERTIES owns their
 // fixtures, this file owns their home (TSPEC §11.5). None of the three is authored by this task.
 
-import { parseLogRecords } from "../consolidate-learnings.js";
+import { parseLogRecords } from "../orchestrate-dev.js";
 
 // ─── Local fixture grammar for a `.consolidation-log.md` failure-mode record block ─────────
 //

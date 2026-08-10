@@ -105,6 +105,62 @@ describe("mergeCommandFor", () => {
     expect(cmd).not.toMatch(/-f number=/);
   });
 
+  // ─── The two consolidation surfaces, both arms of `pluginRepository` (FSPEC §11 / REQ:575) ──
+  //
+  // `consolidation.pluginRepository` ships as `null`, whose contract is "the current repository",
+  // NOT a placeholder slug. `gh` targets the current repository precisely when `--repo` is
+  // ABSENT, so the null arm's oracle is the flag's absence — never a substituted literal.
+
+  test("consolidationPrs — a configured repository is targeted by name", () => {
+    expect(mergeCommandFor("consolidationPrs", { repo: "acme/widgets" })).toBe(
+      'gh pr list --repo acme/widgets --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body',
+    );
+  });
+
+  test("consolidationPrs — a null repository OMITS --repo entirely (the current repository, never a placeholder slug)", () => {
+    const cmd = mergeCommandFor("consolidationPrs", { repo: null });
+    expect(cmd).toBe(
+      'gh pr list --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body',
+    );
+    expect(cmd).not.toMatch(/--repo/);
+    expect(cmd).not.toMatch(/null|undefined|unknown/);
+  });
+
+  test("consolidationPrs — an omitted repo key is the same arm as an explicit null", () => {
+    expect(mergeCommandFor("consolidationPrs", {})).toBe(
+      mergeCommandFor("consolidationPrs", { repo: null }),
+    );
+  });
+
+  test("consolidationCreate — a configured repository is targeted by name", () => {
+    expect(
+      mergeCommandFor("consolidationCreate", {
+        repo: "acme/widgets",
+        head: "consolidation/p1",
+        base: "main",
+        title: "t",
+        bodyFile: "/tmp/body.md",
+      }),
+    ).toBe(
+      "gh pr create --repo acme/widgets --head consolidation/p1 --base main --title t --body-file /tmp/body.md",
+    );
+  });
+
+  test("consolidationCreate — a null repository OMITS --repo entirely (AC-3.8's same-repo case)", () => {
+    const cmd = mergeCommandFor("consolidationCreate", {
+      repo: null,
+      head: "consolidation/p1",
+      base: "main",
+      title: "t",
+      bodyFile: "/tmp/body.md",
+    });
+    expect(cmd).toBe(
+      "gh pr create --head consolidation/p1 --base main --title t --body-file /tmp/body.md",
+    );
+    expect(cmd).not.toMatch(/--repo/);
+    expect(cmd).not.toMatch(/null|undefined|unknown/);
+  });
+
   test("throws on an unrecognised surface — mergeCommandFor is the ONLY builder, and it is total over its own domain", () => {
     expect(() => mergeCommandFor("nonsense", {})).toThrow(/unrecognised surface/);
   });

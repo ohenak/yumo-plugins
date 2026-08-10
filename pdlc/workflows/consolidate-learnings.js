@@ -26,14 +26,42 @@
  */
 
 // Single-line on purpose: stripModuleSyntax recognises imports line-wise.
-import { resolveAdvisoryRung, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, ADVISORY_SEAMS } from "./orchestrate-dev.js";
+import { resolveAdvisoryRung, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, ADVISORY_SEAMS, parseLogRecords, jsonCommentRecords, openPromotionList } from "./orchestrate-dev.js";
 
 export const meta = {
   name: "consolidate-learnings",
   description:
     "Consolidation pass — clusters recurring failure modes across the LEARNINGS corpus and promotes durable patterns into DOMAIN-CONSTRAINTS.md, DECISIONS-*.md, or a guard-set PR.",
-  inputs: [],
+  inputs: [
+    {
+      // AC-1.1's final clause — "a direct /pdlc:consolidate-learnings invocation runs regardless
+      // of the interval; the manual entry point is never gated by cadence". `main` has always
+      // honoured a `direct` parameter, but the runtime supplies operator inputs by the names
+      // DECLARED here, so without this row the clause was reachable from tests only and a real
+      // direct invocation still took the cadence test (and could exit `skipped-cadence`).
+      name: "direct",
+      description:
+        "Run the pass unconditionally, bypassing the cadence and volume triggers. Defaults to false; a bare invocation is cadence-gated.",
+      type: "boolean",
+      required: false,
+    },
+  ],
 };
+
+/**
+ * AC-1.1 — coerce the `direct` input to the boolean `triggerFor` reads. Operator inputs arrive
+ * as TEXT from the runtime's own input plumbing, where the bare truthiness test `if (direct)`
+ * would read the string `"false"` as a direct invocation. Total, and closed by default: anything
+ * not affirmatively naming "yes" is a cadence-gated run.
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+export function directFlag(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return false;
+  return /^(true|yes|1|on)$/i.test(value.trim());
+}
 
 // ─── TSPEC §6.5 — the "unavailable" literal, pinned (T-10) ────────────────────
 //
@@ -495,6 +523,9 @@ export default async function main({
     consumed: [],
     proposals: [],
     records: [],
+    // The log's records, read at step 11 (§7.5). Stays `[]` on any pass that terminates before
+    // the log is read, so item 10 renders a real number rather than an invented backlog.
+    priorRecords: [],
     effectiveness: null,
     suppressions: [],
     notices: [],
@@ -556,7 +587,15 @@ export default async function main({
   // Steps 3/4 — volume then cadence (§7.2). `skipped-cadence` is the one terminal
   // branch that is not a jump: no row, no marker, no passId, no further git call.
   const datum = cadenceDatum(parseTerminalRows(logText));
-  const trigger = triggerFor({ unconsolidated: predicate.unconsolidated, datum, now: nowMs, config, direct });
+  const trigger = triggerFor({
+    unconsolidated: predicate.unconsolidated,
+    datum,
+    now: nowMs,
+    config,
+    // AC-1.1 — the operator input, coerced once, here: `meta.inputs` declares `direct`, and the
+    // runtime delivers declared inputs as text.
+    direct: directFlag(direct),
+  });
   if (trigger === "skipped-cadence") {
     state.status = "skipped-cadence";
     return await finishPass(state, seams);
@@ -668,6 +707,11 @@ export default async function main({
     ...jsonCommentRecords(logText),
     ...parsedLog.records.filter((r) => typeof r.failureModeId === "string"),
   ];
+  // §7.5/§10.4 item 10 — the log's own population, carried onto the state so the report renders
+  // the open-promotion count over the records the harvest's list is derived from, not over this
+  // pass's promotions alone. Read once here; never appended to (this pass's records live in
+  // `state.records`, and item 10 unions the two).
+  state.priorRecords = priorRecords;
   for (const notice of parsedLog.notices) {
     if (notice.subject !== undefined) state.notices.push(notice);
   }
@@ -702,7 +746,9 @@ export default async function main({
 
   let prStates = [];
   if (typeof ghRunFn === "function") {
-    const repo = config.pluginRepository ?? "unknown/unknown";
+    // `null` is the shipped default and means the current repository (REQ:575) — it is passed
+    // through verbatim, never substituted: `mergeCommandFor` omits `--repo` on exactly that arm.
+    const repo = config.pluginRepository ?? null;
     const pollReply = await ghRunFn(mergeCommandFor("consolidationPrs", { repo }));
     if (pollReply && pollReply.ok === true) {
       try {
@@ -838,8 +884,9 @@ export default async function main({
 
       // Per edit: write in the clone, add, commit — one PDLC-PROMOTION-ID each
       // (§9.2). A proposal short of its diff is authored through the same
-      // resolver ladder; a dispatch error there is §2.6 row 4's terminal.
-      let authoringFailed = false;
+      // resolver ladder; a dispatch error there is §2.6 row 4's terminal — the loop stops by
+      // RETURNING through `finishPass`, so no later proposal is authored or committed, and no
+      // separate control flag is carried (one that no arm ever set used to sit here).
       for (const p of prProposals) {
         if (p.diff === null || p.diff === undefined) {
           let authored;
@@ -863,7 +910,6 @@ export default async function main({
           }
           p.diff = authored.raw;
         }
-        if (authoringFailed) break;
         await writeFileFn(`${dir}/${p.artifact}`, p.diff);
         await gitFn(["-C", dir, "add", "--", p.artifact]);
         await gitFn(["-C", dir, "commit", "-m", renderPromotionCommitMessage(p, state.passId), "--", p.artifact]);
@@ -902,7 +948,9 @@ export default async function main({
           const stderr = String((pushReply && pushReply.stderr) || "");
           await degradeAll(classifyPrFailure(stderr, state.credential), stderr || "push failed");
         } else {
-          const repo = config.pluginRepository ?? "unknown/unknown";
+          // Same-repo case (`null`): the flag is omitted, and the clone this PR is pushed from
+          // was itself cut from `origin` (`openClone:2543`), so both halves agree on the target.
+          const repo = config.pluginRepository ?? null;
           const bodyPath = `${dir}/.pdlc-pr-body.md`;
           await writeFileFn(bodyPath, renderPrBody(state, prProposals));
           let createCmd = mergeCommandFor("consolidationCreate", {
@@ -984,28 +1032,6 @@ function parseTerminalRows(logText) {
     if (fields.status !== undefined || fields.date !== undefined) rows.push(fields);
   }
   return rows;
-}
-
-// §7.4's second on-disk record grammar — one full FailureModeRecord as JSON
-// inside an HTML comment, `<!-- pdlc:record {…} -->`. Unparseable JSON is
-// skipped, never an abort (DC-01 receive side).
-const RECORD_COMMENT_RE = /<!--\s*pdlc:record\s+(\{.*?\})\s*-->/g;
-function jsonCommentRecords(logText) {
-  const text = typeof logText === "string" ? logText : "";
-  const records = [];
-  RECORD_COMMENT_RE.lastIndex = 0;
-  let match;
-  while ((match = RECORD_COMMENT_RE.exec(text)) !== null) {
-    try {
-      const parsed = JSON.parse(match[1]);
-      if (parsed && typeof parsed === "object" && typeof parsed.failureModeId === "string") {
-        records.push(parsed);
-      }
-    } catch {
-      // skipped — a malformed comment contributes no record
-    }
-  }
-  return records;
 }
 
 /**
@@ -1578,57 +1604,6 @@ export function mergeProposals(proposals) {
   return result;
 }
 
-// The eight `FailureModeRecord` fields, on-disk key -> camelCased property name (FSPEC §8.1).
-const LOG_RECORD_FIELD_MAP = [
-  ["failure-mode-id", "failureModeId"],
-  ["phase", "phase"],
-  ["symptom", "symptom"],
-  ["artifact", "artifact"],
-  ["target", "target"],
-  ["passId", "passId"],
-  ["action", "action"],
-  ["route", "route"],
-];
-
-/** @returns {{records: FailureModeRecord[], notices: ParseNotice[]}} */
-export function parseLogRecords(logText) {
-  const text = typeof logText === "string" ? logText : "";
-  const blocks = text
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0);
-
-  const records = [];
-  const notices = [];
-
-  for (const block of blocks) {
-    const fieldValues = {};
-    for (const line of block.split("\n")) {
-      const colon = line.indexOf(":");
-      if (colon === -1) continue;
-      fieldValues[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-    }
-
-    const record = {};
-    for (const [textKey, propKey] of LOG_RECORD_FIELD_MAP) {
-      if (Object.prototype.hasOwnProperty.call(fieldValues, textKey)) {
-        record[propKey] = fieldValues[textKey];
-      }
-    }
-
-    const subject = record.failureModeId;
-    for (const [, propKey] of LOG_RECORD_FIELD_MAP) {
-      if (!Object.prototype.hasOwnProperty.call(record, propKey)) {
-        notices.push({ subject, missingField: propKey });
-      }
-    }
-
-    records.push(record);
-  }
-
-  return { records, notices };
-}
-
 // §7.5 — effectiveness, streaks, remediation, the open list
 
 // Vocabularies §2's row 1 mapping — docType named in a CROSS-REVIEW basename -> the phase that
@@ -1807,33 +1782,6 @@ export function effectivenessTable(records, consumedTexts, config) {
 }
 
 /**
- * §7.5 — the ids for which no record carries a landed (non-`degraded`) retire. A record short of
- * `action` or `route` cannot close an id (it stays open); a record short of `failureModeId`
- * contributes no member at all.
- *
- * @returns {string[]}
- */
-export function openPromotionList(records) {
-  const list = Array.isArray(records) ? records : [];
-  const order = [];
-  const seen = new Set();
-  const closed = new Set();
-
-  for (const r of list) {
-    if (!r || typeof r.failureModeId !== "string") continue;
-    if (!seen.has(r.failureModeId)) {
-      seen.add(r.failureModeId);
-      order.push(r.failureModeId);
-    }
-    if (r.action === "retire" && r.route !== undefined && r.route !== "degraded") {
-      closed.add(r.failureModeId);
-    }
-  }
-
-  return order.filter((id) => !closed.has(id));
-}
-
-/**
  * §7.5, FSPEC §8.5's four rows, evaluated top-down. `records` is unused by the rule itself — the
  * spent-alternative clause reads only `prStates` (NFR-4) — but stays in the signature per TSPEC
  * §7.5.
@@ -1889,9 +1837,13 @@ export function routeOf(target) {
  * @returns {"PR"|"constraints"|"decisions"|"proposal-file"}
  */
 export function routeProposal(p) {
-  const r = routeOf(p.target);
+  // Total on an absent proposal (DC-01): an argument that carries no `target` routes to the
+  // proposal file, which is the same answer an argument carrying an unroutable one gets. A throw
+  // here would abort the pass over a missing field the route rule already has an answer for.
+  const proposal = p && typeof p === "object" ? p : {};
+  const r = routeOf(proposal.target);
   if (r === "PR") return "PR";
-  if (p.action === "promote" && (r === "constraints" || r === "decisions")) return r;
+  if (proposal.action === "promote" && (r === "constraints" || r === "decisions")) return r;
   return "proposal-file";
 }
 
@@ -1905,10 +1857,13 @@ export function routeProposal(p) {
  */
 export function enactedByLog(pair, records) {
   const list = Array.isArray(records) ? records : [];
+  // Total on an absent pair (DC-01): a pair short of its keys matches no record, so the honest
+  // answer is `not enacted` — the same answer an unmatched pair gets.
+  const subject = pair && typeof pair === "object" ? pair : {};
   for (const r of list) {
     if (!r || typeof r !== "object") continue;
     if (!("failureModeId" in r) || !("action" in r) || !("route" in r)) continue;
-    if (r.failureModeId !== pair.failureModeId || r.action !== pair.action) continue;
+    if (r.failureModeId !== subject.failureModeId || r.action !== subject.action) continue;
     if (r.route === "degraded") continue;
     return { enacted: true, passId: typeof r.passId === "string" ? r.passId : null };
   }
@@ -1927,7 +1882,10 @@ const ENACTING_PR_STATES = new Set(["OPEN", "MERGED"]);
  */
 export function enactedByPr(pair, prStates) {
   const list = Array.isArray(prStates) ? prStates : [];
-  const key = `${pair.failureModeId}:${pair.action}`;
+  // Total on an absent pair (DC-01), matching `enactedByLog`'s own guard: a pair short of its
+  // fields matches nothing, which is `enacted: false` — never an exception.
+  const subject = pair && typeof pair === "object" ? pair : {};
+  const key = `${subject.failureModeId}:${subject.action}`;
   for (const pr of list) {
     if (!pr || !ENACTING_PR_STATES.has(pr.state)) continue;
     const body = typeof pr.body === "string" ? pr.body : "";
@@ -2393,7 +2351,15 @@ export function renderReportBody(state) {
     lines.push(`  proposal file: ${proposalPathFor(s.passId)}`);
   }
   lines.push(`9. branch: ${s.branch ? s.branch : "writes-uncommitted"}`);
-  lines.push(`10. open promotions: ${openPromotionList(records).length}`);
+  // FSPEC §10.4 item 10 — "the number of open promotions in the list §8.4 step 1 hands to the
+  // harvest prompt", and that list is computed from `.consolidation-log.md`, i.e. over EVERY
+  // recorded promotion. The population is therefore the log's records (`state.priorRecords`,
+  // read at step 11) UNIONED with this pass's own, which are appended to that same log before
+  // any harvest reads it — not `state.records` alone, which would bound the number by this
+  // pass's promotion count and report `0` on every `no-op` pass whatever the real backlog.
+  // `openPromotionList` de-duplicates by id, so an id present in both halves counts once.
+  const priorRecords = Array.isArray(s.priorRecords) ? s.priorRecords : [];
+  lines.push(`10. open promotions: ${openPromotionList([...priorRecords, ...records]).length}`);
 
   if (notices.length > 0) {
     lines.push(`notices:`);

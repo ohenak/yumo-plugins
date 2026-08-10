@@ -19,9 +19,14 @@
 // they throw `notImplemented`, a symbol deleted from the module in `4fdc7fac`. No oracle below is
 // weakened on account of an unimplemented subject.
 
+import { readFileSync } from "fs";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import main, {
+  meta,
   parseMarker,
   markerVerdict,
+  directFlag,
 } from "../consolidate-learnings.js";
 import {
   fakeFs,
@@ -266,6 +271,53 @@ describe("T20 — the pass, end to end (L2)", () => {
         expect(result.trigger).toBe("manual");
         expect(result.status).not.toBe("skipped-cadence"); // BR-05: manual skips BR-01/BR-02 entirely
       });
+    });
+
+    // ─── AC-1.1's manual clause, from the OPERATOR's side (CODE_REVIEW v1 F8) ────────────────
+    //
+    // AT-C4 above drives `direct: true` as a JS argument. That is not the shape an operator
+    // invoking `/pdlc:consolidate-learnings` can produce: the runtime supplies operator inputs by
+    // the names `meta.inputs` DECLARES, so an undeclared parameter is unreachable from the entry
+    // point and the manual clause ("never gated by cadence") would hold only for tests. These
+    // rows pin the declaration and the string-valued arrival the runtime actually performs.
+
+    test("meta declares `direct` as an operator input — the manual clause is reachable from the entry point", () => {
+      const names = (meta.inputs ?? []).map((i) => i.name);
+      expect(names).toContain("direct");
+      const direct = meta.inputs.find((i) => i.name === "direct");
+      expect(direct.required).toBe(false);
+      // A bare `/pdlc:consolidate-learnings` supplies nothing, so the input cannot be required.
+      expect(direct.description).toMatch(/cadence/i);
+    });
+
+    test("a string-valued `direct` from the runtime runs the pass unconditionally (trigger manual)", () => {
+      const recentDate = new Date(FIXED_NOW_MS - 60 * 60 * 1000).toISOString();
+      const logText = buildLogRow({ passId: "2024-12-31-1", date: recentDate, status: "no-op", trigger: "manual" });
+      const seams = buildSeams({ corpusPaths: ["docs/feat-a/LEARNINGS-feat-a.md"], logText });
+
+      return main({ ...seams, direct: "true" }).then((result) => {
+        expect(result.trigger).toBe("manual");
+        expect(result.status).not.toBe("skipped-cadence");
+      });
+    });
+
+    test('a string "false" is NOT a direct invocation — the cadence gate still applies', () => {
+      const recentDate = new Date(FIXED_NOW_MS - 60 * 60 * 1000).toISOString();
+      const logText = buildLogRow({ passId: "2024-12-31-1", date: recentDate, status: "no-op", trigger: "manual" });
+      const seams = buildSeams({ corpusPaths: ["docs/feat-a/LEARNINGS-feat-a.md"], logText });
+
+      return main({ ...seams, direct: "false" }).then((result) => {
+        expect(result.status).toBe("skipped-cadence");
+      });
+    });
+
+    test("directFlag maps every arrival shape the runtime can produce, and defaults closed", () => {
+      for (const value of [true, "true", "TRUE", "yes", "1", "on"]) {
+        expect(directFlag(value)).toBe(true);
+      }
+      for (const value of [false, "false", "no", "0", "off", "", undefined, null, 0, {}, []]) {
+        expect(directFlag(value)).toBe(false);
+      }
     });
 
     test("AT-C5 (FSPEC:2105): a later `refused` row never advances the datum — the datum is D1, the earlier promoted row's date", () => {
@@ -674,6 +726,55 @@ describe("T20 — the pass, end to end (L2)", () => {
           expect(result.prUrl ?? null).toBeNull();
         });
       });
+
+      // ─── (no FSPEC AT) — the authoring loop stops at the FIRST failure ───────────────────
+      //
+      // AT-M9 pins the terminal a failed authoring dispatch reaches. This row pins the other
+      // half of the same arm: no LATER proposal is authored, committed or pushed after it. The
+      // loop's failure arms terminate through `finishPass`, so the stop is a property of the
+      // return — asserted here on the dispatch count and on the clone's git verbs, both of which
+      // a loop that merely flagged the failure and carried on would violate.
+      test("(no FSPEC AT) a failed proposal-authoring dispatch stops the loop — no second proposal is authored, and no promotion commit is made", () => {
+        const cluster = (artifact, symptom) => ({
+          phase: "T",
+          artifact,
+          kind: 3,
+          action: "promote",
+          symptom,
+          evidence: { recurrence: ["feat-a", "feat-b"] },
+          // no `diff` — both clusters need an authoring dispatch
+        });
+        const CLUSTER_REPLY = JSON.stringify({
+          clusters: [
+            cluster("pdlc/workflows/orchestrate-dev.js", "the first guard-set mode"),
+            cluster("pdlc/workflows/orchestrate-queue.js", "the second guard-set mode"),
+          ],
+        });
+        const AUTHORING_ERROR = "boom: authoring dispatch failed";
+
+        const base = oneFileCorpus();
+        const seams = buildSeams({ ...base, agentScript: [CLUSTER_REPLY, AUTHORING_ERROR] });
+        seams._agent = makeAgentDouble({
+          script: [CLUSTER_REPLY, AUTHORING_ERROR, "a diff that must never be requested"],
+          throwOn: new Set([1]),
+        });
+        seams._makeTempDir = fakeMakeTempDir("/tmp/pdlc-consolidation-clone")._makeTempDir;
+
+        return main({ ...seams, direct: true }).then((result) => {
+          expect(result.status).toBe("failed");
+          // Exactly two dispatches: the clustering call, and the FIRST authoring call. The second
+          // proposal's authoring is never requested.
+          expect(seams._agent.calls).toHaveLength(2);
+          expect(seams._agent.calls[1].prompt).toContain("orchestrate-dev");
+          // Nothing was committed in the clone either — the first proposal's own commit is not
+          // made once its diff failed to author, and the second never gets that far.
+          const cloneCommits = seams.git.calls.filter(
+            (argv) => argv.includes("-C") && argv.includes("commit")
+          );
+          expect(cloneCommits).toHaveLength(0);
+          expect(result.prUrl ?? null).toBeNull();
+        });
+      });
     });
 
     // ═══════════════════════════════════════════════════════════════════
@@ -700,5 +801,42 @@ describe("T20 — the pass, end to end (L2)", () => {
         expect(result.body).toContain("LEARNINGS-feat-b.md");
       });
     });
+  });
+});
+
+// ─── The skill surface must not contradict the shipped pass (AC-1.1, AC-3.8/3.8b) ──────────────
+// `pdlc/skills/consolidate-learnings/SKILL.md` is the prompt an agent actually reads. Two of its
+// claims were falsified by this feature: that the pass is manual-only (AC-1.1/AC-1.2 fire it on
+// cadence and on volume), and that the agent should branch-and-push (AC-3.8b requires the writes
+// to land in the invoking tree, on whatever branch it is already on — AC-3.8 forbids changing it).
+// The oracle is on the artifact because the contradiction is only observable there: the runtime is
+// already correct, and an agent following the stale prose would do the forbidden thing anyway.
+describe("consolidate-learnings/SKILL.md agrees with the shipped pass", () => {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const skill = readFileSync(
+    resolve(__dirname, "../../skills/consolidate-learnings/SKILL.md"),
+    "utf8"
+  );
+
+  it("does not claim the pass is manually invoked only (AC-1.1, AC-1.2)", () => {
+    expect(skill).not.toMatch(/Manually invoked/i);
+    // and states the two automatic triggers positively, so the claim is replaced, not just deleted
+    expect(skill).toMatch(/cadenceHours/);
+    expect(skill).toMatch(/volumeThreshold/);
+  });
+
+  it("does not instruct the agent to create or check out a branch, nor to push (AC-3.8, AC-3.8b)", () => {
+    expect(skill).not.toMatch(/chore-consolidate-learnings-/);
+    expect(skill).not.toMatch(/check\s?out or create/i);
+    expect(skill).not.toMatch(/\bpush\b/i);
+  });
+
+  it("names the writes' actual home: the invoking tree, on its current branch", () => {
+    expect(skill).toMatch(/invoking tree/i);
+  });
+
+  it("documents the `direct` input that bypasses the cadence gate (AC-1.1's final clause)", () => {
+    expect(skill).toMatch(/\bdirect\b/);
+    expect(meta.inputs.some((i) => i.name === "direct")).toBe(true);
   });
 });

@@ -1008,6 +1008,10 @@ const MERGE_STATE_STATUS_VALUES = [
 ];
 const UNRECOGNISED_SENTINEL = "__unrecognised__";
 
+function repoFlag(repo) {
+  return repo == null ? "" : ` --repo ${repo}`;
+}
+
 function mergeCommandFor(surface, params = {}) {
   switch (surface) {
     case "prState":
@@ -1040,14 +1044,142 @@ function mergeCommandFor(surface, params = {}) {
     }
     case "consolidationPrs":
 
-      return `gh pr list --repo ${params.repo} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
+      return `gh pr list${repoFlag(params.repo)} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
     case "consolidationCreate":
 
-      return `gh pr create --repo ${params.repo} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
+      return `gh pr create${repoFlag(params.repo)} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
     default:
       throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
   }
 }
+
+const CONSOLIDATION_LOG_PATH = "docs/_decisions/.consolidation-log.md";
+
+const LOG_RECORD_FIELD_MAP = [
+  ["failure-mode-id", "failureModeId"],
+  ["phase", "phase"],
+  ["symptom", "symptom"],
+  ["artifact", "artifact"],
+  ["target", "target"],
+  ["passId", "passId"],
+  ["action", "action"],
+  ["route", "route"],
+];
+
+function parseLogRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  const records = [];
+  const notices = [];
+
+  for (const block of blocks) {
+    const fieldValues = {};
+    for (const line of block.split("\n")) {
+      const colon = line.indexOf(":");
+      if (colon === -1) continue;
+      fieldValues[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+    }
+
+    const record = {};
+    for (const [textKey, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (Object.prototype.hasOwnProperty.call(fieldValues, textKey)) {
+        record[propKey] = fieldValues[textKey];
+      }
+    }
+
+    const subject = record.failureModeId;
+    for (const [, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (!Object.prototype.hasOwnProperty.call(record, propKey)) {
+        notices.push({ subject, missingField: propKey });
+      }
+    }
+
+    records.push(record);
+  }
+
+  return { records, notices };
+}
+
+const RECORD_COMMENT_RE = /<!--\s*pdlc:record\s+(\{.*?\})\s*-->/g;
+
+function jsonCommentRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const records = [];
+  RECORD_COMMENT_RE.lastIndex = 0;
+  let match;
+  while ((match = RECORD_COMMENT_RE.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && typeof parsed === "object" && typeof parsed.failureModeId === "string") {
+        records.push(parsed);
+      }
+    } catch {
+
+    }
+  }
+  return records;
+}
+
+function consolidationLogRecords(logText) {
+  return [
+    ...jsonCommentRecords(logText),
+    ...parseLogRecords(logText).records.filter((r) => typeof r.failureModeId === "string"),
+  ];
+}
+
+function openPromotionList(records) {
+  const list = Array.isArray(records) ? records : [];
+  const order = [];
+  const seen = new Set();
+  const closed = new Set();
+
+  for (const r of list) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!seen.has(r.failureModeId)) {
+      seen.add(r.failureModeId);
+      order.push(r.failureModeId);
+    }
+    if (r.action === "retire" && r.route !== undefined && r.route !== "degraded") {
+      closed.add(r.failureModeId);
+    }
+  }
+
+  return order.filter((id) => !closed.has(id));
+}
+
+function openPromotionsFromLog(logText) {
+  const records = consolidationLogRecords(logText);
+  const open = new Set(openPromotionList(records));
+  const byId = new Map();
+  for (const r of records) {
+    if (!open.has(r.failureModeId)) continue;
+    const entry = byId.get(r.failureModeId) || { failureModeId: r.failureModeId };
+    for (const field of ["phase", "symptom", "artifact"]) {
+      if (typeof r[field] === "string" && r[field].length > 0) entry[field] = r[field];
+    }
+    byId.set(r.failureModeId, entry);
+  }
+  return [...byId.values()];
+}
+
+function renderOpenPromotionList(entries) {
+  const list = Array.isArray(entries) ? entries : [];
+  if (list.length === 0) return "(none — no open promotions are recorded)";
+  return list
+    .map((e) => {
+      const phase = e.phase ? e.phase : UNAVAILABLE_FIELD;
+      const artifact = e.artifact ? e.artifact : UNAVAILABLE_FIELD;
+      const symptom = e.symptom ? e.symptom : UNAVAILABLE_FIELD;
+      return `  - failure-mode-id: ${e.failureModeId} | phase: ${phase} | artifact: ${artifact} | symptom: ${symptom}`;
+    })
+    .join("\n");
+}
+
+const UNAVAILABLE_FIELD = "unavailable";
 
 function parsePrRef(input) {
   if (typeof input !== "string") return null;
@@ -5629,7 +5761,7 @@ function propertiesTestPrompt(featureName) {
   );
 }
 
-function harvestPrompt(featureName) {
+function harvestPrompt(featureName, openPromotions = []) {
   return (
     `Harvest learnings for feature ${featureName}:\n` +
     `1. Read all CROSS-REVIEW-*.md and CODE_REVIEW-*.md files (every doc type, every -vN suffix) for docs/${featureName}/.\n` +
@@ -5638,6 +5770,13 @@ function harvestPrompt(featureName) {
     `4. Commit and push LEARNINGS before any delete operation.\n` +
     `5. Only after the LEARNINGS commit is confirmed on remote, delete the harvested CROSS-REVIEW-* and CODE_REVIEW-* files.\n` +
     `6. Commit and push the deletions.\n` +
+    `\nOpen-promotion list, computed from ${CONSOLIDATION_LOG_PATH} and handed to you (FSPEC §8.4 ` +
+    `step 1). For each §5 Open Item you write, ask one question per entry below: does this item ` +
+    `report the failure that entry's symptom describes, on that entry's artifact, in that ` +
+    `entry's phase? On a yes, copy that entry's id VERBATIM onto the item as ` +
+    `\`failure-mode-id: {id}\` — never re-slug, abbreviate, or mint a new id. On no matches, ` +
+    `write no line.\n` +
+    `${renderOpenPromotionList(openPromotions)}\n` +
     branchPinClause(featureName)
   );
 }
@@ -8189,9 +8328,12 @@ async function main({
       } else {
         phaseFn("Phase H: Harvest");
         const learningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+
+        const consolidationLogText = await readFileFn(CONSOLIDATION_LOG_PATH);
+        const openPromotions = openPromotionsFromLog(consolidationLogText);
         const harvestResult = await wrappedDispatch({
           skill: "harvest-learnings",
-          basePrompt: harvestPrompt(featureName),
+          basePrompt: harvestPrompt(featureName, openPromotions),
           targetPath: learningsPath,
           docType: "LEARNINGS",
           dispatchKind: "harvest",
@@ -8516,7 +8658,7 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, parseLogRecords, jsonCommentRecords, openPromotionList };
 })();
 
 const __queue = (function () {

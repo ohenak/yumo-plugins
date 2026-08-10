@@ -19,6 +19,9 @@
 // pass cannot produce — see PLAN §13.3 rule 2, un-skip only, never rewrite out from under it.
 
 import * as cons from "../consolidate-learnings.js";
+// FSPEC §8.4 — the log record readers live in orchestrate-dev.js so both sides of the hand-off
+// share one implementation; consolidate-learnings.js imports them rather than redefining them.
+import { openPromotionList } from "../orchestrate-dev.js";
 
 // ─── Fixture builders ───────────────────────────────────────────────────────
 
@@ -341,21 +344,21 @@ describe("T17 — AT-F6…AT-F18: effectiveness and remediation (blocks T27)", (
 
     describe("openPromotionList — FSPEC §8.4 step 1 (§8.1's reader row)", () => {
       test("an id with no retire record at all is open", () => {
-        const list = cons.openPromotionList([
+        const list = openPromotionList([
           record({ failureModeId: "fm-open", action: "promote", route: "constraints" }),
         ]);
         expect(list).toContain("fm-open");
       });
 
       test("a retire record whose route is NOT degraded closes the id", () => {
-        const list = cons.openPromotionList([
+        const list = openPromotionList([
           record({ failureModeId: "fm-closed", action: "retire", route: "constraints" }),
         ]);
         expect(list).not.toContain("fm-closed");
       });
 
       test("a retire record whose route IS degraded does not close the id — it stays open", () => {
-        const list = cons.openPromotionList([
+        const list = openPromotionList([
           record({ failureModeId: "fm-degraded", action: "retire", route: "degraded" }),
         ]);
         expect(list).toContain("fm-degraded");
@@ -364,7 +367,7 @@ describe("T17 — AT-F6…AT-F18: effectiveness and remediation (blocks T27)", (
       test("a record missing failureModeId contributes no member at all — never `undefined` in the list", () => {
         const bare = record({ action: "promote", route: "constraints" });
         delete bare.failureModeId;
-        const list = cons.openPromotionList([bare]);
+        const list = openPromotionList([bare]);
         expect(list).not.toContain(undefined);
         expect(list.every((x) => typeof x === "string")).toBe(true);
       });

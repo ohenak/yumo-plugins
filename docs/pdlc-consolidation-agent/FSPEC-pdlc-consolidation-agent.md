@@ -1522,8 +1522,9 @@ agent knows from the feature it is harvesting. An id an LLM composes from the fa
 describing will not be byte-equal to any recorded slug, so a "derive it yourself" convention would
 make `recurred` unreachable and drift every promotion to `insufficient-evidence` and then
 `unmeasurable` (§8.7). The convention this feature adds to
-`pdlc/skills/harvest-learnings/SKILL.md` (metadata table `:70-78`) is therefore a **lookup against
-the open-promotion list**, and is stated in the skill in these terms:
+`pdlc/skills/harvest-learnings/SKILL.md` (the §5 Open Items convention, `:103-108` — *not* the
+metadata table, which is where §8.3's separate `Phases exercised` row lands) is therefore a
+**lookup against the open-promotion list**, and is stated in the skill in these terms:
 
 | # | Harvest-side step | Detail |
 |---|---|---|
