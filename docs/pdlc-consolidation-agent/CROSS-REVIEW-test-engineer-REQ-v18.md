@@ -53,7 +53,31 @@ line it edited. Two new Lows, plus the carried Lows re-measured at HEAD.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | F-61 and F-60 are the same failure twice. Is the anchor set of a document something a check could own rather than a reviewer? Every `path:NN` in these artifacts is machine-extractable, and "the cited line still contains the cited token" is a cheap grep-shaped assertion. A DoD-time lint over `docs/{feature}/*.md` would have caught both instances at the round they were introduced, and it fails the right way — loudly, on a line number, with no judgment call. Non-blocking, and Process-scoped rather than REQ-scoped; raising it here because this is the second round where a human re-measured anchors by hand. |
+| Q-03 | Carried from v17, still non-blocking and still PROPERTIES-layer: AC-3.4's "so on this path no proposal file exists to record into" is absence-shaped, and a fixture that asserts `not exists(CONSOLIDATION-PROPOSAL-…)` on the AT-L1 path would red on a conforming pass that also carries a §5.3 row-2 cause. Worth a one-line convention in the REQ preamble — an AC may not assert the *absence* of an artifact whose existence another AC decides on independent causes? |
+| Q-02 | Carried from v15/v16/v17, unchanged by this delta: should the hook's and the pass's enumerations be pinned by a generator-driven set-equality property over a synthetic docs tree (tracked, untracked, gitignored, staged-but-deleted, nested, `docs/discarded/`)? Set-equality, not containment — the failure mode is one enumeration dropping a basename the other keeps. F-61 makes this more attractive, not less: if the two enumerations are pinned by a property, the REQ's prose anchors stop being load-bearing. |
+
 ## Positive Observations
+
+- **The sweep's own claims are exact, all six of them.** I re-measured every edited anchor
+  against HEAD rather than trusting the commit message, and each one lands on the line that
+  plays the described role — including the fiddliest, `harvest-learnings/SKILL.md:70-79`, where
+  the range had to grow by one because the `DoD rounds` row was appended below
+  `Phases exercised`. An author sweeping ranges usually gets the endpoint wrong; this one did not.
+- **Adding "— the boundary step" is the right repair pattern, and it generalises.** A line
+  number citing pre-feature behaviour goes stale the moment the feature ships. Naming the
+  *role* the line plays makes the anchor survivable and makes the next re-measurement decidable
+  by someone who was not in the room. F-62 is a request to finish that thought in the
+  surrounding sentence, not an objection to the technique.
+- **`{date}` → `{passId}` closes a collision the tests would have felt.** Two same-day passes
+  under the old filename shape collide silently and the second overwrites the first; the
+  proposal-file oracles would have gone green on a lost artifact. `SKILL.md:70` already
+  specifies `{YYYY-MM-DD}-{n}`, so the REQ was the last document naming the colliding form.
+- **The blast radius was checked, not assumed.** `docs/_constraints/` did not move and the
+  untouched remainder of the REQ is byte-identical to the v17 tree, so no previously approved
+  clause needed re-judgment — which is what makes a seven-line delta reviewable in one pass.
 
 ## Recommendation
 
