@@ -37,6 +37,7 @@ import {
   renderProposalFile,
   renderPromotionCommitMessage,
   parseConsolidationConfig,
+  openClone,
   TERMINAL_STATUSES,
   REASON_CODES,
   TRIGGERS,
@@ -409,26 +410,77 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
         expect(malformedBody).not.toBe(absentBody);
       });
 
-      test("AT-N4: pluginRepository set to a name that does not resolve — reason repository-unresolved with the configured value recorded verbatim, never a silent fallback", () => {
+      // AT-N4 is driven through `openClone` — the one production site that decides E-22 — and only
+      // then through the renderer. Hand-building `reasons: new Set(["repository-unresolved"])` into
+      // a state and asserting the renderer echoes it proves the renderer echoes what it is handed;
+      // it cannot fail on a production path that never produces the code. The condition itself is
+      // what this row owns, so the first two legs below drive the real function; the third is the
+      // rendering leg, fed from the value production returned rather than from a literal.
+      describe("AT-N4: pluginRepository set to a name that does not resolve — reason repository-unresolved with the configured value recorded verbatim, never a silent fallback", () => {
         const configuredRepo = "some-owner/does-not-exist";
-        const state = makeState({
-          status: "promoted-degraded",
-          reasons: new Set(["repository-unresolved"]),
-          records: [makeRecord({ route: "degraded" })],
-          notices: [
-            {
-              subject: "consolidation.pluginRepository",
-              missingField: "resolution",
-              detail: `"${configuredRepo}" does not resolve`,
+
+        // A `_git` double that resolves nothing: the clone of the configured name fails the way
+        // git fails a name that is not there. `_makeTempDir` succeeds, so the only failure under
+        // test is the repository's.
+        function cloneSeams(stderr) {
+          const calls = [];
+          return {
+            calls,
+            seams: {
+              _makeTempDir: async () => "/tmp/clone-dir",
+              _git: async (argv) => {
+                calls.push(argv);
+                if (argv[0] === "clone") return { ok: false, stdout: "", stderr };
+                return { ok: true, stdout: "", stderr: "" };
+              },
             },
-          ],
+          };
+        }
+
+        test("the configured-but-unresolvable repository returns repository-unresolved with the configured value verbatim", async () => {
+          const { calls, seams } = cloneSeams(
+            `remote: Repository not found.\nfatal: repository 'https://github.com/${configuredRepo}.git/' not found`
+          );
+
+          const reply = await openClone("2025-06-01-1", { pluginRepository: configuredRepo }, seams);
+
+          expect(reply.failure).toBe("repository-unresolved");
+          expect(reply.detail).toBe(configuredRepo);
+          expect(reply.dir).toBeUndefined();
+
+          // Never a silent fallback: the configured name is the one that was cloned, and no
+          // `remote get-url origin` read happened to substitute the current repository for it.
+          const cloneArgv = calls.find((argv) => argv[0] === "clone");
+          expect(cloneArgv.join(" ")).toContain(configuredRepo);
+          expect(calls.some((argv) => argv[0] === "remote")).toBe(false);
         });
 
-        const body = renderReportBody(state);
+        test("a transport failure on the same configured repository stays api-failure — the two E-22/E-23 classes are not collapsed", async () => {
+          const { seams } = cloneSeams("fatal: unable to access: Could not resolve proxy; TLS handshake timed out");
 
-        expect(body).toContain("repository-unresolved");
-        expect(body).toContain(configuredRepo);
-        expect(body).not.toMatch(/falling back to the current repository|defaulted to the current repository/i);
+          const reply = await openClone("2025-06-01-1", { pluginRepository: configuredRepo }, seams);
+
+          expect(reply.failure).toBe("api-failure");
+          expect(reply.failure).not.toBe("repository-unresolved");
+        });
+
+        test("the reason production returned reaches the report body beside the configured value", async () => {
+          const { seams } = cloneSeams("remote: Repository not found.");
+          const reply = await openClone("2025-06-01-1", { pluginRepository: configuredRepo }, seams);
+
+          const state = makeState({
+            status: "promoted-degraded",
+            reasons: new Set([reply.failure]),
+            records: [makeRecord({ route: "degraded" })],
+            notices: [{ subject: "consolidation.pluginRepository", detail: reply.detail }],
+          });
+
+          const body = renderReportBody(state);
+
+          expect(body).toContain("repository-unresolved");
+          expect(body).toContain(configuredRepo);
+          expect(body).not.toMatch(/falling back to the current repository|defaulted to the current repository/i);
+        });
       });
     });
 

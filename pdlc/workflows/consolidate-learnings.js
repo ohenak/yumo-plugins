@@ -2163,6 +2163,14 @@ export function renderPromotionCommitMessage(proposal, passId) {
 
 // §9.1 — the temporary clone
 
+// E-22's observable. `git clone` reports a name that does not resolve — absent, renamed, or
+// invisible to the credential in hand — with one of these phrasings on stderr; anything else the
+// clone can fail with is E-23's transport/rate-limit class. Kept narrow deliberately: a phrase not
+// listed here degrades to `api-failure`, which is the pre-existing behaviour, never a
+// misclassification of a network blip as a missing repository.
+const REPOSITORY_UNRESOLVED_RE =
+  /repository not found|not found|does not exist|could not read from remote repository|access rights/i;
+
 /**
  * §9.1 — three steps, all through seams, none touching the invoking tree's refs. `null` from
  * `_makeTempDir` degrades `api-failure` with no fallback into the invoking tree (AC-3.8). The
@@ -2194,7 +2202,19 @@ export async function openClone(passId, config, seams) {
 
   const cloneReply = await _git(["clone", "--depth", "1", "--single-branch", remote, dir]);
   if (!cloneReply || cloneReply.ok !== true) {
-    return { failure: "api-failure", detail: (cloneReply && cloneReply.stderr) || "clone failed" };
+    const stderr = (cloneReply && cloneReply.stderr) || "clone failed";
+    // E-22 vs E-23 (FSPEC:2713, :2714). A *configured* `pluginRepository` that git reports as
+    // non-existent or unreadable is BR-23's "does not resolve" case: reason `repository-unresolved`
+    // with the configured value verbatim (FSPEC:889), never a silent fallback to the current
+    // repository. Every other clone failure — network, rate limit, transport — stays E-23's
+    // `api-failure`. The discrimination is made on the clone's own stderr rather than a prior
+    // probe because the clone seam has no probe verb to spend: `git ls-remote` resolves to
+    // `unknown` in `resolveSeamVerb` (`:2247-2262`) and is outside the git-clone permitted set
+    // (TSPEC §9.3), so probing would fail AT-Q7's containment conjunct on a conforming pass.
+    if (cfg.pluginRepository != null && REPOSITORY_UNRESOLVED_RE.test(stderr)) {
+      return { failure: "repository-unresolved", detail: String(cfg.pluginRepository) };
+    }
+    return { failure: "api-failure", detail: stderr };
   }
 
   return { dir };
