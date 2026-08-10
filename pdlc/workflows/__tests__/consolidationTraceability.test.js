@@ -24,7 +24,7 @@
 // This task creates no production code and needs no module symbol: it
 // guards the traceability table itself, from batch 2 onward.
 
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -144,5 +144,117 @@ describe("T05 — traceability set-equality (FSPEC §13 register ↔ TSPEC §12.
       count: tspecSorted.length,
       ids: tspecSorted,
     });
+  });
+});
+
+// ─── PROPERTIES §12.2's property→file map (CR F-08) ─────────────────────────
+//
+// PROP-TRC-01 guarded FSPEC §13 against TSPEC §12.3 and nothing else, so PROPERTIES' own coverage
+// matrix — the table that says which file owns which property — had no mechanical guard at all: a
+// property could be defined and assigned to no file, or assigned to a file that does not exist,
+// and only a reader would notice. The two guards below close that, in the same shape as the
+// register equality above: set-equality in both directions, plus an existence check on the one
+// side that names real paths.
+//
+// Ranges are expanded rather than matched literally: the table writes `PROP-EFF-01…09` where the
+// definitions write nine separate `**PROP-EFF-0n**` headings, so a guard that compared raw tokens
+// would be comparing two different vocabularies and would be red on correct documents.
+
+const PROPERTIES_PATH = join(
+  "docs",
+  "pdlc-consolidation-agent",
+  "PROPERTIES-pdlc-consolidation-agent.md"
+);
+const TESTS_DIR = __dirname;
+
+const PROP_RANGE_RE = /PROP-([A-Z]+)-(\d+)…(\d+)/g;
+const PROP_TOKEN_RE = /PROP-[A-Z]+-\d+/g;
+
+/** Every property id in `text`, with `PROP-XXX-01…09` expanded to its nine members. */
+function extractPropIds(text) {
+  const ids = new Set();
+  PROP_RANGE_RE.lastIndex = 0;
+  let m;
+  while ((m = PROP_RANGE_RE.exec(text))) {
+    const [, family, from, to] = m;
+    const width = from.length;
+    for (let n = Number(from); n <= Number(to); n += 1) {
+      ids.add(`PROP-${family}-${String(n).padStart(width, "0")}`);
+    }
+  }
+  const withoutRanges = text.replace(PROP_RANGE_RE, " ");
+  PROP_TOKEN_RE.lastIndex = 0;
+  while ((m = PROP_TOKEN_RE.exec(withoutRanges))) ids.add(m[0]);
+  return ids;
+}
+
+/**
+ * PROPERTIES §12.2's table: one row per test file. Returns the assigned property ids (ranges
+ * expanded) and the file paths the rows name, excluding the two rows that name no property of
+ * their own (the `helpers/` reuse row carries a prose cell, not an assignment).
+ */
+function parsePropertiesFileMap(root) {
+  const text = readFileSync(join(root, PROPERTIES_PATH), "utf8");
+  const start = text.indexOf("### 12.2 Test files → level, owners, properties");
+  const end = text.indexOf("### 12.3 PLAN §4 tasks → properties", start < 0 ? 0 : start);
+  if (start < 0 || end < 0) {
+    throw new Error("PROPERTIES §12.2 not found — heading text may have drifted");
+  }
+  const section = text.slice(start, end);
+
+  const assigned = new Set();
+  const files = new Set();
+  for (const line of section.split("\n")) {
+    if (!line.startsWith("|") || line.includes("---")) continue;
+    const cells = line.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+    if (cells.length < 5 || cells[0] === "File") continue;
+    for (const id of extractPropIds(cells[4])) assigned.add(id);
+    for (const [, name] of cells[0].matchAll(/`([^`]+)`/g)) files.add(name);
+  }
+  return { assigned, files };
+}
+
+/** Every property DEFINED in PROPERTIES §§4–11 — one `**PROP-…**` heading each. */
+function parsePropertyDefinitions(root) {
+  const text = readFileSync(join(root, PROPERTIES_PATH), "utf8");
+  const defs = new Set();
+  for (const [, id] of text.matchAll(/^\*\*(PROP-[A-Z]+-\d+)(?: \([^)]*\))?\*\*/gm)) defs.add(id);
+  return defs;
+}
+
+describe("T05 — PROPERTIES §12.2 property→file map (CR F-08)", () => {
+  const { assigned, files } = parsePropertiesFileMap(REPO_ROOT);
+  const defined = parsePropertyDefinitions(REPO_ROOT);
+
+  test("non-vacuity floor: the map assigns properties and names files, and §§4–11 define properties", () => {
+    expect(assigned.size).toBeGreaterThan(0);
+    expect(files.size).toBeGreaterThan(0);
+    expect(defined.size).toBeGreaterThan(0);
+  });
+
+  test("every property defined in §§4–11 is assigned a file by §12.2 (definitions ⊆ map)", () => {
+    const unassigned = [...defined].filter((id) => !assigned.has(id)).sort();
+    expect(unassigned).toEqual([]);
+  });
+
+  test("every property §12.2 assigns is defined in §§4–11 (map ⊆ definitions)", () => {
+    const undefinedIds = [...assigned].filter((id) => !defined.has(id)).sort();
+    expect(undefinedIds).toEqual([]);
+  });
+
+  test("set equality: sorted id lists are identical, both sides at the same count", () => {
+    const definedSorted = [...defined].sort();
+    const assignedSorted = [...assigned].sort();
+    expect({ count: definedSorted.length, ids: definedSorted }).toEqual({
+      count: assignedSorted.length,
+      ids: assignedSorted,
+    });
+  });
+
+  test("every file §12.2 names exists on disk — a property cannot be covered by a file that is not there", () => {
+    const missing = [...files]
+      .filter((name) => !existsSync(join(TESTS_DIR, name)))
+      .sort();
+    expect(missing).toEqual([]);
   });
 });
