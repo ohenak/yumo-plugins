@@ -1985,3 +1985,25 @@ Found while grounding this document, **not** fixed here (this layer does not edi
    and its "only remaining" sentence should be restated to cover both. This document keeps
    PROP-PASS-11 where it is; the placement is a **judgment pending this erratum**, not a claim that
    PLAN already licenses it, and §12.2/§12.3's derivation sentences are qualified accordingly.
+8. **`AT-K3b` is registered nowhere downstream of the FSPEC.** FSPEC v11.7 minted the id at
+   `FSPEC:2210` and bound it in §15's AC-1.4 → AT map (`FSPEC:2388`), but `grep AT-K3b` returns zero
+   hits in TSPEC and PLAN at HEAD. Two consequences, both upstream. **(a)** TSPEC §12.2's
+   unreadable-entry row (`TSPEC:2850`) still asserts *"which no register AT reaches either"* for the
+   whole-corpus observable, reasoning from the AC-1.4 → AT map as it stood before v11.7; the cell is
+   now false. **(b)** TSPEC §12.3's `consolidationPass.test.js` row (`:2923`) and §12.4's register
+   set-equality do not assign AT-K3b to any file, so the set equality is short one id — and the id's
+   family, AT-K, is otherwise registered to `consolidationCredential.test.js` (`:2929`), which is the
+   wrong subject for a corpus-handling case. The corrections: TSPEC §12.2 should drop the "no
+   register AT" clause and cite AT-K3b, and §12.3/§12.4 should assign AT-K3b to
+   `consolidationPass.test.js` alongside PROP-COR-09. This document claims the id there now (§4.2,
+   §12.4); until TSPEC carries the same assignment, that claim is this layer's derivation from
+   subject, exactly as erratum 6's is.
+9. **PLAN T20's obligation (i) never absorbed REQ §4b's omission decision, and plans one fixture where
+   two are owed.** The cell (`PLAN:365`) still requires *"`renderConsumedPair`'s output **contains
+   both** basenames"* — the pre-erratum reading REQ §4b overturned, since the unreadable entry is
+   **omitted** from the pair and stays un-consolidated (TSPEC §7.1, §10.4; absorbed by this document
+   in v1.4 and by TSPEC §12.2). An implementer working that cell as written builds the behaviour
+   REQ §4b exists to prevent, and PROP-COR-09 conjunct (2) reds it. The same cell describes **one**
+   fixture — the mixed corpus — so the all-unreadable second fixture and `AT-K3b` (erratum 8) are
+   unplanned at T20, though both land inside the already-planned `T31` case and owe no new task.
+   PLAN T20 needs the omission wording and the second fixture.
