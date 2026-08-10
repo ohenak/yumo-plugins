@@ -13,7 +13,18 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-10 |
+| pdlc | draft | Claude | 1.5 | 2026-08-10 |
+
+**v1.5** — closes SE F-01 from the v5 delta confirmation (POSTMORTEM-T episode 2). `PROP-COR-09`
+gains TSPEC §12.2's **second** fixture — the all-unreadable corpus (§10.3 row 1b): status exactly
+`no-op`, rendered pair empty, `|un-consolidated|` = 2, both basenames named as unread — with the
+cell's mutual-control sentence; the title now covers the whole-corpus arm; §12.1's AC-1.4 row gains
+`PROP-COR-09` as the sole carrier of AC-1.4's third cause; the trailer gains `AC-1.4`. Answering
+`se-review`'s Q-01: the arm was **missed**, not consciously deferred — the erratum's routed item list
+was minted against REQ v2.1 and the wave grew REQ v2.5's second arm (absorbed into TSPEC
+§7.1/§10.3/§10.4/§12.2 and FSPEC v11.7) after the list was cut; this revision re-grounds on those
+upstream cells at HEAD, ahead of the routed items, per the SKILL's re-ground-first procedure. No
+property added, removed or renumbered; the set stays 118.
 
 **v1.4** — erratum round. Absorbs REQ §4b / TSPEC §7.1's omission decision, which an earlier
 revision of PROP-COR-09 contradicted in its own conjunct (2). The property's title already said
@@ -392,9 +403,9 @@ error raised, and the pass proceeds (AT-P8). Written as two rows because E-01 an
 states and one fixture cannot exercise both. *L1 · `consolidationPredicate.test.js` · T14 → T25 ·
 AC-1.1 · AT-P4, AT-P8.*
 
-**PROP-COR-09** — *An unreadable corpus **entry** is omitted from the consumed pair, counted as
-un-consolidated, and named.* One fixture carries **both** an unreadable member and a **readable
-control**. Three conjuncts: (1) the un-consolidated count counts **both** members; (2) the basename
+**PROP-COR-09** — *An unreadable corpus entry — up to and including the **whole corpus** — is omitted
+from the consumed pair, counted as un-consolidated, and named.* One fixture carries **both** an
+unreadable member and a **readable control**. Three conjuncts: (1) the un-consolidated count counts **both** members; (2) the basename
 list `renderConsumedPair` renders is **set-equal to `{readable}`** — the readable basename present,
 the unreadable one **absent**, and **no third name** (set equality, not containment plus one
 absence: NFR-5 requires a block naming *exactly* the consumed set, and a containment oracle is
@@ -404,9 +415,18 @@ on a fixture where nothing was readable, and in (2) it is the positive half that
 passing on an implementation that renders an empty pair. This is REQ §4b's erratum decision — the
 unreadable entry is **omitted** from the consumed pair (it stays un-consolidated and the next pass
 retries it, §10.4), with no `unread:` field, no
-new reason code, no vocabulary row — asserted rather than assumed. Placed at L2 per O-4, because its
+new reason code, no vocabulary row — asserted rather than assumed. A second fixture in the same case
+carries the **all-unreadable corpus** (TSPEC §10.3 row 1b): terminal status is exactly `no-op` —
+**not** `failed`, the adjacent branch an implementer is most likely to reach for, and not `refused` —
+the rendered pair's basename list is **empty**, `|un-consolidated|` is **2**, and both basenames are
+named as unread in the report body. The two fixtures are each other's controls: the all-unreadable
+fixture keeps *"pair empty"* from passing on a pass that enumerated nothing at all, and the mixed
+fixture keeps the all-unreadable fixture's status assertion from passing on an implementation that
+terminates every unreadable-touching pass `failed`. This is AC-1.4's **third** cause (REQ §4b: the
+consumed list empty **while** the un-consolidated set is non-empty — a pairing, not a reason code).
+Placed at L2 per O-4, because its
 subject is the pass's corpus handling end to end. *L2 · `consolidationPass.test.js` · T20 → T31 ·
-AC-1.1, REQ §4b · (no FSPEC AT), TSPEC §12.2.*
+AC-1.1, AC-1.4, REQ §4b · (no FSPEC AT), TSPEC §12.2.*
 
 **PROP-COR-10** — *A basename collision is resolved to one member **and reported**.* Two LEARNINGS
 sharing a basename under `docs/{f}/` and `docs/completed/{g}/` yield **one** member for the pair, and
@@ -1645,7 +1665,7 @@ property lists are derived from the per-property trailers in §§4–11, not mai
 | AC-1.1 cadence trigger — `cadenceHours` elapsed since the datum | PROP-PASS-01, PROP-PASS-02, PROP-PASS-03, PROP-TRG-03, PROP-COR-01…11 (the predicate the trigger counts). PROP-COR-12 and PROP-COR-13 are **not** trigger coverage: they are the L4 differential's pre-widening fixture and its validity pin, and their trailers cite `(no FSPEC AT), TSPEC §7.1 pin (b)` rather than an AC-1.1 obligation |
 | AC-1.2 volume trigger — un-consolidated count at threshold | PROP-PASS-01, PROP-PASS-02 |
 | AC-1.3 one pass at a time — the in-progress marker | PROP-MRK-01…04, PROP-PASS-09, PROP-RPT-02, PROP-SRC-01 |
-| AC-1.4 a no-op pass still reports | PROP-PASS-11, PROP-RTE-06, PROP-EFF-06 |
+| AC-1.4 a no-op pass still reports | PROP-PASS-11, PROP-RTE-06, PROP-EFF-06; PROP-COR-09 (the **third** cause — the all-unreadable corpus, and the only property asserting it) |
 | AC-1.5 runs on the advisory rung and records it | PROP-PASS-06, PROP-PASS-07 |
 | AC-1.6 falls back and says so | PROP-PASS-06 |
 | AC-2.1 domain invariants append to `DOMAIN-CONSTRAINTS.md` | PROP-RTE-02, PROP-RTE-04 (kind 1 arms), PROP-PR-04 |

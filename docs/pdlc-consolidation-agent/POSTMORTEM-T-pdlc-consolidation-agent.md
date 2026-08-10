@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 2.0 | 2026-08-10 |
 
-RESOLVED: no
+RESOLVED: yes
 
 **Two episodes, one marker.** Episode 1 (Phase T TSPEC round exhaustion, 2026-08-06) was resolved
 on 2026-08-06 and its resolution is recorded below; its own marker has been folded into that prose

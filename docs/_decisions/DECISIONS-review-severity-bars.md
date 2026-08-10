@@ -242,3 +242,25 @@ state on this path.
 a confirmation whose response carries no trailer and whose file approves — and is red on the
 pre-decision read. `24b`, `24c` and `24d` are green in both directions by design: they exist to
 show the fix let nothing new through.
+
+## DEC-ERR-02: a delta confirmation is a superset check against upstream HEAD, and routing lists are re-derived at dispatch
+
+**Context.** Recorded per `POSTMORTEM-T-pdlc-consolidation-agent.md` Episode 2 (2026-08-10),
+Recommendation step 5. A multi-layer erratum wave (`REQ → FSPEC → TSPEC → PROPERTIES`, 27 minutes)
+grew a second upstream arm after its routing list was minted; the tail layer absorbed the routed list
+fully and correctly and still shipped a hole, and the two confirming channels split on identical
+bytes — `pm-review` ran the protocol's *absorbed ⊇ raised* check (passed), `se-review` re-measured
+the document against upstream HEAD (failed, 1 High).
+
+**Decision.** Two clauses:
+
+- *Routing lists are re-derived at dispatch, not at wave open.* When any layer above the target has
+  moved since the list was minted, the dispatcher re-derives the routed items from the upstream
+  document's version **at dispatch time**. A list correct for the version it was cut against and
+  stale for HEAD is this episode's root cause (RC-1/RC-2: a wave has no synchronisation point; the
+  list travels unchanged while the wave keeps deciding).
+- *A confirming reviewer's scope is the document against upstream HEAD*, for **both** channels — the
+  superset read, not the routed-list equality read. The check "did the routed items land" is
+  necessary, not sufficient; whether the document is still a faithful compression of the upstream it
+  now cites is the confirmation's actual question, and the outcome must not depend on which reviewer
+  happens to over-deliver.
