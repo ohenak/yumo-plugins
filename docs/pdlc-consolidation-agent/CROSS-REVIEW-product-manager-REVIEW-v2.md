@@ -28,7 +28,42 @@ Suite state: `npm test` in `pdlc/workflows` is 3888 passed / 1 failed. The one f
 
 ## Findings
 
-<!-- filled next -->
+All six blocking findings from v1 are closed on the production path. The three below are new, and all three arise from the F-04 and F-05 fixes themselves — the narrower attention this round is for.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| G-01 | High | Local | **The AC-2.3 diversion mislabels a clean pass `promoted-degraded`.** Status is derived from `deferred.length > 0` (`consolidate-learnings.js:939`), and the new bar rejection pushes into that same `deferred` array (`:791-798`). So a pass that promoted two genuine patterns and correctly rejected one coincidence now terminates `promoted-degraded` — with no reason code — although vocabularies §1's own join reserves that status for an AC-3.5 fallback class. | AC-7.1, AC-2.3, §4b |
+| G-02 | Medium | Local | **The proposal file gains a fourth cause REQ does not enumerate.** AC-3.4 states it is written "when, and only when, the pass has something to propose that it does not enact (AC-3.5, AC-5.4, AC-6.3)". A bar rejection is none of the three, yet it writes the file (`:791-798` → `:931-935`) and mixes a rejected coincidence into the same artifact as genuine PR-failure residue. | AC-3.4, AC-2.3, AC-3.5 |
+| G-03 | Medium | Local | **`promotionSources` matches feature names by substring, so a PR body can cite a LEARNINGS that did not evidence the promotion.** `String(basename).includes(f.trim())` (`:1055-1057`) makes evidence `["feat-a"]` match `LEARNINGS-feat-alpha.md`. AC-3.2(i) asks each promotion to cite *its* sources by feature name; a prefix collision silently widens the citation the reviewer judges against. | AC-3.2 |
+
+### G-01 — a correctly-rejected coincidence should not read as a degraded run
+
+`docs/_constraints/pdlc-consolidation-vocabularies.md:67` settles the join in one sentence: "A pass that promoted something **and also hit an AC-3.5 fallback class** is `promoted-degraded`, never a bare `promoted`." The next sentence supplies the controlling precedent for a *filter* rather than a failure: a pass "that suppressed one duplicate and landed another is `promoted`" — and FSPEC §6.3 says why, in terms that fit the new bar exactly: `duplicate-suppressed` "is decided per proposal *before* any PR is attempted, fires no fallback, and **is not a failure**" (`FSPEC-pdlc-consolidation-agent.md:898-899`).
+
+The AC-2.3 bar is that same shape. It is decided per proposal at `:791`, before `routeProposal` at `:799`; it fires no §6.3 fallback class; it adds no reason code to `state.reasons`. It is the bar working, not the pipeline failing. But because the rejection lands in `deferred`, `:939` reads it as degradation:
+
+- `state.deferred = deferred` — `:928`
+- `state.status = deferred.length > 0 ? "promoted-degraded" : "promoted"` — `:939`
+
+Concretely: a pass whose model returns three clusters, two of which clear the bar and land as constraint promotions, terminates `promoted-degraded`. Per FSPEC §7.3's own gloss the operator reads that as "a degraded run cannot read as an unqualified success" (`REQ:360`) — so the row tells the operator something failed when nothing did. Under NFR-3 this is not the rare case: running on a cadence is expected to surface coincidences, and the prompt now actively instructs the model about them, so the mislabel is the *common* outcome of a healthy pass.
+
+The gap is untested because the existing rows exercise the bar only when it is the sole cluster, where `enacted` is empty and `no-op` is correct either way (`consolidationOperatorChannels.test.js:253`). The mixed pass — one enacted, one bar-rejected — has no row.
+
+Fix: keep bar rejections out of the status derivation. Either track them in a separate list that feeds `state.deferred` for reporting but not `:939`, or key `:939` on the presence of a §6.3 failure class (an item carrying a `reason`), which is what the vocabulary's join actually names. Then add the mixed-pass row: two clusters, one clearing the bar and one not, asserting the status is verbatim `promoted` **and** that report item 8 still names the rejected pair — a positive assertion on the same path as the negative one.
+
+### G-02 — the proposal file's "only when" is a biconditional REQ enumerates
+
+AC-3.4 (`REQ:272-273`) states the proposal file's cause set as a closed list of three: AC-3.5 (the PR could not be opened), AC-5.4 (a propose-only remediation), AC-6.3 (a consumer-local widening). The bar rejection now writes it as a fourth cause (`:931-935`), and `renderProposalFile` renders such an item with `detail:` set and `diff: (unavailable)` (`:2430-2433`) — since a rejected cluster is never authored.
+
+Two product consequences, neither fatal, both worth a decision rather than a default. First, the artifact the operator opens expecting "work this pass could not land" now also contains "work this pass deliberately declined", and the two want different responses. Second, the enumeration in AC-3.4 is stated as *only when*, so shipping a fourth cause makes a REQ sentence false rather than merely incomplete.
+
+I am not asking for the behaviour to be reverted — putting a rejected coincidence in front of a human is a defensible reading of AC-7.1's "what it deferred for human judgment". I am asking that it be either (a) recorded upstream as a fourth cause, or (b) rendered under a heading in the file that separates declined-by-bar items from degraded ones. Filed as an erratum against REQ in this round's hand-off, since the enumeration is REQ's to widen.
+
+### G-03 — substring matching can over-cite a promotion's sources
+
+`promotionSources` narrows correctly for well-separated feature names, which is what the fix was for and what its test pins. The residual is the matcher: `all.filter((basename) => features.some((f) => String(basename).includes(f.trim())))` (`:1055-1057`). Feature names in this repo are prefix-related by convention (`feat-a` / `feat-alpha`, `pdlc-consolidation-agent` / `pdlc-consolidation-agent-v2`), so a promotion evidenced by the shorter name silently cites the longer name's LEARNINGS too.
+
+The reviewer reading the PR is the human control the whole feature rests on (US-02), and this widens the evidence they judge against without saying so. The fallback-to-all arm is honest and should stay; it is the matcher that should be tightened — match the feature name as a whole `[a-z0-9-]`-bounded token of the basename, the same word-boundary discipline the pipeline already applies to heading concepts. A row with two consumed LEARNINGS whose feature names are prefixes of one another would pin it.
 
 ## Questions
 
