@@ -75,6 +75,7 @@ Write to `docs/{feature-name}/LEARNINGS-{feature-name}.md`:
 | Total Iterations | REQ: N, FSPEC: N, TSPEC: N, PLAN: N, PROPERTIES: N, IMPL: N |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → PROPERTIES → IMPL |
 | Harvested from | {list of CROSS-REVIEW + CODE_REVIEW + POSTMORTEM files, now deleted} |
+| Phases exercised | {list of phases this feature's pipeline ran, e.g. R, F, T, P, D, PR} |
 | DoD rounds | {count of CODE_REVIEW-v{N} versions} |
 
 ## 1. Non-Convergences
@@ -100,7 +101,11 @@ Things considered and explicitly not done, where the reason matters for future w
 Signals (Scope = Process, or repeated high-iteration loops) about how the workflow itself should evolve.
 
 ## 5. Open Items for Consolidation
-Candidates for promotion that the harvest is not authorized to promote autonomously.
+Candidates for promotion that the harvest is not authorized to promote autonomously. If a candidate's failure mode was named in the handed open-promotion list (FSPEC §8.3, §8.4), copy that list's id verbatim onto the item — never re-slug, abbreviate, or mint a new id:
+
+```
+failure-mode-id: {id}
+```
 
 ## 6. Approval Record
 The durable (tier-2) record of every approving cross-review round, copied out of the `CROSS-REVIEW-*` files before they are deleted. Never omitted: a feature with no approving round still emits this heading and the header row, with no data rows.

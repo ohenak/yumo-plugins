@@ -236,7 +236,7 @@ const T08_PHASES_EXERCISED_ROW =
   "| Phases exercised | {list of phases this feature's pipeline ran, e.g. R, F, T, P, D, PR} |";
 const T08_FAILURE_MODE_ID_LINE = "failure-mode-id: {id}";
 
-describe.skip("T08 — skill prompt (TSPEC §12.2, §12.3, FSPEC §8.3, §8.4)", () => {
+describe("T08 — skill prompt (TSPEC §12.2, §12.3, FSPEC §8.3, §8.4)", () => {
   it("the Phases exercised row follows Harvested from in the metadata table, verbatim", () => {
     const skill = readRepo(HARVEST_LEARNINGS_SKILL_PATH);
     const harvestedFromIndex = skill.indexOf("| Harvested from |");
