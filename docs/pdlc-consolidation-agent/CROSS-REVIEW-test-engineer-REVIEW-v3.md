@@ -50,11 +50,44 @@ separator and the `promotionSources` matcher. **No Highs. Nothing here blocks.**
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-06 | Is the AC-5.4 propose-only diversion's `promoted-degraded` status a decision or an accident (F-18)? If it is a decision, the difference from a bar rejection is worth one sentence at `:952` — both are reason-free, and only one is now filtered out. |
+| Q-07 | *(carried, unchanged)* Q-05 from round 2 — `sync-workflows.sh --check` exiting non-zero while naming no drifted row — is still outside this feature's diff and still worth someone's attention when the drift ladder's reporting is next touched. Not a gate on this branch. |
 
 ## Positive Observations
 
-*(pending)*
+- **G-01's fix is grounded in the vocabulary, not in the reviewer's preference.** The comment at
+  `:946-952` cites `duplicate-suppressed` as the controlling precedent — a verdict decided per
+  proposal *before* any route is attempted, which FSPEC §6.3 at `:898-899` already excludes from the
+  failure table. The change reasons from an existing precedent rather than inventing a rule for the
+  case at hand, which is why it reads as a narrowing rather than a weakening.
+- **The status row came with its own control, unprompted.** The mixed-declined row asserts
+  `promoted` verbatim, and a second row asserts `promoted-degraded` verbatim on an
+  enacted-plus-genuinely-degraded pass whose deferral carries a reason code
+  (`consolidationOperatorChannels.test.js:551-587`). Without that control the fix would be
+  indistinguishable from deleting the derivation — which is the standard failure mode of "make this
+  status stop appearing" remediations, and it did not happen here.
+- **Non-vacuity conjuncts are in the fixture, not assumed.** The mixed pass asserts a `constraints`
+  record exists *and* `deferred` has length 1 *before* asserting the status
+  (`consolidationOperatorChannels.test.js:534-539`), so the `promoted` assertion cannot pass on a
+  build that silently dropped the declined cluster instead of deferring it — precisely the outcome
+  the AC-2.3 bar exists to prevent.
+- **G-02's oracle is a discrimination, not a containment.** The proposal-file test splits the file
+  on the separator and asserts the declined detail is present **below** and absent **above**
+  (`:604-613`), with a comment saying why a whole-file `toContain` would pass on the interleaved
+  file the finding is about. That is the third time this branch has reached for the split-and-assert
+  shape rather than the easy containment.
+- **F-12's control is the transport phrasing, not another repository phrasing.** The new leg feeds
+  git's real DNS-failure stderr (`fatal: unable to access '…': server not found`) through
+  `openClone` itself and requires `api-failure`, so the E-23 → E-22 boundary is now pinned by a case
+  that would have been red against the old regex — a falsifying test for the fix, in the same
+  revision as the fix.
+- **G-03's row asserts both directions on one line.** The cited sources line must contain
+  `LEARNINGS-feat-a.md` and `LEARNINGS-feat-beta.md` and must not contain `LEARNINGS-feat-alpha.md`
+  (`:657-661`), read off the rendered body rather than from the matcher — a black-box oracle over
+  the operator-visible artifact, with the prefix-related third file present in the corpus so the
+  negative half is not vacuous.
 
 ## Recommendation
 
