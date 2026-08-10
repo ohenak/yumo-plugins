@@ -6261,6 +6261,238 @@ function computeWaves(tasks, ownership) {
   return waves;
 }
 
+const UNSKIP_TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+
+function maskNonCode(source) {
+  if (typeof source !== "string") return "";
+  const n = source.length;
+  const out = new Array(n);
+  const blank = (i) => {
+    out[i] = source[i] === "\n" ? "\n" : " ";
+  };
+
+  let prev = "";
+  let i = 0;
+
+  while (i < n) {
+    const c = source[i];
+    const c2 = i + 1 < n ? source[i + 1] : "";
+
+    if (c === "/" && c2 === "/") {
+      while (i < n && source[i] !== "\n") blank(i++);
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      blank(i++);
+      blank(i++);
+      while (i < n) {
+        if (source[i] === "*" && source[i + 1] === "/") {
+          blank(i++);
+          blank(i++);
+          break;
+        }
+        blank(i++);
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      blank(i++);
+      while (i < n) {
+        const d = source[i];
+        if (d === "\\") {
+          blank(i++);
+          if (i < n) blank(i++);
+          continue;
+        }
+        blank(i++);
+        if (d === c) break;
+      }
+
+      prev = '"';
+      continue;
+    }
+    if (c === "/" && regexOpensAfter(prev)) {
+      const end = regexLiteralEnd(source, i);
+      if (end > i) {
+        while (i < end) blank(i++);
+        prev = "/";
+        continue;
+      }
+    }
+
+    out[i] = c;
+    if (!/\s/.test(c)) prev = c;
+    i++;
+  }
+
+  return out.join("");
+}
+
+function regexOpensAfter(prev) {
+  return prev === "" || "([{;,=:!&|?+-*%^~<>".includes(prev);
+}
+
+function regexLiteralEnd(source, start) {
+  let i = start + 1;
+  let inClass = false;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\n") return -1;
+    if (c === "\\") {
+      i += 2;
+      continue;
+    }
+    if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) {
+      i++;
+      while (i < source.length && /[a-z]/.test(source[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+function scanSkipTokens(source) {
+  if (typeof source !== "string" || source === "") return [];
+  const masked = maskNonCode(source);
+  const found = [];
+  const re = /\b(describe|test|it)\.skip\s*\(/g;
+  let m;
+  while ((m = re.exec(masked)) !== null) {
+    const start = m.index;
+
+    let j = start - 1;
+    while (j >= 0 && (masked[j] === " " || masked[j] === "\t")) j--;
+    if (j >= 0 && masked[j] !== "\n") continue;
+
+    while (j >= 0 && /\s/.test(masked[j])) j--;
+    const prev = j >= 0 ? masked[j] : "";
+    if (prev !== "" && !";{})".includes(prev)) continue;
+
+    found.push({
+      line: source.slice(0, start).split("\n").length,
+      token: `${m[1]}.skip`,
+      title: firstStringArgument(source, start + m[0].length),
+    });
+  }
+  return found;
+}
+
+function firstStringArgument(source, idx) {
+  let i = idx;
+  while (i < source.length && /\s/.test(source[i])) i++;
+  const quote = source[i];
+  if (quote !== '"' && quote !== "'" && quote !== "`") return "";
+  let out = "";
+  i++;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\\") {
+      out += source[i + 1] || "";
+      i += 2;
+      continue;
+    }
+    if (c === quote) break;
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+function titleNamesTask(title, id) {
+  if (!title || !id) return false;
+  const escaped = String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}([^A-Za-z0-9_-]|$)`).test(title);
+}
+
+async function checkWaveUnskips({ waves, waveIndex, _readFile } = {}) {
+  const violations = [];
+  const notices = [];
+  const scanned = [];
+  const done = { violations, notices, scanned };
+
+  if (!Array.isArray(waves) || waves.length === 0) {
+    notices.push("no wave plan to scan");
+    return done;
+  }
+  if (typeof _readFile !== "function") {
+    notices.push("no _readFile transport — owned test files were not scanned");
+    return done;
+  }
+
+  const allIds = [];
+  const complete = new Set();
+  const ownersByFile = new Map();
+  for (let wi = 0; wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      if (!task || !task.id) continue;
+      if (!allIds.includes(task.id)) allIds.push(task.id);
+      if (wi <= waveIndex) complete.add(task.id);
+      for (const file of Array.isArray(task.files) ? task.files : []) {
+        if (!ownersByFile.has(file)) ownersByFile.set(file, []);
+        const owners = ownersByFile.get(file);
+        if (!owners.includes(task.id)) owners.push(task.id);
+      }
+    }
+  }
+
+  const targets = [];
+  for (let wi = 0; wi <= waveIndex && wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      for (const file of Array.isArray(task && task.files) ? task.files : []) {
+        if (UNSKIP_TEST_FILE_RE.test(file) && !targets.includes(file)) targets.push(file);
+      }
+    }
+  }
+  if (targets.length === 0) {
+    notices.push("no completed task owns a test file in the PLAN's manifest — nothing to scan");
+    return done;
+  }
+
+  for (const file of targets) {
+    let text = null;
+    try {
+      text = await _readFile(file);
+    } catch {
+      text = null;
+    }
+    if (typeof text !== "string" || text === "") {
+      notices.push(`${file} could not be read — not scanned`);
+      continue;
+    }
+    scanned.push(file);
+
+    for (const token of scanSkipTokens(text)) {
+      const named = allIds.filter((id) => titleNamesTask(token.title, id));
+      const owners = named.length > 0 ? named : ownersByFile.get(file) || [];
+
+      if (owners.length === 0) continue;
+
+      if (!owners.every((id) => complete.has(id))) continue;
+      violations.push({ ...token, file, owners });
+    }
+  }
+
+  return done;
+}
+
+function formatUnskipViolations(waveNum, violations) {
+  const rows = violations.map(
+    (v) =>
+      `  ${v.file}:${v.line} ${v.token}(${v.title ? `"${v.title}"` : ""}) — ` +
+      `owned by ${v.owners.join(", ")}, complete as of wave ${waveNum}`
+  );
+  return (
+    `Error: Wave ${waveNum} un-skip guard failed — ${violations.length} skipped ` +
+    `test block(s) are owned by a task that is already complete, so the wave's ` +
+    `gate passed on tests that never ran:\n${rows.join("\n")}\n` +
+    `Each 🟢 owner's first obligation is to remove the \`.skip\` wrapper on its own ` +
+    `block. A block owned by a LATER wave's task is legitimate and does not appear here.`
+  );
+}
+
 const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
 
 const WAVE_LEDGER_CLEARED = "{}\n";
@@ -7653,6 +7885,24 @@ async function main({
           emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
         } else {
           evaluateBatchGate(waveResults, waveIndex, wave);
+        }
+
+        const unskip = await checkWaveUnskips({
+          waves,
+          waveIndex,
+          _readFile: readFileFn,
+        });
+        for (const notice of unskip.notices) {
+          emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
+        }
+        if (unskip.violations.length > 0) {
+          throw haltError(formatUnskipViolations(waveNum, unskip.violations));
+        }
+        if (unskip.scanned.length > 0) {
+          emit(
+            `Wave ${waveNum} un-skip guard: ${unskip.scanned.length} owned test ` +
+              `file(s) scanned, no skipped block owed by a completed task`
+          );
         }
 
         if (waveGit) {

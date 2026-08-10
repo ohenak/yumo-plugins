@@ -8530,6 +8530,325 @@ function computeWaves(tasks, ownership) {
   return waves;
 }
 
+// ─── The un-skip guard: a wave may not go green on tests that never ran ──────
+//
+// PLAN discipline (pdlc-consolidation-agent §2): a 🔴 task authors its cases
+// inside `describe.skip` blocks, one block per 🟢 owner and NAMED for that owner
+// (`describe.skip("T25 — corpus and predicate", …)`); the owner's first
+// obligation is to remove the `.skip` wrapper on its own block.
+//
+// Nothing enforced that. On the feature that discovered the hole, most green
+// owners implemented the code and never un-skipped, so the wave gate passed on a
+// suite whose relevant cases reported as *skipped* — a green that asserts
+// nothing. This guard closes it, and its whole difficulty is the one distinction
+// that must not be got wrong: a block owned by a task in a LATER wave is
+// legitimately still skipped, and must never trip the guard.
+//
+// The decision rule, stated once:
+//
+//   For every test file owned (per the PLAN's file-ownership manifest) by a task
+//   that is now COMPLETE — this wave's tasks plus every earlier wave's — read the
+//   file and find each skip token in STATEMENT position. Attribute the token to
+//   the task(s) it names in its title; if it names none, attribute it to the
+//   task(s) that own the containing file. The token is a violation iff it has at
+//   least one owner and EVERY owner is complete. An unattributable token, an
+//   unreadable file and an absent manifest each degrade to a notice — the guard
+//   reports what it could not check and never invents a failure.
+
+/** Owned paths the guard reads: a test/spec module in any of the usual suffixes. */
+const UNSKIP_TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+
+/**
+ * Blank out everything in a JS source that is not code — line comments, block
+ * comments, string and template literals, and regex literals — replacing each
+ * masked character with a space and KEEPING every newline, so that offsets and
+ * line numbers in the result are the offsets and line numbers of the original.
+ *
+ * This is what makes the token scan honest: `// describe.skip(` in a comment,
+ * `"describe.skip("` in a fixture string and `/test\.skip\(/` in a matcher are
+ * all invisible to it, without the guard having to parse JavaScript.
+ *
+ * The masking direction is deliberately safe. Masking can only ERASE candidate
+ * tokens (a mis-masked region hides a real skip, which the next wave's scan or
+ * the final wave's scan still catches); it cannot manufacture one, because no
+ * mask ever writes a `describe`/`test`/`it` where the source had none.
+ *
+ * @param {string} source
+ * @returns {string} same length as `source`, newlines preserved
+ */
+function maskNonCode(source) {
+  if (typeof source !== "string") return "";
+  const n = source.length;
+  const out = new Array(n);
+  const blank = (i) => {
+    out[i] = source[i] === "\n" ? "\n" : " ";
+  };
+  // The last non-whitespace CODE character emitted, used only to decide whether
+  // a `/` opens a regex literal or is a division operator.
+  let prev = "";
+  let i = 0;
+
+  while (i < n) {
+    const c = source[i];
+    const c2 = i + 1 < n ? source[i + 1] : "";
+
+    if (c === "/" && c2 === "/") {
+      while (i < n && source[i] !== "\n") blank(i++);
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      blank(i++);
+      blank(i++);
+      while (i < n) {
+        if (source[i] === "*" && source[i + 1] === "/") {
+          blank(i++);
+          blank(i++);
+          break;
+        }
+        blank(i++);
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      blank(i++);
+      while (i < n) {
+        const d = source[i];
+        if (d === "\\") {
+          blank(i++);
+          if (i < n) blank(i++);
+          continue;
+        }
+        blank(i++);
+        if (d === c) break;
+      }
+      // A string is a value, so a `/` after it is division, not a regex.
+      prev = '"';
+      continue;
+    }
+    if (c === "/" && regexOpensAfter(prev)) {
+      const end = regexLiteralEnd(source, i);
+      if (end > i) {
+        while (i < end) blank(i++);
+        prev = "/";
+        continue;
+      }
+    }
+
+    out[i] = c;
+    if (!/\s/.test(c)) prev = c;
+    i++;
+  }
+
+  return out.join("");
+}
+
+/**
+ * Can a `/` following this code character open a regex literal? True after an
+ * operator or an opening bracket, false after a value (identifier, digit,
+ * closing bracket, string), where `/` is division. The classic heuristic, and
+ * wrong only in directions `maskNonCode` documents as safe.
+ */
+function regexOpensAfter(prev) {
+  return prev === "" || "([{;,=:!&|?+-*%^~<>".includes(prev);
+}
+
+/**
+ * Index one past a regex literal opening at `start`, or `-1` if what starts
+ * there is not one. A literal never spans a line, and `/` inside a character
+ * class does not close it.
+ */
+function regexLiteralEnd(source, start) {
+  let i = start + 1;
+  let inClass = false;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\n") return -1;
+    if (c === "\\") {
+      i += 2;
+      continue;
+    }
+    if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) {
+      i++;
+      while (i < source.length && /[a-z]/.test(source[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+/**
+ * Every skip token in STATEMENT position in one JS source, with its 1-based
+ * line and the title string it was called with.
+ *
+ * "Statement position" is two conditions, and both are needed:
+ *   - nothing but whitespace precedes the token on its own line, and
+ *   - the previous non-whitespace code character opens a new statement
+ *     (start of file, `;`, `{`, `}` or `)`).
+ *
+ * That is exactly the shape a real skipped block has, and it excludes the
+ * environment-gated form the suite uses legitimately — `(canRun ? test :
+ * test.skip)(…)`, where the token sits after a `:` in the middle of a line.
+ *
+ * @param {string} source
+ * @returns {Array<{line: number, token: string, title: string}>}
+ */
+function scanSkipTokens(source) {
+  if (typeof source !== "string" || source === "") return [];
+  const masked = maskNonCode(source);
+  const found = [];
+  const re = /\b(describe|test|it)\.skip\s*\(/g;
+  let m;
+  while ((m = re.exec(masked)) !== null) {
+    const start = m.index;
+
+    let j = start - 1;
+    while (j >= 0 && (masked[j] === " " || masked[j] === "\t")) j--;
+    if (j >= 0 && masked[j] !== "\n") continue;
+
+    while (j >= 0 && /\s/.test(masked[j])) j--;
+    const prev = j >= 0 ? masked[j] : "";
+    if (prev !== "" && !";{})".includes(prev)) continue;
+
+    found.push({
+      line: source.slice(0, start).split("\n").length,
+      token: `${m[1]}.skip`,
+      title: firstStringArgument(source, start + m[0].length),
+    });
+  }
+  return found;
+}
+
+/** The literal string argument opening at/after `idx`, unquoted; "" if none. */
+function firstStringArgument(source, idx) {
+  let i = idx;
+  while (i < source.length && /\s/.test(source[i])) i++;
+  const quote = source[i];
+  if (quote !== '"' && quote !== "'" && quote !== "`") return "";
+  let out = "";
+  i++;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\\") {
+      out += source[i + 1] || "";
+      i += 2;
+      continue;
+    }
+    if (c === quote) break;
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/** Does `title` name task `id` as a whole token (`T7` never matches `T70`)? */
+function titleNamesTask(title, id) {
+  if (!title || !id) return false;
+  const escaped = String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}([^A-Za-z0-9_-]|$)`).test(title);
+}
+
+/**
+ * The un-skip guard proper: run it after a wave's test gate has passed and
+ * before the wave is recorded green.
+ *
+ * Total and never-throwing. Everything it could not check comes back as a
+ * notice; only an attributable, fully-owed skip comes back as a violation.
+ *
+ * @param {{waves: Array<Array<{id: string, files: string[]|null}>>,
+ *          waveIndex: number, _readFile: Function}} args
+ * @returns {Promise<{violations: Array<{file: string, line: number, token: string,
+ *          title: string, owners: string[]}>, notices: string[], scanned: string[]}>}
+ */
+async function checkWaveUnskips({ waves, waveIndex, _readFile } = {}) {
+  const violations = [];
+  const notices = [];
+  const scanned = [];
+  const done = { violations, notices, scanned };
+
+  if (!Array.isArray(waves) || waves.length === 0) {
+    notices.push("no wave plan to scan");
+    return done;
+  }
+  if (typeof _readFile !== "function") {
+    notices.push("no _readFile transport — owned test files were not scanned");
+    return done;
+  }
+
+  const allIds = [];
+  const complete = new Set();
+  const ownersByFile = new Map();
+  for (let wi = 0; wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      if (!task || !task.id) continue;
+      if (!allIds.includes(task.id)) allIds.push(task.id);
+      if (wi <= waveIndex) complete.add(task.id);
+      for (const file of Array.isArray(task.files) ? task.files : []) {
+        if (!ownersByFile.has(file)) ownersByFile.set(file, []);
+        const owners = ownersByFile.get(file);
+        if (!owners.includes(task.id)) owners.push(task.id);
+      }
+    }
+  }
+
+  const targets = [];
+  for (let wi = 0; wi <= waveIndex && wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      for (const file of Array.isArray(task && task.files) ? task.files : []) {
+        if (UNSKIP_TEST_FILE_RE.test(file) && !targets.includes(file)) targets.push(file);
+      }
+    }
+  }
+  if (targets.length === 0) {
+    notices.push("no completed task owns a test file in the PLAN's manifest — nothing to scan");
+    return done;
+  }
+
+  for (const file of targets) {
+    let text = null;
+    try {
+      text = await _readFile(file);
+    } catch {
+      text = null;
+    }
+    if (typeof text !== "string" || text === "") {
+      notices.push(`${file} could not be read — not scanned`);
+      continue;
+    }
+    scanned.push(file);
+
+    for (const token of scanSkipTokens(text)) {
+      const named = allIds.filter((id) => titleNamesTask(token.title, id));
+      const owners = named.length > 0 ? named : ownersByFile.get(file) || [];
+      // Attributable to nobody: not this guard's business.
+      if (owners.length === 0) continue;
+      // Owed by a task that has not run yet — the legitimate case.
+      if (!owners.every((id) => complete.has(id))) continue;
+      violations.push({ ...token, file, owners });
+    }
+  }
+
+  return done;
+}
+
+/** The halt message: every violation named by file, line, token and owner. */
+function formatUnskipViolations(waveNum, violations) {
+  const rows = violations.map(
+    (v) =>
+      `  ${v.file}:${v.line} ${v.token}(${v.title ? `"${v.title}"` : ""}) — ` +
+      `owned by ${v.owners.join(", ")}, complete as of wave ${waveNum}`
+  );
+  return (
+    `Error: Wave ${waveNum} un-skip guard failed — ${violations.length} skipped ` +
+    `test block(s) are owned by a task that is already complete, so the wave's ` +
+    `gate passed on tests that never ran:\n${rows.join("\n")}\n` +
+    `Each 🟢 owner's first obligation is to remove the \`.skip\` wrapper on its own ` +
+    `block. A block owned by a LATER wave's task is legitimate and does not appear here.`
+  );
+}
+
 // ─── INTERIM: the wave ledger, Phase I's script-owned resume pointer ──────────
 //
 // `implementation.startWave` is a MANUAL pointer: after a wave-gate halt an
@@ -10586,6 +10905,28 @@ async function main({
           emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
         } else {
           evaluateBatchGate(waveResults, waveIndex, wave);
+        }
+
+        // A green gate is only worth something if the wave's tests actually ran.
+        // The un-skip guard runs AFTER the gate and BEFORE the commits, so a
+        // vacuous green halts the wave with its work uncommitted, exactly as a
+        // red gate does.
+        const unskip = await checkWaveUnskips({
+          waves,
+          waveIndex,
+          _readFile: readFileFn,
+        });
+        for (const notice of unskip.notices) {
+          emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
+        }
+        if (unskip.violations.length > 0) {
+          throw haltError(formatUnskipViolations(waveNum, unskip.violations));
+        }
+        if (unskip.scanned.length > 0) {
+          emit(
+            `Wave ${waveNum} un-skip guard: ${unskip.scanned.length} owned test ` +
+              `file(s) scanned, no skipped block owed by a completed task`
+          );
         }
 
         // Only now — verified — does anything get committed (M-6).
