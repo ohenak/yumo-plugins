@@ -45,11 +45,61 @@ history it keys is the one described here, not a fresh review of a tree nobody h
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | On F-03: which lever is meant to win — `forcePhases: "I"` or a complete wave ledger? Whichever the answer, it wants one test. If `forcePhases` should win, the `!explicitPointer` guard (`:10812`) needs a second disjunct; if the ledger should win, say so in the skip notice, which today names only the delete-the-file escape. |
+| Q-02 | On F-02: is there a reason not to stamp the completion record with the HEAD sha? The record already carries `version`, `feature`, `planHash` and `lastGreenWave`; a fourth field would make the resume decision a function of the tree as well as of the PLAN, and would cost one `_git rev-parse` on a path that already has a git seam. |
+| Q-03 | On F-05: were the two `orchestrate-dev.js` changes intended to ship on this feature's branch, or were they meant for a separate change? They are not in this feature's scope, and Phase PUB will carry them into the same PR — which is fine if it is a decision, and a surprise if it is not. |
 
 ## Positive Observations
 
-_(pending)_
+- **Every High from the previous CR round is closed, and closed with a stronger oracle than the
+  finding asked for.** Re-verified at HEAD, one by one:
+  - *F-01 (AT-M9 absence-only)* — `155b8f46` and `2272d493`. AT-M9 now reaches step 13 on a JSON
+    cluster reply, opens with a non-vacuity conjunct (`_agent.calls` has length 2 and the second
+    prompt names the routed failure-mode id), then asserts all seven: exact status, empty reason
+    set, the §8.3 table present, the consumed pair, the marker's own bytes matching
+    `^RELEASED: {passId}`, the dispatch error verbatim, and `prUrl` null
+    (`consolidationPass.test.js:634-660`). The marker conjunct reads the file the *next* pass reads
+    rather than `result.markerHeld`, and says why in a comment.
+  - *F-02 (production wrong, not the oracle)* — `36707bd7`. `openClone` now discriminates
+    E-22 from E-23 on the clone's own stderr and returns the configured value verbatim
+    (`consolidate-learnings.js:2242-2247`), and AT-N4 drives the real function in three legs, with a
+    transport-failure control that keeps the two classes uncollapsed and a "no `remote get-url`
+    happened" conjunct against a silent fallback (`consolidationReport.test.js:421-484`).
+  - *F-03 (builder-not-wired config notices)* — `f2af78f7`. There is now one exported production
+    builder, `configNotices` (`consolidate-learnings.js:1846-1863`), and `main()` is its only caller
+    (`:529`). AT-N1…N3 read what production assembles.
+  - *F-04 (AT-M5 exclusion-only)* — `0c966a46`. Both directions, plus a non-vacuity floor on the
+    write set. F-04 above is a refinement of the expected side, not a reopening.
+- **The Mediums and Lows were taken seriously too**, which is unusual and worth saying: AT-M11 now
+  asserts the marker was *taken* (its bytes, its new passId) and pins `status === "no-op"` instead of
+  `not.toBe("refused")` (`consolidationPass.test.js:426-443`); AT-M7 gained a `main()`-level
+  assertion that the `ADVISORY_MODEL_FALLBACK:` line reaches `result.body` (`:492-511`); the dead
+  `notImplemented` scaffold is gone; the seven "not yet landed" comments that pointed the reader in
+  the wrong direction were corrected (`79e304af`).
+- **F-08's durable guard landed and is genuinely durable.** `consolidationTraceability.test.js` now
+  carries a third axis over PROPERTIES §12.2's property→file map (`:150-260`) beside the FSPEC §13 /
+  TSPEC §12.3 set-equality, with a version pin so a moved register fails as "the register moved" and
+  a non-vacuity floor so two empty parses cannot agree. This is the finding that will catch the
+  successors of F-01 and F-04 mechanically.
+- **CR F-11's fix is the right shape.** One `crossReviewPath` builder (`orchestrate-dev.js:6311-6325`)
+  is now the single place a cross-review path is spelled, used by both the loop's read-back and the
+  reviewer prompt, so the name a reviewer is told to write is by construction the name the window
+  looks for. The tests assert the v1 path per role, the absence of an inferred `-IMPLEMENTATION-`
+  path, and the read/write pair on iteration 2 (`reviewLoop.test.js:1302-1401`).
+- **The new artifact was added to every existing axis rather than exempted from them.**
+  `runtimeBundle.test.js`'s `BUNDLES`, `AT19_SEAM_NAMES` (`_envPresent`, `_makeTempDir`, with `_now`
+  deliberately excluded and the reason recorded), `AWAIT_SCAN_SOURCES`, and the manifest-id
+  set-equality all carry `consolidate-learnings`. The comment explaining why omission would be an
+  exemption is the kind of thing that keeps an axis honest a year later.
+- **Set-equality is the house style in the new suites, not an exception.** AT-Q7's three-domain
+  containment-plus-obligation oracle, AT-L5's four-leg vocabulary equality including the one that
+  reads the vocabularies document itself, and the CLAUDE.md ↔ manifest equality (minus the manifest
+  itself) are all written to fail on a deletion, which is the property the phase asks for.
+- **The gates are green and the tree is clean.** All five artifacts in sync, zero `describe.skip`
+  left un-un-skipped in the consolidation suites, and the only red in the run is the documented
+  untracked-file document-oracle red that CI does not see.
 
 ## Recommendation
 
