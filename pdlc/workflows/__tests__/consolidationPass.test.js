@@ -41,6 +41,10 @@ import {
 const MARKER_PATH = "docs/_decisions/.consolidation-lock";
 const LOG_PATH = "docs/_decisions/.consolidation-log.md";
 const STALE_LOCK_MINUTES = 60; // ConsolidationConfig default (TSPEC §6.1)
+// The advisory rung pair, transcribed exactly as `consolidationRung.test.js:37-38` transcribes it
+// (`orchestrate-dev.js:1683-1684` — module-private, so both suites transcribe rather than import).
+const MODEL_ADVISORY = "fable";
+const MODEL_ADVISORY_FALLBACK = "opus";
 
 describe("T20 — the pass, end to end (L2)", () => {
   // ═══════════════════════════════════════════════════════════════════════
@@ -419,7 +423,21 @@ describe("T20 — the pass, end to end (L2)", () => {
             const markerText = markerLine("released", HELD_PASS_ID, atMs);
             const seams = buildSeams({ ...oneFileCorpus(), markerText, agentScript: [NOTHING_FOUND_REPLY] });
             return main({ ...seams, direct: true }).then((result) => {
-              expect(result.status).not.toBe("refused");
+              // Positive: the marker was TAKEN by this pass, not merely "not refused". The
+              // observable is that the pass wrote its own id over the released one — a pass that
+              // bailed for any reason would leave `HELD_PASS_ID` in the file.
+              const markerWrites = seams.fs.writes.filter((w) => w.path === MARKER_PATH);
+              expect(markerWrites.length).toBeGreaterThan(0);
+              expect(markerWrites[0].contents).toBe(`IN-PROGRESS: ${result.passId} ${new Date(FIXED_NOW_MS).toISOString()}`);
+              expect(seams.fs.files[MARKER_PATH]).toBe(
+                `RELEASED: ${result.passId} ${new Date(FIXED_NOW_MS).toISOString()}`
+              );
+              expect(result.passId).not.toBe(HELD_PASS_ID);
+
+              // Positive: the terminal status is the one a nothing-found pass reaches, named —
+              // `not.toBe("refused")` alone is also satisfied by `failed`.
+              expect(result.status).toBe("no-op");
+
               const reasons = Array.from(result.reasons ?? []);
               expect(reasons).not.toContain("reclaimed-stale-lock");
               expect(reasons).not.toContain("consolidation-in-progress");
@@ -445,6 +463,34 @@ describe("T20 — the pass, end to end (L2)", () => {
           // never ran — exactly two appends: the consumed pair and the terminal row.
           expect(seams.fs.appends).toHaveLength(2);
           expect(seams.fs.appends[0].text).toContain("pdlc:consumed");
+        });
+      });
+
+      // AT-M7's main()-level leg. `consolidationRung.test.js` drives the §8.4 tee around the real
+      // `resolveAdvisoryRung` and proves the resolver's line is retained and forwarded; what it
+      // cannot reach from there is the other half of §8.4's obligation — that `main()` threads
+      // that tee as the resolver's `_log` and folds `dispatchLog` into the rendered body. This row
+      // is that half, and it is the one assertion that would go red if `main()` passed the
+      // caller's raw sink (or a swallowing stub) instead of its tee.
+      test("AT-M7 (main()-level): the primary rung fails to resolve, the fallback succeeds — the pass proceeds and the ADVISORY_MODEL_FALLBACK: line reaches the report body", () => {
+        const aliasError = `unrecognised model alias "${MODEL_ADVISORY}"`;
+        const seams = buildSeams({ ...oneFileCorpus(), agentScript: [aliasError, NOTHING_FOUND_REPLY] });
+        seams._agent = makeAgentDouble({
+          script: [aliasError, NOTHING_FOUND_REPLY],
+          throwOn: new Set([0]),
+        });
+
+        return main({ ...seams, direct: true }).then((result) => {
+          // M-2: resolution fell back rather than failing — a `failed`/`advisory-model-unresolved`
+          // pass would satisfy a body assertion vacuously, since the halt message carries the same
+          // line.
+          expect(result.status).not.toBe("failed");
+          expect(Array.from(result.reasons ?? [])).not.toContain("advisory-model-unresolved");
+          expect(result.rung).toBe(MODEL_ADVISORY_FALLBACK);
+
+          expect(result.body).toContain(
+            `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+          );
         });
       });
 
