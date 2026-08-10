@@ -124,10 +124,20 @@ describe("T00 — BL-PREREQ: runtimeBundle.test.js scan sets", () => {
     expect(BUNDLE_TEST_SOURCE).toMatch(/\bconst AWAIT_SCAN_SOURCES\s*=/);
   });
 
-  test("neither scan set carries this feature's new members yet", () => {
-    expect(BUNDLE_TEST_SOURCE).not.toContain("consolidate-learnings.js");
-    expect(BUNDLE_TEST_SOURCE).not.toContain("_envPresent");
-    expect(BUNDLE_TEST_SOURCE).not.toContain("_makeTempDir");
+  test("both scan sets now carry this feature's new members (T13's additions, applied)", () => {
+    // Was recorded here as the negative half, T00 (snapshot authoring day):
+    // neither scan set carried this feature's new members yet. T13 (wave 4)
+    // then legitimately added them alongside runtimeBundle.test.js's own
+    // scan-set changes.
+    //
+    // operator applied this assertion's inversion by hand on 2026-08-09 after
+    // the wave-4 gate halt. This assertion inverted to match what the tree
+    // now carries, not deleted: it still pins the members' presence, which is
+    // what BL-PREREQ is recording. T13 is now a partial no-op; the pipeline
+    // will re-verify.
+    expect(BUNDLE_TEST_SOURCE).toContain("consolidate-learnings.js");
+    expect(BUNDLE_TEST_SOURCE).toContain("_envPresent");
+    expect(BUNDLE_TEST_SOURCE).toContain("_makeTempDir");
   });
 });
 

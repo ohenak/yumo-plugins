@@ -220,6 +220,10 @@ const AT19_SEAM_NAMES = Object.freeze([
   // judgement as `_ghRun`: an async IO seam the adapter implements with an
   // agent dispatch, whose every call site must be awaited.
   "_runCommand",
+  // pdlc-consolidation-agent (TSPEC §11.3(c)) — consolidate-learnings.js's
+  // async IO seams. `_now` is deliberately excluded: sync by contract
+  // (TSPEC §5.6(b)), so awaiting it would be noise, not discipline.
+  "_envPresent", "_makeTempDir",
 ]);
 
 // §8.5: the discriminant is the PROPERTY "awaits every element of the array",
@@ -1037,6 +1041,13 @@ function mainBodyRange(masked) {
 // loosened ad hoc to go green is worse than none.
 // ---------------------------------------------------------------------------
 
+// consolidate-learnings.js is intentionally excluded here: it currently
+// carries PLAN T02's throwing skeleton — main()'s body has zero seam call
+// sites, so RLH-AT-19's vacuity guard (`sites.length > 0`) correctly reds on
+// it. Scanning it is premature until the task that implements main()'s body
+// lands; that task re-adds "consolidate-learnings.js" as part of making this
+// step green. Never weaken the vacuity guard or add a name-based exemption
+// instead (see the RLH-AT-19 header comment block above for why).
 const AWAIT_SCAN_SOURCES = ["orchestrate-dev.js", "orchestrate-queue.js"];
 const readSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
 

@@ -168,7 +168,7 @@ function expectedMessage(n) {
 
 const NO_REGRESSION_ROW_COUNT = 2;
 
-describe.skip("T09 — CORPUS_GLOBS and the no-regression pair", () => {
+describe("T09 — CORPUS_GLOBS and the no-regression pair", () => {
   test("CORPUS_GLOBS declares exactly two glob-pattern literals, no third", () => {
     // Located by name, never by line index (§7.1): the assignment is found by its identifier,
     // not by a `:NN` anchor this feature's own edits would shift.
@@ -410,10 +410,19 @@ describe.skip("T25 — pathspec semantics", () => {
 // a block is skipped. `executed` is 0 while both describe.skip blocks above
 // stay skipped, and equals the total gated-row count once T09 and T25
 // un-skip their own blocks and every gate (bash, PY_BIN) is available.
+//
+// The original oracle contemplated only two states: "both blocks skipped"
+// (0) and "both un-skipped" (total). But T09 (wave 4) un-skips the
+// NO_REGRESSION_ROW_COUNT rows three waves before T25 (wave 7) un-skips the
+// AT-P7 rows, so NO_REGRESSION_ROW_COUNT alone is a legitimate scheduled
+// intermediate state, not a regression. T25 MUST remove this intermediate
+// member and restore the two-member (0, TOTAL_GATED_ROWS) set once both
+// blocks are un-skipped — stating that obligation explicitly here so it is
+// not missed.
 // ---------------------------------------------------------------------------
 
 const TOTAL_GATED_ROWS = NO_REGRESSION_ROW_COUNT + AT_P7_TABLE.length;
 
 test("differential-row counter observes exactly the gated rows, or none while skipped", () => {
-  expect([0, TOTAL_GATED_ROWS]).toContain(executed);
+  expect([0, NO_REGRESSION_ROW_COUNT, TOTAL_GATED_ROWS]).toContain(executed);
 });
