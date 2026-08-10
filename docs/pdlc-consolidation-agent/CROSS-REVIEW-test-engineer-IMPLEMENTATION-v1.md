@@ -43,7 +43,34 @@ FSPEC row claim it asserts.** Because the AT register is the completeness gate, 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For F-02: is BR-23 the intended behaviour, or has it been superseded? If a configured-but-unresolvable `pluginRepository` should degrade as `api-failure`, then FSPEC BR-23/E-22 and REQ:285 are the things to change and this becomes an erratum rather than a code fix. If BR-23 stands, `openClone` needs a resolve probe on the non-null branch before the clone. Either way the current state — spec says one thing, code does another, no test drives the branch — cannot ship. |
+| Q-02 | For F-03: was `main()` ever intended to emit the `{subject: "consolidation.${key}", missingField}` shape the report test transcribes, with `renderReportBody`'s `missingField` fallback (`consolidate-learnings.js:2073`) as its consumer? If so, `main():528-532` is the defect and the test is right; if not, the test helper is the defect. `missingField` is read by the renderer and written by no production caller, which suggests the former. |
+| Q-03 | For F-01: does a fixture that actually reaches step 13 exist anywhere in the suite? I could not find one — `deriveProposals` (`:928`) has unit coverage, but I found no `main()` fixture whose clustering reply yields a routable proposal *and* fails the authoring dispatch. If that fixture is genuinely expensive to build, say so and I will discuss a narrower oracle; but the current row should not claim AT-M9. |
+
 ## Positive Observations
+
+- **Every RED block is un-skipped.** Sixteen new test files, ~5,500 lines, and not one live `.skip(` — the
+  skipped-block discipline PLAN §2 set up, plus the wave-gate un-skip guard (`9c510245`), actually held. This
+  is the failure mode that silently guts a TDD pipeline and it did not happen here.
+- **Set-equality is the house style, not the exception.** `consolidationLifecycle.test.js:317` asserts the
+  fixture map's key set equals `TERMINAL_STATUSES`; `consolidationParse.test.js:138` asserts a parsed record's
+  key set equals the eight field names in both directions; `consolidationBuild.test.js:288, 300` closes
+  CLAUDE.md ↔ manifest ↔ `BUNDLES` three ways; `consolidationRoute.test.js:80` pins `routeOf` set-equal to
+  `MERGE_GUARD_DEFAULTS` rather than a subset. F-04 stands out precisely because it is atypical.
+- **Paired negatives are done properly where they matter most.** AT-M6 (`consolidationPass.test.js:463-475`)
+  is a model of the form: positive terminal status, exact reason-code count, verbatim body text, exact append
+  count, and the marker-release check — the negative ("nothing step 11 would have appended") rides on five
+  positives on the same path.
+- **The non-disclosure sweep is the right oracle.** `accumulatedText(doubles)` swept for `SECRET_VALUE` across
+  every double (`consolidationCredential.test.js:394, 412, 436`) is a falsifier that survives future code that
+  threads the value somewhere new — much stronger than asserting the redaction function was called.
+- **AT-Q7 leads with a runtime oracle and labels the source-grep as supplementary**
+  (`consolidationRoute.test.js:388-407`), explicitly refusing to let the static check be sole evidence. That is
+  the right instinct and it is written down.
+- **PROPERTIES §O-1…O-6 exist at all.** Naming the falsifiability rules made this review mechanical: every
+  High above is a citation of the feature's own rule back at it, not a taste argument.
 
 ## Recommendation
 
