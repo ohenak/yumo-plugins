@@ -57,11 +57,29 @@ file — not a claim re-evaluated against a moving HEAD. It stays correct as tas
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | F-01 asks for a decision, not just an edit, and the cheaper answer may be the better one. Is the `Status` column meant to be a live ledger at all now that the wave ledger (`WAVE_STATE_PATH`) exists and owns resume? If it is not, the smallest correct change is to revert `9b7ea731`, leave the column uniformly `⬚`, and note in §4's preamble that progress is read from the wave ledger rather than from this table — which removes a maintenance obligation that will otherwise go stale on every wave. If it *is* meant to be live, the seven landed rows want reconciling together. I have not assumed which; either resolves the finding. |
 
 ## Positive Observations
 
-_pending_
+- The commit message is falsifiable and it survived falsification. "already lands seven
+  `describe.skip` blocks" is a counted claim about a named file, so it could be checked
+  mechanically rather than believed — and the seven blocks are not merely seven, they are
+  **set-equal by name** to T03's seven declared blocks. A message reading "adds the skip blocks"
+  would have cost the same to write and proved nothing.
+- The status flip is the honest direction of reconciliation. T03's blocks are all skipped, so the
+  row is Red and not Green, and `🔴` is what the key says that state is called. A less careful
+  reconciliation would have marked a row with seven skipped blocks as Done because the file exists.
+- The one-line diff kept the gate numbers stable, and that is checkable rather than assumed:
+  34 / 34 / `{"ok":true}` / 15 ready-sets / 15 waves / 0 batch mismatches / 0 same-batch collisions,
+  every value identical to v4's. A `Status`-column edit sits inside the task table, where a
+  mis-shaped cell would shift the column count the row parser reads — so this was worth re-running
+  rather than waving through as "just a status cell".
+- The `(new)` marker held up under exactly the pressure that would break a sloppier convention.
+  T03's file now exists at HEAD, which makes `(new)` *look* stale, but §4's preamble had already
+  defined the marker as a property of which row creates the file rather than a claim about the
+  current tree. The convention was written to survive its own tasks landing, and it did.
 
 ## Recommendation
 
