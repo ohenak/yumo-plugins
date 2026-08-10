@@ -32,6 +32,261 @@ call-site arity rather than test names.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | The effectiveness fold is given one pass, so `ineffective` and `unmeasurable` are unreachable in production | AC-5.3, AC-5.5, AC-1.4 |
+| F-02 | High | Local | `remediationChoice` has zero production callers — the revision/retirement ladder never fires | AC-5.3, AC-5.4 |
+| F-03 | High | Local | `seamCandidates` has zero production callers — the advisory seam candidate is never derived | AC-6.2, AC-6.3 |
+| F-04 | High | Local | The `deferred:` field is the literal `none` in both the log row and the report body | AC-7.1, AC-2.4, AC-3.5 |
+| F-05 | High | Local | Report item 7 is the literal `advisory: none`; `state.advisory` is read at step 10 and then discarded | AC-7.1, AC-6.1 |
+| F-06 | Medium | Cross-Feature | The PR base branch is the hardcoded string `"main"` at the only `consolidationCreate` call site | AC-3.6, AC-3.8 |
+| F-07 | Medium | Process | `consolidate-learnings/SKILL.md` still reads "Cadence: Manually invoked"; CLAUDE.md claims the `orchestrate-queue` shape | AC-1.1, REQ §5 |
+| F-08 | Low | Local | The module's own `meta` (`:29`) diverges from the bundle's `CONS_META` — no `direct` input, no `whenToUse`, no `phases` | AC-1.1 |
+
+### F-01 — the effectiveness fold receives exactly one pass (High, Local)
+
+`main()` calls the fold with a single-element array holding **this pass and only this pass**
+(`consolidate-learnings.js:651-655`):
+
+```js
+state.effectiveness = effectivenessTable(
+  priorRecords,
+  [{ passId: state.passId, consumed: consumedBodies.map((b) => b.text)… }],
+  config
+);
+```
+
+Inside `effectivenessTable` the two streaks fold over that array (`:1550-1571`) and the states are
+gated on them: `ineffective` needs `ineffectiveStreak >= 2` (`:1577`) and `unmeasurable` needs
+`unmeasurableStreak >= unmeasurablePasses`, default 3 (`:1518-1519`, `:1578`). With one element in
+the array, neither counter can exceed 1. **Both states are therefore unreachable on every production
+path**, and `state` is `null` in every row `main()` ever renders.
+
+What this costs, in REQ's own terms:
+
+- **AC-5.3** ("a promotion whose verdict was `recurred` on two consecutive counted passes … is
+  flagged `ineffective`") can never be satisfied. FSPEC §8.5 states the streak explicitly as a fold
+  across passes, with a table of which pass kinds count — a table that is meaningless over one pass.
+- **AC-5.5** (`insufficient-evidence` on `unmeasurablePasses` consecutive evaluated passes) likewise.
+  Note `consolidation.unmeasurablePasses` is a configured key whose value can change nothing today.
+- **AC-1.4** requires a `no-op` pass to restate "each prior promotion's **standing** verdict and
+  state (including an `unmeasurable` already reached)". FSPEC §8.7 says the same: "Once reached,
+  `unmeasurable` stands until a verdict resets it, and a `no-op` pass restates it meanwhile." Nothing
+  in the shipped code carries a state across passes: `renderFailureModeRecord` (`:1942-1954`) writes
+  eight fields and none of them is the streak or the standing state, and `LOG_RECORD_FIELD_MAP`
+  (`:1369-1378`) parses back the same eight. So the state is neither recomputed nor persisted.
+
+This is the falsifiability loop — REQ-CONS-05 is the requirement that distinguishes this feature from
+the skill it replaces ("every promotion recording the failure mode it targets and the next pass
+reporting, by a deterministic rule, whether that failure mode recurred", REQ §1). Shipping it
+unreachable means the pass can promote forever and never once tell the operator a promotion did not
+work.
+
+The function itself is correct — `consolidationEffectiveness.test.js:224` (AT-F9) proves
+`ineffective` on a hand-built four-pass input, and `:262-269` proves the two-pass boundary. The
+production caller simply never builds that input.
+
+**What to change:** at `:651`, reconstruct the prior passes before folding. The log already carries
+what is needed — one `<!-- pdlc:consumed -->` block per pass, written by `renderConsumedPair`
+(`:1162`) and parsed by the same region split `classifyCorpus` uses (`:1106`) — so the pass can read
+each prior pass's consumed basenames, read those bodies through `readFileFn`, and pass the list
+oldest-first with the current pass last. `effectivenessTable` needs no change; it already folds
+"every pass's consumed set, in file order" exactly as its own docstring at `:1509` says.
+
+### F-02 — `remediationChoice` has zero production callers (High, Local)
+
+`remediationChoice` is defined at `:1631` and referenced exactly once more in the whole module — in
+a comment, at `:1510`. There is no call:
+
+```
+$ grep -n "remediationChoice" pdlc/workflows/consolidate-learnings.js
+1510: * neither `prStates` nor `headExists`, so choosing it is the caller's job (`remediationChoice`).
+1631:export function remediationChoice(id, records, prStates, headExists) {
+```
+
+The docstring names the obligation and then it is dropped: `effectivenessTable` sets
+`remediation: null` unconditionally (`:1584`) precisely because "choosing it is the caller's job",
+and the caller does not choose. Consequently `renderEffectivenessTable`'s remediation branch
+(`if (row.remediation) parts.push(…)`, `:1974`) is dead code in production.
+
+AC-5.3 does not stop at the flag — it requires the pass to propose one of revision or retirement, and
+FSPEC §8.5 gives a four-row top-down decision table for which. AC-5.4 then routes the retirement
+through the same promotion machinery. Neither happens. Even if F-01 were fixed and a row went
+`ineffective`, the operator would be told a promotion failed and offered nothing to do about it —
+the loop would detect ineffectiveness and never close it.
+
+**What to change:** after the effectiveness table is built at `:655`, for each row whose `state` is
+`ineffective`, call `remediationChoice(row.failureModeId, priorRecords, prStates, headExists)` and
+write the answer onto the row. Two inputs need sourcing: `prStates` is already polled at `:665` (it
+would need to move above the table, or the table's remediation pass to move below the poll), and
+`headExists` is a `checkFileFn` call on the row's `artifact`, which FSPEC §8.5 row 3 defines as "a
+file-existence test and nothing else". Then feed the chosen action back through `routeProposal` so
+AC-5.4's "same route as any other promotion" holds.
+
+### F-03 — `seamCandidates` has zero production callers (High, Local)
+
+Same shape. `seamCandidates` is defined at `:1788` and never called:
+
+```
+$ grep -n "seamCandidates" pdlc/workflows/consolidate-learnings.js
+1788:export function seamCandidates(counts) {
+```
+
+`main()` does read the corpus — `parseEscalations` at `:634-637` — and does record the two corpus
+states as reason codes (`no-advisory-corpus`, `advisory-corpus-empty`), and stores the parse on
+`state.advisory`. Then the analysis stops. AC-6.2 ("a seam whose escalation count … spans at least
+two distinct features and exceeds the other seams' …") and AC-6.3 have no production path at all.
+
+I want to be precise about the mitigation, because it is real but partial: BL-01a records that
+`ESCALATIONS.md` is absent at HEAD and is not expected to exist, and REQ notes AC-6.2/AC-6.3 are
+"inert without a corpus". That justifies the *candidates being empty*; it does not justify the
+*derivation being absent*. The difference is observable and matters to the operator: with the code
+wired, the day the advisory tier is enabled the first pass reports its candidate; unwired, that day
+produces nothing and no error, and the gap is invisible until someone re-reads this file. AC-6.1's
+three corpus states are specified as first-class precisely so this ships and is exercisable with the
+tier off.
+
+**What to change:** call `seamCandidates(escalations.counts)` at `:637` and carry the result on
+`state.advisory` for the report (see F-05, which is the other half of the same missing wire).
+
+### F-04 — `deferred:` is a hardcoded literal in both operator surfaces (High, Local)
+
+The log row ends with a constant (`:2008`):
+
+```js
+lines.push(`deferred: none`);
+```
+
+and the report body's item 8 is the same constant (`:2065`):
+
+```js
+lines.push(`8. deferred: none`);
+```
+
+Neither reads `state.deferred`, which `main()` populates at `:856` from the `deferred` accumulator
+and immediately uses for something else: `if (deferred.length > 0)` writes
+`docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` (`:858-862`) and drives the terminal status to
+`promoted-degraded` (`:866`). So on the exact path where deferral is the story, the pass writes a
+proposal file naming the deferred items, sets a status that means "some promotions were deferred",
+and then tells the operator `deferred: none` — twice, on both channels.
+
+This contradicts three ACs. AC-7.1 requires the report to carry "what was deferred to human
+judgment". AC-2.4 requires the log to record "promoted and deferred items". AC-3.5's degraded path is
+only useful if the operator learns there is a proposal file to read. FSPEC §10.4 item 8 is "what it
+deferred for human judgment", and FSPEC's field table (`:1861`) reads `| deferred: | what the pass
+left for human judgment | AC-7.1 |` — a data field, not a fixed word. FSPEC §10.3 classifies
+`deferred:` as **free-form** ("the value is data, not a vocabulary", `:1841`), which is exactly why
+no vocabulary test catches this.
+
+I checked whether any test would: none does. `consolidationReport.test.js:235` names `deferred` only
+in the list of free-form field names excluded from the vocabulary comparison, and no case asserts the
+field's value against a state carrying deferrals. A test that did would be a one-line fix's oracle.
+
+**What to change:** render both fields from `state.deferred` — the identifier and reason per entry,
+`none` only when the array is empty (FSPEC §10.4's receive-side totality rule already says an empty
+section is rendered as an explicit empty statement, so `none` stays correct in the empty case).
+
+### F-05 — report item 7 is the hardcoded literal `advisory: none` (High, Local)
+
+`:2064`:
+
+```js
+lines.push(`7. advisory: none`);
+```
+
+`state.advisory` is set at `:637` from `parseEscalations` and never read again. FSPEC §10.4 item 7 is
+"the §9 advisory notes: the corpus state, any §9.4 / §9.5 candidate, and any operator action" — three
+things, none of them rendered. The corpus state is the part that stings: the pass *does* determine it
+and *does* record it as a reason code, so the information exists and reaches the log's `reason:`
+field but not the report item that AC-7.1 assigns to it. An operator reading item 7 on a run with a
+populated `ESCALATIONS.md` would conclude the advisory corpus was empty.
+
+Paired with F-03, REQ-CONS-06 has no observable output whatsoever: nothing derives the candidate and
+nothing would print it if it did.
+
+**What to change:** render item 7 from `state.advisory` — corpus state always, candidate when
+F-03's call produces one, operator action when one is implied.
+
+### F-06 — the PR base branch is hardcoded to `"main"` (Medium, Cross-Feature)
+
+`:833`:
+
+```js
+let createCmd = mergeCommandFor("consolidationCreate", {
+  repo, head, base: "main", …
+});
+```
+
+`mergeCommandFor` parameterises `base` correctly (`orchestrate-dev.js:379`), and `openClone`
+(`:2195`) deliberately does **not** hardcode a branch — `git clone --depth 1 --single-branch` takes
+whatever the remote's HEAD is, which is what AC-3.8's "cut from the fetched default branch" asks for.
+The call site then throws that generality away.
+
+No spec fixes the literal: TSPEC §8's row is `_ghRun(mergeCommandFor("consolidationCreate", {…}))`
+(`:1637`) with the params elided, and neither FSPEC nor REQ names `main` (I grepped all three). So
+this is an implementation choice with no document behind it. On a consuming repo whose default branch
+is `master` or `develop`, `gh pr create --base main` fails, `classifyPrFailure` (`:877`) routes it to
+`api-failure`, and the promotion degrades to a proposal file — no data loss, but a silently lost
+promotion on a class of repo the feature claims to support, reported as an API failure rather than as
+a misconfiguration.
+
+I tag this **Cross-Feature** rather than Local because the repository's own `mergeCommandFor`
+("repoCaps", `orchestrate-dev.js:348`) already requests `defaultBranchRef` for Phase MERGE — the
+codebase has a settled way to learn this and one call site did not use it. That is a reusable lesson
+about default-branch assumptions in the plugin, not a fact about this feature.
+
+**What to change:** derive the base from the clone (`git -C {dir} symbolic-ref --short HEAD`, which
+`--single-branch` has already resolved) or from `defaultBranchRef`, and pass it. A regression test
+would set the double's default branch to something other than `main` and assert the `--base` argument
+follows.
+
+### F-07 — the operator-facing entry point still documents the old, manual behaviour (Medium, Process)
+
+`pdlc/skills/consolidate-learnings/SKILL.md:12` at HEAD still reads:
+
+> **Cadence:** Manually invoked. A `SessionStart` nudge hook reminds when ≥5 un-consolidated
+> LEARNINGS exist, but you may be run any time.
+
+The branch changed exactly two lines of that file (`:35` predicate, `:41` topic) — both in REQ §5's
+in-scope list, both correct. But the cadence line is now false: the feature's headline is a
+cadence-and-volume-triggered pass with `consolidation.cadenceHours` (default 168) and
+`consolidation.volumeThreshold` (default 5) evaluated **by the pass**, not by the hook (AC-1.2).
+Meanwhile CLAUDE.md's diff on this branch asserts the new shape:
+
+> `/pdlc:consolidate-learnings` now resolves to a skill and a runtime bundle sharing one name, the
+> same shape `orchestrate-queue` already has
+
+In that shape the skill is a pointer: `pdlc/skills/orchestrate-queue/SKILL.md:8` opens "This skill
+delegates to a workflow script. It does not run the pipeline itself." `consolidate-learnings/SKILL.md`
+is still the full manual human procedure and mentions neither the workflow nor the config keys. So an
+operator (or an agent) typing `/pdlc:consolidate-learnings` reads a document that tells it to do the
+work by hand.
+
+I am deliberately not calling this High. REQ §5 puts "retiring the manual `/pdlc:consolidate-learnings`
+entry point" **out of scope**, so keeping a manual procedure is intended, and the workflow is reachable
+on its own (the bundle ships, `distribution-manifest.json:6-8` carries its row, and `sync-workflows.sh`
+is manifest-driven so the consumer copy lands without a script change — I checked). What is missing is
+the sentence that tells a reader both exist and which is which.
+
+**What to change:** update the Cadence line to state the automatic trigger and its two config keys,
+and add a pointer to the workflow — including how a manual run reaches `direct: true`, since that is
+the input the bundle declares for exactly this purpose.
+
+### F-08 — the module's `meta` and the bundle's `CONS_META` disagree (Low, Local)
+
+`consolidate-learnings.js:29-35` declares `inputs: []` and carries no `whenToUse` and no `phases`.
+The bundle's hand-written copy (`build-runtime.mjs:163-185`) declares the `direct` boolean input,
+a `whenToUse`, and four phases. The bundle's copy is the one the runtime reads, so nothing is broken
+— this is the same situation `DEV_META`'s own comment already documents ("the module's own
+`meta.inputs` is dead in this artifact … Keep it in step", `build-runtime.mjs:191-194`).
+
+It is Low because it misleads only a reader of the source. It is worth a line because AC-1.1's manual
+entry point lives entirely in the copy that is easy to forget, and the module's `meta` is where
+someone will look first.
+
+**What to change:** either mirror the bundle's inputs/phases in the module's `meta`, or carry the
+`DEV_META`-style comment there pointing at `CONS_META` as the live channel.
+
 ## Questions
 
 ## Positive Observations
