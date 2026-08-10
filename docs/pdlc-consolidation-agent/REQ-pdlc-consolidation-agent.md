@@ -300,9 +300,11 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   `PDLC-CONSOLIDATION-PASS` trailer (vocabularies §4, cited by the REQ-CONS-03 preamble), so a
   repo-side control can recognise it.
 
-  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (`pdlc/workflows/orchestrate-dev.js:959`) over
-  `effectiveGuardPaths` (`:709`) is reachable only from Phase MERGE's ladder (`:899-900`) and the advisory-envelope check (`:2143`) — both deciding
-  about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"` (`:61`, refusal `:838`). Nothing there evaluates an inbound PR, so claiming
+  This restates `pdlc-merge-phase` REQ-MERGE-03 rather than inheriting it: `guardVerdict` (the guard verdict, `pdlc/workflows/orchestrate-dev.js:959`)
+  over `effectiveGuardPaths` (the guard-path resolver, `:936`) is reachable only from Phase MERGE's ladder (`decideMerge`'s resolver/verdict call pair,
+  `:1126-1127`) and the advisory-envelope check (`:2370`) — both deciding about **that run's own** PR — and Phase MERGE ships `mergeMode: "off"`
+  (the default, `:61`; `decideMerge`'s guard-1 refusal `:1065`, its reason string `:1070`; the phase's own early return `:1659`). Nothing there
+  evaluates an inbound PR, so claiming
   inheritance would assert a control nothing enforces. Repository-side enforcement is BL-05, an operator duty.
 - **AC-3.8** — Given `consolidation.pluginRepository` resolves to the same repository as the
   consuming repo — the shipping configuration today (§1) — Then the pass performs the promotion in
@@ -324,7 +326,7 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   the AC-1.3 marker is written and removed inside the pass and is **never committed** — it is not one of the enumerated paths, and
   `docs/_decisions/.consolidation-lock` appears in no pathspec of any pass; an unrelated pathspec-scoped
   pipeline commit in the same tree cannot pick these files up and vice versa; and because a concurrent commit can hold `index.lock`, the pass retries
-  that failure class as `commitPaths` does (`gitWithLockRetry`, `:8670`) — a commit that still fails leaves the writes uncommitted for the operator,
+  that failure class as `commitPaths` does (`gitWithLockRetry`, the lock-retry wrapper, `:9424`) — a commit that still fails leaves the writes uncommitted for the operator,
   does not change the terminal status, and records `writes-uncommitted`. These writes never travel through the AC-3.1 PR, which carries only
   guard-set edits.
 
