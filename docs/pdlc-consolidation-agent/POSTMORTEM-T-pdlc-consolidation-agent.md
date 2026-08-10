@@ -603,3 +603,85 @@ channel:
 §6): *"the routed erratum items are fully and correctly absorbed — if the only question were 'did the
 delta land', this would be an approval."* No routed item is open. **The confirmation did not fail on
 the raised set.**
+
+## The blocking finding — SE F-01 (High)
+
+**The erratum absorbed half of the authority it now cites.** `PROP-COR-09`'s trailer names
+`TSPEC §12.2` as its authority. That cell (`TSPEC:2835`) specifies **two** fixtures for this case:
+
+1. the mixed corpus (one unreadable member, one readable control) — which v1.4 carries; and
+2. *"a second fixture in the same case carries the **all-unreadable corpus** (§10.3 row 1b)"* — which
+   asserts that terminal status is exactly `no-op` (**not** `failed`, which the same cell names as
+   "the adjacent branch an implementer is most likely to reach for", and not `refused`), that the
+   rendered pair's basename list is **empty**, and that `|un-consolidated|` is **2** with both
+   basenames named as unread.
+
+PROPERTIES carries only the first. The second arm is not deferred, not filed, not mentioned.
+
+### Re-measured at HEAD for this postmortem (not taken from the cross-review)
+
+| Claim | Result at HEAD |
+|---|---|
+| PROPERTIES nowhere covers the all-unreadable corpus | `grep -c "all-unreadable\|entirely unreadable\|row 1b"` over `PROPERTIES-…md` = **0** |
+| `PROP-COR-09` scopes itself to one fixture | `:396` — *"One fixture carries **both** an unreadable member and a **readable control**"* |
+| §12.1's AC-1.4 row does not reach it | `:1648` — `AC-1.4 — a no-op pass still reports \| PROP-PASS-11, PROP-RTE-06, PROP-EFF-06`; `PROP-COR-09` absent |
+| `PROP-PASS-11` does not close it | it enumerates AC-1.4's first and second causes (un-consolidated set empty; every promotion duplicate-suppressed), never the third |
+| The arm exists upstream and is minted, not implied | `REQ:26` — *"§4b's all-unreadable pass keeps terminal status `no-op` (AC-1.4's third cause)"*, staked on a **pairing** (consumed list empty **while** un-consolidated set non-empty) rather than a reason code |
+| No register AT rescues it | `TSPEC:2835` states no register AT reaches these observables and walks through why (AT-K3, AT-L2, AT-F13, AT-R7 cover AC-1.4's first and second causes only) |
+| The correction did no collateral damage | 118 distinct ids at HEAD and at `9a95324f^`; symmetric difference empty; `PROP-COR-09`'s trailer still `L2 · consolidationPass.test.js · T20 → T31` |
+
+So the finding is **correct as stated**, and it is correctly filed as a finding rather than an
+erratum: nothing upstream is wrong — REQ §4b, REQ's erratum note and TSPEC §12.2 all state the arm
+consistently. The gap is this layer's alone. `se-review` says so explicitly and declines to route it
+upstream, which is the right call under DEC-ERR-01.
+
+Severity is also right. The register is what the V-wave runs from; an obligation absent from the
+register is absent from the run whatever TSPEC says. The observable at risk is a terminal status
+distinguished only by a two-field pairing, whose most likely wrong implementation (`failed`) TSPEC
+names by hand.
+
+## Why the two channels split on identical bytes
+
+Neither reviewer is wrong, and the split is not a severity-bar disagreement.
+
+| | `pm-review` v5 | `se-review` v5 |
+|---|---|---|
+| Declared scope | *"Delta confirmation … **product lens only**"*; `git diff c568c4c..HEAD`, three hunks | *"Delta confirmation … **every upstream citation the new text leans on was re-measured at HEAD**"* |
+| Question asked | did the routed items land, and did the diff stay inside the erratum's stated scope? | that, **plus**: is the document still a faithful compression of the upstream it now cites? |
+| Verdict | Approved (0/0/0) | Needs revision (1 High) |
+
+The protocol's delta-confirmation check is *absorbed ⊇ raised*. PM ran exactly that check and it
+passed. SE ran a superset check — the document against upstream HEAD — and it failed. **A wave that
+grows a second arm mid-flight satisfies the first check and fails the second.** That is the whole
+episode in one line.
+
+## Best-guess root cause
+
+**RC-1 (primary) — the routed item list was a snapshot of an earlier generation of the wave, and the
+tail layer re-grounded on the list instead of on upstream HEAD.** The six routed items all descend
+from REQ's *v2.1* omission erratum. By 15:59, REQ v2.5's second arm had been minted and absorbed into
+TSPEC §7.1/§10.3/§10.4/§12.2, and into FSPEC v11.7 at 16:06. The PROPERTIES edit at 16:12 addressed
+the list it was handed. The `se-author`/`te-author` SKILL's *Erratum Rounds — Re-ground Upstream
+First* section requires the opposite order: re-read the immediate upstream at HEAD, diff its version
+cell against the version the document was last approved against, enumerate what was **decided** in
+`AC-`/`BR-` vocabulary, and absorb that **ahead of** the raised items. Step 3 of that procedure —
+"the delta-confirmation check is the absorbed set, not the raised set" — is exactly the step that was
+skipped, and exactly the step `se-review` then ran manually.
+
+**RC-2 (structural, and the reason RC-1 was easy to miss) — a multi-layer wave has no synchronisation
+point.** Each layer re-grounded on its own parent and each was individually correct: TSPEC absorbed
+REQ, FSPEC absorbed REQ, PROPERTIES absorbed the routed text. Nothing in the protocol re-derives the
+routing list at dispatch time from the upstream document's version *at that moment*. The list is
+minted when the wave opens and travels unchanged while the wave keeps deciding.
+
+**RC-3 (aggravating) — the confirmation round and the last round of the window were the same round.**
+The fix `se-review` prices is one conjunct-pair inside a property that already exists, plus two
+bookkeeping edits, no new id. There was no round left to spend on it, so a four-minute repair becomes
+an operator halt.
+
+**Not the cause, ruled out explicitly.** Over-correction (the edit was strictly stronger than the
+routed items required — set equality with "no third name", not containment-plus-absence); collateral
+movement (id set identical, no re-homing); pacing/watchdog failure (three hunks, one commit); a
+reviewer re-litigating settled scope (SE re-litigated nothing — the finding is new scope surfaced by
+the citation the erratum itself added); and severity inflation (the High bar is met on the register's
+own completeness claim).
