@@ -91,8 +91,37 @@ separator and the `promotionSources` matcher. **No Highs. Nothing here blocks.**
 
 ## Recommendation
 
-*(pending)*
+**Approved with minor changes**
+
+All three round-2 Lows are closed, and closed the way they were filed — F-12 with a falsifying
+control rather than a regex edit alone, F-13 in all four headers, F-14 as the record it asked for.
+Nothing regressed: the suite is green apart from `documentOracles` AT-22, whose violations are the
+untracked local tool caches CLAUDE.md documents as a known false red, and
+`build-runtime.mjs --check` reports all five artifacts in sync, so the shipped bundle carries the
+production change rather than lagging it.
+
+The round-3 remediation itself is sound work in this lens. The status narrowing is argued from an
+existing vocabulary precedent, and it landed with the control that distinguishes "narrowed" from
+"deleted" — the single most common way a status-suppression fix goes wrong, avoided without being
+asked.
+
+Four findings, none blocking:
+
+1. **F-15 (Medium)** is a document defect, not a code defect: production now writes the proposal
+   file for a fourth cause on a `promoted` pass, while FSPEC §5.3's "and only when" enumeration
+   still names three and AT-R7 verifies the closure of the smaller set. Routed upstream as an
+   erratum; the AT-R7 fourth fixture follows the erratum rather than preceding it.
+2. **F-18 (Medium)** is the sibling case: the AC-5.4 propose-only diversion is the other reason-free
+   deferral, it was not marked `declined`, and no test pins the status it produces either way.
+3. **F-16 (Low)** is a dead, untested branch whose docstring and boundary class disagree.
+4. **F-17 (Low)** wants the declined/degraded discrimination expressed as a property over generated
+   mixtures, not only as two example rows.
+
+None of the four hides a defect in shipped behaviour, and none is worth another round on its own.
+F-15's erratum should land before the branch ships, since it is the document a future reader will
+consult to decide whether the proposal file's existence is a bug.
 
 ## Verdict
 
-*(pending)*
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
