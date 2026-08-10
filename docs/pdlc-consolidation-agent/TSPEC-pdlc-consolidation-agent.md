@@ -726,14 +726,39 @@ while every unit test drove `fakeListFiles` (`__tests__/helpers/seams.js:132-166
 returns whatever the spec supplies — a double more capable than the seam it doubles, which is the
 DC-07 "production path ≠ unit path" failure exactly.
 
-The pass therefore asks git, in one call:
+The pass therefore asks git. **Two reads, not one**, because REQ §3.1 step 1 decides corpus
+membership by presence *on disk* and no single `ls-files` invocation expresses that:
 
 ```js
-_git(["ls-files", "--cached", "--others", "--exclude-standard", "--",
+_git(["ls-files", "--cached", "--others", "--",
+      ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"])
+_git(["ls-files", "--deleted", "--",
       ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"])
 ```
 
-Four properties of that call, each verified against this repository at HEAD:
+`enumerateCorpus` returns the **first set minus the second**. Both reads carry the identical
+pathspec pair, so the subtraction is over one namespace and cannot silently widen.
+
+**Why the second read exists (REQ §3.1 step 1, second bullet).** REQ decides that *"an index entry
+with no working-tree file is **not** corpus … the pass's enumeration is restricted to paths present
+in the working tree"*. `--cached` is precisely what admits such a path: measured on a scratch
+repository, a LEARNINGS committed and then deleted from the worktree is still returned by
+`--cached --others`, and `ls-files --deleted` over the same pathspecs returns exactly that path and
+nothing else. Subtracting the `--deleted` set is therefore the minimal mechanism that discharges the
+obligation, and it keeps `--cached` — which is still needed, since a tracked-and-present LEARNINGS
+appears under no other selector. This is an **obligation, not an accepted residue**: a staged-but-
+deleted LEARNINGS must not reach the volume count and must not enter a consumed pair.
+
+**Why `--exclude-standard` is absent (REQ §3.1 step 1, first bullet).** REQ decides that *"a
+`.gitignore`d LEARNINGS file **is** corpus. Membership is presence on disk under the two globs, not
+tracked-ness"*, and states the consequence by name: *"the pass's enumeration therefore does **not**
+apply `--exclude-standard`."* The flag is dropped here accordingly. Measured on the same scratch
+repository, dropping it admits an ignored `docs/{f}/LEARNINGS-{f}.md` and changes nothing else — in
+particular `docs/discarded/` stays at zero hits, because that exclusion is performed by `:(glob)`
+and never by the ignore rules (point 2 below). §10.4 records the argument that ran the other way and
+why REQ's decision governs.
+
+Four properties of the enumerating call, each verified against this repository at HEAD:
 
 1. **It returns repository-root-relative paths**, one per line, which is what `CorpusFile.path`
    needs anyway — the walk would have had to reassemble them from a directory and a basename.
@@ -743,10 +768,12 @@ Four properties of that call, each verified against this repository at HEAD:
    `docs/discarded/pdlc-review-convergence/`). With `:(glob)` the same pathspec matches exactly the
    one-level-deep set and those two hits are zero. Exclusion of `docs/discarded/` is therefore still
    by *not enumerating* — the pathspec cannot name it — and not by a filter a later edit can drop.
-3. **`--cached --others --exclude-standard`** is one set, not two calls: a LEARNINGS harvested but
-   not yet committed is still corpus, and an ignored file never is.
-4. **It is a read.** `ls-files` reads the index and the worktree and mutates nothing; §9.3 records it
-   as the `read-index` verb in the invoking-tree domain.
+3. **`--cached --others`** is one set, not two calls: a LEARNINGS harvested but not yet committed is
+   still corpus, and so — per REQ §3.1 step 1 — is an ignored one, which is why no
+   `--exclude-standard` appears. Tracked-ness is not the membership test; presence on disk is, and
+   the `--deleted` subtraction above is what makes "on disk" true rather than merely intended.
+4. **Both calls are reads.** `ls-files` reads the index and the worktree and mutates nothing; §9.3
+   records the pair as the `read-index` verb in the invoking-tree domain.
 
 `parseCorpusListing` is the pure half: split on newline, drop empty lines, and map each path to
 `{path, basename}` by its last `/`. `enumerateCorpus` **never opens a file**.
@@ -759,15 +786,25 @@ lines the fixture author put in the double's scripted stdout, not by the pathspe
 exclusion the REQ calls out by name ("abandoned work is not evidence about a delivered pipeline",
 `REQ-…:113-114`). So the row's oracle is stated here and is **two conjuncts, one of them positive**:
 
-1. **Literal argv.** The array `enumerateCorpus` hands `_git` is asserted element-by-element against
-   the literal `["ls-files", "--cached", "--others", "--exclude-standard", "--",
-   ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"]`, **both `:(glob)`
-   prefixes included**, because point 2 above makes the magic prefix the thing that performs the
-   exclusion. An edit that drops a prefix, drops `--exclude-standard`, or adds a third pathspec is
-   red on this conjunct regardless of what any fixture contains.
+1. **Literal argv, both calls.** The two arrays `enumerateCorpus` hands `_git` are asserted
+   element-by-element against the literals `["ls-files", "--cached", "--others", "--",
+   ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"]` and
+   `["ls-files", "--deleted", "--", ":(glob)docs/*/LEARNINGS-*.md",
+   ":(glob)docs/completed/*/LEARNINGS-*.md"]`, **both `:(glob)` prefixes included in each**, because
+   point 2 above makes the magic prefix the thing that performs the `docs/discarded/` exclusion. An
+   edit that drops a prefix, adds a third pathspec, **re-introduces `--exclude-standard`**, or drops
+   the `--deleted` call is red on this conjunct regardless of what any fixture contains. The last two
+   arms are the ones that pin REQ §3.1 step 1's two decided classes: each is a one-token edit that
+   would otherwise revert a decided requirement in silence.
 2. **Positive membership over the parsed listing.** Given a scripted stdout carrying one
    `docs/completed/{f}/LEARNINGS-{f}.md` line, that basename is in the corpus — so the row is not
    an absence-only assertion about `docs/discarded/`.
+3. **The subtraction is observed, not assumed.** Given a first-call stdout carrying two LEARNINGS
+   paths and a second-call (`--deleted`) stdout carrying one of them, the corpus is exactly the
+   other — and, in the same case, the surviving basename is asserted *present*, so the conjunct
+   cannot be satisfied by an implementation that returns the empty set. This is the L1 oracle for
+   REQ §3.1 step 1's second bullet; the class is unreachable from the L4 fixture harness, which is
+   why §11.1's rule forbids a git-visibility fixture there.
 
 The second conjunct is deliberately *not* "a `docs/discarded/` line is filtered out": nothing in the
 module filters it, and a test asserting that would pin a filter that must never exist. The
@@ -802,9 +839,12 @@ empty one and would advance the cadence datum on a pass that read nothing. §10.
    basenames**; `basenameCollisions` records every group of ≥2 distinct paths sharing a basename
    (E-09), reported by §7.9 and never repaired.
 
-**An enumerated file whose body cannot be read, decided.** §10.4 class (ii) (a staged-but-deleted
-LEARNINGS) and AT-P8's IO-error case both produce an entry that is in the corpus but whose body
-`_readFile` returns `null` for. Two questions had no answer here and now do:
+**An enumerated file whose body cannot be read, decided.** The trigger for this class is a file that
+is **present in the working tree and enumerated, but whose body `_readFile` returns `null` for** —
+AT-P8's IO-error case, reachable on file permissions, a mid-pass unlink, or an IO error between the
+enumeration and the read. It is *not* the staged-but-deleted entry: since the `--deleted`
+subtraction above, such a path is never enumerated at all, so it can never reach this branch. Two
+questions had no answer here and now do:
 
 1. **It counts toward `|un-consolidated|` for the AC-1.2 volume test.** The test is over the
    *enumeration*, and AC-1.1 forbids reading any LEARNINGS body at tick time, so the count cannot
