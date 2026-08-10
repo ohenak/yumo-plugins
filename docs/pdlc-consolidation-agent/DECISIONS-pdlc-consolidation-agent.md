@@ -1086,3 +1086,60 @@ re-read in one sitting: DEC-CONS-01, DEC-CONS-04, DEC-CONS-06 and DEC-CONS-07 wo
 re-decided the same day, and DEC-CONS-05's shared-implementation alternative would become affordable.
 Until then, every one of them is a constraint wearing a decision's clothes, and the honest record of
 that is what this document is for.
+
+## 12. DEC-CONS-08: The two mid-phase `orchestrate-dev.js` changes ship on this branch
+
+*Taken in Phase CR, after §10 and §11 were written; appended here rather than renumbered in, so the
+section anchors downstream documents cite stay valid. Raised by TE Phase CR F-05 and Q-03.*
+
+**Context.** Two changes to `pdlc/workflows/orchestrate-dev.js` landed on
+`feat-pdlc-consolidation-agent` *during* Phase CR, neither of which this feature's REQ, FSPEC, TSPEC,
+PLAN or PROPERTIES asks for:
+
+| Commit | Change | Why it landed here |
+|---|---|---|
+| `202f92e1` | One `crossReviewPath` builder (`orchestrate-dev.js:6311-6325`) is the single place a cross-review path is spelled, so the name a reviewer is told to write is by construction the name `deriveRoundWindow` looks for | CR F-11: this feature's own Phase CR could not converge, because the reviewer prompt named a path the round window did not derive. The pipeline defect blocked the feature |
+| `98b7429e` | A matching complete wave ledger skips Phase I whole (`:10836-10847`, `:10883`) instead of re-dispatching finished waves | This feature's Phase I is a 30-wave PLAN; resuming it re-dispatched every green wave. The cost fell on this feature's run |
+
+Both are pipeline behaviour, not consolidation behaviour. Phase PUB will carry them into this
+feature's PR.
+
+**Decision.** They stay. This feature's PR ships them, and this row is the record that says so
+deliberately rather than by omission.
+
+**Alternatives considered:**
+
+- **Cherry-pick both onto a separate branch and PR them alone** — rejected. Both were *caused* by
+  this feature's run and are what let it proceed: `202f92e1` is the reason a Phase CR round can
+  converge at all, so a branch without it cannot reach a verdict, and the split PR would have to
+  merge first for this one to be reviewable. The dependency runs the wrong way for a clean split.
+- **Revert both and re-run without them** — rejected on the same ground for `202f92e1`, and on cost
+  for `98b7429e`: reverting it re-dispatches every green wave on the next resume, which is the
+  failure the commit exists to stop.
+- **Keep them, and say nothing** — rejected. That is the shape the finding is actually about: an
+  unremarked scope widening in a PR whose title names a different feature. A reviewer who cannot
+  tell a decision from an accident has to treat it as an accident.
+
+**Constraints that forced the shape:** the self-modification guard. Both files are under
+`pdlc/workflows/`, so Phase MERGE will not auto-merge this PR under any `mergeMode`
+(`orchestrate-dev.js`'s merge guard set) — a human reads it before it lands, which is the review the
+split PR would otherwise have bought.
+
+**Reversibility:** easy. Both are additive, separately revertable commits with their own tests
+(`reviewLoop.test.js:1302-1401`; `waveExecution.test.js:1621-1779`, plus the tree-corroboration and
+`forcePhases` cases added in Phase CR).
+
+**Consequence, and the half this document cannot discharge.** A decision to keep them is not a
+durable guard on them. `consolidationTraceability.test.js`'s register set-equality covers `AT-…` ids
+only, so neither change is reachable from any traceability row: nothing downstream notices if a later
+feature deletes them. The durable fix TE F-05 names is a PROPERTIES row for the **wave-ledger resume
+contract**, filed against `pdlc/workflows/` rather than against this feature. PROPERTIES is not this
+document's to write, and the row is raised as an erratum in this phase rather than minted here.
+
+**Re-evaluation triggers:**
+
+- The wave-ledger resume contract acquires a PROPERTIES row (or a REQ of its own) — at which point
+  the changes belong to that document's feature and this row becomes history.
+- A future feature's branch again needs a pipeline fix to converge its own phases. Twice is a
+  pattern, and the pattern's answer is a standing rule about pipeline-fix scope, not a third
+  per-feature decision.
