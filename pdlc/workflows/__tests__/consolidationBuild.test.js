@@ -83,7 +83,7 @@ function extractFunctionBody(source, fnName) {
   return m ? m[0] : null;
 }
 
-describe.skip("T12 — adapter prompt (TSPEC §5.6(a), §11.3(e))", () => {
+describe("T12 — adapter prompt (TSPEC §5.6(a), §11.3(e))", () => {
   it("rtWriteFile's prompt carries the widened absolute-path clause verbatim", () => {
     const adapterSrc = readWorkflowSource("runtime-adapter.js");
     const fnBody = extractFunctionBody(adapterSrc, "rtWriteFile");
@@ -131,7 +131,7 @@ function extractInjectionKeys(source, fnName) {
   return new Set(keys);
 }
 
-describe.skip("T12 — rtConsInjections (TSPEC §5.1, §11.3(e))", () => {
+describe("T12 — rtConsInjections (TSPEC §5.1, §11.3(e))", () => {
   it("rtConsInjections() is declared beside rtDevInjections", () => {
     const adapterSrc = readWorkflowSource("runtime-adapter.js");
     expect(adapterSrc).toMatch(/\bfunction rtConsInjections\s*\(/);
