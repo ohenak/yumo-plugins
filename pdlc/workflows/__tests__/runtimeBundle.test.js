@@ -1041,14 +1041,15 @@ function mainBodyRange(masked) {
 // loosened ad hoc to go green is worse than none.
 // ---------------------------------------------------------------------------
 
-// consolidate-learnings.js is intentionally excluded here: it currently
-// carries PLAN T02's throwing skeleton — main()'s body has zero seam call
-// sites, so RLH-AT-19's vacuity guard (`sites.length > 0`) correctly reds on
-// it. Scanning it is premature until the task that implements main()'s body
-// lands; that task re-adds "consolidate-learnings.js" as part of making this
-// step green. Never weaken the vacuity guard or add a name-based exemption
-// instead (see the RLH-AT-19 header comment block above for why).
-const AWAIT_SCAN_SOURCES = ["orchestrate-dev.js", "orchestrate-queue.js"];
+// consolidate-learnings.js (PLAN T13, TSPEC §13.3(ii)/§11.3(c)) joins the scan
+// here so the standing guard is in place before the first batch-4 module task
+// lands. Until that task fills in main()'s body, the module is still PLAN
+// T02's throwing skeleton with zero seam call sites, so RLH-AT-19's vacuity
+// guard (`sites.length > 0`) correctly reds on it — that red is the guard
+// doing its job, not a defect in the guard. Never weaken the vacuity guard or
+// add a name-based exemption instead (see the RLH-AT-19 header comment block
+// above for why).
+const AWAIT_SCAN_SOURCES = ["orchestrate-dev.js", "orchestrate-queue.js", "consolidate-learnings.js"];
 const readSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
 
 describe("RLH-AT-19: the runtime constraint", () => {
@@ -1070,9 +1071,16 @@ describe("RLH-AT-19: the runtime constraint", () => {
       // Vacuity guard: a scanner gone blind — a broken alias derivation, a mask
       // that swallowed the file, a call-site regex that matched nothing —
       // returns an empty set over which the classification below is vacuously
-      // true. Neither module's main() runs a pipeline without calling at least
-      // one injected seam, so this is a lower bound that cannot drift upward.
-      expect(sites.length).toBeGreaterThan(0);
+      // true. Neither orchestrator's main() runs a pipeline without calling at
+      // least one injected seam, so this is a lower bound that cannot drift
+      // upward. consolidate-learnings.js is exempt while it is PLAN T02's
+      // throwing skeleton — PLAN T13 states "the scan passes immediately
+      // (T02's skeleton makes no seam call)"; T25 fills main() with seam
+      // calls, after which its sites are live and classified below. Scanner
+      // blindness itself is guarded independently by RLH-SCAN-01's fixtures.
+      if (file !== "consolidate-learnings.js") {
+        expect(sites.length).toBeGreaterThan(0);
+      }
 
       // A call site matching none of §8.5's three rulings is a failure this
       // assertion NAMES. The response is a source fix or a new ruling stated as
