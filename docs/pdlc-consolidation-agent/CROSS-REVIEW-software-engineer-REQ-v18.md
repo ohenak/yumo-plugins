@@ -42,8 +42,29 @@ The `{date}` → `{passId}` rename is the substantive win here: two same-day pas
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Should REQ carry inline `file:line` code citations at all? The Altitude Rule says a REQ should carry shipped-behaviour facts as **measured-fact ids cited to a constraints file** (`M-*` style), leaving line-level citation to TSPEC/PLAN/PROPERTIES. This document has now paid the re-measurement tax four times (v2.1, and DOD rounds G, H, J) and is still stale. `docs/_constraints/pdlc-consolidation-vocabularies.md` already exists and is owned by this feature (§1–§4), but has no measured-facts section. Adding one — each fact measured once, with its sha — and pointing the REQ at ids would end the recurrence rather than pay it a fifth time. Worth deciding now or explicitly deferring; I am not treating it as blocking. |
+
 ## Positive Observations
+
+- **The `{date}` → `{passId}` rename fixes a real collision, not just a citation.** Two passes on one day previously produced one filename; the REQ now carries the same `{YYYY-MM-DD}-{n}` grammar the SKILL defines, and AC-3.8b's artifact list moved with it.
+- **Every anchor the sweep did touch is correct.** `:75`, `:56`, `:64`, `:70-79` all resolve to exactly the text the REQ claims. The work that was done was done accurately — the gap is coverage, not quality.
+- **`SKILL.md:56` gained "— the boundary step".** Naming the step alongside the number makes that one anchor self-repairing: a reader who finds the line moved can still find the step. This is the right pattern; F-01's three stale cites would benefit from the same treatment.
+- **The uniform +227 offset is a gift to the fix.** Because a single insertion moved them all, F-02 is a mechanical correction with a mechanical check, not six independent investigations.
+- **Verified untouched and still true:** `MERGE_GUARD_DEFAULTS:48-53` and `nudge-consolidation.sh:25`. The sweep did not introduce regressions into anchors that were already right.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both narrow and both mechanical. Nothing in the delta's *substance* is wrong — the `{passId}` rename is a genuine correction and all four re-measured anchors verify clean. The blocker is that this revision is a citation-correctness pass that left citations incorrect: three stale anchors sit in the same sentence as two it fixed (F-01), and a uniform +227-line shift has invalidated every `orchestrate-dev.js` cite in the document (F-02), several of which now resolve to unrelated subsystems.
+
+Concretely, to clear: add 227 to the six `orchestrate-dev.js` anchors and re-read each; set `nudge-consolidation.sh:41`→`:74` and `:28`→`:60` at all nine occurrences; re-point `:8669`/`:8690` at the actual pathspec-less commit; correct `orchestrate-queue.js:1576`→`:1583`. Then F-04's version bump records that it happened. F-03's lesson — sweep by cited file, not by file extension — is the durable one, and Q-01 offers the way to stop paying this tax.
+
+No High finding touches an acceptance criterion's meaning; the previously approved contract stands. This is the anchor wave finishing its own job.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 2}
