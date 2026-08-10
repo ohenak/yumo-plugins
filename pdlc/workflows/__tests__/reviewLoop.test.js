@@ -1298,3 +1298,104 @@ describe("RLH-LOOP-02c: checkConverged renders `rounds {startIndex}..{endIndex}`
     });
   });
 });
+
+// ─── CR F-11: the reviewer prompt names the exact cross-review file to write ───
+//
+// Phase CR passes a DIRECTORY as `doc`, so `docTypeFromPath` yields null and
+// `reviewFileType` degrades to the literal "REVIEW" (`orchestrate-dev.js:5812-5813`).
+// That literal is what `deriveRoundWindow` counts. Round 1 of this feature's own CR
+// phase was filed as `CROSS-REVIEW-*-IMPLEMENTATION-v1.md` because the round-1 prompt
+// named no output path at all and the reviewer role inferred one from the artifact
+// under review — which left the phase's round history reading as empty.
+//
+// The durable fix is prompt-side: every reviewer dispatch, iteration 1 included,
+// states the exact path. These cases assert that path is present and is the same one
+// `reviewTargetPath` builds, so an inferred name cannot silently fall outside the
+// window again.
+describe("CR F-11: reviewer prompts name the round's cross-review path explicitly", () => {
+  const CR_PARAMS = {
+    // Phase CR's shape: a directory target, no explicit docType.
+    doc: "pdlc/workflows/",
+    phase: "CR",
+    reviewers: ["pm-review", "te-review"],
+    optimizer: "se-author",
+    feature: "test-feat",
+  };
+
+  function capturePrompts(iterations) {
+    const prompts = [];
+    let round = 0;
+    const agent = async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (skill === "se-author") return makeOptimizerResult();
+      prompts.push({ skill, prompt });
+      // Two reviewer dispatches per round, so the round a dispatch belongs to is
+      // derived from the count rather than from a flag that lags one reviewer.
+      round = Math.ceil(prompts.length / 2);
+      return round < iterations ? makeNeedsRevisionResult() : makeApproveResult();
+    };
+    return { prompts, agent };
+  }
+
+  it("iteration 1 names docs/{feature}/CROSS-REVIEW-{role}-REVIEW-v1.md for each reviewer", async () => {
+    const { prompts, agent } = capturePrompts(1);
+
+    await reviewLoop({
+      ...CR_PARAMS,
+      _agent: agent,
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    const firstRound = prompts.slice(0, 2);
+    expect(firstRound).toHaveLength(2); // not vacuous
+
+    expect(
+      firstRound.map(({ skill, prompt }) => ({
+        skill,
+        namesOwnPath: prompt.includes(
+          `docs/test-feat/CROSS-REVIEW-${skill === "pm-review" ? "product-manager" : "test-engineer"}-REVIEW-v1.md`
+        ),
+      }))
+    ).toEqual([
+      { skill: "pm-review", namesOwnPath: true },
+      { skill: "te-review", namesOwnPath: true },
+    ]);
+  });
+
+  it("no iteration-1 prompt names a doc-type-inferred path such as -IMPLEMENTATION-", async () => {
+    const { prompts, agent } = capturePrompts(1);
+
+    await reviewLoop({
+      ...CR_PARAMS,
+      _agent: agent,
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    expect(prompts.length).toBeGreaterThan(0);
+    for (const { prompt } of prompts) {
+      expect(prompt).not.toMatch(/CROSS-REVIEW-[a-z-]+-IMPLEMENTATION-/);
+    }
+  });
+
+  it("iteration 2 names the v2 path to write beside the v1 path to read", async () => {
+    const { prompts, agent } = capturePrompts(2);
+
+    await reviewLoop({
+      ...CR_PARAMS,
+      _agent: agent,
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    const second = prompts.find(
+      ({ skill, prompt }) => skill === "pm-review" && prompt.includes("-REVIEW-v2.md")
+    );
+
+    expect(second).toBeDefined();
+    // The prior file to READ and the new file to WRITE are both named, and they differ.
+    expect(second.prompt).toContain("docs/test-feat/CROSS-REVIEW-product-manager-REVIEW-v1.md");
+    expect(second.prompt).toContain("docs/test-feat/CROSS-REVIEW-product-manager-REVIEW-v2.md");
+  });
+});

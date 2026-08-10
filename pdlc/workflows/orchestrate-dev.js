@@ -5895,8 +5895,7 @@ export async function reviewLoop({
   };
 
   /** The cross-review path a reviewer episode writes this round (§5.2). */
-  const reviewTargetPath = (skill, round) =>
-    `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
+  const reviewTargetPath = (skill, round) => crossReviewPath(feature, skill, reviewFileType, round);
 
   // The branch guard's cheap re-check: `main()` placed the tree on
   // feat-{feature} at entry, but phases run for a long time and a tree can drift
@@ -6307,6 +6306,23 @@ const REVIEWER_ROLE_SLUGS = Object.freeze(Object.values(MAP));
 
 export function reviewerRoleSlug(skill) {
   return MAP[skill] || null;
+}
+
+/**
+ * The one place a `CROSS-REVIEW-…` path is spelled (§5.2).
+ *
+ * CR F-11: this used to be spelled once inside `reviewLoop` (for the path the loop
+ * READS back) while the reviewer prompt named no output path at all, leaving the
+ * reviewer role to infer a file type from the artifact under review. For Phase CR
+ * that inference lands OUTSIDE the round window — CR passes a directory, so
+ * `docTypeFromPath` yields null and `reviewFileType` degrades to the literal
+ * "REVIEW", which is what `deriveRoundWindow` counts; a reviewer who inferred
+ * "IMPLEMENTATION" wrote a file the window could not see and the phase's round
+ * history read as empty. Both the loop and the prompt now derive from here, so the
+ * name the reviewer is told to write is by construction the name the loop looks for.
+ */
+export function crossReviewPath(feature, skill, docType, round) {
+  return `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${docType}-v${round}.md`;
 }
 
 /**
@@ -7436,16 +7452,27 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   // delta re-review as in the first pass.
   const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
-  if (iteration < 2) return `${base}${groundingPart}${oraclePart}`;
-
-  const prev = iteration - 1;
-  const role = reviewerRoleSlug(reviewer);
   // §6.3's general rule: NO un-substituted template reaches an operator-facing
   // string. `{DOC-TYPE}` and `{role}` were literal braces the reader had to
   // resolve by hand; both are known here.
   const type = docType || docTypeFromPath(doc) || "REVIEW";
+  // CR F-11: name the output path outright, on EVERY iteration. A reviewer left to
+  // infer the file type from the artifact under review can name a file outside the
+  // window `deriveRoundWindow` derives — which is exactly how Phase CR's round 1
+  // went missing on this feature. `crossReviewPath` is the same builder the loop
+  // reads back through, so the two cannot drift.
+  const targetFile = crossReviewPath(feature, reviewer, type, iteration);
+  const targetClause =
+    `Write your cross-review to exactly this path: ${targetFile}. ` +
+    `Do not derive a different file type from the artifact under review — this phase's round ` +
+    `history is keyed by that exact name, and a file outside it is not counted.`;
+
+  if (iteration < 2) return `${base}${groundingPart}\n${targetClause}${oraclePart}`;
+
+  const prev = iteration - 1;
+  const role = reviewerRoleSlug(reviewer);
   const priorFile = role
-    ? `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${prev}.md (your reviewer role is "${role}")`
+    ? `${crossReviewPath(feature, reviewer, type, prev)} (your reviewer role is "${role}")`
     : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
@@ -7458,7 +7485,7 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
     `Medium and Low findings do not block; file them and approve with minor changes.\n` +
-    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
+    `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart
   );
 }
