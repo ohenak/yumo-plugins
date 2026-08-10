@@ -146,4 +146,40 @@ the right call and the one that keeps this document out of PROPERTIES' way.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My only open finding from v8 (F-18) recurs as F-22 and is still Low; nothing approved in an earlier
+round was weakened. The delta's largest move is a genuine gain: the AT-Q7c bound erratum this
+document has carried since v5 is **closed upstream**, the warning is withdrawn with its history
+intact, and both upstream statements of the invoking-tree bound now agree — I verified `FSPEC:2169`,
+`FSPEC:14-22` and `TSPEC:1724` all carry the same seven-verb set. The FSPEC sweep is the class fix
+F-16 was reaching for. I applied the one product test that gates this document — *can the PLAN or
+PROPERTIES author read it and write the wrong artifact?* — across every changed surface, and the
+answer is no on all of them.
+
+Four findings ride out, none blocking, all on the new §12:
+
+1. **F-19 (Medium)** — `202f92e1` and `98b7429e` are not on this branch; the shipped commits are
+   `9a1c5222` and `26e51d1c` (plus an unmentioned `90df91c8`). Post-merge, a reviewer with a fresh
+   clone cannot resolve either hash, which defeats the human review the self-modification guard is
+   there to force. Re-key the table on the commits that ship, and carry subject lines as well.
+2. **F-20 (Medium)** — the "acquires … a REQ of its own" trigger has already fired:
+   `docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md` is on this branch as queue row 20 and its §1 *is*
+   the wave-ledger resume contract, citing this feature's own 2026-08-09 run. Say so, and say that
+   the contract is partly implemented ahead of its owning feature, so row 20's author neither
+   re-implements nor reverts it.
+3. **F-21 (Low)** — `orchestrate-dev.js:6311-6325` never resolved on this branch and
+   `:10836-10847` / `:10883` no longer does; extend the anchor warranty to code anchors.
+4. **F-22 (Low)** — "27 citation sites" measures 29 at the revision that publishes it.
+
+I am **not** asking for changes to the decision itself, the alternatives (including the "say nothing"
+row), the guard-path reasoning, the consequence paragraph's refusal to mint a PROPERTIES row, the
+AT-Q7c withdrawal, or any of the nine FSPEC retargets — I would keep every one of those verbatim.
+F-19 and F-20 are the two I would want landed before Phase PUB, because both are about a human
+reading this PR and being able to check what §12 asserts; F-21 and F-22 can ride in whatever round
+next touches the file.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
