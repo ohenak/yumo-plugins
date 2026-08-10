@@ -100,7 +100,49 @@ the right call and the one that keeps this document out of PROPERTIES' way.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | *(carried unchanged since v2.)* DEC-CONS-04's observability paragraph names a forensic signature — two `.consolidation-log.md` records with distinct `passId`s carrying the same `(failure-mode-id, action)` key — that nothing computes. Should it appear in the operator-facing release note beside the drift-gate row §11.1 already flags? |
+| Q-06 | *(carried unchanged since v3.)* `REQ:288` obliges a **pathspec** on invoking-tree calls and explicitly rejects `commitPaths`' bare `git commit -m` shape, but the obligation conjunct asserts only that two verbs were *observed*, and verb-level observation cannot see a pathspec. Which oracle owns the pathspec? |
+| Q-07 | *(carried since v5.)* A mechanical link-resolver would have caught F-10, F-16, F-17 and now F-21; it would not have caught F-13 or F-20, where the anchor resolves but the *claim* has moved on. Is there a cheaper convention that catches both — e.g. a `Superseded-by:` / `Owned-by:` field a downstream document can compare mechanically? |
+| Q-08 | *(carried since v6, answered in practice.)* In-place annotation of overturned decisions now reaches four surfaces per supersession. Should §2's index list only *live* decisions, with overturned entries relocated to a short "superseded" section? Still not a finding — but §12's arrival makes the index question concrete, since DEC-CONS-08 is the first row that is not a §13.1 alternative at all. |
+| Q-09 | *(carried since v6.)* §11.3 still carries two struck items and one live one under a title that describes all three as open. Could PLAN be handed the *live* set to read off rather than derive from strikethrough? |
+| Q-10 | *(carried from v8, and F-22 is its third instance.)* Should this document adopt a flat rule — never publish an integer about itself, only the recipe and the invariant? I would still take that as a process convention rather than a finding against this document, which is why it stays a question. |
+| Q-11 | *(new, from F-19/F-20.)* DEC-CONS-08 is the first decision in this document whose subject is **commits and branches** rather than spec content, and both of my Mediums are about that: hashes rebase away, and ownership of a change migrates to whichever feature files a REQ for it first. Is a decision keyed on commit identity the right instrument, or should a pipeline-scope decision be keyed on the *behaviour* (the cross-review path builder; the wave-ledger resume contract) with commits as supporting evidence? The behaviour outlives the rebase; the hash does not. |
+
 ## Positive Observations
+
+- **The AT-Q7c erratum was answered upstream and then *withdrawn* here, in that order, and the
+  withdrawal keeps the history readable.** The easy move was to delete the old warning; the document
+  instead quotes it with the anchor it then carried, says it "was correct when written and is no
+  longer", names the FSPEC revision that answered it and the changelog entry that records it, and
+  re-states the surviving instruction in one line — transcribe the recorded set, never §6.5's frozen
+  literal. A PROPERTIES author arriving cold gets the right bound and can see why two upstreams once
+  disagreed. This is the erratum lifecycle working end to end, which it has not done before in this
+  feature.
+- **The FSPEC sweep found and fixed a class, not two instances.** F-16 asked for two retargets; the
+  answer swept the whole `FSPEC:` set, found the two hand-retargets had themselves gone stale under
+  v11.4/v11.5, published the per-region offsets to show a uniform re-base would have been wrong, and
+  flagged the one site deliberately left carrying an old value. All nine retargets resolve at HEAD —
+  I checked each against the quoted content, not just the line number.
+- **"The upstream that moves is the one nobody sweeps" is the most durable sentence in the delta.**
+  It is a measured claim (the TSPEC has not moved since the merge commit; the FSPEC moved under
+  every anchor), it explains the failure pattern rather than the failure, and it generalises to any
+  document with two upstreams. If one line from this round survives into LEARNINGS, it should be
+  that one — and F-21 is only the observation that a third upstream, the code, is now the one nobody
+  sweeps.
+- **§12 names the half it cannot discharge instead of implying it is covered.** The consequence
+  paragraph says outright that a decision to keep the changes is not a durable guard on them, proves
+  it against the traceability test's actual grammar, names the durable fix, and then declines to
+  mint it — "PROPERTIES is not this document's to write". That restraint is exactly right, and it is
+  what keeps both my §12 findings at Medium: the record has a gap in its *identifiers*, not in its
+  honesty about scope.
+- **The "keep them, and say nothing" alternative is the one that had to be written down.** Naming
+  the null option and rejecting it — "an unremarked scope widening in a PR whose title names a
+  different feature… a reviewer who cannot tell a decision from an accident has to treat it as an
+  accident" — is the sentence that makes this a decision record rather than a justification. It is
+  also, for what it is worth, the sentence that makes F-19 worth fixing before PUB: the whole value
+  of the row is that a human can check it.
 
 ## Recommendation
 
