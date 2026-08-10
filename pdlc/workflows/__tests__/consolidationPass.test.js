@@ -451,14 +451,28 @@ describe("T20 — the pass, end to end (L2)", () => {
       test("AT-M5: the observed pathspec set of every commit is set-equal to the §5.4 write set, and never contains the lock path", () => {
         const seams = buildSeams({ ...oneFileCorpus(), agentScript: [NOTHING_FOUND_REPLY] });
 
-        return main({ ...seams, direct: true }).then(() => {
+        return main({ ...seams, direct: true }).then((result) => {
           const commitCalls = seams.git.calls.filter((argv) => argv[0] === "add" || argv[0] === "commit");
           expect(commitCalls.length).toBeGreaterThan(0);
+
+          const writeSet = new Set(result.writeSet);
+          expect(writeSet.size).toBeGreaterThan(0); // the equality below is not vacuous on ∅
+
+          const observed = new Set();
           for (const argv of commitCalls) {
             const dashIndex = argv.indexOf("--");
             const pathspec = dashIndex === -1 ? [] : argv.slice(dashIndex + 1);
+            // Per call: the marker path is never in a pathspec (§5.4's exclusion conjunct).
             expect(pathspec).not.toContain(MARKER_PATH);
+            for (const p of pathspec) observed.add(p);
           }
+
+          // The title's actual claim: set-EQUALITY against §5.4's write set, asserted in both
+          // directions. Containment either way would pass with a member dropped — the observed
+          // side missing a written path (an uncommitted write), or the write set missing an
+          // observed one (a path committed that the pass never recorded writing).
+          expect([...observed].sort()).toEqual([...writeSet].sort());
+          expect(writeSet.has(MARKER_PATH)).toBe(false);
         });
       });
 

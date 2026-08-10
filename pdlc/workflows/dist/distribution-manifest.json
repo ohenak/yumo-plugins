@@ -7,7 +7,7 @@
       "pluginPath": "workflows/dist/consolidate-learnings.bundle.js",
       "consumerPath": ".claude/workflows/consolidate-learnings.bundle.js",
       "artifactVersion": "0.22.3",
-      "pluginSha1": "10c67591c271862cebaac382c685c789969e7fe0",
+      "pluginSha1": "c5c39b04db5d5920fc283450ab81b9d39cac3b0b",
       "retires": []
     },
     {

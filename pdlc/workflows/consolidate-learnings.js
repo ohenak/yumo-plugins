@@ -1050,6 +1050,12 @@ async function finishPass(state, seams) {
     prUrl: state.prUrl,
     branch: state.branch,
     markerHeld: state.markerHeld,
+    // §5.4's write set, as an array so the returned value is a plain snapshot rather than a live
+    // handle on `state`'s Set. This is the set every §5.4 commit's pathspec must be set-equal to
+    // (PROPERTIES §O-2, AT-M5); without it on the result, a caller — a test included — can only
+    // check the pathspec for members it already thought to name, which is containment, and a
+    // dropped member is invisible to containment.
+    writeSet: [...state.writeSet],
     body: reportBody,
     reportBody,
   };

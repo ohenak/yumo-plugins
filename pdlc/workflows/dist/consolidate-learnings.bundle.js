@@ -9176,6 +9176,8 @@ async function finishPass(state, seams) {
     prUrl: state.prUrl,
     branch: state.branch,
     markerHeld: state.markerHeld,
+
+    writeSet: [...state.writeSet],
     body: reportBody,
     reportBody,
   };
