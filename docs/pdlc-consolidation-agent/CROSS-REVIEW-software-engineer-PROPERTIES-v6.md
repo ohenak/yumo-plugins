@@ -45,6 +45,20 @@ over-reach or to leave the surrounding text behind:
 
 ## 2. Independent re-measurement
 
+Every factual claim the revision rests on is a claim about some other file, so each was measured at
+HEAD rather than taken from the document's prose.
+
+| Claim | Verdict at HEAD |
+|---|---|
+| TSPEC §12.2 specifies a **second** fixture for this case, with those four observables | **Exact.** `TSPEC:2850`: *"**A second fixture in the same case carries the all-unreadable corpus** (§10.3 row 1b): … asserts positively that the terminal status is exactly `no-op` — not `failed` (row 1a's outcome, the adjacent branch an implementer is most likely to reach for) and not `refused` — that the rendered consumed pair's basename list is **empty**, and that `\|un-consolidated\|` is **2** with both basenames named in the report body as unread"* |
+| §10.3 row 1b routes the all-unreadable pass to `no-op` as AC-1.4's **third** cause | **Exact.** `TSPEC:2230` — row 1b, *"`no-op` — AC-1.4's **third** cause (REQ §4b, `REQ-…:625-631`)"*, with **no** reason code minted and the pair rendered empty |
+| REQ §4b decides the all-unreadable pass terminates `no-op` and mints no reason code | **Exact.** `REQ:624-631` — *"That pass's terminal status is `no-op`"* … *"and no reason code is added either"*, distinguished by the AC-7.1 pairing (consumed list empty **while** the un-consolidated set is non-empty), which the new PROPERTIES text carries at `:426-427` |
+| AC-1.4 has **three** causes at HEAD | **Exact, and this is the point of F-01 below.** `REQ:224-233` enumerates all three in the AC body itself and closes *"the **three** causes differ exactly there (the first and third consume nothing, the second consumes)"* |
+| FSPEC absorbed the same arm | **Exact.** `FSPEC:21` (v11.7 changelog) and `FSPEC:2388` — the all-unreadable pass terminating `no-op` with an empty consumed set is named in the AC-1.4 → AT map's own terms |
+| No register AT covers the arm, so `(no FSPEC AT)` is the right trailer | **Exact.** `TSPEC:2850` walks it: AT-K3, AT-L2, AT-F13, AT-R7 cover AC-1.4's second and first causes only (`FSPEC-…:2370`) |
+| Property count unchanged at 118 | **Exact**, verified as a set and not just a count: id sets at HEAD and at `9a95324f` have empty symmetric difference |
+| `PROP-COR-09` is the **sole** carrier of the third cause | **Exact.** `grep -o "all-unreadable"` returns five hits — the changelog (`:19`), PROP-COR-09's body (`:419`, `:422`, `:424`) and §12.1's row (`:1668`) — i.e. one property and its register row, no second claimant |
+
 ## 3. Findings
 
 ## 4. Questions
