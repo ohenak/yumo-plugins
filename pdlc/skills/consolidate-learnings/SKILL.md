@@ -32,13 +32,13 @@ No argument — operates across the whole repo's `docs/`.
 
 ## Consolidation Process
 
-1. **Find the boundary.** Read `docs/_decisions/.consolidation-log.md` (create it if absent). Every `docs/*/LEARNINGS-*.md` with a Date Completed after the last logged pass is in scope.
+1. **Find the boundary.** Read `docs/_decisions/.consolidation-log.md` (create it if absent). A LEARNINGS file is in scope when its basename is un-consolidated per the block/legacy predicate (`docs/_constraints/pdlc-consolidation-vocabularies.md` §3).
 2. **Read them all.** Collect §2 Cross-Feature Patterns, §4 Process Learnings, and §5 Open Items from each.
 3. **Cluster.** Group items pointing at the same underlying concern across features.
 4. **Distinguish pattern from coincidence.** Two features mentioning the same concern *might* be a pattern or *might* be coincidence. Promote only when the signal is durable: it recurs across ≥2 unrelated features, **or** a single occurrence states a standing invariant (security, data integrity, regulatory) that obviously generalizes. When in doubt, leave it in the proposal for a human to judge — do not promote.
 5. **Route each promoted item:**
    - Domain invariant future REQs must respect → append to `docs/_constraints/DOMAIN-CONSTRAINTS.md` (read by `pm-author`).
-   - Architectural decision now project-level → `docs/_decisions/DECISIONS-{topic}.md` (read by `se-author`).
+   - Architectural decision now project-level → `docs/_decisions/DECISIONS-{topic}.md` (read by `se-author`; {topic} = failure-mode-id for a consolidation-promoted pattern).
    - Process learning about a skill prompt / review checklist / workflow phase → **propose**, never apply (next section).
 6. **Record the pass** in `.consolidation-log.md`: date, which LEARNINGS files were consumed, what was promoted, what was deferred.
 

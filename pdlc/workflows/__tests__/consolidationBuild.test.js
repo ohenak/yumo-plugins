@@ -207,7 +207,7 @@ const T07_ROUTE_LINE =
   "   - Architectural decision now project-level → `docs/_decisions/DECISIONS-{topic}.md` " +
   "(read by `se-author`; {topic} = failure-mode-id for a consolidation-promoted pattern).";
 
-describe.skip("T07 — skill prompt (TSPEC §12.2, §12.3, FSPEC §3.2, §5.2)", () => {
+describe("T07 — skill prompt (TSPEC §12.2, §12.3, FSPEC §3.2, §5.2)", () => {
   it("the block/legacy predicate sentence replaces the Date Completed boundary, verbatim", () => {
     const skill = readRepo(CONSOLIDATE_LEARNINGS_SKILL_PATH);
     expect(skill).toContain(T07_BOUNDARY_LINE);
