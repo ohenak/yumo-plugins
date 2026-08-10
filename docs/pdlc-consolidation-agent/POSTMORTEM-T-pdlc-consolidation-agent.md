@@ -4,14 +4,29 @@
 |---|---|
 | Upstream | `REQ` → `FSPEC` → `TSPEC` → **POSTMORTEM-T** |
 | Downstream | operator decision; `LEARNINGS-pdlc-consolidation-agent.md` harvest |
-| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v{1..5}.md` (10 files) |
+| Cross-Reviews | Episode 1: `CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v{1..5}.md` (10 files) · Episode 2: `CROSS-REVIEW-{product-manager,software-engineer}-PROPERTIES-v5.md` (2 files) |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | halted | Claude (se-author) | 1.0 | 2026-08-06 |
+| pdlc | halted | Claude (se-author) | 2.0 | 2026-08-10 |
 
-RESOLVED: yes
+RESOLVED: no
+
+**Two episodes, one marker.** Episode 1 (Phase T TSPEC round exhaustion, 2026-08-06) was resolved
+on 2026-08-06 and its resolution is recorded below; its own marker has been folded into that prose
+because `parseResolvedMarker` fails closed on a file carrying two markers (`duplicated`). The single
+marker above governs the file and is currently open on **Episode 2** — the erratum-confirmation halt
+of 2026-08-10. Do not flip it while Episode 2’s Recommendation is unaddressed.
+
+| Episode | Halt | Document | Date | State |
+|---|---|---|---|---|
+| 1 | Review-round exhaustion (rounds 1–5, no approval) | `TSPEC` v1.4 | 2026-08-06 | resolved 2026-08-06 |
+| 2 | Erratum delta-confirmation non-approving (`se-review`), on round 5 of 5 | `PROPERTIES` v1.4 | 2026-08-10 | **open** |
+
+---
+
+# Episode 1 — Phase T TSPEC round exhaustion (2026-08-06)
 
 ## Phase
 
@@ -343,7 +358,7 @@ not by delay.
 | Watchdog or pacing failure | No no-progress halt occurred; every round produced committed, versioned revisions |
 | Document bloat | The TSPEC is **smaller** than its FSPEC (215 KB vs 277 KB) and grew ~11 % across the window. Unlike Phase F, size is not a symptom here |
 
-## Recommendation
+## Recommendation — Episode 1 (carried out in full; see § Resolution below)
 
 Ordered. Steps 1–4 are the resolution; step 5 is re-entry; steps 6–8 are scope notes and the
 escalation this feature has now earned.
