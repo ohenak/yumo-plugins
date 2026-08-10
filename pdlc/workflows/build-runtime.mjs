@@ -82,6 +82,7 @@ export function moduleImportLines(source) {
 
 const devSource = readFileSync(resolve(HERE, "orchestrate-dev.js"), "utf8");
 const queueSource = readFileSync(resolve(HERE, "orchestrate-queue.js"), "utf8");
+const consSource = readFileSync(resolve(HERE, "consolidate-learnings.js"), "utf8");
 const adapter = readFileSync(resolve(HERE, "runtime-adapter.js"), "utf8");
 
 const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
@@ -102,6 +103,11 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "advisorySummaryRows",
   "ADVISORY_DEFAULTS",
   "commitPaths",
+  // TSPEC §8.2 — reused by consModule's prelude below; resolveAdvisoryRung is
+  // already published above, so only these three are new to the list.
+  "MERGE_GUARD_DEFAULTS",
+  "mergeCommandFor",
+  "gitWithLockRetry",
 ]);
 
 const queueModule = wrapModule(
@@ -122,6 +128,20 @@ const queueModule = wrapModule(
    "const commitPaths = __dev.commitPaths;"].join("\n")
 );
 
+// TSPEC §8.2 — the consolidation bundle's IIFE. The prelude re-binds the same
+// four reused symbols queueModule's does above, minus the ones queueModule
+// does not need: consSource imports these directly from orchestrate-dev.js,
+// and the import line is stripped, so they must be re-supplied here.
+const consModule = wrapModule(
+  "__cons",
+  stripModuleSyntax(consSource),
+  ["main", "meta"],
+  ["const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
+   "const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;",
+   "const mergeCommandFor = __dev.mergeCommandFor;",
+   "const gitWithLockRetry = __dev.gitWithLockRetry;"].join("\n")
+);
+
 // `meta` must be a pure literal and the first statement, so each bundle carries
 // its own hand-written copy rather than re-exporting the module's.
 const QUEUE_META = `export const meta = {
@@ -135,6 +155,30 @@ const QUEUE_META = `export const meta = {
     { title: "Queue: Select", detail: "pick pending entries in order" },
     { title: "Queue: Triage", detail: "Phase-0 readiness check (sonnet)" },
     { title: "Queue: Run", detail: "delegate to the orchestrate-dev pipeline" },
+  ],
+};`;
+
+// TSPEC §8.2 — hand-written pure literal, first statement, for the same reason
+// QUEUE_META and DEV_META are: `meta` cannot be re-exported from consSource.
+const CONS_META = `export const meta = {
+  name: "consolidate-learnings",
+  description:
+    "Consolidation pass — clusters recurring failure modes across the LEARNINGS corpus and promotes durable patterns into DOMAIN-CONSTRAINTS.md, DECISIONS-*.md, or a guard-set PR.",
+  whenToUse:
+    "Run periodically (or on demand) to consolidate accumulated LEARNINGS into durable, project-level guidance.",
+  inputs: [
+    {
+      name: "direct",
+      description: "Optional manual entry point — forces a pass outside the cadence/volume trigger.",
+      type: "boolean",
+      required: false,
+    },
+  ],
+  phases: [
+    { title: "Enumerate", detail: "read the LEARNINGS corpus and the consolidation log" },
+    { title: "Trigger", detail: "decide whether this pass runs (cadence, volume, or direct)" },
+    { title: "Promote", detail: "cluster failure modes and route durable patterns" },
+    { title: "Report", detail: "render the report body and append log records" },
   ],
 };`;
 
@@ -250,6 +294,20 @@ return await __dev.main({
       rtGit,
       evidence
     ),
+});
+`;
+
+// TSPEC §8.2 — mirrors QUEUE_ENTRY: reads `args` (a bare string or an object)
+// into the one optional input, spreads rtConsInjections(), and returns
+// await __cons.main({...}).
+const CONS_ENTRY = `
+// ─── Entrypoint ─────────────────────────────────────────────────────────────
+const __direct =
+  args && typeof args === "object" && typeof args.direct === "boolean" ? args.direct : false;
+
+return await __cons.main({
+  direct: __direct,
+  ...rtConsInjections(),
 });
 `;
 
@@ -459,6 +517,14 @@ const bundles = [
     // queueModule's prelude references `__dev.main`, so devModule must precede it.
     contents: stripCommentsForRuntime(
       [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n")
+    ),
+  },
+  {
+    file: "consolidate-learnings.bundle.js",
+    // TSPEC §8.2 — consModule's prelude references __dev.* re-bindings, so
+    // devModule must precede it, same ordering hazard queueModule documents above.
+    contents: stripCommentsForRuntime(
+      [CONS_META, BANNER, adapter, devModule, consModule, CONS_ENTRY].join("\n\n")
     ),
   },
   {

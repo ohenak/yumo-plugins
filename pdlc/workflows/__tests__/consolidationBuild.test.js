@@ -152,7 +152,7 @@ describe("T12 — rtConsInjections (TSPEC §5.1, §11.3(e))", () => {
 // T32 — bundle (T-02, TSPEC §8.2, §8.3, §11.3(c))
 // ---------------------------------------------------------------------------
 
-describe.skip("T32 — the consolidation bundle (T-02, TSPEC §8.2, §8.3)", () => {
+describe("T32 — the consolidation bundle (T-02, TSPEC §8.2, §8.3)", () => {
   it("build-runtime.mjs --check is clean", () => {
     expect(() =>
       execFileSync("node", [resolve(WORKFLOWS, "build-runtime.mjs"), "--check"], {

@@ -23,7 +23,11 @@ const requireHere = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "..", "..");
-const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js"];
+// pdlc-consolidation-agent (TSPEC §8.2, §12.2) — the third axis: omitting the
+// new artifact here would exempt it from every BUNDLES-driven L3 suite below
+// (launcher constraint, structural suite, sole-output-directory check,
+// RLH-AT-19, and the drift-perturbation suite) while it still ships.
+const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js", "consolidate-learnings.bundle.js"];
 
 // Sole output directory per AC-6.1 / TSPEC §2.3 point 1 — T-14 moves build-runtime.mjs's
 // OUT_DIR here. Until then, every read below fails with ENOENT: that is the batch-2
@@ -579,6 +583,7 @@ describe("bundle freshness", () => {
     // cannot write into the live dist/.
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
     expect(manifest.rows.map((r) => r.id).sort()).toEqual([
+      "consolidate-learnings",
       "orchestrate-dev",
       "orchestrate-queue",
       "pdlc-cli",
@@ -1217,6 +1222,8 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     // dist/pdlc-cli.mjs's source: the builder reads it like any other input, so
     // a tree without it cannot build at all.
     "cli.mjs",
+    // dist/consolidate-learnings.bundle.js's source (TSPEC §8.2) — same reason.
+    "consolidate-learnings.js",
   ];
   const tmpRoots = [];
 
@@ -1302,6 +1309,7 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     const root = makeBuildTree();
     perturb(root, "orchestrate-dev.bundle.js");
     perturb(root, "orchestrate-queue.bundle.js");
+    perturb(root, "consolidate-learnings.bundle.js");
     perturb(root, "distribution-manifest.json");
 
     const { status, output } = runCheck(root);
