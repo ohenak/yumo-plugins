@@ -515,7 +515,7 @@ async function rtProbePostmortem(arg) {
 async function rtWriteFile(path, contents) {
   rtCacheInvalidate(path);
   await RT.agent(
-    `Write the following content to "${path}", relative to the repository root, ` +
+    `Write the following content to "${path}", relative to the repository root or as an absolute path, ` +
       `replacing the file's current contents exactly. Do not reformat, re-wrap, ` +
       `summarise, or add anything. Reply with "ok" when written.\n\n` +
       `<<<PDLC_CONTENT_BEGIN\n${contents}\nPDLC_CONTENT_END`,
@@ -537,6 +537,25 @@ async function rtCheckFile(path) {
   if (verdict.includes("OK")) return { ok: true };
   if (verdict.includes("EMPTY")) return { ok: false, reason: "file_empty" };
   return { ok: false, reason: "file_missing" };
+}
+
+async function rtEnvPresent(name) {
+  const out = await RT.agent(
+    `Run exactly:  [ -n "\${${name}:-}" ] && echo PRESENT || echo ABSENT\n` +
+      `Reply with that one word and nothing else.`,
+    { label: `env-present:${name}`, model: RT_IO_MODEL }
+  );
+  return String(out ?? "").trim() === "PRESENT";
+}
+
+async function rtMakeTempDir(passId) {
+  const out = await RT.agent(
+    `Run exactly:  mktemp -d -t pdlc-consolidation-${passId}\n` +
+      `Reply with the created path and nothing else.`,
+    { label: `make-temp-dir:${passId}`, model: RT_IO_MODEL }
+  );
+  const text = String(out ?? "").trim();
+  return /^\/\S+$/.test(text) ? text : null;
 }
 
 function rtMakeCheckCi(devModule) {
@@ -730,6 +749,23 @@ function rtDevInjections(devModule) {
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
 
+  };
+}
+
+function rtConsInjections() {
+  return {
+    _agent: rtAgent,
+    _readFile: rtReadFile,
+    _writeFile: rtWriteFile,
+    _appendFile: rtAppendFile,
+    _checkFile: rtCheckFile,
+    _listFiles: rtListFiles,
+    _git: rtGit,
+    _ghRun: rtGhRun,
+    _log: rtLog,
+    _phase: rtPhase,
+    _envPresent: rtEnvPresent,
+    _makeTempDir: rtMakeTempDir,
   };
 }
 
