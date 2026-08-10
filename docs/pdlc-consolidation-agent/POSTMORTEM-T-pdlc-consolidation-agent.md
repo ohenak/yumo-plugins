@@ -545,3 +545,61 @@ basenames. Expectation under the decision freeze plus DEC-SEV-03: one delta roun
 round-5 closures and producing the window's first two approvals, which DEC-CONV-01 then holds.
 Step 8's escalation stands: if rounds 6–10 exhaust, accept the TSPEC at its then-current version
 and route the residue to Phase P / Phase PT as errata — do not open a second Phase T window.
+
+---
+
+# Episode 2 — Erratum-confirmation halt on PROPERTIES (2026-08-10)
+
+## Phase — Episode 2
+
+**Phase T's erratum wave, tail layer. The routed erratum landed in `PROPERTIES` as v1.4; the
+delta-confirmation round came back split — `pm-review` **Approved**, `se-review` **Needs revision**
+(1 High) — and that round was round 5 of `MAX_REVIEW_ROUNDS = 5`.**
+
+| | |
+|---|---|
+| Document | `docs/pdlc-consolidation-agent/PROPERTIES-pdlc-consolidation-agent.md` |
+| Version at HEAD | **1.4** (2026-08-10, commit `9a95324f`) — the version round 5 reviewed |
+| Size at HEAD | 118 distinct `PROP-*` ids, unchanged from v1.3 (verified both ways: id sets at HEAD and at `9a95324f^` have empty symmetric difference) |
+| Branch | `feat-pdlc-consolidation-agent` |
+| Window | rounds 1–5; the erratum edit at 16:12, PM confirmation 16:13, SE confirmation 16:16 — **4 minutes** of confirmation on a 27-minute wave |
+| Reviewers | `pdlc:pm-review` (product-manager) and `pdlc:se-review` (software-engineer) |
+| Halt condition | erratum delta-confirmation non-approving on the phase's erratum budget, with no round left in the window |
+
+Both halt conditions fired on the same round, which matters for re-entry: this is **not** a case where
+one more round would have been taken automatically. The window was spent and the erratum bound (one
+erratum per upstream document per phase) was spent in the same act.
+
+## The wave, in commit order
+
+The erratum was not a single edit to a single document. It was a multi-layer wave descending
+`REQ → FSPEC → TSPEC → PROPERTIES` inside half an hour, and its shape is the root cause:
+
+| Time | Commit | Layer | What moved |
+|---|---|---|---|
+| 15:49–15:52 | `c74d5cef` … | TSPEC v2.5 | absorbs REQ §4b's *omission* decision (unreadable corpus entry omitted from the consumed pair) |
+| 15:56–15:59 | (round-15 fixes) | TSPEC v2.6 | absorbs REQ v2.5's **second arm**: §7.1, §10.3 row 1b, §10.4, §12.2 gain the *all-unreadable pass terminates `no-op`* case and its set-equality oracle |
+| 16:02–16:03 | `58a56d49`, `545ee0c0`, `dc3bca25` | TSPEC round 16 | both reviewers minor-changes; approval anchors appended |
+| 16:06 | `b5ab7503` | FSPEC v11.7 | absorbs REQ v2.5's AC-1.4 `no-op` arm |
+| 16:08–16:10 | `c094127d` … `0d6c4517` | FSPEC v18 | te-review PASS, anchors appended |
+| **16:12** | **`9a95324f`** | **PROPERTIES v1.4** | absorbs **the omission decision only** |
+| 16:13 | `34ff24ac` | pm-review v5 | **Approved** |
+| 16:16 | `1f7f96b3` | se-review v5 | **Needs revision**, 1 High |
+
+The upstream wave had two arms by 15:59. The routed item list handed to the PROPERTIES author had
+one.
+
+## Routed items — all six absorbed
+
+The routing list carried six items, which collapse to two distinct defects, each stated twice by each
+channel:
+
+| Routed item | Disposition at HEAD | Evidence |
+|---|---|---|
+| `PROP-COR-09`'s conjunct (2) asserted `renderConsumedPair`'s output contains **both** basenames, contradicting the property's own title and REQ §4b | **Absorbed** | conjunct (2) (`PROPERTIES:397-401`) now pins the rendered list **set-equal to `{readable}`** — readable present, unreadable **absent**, **no third name** — with NFR-5's reason inline. The pre-erratum inclusion arm survives nowhere in the file |
+| §O-5's parenthetical still read *(counted, in the consumed pair, named)* | **Absorbed** | `PROPERTIES:308-312` reads *(counted, **omitted from** the consumed pair — rendered set-equal to `{readable}` … — and named in the report body)*, plus the empty-pair positive control |
+
+`se-review` states this in its own words (`CROSS-REVIEW-software-engineer-PROPERTIES-v5.md` §1 and
+§6): *"the routed erratum items are fully and correctly absorbed — if the only question were 'did the
+delta land', this would be an approval."* No routed item is open. **The confirmation did not fail on
+the raised set.**
