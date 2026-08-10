@@ -76,7 +76,7 @@ const { MERGE_GUARD_DEFAULTS, mergeCommandFor } = dev;
 // T28 — routing predicates (routeOf, routeProposal, enactedByLog, enactedByPr)
 // ═══════════════════════════════════════════════════════════════════════════
 describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enactedByPr", () => {
-  describe.skip("routeOf is set-equal to MERGE_GUARD_DEFAULTS, not a subset (TSPEC §7.6)", () => {
+  describe("routeOf is set-equal to MERGE_GUARD_DEFAULTS, not a subset (TSPEC §7.6)", () => {
     test("every MERGE_GUARD_DEFAULTS member routes PR — the whole constant, not part of it", () => {
       for (const prefix of MERGE_GUARD_DEFAULTS) {
         expect(routeOf(`${prefix}example-file.md`)).toBe("PR");
@@ -113,7 +113,7 @@ describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enac
     });
   });
 
-  describe.skip("routeProposal reads the action, not only the target (FSPEC §8.6, TSPEC §7.6)", () => {
+  describe("routeProposal reads the action, not only the target (FSPEC §8.6, TSPEC §7.6)", () => {
     const guardTarget = "pdlc/hooks/scripts/nudge-consolidation.sh";
     const constraintsTarget = "docs/_constraints/DOMAIN-CONSTRAINTS.md";
     const decisionsTarget = "docs/_decisions/DECISIONS-x.md";
@@ -156,7 +156,7 @@ describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enac
     });
   });
 
-  describe.skip("enactedByLog is a function of (failureModeId, action) AND route, and of nothing else (TSPEC §7.6)", () => {
+  describe("enactedByLog is a function of (failureModeId, action) AND route, and of nothing else (TSPEC §7.6)", () => {
     const pair = { failureModeId: "p-pdlc-skills-se-author-skill-md", action: "promote" };
 
     test("a matching record with route: constraints enacts, and carries the record's passId", () => {
@@ -193,7 +193,7 @@ describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enac
     });
   });
 
-  describe.skip("enactedByPr reads the PDLC-CONSOLIDATION-PROMOTIONS trailer of open/merged PRs only (TSPEC §7.6, §9.2)", () => {
+  describe("enactedByPr reads the PDLC-CONSOLIDATION-PROMOTIONS trailer of open/merged PRs only (TSPEC §7.6, §9.2)", () => {
     const pair = { failureModeId: "p-pdlc-skills-se-author-skill-md", action: "promote" };
 
     function prWith(state, promotionsLine) {

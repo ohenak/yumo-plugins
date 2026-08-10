@@ -45,7 +45,7 @@ describe("T20 — the pass, end to end (L2)", () => {
   // ═══════════════════════════════════════════════════════════════════════
   // Block 1 — T28: the marker predicates, pure, no `main` (TSPEC §7.3)
   // ═══════════════════════════════════════════════════════════════════════
-  describe.skip("T28 — marker predicates", () => {
+  describe("T28 — marker predicates", () => {
     describe("parseMarker — exactly two one-line forms, null for everything else", () => {
       test("an IN-PROGRESS: line parses to {state: 'in-progress', passId, at}", () => {
         const parsed = parseMarker("IN-PROGRESS: 2025-06-01-1 2025-06-01T00:00:00.000Z");

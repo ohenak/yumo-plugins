@@ -650,22 +650,61 @@ export function mintPassId(logText, today) {
 
 // §7.3 — the marker
 
+// `IN-PROGRESS: {passId} {ISO-8601}` or BR-14a's `RELEASED: {passId} {ISO-8601}` — exactly one
+// line, nothing else (TSPEC:950-954).
+const MARKER_LINE = /^(IN-PROGRESS|RELEASED):\s*(\S+)\s+(\S+)$/;
+
 /** @returns {{state: "in-progress"|"released", passId: string, at: number}|null} */
 export function parseMarker(text) {
-  return notImplemented("parseMarker");
+  if (typeof text !== "string") return null;
+  if (text.includes("\n")) return null;
+  const match = MARKER_LINE.exec(text);
+  if (!match) return null;
+  const [, verb, passId, timestamp] = match;
+  const at = Date.parse(timestamp);
+  if (!Number.isFinite(at)) return null;
+  return { state: verb === "IN-PROGRESS" ? "in-progress" : "released", passId, at };
 }
 
 /** @returns {"free"|"refuse"|"reclaim"} */
 export function markerVerdict(parsed, present, nowMs, staleLockMinutes) {
-  return notImplemented("markerVerdict");
+  if (!present) return "free";
+  if (parsed === null) return "reclaim"; // present but unparseable — no timestamp to age out
+  if (parsed.state === "released") return "free"; // E-11b — free at any age, no reason code
+  const staleMs = staleLockMinutes * 60 * 1000;
+  return nowMs - parsed.at >= staleMs ? "reclaim" : "refuse";
 }
 
+/**
+ * §7.3 — observe-then-write, three seam calls: `_checkFile` for `present` (never derived from
+ * `_readFile`), `_readFile` for the text `parseMarker` consumes, then `_writeFile` when the
+ * verdict permits taking the marker.
+ *
+ * @returns {Promise<{verdict: "free"|"refuse"|"reclaim", parsed: object|null, taken: boolean}>}
+ */
 export async function takeMarker(state, seams) {
-  return notImplemented("takeMarker");
+  const { markerPath, passId, nowMs, staleLockMinutes } = state;
+  const { checkFileFn, readFileFn, writeFileFn } = seams;
+  const checkReply = await checkFileFn(markerPath);
+  const present = !(checkReply && checkReply.ok === false && checkReply.reason === "file_missing");
+  const text = await readFileFn(markerPath);
+  const parsed = parseMarker(text);
+  const verdict = markerVerdict(parsed, present, nowMs, staleLockMinutes);
+  if (verdict === "refuse") {
+    return { verdict, parsed, taken: false };
+  }
+  await writeFileFn(markerPath, `IN-PROGRESS: ${passId} ${new Date(nowMs).toISOString()}`);
+  return { verdict, parsed, taken: true };
 }
 
+/**
+ * §7.3, FSPEC BR-14a — the ONLY write step 16 makes: an in-place sentinel, never a removal (no
+ * seam in this protocol can unlink a file).
+ */
 export async function releaseMarker(state, seams) {
-  return notImplemented("releaseMarker");
+  const { markerPath, passId, nowMs } = state;
+  const { writeFileFn } = seams;
+  await writeFileFn(markerPath, `RELEASED: ${passId} ${new Date(nowMs).toISOString()}`);
 }
 
 // §7.4 — the id, proposals, and the intra-pass merge
@@ -1031,24 +1070,82 @@ export function remediationChoice(id, records, prStates, headExists) {
 
 // §7.6 — routing and suppression
 
-/** @returns {"PR"|"constraints"|"decisions"|"proposal-file"} */
+const DECISIONS_TARGET = /^docs\/_decisions\/DECISIONS-.+\.md$/;
+
+/**
+ * §7.6 — set-equal to the IMPORTED `MERGE_GUARD_DEFAULTS`, never a module-local copy: any prefix
+ * member routes `PR`; failing that, the two named constraint/decision paths; everything else in
+ * the consuming repo is `proposal-file` — an in-module control value, never rendered (§7.6, ER-6).
+ *
+ * @returns {"PR"|"constraints"|"decisions"|"proposal-file"}
+ */
 export function routeOf(target) {
-  return notImplemented("routeOf");
+  const path = String(target);
+  for (const prefix of MERGE_GUARD_DEFAULTS) {
+    if (path.startsWith(prefix)) return "PR";
+  }
+  if (path === "docs/_constraints/DOMAIN-CONSTRAINTS.md") return "constraints";
+  if (DECISIONS_TARGET.test(path)) return "decisions";
+  return "proposal-file";
 }
 
-/** @returns {"PR"|"constraints"|"decisions"|"proposal-file"} */
+/**
+ * §7.6, FSPEC §8.6 — the ONLY caller of `routeOf`. A guard-set target takes the PR route on every
+ * action; a `promote` onto `routeOf`'s constraints/decisions answer is applied there; every other
+ * combination — including `revise`/`retire` onto constraints/decisions, and any action onto a
+ * consuming-repo path — is `proposal-file`.
+ *
+ * @returns {"PR"|"constraints"|"decisions"|"proposal-file"}
+ */
 export function routeProposal(p) {
-  return notImplemented("routeProposal");
+  const r = routeOf(p.target);
+  if (r === "PR") return "PR";
+  if (p.action === "promote" && (r === "constraints" || r === "decisions")) return r;
+  return "proposal-file";
 }
 
-/** @returns {{enacted: boolean, passId: string|null}} */
+/**
+ * §7.6 — a function of `(failureModeId, action)` AND `route`, and of nothing else: a record short
+ * of any of the three cannot be evaluated and reads absent, even when the other fields match. A
+ * `degraded` route never suppresses. `passId` is carried when present but is never itself a
+ * matching key.
+ *
+ * @returns {{enacted: boolean, passId: string|null}}
+ */
 export function enactedByLog(pair, records) {
-  return notImplemented("enactedByLog");
+  const list = Array.isArray(records) ? records : [];
+  for (const r of list) {
+    if (!r || typeof r !== "object") continue;
+    if (!("failureModeId" in r) || !("action" in r) || !("route" in r)) continue;
+    if (r.failureModeId !== pair.failureModeId || r.action !== pair.action) continue;
+    if (r.route === "degraded") continue;
+    return { enacted: true, passId: typeof r.passId === "string" ? r.passId : null };
+  }
+  return { enacted: false, passId: null };
 }
 
-/** @returns {{enacted: boolean, url: string|null}} */
+// FSPEC §9.2's trailer line: `{failureModeId}:{action}` entries, comma-separated.
+const CONSOLIDATION_PROMOTIONS_TRAILER = /^PDLC-CONSOLIDATION-PROMOTIONS:\s*(.*)$/m;
+const ENACTING_PR_STATES = new Set(["OPEN", "MERGED"]);
+
+/**
+ * §7.6, §9.2 — reads the `PDLC-CONSOLIDATION-PROMOTIONS` trailer of PRs observed `OPEN` or
+ * `MERGED` only; state is read at poll time, no memory of any prior state.
+ *
+ * @returns {{enacted: boolean, url: string|null}}
+ */
 export function enactedByPr(pair, prStates) {
-  return notImplemented("enactedByPr");
+  const list = Array.isArray(prStates) ? prStates : [];
+  const key = `${pair.failureModeId}:${pair.action}`;
+  for (const pr of list) {
+    if (!pr || !ENACTING_PR_STATES.has(pr.state)) continue;
+    const body = typeof pr.body === "string" ? pr.body : "";
+    const match = CONSOLIDATION_PROMOTIONS_TRAILER.exec(body);
+    if (!match) continue;
+    const entries = match[1].split(",").map((e) => e.trim());
+    if (entries.includes(key)) return { enacted: true, url: pr.url ?? null };
+  }
+  return { enacted: false, url: null };
 }
 
 // §7.7 — the advisory corpus
