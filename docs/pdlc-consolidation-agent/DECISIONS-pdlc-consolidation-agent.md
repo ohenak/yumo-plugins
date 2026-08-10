@@ -915,7 +915,8 @@ must land as properties rather than as unit cases:
      `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index` — containment in
      both directions, never equality, because the read verbs are permitted and neither their presence
      nor their absence is asserted. The two upstream statements of that bound now **agree**, and this
-     paragraph's earlier warning ("take the upper bound from `TSPEC:1724`, **not** from `FSPEC:2154`")
+     paragraph's earlier warning ("take the upper bound from `TSPEC:1724`, **not** from `FSPEC:2154`" —
+     quoted with the anchor it then carried; that row is `FSPEC:2169` at HEAD)
      is **withdrawn as of FSPEC v11.5** — it was correct when written and is no longer. The erratum
      this document raised has been **answered upstream, not carried**: FSPEC's changelog records it as
      erratum (1) of the Phase D round (`FSPEC:13-22`) in the same terms this entry used — the row
@@ -983,12 +984,29 @@ must land as properties rather than as unit cases:
   the stale ones were inherited by faithful quotation from the TSPEC's own stale cites and are
   raised as an erratum rather than corrected only here.
 
-  **This warranty covers `TSPEC:` anchors only.** The `FSPEC:` set was never swept mechanically, which
-  is why two stale FSPEC values survived two anchor rounds and were caught by a reviewer rather than by
-  the sweep (`FSPEC:415` for §4.1's lifetime row, retargeted to `:435-436` with `:441-442`;
-  `FSPEC:442` for §4.2's empty arm, retargeted to `:479`). The equivalent recipe is
-  `grep -onE 'FSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`, and it is stated here so the next sweep covers
-  both upstream documents rather than one.
+  **The `FSPEC:` set has now been swept too, and it needed it.** Until this revision the warranty
+  covered `TSPEC:` anchors only, which is why two stale FSPEC values survived two anchor rounds and
+  were caught by a reviewer rather than by the sweep (`FSPEC:415` for §4.1's lifetime row and
+  `FSPEC:442` for §4.2's empty arm). Those two were retargeted by hand; the retargets have since gone
+  stale in their turn, because FSPEC v11.4/v11.5 inserted material above every one of them. The
+  recipe is `grep -onE 'FSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`; run at this revision it returned
+  **27** citation sites over **nine** distinct stale values, and **all nine** are retargeted here:
+  `:435-436`⇒`:449-450` (§4.1's lifetime rows), `:441-442`⇒`:455-456` (the reason the FSPEC gives for
+  them), `:476`⇒`:490` (§4.2's `RELEASED:` row), `:479`⇒`:493` (§4.2's empty-or-neither-form row, the
+  table's fifth), `:1060-1063`⇒`:1075-1077` (the two `∅` equalities and why they are equalities),
+  `:2154`⇒`:2169` (AT-Q7c), `:2585`⇒`:2600` (BR-14a), `:2678`⇒`:2693` (E-11), `:2679`⇒`:2694` (E-11b).
+  Every one was resolved against the FSPEC at HEAD, not shifted by a constant: the offsets differ per
+  region (+14 in §4.1/§4.2, +15 elsewhere), so a uniform re-base would have been wrong. **One site is
+  deliberately left carrying the old value** — §11.2's quotation of its own withdrawn warning, which
+  names `FSPEC:2154` because that is the anchor the withdrawn sentence cited; the sentence around it
+  says so and gives the HEAD anchor.
+
+  Two lessons are recorded rather than implied. The upstream that moves is the one nobody sweeps: the
+  TSPEC has not moved since the merge commit that carries this branch (spot-checked at HEAD for
+  `:974-977`, `:987-988`, `:1405`, `:1602`, `:1724`, `:1937`, `:1940`, `:2640`), while the FSPEC moved
+  under every anchor in this document. And a *retarget is not a fix* — it is a measurement with a
+  shelf life. Both recipes belong in any future round that touches either upstream, and the counts
+  they return are a function of the revision, never a constant.
 
   The v4 cross-reviews cite the §11.3(a) conjuncts at `TSPEC:2095-2100` / `:2098-2099`; those were
   correct at the TSPEC revision they reviewed, and the intervening TSPEC round moved them **+104**
@@ -1026,7 +1044,7 @@ writing a test that appears to cover it:
 | Not asserted | Why | Where recorded |
 |---|---|---|
 | The two-pass take race (`_checkFile`/`_readFile`/`_writeFile` window) | No oracle exists at any level available here; a test that appeared to cover it would assert a property the code does not have (DEC-ORACLE-02). The take's *shape* is asserted instead. Detection after the fact is operator-reported and un-instrumented, with a stated forensic signature | DEC-CONS-04 |
-| ~~FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm~~ — **row withdrawn; this arm IS asserted** | It was unreachable only under the empty release form. BR-14a's `RELEASED:` sentinel makes it reachable (`FSPEC:2678`), and it is asserted by the `""` fixture in the four-fixture marker case (`TSPEC:1940`, `:2640`). A PROPERTIES author must **not** read this row as licence to omit it | DEC-CONS-07 |
+| ~~FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm~~ — **row withdrawn; this arm IS asserted** | It was unreachable only under the empty release form. BR-14a's `RELEASED:` sentinel makes it reachable (`FSPEC:2693`), and it is asserted by the `""` fixture in the four-fixture marker case (`TSPEC:1940`, `:2640`). A PROPERTIES author must **not** read this row as licence to omit it | DEC-CONS-07 |
 | The inbound failure-reply channel (`rtGit`'s 300-character combined output reaching a rendered report body) | Bounded by what `git` prints, not by the seam interface; recorded as a residual. (The credentialed-argv question that once rode with it is **closed** — the push carries a credential helper, `TSPEC:1693-1698`, §11.3 item 3 — but the inbound channel itself stays unasserted for the reason in this row) | DEC-CONS-01 |
 
 ### 11.3 Errata raised, not settled here
@@ -1042,12 +1060,12 @@ erratum, stated in its own paragraph):
    — **CLOSED upstream; retained as the record of the round.** §4.1's lifetime row said "Removed at
    step 16", which no declared seam can do, and §4.2's empty-or-neither-form row then bound an
    `empty (truncated write)` arm unreachable under an empty release. Both rows have since been
-   rewritten: at HEAD `FSPEC:435-436` reads "Released … in-place rewrite" / "Removed | **never by the
-   pass**", `FSPEC:441-442` states why, and the empty arm now sits at `FSPEC:479`. FSPEC v11.3 answered the product
+   rewritten: at HEAD `FSPEC:449-450` reads "Released … in-place rewrite" / "Removed | **never by the
+   pass**", `FSPEC:455-456` states why, and the empty arm now sits at `FSPEC:493`. FSPEC v11.3 answered the product
    question — *must the durable log witness a pass that dies mid-take?* — **yes**, and answered it
    with a representation rather than a removal verb: **BR-14a** releases by writing
-   `RELEASED: {passId} {ISO-8601}` (`FSPEC:2585`), **E-11** is reachable *because* of that
-   (`FSPEC:2678`), **E-11b** takes a `RELEASED:` marker like an absent one at any age (`FSPEC:2679`).
+   `RELEASED: {passId} {ISO-8601}` (`FSPEC:2600`), **E-11** is reachable *because* of that
+   (`FSPEC:2693`), **E-11b** takes a `RELEASED:` marker like an absent one at any age (`FSPEC:2694`).
    TSPEC §7.3 adopts all three and raises no erratum of its own (`TSPEC:1015-1020`). Nothing is handed
    up here; what this closure costs **this** document is the two-halves supersession recorded in §9.
 2. **REQ §3.1 step 1 / FSPEC AT-P7 — the enumeration relaxation** (DEC-CONS-05). `REQ:115-116`'s
