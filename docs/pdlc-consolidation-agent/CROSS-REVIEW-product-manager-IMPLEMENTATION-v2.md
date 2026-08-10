@@ -113,6 +113,76 @@ them. The v1 file remains the actionable text.
 
 ## Positive Observations
 
+v1's positives stand in full and I will not re-list them — the falsifiability
+machinery, the set-equality discipline in `routeOf` and the PR trailer, the
+credential that never becomes a string, and the `no-cadence-datum` bootstrap are all
+unchanged on disk and all still good work. Re-reading them this round did not
+weaken any.
+
+Two things worth adding, both discovered while re-verifying rather than in v1:
+
+- **The defect surface really is only five call sites.** Having now walked the same
+  ground twice, I can say the gap between what this module computes and what it
+  delivers is five lines of wiring, not a design problem. `state.deferred` reaching
+  `:1052` is the clearest instance: the data is already assembled correctly and
+  travels correctly, and one renderer change closes AC-7.1's half of F-04. That is a
+  good position to be stalled in.
+- **Nothing regressed.** The convergence question this round includes "did the
+  revision break anything," and the honest answer is that it could not have — the
+  tree is byte-identical. Every green suite is still green for the same reasons, and
+  the one red suite is still the documented untracked-file false-red, not a code
+  fault.
+
 ## Recommendation
 
+**Needs revision.**
+
+Five High findings are open, unchanged, and re-confirmed at the same line numbers.
+Under the High-only bar that is decisive, and I want to be precise about *why* it is
+decisive rather than merely arithmetic: the verdict is not a judgement that the
+round was wasted or that the work is poor. It is that the product gap v1 named —
+three ACs' worth of computed behaviour that never reaches the operator — is exactly
+as wide today as it was then. REQ-CONS-05 is what makes this a consolidation *agent*
+rather than a consolidation *script*; until the effectiveness ladder can be reached
+and reported, the pass can promote forever and never once tell the operator that a
+promotion did not work.
+
+The path to Approved is unchanged and short. In priority order, and all five in
+`pdlc/workflows/consolidate-learnings.js`:
+
+1. **F-01** — at `:651`, build the prior-pass list from the log's
+   `<!-- pdlc:consumed -->` blocks (oldest first, current pass last) so the streak
+   folds can reach `ineffective` and `unmeasurable`. `effectivenessTable` itself
+   needs no change.
+2. **F-02** — for each `ineffective` row, call `remediationChoice`, write the
+   `revision`/`retirement` onto the row, and route the resulting proposal like any
+   other (AC-5.4).
+3. **F-03** — call `seamCandidates(escalations.counts)` at `:637` and carry the
+   result on `state.advisory`.
+4. **F-04** — render `deferred:` from `state.deferred` at `:2008` and `:2065`. The
+   datum already reaches `:1052`; keep `none` for the genuinely empty case.
+5. **F-05** — render item 7 at `:2064` from `state.advisory`: corpus state always,
+   candidate when F-03 produces one.
+
+F-06 through F-08 remain non-gating and can travel in the same change or a later one.
+
+The one request from v1 I want to repeat, because it is what would stop this
+recurring: **each of F-01 through F-05 should land with a test that exercises
+`main()`, not the helper.** Every one of these functions is already unit-tested and
+every one of those tests is green — the functions are correct, the calls are absent,
+so a helper-level oracle structurally cannot see the defect. A `main()`-level case
+for F-04 that supplies a non-empty `state.deferred` and asserts the rendered field is
+not `none` would have caught it at authoring time, and today no test asserts that
+field's value at all, because FSPEC §10.3 classifies it free-form and
+`consolidationReport.test.js:235` excludes the name from vocabulary comparison. That
+exclusion is correct for vocabulary and wrong as a substitute for a value assertion.
+
+If Q-01 is answered as "deferred by intent," say so in a D-CONS row bound to a named
+successor and I will re-review against that framing in one round — F-02 and F-03
+would drop to Low, and F-01, F-04 and F-05 alone would still be a short path to
+Approved.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 2, "low": 1}
