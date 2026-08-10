@@ -9,18 +9,43 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.1 | 2026-08-10 |
+| pdlc | draft | Claude | 2.2 | 2026-08-10 |
+
+> **2.2 (round-10 Lows and one question, no mechanism change).** Five corrections, none touching a
+> decision, obligation, oracle strength or acceptance criterion. (a) **The FSPEC is no longer cited
+> by line anywhere.** pm-review F-01 and te-review L-01 both landed on hand-copied `FSPEC-…:NNNN`
+> coordinates going stale (v11.4 moved every register locator +34; v11.6 moved them again), so all
+> twelve are re-cast as *§-number + heading + id* and §12.3 states the rule — including its
+> corollary for erratum entries, which is pm-review v11's F-01. (b) §12.3's register measurement is
+> re-derived at FSPEC **v11.6**: still **99**, still set-equal to §12.3's table with an empty diff
+> both ways, and the version qualifier is now a re-derivation date rather than a pin, since
+> `consolidationTraceability.test.js` is what must red on a fourth drift. (c) §11.6 discloses that
+> `rtCheckFile`'s catch-all routes *any* unrecognised probe reply to `file_missing`
+> (`runtime-adapter.js:830`) while the double routes only genuine absence there, so §7.3 decision
+> 2's absent arm is **fail-open** on a garbled reply and no L2 fixture can reach it — te-review
+> L-02. §5.1's agreement claim is scoped to the file states, which is all decision 2 rests on. (d)
+> §11.4 gains the **`parseMarker`** strategy (te-review L-03), stated as an iff with a round-trip
+> conjunct, since v2.0 widened that grammar to two forms plus a `state` discriminant; T-09's row in
+> §12.2 now carries the count. (e) te-review Q-01 answered: T-13's conjunct (ii) and the
+> release-set case **pin `_now`** rather than shape-matching the timestamp, in the shape the shipped
+> suites already use, so `{ISO-8601}` is a literal expected value and a release stamped with the
+> take's instant reds.
 
 > **2.1 (erratum round 9, targeted edit — no restructuring).** Three cross-reference errata, nothing
 > else; no mechanism, decision or obligation changes. (a) §7.9's NFR-2 / §7.4 row (`:1418`) cited the
 > inbound-residual render sites by stale line — §10.3 row 1a is at `:1950`, not `:1832`, and
 > `openClone`'s signature is at `:1615`, not `:1522`; both pointers re-measured at HEAD and corrected.
 > (b) §10.3 row 4 and §13.1 row 13 both called the empty-or-neither-form marker state "FSPEC §4.2's
-> **fourth** row"; at FSPEC HEAD it is the **fifth** (`FSPEC-…:493`) and the fourth is the stale
-> `IN-PROGRESS:` reclaim row (`:492`), so an AT fixtured from the old wording would have built the
-> wrong state and proved nothing about **E-11**. Both sites now name the fifth row and cite the FSPEC
-> line. (c) the 1.7 changelog entry located the NFR-2 row at "§8, `:1325`" — a blank line at HEAD, and
-> the wrong section; the row lives in §7.9 at `:1418`. The same stale `TSPEC:1325` pointer in §13.1
+> **fourth** row"; it is the **fifth** — *"Present but **empty**, or a line that is neither form"* —
+> and the fourth is the stale `IN-PROGRESS:` reclaim row, so an AT fixtured from the old wording
+> would have built the wrong state and proved nothing about **E-11**. Both sites now name the fifth
+> row. (The line numbers this entry originally carried for those two rows had themselves drifted by
+> 2.2 — see the citation rule in §12.3 — so both sites, and this entry, name the rows by their text.) (c) the 1.7 changelog entry located the NFR-2 row at "§8, `:1325`" — **the wrong section**;
+> the row lives in §7.9. (This entry originally added "a blank line at HEAD" of the stale target.
+> That was true when the erratum was raised and false by the time it was written, because this
+> entry's own 13-line insertion moved the content down. It is struck at 2.2, and the general rule
+> is now stated in §12.3: an erratum entry cites what a pointer **should** name, never narrates what
+> the stale one currently hits, because the edit that carries the narration invalidates it.) The same stale `TSPEC:1325` pointer in §13.1
 > row 1's inbound-residual note is corrected with it, being the same fact.
 
 > **2.0 (mechanism change, not a patch — hence the major bump).** The marker's **release form** is
@@ -2540,7 +2565,11 @@ again), and no oracle in this document may locate anything by line index anyway 
 §12.2 already require source-text assertions to be anchored "by the surrounding named heading and
 never by line index". **That rule governs this document's own citations of the FSPEC as well**: an
 FSPEC anchor is named as *§-number + heading + id* (`FSPEC §13.5 register, AT-Q13`), which survives
-the drift a line number cannot. Every register id has exactly one file below:
+the drift a line number cannot. **The rule has a corollary for erratum changelog entries, learned
+the expensive way:** an entry cites what a pointer *should* name and never narrates what the stale
+one currently hits, because the insertion that carries the narration moves the content it describes
+and so invalidates itself in the same commit — which is exactly what the 2.1 entry's "a blank line
+at HEAD" did, and why it is struck at 2.2. Every register id has exactly one file below:
 
 | File | Level | ATs owned (exhaustive) |
 |---|---|---|
