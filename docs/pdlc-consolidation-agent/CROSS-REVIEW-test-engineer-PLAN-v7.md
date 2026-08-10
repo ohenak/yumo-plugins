@@ -113,4 +113,39 @@ accepting it — which is what the finding table would have demanded of a test.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. The convergence question for this round has two halves and both answer
+cleanly. **Did the revision close what I asked?** Yes, and by a better route than either
+option I offered: v6's F-01 and F-02 were both about a `Status` column that had become a
+ledger for three rows and a baseline for thirty-one, and the revision closed the class
+rather than the instances — §2 states the column is a Phase-P baseline owned by nobody
+during Phase I, and all **34** rows now carry `⬚`, measured. The rule's grounding
+resolves at every one of its five citations, and it survives an attack the citations do
+not cover (no column predicate can match `status`). **Did the revision break anything?**
+No: 34 tasks with `errors: []`, 34 ownership rows, `validatePlanContract` `{"ok":true}`,
+15 ready-sets, 15 waves, 0 batch-column mismatches, 0 same-batch same-file collisions —
+every number re-derived, none copied, all identical to v1.4's and v1.5's, which is what a
+`Status`-only diff must return. The batch DAG, the ownership manifest, the un-skip chain
+and the TDD ordering are where round 4 left them.
+
+The two findings I file are prose-level and non-gating. F-01 is the more interesting of
+the two: the version header claims to have reverted four cells and names T28 among them,
+but the base commit carries three non-`⬚` cells and T28 was already blank. It costs a
+two-word edit, and it is worth making because that header is what a later harvest reads
+to reconstruct the round — and because a hand-kept count of hand-kept cells is the very
+shape §2 just ruled out one level down. F-02 is smaller: the status key still advertises
+four glyphs the rule forbids the column to carry, on the same screen as the rule. Both
+are recorded, not blocking.
+
+No upstream defect found this round. Every repository fact the revision leans on was
+checked against the committed tree and holds — `parsePlanTasks` at `:3761`, the LOOSE
+ruling at `:3764`, the header sets at `:3797-3798`, `WAVE_STATE_PATH` at `:8860`,
+`parseWaveLedger` at `:8916`, `runtimeBundle.test.js:230` and `:1057` — so I emit no
+errata.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+
+{"high": 0, "medium": 1, "low": 1}
