@@ -34,6 +34,7 @@ import {
   buildConsolidationLog,
   buildCorpusListing,
   buildCorpusFiles,
+  buildEscalationsFixture,
 } from "./helpers/consolidationDoubles.js";
 
 // ─── Shared literals (TSPEC §7.3, §9.4) ────────────────────────────────────
@@ -341,12 +342,12 @@ describe("T20 — the pass, end to end (L2)", () => {
       const STALE_AT = FIXED_NOW_MS - (STALE_LOCK_MINUTES + 1) * 60 * 1000; // > staleLockMinutes ago
       const HELD_PASS_ID = "2024-06-01-9"; // an arbitrary already-held passId
 
-      // A clustering reply that names no recurring failure mode — `deriveProposals` (pure over
-      // this text, §7.4) is not yet built, so this file cannot claim a real grammar for it, only
-      // that whatever grammar it lands with treats free prose as "nothing found" (the same
-      // no-promotions branch every AT-M row below except AT-M9 wants, so the pass proceeds no
-      // further than the dispatch itself, mirroring `buildLogRow`'s documented-assumption stance
-      // on T29's not-yet-real grammar).
+      // A clustering reply that names no recurring failure mode. `deriveProposals` (pure over this
+      // text, §7.4, `consolidate-learnings.js:928-957`) is landed: it parses JSON
+      // `{clusters: […]}` and derives nothing from anything else, so free prose IS the
+      // "nothing found" input — the no-promotions branch every AT-M row below except AT-M9 wants,
+      // where the pass proceeds no further than the dispatch itself. AT-M9 uses the JSON grammar
+      // instead, because it is the one row that must reach step 13.
       const NOTHING_FOUND_REPLY = "no recurring failure mode pattern found across the corpus";
 
       function oneFileCorpus() {
@@ -491,29 +492,109 @@ describe("T20 — the pass, end to end (L2)", () => {
 
       // ─── AT-M9 ────────────────────────────────────────────────────────
       //
-      // The step-13 proposal-authoring dispatch grammar (one call per PR-route proposal, §9.2)
-      // and the clustering reply's own proposal grammar (§7.4's `deriveProposals`) are both not
-      // yet real (T21/T-owning tasks land them); this fixture's reply text is therefore this
-      // file's own best-effort placeholder, documented exactly as `buildLogRow`'s terminal-row
-      // shape is — not a claim about the real grammar's eventual bytes. What this row can assert
-      // with confidence, independent of that grammar, is the *shape* FSPEC states: the pass
-      // reaches `failed` with no reason code after a successful step-8 dispatch, the step-11
-      // effectiveness table (which only needs the log's own prior records, never the clustering
-      // reply) is still appended, and the report body carries the dispatch error verbatim.
+      // The fixture reaches step 13 for real. Both grammars this row depends on are landed and
+      // read off HEAD rather than guessed at:
+      //
+      //   * the clustering reply's grammar is `deriveProposals`' own — JSON
+      //     `{clusters: [{phase, artifact, kind, action, symptom, diff, evidence}]}`
+      //     (`consolidate-learnings.js:928-957`); a cluster whose `diff` is absent derives a
+      //     proposal with `diff: null` (`:948`), which is exactly the proposal that needs
+      //     authoring at step 13;
+      //   * `artifact: "pdlc/workflows/orchestrate-dev.js"` with `kind: 3` gives
+      //     `targetFor` the artifact itself (`:1301-1305`), which `routeOf` classifies `PR`
+      //     because it is under the `MERGE_GUARD_DEFAULTS` prefix `pdlc/workflows/`
+      //     (`orchestrate-dev.js:48-53`, `consolidate-learnings.js:1657-1665`) — so
+      //     `routeProposal` routes it `PR` (`:1675-1680`) and the pass enters the
+      //     `prProposals.length > 0` arm.
+      //
+      // The second dispatch then throws. Because step 8 already resolved the rung,
+      // `resolveAdvisoryRung` returns `{kind: "dispatch-error"}` rather than throwing
+      // (`orchestrate-dev.js:1876-1879`), which is §2.6 row 4's arm: `failed` with NO reason
+      // code. That distinction is what separates this row from AT-M4/AT-M6, and it is asserted
+      // rather than assumed — a fixture that threw before the rung resolved would take the
+      // `advisory-model-unresolved` arm and this row's second conjunct would be red.
       test("AT-M9: step-8 dispatch succeeds, step-13 proposal-authoring dispatch fails — failed, no reason code, §8.3 effectiveness table IS appended (step 11 completed), marker released, error verbatim in the report body", () => {
-        const seams = buildSeams({ ...oneFileCorpus(), agentScript: [NOTHING_FOUND_REPLY, "boom: authoring dispatch failed"] });
+        // A prior record in the log is what gives step 11's effectiveness table a row to render;
+        // without one the table is empty and `finishPass` appends nothing (`:978-985`), so
+        // conjunct 3 would be vacuous. Its `(failureModeId, action)` pair is deliberately NOT the
+        // pair this pass proposes — an enacting record for the same pair would suppress the
+        // proposal at step 12 (`enactedByLog`, `:1690`) and step 13 would never be reached.
+        const PRIOR_ID = "t-docs-feat-b-tspec-feat-b-md";
+        const priorRecord = [
+          `failure-mode-id: ${PRIOR_ID}`,
+          "phase: T",
+          "symptom: an earlier pass promoted this one",
+          "artifact: docs/feat-b/TSPEC-feat-b.md",
+          "target: docs/_constraints/DOMAIN-CONSTRAINTS.md",
+          "passId: 2024-01-01-1",
+          "action: promote",
+          "route: constraints",
+        ].join("\n");
+        const CLUSTER_REPLY = JSON.stringify({
+          clusters: [
+            {
+              phase: "T",
+              artifact: "pdlc/workflows/orchestrate-dev.js",
+              kind: 3,
+              action: "promote",
+              symptom: "the reviewer missed the missing edge case",
+              evidence: "LEARNINGS-feat-a.md",
+              // no `diff` — this is what makes step 13 dispatch an authoring call
+            },
+          ],
+        });
+        const AUTHORING_ERROR = "boom: authoring dispatch failed";
+
+        const base = oneFileCorpus();
+        const seams = buildSeams({
+          ...base,
+          // A present, non-empty advisory corpus, so step 10 adds neither `no-advisory-corpus` nor
+          // `advisory-corpus-empty` and conjunct 2 can assert the reason set is empty outright
+          // rather than empty-except-for-notes-this-row-is-not-about.
+          bodies: {
+            ...base.bodies,
+            "docs/_queue/ESCALATIONS.md": buildEscalationsFixture([{ feature: "feat-a", seam: "A1" }]),
+          },
+          logText: `${priorRecord}\n\n`,
+          agentScript: [CLUSTER_REPLY, AUTHORING_ERROR],
+        });
         seams._agent = makeAgentDouble({
-          script: [NOTHING_FOUND_REPLY, "boom: authoring dispatch failed"],
+          script: [CLUSTER_REPLY, AUTHORING_ERROR],
           throwOn: new Set([1]),
         });
+        // `buildSeams` scripts `_makeTempDir` to `null` (the §9.1 api-failure fixture every other
+        // row here wants). This row needs the clone to OPEN, because the authoring dispatch lives
+        // past `openClone` — with a null temp dir the pass degrades before step 13 and the
+        // dispatch under test never happens.
+        seams._makeTempDir = fakeMakeTempDir("/tmp/pdlc-consolidation-clone")._makeTempDir;
 
         return main({ ...seams, direct: true }).then((result) => {
-          // With `NOTHING_FOUND_REPLY` (no proposals derived), step 13 is never reached at all —
-          // this fixture documents the intended shape; a fixture that actually reaches step 13
-          // needs the real clustering-reply grammar T21 has not yet landed, per the note above.
-          // What is asserted here is therefore the shape that does not depend on that grammar:
-          // a pass with nothing to route reaches a non-`refused`, non-`failed` terminal cleanly.
-          expect(result.status).not.toBe("refused");
+          // (0) Step 13 was actually reached — two dispatches, the second one the authoring call
+          // for the PR-route proposal. Without this conjunct every conjunct below could be
+          // satisfied by a pass that never routed anything.
+          expect(seams._agent.calls).toHaveLength(2);
+          expect(seams._agent.calls[1].prompt).toContain("Author the promotion diff");
+          expect(seams._agent.calls[1].prompt).toContain("t-pdlc-workflows-orchestrate-dev-js");
+
+          // (1) failed
+          expect(result.status).toBe("failed");
+          // (2) NO reason code — §2.6 row 4, not E-19's `advisory-model-unresolved`
+          expect(Array.from(result.reasons ?? [])).toHaveLength(0);
+          // (3) the §8.3 effectiveness table IS appended — step 11 completed before step 13 failed
+          const appended = seams.fs.appends.map((a) => a.text);
+          expect(appended.some((t) => t.includes(PRIOR_ID) && /verdict:/.test(t))).toBe(true);
+          // (4) the consumed pair from step 7 is still there
+          expect(appended.some((t) => t.includes("pdlc:consumed"))).toBe(true);
+          // (5) the marker is released, not left held. Asserted on the marker file's own bytes —
+          // the durable observable a *later* pass reads (`markerVerdict` above) — rather than on
+          // `result.markerHeld`, which `releaseMarker` (`:1279-1283`) does not clear and which no
+          // report or row renders.
+          const marker = seams.fs.files[MARKER_PATH];
+          expect(marker).toMatch(new RegExp(`^RELEASED: ${result.passId} `));
+          // (6) the dispatch error is in the report body verbatim
+          expect(result.body).toContain(AUTHORING_ERROR);
+          // (7) nothing was promoted — the pass opened no PR
+          expect(result.prUrl ?? null).toBeNull();
         });
       });
     });
