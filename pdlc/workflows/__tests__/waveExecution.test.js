@@ -1611,15 +1611,61 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     expect(logs.some((m) => m.includes("was ignored"))).toBe(false);
   });
 
-  it("clears the ledger once every wave is green", async () => {
+  it("keeps the completion record once every wave is green", async () => {
     const writes = [];
     const result = await main(makeLedgerArgs({ writes, git: makeGit([]) }));
 
     expect(result.outcome).toBe("success");
-    // Three per-wave records, then the clear — in that order.
+    // Three per-wave records and nothing after them: the final record IS the
+    // completion record the next invocation's resume path honours.
     const recorded = ledgerWrites(writes);
-    expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3, undefined]);
-    expect(recorded[recorded.length - 1]).toBe("{}\n");
+    expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
+  });
+
+  it("a complete ledger skips every wave without a single implementation dispatch", async () => {
+    const record = [];
+    const logs = [];
+    const writes = [];
+    const ledger = JSON.stringify({
+      version: 1,
+      feature: FEATURE,
+      planHash: computePlanHash([
+        [{ id: "T1", files: ["src/one.js"] }],
+        [{ id: "T2", files: ["src/two.js"] }],
+        [{ id: "T3", files: ["src/three.js"] }],
+      ]),
+      lastGreenWave: 3,
+    });
+    const result = await main(makeLedgerArgs({ ledger, record, logs, writes, git: makeGit([]) }));
+
+    expect(result.outcome).toBe("success");
+    // Not one WAVE dispatch went out — Phase PT's V-wave verification is its
+    // own phase and still runs.
+    const waveDispatches = record.filter(
+      (d) => d.skill === "se-implement" && !/PROPERTIES tests/.test(String(d.prompt))
+    );
+    expect(waveDispatches).toEqual([]);
+    expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(true);
+    // The record is left standing for the invocation after this one.
+    expect(ledgerWrites(writes)).toEqual([]);
+  });
+
+  it("a ledger recording more waves than the plan has is ignored, not honoured", async () => {
+    const logs = [];
+    const ledger = JSON.stringify({
+      version: 1,
+      feature: FEATURE,
+      planHash: computePlanHash([
+        [{ id: "T1", files: ["src/one.js"] }],
+        [{ id: "T2", files: ["src/two.js"] }],
+        [{ id: "T3", files: ["src/three.js"] }],
+      ]),
+      lastGreenWave: 4,
+    });
+    const result = await main(makeLedgerArgs({ ledger, logs, git: makeGit([]) }));
+
+    expect(result.outcome).toBe("success");
+    expect(logs.some((m) => m.includes("was ignored") && m.includes("only 3"))).toBe(true);
   });
 
   it("writes no ledger at all when there is no git transport to commit with", async () => {
@@ -1708,15 +1754,15 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     expect(logs.some((m) => m.startsWith("Resuming at wave"))).toBe(false);
   });
 
-  it("a matching record whose waves are all green is ignored, and every wave runs", async () => {
-    // Same feature, same plan — but it claims the whole plan is already done.
-    // Fail-open: re-running is safe, skipping the entire phase is not.
+  it("a matching record whose waves are all green skips Phase I whole, and the row says so", async () => {
+    // Same feature, same plan, the whole plan recorded done — honoured: the
+    // feature/planHash match is the staleness guard, and re-dispatching every
+    // wave over a finished tree is the failure mode this exists to end.
     const writes = [];
     const first = await main(makeLedgerArgs({ writes, git: makeGit([]) }));
     expect(first.outcome).toBe("success");
-    const wave3Record = ledgerWrites(writes).find(
-      (t) => t !== "{}\n" && JSON.parse(t).lastGreenWave === 3
-    );
+    const wave3Record = ledgerWrites(writes).find((t) => JSON.parse(t).lastGreenWave === 3);
+    expect(wave3Record).toBeDefined();
 
     const record = [];
     const logs = [];
@@ -1725,11 +1771,11 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     );
 
     expect(result.outcome).toBe("success");
-    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
-    expect(logs).toContain(
-      `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — it records 3 wave(s) ` +
-        `green and this plan has 3. Running every wave from 1.`
-    );
+    expect(dispatchedTaskIds(record)).toEqual([]);
+    expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(true);
+    const row = result.phases.find((p) => p.phase === "I");
+    expect(row.status).toBe("⏭");
+    expect(row.detail).toContain("recorded green (wave ledger)");
   });
 
   it("a ledger write that throws is a notice, never a halt", async () => {

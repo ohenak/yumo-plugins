@@ -8886,9 +8886,6 @@ export function formatUnskipViolations(waveNum, violations) {
 // that shipped before it existed — a full run from wave 1.
 export const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
 
-/** The cleared ledger: an empty object, which `parseWaveLedger` reads as absent. */
-const WAVE_LEDGER_CLEARED = "{}\n";
-
 /**
  * An integrity-lite fingerprint of a computed wave plan: FNV-1a (32-bit) over
  * the wave order, the task ids and the owned paths.
@@ -10811,6 +10808,7 @@ export default async function main({
       // uses; every rejection below is a notice and a full run, never a halt.
       const planHash = computePlanHash(waves);
       let ledgerResume = false;
+      let allWavesRecorded = false;
       if (!explicitPointer) {
         const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
         const ledger = parseWaveLedger(ledgerRaw);
@@ -10830,10 +10828,26 @@ export default async function main({
             );
           } else if (recorded.planHash !== planHash) {
             ignore("the PLAN's wave layout has changed since it was written");
-          } else if (recorded.lastGreenWave >= waves.length) {
+          } else if (recorded.lastGreenWave > waves.length) {
             ignore(
               `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
-                `${waves.length}`
+                `only ${waves.length}`
+            );
+          } else if (recorded.lastGreenWave === waves.length) {
+            // A COMPLETE ledger: every wave of this exact plan was committed and
+            // recorded green by an earlier run. Honouring it is what makes a
+            // post-Phase-I re-invocation (a halt in CR, DOD or PUB) resume in
+            // minutes instead of re-dispatching every wave over a finished tree.
+            // The feature and planHash matches above are what make it safe: any
+            // PLAN change re-derives a different hash and runs every wave.
+            startWave = waves.length + 1;
+            ledgerResume = true;
+            allWavesRecorded = true;
+            emit(
+              `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
+                `${waves.length} waves of this plan were committed and recorded ` +
+                `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
+                `full run.`
             );
           } else {
             startWave = recorded.lastGreenWave + 1;
@@ -10866,6 +10880,7 @@ export default async function main({
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
+        if (allWavesRecorded) break;
         if (waveNum < startWave) {
           emit(
             `Wave ${waveNum}/${waves.length}: skipped (` +
@@ -10989,20 +11004,31 @@ export default async function main({
         }
       }
 
-      // Every implementation wave is green and committed: the resume pointer has
-      // nothing left to point at, and a stale one is the only way this mechanism
-      // can skip work that still needs doing.
-      if (waveGit) {
-        await writeWaveLedger(WAVE_LEDGER_CLEARED, "clear");
-      }
+      // Every implementation wave is green and committed. The record is KEPT —
+      // the last per-wave write already says `lastGreenWave === waves.length`,
+      // and the resume path above honours exactly that shape, so a later
+      // invocation of this same plan (a halt in CR, DOD or PUB) skips Phase I
+      // instead of re-dispatching every wave over a finished tree. Staleness is
+      // guarded where it always was: any PLAN change re-derives a different
+      // planHash and the ledger is ignored.
 
-      recordPhase(
-        "I",
-        "Implementation",
-        "✅",
-        `All ${waves.length} waves complete (wave mode, ` +
-          `${scriptGate ? "script-owned gate" : "self-report gate"})`
-      );
+      if (allWavesRecorded) {
+        recordPhase(
+          "I",
+          "Implementation",
+          "⏭",
+          `Skipped — all ${waves.length} waves previously committed and ` +
+            `recorded green (wave ledger)`
+        );
+      } else {
+        recordPhase(
+          "I",
+          "Implementation",
+          "✅",
+          `All ${waves.length} waves complete (wave mode, ` +
+            `${scriptGate ? "script-owned gate" : "self-report gate"})`
+        );
+      }
 
       // ─── PROPOSAL §3.2 row 2 — Phase PT becomes Phase I's final V-wave ────
       //
