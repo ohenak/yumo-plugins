@@ -902,11 +902,11 @@ must land as properties rather than as unit cases:
      `add`, `commit`, `push` observed in the clone domain.
   4. **the two `∅` equalities of AT-Q7c** (`TSPEC:2203` *names* the conjuncts but defines them
      nowhere — `grep -n AT-Q7c` on the TSPEC returns `:2192`, `:2203`, `:2481`, `:2502`, none a
-     definition; the definition is upstream, at `FSPEC:2154` and `FSPEC:1060-1063`). They are
+     definition; the definition is upstream, at `FSPEC:2169` and `FSPEC:1075-1077`). They are
      **whole-domain emptiness equalities on two of the three domains**, asserted on AT-Q7c's Given —
      a pass terminating **`promoted`** with **no** guard-set proposal, so every promotion routes to
      the consuming repo and nothing routes to a PR or a clone:
-     **PR-seam observed `= ∅`** and **clone-seam observed `= ∅`** (`FSPEC:2154`: "the PR seam and
+     **PR-seam observed `= ∅`** and **clone-seam observed `= ∅`** (`FSPEC:2169`: "the PR seam and
      the clone seam observing `∅` and the invoking tree observing a set **bounded on both sides**").
      Three things a property author must carry with them. (i) The **invoking tree is explicitly the
      domain that is not `∅`** on this Given: it contains `{add, commit}` and is contained in that
@@ -914,22 +914,32 @@ must land as properties rather than as unit cases:
      obliged `add` and `commit`, plus permitted
      `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index` — containment in
      both directions, never equality, because the read verbs are permitted and neither their presence
-     nor their absence is asserted. **Take the upper bound from `TSPEC:1724`, not from `FSPEC:2154`.**
-     `FSPEC:2154` renders it "(its permitted set)" and spells it `{add, commit, read-branch,
-     read-status}`, which is FSPEC §6.5's **pre-widening** set: TSPEC §9.3 widens this domain by three
-     non-mutating verbs (`TSPEC:1719` — "exactly four widenings … each marked ⊕ below"; the widening
-     table at `TSPEC:1743-1745` names `read-object` for `git cat-file -e HEAD:{path}`, `read-remote`
-     for `git remote get-url origin`, `read-index` for `git ls-files --cached --others
-     --exclude-standard -- :(glob)…`). At least one of the three is observed on AT-Q7c's **own**
-     Given: a `promoted` pass enumerated a corpus by definition, and §7.1's enumeration is the
-     `git ls-files` call — `read-index` — reached through `enumerateCorpus(_git)` (`TSPEC:672`,
-     `TSPEC:1745`). A property transcribing FSPEC's four-verb bound is therefore **red on correct
-     code**. This is the same defect §5 domain 1 of this document records as already withdrawn once
-     (`DECISIONS:293-297`), and the corrected five-read set there and the one here are the same set by
-     construction — if one moves, both move. `FSPEC:2154`'s parenthetical is stale and is raised as an
-     erratum against the FSPEC, not corrected here.
+     nor their absence is asserted. The two upstream statements of that bound now **agree**, and this
+     paragraph's earlier warning ("take the upper bound from `TSPEC:1724`, **not** from `FSPEC:2154`")
+     is **withdrawn as of FSPEC v11.5** — it was correct when written and is no longer. The erratum
+     this document raised has been **answered upstream, not carried**: FSPEC's changelog records it as
+     erratum (1) of the Phase D round (`FSPEC:13-22`) in the same terms this entry used — the row
+     "spelled §6.5's pre-widening literal `{add, commit, read-branch, read-status}` and called it 'its
+     permitted set'", `read-index` "is observed on AT-Q7c's own `promoted` Given via §7.1's corpus
+     enumeration — so an AT transcribing the row as it stood was red on correct code". At HEAD
+     `FSPEC:2169` states the bound as "§6.5's frozen `{add, commit, read-branch, read-status}` ∪ every
+     widening TSPEC has recorded against it under DEC-LAYER-01, which at TSPEC §9.3 is ⊕ `read-object`,
+     ⊕ `read-remote`, ⊕ `read-index`", spells the resulting seven-verb set out, and adds the reason in
+     its own voice: "a test transcribing §6.5's pre-widening literal is red on correct code". That is
+     the same set `TSPEC:1724` carries, reached by the same construction, so **either upstream source
+     may be transcribed now** — and the standing instruction is unchanged in substance: transcribe the
+     *recorded* set, never §6.5's frozen literal alone. The evidence for that set is still local:
+     TSPEC §9.3 widens this domain by three non-mutating verbs (`TSPEC:1719` — "exactly four widenings
+     … each marked ⊕ below"; the widening table at `TSPEC:1743-1745` names `read-object` for
+     `git cat-file -e HEAD:{path}`, `read-remote` for `git remote get-url origin`, `read-index` for
+     `git ls-files --cached --others --exclude-standard -- :(glob)…`), and at least one of the three is
+     observed on AT-Q7c's **own** Given: a `promoted` pass enumerated a corpus by definition, and
+     §7.1's enumeration is the `git ls-files` call — `read-index` — reached through
+     `enumerateCorpus(_git)` (`TSPEC:672`, `TSPEC:1745`). This was the same defect §5 domain 1 of this
+     document records as already withdrawn once (`DECISIONS:293-297`); the corrected five-read set
+     there and the one here remain the same set by construction — if one moves, both move.
      (ii) Neither `∅` equality is implied by conjunct 2: `∅ ⊆ permitted` is satisfied **vacuously**
-     by containment, which is exactly why `FSPEC:1060-1063` calls the two conjuncts equalities "with
+     by containment, which is exactly why `FSPEC:1075-1077` calls the two conjuncts equalities "with
      the empty set rather than with a permitted set" and warns that weakening them to containment
      "would leave that row nothing to catch" — a pass that quietly clones, branches, commits and
      pushes, or that quietly reads a PR, when nothing routes there. (iii) **No** obligation is
