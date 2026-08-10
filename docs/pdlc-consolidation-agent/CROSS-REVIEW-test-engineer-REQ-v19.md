@@ -71,7 +71,36 @@ and re-measured.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | **New, and F-64 makes it concrete.** The "one epoch" preamble is a promise the document makes about itself, and the only thing checking it today is a reviewer reading every anchor by hand — which is how F-64 survived a sweep that explicitly aimed at it. Is a DoD-time grep-shaped check worth a row: extract every `` `path:NN` `` and `` `:NN` `` continuation from `docs/{feature}/*.md`, resolve each against HEAD, fail on any that lands on a blank line, a comment, or a line whose text does not contain the named role token? It fails the right way — loudly, on a line number, no judgment call — and it is the mechanical form F-60 has been asking for across three rounds. Process-scoped, non-blocking. |
+| Q-04 | Carried from v18, now partly answered. The preamble's "names the *role* the line plays" convention is the machine-extractable half of what Q-04 asked for: a role token beside a line number is greppable in a way a bare `:NN` is not. The open half is that the convention is applied unevenly — the `nudge-consolidation.sh` family carries roles ("the pending filter", "the whole-log read", "the emit-and-exit tail"), the `orchestrate-dev.js` guard family in F-64 carries none. Uniform application is what would make Q-05 implementable. |
+| Q-03 | Carried, still non-blocking, still PROPERTIES-layer. AC-3.4's "so on this path no proposal file exists to record into" (`:276-277`) is absence-shaped. A fixture asserting `not exists(CONSOLIDATION-PROPOSAL-…)` on the AC-3.4 path would go red on a conforming pass that also carries an AC-5.4 or AC-6.3 cause — and v2.3's set-equalisation of AC-3.8b makes that co-occurrence *more* visible, not less. The oracle a PROPERTIES author should write is positive and conjunctive: PR opened, `pr:` field present in the terminal log row, **and** no independent proposal cause held on that run. Worth one line of convention in the REQ preamble. |
+| Q-02 | Carried from v15/v16/v17/v18, unchanged by this delta: does the hook's enumeration and the pass's enumeration get a generator-driven **set-equality** property over a synthetic `docs/` tree (tracked, untracked, gitignored, staged-but-deleted, nested, `docs/discarded/`)? REQ-CONS-01 step 1 states the two mechanisms and the two classes on which they would disagree, so the expected set is transcribable from the spec rather than derived from either implementation. Set-equality, not containment — the failure mode is one enumeration dropping a basename the other keeps, which containment cannot see. |
+
 ## Positive Observations
+
+- **The sweep's re-measurements are exact everywhere it reached — 27 of 31 anchors.** I resolved
+  each one at HEAD rather than trusting the seven commit messages, including the ones most likely to
+  drift: `runtime-adapter.js:951`'s `ls -p -A … | grep -v '/$'` transcription, `orchestrate-queue.js:1587-1592`'s
+  multi-line commit array, and `orchestrate-dev.js:1879-1880`'s two adjacent constants. All land.
+- **"Code anchors: one epoch" is the right durable artefact, and it generalises past this feature.**
+  A standing preamble that pins the whole citation set to one commit and requires a role name beside
+  each line number converts an unbounded editorial obligation into a bounded, checkable one. It is
+  the first structural answer F-60 has received in three rounds. F-64 is a gap in *executing* it, not
+  a defect in the idea.
+- **F-57's fix went past what was asked and closed a termination question.** The finding asked only
+  that the REQ decide whether an unreadable basename counts toward the volume trigger. The revision
+  decides it *and* states the consequence — an entirely unreadable corpus still fires and still
+  terminates, each pass writing a terminal row with nothing consumed. That is a positive, falsifiable
+  oracle where a weaker fix would have left a PROPERTIES author writing an absence-only one.
+- **Retiring the v2.1/v2.2 notes was correct, not merely tidy.** Their corrections now stand in the ACs
+  themselves (REQ-CONS-01 step 1, §4b, AC-3.4, AC-6.3), and the retirement note says exactly where —
+  so a reader is never left comparing a note against an AC to work out which one is current. That is
+  the failure mode that produced F-59 in the first place.
+- **The blast radius was checked rather than assumed.** `docs/_constraints/` did not move, both version
+  pins (`1.0`, `1.4`) still resolve against their files, and every AC whose text was untouched reads
+  identically to the tree approved at v18 — so nothing previously approved needed re-judgment.
 
 ## Recommendation
 
