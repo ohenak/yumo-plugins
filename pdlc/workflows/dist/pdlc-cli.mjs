@@ -8977,20 +8977,40 @@ function parseWaveLedger(text) {
     return { state: null, reason: "its fields are not the shape this workflow writes" };
   }
 
-  return { state: { feature, planHash, lastGreenWave }, reason: null };
+  // `head` is the tree-side corroboration: the commit that carried the recorded
+  // wave's work. It is OPTIONAL on read — a ledger written before this field
+  // existed is still honoured on its feature/planHash match alone, because the
+  // file is untracked local state and a forced full re-run is the cost of
+  // rejecting it. Present but not a string, and it is simply not carried.
+  const head = typeof parsed.head === "string" && parsed.head.trim() !== "" ? parsed.head.trim() : null;
+
+  return { state: { feature, planHash, lastGreenWave, head }, reason: null };
 }
 
 /**
  * Serialise a ledger record. Pretty-printed and newline-terminated because the
  * one reader that matters most is a human debugging a resumed run.
  *
+ * `head` is the commit that carried this wave's work. It is what lets a later
+ * invocation ask the TREE whether the recorded work is still there, rather than
+ * trusting a record about a file the tree never sees: `feature` and `planHash`
+ * are both functions of the PLAN document, so a `git reset --hard` or a re-cut
+ * branch leaves them matching a ledger whose commits are gone. Omitted (null)
+ * when no git transport was injected, in which case the record carries the same
+ * fields it always did.
+ *
  * @param {string} feature
  * @param {string} planHash
  * @param {number} lastGreenWave
+ * @param {string|null} [head]
  * @returns {string}
  */
-function formatWaveLedger(feature, planHash, lastGreenWave) {
-  return `${JSON.stringify({ version: 1, feature, planHash, lastGreenWave }, null, 2)}\n`;
+function formatWaveLedger(feature, planHash, lastGreenWave, head = null) {
+  const record =
+    typeof head === "string" && head.trim() !== ""
+      ? { version: 1, feature, planHash, lastGreenWave, head: head.trim() }
+      : { version: 1, feature, planHash, lastGreenWave };
+  return `${JSON.stringify(record, null, 2)}\n`;
 }
 
 // ─── Runtime API stubs (replaced by real runtime in production) ───────────────
@@ -10828,6 +10848,31 @@ async function main({
               `Running every wave from 1.`
           );
 
+        // The tree-side corroboration. `feature` and `planHash` are both
+        // functions of the PLAN document, so neither can tell a finished tree
+        // from one that was `git reset --hard` or re-cut from the default branch
+        // since the record was written — and the ledger file is untracked, so it
+        // survives both. The recorded commit must still be reachable from HEAD;
+        // ancestry rather than equality, because every later phase (CR, DOD, PUB)
+        // legitimately moves HEAD forward and the resume case is exactly a
+        // re-invocation after those.
+        const headCorroborated = async (recordedHead) => {
+          if (!recordedHead) return true; // pre-`head` record: honoured as before
+          const transport = branchGuardTransport(gitFn);
+          if (!transport) return true; // no transport to ask — not evidence of absence
+          try {
+            const reply = await transport([
+              "merge-base",
+              "--is-ancestor",
+              recordedHead,
+              "HEAD",
+            ]);
+            return !!(reply && reply.ok === true);
+          } catch {
+            return true; // an unavailable probe is not a staleness claim
+          }
+        };
+
         if (ledger.reason) {
           ignore(ledger.reason);
         } else if (ledger.state) {
@@ -10838,6 +10883,12 @@ async function main({
             );
           } else if (recorded.planHash !== planHash) {
             ignore("the PLAN's wave layout has changed since it was written");
+          } else if (!(await headCorroborated(recorded.head))) {
+            ignore(
+              `the commit it records (${String(recorded.head).slice(0, 12)}) is not an ` +
+                `ancestor of HEAD — the branch was reset or re-cut since it was written, ` +
+                `so the work it records is not in this tree`
+            );
           } else if (recorded.lastGreenWave > waves.length) {
             ignore(
               `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
@@ -11007,8 +11058,21 @@ async function main({
           // no commits, and recording the wave green would strand that wave's
           // uncommitted work — a later resume would skip a wave whose work no
           // longer exists in the tree.
+          // The commit this wave's work landed on, stamped so a later invocation
+          // can corroborate the record against the tree (see `formatWaveLedger`).
+          // Best-effort: a transport that cannot answer costs the next run its
+          // corroboration, never this run its record.
+          let waveHead = null;
+          if (waveGit) {
+            try {
+              const rev = await waveGit(["rev-parse", "HEAD"]);
+              if (rev && rev.ok === true) waveHead = String(rev.stdout ?? "").trim() || null;
+            } catch {
+              waveHead = null;
+            }
+          }
           await writeWaveLedger(
-            formatWaveLedger(featureName, planHash, waveNum),
+            formatWaveLedger(featureName, planHash, waveNum, waveHead),
             `record wave ${waveNum} in`
           );
         }

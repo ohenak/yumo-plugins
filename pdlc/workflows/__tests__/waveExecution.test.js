@@ -1622,10 +1622,11 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
   });
 
-  it("a complete ledger skips every wave without a single implementation dispatch", async () => {
+  it("a complete ledger skips every wave without a single implementation dispatch — and Phase PT's V-wave and its gate still run", async () => {
     const record = [];
     const logs = [];
     const writes = [];
+    const gateCommands = [];
     const ledger = JSON.stringify({
       version: 1,
       feature: FEATURE,
@@ -1636,11 +1637,22 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
       ]),
       lastGreenWave: 3,
     });
-    const result = await main(makeLedgerArgs({ ledger, record, logs, writes, git: makeGit([]) }));
+    const result = await main(
+      makeLedgerArgs({
+        ledger,
+        record,
+        logs,
+        writes,
+        git: makeGit([]),
+        runCommand: async (command) => {
+          gateCommands.push(String(command));
+          return { ok: true, output: "green" };
+        },
+      })
+    );
 
     expect(result.outcome).toBe("success");
-    // Not one WAVE dispatch went out — Phase PT's V-wave verification is its
-    // own phase and still runs.
+    // ── The negative half: not one WAVE dispatch went out. ──────────────────
     const waveDispatches = record.filter(
       (d) => d.skill === "se-implement" && !/PROPERTIES tests/.test(String(d.prompt))
     );
@@ -1648,6 +1660,210 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(true);
     // The record is left standing for the invocation after this one.
     expect(ledgerWrites(writes)).toEqual([]);
+
+    // ── The positive half: the safety claim, asserted rather than commented ──
+    // "Phase PT's V-wave verification is its own phase and still runs" was true
+    // of HEAD but was carried only by the comment above: filtering the V-wave
+    // dispatch OUT of the negative conjunct proves nothing about whether it went
+    // out. Turn the `break` that skips the wave loop into an early return past
+    // Phase PT, or move the skip up to the `phaseFn("Phase PT…")` call, and the
+    // two expectations below go red while the negative half stays green. That is
+    // the mutation this pair exists to catch: a run that skips every wave AND
+    // never runs a single test command would otherwise ship as a success.
+    const vWaveDispatches = record.filter(
+      (d) => d.skill === "se-implement" && /PROPERTIES tests/.test(String(d.prompt))
+    );
+    expect(vWaveDispatches).toHaveLength(1);
+    // The gate is the script's, not the agent's self-report: the configured
+    // test command was actually run, exactly once, on this skip run.
+    expect(gateCommands).toEqual([JSON.parse(CONFIG_WITH_TEST_COMMAND).implementation.testCommand]);
+  });
+
+  // TE Phase CR F-02 / Q-02 — the record is corroborated against the TREE, not
+  // only against the PLAN. `feature` and `planHash` are both functions of the
+  // PLAN document, so a `git reset --hard` or a re-cut branch leaves a complete
+  // ledger matching on both while the commits it records are gone — and the
+  // ledger file is untracked, so it survives exactly the operations that destroy
+  // the work. The recorded commit is now stamped and checked for ancestry.
+  describe("the completion record is corroborated against the tree", () => {
+    const HEAD_SHA = "a".repeat(40);
+
+    /** A git transport that answers `rev-parse HEAD` with a fixed sha and scripts
+     *  the ancestry probe's verdict. */
+    function makeShaGit(calls, { ancestor }) {
+      return async (argv) => {
+        calls.push(argv);
+        const joined = argv.join(" ");
+        if (joined === "rev-parse --abbrev-ref HEAD") {
+          return { ok: true, stdout: `${BRANCH}\n`, stderr: "" };
+        }
+        if (joined === "rev-parse HEAD") {
+          return { ok: true, stdout: `${HEAD_SHA}\n`, stderr: "" };
+        }
+        if (argv[0] === "merge-base") {
+          return ancestor
+            ? { ok: true, stdout: "", stderr: "" }
+            : { ok: false, stdout: "", stderr: "" };
+        }
+        if (argv[0] === "diff") {
+          return { ok: true, stdout: `${argv.slice(4).join("\n")}\n`, stderr: "" };
+        }
+        return { ok: true, stdout: "", stderr: "" };
+      };
+    }
+
+    it("stamps the commit each recorded wave landed on", async () => {
+      const writes = [];
+      const result = await main(
+        makeLedgerArgs({ writes, git: makeShaGit([], { ancestor: true }) })
+      );
+
+      expect(result.outcome).toBe("success");
+      const records = ledgerWrites(writes).map((t) => JSON.parse(t));
+      expect(records.map((r) => r.lastGreenWave)).toEqual([1, 2, 3]);
+      // Every record carries the sha, not just the last one: a resume at wave 2
+      // needs corroboration as much as a skip of all three does.
+      expect(records.map((r) => r.head)).toEqual([HEAD_SHA, HEAD_SHA, HEAD_SHA]);
+    });
+
+    it("a complete ledger whose commit is NOT an ancestor of HEAD is ignored, and every wave runs", async () => {
+      const record = [];
+      const logs = [];
+      const calls = [];
+      const ledger = JSON.stringify({
+        version: 1,
+        feature: FEATURE,
+        planHash: computePlanHash([
+          [{ id: "T1", files: ["src/one.js"] }],
+          [{ id: "T2", files: ["src/two.js"] }],
+          [{ id: "T3", files: ["src/three.js"] }],
+        ]),
+        lastGreenWave: 3,
+        head: HEAD_SHA,
+      });
+
+      const result = await main(
+        makeLedgerArgs({ ledger, record, logs, git: makeShaGit(calls, { ancestor: false }) })
+      );
+
+      expect(result.outcome).toBe("success");
+      // The whole point: the tree, not the record, decided.
+      expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+      expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(false);
+      const notice = logs.find((m) => m.includes("was ignored"));
+      expect(notice).toBeDefined();
+      expect(notice).toContain("is not an ancestor of HEAD");
+      // The probe is ancestry, never equality — every later phase legitimately
+      // moves HEAD forward, and the resume case IS a re-invocation after those.
+      expect(calls).toContainEqual(["merge-base", "--is-ancestor", HEAD_SHA, "HEAD"]);
+    });
+
+    it("the same ledger with the commit reachable from HEAD is honoured — the probe is a real input", async () => {
+      const record = [];
+      const logs = [];
+      const ledger = JSON.stringify({
+        version: 1,
+        feature: FEATURE,
+        planHash: computePlanHash([
+          [{ id: "T1", files: ["src/one.js"] }],
+          [{ id: "T2", files: ["src/two.js"] }],
+          [{ id: "T3", files: ["src/three.js"] }],
+        ]),
+        lastGreenWave: 3,
+        head: HEAD_SHA,
+      });
+
+      const result = await main(
+        makeLedgerArgs({ ledger, record, logs, git: makeShaGit([], { ancestor: true }) })
+      );
+
+      expect(result.outcome).toBe("success");
+      expect(dispatchedTaskIds(record)).toEqual([]);
+      expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(true);
+    });
+
+    it("a record written before the `head` field existed is still honoured — the field is optional on read", async () => {
+      const record = [];
+      const logs = [];
+      const ledger = JSON.stringify({
+        version: 1,
+        feature: FEATURE,
+        planHash: computePlanHash([
+          [{ id: "T1", files: ["src/one.js"] }],
+          [{ id: "T2", files: ["src/two.js"] }],
+          [{ id: "T3", files: ["src/three.js"] }],
+        ]),
+        lastGreenWave: 3,
+      });
+
+      const result = await main(
+        makeLedgerArgs({ ledger, record, logs, git: makeShaGit([], { ancestor: false }) })
+      );
+
+      expect(result.outcome).toBe("success");
+      expect(dispatchedTaskIds(record)).toEqual([]);
+      expect(logs.some((m) => m.includes("is not an ancestor of HEAD"))).toBe(false);
+    });
+  });
+
+  // TE Phase CR F-03 / Q-01 — which lever wins when both are pulled. The answer
+  // is that they never meet: `forcePhases` accepts six tokens and `I` is not one
+  // of them (FORCE_PHASE_TOKENS = R, F, T, P, D, PR), so `forcePhases: "I"` is
+  // rejected before any phase runs rather than silently losing to the ledger. The
+  // ledger's own notice therefore names the only escape there is — delete the
+  // file. Both halves are asserted below, because "the lever does not exist" and
+  // "the lever exists and loses" are different contracts and the round-1 review
+  // could not tell which one HEAD implemented.
+  it("forcePhases cannot name Phase I at all — the token is rejected, and the ledger notice names the real escape", async () => {
+    const rejected = await main({
+      ...makeLedgerArgs({ ledger: null, git: makeGit([]) }),
+      forcePhases: "I",
+    });
+
+    expect(rejected.outcome).toBe("halted");
+    // The rejection names the catalogue, so an operator reaching for `I` is told
+    // what the six tokens actually are rather than left guessing.
+    expect(String(rejected.haltReason)).toMatch(/invalid forcePhases token/);
+    expect(String(rejected.haltReason)).toMatch(/\bR\b.*\bF\b.*\bT\b.*\bP\b.*\bD\b.*\bPR\b/s);
+  });
+
+  it("a complete ledger is honoured on a forced run too — the escape is deleting the ledger, and the notice says so", async () => {
+    const record = [];
+    const logs = [];
+    const ledger = JSON.stringify({
+      version: 1,
+      feature: FEATURE,
+      planHash: computePlanHash([
+        [{ id: "T1", files: ["src/one.js"] }],
+        [{ id: "T2", files: ["src/two.js"] }],
+        [{ id: "T3", files: ["src/three.js"] }],
+      ]),
+      lastGreenWave: 3,
+    });
+    const args = makeLedgerArgs({ ledger, record, logs, git: makeGit([]) });
+
+    // A legal force token, on a phase other than I: the ledger is still consulted
+    // and still honoured, because the consult is gated on the explicit
+    // `implementation.startWave` pointer and on nothing else.
+    const result = await main({ ...args, forcePhases: "T" });
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual([]);
+    // The operator who forced the phase is told how to actually force it.
+    const notice = logs.find((m) => m.startsWith("Skipping Phase I (wave ledger"));
+    expect(notice).toBeDefined();
+    expect(notice).toContain(`Delete ${WAVE_STATE_PATH} to force a full run`);
+
+    // The control that makes this a statement about precedence rather than about
+    // `forcePhases` being inert: with the ledger gone, the same forced run
+    // dispatches every wave.
+    const freshRecord = [];
+    const fresh = await main({
+      ...makeLedgerArgs({ ledger: null, record: freshRecord, git: makeGit([]) }),
+      forcePhases: "T",
+    });
+    expect(fresh.outcome).toBe("success");
+    expect(dispatchedTaskIds(freshRecord)).toEqual(["T1", "T2", "T3"]);
   });
 
   it("a ledger recording more waves than the plan has is ignored, not honoured", async () => {

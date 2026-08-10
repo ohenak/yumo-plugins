@@ -6555,11 +6555,17 @@ function parseWaveLedger(text) {
     return { state: null, reason: "its fields are not the shape this workflow writes" };
   }
 
-  return { state: { feature, planHash, lastGreenWave }, reason: null };
+  const head = typeof parsed.head === "string" && parsed.head.trim() !== "" ? parsed.head.trim() : null;
+
+  return { state: { feature, planHash, lastGreenWave, head }, reason: null };
 }
 
-function formatWaveLedger(feature, planHash, lastGreenWave) {
-  return `${JSON.stringify({ version: 1, feature, planHash, lastGreenWave }, null, 2)}\n`;
+function formatWaveLedger(feature, planHash, lastGreenWave, head = null) {
+  const record =
+    typeof head === "string" && head.trim() !== ""
+      ? { version: 1, feature, planHash, lastGreenWave, head: head.trim() }
+      : { version: 1, feature, planHash, lastGreenWave };
+  return `${JSON.stringify(record, null, 2)}\n`;
 }
 
 async function agent(skill, prompt, opts) {
@@ -7802,6 +7808,23 @@ async function main({
               `Running every wave from 1.`
           );
 
+        const headCorroborated = async (recordedHead) => {
+          if (!recordedHead) return true; 
+          const transport = branchGuardTransport(gitFn);
+          if (!transport) return true; 
+          try {
+            const reply = await transport([
+              "merge-base",
+              "--is-ancestor",
+              recordedHead,
+              "HEAD",
+            ]);
+            return !!(reply && reply.ok === true);
+          } catch {
+            return true; 
+          }
+        };
+
         if (ledger.reason) {
           ignore(ledger.reason);
         } else if (ledger.state) {
@@ -7812,6 +7835,12 @@ async function main({
             );
           } else if (recorded.planHash !== planHash) {
             ignore("the PLAN's wave layout has changed since it was written");
+          } else if (!(await headCorroborated(recorded.head))) {
+            ignore(
+              `the commit it records (${String(recorded.head).slice(0, 12)}) is not an ` +
+                `ancestor of HEAD — the branch was reset or re-cut since it was written, ` +
+                `so the work it records is not in this tree`
+            );
           } else if (recorded.lastGreenWave > waves.length) {
             ignore(
               `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
@@ -7955,8 +7984,17 @@ async function main({
             });
           }
 
+          let waveHead = null;
+          if (waveGit) {
+            try {
+              const rev = await waveGit(["rev-parse", "HEAD"]);
+              if (rev && rev.ok === true) waveHead = String(rev.stdout ?? "").trim() || null;
+            } catch {
+              waveHead = null;
+            }
+          }
           await writeWaveLedger(
-            formatWaveLedger(featureName, planHash, waveNum),
+            formatWaveLedger(featureName, planHash, waveNum, waveHead),
             `record wave ${waveNum} in`
           );
         }
