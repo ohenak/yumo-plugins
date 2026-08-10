@@ -1619,16 +1619,23 @@ the report row's deliberate citation of AT-L5 is idempotent. The parser takes an
 is a second source of truth that goes stale on the next erratum round. Two conjuncts sit beside the
 equality to make a failure legible rather than merely red:
 
-1. a **version pin** — FSPEC's `Version` cell reads `11.5` and TSPEC's reads `2.0`, in the shape
+1. a **version pin** — FSPEC's `Version` cell reads `11.7` and TSPEC's reads `2.7`, in the shape
    PROP-RPT-04's fourth leg pins the vocabularies cell at `1.4` — so a later erratum round fails as
    *"the register moved"* rather than as *"the code is wrong"*; and
 2. a **non-vacuity floor** — the parsed register is non-empty and its size is reported in the failure
    message, so **two empty parses cannot agree perfectly** (O-2's degenerate case).
 
-Measurement of record, 2026-08-06: enumerating `AT-…` tokens over FSPEC §13's register range
-(`:2089-2239`), de-duplicated, gives **99** ids at FSPEC v11.5. The task's stated precondition — §9.1
-erratum 4, which assigns `AT-M11`, `AT-Q13` and `AT-R7` — has **landed** at TSPEC v2.0, so this
-property is **green on write** and carries no `describe.skip`. *L3 ·
+Measurement of record, re-taken 2026-08-10: enumerating `AT-…` tokens over FSPEC §13's register range
+(`:2116-2267`), de-duplicated, gives **100** ids at FSPEC v11.7 — one more than the **99** recorded at
+v11.5 on 2026-08-06, the delta being `AT-K3b` (§12.4). The pinned literals in conjunct 1 are the
+**recorded measurement's** versions, and the contract is that pin and measurement move together: both
+are re-taken whenever §12.4 re-measures, so the pin can never certify a count it did not produce. The
+task's stated precondition — §9.1 erratum 4, which assigns `AT-M11`, `AT-Q13` and `AT-R7` — has
+**landed** at TSPEC v2.7. The property carries no `describe.skip`, but it is **green on write only
+once §13.3 erratum 8 lands**: at HEAD the register carries `AT-K3b` while TSPEC §12.3 assigns it to no
+file (`TSPEC:2923`, `:2929`), so the register→file direction of the equality is short exactly that one
+id. A red at T05 before erratum 8 is the routed erratum, not a parser defect — the failure message's
+reported size and the one-id difference say which. *L3 ·
 `consolidationTraceability.test.js` · T05 · NFR-5 · PLAN §4 T05.*
 
 ## 11. Generator-driven properties
