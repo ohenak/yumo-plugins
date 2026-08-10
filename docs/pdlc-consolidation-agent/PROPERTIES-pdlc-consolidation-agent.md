@@ -13,7 +13,17 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-09 |
+| pdlc | draft | Claude | 1.4 | 2026-08-10 |
+
+**v1.4** — erratum round. Absorbs REQ §4b / TSPEC §7.1's omission decision, which an earlier
+revision of PROP-COR-09 contradicted in its own conjunct (2). The property's title already said
+*omitted from the consumed pair*; conjunct (2) said `renderConsumedPair`'s output contains **both**
+basenames, which is the pre-erratum inclusion arm. Conjunct (2) now asserts the rendered basename
+list is **set-equal to `{readable}`** — readable present, unreadable absent, no third name — per
+TSPEC §12.2's cell, and the trailing sentence gives (2) its own positive control (an implementation
+rendering an empty pair). §O-5's parenthetical, which still read *(counted, in consumed pair, named)*,
+now reads *(counted, **omitted from** the consumed pair, named)* on the same terms. No property
+added, removed or renumbered; the set stays 118.
 
 **v1.3** — addresses the round-3 cross-reviews. Three fixes, no property moved and no id reassigned.
 The single-file rule v1.2 asserted is **not yet true of two ids**: AT-P6 and AT-P10 are registered to
@@ -296,9 +306,10 @@ weight and none may be written alone:
 | AT-M9 — the effectiveness table **is** appended when step 11 completed | AT-M6 / AT-M6b — **no** table when step 8 or step 6 terminated the pass | a pass emitting a table unconditionally passes both halves taken singly |
 
 The unreadable-corpus fixture obeys the same rule from the other direction: it carries **both** an
-unreadable and a **readable control** member, so the three observables (counted, in the consumed
-pair, named in the report body) cannot pass on a fixture where nothing was readable (§4,
-PROP-COR-09).
+unreadable and a **readable control** member, so the three observables (counted, **omitted from**
+the consumed pair — which is rendered set-equal to `{readable}`, the readable name present and the
+unreadable one absent — and named in the report body) cannot pass on a fixture where nothing was
+readable, nor on one that renders an empty pair (§4, PROP-COR-09).
 
 ### O-6 — A short or missing field is exercised through a reader that must not repair it
 
@@ -383,10 +394,16 @@ AC-1.1 · AT-P4, AT-P8.*
 
 **PROP-COR-09** — *An unreadable corpus **entry** is omitted from the consumed pair, counted as
 un-consolidated, and named.* One fixture carries **both** an unreadable member and a **readable
-control**. Three conjuncts: (1) the un-consolidated count counts **both** members; (2)
-`renderConsumedPair`'s output contains **both** basenames; (3) the report body names the
+control**. Three conjuncts: (1) the un-consolidated count counts **both** members; (2) the basename
+list `renderConsumedPair` renders is **set-equal to `{readable}`** — the readable basename present,
+the unreadable one **absent**, and **no third name** (set equality, not containment plus one
+absence: NFR-5 requires a block naming *exactly* the consumed set, and a containment oracle is
+satisfied by an implementation that also names a basename the enumeration never returned); (3) the report body names the
 **unreadable** basename and **not** the readable one. The control is what stops (1) and (3) passing
-on a fixture where nothing was readable. This is REQ §4b's erratum decision — no `unread:` field, no
+on a fixture where nothing was readable, and in (2) it is the positive half that stops the conjunct
+passing on an implementation that renders an empty pair. This is REQ §4b's erratum decision — the
+unreadable entry is **omitted** from the consumed pair (it stays un-consolidated and the next pass
+retries it, §10.4), with no `unread:` field, no
 new reason code, no vocabulary row — asserted rather than assumed. Placed at L2 per O-4, because its
 subject is the pass's corpus handling end to end. *L2 · `consolidationPass.test.js` · T20 → T31 ·
 AC-1.1, REQ §4b · (no FSPEC AT), TSPEC §12.2.*
