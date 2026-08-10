@@ -25,10 +25,7 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 > `file:line` set was re-measured as a set, not paragraph by paragraph: the `orchestrate-dev.js`,
 > `nudge-consolidation.sh`, `orchestrate-queue.js` and `QUEUE.md` families had all shifted. REQ-CONS-01's
 > pre-T09 quotes were put in the past tense, and AC-3.8b's cause list was set-equalised with AC-3.4's.
-
-> **Erratum round (v2.2, Phase PR).** Two targeted corrections, nothing else changed: AC-6.3's population is stated as the
-> whole of `ESCALATIONS.md` rather than "the consumed window", matching FSPEC §9.2/§9.5 and BR-37a; AC-3.4 no longer
-> requires the opened PR's URL in `CONSOLIDATION-PROPOSAL-{passId}.md`, which FSPEC §5.3 does not write on that path.
+> The v2.1 and v2.2 notes are retired: their corrections now stand in the ACs themselves (REQ-CONS-01 step 1, §4b, AC-3.4, AC-6.3).
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -318,7 +315,7 @@ because the key is the pair, a merged `promote` entry never bars its own remedia
   credential in this configuration.
 - **AC-3.8b** — Given the pass writes the consuming-repo artifacts — `DOMAIN-CONSTRAINTS.md`
   (AC-2.1), `DECISIONS-{topic}.md` (AC-2.2), `.consolidation-log.md` (AC-1.3, AC-2.4, AC-3.4, AC-5.1,
-  AC-7.2) and `CONSOLIDATION-PROPOSAL-{passId}.md` (AC-3.5, AC-5.4) — Then those writes land in the
+  AC-7.2) and `CONSOLIDATION-PROPOSAL-{passId}.md` (AC-3.5, AC-5.4, AC-6.3 — set-equal to AC-3.4's causes) — Then those writes land in the
   **invoking tree on whatever branch it is already on** (AC-3.8 forbids changing it), and the pass
   commits them **itself, exactly once, at its terminal outcome** (AC-1.3's Commits column), never pushed, with the **pathspec on both git calls** —
   `git add -- {paths}` *and* `git commit -m {msg} -- {paths}`. The precedent is `commitQueueRow` (`pdlc/workflows/orchestrate-queue.js:1583`: add
