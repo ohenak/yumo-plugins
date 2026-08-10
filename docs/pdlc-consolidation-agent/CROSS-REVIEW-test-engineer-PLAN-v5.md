@@ -83,4 +83,30 @@ file — not a claim re-evaluated against a moving HEAD. It stays correct as tas
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+No High. The revision changed one cell, the cell is true, and the gate functions re-run clean and
+unchanged: 34 tasks / 34 ownership rows / `{"ok":true}` / 15 ready-sets / 15 waves / 0 batch
+mismatches / 0 same-batch collisions. Nothing in the review loop's convergence question is open —
+v4 carried no blocking finding, and this revision broke nothing that v4 had settled. The document's
+oracles, batch DAG, ownership manifest and un-skip chain are all where round 4 left them.
+
+Three findings stand, none blocking. F-01 is new and is the only one this revision caused: flipping
+exactly one `Status` cell turned a uniformly-blank column into a selectively-filled one while six
+sibling rows sit in the same or a more advanced state, two of them measurably green. It is Medium
+rather than High because the runtime never reads the column — `parsePlanTasks` does not consume it
+and Phase I resume runs off the wave ledger — so no wave can be misrouted by it; the cost is paid by
+a human reader who trusts a ledger that is only one-seventh kept. F-02 and F-03 are carried from v4
+untouched, both re-measured against the repository this round rather than copied, and both are
+single-cell corrections that touch no oracle.
+
+No upstream defect was found this round. The one changed cell is internally scoped to the PLAN, and
+the repository facts it depends on — `consolidationBuild.test.js` tracked at `38a55af5` with seven
+`describe.skip` blocks, the four landed suites passing 36 / skipping 17 — check out as stated. I
+emit no errata.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+
+{"high": 0, "medium": 2, "low": 1}
