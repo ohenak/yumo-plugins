@@ -59,7 +59,8 @@ REQs addresses is a property of that hop:
   end-to-end pipeline run for the feature `wheel-paper-portfolio` (~40 review rounds, 49
   implementation tasks, 3 DoD rounds, PR #261 green) while still executing engine bytes built at
   plugin **0.21.0** against an installed plugin at **0.22.x**. The cost was not an outage but a
-  tax the operator paid across the whole run: a review gate mis-gated the PR, four or more
+  tax the operator paid across the whole run: the stale review-gate semantics nearly mis-gated a
+  phase (averted by hand), four or more
   verdict trailers were repaired by hand, background waits and repository-index contention
   needed manual intervention, and tracked-copy ride-alongs from the sync chain landed in the
   feature PR's diff. Each of those pain points is already answered by the 0.22.x modules at HEAD
