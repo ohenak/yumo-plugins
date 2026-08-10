@@ -327,4 +327,44 @@ someone will look first.
 
 ## Recommendation
 
+**Needs revision.**
+
+Five High findings, and I want to be clear that this is not a verdict on the quality of the work —
+the module is careful, the specs are unusually well served in the places that were wired, and the
+credential handling and clone isolation are better than the ACs strictly demanded. The problem is
+narrow and mechanical: **three ACs' worth of computed behaviour never reaches the operator.** In
+REQ's own framing, REQ-CONS-05 is what makes this a consolidation *agent* rather than a consolidation
+*script* — a promotion that cannot be measured, remediated or retired is the failure this feature was
+written to end, and today it ships unmeasured.
+
+To move to Approved, exactly this:
+
+1. **F-01** — at `consolidate-learnings.js:651`, build the pass list from the log's
+   `<!-- pdlc:consumed -->` blocks (oldest first, current pass last) and fold over it, so
+   `ineffective` and `unmeasurable` can be reached. `effectivenessTable` itself needs no change.
+2. **F-02** — call `remediationChoice` for each `ineffective` row, write `revision`/`retirement` onto
+   the row, and route the resulting proposal like any other (AC-5.4).
+3. **F-03** — call `seamCandidates(escalations.counts)` at `:637` and carry the result on
+   `state.advisory`.
+4. **F-04** — render `deferred:` from `state.deferred` in both `renderTerminalRow` (`:2008`) and
+   `renderReportBody` (`:2065`); keep `none` for the genuinely empty case.
+5. **F-05** — render report item 7 (`:2064`) from `state.advisory`: corpus state, candidate,
+   operator action.
+6. **F-06** — derive the PR base from the clone's resolved default branch instead of the literal
+   `"main"` at `:833`.
+
+F-07 and F-08 are Medium and Low and do not gate the verdict; please fold them in while the file is
+open, since both are a few lines.
+
+One request that costs little and is worth more than any single fix above: **each of F-01 through
+F-05 should land with a test that exercises `main()`, not the helper.** Every one of these functions
+is already unit-tested and every one of those tests is green — the tests are correct and the calls
+are absent, so an L1 oracle cannot see the defect. For F-04 specifically, a case that gives `main()`
+a state with a non-empty `deferred` and asserts the rendered field is not `none` would have caught it
+at authoring time; today no test asserts that field's value at all, because FSPEC §10.3 classifies it
+free-form and the vocabulary comparison excludes it by name.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 2, "low": 1}
