@@ -661,7 +661,7 @@ recorded path arguments: every one of them is either repo-root-relative or begin
 **Context.** FSPEC §4.1's marker-lifetime row **said** the marker was "removed at step 16" at the
 revision this entry was written against. It no longer does: at HEAD the lifetime rows read "Released |
 at step 16 … an **in-place rewrite**" and "Removed | **never by the pass**"
-(`FSPEC-pdlc-consolidation-agent.md:435-436`), and `FSPEC:441-442` gives this entry's own reason for
+(`FSPEC-pdlc-consolidation-agent.md:449-450`), and `FSPEC:455-456` gives this entry's own reason for
 the change — "a lifetime that said 'removed at step 16' would state a capability the runtime does not
 have, so release is specified as the one operation available: an in-place write of the same path".
 No declared seam can remove a file:
@@ -685,15 +685,15 @@ and why, not as live direction:**
 The accepted cost is stated rather than absorbed: FSPEC §4.2's **empty-or-neither-form** row assigns
 "present but **empty**, or a line that is neither form" the outcome "treated as **stale and
 reclaimed**, recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown`"
-(`FSPEC:479` — the table's *fifth* row at HEAD; it was the fourth before the `RELEASED:` row at
-`FSPEC:476` was inserted, which is why this entry called it the fourth), bound again by E-11 and by
+(`FSPEC:493` — the table's *fifth* row at HEAD; it was the fourth before the `RELEASED:` row at
+`FSPEC:490` was inserted, which is why this entry called it the fourth), bound again by E-11 and by
 AT-M3's *Given*. The
 **unparseable-but-non-empty** arm behaves exactly as specified; the **empty** arm becomes
 **unreachable**. That was raised as an erratum against FSPEC, not reinterpreted here (§11).
 **The erratum has since been answered and the cost is no longer paid** — FSPEC v11.3's **BR-14a**
-(`FSPEC:2585`) releases by writing a `RELEASED:` sentinel, **E-11** (`FSPEC:2678`) is reachable
-*because* of that, and **E-11b** (`FSPEC:2679`) sends a `RELEASED:` marker to `free` at any age with
-no reason code. Both arms of §4.2's empty-or-neither-form row (`FSPEC:479`) are live; see the
+(`FSPEC:2600`) releases by writing a `RELEASED:` sentinel, **E-11** (`FSPEC:2693`) is reachable
+*because* of that, and **E-11b** (`FSPEC:2694`) sends a `RELEASED:` marker to `free` at any age with
+no reason code. Both arms of §4.2's empty-or-neither-form row (`FSPEC:493`) are live; see the
 supersession note below.
 
 There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
@@ -800,10 +800,10 @@ the Decision above are superseded rather than merely re-priced.
 
 **Re-evaluation triggers.** The adapter gaining a removal verb; ~~the FSPEC answering the erratum's
 question — *when a pass dies mid-take, must the durable log witness it?*~~ (**answered: yes**,
-FSPEC v11.3 §4.2 / `FSPEC:2678`); ~~a marker representation that distinguishes "released" from
+FSPEC v11.3 §4.2 / `FSPEC:2693`); ~~a marker representation that distinguishes "released" from
 "truncated" without removal (e.g. a released sentinel line), which would restore the empty arm at the
 cost of making `parseMarker` total over two forms~~ (**taken**: BR-14a's `RELEASED:` line,
-`FSPEC:2585` / `TSPEC:974-977`, with `parseMarker` total over the two forms at `TSPEC:951`). What
+`FSPEC:2600` / `TSPEC:974-977`, with `parseMarker` total over the two forms at `TSPEC:951`). What
 remains live is the first trigger alone.
 
 **Testability:** the observable is the **write double's last recorded contents for the marker path** —
@@ -853,7 +853,7 @@ Two further alternatives were weighed at the FSPEC/REQ layer and are **not** thi
 record, listed only so the boundary is visible: whether an ignored LEARNINGS file is corpus
 (DEC-CONS-05's upstream question, **still open**), and whether the durable log must witness a pass
 that dies mid-take (DEC-CONS-07's, **answered yes** by FSPEC v11.3 — BR-14a's `RELEASED:` sentinel,
-`FSPEC:2585`/`:2678`/`:2679`). Both are product judgements about what counts as evidence, not
+`FSPEC:2600`/`:2693`/`:2694`). Both are product judgements about what counts as evidence, not
 technical choices, and both were raised as errata rather than settled here; the second has since been
 decided upstream and this document records the consequence in §9 rather than re-deciding it.
 
