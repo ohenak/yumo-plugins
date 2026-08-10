@@ -598,7 +598,11 @@ describe("T20 — the pass, end to end (L2)", () => {
               kind: 3,
               action: "promote",
               symptom: "the reviewer missed the missing edge case",
-              evidence: "LEARNINGS-feat-a.md",
+              // AC-2.3's bar, in the shape `clearsPatternBar` reads: two distinct features.
+              // A bare string fails the bar and would be diverted to the proposal file at
+              // step 13 before any authoring dispatch, so this row would never reach the
+              // dispatch failure it is about.
+              evidence: { recurrence: ["feat-a", "feat-b"] },
               // no `diff` — this is what makes step 13 dispatch an authoring call
             },
           ],

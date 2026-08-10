@@ -289,7 +289,7 @@ describe("T31 — release across the six terminal statuses (FSPEC §4.3, TSPEC �
         action: "promote",
         symptom: "sample.sh recurs",
         diff: "--- a/pdlc/hooks/scripts/sample.sh\n",
-        evidence: { recurrence: ["some-feature"] },
+        evidence: { recurrence: ["some-feature", "sibling-feature"] },
       };
       const promotionFixture = (clusters) => () => {
         const fs = fakeFs({

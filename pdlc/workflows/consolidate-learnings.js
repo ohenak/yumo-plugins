@@ -596,8 +596,10 @@ export default async function main({
   const rungState = { resolved: null };
   let clusterReplyText = null;
   const consumedBodies = [];
+  // Hoisted out of the clustering arm: step 11 resolves prior passes' basenames through
+  // the same map, so both halves read one corpus listing.
+  const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
   if (corpusFiles.length > 0) {
-    const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
     for (const basename of state.consumed) {
       const path = basenameToPath.get(basename);
       const text = path ? await readFileFn(path) : null;
@@ -613,6 +615,20 @@ export default async function main({
         prompt:
           "Cluster recurring failure modes across the consumed LEARNINGS corpus. " +
           "Reply with JSON {\"clusters\": [{phase, artifact, kind, action, symptom, diff, evidence}]}.\n\n" +
+          // AC-2.3's bar, stated to the model that produces the proposals, and AC-3.2(iii)'s
+          // evidence shape stated in the exact form `clearsPatternBar` and `renderEvidenceLine`
+          // read. A cluster whose evidence does not clear the bar is diverted to the proposal
+          // file rather than promoted, so understating the bar costs promotions.
+          "Only cluster a failure mode that clears this bar: it recurs across TWO OR MORE " +
+          "UNRELATED features, or a single occurrence states a standing invariant that holds " +
+          "beyond its own feature. A one-off that happened once and states nothing general is a " +
+          "coincidence, not a pattern — leave it out.\n" +
+          "State the evidence that cleared the bar in `evidence`, in exactly one of two shapes:\n" +
+          "  {\"recurrence\": [\"feature-a\", \"feature-b\"]} — the distinct feature names, two or more, " +
+          "whose LEARNINGS each show this failure mode; or\n" +
+          "  {\"standingInvariant\": \"<the invariant, one sentence>\"} — for a single occurrence " +
+          "that states a rule holding beyond its feature.\n" +
+          "Any other shape fails the bar.\n\n" +
           consumedBodies.map((b) => `## ${b.basename}\n${b.text ?? "(unreadable)"}`).join("\n\n"),
       });
     } catch (err) {
@@ -655,11 +671,29 @@ export default async function main({
   for (const notice of parsedLog.notices) {
     if (notice.subject !== undefined) state.notices.push(notice);
   }
-  state.effectiveness = effectivenessTable(
-    priorRecords,
-    [{ passId: state.passId, consumed: consumedBodies.map((b) => b.text).filter((t) => typeof t === "string") }],
-    config
-  );
+  // AC-5.3/AC-5.5 — the streaks are counted over EVERY pass the log records, not over this
+  // one. Each prior pass's consumed corpus is reconstructed from its
+  // `<!-- pdlc:consumed {passId} -->` block and re-read through the same corpus listing; a
+  // member deleted or archived since simply contributes no text, which is `insufficient-evidence`
+  // for that pass rather than a silent skip. With a one-element array — this pass alone —
+  // `ineffectiveStreak >= 2` and `unmeasurableStreak >= unmeasurablePasses` were unreachable on
+  // every repo, so no promotion could ever be flagged, revised or retired.
+  const priorPasses = [];
+  for (const block of parseConsumedBlocks(logText)) {
+    const texts = [];
+    for (const basename of block.basenames) {
+      const path = basenameToPath.get(basename);
+      if (!path) continue; // consumed then deleted — counted as a pass, contributing no text
+      const text = await readFileFn(path);
+      if (typeof text === "string") texts.push(text);
+    }
+    priorPasses.push({ passId: block.passId, consumed: texts });
+  }
+  const currentPass = {
+    passId: state.passId,
+    consumed: consumedBodies.map((b) => b.text).filter((t) => typeof t === "string"),
+  };
+  state.effectiveness = effectivenessTable(priorRecords, [...priorPasses, currentPass], config);
 
   // Step 12 — derive proposals from the clustering reply (§7.4) and apply NFR-4
   // suppression (§7.6). Free prose derives nothing.
@@ -680,6 +714,25 @@ export default async function main({
     } else {
       state.notices.push({ subject: "pr-poll", detail: "duplicate poll unavailable" });
     }
+  }
+
+  // AC-5.3/AC-5.4 — the remediation the operator sees. `effectivenessTable` cannot choose it
+  // (it receives neither `prStates` nor `headExists`, `:1610`), so `main` does, for exactly the
+  // rows §8.5 applies to: those the streak fold flagged `ineffective`. `headExists` is TSPEC
+  // §7.5's one `cat-file -e HEAD:{artifact}` read; a row short of its artifact cannot run the
+  // probe and proposes nothing, per §8.5's short-artifact arm.
+  for (const row of state.effectiveness) {
+    if (row.state !== "ineffective") continue;
+    if (typeof row.artifact !== "string" || row.artifact.length === 0) continue;
+    let headExists = false;
+    try {
+      const probe = await gitFn(["cat-file", "-e", `HEAD:${row.artifact}`]);
+      headExists = probe ? probe.ok === true : false;
+    } catch {
+      // an unavailable probe is not an existence claim — the ladder falls to retirement
+      headExists = false;
+    }
+    row.remediation = remediationChoice(row.failureModeId, priorRecords, prStates, headExists);
   }
 
   const active = [];
@@ -731,6 +784,18 @@ export default async function main({
   const consumingProposals = [];
   const prProposals = [];
   for (const p of active) {
+    // AC-2.3 — the bar is enforced here, not only stated in the prompt: a cluster whose
+    // evidence does not clear it is never enacted on any route. It is deferred, so it
+    // lands in the proposal file and in report item 8 for human judgment rather than
+    // being dropped silently or promoted on a coincidence.
+    if (!clearsPatternBar(p.evidence)) {
+      deferred.push({
+        ...p,
+        reason: null,
+        detail: "pattern bar unmet (AC-2.3): evidence names fewer than two distinct features and states no standing invariant",
+      });
+      continue;
+    }
     const route = routeProposal(p);
     if (route === "PR") prProposals.push(p);
     else if (route === "constraints" || route === "decisions") consumingProposals.push({ p, route });
@@ -926,6 +991,71 @@ function jsonCommentRecords(logText) {
     }
   }
   return records;
+}
+
+/**
+ * §7.4, AC-2.3 — the bar that separates a pattern from a coincidence, in the one shape the
+ * clustering prompt asks for and `renderPrBody` reads: either `recurrence` naming **two or more
+ * distinct** features, or a non-empty `standingInvariant`. Total: any other shape, and `null`,
+ * fails the bar rather than passing silently. A proposal that fails it never reaches a PR — it is
+ * diverted to the proposal file (`main` step 13), where a human can judge it.
+ *
+ * @param {unknown} evidence
+ * @returns {boolean}
+ */
+export function clearsPatternBar(evidence) {
+  if (!evidence || typeof evidence !== "object") return false;
+  if (Array.isArray(evidence.recurrence)) {
+    const features = new Set(
+      evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0).map((f) => f.trim())
+    );
+    if (features.size >= 2) return true;
+  }
+  if (typeof evidence.standingInvariant === "string" && evidence.standingInvariant.trim().length > 0) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * §7.4, AC-3.2(iii) — the evidence line every PR section carries. Total over the evidence shapes
+ * the wire grammar admits, including the ones it does not: an unrecognised or absent evidence
+ * renders `(unmet)` rather than dropping the line, so a reviewer never sees a promotion whose
+ * evidence is silently missing.
+ *
+ * @returns {string}
+ */
+export function renderEvidenceLine(evidence) {
+  if (evidence && Array.isArray(evidence.recurrence)) {
+    const features = evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0);
+    if (features.length > 0) return `evidence: recurrence across ${features.join(", ")}`;
+  }
+  if (evidence && typeof evidence.standingInvariant === "string" && evidence.standingInvariant.trim().length > 0) {
+    return `evidence: standing invariant — ${evidence.standingInvariant}`;
+  }
+  return `evidence: ${UNMET_EVIDENCE}`;
+}
+
+const UNMET_EVIDENCE = "(unmet — AC-2.3 bar not cleared)";
+
+/**
+ * §7.9, AC-3.2(i) — the source LEARNINGS for ONE promotion: the consumed basenames whose feature
+ * name appears in this promotion's `evidence.recurrence`. A `standingInvariant` promotion, and any
+ * promotion whose recurrence matches no consumed basename, falls back to the whole consumed set —
+ * the honest answer when the evidence does not narrow it, and never an empty citation.
+ *
+ * @returns {string[]}
+ */
+export function promotionSources(item, consumed) {
+  const all = Array.isArray(consumed) ? consumed : [];
+  const evidence = item && item.evidence;
+  if (!evidence || !Array.isArray(evidence.recurrence)) return all;
+  const features = evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0);
+  if (features.length === 0) return all;
+  const matched = all.filter((basename) =>
+    features.some((f) => String(basename).includes(f.trim()))
+  );
+  return matched.length > 0 ? matched : all;
 }
 
 // §7.4 — pure over the clustering reply. The adopted wire grammar is JSON
@@ -1165,6 +1295,40 @@ export function classifyCorpus(files, logText) {
     unconsolidated: [...unconsolidatedSet],
     basenameCollisions,
   };
+}
+
+/**
+ * §7.1, §7.5 — the log's `<!-- pdlc:consumed {passId} -->` blocks, in file order: one entry per
+ * prior pass, naming that pass and the basenames it consumed. This is the record of which corpus
+ * each prior pass saw, and it is what makes AC-5.3's "two consecutive counted passes" and AC-5.5's
+ * N-pass streak reachable — `effectivenessTable` folds one pass per entry rather than one.
+ *
+ * Total: an unterminated block (E-04) contributes the members it names up to EOF; a block whose
+ * opener carries no passId contributes none, because a pass that cannot be named cannot be counted.
+ *
+ * @param {string|null} logText
+ * @returns {{passId: string, basenames: string[]}[]}
+ */
+export function parseConsumedBlocks(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const OPENER = /<!--\s*pdlc:consumed\s+(\S+)\s*-->/g;
+  const CLOSER = "<!-- /pdlc:consumed -->";
+  const blocks = [];
+  let match;
+  while ((match = OPENER.exec(text)) !== null) {
+    const passId = match[1];
+    const bodyStart = match.index + match[0].length;
+    const end = text.indexOf(CLOSER, bodyStart);
+    const body = end === -1 ? text.slice(bodyStart) : text.slice(bodyStart, end);
+    const basenames = body
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("<!--"));
+    blocks.push({ passId, basenames });
+    if (end === -1) break;
+    OPENER.lastIndex = end + CLOSER.length;
+  }
+  return blocks;
 }
 
 /** @returns {string} */
@@ -2219,16 +2383,15 @@ export function renderPrBody(state, enacted) {
   const lines = [];
   for (const item of items) {
     lines.push(`## ${item.failureModeId}:${item.action}`);
-    lines.push(`source: ${consumed.join(", ")}`);
+    // AC-3.2(i) — THIS promotion's sources, not the pass's whole consumed set: the
+    // features its own `evidence.recurrence` names, matched back to the consumed
+    // basenames that carry them. The pass-level set stays on the
+    // PDLC-CONSOLIDATION-SOURCES trailer, where it belongs.
+    lines.push(`source: ${promotionSources(item, consumed).join(", ")}`);
     lines.push(`failure mode: ${item.failureModeId} — ${item.symptom ?? ""}`);
-    // AC-3.2(iii) — the AC-2.3 pattern evidence that cleared the bar, in
-    // whichever of its two forms the clustering reply carried.
-    const evidence = item.evidence;
-    if (evidence && Array.isArray(evidence.recurrence)) {
-      lines.push(`evidence: recurrence across ${evidence.recurrence.join(", ")}`);
-    } else if (evidence && typeof evidence.standingInvariant === "string") {
-      lines.push(`evidence: standing invariant — ${evidence.standingInvariant}`);
-    }
+    // AC-3.2(iii) — the AC-2.3 pattern evidence that cleared the bar. Always emitted:
+    // an unrecognised shape renders `(unmet)` rather than dropping the line.
+    lines.push(renderEvidenceLine(item.evidence));
     lines.push("");
   }
 

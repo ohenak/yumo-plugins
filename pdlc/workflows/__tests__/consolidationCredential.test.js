@@ -88,7 +88,7 @@ const GUARD_CLUSTER = {
   action: "promote",
   symptom: "sample.sh recurs across features",
   diff: "--- a/pdlc/hooks/scripts/sample.sh\n+++ b/pdlc/hooks/scripts/sample.sh\n",
-  evidence: { recurrence: ["sample-feature"] },
+  evidence: { recurrence: ["sample-feature", "sibling-feature"] },
 };
 const CONSUMING_CLUSTER = {
   phase: "T",

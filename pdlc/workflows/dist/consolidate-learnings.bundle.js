@@ -8704,6 +8704,9 @@ async function main({
     suppressions: [],
     notices: [],
     deferred: [],
+
+    advisory: null,
+    seamCandidates: null,
     prUrl: null,
     branch: null,
     markerHeld: false,
@@ -8783,8 +8786,9 @@ async function main({
   const rungState = { resolved: null };
   let clusterReplyText = null;
   const consumedBodies = [];
+
+  const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
   if (corpusFiles.length > 0) {
-    const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
     for (const basename of state.consumed) {
       const path = basenameToPath.get(basename);
       const text = path ? await readFileFn(path) : null;
@@ -8800,6 +8804,17 @@ async function main({
         prompt:
           "Cluster recurring failure modes across the consumed LEARNINGS corpus. " +
           "Reply with JSON {\"clusters\": [{phase, artifact, kind, action, symptom, diff, evidence}]}.\n\n" +
+
+          "Only cluster a failure mode that clears this bar: it recurs across TWO OR MORE " +
+          "UNRELATED features, or a single occurrence states a standing invariant that holds " +
+          "beyond its own feature. A one-off that happened once and states nothing general is a " +
+          "coincidence, not a pattern — leave it out.\n" +
+          "State the evidence that cleared the bar in `evidence`, in exactly one of two shapes:\n" +
+          "  {\"recurrence\": [\"feature-a\", \"feature-b\"]} — the distinct feature names, two or more, " +
+          "whose LEARNINGS each show this failure mode; or\n" +
+          "  {\"standingInvariant\": \"<the invariant, one sentence>\"} — for a single occurrence " +
+          "that states a rule holding beyond its feature.\n" +
+          "Any other shape fails the bar.\n\n" +
           consumedBodies.map((b) => `## ${b.basename}\n${b.text ?? "(unreadable)"}`).join("\n\n"),
       });
     } catch (err) {
@@ -8826,6 +8841,8 @@ async function main({
   else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
   state.advisory = escalations;
 
+  state.seamCandidates = seamCandidates(escalations);
+
   const parsedLog = parseLogRecords(logText);
   const priorRecords = [
     ...jsonCommentRecords(logText),
@@ -8834,11 +8851,23 @@ async function main({
   for (const notice of parsedLog.notices) {
     if (notice.subject !== undefined) state.notices.push(notice);
   }
-  state.effectiveness = effectivenessTable(
-    priorRecords,
-    [{ passId: state.passId, consumed: consumedBodies.map((b) => b.text).filter((t) => typeof t === "string") }],
-    config
-  );
+
+  const priorPasses = [];
+  for (const block of parseConsumedBlocks(logText)) {
+    const texts = [];
+    for (const basename of block.basenames) {
+      const path = basenameToPath.get(basename);
+      if (!path) continue; 
+      const text = await readFileFn(path);
+      if (typeof text === "string") texts.push(text);
+    }
+    priorPasses.push({ passId: block.passId, consumed: texts });
+  }
+  const currentPass = {
+    passId: state.passId,
+    consumed: consumedBodies.map((b) => b.text).filter((t) => typeof t === "string"),
+  };
+  state.effectiveness = effectivenessTable(priorRecords, [...priorPasses, currentPass], config);
 
   const proposals = clusterReplyText === null ? [] : deriveProposals(clusterReplyText);
   state.proposals = proposals;
@@ -8857,6 +8886,20 @@ async function main({
     } else {
       state.notices.push({ subject: "pr-poll", detail: "duplicate poll unavailable" });
     }
+  }
+
+  for (const row of state.effectiveness) {
+    if (row.state !== "ineffective") continue;
+    if (typeof row.artifact !== "string" || row.artifact.length === 0) continue;
+    let headExists = false;
+    try {
+      const probe = await gitFn(["cat-file", "-e", `HEAD:${row.artifact}`]);
+      headExists = probe ? probe.ok === true : false;
+    } catch {
+
+      headExists = false;
+    }
+    row.remediation = remediationChoice(row.failureModeId, priorRecords, prStates, headExists);
   }
 
   const active = [];
@@ -8906,6 +8949,15 @@ async function main({
   const consumingProposals = [];
   const prProposals = [];
   for (const p of active) {
+
+    if (!clearsPatternBar(p.evidence)) {
+      deferred.push({
+        ...p,
+        reason: null,
+        detail: "pattern bar unmet (AC-2.3): evidence names fewer than two distinct features and states no standing invariant",
+      });
+      continue;
+    }
     const route = routeProposal(p);
     if (route === "PR") prProposals.push(p);
     else if (route === "constraints" || route === "decisions") consumingProposals.push({ p, route });
@@ -9030,7 +9082,7 @@ async function main({
   state.deferred = deferred;
 
   if (deferred.length > 0) {
-    const proposalPath = `docs/_decisions/CONSOLIDATION-PROPOSAL-${state.passId}.md`;
+    const proposalPath = proposalPathFor(state.passId);
     await writeFileFn(proposalPath, renderProposalFile(state, deferred));
     state.writeSet.add(proposalPath);
   }
@@ -9083,6 +9135,45 @@ function jsonCommentRecords(logText) {
     }
   }
   return records;
+}
+
+function clearsPatternBar(evidence) {
+  if (!evidence || typeof evidence !== "object") return false;
+  if (Array.isArray(evidence.recurrence)) {
+    const features = new Set(
+      evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0).map((f) => f.trim())
+    );
+    if (features.size >= 2) return true;
+  }
+  if (typeof evidence.standingInvariant === "string" && evidence.standingInvariant.trim().length > 0) {
+    return true;
+  }
+  return false;
+}
+
+function renderEvidenceLine(evidence) {
+  if (evidence && Array.isArray(evidence.recurrence)) {
+    const features = evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0);
+    if (features.length > 0) return `evidence: recurrence across ${features.join(", ")}`;
+  }
+  if (evidence && typeof evidence.standingInvariant === "string" && evidence.standingInvariant.trim().length > 0) {
+    return `evidence: standing invariant — ${evidence.standingInvariant}`;
+  }
+  return `evidence: ${UNMET_EVIDENCE}`;
+}
+
+const UNMET_EVIDENCE = "(unmet — AC-2.3 bar not cleared)";
+
+function promotionSources(item, consumed) {
+  const all = Array.isArray(consumed) ? consumed : [];
+  const evidence = item && item.evidence;
+  if (!evidence || !Array.isArray(evidence.recurrence)) return all;
+  const features = evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0);
+  if (features.length === 0) return all;
+  const matched = all.filter((basename) =>
+    features.some((f) => String(basename).includes(f.trim()))
+  );
+  return matched.length > 0 ? matched : all;
 }
 
 function deriveProposals(replyText) {
@@ -9291,6 +9382,28 @@ function classifyCorpus(files, logText) {
     unconsolidated: [...unconsolidatedSet],
     basenameCollisions,
   };
+}
+
+function parseConsumedBlocks(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const OPENER = /<!--\s*pdlc:consumed\s+(\S+)\s*-->/g;
+  const CLOSER = "<!-- /pdlc:consumed -->";
+  const blocks = [];
+  let match;
+  while ((match = OPENER.exec(text)) !== null) {
+    const passId = match[1];
+    const bodyStart = match.index + match[0].length;
+    const end = text.indexOf(CLOSER, bodyStart);
+    const body = end === -1 ? text.slice(bodyStart) : text.slice(bodyStart, end);
+    const basenames = body
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("<!--"));
+    blocks.push({ passId, basenames });
+    if (end === -1) break;
+    OPENER.lastIndex = end + CLOSER.length;
+  }
+  return blocks;
 }
 
 function renderConsumedPair(passId, basenames) {
@@ -9929,6 +10042,55 @@ function renderSuppressionEntry(s) {
   return `${entry.failureModeId}:${entry.action} → ${rendered}`;
 }
 
+function renderDeferredEntry(d) {
+  const item = d || {};
+  const pair = `${item.failureModeId}:${item.action}`;
+  const cause = typeof item.reason === "string" && item.reason.length > 0 ? item.reason : null;
+  const detail = typeof item.detail === "string" && item.detail.length > 0 ? item.detail : null;
+  if (cause && detail) return `${pair} (${cause}: ${detail})`;
+  if (cause) return `${pair} (${cause})`;
+  if (detail) return `${pair} (${detail})`;
+  return pair;
+}
+
+function proposalPathFor(passId) {
+  return `docs/_decisions/CONSOLIDATION-PROPOSAL-${passId ?? ""}.md`;
+}
+
+function renderAdvisoryItem(s) {
+  const advisory = s && typeof s.advisory === "object" && s.advisory !== null ? s.advisory : null;
+  if (advisory === null) return "none";
+  const corpusState = typeof advisory.corpusState === "string" ? advisory.corpusState : "absent";
+  const parts = [`corpus ${corpusState}`];
+  const candidates =
+    s.seamCandidates && typeof s.seamCandidates === "object" ? s.seamCandidates : null;
+  if (candidates) {
+    if (typeof candidates.over === "string" && candidates.over.length > 0) {
+      const distinct =
+        advisory.distinctFeatures instanceof Map ? advisory.distinctFeatures.get(candidates.over) : null;
+      const total = advisory.totals instanceof Map ? advisory.totals.get(candidates.over) : null;
+      parts.push(
+        `over-escalating: ${candidates.over} (${total ?? 0} escalations across ${distinct ?? 0} features)`
+      );
+    } else if (Array.isArray(candidates.tie) && candidates.tie.length > 0) {
+      parts.push(`over-escalating: none (tie: ${candidates.tie.join(", ")})`);
+    } else {
+      parts.push(`over-escalating: none`);
+    }
+    const under = Array.isArray(candidates.under) ? candidates.under : [];
+    parts.push(`widening candidates: ${under.length > 0 ? under.join(", ") : "none"}`);
+    if (under.length > 0) {
+      parts.push(
+        `operator action: widen advisory.seams for ${under.join(", ")} in .claude/pdlc.config.json (consumer-local, not PR-able)`
+      );
+    }
+  } else {
+    parts.push(`over-escalating: none`);
+    parts.push(`widening candidates: none`);
+  }
+  return parts.join("; ");
+}
+
 function renderFailureModeRecord(record) {
   const r = record || {};
   return [
@@ -9986,7 +10148,11 @@ function renderTerminalRow(state) {
   }
   lines.push(`suppressed-by: ${suppressions.map(renderSuppressionEntry).join(", ")}`);
   lines.push(`branch: ${s.branch ?? ""}`);
-  lines.push(`deferred: none`);
+
+  const deferred = Array.isArray(s.deferred) ? s.deferred : [];
+  lines.push(
+    `deferred: ${deferred.length > 0 ? deferred.map(renderDeferredEntry).join(", ") : "none"}`
+  );
 
   return { text: lines.join("\n"), dropped };
 }
@@ -10034,8 +10200,16 @@ function renderReportBody(state) {
     }
   }
 
-  lines.push(`7. advisory: none`);
-  lines.push(`8. deferred: none`);
+  lines.push(`7. advisory: ${renderAdvisoryItem(s)}`);
+
+  const deferred = Array.isArray(s.deferred) ? s.deferred : [];
+  if (deferred.length === 0) {
+    lines.push(`8. deferred: none`);
+  } else {
+    lines.push(`8. deferred:`);
+    for (const item of deferred) lines.push(`  - ${renderDeferredEntry(item)}`);
+    lines.push(`  proposal file: ${proposalPathFor(s.passId)}`);
+  }
   lines.push(`9. branch: ${s.branch ? s.branch : "writes-uncommitted"}`);
   lines.push(`10. open promotions: ${openPromotionList(records).length}`);
 
@@ -10059,15 +10233,11 @@ function renderPrBody(state, enacted) {
   const lines = [];
   for (const item of items) {
     lines.push(`## ${item.failureModeId}:${item.action}`);
-    lines.push(`source: ${consumed.join(", ")}`);
+
+    lines.push(`source: ${promotionSources(item, consumed).join(", ")}`);
     lines.push(`failure mode: ${item.failureModeId} — ${item.symptom ?? ""}`);
 
-    const evidence = item.evidence;
-    if (evidence && Array.isArray(evidence.recurrence)) {
-      lines.push(`evidence: recurrence across ${evidence.recurrence.join(", ")}`);
-    } else if (evidence && typeof evidence.standingInvariant === "string") {
-      lines.push(`evidence: standing invariant — ${evidence.standingInvariant}`);
-    }
+    lines.push(renderEvidenceLine(item.evidence));
     lines.push("");
   }
 
