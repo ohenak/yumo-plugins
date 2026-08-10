@@ -17,7 +17,7 @@ import { parseEscalations, seamCandidates } from "../consolidate-learnings.js";
 import { ADVISORY_SEAMS } from "../orchestrate-dev.js";
 import { buildEscalationsFixture } from "./helpers/consolidationDoubles.js";
 
-describe.skip("T18 — AT-A1 … AT-A7: the advisory corpus (parseEscalations, seamCandidates)", () => {
+describe("T18 — AT-A1 … AT-A7: the advisory corpus (parseEscalations, seamCandidates)", () => {
   test("AT-A1 — absent corpus: corpusState 'absent' (reason no-advisory-corpus), no seam proposal of any kind", () => {
     const counts = parseEscalations(null);
 

@@ -97,7 +97,7 @@ function learningsHarvestedFrom(basename) {
 // ─── T17 — AT-F6 … AT-F18 ───────────────────────────────────────────────────
 
 describe("T17 — AT-F6…AT-F18: effectiveness and remediation (blocks T27)", () => {
-  describe.skip("phasesExercised, effectivenessTable, openPromotionList, remediationChoice", () => {
+  describe("phasesExercised, effectivenessTable, openPromotionList, remediationChoice", () => {
     describe("phasesExercised — vocabularies §2's mapping", () => {
       test("prefers the LEARNINGS' own `Phases exercised` metadata row when present", () => {
         const result = cons.phasesExercised(learningsWithPhases(["T", "D"]));

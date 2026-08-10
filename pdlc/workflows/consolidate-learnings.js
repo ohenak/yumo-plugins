@@ -24,7 +24,7 @@
  */
 
 // Single-line on purpose: stripModuleSyntax recognises imports line-wise.
-import { resolveAdvisoryRung, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry } from "./orchestrate-dev.js";
+import { resolveAdvisoryRung, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, ADVISORY_SEAMS } from "./orchestrate-dev.js";
 
 export const meta = {
   name: "consolidate-learnings",
@@ -801,24 +801,232 @@ export function parseLogRecords(logText) {
 
 // §7.5 — effectiveness, streaks, remediation, the open list
 
-/** @returns {Set<Phase>} */
+// Vocabularies §2's row 1 mapping — docType named in a CROSS-REVIEW basename -> the phase that
+// owns it. Transcribed verbatim (`docs/_constraints/pdlc-consolidation-vocabularies.md` §2).
+const DOCTYPE_OWNING_PHASE = Object.freeze({
+  REQ: "R",
+  FSPEC: "F",
+  TSPEC: "T",
+  DECISIONS: "D",
+  PLAN: "P",
+  PROPERTIES: "PR",
+});
+
+const CROSS_REVIEW_BASENAME = new RegExp(
+  `^CROSS-REVIEW-.+-(${Object.keys(DOCTYPE_OWNING_PHASE).join("|")})-v\\d+\\.md$`
+);
+const CODE_REVIEW_BASENAME = /^CODE_REVIEW-.+-v\d+\.md$/;
+const POSTMORTEM_BASENAME = /^POSTMORTEM-([A-Za-z]+)-.+\.md$/;
+
+/**
+ * §7.5, vocabularies §2 — prefers the LEARNINGS' own `Phases exercised` metadata row; falls back,
+ * per file, to the `Harvested from` basename mapping. Row 3 (POSTMORTEM) takes precedence over
+ * rows 1–2, so it is checked first. Undecidable ⇒ the empty set, never a guessed phase.
+ *
+ * @returns {Set<Phase>}
+ */
 export function phasesExercised(learningsText) {
-  return notImplemented("phasesExercised");
+  const text = typeof learningsText === "string" ? learningsText : "";
+
+  const phasesRow = text.match(/^\|\s*Phases exercised\s*\|\s*(.*?)\s*\|\s*$/m);
+  if (phasesRow) {
+    const phases = phasesRow[1]
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    return new Set(phases);
+  }
+
+  const harvestedRow = text.match(/^\|\s*Harvested from\s*\|\s*(.*?)\s*\|\s*$/m);
+  const basename = harvestedRow ? harvestedRow[1].trim() : "";
+
+  const postmortemMatch = basename.match(POSTMORTEM_BASENAME);
+  if (postmortemMatch) return new Set([postmortemMatch[1]]);
+
+  const crossReviewMatch = basename.match(CROSS_REVIEW_BASENAME);
+  if (crossReviewMatch) return new Set([DOCTYPE_OWNING_PHASE[crossReviewMatch[1]]]);
+
+  if (CODE_REVIEW_BASENAME.test(basename)) return new Set(["DOD"]);
+
+  return new Set();
 }
 
-/** @returns {EffectivenessRow[]} */
+// A consumed LEARNINGS' `- failure-mode-id: {id}` line (FSPEC §8.4 step 3's grammar).
+const FAILURE_MODE_ID_LINE = /^-\s*failure-mode-id:\s*(.+)$/gm;
+
+/** @returns {boolean} at least one consumed text names `id` (FSPEC §8.3's `recurred` arm). */
+function consumedNamesId(consumedList, id) {
+  for (const text of consumedList) {
+    if (typeof text !== "string") continue;
+    FAILURE_MODE_ID_LINE.lastIndex = 0;
+    let match;
+    while ((match = FAILURE_MODE_ID_LINE.exec(text)) !== null) {
+      if (match[1].trim() === id) return true;
+    }
+  }
+  return false;
+}
+
+/** @returns {boolean} at least one consumed text is decided to have exercised `phase`. */
+function consumedExercisedPhase(consumedList, phase) {
+  if (phase === undefined || phase === null) return false;
+  for (const text of consumedList) {
+    if (typeof text !== "string") continue;
+    if (phasesExercised(text).has(phase)) return true;
+  }
+  return false;
+}
+
+/** @returns {Verdict} FSPEC §8.3's three arms, evaluated in order, total. */
+function effectivenessVerdict(id, phase, consumedList) {
+  if (consumedNamesId(consumedList, id)) return "recurred";
+  if (consumedExercisedPhase(consumedList, phase)) return "prevented";
+  return "insufficient-evidence";
+}
+
+/**
+ * §7.5, FSPEC §8.3, §8.5, §8.7 — one row per distinct `failureModeId` in `records`, sorted on that
+ * id (PROP-GEN-06: the table is invariant under record order, so the row order cannot be a
+ * function of it). The standing verdict comes from evaluating §8.3's arms against the most recent
+ * pass's consumed set, and the `ineffective`/`unmeasurable` streaks come from folding every pass's
+ * consumed set, in file order. `remediation` is always `null` here — this function receives
+ * neither `prStates` nor `headExists`, so choosing it is the caller's job (`remediationChoice`).
+ *
+ * @returns {EffectivenessRow[]}
+ */
 export function effectivenessTable(records, consumedTexts, config) {
-  return notImplemented("effectivenessTable");
+  const recordList = Array.isArray(records) ? records : [];
+  const passes = Array.isArray(consumedTexts) ? consumedTexts : [];
+  const cfg = config && typeof config === "object" ? config : {};
+  const unmeasurablePasses =
+    typeof cfg.unmeasurablePasses === "number" ? cfg.unmeasurablePasses : 3;
+
+  // First-seen record per distinct id — a row cannot be keyed on an absent id.
+  const order = [];
+  const firstRecordById = new Map();
+  for (const r of recordList) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!firstRecordById.has(r.failureModeId)) {
+      firstRecordById.set(r.failureModeId, r);
+      order.push(r.failureModeId);
+    }
+  }
+
+  // A `revise` record for this id marks the passId whose fold resets the `ineffective` streak
+  // (TSPEC §7.5's "merged revision", simplified to this function's own inputs).
+  const revisePassIdsById = new Map();
+  for (const r of recordList) {
+    if (!r || typeof r.failureModeId !== "string" || r.action !== "revise") continue;
+    if (!revisePassIdsById.has(r.failureModeId)) revisePassIdsById.set(r.failureModeId, new Set());
+    if (typeof r.passId === "string") revisePassIdsById.get(r.failureModeId).add(r.passId);
+  }
+
+  const rows = [];
+  for (const id of order) {
+    const source = firstRecordById.get(id);
+    const phase = source.phase;
+    const artifact = source.artifact !== undefined ? source.artifact : null;
+    const resetPassIds = revisePassIdsById.get(id) ?? new Set();
+
+    let ineffectiveStreak = 0;
+    let unmeasurableStreak = 0;
+
+    for (const pass of passes) {
+      if (!pass || !Array.isArray(pass.consumed)) continue;
+
+      if (typeof pass.passId === "string" && resetPassIds.has(pass.passId)) {
+        ineffectiveStreak = 0;
+      }
+
+      if (pass.consumed.length === 0) continue; // empty consumed set — neither streak moves
+
+      const verdict = effectivenessVerdict(id, phase, pass.consumed);
+
+      // §8.5 — the `ineffective` streak: counted on `recurred`/`prevented`, skipped (untouched)
+      // on `insufficient-evidence`.
+      if (verdict === "recurred") ineffectiveStreak += 1;
+      else if (verdict === "prevented") ineffectiveStreak = 0;
+
+      // §8.7 — the `unmeasurable` streak: every non-empty-consumed pass is evaluated.
+      if (verdict === "insufficient-evidence") unmeasurableStreak += 1;
+      else unmeasurableStreak = 0;
+    }
+
+    const lastPass = passes.length > 0 ? passes[passes.length - 1] : null;
+    const lastConsumed = lastPass && Array.isArray(lastPass.consumed) ? lastPass.consumed : [];
+    const verdict = effectivenessVerdict(id, phase, lastConsumed);
+
+    let state = null;
+    if (ineffectiveStreak >= 2) state = "ineffective";
+    else if (unmeasurableStreak >= unmeasurablePasses) state = "unmeasurable";
+
+    rows.push({
+      failureModeId: id,
+      artifact,
+      verdict,
+      state,
+      remediation: null,
+    });
+  }
+
+  // PROP-GEN-06: the table is invariant under record order, so the row order cannot be a function
+  // of `records`' own order — sorted on the one field every row carries.
+  rows.sort((a, b) => (a.failureModeId < b.failureModeId ? -1 : a.failureModeId > b.failureModeId ? 1 : 0));
+
+  return rows;
 }
 
-/** @returns {string[]} */
+/**
+ * §7.5 — the ids for which no record carries a landed (non-`degraded`) retire. A record short of
+ * `action` or `route` cannot close an id (it stays open); a record short of `failureModeId`
+ * contributes no member at all.
+ *
+ * @returns {string[]}
+ */
 export function openPromotionList(records) {
-  return notImplemented("openPromotionList");
+  const list = Array.isArray(records) ? records : [];
+  const order = [];
+  const seen = new Set();
+  const closed = new Set();
+
+  for (const r of list) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!seen.has(r.failureModeId)) {
+      seen.add(r.failureModeId);
+      order.push(r.failureModeId);
+    }
+    if (r.action === "retire" && r.route !== undefined && r.route !== "degraded") {
+      closed.add(r.failureModeId);
+    }
+  }
+
+  return order.filter((id) => !closed.has(id));
 }
 
-/** @returns {"revision"|"retirement"|null} */
+/**
+ * §7.5, FSPEC §8.5's four rows, evaluated top-down. `records` is unused by the rule itself — the
+ * spent-alternative clause reads only `prStates` (NFR-4) — but stays in the signature per TSPEC
+ * §7.5.
+ *
+ * @returns {"revision"|"retirement"|null}
+ */
+// eslint-disable-next-line no-unused-vars
 export function remediationChoice(id, records, prStates, headExists) {
-  return notImplemented("remediationChoice");
+  const states = Array.isArray(prStates) ? prStates : [];
+
+  const hasSpentPair = (action) =>
+    states.some(
+      (pr) =>
+        pr &&
+        (pr.state === "open" || pr.state === "merged") &&
+        Array.isArray(pr.pairs) &&
+        pr.pairs.some((p) => p && p.failureModeId === id && p.action === action)
+    );
+
+  if (hasSpentPair("retire")) return null;
+  if (hasSpentPair("revise")) return "retirement";
+  if (headExists) return "revision";
+  return "retirement";
 }
 
 // §7.6 — routing and suppression
@@ -845,14 +1053,92 @@ export function enactedByPr(pair, prStates) {
 
 // §7.7 — the advisory corpus
 
-/** @returns {EscalationCounts} */
+const ESCALATION_FEATURE_ROW = /^\|\s*Feature\s*\|\s*(.+?)\s*\|\s*$/m;
+const ESCALATION_SEAM_ROW = /^\|\s*Seam\s*\|\s*(.+?)\s*\|\s*$/m;
+
+/**
+ * §7.7 — reads the metadata table row, never the heading (`renderEscalationEntry`,
+ * `orchestrate-dev.js:2763`). `corpusState` is `absent` for `null` (unreadable folds into this
+ * too, at the caller's `_readFile` seam — never `empty`), `empty` for a file with no `## ` entries,
+ * `present` otherwise. An entry missing `Feature` or `Seam` is skipped — a parse notice, not an
+ * abort, and attributed to no key.
+ *
+ * @returns {EscalationCounts}
+ */
 export function parseEscalations(text) {
-  return notImplemented("parseEscalations");
+  const bySeamFeature = new Map();
+  const totals = new Map();
+  const distinctFeatures = new Map();
+
+  if (text === null || text === undefined) {
+    return { bySeamFeature, totals, distinctFeatures, entryCount: 0, corpusState: "absent" };
+  }
+
+  const raw = typeof text === "string" ? text : "";
+  const blocks = raw
+    .split(/^## /m)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+  let entryCount = 0;
+  for (const block of blocks) {
+    const featureMatch = block.match(ESCALATION_FEATURE_ROW);
+    const seamMatch = block.match(ESCALATION_SEAM_ROW);
+    if (!featureMatch || !seamMatch) continue; // E-12: skipped, parse notice, no guessed key
+
+    const feature = featureMatch[1].trim();
+    const seam = seamMatch[1].trim();
+    entryCount += 1;
+
+    if (!bySeamFeature.has(seam)) bySeamFeature.set(seam, new Map());
+    const perFeature = bySeamFeature.get(seam);
+    perFeature.set(feature, (perFeature.get(feature) ?? 0) + 1);
+
+    totals.set(seam, (totals.get(seam) ?? 0) + 1);
+    distinctFeatures.set(seam, perFeature.size);
+  }
+
+  const corpusState = blocks.length === 0 ? "empty" : "present";
+
+  return { bySeamFeature, totals, distinctFeatures, entryCount, corpusState };
 }
 
-/** @returns {{over: string|null, tie: string[], under: string[]}} */
+/**
+ * §7.7, FSPEC §9.4–§9.5 — ranges over EVERY entry in `ESCALATIONS.md` (BR-37a): no filter on
+ * `Feature`, none on date, no relation to any consumed set. A stock repo (`corpusState` other than
+ * `present`) proposes nothing of either kind (FSPEC §9.3 row 1/2).
+ *
+ * @returns {{over: string|null, tie: string[], under: string[]}}
+ */
 export function seamCandidates(counts) {
-  return notImplemented("seamCandidates");
+  const c = counts && typeof counts === "object" ? counts : {};
+  if (c.corpusState !== "present") return { over: null, tie: [], under: [] };
+
+  const totals = c.totals instanceof Map ? c.totals : new Map();
+  const distinctFeatures = c.distinctFeatures instanceof Map ? c.distinctFeatures : new Map();
+  const escalatingSeams = [...totals.keys()].filter((seam) => (totals.get(seam) ?? 0) > 0);
+
+  let over = null;
+  const tie = [];
+  if (escalatingSeams.length > 0) {
+    const maxTotal = Math.max(...escalatingSeams.map((seam) => totals.get(seam) ?? 0));
+    const topSeams = escalatingSeams.filter((seam) => (totals.get(seam) ?? 0) === maxTotal);
+    if (topSeams.length === 1) {
+      const [seam] = topSeams;
+      if ((distinctFeatures.get(seam) ?? 0) >= 2) over = seam;
+    } else {
+      tie.push(...topSeams.sort());
+    }
+  }
+
+  const under = [];
+  if (escalatingSeams.length > 0) {
+    for (const seam of ADVISORY_SEAMS) {
+      if ((totals.get(seam) ?? 0) === 0) under.push(seam);
+    }
+  }
+
+  return { over, tie, under };
 }
 
 // §7.8 — configuration

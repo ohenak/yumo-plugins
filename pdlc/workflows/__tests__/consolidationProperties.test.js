@@ -233,7 +233,7 @@ describe("T19 — the property suite (L5)", () => {
 
   // ─────────────────────── T27 — effectiveness and escalations ───────────────────────
 
-  describe.skip("T27 — effectiveness and escalations", () => {
+  describe("T27 — effectiveness and escalations", () => {
     // PROP-GEN-04 — escalation counting attributes exactly the well-formed entries and invents
     // no key.
     test("PROP-GEN-04: the total attributed count equals the number of entries carrying both Feature and Seam, and no count is attributed to a key absent from the input", () => {
@@ -267,9 +267,9 @@ describe("T19 — the property suite (L5)", () => {
           throw new Error(`PROP-GEN-04 failed at seed 1900004, draw ${i}: ${err.message}`);
         }
 
-        const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
+        const total = [...counts.totals.values()].reduce((sum, c) => sum + c, 0);
         expect(total).toBe(wellFormed);
-        for (const key of Object.keys(counts)) {
+        for (const key of counts.totals.keys()) {
           // No count attributed to a key absent from the input — the positive conjunct that stops
           // a function attributing everything to one bucket.
           expect(presentSeams.has(key)).toBe(true);
@@ -313,8 +313,8 @@ describe("T19 — the property suite (L5)", () => {
 
         expect(table).toHaveLength(distinctIds.size);
         for (const row of table) {
-          expect(distinctIds.has(row.id)).toBe(true);
-          const source = records.find((r) => r.failureModeId === row.id);
+          expect(distinctIds.has(row.failureModeId)).toBe(true);
+          const source = records.find((r) => r.failureModeId === row.failureModeId);
           if (source.phase === undefined) {
             // A record with no phase falls to insufficient-evidence — the structural arm §7.5
             // states rather than a guessed prevented/recurred.
