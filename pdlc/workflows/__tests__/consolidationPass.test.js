@@ -179,7 +179,7 @@ describe("T20 — the pass, end to end (L2)", () => {
         _writeFile: fs.writeFile,
         _appendFile: fs.appendFile,
         _checkFile: fs.checkFile,
-        _git: git,
+        _git: git._git,
         _ghRun: fakeGhRun(),
         _agent: agent,
         _envPresent: fakeEnvPresent()._envPresent,
@@ -243,7 +243,7 @@ describe("T20 — the pass, end to end (L2)", () => {
         expect(seams.fs.appends).toHaveLength(0); // no log row appended
         expect(seams.fs.reads.some((r) => /LEARNINGS-/.test(r.path))).toBe(false); // no body read
         expect(result.passId).toBeNull(); // no passId minted
-        expect(seams.git.callCount).toBe(0); // no git call (enumeration is itself a git call it never reaches)
+        expect(seams.git.calls).toHaveLength(0); // no git call (enumeration is itself a git call it never reaches)
       });
     });
 
