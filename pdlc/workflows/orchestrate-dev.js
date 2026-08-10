@@ -8520,6 +8520,126 @@ export function computeWaves(tasks, ownership) {
   return waves;
 }
 
+// ─── INTERIM: the wave ledger, Phase I's script-owned resume pointer ──────────
+//
+// `implementation.startWave` is a MANUAL pointer: after a wave-gate halt an
+// operator has to edit the config before re-invoking, and an unattended queue
+// run therefore re-dispatches agents over work that is already committed. The
+// ledger closes that gap without an operator in the loop: after each wave whose
+// work the script itself committed, the script records the wave number; the next
+// invocation reads it and resumes at the wave that actually needs doing.
+//
+// INTERIM, and marked as such deliberately. The formalized mechanism is the
+// `pdlc-wave-resume` feature (docs/_queue/QUEUE.md row 20) — this block is
+// contained (one path constant, two pure functions, one read site and two write
+// sites, all inside Phase I's wave branch) precisely so that feature can replace
+// it cleanly rather than untangle it.
+//
+// Every failure mode here is FAIL-OPEN. A ledger that cannot be read, parsed,
+// matched or written never halts the pipeline: the worst case is the behaviour
+// that shipped before it existed — a full run from wave 1.
+export const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
+
+/** The cleared ledger: an empty object, which `parseWaveLedger` reads as absent. */
+const WAVE_LEDGER_CLEARED = "{}\n";
+
+/**
+ * An integrity-lite fingerprint of a computed wave plan: FNV-1a (32-bit) over
+ * the wave order, the task ids and the owned paths.
+ *
+ * Not a cryptographic digest and not trying to be — `_hashFile`'s sha256 is for
+ * approval anchors, where the adversary is silent drift in a reviewed document.
+ * Here the question is only "is this the same plan the ledger was written
+ * against?", and a re-derived PLAN that reshuffles waves or re-owns files must
+ * answer no. FNV-1a is pure arithmetic, so it needs no crypto seam in a module
+ * that has none.
+ *
+ * @param {Array<Array<{id: string, files: string[]|null}>>} waves
+ * @returns {string} 8 lowercase hex digits
+ */
+export function computePlanHash(waves) {
+  const canonical = (Array.isArray(waves) ? waves : [])
+    .map((wave) =>
+      (Array.isArray(wave) ? wave : [])
+        .map((t) => {
+          const id = t && t.id != null ? String(t.id) : "";
+          const files = t && Array.isArray(t.files) ? t.files : [];
+          return `${id}:${files.join(",")}`;
+        })
+        .join("|")
+    )
+    .join(";");
+
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/**
+ * Parse the wave ledger. Pure and total: never throws, never reads anything.
+ *
+ * Three outcomes, and the caller says something different about each:
+ * - `{state: null, reason: null}` — no ledger to speak of (absent file, empty
+ *   file, or the cleared `{}`). SILENT: this is the shape of every fresh run.
+ * - `{state: null, reason: "<why>"}` — there is content, and it is not something
+ *   this workflow wrote. The caller emits a notice naming the reason and runs
+ *   every wave.
+ * - `{state: {...}, reason: null}` — a well-formed record. The caller still has
+ *   to match it against THIS run's feature and plan before honouring it.
+ *
+ * @param {string|null} text
+ * @returns {{state: {feature: string, planHash: string, lastGreenWave: number}|null,
+ *            reason: string|null}}
+ */
+export function parseWaveLedger(text) {
+  if (text == null) return { state: null, reason: null };
+
+  const trimmed = String(text).trim();
+  if (trimmed === "" || trimmed === "{}") return { state: null, reason: null };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return { state: null, reason: "it is not readable JSON" };
+  }
+
+  if (!isPlainObject(parsed)) return { state: null, reason: "it is not a JSON object" };
+
+  const feature = parsed.feature;
+  const planHash = parsed.planHash;
+  const lastGreenWave = parsed.lastGreenWave;
+  const wellFormed =
+    typeof feature === "string" &&
+    feature.trim() !== "" &&
+    typeof planHash === "string" &&
+    planHash.trim() !== "" &&
+    Number.isInteger(lastGreenWave) &&
+    lastGreenWave >= 1;
+
+  if (!wellFormed) {
+    return { state: null, reason: "its fields are not the shape this workflow writes" };
+  }
+
+  return { state: { feature, planHash, lastGreenWave }, reason: null };
+}
+
+/**
+ * Serialise a ledger record. Pretty-printed and newline-terminated because the
+ * one reader that matters most is a human debugging a resumed run.
+ *
+ * @param {string} feature
+ * @param {string} planHash
+ * @param {number} lastGreenWave
+ * @returns {string}
+ */
+export function formatWaveLedger(feature, planHash, lastGreenWave) {
+  return `${JSON.stringify({ version: 1, feature, planHash, lastGreenWave }, null, 2)}\n`;
+}
+
 // ─── Runtime API stubs (replaced by real runtime in production) ───────────────
 
 /* These are no-op stubs for the module-level functions that the real Claude Code
@@ -10316,6 +10436,10 @@ export default async function main({
       // halted run, and the safe reading of an out-of-range resume point is to
       // run everything rather than to run nothing.
       let startWave = implConfig.startWave;
+      // An explicit pointer is an operator's instruction and outranks the
+      // script's own ledger — including when it is out of range and clamps back
+      // to 1, which is still an operator asking for a full run.
+      const explicitPointer = startWave > 1;
       if (startWave > waves.length) {
         emit(
           `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
@@ -10336,11 +10460,74 @@ export default async function main({
         );
       }
 
+      // ── INTERIM wave ledger (see WAVE_STATE_PATH) — the automatic half of the
+      // resume pointer. Read through the same never-throwing reader the config
+      // uses; every rejection below is a notice and a full run, never a halt.
+      const planHash = computePlanHash(waves);
+      let ledgerResume = false;
+      if (!explicitPointer) {
+        const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
+        const ledger = parseWaveLedger(ledgerRaw);
+        const ignore = (why) =>
+          emit(
+            `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${why}. ` +
+              `Running every wave from 1.`
+          );
+
+        if (ledger.reason) {
+          ignore(ledger.reason);
+        } else if (ledger.state) {
+          const recorded = ledger.state;
+          if (recorded.feature !== featureName) {
+            ignore(
+              `it records feature "${recorded.feature}", not "${featureName}"`
+            );
+          } else if (recorded.planHash !== planHash) {
+            ignore("the PLAN's wave layout has changed since it was written");
+          } else if (recorded.lastGreenWave >= waves.length) {
+            ignore(
+              `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
+                `${waves.length}`
+            );
+          } else {
+            startWave = recorded.lastGreenWave + 1;
+            ledgerResume = true;
+            emit(
+              `Resuming at wave ${startWave} of ${waves.length} (wave ledger ` +
+                `${WAVE_STATE_PATH}). Waves 1–${recorded.lastGreenWave} were committed ` +
+                `and recorded green by an earlier run of this same plan; the first ` +
+                `executed wave's gate still verifies the whole tree. Delete ` +
+                `${WAVE_STATE_PATH} to force a full run.`
+            );
+          }
+        }
+      }
+
+      // Best-effort ledger write: a ledger this run cannot write costs the NEXT
+      // run its resume, and nothing else, so a failure is a notice.
+      const writeWaveLedger = async (contents, what) => {
+        try {
+          await writeFileFn(WAVE_STATE_PATH, contents);
+        } catch (err) {
+          emit(
+            `Notice: could not ${what} the wave ledger ${WAVE_STATE_PATH} — ` +
+              `${(err && err.message) || String(err)}. The run continues; a later ` +
+              `invocation will simply start from wave 1.`
+          );
+        }
+      };
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
         if (waveNum < startWave) {
-          emit(`Wave ${waveNum}/${waves.length}: skipped (implementation.startWave=${startWave})`);
+          emit(
+            `Wave ${waveNum}/${waves.length}: skipped (` +
+              (ledgerResume
+                ? `wave ledger: waves 1–${startWave - 1} already green`
+                : `implementation.startWave=${startWave}`) +
+              `)`
+          );
           continue;
         }
         phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
@@ -10421,7 +10608,24 @@ export default async function main({
               emit,
             });
           }
+
+          // The ledger records COMMITTED waves only, which is why it is written
+          // here and not next to the gate: without a git transport this run made
+          // no commits, and recording the wave green would strand that wave's
+          // uncommitted work — a later resume would skip a wave whose work no
+          // longer exists in the tree.
+          await writeWaveLedger(
+            formatWaveLedger(featureName, planHash, waveNum),
+            `record wave ${waveNum} in`
+          );
         }
+      }
+
+      // Every implementation wave is green and committed: the resume pointer has
+      // nothing left to point at, and a stale one is the only way this mechanism
+      // can skip work that still needs doing.
+      if (waveGit) {
+        await writeWaveLedger(WAVE_LEDGER_CLEARED, "clear");
       }
 
       recordPhase(

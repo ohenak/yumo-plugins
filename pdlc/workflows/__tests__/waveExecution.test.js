@@ -22,6 +22,8 @@ import main, {
   GIT_LOCK_RETRIES,
   GIT_LOCK_RETRY_DELAY_MS,
   IMPLEMENTATION_DEFAULTS,
+  WAVE_STATE_PATH,
+  computePlanHash,
   evaluateWaveDispatch,
   parseImplementationConfig,
 } from "../orchestrate-dev.js";
@@ -1281,5 +1283,294 @@ describe("Phase I — implementation.startWave resumes a halted run", () => {
       `Notice: implementation.startWave in ${CONFIG_PATH} is not a valid value — ` +
         `using the default.`
     );
+  });
+});
+
+// ─── Phase I: the INTERIM wave ledger — the resume pointer with no operator ───
+//
+// `implementation.startWave` needs a human to edit the config between the halt
+// and the re-invocation. The ledger is the same pointer written and read by the
+// script itself: each committed wave is recorded, and the next invocation of the
+// SAME plan for the SAME feature resumes at the wave that actually needs doing.
+// Every rejection path is fail-open — a notice and a full run, never a halt.
+
+/**
+ * main() args with both halves of the ledger seam under test control: reads are
+ * scripted, writes are captured, and nothing touches the real filesystem.
+ */
+function makeLedgerArgs({
+  ledger = null,
+  config = CONFIG_WITH_TEST_COMMAND,
+  writes = [],
+  record = [],
+  logs = [],
+  git,
+  runCommand = async () => ({ ok: true, output: "green" }),
+} = {}) {
+  return makeArgs({
+    plan: PLAN_THREE_WAVES,
+    config,
+    record,
+    logs,
+    git,
+    runCommand,
+    extra: {
+      _readFile: (path) => {
+        const p = String(path);
+        if (p === WAVE_STATE_PATH) return ledger;
+        if (p === CONFIG_PATH) return config;
+        if (p.includes("/PLAN-")) return PLAN_THREE_WAVES;
+        return null;
+      },
+      _writeFile: (path, contents) => {
+        writes.push({ path: String(path), contents: String(contents) });
+      },
+    },
+  });
+}
+
+/** Everything this run wrote to the ledger path, in order, as text. */
+const ledgerWrites = (writes) =>
+  writes.filter((w) => w.path === WAVE_STATE_PATH).map((w) => w.contents);
+
+describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", () => {
+  it("records each committed wave, and the next invocation resumes at the failed one", async () => {
+    // ── Run 1: wave 1 is green and committed; wave 2's gate is red. ──────────
+    const firstWrites = [];
+    let gateCalls = 0;
+    const halted = await main(
+      makeLedgerArgs({
+        writes: firstWrites,
+        git: makeGit([]),
+        runCommand: async () => {
+          gateCalls += 1;
+          return gateCalls === 1
+            ? { ok: true, output: "Tests: 40 passed\n" }
+            : { ok: false, output: "Tests: 1 failed, 39 passed\n" };
+        },
+      })
+    );
+
+    expect(halted.outcome).toBe("halted");
+    expect(halted.haltReason).toContain("Error: Wave 2 test gate failed");
+
+    // Exactly one ledger write, and it records the one wave that was committed.
+    const recorded = ledgerWrites(firstWrites);
+    expect(recorded.length).toBe(1);
+    expect(JSON.parse(recorded[0])).toMatchObject({
+      version: 1,
+      feature: FEATURE,
+      lastGreenWave: 1,
+    });
+
+    // ── Run 2: the SAME ledger bytes, no config change, no operator. ─────────
+    const record = [];
+    const logs = [];
+    const gitCalls = [];
+    const secondWrites = [];
+    const resumed = await main(
+      makeLedgerArgs({
+        ledger: recorded[0],
+        record,
+        logs,
+        writes: secondWrites,
+        git: makeGit(gitCalls),
+      })
+    );
+
+    expect(resumed.outcome).toBe("success");
+    // Wave 1 is not re-dispatched and not re-committed; waves 2 and 3 are both.
+    expect(dispatchedTaskIds(record)).toEqual(["T2", "T3"]);
+    expect(gitCalls.filter((a) => a[0] === "add")).toEqual([
+      ["add", "--", "src/two.js"],
+      ["add", "--", "src/three.js"],
+    ]);
+    // The skip and the resume are both announced, and the banner names the file
+    // an operator would delete to force a full run.
+    expect(logs).toContain("Wave 1/3: skipped (wave ledger: waves 1–1 already green)");
+    const banner = logs.filter((m) => m.startsWith("Resuming at wave 2 of 3 (wave ledger"));
+    expect(banner.length).toBe(1);
+    expect(banner[0]).toContain(`Delete ${WAVE_STATE_PATH} to force a full run.`);
+    // Nothing was rejected: the resume is the paired positive for every
+    // "ignored" notice asserted below.
+    expect(logs.some((m) => m.includes("was ignored"))).toBe(false);
+  });
+
+  it("clears the ledger once every wave is green", async () => {
+    const writes = [];
+    const result = await main(makeLedgerArgs({ writes, git: makeGit([]) }));
+
+    expect(result.outcome).toBe("success");
+    // Three per-wave records, then the clear — in that order.
+    const recorded = ledgerWrites(writes);
+    expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3, undefined]);
+    expect(recorded[recorded.length - 1]).toBe("{}\n");
+  });
+
+  it("writes no ledger at all when there is no git transport to commit with", async () => {
+    const writes = [];
+    const logs = [];
+    // No `_git`: the orchestrator verifies but commits nothing, so there is no
+    // committed wave to record.
+    const result = await main(makeLedgerArgs({ writes, logs }));
+
+    expect(result.outcome).toBe("success");
+    expect(ledgerWrites(writes)).toEqual([]);
+    // Paired positive: the waves really did run, and the run said why it did not
+    // commit them.
+    expect(logs).toContain(
+      "Notice: no git transport is injected — wave work will be verified but NOT " +
+        "committed by the orchestrator."
+    );
+  });
+
+  it("an explicit implementation.startWave outranks the ledger", async () => {
+    const record = [];
+    const logs = [];
+    const ledger = JSON.stringify({
+      version: 1,
+      feature: FEATURE,
+      planHash: computePlanHash([
+        [{ id: "T1", files: ["src/one.js"] }],
+        [{ id: "T2", files: ["src/two.js"] }],
+        [{ id: "T3", files: ["src/three.js"] }],
+      ]),
+      lastGreenWave: 1,
+    });
+    const result = await main(
+      makeLedgerArgs({
+        ledger,
+        config: configWithStartWave(3),
+        record,
+        logs,
+        git: makeGit([]),
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    // The operator's wave 3, not the ledger's wave 2.
+    expect(dispatchedTaskIds(record)).toEqual(["T3"]);
+    expect(logs.some((m) => m.startsWith("Resuming at wave 3 of 3 (implementation.startWave)"))).toBe(
+      true
+    );
+    expect(logs.some((m) => m.includes("(wave ledger"))).toBe(false);
+  });
+
+  it.each([
+    [
+      "unparseable content",
+      "{ this is not json",
+      "it is not readable JSON",
+    ],
+    [
+      "a record for another feature",
+      JSON.stringify({ version: 1, feature: "other-feat", planHash: "deadbeef", lastGreenWave: 1 }),
+      'it records feature "other-feat", not "test-feat"',
+    ],
+    [
+      "a plan hash that no longer matches",
+      JSON.stringify({ version: 1, feature: FEATURE, planHash: "00000000", lastGreenWave: 1 }),
+      "the PLAN's wave layout has changed since it was written",
+    ],
+    [
+      "a record whose fields are the wrong shape",
+      JSON.stringify({ version: 1, feature: FEATURE, planHash: "00000000", lastGreenWave: "1" }),
+      "its fields are not the shape this workflow writes",
+    ],
+  ])("%s is ignored with a notice, and every wave runs", async (_label, ledger, reason) => {
+    const record = [];
+    const logs = [];
+    const result = await main(
+      makeLedgerArgs({ ledger, record, logs, writes: [], git: makeGit([]) })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+    expect(logs).toContain(
+      `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${reason}. ` +
+        `Running every wave from 1.`
+    );
+    expect(logs.some((m) => m.startsWith("Resuming at wave"))).toBe(false);
+  });
+
+  it("a matching record whose waves are all green is ignored, and every wave runs", async () => {
+    // Same feature, same plan — but it claims the whole plan is already done.
+    // Fail-open: re-running is safe, skipping the entire phase is not.
+    const writes = [];
+    const first = await main(makeLedgerArgs({ writes, git: makeGit([]) }));
+    expect(first.outcome).toBe("success");
+    const wave3Record = ledgerWrites(writes).find(
+      (t) => t !== "{}\n" && JSON.parse(t).lastGreenWave === 3
+    );
+
+    const record = [];
+    const logs = [];
+    const result = await main(
+      makeLedgerArgs({ ledger: wave3Record, record, logs, git: makeGit([]) })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+    expect(logs).toContain(
+      `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — it records 3 wave(s) ` +
+        `green and this plan has 3. Running every wave from 1.`
+    );
+  });
+
+  it("a ledger write that throws is a notice, never a halt", async () => {
+    const logs = [];
+    const result = await main(
+      makeArgs({
+        plan: PLAN_THREE_WAVES,
+        config: CONFIG_WITH_TEST_COMMAND,
+        logs,
+        git: makeGit([]),
+        runCommand: async () => ({ ok: true, output: "green" }),
+        extra: {
+          _readFile: (path) => {
+            const p = String(path);
+            if (p === CONFIG_PATH) return CONFIG_WITH_TEST_COMMAND;
+            if (p.includes("/PLAN-")) return PLAN_THREE_WAVES;
+            return null;
+          },
+          _writeFile: (path) => {
+            if (String(path) === WAVE_STATE_PATH) throw new Error("EACCES: read-only");
+          },
+        },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    const notices = logs.filter((m) =>
+      m.startsWith(`Notice: could not record wave 1 in the wave ledger ${WAVE_STATE_PATH}`)
+    );
+    expect(notices.length).toBe(1);
+    expect(notices[0]).toContain("EACCES: read-only");
+  });
+});
+
+describe("computePlanHash — the ledger's plan fingerprint", () => {
+  const WAVES = [
+    [{ id: "T1", files: ["src/one.js"] }],
+    [{ id: "T2", files: ["src/two.js"] }],
+  ];
+
+  it("is deterministic, and is 8 hex digits", () => {
+    expect(computePlanHash(WAVES)).toBe(computePlanHash(WAVES));
+    expect(computePlanHash(WAVES)).toMatch(/^[0-9a-f]{8}$/);
+  });
+
+  it("changes when the owned files change", () => {
+    expect(
+      computePlanHash([[{ id: "T1", files: ["src/one.js"] }], [{ id: "T2", files: ["src/CHANGED.js"] }]])
+    ).not.toBe(computePlanHash(WAVES));
+  });
+
+  it("changes when the wave order changes", () => {
+    expect(computePlanHash([WAVES[1], WAVES[0]])).not.toBe(computePlanHash(WAVES));
+  });
+
+  it("changes when two waves are merged into one", () => {
+    expect(computePlanHash([[WAVES[0][0], WAVES[1][0]]])).not.toBe(computePlanHash(WAVES));
   });
 });

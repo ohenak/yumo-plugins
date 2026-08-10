@@ -6201,6 +6201,68 @@ function computeWaves(tasks, ownership) {
   return waves;
 }
 
+const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
+
+const WAVE_LEDGER_CLEARED = "{}\n";
+
+function computePlanHash(waves) {
+  const canonical = (Array.isArray(waves) ? waves : [])
+    .map((wave) =>
+      (Array.isArray(wave) ? wave : [])
+        .map((t) => {
+          const id = t && t.id != null ? String(t.id) : "";
+          const files = t && Array.isArray(t.files) ? t.files : [];
+          return `${id}:${files.join(",")}`;
+        })
+        .join("|")
+    )
+    .join(";");
+
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+function parseWaveLedger(text) {
+  if (text == null) return { state: null, reason: null };
+
+  const trimmed = String(text).trim();
+  if (trimmed === "" || trimmed === "{}") return { state: null, reason: null };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return { state: null, reason: "it is not readable JSON" };
+  }
+
+  if (!isPlainObject(parsed)) return { state: null, reason: "it is not a JSON object" };
+
+  const feature = parsed.feature;
+  const planHash = parsed.planHash;
+  const lastGreenWave = parsed.lastGreenWave;
+  const wellFormed =
+    typeof feature === "string" &&
+    feature.trim() !== "" &&
+    typeof planHash === "string" &&
+    planHash.trim() !== "" &&
+    Number.isInteger(lastGreenWave) &&
+    lastGreenWave >= 1;
+
+  if (!wellFormed) {
+    return { state: null, reason: "its fields are not the shape this workflow writes" };
+  }
+
+  return { state: { feature, planHash, lastGreenWave }, reason: null };
+}
+
+function formatWaveLedger(feature, planHash, lastGreenWave) {
+  return `${JSON.stringify({ version: 1, feature, planHash, lastGreenWave }, null, 2)}\n`;
+}
+
 async function agent(skill, prompt, opts) {
 
   throw new Error("agent() not available outside Claude Code runtime");
@@ -7410,6 +7472,8 @@ async function main({
       );
 
       let startWave = implConfig.startWave;
+
+      const explicitPointer = startWave > 1;
       if (startWave > waves.length) {
         emit(
           `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
@@ -7427,11 +7491,69 @@ async function main({
         );
       }
 
+      const planHash = computePlanHash(waves);
+      let ledgerResume = false;
+      if (!explicitPointer) {
+        const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
+        const ledger = parseWaveLedger(ledgerRaw);
+        const ignore = (why) =>
+          emit(
+            `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${why}. ` +
+              `Running every wave from 1.`
+          );
+
+        if (ledger.reason) {
+          ignore(ledger.reason);
+        } else if (ledger.state) {
+          const recorded = ledger.state;
+          if (recorded.feature !== featureName) {
+            ignore(
+              `it records feature "${recorded.feature}", not "${featureName}"`
+            );
+          } else if (recorded.planHash !== planHash) {
+            ignore("the PLAN's wave layout has changed since it was written");
+          } else if (recorded.lastGreenWave >= waves.length) {
+            ignore(
+              `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
+                `${waves.length}`
+            );
+          } else {
+            startWave = recorded.lastGreenWave + 1;
+            ledgerResume = true;
+            emit(
+              `Resuming at wave ${startWave} of ${waves.length} (wave ledger ` +
+                `${WAVE_STATE_PATH}). Waves 1–${recorded.lastGreenWave} were committed ` +
+                `and recorded green by an earlier run of this same plan; the first ` +
+                `executed wave's gate still verifies the whole tree. Delete ` +
+                `${WAVE_STATE_PATH} to force a full run.`
+            );
+          }
+        }
+      }
+
+      const writeWaveLedger = async (contents, what) => {
+        try {
+          await writeFileFn(WAVE_STATE_PATH, contents);
+        } catch (err) {
+          emit(
+            `Notice: could not ${what} the wave ledger ${WAVE_STATE_PATH} — ` +
+              `${(err && err.message) || String(err)}. The run continues; a later ` +
+              `invocation will simply start from wave 1.`
+          );
+        }
+      };
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
         if (waveNum < startWave) {
-          emit(`Wave ${waveNum}/${waves.length}: skipped (implementation.startWave=${startWave})`);
+          emit(
+            `Wave ${waveNum}/${waves.length}: skipped (` +
+              (ledgerResume
+                ? `wave ledger: waves 1–${startWave - 1} already green`
+                : `implementation.startWave=${startWave}`) +
+              `)`
+          );
           continue;
         }
         phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
@@ -7502,7 +7624,16 @@ async function main({
               emit,
             });
           }
+
+          await writeWaveLedger(
+            formatWaveLedger(featureName, planHash, waveNum),
+            `record wave ${waveNum} in`
+          );
         }
+      }
+
+      if (waveGit) {
+        await writeWaveLedger(WAVE_LEDGER_CLEARED, "clear");
       }
 
       recordPhase(
