@@ -55,7 +55,7 @@ function makeTee(_log) {
 
 // ─── T11 — AT-M10 ───────────────────────────────────────────────────────────
 describe("T11 — AT-M10: resolveAdvisoryRung's shipped call site is unchanged by the §8.1 widening", () => {
-  describe.skip("no `skill` argument dispatches the default, ADVISORY_RUNG_SKILL, on every path", () => {
+  describe("no `skill` argument dispatches the default, ADVISORY_RUNG_SKILL, on every path", () => {
     test("primary rung resolves: the one dispatch carries ADVISORY_RUNG_SKILL", async () => {
       const agent = makeAgentDouble({ script: ["well-formed trailer"] });
       const { _log } = makeLogs();
