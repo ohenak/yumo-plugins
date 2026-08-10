@@ -115,3 +115,6 @@ here as a finding on REQ's missing obligation, not routed as an erratum.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 2}
+
+APPROVAL-HASH: sha256:2728a67ad2b31a557c01aa3874598b19b38eaa973a259b6f9088578fca417a9f
+REVIEWED-COMMIT: cdd187fe443cfd832ba47d911807e6a9ae3ecd56
