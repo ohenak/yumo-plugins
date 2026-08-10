@@ -8392,8 +8392,8 @@ async function main({
   _envPresent: envPresentFn = NO_ENV_PRESENT,
   _makeTempDir: makeTempDirFn = NO_MAKE_TEMP_DIR,
   _now: nowFn = () => Date.now(),
+  direct = false,
 } = {}) {
-
   const seams = {
     agentFn,
     readFileFn,
@@ -8409,7 +8409,529 @@ async function main({
     makeTempDirFn,
     nowFn,
   };
-  throw new Error("consolidate-learnings: main() not implemented yet (PLAN T02 skeleton)");
+
+  const nowMs = nowFn();
+  const markerPath = "docs/_decisions/.consolidation-lock";
+  const logPath = "docs/_decisions/.consolidation-log.md";
+
+  const state = {
+    passId: null,
+    trigger: null,
+    status: null,
+    reasons: new Set(),
+    rung: null,
+    credential: "absent",
+    consumed: [],
+    proposals: [],
+    records: [],
+    effectiveness: null,
+    suppressions: [],
+    notices: [],
+    deferred: [],
+    prUrl: null,
+    branch: null,
+    markerHeld: false,
+    markerPath,
+    logPath,
+    nowMs,
+    heldPassId: null,
+    abandonedPassId: null,
+
+    dispatchLog: [],
+    writeSet: new Set([logPath]),
+  };
+
+  const tee = (line) => {
+    state.dispatchLog.push(String(line));
+    try {
+      logFn(line);
+    } catch {
+
+    }
+  };
+
+  const configText = await readFileFn(".claude/pdlc.config.json");
+  const { config, sectionMalformed, invalidKeys } = parseConsolidationConfig(configText);
+  if (sectionMalformed) {
+    state.notices.push({ subject: "config", detail: "consolidation section malformed — defaults used" });
+  }
+  for (const key of invalidKeys) {
+    state.notices.push({ subject: "config", detail: `${key} invalid — fell back to ${config[key]}` });
+  }
+  state.config = config;
+
+  const logText = await readFileFn(logPath);
+  const corpusReply = await enumerateCorpus(gitFn);
+  if (corpusReply.unlistable) {
+
+    state.dispatchLog.push(`corpus unlistable: ${LS_FILES_ARGV.join(" ")} — ${corpusReply.detail}`);
+    state.status = "failed";
+    return await finishPass(state, seams);
+  }
+  const corpusFiles = corpusReply.files;
+  const predicate = classifyCorpus(corpusFiles, logText);
+  state.consumed = [...predicate.unconsolidated];
+  for (const collision of predicate.basenameCollisions) {
+    state.notices.push({ subject: "corpus", detail: `basename collision: ${collision.join(", ")}` });
+  }
+
+  const datum = cadenceDatum(parseTerminalRows(logText));
+  const trigger = triggerFor({ unconsolidated: predicate.unconsolidated, datum, now: nowMs, config, direct });
+  if (trigger === "skipped-cadence") {
+    state.status = "skipped-cadence";
+    return await finishPass(state, seams);
+  }
+  state.trigger = trigger;
+  if (trigger === "cadence" && (datum === null || datum === undefined)) {
+    state.reasons.add("no-cadence-datum");
+  }
+
+  const todayPrefix = new Date(nowMs).toISOString().slice(0, 10);
+  state.passId = mintPassId(logText, todayPrefix);
+
+  const take = await takeMarker(
+    { markerPath, passId: state.passId, nowMs, staleLockMinutes: config.staleLockMinutes },
+    { checkFileFn, readFileFn, writeFileFn }
+  );
+  if (take.verdict === "refuse") {
+    state.status = "refused";
+    state.reasons.add("consolidation-in-progress");
+    state.heldPassId = take.parsed ? take.parsed.passId : "unknown";
+    return await finishPass(state, seams);
+  }
+  if (take.verdict === "reclaim") {
+    state.reasons.add("reclaimed-stale-lock");
+    state.abandonedPassId = take.parsed && take.parsed.passId ? take.parsed.passId : "unknown";
+  }
+  state.markerHeld = take.taken;
+
+  await appendFileFn(logPath, renderConsumedPair(state.passId, state.consumed));
+
+  const rungState = { resolved: null };
+  let clusterReplyText = null;
+  const consumedBodies = [];
+  if (corpusFiles.length > 0) {
+    const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
+    for (const basename of state.consumed) {
+      const path = basenameToPath.get(basename);
+      const text = path ? await readFileFn(path) : null;
+
+      consumedBodies.push({ basename, text });
+    }
+    let clusterResult;
+    try {
+      clusterResult = await resolveAdvisoryRung({
+        _agent: agentFn,
+        _log: tee,
+        _state: rungState,
+        prompt:
+          "Cluster recurring failure modes across the consumed LEARNINGS corpus. " +
+          "Reply with JSON {\"clusters\": [{phase, artifact, kind, action, symptom, diff, evidence}]}.\n\n" +
+          consumedBodies.map((b) => `## ${b.basename}\n${b.text ?? "(unreadable)"}`).join("\n\n"),
+      });
+    } catch (err) {
+
+      state.rung = rungState.resolved ? rungState.resolved.model : null;
+      state.dispatchLog.push(String(err && err.message));
+      state.status = "failed";
+      state.reasons.add("advisory-model-unresolved");
+      return await finishPass(state, seams);
+    }
+    state.rung = rungState.resolved ? rungState.resolved.model : null;
+    if (clusterResult && clusterResult.kind === "dispatch-error") {
+
+      state.dispatchLog.push(String(clusterResult.err && clusterResult.err.message));
+      state.status = "failed";
+      return await finishPass(state, seams);
+    }
+    clusterReplyText = clusterResult ? clusterResult.raw : null;
+  }
+
+  const escText = await readFileFn("docs/_queue/ESCALATIONS.md");
+  const escalations = parseEscalations(escText);
+  if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
+  else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
+  state.advisory = escalations;
+
+  const parsedLog = parseLogRecords(logText);
+  const priorRecords = [
+    ...jsonCommentRecords(logText),
+    ...parsedLog.records.filter((r) => typeof r.failureModeId === "string"),
+  ];
+  for (const notice of parsedLog.notices) {
+    if (notice.subject !== undefined) state.notices.push(notice);
+  }
+  state.effectiveness = effectivenessTable(
+    priorRecords,
+    [{ passId: state.passId, consumed: consumedBodies.map((b) => b.text).filter((t) => typeof t === "string") }],
+    config
+  );
+
+  const proposals = clusterReplyText === null ? [] : deriveProposals(clusterReplyText);
+  state.proposals = proposals;
+
+  let prStates = [];
+  if (typeof ghRunFn === "function") {
+    const repo = config.pluginRepository ?? "unknown/unknown";
+    const pollReply = await ghRunFn(mergeCommandFor("consolidationPrs", { repo }));
+    if (pollReply && pollReply.ok === true) {
+      try {
+        const parsed = JSON.parse(pollReply.stdout);
+        if (Array.isArray(parsed)) prStates = parsed;
+      } catch {
+        state.notices.push({ subject: "pr-poll", detail: "unparseable gh pr list reply" });
+      }
+    } else {
+      state.notices.push({ subject: "pr-poll", detail: "duplicate poll unavailable" });
+    }
+  }
+
+  const active = [];
+  for (const p of proposals) {
+    const pair = { failureModeId: p.failureModeId, action: p.action };
+    const byLog = enactedByLog(pair, priorRecords);
+    if (byLog.enacted) {
+      state.reasons.add("duplicate-suppressed");
+      state.suppressions.push({
+        failureModeId: p.failureModeId,
+        action: p.action,
+        evidence: { kind: "pass", passId: byLog.passId },
+      });
+      continue;
+    }
+    const byPr = enactedByPr(pair, prStates);
+    if (byPr.enacted) {
+      state.reasons.add("duplicate-suppressed");
+      state.suppressions.push({
+        failureModeId: p.failureModeId,
+        action: p.action,
+        evidence: { kind: "pr", url: byPr.url },
+      });
+      continue;
+    }
+    active.push(p);
+  }
+
+  const enacted = [];
+  const deferred = [];
+
+  const recordFor = (p, route) => ({
+    failureModeId: p.failureModeId,
+    phase: p.phase,
+    symptom: p.symptom,
+    artifact: p.artifact,
+    target: p.target,
+    passId: state.passId,
+    action: p.action,
+    route,
+  });
+  const appendRecord = async (record) => {
+    state.records.push(record);
+    await appendFileFn(logPath, `${renderFailureModeRecord(record)}\n\n`);
+  };
+
+  const consumingProposals = [];
+  const prProposals = [];
+  for (const p of active) {
+    const route = routeProposal(p);
+    if (route === "PR") prProposals.push(p);
+    else if (route === "constraints" || route === "decisions") consumingProposals.push({ p, route });
+    else deferred.push({ ...p, reason: null, detail: "propose-only (AC-5.4 diversion)" });
+  }
+
+  for (const { p, route } of consumingProposals) {
+    const current = await readFileFn(p.target);
+    await writeFileFn(
+      p.target,
+      `${current ?? ""}\n<!-- pdlc:promotion ${p.failureModeId}:${p.action} (${state.passId}) -->\n${p.diff ?? p.symptom}\n`
+    );
+    state.writeSet.add(p.target);
+    enacted.push(p);
+    await appendRecord(recordFor(p, route));
+  }
+
+  if (prProposals.length > 0) {
+    const degradeAll = async (reason, detail) => {
+      if (reason) state.reasons.add(reason);
+      for (const p of prProposals) {
+        deferred.push({ ...p, reason, detail });
+        await appendRecord(recordFor(p, "degraded"));
+      }
+    };
+
+    const clone = await openClone(state.passId, config, { _makeTempDir: makeTempDirFn, _git: gitFn });
+    if (clone.failure) {
+      await degradeAll(clone.failure, clone.detail);
+    } else {
+      const dir = clone.dir;
+      const head = `consolidation/${state.passId}`;
+      await gitFn(["-C", dir, "checkout", "-b", head]);
+
+      let authoringFailed = false;
+      for (const p of prProposals) {
+        if (p.diff === null || p.diff === undefined) {
+          let authored;
+          try {
+            authored = await resolveAdvisoryRung({
+              _agent: agentFn,
+              _log: tee,
+              _state: rungState,
+              prompt: `Author the promotion diff for ${p.failureModeId} (${p.action}): ${p.symptom ?? ""}`,
+            });
+          } catch (err) {
+            state.dispatchLog.push(String(err && err.message));
+            state.status = "failed";
+            state.reasons.add("advisory-model-unresolved");
+            return await finishPass(state, seams);
+          }
+          if (!authored || authored.kind === "dispatch-error") {
+            state.dispatchLog.push(String(authored && authored.err && authored.err.message));
+            state.status = "failed";
+            return await finishPass(state, seams);
+          }
+          p.diff = authored.raw;
+        }
+        if (authoringFailed) break;
+        await writeFileFn(`${dir}/${p.artifact}`, p.diff);
+        await gitFn(["-C", dir, "add", "--", p.artifact]);
+        await gitFn(["-C", dir, "commit", "-m", renderPromotionCommitMessage(p, state.passId), "--", p.artifact]);
+      }
+
+      const envOk = typeof envPresentFn === "function" ? await envPresentFn(config.credentialEnv) : null;
+      if (envOk === true) {
+        state.credential = "present (redacted)";
+      } else if (typeof ghRunFn === "function") {
+        const authReply = await ghRunFn("gh auth status");
+
+        state.credential = authReply && authReply.ok === true ? "local-gh" : "absent";
+      } else {
+        state.credential = "absent";
+      }
+
+      if (typeof ghRunFn !== "function") {
+        await degradeAll("api-failure", "no PR transport available");
+      } else {
+        const pushArgv = ["-C", dir];
+        if (state.credential === "present (redacted)") {
+
+          pushArgv.push(
+            "-c",
+            `credential.helper=!f(){ echo username=x; echo password=$${config.credentialEnv}; };f`
+          );
+        }
+        pushArgv.push("push", "origin", head);
+        const pushReply = await gitFn(pushArgv);
+        if (!pushReply || pushReply.ok !== true) {
+          const stderr = String((pushReply && pushReply.stderr) || "");
+          await degradeAll(classifyPrFailure(stderr, state.credential), stderr || "push failed");
+        } else {
+          const repo = config.pluginRepository ?? "unknown/unknown";
+          const bodyPath = `${dir}/.pdlc-pr-body.md`;
+          await writeFileFn(bodyPath, renderPrBody(state, prProposals));
+          let createCmd = mergeCommandFor("consolidationCreate", {
+            repo,
+            head,
+            base: "main",
+            title: `consolidation: ${state.passId}`,
+            bodyFile: bodyPath,
+          });
+          if (state.credential === "present (redacted)") {
+            createCmd = `GH_TOKEN="$${config.credentialEnv}" ${createCmd}`;
+          }
+          const createReply = await ghRunFn(createCmd);
+          if (createReply && createReply.ok === true) {
+            state.prUrl = typeof createReply.stdout === "string" ? createReply.stdout.trim() : null;
+            for (const p of prProposals) {
+              enacted.push(p);
+              await appendRecord(recordFor(p, "PR"));
+            }
+          } else {
+            const stderr = String((createReply && createReply.stderr) || "");
+            await degradeAll(classifyPrFailure(stderr, state.credential), stderr || "gh pr create failed");
+          }
+        }
+      }
+    }
+  }
+
+  state.deferred = deferred;
+
+  if (deferred.length > 0) {
+    const proposalPath = `docs/_decisions/CONSOLIDATION-PROPOSAL-${state.passId}.md`;
+    await writeFileFn(proposalPath, renderProposalFile(state, deferred));
+    state.writeSet.add(proposalPath);
+  }
+
+  if (enacted.length > 0) {
+    state.status = deferred.length > 0 ? "promoted-degraded" : "promoted";
+  } else {
+    state.status = "no-op";
+  }
+  return await finishPass(state, seams);
+}
+
+function classifyPrFailure(stderr, credential) {
+  if (/already exists|non-fast-forward|\[rejected\]/i.test(stderr)) return "branch-exists";
+  if (/401|bad credentials|not logged in|authentication|permission denied \(publickey\)/i.test(stderr)) {
+    return "credential-unavailable";
+  }
+  if (/HTTP 5\d\d|rate limit|timed out|ECONNREFUSED|ENOTFOUND|503|502|500/i.test(stderr)) return "api-failure";
+  return credential === "absent" ? "credential-unavailable" : "api-failure";
+}
+
+function parseTerminalRows(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const rows = [];
+  for (const chunk of text.split(/\n\s*\n/)) {
+    const fields = {};
+    for (const line of chunk.split("\n")) {
+      const match = /^(pass|date|status|trigger):\s*(.*)$/.exec(line.trim());
+      if (match) fields[match[1]] = match[2];
+    }
+    if (fields.status !== undefined || fields.date !== undefined) rows.push(fields);
+  }
+  return rows;
+}
+
+const RECORD_COMMENT_RE = /<!--\s*pdlc:record\s+(\{.*?\})\s*-->/g;
+function jsonCommentRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const records = [];
+  RECORD_COMMENT_RE.lastIndex = 0;
+  let match;
+  while ((match = RECORD_COMMENT_RE.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && typeof parsed === "object" && typeof parsed.failureModeId === "string") {
+        records.push(parsed);
+      }
+    } catch {
+
+    }
+  }
+  return records;
+}
+
+function deriveProposals(replyText) {
+  let parsed;
+  try {
+    parsed = JSON.parse(replyText);
+  } catch {
+    return [];
+  }
+  if (!isPlainObjectLocal(parsed) || !Array.isArray(parsed.clusters)) return [];
+
+  const proposals = [];
+  for (const c of parsed.clusters) {
+    if (!c || typeof c !== "object") continue;
+    if (typeof c.phase !== "string" || typeof c.artifact !== "string") continue;
+    const kind = c.kind === 1 || c.kind === 2 || c.kind === 3 ? c.kind : 3;
+    const action = ACTIONS.includes(c.action) ? c.action : "promote";
+    const id = failureModeId(c.phase, c.artifact);
+    proposals.push({
+      failureModeId: id,
+      phase: c.phase,
+      symptom: typeof c.symptom === "string" ? c.symptom : "",
+      artifact: c.artifact,
+      kind,
+      target: targetFor(kind, c.artifact, id),
+      action,
+      diff: c.diff === undefined ? null : c.diff,
+      evidence: c.evidence === undefined ? null : c.evidence,
+      elidedKinds: [],
+      elidedArtifacts: [],
+    });
+  }
+  return mergeProposals(proposals);
+}
+
+async function finishPass(state, seams) {
+  const { appendFileFn, gitFn, logFn, phaseFn } = seams;
+
+  if (state.status !== "skipped-cadence") {
+
+    if (typeof gitFn === "function" && state.branch === null) {
+      const branchReply = await gitFn(["rev-parse", "--abbrev-ref", "HEAD"]);
+      if (branchReply && branchReply.ok === true && typeof branchReply.stdout === "string") {
+        const name = branchReply.stdout.trim();
+        state.branch = name.length > 0 ? name : null;
+      }
+    }
+
+    if (Array.isArray(state.effectiveness) && state.effectiveness.length > 0) {
+      try {
+        await appendFileFn(state.logPath, `${renderEffectivenessTable(state.effectiveness)}\n\n`);
+      } catch {
+
+      }
+    }
+
+    const { text } = renderTerminalRow(state);
+    const extraLines = [];
+    if (state.heldPassId) extraLines.push(`held: ${state.heldPassId}`);
+    if (state.abandonedPassId) extraLines.push(`abandoned: ${state.abandonedPassId}`);
+    try {
+      await appendFileFn(state.logPath, `${text}${extraLines.length > 0 ? `\n${extraLines.join("\n")}` : ""}\n\n`);
+    } catch {
+
+    }
+
+    if (state.status !== "refused" && typeof gitFn === "function") {
+      const commitResult = await commitConsumingRepoPaths(
+        [...state.writeSet],
+        `chore(consolidation): pass ${state.passId}`,
+        { _git: gitFn, _log: logFn }
+      );
+      if (commitResult.reason === "writes-uncommitted") {
+        state.reasons.add("writes-uncommitted");
+      }
+    }
+
+    if (state.markerHeld) {
+      await releaseMarker(state, { writeFileFn: seams.writeFileFn });
+    }
+  }
+
+  const reportBody =
+    renderReportBody(state) +
+    (state.dispatchLog.length > 0 ? `\ndispatch log:\n${state.dispatchLog.join("\n")}` : "");
+  state.body = reportBody;
+
+  if (typeof phaseFn === "function") {
+    try {
+      phaseFn(state.status);
+    } catch {
+
+    }
+  }
+  if (typeof logFn === "function") {
+    try {
+      logFn(reportBody);
+    } catch {
+
+    }
+  }
+
+  return {
+    status: state.status,
+    trigger: state.trigger,
+    credential: state.credential,
+    reasons: state.reasons,
+    passId: state.passId,
+    rung: state.rung,
+    consumed: state.consumed,
+    proposals: state.proposals,
+    records: state.records,
+    effectiveness: state.effectiveness,
+    suppressions: state.suppressions,
+    notices: state.notices,
+    deferred: state.deferred,
+    prUrl: state.prUrl,
+    branch: state.branch,
+    markerHeld: state.markerHeld,
+    body: reportBody,
+    reportBody,
+  };
 }
 
 function notImplemented(name) {
@@ -9250,6 +9772,13 @@ function renderPrBody(state, enacted) {
     lines.push(`## ${item.failureModeId}:${item.action}`);
     lines.push(`source: ${consumed.join(", ")}`);
     lines.push(`failure mode: ${item.failureModeId} — ${item.symptom ?? ""}`);
+
+    const evidence = item.evidence;
+    if (evidence && Array.isArray(evidence.recurrence)) {
+      lines.push(`evidence: recurrence across ${evidence.recurrence.join(", ")}`);
+    } else if (evidence && typeof evidence.standingInvariant === "string") {
+      lines.push(`evidence: standing invariant — ${evidence.standingInvariant}`);
+    }
     lines.push("");
   }
 
@@ -9275,6 +9804,9 @@ function renderProposalFile(state, deferred) {
     lines.push("");
     lines.push(`## ${item.failureModeId}:${item.action}`);
     lines.push(`target: ${item.target ?? ""}`);
+
+    if (item.reason) lines.push(`failure: ${item.reason}`);
+    if (item.detail) lines.push(`detail: ${item.detail}`);
     lines.push(`diff:`);
     lines.push(item.diff === null || item.diff === undefined ? UNAVAILABLE : item.diff);
   }
