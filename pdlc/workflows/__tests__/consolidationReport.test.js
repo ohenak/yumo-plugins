@@ -98,7 +98,7 @@ function makeRecord(overrides = {}) {
 // ─── T29 — the seven §7.9 render functions, driven directly ────────────────
 
 describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
-  describe.skip("driving the seven §7.9 render functions directly, never through main()", () => {
+  describe("driving the seven §7.9 render functions directly, never through main()", () => {
     // ─── AT-L1 — a pass that opened a PR and suppressed another proposal ─────
 
     test("AT-L1: pr: carries this pass's PR and suppressed-by: carries the suppressed pair — both present, neither merged into the other", () => {

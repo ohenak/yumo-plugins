@@ -1322,39 +1322,252 @@ export function parseConsolidationConfig(text) {
 
 // §7.9 — rendering: the log records and the report body
 
+/**
+ * §6.4 — the row's reason codes split into the ones legal with `status` (vocabularies §1's
+ * composition rule) and the ones illegal with it (dropped). Iterates `REASON_CODES` in its own
+ * frozen catalogue order, never `Set` insertion order, so the split is byte-stable across runs
+ * regardless of how the caller built the `reasons` set (T29, PLAN §13.3).
+ *
+ * @returns {{legal: ReasonCode[], dropped: ReasonCode[]}}
+ */
+function classifyReasons(status, reasonsSet) {
+  const reasons = reasonsSet instanceof Set ? reasonsSet : new Set(reasonsSet || []);
+  const legal = [];
+  const dropped = [];
+  for (const code of REASON_CODES) {
+    if (!reasons.has(code)) continue;
+    const permitted = REASON_CODE_STATUSES[code] || [];
+    if (permitted.includes(status)) legal.push(code);
+    else dropped.push(code);
+  }
+  return { legal, dropped };
+}
+
+/**
+ * §10.3's `suppressed-by:` entry grammar — exactly two evidence spellings, chosen by the
+ * suppression's own carrier, never by the writer: the PR URL verbatim, or `pass:{passId}`,
+ * degrading to `pass:(unavailable)` when the enacting record carried no `passId`.
+ *
+ * @returns {string}
+ */
+function renderSuppressionEntry(s) {
+  const entry = s || {};
+  const evidence = entry.evidence || {};
+  const rendered =
+    evidence.kind === "pr"
+      ? evidence.url
+      : `pass:${typeof evidence.passId === "string" ? evidence.passId : UNAVAILABLE}`;
+  return `${entry.failureModeId}:${entry.action} → ${rendered}`;
+}
+
 /** @returns {string} */
 export function renderFailureModeRecord(record) {
-  return notImplemented("renderFailureModeRecord");
+  const r = record || {};
+  return [
+    `failure-mode-id: ${r.failureModeId ?? ""}`,
+    `phase: ${r.phase ?? ""}`,
+    `symptom: ${r.symptom ?? ""}`,
+    `artifact: ${r.artifact ?? ""}`,
+    `target: ${r.target ?? ""}`,
+    `passId: ${r.passId ?? ""}`,
+    `action: ${r.action ?? ""}`,
+    `route: ${r.route ?? ""}`,
+  ].join("\n");
 }
 
 /** @returns {string} */
 export function renderEffectivenessTable(rows) {
-  return notImplemented("renderEffectivenessTable");
+  const list = Array.isArray(rows) ? rows : [];
+  if (list.length === 0) return "none";
+  return list
+    .map((row) => {
+      const artifact =
+        row.artifact === null || row.artifact === undefined ? UNAVAILABLE : row.artifact;
+      const parts = [`- ${row.failureModeId}`, `artifact: ${artifact}`, `verdict: ${row.verdict}`];
+      if (row.state) parts.push(`state: ${row.state}`);
+      if (row.remediation) parts.push(`remediation: ${row.remediation}`);
+      return parts.join(", ");
+    })
+    .join("\n");
 }
 
-/** @returns {{text: string, dropped: ReasonCode[]}} */
+/**
+ * §7.9, FSPEC §10.3 — one row, one pass. `pr:` is the sole biconditional field: rendered only
+ * when this pass opened its own PR (omitted, never emptied, when it did not). Returns the codes
+ * it dropped as illegal-with-this-status (§6.4) so the caller can name them rather than let the
+ * loss go silent.
+ *
+ * @returns {{text: string, dropped: ReasonCode[]}}
+ */
 export function renderTerminalRow(state) {
-  return notImplemented("renderTerminalRow");
+  const s = state || {};
+  const { legal, dropped } = classifyReasons(s.status, s.reasons);
+  const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+  const suppressions = Array.isArray(s.suppressions) ? s.suppressions : [];
+  const records = Array.isArray(s.records) ? s.records : [];
+
+  const datePrefix =
+    typeof s.passId === "string" ? s.passId.split("-").slice(0, -1).join("-") : "";
+  const promotions = records
+    .filter((r) => r && r.action === "promote")
+    .map((r) => `${r.failureModeId}:${r.route}`);
+
+  const lines = [];
+  lines.push(`pass: ${s.passId ?? ""}`);
+  lines.push(`date: ${datePrefix}`);
+  lines.push(`status: ${s.status ?? ""}`);
+  lines.push(`trigger: ${s.trigger ?? ""}`);
+  lines.push(`reason: ${legal.join(", ")}`);
+  lines.push(`rung: ${s.rung ?? ""}`);
+  lines.push(`credential: ${s.credential ?? ""}`);
+  lines.push(`consumed: ${consumed.join(", ")}`);
+  lines.push(`promotions: ${promotions.length > 0 ? promotions.join(", ") : "none"}`);
+  if (typeof s.prUrl === "string" && s.prUrl.length > 0) {
+    lines.push(`pr: ${s.prUrl}`);
+  }
+  lines.push(`suppressed-by: ${suppressions.map(renderSuppressionEntry).join(", ")}`);
+  lines.push(`branch: ${s.branch ?? ""}`);
+  lines.push(`deferred: none`);
+
+  return { text: lines.join("\n"), dropped };
 }
 
-/** @returns {string} */
+/**
+ * §7.9, FSPEC §10.4 — the ten items, in order, each present even when empty (DC-01). The dropped
+ * reason codes are re-derived over the same `(status, reasons)` pair `renderTerminalRow` uses
+ * (never threaded through a hidden channel), so the notice naming an illegal pair lives beside
+ * item 1's status/reason line.
+ *
+ * @returns {string}
+ */
 export function renderReportBody(state) {
-  return notImplemented("renderReportBody");
+  const s = state || {};
+  const { legal, dropped } = classifyReasons(s.status, s.reasons);
+  const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+  const records = Array.isArray(s.records) ? s.records : [];
+  const suppressions = Array.isArray(s.suppressions) ? s.suppressions : [];
+  const effectiveness = Array.isArray(s.effectiveness) ? s.effectiveness : [];
+  const notices = Array.isArray(s.notices) ? s.notices : [];
+
+  const lines = [];
+
+  lines.push(`1. status: ${s.status ?? ""}`);
+  lines.push(`reason: ${legal.length > 0 ? legal.join(", ") : "none"}`);
+  for (const code of dropped) {
+    lines.push(`dropped (illegal for status ${s.status}): ${code}`);
+  }
+
+  lines.push(`2. rung: ${s.rung ?? ""}`);
+
+  lines.push(`3. consumed: ${consumed.length > 0 ? consumed.join(", ") : "none"}`);
+
+  if (records.length === 0) {
+    lines.push(`4. promotions: none`);
+  } else {
+    lines.push(`4. promotions:`);
+    for (const r of records) {
+      lines.push(`  - ${r.failureModeId}: ${r.route} (${r.action})`);
+    }
+  }
+
+  lines.push(
+    `5. effectiveness: ${effectiveness.length > 0 ? renderEffectivenessTable(effectiveness) : "none"}`
+  );
+
+  if (suppressions.length === 0) {
+    lines.push(`6. duplicate-suppressed: none`);
+  } else {
+    lines.push(`6. duplicate-suppressed:`);
+    for (const sup of suppressions) {
+      lines.push(`  - ${renderSuppressionEntry(sup)}`);
+    }
+  }
+
+  lines.push(`7. advisory: none`);
+  lines.push(`8. deferred: none`);
+  lines.push(`9. branch: ${s.branch ? s.branch : "writes-uncommitted"}`);
+  lines.push(`10. open promotions: ${openPromotionList(records).length}`);
+
+  if (notices.length > 0) {
+    lines.push(`notices:`);
+    for (const n of notices) {
+      const notice = n || {};
+      const detail = notice.detail ? notice.detail : notice.missingField ? notice.missingField : "";
+      lines.push(`notice: ${notice.subject}: ${detail}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
-/** @returns {string} the PR body file (AC-3.2, AC-3.7) */
+/**
+ * §7.9 — produces the bytes `--body-file` reads (§9.2): one section per promotion `enacted`
+ * (AC-3.2's three citations) then, last, the three vocabularies §4 trailers in the fixed order
+ * pass → sources → promotions. `PDLC-CONSOLIDATION-PROMOTIONS` is derived from `enacted` itself
+ * (never assembled beside it), so the trailer is set-equal to what the PR enacts by construction.
+ *
+ * @returns {string} the PR body file (AC-3.2, AC-3.7)
+ */
 export function renderPrBody(state, enacted) {
-  return notImplemented("renderPrBody");
+  const s = state || {};
+  const items = Array.isArray(enacted) ? enacted : [];
+  const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+
+  const lines = [];
+  for (const item of items) {
+    lines.push(`## ${item.failureModeId}:${item.action}`);
+    lines.push(`source: ${consumed.join(", ")}`);
+    lines.push(`failure mode: ${item.failureModeId} — ${item.symptom ?? ""}`);
+    lines.push("");
+  }
+
+  const sortedConsumed = [...consumed].sort();
+  const sortedPairs = items.map((i) => `${i.failureModeId}:${i.action}`).sort();
+
+  lines.push(`PDLC-CONSOLIDATION-PASS: ${s.passId ?? ""}`);
+  lines.push(`PDLC-CONSOLIDATION-SOURCES: ${sortedConsumed.join(", ")}`);
+  lines.push(`PDLC-CONSOLIDATION-PROMOTIONS: ${sortedPairs.join(", ")}`);
+
+  return lines.join("\n");
 }
 
-/** @returns {string} CONSOLIDATION-PROPOSAL-{passId}.md (AC-3.5) */
+/**
+ * §7.9 — `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`. Per deferred item: the id, the
+ * action, the target, the full proposed diff inline (AC-3.5 — never a summary), degrading to
+ * §6.5's unavailable literal when `diff` is `null` rather than dropping the item.
+ *
+ * @returns {string} CONSOLIDATION-PROPOSAL-{passId}.md (AC-3.5)
+ */
 export function renderProposalFile(state, deferred) {
-  return notImplemented("renderProposalFile");
+  const s = state || {};
+  const items = Array.isArray(deferred) ? deferred : [];
+
+  const lines = [`# CONSOLIDATION-PROPOSAL-${s.passId ?? ""}`];
+  if (typeof s.prUrl === "string" && s.prUrl.length > 0) {
+    lines.push(`pr: ${s.prUrl}`);
+  }
+  for (const item of items) {
+    lines.push("");
+    lines.push(`## ${item.failureModeId}:${item.action}`);
+    lines.push(`target: ${item.target ?? ""}`);
+    lines.push(`diff:`);
+    lines.push(item.diff === null || item.diff === undefined ? UNAVAILABLE : item.diff);
+  }
+
+  return lines.join("\n");
 }
 
-/** @returns {string} PDLC-PROMOTION-ID trailer (AC-3.3) */
+/**
+ * §7.9 — one commit's subject plus the per-commit `PDLC-PROMOTION-ID: {id}:{action}` trailer of
+ * vocabularies §4, so commit → proposal is readable without counting (AC-3.3).
+ *
+ * @returns {string} PDLC-PROMOTION-ID trailer (AC-3.3)
+ */
+// eslint-disable-next-line no-unused-vars
 export function renderPromotionCommitMessage(proposal, passId) {
-  return notImplemented("renderPromotionCommitMessage");
+  const p = proposal || {};
+  const subject = `${p.action ?? ""}: ${p.symptom ?? ""}`;
+  return [subject, "", `PDLC-PROMOTION-ID: ${p.failureModeId ?? ""}:${p.action ?? ""}`].join("\n");
 }
 
 // §9.1 — the temporary clone
