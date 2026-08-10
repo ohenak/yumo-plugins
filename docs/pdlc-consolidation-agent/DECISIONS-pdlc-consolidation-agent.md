@@ -919,7 +919,7 @@ must land as properties rather than as unit cases:
      quoted with the anchor it then carried; that row is `FSPEC:2169` at HEAD)
      is **withdrawn as of FSPEC v11.5** — it was correct when written and is no longer. The erratum
      this document raised has been **answered upstream, not carried**: FSPEC's changelog records it as
-     erratum (1) of the Phase D round (`FSPEC:13-22`) in the same terms this entry used — the row
+     erratum (1) of the Phase D round (`FSPEC:14-22`) in the same terms this entry used — the row
      "spelled §6.5's pre-widening literal `{add, commit, read-branch, read-status}` and called it 'its
      permitted set'", `read-index` "is observed on AT-Q7c's own `promoted` Given via §7.1's corpus
      enumeration — so an AT transcribing the row as it stood was red on correct code". At HEAD
