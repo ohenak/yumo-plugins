@@ -81,11 +81,12 @@ carries no code at all — it writes no log row (AC-7.2).
 
 ## 2. The phase observable
 
-A LEARNINGS at HEAD carries no phase field: its metadata table is `Feature` / `REQ` / `Date Completed` /
-`Total Iterations` / `Upstream` / `Harvested from` / `DoD rounds` (`pdlc/skills/harvest-learnings/SKILL.md:70-78`),
-and `## 6. Approval Record` (`:105`) is keyed by document type, not phase. The consolidation feature
-therefore adds a **`Phases exercised`** row to that table, carrying the set of phase ids the feature's
-run executed. For a LEARNINGS predating the convention the value is derived, by this stated and total
+A LEARNINGS predating this feature carried no phase field: its metadata table was `Feature` / `REQ` /
+`Date Completed` / `Total Iterations` / `Upstream` / `Harvested from` / `DoD rounds`, and
+`## 6. Approval Record` (`pdlc/skills/harvest-learnings/SKILL.md:110`) is keyed by document type, not
+phase. The consolidation feature therefore adds a **`Phases exercised`** row, carrying the set of phase
+ids the feature's run executed, to that table — now eight fields at `:70-79`, the new row itself at
+`:78`. For a LEARNINGS predating the convention the value is derived, by this stated and total
 mapping, from `Harvested from` (`:77`) — the one field that already names phase-bearing artifacts:
 
 | `Harvested from` basename class | Phases it evidences | Shipped naming |

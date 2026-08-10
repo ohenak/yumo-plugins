@@ -1495,7 +1495,7 @@ is **binding, not restated**. Two consequences this rule depends on:
    is normative for that arm, and for the id-less record that yields no row at all.
 
 This feature adds the **`Phases exercised`** row to the harvest metadata table
-(`pdlc/skills/harvest-learnings/SKILL.md:70-78`), so post-convention LEARNINGS carry the value
+(`pdlc/skills/harvest-learnings/SKILL.md:70-79`), so post-convention LEARNINGS carry the value
 directly and the §2 mapping is needed only for pre-convention files.
 
 **Set-equality obligation on the table.** Exactly one row per **distinct `failure-mode-id`** recorded
@@ -2451,7 +2451,7 @@ rather than left to be discovered downstream.
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:56` (was the `Date Completed` date boundary) now carries the §3.2 predicate; `:62`'s `DECISIONS-{topic}.md` route gains the §5.2 derivation (`{topic} = failure-mode-id`), so the manual entry point and the pass cannot diverge | §3.2, §5.2 |
 | **`pdlc/workflows/orchestrate-dev.js`** — a **guard-set** path | `resolveAdvisoryRung` (`:1833`) gains an **optional `skill` parameter defaulting to `ADVISORY_RUNG_SKILL`** (`:1797`), threaded to the dispatch at `:1841` and to the memoised path at `:1844-1849`. Every existing call site is unchanged (AT-M10). This is the one edit this feature makes to already-shipped behaviour, and the only reason §2.6's reuse story compiles | §2.6 item 2, §14.1 T-05 |
 | **`pdlc/workflows/dist/orchestrate-dev.bundle.js`**, **`pdlc/workflows/dist/orchestrate-queue.bundle.js`** and **`pdlc/workflows/dist/pdlc-cli.mjs`** | all **three** rebuilt, **in the same commit** as the row above. `CLAUDE.md` requires it, and each of the three inlines the dev module wholesale — the `bundles` array carries three entries (`build-runtime.mjs:448-471`; the third, `{ file: "pdlc-cli.mjs", id: "pdlc-cli", contents: cliArtifact }`, is `:464-470` — its opening brace is `:464` and the `file:` key `:465` — and `cliArtifact` is composed at `:291`) — so the widened resolver's bytes live in **three** tracked artifacts as well as in the source. Verified at HEAD: `resolveAdvisoryRung` is defined at `dist/orchestrate-dev.bundle.js:1994`, `dist/orchestrate-queue.bundle.js:1970` and `dist/pdlc-cli.mjs:1843`, and all three are `git ls-files`-tracked. **The count is load-bearing:** CI's `Generated artifacts are in sync` job rebuilds and diffs *every* artifact, so a commit that rebuilds two of the three fails it | §14.1 T-02 |
-| `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row added to the metadata table (`:70-78`); a `failure-mode-id` line added to the §5 Open Items convention | §8.3, §8.4 |
+| `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row added to the metadata table (`:70-79`); a `failure-mode-id` line added to the §5 Open Items convention | §8.3, §8.4 |
 | `.gitignore` | one entry for `docs/_decisions/.consolidation-lock` | §4.1 |
 | `pdlc/workflows/build-runtime.mjs` and `pdlc/workflows/dist/distribution-manifest.json` | the consolidation bundle's build entry, plus the manifest's own row for it. The manifest carries **one row per artifact** with a `sha1` each (ids `orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` at HEAD), so the rebuild above **re-stamps three existing rows** as well as adding the new one — the manifest is not touched once per feature but once per artifact the rebuild changes | §14.1 T-02 |
 | `docs/_constraints/pdlc-consolidation-vocabularies.md` | authored and owned by this feature (§1–§4 entire), kept at `Version` 1.4 | REQ §4b |

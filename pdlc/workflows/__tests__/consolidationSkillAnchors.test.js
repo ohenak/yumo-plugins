@@ -388,3 +388,87 @@ describe("consolidate-learnings/SKILL.md declares itself bundle-backed, as its s
     expect(skillText).toMatch(/does not run the pass itself|performs the pass|the workflow script/i);
   });
 });
+
+// ─── J1 (CODE_REVIEW v4) — the harvest SKILL's anchor family ─────────────────
+//
+// Three DoD rounds each closed one stale-anchor instance for the consolidate
+// SKILL while this feature's own T08 edit moved the HARVEST SKILL's metadata
+// table (`Phases exercised` inserted at what was `DoD rounds`' line) and no
+// oracle ranged over that file. Same machinery, second subject. The measured
+// facts come from the SKILL at run time; nothing here is a transcribed line
+// number — which is the whole point.
+describe("harvest-learnings SKILL anchors (CODE_REVIEW v4 J1)", () => {
+  const HARVEST_REL = "pdlc/skills/harvest-learnings/SKILL.md";
+  const harvestLines = readFileSync(join(REPO_ROOT, HARVEST_REL), "utf8").split("\n");
+
+  const soleHarvestLine = (re) => {
+    const hits = harvestLines.reduce((acc, line, i) => (re.test(line) ? [...acc, i + 1] : acc), []);
+    if (hits.length !== 1) {
+      throw new Error(
+        `harvest SKILL content ${re} matched ${hits.length} lines (${hits.join(", ")}); a citable claim must be unique`
+      );
+    }
+    return hits[0];
+  };
+
+  // The measured anchor family.
+  const tableHeader = soleHarvestLine(/^\| Field \| Detail \|$/);
+  const harvestedFrom = soleHarvestLine(/^\| Harvested from \|/);
+  const phasesExercised = soleHarvestLine(/^\| Phases exercised \|/);
+  const dodRounds = soleHarvestLine(/^\| DoD rounds \|/);
+  const approvalRecord = soleHarvestLine(/^## 6\. Approval Record$/);
+
+  it("the metadata table is contiguous, ordered, and ends at DoD rounds", () => {
+    for (let n = tableHeader; n <= dodRounds; n++) {
+      expect(harvestLines[n - 1]).toMatch(/^\|/);
+    }
+    expect(harvestedFrom).toBe(phasesExercised - 1); // T08: after `Harvested from`
+    expect(phasesExercised).toBe(dodRounds - 1);
+  });
+
+  it("vocabularies §2 cites the measured table span, row and heading — not a remembered one", () => {
+    const vocab = docs[VOCAB] ?? readFileSync(join(REPO_ROOT, VOCAB), "utf8");
+    expect(vocab).toContain(`\`pdlc/skills/harvest-learnings/SKILL.md:${approvalRecord}\``);
+    expect(vocab).toContain(`\`:${tableHeader}-${dodRounds}\``);
+    expect(vocab).toContain(`\`:${phasesExercised}\``);
+  });
+
+  // v4's second recommendation, made the general conjunct: every instance of
+  // this class in three rounds was a range that stopped short of the block it
+  // names. Any cited range that intersects the metadata table must end at the
+  // table's last row — a range that stops inside it is the J1 shape.
+  const namesOnlyHarvest = (line) => {
+    const dirs = new Set([...line.matchAll(QUALIFIED_SKILL_RE)].map((m) => m[1]));
+    return dirs.size === 1 && dirs.has("harvest-learnings");
+  };
+  const HARVEST_RANGE_RE = /(?:harvest-learnings\/SKILL\.md:|`:)(\d+)-(\d+)`?/g;
+
+  it("no tracked citer's range stops inside the metadata table", () => {
+    const out = execFileSync("git", ["grep", "-l", "-F", "harvest-learnings/SKILL.md", "--", "*.md"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
+    const citers = out
+      .split("\n")
+      .filter(Boolean)
+      .filter((p) => p !== HARVEST_REL && !EXCLUDED_CITER.test(p));
+    expect(citers.length).toBeGreaterThan(0); // the grep itself must not go blind
+
+    const violations = [];
+    for (const rel of citers) {
+      const text = readFileSync(join(REPO_ROOT, rel), "utf8");
+      text.split("\n").forEach((line, i) => {
+        if (!line.includes("harvest-learnings") && !namesOnlyHarvest(line)) return;
+        for (const m of line.matchAll(HARVEST_RANGE_RE)) {
+          const from = Number(m[1]);
+          const to = Number(m[2]);
+          const intersects = from <= dodRounds && to >= tableHeader;
+          if (intersects && to !== dodRounds) {
+            violations.push(`${rel}:${i + 1} cites :${from}-${to}; the table ends at :${dodRounds}`);
+          }
+        }
+      });
+    }
+    expect(violations).toEqual([]);
+  });
+});

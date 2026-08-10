@@ -623,7 +623,7 @@ the delimited consumed block plus the legacy region — including the matching e
 credential, in both the same-repo (AC-3.8) and two-repo configurations, plus the pathspec-scoped
 commit of the consuming-repo writes (AC-3.8b); the effectiveness/falsifiability loop, including the
 two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-5.2) and
-`Phases exercised` in the harvest metadata table (`harvest-learnings/SKILL.md:70-78`);
+`Phases exercised` in the harvest metadata table (`harvest-learnings/SKILL.md:70-79`);
 `ESCALATIONS.md` consumption in all three corpus states (AC-6.1); the one-line `.gitignore` entry for
 `docs/_decisions/.consolidation-lock` (AC-1.3); the two project-level reference files this feature
 authors and thereafter owns — `docs/_constraints/pdlc-consolidation-vocabularies.md` (§1–§4 entire,
