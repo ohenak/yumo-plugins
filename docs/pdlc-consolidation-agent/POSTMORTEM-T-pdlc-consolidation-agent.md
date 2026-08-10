@@ -674,10 +674,12 @@ REQ, FSPEC absorbed REQ, PROPERTIES absorbed the routed text. Nothing in the pro
 routing list at dispatch time from the upstream document's version *at that moment*. The list is
 minted when the wave opens and travels unchanged while the wave keeps deciding.
 
-**RC-3 (aggravating) — the confirmation round and the last round of the window were the same round.**
-The fix `se-review` prices is one conjunct-pair inside a property that already exists, plus two
-bookkeeping edits, no new id. There was no round left to spend on it, so a four-minute repair becomes
-an operator halt.
+**RC-3 (aggravating) — the confirmation landed on the last round of the invocation's budget.**
+`MAX_REVIEW_ROUNDS` is a **per-invocation budget**, not a lifetime cap: `deriveRoundWindow` reads the
+on-disk `-v5` basenames and a re-entry opens rounds **6–10**. So the round count is not what blocks
+re-entry — this POSTMORTEM's marker is. But within this invocation there was no round left to spend,
+so a repair `se-review` prices at one conjunct-pair inside an existing property plus two bookkeeping
+edits, with no new id, became an operator halt instead of a round-6 delta.
 
 **Not the cause, ruled out explicitly.** Over-correction (the edit was strictly stronger than the
 routed items required — set equality with "no third name", not containment-plus-absence); collateral
@@ -685,3 +687,80 @@ movement (id set identical, no re-homing); pacing/watchdog failure (three hunks,
 reviewer re-litigating settled scope (SE re-litigated nothing — the finding is new scope surfaced by
 the citation the erratum itself added); and severity inflation (the High bar is met on the register's
 own completeness claim).
+
+## Recommendation
+
+Ordered. Steps 1–3 are the repair; step 4 is re-entry; steps 5–6 are the durable changes this episode
+has earned. Steps 1–3 are small and mechanical — this halt is a bookkeeping failure of the erratum
+protocol, not a design disagreement.
+
+**1. Close SE F-01 in `PROPERTIES` v1.5 — one property, no new id.** Follow TSPEC §12.2's own shape
+and extend `PROP-COR-09` to carry the second fixture in the same case:
+
+> a second fixture carries the **all-unreadable corpus**: terminal status is exactly `no-op`, the
+> rendered pair's basename list is **empty**, `|un-consolidated|` is 2, and both basenames are named
+> as unread
+
+plus the mutual-control sentence §12.2 already supplies — the all-unreadable fixture keeps *"pair
+empty"* from passing on a pass that enumerated nothing at all, and the mixed fixture keeps that
+fixture's status assertion from passing on an implementation that terminates every
+unreadable-touching pass `failed`. Three consequent edits fall out, all bookkeeping:
+
+- the title, which speaks only of an "entry" (`:395`), must cover the whole-corpus arm;
+- §12.1's AC-1.4 row (`:1648`) gains `PROP-COR-09` — after this change it is the only property
+  asserting AC-1.4's **third** cause;
+- the trailer's AC list gains `AC-1.4` beside `AC-1.1, REQ §4b`.
+
+The property count stays at **118**. Verify at HEAD after the edit, not from this text:
+`grep -c "all-unreadable" PROPERTIES-…md` > 0, and the id count still 118.
+
+**2. Answer `se-review`'s Q-01 in the document, not in a commit message.** Record in the v1.5
+changelog whether the all-unreadable arm was consciously out of scope for the erratum round or was
+missed (it was missed — see RC-1). The next reader diffs PROPERTIES against TSPEC §12.2 and finds one
+fixture where the cell specifies two; the changelog must answer that before they raise it again.
+
+**3. Re-ground before writing, in the order the SKILL specifies.** Diff `REQ`, `FSPEC` and `TSPEC` at
+HEAD against the versions PROPERTIES v1.3 was approved against, and enumerate every `AC-`/`BR-`/§ row
+the wave moved — **not** the routed item list. Concretely, for this repair that means REQ v2.5's
+erratum note (`REQ:26`), TSPEC §7.1, §10.3 rows 1a/1b, §10.4 and §12.2's cell (`TSPEC:2835`). Absorb
+those ahead of the raised items and record the absorption in the changelog.
+
+**4. Re-entry.** Land steps 1–3, then set the marker at the top of this file to `yes` **in the same
+commit**, naming the evidence in the commit message (the two greps from step 1). Re-invoke
+`orchestrate-dev` on `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md`; the PROPERTIES
+window opens at round **6** from the on-disk `-v5` basenames and runs to 10. Two constraints on that
+round:
+
+- the erratum bound (one erratum per upstream document per phase) is **spent**; anything genuinely
+  upstream that a round-6 reviewer finds is a Low/deferred filing plus a note, not a second wave;
+- the round is a delta round on one property. A reviewer re-opening settled scope in it should be
+  answered with DEC-SEV-03, not with an edit.
+
+Expectation: one delta round producing both approvals, since PM already approved these bytes and SE
+stated that the routed items are fully absorbed.
+
+**5. Record `DEC-ERR-02` in `docs/_decisions/DECISIONS-review-severity-bars.md` (or a new
+`DECISIONS-erratum-protocol.md`) — the delta-confirmation check is a superset check against upstream
+HEAD, not an equality check against the routed list.** Two clauses:
+
+- *Routing lists are re-derived at dispatch, not at wave open.* When a wave has already moved a layer
+  above the target since the list was minted, the dispatcher re-derives the list from the upstream
+  document's version **at dispatch time**. This episode's list was correct for REQ v2.1 and stale for
+  REQ v2.5 by 13 minutes.
+- *A confirming reviewer's scope is the document against upstream HEAD.* `pm-review`'s v5 was
+  protocol-correct and still passed a document with a hole; `se-review`'s superset read is the one
+  that caught it. Make the superset read the stated obligation for **both** confirming channels so
+  the outcome does not depend on which reviewer happens to over-deliver.
+
+**6. Harvest note.** The durable signal is RC-2 — *a multi-layer erratum wave has no synchronisation
+point: every layer can absorb its own parent correctly and the tail can still ship a hole, because
+the routing list is minted once and the wave keeps deciding.* Episode 1's durable signal was about
+layer boundaries; this one is about wave **time**. Both belong in
+`LEARNINGS-pdlc-consolidation-agent.md`, and RC-2 is a candidate for promotion to
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` at the next `consolidate-learnings` pass.
+
+**Scope note — what this halt is not.** No production code is implicated, no PLAN task is invalidated,
+and no approval already recorded on `REQ`, `FSPEC` or `TSPEC` is made stale by it: all three state the
+arm correctly and consistently. The exposure is confined to the property register missing one fixture
+for AC-1.4's third cause — which, per `TSPEC:2835`, no register AT reaches either, so if PROPERTIES
+does not carry it, nothing tests it.
