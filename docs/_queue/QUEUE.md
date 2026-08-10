@@ -44,6 +44,25 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
 | 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
+| 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
+
+**Row 21 (`pdlc-learnings-injection`) added 2026-08-10 from consumer-run feedback.** The
+`regime-ledger` consumer completed a full end-to-end run of `wheel-paper-portfolio` (~40 review
+rounds, 49 implementation tasks, 3 DoD rounds, PR #261 green) while executing a stale 0.21.0
+workflow copy against a 0.22.x plugin, and the operator relayed its pain points on 2026-08-10.
+Checked against `pdlc/workflows/orchestrate-dev.js` at HEAD, almost all of them are already
+answered by the 0.22.x modules — the verdict vocabulary, verdict-trailer recovery, per-phase
+model routing and wave-mode's script-owned pathspec-scoped commits behind a foreground test
+gate — so the staleness itself is the story, and it belongs to the headless-engine family (rows
+3–5, whose REQ now records the incident as corroborating evidence at v0.5). **One genuine gap
+survived that check:** no mechanism injects a sibling feature's harvested LEARNINGS into an
+authoring dispatch, so a lesson the pipeline paid a feature to learn does not reach the next
+feature's authors in-run. Row 21 is that gap and only that gap. `Order` values are allocated and
+never reused; 21 is the next free after 20. Its `Depends-On` is `—`: it composes with
+`pdlc-consolidation-agent` (row 2) but consumes nothing the consolidation pass produces — the
+distinction is stated in the REQ's §1.3 and §4.2 BL-03 — and it needs no other row to land
+first. `ready: false` until the operator reviews the draft, so the queue does not pick it up as
+drafted.
 
 **Row 19 — the sixth advisory seam — added 2026-08-09 (draft REQ, `ready: false`, operator review
 pending).** Motivated by a live Phase I failure on `pdlc-consolidation-agent` the same day: a wave-2
