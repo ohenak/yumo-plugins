@@ -104,7 +104,9 @@
 
 ## 1. Scope, inputs, and what this document decides
 
-This TSPEC is written against `FSPEC-pdlc-consolidation-agent` v11.1 and `REQ-…` v2.0. It adds no
+This TSPEC is written against `FSPEC-pdlc-consolidation-agent` **v11.6** and `REQ-…` **v2.5** — the
+versions it has actually absorbed, re-taken at v2.2. The earlier "v11.1 / v2.0" was the pin the
+document opened at and had been false since v2.0 adopted FSPEC v11.3's **BR-14a** by name. It adds no
 behaviour. Where the FSPEC names an observable, this document names the module, function, seam and
 type that produce it, and the test level that falsifies it.
 
@@ -1754,7 +1756,14 @@ proposal never runs it and reports `absent` as its null.
 The FSPEC froze these sets and made widening a **recorded TSPEC decision** under `DEC-LAYER-01`
 ("a widening is a recorded TSPEC decision against this set, never a silent reading of it"). This
 layer records **exactly four widenings**, every one in a permitted-but-not-obliged column, every one
-non-mutating, each marked ⊕ below. Every other cell is transcribed unchanged at FSPEC v11.1.
+non-mutating, each marked ⊕ below. Every other cell is transcribed unchanged from **FSPEC §6.5's own
+table** — the anchor, not a version, for the reason §12.3 states: the four ⊕ widenings are what this
+layer decides, and everything else is a transcription whose authority is the named FSPEC section at
+whatever version is current. Be clear about what does **not** police this: §11.3(a)'s containment
+oracle asserts `observed ⊆ permitted` against **this table**, transcribed into the test — it pins
+the implementation to the spec, not the spec to its upstream. A cell that drifts from FSPEC §6.5
+is caught by review of that section, which is why the anchor is named rather than a line or a
+version cited.
 
 | Domain | How a call is classified | Obliged | Permitted, not obliged | Absent always |
 |---|---|---|---|---|
