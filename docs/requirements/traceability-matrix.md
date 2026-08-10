@@ -112,3 +112,12 @@ per-criterion mapping lives in FSPEC §15.1; roll-up below.
 | US-03 | REQ-CONS-01 | §2 FSPEC-CONS-01, §3 FSPEC-CONS-02, §4 FSPEC-CONS-03 |
 | US-04 | REQ-CONS-05, REQ-CONS-07 | §8 FSPEC-CONS-07, §10 FSPEC-CONS-09 |
 | US-05 | REQ-CONS-05, REQ-CONS-06 | §8.5, §8.7, §9 FSPEC-CONS-08 |
+
+## pdlc-wave-resume
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05 | (pending) |
+| US-02 | REQ-WVR-02, REQ-WVR-04 | (pending) |
+| US-03 | REQ-WVR-03, REQ-WVR-06 | (pending) |
+| US-04 | REQ-WVR-07 | (pending) |
