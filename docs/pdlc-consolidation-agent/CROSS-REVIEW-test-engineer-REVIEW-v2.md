@@ -82,4 +82,43 @@ One new finding (F-11) is filed — it is about this round's own bookkeeping, no
 
 ## Recommendation
 
+**Needs revision**
+
+Four High findings remain open, all four carried unchanged from round 1. This is not a harsher
+verdict than round 1 — it is the same verdict, because the tree under review is byte-identical to
+the tree I reviewed at `495e62a8` apart from PM's review file. Nothing regressed; nothing converged.
+
+The order of work is unchanged from round 1, and each item is additive to a body of work that is
+structurally sound:
+
+1. **F-02 first** — the only row where production, not the oracle, is wrong. Either add a resolve
+   probe to `openClone`'s non-null branch so a configured-but-unresolvable repository returns
+   `{failure: "repository-unresolved", detail: <configured value verbatim>}`, or route an erratum to
+   change BR-23/E-22. Then drive it directly: an `openClone` test with
+   `{pluginRepository: "some-owner/does-not-exist"}` and a failing clone reply, asserting the reason
+   code and the verbatim value — not through `renderReportBody`.
+2. **F-01** — give AT-M9 a fixture that reaches step 13 and assert all seven conjuncts. If Q-03's
+   answer is that no such fixture is reachable, retitle the row and stop claiming the AT; either way
+   `not.toBe("refused")` cannot stand alone.
+3. **F-03** — answer Q-02, then make one shape authoritative and let the assembled `result.body` be
+   what the AT-N1…N3 tests read, so the assertion traverses the production path.
+4. **F-04** — replace AT-M5's exclusion-only body with the set-equality the title promises: the
+   union of observed pathspecs compared against `state.writeSet`, keeping the marker-exclusion
+   conjunct alongside it.
+5. **F-05, F-06, F-07** — one-line strengthenings each: `toBeNull()` on the effectiveness `state`; a
+   positive terminal-status and marker-taken conjunct on AT-M11; one `main()`-level assertion that
+   the `ADVISORY_MODEL_FALLBACK:` line reaches `result.body`.
+6. **F-08** — the durable one: a §12.2 set-equality guard inside PROP-TRC-01 would have caught F-01
+   and F-04 mechanically and will catch their successors. Nothing blocks on it.
+7. **F-09, F-10** — cleanup; F-10 matters more than its severity because those comments are
+   load-bearing in the wrong direction.
+8. **F-11** — file CR reviews under the `REVIEW` doc type the loop derives, so the round history is
+   visible to `deriveRoundWindow`.
+
+If round 3 opens with the same diff again, the blocker is not the findings — it is that no
+remediation is reaching the branch, and that is worth surfacing before the round budget is spent.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 5, "low": 2}
