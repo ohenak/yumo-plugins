@@ -10,8 +10,8 @@
 //     are authored there, but TSPEC §11.5 decides this file is their *home*: `test.todo` entries
 //     below hold the seats without asserting content that belongs upstream.
 //
-// `failureModeId`, `targetFor` and `mergeProposals` do not exist as behaviour yet (PLAN T02
-// skeleton — all three throw `notImplemented`); T26 is the row that gives them one. Every fixture
+// `failureModeId`, `targetFor` and `mergeProposals` are implemented (T26); this header used to say
+// they throw `notImplemented`, a symbol deleted from the module in `4fdc7fac`. Every fixture
 // below is built as a plain `Proposal`-shaped object (TSPEC §6.2's interface, transcribed by hand —
 // this module owns no `Proposal` builder in `consolidationDoubles.js` because the shape is small and
 // every field the assertions below read is set explicitly per fixture, never defaulted).

@@ -15,8 +15,9 @@
 //     marker, written inside the AT-M3 case beside AT-M11 (TSPEC:2497). Both AT-M11 halves live in
 //     this one file, so T05's "exactly one file per register id" is undisturbed.
 //
-// `parseMarker`, `markerVerdict` and `main` do not exist as behaviour yet (PLAN T02 skeleton — all
-// three throw `notImplemented`); T28 and T31 are the rows that give them one.
+// `parseMarker`, `markerVerdict` and `main` are implemented (T28, T31); this header used to say
+// they throw `notImplemented`, a symbol deleted from the module in `4fdc7fac`. No oracle below is
+// weakened on account of an unimplemented subject.
 
 import main, {
   parseMarker,

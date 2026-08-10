@@ -9,8 +9,8 @@
 //     and not by a fixture; the second conjunct is the positive membership case), AT-P2, AT-P3,
 //     AT-P4, AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11 (TSPEC §7.1, FSPEC §12.1 at :2114-2124).
 //
-// `enumerateCorpus` and `classifyCorpus` do not exist as behaviour yet (PLAN T02 skeleton — both
-// throw `notImplemented`); T25 is the row that gives them one. This file drives `enumerateCorpus`
+// `enumerateCorpus` and `classifyCorpus` are implemented (T25); this header used to say they throw
+// `notImplemented`, a symbol deleted from the module in `4fdc7fac`. This file drives `enumerateCorpus`
 // through `fakeGit` (never a real `git`) and `classifyCorpus` directly over plain
 // `CorpusFile[]`/`logText` fixtures, per `consolidationDoubles.js`'s fixture-builder rule (no
 // fixture here may depend on git *visibility* — TSPEC §7.1).

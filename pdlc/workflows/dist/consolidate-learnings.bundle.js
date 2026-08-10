@@ -8993,6 +8993,7 @@ async function main({
     if (!clearsPatternBar(p.evidence)) {
       deferred.push({
         ...p,
+        declined: true,
         reason: null,
         detail: "pattern bar unmet (AC-2.3): evidence names fewer than two distinct features and states no standing invariant",
       });
@@ -9127,8 +9128,9 @@ async function main({
     state.writeSet.add(proposalPath);
   }
 
+  const degraded = deferred.filter((d) => !(d && d.declined === true));
   if (enacted.length > 0) {
-    state.status = deferred.length > 0 ? "promoted-degraded" : "promoted";
+    state.status = degraded.length > 0 ? "promoted-degraded" : "promoted";
   } else {
     state.status = "no-op";
   }
@@ -9211,9 +9213,17 @@ function promotionSources(item, consumed) {
   const features = evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0);
   if (features.length === 0) return all;
   const matched = all.filter((basename) =>
-    features.some((f) => String(basename).includes(f.trim()))
+    features.some((f) => matchesFeatureToken(String(basename), f.trim()))
   );
   return matched.length > 0 ? matched : all;
+}
+
+function matchesFeatureToken(basename, feature) {
+  if (feature.length === 0) return false;
+  const slot = /^LEARNINGS-(.+)\.md$/i.exec(basename);
+  if (slot) return slot[1].toLowerCase() === feature.toLowerCase();
+  const escaped = feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9-])${escaped}([^a-z0-9-]|$)`, "i").test(basename);
 }
 
 function deriveProposals(replyText) {
@@ -10299,7 +10309,8 @@ function renderProposalFile(state, deferred) {
   if (typeof s.prUrl === "string" && s.prUrl.length > 0) {
     lines.push(`pr: ${s.prUrl}`);
   }
-  for (const item of items) {
+
+  const renderItem = (item) => {
     lines.push("");
     lines.push(`## ${item.failureModeId}:${item.action}`);
     lines.push(`target: ${item.target ?? ""}`);
@@ -10308,10 +10319,21 @@ function renderProposalFile(state, deferred) {
     if (item.detail) lines.push(`detail: ${item.detail}`);
     lines.push(`diff:`);
     lines.push(item.diff === null || item.diff === undefined ? UNAVAILABLE : item.diff);
+  };
+
+  for (const item of items.filter((i) => !(i && i.declined === true))) renderItem(item);
+
+  const declined = items.filter((i) => i && i.declined === true);
+  if (declined.length > 0) {
+    lines.push("");
+    lines.push(DECLINED_HEADING);
+    for (const item of declined) renderItem(item);
   }
 
   return lines.join("\n");
 }
+
+const DECLINED_HEADING = "# Declined at the AC-2.3 pattern bar (not a degraded promotion)";
 
 function renderPromotionCommitMessage(proposal, passId) {
   const p = proposal || {};
@@ -10320,7 +10342,7 @@ function renderPromotionCommitMessage(proposal, passId) {
 }
 
 const REPOSITORY_UNRESOLVED_RE =
-  /repository not found|not found|does not exist|could not read from remote repository|access rights/i;
+  /repository not found|does not exist|could not read from remote repository|access rights/i;
 
 async function openClone(passId, config, seams) {
   const { _makeTempDir, _git } = seams || {};

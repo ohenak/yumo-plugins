@@ -9,8 +9,9 @@
 // seed and draw index so the case is reproducible without re-running the suite (PROP-GEN-00).
 //
 // `classifyCorpus`, `parseConsolidationConfig`, `mintPassId`, `failureModeId`, `targetFor`,
-// `mergeProposals`, `parseEscalations` and `effectivenessTable` do not exist as behaviour yet (PLAN
-// T02 skeleton — all throw `notImplemented`); T25/T26/T27 are the rows that give them one.
+// `mergeProposals`, `parseEscalations` and `effectivenessTable` are implemented (T25/T26/T27); this
+// header used to say they throw `notImplemented`, a symbol deleted from the module in `4fdc7fac`.
+// Nothing here is weakened on account of an unimplemented subject.
 
 import {
   classifyCorpus,

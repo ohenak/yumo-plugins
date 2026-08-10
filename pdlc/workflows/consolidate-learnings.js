@@ -788,9 +788,15 @@ export default async function main({
     // evidence does not clear it is never enacted on any route. It is deferred, so it
     // lands in the proposal file and in report item 8 for human judgment rather than
     // being dropped silently or promoted on a coincidence.
+    // `declined: true` separates this deferral from a degraded one. Per vocabularies
+    // §1 and FSPEC §6.3's `duplicate-suppressed` precedent, a verdict decided per
+    // proposal BEFORE any route is attempted fires no §6.3 fallback class and is not a
+    // failure — so it never feeds the `promoted-degraded` derivation at step 14 (PM
+    // G-01), and it renders under its own heading in the proposal file (PM G-02).
     if (!clearsPatternBar(p.evidence)) {
       deferred.push({
         ...p,
+        declined: true,
         reason: null,
         detail: "pattern bar unmet (AC-2.3): evidence names fewer than two distinct features and states no standing invariant",
       });
@@ -935,8 +941,17 @@ export default async function main({
   }
 
   // Step 14's status (§10.3): promoted / promoted-degraded / no-op.
+  //
+  // PM G-01 — only DEGRADED deferrals darken the status. An AC-2.3 bar rejection is
+  // decided per proposal before routing, fires no §6.3 fallback class and adds no reason
+  // code; vocabularies §1 reserves `promoted-degraded` for a pass that "also hit an AC-3.5
+  // fallback class", and gives `duplicate-suppressed` as the controlling precedent for a
+  // filter that is not a failure. A pass that promoted what cleared the bar and correctly
+  // declined a coincidence reads `promoted` — the declined pair is still named in report
+  // item 8 and in the proposal file, so nothing is lost by not degrading the status.
+  const degraded = deferred.filter((d) => !(d && d.declined === true));
   if (enacted.length > 0) {
-    state.status = deferred.length > 0 ? "promoted-degraded" : "promoted";
+    state.status = degraded.length > 0 ? "promoted-degraded" : "promoted";
   } else {
     state.status = "no-op";
   }
@@ -1053,9 +1068,29 @@ export function promotionSources(item, consumed) {
   const features = evidence.recurrence.filter((f) => typeof f === "string" && f.trim().length > 0);
   if (features.length === 0) return all;
   const matched = all.filter((basename) =>
-    features.some((f) => String(basename).includes(f.trim()))
+    features.some((f) => matchesFeatureToken(String(basename), f.trim()))
   );
   return matched.length > 0 ? matched : all;
+}
+
+/**
+ * PM G-03 — the feature name must be the basename's WHOLE feature slot, not a substring of it.
+ * Bare `includes` over-cited prefix-related names: `feat-a` matched `LEARNINGS-feat-alpha.md`,
+ * and `pdlc-consolidation-agent` matched `…-agent-v2.md`, widening a promotion's cited sources
+ * past the evidence that actually named them. The slot is read off the `LEARNINGS-{feature}.md`
+ * grammar §3.1 fixes for the corpus; a basename outside that grammar falls back to a
+ * `[a-z0-9]`-bounded token match, which still rejects both prefix cases above.
+ *
+ * @param {string} basename
+ * @param {string} feature
+ * @returns {boolean}
+ */
+function matchesFeatureToken(basename, feature) {
+  if (feature.length === 0) return false;
+  const slot = /^LEARNINGS-(.+)\.md$/i.exec(basename);
+  if (slot) return slot[1].toLowerCase() === feature.toLowerCase();
+  const escaped = feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9-])${escaped}([^a-z0-9-]|$)`, "i").test(basename);
 }
 
 // §7.4 — pure over the clustering reply. The adopted wire grammar is JSON
@@ -2420,7 +2455,8 @@ export function renderProposalFile(state, deferred) {
   if (typeof s.prUrl === "string" && s.prUrl.length > 0) {
     lines.push(`pr: ${s.prUrl}`);
   }
-  for (const item of items) {
+
+  const renderItem = (item) => {
     lines.push("");
     lines.push(`## ${item.failureModeId}:${item.action}`);
     lines.push(`target: ${item.target ?? ""}`);
@@ -2431,10 +2467,27 @@ export function renderProposalFile(state, deferred) {
     if (item.detail) lines.push(`detail: ${item.detail}`);
     lines.push(`diff:`);
     lines.push(item.diff === null || item.diff === undefined ? UNAVAILABLE : item.diff);
+  };
+
+  // PM G-02 — two causes, two headings. Items above the separator are work the pass COULD NOT
+  // land (AC-3.5 / AC-5.4 / AC-6.3, the causes AC-3.4 enumerates); items below it are work the
+  // pass DELIBERATELY DECLINED at the AC-2.3 bar. The operator's response differs — one is
+  // residue to retry, the other is a coincidence to judge — so they are never interleaved.
+  for (const item of items.filter((i) => !(i && i.declined === true))) renderItem(item);
+
+  const declined = items.filter((i) => i && i.declined === true);
+  if (declined.length > 0) {
+    lines.push("");
+    lines.push(DECLINED_HEADING);
+    for (const item of declined) renderItem(item);
   }
 
   return lines.join("\n");
 }
+
+// The separator PM G-02 asks for, spelled once. A `#` heading, so the per-item `##` sections
+// keep the grammar `renderProposalFile`'s readers already parse.
+const DECLINED_HEADING = "# Declined at the AC-2.3 pattern bar (not a degraded promotion)";
 
 /**
  * §7.9 — one commit's subject plus the per-commit `PDLC-PROMOTION-ID: {id}:{action}` trailer of
@@ -2456,8 +2509,12 @@ export function renderPromotionCommitMessage(proposal, passId) {
 // clone can fail with is E-23's transport/rate-limit class. Kept narrow deliberately: a phrase not
 // listed here degrades to `api-failure`, which is the pre-existing behaviour, never a
 // misclassification of a network blip as a missing repository.
+// TE F-12: the bare `/not found/` alternative was dropped. It subsumed the specific
+// `repository not found` beside it and also matched transport stderr carrying the phrase
+// (`fatal: unable to access …: server not found`, git's DNS failure), which is exactly the
+// E-23 → E-22 misclassification this comment says it avoids.
 const REPOSITORY_UNRESOLVED_RE =
-  /repository not found|not found|does not exist|could not read from remote repository|access rights/i;
+  /repository not found|does not exist|could not read from remote repository|access rights/i;
 
 /**
  * §9.1 — three steps, all through seams, none touching the invoking tree's refs. `null` from

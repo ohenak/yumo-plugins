@@ -494,3 +494,176 @@ describe("AC-5.3/AC-5.4 — a promotion that recurred on two counted passes is f
     expect(row.remediation).toBeNull();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PM G-01/G-02 — an AC-2.3 bar rejection is a filter, not a degradation
+// ═══════════════════════════════════════════════════════════════════════════
+describe("AC-7.1/AC-2.3 — a pass that promotes and correctly declines a coincidence reads `promoted`", () => {
+  // The mixed pass PM G-01 asks for, and the row the existing bar coverage lacked: every prior
+  // bar row had a SOLE cluster, so `enacted` was empty and `no-op` masked the status derivation.
+  // Two kind-1 clusters on distinct artifacts (distinct `failureModeId`s, so `mergeProposals`
+  // cannot fold them): one clears the bar and is enacted on the constraints route, one fails it.
+  //
+  // The oracle is a conjunction on the same path, not a bare status check: the status is
+  // `promoted` VERBATIM *and* item 8 still names the declined pair *and* the enacted promotion
+  // landed. Asserting the status alone would pass on a build that silently dropped the declined
+  // cluster instead of deferring it — the failure mode the AC-2.3 bar exists to prevent.
+  const mixedPass = () =>
+    runPass({
+      corpusListing: CORPUS,
+      agent: makeAgentDouble({
+        script: [
+          agentReply([
+            guardCluster({
+              phase: "T",
+              artifact: "pdlc/hooks/scripts/cleared.sh",
+              kind: 1,
+              symptom: "cleared-the-bar symptom",
+              evidence: { recurrence: ["feat-alpha", "feat-beta"] },
+            }),
+            guardCluster({
+              phase: "I",
+              artifact: "pdlc/hooks/scripts/declined.sh",
+              kind: 1,
+              symptom: "coincidence symptom",
+              evidence: { recurrence: ["feat-alpha"] },
+            }),
+          ]),
+        ],
+      }),
+      files: { [CONSTRAINTS_PATH]: "" },
+    });
+
+  test("the status is `promoted`, the declined pair is still named in item 8, and the promotion landed", async () => {
+    const pass = mixedPass();
+
+    const result = await pass.run();
+
+    // (0) Non-vacuity: the pass really did both things. Without this the status assertion
+    // could hold on a pass that enacted nothing or declined nothing.
+    expect(result.records.some((r) => r.route === "constraints")).toBe(true);
+    expect(result.deferred).toHaveLength(1);
+
+    // (1) G-01: the bar rejection does not darken the terminal status.
+    expect(result.status).toBe("promoted");
+    expect(appendedLogText(pass.fs)).toMatch(/status: promoted(\s|$)/m);
+    expect(appendedLogText(pass.fs)).not.toContain("promoted-degraded");
+
+    // (2) Nothing is lost by not degrading: item 8 still names the declined pair and points
+    // at the proposal file.
+    expect(result.body).toMatch(/pattern bar unmet \(AC-2\.3\)/);
+    expect(result.body).toContain("CONSOLIDATION-PROPOSAL-");
+  });
+
+  test("a genuinely degraded deferral still reads `promoted-degraded` — the derivation was narrowed, not removed", async () => {
+    // The control for the row above. One cluster clears the bar and is enacted on the
+    // constraints route; a second clears the bar too but takes the PR route with no credential
+    // and no plugin repository, so `degradeAll` defers it with a reason code. That deferral is
+    // an AC-3.5 fallback class, so the status must still degrade.
+    const pass = runPass({
+      corpusListing: CORPUS,
+      agent: makeAgentDouble({
+        script: [
+          agentReply([
+            guardCluster({
+              phase: "T",
+              artifact: "pdlc/hooks/scripts/cleared.sh",
+              kind: 1,
+              symptom: "cleared-the-bar symptom",
+              evidence: { recurrence: ["feat-alpha", "feat-beta"] },
+            }),
+            guardCluster({
+              phase: "I",
+              artifact: GUARD_ARTIFACT,
+              kind: 3,
+              symptom: "pr-route symptom",
+              evidence: { recurrence: ["feat-alpha", "feat-beta"] },
+            }),
+          ]),
+        ],
+      }),
+      files: { [CONSTRAINTS_PATH]: "" },
+    });
+
+    const result = await pass.run();
+
+    expect(result.records.some((r) => r.route === "constraints")).toBe(true);
+    expect(result.deferred).toHaveLength(1);
+    // A reason code — the mark of an AC-3.5 fallback class, which a bar rejection never carries.
+    expect(result.deferred[0].reason).toBeTruthy();
+    expect(result.status).toBe("promoted-degraded");
+  });
+
+  test("the proposal file separates declined-by-bar items from degraded ones (G-02)", async () => {
+    const pass = mixedPass();
+
+    await pass.run();
+
+    const proposalWrite = pass.fs.writes.find((w) => /CONSOLIDATION-PROPOSAL-/.test(w.path ?? ""));
+    expect(proposalWrite).toBeDefined();
+
+    const heading = "# Declined at the AC-2.3 pattern bar (not a degraded promotion)";
+    expect(proposalWrite.contents).toContain(heading);
+
+    // The discrimination, not a containment: the declined item's section must live BELOW the
+    // separator. A whole-file `toContain` would pass on a file that printed the heading and
+    // then interleaved the two causes anyway — the defect G-02 is about.
+    const [above, below] = proposalWrite.contents.split(heading);
+    expect(below).toContain("pattern bar unmet (AC-2.3)");
+    expect(above).not.toContain("pattern bar unmet (AC-2.3)");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PM G-03 — `promotionSources` matches whole feature names, not substrings
+// ═══════════════════════════════════════════════════════════════════════════
+describe("AC-3.2(i) — a promotion's cited sources are not widened by a prefix-related feature name", () => {
+  test("evidence naming `feat-a` cites LEARNINGS-feat-a.md and not LEARNINGS-feat-alpha.md", async () => {
+    const ghRun = fakeGhRun({
+      "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
+      "gh pr create": { ok: true, stdout: "https://github.com/kaneho/yumo-plugins/pull/43\n" },
+    });
+    const pass = runPass({
+      ghRun,
+      git: fakeGit({
+        "ls-files": {
+          ok: true,
+          stdout:
+            [
+              "docs/feat-a/LEARNINGS-feat-a.md",
+              "docs/feat-alpha/LEARNINGS-feat-alpha.md",
+              "docs/feat-beta/LEARNINGS-feat-beta.md",
+            ].join("\n") + "\n",
+        },
+      }),
+      agent: makeAgentDouble({
+        script: [
+          agentReply([
+            guardCluster({
+              phase: "T",
+              artifact: "pdlc/hooks/scripts/prefix.sh",
+              symptom: "prefix symptom",
+              // Two features, so the bar is cleared; one of them is a strict prefix of a third
+              // consumed feature that the evidence does NOT name.
+              evidence: { recurrence: ["feat-a", "feat-beta"] },
+            }),
+          ]),
+        ],
+      }),
+    });
+
+    await pass.run();
+
+    const bodyWrite = pass.fs.writes.find((w) => /PDLC-CONSOLIDATION-PROMOTIONS/.test(w.contents ?? ""));
+    expect(bodyWrite).toBeDefined();
+    const section = bodyWrite.contents.split(/^## /m).slice(1)[0];
+    const sourceLine = section.split("\n").find((line) => line.startsWith("source: ")) ?? "";
+
+    // Positive and negative on the same line: the cited pair is present, the prefix-related
+    // third file is absent. Under the old `includes` matcher `LEARNINGS-feat-alpha.md` was
+    // cited by `feat-a`, so this row is red against that build.
+    expect(sourceLine).toContain("LEARNINGS-feat-a.md");
+    expect(sourceLine).toContain("LEARNINGS-feat-beta.md");
+    expect(sourceLine).not.toContain("LEARNINGS-feat-alpha.md");
+  });
+});

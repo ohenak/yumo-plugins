@@ -466,6 +466,22 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
           expect(reply.failure).not.toBe("repository-unresolved");
         });
 
+        // TE F-12's control. The prior leg proves only that ONE transport phrasing
+        // (`Could not resolve proxy`) stays `api-failure`; it cannot fail on a phrasing that
+        // contains "not found", which is how git reports a DNS failure on the `unable to access`
+        // path. That is the E-23 → E-22 misclassification the discrimination exists to avoid, so
+        // it gets its own row rather than riding on the phrasing above.
+        test("transport stderr that happens to contain \"not found\" stays api-failure — the phrase alone is not the boundary", async () => {
+          const { seams } = cloneSeams(
+            "fatal: unable to access 'https://github.com/some-owner/does-not-exist.git/': server not found"
+          );
+
+          const reply = await openClone("2025-06-01-1", { pluginRepository: configuredRepo }, seams);
+
+          expect(reply.failure).toBe("api-failure");
+          expect(reply.failure).not.toBe("repository-unresolved");
+        });
+
         test("the reason production returned reaches the report body beside the configured value", async () => {
           const { seams } = cloneSeams("remote: Repository not found.");
           const reply = await openClone("2025-06-01-1", { pluginRepository: configuredRepo }, seams);
