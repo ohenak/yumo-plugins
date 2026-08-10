@@ -18,9 +18,11 @@
  * the streaks, the routing, the suppression, the counting, the row rendering —
  * is a pure function of already-read text, exported for direct unit test.
  *
- * This file is currently a SKELETON (TSPEC §5, §6 — PLAN T02): the seam
- * protocol, the frozen catalogues, the data-model JSDoc typedefs and one
- * throwing stub per §7/§9 export. No pass behaviour is implemented yet.
+ * Status: the pass is implemented end to end — the §7 pure functions, the §9
+ * seam-facing helpers and `main`'s fourteen steps. `main` is the production
+ * caller of every exported builder that feeds an operator-visible artifact
+ * (the `.consolidation-log.md` terminal row and the report body); a builder
+ * with no such caller is a DC-07 defect, not a staging state.
  */
 
 // Single-line on purpose: stripModuleSyntax recognises imports line-wise.
@@ -497,6 +499,11 @@ export default async function main({
     suppressions: [],
     notices: [],
     deferred: [],
+    // §7.7 — the advisory corpus counts and the §9.4/§9.5 candidates derived from them.
+    // Both stay null until step 10 reads `ESCALATIONS.md`, so an early terminal reports
+    // `advisory: none` rather than an invented corpus state.
+    advisory: null,
+    seamCandidates: null,
     prUrl: null,
     branch: null,
     markerHeld: false,
@@ -633,6 +640,9 @@ export default async function main({
   if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
   else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
   state.advisory = escalations;
+  // AC-6.2/AC-6.3 — the counts are an input, not an artifact: `seamCandidates` is called
+  // here so report item 7 renders a real §9.4 candidate and §9.5 widening (`renderAdvisoryItem`).
+  state.seamCandidates = seamCandidates(escalations);
 
   // Step 11 — the effectiveness table over prior passes (§7.5). Records come from
   // both grammars the log admits: `renderFailureModeRecord`'s field lines and the
@@ -854,7 +864,7 @@ export default async function main({
 
   // §5.3 — the proposal file, written when and only when there is a cause.
   if (deferred.length > 0) {
-    const proposalPath = `docs/_decisions/CONSOLIDATION-PROPOSAL-${state.passId}.md`;
+    const proposalPath = proposalPathFor(state.passId);
     await writeFileFn(proposalPath, renderProposalFile(state, deferred));
     state.writeSet.add(proposalPath);
   }
@@ -1967,6 +1977,77 @@ function renderSuppressionEntry(s) {
   return `${entry.failureModeId}:${entry.action} → ${rendered}`;
 }
 
+/**
+ * §7.9, FSPEC §10.4 item 8, AC-7.1/AC-3.5 — one deferred item, named the way the operator can act
+ * on it: the `{failureModeId}:{action}` pair, then whichever of `reason`/`detail` the diversion
+ * carried. Both operator channels render from `state.deferred` through this one function, so the
+ * row and the report can never disagree about what a pass left for human judgment.
+ *
+ * @returns {string}
+ */
+function renderDeferredEntry(d) {
+  const item = d || {};
+  const pair = `${item.failureModeId}:${item.action}`;
+  const cause = typeof item.reason === "string" && item.reason.length > 0 ? item.reason : null;
+  const detail = typeof item.detail === "string" && item.detail.length > 0 ? item.detail : null;
+  if (cause && detail) return `${pair} (${cause}: ${detail})`;
+  if (cause) return `${pair} (${cause})`;
+  if (detail) return `${pair} (${detail})`;
+  return pair;
+}
+
+/**
+ * §5.3 — the one place `CONSOLIDATION-PROPOSAL-{passId}.md` is spelled, so `main`'s write and
+ * report item 8's pointer can never name different files.
+ *
+ * @returns {string}
+ */
+export function proposalPathFor(passId) {
+  return `docs/_decisions/CONSOLIDATION-PROPOSAL-${passId ?? ""}.md`;
+}
+
+/**
+ * §7.9, FSPEC §10.4 item 7, AC-6.1/AC-6.2/AC-6.3 — the corpus state, the §9.4 candidate (or the
+ * tie that blocks one), the §9.5 widenings, and AC-6.3's operator action where the widening is
+ * consumer-local (`.claude/pdlc.config.json` is untracked, so it is never PR-able). Rendered from
+ * `state.advisory` and `state.seamCandidates`, both set by `main` step 10.
+ *
+ * @returns {string}
+ */
+function renderAdvisoryItem(s) {
+  const advisory = s && typeof s.advisory === "object" && s.advisory !== null ? s.advisory : null;
+  if (advisory === null) return "none";
+  const corpusState = typeof advisory.corpusState === "string" ? advisory.corpusState : "absent";
+  const parts = [`corpus ${corpusState}`];
+  const candidates =
+    s.seamCandidates && typeof s.seamCandidates === "object" ? s.seamCandidates : null;
+  if (candidates) {
+    if (typeof candidates.over === "string" && candidates.over.length > 0) {
+      const distinct =
+        advisory.distinctFeatures instanceof Map ? advisory.distinctFeatures.get(candidates.over) : null;
+      const total = advisory.totals instanceof Map ? advisory.totals.get(candidates.over) : null;
+      parts.push(
+        `over-escalating: ${candidates.over} (${total ?? 0} escalations across ${distinct ?? 0} features)`
+      );
+    } else if (Array.isArray(candidates.tie) && candidates.tie.length > 0) {
+      parts.push(`over-escalating: none (tie: ${candidates.tie.join(", ")})`);
+    } else {
+      parts.push(`over-escalating: none`);
+    }
+    const under = Array.isArray(candidates.under) ? candidates.under : [];
+    parts.push(`widening candidates: ${under.length > 0 ? under.join(", ") : "none"}`);
+    if (under.length > 0) {
+      parts.push(
+        `operator action: widen advisory.seams for ${under.join(", ")} in .claude/pdlc.config.json (consumer-local, not PR-able)`
+      );
+    }
+  } else {
+    parts.push(`over-escalating: none`);
+    parts.push(`widening candidates: none`);
+  }
+  return parts.join("; ");
+}
+
 /** @returns {string} */
 export function renderFailureModeRecord(record) {
   const r = record || {};
@@ -2034,7 +2115,12 @@ export function renderTerminalRow(state) {
   }
   lines.push(`suppressed-by: ${suppressions.map(renderSuppressionEntry).join(", ")}`);
   lines.push(`branch: ${s.branch ?? ""}`);
-  lines.push(`deferred: none`);
+  // AC-7.1 — "what it deferred for human judgment". Rendered from `state.deferred`
+  // (`:853`); `none` is reserved for the genuinely empty case.
+  const deferred = Array.isArray(s.deferred) ? s.deferred : [];
+  lines.push(
+    `deferred: ${deferred.length > 0 ? deferred.map(renderDeferredEntry).join(", ") : "none"}`
+  );
 
   return { text: lines.join("\n"), dropped };
 }
@@ -2090,8 +2176,18 @@ export function renderReportBody(state) {
     }
   }
 
-  lines.push(`7. advisory: none`);
-  lines.push(`8. deferred: none`);
+  lines.push(`7. advisory: ${renderAdvisoryItem(s)}`);
+
+  // AC-7.1/AC-3.5 item 8 — every deferred item by name, and the proposal file that
+  // holds them, so a `promoted-degraded` pass points the operator at the residue.
+  const deferred = Array.isArray(s.deferred) ? s.deferred : [];
+  if (deferred.length === 0) {
+    lines.push(`8. deferred: none`);
+  } else {
+    lines.push(`8. deferred:`);
+    for (const item of deferred) lines.push(`  - ${renderDeferredEntry(item)}`);
+    lines.push(`  proposal file: ${proposalPathFor(s.passId)}`);
+  }
   lines.push(`9. branch: ${s.branch ? s.branch : "writes-uncommitted"}`);
   lines.push(`10. open promotions: ${openPromotionList(records).length}`);
 
