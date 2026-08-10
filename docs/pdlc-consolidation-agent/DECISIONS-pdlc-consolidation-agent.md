@@ -835,7 +835,8 @@ both are tested by the four fixtures above.
 
 ## 10. Alternatives considered but not recorded as decisions
 
-TSPEC §13.1 records thirteen rows. Seven are promoted above. The remaining six are listed here with
+TSPEC §13.1 records thirteen rows. Seven are promoted above, as DEC-CONS-01…07 (DEC-CONS-08 in §12
+is not a §13.1 row — it was taken in Phase CR). The remaining six are listed here with
 the reason each is *not* a decision, so a reader does not mistake omission for oversight — and so a
 future agent that finds one of them and thinks it is an open question can see it was closed and why.
 
