@@ -737,7 +737,7 @@ export function mergeProposals(proposals) {
   const order = [];
   const groups = new Map();
   for (const p of list) {
-    const key = `${p.failureModeId} ${p.action}`;
+    const key = `${p.failureModeId}\0${p.action}`;
     if (!groups.has(key)) {
       groups.set(key, []);
       order.push(key);
