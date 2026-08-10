@@ -61,7 +61,24 @@ One new finding (F-11) is filed — it is about this round's own bookkeeping, no
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Round 1's Q-01 is unanswered and still gates F-02: is a configured-but-unresolvable `pluginRepository` meant to land on `api-failure` (in which case FSPEC BR-23/E-22 needs an erratum) or on `repository-unresolved` (in which case `openClone`'s non-null branch needs a resolve probe)? The spec and the code disagree and no test drives the branch; either answer is shippable, the disagreement is not. |
+| Q-02 | Round 1's Q-02 is unanswered and still gates F-03: is `main()`'s `{subject: "config", detail}` the intended notice shape, or is `notesFromConfigParse`'s `{subject: "consolidation.${key}", missingField}` shape the one T31 was meant to wire in? The `missingField` key is read by the renderer and written by no production caller, which points at the latter. |
+| Q-03 | Round 1's Q-03 is unanswered and still gates F-01: does a fixture that actually reaches step 13 exist anywhere in the suite? If it is genuinely out of reach, AT-M9's row should say so rather than claim the AT. |
+| Q-04 | Was any remediation attempted between rounds? The diff `495e62a8..HEAD` shows only PM's review file, so from the testing lens this round had nothing to converge on. If remediation was expected and did not land, that is worth knowing before round 3 spends a budget slot. |
+
 ## Positive Observations
+
+- The round-1 positives all survive re-verification unchanged, because nothing changed: every RED
+  block still un-skipped across sixteen new test files, set-equality as house style in
+  `consolidationLifecycle.test.js:317` / `consolidationParse.test.js:138` / `consolidationBuild.test.js:288, 300`,
+  the non-disclosure sweep's whole-transcript falsifier, AT-Q7's runtime oracle with source-grep
+  demoted to supplementary, and PROPERTIES §O-1…§O-6 existing at all.
+- The working tree is clean and `build-runtime.mjs --check` was green at round 1 with no artifact
+  touched since, so nothing in this round's verdict is about drift or staleness.
+- PM's round-1 review landed in parallel without touching code, which kept the delta clean enough to
+  diff in one command. That is the cheap case for a re-review and it worked as designed.
 
 ## Recommendation
 
