@@ -218,14 +218,16 @@ pass — the never-fires failure this datum prevents.
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that dies mid-flight cannot wedge the cadence. An
   operator may also clear it by deleting `.consolidation-lock`.
-- **AC-1.4** — Given a pass that makes **no new promotion** — either because the un-consolidated set
-  under the AC-1.1 predicate is empty, or because every promotion it would have made was suppressed
-  as a duplicate (NFR-4) — Then it records `no-op` in `docs/_decisions/.consolidation-log.md` and
+- **AC-1.4** — Given a pass that makes **no new promotion** — because the un-consolidated set
+  under the AC-1.1 predicate is empty, because every promotion it would have made was suppressed
+  as a duplicate (NFR-4), or because every enumerated basename was unreadable and so nothing was
+  consumed (§4b, reason code `corpus-unreadable`) — Then it records `no-op` in `docs/_decisions/.consolidation-log.md` and
   exits successfully without opening a PR or writing a proposal file. A `no-op` pass still emits the
   AC-5.2 effectiveness table, restating each prior promotion's **standing** verdict and state
   (including an `unmeasurable` already reached), and still releases the AC-1.3 marker. **Which
-  streaks it advances is decided by consumed-set emptiness, never by the `no-op` label** — the two
-  causes differ exactly there, and AC-5.3 and AC-5.5 state each population in those terms.
+  streaks it advances is decided by consumed-set emptiness, never by the `no-op` label** — the three
+  causes differ exactly there (the first and third consume nothing, the second consumes), and AC-5.3
+  and AC-5.5 state each population in those terms.
 - **AC-1.5** — Given a pass runs, Then it runs on the advisory model rung and records the rung it actually ran on in its report and in the log row.
   The rung ladder — its two constants, its exported resolver `resolveAdvisoryRung`
   (`pdlc/workflows/orchestrate-dev.js:2060`), its shipped second consumer, and the drift-observable fallback if reuse proves impossible — is stated in
@@ -447,7 +449,7 @@ procedural — it holds even if every other control failed.
   to state; that the choice is reported is this REQ's.) The
   streak is counted per `failure-mode-id` **in passes, not elapsed time**, and only passes that returned `prevented` or `recurred` for that promotion are
   counted: an `insufficient-evidence` verdict is skipped entirely, as is any pass with an **empty consumed set** (which produces no verdict at all —
-  AC-1.4's first cause), so quiet weeks cannot silently reset the streak. The population is keyed on consumed-set emptiness, never on the `no-op` label
+  AC-1.4's first or third cause), so quiet weeks cannot silently reset the streak. The population is keyed on consumed-set emptiness, never on the `no-op` label
   (AC-1.4), and it governs the `ineffective` streak **only**; AC-5.5 counts a different population.
 
   **A spent alternative, and the terminal remediation.** NFR-4 suppresses on the pair, so each `action` fires at most once per id — which would leave
@@ -472,7 +474,7 @@ procedural — it holds even if every other control failed.
   reported as `unmeasurable`, so a promotion whose effect can never be observed is visible as such rather than accumulating silently. An **evaluated
   pass** is a pass with a **non-empty consumed set** that produced any AC-5.2 verdict for this promotion — the population is deliberately *not*
   AC-5.3's `counted` set, which excludes `insufficient-evidence` by construction and would make this state unreachable. A `prevented` or `recurred`
-  verdict resets the `unmeasurable` streak to zero; a pass with an **empty** consumed set (AC-1.4's first cause) and a `skipped-cadence` tick are not
+  verdict resets the `unmeasurable` streak to zero; a pass with an **empty** consumed set (AC-1.4's first or third cause) and a `skipped-cadence` tick are not
   evaluated passes and neither advance nor reset it — while a duplicate-suppressed `no-op`, whose consumed set is non-empty, is an evaluated pass and
   does. Once reached, `unmeasurable` stands until a verdict resets it, and AC-1.4 restates it meanwhile.
 
@@ -617,7 +619,11 @@ Enumeration-level unreadability is already closed by REQ-CONS-01 step 1's workin
 the residual case is an on-disk file that cannot be read — permissions or an IO error. Such a basename
 **stays in the un-consolidated set and so still counts toward AC-1.2's volume trigger**; only the consumed
 pair omits it. A corpus that is entirely unreadable therefore still fires the trigger and still terminates,
-each pass reporting its terminal row with nothing consumed.
+each pass reporting its terminal row with nothing consumed. **That pass's terminal status is `no-op`** — AC-1.4's
+third cause, taken from the six-member set above, so no status is added — **and its row carries the reason code
+`corpus-unreadable`**. The reason code is what makes the repeating case legible: without it, a permanently
+unreadable corpus produces an unbroken series of ordinary empty-set `no-op` rows, and an operator reading the
+log cannot tell a quiet week from a corpus nothing can read.
 
 ## 5. Scope
 
