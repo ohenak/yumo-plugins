@@ -15,17 +15,16 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.3 | 2026-08-10 |
+| pdlc | draft | Claude | 2.4 | 2026-08-10 |
 
 > **Code anchors: one epoch.** Every `file:line` below is measured after this feature's T09 commit `b22834b7`, and
 > names the *role* the line plays so it stays re-findable. Where an anchor supports a statement about pre-feature
 > behaviour, the sentence is past tense and the anchor points at today's line for that role.
 
-> **Erratum round (v2.3, Phase DOD).** Citation re-measurement, as a set rather than paragraph by paragraph: the
-> `orchestrate-dev.js`, `nudge-consolidation.sh`, `orchestrate-queue.js`, `runtime-adapter.js` and `QUEUE.md` families had
-> all shifted. Also: REQ-CONS-01's pre-T09 quotes put in the past tense; AC-3.8b's cause list set-equalised with AC-3.4's;
-> §4b decides that an unreadable basename still counts toward the volume trigger. The v2.1 and v2.2 notes are retired —
-> their corrections now stand in the ACs themselves (REQ-CONS-01 step 1, §4b, AC-3.4, AC-6.3).
+> **Erratum round (v2.4, Phase R).** Citation set re-derived by grep over the whole REQ rather than by family: the
+> `orchestrate-dev.js` guard anchors and `build-runtime.mjs` are re-measured, each with its role named. Also: §4b names the
+> terminal status and reason code an all-unreadable corpus takes, and AC-1.4 carries that as its third cause. The v2.1–v2.3
+> notes are retired — their corrections now stand in the ACs themselves.
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
