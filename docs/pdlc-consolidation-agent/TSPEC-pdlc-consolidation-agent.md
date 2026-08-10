@@ -959,15 +959,16 @@ is **present in the working tree and enumerated, but whose body `_readFile` retu
 AT-P8's IO-error case, reachable on file permissions, a mid-pass unlink, or an IO error between the
 enumeration and the read. It is *not* the staged-but-deleted entry: since the `--deleted`
 subtraction above, such a path is never enumerated at all, so it can never reach this branch. Its
-two observables are fixed — the first by this layer, the second **upstream, and absorbed here**:
+three observables are fixed — the first by this layer, the second and third **upstream, and
+absorbed here**:
 
 1. **It counts toward `|un-consolidated|` for the AC-1.2 volume test.** The test is over the
    *enumeration*, and AC-1.1 forbids reading any LEARNINGS body at tick time, so the count cannot
    depend on readability without violating the tick contract. REQ §4b decides the same thing in its
    own words — such a basename *"stays in the un-consolidated set and so still counts toward
    AC-1.2's volume trigger"*.
-2. **It is *omitted* from the consumed pair, stays un-consolidated, and the next pass retries it**,
-   and its basename is named in the report body as an entry the pass could not read. This is REQ
+2. **It is *omitted* from the consumed pair, stays un-consolidated, and the next pass retries it.**
+   This is REQ
    §4b's decision (*"An enumerated basename whose body cannot be read is instead **not consumed** —
    it is omitted from the `<!-- pdlc:consumed {passId} -->` pair"*), and this document **absorbs**
    it rather than re-deciding it. An earlier revision of this section decided the opposite arm — the
@@ -983,6 +984,18 @@ two observables are fixed — the first by this layer, the second **upstream, an
    mid-pass unlink — an operator-visible fault the report body names on every pass until the operator
    clears it at the source. §10.4 records the retried entry as accepted residue, and §13.3 carries the
    observation that would falsify the "transient" premise.
+3. **Its basename is named in the report body** as an entry the pass could not read. Since the pair
+   omits it and no reason code is minted, this naming is the pass's only positive disclosure of the
+   fault, and it is re-emitted on every pass until the operator clears it at the source. It is stated
+   as its own observable rather than as a sub-clause of (2) because §12.2 binds it as its own
+   conjunct against a readable control.
+
+**A corpus in which *every* enumerated body is unreadable terminates `no-op`** — AC-1.4's third cause
+(REQ §4b, `REQ-pdlc-consolidation-agent.md:625-631`), reached by applying the omission of (2) to every
+member: the consumed set is empty, so no status and no reason code is added. §10.3 row 1b routes it,
+and it is not §10.3 row 1a's unlistable corpus, which terminates `failed`: there the *enumeration*
+failed and the corpus's size is unknown; here the enumeration succeeded, its members are known, and
+only their bodies are unreadable.
 
 No reason code is minted for it (REQ §4b; vocabularies §1 at `Version` 1.4 has no row), so the
 evidence is the report body's named list and nothing else. This is distinct from `{unlistable: true}`
