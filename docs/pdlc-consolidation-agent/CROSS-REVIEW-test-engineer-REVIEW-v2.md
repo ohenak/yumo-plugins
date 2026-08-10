@@ -99,3 +99,34 @@ are durable rather than buried in commit bodies.
   the body on `^## ` and asserting per-section rather than whole-body containment, with an explicit
   comment that a whole-body `toContain` would pass on the very defect the row is about
   (`consolidationOperatorChannels.test.js:340-365`).
+
+## Recommendation
+
+**Approved with minor changes**
+
+All four round-1 Highs are resolved, and resolved on the production path rather than in the
+oracle — which is the distinction that made them Highs. The four Mediums and both Lows are
+resolved too, F-10 all but a residue. Nothing regressed: the suite is green apart from
+`documentOracles` AT-22, whose violations are untracked local tool caches (`.serena/cache/`,
+`.tokensave/`) and which CLAUDE.md documents as exactly this false red; `build-runtime.mjs --check`
+reports all five artifacts in sync.
+
+From the testing lens this branch is ready. The three residual Lows are worth doing but none of
+them can hide a defect:
+
+1. **F-12** — drop the bare `/not found/` alternative from `REPOSITORY_UNRESOLVED_RE` and add one
+   control whose stderr is transport-class *and* contains "not found". This is the only residual
+   with a behavioural consequence, and it is a misclassification of a reason code, not a
+   correctness failure.
+2. **F-13** — four suite headers still name `notImplemented`, deleted in `4fdc7fac`. Same one-line
+   correction `79e304af` applied to the other four files.
+3. **F-14** — bookkeeping only: note that `result.writeSet` is currently read by the test alone, so
+   a later reader does not take it for load-bearing production output.
+
+Q-05 is outside this feature's diff and should not gate it; it belongs to whoever next touches the
+drift ladder's reporting.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
