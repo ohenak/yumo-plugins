@@ -9,7 +9,32 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-09 |
+| pdlc | draft | Claude | 1.6 | 2026-08-09 |
+
+> **1.6 (one rule stated, four cells reverted, one row grounded — no design change, no graph change).**
+> Round 5's two open items, both about the `Status` column's meaning. (i) **The column had become a
+> ledger for four rows and a baseline for thirty** (PM F-13, TE F-01). T03 and T17 read `🔴` and T27
+> and T28 read `✅`, while rows whose work is equally landed at HEAD read `⬚` — so `⬚` meant "not
+> started" on one row and "nobody updated this" on another, and no rule in the document told the two
+> apart. Resolved in the direction both reviewers named as cheaper and equally honest, and resolved as
+> a **rule** rather than as a reconciliation that would drift again by the next wave: §2 now states
+> that the column is a Phase-P baseline owned by nobody during Phase I, and §4's four out-of-band
+> cells are reverted to a uniform `⬚`. The rule is grounded, not asserted — `parsePlanTasks`
+> (`orchestrate-dev.js:3761`) reads the id, `Deps` and batch cells and nothing else (the description
+> and batch columns are marked "LOOSE … cosmetic" at `:3764`; the id/deps headers match exactly at
+> `:3797-3798`), and resume is already owned by the wave ledger at `WAVE_STATE_PATH` (`:8860`,
+> `parseWaveLedger` `:8916`). A second hand-kept ledger could only disagree with the first. This
+> answers PM Q-08 and TE Q-01 with the same sentence. (ii) **T13's "both axes in the same commit" rule
+> now survives finding the work already done** (PM F-14). Re-measured at HEAD through `git show HEAD:`,
+> *both* halves are present — `runtimeBundle.test.js:230` carries `"_envPresent", "_makeTempDir"` and
+> `:1057` carries `"consolidate-learnings.js"` — where v5 measured only the first. The row therefore no
+> longer reads as if neither axis had moved: it says the implementer's job is to **assert** both, since
+> a task that finds one half done and drops the pairing is how a half-widened scan becomes permanent.
+> Gate re-run over the revised text: **34** tasks (`errors: []`), **34** ownership rows,
+> `validatePlanContract` `{"ok":true}`, **15** ready-sets, **15** waves, **0** batch-column mismatches
+> — every number identical to v1.4's and v1.5's, as a Status-only diff must leave them.
+> The three v5 items not listed here were already closed by v1.5 and were re-checked, not rewritten:
+> §5's "Twelve" census (PM F-12, TE F-02) and T33's fourth-row wording (TE F-03) both stand as landed.
 
 > **1.5 (three prose-against-measurement corrections — no design change, no graph change).** Round 4's
 > two findings and its one question, all inside §5, §4.2 and §6.1. (i) **§5's writer census was a
