@@ -29,7 +29,31 @@
 // G2 and G3 are pinned here too, because both are claims this same file makes
 // about the module: that it is backed by a bundle rather than hand-executed, and
 // that the proposal artifact it names is the one `proposalPathFor` actually writes.
+//
+// ── DOD round 3 (CODE_REVIEW v3, H1/H2) ──────────────────────────────────────
+// v3's H1 is that the warranty above was drawn narrower than the family the
+// finding is about: the document set was the literal `{REQ, FSPEC}` — the two
+// documents v2 happened to enumerate — while the same defect survived untested
+// in `TSPEC:179` and in `docs/_constraints/pdlc-consolidation-vocabularies.md`,
+// the latter read by `pm-author`/`se-author` on every future feature. The
+// document set is therefore no longer a literal: it is **derived** from the repo
+// by `git grep`, so a citer that does not exist yet is covered on the day it is
+// written. Review artifacts (CROSS-REVIEW/CODE_REVIEW/POSTMORTEM) are excluded
+// by rule, not by omission — they quote stale anchors deliberately, as findings,
+// and re-pointing them would destroy the round record.
+//
+// Widening immediately found two citers neither v2 nor v3 enumerated —
+// `FSPEC:2451` and `PLAN:318` — both carrying the same stale `:35`/`:41` pair in
+// a third anchor form: the file named in one table cell, the anchors as bare
+// `` `:NNN` `` in the next. That form is now extracted too; missing it is how a
+// hand sweep stays "complete" while the family is not.
+//
+// v3's H2 is G3's own recurrence one document away: the SKILL was corrected to
+// `{passId}` but `REQ:41` still quoted the `{date}` name the module cannot
+// produce. The `{passId}` assertion below therefore runs over every citing
+// document, not over the SKILL alone.
 
+import { execFileSync } from "child_process";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -39,16 +63,49 @@ import { proposalPathFor } from "../consolidate-learnings.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 
-const SKILL_PATH = join(REPO_ROOT, "pdlc", "skills", "consolidate-learnings", "SKILL.md");
-const REQ_PATH = join(REPO_ROOT, "docs", "pdlc-consolidation-agent", "REQ-pdlc-consolidation-agent.md");
-const FSPEC_PATH = join(REPO_ROOT, "docs", "pdlc-consolidation-agent", "FSPEC-pdlc-consolidation-agent.md");
+const SKILL_REL = "pdlc/skills/consolidate-learnings/SKILL.md";
+const REQ = "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md";
+const FSPEC = "docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md";
+const TSPEC = "docs/pdlc-consolidation-agent/TSPEC-pdlc-consolidation-agent.md";
+const PLAN = "docs/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md";
+const VOCAB = "docs/_constraints/pdlc-consolidation-vocabularies.md";
 
-const skillText = readFileSync(SKILL_PATH, "utf8");
+// The citers known at the time of writing. Not the document set — a floor under
+// the derived one, so a `git grep` that silently returns nothing (no git, wrong
+// cwd, changed flag) fails loudly instead of passing vacuously over zero files.
+const KNOWN_CITERS = [REQ, FSPEC, TSPEC, PLAN, VOCAB];
+
+// Review artifacts record the anchor state of a past round and must not be swept.
+const EXCLUDED_CITER = /(CROSS-REVIEW|CODE_REVIEW|POSTMORTEM)-/;
+
+const skillText = readFileSync(join(REPO_ROOT, SKILL_REL), "utf8");
 const skillLines = skillText.split("\n");
-const docs = {
-  REQ: readFileSync(REQ_PATH, "utf8"),
-  FSPEC: readFileSync(FSPEC_PATH, "utf8"),
+
+/**
+ * Every tracked markdown file that names the consolidate-learnings SKILL,
+ * derived from the repo rather than transcribed. Selecting on the *path* (not on
+ * `path:NNN`) is deliberate: `TSPEC:179` names the file in one cell and anchors
+ * into it with a bare `` `:35` `` in the next, so a `path:NNN` selector would
+ * have missed exactly the document H1 is about.
+ */
+const deriveCiterPaths = () => {
+  // Matched on the `{skill}/SKILL.md` tail, not the full path: `CLAUDE.md` and
+  // PROPERTIES name the file in a shorter form, and a selector that misses a
+  // document is the whole of H1.
+  const out = execFileSync("git", ["grep", "-l", "-F", "consolidate-learnings/SKILL.md", "--", "*.md"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  });
+  return out
+    .split("\n")
+    .filter(Boolean)
+    .filter((p) => p !== SKILL_REL && !EXCLUDED_CITER.test(p));
 };
+
+const citerPaths = deriveCiterPaths();
+const docs = Object.fromEntries(
+  citerPaths.map((rel) => [rel, readFileSync(join(REPO_ROOT, rel), "utf8")])
+);
 
 /**
  * 1-based line number of the single line of the SKILL matching `re`.
@@ -74,23 +131,46 @@ const soleSkillLine = (re) => {
 // conjunct total; matching only the qualified form would silently under-count.
 const CITATION_RE = /(?:([a-z0-9-]+)\/)?SKILL\.md:(\d+)(?:-(\d+))?/g;
 
+// The third form, found by the H1 widening: the file is named in one table cell
+// and the anchors follow as bare `` `:NNN` `` — `TSPEC:179`, `FSPEC:2451`,
+// `PLAN:318`. Claimed only on a line that names the consolidate SKILL and no
+// other SKILL, so a row citing the harvest file (`TSPEC:180`) or naming both
+// (`TSPEC:2462`, whose `:13-17` anchors a test file) is left alone.
+const CELL_ANCHOR_RE = /`:(\d+)(?:-(\d+))?`/g;
+// Qualified only: a bare `SKILL.md` in prose is the continuation form and refers
+// to the file the line already named, so it does not make the row ambiguous —
+// a *second directory* does.
+const QUALIFIED_SKILL_RE = /([a-z0-9-]+)\/SKILL\.md/g;
+const namesOnlyThisSkill = (line) => {
+  const dirs = new Set([...line.matchAll(QUALIFIED_SKILL_RE)].map((m) => m[1]));
+  return dirs.size === 1 && dirs.has("consolidate-learnings");
+};
+
 /**
  * Every consolidate-learnings SKILL citation in `text`, as {line, from, to}.
  *
  * An anchor qualified with some other skill directory belongs to that file and is
  * skipped. An *unqualified* `SKILL.md:NNN` — the continuation form DECISIONS §960
- * names — is claimed here: in these two documents the bare form is always a
+ * names — is claimed here: in these documents the bare form is always a
  * continuation of a consolidate-learnings anchor, and defaulting the other way is
  * what let FSPEC:711 and FSPEC:717 survive a hand sweep. Defaulting *in* means a
  * genuinely new bare anchor for some other file fails loudly rather than silently
  * escaping the check.
  */
 const citationsIn = (text) =>
-  text.split("\n").flatMap((line, i) =>
-    [...line.matchAll(CITATION_RE)]
+  text.split("\n").flatMap((line, i) => {
+    const qualified = [...line.matchAll(CITATION_RE)]
       .filter((m) => (m[1] ?? "consolidate-learnings") === "consolidate-learnings")
-      .map((m) => ({ line: i + 1, from: Number(m[2]), to: Number(m[3] ?? m[2]) }))
-  );
+      .map((m) => ({ line: i + 1, from: Number(m[2]), to: Number(m[3] ?? m[2]) }));
+    const cell = namesOnlyThisSkill(line)
+      ? [...line.matchAll(CELL_ANCHOR_RE)].map((m) => ({
+          line: i + 1,
+          from: Number(m[1]),
+          to: Number(m[2] ?? m[1]),
+        }))
+      : [];
+    return [...qualified, ...cell];
+  });
 
 /**
  * The text a citing site's anchors live in: the located line, plus the following
@@ -98,15 +178,18 @@ const citationsIn = (text) =>
  * paragraph). Never a fixed two-line window — in a markdown table that reaches
  * into the *next row* and silently borrows its neighbour's anchor.
  */
-// Non-global clone: `CITATION_RE.test` would carry `lastIndex` between calls.
-const HAS_CITATION = new RegExp(CITATION_RE.source);
 const siteWindow = (lines, idx) =>
-  HAS_CITATION.test(lines[idx]) ? lines[idx] : lines.slice(idx, idx + 2).join("\n");
+  citationsIn(lines[idx]).length > 0 ? lines[idx] : lines.slice(idx, idx + 2).join("\n");
+const citedLinesAt = (lines, idx) => citationsIn(siteWindow(lines, idx)).map((c) => c.from);
 
 // ─── The claim table ────────────────────────────────────────────────────────────────────────
 // `skillContent` is the content the citing sentence asserts lives at the anchor;
 // `sites` are the sentences that assert it, located by prose. Nothing here is a
 // line number: both sides of every equality are measured at run time.
+// The file-ownership row: `| `pdlc/skills/consolidate-learnings/SKILL.md` | …`,
+// which TSPEC §3.2 and FSPEC §12.2 both carry in the same shape.
+const SKILL_ROW = new RegExp(`^\\| \`${SKILL_REL.replace(/[/.]/g, "\\$&")}\` \\|`);
+
 const CLAIMS = [
   {
     id: "boundary",
@@ -114,58 +197,103 @@ const CLAIMS = [
     // `Date Completed` date boundary to the basename test.
     skillContent: /^1\. \*\*Find the boundary\.\*\*/,
     sites: [
-      { doc: "REQ", sentence: /skill's date boundary/ },
-      { doc: "REQ", sentence: /and updates `SKILL\.md:/ },
-      { doc: "REQ", sentence: /including the matching edits to$/ },
-      { doc: "FSPEC", sentence: /a \*\*date\*\* boundary/ },
+      { doc: REQ, sentence: /skill's date boundary/ },
+      { doc: REQ, sentence: /and updates `SKILL\.md:/ },
+      { doc: REQ, sentence: /including the matching edits to$/ },
+      { doc: FSPEC, sentence: /a \*\*date\*\* boundary/ },
+      // The cell form — the file-ownership row (TSPEC §3.2 is what Phase P
+      // validates and Phase I partitions waves by) and its FSPEC and PLAN twins.
+      { doc: TSPEC, sentence: SKILL_ROW },
+      { doc: FSPEC, sentence: SKILL_ROW },
+      // T07's task row, not its row in §5's ownership manifest (which names the
+      // file but anchors nothing).
+      { doc: PLAN, sentence: /^\| T07 \| \*\*\[Docs\] `consolidate-learnings` prompt\.\*\*/ },
     ],
   },
   {
     id: "pattern-bar",
     skillContent: /^4\. \*\*Distinguish pattern from coincidence\.\*\*/,
-    sites: [{ doc: "FSPEC", sentence: /generalises \(`SKILL\.md:/ }],
+    sites: [{ doc: FSPEC, sentence: /generalises \(`SKILL\.md:/ }],
   },
   {
     id: "domain-constraints-route",
     skillContent: /^ +- Domain invariant future REQs must respect/,
-    sites: [{ doc: "FSPEC", sentence: /^\| Domain invariant future REQs must respect \|/ }],
+    sites: [{ doc: FSPEC, sentence: /^\| Domain invariant future REQs must respect \|/ }],
   },
   {
     id: "decisions-route",
     skillContent: /^ +- Architectural decision now project-level/,
     sites: [
-      { doc: "FSPEC", sentence: /^\| Architectural decision now project-level \|/ },
-      { doc: "FSPEC", sentence: /The skill's own instruction at/ },
+      { doc: FSPEC, sentence: /^\| Architectural decision now project-level \|/ },
+      { doc: FSPEC, sentence: /The skill's own instruction at/ },
+      { doc: TSPEC, sentence: SKILL_ROW },
+      { doc: FSPEC, sentence: SKILL_ROW },
+      // T07's task row, not its row in §5's ownership manifest (which names the
+      // file but anchors nothing).
+      { doc: PLAN, sentence: /^\| T07 \| \*\*\[Docs\] `consolidate-learnings` prompt\.\*\*/ },
     ],
   },
   {
     id: "log-record",
     skillContent: /^6\. \*\*Record the pass\*\*/,
     sites: [
-      { doc: "REQ", sentence: /set\), promoted and deferred items, as today/ },
-      { doc: "FSPEC", sentence: /items in `docs\/_decisions\/\.consolidation-log\.md` \(AC-2\.4/ },
+      { doc: REQ, sentence: /set\), promoted and deferred items, as today/ },
+      { doc: FSPEC, sentence: /items in `docs\/_decisions\/\.consolidation-log\.md` \(AC-2\.4/ },
     ],
   },
   {
     id: "proposal-table",
     skillContent: /^\| Source LEARNINGS \| Target skill \| Proposed change \| Rationale \|/,
     sites: [
-      { doc: "REQ", sentence: /\*\*in the consuming repo\*\*, while the skills it names/ },
-      { doc: "FSPEC", sentence: /that shape remains the fallback's presentation/ },
+      { doc: REQ, sentence: /\*\*in the consuming repo\*\*, while the skills it names/ },
+      { doc: FSPEC, sentence: /that shape remains the fallback's presentation/ },
     ],
+  },
+  {
+    // H1's third anchor: `vocabularies.md:163` cited the `{date}`-only proposal
+    // name, which G3's fix removed from the file — a citation whose referent no
+    // longer exists anywhere, in a `docs/_constraints/` file that outlives this
+    // feature. Re-pointed at the sentence that states the shipped name.
+    id: "proposal-path",
+    skillContent: /^When a learning says a skill prompt itself should change/,
+    sites: [{ doc: VOCAB, sentence: /^\| Proposal artifact \|/ }],
   },
 ];
 
-describe("REQ and FSPEC anchors into consolidate-learnings/SKILL.md resolve to what they claim", () => {
+// Keyed by (doc, sentence): one site may carry anchors for several claims — the
+// file-ownership row cites both the boundary line and the DECISIONS route — so
+// the checkable identity is the *set* a site cites, not each anchor separately.
+const siteExpectations = () => {
+  const byKey = new Map();
+  for (const claim of CLAIMS) {
+    for (const site of claim.sites) {
+      const key = `${site.doc}||${site.sentence.source}`;
+      if (!byKey.has(key)) byKey.set(key, { ...site, expected: new Set() });
+      byKey.get(key).expected.add(soleSkillLine(claim.skillContent));
+    }
+  }
+  return [...byKey.values()];
+};
+
+describe("anchors into consolidate-learnings/SKILL.md resolve to what they claim", () => {
+  it("sweeps every tracked citer, derived from the repo rather than transcribed", () => {
+    // The floor: the citers known when this was written must all be present. A
+    // `git grep` returning nothing would otherwise make every conjunct vacuous.
+    for (const known of KNOWN_CITERS) expect(citerPaths).toContain(known);
+    // And the derivation must be live, not the floor re-spelled: review
+    // artifacts are the only exclusion, so any *new* citer is in scope.
+    expect(citerPaths.every((p) => !EXCLUDED_CITER.test(p))).toBe(true);
+  });
+
   it("has a non-vacuous claim table and citation set", () => {
     expect(CLAIMS.length).toBeGreaterThan(0);
-    const total = citationsIn(docs.REQ).length + citationsIn(docs.FSPEC).length;
+    const total = citerPaths.reduce((n, doc) => n + citationsIn(docs[doc]).length, 0);
     expect(total).toBeGreaterThan(0);
   });
 
-  it.each(CLAIMS.map((c) => [c.id, c]))("%s — every citing sentence names the derived line", (_id, claim) => {
-    const derived = soleSkillLine(claim.skillContent);
-    for (const site of claim.sites) {
+  it.each(siteExpectations().map((s) => [`${s.doc} ${s.sentence.source}`, s]))(
+    "%s — cites exactly the derived line(s)",
+    (_label, site) => {
       const lines = docs[site.doc].split("\n");
       const hits = lines.reduce((acc, line, i) => (site.sentence.test(line) ? [...acc, i] : acc), []);
       // Located by prose, so an ambiguous or vanished sentence fails as "the
@@ -173,16 +301,14 @@ describe("REQ and FSPEC anchors into consolidate-learnings/SKILL.md resolve to w
       expect(`${site.doc} ${site.sentence} matched ${hits.length} line(s)`).toBe(
         `${site.doc} ${site.sentence} matched 1 line(s)`
       );
-      const cited = [...siteWindow(lines, hits[0]).matchAll(CITATION_RE)].map((m) => Number(m[2]));
-      expect(cited.length).toBeGreaterThan(0);
-      for (const n of cited) {
-        expect(`${claim.id} @ ${site.doc}: cited ${n}`).toBe(`${claim.id} @ ${site.doc}: cited ${derived}`);
-      }
+      const cited = [...new Set(citedLinesAt(lines, hits[0]))].sort((a, b) => a - b);
+      const expected = [...site.expected].sort((a, b) => a - b);
+      expect(`${site.doc}: cites ${cited.join(",")}`).toBe(`${site.doc}: cites ${expected.join(",")}`);
     }
-  });
+  );
 
   it("no cited line is blank — the shape four of round 1's stale anchors took", () => {
-    for (const doc of ["REQ", "FSPEC"]) {
+    for (const doc of citerPaths) {
       for (const c of citationsIn(docs[doc])) {
         for (let n = c.from; n <= c.to; n += 1) {
           expect(n).toBeLessThanOrEqual(skillLines.length);
@@ -194,20 +320,16 @@ describe("REQ and FSPEC anchors into consolidate-learnings/SKILL.md resolve to w
     }
   });
 
-  it("claims the whole citation family — no citation goes unchecked", () => {
+  it("claims the whole citation family — no citation in any citer goes unchecked", () => {
     const claimed = new Set();
-    for (const claim of CLAIMS) {
-      for (const site of claim.sites) {
-        const lines = docs[site.doc].split("\n");
-        const idx = lines.findIndex((l) => site.sentence.test(l));
-        for (const m of siteWindow(lines, idx).matchAll(CITATION_RE)) {
-          // Record by (doc, cited line) — the identity the claim table asserts about.
-          claimed.add(`${site.doc}:${Number(m[2])}`);
-        }
-      }
+    for (const site of siteExpectations()) {
+      const lines = docs[site.doc].split("\n");
+      const idx = lines.findIndex((l) => site.sentence.test(l));
+      // Record by (doc, cited line) — the identity the claim table asserts about.
+      for (const n of citedLinesAt(lines, idx)) claimed.add(`${site.doc}:${n}`);
     }
     const actual = new Set();
-    for (const doc of ["REQ", "FSPEC"]) {
+    for (const doc of citerPaths) {
       for (const c of citationsIn(docs[doc])) actual.add(`${doc}:${c.from}`);
     }
     expect([...actual].sort()).toEqual([...claimed].sort());
@@ -221,6 +343,17 @@ describe("the SKILL's proposal artifact matches proposalPathFor", () => {
     // `{date}` alone collides with the first pass of the same day: `passId` is
     // `{YYYY-MM-DD}-{n}`, so the date form is not merely stale, it is ambiguous.
     expect(skillText).not.toContain(proposalPathFor("{date}"));
+  });
+
+  // H2: G3 corrected the SKILL and left `REQ:41` quoting the old name one
+  // document away. Checking only the SKILL is what let that survive, so the
+  // obligation runs over every document that grounds itself on the SKILL: no
+  // citer may name a proposal file `proposalPathFor` cannot produce.
+  it.each(citerPaths)("%s names no proposal filename the module cannot produce", (doc) => {
+    const slots = [...docs[doc].matchAll(/CONSOLIDATION-PROPOSAL-\{([A-Za-z]+)\}/g)].map(
+      (m) => `${doc}: CONSOLIDATION-PROPOSAL-{${m[1]}}`
+    );
+    expect(slots).toEqual(slots.map(() => `${doc}: CONSOLIDATION-PROPOSAL-{passId}`));
   });
 });
 

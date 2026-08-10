@@ -25,7 +25,11 @@ sections is **symmetric in both directions**: a value that REQ names with no row
 here naming a value that REQ never uses, are equally defects — so a *deleted* row is as much a breach
 as a missing one, which is what makes the downstream set-equality oracle meaningful rather than a
 one-sided containment check. Consumers cite this file **at its `Version`**; a row change that is not
-accompanied by a version bump is itself a defect.
+accompanied by a version bump is itself a defect. **A row's *enumerated value* is what that rule is
+about.** Re-measuring a `file:line` coordinate inside a row's gloss — the discipline DECISIONS §960
+obliges and `consolidationSkillAnchors.test.js` mechanises — changes no value, invalidates no
+downstream transcription, and is therefore **not** a version-bumping change; bumping for it would
+falsify every consumer's `at Version N` pin for no semantic delta.
 
 ## 1. Enumerated vocabularies
 
@@ -160,7 +164,7 @@ ordinal of that pass on that calendar date — so two same-day passes never coll
 
 | Thing | Name |
 |---|---|
-| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, superseding the `{date}`-only name at `pdlc/skills/consolidate-learnings/SKILL.md:49` |
+| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, the name the skill states at `pdlc/skills/consolidate-learnings/SKILL.md:70` (it superseded a `{date}`-only name, which no longer appears in that file) |
 | Promotion branch | `consolidation/{passId}` |
 
 The PR body carries exactly three trailers, and each promotion commit carries one:

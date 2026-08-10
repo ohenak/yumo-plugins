@@ -38,7 +38,7 @@ project-level `DOMAIN-CONSTRAINTS` and `DECISIONS`. That part works and stays.
 Two things do not.
 
 **The cross-repo dead end.** When a learning says *a skill prompt itself should change*, the skill
-writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a four-column markdown table,
+writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` — a four-column markdown table,
 `| Source LEARNINGS | Target skill | Proposed change | Rationale |`
 (`pdlc/skills/consolidate-learnings/SKILL.md:75`) — **in the consuming repo**, while the skills it names live in `yumo-plugins/pdlc/skills/`. Nothing
 carries the proposal across that boundary: no `gh pr create` and no cross-repo push exists outside Phase PUB's own-repo `ship-pr`. Propose-only is
