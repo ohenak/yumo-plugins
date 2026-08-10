@@ -81,8 +81,50 @@ The stale two-cause text is this layer's alone, so it is a finding, not a routed
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-02's boundary is upstream's to move, not mine, so I want it named rather than assumed: is the intent that the all-unreadable path's *restate* and *release* obligations ride on `PROP-PASS-11`'s conjuncts reaching every `finishPass` exit, or that they are simply unasserted on that path and accepted as such? Either answer is defensible and neither needs a new property; I only ask that the revision write down which one it is, in the sentence that fixes F-01. |
+
 ## 5. Positive Observations
+
+- **The fix took the authority's shape, not a summary of it.** The added text carries `TSPEC:2850`'s
+  four observables, its "not `failed` … not `refused`" exclusion, its reason for naming `failed`
+  specifically (row 1a's outcome, the adjacent branch), and its mutual-control sentence — in the
+  cell's own words. Layers that transcribe rather than paraphrase are the ones that survive the next
+  erratum without re-deriving a contradiction.
+- **The controls run in both directions, which is the hard half.** It would have been enough, on a
+  literal reading of v5's finding, to add a fixture asserting `no-op`. What landed says why each
+  fixture cannot pass vacuously *and* why the other one is its control — so neither the empty-pair
+  assertion nor the status assertion is a lone negative.
+- **Q-01 was answered against the reviewer's interest.** "Missed, not deferred" is the costlier of
+  the two available answers, and the changelog gives the mechanism (list cut against REQ v2.1, wave
+  grew a second arm afterwards) rather than an apology. `POSTMORTEM-T` Episode 2's commit-order table
+  corroborates it independently, which is how a root cause should read.
+- **The re-ground-first discipline is visible in the edit.** The changelog says the revision
+  re-grounded on the upstream cells at HEAD *ahead of* the routed item list, and the text bears that
+  out — it cites §10.3 row 1b, a cell that did not exist when the item list was cut.
+- **Bookkeeping stayed honest under a widening edit.** A round that widens a property's scope is
+  exactly where id sets quietly drift; this one did not move a single id, and §12.1's row states the
+  new coverage as *sole* carriership rather than adding a name to a list and leaving the reader to
+  infer what it carries.
 
 ## 6. Recommendation
 
+**Approved with minor changes**
+
+The High from v5 is closed, and closed at the layer that owned it: `PROP-COR-09` now carries both of
+TSPEC §12.2's fixtures, the title covers the whole-corpus arm, §12.1's AC-1.4 row names the third
+cause and its sole carrier, and the trailer cites `AC-1.4`. No property moved, none was added or
+removed, the set stands at 118, and the new fixture lands inside `PLAN` T20 → T31's existing case.
+Nothing the revision touched broke.
+
+Two Medium findings should be picked up in the next revision and can be discharged by editing one
+property. `PROP-PASS-11` must stop saying AC-1.4 has two causes and stop claiming closure over
+"both" (F-01), and the same sentence should say what happens to the third cause's *restate* and
+*release* obligations (F-02, Q-01). F-03 is a one-line consistency repair in `POSTMORTEM-T`, outside
+this document, recorded here because the halt record is the artifact a later reader will trust.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
