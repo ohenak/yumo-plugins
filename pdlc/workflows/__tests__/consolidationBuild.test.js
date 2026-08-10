@@ -284,7 +284,7 @@ function extractBundlesConstant(runtimeBundleTestSrc) {
   );
 }
 
-describe.skip("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () => {
+describe("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () => {
   it("CLAUDE.md's enumerated artifact paths, minus the manifest, are set-equal to the manifest's rows", () => {
     const claudeMd = readRepo("CLAUDE.md");
     const manifest = JSON.parse(readDist("distribution-manifest.json"));

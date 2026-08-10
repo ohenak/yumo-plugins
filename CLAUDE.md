@@ -47,7 +47,7 @@ Every plugin follows this layout:
 | `tech-lead` | `skills/tech-lead/SKILL.md` | Parses PLAN, dispatches parallel se-implement agents (TypeScript) |
 | `tech-lead-python` | `skills/tech-lead-python/SKILL.md` | Same as tech-lead for Python repos |
 | `harvest-learnings` | `skills/harvest-learnings/SKILL.md` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes harvested files |
-| `consolidate-learnings` | `skills/consolidate-learnings/SKILL.md` | Merges LEARNINGS across features into project-level knowledge |
+| `consolidate-learnings` | `skills/consolidate-learnings/SKILL.md` | Merges LEARNINGS across features into project-level knowledge; `/pdlc:consolidate-learnings` now resolves to a skill and a runtime bundle sharing one name, the same shape `orchestrate-queue` already has |
 
 ### Workflow scripts and the runtime build
 
@@ -57,9 +57,11 @@ Every plugin follows this layout:
 
 - `pdlc/workflows/dist/orchestrate-dev.bundle.js`
 - `pdlc/workflows/dist/orchestrate-queue.bundle.js` (inlines `orchestrate-dev` too — the queue calls it in-process)
+- `pdlc/workflows/dist/consolidate-learnings.bundle.js`
+- `pdlc/workflows/dist/pdlc-cli.mjs`
 - `pdlc/workflows/dist/distribution-manifest.json` — one row per artifact (id, plugin path, sha1, retired predecessors), plus the plugin version those bytes were built at
 
-Those three are the tracked, shipped outputs. The copy the workflow runtime actually loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
+These are the tracked, shipped outputs. The copy the workflow runtime actually loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
 
 All are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when an artifact under `pdlc/workflows/dist/` is stale, `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints, and `pdlc/hooks/scripts/sync-workflows.sh --check` exits non-zero when the consumer copy has drifted from the built artifacts.
 
