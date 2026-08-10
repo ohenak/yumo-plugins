@@ -50,3 +50,6 @@ The delta resolves both raised errata and breaks nothing previously approved. No
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:44790289796a40f8b6122a1df2b92a36b9253cf072f2b768408134a4b1217315
+REVIEWED-COMMIT: e192d6e739420ba179d05b1eee905c85663600aa
