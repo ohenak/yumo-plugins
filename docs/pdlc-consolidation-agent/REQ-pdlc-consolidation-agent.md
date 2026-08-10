@@ -78,23 +78,24 @@ wrong cannot be trusted to be right.
 queue already uses — a session-resident `/loop run /pdlc:consolidate-learnings` (CLAUDE.md, "Entry (queue, multi-feature)"), where the operator starts
 the loop once and each tick runs a pass with no per-pass invocation. Nothing in `pdlc/hooks/hooks.json` can start a pass: it registers only `PreToolUse`,
 `PostToolUse` and `SessionStart` entries (`:3`, `:14`, `:29`), and `nudge-consolidation.sh` only prints `hookSpecificOutput.additionalContext` and exits
-0 (`:47-48`, header `:4`) — its advisory role is **unchanged** here. Session-free execution is D-CONS-04, bound to `pdlc-engineering-loop`.
+0 (`:85-87` — the emit-and-exit tail; header `:4`) — its advisory role is **unchanged** here. Session-free execution is D-CONS-04, bound to `pdlc-engineering-loop`.
 
-**One predicate for "un-consolidated", named.** Two definitions exist at HEAD and disagree: the hook's basename test (`pending = [p for p in learnings
-if os.path.basename(p) not in logtext]`, `pdlc/hooks/scripts/nudge-consolidation.sh:41`, against `docs/_decisions/.consolidation-log.md`, `:32`) and the
+**One predicate for "un-consolidated", named.** Two definitions existed when this REQ was written, and disagreed: the hook's basename test
+(then `pending = [p for p in learnings if os.path.basename(p) not in logtext]` — the pending filter, now `pdlc/hooks/scripts/nudge-consolidation.sh:73-74`,
+against `docs/_decisions/.consolidation-log.md`, the log path, now `:63`) and the
 skill's date boundary (`Date Completed` after the last logged pass — the boundary step, `pdlc/skills/consolidate-learnings/SKILL.md:56`). **This feature adopts the basename
 test** — durable against LEARNINGS date edits and already shipped — and updates `SKILL.md:56` to match. Every AC below saying "un-consolidated" or
 "accumulated since the last pass" means exactly this predicate.
 
-**The predicate's corpus is a delimited region, not the whole log.** The shipped predicate is a bare
-substring test over the whole of `docs/_decisions/.consolidation-log.md` (`:41`; the read is `:36-37`), and
+**The predicate's corpus is a delimited region, not the whole log.** The predicate was a bare
+substring test over the whole of `docs/_decisions/.consolidation-log.md` (the pending filter; the read is `:67-68`), and
 this feature writes further record types into that same file (AC-3.4's PR URLs, AC-5.1's failure-mode
 records — whose `artifact` field may legitimately be a LEARNINGS path — and AC-5.2's effectiveness
 table), any of which could contain a basename and falsely mark that file consolidated. So consumption
 is recorded **only** inside the delimited `<!-- pdlc:consumed {passId} -->` block whose grammar,
 exclusivity rule ("no other record type may appear inside one") and append-only write granularity are
 stated in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.4) and are binding here. This
-feature updates `pdlc/hooks/scripts/nudge-consolidation.sh:41` to scope its test to those blocks, so
+feature updated `nudge-consolidation.sh`'s pending filter (`:73-74`) to scope its test to those blocks, so
 the hook and the pass keep one predicate rather than two — which is what makes NFR-5's "exactly the
 consumed set" enforceable by the predicate that consumes it.
 
