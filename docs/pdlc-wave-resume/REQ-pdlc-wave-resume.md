@@ -140,10 +140,102 @@ OB-2, §9).
 
 ## 7. Acceptance Criteria
 
-## 7. Acceptance Criteria
+### REQ-WVR-01 — automatic resume at the failed wave (P0, Phase 1)
+
+**Who:** pipeline operator. **Given:** a Phase I run halted at a wave gate, the cause
+since addressed, the same feature and an unchanged plan. **When:** the pipeline is
+re-invoked with no resume-related configuration set. **Then:** implementation resumes at
+the wave that failed (OF-3); each skipped wave is announced as skipped; the run log and
+final report state the resume point and its provenance as automatic. *Source: US-01.*
+
+### REQ-WVR-02 — fresh runs and foreign state are unaffected (P0, Phase 1)
+
+**Who:** pipeline operator. **Given:** no prior halted Phase I for this feature — or a
+resume record left by a different feature, a since-changed plan, or an out-of-range
+state. **When:** the pipeline is invoked. **Then:** every wave runs from the first; an
+ignored record is announced with the reason it was ignored; nothing about the record
+makes the invocation refuse to run (C-2). *Source: US-01, US-02.*
+
+### REQ-WVR-03 — verification independence (P0, Phase 1)
+
+**Who:** pipeline maintainer. **Given:** any resume-record content whatsoever, including
+corrupt or adversarial bytes. **When:** a resumed run reaches its first executed wave.
+**Then:** the full test suite verifies the whole tree before any new commit lands, with
+the same gate outcome semantics as an unresumed run; a record that cannot be read
+degrades to a full run with an announced reason (C-2). *Source: US-03.*
+
+### REQ-WVR-04 — operator override precedence (P0, Phase 1)
+
+**Who:** pipeline operator. **Given:** both an explicit manual resume point (BL-01) and
+an automatic resume determination available for the same invocation. **When:** the run
+starts. **Then:** the manual point wins, the run announces provenance as operator-set,
+and a documented, announced escape hatch exists to force a full run despite a valid
+record. *Source: US-02.*
+
+### REQ-WVR-05 — self-clearing lifecycle (P1, Phase 1)
+
+**Who:** pipeline operator. **Given:** a Phase I that completes all waves. **When:** the
+run finishes the phase. **Then:** no resume state survives for a later fresh run of any
+feature to inherit; a subsequent invocation behaves as if no halted run ever existed.
+*Source: US-01.*
+
+### REQ-WVR-06 — completion evidence is never commit presence (P1, Phase 1)
+
+**Who:** pipeline maintainer. **Given:** a plan containing tasks that complete without
+producing a commit (OF-2). **When:** the resume point is determined. **Then:** the
+determination does not consult commit presence or commit messages; a no-op-completing
+task never causes its wave to be treated as incomplete. *Source: US-03.*
+
+### REQ-WVR-07 — unattended queue parity (P2, Phase 2)
+
+**Who:** queue operator. **Given:** a queue-driven iteration whose feature halted at a
+wave gate in a previous iteration. **When:** the queue re-attempts the feature after the
+halt is cleared. **Then:** the delegated run resumes exactly as a direct invocation
+would under REQ-WVR-01..05, with no queue-specific configuration. *Source: US-04.*
 
 ## 8. Risks
 
+- **R-1 — stale record after history rewrite.** An operator rebase/reset can invalidate
+  what the record believes is committed. Mitigated structurally by REQ-WVR-03 (nothing
+  commits before full-tree verification) and REQ-WVR-02 (changed plan invalidates the
+  record); residual worst case is a gate halt, as today.
+- **R-2 — resume-skip strands uncommitted work.** If a wave were recorded complete while
+  its work is uncommitted, a resumed run would skip work that exists nowhere but the
+  tree. REQ-WVR-01/OF-3's "resume at the earliest uncommitted wave" is the requirement
+  that forbids this; the FSPEC must carry an explicit acceptance test for it.
+- **R-3 — provenance confusion.** Two resume sources (manual, automatic) can leave an
+  operator unsure why a run started where it did. Mitigated by REQ-WVR-01/-04's
+  mandatory provenance announcements.
+- **R-4 — interim/final divergence.** The interim HEAD mechanism (BL-03) and this
+  feature's reviewed contract could drift apart if the feature lands as "new code
+  alongside". BL-03's gating logic (formalize or replace, never duplicate) is the
+  control; se-review should treat duplication as a blocking finding.
+
 ## 9. Obligations / Open Questions
 
+- **OB-1 (owner: TSPEC).** The resume record's location, format, matching rules, and the
+  determination procedure are implementation contracts owned by the TSPEC — this REQ
+  deliberately states only their observable outcomes (REQ-WVR-01..06).
+- **OB-2 (owner: this feature's se-author, at FSPEC/TSPEC authoring).** Promote OF-1..3
+  into `docs/_constraints/pdlc-wave-gate-baseline.md` as measured `M-*` facts once BL-02
+  resolves, and cite them by id from downstream artifacts.
+- **OB-3 (owner: pm-author, at FSPEC authoring).** Confirm the interaction ordering with
+  the advisory wave-gate remediation seam (`pdlc-advisory-wave-gate`): proposed default —
+  remediation acts *within* the halted run, automatic resume acts at the *next*
+  invocation, so the two compose without coordination. Carried as open until that REQ's
+  FSPEC exists.
+- **OQ-1.** Should the escape hatch of REQ-WVR-04 be a config value, a record-removal
+  action, or both? Product requirement is only that one exists and is announced;
+  form is the TSPEC's choice unless the operator states a preference at FSPEC review.
+
 ## 10. Traceability
+
+| User story | Requirements |
+|---|---|
+| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05 |
+| US-02 | REQ-WVR-02, REQ-WVR-04 |
+| US-03 | REQ-WVR-03, REQ-WVR-06 |
+| US-04 | REQ-WVR-07 |
+
+Registered in `docs/_queue/QUEUE.md` as Order 20 (`ready: false` until prerequisites
+BL-01..03 resolve); project matrix row in `docs/requirements/traceability-matrix.md`.
