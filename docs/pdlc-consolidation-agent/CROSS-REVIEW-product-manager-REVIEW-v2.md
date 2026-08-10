@@ -83,8 +83,22 @@ The reviewer reading the PR is the human control the whole feature rests on (US-
 
 ## Recommendation
 
-<!-- filled next -->
+**Needs revision.**
+
+This is a substantial round and I want to be clear about where it landed: all four High findings from v1 are genuinely closed, on the production path, with tests that drive `main()` and controls that make them falsifiable. The feature now does what REQ §1 said it would — a promotion can be flagged, a coincidence cannot be promoted, and the operator sees both. That is the hard part, and it is done.
+
+One High remains, and it is a consequence of the F-04 fix rather than a return of it:
+
+1. **G-01** — keep the AC-2.3 bar rejection out of the terminal-status derivation at `:939`, so a pass that promoted successfully and correctly declined a coincidence reports `promoted`, per vocabularies §1's join and the `duplicate-suppressed` precedent. Add the missing mixed-pass row (one enacted, one bar-rejected) asserting the status verbatim **and** that item 8 still names the declined pair.
+
+Worth taking in the same pass, neither gating:
+
+2. **G-02** — decide whether the proposal file carries bar-rejected items; if yes, the enumeration in AC-3.4 needs the fourth cause (raised as an erratum against REQ this round), and the file should separate declined items from degraded ones.
+3. **G-03** — bound `promotionSources`' feature match on a whole `[a-z0-9-]` token instead of a substring, and pin it with two consumed features whose names are prefixes of one another.
+
+Nothing in v1's approved surface regressed: `dist/` is in sync, the suite's only red is the documented untracked-file false-red, and the propose-only guarantee, the non-lossy degradation and the duplicate-suppression story I recorded as positives in v1 are all intact on HEAD.
 
 ## Verdict
 
-<!-- filled last -->
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
