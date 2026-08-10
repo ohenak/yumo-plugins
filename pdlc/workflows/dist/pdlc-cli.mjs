@@ -4,8 +4,7 @@ import { dirname } from "path";
 // ⚠️  GENERATED FILE — DO NOT EDIT.
 // Built by `node pdlc/workflows/build-runtime.mjs` from:
 //   pdlc/workflows/orchestrate-dev.js
-//   pdlc/workflows/orchestrate-queue.js
-//   pdlc/workflows/runtime-adapter.js
+//   pdlc/workflows/cli.mjs
 // Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this
 // bundle exists (the workflow runtime allows no imports, exports past meta, or fs).
 

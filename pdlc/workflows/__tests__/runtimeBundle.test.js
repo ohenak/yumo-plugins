@@ -542,6 +542,71 @@ describe.each(BUNDLES)("%s", (file) => {
   });
 });
 
+// ─── Banner provenance ────────────────────────────────────────────────────
+//
+// The banner is what an operator reads before deciding which file to edit, so
+// its source list is load-bearing prose, not decoration: a bundle that names a
+// source it was not built from sends the edit to a file that cannot affect it.
+// A single shared banner constant did exactly that once the consolidation
+// bundle and the CLI joined the build — both carried `orchestrate-queue.js`,
+// neither is built from it.
+//
+// The oracle does not read the builder's own source-list constants (that would
+// compare the builder to itself and pass on any list). It reads the ARTIFACT:
+// each source contributes a marker identifier that survives comment-stripping
+// and appears in no other workflow source, so "is this source inlined here?"
+// is answered from the shipped bytes. Both directions are asserted — a named
+// source must be present, and an unnamed one must be absent — so neither an
+// over-broad banner nor a silently-added source passes.
+const SOURCE_MARKERS = Object.freeze({
+  "runtime-adapter.js": "rtRotr32",
+  "orchestrate-dev.js": "computeTopologicalBatches",
+  "orchestrate-queue.js": "rewriteStatus",
+  "consolidate-learnings.js": "parseConsumedBlocks",
+  "cli.mjs": "withCleanStdout",
+});
+
+const ARTIFACT_SOURCES = Object.freeze({
+  "orchestrate-queue.bundle.js": ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"],
+  // The dev bundle inlines the queue module too (§7.2 edit 4), so naming
+  // orchestrate-queue.js here is truthful rather than copied.
+  "orchestrate-dev.bundle.js": ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"],
+  "consolidate-learnings.bundle.js": ["runtime-adapter.js", "orchestrate-dev.js", "consolidate-learnings.js"],
+  // Plain Node: real `fs`, so no adapter; no queue module either.
+  "pdlc-cli.mjs": ["orchestrate-dev.js", "cli.mjs"],
+});
+
+describe("RLH-CR-F6: every generated artifact's banner names its own sources", () => {
+  it("uses markers that are unique to one source apiece — the oracle below is not vacuous", () => {
+    for (const [source, marker] of Object.entries(SOURCE_MARKERS)) {
+      const owners = Object.keys(SOURCE_MARKERS).filter((f) =>
+        readSource(f).includes(marker)
+      );
+      expect(owners).toEqual([source]);
+    }
+  });
+
+  it.each(Object.keys(ARTIFACT_SOURCES))("%s: the banner's list is exactly what is inlined", (file) => {
+    const text = read(file);
+    const expected = ARTIFACT_SOURCES[file];
+
+    // The banner: the `//   pdlc/workflows/{source}` lines under the build line.
+    const named = (text.match(/^\/\/ {3}pdlc\/workflows\/(\S+)$/gm) || []).map((line) =>
+      line.replace("//   pdlc/workflows/", "")
+    );
+    expect(named.sort()).toEqual([...expected].sort());
+
+    // …and the artifact's own bytes agree, in both directions.
+    for (const [source, marker] of Object.entries(SOURCE_MARKERS)) {
+      if (expected.includes(source)) {
+        expect(text).toContain(marker);
+      } else {
+        expect(text).not.toContain(marker);
+      }
+    }
+  });
+});
+
 describe("bundle freshness", () => {
   // RLH-AT-20 (FSPEC AT-20) — dist/ is fresh in the same commit as any workflow
   // source change. The consumer half (`sync-workflows.sh --check`) is asserted

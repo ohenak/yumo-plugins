@@ -519,6 +519,18 @@ describe("T20 — the pass, end to end (L2)", () => {
           // observed one (a path committed that the pass never recorded writing).
           expect([...observed].sort()).toEqual([...writeSet].sort());
           expect(writeSet.has(MARKER_PATH)).toBe(false);
+
+          // The spec-anchored side. Everything above compares the run against itself: both sides of
+          // the equality are produced by the same pass, so a pass that committed the wrong path and
+          // recorded that same wrong path in its write set would satisfy it. §5.4's table names four
+          // possible members, and three of them are conditional on work this fixture does not do —
+          // no AC-2.1 promotion (`DOMAIN-CONSTRAINTS.md`), no AC-2.2 promotion
+          // (`DECISIONS-{topic}.md`), no §5.3 proposal (`CONSOLIDATION-PROPOSAL-{passId}.md`). What
+          // remains for a nothing-found pass is the fourth: the log, carrying the §3.3 consumed pair
+          // and the §10 terminal row. So the literal set is derivable from the FSPEC without running
+          // anything, and it is asserted as a literal.
+          expect(result.status).toBe("no-op"); // the branch the derivation above assumes
+          expect([...observed].sort()).toEqual([LOG_PATH]);
         });
       });
 

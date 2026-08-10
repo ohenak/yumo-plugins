@@ -31,15 +31,26 @@ const REPO_ROOT = resolve(HERE, "..", "..");
 // The .claude/workflows/ consumer copy is produced by the maintainer sync step, not this script.
 const OUT_DIR = resolve(HERE, "dist");
 
-const BANNER = [
-  "// ⚠️  GENERATED FILE — DO NOT EDIT.",
-  "// Built by `node pdlc/workflows/build-runtime.mjs` from:",
-  "//   pdlc/workflows/orchestrate-dev.js",
-  "//   pdlc/workflows/orchestrate-queue.js",
-  "//   pdlc/workflows/runtime-adapter.js",
-  "// Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this",
-  "// bundle exists (the workflow runtime allows no imports, exports past meta, or fs).",
-].join("\n");
+/** The generated-file banner, naming THIS artifact's own sources.
+ *
+ * The banner is the one line of an artifact an operator reads before deciding
+ * where to make a change, so naming sources the artifact was not built from
+ * sends that edit to the wrong file. A single shared list did exactly that once
+ * `consolidate-learnings.bundle.js` and `pdlc-cli.mjs` joined the build: neither
+ * is built from `orchestrate-queue.js`, and the CLI is not built from the
+ * adapter. Each row below passes its own source list; `runtimeBundle.test.js`
+ * pins per-artifact provenance so a source added to a bundle without being added
+ * to its banner is a red suite.
+ */
+function banner(sources) {
+  return [
+    "// ⚠️  GENERATED FILE — DO NOT EDIT.",
+    "// Built by `node pdlc/workflows/build-runtime.mjs` from:",
+    ...sources.map((s) => `//   pdlc/workflows/${s}`),
+    "// Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this",
+    "// bundle exists (the workflow runtime allows no imports, exports past meta, or fs).",
+  ].join("\n");
+}
 
 /** Strip ES module syntax so the body can live inside an IIFE. */
 export function stripModuleSyntax(source) {
@@ -346,9 +357,13 @@ const cliBody = cliSource
   .replace(/^#![^\n]*\n/, "")
   .replace(CLI_IMPORT_MARK, "const dev = __dev;");
 
+// The CLI is plain Node: it inlines the dev module and cli.mjs, and takes no
+// adapter (it has real `fs`) and no queue module.
+const CLI_SOURCES = ["orchestrate-dev.js", "cli.mjs"];
+
 const cliArtifact = [
   moduleImportLines(devSource).join("\n"),
-  BANNER,
+  banner(CLI_SOURCES),
   wrapModule("__dev", stripModuleSyntax(devSource), CLI_DEV_EXPORTS),
   cliBody,
 ].join("\n\n");
@@ -499,15 +514,21 @@ export function neutralizeDynamicImports(code) {
   );
 }
 
-function stripCommentsForRuntime(code) {
-  return `${BANNER}\n${neutralizeDynamicImports(stripJsComments(code))}`;
+function stripCommentsForRuntime(code, sources) {
+  return `${banner(sources)}\n${neutralizeDynamicImports(stripJsComments(code))}`;
 }
+
+// Per-artifact source lists, in the order the modules are concatenated below.
+const QUEUE_SOURCES = ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"];
+const DEV_SOURCES = ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"];
+const CONS_SOURCES = ["runtime-adapter.js", "orchestrate-dev.js", "consolidate-learnings.js"];
 
 const bundles = [
   {
     file: "orchestrate-queue.bundle.js",
     contents: stripCommentsForRuntime(
-      [QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n")
+      [QUEUE_META, banner(QUEUE_SOURCES), adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n"),
+      QUEUE_SOURCES
     ),
   },
   {
@@ -515,8 +536,11 @@ const bundles = [
     // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
     // `_recordQueueRow` closure can reach the queue's row helpers. ORDERING HAZARD:
     // queueModule's prelude references `__dev.main`, so devModule must precede it.
+    // (That inlining is also why `orchestrate-queue.js` is a truthful source of
+    // THIS bundle, not only of the queue one.)
     contents: stripCommentsForRuntime(
-      [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n")
+      [DEV_META, banner(DEV_SOURCES), adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
+      DEV_SOURCES
     ),
   },
   {
@@ -524,7 +548,8 @@ const bundles = [
     // TSPEC §8.2 — consModule's prelude references __dev.* re-bindings, so
     // devModule must precede it, same ordering hazard queueModule documents above.
     contents: stripCommentsForRuntime(
-      [CONS_META, BANNER, adapter, devModule, consModule, CONS_ENTRY].join("\n\n")
+      [CONS_META, banner(CONS_SOURCES), adapter, devModule, consModule, CONS_ENTRY].join("\n\n"),
+      CONS_SOURCES
     ),
   },
   {
