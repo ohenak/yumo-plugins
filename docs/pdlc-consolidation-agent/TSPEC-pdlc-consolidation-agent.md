@@ -2497,13 +2497,25 @@ last two by hand. That is not a bookkeeping slip in the `DEC-SEV-02` sense: this
 is what tells a PLAN task which ATs it owes. An AT with no file is an AT the PLAN will not name and
 the implementation will not write, and nothing goes red.
 
-The FSPEC's AT register carries **99** ids, measured at **v11.3** by enumerating `AT-…` tokens over
-§13 (`FSPEC-…:2041-2191`) and de-duplicating. The earlier "96, measured at v11.1" was stale: FSPEC
-v11.2/v11.3 added **AT-M11**, **AT-Q13** and **AT-R7** — the three ids that close the register gaps
-T-11, T-12 and §12.2's empty-marker row had recorded and raised upstream. All three are assigned
-below. The measurement is dated on purpose, and it is not the mechanism: `consolidationTraceability.test.js`
-re-derives both sides at run time, so this number is a reader's summary that the set-equality test
-falsifies if it drifts again. Every register id has exactly one file below:
+The FSPEC's AT register carries **99** ids, obtained by enumerating `AT-…` tokens over **FSPEC §13,
+"Acceptance tests"** (§§13.1–13.9) and de-duplicating; re-derived at FSPEC **v11.6** and still 99,
+set-equal to this table in both directions with an empty diff each way. The earlier "96, at v11.1"
+was stale: FSPEC v11.2/v11.3 added **AT-M11**, **AT-Q13** and **AT-R7** — the three ids that close
+the register gaps T-11, T-12 and §12.2's empty-marker row had recorded and raised upstream. All
+three are assigned below.
+
+**Two things about that number, both deliberate.** First, it is a reader's summary and not the
+mechanism: `consolidationTraceability.test.js` re-derives *both* sides at run time, so a fourth
+drift of this count must go **red in the suite** rather than need a fourth erratum round — which is
+why the version qualifier is now a re-derivation date rather than a pin anything depends on.
+Second, the register is cited **by section name and id, never by line range**: three consecutive
+review rounds each spent a finding on a hand-copied `FSPEC-…:NNNN` coordinate that a later FSPEC
+revision had already shifted (v11.4 alone moved every register locator +34, and v11.6 moved them
+again), and no oracle in this document may locate anything by line index anyway — §11.3(e) and
+§12.2 already require source-text assertions to be anchored "by the surrounding named heading and
+never by line index". **That rule governs this document's own citations of the FSPEC as well**: an
+FSPEC anchor is named as *§-number + heading + id* (`FSPEC §13.5 register, AT-Q13`), which survives
+the drift a line number cannot. Every register id has exactly one file below:
 
 | File | Level | ATs owned (exhaustive) |
 |---|---|---|
