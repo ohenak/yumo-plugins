@@ -827,6 +827,16 @@ Four properties of the enumerating call, each verified against this repository a
 `parseCorpusListing` is the pure half: split on newline, drop empty lines, and map each path to
 `{path, basename}` by its last `/`. `enumerateCorpus` **never opens a file**.
 
+**The corpus is a set, and every oracle over it is a set oracle.** `ls-files` does not sort its
+output and does not return it in pathspec order — measured on a scratch tree, `--cached --others`
+returned the untracked path *ahead* of the tracked ones — so the order of `parseCorpusListing`'s
+result is a fact about git, not about this feature, and **no assertion anywhere may depend on it**.
+Concretely: a `toEqual` over a `CorpusFile[]` or a basename array must sort both sides or compare as
+sets, membership conjuncts are the preferred form, and this binds the real-git L4 case in §11.1 most
+of all, since it is the one place an unsorted listing actually reaches an assertion. An order-sensitive
+oracle here would go intermittently red on a correct implementation. §11.4's determinism rows carry
+the same rule for the generated cases.
+
 **AT-P1's oracle is the argv, not the fixture.** AT-P1 (FSPEC §13.2 register, *The consumed predicate and the corpus*) is purely an enumeration
 claim — a LEARNINGS under `docs/completed/{feature}/` is in corpus, one under
 `docs/discarded/{feature}/` is not — and §12.3 runs it at **L1**, over the `_git` double. Run
@@ -878,7 +888,7 @@ empty one and would advance the cadence datum on a pass that read nothing. §10.
 1. `boundary = logText.indexOf("<!-- pdlc:consumed")`. `-1` (or `logText == null`) ⇒ the legacy
    region is the whole text and the block region is empty.
 2. **Legacy region** = `logText.slice(0, boundary)`; membership is bare substring containment — the
-   shipped test (`nudge-consolidation.sh:41`) applied to a bounded slice.
+   shipped test (the `pending` comprehension in `nudge-consolidation.sh`) applied to a bounded slice.
 3. **Block region** = the concatenation of every span from an opening `<!-- pdlc:consumed {id} -->`
    to the next `<!-- /pdlc:consumed -->`, or to end-of-text when no closer follows (the truncated
    append of E-04); membership is per-line equality against a trimmed line.
@@ -928,13 +938,14 @@ legacy region must reproduce the shipped predicate over prose that names full pa
 
 **T-08 decided: two implementations, whose predicates are held equal by a differential test.** The pass is JavaScript in
 a bundle that cannot import; the hook is a Python heredoc inside bash that no JS test can import
-(`nudge-consolidation.sh:22-50`). Extracting a shared implementation would need a third artifact and
-a language boundary neither side has today. The two are therefore written separately to one stated
-algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs both over one fixture table and
-asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s single
-`os.path.join` glob becomes the two-literal `CORPUS_GLOBS` tuple and the comprehension over it given
-below, and `:41`'s comprehension tests against the two regions computed by a short helper rather than
-against `logtext` whole.
+(the `PY` heredoc in `nudge-consolidation.sh`). Extracting a shared implementation would need a third
+artifact and a language boundary neither side has today. The two are therefore written separately to
+one stated algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs both over
+one fixture table and asserts set equality (§11.3). The hook's edit was minimal and mechanical, and
+**has landed at HEAD** — it is described here in the past tense and located by symbol, never by line
+index, per §12.3: the single `os.path.join` glob became the two-literal `CORPUS_GLOBS` tuple and the
+comprehension over it given below, and the membership comprehension (now bound to `pending`) tests
+against the two regions computed by the `region_split` helper rather than against `logtext` whole.
 
 **Both enumerations are pinned literally, so a divergence larger than §10.4's one remaining class reds.**
 AT-P7 feeds both sides one basename list and therefore holds the *predicate* half only (§11.3(f)).
@@ -995,18 +1006,18 @@ equality was a REQ/FSPEC decision rather than this layer's, and it has been made
 is exactly the shape pinned here. §13.3 records that round trip as closed.
 
 **A third hook edit exists, and it is what makes AT-P7 an oracle at all.** The shipped hook cannot
-emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count**
-(`:44-48`), and it prints it only when `n >= THRESHOLD` with `THRESHOLD = 5` (`:25`, `:43`); below
-five it prints nothing and exits 0 (`:49`). Every fixture that discriminates the two-region
+emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count** (the
+`msg` / `json.dumps` block), and it prints it only when `n >= THRESHOLD` with `THRESHOLD = 5`; below
+five it prints nothing and exits 0. Every fixture that discriminates the two-region
 predicate — the truncated block (E-04), the stray closer (E-05), the basename collision (E-09), the
 legacy/block boundary — has fewer than five pending files, so an oracle reading that message is
 blind on all of them, and a count-above-five comparison would pass unchanged if the hook's
-two-region logic were deleted outright. The hook therefore gains, immediately before the threshold
-test:
+two-region logic were deleted outright. The hook therefore gained, immediately after `pending` is
+computed and before the threshold test, the block that stands at HEAD:
 
 ```python
 if os.environ.get("PDLC_CONSOLIDATION_DEBUG") == "1":
-    names = sorted(os.path.basename(p) for p in pending)
+    names = sorted(set(os.path.basename(p) for p in pending))
     sys.stderr.write("PDLC_PENDING:" + ",".join(names) + "\n")
 ```
 
@@ -1021,32 +1032,36 @@ line T-08's "held equal by a differential test" is not true, and the decision wo
 re-argued on evidence a count-above-threshold oracle can actually supply; §13.1 row 6 records that
 dependency.
 
-**Placement: after `pending` is computed, but the early exit moves.** The shipped hook returns at
-`:29-30` (`if not learnings: sys.exit(0)`) before `pending` exists, so a zero-corpus fixture would
-emit no line at all and the harness would have to read `∅` from **silence** — an absence-only reading
-of the one channel the whole differential rests on, indistinguishable from "the hook did not run".
-The edit therefore replaces that early exit with a `pending = []` fall-through so the debug line is
-reached on every path, and the `n >= THRESHOLD` test at `:43` (which is already false for `n == 0`)
-carries the no-output behaviour unchanged. That keeps the shipped stdout contract byte-identical on a
-zero corpus while making `PDLC_PENDING:` (with an empty value) a **positive** observation of `∅`.
+**Placement: after `pending` is computed, and the early exit had to go.** The hook previously returned
+early (`if not learnings: sys.exit(0)`) before `pending` existed, so a zero-corpus fixture would emit
+no line at all and the harness would have to read `∅` from **silence** — an absence-only reading of
+the one channel the whole differential rests on, indistinguishable from "the hook did not run". The
+edit therefore replaced that early exit with a fall-through, so `pending` is always computed and the
+debug line is reached on every path; the `n >= THRESHOLD` test (already false for `n == 0`) carries
+the no-output behaviour unchanged. At HEAD there is no early exit between the corpus glob and
+`pending`, which is the state this describes. That keeps the shipped stdout contract byte-identical on
+a zero corpus while making `PDLC_PENDING:` (with an empty value) a **positive** observation of `∅`.
 §11.3(f)'s fixture table gains a zero-corpus row to exercise it.
 
 **How the PLAN must route this edit: production code, not test scaffolding.** It ships in
 `pdlc/hooks/scripts/nudge-consolidation.sh`, a consumer runs it on every `SessionStart`, and
 `bash -n` in CI's `Shell scripts parse` job covers it — so it belongs to the hook's owning
-implementation task with the `:28` glob and `:41` predicate edits (one file, one task, per
-batch-safety rule 2), never to a test-helper task. The release note names it as a new,
+implementation task alongside the `CORPUS_GLOBS` glob and `region_split`/`pending` predicate edits
+(one file, one task, per batch-safety rule 2), never to a test-helper task. Since all four edits are
+already at HEAD (§10.4), that task's remaining work is ownership of the file, not authorship of the
+edit — §3.2's row states it in those terms. The release note names it as a new,
 default-off debug channel, alongside §8.3's drift-gate notice.
 
-**One side effect of the relocated exit, named deliberately.** Removing `:29-30` means a zero-corpus
-session now reaches the log read at `:32-39`, where today the hook exits first. That is a new read on
-a `SessionStart` path in every repository that ships this plugin. It is safe — the read is already
+**One side effect of the relocated exit, named deliberately.** Removing the early exit means a
+zero-corpus session now reaches the `.consolidation-log.md` read (the `os.path.isfile(log)` guard and
+its `try`), where the hook previously exited first. That is a new read on a `SessionStart` path in
+every repository that ships this plugin. It is safe — the read is already
 guarded by `os.path.isfile` and wrapped in a `try` with `errors="ignore"` — and it is deliberate,
 because the debug line must be reached on every path for `∅` to be observable. It is **in scope for
 the release note**, which names both halves of this edit rather than only the visible one: a new
 default-off `PDLC_PENDING:` stderr channel, and one additional guarded read of
 `docs/_decisions/.consolidation-log.md` on zero-corpus sessions. Stdout is byte-unchanged either way
-(`n >= THRESHOLD` at `:43` is already false for `n == 0`).
+(the `n >= THRESHOLD` test is already false for `n == 0`).
 
 ### 7.2 Trigger, datum and `passId` (FSPEC §2.3, §2.5)
 
