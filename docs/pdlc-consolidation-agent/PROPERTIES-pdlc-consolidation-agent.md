@@ -438,8 +438,15 @@ named as unread in the report body. That second fixture **is `AT-K3b`'s oracle**
 in FSPEC v11.7): its Given — *"a corpus whose enumerated basenames are all unreadable on disk…, with
 nothing else to promote"* — and its Then — terminal `no-op`, the consumed pair appended **empty**, and
 **no** reason code minted for the condition — are the four observables above, so the register id is
-claimed here rather than left carrier-less. Its `no CONSOLIDATION-PROPOSAL-*.md for that passId`
-conjunct is PROP-RTE-06(b)'s, on the same terminal status, and is not restated here. The two fixtures are each other's controls: the all-unreadable
+claimed here rather than left carrier-less. AT-K3b's remaining Then-conjunct — **no**
+`CONSOLIDATION-PROPOSAL-{passId}.md` for that pass — is asserted **on this same all-unreadable
+fixture**, through the write double's recorded path set: the set of paths the double was asked to
+write contains no `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` bearing this pass's `passId`. It is
+*not* delegated to PROP-RTE-06(b): that fixture's Given is a **duplicate-suppressed** pass, AC-1.4's
+second cause, so it can only witness the obligation on its own Given, and PROP-RTE-06's own body
+records why the shared terminal status does not bridge them — *"§5.3 decides on causes, not on
+terminal status"* (`:1057-1058`). All four of AT-K3b's Then-conjuncts therefore rest on AT-K3b's
+Given. The two fixtures are each other's controls: the all-unreadable
 fixture keeps *"pair empty"* from passing on a pass that enumerated nothing at all, and the mixed
 fixture keeps the all-unreadable fixture's status assertion from passing on an implementation that
 terminates every unreadable-touching pass `failed`. This is AC-1.4's **third** cause (REQ §4b: the
