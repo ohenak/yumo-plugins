@@ -85,7 +85,7 @@ test** — durable against LEARNINGS date edits and already shipped — and upda
 "accumulated since the last pass" means exactly this predicate.
 
 **The predicate's corpus is a delimited region, not the whole log.** The predicate was a bare
-substring test over the whole of `docs/_decisions/.consolidation-log.md` (the pending filter; the read is `:67-68`), and
+substring test over the whole of `docs/_decisions/.consolidation-log.md` (the pending filter; the whole-log read is `nudge-consolidation.sh:67-68`), and
 this feature writes further record types into that same file (AC-3.4's PR URLs, AC-5.1's failure-mode
 records — whose `artifact` field may legitimately be a LEARNINGS path — and AC-5.2's effectiveness
 table), any of which could contain a basename and falsely mark that file consolidated. So consumption
