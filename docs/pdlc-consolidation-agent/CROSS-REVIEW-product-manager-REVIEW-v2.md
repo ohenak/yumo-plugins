@@ -67,11 +67,19 @@ The reviewer reading the PR is the human control the whole feature rests on (US-
 
 ## Questions
 
-<!-- filled next -->
+| ID | Question |
+|----|---------|
+| Q-01 | v1's Q-01 is now answered by construction — no seam can unlink a file (`:1453`), so prior passes' corpora survive and the streaks are genuinely reachable. The residual: a corpus member that is `.gitignore`d or moved between passes contributes no text, and `:1727` skips an empty consumed set entirely. Should a pass whose reconstruction came back empty be *reported* as such in item 5, so the operator can tell "no promotion has recurred" from "the evidence for those passes is gone"? Both render as no flag today. |
+| Q-02 | G-02's routing: is a bar-rejected coincidence a *proposal* for AC-3.4's purposes, or a non-proposal the log should note and the file should not carry? The answer decides whether REQ widens the enumeration or the code stops writing the file for that cause. Product call, not a code one. |
+| Q-03 | AC-6.3's operator action is now rendered every pass a widening candidate exists (`:2202-2206`). Under `/loop` that is the same sentence on every tick until the operator edits an untracked config file. Should the log row carry a marker so a later pass can say "already recommended" rather than repeating? Raised in v1 as Q-02 and still open; not a blocker either round. |
 
 ## Positive Observations
 
-<!-- filled next -->
+- **The four unwired ACs are wired the way the ACs describe, not the way the tests wanted.** Each fix put the call in `main()` and left the pure function alone — `seamCandidates` at `:659`, `remediationChoice` at `:735`, `clearsPatternBar` at `:791`, `promotionSources` at `:2390`. That is the honest shape of a DC-07 remediation: the builder was never wrong, the assembly was missing.
+- **The new tests drive `main()`, and their controls are real.** `consolidationOperatorChannels.test.js` opens by saying every row drives the default export and reads what the operator reads (`:3-12`), and it holds to it. The AC-6.2 row is paired with a tie row and an absent-corpus row so it cannot pass by printing a candidate unconditionally (`:198`, `:212`); the `ineffective` row is paired with a HEAD-absent probe row and a one-pass row so neither the probe nor the threshold can be a constant (`:448`, `:478`). Negative assertions are paired with positive ones on the same path — the bar-rejection row asserts `records` is empty **and** that the report names the cause (`:252-254`).
+- **`parseConsumedBlocks` reads the log before the pass writes into it.** `:540` then `:591` is the ordering that keeps the current pass out of its own prior-pass fold; a reversed read would have inflated every streak by one and made AC-5.3 fire a pass early. The comment at `:673-679` states the deleted-member case explicitly rather than leaving it to be discovered.
+- **`renderEvidenceLine` closed the AC-3.2(iii) gap in the direction that favours the reviewer.** The old code dropped the line for an unrecognised shape; the new one emits `(unmet — AC-2.3 bar not cleared)` (`:1036`). A promotion whose evidence the pipeline could not read is now visible in the PR body as exactly that, which is the fact the human reviewer needs most.
+- **The pipeline-scope question was taken as a decision, not absorbed silently.** DEC-CONS-08 records that the two mid-phase `orchestrate-dev.js` changes ship on this branch, with the revert cost and the scope reasoning stated (`DECISIONS-pdlc-consolidation-agent.md:58`, §12 at `:1091`). I am not re-litigating it; it is recorded where a later reader will find it.
 
 ## Recommendation
 
