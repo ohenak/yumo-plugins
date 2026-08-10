@@ -8701,13 +8701,10 @@ async function main({
   };
 
   const configText = await readFileFn(".claude/pdlc.config.json");
-  const { config, sectionMalformed, invalidKeys } = parseConsolidationConfig(configText);
-  if (sectionMalformed) {
-    state.notices.push({ subject: "config", detail: "consolidation section malformed — defaults used" });
-  }
-  for (const key of invalidKeys) {
-    state.notices.push({ subject: "config", detail: `${key} invalid — fell back to ${config[key]}` });
-  }
+  const parse = parseConsolidationConfig(configText);
+  const { config } = parse;
+
+  for (const notice of configNotices(parse)) state.notices.push(notice);
   state.config = config;
 
   const logText = await readFileFn(logPath);
@@ -9808,6 +9805,24 @@ function isPlainObjectLocal(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+function configNotices(parse) {
+  const p = parse || {};
+  const config = p.config || CONSOLIDATION_DEFAULTS;
+  const notices = (p.invalidKeys || []).map((key) => ({
+    subject: `consolidation.${key}`,
+    missingField: key,
+    detail: `fell back to default ${JSON.stringify(config[key])}`,
+  }));
+  if (p.sectionMalformed) {
+    notices.push({
+      subject: "consolidation",
+      missingField: "section",
+      detail: "present but not an object",
+    });
+  }
+  return notices;
+}
+
 function parseConsolidationConfig(text) {
   const degraded = (sectionMalformed) => ({
     config: CONSOLIDATION_DEFAULTS,
@@ -10070,6 +10085,9 @@ function renderPromotionCommitMessage(proposal, passId) {
   return [subject, "", `PDLC-PROMOTION-ID: ${p.failureModeId ?? ""}:${p.action ?? ""}`].join("\n");
 }
 
+const REPOSITORY_UNRESOLVED_RE =
+  /repository not found|not found|does not exist|could not read from remote repository|access rights/i;
+
 async function openClone(passId, config, seams) {
   const { _makeTempDir, _git } = seams || {};
   const cfg = config || {};
@@ -10092,7 +10110,12 @@ async function openClone(passId, config, seams) {
 
   const cloneReply = await _git(["clone", "--depth", "1", "--single-branch", remote, dir]);
   if (!cloneReply || cloneReply.ok !== true) {
-    return { failure: "api-failure", detail: (cloneReply && cloneReply.stderr) || "clone failed" };
+    const stderr = (cloneReply && cloneReply.stderr) || "clone failed";
+
+    if (cfg.pluginRepository != null && REPOSITORY_UNRESOLVED_RE.test(stderr)) {
+      return { failure: "repository-unresolved", detail: String(cfg.pluginRepository) };
+    }
+    return { failure: "api-failure", detail: stderr };
   }
 
   return { dir };

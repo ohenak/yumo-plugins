@@ -38,6 +38,7 @@ import {
   renderPromotionCommitMessage,
   parseConsolidationConfig,
   openClone,
+  configNotices,
   TERMINAL_STATUSES,
   REASON_CODES,
   TRIGGERS,
@@ -366,7 +367,7 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
         expect(parse.sectionMalformed).toBe(false);
         expect(parse.invalidKeys).toEqual([]);
 
-        const state = makeState({ notices: notesFromConfigParse(parse) });
+        const state = makeState({ notices: configNotices(parse) });
         const body = renderReportBody(state);
 
         expect(body).not.toMatch(/sectionMalformed|not an object|fell back/i);
@@ -382,7 +383,7 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
         expect(parse.config.cadenceHours).toBe(168);
         expect(parse.config.volumeThreshold).toBe(9);
 
-        const state = makeState({ notices: notesFromConfigParse(parse) });
+        const state = makeState({ notices: configNotices(parse) });
         const body = renderReportBody(state);
 
         expect(body).toContain("cadenceHours");
@@ -401,9 +402,9 @@ describe("T29 — renderers (L1): AT-L1 … AT-L5, AT-N1 … AT-N4", () => {
         expect(absentParse.sectionMalformed).toBe(false);
 
         const malformedBody = renderReportBody(
-          makeState({ notices: notesFromConfigParse(malformedParse) })
+          makeState({ notices: configNotices(malformedParse) })
         );
-        const absentBody = renderReportBody(makeState({ notices: notesFromConfigParse(absentParse) }));
+        const absentBody = renderReportBody(makeState({ notices: configNotices(absentParse) }));
 
         expect(malformedBody).toMatch(/not an object|sectionMalformed|malformed/i);
         expect(absentBody).not.toMatch(/not an object|sectionMalformed|malformed/i);
@@ -684,29 +685,6 @@ describe("T31 — the ER-6 interim's discriminator (§7.6, §12.4)", () => {
 });
 
 // ─── Helpers local to this file ─────────────────────────────────────────────
-
-/**
- * Builds the report-facing `notices` a caller (main, T31) derives from a `ConfigParse` result — one
- * `ParseNotice` per fallen-back key (naming the key and the default it fell back to), plus one for a
- * malformed (non-object) `consolidation` section. Local to this file: `parseConsolidationConfig`
- * itself carries no report-shaping obligation (TSPEC §7.8), so the notices§11.3 asks the report to
- * carry are assembled by the caller, exactly as they will be inside `main()` once T31 lands it.
- */
-function notesFromConfigParse(parse) {
-  const notices = parse.invalidKeys.map((key) => ({
-    subject: `consolidation.${key}`,
-    missingField: key,
-    detail: `fell back to default ${JSON.stringify(parse.config[key])}`,
-  }));
-  if (parse.sectionMalformed) {
-    notices.push({
-      subject: "consolidation",
-      missingField: "section",
-      detail: "present but not an object",
-    });
-  }
-  return notices;
-}
 
 /**
  * Parses `docs/_constraints/pdlc-consolidation-vocabularies.md` §1's own table — the authority

@@ -523,13 +523,10 @@ export default async function main({
 
   // Step 1 — configuration (§7.8): per-key independent fallback, never a halt.
   const configText = await readFileFn(".claude/pdlc.config.json");
-  const { config, sectionMalformed, invalidKeys } = parseConsolidationConfig(configText);
-  if (sectionMalformed) {
-    state.notices.push({ subject: "config", detail: "consolidation section malformed — defaults used" });
-  }
-  for (const key of invalidKeys) {
-    state.notices.push({ subject: "config", detail: `${key} invalid — fell back to ${config[key]}` });
-  }
+  const parse = parseConsolidationConfig(configText);
+  const { config } = parse;
+  // §11.3's notices, derived by the one production builder AT-N1…AT-N3 also drive (`:1835`).
+  for (const notice of configNotices(parse)) state.notices.push(notice);
   state.config = config;
 
   // Step 2 — enumerate the corpus (basenames only, no body read) and classify.
@@ -1830,6 +1827,36 @@ const CONSOLIDATION_DEFAULTS = Object.freeze({
 
 function isPlainObjectLocal(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * §11.3 — the report-facing `notices` derived from a `ConfigParse`: one `ParseNotice` per
+ * fallen-back key (naming the key and the default it fell back to) plus one for a malformed
+ * (non-object) `consolidation` section. `parseConsolidationConfig` itself carries no
+ * report-shaping obligation (TSPEC §7.8), so the derivation lives beside it rather than inside
+ * it — but it lives *in production*, and `main()` step 1 is its only caller, so the shape
+ * AT-N1…AT-N3 read is the shape the report renders. Every notice satisfies the `ParseNotice`
+ * typedef (`:251-255`), `missingField` included.
+ *
+ * @param {ConfigParse} parse
+ * @returns {ParseNotice[]}
+ */
+export function configNotices(parse) {
+  const p = parse || {};
+  const config = p.config || CONSOLIDATION_DEFAULTS;
+  const notices = (p.invalidKeys || []).map((key) => ({
+    subject: `consolidation.${key}`,
+    missingField: key,
+    detail: `fell back to default ${JSON.stringify(config[key])}`,
+  }));
+  if (p.sectionMalformed) {
+    notices.push({
+      subject: "consolidation",
+      missingField: "section",
+      detail: "present but not an object",
+    });
+  }
+  return notices;
 }
 
 /**
