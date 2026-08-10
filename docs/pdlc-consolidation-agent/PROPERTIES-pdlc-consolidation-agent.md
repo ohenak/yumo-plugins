@@ -1397,18 +1397,23 @@ visible. The trigger recorded on each arm is the closed-set value NFR-3a require
 this is the sole home of the invariant, PROP-TRG-05 having been retired into it (§5.1). *L2 ·
 `consolidationPass.test.js` · T20 → T31 · NFR-3, NFR-3a · AT-C8.*
 
-**PROP-PASS-11** — *A `no-op` pass still reports, still restates, and still releases — on both of its
-causes.* AC-1.4's obligations are **positive** and none of them is discharged by the absences other
-properties assert (no PR: PROP-RPT-01; no proposal file: PROP-RTE-06(b); terminal status:
-PROP-CRED-04). Two Givens, because AC-1.4 has two causes that differ exactly where AC-5.3 and AC-5.5
+**PROP-PASS-11** — *A `no-op` pass still reports, still restates, and still releases — on both of the
+causes that differ in what the pass consumes.* AC-1.4's obligations are **positive** and none of them
+is discharged by the absences other properties assert (no PR: PROP-RPT-01; no proposal file:
+PROP-RTE-06(b); terminal status: PROP-CRED-04). AC-1.4 has **three** causes (`REQ:224-233`); two
+Givens here, because those two are the ones that differ exactly where AC-5.3 and AC-5.5
 count: **(i)** the un-consolidated set is **empty**, and **(ii)** every promotion the pass would have
-made was **duplicate-suppressed** (NFR-4), so the consumed set is non-empty. On **both**: terminal
+made was **duplicate-suppressed** (NFR-4), so the consumed set is non-empty. The **third** cause —
+REQ §4b's all-unreadable corpus, whose pass consumes nothing and is therefore streak-equivalent to
+(i) — is carried by **PROP-COR-09**, which asserts the observables that distinguish it; its
+restate-and-release obligations are cause (i)'s, pinned here, because it reaches `finishPass` through
+that same exit. On **both** Givens below: terminal
 status is verbatim **`no-op`** in the pass's single appended log row; the **AC-5.2 effectiveness
 table is present** in the report, restating each prior promotion's **standing** verdict and state —
 including an `unmeasurable` already reached, which is the conjunct that fails an implementation
 emitting the table only when it has a fresh verdict to put in it; and the AC-1.3 marker is
 **released** (PROP-PASS-09's set-equality ranges over `no-op`, and this property pins the two causes
-that reach it). The two Givens are asserted apart, not pooled, because **which streaks a pass
+it names above — not the status's whole cause set, whose third member is PROP-COR-09's). The two Givens are asserted apart, not pooled, because **which streaks a pass
 advances is decided by consumed-set emptiness, never by the `no-op` label**: on (i) no AC-5.2 verdict
 is produced and neither the `ineffective` nor the `unmeasurable` streak advances, while on (ii) the
 pass **is** an evaluated pass and the `unmeasurable` streak **does** advance (AC-5.5). Pooling them
