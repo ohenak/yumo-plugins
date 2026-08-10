@@ -64,6 +64,16 @@ The reason I file it at all is that the design comment at `:2186-2188` now asser
 
 ## Errata routed upstream
 
+Two upstream documents now enumerate the proposal file's causes as a closed list that the shipped behaviour exceeds. Neither is a defect in the implementation in front of me, so neither is a finding above — both are emitted as `ERRATUM:` lines in this round's hand-off for the owning author to make a targeted versioned edit.
+
+**REQ AC-3.4** (`REQ-pdlc-consolidation-agent.md:272-274`) states the file "is written when, and only when, the pass has something to propose that it does not enact (AC-3.5, AC-5.4, AC-6.3)". An AC-2.3 bar decline is a fourth cause: it is decided at `consolidate-learnings.js:796`, lands in `deferred` at `:797-802`, and triggers the write at `:937-941`. The leading clause is true of it; the parenthetical enumeration is not. I raised this in v2 and it was filed as an erratum then (`d0e19888`'s message says so), but REQ is unmodified in the `401f41d0..HEAD` window — `git log 401f41d0..HEAD -- REQ…` is empty — so the erratum has not yet been routed. I re-emit it rather than let it lapse.
+
+Worth noting for whoever amends it: AC-3.5's own text already contains the paragraph pattern this needs, in the sentence excluding `duplicate-suppressed` from the failure-class table ("decided per promotion before any PR is attempted, fires no fallback", `REQ:285-286`). A bar decline takes the same shape and can be recorded the same way.
+
+**FSPEC §5.3's proposal-file table** (`FSPEC-pdlc-consolidation-agent.md:895-900`) has the identical gap one layer down, and it bites slightly harder because it is written as an exhaustive four-row table over passes: two `no-op` rows that write nothing, one `no-op` row that writes (AC-4.3's degraded pass), and `promoted-degraded` with a degraded promotion. A pass whose **only** cluster is bar-declined reaches `no-op` — `enacted` is empty, so `:956` — and **writes the file** (`:937`). That is a fifth pass shape the table does not carry, and the prose beneath it (`:902-905`) explicitly reasons about which `no-op` causes AC-1.4 does and does not enumerate, so the omission reads as a considered exclusion rather than an oversight. The behaviour is pinned by an existing test — `consolidationOperatorChannels.test.js:242-256` asserts `no-op` with one deferred item and the cause named in the body — so this is the document trailing the code, not the reverse.
+
+This gap predates round 2; it is not something `d0e19888` introduced. I did not raise it in v2 because I had located the enumeration in REQ only.
+
 ## Questions
 
 ## Positive Observations
