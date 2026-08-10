@@ -33,6 +33,14 @@
 > dispatcher reads a `Status` cell, so nothing downstream ever read T17's `🔴` as a live signal. On TE
 > Q-02 (bookkeeping): these header entries are numbered by **revision**, and each names the review
 > round it answers in its first sentence, so a harvest walking either sequence can join the two.
+> (iii) **The `Status`-rule locators were re-pinned** — unraised by either reviewer, found while
+> re-grounding the §2 rule that closes PM F-15. `orchestrate-dev.js` gained roughly 200 lines on this
+> branch after the reviewed commit (`b42276eb` … `76476315`), so v1.6's citations no longer landed on
+> the code they name. Re-measured at HEAD and corrected in both §2 and v1.6's entry: `parsePlanTasks`
+> `:3963`, the "LOOSE … cosmetic" comment `:3966`, `PLAN_ID_HEADER_CELLS` / `PLAN_DEPS_HEADER_CELLS`
+> `:4047-4048`, `WAVE_STATE_PATH` `:9104`, `parseWaveLedger` `:9157`. The rule is unchanged; only the
+> line numbers under it moved, and a rule whose evidence does not resolve is a rule a reader cannot
+> check.
 > Gate re-run over the revised text: **34** tasks (`errors: []`), **34** ownership rows,
 > `validatePlanContract` `{"ok":true}`, **15** ready-sets, **15** waves, **0** batch-column mismatches,
 > **0** same-batch same-file collisions, **16** multi-writer files over 28 distinct files — every
