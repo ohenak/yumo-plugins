@@ -120,7 +120,7 @@ describe("T19 — the property suite (L5)", () => {
 
   // ─────────────────────────── T26 — identity and merge ───────────────────────────
 
-  describe.skip("T26 — identity and merge", () => {
+  describe("T26 — identity and merge", () => {
     // PROP-GEN-02 — mintPassId dominates every parseable {today} id, ignores garbage, is
     // invariant under row order.
     test("PROP-GEN-02: minted id is strictly greater than every parseable {today} id, unparseable rows change nothing, and the result is invariant under row permutation", () => {

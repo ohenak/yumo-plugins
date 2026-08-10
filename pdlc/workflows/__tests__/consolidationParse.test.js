@@ -71,7 +71,7 @@ const RECORD_OBJECT_FIELDS = [
   "route",
 ].sort();
 
-describe.skip("T26 — the record reader (parseLogRecords)", () => {
+describe("T26 — the record reader (parseLogRecords)", () => {
   // ─── AT-F20 — every field, on every kind, and on the degraded route ───────────────────
 
   describe("AT-F20: a full record's field-name set is set-equal to the eight, on every §5.2 kind and on `degraded`", () => {

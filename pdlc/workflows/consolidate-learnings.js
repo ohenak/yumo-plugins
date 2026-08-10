@@ -589,19 +589,63 @@ export function renderConsumedPair(passId, basenames) {
 
 // §7.2 — trigger, datum and passId
 
+// The statuses `cadenceDatum` counts toward the datum — TSPEC §7.2: "the date of the most recent
+// row whose status is in {promoted, promoted-degraded, no-op, failed}".
+const CADENCE_RELEVANT_STATUSES = new Set(["promoted", "promoted-degraded", "no-op", "failed"]);
+
 /** @returns {number|null} */
 export function cadenceDatum(logRows) {
-  return notImplemented("cadenceDatum");
+  const rows = Array.isArray(logRows) ? logRows : [];
+  let latest = null;
+  for (const row of rows) {
+    if (!row || !CADENCE_RELEVANT_STATUSES.has(row.status)) continue;
+    const at = typeof row.date === "number" ? row.date : Date.parse(row.date);
+    if (!Number.isFinite(at)) continue;
+    if (latest === null || at > latest) latest = at;
+  }
+  return latest;
 }
 
 /** @returns {Trigger|"skipped-cadence"} */
-export function triggerFor(params) {
-  return notImplemented("triggerFor");
+export function triggerFor({ unconsolidated, datum, now, config, direct } = {}) {
+  if (direct) return "manual";
+
+  const n = Array.isArray(unconsolidated)
+    ? unconsolidated.length
+    : typeof unconsolidated === "number"
+      ? unconsolidated
+      : 0;
+  const volumeThreshold = config && typeof config.volumeThreshold === "number" ? config.volumeThreshold : 5;
+  if (n >= volumeThreshold) return "volume";
+
+  // The empty datum set (`null`) counts as elapsed (TSPEC §7.2).
+  if (datum === null || datum === undefined) return "cadence";
+
+  const cadenceHours = config && typeof config.cadenceHours === "number" ? config.cadenceHours : 168;
+  const cadenceMs = cadenceHours * 60 * 60 * 1000;
+  return now - datum >= cadenceMs ? "cadence" : "skipped-cadence";
 }
 
 /** @returns {string} */
 export function mintPassId(logText, today) {
-  return notImplemented("mintPassId");
+  const text = typeof logText === "string" ? logText : "";
+  const prefix = `${today}-`;
+  let found = false;
+  let max = 0;
+
+  const re = /pass:\s*(\S+)/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    const value = match[1];
+    if (!value.startsWith(prefix)) continue; // E-10: unparseable/other-day rows contribute nothing
+    const suffix = value.slice(prefix.length);
+    if (!/^\d+$/.test(suffix)) continue;
+    const n = Number.parseInt(suffix, 10);
+    found = true;
+    if (n > max) max = n;
+  }
+
+  return found ? `${prefix}${max + 1}` : `${prefix}1`;
 }
 
 // §7.3 — the marker
@@ -628,22 +672,131 @@ export async function releaseMarker(state, seams) {
 
 /** @returns {string} */
 export function failureModeId(phase, artifact) {
-  return notImplemented("failureModeId");
+  // TSPEC §7.4's three ordered substitutions — order is load-bearing: collapsing runs AFTER the
+  // separator substitution is what makes `a-b.md`, `a/b.md` and `a.b.md` collide into one id.
+  const slug = String(artifact)
+    .replace(/[/.]/g, "-")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${String(phase).toLowerCase()}-${slug}`;
 }
 
 /** @returns {string} */
 export function targetFor(kind, artifact, id) {
-  return notImplemented("targetFor");
+  if (kind === 1) return "docs/_constraints/DOMAIN-CONSTRAINTS.md";
+  if (kind === 2) return `docs/_decisions/DECISIONS-${id}.md`;
+  return artifact; // kind 3 — the subject artifact itself
 }
 
 /** @returns {Proposal[]} */
 export function mergeProposals(proposals) {
-  return notImplemented("mergeProposals");
+  const list = Array.isArray(proposals) ? proposals : [];
+
+  // Group by (failureModeId, action) — never by kind, never by target (TSPEC §7.4).
+  const order = [];
+  const groups = new Map();
+  for (const p of list) {
+    const key = `${p.failureModeId} ${p.action}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    groups.get(key).push(p);
+  }
+
+  const byteCompare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+  const result = [];
+  for (const key of order) {
+    const group = groups.get(key);
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+
+    // Canonical processing order for this fold — byte order over `artifact` — so every derived
+    // field (including the symptom join) is a pure function of the group, never of input order.
+    const sortedByArtifact = [...group].sort((a, b) => byteCompare(a.artifact, b.artifact));
+    const foldedArtifact = sortedByArtifact[0].artifact;
+    const foldedKind = Math.min(...group.map((p) => p.kind));
+    const id = sortedByArtifact[0].failureModeId;
+
+    const elidedKinds = [...new Set(group.map((p) => p.kind))]
+      .filter((k) => k !== foldedKind)
+      .sort((a, b) => a - b);
+    const elidedArtifacts = group
+      .map((p) => p.artifact)
+      .filter((a) => a !== foldedArtifact)
+      .sort(byteCompare);
+
+    result.push({
+      failureModeId: id,
+      phase: sortedByArtifact[0].phase,
+      symptom: sortedByArtifact.map((p) => p.symptom).join("; "),
+      artifact: foldedArtifact,
+      kind: foldedKind,
+      target: targetFor(foldedKind, foldedArtifact, id),
+      action: sortedByArtifact[0].action,
+      diff: sortedByArtifact[0].diff === undefined ? null : sortedByArtifact[0].diff,
+      elidedKinds,
+      elidedArtifacts,
+    });
+  }
+
+  return result;
 }
+
+// The eight `FailureModeRecord` fields, on-disk key -> camelCased property name (FSPEC §8.1).
+const LOG_RECORD_FIELD_MAP = [
+  ["failure-mode-id", "failureModeId"],
+  ["phase", "phase"],
+  ["symptom", "symptom"],
+  ["artifact", "artifact"],
+  ["target", "target"],
+  ["passId", "passId"],
+  ["action", "action"],
+  ["route", "route"],
+];
 
 /** @returns {{records: FailureModeRecord[], notices: ParseNotice[]}} */
 export function parseLogRecords(logText) {
-  return notImplemented("parseLogRecords");
+  const text = typeof logText === "string" ? logText : "";
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  const records = [];
+  const notices = [];
+
+  for (const block of blocks) {
+    const fieldValues = {};
+    for (const line of block.split("\n")) {
+      const colon = line.indexOf(":");
+      if (colon === -1) continue;
+      fieldValues[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+    }
+
+    const record = {};
+    for (const [textKey, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (Object.prototype.hasOwnProperty.call(fieldValues, textKey)) {
+        record[propKey] = fieldValues[textKey];
+      }
+    }
+
+    const subject = record.failureModeId;
+    for (const [, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (!Object.prototype.hasOwnProperty.call(record, propKey)) {
+        notices.push({ subject, missingField: propKey });
+      }
+    }
+
+    records.push(record);
+  }
+
+  return { records, notices };
 }
 
 // §7.5 — effectiveness, streaks, remediation, the open list

@@ -42,7 +42,7 @@ const AT_R6_ID = "p-pdlc-skills-se-author-skill-md";
 const AT_R6_TARGET = "docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md";
 
 describe("T15 — identity and merge (L1)", () => {
-  describe.skip("T26 — identity, targetFor and merge", () => {
+  describe("T26 — identity, targetFor and merge", () => {
     // ─── AT-R6 — pure, total, keyed on phase + artifact only ──────────────
 
     test("AT-R6: failureModeId is a pure function of (phase, artifact) alone — two calls with the same keying fields agree", () => {
