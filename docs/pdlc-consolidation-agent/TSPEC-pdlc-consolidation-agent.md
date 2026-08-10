@@ -2284,12 +2284,40 @@ is what makes `0` an asserted outcome rather than an unobserved one.
 | Seam | Double | Source |
 |---|---|---|
 | `_agent` | `makeAgentDouble({script, throwOn})` | `__tests__/helpers/advisoryDoubles.js` — already built to drive `isModelResolutionError` from a scripted rejection *message*, which is exactly what FSPEC §2.6 rows 2–4 need |
-| `_git` | `fakeGit(script)` | `mergeDoubles.js`, re-exported by `advisoryDoubles.js` as `makeGitDouble` |
+| `_git` | `fakeGit(script)` — **`seams.js`'s, not `mergeDoubles.js`'s** | `__tests__/helpers/seams.js:389`. Decided below: only this one can script two calls that share a subcommand, which §7.1's enumeration now issues |
 | `_ghRun` | `fakeGhRun(script)` — **not** `passingGh` | same. `matchKey` (`mergeDoubles.js:45-60`) keys both new surfaces cleanly (`gh pr list --json url,state,body`; `gh pr create`), so `fakeGhRun` needs no change. `passingGh`'s defaults (`:93+`) answer only the six shipped Phase MERGE surfaces, so the consolidation suites build their **own** script map rather than widening it, and `GH_SURFACE_NAMES` (`:181` — `Object.keys(SURFACE_KEY_BY_NAME)`) does **not** grow: it is the set `passingGh` is obliged to answer, and this feature adds no obligation to that helper |
 | `_readFile` / `_writeFile` / `_appendFile` / `_checkFile` | `fakeFs(initialContents, opts)` | `__tests__/helpers/seams.js` |
 | `_listFiles` | `fakeListFiles(spec)` | same — wired for protocol completeness only. **No consolidation test drives it**: the corpus is enumerated through `_git` (§7.1), precisely because the double is more capable than the seam it doubles. A test that reached for it would be re-introducing the DC-07 hazard §7.1 removes |
 | clock, sleep | `fakeNow`, `FIXED_NOW_MS`, `fakeSleep` | `mergeDoubles.js` |
 | PRNG | `seeded`, `resolveSeed` | `driftGenerators.js` — the repo's one seeded-PRNG library |
+
+**Which `fakeGit`, decided — the repo ships two and only one can express this feature's enumeration.**
+Since §7.1 issues **two** `_git` reads whose argv both begin `ls-files` (the `--cached --others`
+enumeration and the `--deleted` subtraction), a double keyed by the git *subcommand* returns the same
+value to both. `mergeDoubles.js`'s `fakeGit` is exactly that: it computes `key = argv[i]` after
+skipping `-C`/`-c` pairs and looks up `script[key]` (`mergeDoubles.js:200-207`), so both calls hit the
+one `ls-files` entry and an unscripted key returns `{ok:true, stdout:""}` (`:208`). Either way the
+`--deleted` set equals the enumeration set and **the corpus is always empty** — which reds AT-P1's
+conjuncts 2 and 3 on a *correct* implementation, and silently greens any absence-shaped assertion in
+every L2 fixture that scripts a listing (the AC-1.2 volume count, the consumed pair, the report body's
+unreadable-basename case, §12.2's whole-pass lifecycle rows). That is a double defeating the oracles,
+not an oracle defect, and the cheapest wrong repair is to weaken the assertion.
+
+`seams.js`'s `fakeGit` (`:389`) already has the capability and needs no edit, which is why this row is
+re-pointed rather than a third factory added or `mergeDoubles.js` widened: its `script` may be a
+**function** `(argv, callIndex) => result` (`:404`) or an **array** indexed per call with the last
+entry repeating (`:406-408`), alongside the same subcommand-map form for tests that want it
+(`:409-413`); and it records `.calls` / `.invocations` / `.commands` / `.callCount` (`:421-426`),
+which is precisely what AT-P1's two-argv pin and the subtraction conjunct read. Corpus fixtures use
+the **function or array form**, never the map form, and the reason is a rule rather than a preference:
+the map form cannot distinguish two calls sharing a subcommand, so a corpus suite that reaches for it
+re-introduces the always-empty corpus above. Clone-domain tests (§9.2) must also use the function
+form, because `seams.js` keys its map on a raw `args[0]` and does **not** skip the `-C`/`-c` pairs
+those calls lead with — the one respect in which `mergeDoubles.js`'s version is the more convenient of
+the two, and it is not the respect this feature needs. This choice is consistent with a commitment the
+document already made elsewhere: T-13 drives `asAsync(fakeGit)`, and `asAsync` wraps the **sync**
+doubles `seams.js` ships — `mergeDoubles.js`'s factory is `async` and returns a `{calls, _git}` pair
+rather than a callable (`:193-211`), so it could not have been the subject there either.
 
 **Two new factories only**, both in `__tests__/helpers/consolidationDoubles.js`, because the seams
 they double do not exist yet: `fakeEnvPresent(presentNames: Set<string>)` and
