@@ -1831,7 +1831,8 @@ verb for, and each gets its **own** verb:
 |---|---|---|
 | `git cat-file -e HEAD:{path}` | ⊕ `read-object` | FSPEC §8.5 row 3's file-existence test at HEAD (§7.5), which the runtime cannot ask of a filesystem it does not have |
 | `git remote get-url origin` | ⊕ `read-remote` | §9.1 step 2's clone source in the same-repo case |
-| `git ls-files --cached --others --exclude-standard -- :(glob)…` | ⊕ `read-index` | §7.1's corpus enumeration |
+| `git ls-files --cached --others -- :(glob)…` | ⊕ `read-index` | §7.1's corpus enumeration |
+| `git ls-files --deleted -- :(glob)…` | `read-index` (already widened by the row above) | §7.1's working-tree restriction — REQ §3.1 step 1's second bullet. Same verb, same domain, no further widening: it reads the index against the worktree and mutates neither |
 
 An earlier draft folded `read-remote` into `read-object` "because a two-verb widening is easier for
 a test author to transcribe exactly than a three-verb one". That is withdrawn, and it was wrong on
@@ -2072,15 +2073,17 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   non-repository and with no git on `PATH` — the same shipped-hook robustness cost this feature
   declined before, and declines again, for a rarer class.
 
-  **What closing each would actually cost, corrected.** An earlier draft of this bullet said that
-  dropping `--exclude-standard` "re-admits the two `docs/discarded/` directories §7.1's `:(glob)`
-  anchoring exists to exclude". That is **false, and it contradicted §7.1 point 2 of this same
-  document**, which says correctly that the exclusion is performed by `:(glob)`. Measured at HEAD:
+  **Dropping the flag does not re-admit `docs/discarded/`, and that is why REQ's answer was cheap to
+  absorb.** An earlier draft of this bullet said that dropping `--exclude-standard` "re-admits the two
+  `docs/discarded/` directories §7.1's `:(glob)` anchoring exists to exclude". That was **false, and
+  it contradicted §7.1 point 2 of this same document**, which says correctly that the exclusion is
+  performed by `:(glob)`. Measured at HEAD, the shipped call —
   `git ls-files --cached --others -- ':(glob)docs/*/LEARNINGS-*.md'
-  ':(glob)docs/completed/*/LEARNINGS-*.md'` — the same call with `--exclude-standard` dropped —
-  returns the **same five** paths and **zero** under `docs/discarded/`; it is dropping `:(glob)`
-  that re-admits them (seven paths). The two flags are independent, and only one of them excludes
-  `docs/discarded/`.
+  ':(glob)docs/completed/*/LEARNINGS-*.md'` — returns the **same five** paths the flagged call
+  returned and **zero** under `docs/discarded/`; it is dropping `:(glob)` that re-admits them (seven
+  paths). The two are independent, and only one of them excludes `docs/discarded/`. Had they not been
+  independent, absorbing REQ §3.1 step 1 would have cost this document the one exclusion the REQ
+  names by name.
 
   **What the REQ decided, and what it cost.** Both former classes were handed upstream as an erratum,
   and REQ v2.1 answered both in §3.1 step 1. The answers, and this document's absorption of them:
@@ -2151,16 +2154,25 @@ grows. It is **outside** the differential fixture table and therefore outside th
 below — its subject is git, not the hook, and folding it in would make `executed === TABLE.length`
 false for a reason that has nothing to do with the interpreter probe.
 
-**What that case deliberately does not cover, recorded so a later reader does not assume it does.**
-The fixture is built with `git init` + `git add -A`, so every path it asserts over is reached through
-`--cached` and `--exclude-standard` is **inert** in it: the case pins the `:(glob)` half of pin (a)'s
-argv and **not** the flag half. That is deliberate, and the reason is §13.3's: whether a `.gitignore`d
-LEARNINGS file is corpus is exactly the sub-question this layer hands upstream, and the two answers
-differ precisely in whether `--exclude-standard` stays. Adding an untracked-and-ignored file here to
-make the flag observable would pin the answer this document has declined to give, so the case pins
-what the erratum does not touch and the erratum decides the rest. If the answer comes back "an ignored
-LEARNINGS file is corpus", the flag is dropped and there is no flag behaviour left to pin; if it comes
-back "no", this case gains that fixture member and the flag conjunct with it.
+**What that case now also covers, since REQ §3.1 step 1 decided the two classes.** An earlier draft
+of this paragraph recorded a deliberate gap: the fixture was built with `git init` + `git add -A`, so
+every path was reached through `--cached`, `--exclude-standard` was **inert**, and pinning the flag
+half would have pinned an answer this document had declined to give. That reason has expired — REQ
+decided both classes — so the gap closes rather than being carried, and the fixture gains **two
+members** and **two conjuncts**:
+
+- **An ignored LEARNINGS.** The temp repository gains a `.gitignore` naming one feature directory and
+  a LEARNINGS inside it. The conjunct: that basename **is** in the result. Against a re-introduced
+  `--exclude-standard` this reds through a real `git`, which is the half AT-P1's argv pin cannot
+  reach — the argv pin catches the token, this catches the *behaviour* the token would change.
+- **A staged-but-deleted LEARNINGS.** One fixture file is `git add`-ed and then unlinked from the
+  worktree. The conjunct: that basename is **not** in the result. This is the only oracle anywhere
+  that runs the `--deleted` subtraction against real git rather than against a scripted double.
+
+Both conjuncts are positive-and-negative in the sense §11.3 requires: each names a basename that must
+be present alongside the one that must be absent, so neither can be satisfied by an empty result. The
+case remains outside the differential fixture table and the executed-row counter — its subject is
+still git, not the hook.
 
 **A skipped L4 is distinguishable from a passing one.** The hook's own `PY_BIN` probe (`:13-20`)
 degrades to a silent `exit 0` when no usable interpreter is found, and a differential test that
