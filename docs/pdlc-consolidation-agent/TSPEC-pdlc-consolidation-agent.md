@@ -202,7 +202,7 @@ decomposition is by **exported pure function** (§4), not by file.
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
 | `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-811`) **alone**, whose prompt today says `relative to the repository root` (`:805`, the only occurrence of that string in the file). `rtReadFile` is **not** modified — see §5.6(a) | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
-| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28`'s single `os.path.join` glob replaced by a named two-literal `CORPUS_GLOBS` tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; `:41` predicate scoped to the two §3.2 regions; `:29-30`'s early exit replaced by a `pending = []` fall-through; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | The single `os.path.join` glob replaced by a named two-literal **`CORPUS_GLOBS`** tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; the basename predicate scoped to the two §3.2 regions via **`region_split`**; the early exit replaced by a **`pending`** fall-through; **and** one env-gated **`PDLC_PENDING:`** debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). Located by symbol, never by line index — the same rule §7.1 imposes on pin (b)'s oracle, and for the same reason: this feature's own edits to the heredoc shift every line in it. All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
 | `pdlc/skills/consolidate-learnings/SKILL.md` | `:56` (was the `Date Completed` date boundary) now carries the block/legacy predicate; `:62`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-79`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
 | `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
@@ -361,8 +361,10 @@ type ListReply = {ok: true; files: string[]}
                | {ok: false; reason: "dir_missing" | "not_a_directory"
                                    | "unreadable" | "bad_argument"};
 
-// NOT a seam. A module-level default, the shipped pattern (orchestrate-dev.js:1396,
-// `_now = () => Date.now()`) — see §5.6.
+// NOT a seam. A destructured injection default, the shipped pattern (orchestrate-dev.js:1623,
+// :3182, :8417 — each a `_now = () => Date.now()` default in a function's options
+// destructuring). That is what makes T-13's clock pin possible: a caller may pass _now,
+// while production supplies none and gets Date.now(). See §5.6(b).
 _now(): number;
 ```
 
@@ -528,11 +530,18 @@ verbatim (one prompt, not two), and §11.6 no longer exempts it. Routing the clo
 rejected: git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index`,
 which is three mutating calls in the clone domain to replace one path argument.
 
-**(b) `_now` is a module-level default, not a seam.** `rtDevInjections` (`runtime-adapter.js:1086-1110`)
+**(b) `_now` is a destructured injection default, not a seam.** `rtDevInjections` (`runtime-adapter.js:1086-1110`)
 supplies no clock: its members are `_agent`, `_parallel`, `_pipeline`, `_phase`, `_log`, `_checkFile`,
 `_readFile`, `_hashFile`, `_checkCi`, `_mergeWorktree`, `_writeFile`, `_appendFile`, `_listFiles`,
-`_git`, `_ghRun`, `_runCommand` and the probe seams. The shipped pattern is the module-level default
-`_now = () => Date.now()` (`orchestrate-dev.js:1396`), and this pass takes it.
+`_git`, `_ghRun`, `_runCommand` and the probe seams. The shipped pattern is a **destructured default
+in the options object** — `_now = () => Date.now()` at `orchestrate-dev.js:1623`, `:3182` and `:8417`
+— and this pass takes it. The distinction matters and is not pedantry: a destructured default is
+*overridable by a caller*, which is exactly what lets §12.2's T-13 pin the clock and assert a literal
+`{ISO-8601}` rather than shape-match a regex, in the same way three shipped suites already do
+(`advisoryDodSeams.test.js:129`, `:1116`; `advisoryDisabled.test.js:276`). An earlier draft called
+this a "module-level default" and cited `orchestrate-dev.js:1396`, which at HEAD is a blank JSDoc
+continuation line — a line-drift of exactly the class §12.3's citation rule exists to prevent, under
+the very mechanism T-13 leans on.
 
 The consequence is observable and is stated so a test author knows what to pin: `Date.now()` in the
 bundle runs in the **workflow host process's** timezone, not in an operator-chosen one. §7.2's
@@ -908,12 +917,13 @@ REQ relaxation is being conceded against, so the weaker reading is not the one t
 owns an assertion is a PLAN-level fact, not prose. §11.1's level table, §12.2's T-08 row and §12.3's
 file table all state the split above; this paragraph now agrees with them.
 
-**Pin (b) needs a form the shipped script does not have, so this feature's edit gives it one.** At
-HEAD `:28` reads `learnings = glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))` — the
-pattern exists only as three `os.path.join` components, neither literal `docs/*/LEARNINGS-*.md` nor
-`docs/completed/*/LEARNINGS-*.md` occurs anywhere in the file, and a pin written over a line index is
-anyway invalidated by this feature's own edits to the same heredoc (a second glob, the relocated
-early exit, the `PDLC_PENDING:` line all shift it). Both problems are closed by one edit: the two
+**Pin (b) needs a form the shipped script did not have, so this feature's edit gives it one.** Before
+this feature the enumeration read `learnings = glob.glob(os.path.join(proj, "docs", "*",
+"LEARNINGS-*.md"))` — the pattern existed only as three `os.path.join` components, neither literal
+`docs/*/LEARNINGS-*.md` nor `docs/completed/*/LEARNINGS-*.md` occurred anywhere in the file, and a pin
+written over a line index would anyway have been invalidated by this feature's own edits to the same
+heredoc (a second glob, the relocated early exit, the `PDLC_PENDING:` line all shift it). The edit has
+since landed: `CORPUS_GLOBS` and its comprehension are at HEAD, located by name. Both problems are closed by one edit: the two
 patterns become **single string literals in one named module-level tuple**, and the enumeration
 ranges over that tuple:
 
