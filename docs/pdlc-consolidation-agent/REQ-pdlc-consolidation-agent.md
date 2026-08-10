@@ -15,16 +15,20 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.2 | 2026-08-09 |
+| pdlc | draft | Claude | 2.3 | 2026-08-10 |
+
+> **Code anchors: one epoch.** Every `file:line` below is measured after this feature's T09 commit `b22834b7`, and
+> names the *role* the line plays so it stays re-findable. Where an anchor supports a statement about pre-feature
+> behaviour, the sentence is past tense and the anchor points at today's line for that role.
+
+> **Erratum round (v2.3, Phase DOD).** Citation re-measurement only; no clause changed meaning. The whole
+> `file:line` set was re-measured as a set, not paragraph by paragraph: the `orchestrate-dev.js`,
+> `nudge-consolidation.sh`, `orchestrate-queue.js` and `QUEUE.md` families had all shifted. REQ-CONS-01's
+> pre-T09 quotes were put in the past tense, and AC-3.8b's cause list was set-equalised with AC-3.4's.
 
 > **Erratum round (v2.2, Phase PR).** Two targeted corrections, nothing else changed: AC-6.3's population is stated as the
 > whole of `ESCALATIONS.md` rather than "the consumed window", matching FSPEC §9.2/§9.5 and BR-37a; AC-3.4 no longer
 > requires the opened PR's URL in `CONSOLIDATION-PROPOSAL-{passId}.md`, which FSPEC §5.3 does not write on that path.
-
-> **Erratum round (v2.1, Phase D).** Three targeted corrections, nothing else changed: REQ-CONS-01 step 1 withdraws its
-> "one enumeration as well as one predicate" claim and decides the two classes on which the hook's and the pass's
-> enumerations would otherwise disagree (including whether a `.gitignore`d LEARNINGS file is corpus — it is); §4b decides
-> whether the durable log row carries unreadable corpus basenames (it does not).
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
