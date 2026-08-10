@@ -3457,6 +3457,12 @@ export const PHASE_DISPATCH = {
     grounding: [
       "The feature's full diff against the default branch — every finding must cite the actual changed lines.",
       "The documents under docs/{feature}/ — confirm the shipped code matches what they specify.",
+      // PM F-06 (CR round 1, pdlc-consolidation-agent): four builder-not-wired gaps
+      // reached final review green because every acceptance test drove a pure builder
+      // with hand-built inputs, and no row asked who calls it in production. The
+      // pm-review SKILL carries the sweep, but only as one bullet among many; naming
+      // it as CR grounding puts it in every CR reviewer's prompt, both lenses.
+      "For each AC that claims an operator-visible artifact contains something: name the production caller that assembles it and the test that drives THAT caller, or file a finding. A builder covered only through its own unit tests is not wired.",
     ],
   },
   DOD: {
