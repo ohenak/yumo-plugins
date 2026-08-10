@@ -87,9 +87,58 @@ mechanism, not necessarily new wiring.
 
 ## 4. Constraints
 
+Observed facts, each dated and reproducible from the cited run. On merge of the
+`pdlc-advisory-wave-gate` REQ these should be promoted into
+`docs/_constraints/pdlc-wave-gate-baseline.md` and cited from there by id (Obligation
+OB-2, §9).
+
+- **OF-1 (2026-08-09, pdlc-consolidation-agent run).** A 15-wave plan halted at wave 2
+  and again at wave 4; each re-invocation re-entered wave 1 and re-dispatched seven
+  implementation agents (waves 1–3) that individually concluded no-op. Replay cost
+  recurs per halt and scales with plan depth.
+- **OF-2 (2026-08-09, same run, wave 1).** A completed task may legitimately produce
+  **no commit**: wave 1's only task finished with "nothing staged — no changes to
+  commit". Commit presence is therefore not usable as completion evidence, in either
+  direction (stray agent-authored commits were also observed in the same run).
+- **OF-3 (2026-08-09, same run, wave 4).** A halted wave's own work is uncommitted at
+  the halt — the gate refuses to commit red work. The correct resume point is therefore
+  the earliest wave whose work is not yet committed, i.e. the failed wave itself, never
+  the one after it.
+- **C-1 — consumer-local state.** Whatever record supports automatic resume lives in
+  consumer-local, untracked state (the drift-state record's precedent): per-wave
+  bookkeeping must not generate tracked-file commit churn on the feature branch.
+- **C-2 — fail open, never halt.** An unreadable, foreign, or out-of-range resume record
+  degrades to a full run with an announced reason. No state of the record may make the
+  pipeline refuse to run.
+- **C-3 — no new runtime capabilities.** The determination and its bookkeeping operate
+  within the workflow runtime's existing capability envelope (injected-seam IO, no new
+  host dependencies); the contract's specifics are the TSPEC's to own (OB-1, §9).
+
 ## 5. Prerequisites
 
+| # | Dependency | Resolution form | Gating logic |
+|---|---|---|---|
+| BL-01 | Manual resume override (`implementation.startWave` config value, default 1, owner: repo operator via `.claude/pdlc.config.json`) exists at HEAD | `pdlc-consolidation-agent` PR merged | Must exist at HEAD before FSPEC authoring — REQ-WVR-04 specifies precedence over it |
+| BL-02 | Wave-gate baseline measured-facts file (`docs/_constraints/pdlc-wave-gate-baseline.md`) available for citation | `pdlc-advisory-wave-gate` PR merged | Must exist at HEAD before FSPEC authoring — OF-1..3 promote into it (OB-2) |
+| BL-03 | Interim auto-resume mechanism (marked INTERIM, 2026-08-09) present at HEAD | `pdlc-consolidation-agent` PR merged | Checked at FSPEC authoring: deliverable formalizes or replaces it, never duplicates alongside it |
+
 ## 6. User Stories
+
+- **US-01.** As the operator of an unattended pdlc run, when Phase I halts at a wave gate
+  and I re-invoke after addressing the cause, I want the run to resume at the wave that
+  failed without my computing or setting anything, so that recovery costs one
+  re-invocation instead of a replay of completed waves plus config arithmetic.
+- **US-02.** As the operator, I want an explicitly set manual resume point to always win
+  over the automatic one, and every resume to announce where it starts and why, so that
+  I can force any starting point and audit any run's behaviour from its log.
+- **US-03.** As the maintainer of the pipeline's integrity guarantees, I want the resume
+  record to be unable to weaken verification — no new commit before the full suite passes
+  over the whole tree — so that automatic resume adds no new trust surface.
+- **US-04.** As the operator of the multi-feature queue, I want unattended queue
+  iterations to recover from wave halts with the same zero-action resume, so that the
+  no-halt direction of the loop does not depend on my attention.
+
+## 7. Acceptance Criteria
 
 ## 7. Acceptance Criteria
 
