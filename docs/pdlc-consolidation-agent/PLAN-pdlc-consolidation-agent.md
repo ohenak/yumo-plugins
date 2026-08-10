@@ -9,7 +9,34 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-09 |
+| pdlc | draft | Claude | 1.7 | 2026-08-10 |
+
+> **1.7 (one instruction restored, one edge renamed — no design change, no graph change).** Round 6's
+> two open findings; the third (PM F-15 / TE F-01, the `Status` column) and TE F-02 (T17's stale `🔴`)
+> were already closed by v1.6, which replaced the drifting ledger with §2's Phase-P-baseline rule and a
+> uniform `⬚`, and are re-checked here rather than rewritten. (i) **T33 stated TSPEC's counts but not
+> TSPEC's instruction about counts** (PM F-16). The row said "five tracked files, four manifest rows"
+> and explained the off-by-one, all true, while never carrying the thing an implementer must actually
+> do: `TSPEC:318` requires `CLAUDE.md:62`'s closing sentence **rewritten to a count-free form**, "not a
+> `three` → `four` substitution that would be stale again on the next artifact". The gap was invisible
+> to the row's own oracle — `TSPEC:2841` states the prose count "is **not** asserted … precisely so
+> there is no number left for a test to pin" — so "Those five are the tracked, shipped outputs" would
+> have shipped green and drifted on the next artifact, which is the defect T33 exists to end. The row
+> now says the counts describe the resulting state and are not text to write. (ii) **§6.1's rejected
+> alternative named an edge it had not measured** (PM F-17). The parenthetical read "`T10 deps T08`
+> replacing `T12 deps T10`" while the chain beside it keeps `T10 → T12`. Re-derived both readings at
+> HEAD: the graph reproducing the paragraph's own numbers (15 ready-sets, 15 waves, T07 → 4, T08 → 7,
+> T10 → 8, T12 → 9) keeps `T12 deps T10` and drops **`T07 deps T12`** — confirmed against the table's
+> own cells, where T07's `Deps` is `T12` and T12's is `T03, T10`. Removing `T12 deps T10` as written
+> would return 16/16 and falsify the paragraph's headline. The edge named is now the edge measured.
+> Both PM Q-09 and TE Q-01 are answered by v1.6's §2 rule and need no second answer: no parser, gate or
+> dispatcher reads a `Status` cell, so nothing downstream ever read T17's `🔴` as a live signal. On TE
+> Q-02 (bookkeeping): these header entries are numbered by **revision**, and each names the review
+> round it answers in its first sentence, so a harvest walking either sequence can join the two.
+> Gate re-run over the revised text: **34** tasks (`errors: []`), **34** ownership rows,
+> `validatePlanContract` `{"ok":true}`, **15** ready-sets, **15** waves, **0** batch-column mismatches,
+> **0** same-batch same-file collisions, **16** multi-writer files over 28 distinct files — every
+> number identical to v1.4's, v1.5's and v1.6's, as a prose-only diff must leave them.
 
 > **1.6 (one rule stated, four cells reverted, one row grounded — no design change, no graph change).**
 > Round 5's two open items, both about the `Status` column's meaning. (i) **The column had become a
