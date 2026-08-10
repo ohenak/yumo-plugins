@@ -49,3 +49,16 @@ Every row below was re-verified by reading HEAD, not by trusting the remediation
 | F-09 | Low | **Resolved.** `notImplemented` deleted; no `notImplemented` symbol remains in `consolidate-learnings.js`. | `4fdc7fac`; grep at HEAD |
 | F-10 | Low | **Partly resolved** — see F-13. Four suites corrected; four header comments still describe deleted behaviour. | `consolidationLifecycle/Report/Route/Rung.test.js` |
 | F-11 | Medium | **Resolved.** Reviewer prompts now name the exact cross-review path the round window derives; this round was dispatched with the literal `REVIEW-v2` path. | `202f92e1` |
+
+## Findings
+
+Round-2 scope: were my blocking findings resolved, and did the revision break anything? All four
+round-1 Highs are resolved on the production path, not merely in the oracle. Nothing regressed —
+the suite is green apart from the documented untracked-file false red, and the dist artifacts
+moved with their sources. Three residual Lows remain, none gating.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-12 | Low | Local | **`REPOSITORY_UNRESOLVED_RE` is broader than the E-22/E-23 boundary it draws.** The alternation carries a bare `/not found/`, which subsumes the specific `repository not found` beside it and also matches transport stderr that happens to contain the phrase (`fatal: unable to access …: server not found`, a DNS failure git reports on the `unable to access` path). That misclassifies an E-23 network blip as E-22 `repository-unresolved` — the direction the comment at `:2456-2458` explicitly says it wants to avoid. The AT-N4 control proves only that *one* transport phrasing (`Could not resolve proxy`) stays `api-failure`; it cannot fail on a phrasing containing "not found". Suggest dropping the bare alternative and adding a control whose stderr is transport-class but contains "not found". | `consolidate-learnings.js:2459-2460`; `consolidationReport.test.js:459-467` |
+| F-13 | Low | Local | **F-10's residual: four suite headers still describe deleted behaviour.** `79e304af` corrected the Lifecycle/Report/Route/Rung comments, but four files still state that their subjects "throw `notImplemented`" — a symbol `4fdc7fac` removed from the module entirely. Same failure mode F-10 named: a comment that reads as a standing justification for a weaker oracle, now naming a function that does not exist. | `consolidationProperties.test.js:13`; `consolidationIdentity.test.js:14`; `consolidationPredicate.test.js:13`; `consolidationPass.test.js:18-19` |
+| F-14 | Low | Local | **`result.writeSet` has no production reader.** It was added to give AT-M5 the domain PROPERTIES §O-2 names — the right fix for F-04 — but at HEAD the only consumer of the returned field is the test (`state.writeSet` itself is read by step 15's commit; the *result* field is not). It is defensible as a lineage field on an operator-facing return and is documented as one at `:1193-1197`, so this is not the dead-config pattern proper; recording it so a later reader does not mistake it for load-bearing. If item 8 or the terminal row ever wants to name the write set, that is the wiring that would retire this finding. | `consolidate-learnings.js:1193-1198`; `consolidationPass.test.js:504` |
