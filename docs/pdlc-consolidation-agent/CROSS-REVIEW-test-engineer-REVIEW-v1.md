@@ -103,4 +103,42 @@ history it keys is the one described here, not a fresh review of a tree nobody h
 
 ## Recommendation
 
-_(pending)_
+**Needs revision** — one High, and it is a small one.
+
+The consolidation feature itself is in good shape from this lens: every blocking finding the
+previous round left open is closed, the oracles that replaced them are stronger than the findings
+asked for, and PROPERTIES now has a traceability guard that will catch the next one mechanically.
+Nothing in `consolidate-learnings.js` or its sixteen suites blocks.
+
+What blocks is the wave-ledger change that landed mid-phase. Skipping Phase I whole is the right
+optimisation and HEAD implements it correctly — the V-wave and its gate still run. The problem is
+that a test can no longer tell: the only assertion is that nothing was dispatched, which is exactly
+the shape that survives the mutation that would matter.
+
+Order of work:
+
+1. **F-01** — add the positive conjuncts to
+   `waveExecution.test.js:1621` ("a complete ledger skips every wave…"): assert the V-wave
+   dispatch went out (`record` contains the `se-implement` call whose prompt names the PROPERTIES
+   suite) and that `_runCommand` was called with `implementation.testCommand` on that same run. One
+   spy counter and two expectations. Then confirm it by mutation: turn `break` (`:10883`) into a
+   return past the V-wave and watch the case go red.
+2. **F-02 / Q-02** — decide whether the completion record should be corroborated against the tree,
+   and if so add the sha field plus the mismatched-tree case.
+3. **F-03 / Q-01** — one test stating which of `forcePhases` and the ledger wins.
+4. **F-04** — add `[LOG_PATH]` as the spec-anchored expected side of AT-M5, keeping the coherence
+   comparison beside it.
+5. **F-05 / Q-03** — a scoping decision more than a test task; if the two `orchestrate-dev.js`
+   changes stay on this branch, a PROPERTIES row for the wave-ledger resume contract is what keeps
+   them from silently regressing.
+6. **F-06** — per-bundle banner, or one test asserting each artifact's banner names its own source.
+
+No errata are filed this round: every finding is about code and tests on this branch, not about a
+defect in an upstream document. F-05 is the closest, and routing it as an erratum against this
+feature's PLAN would misfile it — the changes it names are out of this feature's scope entirely,
+which is the finding.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 4, "low": 1}
