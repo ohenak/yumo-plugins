@@ -931,37 +931,51 @@ empty one and would advance the cadence datum on a pass that read nothing. §10.
 is **present in the working tree and enumerated, but whose body `_readFile` returns `null` for** —
 AT-P8's IO-error case, reachable on file permissions, a mid-pass unlink, or an IO error between the
 enumeration and the read. It is *not* the staged-but-deleted entry: since the `--deleted`
-subtraction above, such a path is never enumerated at all, so it can never reach this branch. Two
-questions had no answer here and now do:
+subtraction above, such a path is never enumerated at all, so it can never reach this branch. Its
+two observables are fixed — the first by this layer, the second **upstream, and absorbed here**:
 
 1. **It counts toward `|un-consolidated|` for the AC-1.2 volume test.** The test is over the
    *enumeration*, and AC-1.1 forbids reading any LEARNINGS body at tick time, so the count cannot
-   depend on readability without violating the tick contract.
-2. **It appears in the consumed pair**, and its basename is named in the report body as an entry the
-   pass could not read. This is the arm that matters: excluding it would leave it un-consolidated
-   forever, tripping the threshold on every subsequent pass and being drawn and dropped again each
-   time — the "nudged forever, never clearable" shape §10.4 already treats as the worst outcome.
-   Including it makes the pass converge, and the report says exactly what it could not read.
+   depend on readability without violating the tick contract. REQ §4b decides the same thing in its
+   own words — such a basename *"stays in the un-consolidated set and so still counts toward
+   AC-1.2's volume trigger"*.
+2. **It is *omitted* from the consumed pair, stays un-consolidated, and the next pass retries it**,
+   and its basename is named in the report body as an entry the pass could not read. This is REQ
+   §4b's decision (*"An enumerated basename whose body cannot be read is instead **not consumed** —
+   it is omitted from the `<!-- pdlc:consumed {passId} -->` pair"*), and this document **absorbs**
+   it rather than re-deciding it. An earlier revision of this section decided the opposite arm — the
+   entry *in* the pair — on a convergence argument: excluding it would leave the file
+   un-consolidated, tripping the threshold on every subsequent pass, the "nudged forever, never
+   clearable" shape §10.4 treats as the worst outcome. **REQ answered that argument rather than
+   overlooking it**, and the answer is the reason inclusion is wrong: an entry marked consumed while
+   contributing no evidence can only ever push a verdict toward `prevented` or
+   `insufficient-evidence` and never toward `recurred`, which corrupts REQ-CONS-05's falsifiability
+   loop in one direction. Convergence bought at the price of a one-directional bias in the
+   effectiveness loop is not a trade this layer may make. The retry is bounded by the population, not
+   by a counter: since the `--deleted` subtraction, what remains here is a permissions error or a
+   mid-pass unlink — an operator-visible fault the report body names on every pass until the operator
+   clears it at the source. §10.4 records the retried entry as accepted residue, and §13.3 carries the
+   observation that would falsify the "transient" premise.
 
 No reason code is minted for it (REQ §4b; vocabularies §1 at `Version` 1.4 has no row), so the
 evidence is the report body's named list and nothing else. This is distinct from `{unlistable: true}`
 above, which is the *enumeration* failing and terminates `failed`; here the enumeration succeeded and
 one member of it is unreadable.
 
-**Answering the reviewer directly on the durability of that evidence.** The consequence was put
-plainly: a LEARNINGS file can be permanently marked consumed while contributing zero evidence to any
-promotion, and the only trace is one pass's transient report body. That is real, and this layer still
-does **not** add an `unread:` field beside `consumed` in the log row — not because it would be
-useless, but because the log record's field set is a `pdlc-consolidation-vocabularies.md` §3
-contract, and minting a field here is the same REQ §4b breach as minting a reason code. The three
-observables above are what this document decides; whether the durable record should carry the
-unreadable basenames is a product question about the log's field set. §13.3 now **closes** that
-question rather than handing it up: since the `--deleted` subtraction removed the staged-but-deleted
-population from this class, what remains is transient, operator-visible faults that the report body
-already names, so the recommendation is that no field be minted — recorded there with the observation
-that would reverse it.
+**The `unread:` field question is answered upstream, and absorbed here.** An earlier revision of this
+section raised it: if such an entry were marked consumed while contributing zero evidence, the only
+trace would be one pass's transient report body — so should the durable log row carry the unreadable
+basenames (an `unread:` field beside `consumed`)? REQ §4b answers **no**, and answers it by removing
+the premise rather than by declining the field: the entry is not consumed at all, so there is nothing
+for a field to disclose that the un-consolidated set does not already carry (*"Omission needs no new
+field, no new reason code and no vocabulary row, and it is not silent: the basename remains in the
+un-consolidated set that both the hook and the next tick compute"*). This layer would in any case have
+been the wrong place to decide it — the log record's field set is a
+`pdlc-consolidation-vocabularies.md` §3 contract, and minting a field here is the same REQ §4b breach
+as minting a reason code — so §13.3 records the question as **answered upstream and absorbed**, not as
+answered here, and keeps only the observation that would reopen it upstream.
 
-These three obligations are not left to inspection either: §12.2 carries a `(no FSPEC AT)` row for
+These obligations are not left to inspection either: §12.2 carries a `(no FSPEC AT)` row for
 them and §12.3 assigns it a file.
 
 The two membership tests differ deliberately — substring in the legacy region, per-line in the block
