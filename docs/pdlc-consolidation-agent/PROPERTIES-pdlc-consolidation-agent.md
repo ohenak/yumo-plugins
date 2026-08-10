@@ -1784,7 +1784,7 @@ another task's file, that is the spanning convention at work, not a contradictio
 | `helpers/consolidationDoubles.js` | — | — (T01) | T31 (the mutation check) | PROP-DBL-01…03, PROP-FIX-01, PROP-FIX-02 |
 | `consolidationBuild.test.js` | L3 | T03 | T07, T08, T10, T12, T32, T33 | PROP-SRC-01…04, PROP-BLD-01, PROP-BLD-02 |
 | `consolidationHookParity.test.js` | L4 + L3 | T04 | T09, T25 | PROP-COR-07, PROP-COR-08, PROP-COR-12, PROP-COR-13, PROP-FIX-03 |
-| `consolidationTraceability.test.js` | L3 | — (T05, green on write) | — | PROP-TRC-01 |
+| `consolidationTraceability.test.js` | L3 | — (T05; green on write **once §13.3 erratum 8 lands** — short one id, `AT-K3b`, until then: §12.4's AT-K row) | — | PROP-TRC-01 |
 | `consolidationRung.test.js` | L2 | T06 | T11, T31 | PROP-PASS-06, PROP-PASS-07 |
 | `runtimeBundle.test.js` (**exists at HEAD**) | L3 | — | T13 | PROP-BLD-03 |
 | `consolidationPredicate.test.js` | L1 | T14 | T25 | PROP-COR-01…06, PROP-CFG-01, PROP-CFG-02 |
@@ -1851,8 +1851,9 @@ property can be left in a permanently-red block.
 
 ### 12.4 FSPEC §13 acceptance register → properties
 
-Read against the register at FSPEC **v11.5** (99 ids, measured 2026-08-06; PROP-TRC-01 pins the
-version and re-reads the count rather than transcribing it). **One id post-dates that measurement:**
+Read against the register at FSPEC **v11.7** (100 ids, re-measured 2026-08-10; PROP-TRC-01 pins the
+version and re-reads the count rather than transcribing it, and §10.4's pin was re-taken with this
+measurement). **The one id added since the 2026-08-06 measurement of 99:**
 `AT-K3b`, minted by FSPEC v11.7 (`FSPEC:21`, row at `:2210`) and claimed in the AT-K row below. It is
 named rather than folded into the count, so that a reader comparing this table against a
 freshly-measured register sees the one known delta instead of an unexplained off-by-one.
@@ -1864,7 +1865,7 @@ freshly-measured register sees the one known delta instead of an unexplained off
 | AT-M (marker, model ladder, late failure) | AT-M1…AT-M11 | PROP-MRK-01…04, PROP-PASS-06…08 |
 | AT-R (routing, merge, commit, proposal file) | AT-R1…AT-R7, AT-R6b | PROP-RTE-01…06, PROP-ID-03, PROP-MRG-01, PROP-MRG-02 |
 | AT-Q (the PR carrier and suppression) | AT-Q1…AT-Q13, AT-Q7b, AT-Q7c | PROP-PR-01…08, PROP-PR-11 (AT-Q2's trailer-set arm) |
-| AT-K (the credential) | AT-K1…AT-K7, **AT-K3b** | PROP-CRED-01…04; **AT-K3b → PROP-COR-09**. AT-K3b (FSPEC v11.7, `FSPEC:2210`) is not a credential id: its subject is the all-unreadable corpus terminating `no-op`, so its property lives at L2 in `consolidationPass.test.js` while AT-K1…AT-K7 sit in `consolidationCredential.test.js` (`TSPEC:2929`). The single-file rule holds per id — no file claims AT-K3b twice — but the AT-K **family** now spans two files, and **§13.3 erratum 8 routes the registration** of AT-K3b into TSPEC §12.3/§12.4 and PLAN T20, which do not carry the id at HEAD |
+| AT-K (the credential) | AT-K1…AT-K7, **AT-K3b** | PROP-CRED-01…04; **AT-K3b → PROP-COR-09**. AT-K3b (FSPEC v11.7, `FSPEC:2210`) is not a credential id: its subject is the all-unreadable corpus terminating `no-op`, so its property lives at L2 in `consolidationPass.test.js` while AT-K1…AT-K7 sit in `consolidationCredential.test.js` (`TSPEC:2929`). The single-file rule holds per id — no file claims AT-K3b twice — but the AT-K **family** now spans two files, and **§13.3 erratum 8 routes the registration** of AT-K3b into TSPEC §12.3/§12.4 and PLAN T20, which do not carry the id at HEAD. **Consequence for PROP-TRC-01, stated rather than left to be discovered at T05:** until erratum 8 lands, the register carries an id §12.3 assigns to no file, so that property's set-equality is short **exactly this one id** in the register→file direction and reds. That red is the routed erratum, not a parser defect, and it is not the "permanently-red block" §12.3's closing rule forbids — it clears when erratum 8 does |
 | AT-F (identity) | AT-F1…AT-F4 | PROP-ID-01, PROP-ID-02 |
 | " (effectiveness, remediation) | AT-F5…AT-F18 | PROP-EFF-01…09 |
 | " (the record reader) | AT-F19, AT-F20, AT-F21 | PROP-REC-02, PROP-REC-01, PROP-REC-03 |
