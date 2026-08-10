@@ -4475,8 +4475,7 @@ async function reviewLoop({
     }
   };
 
-  const reviewTargetPath = (skill, round) =>
-    `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
+  const reviewTargetPath = (skill, round) => crossReviewPath(feature, skill, reviewFileType, round);
 
   await verifyFeatureBranch({
     feature,
@@ -4773,6 +4772,10 @@ const REVIEWER_ROLE_SLUGS = Object.freeze(Object.values(MAP));
 
 function reviewerRoleSlug(skill) {
   return MAP[skill] || null;
+}
+
+function crossReviewPath(feature, skill, docType, round) {
+  return `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${docType}-v${round}.md`;
 }
 
 function reviewerSkillForSlug(slug) {
@@ -5429,14 +5432,20 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
 
   const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
-  if (iteration < 2) return `${base}${groundingPart}${oraclePart}`;
+  const type = docType || docTypeFromPath(doc) || "REVIEW";
+
+  const targetFile = crossReviewPath(feature, reviewer, type, iteration);
+  const targetClause =
+    `Write your cross-review to exactly this path: ${targetFile}. ` +
+    `Do not derive a different file type from the artifact under review — this phase's round ` +
+    `history is keyed by that exact name, and a file outside it is not counted.`;
+
+  if (iteration < 2) return `${base}${groundingPart}\n${targetClause}${oraclePart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
-
-  const type = docType || docTypeFromPath(doc) || "REVIEW";
   const priorFile = role
-    ? `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${prev}.md (your reviewer role is "${role}")`
+    ? `${crossReviewPath(feature, reviewer, type, prev)} (your reviewer role is "${role}")`
     : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
@@ -5449,7 +5458,7 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
     `Medium and Low findings do not block; file them and approve with minor changes.\n` +
-    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
+    `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart
   );
 }
