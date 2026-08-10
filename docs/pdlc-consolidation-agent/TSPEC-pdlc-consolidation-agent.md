@@ -9,7 +9,34 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.2 | 2026-08-10 |
+| pdlc | draft | Claude | 2.3 | 2026-08-10 |
+
+> **2.3 (REQ v2.5's two corpus rules absorbed — a behaviour change, not bookkeeping).** v2.2 asserted
+> a re-pin to `REQ v2.5` without performing it; pm-review v12 F-01/F-02 caught that §7.1 still shipped
+> both corpus-membership rules against REQ §3.1 step 1's decision. **Absorbed, not re-raised** — the
+> REQ decided both classes, and routing a settled question back upstream is the anti-pattern
+> DEC-ERR-01 names. (a) **`--exclude-standard` is dropped** from §7.1's argv, AT-P1's pin, §9.3's
+> permitted-call row and §12.2's T-08 rows: an ignored LEARNINGS *is* corpus. The argument §10.4 made
+> for keeping it (promotion from a source no reviewer sees in a diff) is kept as recorded history and
+> its cost is now stated as *paid*, not avoided. (b) **A second `_git` read, `ls-files --deleted` over
+> the identical pathspec pair, is subtracted** from the enumeration, so an index entry with no
+> working-tree file is not corpus; this is an obligation, not residue. §10.4's class (ii) — "genuinely
+> not closable at this layer" — is corrected: it is closed by narrowing the *pass*, not by widening
+> the hook. (c) The divergence set falls from two classes to **one** (a LEARNINGS inside a nested git
+> repository, measured on a scratch tree), which §10.4 now names and accepts. (d) §13.3's enumeration
+> erratum is rewritten as **absorbed-and-closed** on both halves — REQ withdrew "one enumeration",
+> FSPEC v11.6 re-scoped AT-P7 to the predicate — keeping only the genuinely open `unread:` field
+> question, now narrowed by (b). (e) §11.1's L4 git case gains the two fixture members and conjuncts
+> it previously declined to add while the question was open, so the flag and the subtraction are
+> pinned against real git and not only against a scripted double. Lows folded in: AT-P7 re-cited to
+> FSPEC §13.2; §12.3's citation rule widened to **every** upstream document with the four stale REQ
+> pointers re-cast (scoping it to one document was itself the defect); §12.2's provenance sentence
+> scoped to FSPEC §13 as a whole; the hook row re-measured by symbol. te-review v12: §5.1's probe
+> comment now scopes its agreement claim to the *state* and not the reason's provenance (F-01);
+> §7.3 decides that surrounding whitespace is tolerated and §11.4's generator draws it into the
+> well-formed arm, closing a property that would have redded on conforming code (F-02); `_now` is a
+> **destructured** injection default at `:1623`/`:3182`/`:8417`, not a module-level one at the stale
+> `:1396` (F-03).
 
 > **2.2 (round-10 Lows and one question, no mechanism change).** Five corrections, none touching a
 > decision, obligation, oracle strength or acceptance criterion. (a) **The FSPEC is no longer cited
@@ -105,9 +132,13 @@
 ## 1. Scope, inputs, and what this document decides
 
 This TSPEC is written against `FSPEC-pdlc-consolidation-agent` **v11.6** and `REQ-…` **v2.5** — the
-versions it has actually absorbed, re-taken at v2.2. The earlier "v11.1 / v2.0" was the pin the
-document opened at and had been false since v2.0 adopted FSPEC v11.3's **BR-14a** by name. It adds no
-behaviour. Where the FSPEC names an observable, this document names the module, function, seam and
+versions it has actually absorbed. The earlier "v11.1 / v2.0" was the pin the document opened at and
+had been false since v2.0 adopted FSPEC v11.3's **BR-14a** by name. The pin was re-taken at v2.2 and
+**performed at v2.3**: v2.2 asserted the re-pin while §7.1 still shipped REQ §3.1 step 1's two
+corpus-membership rules the other way round, which is the one thing a version pin must not do. v2.3
+absorbed both (§7.1, §10.4), so the pin and the mechanism now agree. Unlike the re-pin itself, that
+absorption **does** change behaviour — the enumeration drops `--exclude-standard` and subtracts an
+`ls-files --deleted` read. Where the FSPEC names an observable, this document names the module, function, seam and
 type that produce it, and the test level that falsifies it.
 
 **Binding upstream references, cited by pinned `Version`, never restated:**
@@ -902,7 +933,7 @@ asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'
 below, and `:41`'s comprehension tests against the two regions computed by a short helper rather than
 against `logtext` whole.
 
-**Both enumerations are pinned literally, so a divergence larger than §10.4's two classes reds.**
+**Both enumerations are pinned literally, so a divergence larger than §10.4's one remaining class reds.**
 AT-P7 feeds both sides one basename list and therefore holds the *predicate* half only (§11.3(f)).
 That leaves the enumeration pair with no equality oracle — but it does not leave it unguarded, and
 the guard is not "inspection". Two literal pins, **at two different levels and in two different
@@ -2443,7 +2474,7 @@ usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recor
 
 **What this harness does not falsify, stated rather than implied.** Feeding both sides the same
 basename list holds the **predicate** equal and holds the **enumeration** equal by construction —
-so the enumeration pair (`git ls-files --cached --others --exclude-standard` on the JS side,
+so the enumeration pair (`git ls-files --cached --others` minus `--deleted` on the JS side,
 `glob.glob` over `CORPUS_GLOBS` on the hook's) is outside AT-P7's reach entirely. That is deliberate, and it is
 the reason the fixtures are fed rather than enumerated: the fixture temp directory is not a git
 repository, so `enumerateCorpus` could not run there without a `git init` and a staged index, and
@@ -2467,9 +2498,13 @@ a third class silently. "Held by inspection" would have been the wrong answer an
 given: an equality this harness cannot run is replaced by two pins it can.
 
 One consequence for the fixture table: `classifyCorpus` is driven directly, not through
-`enumerateCorpus`, so **no fixture may be written that depends on git visibility** (an ignored file,
-a staged-but-deleted file). Such a fixture would assert a divergence the harness cannot observe and
-would read as coverage of the enumeration half.
+`enumerateCorpus`, so **no fixture may be written that depends on git visibility** (an ignored file, a
+staged-but-deleted file, a nested repository). Such a fixture would assert a divergence the harness
+cannot observe and would read as coverage of the enumeration half. Note that the first two are no
+longer *divergences* since §7.1 absorbed REQ §3.1 step 1 — they are decided corpus rules — but the
+rule stands unchanged and for the same reason: this harness drives `classifyCorpus` directly, so it
+cannot observe any git-visibility fact whatever. Their oracles live in §11.1's L4 git case, which
+can.
 
 **That rule lives in the code, not only here.** It is written into the header of
 `consolidationDoubles.js`'s fixture builder — the same place `seams.js` and `advisoryDoubles.js`
@@ -2762,7 +2797,7 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 | 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
 | 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
 | 5 | Take the marker observe-then-write (§7.3's three seam calls: `_checkFile`, `_readFile`, `_writeFile`; the earlier "read-then-write" spelling is withdrawn — it prices a two-call take and reads as sanctioning the `_readFile(...) !== null` derivation decision 2 forbids) | an exclusive-create seam | no adapter transport offers `O_EXCL`, and an agent's report of prior existence is exactly as racy as the read |
-| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's two classes make an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct at **L1**, both `:(glob)` prefixes literal, in `consolidationPredicate.test.js`) and the hook's two glob patterns (an **L3** source-text read of the `CORPUS_GLOBS` declaration, in `consolidationHookParity.test.js`) — two levels and two files, for the reasons §7.1 gives — which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **This decision relaxes REQ `:115-116`'s "keeping one enumeration as well as one predicate", so it is not settled here**: §13.3 raises it as a REQ/FSPEC erratum, and this row records what this layer would ship if the relaxation is accepted |
+| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's surviving nested-repository class makes an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct at **L1**, both `:(glob)` prefixes literal, in `consolidationPredicate.test.js`) and the hook's two glob patterns (an **L3** source-text read of the `CORPUS_GLOBS` declaration, in `consolidationHookParity.test.js`) — two levels and two files, for the reasons §7.1 gives — which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **This decision relaxes REQ `:115-116`'s "keeping one enumeration as well as one predicate", so it is not settled here**: §13.3 raises it as a REQ/FSPEC erratum, and this row records what this layer would ship if the relaxation is accepted |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
 | 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
