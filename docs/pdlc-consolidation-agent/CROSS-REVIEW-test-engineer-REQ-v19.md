@@ -104,4 +104,36 @@ and re-measured.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 1 Medium, 3 Low.
+
+The delta question was whether the v2.3 sweep landed its own claim and whether it broke anything
+previously approved.
+
+- **Blocking findings from v18: all resolved.** F-61's Medium is closed — every one of the nine
+  `nudge-consolidation.sh` citation sites now resolves at HEAD, verified against the script rather
+  than the commit message. F-62, F-63, F-59, F-55 and F-57 are closed too, with F-57's fix going
+  past the finding to close a termination question a PROPERTIES author would otherwise have had to
+  invent an answer for.
+- **Nothing previously approved regressed.** Every AC whose text this delta did not touch is
+  byte-identical to the v18-approved tree, `docs/_constraints/` did not move, and both version pins
+  still resolve. The three ACs that did change (AC-3.8b, §4b, REQ-CONS-01 step 1) changed in the
+  direction their findings asked for and in no other direction.
+- **The gap the sweep did not reach.** F-64 is Medium, not High, on the same two grounds v18 applied
+  to F-61: no test oracle keys on a REQ line number, and the *behaviour* the stale anchors describe
+  is still exactly true at HEAD — I re-derived `guardVerdict`'s complete call graph from source and
+  it is still the declaration plus two callers, both about the run's own PR, with Phase MERGE still
+  shipping `off`. Only the coordinates moved. The fix is four substitutions and four role names:
+  `709 → 936`, `899-900 → 1064-1065`, `2143 → 2370`, `838 → 1659`.
+
+F-64 and F-56 want to land together. The document is 4,551 bytes over the byte budget and 13 lines
+under the line budget, so the edit that re-anchors AC-3.8's guard paragraph is the natural place to
+also recover some of what the anchor-epoch preamble spent. Neither is gating: `check-req-size.sh`
+warns and does not block, and no downstream oracle reads either.
+
+**No upstream defects.** REQ is the root document; nothing upstream of it can be wrong. No ERRATUM
+lines are emitted from this review.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
