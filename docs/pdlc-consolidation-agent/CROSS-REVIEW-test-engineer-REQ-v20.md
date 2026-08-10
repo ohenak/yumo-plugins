@@ -111,4 +111,45 @@ roles named, so the next round can re-find them without a grep.
 
 ## Recommendation
 
+**Needs revision** — 1 High, 0 Medium, 2 Low.
+
+The delta question was whether v2.4's claimed moves landed and whether the revision broke
+anything previously approved. Both halves have answers, and they differ.
+
+- **v19's blocking finding is resolved.** F-64's four stale guard coordinates are fixed, each
+  re-verified at HEAD rather than from a commit message, each carrying the role name the
+  preamble promises. `build-runtime.mjs` and `gitWithLockRetry` are re-anchored the same way.
+  Eleven of eleven moved anchors resolve. I have no anchor finding this round.
+- **Nothing previously approved regressed in substance.** The reachability claim about
+  `guardVerdict` is still true at HEAD (declaration plus exactly two callers, both about the
+  run's own PR); `mergeMode` still ships `off`; the three-cause propagation into AC-5.3 and
+  AC-5.5 is correct in both places and leaves the consumed-set-emptiness invariant intact.
+- **But the revision introduced one new blocking defect.** F-65: `corpus-unreadable` is used
+  twice in the REQ and registered nowhere. This is High rather than Medium on the grounds this
+  review has applied consistently — unlike a stale line number, **a test oracle keys on this
+  one**. §4b commissions a set-equality property over vocabularies §1 at `Version` 1.4, and
+  PROPERTIES `:132` already pins the doubles module to that literal transcription. With the
+  value in one authority and not the other, there is no expected set a test author can write
+  down that is correct against both: the property is unsatisfiable rather than merely
+  inaccurate. The REQ also convicts itself here — §4b `:604-607` and the governed file
+  `:38-39` both state that a value used without a row is a defect — and the paragraph still
+  carries the v2.1 sentence "no new reason code and no vocabulary row" three lines above the
+  code it adds.
+
+The fix is small, mechanical, and fully specified in F-65: one row in vocabularies §1, one
+version bump to `1.5`, eight re-pins in the REQ, one clause qualified at `:618`. No AC
+semantics change, no decision is reopened, and the §4b decision the row registers is one I
+have recorded as a Positive Observation. I expect this to close in a single edit.
+
+Pair it with a compaction if any is available: at 695 lines the document has five lines of
+line-budget headroom (F-56), and F-65's edit is roughly byte-neutral.
+
+**No upstream defects.** REQ is the root document; nothing upstream of it is wrong, so no
+ERRATUM lines are emitted. Note for the downstream author, not for this round: PROPERTIES
+`:132` (`Version` 1.4 transcription) and PROP-PASS-08 at `:1355-1365` ("pins the two causes")
+both go stale once F-65 lands, and should be swept in Phase PR rather than rediscovered.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
