@@ -15,7 +15,7 @@
 // Beside the equality sit two conjuncts that make a failure legible instead
 // of merely red:
 //   (i)  a version pin — FSPEC's `Version` cell reads `11.5` and TSPEC's
-//        reads `2.0` — so a later erratum round that moves the register
+//        reads `2.1` — so a later erratum round that moves the register
 //        fails as "the register moved" rather than as "the code is wrong";
 //   (ii) a non-vacuity floor — the parsed register is non-empty and its
 //        size is reported in the failure message, so two empty parses
@@ -122,9 +122,9 @@ describe("T05 — traceability set-equality (FSPEC §13 register ↔ TSPEC §12.
     expect(tspec.ids.size).toBeGreaterThan(0);
   });
 
-  test("version pin: FSPEC reads 11.5 and TSPEC reads 2.0", () => {
+  test("version pin: FSPEC reads 11.5 and TSPEC reads 2.1", () => {
     expect(fspec.version).toBe("11.5");
-    expect(tspec.version).toBe("2.0");
+    expect(tspec.version).toBe("2.1");
   });
 
   test("every FSPEC register id has exactly one TSPEC §12.3 file (register ⊆ table)", () => {
