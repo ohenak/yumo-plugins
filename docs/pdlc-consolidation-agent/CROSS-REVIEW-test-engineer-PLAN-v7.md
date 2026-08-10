@@ -43,6 +43,16 @@ Both halves are present, both are load-bearing (the `it.each(AWAIT_SCAN_SOURCES)
 
 ## Prior findings
 
+| ID (v6) | Disposition |
+|---|---|
+| F-01 (Medium, Process) — the `Status` column was half-reconciled: three rows carried a live cell while twenty-eight rows read `⬚` over work committed on the branch | **Closed, verified, and closed the better way.** v6 offered two repairs and named a third as unavailable; the revision took neither of the two but stated a **rule** instead, which is strictly better than either — a reconciliation would have drifted again by the next wave. §2 `:189-204` now declares the column a Phase-P baseline owned by nobody during Phase I, and §4's out-of-band cells are reverted. Measured: all **34** task rows in §4.1 and §4.2 now carry `⬚`, zero rows carry any other value. The rule's two grounds were falsified independently, not read (see *Method*): no column predicate can reach a `Status` cell, and `WAVE_STATE_PATH` (`:8860`) already owns resume. The v6 question — "is this a live ledger or not?" — is answered in the document rather than in a review thread, which is where the answer had to live to stay answered. |
+| F-02 (Low, Local) — T17's cell read `🔴` while `consolidationEffectiveness.test.js` was green at HEAD | **Closed, verified.** T17's cell now reads `⬚` (`:355`), and under the new rule it makes no claim about HEAD at all, so it cannot be false. This is the class of finding the rule dissolves rather than fixes: a baseline cell has no truth value to lose. |
+| Q-01 — is the column a live ledger, and if not should the filled cells come back out? | **Answered, in the document.** §2's rule answers it and the four reverts enact the answer. |
+| Q-02 — header round numbering (v1.5's "Round 4's findings" against `…-PLAN-v5.md`) | **Answered by convention.** v1.6's header says "Round 5's two open items" against `…-PLAN-v6.md`, i.e. headers number the *revision's* round as one behind the cross-review filename. Consistent with v1.5; no finding. |
+
+Both v6 findings are closed. Neither closure introduced a graph, ownership or batch
+change — re-measured above, every gate number is identical to v1.4's.
+
 ## Findings
 
 ## Questions
