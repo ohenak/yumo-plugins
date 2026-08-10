@@ -2388,7 +2388,7 @@ Since §7.1 issues **two** `_git` reads whose argv both begin `ls-files` (the `-
 enumeration and the `--deleted` subtraction), a double keyed by the git *subcommand* returns the same
 value to both. `mergeDoubles.js`'s `fakeGit` is exactly that: it computes `key = argv[i]` after
 skipping `-C`/`-c` pairs and looks up `script[key]` (`mergeDoubles.js:200-207`), so both calls hit the
-one `ls-files` entry and an unscripted key returns `{ok:true, stdout:""}` (`:208`). Either way the
+one `ls-files` entry and an unscripted key returns `{ok:true, stdout:"", stderr:""}` (`:209`). Either way the
 `--deleted` set equals the enumeration set and **the corpus is always empty** — which reds AT-P1's
 conjuncts 2 and 3 on a *correct* implementation, and silently greens any absence-shaped assertion in
 every L2 fixture that scripts a listing (the AC-1.2 volume count, the consumed pair, the report body's
@@ -2397,8 +2397,10 @@ not an oracle defect, and the cheapest wrong repair is to weaken the assertion.
 
 `seams.js`'s `fakeGit` (`:389`) already has the capability and needs no edit, which is why this row is
 re-pointed rather than a third factory added or `mergeDoubles.js` widened: its `script` may be a
-**function** `(argv, callIndex) => result` (`:404`) or an **array** indexed per call with the last
-entry repeating (`:406-408`), alongside the same subcommand-map form for tests that want it
+**function** `(argv, callIndex) => result` (`:405-406`, the `typeof script === "function"` branch) or
+an **array** indexed per call with the last entry repeating (`:407-408`, the `Array.isArray(script)`
+branch, `script[Math.min(index, script.length - 1)]`), alongside the same subcommand-map form for
+tests that want it
 (`:409-413`); and it records `.calls` / `.invocations` / `.commands` / `.callCount` (`:421-426`),
 which is precisely what AT-P1's two-argv pin and the subtraction conjunct read. Corpus fixtures use
 the **function or array form**, never the map form, and the reason is a rule rather than a preference:
