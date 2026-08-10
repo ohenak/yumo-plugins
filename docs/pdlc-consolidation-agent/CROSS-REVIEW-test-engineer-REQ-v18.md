@@ -81,4 +81,32 @@ line it edited. Two new Lows, plus the carried Lows re-measured at HEAD.
 
 ## Recommendation
 
+**Approved with minor changes** — 0 High, 1 Medium, 7 Low.
+
+The delta-confirmation question was: did the anchor sweep land its own claim, and did it break
+anything previously approved?
+
+- **Its own claim: yes, on every line it touched.** Six of six edited anchors resolve at HEAD,
+  verified line by line rather than from the commit message. No AC changed meaning, so no
+  downstream oracle moves.
+- **Nothing previously approved regressed.** Seven insertions, seven deletions, four hunks, one
+  file; the remainder is byte-identical to the tree approved at v17.
+- **The gap is what the sweep did not reach.** F-61 is Medium, not High, on two grounds: no test
+  or oracle keys on a REQ line number, and the *behaviour* each stale anchor describes is still
+  exactly what `nudge-consolidation.sh` does — only the coordinates moved. It is more than Low
+  because the stale anchors sit on a line this delta edited, and because grepping `:41` for the
+  basename predicate now lands on a bracket-matching loop, which is the confirmation failure J1
+  was raised to prevent. The fix is mechanical: `41 → 74`, `28 → 60-61`, `32 → 63`, `36-37 → 64`.
+
+Suggested batching for the next edit, since F-56 says the byte budget is already 3,728 over:
+F-61's nine anchors, F-62's one clause, and F-63's one changelog line are all in the same
+document and should land together, with the v2.1 erratum note retired in the same pass to keep
+the edit net-shrinking.
+
+**No upstream defects.** REQ is the root document; nothing upstream of it can be wrong. No
+ERRATUM lines are emitted from this review.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 7}
