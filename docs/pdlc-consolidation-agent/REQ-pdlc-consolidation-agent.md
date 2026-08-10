@@ -21,11 +21,11 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 > names the *role* the line plays so it stays re-findable. Where an anchor supports a statement about pre-feature
 > behaviour, the sentence is past tense and the anchor points at today's line for that role.
 
-> **Erratum round (v2.3, Phase DOD).** Citation re-measurement only; no clause changed meaning. The whole
-> `file:line` set was re-measured as a set, not paragraph by paragraph: the `orchestrate-dev.js`,
-> `nudge-consolidation.sh`, `orchestrate-queue.js` and `QUEUE.md` families had all shifted. REQ-CONS-01's
-> pre-T09 quotes were put in the past tense, and AC-3.8b's cause list was set-equalised with AC-3.4's.
-> The v2.1 and v2.2 notes are retired: their corrections now stand in the ACs themselves (REQ-CONS-01 step 1, §4b, AC-3.4, AC-6.3).
+> **Erratum round (v2.3, Phase DOD).** Citation re-measurement, as a set rather than paragraph by paragraph: the
+> `orchestrate-dev.js`, `nudge-consolidation.sh`, `orchestrate-queue.js`, `runtime-adapter.js` and `QUEUE.md` families had
+> all shifted. Also: REQ-CONS-01's pre-T09 quotes put in the past tense; AC-3.8b's cause list set-equalised with AC-3.4's;
+> §4b decides that an unreadable basename still counts toward the volume trigger. The v2.1 and v2.2 notes are retired —
+> their corrections now stand in the ACs themselves (REQ-CONS-01 step 1, §4b, AC-3.4, AC-6.3).
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -596,8 +596,8 @@ both**, and changes none of anyone else's; a successor feature's vocabulary belo
 section of the governed file or in its own file, never interleaved into §1–§4. Of the owned sections, **§1, §2 and §4 are enumerations** and **§3 is owned
 normative prose** — binding, but carrying no table a downstream layer transcribes, so no row oracle
 ranges over it. So the oracle's range is stated, not "the table": downstream completeness is
-checkable by **set-equality over every enumerated row this REQ owns — §1, §2 and §4 entire at
-Version 1.4** (§4's four-row trailer table and its two derived names included) — and the defect
+checkable by **set-equality over every enumerated row this REQ owns — §1, §2 and §4 of
+`docs/_constraints/pdlc-consolidation-vocabularies.md`, entire, at `Version` 1.4** (§4's four-row trailer table and its two derived names included) — and the defect
 rule is symmetric, a value used here with no row there **and** a row there naming a value this REQ
 never uses being equally defects. The symmetry is what makes a *deleted* row a breach; the version
 pin is what gives a downstream test a fixed expected value to transcribe.
@@ -613,7 +613,10 @@ evidence: under AC-5.2 such an entry can only ever push a verdict toward `preven
 one direction. Omission needs no new field, no new reason code and no vocabulary row, and it is not
 silent: the basename remains in the un-consolidated set that both the hook and the next tick compute.
 Enumeration-level unreadability is already closed by REQ-CONS-01 step 1's working-tree restriction, so
-the residual case is an on-disk file that cannot be read — permissions or an IO error.
+the residual case is an on-disk file that cannot be read — permissions or an IO error. Such a basename
+**stays in the un-consolidated set and so still counts toward AC-1.2's volume trigger**; only the consumed
+pair omits it. A corpus that is entirely unreadable therefore still fires the trigger and still terminates,
+each pass reporting its terminal row with nothing consumed.
 
 ## 5. Scope
 
