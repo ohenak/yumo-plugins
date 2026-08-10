@@ -69,7 +69,47 @@ accepting it — which is what the finding table would have demanded of a test.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T13 is now a task whose two production edits are **already at HEAD** (`runtimeBundle.test.js:230` and `:1057`, both confirmed). The row handles this well — it tells the implementer to assert both axes rather than re-add them — but it leaves one mechanical question unanswered for the wave gate: what does T13's commit *contain*? A task that finds its work done and commits nothing produces an empty pathspec-scoped commit, which `NOTHING_TO_COMMIT_RE` treatment absorbs quietly. If the intended answer is "the assertion is the existing `it.each(AWAIT_SCAN_SOURCES)` case and T13 verifies rather than writes", saying so in one clause makes the row's own definition of done checkable. No finding filed — this is a wave-execution detail, not a PLAN defect, and the row's substantive instruction (never drop the pairing) is the part that matters. |
+
 ## Positive Observations
+
+- **The revision answered a question with a rule instead of a reconciliation, and that is
+  the durable half.** v6 named two repairs; the revision took a third the review had not
+  offered. Reconciling twenty-eight cells would have been correct for one commit and
+  wrong again by the next wave — the finding would have returned every round for the rest
+  of Phase I. Declaring the column a Phase-P baseline removes the finding's *source*.
+  This is the difference between fixing an instance and closing a class, and the document
+  now states which one it did.
+- **The rule is grounded twice over, and the grounding survives falsification.** §2 does
+  not assert "nothing reads this" — it names `parsePlanTasks` (`:3761`), quotes the
+  "LOOSE … cosmetic" ruling (`:3764`), pins the exact-match header sets (`:3797-3798`)
+  and names the thing that *does* own resume (`WAVE_STATE_PATH` `:8860`,
+  `parseWaveLedger` `:8916`). Every one of those five citations resolves. I then tried to
+  break the claim from the angle the citations do not cover — could a loose predicate
+  swallow the `Status` column by accident? — and `isDescCell` (`:3767`) and `isBatchCell`
+  (`:3773`) match neither the word nor any substring of it. The claim is true for a
+  stronger reason than the one given.
+- **§2 names the failure mode it closes, in the reader's terms.** "A uniformly `⬚` column
+  honestly reports *no ledger is kept here*, whereas a column with some rows filled
+  invites the reader to conclude the unfilled rows are untouched." That is precisely the
+  inverted-cost observation v6 filed, restated as the document's own reasoning. A rule
+  that carries its rationale survives the next person who thinks the column looks stale.
+- **T13's rewrite replaced an assumption with a measurement and kept the obligation.**
+  The easy revision here was to delete T13 as already done. Instead the row records both
+  halves at HEAD with exact line citations, states that the `⬚` says nothing about HEAD
+  (closing the loop with §2 rather than leaving two paragraphs in tension), and keeps the
+  pairing obligation with its reason: "a task that finds one half done and quietly drops
+  the pairing is how the half-widened state — the exact state this row exists to prevent
+  — becomes permanent." That is the correct instinct for a guard task. Both cited lines
+  verified through `git show HEAD:`, and the third `AWAIT_SCAN_SOURCES` member is live in
+  the `it.each` at `:1072`, so the widening is not decorative.
+- **The revision falsified its own null result instead of assuming it.** A `Status`-only
+  diff "must" leave the graph alone — but a mis-shaped cell is exactly the edit that
+  shifts a column count under the parser while looking harmless, and the header re-ran
+  the gate rather than reasoning about it. My independent re-run returns the same six
+  numbers (34 / 34 / `{"ok":true}` / 15 / 15 / 0), so the header's arithmetic is real.
 
 ## Recommendation
 
