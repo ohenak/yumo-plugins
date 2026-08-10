@@ -282,10 +282,113 @@ describe("T15 — identity and merge (L1)", () => {
     // ─── Reserved seats — TSPEC §11.5 ───────────────────────────────────────
     //
     // LD-2 and LD-3 are PROPERTIES-owned per DEC-LAYER-01 (FSPEC §14.5): their fixtures are authored
-    // in `PROPERTIES-pdlc-consolidation-agent.md`'s property-testing register, not here. TSPEC §11.5
-    // decides only that this file is their *home* once authored. These seats are reserved, not
-    // filled, by this row — filling them is the PROPERTIES-authoring task's job, not T15's.
-    test.todo("LD-2: a colliding-subject merge of two process learnings (kind 3) — precedence keeps kind 3, and the surviving target follows the surviving artifact (§8.2's third note; PROPERTIES-owned fixture)");
-    test.todo("LD-3: two actions over one subject (PROPERTIES-owned fixture)");
+    // in `PROPERTIES-pdlc-consolidation-agent.md`'s property-testing register (PROP-MRG-03,
+    // PROP-MRG-04), not here originally — TSPEC §11.5 decided only that this file is their *home*
+    // once authored. This file's scope boundary (top of file) still applies: only the L1 slice —
+    // `failureModeId`/`targetFor`/`mergeProposals` as pure functions — is asserted below. The L2
+    // halves (PROP-MRG-03's report item 4, PROP-MRG-04's route-level two-commit PR) are out of this
+    // file's reach and live at `consolidationReport.test.js` / `consolidationRoute.test.js`.
+
+    test("LD-2 (PROP-MRG-03): a colliding-subject merge of two process learnings (kind 3 on both sides) — the surviving target follows the surviving artifact, never the other side's", () => {
+      // Both sides kind 3, so §8.2's kind precedence is not in play — only the subject tie-break
+      // (lexicographically first canonical path) decides. `pdlc/skills/a-b.md` and
+      // `pdlc/skills/a/b.md` collide to one id (established by AT-F5 above); `-` (0x2D) precedes
+      // `/` (0x2F), so `a-b.md` survives.
+      const survivorArtifact = "pdlc/skills/a-b.md";
+      const elidedArtifact = "pdlc/skills/a/b.md";
+      const id = failureModeId("P", survivorArtifact);
+      expect(failureModeId("P", elidedArtifact)).toBe(id);
+
+      const proposals = [
+        {
+          failureModeId: id, phase: "P", symptom: "process learning, half 1", artifact: survivorArtifact,
+          kind: 3, target: targetFor(3, survivorArtifact, id), action: "promote", diff: null,
+          elidedKinds: [], elidedArtifacts: [],
+        },
+        {
+          failureModeId: id, phase: "P", symptom: "process learning, half 2", artifact: elidedArtifact,
+          kind: 3, target: targetFor(3, elidedArtifact, id), action: "promote", diff: null,
+          elidedKinds: [], elidedArtifacts: [],
+        },
+      ];
+
+      const merged = mergeProposals(proposals);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].artifact).toBe(survivorArtifact);
+      // The compensating claim: `target` is the SURVIVING proposal's target, not a target paired
+      // with the elided proposal's artifact — kind 3's target is the artifact itself (§7.4), so a
+      // wrong-pairing implementation would leak `elidedArtifact` into `target` here.
+      expect(merged[0].target).toBe(survivorArtifact);
+      expect(merged[0].target).not.toBe(elidedArtifact);
+      // Kind precedence genuinely does not fire: both sides being kind 3 means nothing is elided
+      // on the kind axis.
+      expect(merged[0].elidedKinds).toEqual([]);
+      expect(merged[0].elidedArtifacts).toEqual([elidedArtifact]);
+    });
+
+    test("LD-2 (PROP-MRG-03): the >2-candidate case — elidedKinds and elidedArtifacts are set-equal to the two non-surviving members', not one member of a set of two", () => {
+      // Three path spellings that all collide to the same id (`/` and `.` both fold to `-`, then
+      // runs of `-` collapse): the shortest is the fixture's canonical survivor.
+      const artifactSurvivor = "pdlc/skills/a-b.md"; // kind 1 — survives (min kind), byte-smallest
+      const artifactMid = "pdlc/skills/a//b.md"; // kind 2 — elided
+      const artifactLast = "pdlc/skills/a/b.md"; // kind 3 — elided
+      const id = failureModeId("P", artifactSurvivor);
+      expect(failureModeId("P", artifactMid)).toBe(id);
+      expect(failureModeId("P", artifactLast)).toBe(id);
+      // Byte order over the three literal strings, confirmed so the fixture's own claim about which
+      // one is "first" cannot silently drift: "-" (0x2D) precedes "/" (0x2F) at the first point of
+      // difference, and between the two `/`-first spellings a second `/` precedes `b`.
+      expect([artifactMid, artifactLast].sort()).toEqual([artifactMid, artifactLast]);
+      expect([artifactSurvivor, artifactMid, artifactLast].sort()).toEqual([artifactSurvivor, artifactMid, artifactLast]);
+
+      const proposals = [
+        { failureModeId: id, phase: "P", symptom: "candidate 1", artifact: artifactSurvivor, kind: 1, target: targetFor(1, artifactSurvivor, id), action: "promote", diff: null, elidedKinds: [], elidedArtifacts: [] },
+        { failureModeId: id, phase: "P", symptom: "candidate 2", artifact: artifactMid, kind: 2, target: targetFor(2, artifactMid, id), action: "promote", diff: null, elidedKinds: [], elidedArtifacts: [] },
+        { failureModeId: id, phase: "P", symptom: "candidate 3", artifact: artifactLast, kind: 3, target: targetFor(3, artifactLast, id), action: "promote", diff: null, elidedKinds: [], elidedArtifacts: [] },
+      ];
+
+      const merged = mergeProposals(proposals);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].artifact).toBe(artifactSurvivor);
+      expect(merged[0].kind).toBe(1);
+      // Set-equal to the two non-surviving members' values — not a single element, which is exactly
+      // the defect a one-elided-path implementation would leave invisible on a two-candidate fixture
+      // but not on this one.
+      expect(new Set(merged[0].elidedKinds)).toEqual(new Set([2, 3]));
+      expect(merged[0].elidedKinds).toHaveLength(2);
+      expect(new Set(merged[0].elidedArtifacts)).toEqual(new Set([artifactMid, artifactLast]));
+      expect(merged[0].elidedArtifacts).toHaveLength(2);
+    });
+
+    test("LD-3 (PROP-MRG-04): two actions over one subject in one phase are two keys — mergeProposals folds nothing, both proposals survive distinct", () => {
+      // Same failureModeId, same artifact, same phase — but `(failureModeId, action)` differs
+      // (`promote` vs `revise`), which is the pair `mergeProposals` groups on (never `failureModeId`
+      // alone, never `target`). An implementation grouping by `failureModeId` alone folds these two
+      // into one, dropping the second write — the defect this fixture exists to catch.
+      const artifact = "pdlc/workflows/consolidate-learnings.js";
+      const id = failureModeId("P", artifact);
+      const promoteProposal = {
+        failureModeId: id, phase: "P", symptom: "guard-set subject, promote half", artifact, kind: 3,
+        target: targetFor(3, artifact, id), action: "promote", diff: "diff-promote", elidedKinds: [], elidedArtifacts: [],
+      };
+      const reviseProposal = {
+        failureModeId: id, phase: "P", symptom: "guard-set subject, revise half", artifact, kind: 3,
+        target: targetFor(3, artifact, id), action: "revise", diff: "diff-revise", elidedKinds: [], elidedArtifacts: [],
+      };
+
+      const merged = mergeProposals([promoteProposal, reviseProposal]);
+
+      expect(merged).toHaveLength(2);
+      expect(new Set(merged.map((p) => p.action))).toEqual(new Set(["promote", "revise"]));
+      // Neither survivor carries the other's diff — nothing was folded, so each record is exactly
+      // the proposal that produced it.
+      const byAction = Object.fromEntries(merged.map((p) => [p.action, p]));
+      expect(byAction.promote.diff).toBe("diff-promote");
+      expect(byAction.revise.diff).toBe("diff-revise");
+      expect(byAction.promote.elidedKinds).toEqual([]);
+      expect(byAction.revise.elidedKinds).toEqual([]);
+    });
   });
 });
