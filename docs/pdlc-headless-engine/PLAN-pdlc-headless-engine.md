@@ -483,4 +483,50 @@ by reading prose is not on this list.
 
 ## 9. Traceability — acceptance criteria to tasks
 
+Total over REQ v0.10's 26 acceptance criteria. Every criterion names the task that makes it pass and
+the task whose failing test proves it was not already passing.
+
+| AC | Red task | Green task(s) | Acceptance tests |
+|---|---|---|---|
+| AC-1.1 parity with a Claude Code run | T34 | T49, T39, T40 | AT-ENG-45, AT-ENG-46, AT-ENG-51 |
+| AC-1.2 the run observed at the filesystem level | T33 | T43, T46 | AT-ENG-47, AT-ENG-48, AT-ENG-50 |
+| AC-1.3 queue surface, both stop reasons | T31 | T39, T47 | AT-ENG-52…AT-ENG-56 |
+| AC-1.4 halt exits `2`, not `1` | T31 | T47 | AT-ENG-04 |
+| AC-1.5 not a fork | T10 | — (green at HEAD, strengthened by T10) | AT-ENG-49 |
+| AC-2.1 startup banner, six ordered auth rows | T06, T26 | T15, T41, T44 | AT-ENG-11, AT-ENG-13, AT-ENG-15 |
+| AC-2.2 key present without opt-in ⇒ refusal | T06 | T15, T44, T47 | AT-ENG-14 |
+| AC-2.3 proxy env reaches every dispatch | T22 | T36, T37 | AT-ENG-26, AT-ENG-27 |
+| AC-2.4 logged-in session, key ignored | T06, T20 | T15, T35, T40 | AT-ENG-16 |
+| AC-2.5 dispatch cwd is the repo, per dispatch | T20, T22 | T35, T36, T37 | AT-ENG-28 |
+| AC-3.1 a dispatch composes for every skill in the set | T24 | T38, T47 | AT-ENG-20, AT-ENG-24 |
+| AC-3.2 no plugin installed ⇒ legible refusal | T26 | T44 | AT-ENG-08, AT-ENG-10 |
+| AC-3.3 pinned model map, both directions | T50 | T48, T52 | AT-ENG-29, AT-ENG-30 |
+| AC-3.4 permission posture is explicit | T22 | T36, T42 | AT-ENG-31 |
+| AC-3.5 dispatchable ≡ readable, both directions | T07, T26 | T16, T39, T44 | AT-ENG-10 |
+| AC-4.1 six-member outcome taxonomy | T04 | T13, T19 | AT-ENG-33, AT-ENG-34 |
+| AC-4.2 retry budget and timeout cap | T21 | T45 | AT-ENG-35, AT-ENG-36, AT-ENG-37 |
+| AC-4.3 exhausted retries surface legibly | T21, T05 | T14, T45 | AT-ENG-38 |
+| AC-4.4 mid-run `auth-failure` is fatal, never retried | T21, T31 | T45, T47 | AT-ENG-39, AT-ENG-67 |
+| AC-4.5 report carries module fields + engine block | T32 | T40, T35, T47 | AT-ENG-58, AT-ENG-59, AT-ENG-60, AT-ENG-68 |
+| AC-5.1 guard refuses with `LEARNINGS` absent, per transport | T28 | T36, T37 | AT-ENG-41, AT-ENG-43, AT-ENG-44 |
+| AC-5.2 harvest's deletions succeed once it exists | T28 | T36, T37 | AT-ENG-42 |
+| AC-6.1 hermetic suite, observed | T02, T01 | T11, T12 | AT-ENG-63 |
+| AC-6.2 opt-in live smoke | — (flag-gated, §4's note) | T51 | AT-ENG-65 |
+| AC-6.3 per-transport recorded fixtures | T09, T23 | T18, T37 | AT-ENG-64, AT-ENG-22 |
+| AC-6.4 closed message catalogue, both directions | T05, T03 | T14, T19 | AT-ENG-61, AT-ENG-62 |
+
+**Constraints not reducible to a single AC.** C-11 (a host that cannot run the guard is not a host
+that runs pdlc unattended) is authorised in REQ v0.10 and specified as FSPEC v1.6's rung 4a with
+BR-GUARD-6, EC-START-10/11 and AT-ENG-11a. It has **no TSPEC section** — TSPEC v1.5 predates that
+FSPEC revision and still declares the ladder as "always all six" rungs with
+`RungRecord = { rung: 0..5 }` (`TSPEC:834`, `:840`). T27 and T44 implement it against FSPEC, which is
+the approved authority for observable behaviour, and the gap is raised as an erratum rather than
+absorbed silently: the `RungRecord` shape a TSPEC reader would build cannot represent rung 4a, so an
+implementer working from TSPEC alone would either drop the rung or renumber the ladder, and
+renumbering would break FSPEC's fixed rung numbers 0–5.
+
+C-9 (every runtime fact measured, per platform) is carried by T17's two-platform matrix and T42's
+per-platform `M-ENG-09` rows; C-4 (the modules are not forked) by T10 and the DoD's `git diff --stat`
+check; C-8 (closed message catalogue) by T05/T14/T19.
+
 ## 10. Risks, deferrals and open questions carried into implementation
