@@ -47,8 +47,56 @@ All five are on material **new in v1.1**. Nothing previously approved is re-liti
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-06 | §3.3's derived set is 10; `startup.mjs:20`'s `EXPECTED_SKILLS` is 17 prompt files over 15 skills, and rung 4 currently checks that wider set. Deleting it narrows rung 4's readability check by five skills (`consolidate-learnings`, `tech-lead`, `tech-lead-python`, the two orchestrator SKILLs). That is the correct reading of AC-3.5 — dispatchable ≡ readable, and those five are not dispatched by either module — but it is a deliberate *reduction* in what startup catches, and the TSPEC does not say so. Worth one sentence, so a later reader does not "restore" the missing five and reintroduce the declaration BR-START-4 forbids. |
+| Q-07 | §7.0's `_bootstrap.mjs` and `_assert-suite-wide.mjs` sit inside `__tests__/` but must not be discovered as test files. Under `node --test __tests__/` on node 20 they are not (neither matches the runner's naming patterns), so this works — but it works by filename convention, and a rename to `bootstrap.test.mjs` would silently make the bootstrap a test. Is the leading underscore load-bearing enough to state? |
+| Q-08 | §6.5's gate fails the hermetic suite when no M-ENG-09 row exists for the running platform, and §7.6 runs on ubuntu + macos. On a contributor's machine that is neither (a Linux distro reporting differently, or a container), does the gate fail on a platform key it will never have a row for? O-ENG-T4 opens the staleness predicate; this is the *unknown-platform* case, which is a different question. |
+
 ## Positive Observations
+
+- The revision did the hard version of every fix rather than the cheap one. §6.3's step 3 — "then
+  perform the deletion the callback's verdict permits" — is the single sentence that turns the whole
+  guard-parity suite from well-formedness checking into behaviour checking, and the allow-path
+  control that proves the harness *can* delete is the right way to prove it.
+- §5.1's predicate resolves F-05 without weakening R-ARCH-2, and the paragraph explaining why
+  `VERDICT: Needs revision` is a **successful** dispatch is the kind of reasoning that stops a future
+  implementer "improving" the classifier into a pipeline-aware one. The falsifying companion (token
+  mid-line ⇒ `ok`) is a transcription of the stated predicate, not an echo of an implementation.
+- §3.3's derivation is genuinely computed, and I verified it executes to exactly the claimed 10
+  against HEAD's `PHASE_DISPATCH`. Changing the oracle from "parse source" to "read imported data"
+  is the correct move: the property is now true by construction and the no-bare-literal test guards
+  only the one escape hatch (modulo F-19's exemption).
+- §7.7's insistence on a **populated** `.claude/workflows/` fixture — "an empty directory would
+  satisfy clause 3 for the wrong reason" — is exactly the instinct this review keeps asking for, and
+  it is applied here without being asked.
+- §4.6 answering a tunable question I did not raise (`queue.maxIterations` unbounded, with a test
+  asserting `runQueueLoop`'s own `100` is never the effective value) is a real catch: `run.mjs:273`'s
+  default and `bin/pdlc.mjs:304-305`'s `Infinity` do disagree, and a `bound-reached` report on a queue
+  the operator believed unbounded is precisely the silent failure that would follow.
+- §9.2's O-ENG-T2 correcting itself against HEAD (`withCwd` at `run.mjs:155` **does** `process.chdir`,
+  so the in-process case is settled by exclusion, not coherence) is a document arguing against its own
+  earlier claim on evidence. Verified: `run.mjs:158`.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both narrow, both on text added in v1.1, and neither on the design:
+
+1. **F-18** is the same shape as v1's F-03 one layer down — the replacement mechanism is right in
+   architecture and wrong in one detail I could measure in a minute. Fix where the run id is minted.
+2. **F-17** is a restatement error, not a design error: §7.4 states a stricter oracle than AC-3.3
+   asks for, and the stricter one is unwritable at HEAD because M-ENG-07's first row is a wildcard
+   and both `haiku` dispatch sites carry no label. Transcribing AC-3.3's own two directions resolves
+   it.
+
+The three Mediums/Lows are one sentence each. Everything v1 blocked on is genuinely resolved, and I
+checked the resolutions against the code rather than the changelog — the derivation executes to 10,
+the queue's corrected citations all resolve, and the guard oracle now has a falsifier per clause.
+One more round should close this.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 1}
