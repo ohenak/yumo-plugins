@@ -8774,7 +8774,292 @@ function dodReVerifyPrompt(featureName, version) {
   );
 }
 
-function dodRemediatePrompt(featureName, version) {
+// ─── DOD remediation routing: a finding goes to the skill that OWNS its target ─
+//
+// Phase DOD used to dispatch `se-implement` for EVERY CODE_REVIEW finding,
+// whatever the finding was about. That is a routing bug with a code-shaped
+// remedy attached to it: `se-implement` is a TDD implementation skill, so a
+// finding whose whole content is "FSPEC §3.3 describes a consumed pair that
+// stopped existing two commits ago" arrives at an agent whose instructions are
+// "write the failing test first, then the minimum production code". The only
+// ways out of that prompt are to improvise a document edit outside the skill's
+// remit, or to do nothing. Observed 2026-08-11 on pdlc-consolidation-agent:
+// CODE_REVIEW v6's sole finding (L1) was a documentation erratum whose Required
+// fix cell literally began `ERRATUM: FSPEC:`, and the loop dispatched
+// `se-implement` anyway.
+//
+// A document defect belongs to that document's AUTHOR. The routing below reads
+// the same two facts the rest of the module already agrees on — `ERRATUM_DOC_TYPES`
+// for the vocabulary, `PHASE_DISPATCH` (through `ERRATUM_PHASE_BY_DOC_TYPE`) for
+// who may write each document — so there is no second copy of "who owns FSPEC".
+//
+// The classification is FAIL-SAFE TOWARD TODAY'S BEHAVIOUR. Anything not proven
+// to target a spec document is a code finding, an unreadable or table-free
+// CODE_REVIEW yields no doc findings at all, and a review with no doc findings
+// produces the byte-identical `se-implement` dispatch it produced before this
+// existed.
+
+/**
+ * The findings-table header, exact-cell (same discipline as `parsePlanTasks`'s
+ * `PLAN_ID_HEADER_CELLS`: a header cell qualifies in full, never as a substring).
+ * The shipped grammar is dod-verify SKILL.md §1's
+ * `| # | Criterion | Severity | File:Line | Problem | Required fix | Scope |`;
+ * the alternates are the spellings the v1–v6 corpus and its neighbours actually
+ * use. Requiring BOTH a File:Line column and a Required-fix column is what keeps
+ * §2's traceability table (`# | Source | … | Gap? | …`) and the per-round
+ * disposition tables out of the parse.
+ */
+const DOD_FINDING_FILE_HEADER_CELLS = new Set([
+  "file:line",
+  "file line",
+  "file/line",
+  "file:lines",
+  "location",
+]);
+const DOD_FINDING_FIX_HEADER_CELLS = new Set([
+  "required fix",
+  "required-fix",
+  "required_fix",
+  "fix",
+  "remediation",
+]);
+const DOD_FINDING_ID_HEADER_CELLS = new Set(["#", "id", "no", "no.", "finding"]);
+
+/**
+ * The erratum marker as it appears INSIDE a Required-fix cell. Deliberately the
+ * same vocabulary as `parseErrata`'s line grammar (`ERRATUM_DOC_TYPES`) rather
+ * than a second list: a reviewer who writes `ERRATUM: FSPEC:` in a table cell
+ * and one who writes it on its own line mean the same thing.
+ *
+ * Not anchored to start-of-line, because a cell reads
+ * "`ERRATUM: FSPEC:` — re-anchor §3.3 to v2.8". Note what does NOT match:
+ * "raise it as an **ERRATUM** against REQ AC-6.1" (v5's K1) carries no
+ * `{DOCTYPE}:`, so it stays a code finding — which is correct, K1's remedy was
+ * a code change.
+ */
+const DOD_ERRATUM_CELL_RE = new RegExp(
+  `ERRATUM:\\s*(${ERRATUM_DOC_TYPES.join("|")})\\s*:`
+);
+
+/** Every file-path-shaped token in a table cell, backticks and emphasis stripped. */
+function dodFindingPathTokens(cell) {
+  const plain = String(cell ?? "").replace(/[`*_]/g, " ");
+  return plain.match(/[A-Za-z0-9_@][A-Za-z0-9_@./-]*\.[A-Za-z0-9]+/g) ?? [];
+}
+
+/**
+ * The doc type a File:Line token names, or `null` when it names anything else.
+ *
+ * A spec document is `docs/{feature}/{DOCTYPE}-{feature}.md` with `{DOCTYPE}` in
+ * the erratum vocabulary. When `feature` is supplied both segments must equal it,
+ * so a finding citing ANOTHER feature's FSPEC is not routed to this feature's
+ * author.
+ */
+function dodDocTypeForPath(token, feature) {
+  const m = /^docs\/([^/]+)\/([A-Za-z]+)-(.+)\.md$/.exec(String(token ?? ""));
+  if (!m) return null;
+  const [, dirSeg, docType, nameSeg] = m;
+  if (!ERRATUM_DOC_TYPES.includes(docType)) return null;
+  if (dirSeg !== nameSeg) return null;
+  if (feature && dirSeg !== feature) return null;
+  return docType;
+}
+
+/**
+ * The document one finding targets, or `null` for a code finding.
+ *
+ * Two signals, in priority order:
+ *
+ *  1. The Required-fix cell carries `ERRATUM: {DOCTYPE}:`. This is the reviewer
+ *     stating the routing explicitly, so it wins outright.
+ *  2. Otherwise the File:Line cell must name at least one path and EVERY path it
+ *     names must be the SAME spec document. A cell mixing a spec path with a code
+ *     path is a code finding: the code half needs `se-implement`, and a finding
+ *     dispatched to both skills would have two agents editing on one round.
+ */
+function dodFindingDocType(finding, feature) {
+  const marker = DOD_ERRATUM_CELL_RE.exec(finding.requiredFix ?? "");
+  if (marker) return marker[1];
+
+  const tokens = dodFindingPathTokens(finding.fileLine);
+  if (tokens.length === 0) return null;
+  let docType = null;
+  for (const token of tokens) {
+    const t = dodDocTypeForPath(token, feature);
+    if (t === null) return null;
+    if (docType !== null && t !== docType) return null;
+    docType = t;
+  }
+  return docType;
+}
+
+/**
+ * Classify a CODE_REVIEW's findings by the artifact they target.
+ *
+ * Pure, synchronous, total; takes no seam. Fenced regions are skipped
+ * (`scanLines`), so a CODE_REVIEW that QUOTES the findings-table template — as
+ * dod-verify's own SKILL.md does — cannot fabricate a finding.
+ *
+ * @param {string | null | undefined} codeReviewText
+ * @param {string} [feature] - scopes the `docs/{feature}/…` path rule
+ * @returns {{docFindings: Map<string, Array<object>>, codeFindings: Array<object>}}
+ *   `docFindings` is keyed by doc type and iterates in pipeline order
+ *   (`ERRATUM_DOC_TYPES`), not in table order.
+ */
+export function classifyDodFindings(codeReviewText, feature) {
+  const docFindings = new Map();
+  const codeFindings = [];
+  for (const finding of parseDodFindings(codeReviewText)) {
+    const docType = dodFindingDocType(finding, feature);
+    if (docType === null) {
+      codeFindings.push(finding);
+      continue;
+    }
+    if (!docFindings.has(docType)) docFindings.set(docType, []);
+    docFindings.get(docType).push({ ...finding, docType });
+  }
+  // Pipeline order, so a wave that touches REQ and FSPEC fixes REQ first.
+  const ordered = new Map();
+  for (const docType of ERRATUM_DOC_TYPES) {
+    if (docFindings.has(docType)) ordered.set(docType, docFindings.get(docType));
+  }
+  return { docFindings: ordered, codeFindings };
+}
+
+/**
+ * Every row of every findings table in a CODE_REVIEW, in document order.
+ *
+ * Block-segmented exactly like `parsePlanTasks`: contiguous runs of pipe rows
+ * are one table each, and a non-pipe line ends the run — so a non-qualifying
+ * table contributes nothing and cannot swallow the rows after it.
+ *
+ * @returns {Array<{id: string, criterion: string, severity: string, fileLine: string, problem: string, requiredFix: string, scope: string}>}
+ */
+function parseDodFindings(codeReviewText) {
+  const blocks = [];
+  let block = null;
+  scanLines(codeReviewText, (line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
+    }
+  });
+
+  const findings = [];
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const fileIdx = cols.findIndex((c) => DOD_FINDING_FILE_HEADER_CELLS.has(c));
+    const fixIdx = cols.findIndex((c) => DOD_FINDING_FIX_HEADER_CELLS.has(c));
+    if (fileIdx < 0 || fixIdx < 0) continue;
+
+    const findCol = (pred) => {
+      for (let i = 0; i < cols.length; i++) {
+        if (i === fileIdx || i === fixIdx) continue;
+        if (pred(cols[i])) return i;
+      }
+      return -1;
+    };
+    const idIdx = findCol((c) => DOD_FINDING_ID_HEADER_CELLS.has(c));
+    const criterionIdx = findCol((c) => c === "criterion" || c === "criteria");
+    const severityIdx = findCol((c) => c === "severity" || c === "sev");
+    const problemIdx = findCol((c) => c === "problem" || c === "finding");
+    const scopeIdx = findCol((c) => c === "scope");
+
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      // Skip the markdown separator row (|---|---|).
+      if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+      const at = (idx) => (idx >= 0 ? (cells[idx] || "").trim() : "");
+      const fileLine = at(fileIdx);
+      const requiredFix = at(fixIdx);
+      // A row with neither a target nor a remedy is a spacer, not a finding.
+      if (fileLine === "" && requiredFix === "") continue;
+      findings.push({
+        id: at(idIdx).replace(/\*/g, "").trim(),
+        criterion: at(criterionIdx),
+        severity: at(severityIdx),
+        fileLine,
+        problem: at(problemIdx),
+        requiredFix,
+        scope: at(scopeIdx),
+      });
+    }
+  }
+  return findings;
+}
+
+/**
+ * The skill that may WRITE one doc type — read out of `PHASE_DISPATCH` through
+ * `ERRATUM_PHASE_BY_DOC_TYPE`, exactly as the erratum protocol's step 4b does
+ * (`creator` where the phase has one, `optimizer` where it does not, because
+ * Phase R's REQ arrives already authored and `pm-author` is its only writer).
+ *
+ * REQ/FSPEC ⇒ `pm-author`; TSPEC/DECISIONS/PLAN ⇒ `se-author`;
+ * PROPERTIES ⇒ `te-author`. That table is not written down here on purpose:
+ * it is derived, so a change to `PHASE_DISPATCH` moves this with it.
+ */
+function dodDocAuthorSkill(docType) {
+  const phase = PHASE_DISPATCH[ERRATUM_PHASE_BY_DOC_TYPE[docType]];
+  if (!phase) return null;
+  return phase.creator ?? phase.optimizer ?? null;
+}
+
+/** One `- {id}: {problem} → {fix}` line per routed finding. */
+function dodFindingLines(items) {
+  return items
+    .map((f) => {
+      const head = f.id ? `${f.id}: ` : "";
+      const problem = f.problem ? `${f.problem}. ` : "";
+      const fix = f.requiredFix ? `Required fix: ${f.requiredFix}` : "";
+      const cite = f.fileLine ? ` (cited at ${f.fileLine})` : "";
+      return `- ${head}${problem}${fix}${cite}`.trim();
+    })
+    .join("\n");
+}
+
+/**
+ * The dispatch for the DOCUMENT half of a DoD round: a targeted, versioned edit
+ * to one spec document by that document's own author.
+ *
+ * Deliberately shaped like `erratumAuthorPrompt` rather than like
+ * `dodRemediatePrompt` — same "targeted edit, not a rewrite, do not re-litigate
+ * approved decisions" bar — because it is the same operation arriving through a
+ * different door. The document's approvers are NOT re-run here: Phase DOD's own
+ * gate is the next `dod-verify` round, which re-reads the document and either
+ * closes the finding or re-files it.
+ */
+function dodDocRemediatePrompt({ feature, version, docType, docPath, items }) {
+  return (
+    `DOCUMENT REMEDIATION for ${docPath} (feature ${feature}).\n` +
+    `The Definition of Done review docs/${feature}/CODE_REVIEW-${feature}-v${version}.md ` +
+    `filed the following finding${items.length === 1 ? "" : "s"} against this ${docType}:\n` +
+    `${dodFindingLines(items)}\n` +
+    `Read the CODE_REVIEW entries in full for context, then apply a targeted, versioned edit to ` +
+    `${docPath} that addresses exactly the items listed above and changes nothing else — do not ` +
+    `restructure, do not re-litigate approved decisions, do not expand scope. Verify each claim ` +
+    `against the code at HEAD rather than against the review's paraphrase of it. If the document ` +
+    `carries a version or changelog, bump it and record this edit there.\n` +
+    `Do NOT write production code and do NOT edit the CODE_REVIEW file. Commit and push the ` +
+    `document edit.\n` +
+    branchPinClause(feature)
+  );
+}
+
+/**
+ * @param {string} featureName
+ * @param {number} version
+ * @param {Array<object>} [routedDocFindings] - findings dispatched to a document
+ *   author on this same round. When empty (the code-only case, and every case
+ *   before this routing existed) the returned prompt is BYTE-IDENTICAL to the
+ *   original — the exclusion clause is additive, never a rewrite of the base.
+ */
+function dodRemediatePrompt(featureName, version, routedDocFindings = []) {
   return (
     `Address every finding in the Definition of Done code review for feature ${featureName}.\n` +
     `1. Read docs/${featureName}/CODE_REVIEW-${featureName}-v${version}.md — the latest DoD review.\n` +
@@ -8782,7 +9067,21 @@ function dodRemediatePrompt(featureName, version) {
     `Derive correct behavior from the TSPEC/FSPEC/PROPERTIES (REQ for intent).\n` +
     `3. Run the full test suite with branch coverage. All tests must pass.\n` +
     `4. Commit and push the fixes. Do NOT edit the CODE_REVIEW file.\n` +
-    branchPinClause(featureName)
+    branchPinClause(featureName) +
+    dodRoutedAwayClause(routedDocFindings)
+  );
+}
+
+/** The mixed-round exclusion: which findings someone ELSE is already fixing. */
+function dodRoutedAwayClause(routedDocFindings) {
+  if (!Array.isArray(routedDocFindings) || routedDocFindings.length === 0) return "";
+  const rows = routedDocFindings
+    .map((f) => `- ${f.id ? `${f.id} ` : ""}(${f.docType})`)
+    .join("\n");
+  return (
+    `\nEXCLUDED from your scope — these findings target specification DOCUMENTS and have already ` +
+    `been dispatched to each document's own author in parallel with you. Do not edit those ` +
+    `documents and do not attempt to fix these findings:\n${rows}`
   );
 }
 
@@ -8813,6 +9112,10 @@ export async function rebaseOntoDefault({ feature, _agent = agent, _log = log })
  * @param {number} [params.maxIterations]
  * @param {function} [params._agent]
  * @param {function} [params._log]
+ * @param {function} [params._readFile] - reads the round's CODE_REVIEW so the
+ *   remediation dispatch can route by target (`classifyDodFindings`). A read
+ *   that fails or returns nothing degrades to the pre-routing behaviour: one
+ *   `se-implement` dispatch with the original prompt.
  * @returns {Promise<{ passed: boolean, iterations: number, lastStatus?: object }>}
  */
 export async function dodVerifyLoop({
@@ -8820,6 +9123,7 @@ export async function dodVerifyLoop({
   maxIterations = DOD_MAX_ITERATIONS,
   _agent = agent,
   _log = log,
+  _readFile = defaultReadFile,
 }) {
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     _log(`DoD verification — iteration ${iteration}`);
@@ -8851,13 +9155,55 @@ export async function dodVerifyLoop({
       return { passed: false, iterations: iteration, lastStatus: status };
     }
 
-    // Dispatch remediation: se-implement addresses the findings recorded in this
-    // version's CODE_REVIEW file, then the next iteration re-verifies.
-    _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
-    await withDispatchRetry(
-      () => _agent("se-implement", dodRemediatePrompt(feature, iteration)),
-      { label: `DOD remediation, iteration ${iteration}`, emit: _log }
-    );
+    // Dispatch remediation, ROUTED BY TARGET: findings against a specification
+    // document go to that document's author, everything else to se-implement,
+    // and the next iteration re-verifies both halves. The read is best-effort —
+    // an unreadable CODE_REVIEW classifies as "no doc findings", which is the
+    // pre-routing dispatch exactly.
+    const codeReviewPath = `docs/${feature}/CODE_REVIEW-${feature}-v${iteration}.md`;
+    let codeReviewText = "";
+    try {
+      const text = await _readFile(codeReviewPath);
+      codeReviewText = typeof text === "string" ? text : "";
+    } catch {
+      codeReviewText = "";
+    }
+    const { docFindings, codeFindings } = classifyDodFindings(codeReviewText, feature);
+
+    const routedDocFindings = [];
+    for (const [docType, items] of docFindings) {
+      const skill = dodDocAuthorSkill(docType);
+      if (!skill) continue;
+      routedDocFindings.push(...items);
+      const docPath = `docs/${feature}/${docType}-${feature}.md`;
+      _log(
+        `Dispatching ${docType} document remediation to ${skill} for ` +
+          `CODE_REVIEW-${feature}-v${iteration} (${items.length} finding${
+            items.length === 1 ? "" : "s"
+          })`
+      );
+      await withDispatchRetry(
+        () =>
+          _agent(
+            skill,
+            dodDocRemediatePrompt({ feature, version: iteration, docType, docPath, items })
+          ),
+        { label: `DOD ${docType} remediation, iteration ${iteration}`, emit: _log }
+      );
+    }
+
+    // The code half. Skipped ONLY when every finding was routed to a document
+    // author — with nothing left for it to fix, an `se-implement` dispatch is an
+    // agent asked to write production code for a documentation erratum, which is
+    // the defect this routing exists to remove. In every other case, including a
+    // CODE_REVIEW this parse could not read, se-implement runs as it always has.
+    if (routedDocFindings.length === 0 || codeFindings.length > 0) {
+      _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
+      await withDispatchRetry(
+        () => _agent("se-implement", dodRemediatePrompt(feature, iteration, routedDocFindings)),
+        { label: `DOD remediation, iteration ${iteration}`, emit: _log }
+      );
+    }
   }
 
   // Should not reach here, but guard
@@ -12189,6 +12535,9 @@ export default async function main({
           feature: featureName,
           _agent: agentFn,
           _log: emit,
+          // The loop reads each round's CODE_REVIEW to route remediation by
+          // target; it uses the pipeline's read seam, not its own.
+          _readFile: readFileFn,
         });
         if (!dodResult.passed) {
           const detail =
