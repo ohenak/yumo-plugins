@@ -48,3 +48,42 @@ independently at HEAD:
 |----|----------|-------|---------|------------|
 | F-01 | Medium | Local | **The delta added three intra-document line citations and its own +35 lines invalidated two of them; both now land on a different property than the one they name.** `PROP-MRK-04's precedent at `:1018`` (`:482`) points at **PROP-MRK-01** — PROP-MRK-04 is at `:1053`. The re-quoted PROP-RTE-06 wording *"decides on causes rather than on terminal status"* is cited `:1082` (`:500`), which is inside **PROP-RTE-04** — the quoted sentence is at `:1117`. Both were **correct at the pre-delta blob** (`d1862bd9`: MRK-04 at `:1018`, the quoted line at `:1082`), so this is not inherited drift: the same commits that inserted the 16-line changelog block and the 5-line O-1 bullet moved the targets and did not re-measure. Third site, same class: the O-1 bullet cites PROP-COR-09 as `:458-476` (`:316`), but the set-equality sentence the bullet exists to advertise runs `:481-496` — a reader who follows the range stops one paragraph short of the material. The fix is mechanical and is three numbers: `:1053`, `:1117`, `:459-505`. Worth doing rather than tolerating, because these are exactly the pointers a T20/T31 implementer follows to find the precedent they are told to copy | §7 O-1 (`:316`), §4.2 PROP-COR-09 (`:482`, `:500`); targets at `:1053`, `:1117` |
 | F-02 | Medium | Local | **§10.4 hands PLAN T05's repair to the erratum channel, and §13.3 opens no row for it — so nothing routes it.** The new paragraph says the divergence *"is PLAN's to repair through the erratum channel, not this document's to fix"* (`:1686-1688`), which is the right call on ownership. But §13.3's list stops at errata 8 and 9, and the changelog states plainly *"no new erratum is raised"*. Erratum 9 does touch PLAN — T20's cell — and erratum 8 touches TSPEC, so the channel is live and the omission reads as an oversight rather than a decision. The consequence is concrete and lands in Phase I, not in review: T05 as PLAN writes it pins `11.5` / `2.0` and expects **99** over `:2089-2239`, all four superseded at HEAD (FSPEC 11.7, TSPEC 2.7, **100** over `:2116-2267` — I re-measured), and PLAN still closes *"the case is green the moment it is written"* (`PLAN:351`). An implementer who builds T05 from PLAN writes a case that reds on its first assertion against a conforming tree. §10.4 makes that legible after the fact; only an erratum row makes it repaired before dispatch. This document's part is one §13.3 item naming the four stale figures and their current values — the finding itself I route upstream as an `ERRATUM: PLAN` line, so the fix does not wait on this file | §10.4 (`:1683-1691`), §13.3 (`:1994`, items 8–9); `PLAN:351`, `PLAN:120-130` |
+
+## 4. Oracle-quality checks
+
+- **No implementation echoes.** Clean, and the delta strengthened this rather
+  than weakening it. The expected write set is a **literal transcription** —
+  `{docs/_decisions/.consolidation-lock}`, the path §10/PROP-SRC already pins in
+  `.gitignore` — not a value read back from the pass under test. The delta
+  explicitly refuses the two echo-shaped alternatives: it is not the double's
+  **call count** (which would track the implementation's take/release call shape),
+  and it is not *"nothing under `docs/_decisions/`"* (which would be derived from
+  the corpus layout). §10.4's version pins (`11.7` / `2.7`) remain literals read
+  from FSPEC/TSPEC front matter, and `PROP-TRC-01`'s *"the count is read, never
+  hard-coded"* clause is untouched — the 100 stays a documentation assertion, not
+  a test literal.
+- **No absence-only oracles.** My v8 F-01 was the one violation and it is gone.
+  The absence is now derived from an equality whose expected set is non-empty **by
+  construction on that Given**, with the construction argued from the release
+  table rather than asserted — the strongest available form, because it does not
+  depend on the test author remembering to add a control fixture. §7's O-1 roll
+  now lists the case, so the register of absence-paired oracles is complete rather
+  than one member short (that was pm-review's F-02, and it is the right place for
+  it: O-1 is the index an implementer scans, not a prose paragraph 170 lines down).
+- **Completeness is set-equality, not containment.** Held throughout. The new
+  conjunct is itself an equality, not a containment — a *surplus* recorded write
+  (a stray proposal file, a spurious guard-set edit) reds it just as a missing one
+  does, which is what `contains no CONSOLIDATION-PROPOSAL-*` would not have caught
+  in the surplus direction for any other path. `PROP-TRC-01`'s two-way register
+  equality is untouched and was not quietly relaxed to containment to make the
+  AT-K3b shortfall go away; the shortfall is still written down and still routed
+  as erratum 8. PROP-COR-09's conjunct (2) keeps its `renderConsumedPair` set
+  equality, and PROP-MRK-04's pathspec equality — the shape precedent — is
+  unchanged.
+
+## 5. Questions
+
+None. My v8 Q-01 asked which anchor the author intended for non-vacuity; the
+delta answers it in the document body rather than in a reply — the anchor is the
+marker path, the set is a path set, and take/release collapse to one member.
+That is the answer an implementer reads, which is where it needed to be.
