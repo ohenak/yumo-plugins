@@ -176,8 +176,10 @@ surfaces (§6.5, AT-ENG-24).
 | `--max-iterations <n>` | `queue --loop` | the opt-in iteration bound of BR-LOOP-2; a positive number, else a usage error (EC-Q-5). Shipped at `pdlc/engine/bin/pdlc.mjs:83`, parsed `:303`, rejected `:306-307` |
 | `--dry-run-skill <name>` | `dev`, `queue` with `--dry-run` | which skill's composed prompt the dry run prints (default `pm-author`); §6.3 fixes how the every-member assertion of §6.4 is reached over it |
 
-This table is the closed flag surface: a flag outside it is a usage error, and a flag the engine
-ships is a row here or a defect. **There is no transport selector.** In this feature every real
+This table is the closed flag surface: a flag outside it is a usage error (EC-CLI-7), and a flag the
+engine ships is a row here or a defect. This is red at HEAD: an unknown `--flag` is silently
+dropped, since `positionals()` skips any token starting with `--`
+(`pdlc/engine/bin/pdlc.mjs:62-75`), so `pdlc dev REQ.md --dry-runn` runs live today. **There is no transport selector.** In this feature every real
 run uses the primary transport; the fallback is exercised through recorded fixtures only (§12.4
 BR-VER-2), so "which transport ran" is answered by the report's `transport` field (§12.2) rather
 than chosen by the operator. Making the fallback runtime-selectable is O-1's, not this document's.
@@ -217,8 +219,9 @@ refusal (§5.2), and the per-dispatch auth abort (§5.3) exit `1`, because in al
 pipeline produced no verdict about the feature.
 
 **BR-EXIT-3 — `queue --loop` reports the worst iteration, under a total order.** "Worst" is
-`1` > `2` > `0`: an engine refusal in *any* iteration is the loop's exit code even if a later or
-earlier iteration halted; absent a refusal, any halted-or-blocked iteration yields `2`; only an
+`1` > `2` > `0`: an engine refusal in any iteration is the loop's exit code even if an earlier
+iteration halted — and it is always the *last* iteration, since BR-LOOP-4 stops the loop on a
+refusal; absent a refusal, any halted-or-blocked iteration yields `2`; only an
 all-`0` loop exits `0`. The order is total over the three codes, so a loop whose iteration 1 halts
 (`2`) and whose iteration 2 refuses (`1`) exits `1` — a broken host outranks a recorded pipeline
 outcome, because it is the one an operator must fix before the next cron slot. (§11.3 fixes what
@@ -234,6 +237,7 @@ the loop does *next* in each case, which is a separate decision from what it fin
 | EC-CLI-4 | `--force-phases` with a token the module rejects | the module's own refusal surfaces; the engine adds no token vocabulary of its own |
 | EC-CLI-5 | a value flag given with no value (`--cwd` as the last argument) | usage error, exit `1`; never silently treated as empty |
 | EC-CLI-6 | `--dry-run` on a repo whose plugin handshake fails | the handshake refusal wins (§4.2 ordering): a dry run is not a way to skip the gate |
+| EC-CLI-7 | a flag outside §3.2's table (a typo such as `--dry-runn`) | usage error naming the unknown flag, exit `1`; nothing resolved, nothing dispatched, never silently ignored |
 
 ### 3.5 Acceptance tests
 
@@ -243,7 +247,7 @@ the loop does *next* in each case, which is a separate decision from what it fin
 | AT-ENG-02 | `--flag value` and `--flag=value` produce identical composed descriptors (BR-CLI-1) |
 | AT-ENG-03 | a config file setting `auth.allowApiKeyBilling: true` changes nothing; only the flag does (BR-CLI-2) |
 | AT-ENG-04 | a halting fixture run exits `2` and a startup-refusal run exits `1`, on the same repo (BR-EXIT-1/2) |
-| AT-ENG-05 | EC-CLI-2…EC-CLI-6, one case each |
+| AT-ENG-05 | EC-CLI-2…EC-CLI-7, one case each — including the unknown-flag typo of EC-CLI-7, and the usage-error/refusal split of BR-REP-0a (EC-CLI-2 and EC-CLI-5 emit no report line; EC-CLI-3 does) |
 
 ## 4. FSPEC-ENG-02 — The startup gate ladder
 
