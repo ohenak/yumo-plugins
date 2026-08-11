@@ -156,3 +156,99 @@ Two contributing factors, neither sufficient alone:
   one, and the run report names only the false one.
 
 ## Recommendation
+
+**Do not re-author anything. Do not re-open C-11, DEC-ENG-03's retained half, or any DECISIONS
+entry. The branch already holds the converged DECISIONS, the landed REQ erratum and two approving
+confirmations of it.** What is missing is bookkeeping the halt pre-empted, one downstream sentence,
+and one erratum that never got dispatched.
+
+### Step 1 — Verify the contradiction yourself before clearing anything
+
+Three commands, all cheap; if any disagrees with this document, stop and re-diagnose:
+
+```
+grep -A1 "^VERDICT:" docs/pdlc-headless-engine/CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v8.md
+git log --oneline 96b8671a..HEAD -- docs/pdlc-headless-engine/
+git show --stat 6ff9871a
+```
+
+Expected: both files end `VERDICT: Approved with minor changes` / `{"high": 0, "medium": 1,
+"low": 1}`; the confirmations (`2d125f41`, `23a1a614`) are committed *after* the erratum edit
+(`6ff9871a`); the edit touches REQ only, `+31/−28`.
+
+### Step 2 — Append the approval anchors the halt skipped (se-author or operator)
+
+REQ's approvers confirmed v0.10, but the anchor append never ran, so REQ's recorded approval still
+pins v0.9's bytes. Append beneath the `## Verdict` section of **both** `…-REQ-v8.md` files — the
+sanctioned post-terminal write, which adds no second `VERDICT:` line:
+
+```
+APPROVAL-HASH: sha256:9176adf0e0f33b085bf238dc181741c7991315474d864c76673bb7e20c970957
+REVIEWED-COMMIT: 6ff9871a
+```
+
+The digest above is `shasum -a 256` over `REQ-pdlc-headless-engine.md` at HEAD; re-compute it
+before writing rather than trusting this line, and re-compute it again if Step 3 or 4 touches REQ
+(they should not). Commit pathspec-scoped to the two review files.
+
+### Step 3 — Update DEC-ENG-03's stale sentence, and only that sentence
+
+`DECISIONS:183-196` still asserts `grep -in "python\|interpreter"` returns "**zero hits in both**"
+and that its authority is pending. The REQ half of that is now false. This is the downstream half
+of the erratum wave, exactly as `se-review` flagged it: rewrite the sentence to cite **C-11
+(`REQ:284-298`)** as the landed authority for the startup refusal, keep the FSPEC half as still
+outstanding (verified: `grep -inE "python|interpreter"` over FSPEC returns zero hits at HEAD), and
+bump DECISIONS to v1.3 with a one-line change note naming this postmortem. Change no other entry,
+no alternative, no consequence table. Both DECISIONS approvers will see it in the confirmation
+round Step 5 opens.
+
+### Step 4 — Re-file the FSPEC erratum that never ran
+
+The rung-placement item (te `F-02`, pm `F-02`/`Q-01` in the DECISIONS v2 reviews) — whether the
+interpreter observation surfaces as rung 6, or as rung 5 redefined with per-cause ids, given
+BR-START-2's totality (`FSPEC:307-311`) and `RungRecord`'s pinned `rung: 0..5` (`TSPEC:834`,
+`:840`) — was queued behind the REQ round and discarded by the halt. It must be re-emitted as an
+`ERRATUM: FSPEC:` line in the re-run, or it is lost: nothing in the repository remembers a
+discarded erratum. The re-invocation's erratum budget is per-invocation, so the round is available.
+
+### Step 5 — Flip the marker with evidence, then re-invoke Phase D
+
+Set `RESOLVED: yes` in this file only after Steps 1–4 are on the branch, with the clearing commit
+naming what it verified. Then:
+
+```
+/pdlc:orchestrate-dev { "reqPath": "docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md", "forcePhases": "D" }
+```
+
+`forcePhases: "D"` overrides Phase D's recorded approval (necessary — Step 3 edits DECISIONS, which
+invalidates the v1.2 anchors anyway); it does **not** clear this POSTMORTEM, which is why the marker
+is flipped first. `deriveRoundWindow` reads the four existing DECISIONS cross-review basenames and
+opens round 3 against v1.3. Expect a cheap confirmation round, then the FSPEC erratum round — and
+expect the REQ erratum step to find nothing to route, because C-11 exists.
+
+### Step 6 — If the re-run halts the same way, stop and read the transcript
+
+A second spurious non-approval on artifacts that approve is not a phase problem; it is the runtime
+defect below, and no number of re-invocations will clear it. In that case the correct move is to
+fix `orchestrate-dev.js`'s erratum gate (countermeasure 1) rather than to spend another Phase D.
+
+### Durable countermeasures (route to LEARNINGS at harvest; not blocking this halt)
+
+1. **The erratum delta-confirmation gate should read both verdict carriers, like the review loop
+   does.** `orchestrate-dev.js:9343` should, on `malformed`, spend the same `recoverVerdict` call
+   the loop spends at `:5991`, and failing that read the confirmation file it just commissioned via
+   `extractFileVerdict` (`:4637`). A committed file that says "Approved with minor changes" must not
+   lose to an absent trailer. Fail-closed is right when there is no evidence; here there was.
+2. **A halt must name the evidence it read.** The reported reason says `non-approving: [se-review]`
+   and nothing else — not "trailer unparseable", not the file path it did or did not consult. Had
+   the message distinguished *rejected* from *unreadable*, this postmortem would have been one line
+   of triage. Halt reasons that decide a phase should carry the parse's provenance.
+3. **A halt on one upstream document silently drops the errata queued behind it.** `routeErrata`
+   throws mid-iteration over `ERRATUM_DOC_TYPES`; the FSPEC item vanished with no record. At
+   minimum the halt reason should enumerate the unrouted items so recovery does not depend on a
+   human re-reading round-2 cross-reviews.
+4. **Reviewer response trailers are the least durable of the three carriers, and the erratum path
+   is where they are load-bearing.** The project already knows this — the file-verdict rule exists
+   precisely because "the response trailer only feeds the loop inside the current invocation". The
+   erratum protocol was added later and did not inherit the lesson. Worth a project-level decision
+   that *every* gate deciding a phase reads the file, with the response as an accelerator only.
