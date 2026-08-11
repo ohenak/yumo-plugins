@@ -204,6 +204,109 @@ finally reports).
 
 ## 4. FSPEC-ENG-02 — The startup gate ladder
 
+### 4.1 The ladder
+
+Every command that can dispatch runs the same ladder before the workflow modules are asked to do
+anything, and `pdlc doctor` runs exactly this ladder and stops. The rungs, in order:
+
+| # | Rung | Passes when | On failure |
+|---|---|---|---|
+| 1 | **plugin resolved** | an installed pdlc plugin is located (or `--plugin-root` / the plugin-root environment override names one) | refusal naming what was searched and both overrides |
+| 2 | **plugin manifest readable** | the located plugin's manifest is present and parseable | refusal naming the manifest path and why it failed |
+| 3 | **version handshake (C-10)** | the plugin version satisfies the engine's declared compatible range | refusal naming the declared range, the version found (or "not found"), and the remedy |
+| 4 | **skill prompts readable** | every prompt file the run can need is present and non-empty (§4.4) | refusal naming each missing or unreadable identifier |
+| 5 | **billing posture** | the startup auth mapping of §5.1 does not land on the refusal row | refusal `auth.api-key-refused` naming the opt-in flag |
+
+**BR-START-1 — dispatch nothing until every rung passes.** No model call, and no probe of any kind,
+is made while the ladder is running; a failure at any rung ends the invocation with exit `1` and
+zero tokens billed. This is what makes a mis-installed machine cheap to discover.
+
+**BR-START-2 — the ladder is total and reports every rung, not the first failure.** Two broken
+things (say, an absent plugin *and* an API key with no subscription credential) produce one message
+listing both, because an operator fixing a cron host one round-trip at a time is the failure mode
+this rule exists to prevent. Rungs whose evidence is unavailable because an earlier rung failed
+report as *skipped, with the reason* — never as passing.
+
+**BR-START-3 — `doctor` is the same ladder, not a second implementation.** Any divergence between
+what `doctor` reports and what a run's start enforces is a defect: `doctor` exists to answer "will a
+run start here?" and only a shared ladder can answer that honestly.
+
+### 4.2 Ordering, and why it is fixed
+
+The order above is behavioural, not cosmetic. Two orderings in it are load-bearing:
+
+- **The plugin handshake precedes everything the modules do.** The engine must not import, let
+  alone run, the workflow modules on a machine whose plugin is missing or out of range, because a
+  partially-started pipeline can commit to a consumer repo (queue rows, POSTMORTEMs). Fail-closed
+  means *before the first side effect*, not merely before the first dispatch (C-10).
+- **The billing posture is the last rung, and a dry run does not skip it.** A `--dry-run` still runs
+  rungs 1–4 (it needs the plugin's bytes to compose anything) and still reports rung 5's finding,
+  but since it dispatches nothing it does not refuse on rung 5 alone — an operator may legitimately
+  inspect composed prompts on a machine that could not bill. This is the single point where the
+  dry-run path and the run path differ, and it is deliberate (EC-START-4).
+
+### 4.3 What a refusal says
+
+Every startup refusal is a catalogue entry (§12.3) and carries three things: **what was expected**,
+**what was found**, and **the remedy**. The handshake refusal is the worked example: the engine's
+declared compatible range, the plugin version found or "not found", and install/upgrade/downgrade
+guidance (AC-3.2). A refusal that names only the failure — "plugin incompatible" — does not satisfy
+this section.
+
+The banner and every run report carry `engineVersion` and `pluginVersion` **together, as a pair**,
+on success and on refusal alike (C-10). An operator debugging a surprising result reads the pair
+rather than inferring it, which is the entire mitigation R-6 offers for the skew axis C-10 opens.
+
+### 4.4 Rung 4: which skills must be readable
+
+AC-3.5 asks for **set-equality** between the skill identifiers the modules can dispatch and the
+skill prompt files present in the installed plugin, in both directions, checked before any dispatch.
+The intent — a missing or renamed prompt file is discovered at startup, not mid-run by the phase
+that needed it — is specified here as:
+
+- **Direction A (dispatchable ⊆ readable), enforced.** Every skill identifier a module can dispatch
+  has a present, non-empty prompt file in the located plugin, and the two `se-implement` language
+  supplements are present. A failure names each missing identifier and refuses (exit `1`).
+- **Direction B (readable ⊆ dispatchable), reported.** A prompt file present in the plugin that no
+  module dispatches is reported at startup and does **not** refuse.
+
+Direction B is stated as *report, not refuse*, because at HEAD the two sets are not equal and cannot
+be: the plugin ships prompt files the modules never dispatch (the operator-invoked entry and
+consolidation skills), so an equality gate would refuse on every correctly installed machine. This
+is a defect in AC-3.5's oracle rather than a decision this FSPEC may make on its own — it is raised
+as an erratum against the REQ, and §13 O-ENG-1 carries it. The count in AC-3.5's parenthetical is
+likewise a count of *files*, not of dispatchable identifiers.
+
+**BR-START-4 — the count is never the assertion.** Neither direction is expressed as "17" or any
+other number. A frozen list of names, or a count, passes on a plugin whose files have been renamed
+underneath it; the assertion is over identifiers derived from the modules and files found in the
+plugin at startup.
+
+### 4.5 Edge cases
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-START-1 | no plugin installed anywhere | rung 1 refusal naming both overrides; exit `1`, nothing dispatched (AC-3.2) |
+| EC-START-2 | plugin present, version outside the declared range | rung 3 refusal naming range, version found, remedy (AC-3.2) |
+| EC-START-3 | plugin present, manifest unparseable | rung 2 refusal naming the manifest path; never treated as "version unknown, proceed" |
+| EC-START-4 | `--dry-run` on a machine that would refuse on rung 5 only | composition proceeds and prints; rung 5's finding is reported, not fatal (§4.2) |
+| EC-START-5 | `--plugin-root` naming a directory with no skills tree | rung 1 passes on the override, rung 4 refuses naming every unreadable identifier |
+| EC-START-6 | a prompt file present but empty | treated as unreadable by rung 4 — an empty prompt would dispatch an agent with no role |
+| EC-START-7 | plugin ships a prompt file no module dispatches | reported, not refused (§4.4 Direction B) |
+| EC-START-8 | two rungs fail at once | one message lists both; skipped rungs report their reason (BR-START-2) |
+
+### 4.6 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-06 | rungs run in §4.1's order, and a rung-1 failure leaves rungs 2/4 reported as skipped-with-reason, never passing (BR-START-2) |
+| AT-ENG-07 | every failing rung refuses with exit `1` and zero dispatches attempted (BR-START-1) |
+| AT-ENG-08 | the handshake refusal text names range, found-version, and remedy (§4.3, AC-3.2) |
+| AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture (BR-START-3) |
+| AT-ENG-10 | Direction A refuses on a plugin missing one dispatchable skill's prompt file; Direction B reports without refusing on an extra file (§4.4) |
+| AT-ENG-11 | banner and run report both carry `engineVersion` and `pluginVersion` as a pair (§4.3) |
+| AT-ENG-12 | EC-START-3…EC-START-8, one case each |
+
 ## 5. FSPEC-ENG-03 — Auth posture: startup banner and the per-dispatch assertion
 
 ## 6. FSPEC-ENG-04 — Skill resolution and prompt composition
