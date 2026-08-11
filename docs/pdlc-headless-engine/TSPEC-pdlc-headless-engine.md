@@ -793,12 +793,23 @@ fields close that:
   carry `outcome: null, errorText: null` forever no matter how the in-memory object was mutated
   afterwards, `_assert-suite-wide.mjs` reads only the lines, and §7.4 row 4's terminal conjuncts
   would be unsatisfiable — red on correct code, with "loosen row 4" as the only available repair.
-  A dispatch that is **composed but never executed** — the inert transport behind `--dry-run`
-  (`bin/pdlc.mjs:173`, §3.4) — has no settlement, so its line is appended at composition with both
-  terminal fields `null`. That keeps FSPEC BR-MODEL-3's "a descriptor exists when a dispatch is
-  composed … no row depends on billed traffic" (`FSPEC:654-656`) true in both halves: every composed
-  dispatch produces exactly one line per attempt, and the corpus's settlements are fixture
-  transports (§7.2), never billed traffic. §7.4 states which line each row's predicate reads.
+  **Every recorded line is therefore a settlement line, without exception** (PM F-01/TE F-36).
+  There is no composition-time line and no line with `null` terminals: this design appends from the
+  `_agent` body alone (`lib/adapter.mjs:271`), and `composePrompt` is a **separate entry point**
+  (`lib/adapter.mjs:259`, exported at `:373`) that no accumulator hangs off. The one production
+  surface that composes without dispatching therefore writes nothing — `emitDryRun` calls
+  `adapter.composePrompt(skill, …)` **directly**
+  (`bin/pdlc.mjs:190`), never `_agent`, so no descriptor is stamped and no line is produced. Had
+  `_agent` been called on that adapter, `inertTransport().dispatch()` **throws**
+  (`bin/pdlc.mjs:98-104`), which settles as an error outcome — still a settlement line, still not a
+  `null` one. This is the upstream rule, not a local narrowing: FSPEC BR-MODEL-3 says a descriptor
+  exists when a dispatch is composed "so the whole corpus is reachable from hermetic fixture-driven
+  runs and no row of the map depends on billed traffic", and that "the dry-run surface is **not** a
+  way to reach it … it exercises at most one row and is never the corpus's source"
+  (`FSPEC:680-684`). Both halves hold here: every *dispatched* composition produces exactly one line
+  per attempt, and the corpus's settlements are fixture transports (§7.2), never billed traffic.
+  §7.4 states which line each row's predicate reads, and row 4's `F` is a settlement line by this
+  rule rather than by a condition it has to check.
 
 Neither field is engine-facing state: nothing in the run loop, the report projection or the exit-code
 mapping (§5.4) reads them. They are recorded fields, and §7.4 is their only consumer.
