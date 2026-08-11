@@ -392,6 +392,123 @@ adds.
 
 ## 4. Data Model
 
+Every shape here is engine-owned and in-memory. **The engine defines no persisted schema**: the
+pipeline's documents, cross-reviews, queue table and drift-state file remain exactly as the workflow
+modules write them (NG-7). The only bytes the engine adds to disk are the `engine` block inside the
+run report (§3.6) and, when the operator asks for it, the report file itself.
+
+### 4.1 `DispatchDescriptor` — what the adapter hands a transport
+
+```js
+{ skill: string,          // a member of the derived dispatchable set (§3.3)
+  label: string|null,     // the module's phase label, for logs and pause rows
+  prompt: string,         // composed: role line + role definition + supplements + task
+  model: string,          // verbatim from the module's opts.model; never defaulted here
+  cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
+  timeoutMs: number,      // dispatch.timeoutMinutes × 60 000
+  attempt: number }       // 0-based; 0 is the first try, not a retry
+```
+
+`model` passes through untouched (`adapter.mjs:271`): the modules own phase→model pinning
+(`MODEL_DEFAULT` `orchestrate-dev.js:1603`, `MODEL_IMPLEMENTATION` `:1646`, `MODEL_ADVISORY` `:1652`,
+`MODEL_ADVISORY_FALLBACK` `:1653`, `MODEL_QUEUE` `orchestrate-queue.js:70`). An engine-side default
+would silently re-price a phase, so there is none — an absent `model` is passed as absent and the
+transport omits the option (`transport.mjs:176`).
+
+### 4.2 `DispatchResult` and `Outcome`
+
+```js
+DispatchResult = {
+  text: string,                 // the assistant's final text, verbatim
+  sessionId: string,
+  costUsd: number,
+  usage: object,
+  rateLimitEvents: object[],    // every rate_limit_event seen in the stream
+  apiKeySource: string|null,    // from system/init; null when never reported
+}
+```
+
+`_agent` returns `result.text` alone (`adapter.mjs`, §3.1) — the modules parse prose, and widening
+that return would let a module start depending on transport internals.
+
+```js
+Outcome = "ok" | "retryable" | "timeout" | "auth-failure"
+        | "transport-contract-violation" | "agent-reported-failure"    // AC-4.1
+```
+
+Exactly six members, frozen, exported once. **Set-equality is asserted in both directions** — every
+classifier branch yields a member, and every member is produced by some fixture — so neither an
+unclassified error nor a dead member can survive (§5.1).
+
+### 4.3 `AuthPosture` and `StartupResult`
+
+`AuthPosture` is §3.2's return: `{ row, catalogueId, refuses, evidencePath }`, plus the resolved
+`apiKeySourcePolicy` the transport will enforce per dispatch. The startup posture (C-1a) and the
+per-dispatch assertion (C-1b) share the catalogue id but are separate observations: agreement between
+them is a checked property, not an assumption (a run may start on row 1 and observe a key mid-run).
+
+```js
+StartupResult = {
+  ok: boolean,
+  rungs: RungRecord[],     // always all six, 0..5, in order
+  banner: string,
+  pluginRoot: string|null,
+  pluginVersion: string|null,
+  reason: string|null,     // catalogue id + detail of the first failing rung
+}
+RungRecord = { rung: 0..5, name: string, state: "pass"|"fail"|"skipped", detail: string|null }
+```
+
+**The ladder is total** (BR-START-1): a rung after a failure records `"skipped"` with the reason it
+was skipped, never absence. `pdlc doctor` prints the same array — the mechanism is one function, so
+the diagnostic and the gate cannot diverge. HEAD's `runStartupChecks` (`startup.mjs:60`) returns
+`{ok, banner, pluginRoot, pluginVersion, reason}` and pushes free-text check lines; the change is to
+make the records structured and to add rungs 0 (args/cwd) and 5 (billing posture), keeping the string
+banner as a rendering of the array (`formatStartup`, `:145`).
+
+Rung 4's `EXPECTED_SKILLS` frozen literal (`startup.mjs:20`) is deleted, replaced by the derived set
+(§3.3) — the constant is the declaration BR-START-4 forbids.
+
+### 4.4 `PauseRow`, `DenialRow`, `DispatchCounts`
+
+`PauseRow` exists at HEAD (`adapter.mjs`, pushed on `RateLimitedError`) and is unchanged:
+
+```js
+{ timestamp, skill, label, attempt, waitedMs, rateLimitType, status, resetsAt, retryAfterMs }
+```
+
+It is append-only and run-scoped: a pause is evidence of what the account did, so rows are never
+coalesced or trimmed. `rateLimitType` and `status` carry the SDK's own vocabulary verbatim
+(`"five_hour"`, `"rejected"` — SPIKE §3), never a normalised synonym, so the report can be read
+against Anthropic's semantics rather than the engine's.
+
+`DenialRow` records permission denials (`{ timestamp, skill, tool, reason }`); `DispatchCounts` is
+`{ [skill]: number }`. Both feed the report, neither feeds a decision.
+
+### 4.5 The `engine` report block
+
+```js
+report.engine = {
+  engineVersion, pluginVersion, pluginRoot,
+  transport: "agent-sdk" | "cli",          // observed choice, §3.6
+  authSources: [{ skill, label, attempt, apiKeySource }],   // per dispatch, AC-4.5
+  baseUrl: string|null,                    // ANTHROPIC_BASE_URL, or null when direct
+  startup: RungRecord[],
+  pauses: PauseRow[], denials: DenialRow[], dispatches: DispatchCounts,
+  outcomes: { [Outcome]: number },         // all six keys, zeros included
+  startedAt, finishedAt,
+}
+```
+
+Two conventions this repo already relies on carry over. **Counts are present-and-zero, never absent**,
+so a quiet run and a broken counter are distinguishable (the advisory tier's all-zero rows make the
+same distinction). And **provenance is observation, never verdict**: `transport`, `authSources` and
+`baseUrl` record what happened; nothing in the block is derived from what the engine intended.
+
+`stampReport` places all of this under the single `engine` key of the module's own report object, so
+`outcome`, `phase`, `prUrl`, `ciStatus` and every other module field reach the operator byte-identical
+to a Claude Code run (AC-1.1, `orchestrate-dev.js:6190`).
+
 ## 5. Error Handling
 
 ## 6. Guard Parity Design
