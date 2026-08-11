@@ -1648,16 +1648,43 @@ because they are what F-26 asked for:
 - **It reads no ordering beyond `B.seq > F.seq`.** That conjunct is a direction, not an adjacency —
   it holds no matter how many dispatches interleave, so TE F-23's flakiness cannot return through it.
   The `seq` values themselves are compared, never counted.
-- **`F.outcome !== "ok"` is a recorded classification, not an inference.** The `fable` dispatch
-  rejects, so the adapter stamps `classifyOutcome`'s member and the verbatim message (§4.1). The
-  harness matches `errorText` against the literal string its own fixture injects — a transcription of
-  the fixture, not an import of `MODEL_ERROR_RE` (`orchestrate-dev.js:1780`), which would make the
-  test agree with the module by construction.
+- **`F.outcome` names the exact member, and the member is derived from the spec** (TE F-32). The
+  `fable` dispatch rejects, so the adapter stamps `classifyOutcome`'s member and the verbatim
+  message (§4.1). Which member is decidable from §5.1 without reading the classifier: a
+  model-resolution rejection is none of the three named transport classes (`AuthPolicyError`,
+  `RateLimitedError`, `TimeoutError`), so `classifyThrown`'s unrecognised arm maps it to
+  `TransportError` (`transport.mjs:123`) and §5.1's table maps that to
+  **`transport-contract-violation`**. Row 4 therefore pins the literal member rather than the
+  complement of `ok`: `!== "ok"` would also pass a fixture that regressed into injecting a timeout or
+  an auth failure, i.e. a run that never exercised model resolution at all. If run iv's fixture is
+  ever changed to inject a rejection of a different class, the row's literal is what makes the change
+  visible instead of silently absorbed.
+- **The failure half is paired with a positive conjunct on the same record**, so the pair is not an
+  absence-only oracle: `F.errorText` must contain the literal string the fixture injects — a
+  transcription of the fixture, not an import of `MODEL_ERROR_RE` (`orchestrate-dev.js:1780`), which
+  would make the test agree with the module by construction.
+- **The pair reads settlement lines, and retries do not disturb it** (PM Q-02, TE Q-14). One line is
+  appended per *attempt* (§4.1), so a rate-limit retry of the `fable` rung appends a second
+  `F`-shaped line under the shared `seq`; the predicate is existential, so extra `F` candidates can
+  only help it, and no count of `fable` failures is asserted — counting would couple the row to the
+  seam's retry scheduling, which is the flakiness TE F-23 removed. `promptHash` is the digest of the
+  descriptor's `prompt` field, i.e. the **composed** prompt `composePrompt(skill, prompt)` produces
+  (`adapter.mjs:273`), not the module's raw argument (TE Q-13); the fallback re-dispatch composes the
+  same skill and the same raw prompt, so the two hashes agree by construction of `dispatchAt`
+  (`orchestrate-dev.js:1840-1842`).
 
-**The fifth suite-wide assertion is the pre-phase bucket: `byPhase["(no phase)"]` is absent or `0` on
-every run-shaped test** (§4.1, PM Q-01/TE Q-10). It is a row of the property table above, not a note
-beneath it (TE F-29), so the table, §8.3's row for `_assert-suite-wide.mjs` and the module itself
-enumerate the same five things. It rides the model-map accumulator rather than owning one, because `phase` is already on
+**The fifth suite-wide assertion is the pre-phase bucket, and it is written over records rather than
+over the report** (§4.1, PM Q-01/TE Q-10). The predicate `_assert-suite-wide.mjs` implements is **no
+record with `corpusRun != null` has `phase === null`**; `byPhase["(no phase)"]` is the reader-facing
+gloss, and it is a gloss because `byPhase` is §4.4's *report* projection — `"(no phase)"` is the key
+that projection substitutes for `null`, and it never appears in a `.jsonl` line (PM F-03, TE F-35).
+Two fields carry the scope, and both are on every record: `corpusRun` is harness-supplied (it names
+which of the five run configurations is executing), so `corpusRun != null` is exactly "this record
+came from a run-shaped test" and excludes the unit tests that construct an adapter directly and
+dispatch without announcing a phase (PM F-02) — those legitimately record `phase === null` and must
+not turn the row red. It is a row of the property table above, not a note beneath it (TE F-29), so
+the table, §8.3's row for `_assert-suite-wide.mjs` and the module itself enumerate the same five
+things. It rides the model-map accumulator rather than owning one, because `phase` is already on
 every record. Listing it makes it an assertion rather than a reported number nobody fails on — the
 first dispatch that drifts ahead of its phase banner is red.
 
@@ -1672,8 +1699,11 @@ that is the shape of strengthening a later author is most likely to attempt.
 
 Its corpus is M-ENG-07's own: the union of **five run configurations** (dev healthy path, queue,
 advisory seam, advisory fallback, and the two `haiku` recovery paths), because no single run
-exercises every row. A descriptor is recorded when a dispatch is *composed*, whether or not a model
-call is executed, so no row depends on billed traffic. **The instrument is the fixture-driven run,
+exercises every row. **A descriptor exists for every dispatch that is *composed*, whether or not a
+model call is executed, so no row depends on billed traffic** (FSPEC BR-MODEL-3) — with the write
+timing §4.1 fixes: the line is appended at **settlement**, one per attempt, so it carries the
+terminal `outcome`/`errorText` rows 3 and 4 read; a composed dispatch that never executes (the inert
+transport) is appended at composition with those two fields `null`, which no row's predicate matches. **The instrument is the fixture-driven run,
 recorded through §7.0's observation seam — not `--dry-run-skill`** (PM Q-03): that flag selects which
 single skill's composed prompt is printed (`FSPEC:190`), a one-prompt surface, whereas every row here
 needs a whole run's worth of descriptors, rows 1 and 2 need a run's full phase context, and row 4
