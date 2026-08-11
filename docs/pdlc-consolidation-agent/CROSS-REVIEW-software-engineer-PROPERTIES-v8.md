@@ -54,7 +54,34 @@ implementer no new double (`TSPEC:2460` binds `_writeFile` to `fakeFs`).
 
 ## 4. Oracle-quality checks on what changed
 
+Three standing checks, run over the delta only:
+
+- **No implementation echoes.** The new text transcribes `FSPEC:2210`'s
+  Then-conjuncts and `TSPEC:2929`'s file assignment as literals; the re-pinned
+  `11.7` / `2.7` are read off the FSPEC and TSPEC `Version` cells, which are the
+  spec, not the code under test. The count remains **read at run time, never
+  hard-coded** — `PROP-TRC-01`'s *"the count is read, never hard-coded"* clause
+  is untouched, and the re-measured 100 is documentation of what the assertion
+  should produce, not a literal the test asserts. That distinction is the one
+  that matters here and the revision keeps it.
+- **No absence-only oracles.** One violation, F-01: the reclaimed
+  `no CONSOLIDATION-PROPOSAL-{passId}.md` conjunct has no positive assertion on
+  the same channel. The delta's other negatives are clean — *"no reason code
+  minted"* and *"the rendered pair's basename list is empty"* sit against
+  `|un-consolidated|` is **2**, both basenames named in the report body, and
+  terminal status exactly `no-op`, all on the same fixture.
+- **Completeness is set-equality, not containment.** `PROP-TRC-01`'s two-way
+  equality is intact and was not quietly relaxed to containment to make the
+  AT-K3b shortfall go away — the revision did the opposite, keeping the equality
+  and writing down that it reds until erratum 8 lands. §12.4's AT-K row is a
+  per-id assignment, not an oracle, so it carries no equality obligation of its
+  own.
+
 ## 5. Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: is there a reason the marker path is *not* the non-vacuity anchor you want — e.g. do you read §7.3's take as reaching `_writeFile` before the corpus is classified, so an implementation that failed earlier would still record it? If so, say which write you would rather anchor on; any recorded write on this Given does the job, and I have no preference between them. |
 
 ## 6. Positive Observations
 
