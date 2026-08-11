@@ -438,22 +438,44 @@ createTransport({ queryFn, env, apiKeySourcePolicy, defaultTimeoutMs, permission
 
 **This four-key options object is the whole transport-facing boundary.** The boundary test is a
 **two-part contract, not a set-equality over one instance** — the distinction matters because the
-four keys are not all present on any real dispatch. `model`, `timeoutMs` and `maxTurns` are each
-assigned only when defined (`adapter.mjs:278-281`), and §4.1 records that `maxTurns` is never set by
-any module, so no dispatch this feature can produce carries all four. An instance-level set-equality
-would fail on every dispatch. Both halves are therefore stated:
+four keys are not all present on any real dispatch. `model` and `maxTurns` are assigned only when
+defined (`adapter.mjs:279`, `:281`), and §4.1 records that `maxTurns` is never set by any module, so
+no dispatch this feature can produce carries all four. An instance-level set-equality would fail on
+every dispatch. Both halves are therefore stated:
 
 | Half | Assertion | What it catches |
 |---|---|---|
 | containment | every key observed on any `dispatchOpts` is a member of the permitted set `{ model, cwd, timeoutMs, maxTurns }` | a fifth key leaking across the boundary — the completeness half, and the reason this is not merely a spot check |
-| presence | `cwd` is present on **every** dispatch | the per-dispatch cwd discipline §2.3 depends on; `cwd` is the one unconditional key (`adapter.mjs:278`) |
+| presence | `cwd` **and** `timeoutMs` are present on **every** dispatch | the per-dispatch cwd discipline §2.3 depends on, and the effective-timeout guarantee §4.6/BR-CLI-3 depend on (see below) |
 
-So it is set-equality against the *permitted* set, asserted as containment plus one required key —
+**`timeoutMs` is engine-supplied on every dispatch; `maxTurns` is the one declared-but-unreachable
+key** (PM F-01). v1.2 said in two places what could not both be true: §3.4 grouped `timeoutMs` with
+the conditionally-assigned keys, while §4.1 and §4.6 declared it always present and derived from
+`dispatch.timeoutMinutes`. §4.1 and §4.6 are the ones kept, because §4.6's tunable is only honest if
+it reaches the dispatch. No workflow module passes `timeoutMs`, so HEAD's adapter assigns it only when
+an opts field carries it (`adapter.mjs:280`) — i.e. never; under that reading the operator's resolved
+timeout would never leave `resolveTunables`, every dispatch would run on `createTransport`'s
+constructor default (`transport.mjs:152`, `timeoutMs = defaultTimeoutMs`), and `tunables.timeoutMinutes`
+(§4.5, BR-CLI-3) would report an effective value nothing enforced. **The adapter therefore stamps
+`timeoutMs` = the resolved `dispatch.timeoutMinutes` × 60 000 onto the options object of every
+dispatch**, overriding nothing the modules pass (they pass nothing) and leaving the transport's own
+default as a construction-time fallback no run-shaped path reaches. That assignment is part of §8.3's
+edit surface.
+
+**The presence half asserts key presence; the `cwd` *value* is asserted elsewhere** (TE Q-09) — a
+division of labour, not an omission. `adapter.mjs:278` builds `{ cwd }` unconditionally, so the key
+exists even when the value is `undefined` (§4.1 types it `string|undefined`), and presence alone would
+stay green on a run where the cwd discipline had silently degraded. AC-2.5's test owns the value: the
+resolved repo root reaching the transport per dispatch (§2.3, `run.mjs:155`). This row is therefore
+not the whole guarantee, and the same split applies to `timeoutMs` — presence here, *effective value
+equals the reported tunable* in §4.6's test.
+
+So it is set-equality against the *permitted* set, asserted as containment plus the two required keys —
 never equality against the keys of a single call. §4.1's `DispatchDescriptor` is a strictly wider
 *adapter-internal* shape: `skill`, `label` and `attempt` stay adapter-local (`adapter.mjs:272`,
 `:285`) and are never handed to a transport, which is why HEAD builds `dispatchOpts` as
-`{ cwd }` plus the three optional keys (`adapter.mjs:278-281`) rather than forwarding the
-descriptor. The two enumerations are deliberately different and §4.1 names which is which.
+`{ cwd }` plus conditional keys (`adapter.mjs:278-281`) rather than forwarding the
+descriptor — this design keeps that build and adds the engine-stamped `timeoutMs` to it. The two enumerations are deliberately different and §4.1 names which is which.
 
 `createTransport` (`transport.mjs:135`) and its `dispatch` JSDoc (`:143-150`) already declare exactly
 this shape at HEAD; the SDK implementation is the one that exists. **Both implementations return the
