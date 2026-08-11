@@ -122,9 +122,9 @@ describe("T05 — traceability set-equality (FSPEC §13 register ↔ TSPEC §12.
     expect(tspec.ids.size).toBeGreaterThan(0);
   });
 
-  test("version pin: FSPEC reads 11.5 and TSPEC reads 2.1", () => {
-    expect(fspec.version).toBe("11.5");
-    expect(tspec.version).toBe("2.1");
+  test("version pin: FSPEC reads 11.7 and TSPEC reads 2.8", () => {
+    expect(fspec.version).toBe("11.7");
+    expect(tspec.version).toBe("2.8");
   });
 
   test("every FSPEC register id has exactly one TSPEC §12.3 file (register ⊆ table)", () => {
