@@ -472,7 +472,16 @@ new reason code, no vocabulary row — asserted rather than assumed. A second fi
 carries the **all-unreadable corpus** (TSPEC §10.3 row 1b): terminal status is exactly `no-op` —
 **not** `failed`, the adjacent branch an implementer is most likely to reach for, and not `refused` —
 the rendered pair's basename list is **empty**, `|un-consolidated|` is **2**, and both basenames are
-named as unread in the report body. That second fixture **is `AT-K3b`'s oracle** (`FSPEC:2210`, minted
+named as unread in the report body. The pair is **not** the only surface asserted, and reading it
+alone is what let the narrowing land in `renderConsumedPair`'s argument while `state.consumed` kept
+the unreadable members: **all four** surfaces that render a pass's consumed set are asserted to
+agree — the persisted pair, `result.consumed`, the **durable terminal row** written into the same log
+file two appends later, and **report item 3**, which *is* AC-7.1's *LEARNINGS consumed by basename*
+and is the surface AT-K3b's Then actually names. Item 3 empty while the un-consolidated set is
+non-empty is REQ §4b's discriminator against a quiet week (both empty), so an oracle that never reads
+item 3 cannot discharge §4b at all. Each is read as a **located line** (item 3 by its `3. consumed:`
+opener, the terminal row by its own `pass:` opener rather than by append index), so a missing line
+fails rather than passing vacuously as an empty list. That second fixture **is `AT-K3b`'s oracle** (`FSPEC:2210`, minted
 in FSPEC v11.7): its Given — *"a corpus whose enumerated basenames are all unreadable on disk…, with
 nothing else to promote"* — and its Then — terminal `no-op`, the consumed pair appended **empty**, and
 **no** reason code minted for the condition — are the four observables above, so the register id is
@@ -967,6 +976,26 @@ proposal (AT-A2). **Present with ≥ 1 entry** ⇒ both AC-6.2 and AC-6.3 are li
 are distinct because absence of the file is never absence of escalations: the tier could not
 escalate, which is not the same as the seams having worked. *L1 · `consolidationAdvisory.test.js` ·
 T18 → T27 · AC-6.1 · AT-A1, AT-A2.*
+
+**PROP-ADV-01b** — *Both reason codes are **minted on the pass**, not merely derivable from the
+corpus state.* AT-A1 and AT-A2 name `no-advisory-corpus` and `advisory-corpus-empty` in their titles
+but assert only `corpusState`, `entryCount` and the seam-proposal negatives, all at L1 over
+`parseEscalations`. **A reason code named in a test title is not a tested reason code**: with no
+oracle over `result.reasons`, a step-10 gate that withheld both codes on every quiet week shipped
+green. So each code additionally has an oracle **through `main()`**, on `result.reasons`, and the
+fixtures are chosen so the *predicate* is what is under test rather than step 10 as a whole: (i) an
+**empty** corpus with `ESCALATIONS.md` absent — AC-1.4's quiet week, and on this repo's shipping
+default the only kind there is — still records `no-advisory-corpus`; (ii) a **readable, non-empty**
+corpus with the file absent records it too, as (i)'s control, so a gate keyed on readability greens
+one and reds the other; (iii) a present-but-entryless file records `advisory-corpus-empty` **and not**
+`no-advisory-corpus`; and (iv) the single withheld state — enumeration returned ≥ 1 basename and
+**none** was readable (TSPEC §12.2 v2.8's all-unreadable pass) — mints neither, on the *same* absent
+`ESCALATIONS.md` as (i) and (ii) so readability is the only difference between the positives and the
+negative. Correspondingly, AT-K3b's own fixture asserts its reason set empty on a corpus that is
+**present and non-empty**: on an absent one, BR-38's code is legal there, and "no reason code **for
+the condition**" read as "no reason codes at all" is what bent the implementation into withholding
+BR-38 everywhere. *L2 · `consolidationPass.test.js` · AC-6.1, BR-38, E-30, S-13, TSPEC §10.3 rows
+15–16 · AT-A1, AT-A2, AT-K3b.*
 
 **PROP-ADV-02** — *A stock repository cannot propose widening.* On a repo where the tier never ran,
 the pass does **not** propose widening any of the five `ADVISORY_SEAMS`

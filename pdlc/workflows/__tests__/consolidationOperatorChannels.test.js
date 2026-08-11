@@ -87,6 +87,16 @@ function runPass(overrides = {}) {
   return { run: () => main(seams), fs, git, ghRun, agent };
 }
 
+/**
+ * A minimal readable LEARNINGS body for a corpus path. TSPEC §12.2 v2.8 makes readability
+ * the difference between a consumed entry and an un-consolidated one, so any fixture whose
+ * subject is "what this pass consumed" has to supply bodies rather than only a listing.
+ */
+function learningsBody(path) {
+  const feature = /LEARNINGS-(.+)\.md$/.exec(path)?.[1] ?? "unknown";
+  return `# LEARNINGS — ${feature}\n\n## 1. Domain / architectural invariant\nAn invariant recorded by ${feature}.\n`;
+}
+
 /** The bytes appended to the log — the terminal row lives in here, and it is the operator's
  * other channel. Read from the fake's append record rather than reconstructed. */
 function appendedLogText(fs) {
@@ -303,19 +313,19 @@ describe("AC-3.2(i) — the per-promotion `source:` line is the promotion's own,
       "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
       "gh pr create": { ok: true, stdout: "https://github.com/kaneho/yumo-plugins/pull/42\n" },
     });
+    const CORPUS = [
+      "docs/feat-alpha/LEARNINGS-feat-alpha.md",
+      "docs/feat-beta/LEARNINGS-feat-beta.md",
+      "docs/feat-gamma/LEARNINGS-feat-gamma.md",
+    ];
     const pass = runPass({
       ghRun,
-      git: fakeGit({
-        "ls-files": {
-          ok: true,
-          stdout:
-            [
-              "docs/feat-alpha/LEARNINGS-feat-alpha.md",
-              "docs/feat-beta/LEARNINGS-feat-beta.md",
-              "docs/feat-gamma/LEARNINGS-feat-gamma.md",
-            ].join("\n") + "\n",
-        },
-      }),
+      // The three files are READABLE. This row's subject is which consumed features a
+      // promotion cites, so its corpus has to be consumed: under TSPEC §12.2 v2.8 an
+      // enumerated-but-unreadable entry is not consumed at all, and provenance drawn from
+      // one would attribute a promotion to a LEARNINGS the pass never opened.
+      files: Object.fromEntries(CORPUS.map((p) => [p, learningsBody(p)])),
+      git: fakeGit({ "ls-files": { ok: true, stdout: CORPUS.join("\n") + "\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply([
@@ -618,6 +628,13 @@ describe("AC-7.1/AC-2.3 — a pass that promotes and correctly declines a coinci
 // PM G-03 — `promotionSources` matches whole feature names, not substrings
 // ═══════════════════════════════════════════════════════════════════════════
 describe("AC-3.2(i) — a promotion's cited sources are not widened by a prefix-related feature name", () => {
+  // `feat-a` is a strict prefix of `feat-alpha`, and the evidence names only the former.
+  const PREFIX_CORPUS = [
+    "docs/feat-a/LEARNINGS-feat-a.md",
+    "docs/feat-alpha/LEARNINGS-feat-alpha.md",
+    "docs/feat-beta/LEARNINGS-feat-beta.md",
+  ];
+
   test("evidence naming `feat-a` cites LEARNINGS-feat-a.md and not LEARNINGS-feat-alpha.md", async () => {
     const ghRun = fakeGhRun({
       "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
@@ -628,14 +645,13 @@ describe("AC-3.2(i) — a promotion's cited sources are not widened by a prefix-
       git: fakeGit({
         "ls-files": {
           ok: true,
-          stdout:
-            [
-              "docs/feat-a/LEARNINGS-feat-a.md",
-              "docs/feat-alpha/LEARNINGS-feat-alpha.md",
-              "docs/feat-beta/LEARNINGS-feat-beta.md",
-            ].join("\n") + "\n",
+          stdout: PREFIX_CORPUS.join("\n") + "\n",
         },
       }),
+      // Readable, for the same reason as the sibling row above: an unreadable entry is
+      // not consumed, so a prefix-matching oracle over the consumed set would have
+      // nothing to match against and would pass vacuously.
+      files: Object.fromEntries(PREFIX_CORPUS.map((p) => [p, learningsBody(p)])),
       agent: makeAgentDouble({
         script: [
           agentReply([

@@ -827,6 +827,38 @@ describe("T20 — the pass, end to end (L2)", () => {
           .filter((line) => /unread|could not read|unreadable/i.test(line));
       }
 
+      // v5 K2 — the two operator-visible surfaces AT-K3b's Then actually names, beside
+      // the pair block the prior oracle read alone. Item 3 IS AC-7.1's "LEARNINGS
+      // consumed by basename" (REQ §4b's discriminator); the terminal row is the durable
+      // record written into the SAME log file as the pair block, so disagreement between
+      // them is one file carrying two answers to one question.
+      function reportItem3(body) {
+        return (
+          String(body ?? "")
+            .split("\n")
+            .find((l) => l.trimStart().startsWith("3. consumed:")) ?? null
+        );
+      }
+
+      function namedBasenames(line) {
+        if (line === null) return null; // an absent line is not an empty list
+        return String(line)
+          .slice(String(line).indexOf(":") + 1)
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && s !== "none");
+      }
+
+      // The terminal row is `renderTerminalRow`'s append — located by its own `pass:`
+      // opener rather than by append index, so the oracle does not silently read a
+      // different append if the pass's append order changes.
+      function terminalRowConsumed(appends) {
+        const row = appends.map((a) => a.text).find((t) => /^pass: /m.test(t));
+        if (row === undefined) return null;
+        const line = row.split("\n").find((l) => l.startsWith("consumed:"));
+        return namedBasenames(line ?? null);
+      }
+
       test("Fixture 1, the mixed corpus (no register id): un-consolidated counts both, renderConsumedPair is set-equal to {readable}, and the report body names the unreadable basename and not the readable one", () => {
         const READABLE_BASENAME = "LEARNINGS-feat-a.md";
         const UNREADABLE_BASENAME = "LEARNINGS-feat-b.md";
@@ -869,6 +901,18 @@ describe("T20 — the pass, end to end (L2)", () => {
           const lines = unreadLines(result.body);
           expect(lines.some((l) => l.includes(UNREADABLE_BASENAME))).toBe(true);
           expect(lines.some((l) => l.includes(READABLE_BASENAME))).toBe(false);
+
+          // (4) v5 K2 — the OTHER three surfaces that render the consumed set are
+          // set-equal to {readable} too, not just `renderConsumedPair`'s argument.
+          // The unreadable member is the falsifier: an implementation that narrows
+          // only the pair block leaves it standing in all three.
+          expect(new Set(result.consumed)).toEqual(new Set([READABLE_BASENAME]));
+          expect(new Set(namedBasenames(reportItem3(result.body)))).toEqual(
+            new Set([READABLE_BASENAME])
+          );
+          expect(new Set(terminalRowConsumed(seams.fs.appends))).toEqual(
+            new Set([READABLE_BASENAME])
+          );
         });
       });
 
@@ -877,7 +921,21 @@ describe("T20 — the pass, end to end (L2)", () => {
         const BASENAME_B = "LEARNINGS-feat-b.md";
         const paths = [`docs/feat-a/${BASENAME_A}`, `docs/feat-b/${BASENAME_B}`];
         // Both bodies omitted — every enumerated basename is unreadable.
-        const seams = buildSeams({ corpusPaths: paths, agentScript: [NOTHING_FOUND] });
+        //
+        // v5 K1 — a PRESENT, NON-EMPTY advisory corpus, so step 10 mints neither
+        // `no-advisory-corpus` nor `advisory-corpus-empty` on grounds this row is not
+        // about, and conjunct "no reason code for the condition" can be asserted
+        // outright. The prior fixture omitted `ESCALATIONS.md`, which made BR-38's
+        // absent-file code legal here and turned this assertion into a claim that no
+        // reason code at all may be minted on an all-unreadable pass — a rule this row
+        // does not state. The absent/empty corpus codes have their own fixtures below.
+        const seams = buildSeams({
+          corpusPaths: paths,
+          bodies: {
+            "docs/_queue/ESCALATIONS.md": buildEscalationsFixture([{ feature: "feat-x", seam: "A1" }]),
+          },
+          agentScript: [NOTHING_FOUND],
+        });
 
         return main({ ...seams, direct: true }).then((result) => {
           // Terminal status pinned against §6.4's frozen catalogue, and against
@@ -900,14 +958,113 @@ describe("T20 — the pass, end to end (L2)", () => {
           expect(lines.some((l) => l.includes(BASENAME_A))).toBe(true);
           expect(lines.some((l) => l.includes(BASENAME_B))).toBe(true);
 
+          // v5 K2 — AC-7.1's "LEARNINGS consumed by basename" is EMPTY while the
+          // un-consolidated set (asserted non-empty just above) is not: that pairing
+          // is REQ §4b's discriminator between an all-unreadable pass and a quiet
+          // week, and it only exists if `state.consumed` itself is narrowed. Item 3
+          // is read as a located line, so a missing item 3 fails rather than passing
+          // vacuously.
+          expect(result.consumed).toEqual([]);
+          expect(namedBasenames(reportItem3(result.body))).toEqual([]);
+
+          // …and the durable terminal row agrees with the pair block two appends
+          // earlier. Both go into the same log file; before this fix that file
+          // carried two different answers for one passId.
+          expect(terminalRowConsumed(seams.fs.appends)).toEqual([]);
+
           // No reason code is minted for the condition (vocabularies §1 has no
-          // row for it).
+          // row for it) — on a fixture whose advisory corpus is present and
+          // non-empty, so this asserts only what the row states.
           expect(Array.from(result.reasons ?? [])).toHaveLength(0);
 
           // No CONSOLIDATION-PROPOSAL-{passId}.md is written for this pass.
           const proposalPath = proposalPathFor(result.passId);
           expect(seams.fs.writes.some((w) => w.path === proposalPath)).toBe(false);
           expect(Object.prototype.hasOwnProperty.call(seams.fs.files, proposalPath)).toBe(false);
+        });
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Step 10's two advisory-corpus reason codes, through `main()`
+    // (REQ AC-6.1's absent-file row; FSPEC BR-38 / E-30 / S-13; TSPEC §10.3
+    // rows 15–16). AT-A1 and AT-A2 name these codes in their titles but assert
+    // `corpusState`/`entryCount` at L1 only — the codes themselves were asserted
+    // nowhere in the repository, which is how a gate that withheld them on every
+    // quiet week shipped green. These four rows are that missing oracle: three
+    // positives on the input states each code IS for, and one negative on the
+    // single state AT-K3b withholds them for.
+    // ═══════════════════════════════════════════════════════════════════
+    describe("step 10 — the advisory-corpus reason codes are minted on the pass, not just parsed", () => {
+      const NOTHING_FOUND = "no recurring failure mode pattern found across the corpus";
+      const ESC_PATH = "docs/_queue/ESCALATIONS.md";
+      const READABLE_PATH = "docs/feat-a/LEARNINGS-feat-a.md";
+
+      // One readable un-consolidated LEARNINGS — the non-quiet input every positive
+      // below shares. Declared here rather than reached for out of the AT-M block, so
+      // this describe's fixtures cannot be changed from under it.
+      function readableCorpus() {
+        return {
+          corpusPaths: [READABLE_PATH],
+          bodies: {
+            [READABLE_PATH]:
+              "# LEARNINGS\n\n## 1. Domain / architectural invariant\nAlways validate at the boundary.\n",
+          },
+        };
+      }
+
+      test("AC-6.1 / BR-38 — the quiet week: an empty corpus with ESCALATIONS.md absent (this repo's shipping default) still records no-advisory-corpus", () => {
+        // Both halves of AC-1.4's quiet week: nothing to consolidate AND no advisory
+        // corpus. `direct` carries it past the cadence gate so the pass reaches step 10
+        // rather than terminating at `skipped-cadence`.
+        const seams = buildSeams({ corpusPaths: [], agentScript: [NOTHING_FOUND] });
+
+        return main({ ...seams, direct: true }).then((result) => {
+          expect(result.status).toBe("no-op");
+          expect(Array.from(result.reasons ?? [])).toContain("no-advisory-corpus");
+        });
+      });
+
+      test("AC-6.1 / BR-38 — an ordinary pass with readable LEARNINGS and ESCALATIONS.md absent records no-advisory-corpus", () => {
+        // The control for the row above: same absent corpus, non-empty readable input.
+        // A gate keyed on readability passes this one and fails the quiet week, so the
+        // pair localises the defect to the predicate rather than to step 10 as a whole.
+        const seams = buildSeams({ ...readableCorpus(), agentScript: [NOTHING_FOUND] });
+
+        return main({ ...seams, direct: true }).then((result) => {
+          expect(Array.from(result.reasons ?? [])).toContain("no-advisory-corpus");
+        });
+      });
+
+      test("TSPEC §10.3 row 16 — a present-but-entryless ESCALATIONS.md records advisory-corpus-empty, and not no-advisory-corpus", () => {
+        const base = readableCorpus();
+        const seams = buildSeams({
+          ...base,
+          bodies: { ...base.bodies, [ESC_PATH]: buildEscalationsFixture([]) },
+          agentScript: [NOTHING_FOUND],
+        });
+
+        return main({ ...seams, direct: true }).then((result) => {
+          const reasons = Array.from(result.reasons ?? []);
+          expect(reasons).toContain("advisory-corpus-empty");
+          expect(reasons).not.toContain("no-advisory-corpus");
+        });
+      });
+
+      test("AT-K3b's narrow condition — a corpus that enumerated basenames and could read none withholds both codes, even with ESCALATIONS.md absent", () => {
+        // The one input state the gate is for. Same absent `ESCALATIONS.md` as the two
+        // positives above, so the ONLY difference is the readability of the corpus —
+        // which is what makes this the negative half of the same predicate rather than
+        // a fixture about something else. Bodies omitted ⇒ every basename unreadable.
+        const seams = buildSeams({
+          corpusPaths: ["docs/feat-a/LEARNINGS-feat-a.md", "docs/feat-b/LEARNINGS-feat-b.md"],
+          agentScript: [NOTHING_FOUND],
+        });
+
+        return main({ ...seams, direct: true }).then((result) => {
+          const reasons = Array.from(result.reasons ?? []);
+          expect(reasons).not.toContain("no-advisory-corpus");
+          expect(reasons).not.toContain("advisory-corpus-empty");
         });
       });
     });
