@@ -111,3 +111,6 @@ not about this document's design.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
+
+APPROVAL-HASH: sha256:2ac2592d7f0085a64caf2e4d6080743fccaba7f9aa9e928ddbbbce5010a7965d
+REVIEWED-COMMIT: 22eb0b3b07624811224ed9759821c0c6d6f91fbf
