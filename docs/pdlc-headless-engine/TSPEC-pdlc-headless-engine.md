@@ -515,10 +515,17 @@ uses for tunables** (TE Q-11). `createAdapter` (`adapter.mjs:215`) already takes
 resolved tunables as defaulted constructor options — `maxRateLimitPauses` (`:224`) and
 `retryBackoffBaseMs` (`:225`) — and `dispatchTimeoutMs` joins them on the same footing: one option,
 one default, closed over by `_agent` and written onto `dispatchOpts` at `:278-281`. The resolved
-value is supplied by the two construction sites, both in `bin/pdlc.mjs` (`:173` for the run path,
-`:205` for `doctor`), which is where `resolveTunables({ config, flags })` (§4.6) is called and where
-the `tunables` report block (§4.5) is built — so the number stamped on the dispatch and the number
-reported are the same call's return by construction, not by convention. No per-run seam and no
+value is supplied by the two construction sites, both in `bin/pdlc.mjs`, and v1.4 mis-labelled which
+is which (TE F-31): **`:173` is inside `emitDryRun`** — AC-3.1's inspection surface, built over
+`inertTransport()`, so the resolved value is printed but never reaches a transport boundary — and
+**`:205` is inside `liveAdapter`** ("Build the live adapter: real SDK transport, consumer cwd"),
+which is the run path and the only site whose dispatches carry the stamp. **`doctor` constructs no
+adapter and no transport at all** (`cmdDoctor`, `:157`; its arm prints "doctor: all checks passed. No
+dispatch was performed." at `:162`), so it is not a third resolution point and §4.6's table is not
+read through it. Both real sites are where `resolveTunables({ config, flags })` (§4.6) is called and
+where the `tunables` report block (§4.5) is built — so the number stamped on the dispatch and the
+number reported are the same call's return by construction, not by convention, and §4.6's
+effective-value oracle is asserted on the `:205` path because it is the one that dispatches. No per-run seam and no
 second resolution point is introduced; `run.mjs` receives the already-built adapter (`:72`, `:182`
 document it as such) and resolves nothing itself.
 
@@ -989,8 +996,11 @@ Three rules make the table load-bearing rather than descriptive:
 
 - **One resolution point.** Every read of a tunable goes through `resolveTunables`; no call site
   reaches config or a flag directly, which is what makes the reported effective values honest. It is
-  called at the two `createAdapter` construction sites in `bin/pdlc.mjs` (`:173`, `:205`), which both
-  build the adapter's tunable options and the `tunables` report block from one return (§3.4). For
+  called at the two `createAdapter` construction sites in `bin/pdlc.mjs` — `:173` in `emitDryRun`
+  (the inert AC-3.1 surface) and `:205` in `liveAdapter` (the run path) — which both build the
+  adapter's tunable options and the `tunables` report block from one return (§3.4). `doctor` is not a
+  third site: it constructs no adapter (`cmdDoctor`, `:157`) and its projection is §4.3's three
+  startup facts, which are not tunables (TE F-31). For
   `dispatch.timeoutMinutes` that honesty needs one assertion of its own, because the value only
   becomes effective by being stamped on the dispatch (§3.4). **The fixture pins a non-default value,
   and both sides of the assertion are spec literals** (PM F-02, TE F-27): run i's
@@ -1861,7 +1871,7 @@ every file it touches; a component in **bold** is new in this feature.
 | `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
 | `lib/startup.mjs` | changed (structured rungs 0–5, derived skill set) | §4.3 |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
-| `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173`/`:205`, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
+| `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
 | **`__tests__/_assert-suite-wide.mjs`** | new — §7.4's five suite-wide assertions (four set-equality properties + the `"(no phase)"` bucket), one per row of that section's table | §7.0, §7.4 |
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
