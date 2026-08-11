@@ -100,4 +100,59 @@ disagree, and the one that decided the phase is the one no longer in existence.
 
 ## Best-Guess Root Cause
 
+**A reviewer's verdict has two carriers — the response trailer and the cross-review file — and the
+erratum delta-confirmation gate reads only the volatile one, with a fail-closed default and none of
+the recovery the ordinary review loop has.**
+
+The gate is one line (`orchestrate-dev.js:9343-9345`):
+
+```js
+const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
+```
+
+`parseVerdict` (`:4136`) scans the **agent's response string** in reverse for the last
+`VERDICT: ` line. A response that is empty, that never emitted a trailer, or whose trailer value
+falls outside `VALID_VERDICTS` returns the fallback `{verdict: "Needs revision", high: 0,
+medium: 0, low: 0, malformed: true}` — correct fail-closed behaviour in isolation, and
+indistinguishable at the call site from a reviewer who genuinely rejected the delta.
+
+Compare the review loop this path borrows its shape from (`:5987-6008`), which does two more things
+before deciding:
+
+1. On `malformed`, it spends one cheap Haiku `recoverVerdict` call (`:7443-7466`) asking the same
+   reviewer to re-emit its own trailer without redoing the review.
+2. Across invocations, the approval search reads the **file** through `extractFileVerdict`
+   (`:4637`, used at `:6635`) — the carrier that survives the process.
+
+The erratum path has neither. It never reads the confirmation file it just instructed the reviewer
+to write, even though that file is on disk and committed by the time the gate runs, and even though
+`extractFileVerdict` exists three thousand lines above for exactly this purpose. So the most
+probable chain is:
+
+1. `se-review` performed the delta confirmation, wrote `CROSS-REVIEW-software-engineer-REQ-v8.md`,
+   committed it (`2d125f41`), and returned a summary whose final lines did not carry a parseable
+   `VERDICT: ` trailer — the ordinary trailer-loss mode the review loop pays a Haiku call to absorb.
+2. `parseVerdict` returned the `malformed` fallback: `Needs revision`.
+3. `isPassResult` rejected it, `nonApproving` became `["se-review"]`, and `erratumPostmortemHalt`
+   ran — writing this document.
+4. Nothing consulted the file that says otherwise, and nothing recorded the response text, so the
+   halt cannot be audited after the fact from the repository alone.
+
+**The falsifiable claim** is step 1, and it is falsifiable only outside the repository: if the run
+transcript shows `se-review` returning a well-formed `VERDICT: Needs revision` trailer, this root
+cause is wrong and the real defect is a reviewer whose response contradicted its own committed
+file — a different and worse problem. Everything from step 2 on is readable in the shipped code and
+holds under either hypothesis: **a delta confirmation cannot fail on this branch's artifacts.**
+
+Two contributing factors, neither sufficient alone:
+
+- **The erratum gate is a copy of the review gate that lost its safety net.** Both decide the same
+  question — "did these two reviewers pass?" — and only one of them treats a missing trailer as
+  recoverable. The asymmetry is invisible at the call site; the erratum path reads as complete.
+- **The halt is terminal at the first upstream document.** `routeErrata` iterates
+  `ERRATUM_DOC_TYPES` in pipeline order and `erratumPostmortemHalt` throws, so a spurious failure on
+  `REQ` silently discarded the FSPEC erratum queued behind it. The phase lost a real item to a false
+  one, and the run report names only the false one.
+
 ## Recommendation
