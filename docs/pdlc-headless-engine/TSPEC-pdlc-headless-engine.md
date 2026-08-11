@@ -75,6 +75,98 @@ behaviour changes inside them, and each is a tested change in this repo — neve
 
 ## 2. Architecture
 
+### 2.1 Module map
+
+Layering is strict downward: a module may import only from layers below it. `lib/startup.mjs`'s
+existing rule — it imports **nothing** from `pdlc/workflows/` — is preserved and widened into the
+table's "may import workflows" column, because it is what makes "fail closed before any module
+evaluation" (C-10, FSPEC §4.2) a structural property rather than a call-order convention.
+
+| Layer | File | State | Responsibility | May import workflows |
+|---|---|---|---|---|
+| 5 CLI | `bin/pdlc.mjs` | extended | argv → command; usage errors; exit codes; report emission | no (only via layer 4) |
+| 4 run wiring | `lib/run.mjs` | extended | seam injection per module; `cwd` pinning; dynamic module import | **yes, and only here** |
+| 3 startup | `lib/startup.mjs` | extended | the six-rung ladder, total, reporting every rung | no (rung 4 delegates, §3.3) |
+| 3 startup | `lib/auth.mjs` | **new** | C-1a startup posture, first-match over env + login record | no |
+| 3 startup | `lib/handshake.mjs` | extended | version parse/compare/range, C-10 decision, banner rows | no |
+| 3 startup | `lib/skills.mjs` | extended | plugin-root resolution, identifier→path, prompt composition | no |
+| 2 dispatch | `lib/adapter.mjs` | extended | the `_agent` seam: compose → dispatch → classify → retry → record | no |
+| 1 transport | `lib/transport.mjs` | extended | SDK invocation, message-stream parse, C-1b assertion | no |
+| 1 transport | `lib/transport-cli.mjs` | **new** | `claude -p` invocation and output parse (§3.4) | no |
+| 0 shared | `lib/outcome.mjs` | **new** | the six-member taxonomy and its total classifier (§5.1) | no |
+| 0 shared | `lib/catalogue.mjs` | **new** | registered message ids, one emission seam (§3.5) | no |
+| 0 shared | `lib/report.mjs` | extended | pure `engine` block build + stamp | no |
+
+Two rules fall out of the table and are asserted, not merely stated:
+
+- **R-ARCH-1 — only `lib/run.mjs` may reference `pdlc/workflows/`.** Any other engine file naming a
+  workflow path is a layering violation and fails the suite (§7.4). This is what keeps rung 3's
+  refusal genuinely pre-import.
+- **R-ARCH-2 — layers 0–1 hold no policy.** The taxonomy, the catalogue and the transports know
+  nothing about phases, skills or the queue; everything pipeline-shaped lives at layer 2 and above.
+
+### 2.2 Control flow of one run
+
+```
+argv ──► parseInvocation (bin)              usage error ──► stderr, exit 1, no report line (BR-REP-0a)
+          │
+          ▼
+       runLadder (startup)  rung 0..5, total, every rung reported
+          │  fail ──► catalogue refusal ──► report line (one JSON, stdout) ──► exit 1
+          ▼
+       banner (version pair, base URL, auth id)
+          │
+          ▼
+       run.mjs: dynamic import of the workflow module(s), chdir to consumer root
+          │
+          ▼
+       module main({...seams})
+          │   every dispatch ──► adapter._agent
+          │                        compose (skills)  ──► transport.dispatch
+          │                        classify (outcome) ──► retry ladder ──► record
+          ▼
+       module report ──► stampReport(+engine block) ──► one JSON line ──► exit 0 | 2
+```
+
+The only two places the engine can end a run of its own accord are the ladder (exit `1`, zero
+tokens) and an engine-fatal classification (`auth-failure`, `transport-contract-violation`; exit `1`,
+no POSTMORTEM, queue row untouched — BR-FAIL-3). Every other ending is the module's (`0`/`2`).
+
+### 2.3 Process model
+
+One pipeline per process. `lib/run.mjs` `withCwd` (`pdlc/engine/lib/run.mjs:155`) `process.chdir`s
+into the consumer root for the duration and restores in a `finally`, because the modules address the
+filesystem consumer-relative and never call `process.cwd()` themselves — they hand bare relative
+paths to `fs` (M-ENG-01: `defaultReadFile` at `orchestrate-dev.js:8492`) and shell `git` with no cwd
+option. This is process-global state, and it is why the engine dispatches no run concurrently with
+another in the same process. `dispatchOpts.cwd` is *also* set per dispatch
+(`adapter.mjs:281`) so the transport pins the agent's own working directory (AC-2.5, BR-CWD-1)
+independently of the process cwd.
+
+**Two engine runs against one consumer repo are out of scope** (EC-RUN-4): no lock is designed here.
+The gap is recorded, not closed.
+
+### 2.4 Anti-fork, structurally
+
+`WORKFLOW_MODULE_URLS` (`pdlc/engine/lib/run.mjs:52`) resolves both modules by relative URL from the
+engine source inside this repo checkout, and `workflowModulePath()` (`:58`) exposes the absolute path
+as the AC-1.5 observable. Two assertions make "not a fork" decidable with no reference copy:
+
+| Observable | Assertion | HEAD state |
+|---|---|---|
+| resolved specifier | equals the repo-relative path `pdlc/workflows/orchestrate-{dev,queue}.js` | weaker at HEAD — `__tests__/run.test.js:64` asserts a `file:` URL only (M-ENG-06) |
+| tree contents | no second file named `orchestrate-dev.js` / `orchestrate-queue.js` anywhere under `pdlc/engine/` | green (`__tests__/run.test.js:48`) |
+
+Tightening the first to a path assertion is in scope (AC-1.5(a)).
+
+### 2.5 What the engine does *not* build
+
+`runtime-adapter.js`'s IO surface is not ported (M-ENG-03): `_readFile`, `_writeFile`, `_appendFile`,
+`_listFiles`, `_checkFile`, `_hashFile`, `_ghRun`, `_checkCi`, `_mergeWorktree`, `_recordQueueRow`,
+`_rebaseOntoDefault`, the advisory seams and the probe seams all keep the modules' own Node defaults,
+so an engine run exercises exactly the code paths the module test-suite already covers. Overriding a
+seam whose default works is a defect here, with one deliberate exception (`_git`, §3.1).
+
 ## 3. Interfaces
 
 ## 4. Data Model
