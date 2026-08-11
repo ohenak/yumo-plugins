@@ -605,7 +605,7 @@ any tool runs**. `startupFor` (`bin/pdlc.mjs:88`) widens that set to the five-me
 `--allow-api-key-billing` (`:93`).
 
 **There is no transport selector in this feature, and `resolveTransport` takes no operator input.**
-FSPEC §3.2 is explicit (`FSPEC:193-196`): every real run uses the primary transport, the fallback is
+FSPEC §3.2 is explicit (`FSPEC:215-217`): every real run uses the primary transport, the fallback is
 exercised through recorded fixtures only, and making it runtime-selectable is O-1's work, not this
 document's. v1.0 stated the opposite here and the correct thing in §6.4; this is the single place
 the question is settled.
@@ -971,7 +971,7 @@ report.engine = {
 }
 ```
 
-**Row-by-row against FSPEC §12.2** (`FSPEC:1149-1160`), because a reader must be able to check
+**Row-by-row against FSPEC §12.2** (`FSPEC:1203-1213`), because a reader must be able to check
 completeness rather than infer it. Six rows are AC-4.5's own; three are FSPEC-added:
 
 | FSPEC §12.2 row | Field here | Note |
@@ -1125,7 +1125,7 @@ classifyOutcome({ error: null, result, reportedFailure });
 
 The literal predicate is: **the result text contains a line whose first non-space content is
 `DISPATCH-FAILED:` or `ERROR:` followed by non-space text.** Upstream fixes only the member's
-*meaning* — "the dispatch ran and the agent reported failure" (`FSPEC:709`, `REQ:519`) — and
+*meaning* — "the dispatch ran and the agent reported failure" (`FSPEC:737`, `REQ:522`) — and
 deliberately leaves the predicate to this document (BR-FAIL-2 hands the *consequence* to the
 modules), so the token above is TSPEC-introduced, with no upstream id. Three consequences worth
 stating,
