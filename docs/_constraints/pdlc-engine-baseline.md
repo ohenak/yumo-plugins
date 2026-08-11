@@ -128,3 +128,19 @@ Measured at HEAD: `orchestrate-dev.js:1603`, `:1646`, `:1652` (`MODEL_ADVISORY =
 dispatched at `:1851`), `:1653` (fallback, dispatched at `:1861` behind the model-resolution
 error check), `:7463` (verdict recovery, inside `recoverVerdict`), `:9968` (PLAN-DAG extraction,
 in the else-branch after `parsePlanTasks` returns no tasks), `orchestrate-queue.js:70`.
+
+## M-ENG-08 — What "logged-in Claude Code settings state" is inspectable as
+
+Measured on the maintainer's macOS host, 2026-08-11, on a machine logged in to a Claude
+subscription with `ANTHROPIC_API_KEY` absent (the M-ENG-04 environment):
+
+- `~/.claude.json` is present and carries an **`oauthAccount`** object alongside `userID`. This
+  is the inspectable evidence that the host is logged in.
+- `~/.claude/settings.json` and `~/.claude/settings.local.json` carry **no** credential and no
+  `apiKeyHelper` (`SPIKE-agent-sdk-auth.md:42`); they are settings, not auth state. The
+  credential itself is not in any file the engine reads — on this platform it is in the OS
+  keychain — so `oauthAccount`'s presence is *evidence of* a credential, never the credential.
+
+**Per-platform scope (C-9).** This is one platform's measurement. Whether Linux and Windows hosts
+carry the same record in the same path is unmeasured; a run on a host where no such evidence is
+readable is `auth.unknown` (AC-2.1 row 6), never a refusal — see FSPEC §5.1 BR-AUTH-0.
