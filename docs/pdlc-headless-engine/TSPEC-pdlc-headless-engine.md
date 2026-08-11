@@ -876,3 +876,48 @@ every file it touches; a component in **bold** is new in this feature.
 No other file under `pdlc/workflows/` is modified (§2.4, §2.5).
 
 ## 9. Open Questions
+
+### 9.1 Carried from FSPEC §13.2, with this document's disposition
+
+| # | Question | Disposition here | Owner |
+|---|---|---|---|
+| O-1 | fallback `claude -p` flag surface; per-transport model-alias semantics | §3.4 fixes the *interface* both transports satisfy; the CLI's flag spellings are a PLAN task producing the §7.2 fixture set. **Not blocking**: the primary transport ships without it | PLAN |
+| O-2 | guard-parity mechanism per transport, and first **whether a PreToolUse deny fires at all under `bypassPermissions`** | §6.5 pre-commits both branches so a red measurement is not a design debate. **Blocking for unattended use**, and scheduled before it (BR-GUARD-4) | PLAN, first implementation wave |
+| O-3 | where engine configuration lives (consumer config vs. engine-global with override) | not decided here. §4.1/§5.2 read tunables through one resolver, so the *location* is a single function's business and the design does not depend on the answer | deferred |
+| O-4 | token viability and renewal runbook for cron contexts | out of scope for TSPEC — an operational runbook, not a mechanism. §3.2 row 1 is the only code contact | deferred |
+| O-5 | dry-run surface shape | partly discharged: `--dry-run-skill` exists (`bin/pdlc.mjs:171-172`) and §7.1 makes it the hermetic prompt-corpus surface. Whether a whole-run `--dry-run` is added is a PLAN decision | PLAN |
+| O-6 | session-reuse flag design | **the seam must not be painted shut** (R-4). §3.1 keeps `_sessionAgent` unwired, so fresh-per-dispatch stays today's semantics and a future flag has somewhere to attach | deferred, deliberately |
+| O-7 | re-derive retry defaults from observed unattended load | §5.2's defaults are a starting point, not a measured floor; §4.4's pause records are the measurement instrument | deferred, instrumented |
+| O-8 | plugin installed-location discovery | **discharged** — probed and shipped (`skills.mjs:204-256`), unchanged here | closed |
+| O-9 | whether either transport can distinguish a logged-in session from a token credential from its own reported state | §3.2 and §3.4 are deliberately independent observations for exactly this reason. If the answer is no, §3.2's startup mapping is the whole answer and §3.4's per-dispatch check remains a policy assertion, not a discrimination | deferred |
+
+### 9.2 Raised by this document
+
+- **O-ENG-T1 — the CI job's cost and placement.** §7.6 adds a fifth job on the same two-platform
+  matrix. Whether the engine suite runs on both platforms every PR, or ubuntu-only with macos on
+  merge, is a maintainer decision about CI minutes that a plan can set either way. The technical
+  requirement is only that **both platforms are exercised somewhere**, because C-9 makes per-platform
+  measurement a constraint (`~/.claude.json` location, process spawning).
+- **O-ENG-T2 — two concurrent engine runs in one repo.** §2.3 records that the design forbids
+  `process.chdir` and passes `cwd` per dispatch, which makes two runs in one *process* coherent — but
+  two runs against the same worktree share a git index and a branch. The engine does not currently
+  detect this. The likely answer is an advisory lock file scoped to the repo, refusing the second run
+  with a catalogue-registered message; it is not designed here because no acceptance criterion binds
+  it and inventing a locking protocol without a stated requirement is how a lock becomes the thing
+  that halts unattended runs.
+- **O-ENG-T3 — supplement inlining and prompt size.** §3.3 decides that `se-implement` dispatches
+  carry `SKILL.md` plus both language supplements. That is the smallest change that satisfies
+  AC-3.5's 12-file count without an exemption list, but it sends both languages to every
+  implementation dispatch. If measured prompt size becomes a problem, the alternative is a
+  language-conditioned selection driven by the repo's own manifest — a decision that needs a
+  measurement first, and one this TSPEC deliberately does not pre-empt.
+
+### 9.3 Errata raised against upstream documents
+
+Emitted verbatim in this dispatch's final message, not folded into any document:
+
+- `ERRATUM: FSPEC: BR-SKILL-3` — the two `se-implement` language supplements are named nowhere in
+  `pdlc/workflows/*.js`; they are loaded by the agent per `pdlc/skills/se-implement/SKILL.md:3`.
+- `ERRATUM: REQ: AC-3.5`'s 12-prompt-file count (10 `SKILL.md` + 2 supplements) is only reachable if
+  the engine inlines a dispatched identifier's whole file set — §3.3's decision — because no module
+  dispatch names a supplement.
