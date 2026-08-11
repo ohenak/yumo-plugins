@@ -485,6 +485,18 @@ dispatch**, overriding nothing the modules pass (they pass nothing) and leaving 
 default as a construction-time fallback no run-shaped path reaches. That assignment is part of §8.3's
 edit surface.
 
+**Where the adapter receives the value: one constructor option, the shape `createAdapter` already
+uses for tunables** (TE Q-11). `createAdapter` (`adapter.mjs:215`) already takes its other two
+resolved tunables as defaulted constructor options — `maxRateLimitPauses` (`:224`) and
+`retryBackoffBaseMs` (`:225`) — and `dispatchTimeoutMs` joins them on the same footing: one option,
+one default, closed over by `_agent` and written onto `dispatchOpts` at `:278-281`. The resolved
+value is supplied by the two construction sites, both in `bin/pdlc.mjs` (`:173` for the run path,
+`:205` for `doctor`), which is where `resolveTunables({ config, flags })` (§4.6) is called and where
+the `tunables` report block (§4.5) is built — so the number stamped on the dispatch and the number
+reported are the same call's return by construction, not by convention. No per-run seam and no
+second resolution point is introduced; `run.mjs` receives the already-built adapter (`:72`, `:182`
+document it as such) and resolves nothing itself.
+
 **The presence half asserts key presence; the `cwd` *value* is asserted elsewhere** (TE Q-09) — a
 division of labour, not an omission. `adapter.mjs:278` builds `{ cwd }` unconditionally, so the key
 exists even when the value is `undefined` (§4.1 types it `string|undefined`), and presence alone would
