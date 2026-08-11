@@ -436,8 +436,13 @@ by reading prose is not on this list.
       that never fires would be indistinguishable from one never installed (AT-ENG-63).
 - [ ] `.github/workflows/pr-tests.yml` runs five jobs, the new one on the `unit-tests` matrix with a
       body of `npm ci` then `npm test` and nothing else.
-- [ ] `.claude/pdlc.config.json` `implementation.testCommand` executes the engine suite, so a wave
-      gate in this feature's own Phase I runs the code the wave wrote.
+- [ ] `.claude/pdlc.config.json` `implementation.testCommand` runs **both** V1 and V2 — the engine
+      suite *and* the workflows suite — with `pdlc/workflows`' existing
+      `--testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'`
+      preserved verbatim. Post-T17 the value is literally
+      `cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'`.
+      Set-equality, not containment: this file is repo-wide state, so a value that runs only the
+      engine suite would blind **other** features' wave gates — a blast radius outside this REQ.
 
 **Generated artifacts and the workflow modules**
 
@@ -446,14 +451,32 @@ by reading prose is not on this list.
 - [ ] `pdlc/workflows/dist/` and `distribution-manifest.json` are committed in T16's own batch.
 - [ ] The workflows-side change is exactly two files: added exports plus bare literals replaced at
       their dispatch sites. No pipeline behaviour changes, and `pdlc/workflows/`'s own suite is green.
-- [ ] The no-bare-literal test's exempt sites equal — not merely contain — the closed allow-list
-      (`orchestrate-dev.js:6229-6231`).
+- [ ] The no-bare-literal test is DEC-ENG-05's **containment** form with **no exemption list**: every
+      skill-identifier-shaped literal in either module is a member of the exported
+      `DISPATCHABLE_SKILLS` union, and the shape predicate is itself asserted against the known set.
+      No absolute line number appears as an oracle. TSPEC §3.3's exactly-equal allow-list is the
+      superseded draft and is **not** implemented.
 
 **Acceptance criteria and acceptance tests**
 
-- [ ] All 26 of REQ v0.10's acceptance criteria have a passing test, per §9's table.
-- [ ] AT-ENG-01…AT-ENG-68 each map to at least one named test, and every AT that FSPEC scopes "per
-      transport" is asserted twice.
+- [ ] All 26 of REQ v0.10's acceptance criteria have a passing test, per §9's table — **except
+      AC-6.2, whose evidence is operator-recorded rather than suite-observed**: T51 is flag-gated and
+      never runs in CI, so AC-6.2 is met by a dated line recorded beside `M-ENG-06`/`M-ENG-09` in
+      `docs/_constraints/pdlc-engine-baseline.md` (T53 owns that file) naming the commit the live
+      smoke ran against. No command in §11 observes it, and that is stated rather than implied.
+- [ ] **All 69 of FSPEC v1.6's acceptance tests — AT-ENG-01…AT-ENG-68 plus AT-ENG-11a** — each map to
+      at least one named test, and every AT that FSPEC scopes "per transport" is asserted twice. The
+      enumeration is set-equal to FSPEC's, not a numeric range that silently drops `11a`.
+- [ ] §9's "Acceptance tests" column is **set-equal, per row, to FSPEC §14.1** (`FSPEC:1335-1360`);
+      any AT this plan deliberately routes to a different AC's row says so in the cell.
+- [ ] Each parameterisable component named in §3 carries its property strategy and the strategy runs:
+      `classifyOutcome`'s totality (T04), `resolveAuthPosture`'s exactly-one-row-matches (T06),
+      `computeRateLimitWaitMs`'s monotone/capped/jittered laws (T21), `resolveTunables`' precedence
+      totality (T30), `parseVersion`/`satisfiesRange`'s ordering laws (T41).
+- [ ] Branch coverage over the four new modules (`lib/outcome.mjs`, `lib/catalogue.mjs`,
+      `lib/auth.mjs`, `lib/transport-cli.mjs`) is **≥ 85 %**, observed by
+      `cd pdlc/engine && node --test --experimental-test-coverage __tests__/` (available on node 20)
+      and read off that run's coverage table.
 - [ ] The six-member outcome taxonomy is asserted in **both** directions, the reverse by a named
       provocation fixture per member; a member no fixture reaches is a missing fixture, never a
       loosened oracle.
@@ -469,8 +492,10 @@ by reading prose is not on this list.
 - [ ] Each of §6.3's three clauses has its falsifying counterpart asserted in the same file, and the
       deny path performs the deletion it is guarding.
 - [ ] The provenance test runs with no pdlc hooks registered on the host.
-- [ ] `docs/_constraints/pdlc-engine-baseline.md` carries an `M-ENG-09` row for each CI platform, and
-      the hermetic gate fails when a row for the running platform is absent.
+- [ ] `docs/_constraints/pdlc-engine-baseline.md` carries an `M-ENG-09` row for **each** platform in
+      T17's matrix — `ubuntu-latest` and `macos-latest`, both present, not one — and the hermetic
+      gate fails when a row for the running platform is absent. T42 supplies the wave host's row; the
+      other is the §5 operator step, and this item is not met while either is missing.
 - [ ] If any row records `denyFired: no`, TSPEC §6.5's branch is taken — the posture tightens or the
       guard moves to `canUseTool` — and this DoD is **not** met by noting the measurement.
 
@@ -483,7 +508,10 @@ by reading prose is not on this list.
 - [ ] Only `lib/run.mjs` names a path under `pdlc/workflows/`; any other engine file doing so fails
       the suite (R-ARCH-1).
 - [ ] `_sessionAgent` is unwired and `runtime-adapter.js`'s IO seams are un-overridden, both asserted
-      by T25 rather than left to review.
+      by T25 rather than left to review — and **each absence is paired with its positive on the same
+      path**: two successive dispatches are shown to produce two independent sessions, and the
+      un-overridden seams' Node defaults are shown to be exercised by a real run. An assertion set
+      that cannot tell "seam omitted" from "seam never reached" does not meet this item.
 - [ ] No fixture contains a credential, asserted by a scanner whose positive control is in the same
       test.
 
