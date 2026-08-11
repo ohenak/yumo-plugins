@@ -1830,13 +1830,16 @@ that is the shape of strengthening a later author is most likely to attempt.
 
 Its corpus is M-ENG-07's own: the union of **five run configurations** (dev healthy path, queue,
 advisory seam, advisory fallback, and the two `haiku` recovery paths), because no single run
-exercises every row. **A descriptor exists for every dispatch that is *composed*, whether or not a
-model call is executed, so no row depends on billed traffic** (FSPEC BR-MODEL-3) — with the write
-timing §4.1 fixes: the line is appended at **settlement**, one per attempt, so it carries the
-terminal `outcome`/`errorText` rows 3 and 4 read; a composed dispatch that never executes (the inert
-transport) is appended at composition with those two fields `null`, which no row's predicate matches. **The instrument is the fixture-driven run,
-recorded through §7.0's observation seam — not `--dry-run-skill`** (PM Q-03): that flag selects which
-single skill's composed prompt is printed (`FSPEC:190`), a one-prompt surface, whereas every row here
+exercises every row. **A descriptor exists for every dispatch that is *composed* through `_agent`,
+and every settlement is a fixture transport's, so no row depends on billed traffic** (FSPEC
+BR-MODEL-3, `FSPEC:680-682`) — with the write timing §4.1 fixes: the line is appended at
+**settlement**, one per attempt, so it carries the terminal `outcome`/`errorText` rows 3 and 4 read.
+Every line in the corpus is a settlement line; there is no `null`-terminal line for a row to have to
+exclude. **The instrument is the fixture-driven run,
+recorded through §7.0's observation seam — not `--dry-run-skill`** (PM Q-03, and FSPEC BR-MODEL-3
+now says the same upstream: "the dry-run surface is **not** a way to reach it … it exercises at most
+one row and is never the corpus's source", `FSPEC:682-684`): that flag selects which
+single skill's composed prompt is printed (`FSPEC:210`), a one-prompt surface, whereas every row here
 needs a whole run's worth of descriptors, rows 1 and 2 need a run's full phase context, and row 4
 needs the failure the fixture forces mid-run.
 `--dry-run-skill` remains §7.1's prompt-corpus instrument and is not cited for this property. A
@@ -1998,7 +2001,7 @@ every file it touches; a component in **bold** is new in this feature.
 | **`lib/catalogue.mjs`** | new | §3.5 |
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
-| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor, and the record appended to §7.0's accumulator at settlement — one line per attempt, at composition with `null` terminals when the dispatch never executes** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
+| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor, and the record appended to §7.0's accumulator at settlement — one line per attempt, appended from the `_agent` body (`:271`) and never from `composePrompt` (`:259`), so every line is a settlement line** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
 | `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.6's rung 4a guard-executable check — derived skill set) | §4.3, §6.4 |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
