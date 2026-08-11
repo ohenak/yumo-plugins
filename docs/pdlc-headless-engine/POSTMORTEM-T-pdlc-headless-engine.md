@@ -11,7 +11,21 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 1.0 | 2026-08-11 |
 
-RESOLVED: no
+RESOLVED: yes
+
+Resolution (2026-08-11, operator-directed): Step 1's checks re-derived against TSPEC v1.5 at
+HEAD before flipping. PM F-01 — §4.1's `DispatchDescriptor` carries `outcome` (§4.2's member,
+stamped at settlement) and `errorText` (verbatim, never parsed); §7.0 appends **one line per
+attempt at settlement** into the append-only accumulator, with a composed-but-never-executed
+dry-run dispatch appended at composition carrying `outcome: null, errorText: null`; §7.4 row 4's
+pair `(F, B)` reads settlement lines whose every conjunct is a recorded field, pinning the exact
+member `transport-contract-violation` and discriminating on `promptHash` plus the recorded
+failure, not `seq` adjacency. PM F-02 — the fifth suite-wide row is `no record with
+`corpusRun != null` and `phase === null``, with `corpusRun` scoping the assertion to run-shaped
+tests. PM F-03 — that predicate is stated over records; `byPhase["(no phase)"]` is kept only as
+a reader-facing gloss. No section was re-authored; round 6 is the confirmation round over v1.5.
+Per §Step 4: if round 6 raises a *new* High in §7.4, stop and escalate rather than spending
+rounds 7–10.
 
 ## Phase
 
