@@ -411,6 +411,89 @@ positives on the same run — a completing dispatch and a recorded source.
 
 ## 6. FSPEC-ENG-04 — Skill resolution and prompt composition
 
+### 6.1 Where prompt text comes from
+
+The plugin is the **sole delivery vehicle** for skill prompts and stays that way: prompt files are
+not packaged inside the engine, so `/pdlc:*` skills keep working in interactive sessions unchanged
+(G-5). At dispatch time the engine reads the requested skill's prompt file from the located plugin
+and inlines its text into the composed prompt.
+
+**BR-SKILL-1 — resolved from disk, not invoked as a capability.** A composed prompt contains no
+instruction to invoke the Skill tool and no `pdlc:` namespace reference. The plugin is a source of
+bytes the engine controls end to end, never an in-session capability the dispatched agent must
+resolve (A-ENG-01 records the rejected alternative).
+
+**BR-SKILL-2 — one composed prompt, both transports.** The same composed text is what either
+transport receives. A behavioural difference between the primary and fallback transports may exist
+in how a dispatch is *made*; it may not exist in what the agent is *told*.
+
+**BR-SKILL-3 — the supplements are conditional, and their condition is the module's.** The two
+`se-implement` language supplements are inlined when the module's dispatch asks for them. The
+engine adds no language-detection policy of its own.
+
+**BR-SKILL-4 — read at dispatch time.** Prompt bytes are read for the dispatch that needs them, so
+a plugin upgraded between two runs takes effect on the next run without an engine step. (Whether
+reads within one run are cached is a TSPEC concern; the observable this section fixes is that no
+run inlines prompt text from a plugin other than the one the startup handshake approved.)
+
+### 6.2 What a composed prompt contains
+
+A composed dispatch descriptor carries, as operator-inspectable content:
+
+| Part | Content |
+|---|---|
+| skill identifier | the identifier the module named |
+| inlined prompt text | the full text of that skill's prompt file from the located plugin |
+| task text | the module's own dispatch prompt, unmodified by the engine |
+| model | the value the module pinned, forwarded verbatim (§7.3) |
+| environment | the parent environment extended (§7.1) |
+| working directory | the consumer repo root (§7.2) |
+| permission posture | the one engine-wide setting (§7.4) |
+
+The engine composes; it does not edit. It adds no instruction of its own to the module's task text
+beyond what this table names, because prompt semantics are the modules' and the skills' business
+(NG-8: a needed prompt rewrite is an obligation, never a silent engine-side edit).
+
+### 6.3 The dry-run surface
+
+`--dry-run` is the inspection surface AC-3.1 assumes (O-5): it resolves the plugin, runs the startup
+ladder, composes the dispatch(es), prints the composed prompt, and dispatches nothing. It is the
+mechanism by which every claim in §6.2 is checkable without billing a token, and by which the model
+map of §7.3 is exercised over descriptors rather than executed calls.
+
+**BR-SKILL-5 — dry-run inertness is asserted, not assumed.** On the dry-run path an attempted
+dispatch is a failure the surface reports, not a silently-executed call (§3.1).
+
+### 6.4 Coverage: every skill, not a sample
+
+AC-3.1 requires the composition assertion for **each** member of the dispatchable skill set, not a
+sample, so a skill whose prompt file was renamed or whose composition path is special (the
+supplements) cannot hide behind a passing sample. The set the assertion ranges over is the
+dispatchable set of §4.4 Direction A — the identifiers the modules can dispatch, plus the two
+supplements — and §4.4's erratum about AC-3.5's reference set applies here identically.
+
+### 6.5 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-SKILL-1 | prompt file deleted between startup and a later dispatch | that dispatch fails as a transport-independent engine error naming the identifier and path; it is not silently dispatched with empty role text |
+| EC-SKILL-2 | prompt file present but empty at dispatch time | same as EC-SKILL-1 — an empty role is never dispatched (cf. EC-START-6) |
+| EC-SKILL-3 | a module dispatches an identifier startup did not know about | engine error naming the identifier; never a best-effort dispatch with no prompt |
+| EC-SKILL-4 | the plugin is upgraded mid-run | the run continues against the plugin version the handshake approved; a version change is discovered by the next run's handshake, not mid-run (BR-SKILL-4) |
+| EC-SKILL-5 | prompt text itself contains a `pdlc:` reference (skill prose, not an engine instruction) | permitted — BR-SKILL-1 constrains what the *engine* adds; auditing prompt prose that assumes runtime mechanics is R-5's audit, recorded as an obligation (NG-8) |
+| EC-SKILL-6 | `--dry-run` where a dispatch is attempted anyway | reported as a failure of the run (BR-SKILL-5) |
+
+### 6.6 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-20 | for **every** member of the dispatchable set (§6.4), the composed prompt contains that prompt file's full text (AC-3.1) |
+| AT-ENG-21 | no composed prompt contains a Skill-tool instruction or an engine-added `pdlc:` reference (BR-SKILL-1) |
+| AT-ENG-22 | the composed prompt for the same dispatch is identical across transports (BR-SKILL-2) |
+| AT-ENG-23 | the `se-implement` supplements appear exactly when the module's dispatch asks for them (BR-SKILL-3) |
+| AT-ENG-24 | `--dry-run` prints composed prompts and executes no dispatch; an attempted dispatch fails the run (BR-SKILL-5, EC-SKILL-6) |
+| AT-ENG-25 | EC-SKILL-1…EC-SKILL-4, one case each |
+
 ## 7. FSPEC-ENG-05 — What a dispatch carries: environment, working directory, model, permissions
 
 ## 8. FSPEC-ENG-06 — Dispatch outcome taxonomy, retry, and timeout
