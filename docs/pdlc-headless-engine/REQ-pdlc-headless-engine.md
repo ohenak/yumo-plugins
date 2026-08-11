@@ -463,29 +463,49 @@ C-10)*
   `SKILL.md` + 2 `se-implement` supplements) is an observation, never the assertion.
 **Group 4 — dispatch failure taxonomy and endurance** *(US-02; G-7; DC-01)*
 
-- **AC-4.1** *Given* any dispatch outcome, *when* the engine classifies it, *then* it lands
-  in exactly one member of a **closed, documented taxonomy** — at minimum: `ok`,
-  `retryable` (rate limit, overload, transport interruption), `timeout`, `auth-failure`,
-  `transport-contract-violation` (output the engine cannot parse), and `agent-reported
-  failure` (the dispatch ran and the agent reported failure, which is the modules' business,
-  not the engine's). Every classification is a total function of the observed outcome:
-  unrecognised output classifies as `transport-contract-violation`, never as success.
-- **AC-4.2** *Given* a `retryable` outcome, *when* it occurs, *then* the dispatch is retried
-  up to `dispatch.retryAttempts` with `dispatch.retryBackoff`; *given* a dispatch producing
-  no output for `dispatch.timeoutMinutes`, it is classified `timeout` and treated as
-  retryable once, then terminal.
-- **AC-4.3** *Given* retries were exhausted, *when* the run ends, *then* the engine surfaces
-  the failure through the modules' own failure path — the phase halts with its normal
-  POSTMORTEM and halt-row semantics — and the engine process itself does not crash, leave an
-  orphan `claude` child, or exit before the halt is recorded.
+- **AC-4.1** *Given* any dispatch outcome, *when* the engine classifies it, *then* it lands in
+  **exactly one member of exactly this six-member catalogue** — `ok`, `retryable` (rate limit,
+  overload, transport interruption), `timeout`, `auth-failure`, `transport-contract-violation`
+  (output the engine cannot parse), `agent-reported-failure` (the dispatch ran and the agent
+  reported failure, which is the modules' business, not the engine's). The catalogue is closed:
+  the test asserts **set-equality** between the classifier's possible outputs and these six
+  (TE F-05), and adding a seventh member is a change to this AC, not a configuration. Every
+  classification is a total function of the observed outcome: unrecognised output classifies as
+  `transport-contract-violation`, never as success.
+- **AC-4.2** *Given* a `retryable` outcome, *when* it occurs, *then* the dispatch is retried up
+  to `dispatch.retryAttempts` with `dispatch.retryBackoff`; *given* a dispatch producing no
+  output for `dispatch.timeoutMinutes`, it is classified `timeout` and retried at most once.
+  **The `timeout` retry is drawn from the same `dispatch.retryAttempts` budget, and a timeout
+  never resets it** (TE F-10, SE Q-04). At the default of 3, the total attempt counts are:
+
+  | Observed sequence | Total attempts | Terminal classification |
+  |---|---|---|
+  | `retryable` × 3, then success | 4 | `ok` |
+  | `retryable` × 4 | 4 | `retryable`, budget exhausted |
+  | `timeout`, then success | 2 | `ok` |
+  | `timeout`, `timeout` | 2 | `timeout`, terminal (second timeout is never retried) |
+  | `retryable`, `timeout`, then success | 3 | `ok` |
+  | `timeout`, `retryable`, `retryable` | 4 | `retryable`, budget exhausted |
+- **AC-4.3** *Given* retries were exhausted, *when* the run ends, *then* the failure surfaces
+  through the modules' own failure path — the phase halts with its normal POSTMORTEM and
+  halt-row semantics — and both halves are asserted (TE F-14): *positively*, the halt artifacts
+  exist (the POSTMORTEM file, the `halted` queue row, its pathspec-scoped commit), which is
+  what proves the engine process stayed alive long enough to record the halt; *negatively*, the
+  set of child processes the engine started is empty at exit and the engine itself did not
+  crash. On the primary transport the negative half is over an empty set by construction (no
+  child is spawned); on the `claude -p` fallback it is over the children it spawned.
 - **AC-4.4** *Given* an `auth-failure` mid-run, *when* it occurs, *then* it is **not**
   retried silently: the run stops and the message names the auth source that failed, because
   a retry loop against a dead credential burns the wall clock a queue run depends on.
 - **AC-4.5** *Given* a completed or halted run, *when* the run report is read, *then* it
-  carries, in addition to every field the modules already produce: engine version, auth
-  source, effective base URL, per-phase dispatch counts, and one row per retry and per pause
-  (taxonomy member, phase, attempt number, delay). A run with zero retries carries an empty
-  set of such rows, not a missing field.
+  carries, in addition to every field the modules already produce: engine version, the startup
+  auth catalogue id (AC-2.1), the transport-reported auth source observed per dispatch (C-1b;
+  `apiKeySource` on the primary path), effective base URL, per-phase dispatch counts, and one
+  row per retry and per pause (taxonomy member, phase, attempt number, delay). A run with zero
+  retries carries an empty set of such rows, not a missing field. Per-phase dispatch counts are
+  **observable, not derivable** from this REQ for an arbitrary run (TE Q-04): a test asserts
+  their presence and internal consistency (counts sum to the recorded dispatch rows), and
+  asserts exact values only for a fixture run whose dispatch sequence the fixture fixes.
 
 **Group 5 — guard parity and safety** *(C-5)*
 
