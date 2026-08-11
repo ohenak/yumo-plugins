@@ -601,3 +601,33 @@ path designed at the same time); or per-worktree consumer state (D-DIST-07) land
 concurrent worktree runs a supported workflow rather than an accident.
 
 ## 7. Decision index
+
+| ID | Decision | Reversibility | Owning TSPEC § |
+|---|---|---|---|
+| DEC-ENG-01 | SDK primary, `claude -p` built but not runtime-selectable | easy | §3.4 |
+| DEC-ENG-02 | No failover between transports | easy | §3.4 (R-TRANS-1) |
+| DEC-ENG-03 | Shipped `.sh` is the guard's only definition; its fail-open interpreter probe is startup-probed | easy | §6.1, §6.2, §6.4 |
+| DEC-ENG-04 | Unrecorded `M-ENG-09` measurement ⇒ red hermetic suite | easy per branch; the branch it forces is not | §6.5 |
+| DEC-ENG-05 | Dispatchable skill set derived from module exports | easy | §3.3 |
+| DEC-ENG-06 | Dispatch inlines the identifier's whole prompt-file set | easy | §3.3 |
+| DEC-ENG-07 | Phase provenance from the `_phase` seam, engine-side only | easy | §4.1, §8.3 |
+| DEC-ENG-08 | Startup auth posture is a pure module, independent of the per-dispatch check | easy | §3.2, §3.4 |
+| DEC-ENG-09 | Outcome taxonomy is a policy-free layer-0 module | easy | §5.1 |
+| DEC-ENG-10 | Suite-wide accumulation via filesystem, run id minted by the runner | easy | §7.0, §7.4 |
+| DEC-ENG-11 | Every guard clause has a falsifying counterpart; the deny path performs the deletion | easy | §6.3 |
+| DEC-ENG-12 | `dispatchTimeoutMs` constructor option, one resolution point | easy | §3.4, §4.6 |
+| DEC-ENG-13 | Closed message catalogue; unknown id throws | easy structurally, social once ids are cited | §3.5 |
+| DEC-ENG-14 | No concurrency lock; the gap is recorded, not closed | easy to add later | §2.3, §9.2 O-ENG-T2 |
+
+### What is not decided here
+
+TSPEC §9.2's five open questions (O-ENG-T1 CI placement, O-ENG-T2 concurrency — see DEC-ENG-14,
+O-ENG-T3 supplement size — see DEC-ENG-06, O-ENG-T4 measurement-key granularity, O-ENG-T5 the
+off-matrix platform) remain open. Three of them are maintainer calls about *keys and cost*, not about
+mechanism, and each has a named home above: a decision that changes one of them changes a gate's key,
+not the gate.
+
+Two REQ/FSPEC-level questions also stay upstream: where engine configuration lives (O-3 — §4.6 fixes
+the set, the defaults and the resolution point, so only the *location* is open and no acceptance
+criterion depends on it), and whether either transport can distinguish a session from a token
+credential (O-9 — DEC-ENG-08 is built to survive either answer).
