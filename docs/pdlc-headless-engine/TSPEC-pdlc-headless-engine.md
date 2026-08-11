@@ -359,7 +359,7 @@ Plugin-root resolution is discharged and unchanged (O-8): explicit override → 
 extracted cache → marketplace checkout, with `tried[]` retained for a legible refusal
 (`skills.mjs:204-256`).
 
-### 3.4 The `Transport` interface and its two implementations (C-2, C-6, BR-TRANS-*)
+### 3.4 The `Transport` interface and its two implementations (C-2, C-6, FSPEC §3.2)
 
 One interface, deliberately narrow — a transport dispatches a composed prompt and reports what it
 observed. It owns no policy: no retry, no backoff, no rate-limit pausing, no auth verdict. Those live
@@ -370,6 +370,13 @@ createTransport({ queryFn, env, apiKeySourcePolicy, defaultTimeoutMs, permission
   -> { dispatch(prompt, { model, cwd, timeoutMs, maxTurns })
          -> Promise<DispatchResult> }
 ```
+
+**This four-key options object is the whole transport-facing boundary**, and the boundary test
+asserts set-equality over its keys, not containment. §4.1's `DispatchDescriptor` is a strictly wider
+*adapter-internal* shape: `skill`, `label` and `attempt` stay adapter-local (`adapter.mjs:272`,
+`:285`) and are never handed to a transport, which is why HEAD builds `dispatchOpts` as
+`{ cwd }` plus the three optional keys (`adapter.mjs:278-281`) rather than forwarding the
+descriptor. The two enumerations are deliberately different and §4.1 names which is which.
 
 `createTransport` (`transport.mjs:135`) and its `dispatch` JSDoc (`:143-150`) already declare exactly
 this shape at HEAD; the SDK implementation is the one that exists. **Both implementations return the
@@ -399,10 +406,32 @@ dispatch, not a policy: the observed `apiKeySource` is checked against `apiKeySo
 any tool runs**. `startupFor` (`bin/pdlc.mjs:88`) widens that set to the five-member policy only under
 `--allow-api-key-billing` (`:93`).
 
-**Transport selection is explicit and recorded.** `resolveTransport({ env, flags })` returns
-`{ kind: "agent-sdk" | "cli", transport, reason }`; the primary is chosen unless the operator selects
-the fallback. There is **no silent failover**: an SDK failure is a failure (BR-TRANS-6), because a
-transport that quietly changes underneath a run makes every subsequent observation unattributable.
+**There is no transport selector in this feature, and `resolveTransport` takes no operator input.**
+FSPEC §3.2 is explicit (`FSPEC:193-196`): every real run uses the primary transport, the fallback is
+exercised through recorded fixtures only, and making it runtime-selectable is O-1's work, not this
+document's. v1.0 stated the opposite here and the correct thing in §6.4; this is the single place
+the question is settled.
+
+```js
+resolveTransport({ env }) -> { kind: "agent-sdk", transport, reason }   // kind is constant here
+```
+
+The consequences a test author needs, stated rather than implied:
+
+- **`kind` is `"agent-sdk"` on every code path a run can take.** `reason` is present so the field
+  reads as an observation rather than a constant, and so O-1 can add branches without changing the
+  shape; at this feature's scope `reason` has one value, naming the absent selector.
+- **`"cli"` is reachable only by direct unit construction** — a test importing `transport-cli.mjs`
+  and driving it over §7.2's recorded fixtures. It is not reachable through `resolveTransport`, and
+  no flag, env var or fallback path produces it.
+- **The report's `transport` field therefore asserts one value on any run-shaped test** (§4.5), and
+  two only in the per-transport unit tests that construct the fallback directly. The
+  `"agent-sdk" | "cli"` enumeration is the field's *type*, not its runtime range in this feature.
+- **There is no failover, silent or otherwise** (**R-TRANS-1**, a TSPEC-introduced design rule with
+  no upstream id — v1.0 attributed it to a `BR-TRANS-6` that does not exist in REQ or FSPEC): an SDK
+  failure is a failure, classified by §5.1 and surfaced. With no selector there is nothing to fail
+  over *to*, and a transport that quietly changed underneath a run would make every subsequent
+  observation unattributable.
 
 ### 3.5 The message catalogue seam (C-8, AC-6.4)
 
@@ -420,9 +449,10 @@ Three properties, all mechanically checked rather than reviewed:
 
 - **Unknown id throws** at emission, so an unregistered string cannot reach an operator.
 - **Every registered id is emitted at least once by the suite, asserted once suite-wide**, not per
-  test: each `message()` call records its id into a run-scoped set, and a final test asserts
-  set-equality with `messageIds()`. Per-test assertions would make the property vacuous the moment a
-  test is skipped (this repo's `consolidation-agent-vacuous-green` lesson).
+  test: each `message()` call appends its id to the run's observation directory (§7.4's
+  cross-process mechanism — a module-scoped `Set` would be per test *file*, not per run), and a
+  final step asserts set-equality with `messageIds()`. Per-test assertions would make the property
+  vacuous the moment a test is skipped (this repo's `consolidation-agent-vacuous-green` lesson).
 - **Ids are stable identifiers, wording is not.** The catalogue id is the contract other documents
   cite (`auth.*` rows in §3.2); the template may be reworded without a spec change, and no test
   asserts prose.
@@ -439,7 +469,7 @@ observation:
 
 | Field | HEAD | Target |
 |---|---|---|
-| `transport` | hardcoded `"agent-sdk"` (`report.mjs:51`) | the `kind` `resolveTransport` chose, recorded once per run |
+| `transport` | hardcoded `"agent-sdk"` (`report.mjs:50`) | the `kind` `resolveTransport` returned, recorded once per run — same value, but observed rather than declared (§3.4) |
 | `apiKeySource` | one run-scoped `lastApiKeySource` (`adapter.mjs:245`, written `:320`, read `:381`) | a per-dispatch record; the block carries the observed set plus per-dispatch rows |
 
 `buildEngineBlock` therefore takes `transport` and `authSources` arguments instead of a constant and a
