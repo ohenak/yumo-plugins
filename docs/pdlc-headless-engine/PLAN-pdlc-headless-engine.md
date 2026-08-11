@@ -397,10 +397,14 @@ unrelated to the work, and the repair looks like a CI problem rather than a miss
 is `max(dep batches) + 1` on every row, so the graph is a DAG by construction: a cycle would require
 an edge into an equal-or-lower batch, which no row has. `parsePlanTasks` plus
 `computeTopologicalBatches` are run against this table at the close of Phase P, and the header cells
-above (`#`, `Deps`) are the exact spellings that parser accepts. §4's manifest is the only other
-table in this document with a `#`-like column, and it has none — its header is `Path | Owner(s), by
-batch`, which the parser's exact-cell grammar does not match, so it cannot be mistaken for the task
-table.
+above (`#`, `Deps`) are the exact spellings that parser accepts. Two other tables in this document
+could be mistaken for it and cannot be, for two different reasons. §4's manifest has no id-like
+column at all — its header is `Path | Owner(s), by batch`, which the exact-cell grammar does not
+match. §7's integration table *does* open with a `#` cell, but the parser requires **both** an exact
+id cell and an exact dependencies cell (`Deps`/`Dependencies`/`Depends on`/`Prerequisites`), and §7
+has no such column — its header is `# | Integration point at HEAD | What attaches`. So the task
+table at §3 is the only table in this file the parser accepts, and adding a `Deps`-spelled column to
+§7 would break that, which is why §7 names edges in prose rather than in a column.
 
 ## 7. Integration points
 
