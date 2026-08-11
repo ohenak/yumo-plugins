@@ -13,7 +13,14 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-11 |
+| pdlc | draft | Claude | 1.4 | 2026-08-11 |
+
+**Change note, v1.4** (Phase-T erratum round, one item, no new content): BR-MODEL-3 claimed
+M-ENG-07's corpus was reachable from dry runs. It is not — a dry run composes one skill's prompt
+and dispatches nothing (`inertTransport`), which this document already fixed in BR-SKILL-5/6, so
+the claim contradicted §6.3. The clause now names hermetic fixture-driven runs as the corpus's only
+source and states the dry-run surface's one-row reach explicitly. AT-ENG-29 and EC-DISP-6 already
+scoped the oracle to recorded descriptors and are unchanged. No decision in v1.0–v1.3 is reopened.
 
 **Change note, v1.3** (round 3, addressing `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3`):
 the High is §4.4: AC-3.5's equality is **rescoped**, not weakened — over the modules-derived
@@ -652,8 +659,10 @@ the map, and every map row is exercised by at least one descriptor — so a phas
 pinning a model fails the check (AC-3.3).
 
 **BR-MODEL-3 — the corpus is over recorded descriptors, not executed calls.** A descriptor exists
-when a dispatch is composed, so the whole corpus is reachable from dry runs and hermetic
-fixture-driven runs; no row of the map depends on billed traffic (AC-6.1, AC-3.3).
+when a dispatch is composed, so the whole corpus is reachable from hermetic fixture-driven runs and
+no row of the map depends on billed traffic (AC-6.1, AC-3.3). The dry-run surface is **not** a way
+to reach it: one invocation composes one skill's prompt and dispatches nothing (§6.3, BR-SKILL-5/6),
+so it exercises at most one row and is never the corpus's source.
 
 ### 7.4 Permission posture
 
