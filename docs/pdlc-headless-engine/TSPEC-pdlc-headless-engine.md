@@ -1544,7 +1544,12 @@ whole claim is that transcriptions are exact). The legacy worktree path is reach
 exactly one route, a PLAN approved before the manifest requirement with Phase P skipped on a recorded
 approval (`:9987-9990`). **Run i's fixture repo therefore ships a PLAN with a valid ownership
 manifest and a `implementation.testCommand` in `.claude/pdlc.config.json`**, so the run takes wave
-mode and the script-owned gate (`:10099-10100`). Two consequences the harness makes explicit rather
+mode and the script-owned gate (`:10099-10100`). Two properties of that config file are fixed here
+rather than left to implementation time: the `testCommand` is a **local node script that exits `0`
+and touches nothing outside the fixture repo** — never this repository's own suite, which §7.1's
+hermeticity guard would in any case not permit (PM Q-01) — and `dispatch.timeoutMinutes` is **`7`**,
+the non-default value §4.6's effective-timeout oracle asserts as a literal `420000` at the transport
+boundary. Two further consequences the harness makes explicit rather
 than trusting:
 
 - **The mode is asserted, not assumed.** Run i's assertions include ≥1 descriptor with
@@ -1761,12 +1766,12 @@ every file it touches; a component in **bold** is new in this feature.
 | **`lib/catalogue.mjs`** | new | §3.5 |
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
-| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **resolved `dispatch.timeoutMinutes` stamped as `timeoutMs` on every dispatch's options object** (§3.4), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
+| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
 | `lib/startup.mjs` | changed (structured rungs 0–5, derived skill set) | §4.3 |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
-| `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables`) | §4.3, §4.6, §5.4, §7.1 |
+| `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173`/`:205`, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
-| **`__tests__/_assert-suite-wide.mjs`** | new — the four set-equality assertions plus the `"(no phase)"` bucket assertion | §7.0, §7.4 |
+| **`__tests__/_assert-suite-wide.mjs`** | new — §7.4's five suite-wide assertions (four set-equality properties + the `"(no phase)"` bucket), one per row of that section's table | §7.0, §7.4 |
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
 | `pdlc/engine/package.json` | changed — `scripts.test` becomes the runner invocation | §7.0 |
 | `pdlc/workflows/orchestrate-dev.js` | **exports added** (`DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants) + bare skill literals replaced by those constants at their dispatch sites | §3.3 |
