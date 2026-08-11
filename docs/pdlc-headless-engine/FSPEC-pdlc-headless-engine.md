@@ -846,6 +846,70 @@ installer and writes no engine-owned file into a consumer repo; it neither repai
 
 ## 11. FSPEC-ENG-09 — Queue driving and `--loop`
 
+### 11.1 One invocation, one feature
+
+*Given* a queue with a ready row and the §10.3 posture configured, *when* the operator runs
+`pdlc queue`, *then* exactly one feature is selected **by the module's own Phase-0 triage** — same
+row, same ordering, same blocked/halted handling as the workflow-runtime path (AC-1.3).
+
+**BR-QUEUE-1 — selection is the module's, always.** The engine contributes no ordering preference,
+no readiness opinion, and no dependency reasoning. "Which feature runs next" has exactly one
+implementation, and it is the one already tested in this repo.
+
+**BR-QUEUE-2 — `forcePhases` is not forwarded from the queue path.** A queue run is unattended; a
+forced re-run is always a direct `pdlc dev` invocation (mirroring the workflow-runtime rule, NG-1).
+
+### 11.2 `--loop`
+
+`pdlc queue --loop` replaces `/loop` as the unattended driver (G-7): one ready feature per
+iteration, repeating until no ready row remains, then exiting `0`.
+
+**BR-LOOP-1 — termination is a decidable condition, not a count.** The loop ends when the module
+reports no ready feature. It does not stop because a fixed number of iterations elapsed.
+
+**BR-LOOP-2 — an iteration bound, if offered, is opt-in and reported.** Where an invocation passes
+an explicit maximum-iteration bound, reaching it is a *distinct, reported* termination reason —
+"bound reached, ready work may remain" — never reported as "no ready work remains". An unattended
+operator who cannot tell those two apart will believe a queue is drained when it is not. Absent the
+flag, the loop is bounded only by BR-LOOP-1. (AC-1.3 admits no bound at all while the shipped CLI
+exposes one; the reconciliation is raised as an erratum, §13 O-ENG-3.)
+
+**BR-LOOP-3 — the loop does not swallow an iteration's outcome.** Each iteration's outcome
+(completed, halted, blocked, engine refusal) is recorded per iteration, and §3.3's BR-EXIT-3 fixes
+what the loop finally exits with.
+
+**BR-LOOP-4 — what the loop does next per outcome:**
+
+| Iteration outcome | Loop's next move | Why |
+|---|---|---|
+| completed | continue to the next ready feature | the normal path |
+| halted | continue to the next ready feature | the halt is recorded on that feature's row; other features are independent work |
+| blocked by the module's own gate (e.g. drift) | stop | the block is a property of the repo, not of the feature; the next iteration would hit it identically |
+| engine refusal (startup, auth) | stop | the host is broken; every further iteration would refuse the same way, burning the cron slot on identical failures |
+
+### 11.3 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-Q-1 | queue file absent or unparseable | the module's own handling surfaces; the engine invents no empty queue |
+| EC-Q-2 | queue has rows, none ready | exit `0` immediately, reporting "no ready work" — not an error |
+| EC-Q-3 | every ready feature halts in turn | the loop runs them all, records each halt, and exits `2` (BR-EXIT-3, BR-LOOP-4) |
+| EC-Q-4 | a feature's row is `in-progress` from a killed earlier run | the module's own lifecycle handling governs; the engine re-invokes nothing on its own initiative |
+| EC-Q-5 | `--loop` with an explicit bound of 0 or a non-numeric value | usage error, exit `1` — never silently treated as unbounded |
+| EC-Q-6 | new ready rows appear (human edits the queue) while the loop runs | picked up on the next iteration, since selection re-reads the queue each iteration |
+| EC-Q-7 | `--dry-run` with `--loop` | one iteration's composition is printed and the loop stops: a dry run that iterated forever would never terminate, since no feature's state advances |
+
+### 11.4 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-52 | `pdlc queue` selects exactly the row the module's triage selects, on a multi-row fixture with dependencies (AC-1.3, BR-QUEUE-1) |
+| AT-ENG-53 | `--loop` runs one feature per iteration until none is ready, then exits `0` (AC-1.3, BR-LOOP-1) |
+| AT-ENG-54 | a bounded loop that stops at its bound reports a termination reason distinct from "no ready work" (BR-LOOP-2) |
+| AT-ENG-55 | each row of BR-LOOP-4's table, one fixture each |
+| AT-ENG-56 | the loop's exit code is the worst iteration's (BR-EXIT-3, EC-Q-3) |
+| AT-ENG-57 | EC-Q-2, EC-Q-5, EC-Q-6, EC-Q-7, one case each |
+
 ## 12. FSPEC-ENG-10 — The run report and the closed message catalogue
 
 ## 13. Open questions
