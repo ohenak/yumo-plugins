@@ -1014,9 +1014,44 @@ asserted property in §6.3 and not an implementation detail.
 
 ## 7. Test Strategy
 
-The suite is `node --test __tests__/` under `pdlc/engine/` (`package.json`, `scripts.test`), no test
-framework beyond the runtime's. Everything below is a mechanism, not an aspiration: each subsection
-names the seam that makes the property assertable.
+The suite is `node --test` under `pdlc/engine/`, no test framework beyond the runtime's. Everything
+below is a mechanism, not an aspiration: each subsection names the seam that makes the property
+assertable.
+
+### 7.0 How the suite is invoked (the decision §§3.5, 5.1, 7.1, 7.4 all depend on)
+
+`node --test` runs **each test file in its own child process** (measured on this repo's node
+v20.20.1: a file writing to a shared module-scoped `Set` prints size 1 from one pid, a second file
+importing the same module prints size 0 from another), and gives **no ordering guarantee across
+files**. v1.0's "a module-scoped accumulator read by a test file that runs last by name ordering"
+is therefore not a mechanism at all, and its failure mode is asymmetric and dangerous: the outcome
+harness's forward direction (`observed ⊆ OUTCOMES`) would pass **vacuously green over the empty
+set** — precisely the failure §5.1 exists to prevent — while the catalogue's set-equality would fail
+permanently. So the invocation is fixed here, once:
+
+```json
+"scripts": {
+  "test": "node --test --import=./__tests__/_bootstrap.mjs __tests__/ && node __tests__/_assert-suite-wide.mjs"
+}
+```
+
+Three parts, each doing one job:
+
+| Part | Job | Why it must be this |
+|---|---|---|
+| `--import=./__tests__/_bootstrap.mjs` | preloads into **every** test-file process: §7.1's construction guard and socket trap, and the observation writer below | a bootstrap that is merely `import`ed by some test files is installed only in those files' processes; `--import` is the only thing that makes "a new test file inherits it without opting in" true |
+| observation directory | each process appends its observations as JSON lines to `${PDLC_TEST_RUN_DIR}/{pid}.jsonl`, created by the bootstrap; the run dir is keyed by `PDLC_TEST_RUN_ID` (set by the bootstrap on first use, inherited by every child) | append-only per-pid files need no locking and survive concurrent processes, unlike a shared file or a socket |
+| `&& node __tests__/_assert-suite-wide.mjs` | reads the union of every `.jsonl` and makes §7.4's assertions | a *step*, not a test file, so it is ordered by the shell rather than by filename luck, and it runs once per suite by construction |
+
+`--test-concurrency=1` plus a single-process entry file was the alternative considered; it was
+rejected because it serialises the suite for a property that does not need serialisation, and
+because it leaves the ordering assumption in place rather than removing it.
+
+**The final step's own emptiness is a failure.** If the observation directory is missing or holds no
+records, `_assert-suite-wide.mjs` exits non-zero naming that, rather than asserting over an empty
+union — the one guard that stops the whole mechanism from degrading back into the vacuous green it
+was introduced to prevent. A self-test asserts exactly that: run the step against an empty scratch
+run dir, expect failure.
 
 ### 7.1 Hermeticity, observed rather than asserted (AC-6.1, BR-VER-1)
 
@@ -1025,11 +1060,16 @@ Three layers, in increasing order of paranoia:
 1. **Seam construction.** Every test builds a transport through `createTransport({ queryFn })`
    (`transport.mjs:135`); the SDK's own `query` is reached only by `defaultQueryFn` (`:17`), which
    imports the SDK lazily. A test that omits `queryFn` gets the real client.
-2. **Construction guard.** A suite-scoped guard fails the run on any attempt to construct the real
-   transport — the SDK client *or* a `claude` child spawn. It is a wrapper installed by the test
-   bootstrap, so a new test file inherits it without opting in.
-3. **Socket trap.** The bootstrap patches `net.Socket.prototype.connect` (and the `tls` path) to fail
-   the suite on any outbound connection attempt.
+2. **Construction guard.** A guard fails the run on any attempt to construct the real transport — the
+   SDK client *or* a `claude` child spawn. It is installed by `__tests__/_bootstrap.mjs`, preloaded
+   into every test-file process by `--import` (§7.0), which is what makes "a new test file inherits
+   it without opting in" true rather than aspirational.
+3. **Socket trap.** The same preloaded bootstrap patches `net.Socket.prototype.connect` (and the
+   `tls` path) to fail the suite on any outbound connection attempt.
+
+Layers 2 and 3 exist **per process**, not suite-wide, and that is the correct scope: each is a trap
+in the process that could violate hermeticity. What must be suite-wide is only the *observation* of
+§7.4's set properties, which §7.0 handles separately.
 
 **The trap is itself tested**: one test deliberately attempts a connection and expects to trip it
 (AT-ENG-63). A trap that never fires is indistinguishable from one that was never installed — the
@@ -1049,8 +1089,20 @@ a `__tests__/fixtures/README.md` naming the command and the redaction rules — 
 because the fixtures are the only thing standing between a transport upgrade and a silent contract
 change.
 
-Fixtures are redacted of account identifiers at recording time; no fixture may contain a credential,
-and a test asserts the fixture directory is free of key-shaped strings.
+Fixtures are redacted of account identifiers at recording time; no fixture may contain a credential.
+**The scanner that checks this is paired with a positive control in the same test**, because an
+absence-only scan passes identically whether its pattern is right, wrong or empty. Both halves:
+
+| Half | Assertion |
+|---|---|
+| negative | the scan over `__tests__/fixtures/` finds no match |
+| positive | the **same scanner**, run over a scratch file the test writes containing one deliberately key-shaped string, **must** flag it — asserted in the same test, so a broken pattern fails here instead of passing silently over the fixtures |
+
+The pattern is named in the spec rather than left to the implementation: `sk-ant-` followed by ≥20
+characters of `[A-Za-z0-9_-]`, plus any assignment of `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`
+to a non-empty value. The redaction rules `fixtures/README.md` documents are the same list, and the
+positive control carries one instance of each rule, so "the README's rules" and "the scanner's
+pattern" are asserted equal rather than assumed to be.
 
 ### 7.3 The parity oracle and its write-replaying double (AC-1.1, BR-PARITY-3/4/5)
 
@@ -1074,18 +1126,38 @@ correctness depends entirely on the double:
 
 ### 7.4 Set-equality harnesses
 
-Three properties share one shape — accumulate through a seam across the whole suite, assert once at
+Four properties share one shape — accumulate through a seam across the whole suite, assert once at
 the end — because per-test assertions go vacuous the moment a test is skipped:
 
-| Property | Seam | Assertion |
+| Property | Seam (writes a record per observation) | Assertion in `_assert-suite-wide.mjs` |
 |---|---|---|
 | message catalogue (§3.5) | `message(id, …)` records the id | emitted ids ≡ `messageIds()` |
-| outcome taxonomy (§5.1) | `classifyOutcome` records the result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
-| dispatchable skills (§3.3) | the derived set vs. readable prompt files | both directions, §3.3's table |
+| outcome taxonomy (§5.1) | `classifyOutcome` records its result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
+| **pinned model map (§4.1, AC-3.3)** | the adapter records each `DispatchDescriptor`'s `{ skill, label, model }` | the observed `(phase, model)` pairs ≡ **M-ENG-07's seven rows, in both directions** |
+| dispatchable skills (§3.3) | not an accumulator — computed once from imported data | both directions, §3.3's table |
 
-Each is a single test file that runs last by name ordering and reads a module-scoped accumulator. The
-accumulator is reset per process, never per test — resetting per test is how these degrade into the
-per-test assertions they replace.
+**The model-map row is new in v1.1** and closes AC-3.3, which v1.0 left owned by verbatim
+pass-through alone. `adapter.mjs:271` forwarding `model` untouched is necessary and correctly
+designed, but it proves neither direction: a phase that silently stopped pinning a model would pass
+a pass-through test, and a model reaching a phase no row names would too. AC-3.3 asks for
+set-equality over the recorded corpus and M-ENG-07's map in *both* directions, including that no
+provocation reaches an unnamed model such as `haiku`, so it needs an accumulator of its own. The
+forward direction catches a new model; the reverse catches a phase that stopped pinning — the
+failure that motivated the criterion.
+
+Its corpus is M-ENG-07's own: the union of **five run configurations** (dev healthy path, queue,
+advisory seam, advisory fallback, and the two `haiku` recovery paths), because no single run
+exercises every row. A descriptor is recorded when a dispatch is *composed*, whether or not a model
+call is executed, so all five are reachable hermetically through `--dry-run-skill` (§7.1) and
+fixture-driven runs, and no row depends on billed traffic. M-ENG-07's table stays a **transcription**
+of the modules' constants, never an import from them — importing it would make the drift AC-3.3
+exists to catch invisible.
+
+The first three write through §7.0's observation seam, so the union is genuinely suite-wide across
+processes. The accumulator is per process by construction and never reset per test — resetting per
+test is how these degrade into the per-test assertions they replace. Each property's assertion also
+fails on an empty observation set (§7.0), so "no test exercised this" is a red result, not a green
+one.
 
 ### 7.5 The opt-in live path (AC-6.2, BR-VER-3)
 
@@ -1108,10 +1180,56 @@ engine-tests:
   # working-directory: pdlc/engine ; npm ci ; npm test
 ```
 
+The job body is `npm test` and nothing else, which is what makes §7.0's invocation load-bearing
+rather than a developer convention: the `--import` bootstrap flag and the suite-wide assertion step
+are inside the `test` script, so CI inherits both. A job that spelled out `node --test __tests__/`
+directly would run without the hermeticity bootstrap and without the set-equality step, and would be
+green for a strictly weaker property than the local suite — the drift is prevented by there being
+one spelling, in `package.json`.
+
 Matching the existing matrix is deliberate: the engine spawns processes and reads `~/.claude.json`,
 both of which differ across the maintainer's macOS and CI's Linux, and this repo already pays for
 that difference in its bash-3.2/bash-5 constraint. The job runs the hermetic suite only; nothing in
 CI dispatches a model call or reads a credential.
+
+### 7.7 AC-1.2's filesystem observation (the instrument, not a proxy)
+
+AC-1.2 (`REQ:355-376`) is the one criterion whose oracle is an **instrument**: the run must be
+observed at the filesystem level *for its whole duration*, and three clauses must hold on that same
+observed run — at least one read of `{pluginRoot}/skills/{skill}/SKILL.md`, at least one read of
+`docs/{f}/REQ-{f}.md`, and an **empty** set of paths opened under the consumer's `.claude/workflows/`.
+v1.0 mapped this to `WORKFLOW_MODULE_URLS` (`run.mjs:52`), which resolves module specifiers and
+observes nothing; no section designed the observation at all. This section does.
+
+**The instrument is an in-process `fs` recorder installed by the test, not a platform tracer.**
+`strace`/`dtrace` were considered and rejected: they need elevated privileges on macOS, differ per
+platform (against C-9's grain rather than with it), and cannot run in the hermetic suite. Instead:
+
+| Element | Design |
+|---|---|
+| what records | a wrapper over `node:fs`'s read entry points (`readFileSync`, `promises.readFile`, `createReadStream`, `openSync`, `promises.open`) installed by `__tests__/_bootstrap.mjs` (§7.0) and enabled only for the AC-1.2 test |
+| scope | **the whole run**, from before `runLadder` to after the report is stamped — installed by the bootstrap, so it is live during the dynamic `import()` of the modules too, which is the window the `.claude/workflows/` clause is really about |
+| coverage of both readers | the engine reads through `node:fs` directly, and the modules read through their **own Node defaults** (`defaultReadFile`, `orchestrate-dev.js:8492`) which are also `node:fs` — so one wrapper observes both, and §2.5's decision not to override the modules' IO seams is what makes that true. An injected `_readFile` recorder would have observed the modules only |
+| what is recorded | every resolved absolute path, in order, with the call that opened it |
+
+The three clauses are then assertions over one recording, and the two positive clauses are what make
+the negative one falsifiable:
+
+1. `∃` a recorded path matching `{pluginRoot}/skills/{skill}/SKILL.md` for the dispatched skill.
+2. `∃` a recorded path equal to `docs/{f}/REQ-{f}.md` under the consumer root.
+3. `∄` a recorded path under `{consumerRoot}/.claude/workflows/`.
+
+**Clause 3 is absence-shaped and is never asserted alone.** It is asserted only in a test where 1
+and 2 pass on the *same* recording — an instrument that recorded nothing satisfies clause 3
+perfectly. Two further falsifying controls, in the same file: a case that deliberately reads a file
+under `.claude/workflows/` inside the observation window **must** fail clause 3 (proving the matcher
+sees that tree), and a case asserting the recording is non-empty (proving the wrapper is installed).
+
+The consumer fixture is a scratch repo carrying a **populated** `.claude/workflows/` tree, not an
+absent one; an empty directory would satisfy clause 3 for the wrong reason. This is what turns
+AC-1.2 from "we found no read" into "we watched, and there was none" — and it is the reason the
+posture the run is given (`distribution.checkEnabled`, `REQ:365-374`, consumed at
+`orchestrate-queue.js:2068`, `:1071-1072`) is part of the fixture and named in §8.1's row.
 
 ## 8. Traceability
 
