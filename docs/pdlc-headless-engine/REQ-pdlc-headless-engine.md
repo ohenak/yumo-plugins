@@ -28,8 +28,8 @@ Also: AC-4.2's sixth sequence is arithmetically fixed and the `timeout` cap disa
 (SE F-15, TE Q-02); AC-1.1's *Given* carries the queue posture and its filename oracle splits
 set-equality from run-dependent rules (TE F-06, SE Q-05); §1.2a files AC-4.5's per-dispatch
 auth clause red and drops an unsupported citation (TE F-05, F-07); §1.2/§1.3's measured facts
-are relocated to `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-01…05 (size budget).
-Verified against HEAD before writing; nothing outside these findings changed (SE F-16).
+move to `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…05, size budget). Each claim was
+re-verified against HEAD; nothing outside these findings changed (SE F-16).
 
 *Earlier change notes.* **0.5** (round-1 cross-review): the 0.4 transport swap completed through
 the mechanism layer (SE/TE F-01), C-1 split into startup and per-dispatch parts (SE F-02),
