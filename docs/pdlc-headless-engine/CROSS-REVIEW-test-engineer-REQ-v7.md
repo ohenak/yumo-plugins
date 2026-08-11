@@ -82,3 +82,6 @@ the same non-blocking Medium residue for the TSPEC author to inherit.
 
 VERDICT: Approved
 {"high": 0, "medium": 0, "low": 0}
+
+APPROVAL-HASH: sha256:0588cd1b74288cd6f0a41dfcc05ff1bba5e371c6c681db24bb32fdc27c526784
+REVIEWED-COMMIT: 2a4939cab5e84e4e0963ea20b7b34448d16ed1de
