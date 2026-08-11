@@ -525,6 +525,14 @@ map of §7.3 is exercised over descriptors rather than executed calls.
 **BR-SKILL-5 — dry-run inertness is asserted, not assumed.** On the dry-run path an attempted
 dispatch is a failure the surface reports, not a silently-executed call (§3.1).
 
+**BR-SKILL-6 — the dry run prints one skill per invocation; the coverage assertion ranges over the
+set.** `--dry-run-skill` names the skill whose composed prompt is printed, defaulting to
+`pm-author` (`pdlc/engine/bin/pdlc.mjs:172`, `:189-191`). The surface is deliberately one-at-a-time
+— an operator inspecting a prompt wants one prompt — so §6.4's every-member assertion is reached by
+**one invocation per member** of the dispatchable set, not by one invocation printing all of them.
+AT-ENG-20 is therefore parameterised over the set derived at startup (§4.4 Direction A), and a
+member with no invocation is a failing test, not a smaller sample.
+
 ### 6.4 Coverage: every skill, not a sample
 
 AC-3.1 requires the composition assertion for **each** member of the dispatchable skill set, not a
@@ -548,7 +556,7 @@ supplements — and §4.4's erratum about AC-3.5's reference set applies here id
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-20 | for **every** member of the dispatchable set (§6.4), the composed prompt contains that prompt file's full text (AC-3.1) |
+| AT-ENG-20 | for **every** member of the dispatchable set (§6.4), one invocation each, the composed prompt contains that prompt file's full text (AC-3.1, BR-SKILL-6) |
 | AT-ENG-21 | no composed prompt contains a Skill-tool instruction or an engine-added `pdlc:` reference (BR-SKILL-1) |
 | AT-ENG-22 | the composed prompt for the same dispatch is identical across transports (BR-SKILL-2) |
 | AT-ENG-23 | the `se-implement` supplements appear exactly when the module's dispatch asks for them (BR-SKILL-3) |
@@ -606,6 +614,14 @@ fixture-driven runs; no row of the map depends on billed traffic (AC-6.1, AC-3.3
 (allowed tools, bypass level) comes from a single named, reviewable engine setting on either
 transport. No call site carries its own escalation (C-6). "Which posture is in force" is therefore
 answerable by reading one value, and the run report records the value in force (§12.2).
+
+**BR-PERM-2 — the posture in force is the most permissive one, and §9's guard must hold under it.**
+At HEAD that value is `bypassPermissions`, with the SDK's paired acknowledgement
+(`pdlc/engine/lib/transport.mjs:89`, `:170-175`). Every assertion in this document that a dispatch
+is constrained — the delete guard above all — is therefore asserted on a dispatch composed exactly
+as §6.2 and this subsection compose it, permission posture included. An assertion made under a
+stricter test-only posture proves the configuration is well-formed and nothing about a production
+dispatch (§9.1).
 
 ### 7.5 Edge cases and error scenarios
 
@@ -764,6 +780,13 @@ engine is an assertion made **with no pdlc hooks registered** on the host: the r
 happen. An assertion made on a host where the plugin's hooks are live proves nothing about the
 engine (AC-5.1).
 
+**BR-GUARD-5 — the refusal is asserted under the production permission posture.** The dispatch the
+guard is asserted against is composed exactly as §6.2 and §7.4 compose a real one, `bypassPermissions`
+included (BR-PERM-2). Whether a PreToolUse-style guard fires *under* that posture is unmeasured on
+either transport — it is the first thing O-2 must measure (§13.2), because a guard that the bypass
+setting disables would pass every well-formedness test and protect nothing. Until that measurement
+exists, §9's tests are the shape of the answer, not the answer.
+
 ### 9.2 Behaviour
 
 *Given* an engine-dispatched agent working in a repo where `LEARNINGS-{f}.md` does not exist,
@@ -784,14 +807,14 @@ which is why a plan should schedule this before any unattended use.
 | EC-GUARD-1 | host has the plugin's hooks registered as well | the refusal still happens; the test that matters runs with them absent (BR-GUARD-3) |
 | EC-GUARD-2 | deletion attempted through a shell pipeline rather than a direct command | the guard's coverage is the invariant, not a command spelling; a form that evades it is a defect of the mechanism O-2 selects |
 | EC-GUARD-3 | `LEARNINGS-{f}.md` exists but is untracked / uncommitted | the existing guard's own definition of "exists on the branch" governs; the engine changes no part of that definition (NG-1) |
-| EC-GUARD-4 | the guard configuration cannot be applied on a transport | that transport is unusable for a real run: the engine refuses to dispatch rather than running unguarded (fail-closed, C-5) |
+| EC-GUARD-4 | the guard configuration cannot be applied on a transport | that transport is unusable for a real run: the engine refuses to dispatch rather than running unguarded (fail-closed, C-5). Since this feature ships no runtime transport selector (§3.2), a refusal on the **primary** transport is a refusal of the whole engine, and its message says so: it names the missing capability, names the fallback as the known alternative, and states that selecting it is not yet available (O-1/O-2). That is a decision an operator can act on — measure or defer the engine — rather than a silent dead end |
 | EC-GUARD-5 | a non-matching file is deleted (source file, scratch file) | unaffected — the guard's file classes are unchanged (NG-1) |
 
 ### 9.4 Acceptance tests
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-41 | with no pdlc hooks registered on the host, an engine-dispatched deletion of each of the three protected classes is refused when `LEARNINGS-{f}.md` is absent — asserted per transport (AC-5.1, BR-GUARD-1/3) |
+| AT-ENG-41 | with no pdlc hooks registered on the host, an engine-dispatched deletion of each of the three protected classes is refused when `LEARNINGS-{f}.md` is absent — asserted per transport, on a dispatch composed under the production permission posture (AC-5.1, BR-GUARD-1/3/5) |
 | AT-ENG-42 | with `LEARNINGS-{f}.md` present, harvest's deletions succeed — asserted per transport (AC-5.2, BR-GUARD-2) |
 | AT-ENG-43 | a transport that cannot carry the guard configuration refuses to dispatch (EC-GUARD-4) |
 | AT-ENG-44 | EC-GUARD-1, EC-GUARD-5, one case each |
