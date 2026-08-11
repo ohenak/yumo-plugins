@@ -64,10 +64,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 const SKILL_REL = "pdlc/skills/consolidate-learnings/SKILL.md";
-const REQ = "docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md";
-const FSPEC = "docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md";
-const TSPEC = "docs/pdlc-consolidation-agent/TSPEC-pdlc-consolidation-agent.md";
-const PLAN = "docs/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md";
+const REQ = "docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md";
+const FSPEC = "docs/completed/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md";
+const TSPEC = "docs/completed/pdlc-consolidation-agent/TSPEC-pdlc-consolidation-agent.md";
+const PLAN = "docs/completed/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md";
 const VOCAB = "docs/_constraints/pdlc-consolidation-vocabularies.md";
 
 // The citers known at the time of writing. Not the document set — a floor under

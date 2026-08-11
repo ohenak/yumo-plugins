@@ -101,8 +101,8 @@ of the FSPEC; roll-up below.
 
 ## pdlc-consolidation-agent
 
-Upstream: `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (v2.0). Downstream:
-`docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` (v1.0). The authoritative
+Upstream: `docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (v2.0). Downstream:
+`docs/completed/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` (v1.0). The authoritative
 per-criterion mapping lives in FSPEC §15.1; roll-up below.
 
 | User Story | Requirement | FSPEC sections |
