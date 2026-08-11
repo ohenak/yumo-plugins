@@ -493,6 +493,11 @@ async function rtCliQuery(argv, label) {
   return null;
 }
 
+async function rtHashNormalizedFile(path) {
+  const probed = await rtProbeDoc(path);
+  return probed && typeof probed.normalizedHash === "string" ? probed.normalizedHash : null;
+}
+
 async function rtProbeDoc(path, docType) {
   if (!path || typeof path !== "string") return null;
   const argv = ["doc-probe", path];
@@ -733,6 +738,7 @@ function rtDevInjections(devModule) {
     _checkFile: rtCheckFile,
     _readFile: rtReadFile,
     _hashFile: rtHashFile,
+    _hashNormalizedFile: rtHashNormalizedFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
 
@@ -3992,9 +3998,23 @@ function approvalHashOf(text) {
   return `sha256:${sha256Hex(text)}`;
 }
 
+const APPROVAL_PATH_ANCHOR_RE =
+  /([A-Za-z0-9_~@][A-Za-z0-9_@~.\-/]*[./][A-Za-z0-9_@~.\-/]*):(\d+)(?:-(\d+))?(?![\w.-])/g;
+const APPROVAL_CELL_ANCHOR_RE = /`:(\d+)(?:-(\d+))?`/g;
+
+function normalizeForApproval(text) {
+  return String(text ?? "")
+    .replace(APPROVAL_PATH_ANCHOR_RE, (_m, head, _a, b) => `${head}:${b == null ? "*" : "*-*"}`)
+    .replace(APPROVAL_CELL_ANCHOR_RE, (_m, _a, b) => `\`:${b == null ? "*" : "*-*"}\``);
+}
+
+function approvalHashOfNormalized(text) {
+  return approvalHashOf(normalizeForApproval(text));
+}
+
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
 
-const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH|REVIEWED-COMMIT):/;
+const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
 
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
 
@@ -4004,10 +4024,13 @@ const COMMIT_UNAVAILABLE = "unavailable";
 
 function parseApprovalHash(fileText) {
   const hashes = [];
+  const normalized = [];
   const commits = [];
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
+    const n = /^\s*APPROVAL-HASH-NORMALIZED:\s*(\S*)\s*$/.exec(line);
+    if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
   });
@@ -4021,7 +4044,10 @@ function parseApprovalHash(fileText) {
       ? commits[0]
       : COMMIT_UNAVAILABLE;
 
-  return { ok: true, hash: hashes[0], reviewedCommit };
+  const normalizedHash =
+    normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
+
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
 }
 
 function extractFileVerdict(fileText, roleSlug) {
@@ -4535,6 +4561,7 @@ async function reviewLoop({
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
   _hashFile = defaultHashFile,
+  _hashNormalizedFile = defaultHashNormalizedFile,
   _appendFile = defaultAppendFile,
 
   _probeDoc = NO_PROBE,
@@ -4700,11 +4727,18 @@ async function reviewLoop({
     }
 
     let anchorHash = null;
+    let anchorNormalizedHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
 
       const probe = await probeDocument(_probeDoc, doc, roundDocType);
       anchorHash = (probe ? probe.hash : await _hashFile(doc)) ?? null; 
+
+      anchorNormalizedHash = await normalizedAnchorFor({
+        probe,
+        path: doc,
+        _hashNormalizedFile,
+      });
       anchorCommit = await headCommitSha(_git); 
     }
 
@@ -4759,6 +4793,7 @@ async function reviewLoop({
       await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
+        normalizedHash: anchorNormalizedHash,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -4832,9 +4867,21 @@ function approvalAnchorPreCount(fileText) {
   return found;
 }
 
+async function normalizedAnchorFor({ probe, path, _hashNormalizedFile }) {
+  if (probe) return typeof probe.normalizedHash === "string" ? probe.normalizedHash : null;
+  if (typeof _hashNormalizedFile !== "function") return null;
+  try {
+    const value = await _hashNormalizedFile(path);
+    return typeof value === "string" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function appendApprovalAnchors({
   paths,
   hash,
+  normalizedHash = null,
   commit,
   _readFile,
   _probeDoc,
@@ -4878,7 +4925,13 @@ async function appendApprovalAnchors({
       return;
     }
     try {
-      await _appendFile(path, `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ${commit}\n`);
+
+      await _appendFile(
+        path,
+        `\nAPPROVAL-HASH: ${hash}\n` +
+          (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
+          `REVIEWED-COMMIT: ${commit}\n`
+      );
       appended = true;
     } catch (err) {
       emit(
@@ -5137,6 +5190,8 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
       high: parsedVerdict.ok ? parsedVerdict.high : null,
       verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
       anchorHash: anchor.ok ? anchor.hash : null,
+
+      anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -5255,7 +5310,14 @@ async function targetState({ targetPath, artifactClass, docType, _readFile, _pro
 }
 
 function noApprovalRecord(candidate, unevaluable = []) {
-  return { approving: false, candidate, hash: null, unevaluable, tier1Empty: false };
+  return {
+    approving: false,
+    candidate,
+    hash: null,
+    normalizedHash: null,
+    unevaluable,
+    tier1Empty: false,
+  };
 }
 
 function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
@@ -5281,7 +5343,18 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
     return noApprovalRecord(candidate, records.map((r) => r.path));
   }
 
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+  const norms = records.map((r) => r.anchorNormalizedHash ?? null);
+  const normalizedHash =
+    norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
+
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 const APPROVAL_RECORD_HEADING = /^\s*##\s+\d*\.?\s*Approval Record\s*$/;
@@ -5318,7 +5391,15 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
   if (!hashes.every((h) => APPROVAL_HASH_VALUE_RE.test(h) && h === hashes[0])) {
     return noApprovalRecord(candidate);
   }
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash: null,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 function authoringHaltError(message, trailerReason) {
@@ -6737,6 +6818,14 @@ function defaultHashFile(path) {
   }
 }
 
+function defaultHashNormalizedFile(path) {
+  try {
+    return approvalHashOfNormalized(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function defaultListFiles(dirPath, { fsMod = fs } = {}) {
   if (typeof dirPath !== "string" || dirPath.trim() === "") {
     return { ok: false, reason: "bad_argument" };
@@ -6978,6 +7067,7 @@ async function main({
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
   _hashFile: hashFileFn = defaultHashFile,
+  _hashNormalizedFile: hashNormalizedFileFn = defaultHashNormalizedFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -7089,10 +7179,23 @@ async function main({
 
         const probe = await probeDocument(probeDocFn, docPath, docType);
         const docHash = probe ? probe.hash ?? null : await hashFileFn(docPath);
-        const freshness =
+        let freshness =
           docHash == null
             ? isStale(record.hash, null)
             : isStaleByHash(record.hash, docHash);
+
+        let heldByNormalization = false;
+        if (freshness === "STALE" && record.normalizedHash) {
+          const docNormalized = await normalizedAnchorFor({
+            probe,
+            path: docPath,
+            _hashNormalizedFile: hashNormalizedFileFn,
+          });
+          if (docNormalized && docNormalized === record.normalizedHash) {
+            freshness = "FRESH";
+            heldByNormalization = true;
+          }
+        }
         if (freshness === "FRESH") {
 
           const pm = await resolvePostmortem({
@@ -7101,7 +7204,16 @@ async function main({
             _readFile: readFileFn,
             _probePostmortem: probePostmortemFn,
           });
-          let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
+          let detail = heldByNormalization
+            ? `Skipped — approved round ${record.candidate}, approval held: only line-number anchors moved since review`
+            : `Skipped — approved round ${record.candidate}, hash FRESH`;
+          if (heldByNormalization) {
+            notices.push(
+              `Phase ${phaseId}: ${docPath} differs from the approved bytes only in ` +
+                `line-number anchors (\`file:line\` citations) — the recorded approval holds ` +
+                `and the phase is skipped (DEC-APPROVAL-03).`
+            );
+          }
           if (pm.status === "unresolved") {
             detail += `; unresolved POSTMORTEM at ${pm.path}`;
             skipPostmortem = pm;
@@ -7161,6 +7273,7 @@ async function main({
     _agent: agentFn,
     _readFile: readFileFn,
     _hashFile: hashFileFn,
+    _hashNormalizedFile: hashNormalizedFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _probeDoc: probeDocFn,
@@ -7278,6 +7391,11 @@ async function main({
 
     const probe = await probeDocument(probeDocFn, upstreamPath, target);
     const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
+    const anchorNormalizedHash = await normalizedAnchorFor({
+      probe,
+      path: upstreamPath,
+      _hashNormalizedFile: hashNormalizedFileFn,
+    });
     const anchorCommit = await headCommitSha(gitFn);
 
     const responses = await parallelFn(
@@ -7351,6 +7469,7 @@ async function main({
     await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
+      normalizedHash: anchorNormalizedHash,
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,
