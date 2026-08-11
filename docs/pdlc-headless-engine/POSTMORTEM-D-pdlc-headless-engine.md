@@ -33,7 +33,42 @@ came with **both delta-confirmation files on the branch carrying approving verdi
 
 ## Iterations
 
+| Round | Document | Version | pm-review | te-review | Outcome |
+|---|---|---|---|---|---|
+| 1 | DECISIONS | v1.1 | Needs revision (`f084bdbc`) | Needs revision (`c98fcb05`) | six commits of targeted repair (`a4bd72bc` … `07bb1b0a`): DEC-ENG-03 dropped its EC-GUARD-4 message contract and rung-5 pin and cited upstream authority; DEC-ENG-04 re-cited BR-GUARD-5/O-2; DEC-ENG-05 corrected HEAD measurements |
+| **2** | DECISIONS | **v1.2** | **Approved with minor changes** (`ca212254`) | **Approved with minor changes** (`9938f3f8`) | **converged.** Anchors recorded in `96b8671a`. Both reviewers re-emitted the two DEC-ENG-03 errata; pm-review filed the open dependency as `Q-01`, not as a finding, "because it is upstream's state, not this document's" |
+| **E1** | **REQ (erratum)** | **v0.10** | *(not a REQ approver)* | — | targeted edit `6ff9871a`; delta confirmation by REQ's own approvers below — **the halt** |
+| E1 | REQ (erratum) | v0.10 | `se-review`: **Approved with minor changes** `{0, 1, 1}` (`2d125f41`) | `te-review`: **Approved with minor changes** `{0, 1, 1}` (`23a1a614`) | files approve; **the run reported `se-review` non-approving** |
+| — | FSPEC (erratum) | v1.5 | — | — | **never dispatched.** Pre-empted by the REQ halt |
+
+The erratum edit is small and squarely inside the protocol's scope: `+31/−28` lines, one new
+constraint **C-11** at `REQ:284-298`, the version row, and a change-note block (the 0.8/0.9 notes
+compressed into one paragraph to hold the REQ size budget). `git diff` shows no `AC-`, `BR-`, goal,
+non-goal or risk text touched. C-11 declares the engine's ability to execute the shipped guard a
+**declared host precondition**, observed once at startup, whose absence is a fail-closed startup
+refusal — and explicitly leaves *which* interpreters satisfy it, how the observation is made, the
+refusal string, and the check's position among the startup rungs to FSPEC and TSPEC.
+
 ## Reviewers
+
+| Reviewer | Verdict in file | Findings | Substance |
+|---|---|---|---|
+| `se-review` (software-engineer) | **Approved with minor changes** `{0, 1, 1}` | `F-01` Medium: C-11 claims the same footing as C-10 but has no AC of AC-3.2's shape; `F-02` Low: REQ now 695 lines / 54,685 bytes against a 700-line / 60 KB budget | Verified both erratum items cleared, re-ran the author's own grep (`REQ:23`, `:25`, `:285-298`), re-checked the `guard-harvest-before-delete.sh:14-21` citation line-by-line at HEAD, and audited four places the new refusal could contradict standing text (AC-4.1's closed catalogue, AC-2.1's first-match table, C-8's string catalogue, NG-1) — all intact |
+| `te-review` (test-engineer) | **Approved with minor changes** `{0, 1, 1}` | `F-04` Medium carried forward to FSPEC/TSPEC review; `F-05` Low process note | "The delta resolves both errata and breaks nothing previously approved: the AC set is byte-stable at 26, the constraint set gains only C-11, the guard citation holds at HEAD, and NG-1 is preserved explicitly" |
+
+Neither reviewer raised a High. Neither asked for a re-edit. `se-review` closed with the opposite
+of a rejection: "neither is gating and neither should trigger a re-authoring round."
+
+Two further facts about these two files matter for recovery:
+
+- **They carry no approval anchors.** `grep -c "APPROVAL-HASH\|REVIEWED-COMMIT"` returns `0` for
+  both REQ v8 files, and `2` for the DECISIONS v2 files. The anchor append runs *after* the
+  confirmation gate (`orchestrate-dev.js:9357` onward); the halt threw first. So REQ's recorded
+  approval still points at v0.9's bytes even though its approvers confirmed v0.10.
+- **`se-review` left a note for the DECISIONS author**, explicitly not a finding against REQ:
+  DEC-ENG-03 still reads that `grep -in "python\|interpreter"` over REQ and FSPEC "returns **zero
+  hits in both**" and still describes its authority as pending (`DECISIONS:183-196`). That sentence
+  is now half false — the REQ half by design, as the downstream half of this same erratum wave.
 
 ## Pattern of Disagreement
 
