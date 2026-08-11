@@ -328,16 +328,23 @@ question. `{f}` denotes a feature name throughout.
 **Group 1 — pipeline parity** *(US-01, US-03; G-1, G-2, G-6)*
 
 - **AC-1.1** *Who:* the operator. *Given* a consumer repo on `feat-{f}` holding
-  `docs/{f}/REQ-{f}.md`, with **no `.claude/workflows/` directory at all** and the pdlc
+  `docs/{f}/REQ-{f}.md`, with **no `.claude/workflows/` directory at all**, the engine's
+  declared queue posture set — `distribution.checkEnabled: false` in the consumer's
+  `.claude/pdlc.config.json` (AC-1.2, SE Q-05) — and the pdlc
   plugin installed machine-wide at a version within the engine's declared compatible range
   (C-10), *when* they run `pdlc dev docs/{f}/REQ-{f}.md`, *then* the pipeline runs end-to-end
   through the phases enabled by that repo's config and satisfies each **structural** oracle
   below. The oracle is structural, not byte-equality, and needs no comparison run of the
   workflow-runtime path — two pipeline runs dispatch non-deterministic model calls, and AC-6.1
   forbids a live comparison arm in CI (TE F-08). Expected sets are transcribed here:
-  1. the set of artifact **filenames** created under `docs/{f}/` equals the set the enabled
-     phases declare (`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS` when
-     warranted, `LEARNINGS`, one `CROSS-REVIEW-{role}-{doc}[-v{N}].md` per review round run);
+  1. the artifact **filenames** created under `docs/{f}/` satisfy two rules, because only part
+     of the set is run-independent (TE F-06): (i) **set-equality** against the phase-declared
+     core — `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `LEARNINGS` (`REQ` pre-exists) — for the
+     phases that repo's config enables; (ii) for the two run-dependent members, a rule, not a
+     fixed set: `DECISIONS-{f}.md` exists **iff** the run report records the Phase-T decision
+     that warrants it, and the `CROSS-REVIEW-{role}-{doc}[-v{N}].md` set equals exactly one
+     file per `(role, doc, round)` the run's own recorded round windows name. No filename
+     outside (i) and (ii) may appear — the set is closed in both rules;
   2. every `CROSS-REVIEW-*` file carries a parseable `VERDICT:` line and a counts JSON object;
   3. approval anchors (`APPROVAL-HASH:`, `REVIEWED-COMMIT:`) are present on each cross-review
      that reached a terminal approval;
@@ -348,15 +355,18 @@ question. `{f}` denotes a feature name throughout.
   whole duration, *then* all three hold on that **same observed run** (TE F-09): (a) at least
   one read of `{pluginRoot}/skills/{skill}/SKILL.md` is observed; (b) at least one read of the
   consumer's `docs/{f}/REQ-{f}.md` is observed; (c) the set of paths opened under the
-  consumer's `.claude/workflows/` is empty **except** for `orchestrate-queue.js`'s own drift
-  gate, which reads `.claude/workflows/.pdlc-drift-state.json` through the injected
-  `_readFile` before `QUEUE.md` is read at all (`orchestrate-queue.js:64`, `:1074`). That read
-  is a module behaviour G-2/C-4 forbid forking, so its disposition is fixed here rather than
-  denied (SE F-04): **the engine's declared queue posture is `distribution.checkEnabled:
-  false` in the consumer's `.claude/pdlc.config.json`**, the documented opt-out the module
-  honours ahead of the drift-state record (`orchestrate-queue.js:1947`), and an engine run in
-  a repo with no `.claude/workflows/` tree and no opt-out is **expected** to be blocked by the
-  gate. Reads of the consumer's own `docs/**` and `.claude/pdlc.config.json`, and reads inside
+  consumer's `.claude/workflows/` is **empty, with no exception** — under the posture AC-1.1's
+  *Given* fixes, no path under that directory is opened at all. The module's config-side
+  opt-out is evaluated *before* any drift-state read and short-circuits it
+  (`parseDistributionCheckEnabledOptOut`, `orchestrate-queue.js:2068`, called at `:1071-1072`;
+  the drift-state read at `.claude/workflows/.pdlc-drift-state.json`, `:64`, lives only in the
+  else-branch, `:1074`) — so the drift gate that G-2/C-4 forbid forking (SE F-04) costs the
+  engine no read under `.claude/workflows/` at all, rather than one permitted read. Without
+  that opt-out the same run is **expected** to be blocked by the gate, and the drift-state read
+  is then observable; that is a different posture, not this AC's. (`:1947`'s
+  `record.checkEnabled === false` is `mapDriftState`'s row 2 — a field *of the drift-state
+  record*, not the config-file opt-out this posture sets; SE F-13, TE F-04.)
+  Reads of the consumer's own `docs/**` and `.claude/pdlc.config.json`, and reads inside
   the engine install or the installed plugin's `skills/` tree (G-5, C-10), are expected.
 - **AC-1.3** *Given* a queue with a ready row and the AC-1.2 posture configured, *when* the
   operator runs `pdlc queue`, *then* exactly one feature is selected by the module's own
