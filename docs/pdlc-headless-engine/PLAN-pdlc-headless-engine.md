@@ -372,6 +372,41 @@ table.
 
 ## 7. Integration points
 
+Each row names the existing code or configuration a task attaches to, measured at HEAD, so the
+integration is a known edit rather than a discovery made mid-wave.
+
+| # | Integration point at HEAD | What attaches |
+|---|---|---|
+| T11 | `pdlc/engine/package.json` `scripts.test` is `node --test __tests__/` | replaced by `node __tests__/_run-suite.mjs`; this one spelling is what makes CI and the local suite assert the same property (TSPEC §7.6) |
+| T12 | `transport.mjs:17` `defaultQueryFn` imports the SDK lazily; `transport.mjs:135` `createTransport` takes an injectable `queryFn` | the construction guard hooks the path a test takes when it *omits* `queryFn` — the seam that already exists is what makes hermeticity observable rather than aspirational |
+| T13 | `transport.mjs:98` `classifyThrown` already funnels every thrown value into the four classes, with the unrecognised arm at `:123` | `classifyOutcome` maps those four plus `reportedFailure`; the total-without-fallback property is inherited from `:123`, not re-implemented |
+| T14 | strings are built inline at `handshake.mjs:124` (`REMEDY`), `startup.mjs:139`, `bin/pdlc.mjs:36` (`USAGE`) | each becomes a registered id; the inline sites are the closed list T05's test enumerates |
+| T15 | `startup.mjs:49`, `:64` and `handshake.mjs:183` `buildBanner` render an `apiKeyPolicy` row **from the CLI flag alone** — HEAD inspects neither environment nor login record | `lib/auth.mjs` supplies the observed posture; T41 rewires the banner row to it |
+| T16 | `PHASE_DISPATCH` exported at `orchestrate-dev.js:3337`, rows `:3344`–`:3435`; `ADVISORY_RUNG_SKILL` module-local at `:1797`; `orchestrate-queue.js:41` already imports from `orchestrate-dev.js` on one line, as `stripModuleSyntax` requires | five role keys are flattened out of `PHASE_DISPATCH`, six constants are promoted, and the queue's two-member set is derived; the single-line import at `:41` is extended, never wrapped |
+| T17 | `pr-tests.yml` runs four jobs — `unit-tests` `:27`, `artifact-freshness` `:77`, `fresh-clone-bootstrap` `:103`, `script-syntax` `:161` — and **none runs `pdlc/engine/`'s tests**; `.claude/pdlc.config.json` `implementation.testCommand` is `cd pdlc/workflows && npm test …` | a fifth job on the `unit-tests` matrix, and a `testCommand` that also runs the engine suite so this feature's own waves are gated on the code they are writing |
+| T20 | `adapter.mjs:266-268`'s comment claims `opts.label` is one of two fields the modules pass; `:274` `const tag = label \|\| skill`; `:278-281` builds `dispatchOpts`; `:357-359` logs the phase label and discards it | the `_phase` seam is retained as run state and stamped; the stale comment is corrected in the same task, because leaving it is how the next reader keys something on `label` |
+| T22 | `transport.mjs:159` spreads the parent env; `:162-166` is the `AbortController` timer; `:170-174` pairs `permissionMode` with `allowDangerouslySkipPermissions`; `:176-178` assign `model`/`cwd`/`maxTurns`; `:199-206` reads `apiKeySource` from `system/init` | the shared child-env helper is factored out of `:159` so both transports carry one rule, and BR-PARITY-5's sentinel test asserts it survives on both |
+| T28 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh` — stdin JSON, unparseable ⇒ exit 0 (`:29-30`), scope match (`:35-38`), directory `LEARNINGS-*.md` check (`:53-57`), exit 2 blocks and feeds stderr back (`:6`) | both carriers invoke **the shipped script** and consume its exit code; no JavaScript reimplementation, so "exists on the branch" keeps one meaning (NG-1, DEC-ENG-03) |
+| T27 | the same script's interpreter probe, `:13-21`: candidates `python3`, `python`, `py`, each **run** (`"$cand" -c "import sys"`), and `[ -z "$PY_BIN" ] && exit 0` — fail-open | rung 4a probes the identical candidate set in the identical order, by running rather than by `PATH` presence, and refuses; the script's own fail-open posture is untouched |
+| T30 | `adapter.mjs:57` `maxRateLimitPauses` default 3, `:58` `baseMs` 30 s, `:59` cap 15 min, `:60` jitter; `transport.mjs:64` `DEFAULT_TIMEOUT_MS` and `:139`/`:152` its application; `bin/pdlc.mjs:83`, `:303-307` `--max-iterations`; `:88-93` `--allow-api-key-billing` | `resolveTunables` becomes the single reader; the fixture pins `dispatch.timeoutMinutes: 7` precisely because `DEFAULT_TIMEOUT_MS` equals the tunable's own default and an assertion at the default is self-consistent and false |
+| T31 | `run.mjs:273` `maxPasses = 100`; `:277-282` the loop's four exits; `bin/pdlc.mjs:236-238` the exit write; `:304-305` yields `Infinity` when the flag is absent | one mapping function over the module `outcome`; `stopReason` total over all four exits; `Infinity → null` converted where the block is assembled, asserted on the in-memory object |
+| T35 | `adapter.mjs:245` `lastApiKeySource`, written `:320`, read `:381`; `:305`/`:340` push `label: tag`; `report.mjs:51` surfaces the scalar once | the scalar becomes a per-dispatch `authSources` array; pause and denial rows gain `phase` while keeping `label` as an honest log tag |
+| T36 | `transport.mjs:63` `DEFAULT_API_KEY_SOURCE_POLICY = ["none"]`; `:201-206` throws `AuthPolicyError` before any tool runs; `bin/pdlc.mjs:88` `startupFor` widens the set at `:93` | C-1b stays in the transport as an observation of that dispatch; the widening stays flag-only |
+| T39 | `run.mjs:52` `WORKFLOW_MODULE_URLS`, `:58` `workflowModulePath`, `:80` `devInjection`, `:114` `queueInjection`, `:155` `withCwd`; `orchestrate-dev.js:8916` declares 30+ seams, `orchestrate-queue.js:1033` declares 12, and `:1422` calls `_runPipeline` with `{reqPath}` and no seams | only `lib/run.mjs` names `pdlc/workflows/` (R-ARCH-1); `_git` is supplied with a **distinct function identity** because `branchGuardTransport` (`orchestrate-dev.js:3487`) refuses to act through the module's own default |
+| T40 | `report.mjs:36` `buildEngineBlock`, `:50` the hardcoded `"agent-sdk"`, `:70` `stampReport` | the constant becomes the observed `kind`; `stampReport` still copies the module report verbatim and adds exactly one key |
+| T42 | `transport.mjs:70-89`'s comment recording a measured runtime fact beside the code is the shape precedent; `docs/_constraints/pdlc-engine-baseline.md` already carries M-ENG-01…M-ENG-08 | `M-ENG-09` is appended in the same `M-ENG-*` form, columns `date \| platform \| transport \| sdkVersion \| denyFired` |
+| T48 | `orchestrate-dev.js:9995` selects wave mode; `:9959-9962` is the `haiku` PLAN-DAG fallback; `:7454`→`:7463` is `recoverVerdict`; `:10248`→`:10253` is the V-wave; `orchestrate-queue.js:1216` is Phase-0 triage | run i's fixture PLAN carries a valid ownership manifest and a local exit-`0` `testCommand` so wave mode is taken and asserted; its reviewer fixtures emit well-formed `VERDICT:` trailers so both `haiku` routes are closed by fixture content rather than by luck |
+
+**Two integration points that are deliberately *not* touched.** `runtime-adapter.js`'s IO surface is
+not ported (TSPEC §2.5, M-ENG-03): `_readFile`, `_writeFile`, `_appendFile`, `_listFiles`,
+`_checkFile`, `_hashFile`, `_ghRun`, `_checkCi`, `_mergeWorktree`, `_recordQueueRow`,
+`_rebaseOntoDefault` and the advisory and probe seams all keep the modules' Node defaults, and
+overriding one whose default works is a defect in this feature, not an improvement. And
+`_sessionAgent` stays **unwired** (R-4, O-6, DEC-ENG-07's neighbourhood): fresh-per-dispatch is
+today's semantics, and painting the seam shut would remove the attachment point a future
+session-reuse flag needs. T25's seam-contract test asserts both, so a well-meaning later wiring is
+red rather than silent.
+
 ## 8. Definition of Done
 
 ## 9. Traceability — acceptance criteria to tasks
