@@ -68,6 +68,28 @@ origin of the claim BR-MODEL-3 was corrected to deny.
 
 ## Reviewers
 
+| Role | E1 verdict | Blocking finding | Character of the review |
+|---|---|---|---|
+| `se-review` (software-engineer) | **Needs revision** `{1, 0, 0}` | `F-24` (High): §6.3's preamble still asserts the dry-run surface is "the mechanism … by which the model map of §7.3 is exercised over descriptors rather than executed calls" | Re-derived the erratum's factual claim from HEAD rather than accepting it on report — `inertTransport()` throwing at `bin/pdlc.mjs:97-104`, installed at `:174`; `--dry-run-skill` defaulting `pm-author` at `:172`, `:189-191` — then checked the corrected clause against REQ AC-3.3 and confirmed the delta moves FSPEC *toward* the REQ. Also searched for further sites and reported the search's blind spot: §6.3 says "it", not "dry run", so a literal token search misses it |
+| `te-review` (test-engineer) | **Needs revision** `{1, 0, 0}` | `F-01` (High): the same sentence, same fix | Scored the erratum "partially resolved" rather than resolved-or-not, and carried the consequence through to the test: an implementer reading §6.3 would build AT-ENG-29's corpus from `--dry-run --dry-run-skill …` invocations, get five descriptors with no module-pinned model, and either fail the set-equality for reasons unrelated to the map or quietly narrow the corpus so `EC-DISP-6`'s unreachable-row case never fires |
+
+**The two reviewers agree completely — same defect, same site, same one-clause fix, same severity.**
+This is the first round in this feature's history with no split of any kind. Both offer the same two
+acceptable repairs: end the sentence at "without billing a token", or requalify the trailing clause
+to name the hermetic fixture-driven suite as what exercises the map. TE adds a third reading — if
+the sentence means the *compose-without-dispatch principle* rather than the `--dry-run` CLI surface,
+say so, since the sentence's subject is `--dry-run`.
+
+Under the High-only convergence bar a single open High from either reviewer fails the delta
+confirmation; here both raised one, so the failure is unambiguous rather than marginal. With the
+erratum bound at one round per upstream document per phase, the failure is terminal for the phase.
+
+Worth recording plainly: `se-review` states that `F-24` is **not a regression introduced by the
+delta**. §6.3 carried the claim before the erratum and was approved with it in v1–v4. The erratum
+did not break §6.3; it exposed it. What gates is the *state the document is now in* — the
+pre-erratum FSPEC was consistently wrong, the fully-corrected FSPEC is consistently right, and the
+current one is neither, which is the worst of the three to hand to an implementer.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
