@@ -621,6 +621,94 @@ divergent codes down different paths. Under `--loop`, the loop's code is the wor
 
 ## 6. Guard Parity Design
 
+### 6.1 What is being reproduced
+
+`pdlc/hooks/scripts/guard-harvest-before-delete.sh` is a blocking `PreToolUse` hook on the `Bash`
+matcher. Its decision procedure, read from the script itself:
+
+1. Parse the hook's stdin JSON; **unparseable input exits 0** (`:29-30`) — the guard never interferes
+   with something it did not understand.
+2. Scope: the command text must mention `CROSS-REVIEW`, `CODE_REVIEW` or `ADVISORY` (`:35-36`) **and**
+   match a removal form — `rm`/`unlink` at a command boundary, or `git rm` (`:37-38`).
+3. Extract the protected path tokens, take the directories they live in (`:42-50`), and block the call
+   when a directory holds no `LEARNINGS-*.md` (`:53-57`).
+4. **Exit 2 blocks the call and feeds stderr back to the agent** (`:6`); exit 0 allows. The refusal
+   prefix and bracketed directory are byte-exact because `orchestrate-dev.js` reads them.
+
+Two properties of that procedure are the ones the engine must preserve, and neither is a spelling:
+the guard is **conditional** on `LEARNINGS-*.md` (BR-GUARD-2 — harvest must still be able to delete),
+and the refusal is **visible to the agent**, so it can proceed differently instead of continuing while
+believing the deletion happened.
+
+**The script itself is the guard's definition and is not rewritten** (NG-1). Both transports invoke
+the shipped script and consume its exit code; a JavaScript reimplementation would be a second
+definition that could drift, and "exists on the branch" would then mean two things.
+
+### 6.2 Mechanism per transport (C-5, BR-GUARD-1)
+
+| | Primary (`agent-sdk`) | Fallback (`claude -p`) |
+|---|---|---|
+| carrier | `hooks: { PreToolUse: [{ matcher: "Bash", hooks: [cb] }] }` on the `query` options (`sdk.d.ts:1545`, event name `:816`) | a per-dispatch `--settings` JSON file registering the same hook |
+| callback | runs the shipped `.sh` with the tool-input JSON on stdin, maps exit 2 → deny with the script's stderr as the reason | the CLI runs the script itself; the deny path is the CLI's own |
+| lifetime | the dispatch's options object — created per dispatch, never process-global | a temp file per dispatch, removed after |
+| source of truth | `{pluginRoot}/hooks/scripts/guard-harvest-before-delete.sh` | the same path |
+
+The configuration is built once, by the engine, and handed to whichever transport `resolveTransport`
+chose — so the invariant is one object and the carriers are two adapters over it (R-ARCH-2: policy
+above, plumbing below).
+
+### 6.3 The provenance assertion (BR-GUARD-3)
+
+The test that matters runs **with no pdlc hooks registered on the host** and asserts the refusal
+still happens. A green test on a developer machine where the plugin's hooks are live proves nothing
+about the engine — it proves the host. Mechanically the test writes `CLAUDE_PROJECT_DIR` and
+`HOME`/settings into a scratch tree containing neither `.claude/settings.json` hook entries nor an
+installed plugin registration, and asserts (a) the deny, (b) the file surviving on disk, (c) the
+refusal text reaching the agent-visible channel.
+
+Both directions are asserted per transport: refusal with `LEARNINGS-{f}.md` absent (AC-5.1), success
+with it present (AC-5.2).
+
+### 6.4 Fail-closed refusal when the guard cannot be carried (EC-GUARD-4)
+
+If the guard configuration cannot be applied on the transport a run would use, **the engine refuses to
+dispatch rather than dispatching unguarded**. Because this feature ships no runtime transport selector,
+a refusal on the primary transport is a refusal of the whole engine, and the message must satisfy
+three obligations, asserted as three separate expectations (AT-ENG-43): it names the missing
+capability, names the fallback transport as the known alternative, and states that selecting it is not
+yet available. That is a state an operator can act on — measure or defer — rather than a dead end.
+
+The check is a startup-time capability probe, not a per-dispatch surprise: it belongs to the ladder's
+rung 5 neighbourhood, so a run that cannot be guarded never gets as far as touching the repo.
+
+### 6.5 The measurement O-2 owes first (BR-GUARD-5, M-ENG-06)
+
+`DEFAULT_PERMISSION_MODE = "bypassPermissions"` (`transport.mjs:89`) is the production posture, set
+explicitly and paired with `allowDangerouslySkipPermissions` (`:170-174`). **Whether a PreToolUse deny
+fires at all under that posture is unmeasured on either transport.** This is the single largest open
+safety gap and the first thing implementation must measure, because a guard the bypass setting
+disables would pass every well-formedness test in §6.3 and protect nothing — the tests would be
+green and vacuous, which is precisely the failure mode this repo has already paid for once.
+
+The measurement is a live, opt-in test (§7.5) dispatching a real deletion attempt under the
+production posture. Its result determines the design, and the branches are pre-committed so that a
+red measurement does not become a design debate:
+
+| Measured | Consequence |
+|---|---|
+| deny fires under `bypassPermissions` | §6.2 stands as written |
+| deny does not fire | the posture and the guard are **one decision, not two**: either the posture tightens (drop the bypass, enumerate `allowedTools`) or the guard moves to a mechanism the posture cannot disable (the SDK's `canUseTool` callback, which is consulted on the tool-use path rather than registered as a hook) |
+
+Until that measurement exists, §6's tests are the *shape* of the answer, not the answer, and an
+engine run can delete review history the plugin path would have protected. **A plan schedules this
+before any unattended use** (BR-GUARD-4).
+
+Note the guard's own denial-blindness interacts here. `adapter.mjs:320-341` already logs and tallies
+permission denials precisely because a dispatch whose tool calls were denied still terminates as a
+success with prose claiming the work was done — the agent is not told. A guard deny that the agent
+cannot see would reproduce that failure exactly, which is why "the agent sees the refusal" is an
+asserted property in §6.3 and not an implementation detail.
+
 ## 7. Test Strategy
 
 ## 8. Traceability
