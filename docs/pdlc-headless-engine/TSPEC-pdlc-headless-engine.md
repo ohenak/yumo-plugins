@@ -1685,7 +1685,7 @@ engine *can* record is that **the fallback re-dispatches the same prompt**: `dis
 one `prompt` (`orchestrate-dev.js:1840-1842`) and both rungs go out through it, so `F` and `B` are
 byte-identical in the composed prompt (`promptHash`) while differing in `model` — a pairing no
 ordinary reviewer dispatch produces, because it has no `fable` sibling at all, let alone one carrying
-a model-resolution rejection in `errorText`. Three properties of this witness are worth stating,
+a model-resolution rejection in `errorText`. Five properties of this witness are worth stating,
 because they are what F-26 asked for:
 
 - **It is falsified by the deletion it exists to catch.** Delete `:1851`→`:1861` and no `B` exists
