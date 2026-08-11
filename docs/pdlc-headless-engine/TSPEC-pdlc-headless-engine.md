@@ -1494,18 +1494,20 @@ correctness depends entirely on the double:
 ### 7.4 Set-equality harnesses
 
 Five suite-wide assertions share one shape — accumulate through a seam across the whole suite,
-assert once at the end — because per-test assertions go vacuous the moment a test is skipped. Four
-are properties with their own accumulator; the fifth (§4.1's pre-phase bucket) rides the model-map
-accumulator and is listed here rather than left in prose, because this table is the checklist
+assert once at the end — because per-test assertions go vacuous the moment a test is skipped. They
+run on **three accumulators**, not five (TE F-33): the catalogue, the outcome taxonomy and the
+model-map accumulator each own one; the dispatchable-skill property owns none (it is computed once
+from imported data); and the fifth property (§4.1's pre-phase bucket) rides the model-map
+accumulator. All five are listed here rather than left in prose, because this table is the checklist
 `_assert-suite-wide.mjs` is built from (TE F-29):
 
 | Property | Seam (writes a record per observation) | Assertion in `_assert-suite-wide.mjs` |
 |---|---|---|
 | message catalogue (§3.5) | `message(id, …)` records the id | emitted ids ≡ `messageIds()` |
 | outcome taxonomy (§5.1) | `classifyOutcome` records its result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
-| **pinned model map (§4.1, AC-3.3)** | the adapter records each `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model, attempt, outcome, errorText, promptHash }` | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
+| **pinned model map (§4.1, AC-3.3)** | the adapter appends one line per dispatch *attempt* at **settlement** (§4.1, §7.0), carrying that `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model, attempt, outcome, errorText, promptHash }`; a composed-but-never-executed dispatch is appended at composition with `outcome: null, errorText: null` | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
 | dispatchable skills (§3.3) | not an accumulator — computed once from imported data | both directions, §3.3's table |
-| pre-phase window (§4.1) | the same model-map accumulator, read on its `phase` field | `byPhase["(no phase)"]` absent or `0` on every run-shaped test |
+| pre-phase window (§4.1) | the same model-map accumulator, read on its `phase` field | **no record with `corpusRun != null` has `phase === null`** — `corpusRun` is the field that scopes the assertion to run-shaped tests (PM F-02), and `phase === null` is the record-level predicate (PM F-03, TE F-35). Reader-facing gloss: `byPhase["(no phase)"]` is absent or `0` on every corpus run |
 
 **The model-map row is new in v1.1** and closes AC-3.3, which v1.0 left owned by verbatim
 pass-through alone. `adapter.mjs:271` forwarding `model` untouched is necessary and correctly
@@ -1546,7 +1548,7 @@ leaned on adjacency is corrected below:
 | 1 every phase except Phase I | `opus` | **quantified, not existential**: in run i, *every* descriptor **outside the Phase-I wave set** (defined below) has `model === "opus"` (and ≥1 such descriptor exists) |
 | 2 Phase I implementation waves | `sonnet` | in run i, *every* descriptor **inside the Phase-I wave set** has `model === "sonnet"` (and ≥1 exists) |
 | 3 advisory-tier dispatch | `fable` | in run iii, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "fable"` |
-| 4 advisory fallback | `opus` | in run iv, **a pair** `(F, B)` of recorded descriptors with `F.skill === B.skill === ADVISORY_RUNG_SKILL`, `F.promptHash === B.promptHash`, `B.seq > F.seq`, `F.model === "fable"`, `F.outcome !== "ok"` and `F.errorText` containing the literal message run iv's fixture injects, and `B.model === "opus"`. Every conjunct is a recorded field (§4.1); the discriminator is the re-dispatched prompt plus the recorded failure, not `seq` adjacency (see below) |
+| 4 advisory fallback | `opus` | in run iv, **a pair** `(F, B)` of recorded descriptors with `F.skill === B.skill === ADVISORY_RUNG_SKILL`, `F.promptHash === B.promptHash`, `B.seq > F.seq`, `F.model === "fable"`, `F.outcome === "transport-contract-violation"` (the exact member, derived from the spec below — not `!== "ok"`, TE F-32) and `F.errorText` containing the literal message run iv's fixture injects, and `B.model === "opus"`. `F` is a **settlement line** (§4.1); every conjunct is a recorded field; the discriminator is the re-dispatched prompt plus the recorded failure, not `seq` adjacency (see below) |
 | 5 queue Phase-0 triage | `sonnet` | in run ii, ≥1 descriptor with `phase === "Queue"`, `skill === "se-author"`, `model === "sonnet"` |
 | 6 verdict-recovery re-emit | `haiku` | in run v(a) — the malformed-`VERDICT` fixture — ≥1 descriptor with `model === "haiku"` and a reviewer `skill` |
 | 7 PLAN-DAG extraction | `haiku` | in run v(b) — the unparseable-task-table fixture — ≥1 descriptor with `model === "haiku"` and `skill === "se-author"` |
