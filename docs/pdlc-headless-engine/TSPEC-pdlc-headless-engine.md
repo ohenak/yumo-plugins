@@ -1365,10 +1365,26 @@ Two assertions in the **hermetic** suite make the record load-bearing rather tha
   platform, the hermetic suite **fails** with a catalogue-registered message naming the missing
   measurement. This is deliberate: an absent measurement is exactly the state in which the guard's
   well-formedness tests are green and prove nothing, so it must not be the state a clean CI run
-  reports. The failure names the opt-in command that produces the row. **Ordering matters for the
-  PLAN**: the gate and the first M-ENG-09 rows (one per CI platform) land in the *same* task, so CI
-  never observes an unrecorded state; introducing the gate first would leave the pipeline red for a
-  reason unrelated to the change that turned it red.
+  reports. The failure names the opt-in command that produces the row.
+
+**Ordering matters for the PLAN, and the rule has to be stated in terms a task can actually
+discharge.** An earlier draft required "the gate and the first M-ENG-09 rows, one per CI platform,
+land in the *same* task". That is unsatisfiable as written: the row is produced only by the **opt-in,
+credentialed live test** (§7.5), and **nothing in CI ever runs it** (§7.6 — no CI job dispatches a
+model call or reads a credential), so no mechanism inside the task yields a row for a platform the
+implementer is not sitting on. The satisfiable rule is:
+
+| Obligation | Who discharges it | When |
+|---|---|---|
+| the gate, and the M-ENG-09 row for the **implementing host's own `process.platform`** | the task, mechanically — run the opt-in command, commit the row | same task as the gate, so the task never lands a state its own suite calls red |
+| a row for any **other** `process.platform` | the maintainer, by hand, on a host of that platform | before unattended use on that platform (BR-GUARD-4) — never producible by CI |
+
+The gate is keyed on `process.platform`, not on §7.6's matrix (O-ENG-T4), so the two obligations are
+independent: the task's own platform is always covered, and an uncovered platform is exactly the
+`unrecorded is red` state on the host that lacks a row — which is the honest report, not a CI
+failure the task could have prevented. Introducing the gate *without* the local row would leave the
+pipeline red for a reason unrelated to the change that turned it red; that is what the first row
+above forbids. O-ENG-T5 remains the open question of what an off-matrix host should do with that red.
 
 Until that measurement exists, §6's tests are the *shape* of the answer, not the answer, and an
 engine run can delete review history the plugin path would have protected. **A plan schedules this
@@ -1804,16 +1820,21 @@ redaction question arrives with it.
 ### 7.6 CI arrangement
 
 `.github/workflows/pr-tests.yml` currently runs four jobs — `unit-tests` (`:27`; matrix
-ubuntu/macos, node 20, `working-directory: pdlc/workflows`), `artifact-freshness` (`:77`),
+`os: [ubuntu-latest]`, node 20, `working-directory: pdlc/workflows`), `artifact-freshness` (`:77`),
 `fresh-clone-bootstrap` (`:103`) and `script-syntax` (`:161`) — and **none of them runs
 `pdlc/engine/`'s tests**. A fifth job is therefore part of this feature, not a
 follow-up:
 
 ```yaml
 engine-tests:
-  strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }   # same matrix as unit-tests
+  strategy: { matrix: { os: [ubuntu-latest] } }   # same matrix as unit-tests (pr-tests.yml:40)
   # working-directory: pdlc/engine ; npm ci ; npm test
 ```
+
+**The matrix is one platform, not two.** `macos-latest` was dropped from `unit-tests` in `410f3a07`,
+so HEAD's matrix is `os: [ubuntu-latest]` (`pr-tests.yml:40`; the surrounding comment still describes
+the two-platform intent and is stale about the value). "Same matrix as `unit-tests`" therefore means
+ubuntu-only today, and this document makes no claim that CI exercises macOS.
 
 The job body is `npm test` and nothing else, which is what makes §7.0's invocation load-bearing
 rather than a developer convention: the `--import` bootstrap flag and the suite-wide assertion step
@@ -1822,10 +1843,16 @@ directly would run without the hermeticity bootstrap and without the set-equalit
 green for a strictly weaker property than the local suite — the drift is prevented by there being
 one spelling, in `package.json`.
 
-Matching the existing matrix is deliberate: the engine spawns processes and reads `~/.claude.json`,
-both of which differ across the maintainer's macOS and CI's Linux, and this repo already pays for
-that difference in its bash-3.2/bash-5 constraint. The job runs the hermetic suite only; nothing in
-CI dispatches a model call or reads a credential.
+Matching the existing matrix is deliberate — the engine job tracks whatever `unit-tests` runs rather
+than declaring a second, independently-drifting platform list. But because that matrix is now a
+single platform, **per-platform coverage is not something CI delivers**, and the design does not
+pretend otherwise: the engine spawns processes and reads `~/.claude.json`, both of which differ
+across the maintainer's macOS and CI's Linux, so the platform-sensitive obligation is carried by
+**`process.platform` keying** (§6.5's M-ENG-09 row, O-ENG-T4) rather than by a matrix entry. A run on
+a platform with no recorded row is red on that host, wherever the host is; adding `macos-latest` back
+to the matrix would be one way to get a second platform observed, and is a CI-minutes decision
+(O-ENG-T1), not a correctness one. The job runs the hermetic suite only; nothing in CI dispatches a
+model call or reads a credential.
 
 ### 7.7 AC-1.2's filesystem observation (the instrument, not a proxy)
 
