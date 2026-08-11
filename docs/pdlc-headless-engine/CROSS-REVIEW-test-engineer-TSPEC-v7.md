@@ -77,4 +77,43 @@ forward verbatim in substance and re-verified at HEAD rather than restated on tr
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta this round is empty on the reviewed document and entirely upstream, so the
+convergence question answers itself: nothing in TSPEC changed, therefore nothing in TSPEC
+broke, and the sections I approved in rounds 1–6 stand unre-reviewed as the protocol
+directs. What I did check is the thing an unchanged document can still fail — whether the
+upstream edit moved the ground under it. It moved in two ways, both minor and neither
+blocking.
+
+The substantive one is that FSPEC v1.5 resolved F-36's open question **in favour of the
+finding**: BR-MODEL-3 now states that the dry-run surface is never the model corpus's source
+(`FSPEC:670-674`), while §4.1 still justifies its `null`-terminal branch as keeping
+BR-MODEL-3 "true in both halves" (`TSPEC:789-794`). The design is unaffected — the branch
+was already unreachable at HEAD (`pdlc/engine/bin/pdlc.mjs:190`, `:100-102`) and no row's
+predicate matches a `null`-terminal line — so this is a clause to delete, not a decision to
+revisit. The mechanical one is F-39: all five `FSPEC:{line}` citations now point at the
+wrong text after the change notes shifted the file, including the one anchoring §11's
+row-by-row completeness check against §12.2. Re-deriving five ranges is a single edit.
+
+F-37 and F-38 carry forward as filed. I re-verified both against HEAD rather than trusting
+v6 — `orchestrate-dev.js:3143-3157` still catches the advisory rung's dispatch error and
+continues, and `transport.mjs:123` still returns `TransportError` from the unrecognised arm —
+so both findings remain accurate and both remain one- or two-sentence edits.
+
+None of the four needs a confirmation round. Fold them into the next revision. On the review
+contract's three oracle clauses: no expectation in this document imports or derives its
+expected value from code under test (§7.4's model map is explicitly a transcription, never an
+import, `TSPEC:1758-1760`; likewise `:1707-1710`, a transcription of the fixture rather than
+an import of `MODEL_ERROR_RE`, `orchestrate-dev.js:1780`); the one absence-shaped assertion I have pressed on across rounds —
+row 4's outcome — is pinned to an exact member rather than `!== "ok"`; and §11's report-field
+check is set-equality in both directions, which is why F-39 flags its citation rather than
+shrugging at it.
+
+No erratum this round. The one I filed in v6 is discharged, and I found no new defect in REQ,
+FSPEC, DECISIONS, PLAN or PROPERTIES while grounding the claims above.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 1}
