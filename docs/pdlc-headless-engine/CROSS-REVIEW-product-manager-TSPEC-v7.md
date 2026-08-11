@@ -32,6 +32,28 @@ drift the erratum introduced into this document's citations, is the whole of thi
 
 ## Disposition of v6
 
+| v6 finding | Status in v1.5 | Note |
+|---|---|---|
+| F-01 (Medium, Local) — the "composed but never executed" branch cites a path that composes no dispatch at all | **Half resolved, upstream.** FSPEC BR-MODEL-3 now says the dry-run surface "is **not** a way to reach it" (`FSPEC:672-674`). The five TSPEC sites (`:25-26`, `:789-791`, `:1430-1431`, `:1546`, `:1904`) are unchanged and still assert the branch. | Re-raised as F-01 below, same severity, stronger evidence: it is now a contradiction with an approved upstream rule, not only with HEAD. |
+| F-02 (Low, Local) — row 4's pinned outcome member is derivable only if run iv injects at the transport | **Not addressed.** `:1698-1706` and `:772` are unchanged; §7.4 still says only "run iv's fixture injects the model-resolution rejection" without naming `queryFn`. | Re-raised as F-03 below, unchanged severity. |
+
+Both were explicitly non-gating in v6 and the document converged without them; carrying them forward
+is a record, not a re-litigation.
+
+**Re-grounded against HEAD (not against the TSPEC's prose):**
+
+- `emitDryRun` (`pdlc/engine/bin/pdlc.mjs:170-192`) builds an adapter with `inertTransport()` at
+  `:171-176`, then calls `adapter.composePrompt(skill, …)` directly at `:190`. `composePrompt`
+  (`lib/adapter.mjs:259`) is a separate entry point from the dispatch path, which composes at
+  `:273`; the accumulator append is on the dispatch path only (`lib/adapter.mjs:376`, "Append-only
+  record of dispatches through the tool `_agent`"). No descriptor is stamped and no `.jsonl` line is
+  produced on the dry-run path. `inertTransport().dispatch()` (`:98-104`) is never called by
+  `emitDryRun`.
+- `cmdDoctor` (`bin/pdlc.mjs:156-169`) constructs no adapter and prints "doctor: all checks passed.
+  No dispatch was performed." (`:161`) — §8.3's v1.5 correction still holds.
+- `classifyThrown` (`lib/transport.mjs:98`) maps an unrecognised rejection to `TransportError`
+  (`:123`) — row 4's pinned `transport-contract-violation` still derives from §5.1 as written.
+
 ## Findings
 
 ## Questions
