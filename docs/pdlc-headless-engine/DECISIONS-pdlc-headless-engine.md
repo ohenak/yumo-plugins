@@ -287,6 +287,115 @@ third language supplement lands; a skill directory acquires a non-prompt `.md` f
 
 ## 4. Engine-side provenance
 
+## DEC-ENG-07: Phase provenance is bought entirely on the engine side, from the `_phase` seam the modules already call
+
+**Context:** AC-3.3's model map is per *phase* (`Phase I` on Sonnet, everything else Opus), so
+asserting it needs each dispatch record to carry the phase it belongs to. The modules do not pass a
+phase to `_agent`: they pass `model` and a log-only `label` (`pdlc/engine/lib/adapter.mjs:266-268`),
+and `label` is not the phase.
+
+**Decision:** The adapter holds the most recent `_phase(label)` value as run state and stamps it onto
+each `DispatchDescriptor`. The seam already exists and the modules already call it — 15 call sites in
+`pdlc/workflows/orchestrate-dev.js` (`:9516`, `:9951`, `:10066`, `:10136`, `:10248`, …) — and the
+engine's implementation today merely logs (`adapter.mjs:357`).
+
+**Alternatives considered:**
+
+- **Add a `label`/`phase` argument at the modules' dispatch sites** — rejected because it would
+  falsify the claim that the only change under `pdlc/workflows/` is the DEC-ENG-05 exports. That
+  claim is load-bearing for C-4: it is what makes "the engine does not fork the modules" a statement
+  about a two-row diff rather than a promise. Buying the phase from a seam the modules already call
+  keeps the diff at two rows.
+- **Infer the phase from the skill identifier** — rejected: the mapping is not a function.
+  `se-implement` is dispatched from Phase I waves, from Phase DOD remediation and from the PROPERTIES
+  wave; `se-author` is both a spec author and the queue's Phase-0 triage agent.
+
+**Constraint that forced this shape:** C-4, read strictly.
+
+**The cost this decision accepts:** the phase is *last-write-wins run state*, so it is only as
+accurate as the modules' own `_phase` discipline — and one known wrinkle is already priced in: Phase
+I's V-wave announces itself as `"Phase PT"` (`orchestrate-dev.js:10248`) while pinning `sonnet`
+(`:10253`). The model-map oracle therefore partitions on a defined Phase-I wave set that includes
+that descriptor, rather than on the announced string. Dispatches occurring before any `_phase` call
+carry `null`, which is asserted rather than assumed away.
+
+**Reversibility:** Easy, and asymmetric in a useful way: if per-dispatch labels ever become
+necessary, they can be added to the modules later without unwinding the run-state mechanism.
+
+**Re-evaluation triggers:** A module dispatches from a code path that announces no phase; concurrent
+dispatches within one phase make "most recent" ambiguous (it is not today — `_parallel` fans out
+within a single announced phase).
+
+## DEC-ENG-08: Startup auth posture is a new pure module, deliberately independent of the per-dispatch auth assertion
+
+**Context:** Two auth questions look like one. Before dispatching, the operator needs to know which
+credential a run will bill (C-1a, AC-2.1/2.2/2.4); during a dispatch, the engine must refuse a
+credential the operator did not opt into — which HEAD already does, throwing `AuthPolicyError` when
+the SDK's `system/init` message reports an `apiKeySource` outside the policy
+(`pdlc/engine/lib/transport.mjs:201-206`, default policy `["none"]` at `:63`).
+
+**Decision:** Add `lib/auth.mjs` as a **pure** function over injected `env` and file evidence
+(`readLoginEvidence` / `resolveAuthPosture`, six first-match rows), and keep §3.4's per-dispatch
+assertion exactly where it is. Two independent observations, one banner.
+
+**Alternatives considered:**
+
+- **Derive the startup posture from the transport's reported `apiKeySource`** — rejected: it is not
+  available before a dispatch exists, so the banner could only be printed after billing had already
+  started. That inverts C-1a.
+- **Treat the per-dispatch check as sufficient and print no posture** — rejected: AC-2.2 requires a
+  refusal *before* a run, and an operator with `ANTHROPIC_API_KEY` set by a shell profile they forgot
+  about is the exact case the banner exists for.
+- **Fold both into one module** — rejected for a reason recorded as O-9: it is not known whether
+  either transport can distinguish a logged-in session from a token credential from its own reported
+  state. Keeping the two observations separate means that if the answer is no, the startup mapping
+  is still the whole answer and the per-dispatch check remains an honest policy assertion rather than
+  a discrimination it cannot make.
+
+**Constraints that forced this shape:** C-1a and C-1b are two constraints, not one; M-ENG-08 fixes
+what "logged-in state" is inspectable as (`~/.claude.json` carrying an `oauthAccount` object), which
+is a *file* fact and therefore only reachable at startup.
+
+**Reversibility:** Easy. Purity is the enabling property: every row is fixturable by pointing `HOME`
+at a scratch directory, so no operator credential is involved in any test, including row 5's refusal.
+
+**Re-evaluation triggers:** O-9 resolves affirmatively (a transport can report the distinction), at
+which point the per-dispatch record could subsume part of the startup mapping; the login record's
+location or shape changes per platform beyond what M-ENG-08 records.
+
+## DEC-ENG-09: Outcome classification is a policy-free layer-0 module, and the transport stays blind to it
+
+**Context:** HEAD classifies inside the transport, as four error classes it throws
+(`AuthPolicyError` `transport.mjs:23`, `RateLimitedError` `:33`, `TimeoutError` `:46`,
+`TransportError` `:55`). AC-4.1 requires a six-member closed taxonomy, adding
+`transport-contract-violation` and `agent-reported-failure` — and the second of those is not a
+transport fact at all: it is a claim about what the agent said.
+
+**Decision:** `lib/outcome.mjs` (new, layer 0) owns one total classifier over a `DispatchResult`.
+Transports report what they observed and throw their typed errors; they hold no taxonomy, no retry
+policy, no auth verdict, and no knowledge of phases or skills.
+
+**Alternatives considered:**
+
+- **Extend the transport's error classes to six** — rejected: `agent-reported-failure` would force
+  the transport to parse agent output, and `transport-cli.mjs` would then have to reproduce that
+  parsing to stay at parity — a second definition of a policy, which is the same failure DEC-ENG-03
+  refuses for the guard.
+- **Classify in the adapter, beside the retry machine** — rejected as a layering choice rather than a
+  correctness one: the retry machine is a *consumer* of the classification, and putting both in one
+  module makes the taxonomy's totality testable only through a dispatch. As its own module it is
+  testable directly, which is what makes the set-equality assertion (observed ≡ the six) cheap.
+
+**Constraint that forced this shape:** AC-4.1's totality plus AC-4.4 (a mid-run `auth-failure` is
+fatal and never retried) — a fatal-vs-retryable verdict is policy, and policy above plumbing is the
+architecture rule this design already asserts.
+
+**Reversibility:** Easy — one new module with no persisted contract.
+
+**Re-evaluation triggers:** A seventh outcome is needed (the set is closed and asserted, so this is a
+spec change, not a code change); a transport reports something the classifier cannot map, which is
+itself the `transport-contract-violation` member and should surface, not widen the taxonomy.
+
 ## 5. Test mechanics
 
 ## 6. Configuration and lifecycle
