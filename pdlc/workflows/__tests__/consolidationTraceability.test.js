@@ -122,8 +122,12 @@ describe("T05 — traceability set-equality (FSPEC §13 register ↔ TSPEC §12.
     expect(tspec.ids.size).toBeGreaterThan(0);
   });
 
-  test("version pin: FSPEC reads 11.7 and TSPEC reads 2.8", () => {
-    expect(fspec.version).toBe("11.7");
+  // FSPEC 11.8 — the CODE_REVIEW v6 L1 erratum re-anchored §3.3's consumed-pair
+  // description onto the readable subset and the step-6.5 narrowing. TSPEC stays
+  // 2.8: §12.2 v2.8 is the decision the erratum brings FSPEC into line with, so
+  // this round changed the downstream description only, not the upstream rule.
+  test("version pin: FSPEC reads 11.8 and TSPEC reads 2.8", () => {
+    expect(fspec.version).toBe("11.8");
     expect(tspec.version).toBe("2.8");
   });
 
