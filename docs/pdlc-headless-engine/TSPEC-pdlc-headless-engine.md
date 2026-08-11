@@ -716,8 +716,7 @@ export const OUTCOMES = Object.freeze([
   "ok", "retryable", "timeout", "auth-failure",
   "transport-contract-violation", "agent-reported-failure",
 ]);
-export function classifyOutcome({ error, result }): Outcome    // total: no throw, no undefined
-export function observedOutcomes(): Set<string>               // suite-wide accumulator, §7.4
+export function classifyOutcome({ error, result, reportedFailure }): Outcome   // total: no throw
 ```
 
 The mapping is by error class, which is why §3.4 requires both transports to throw the same four:
@@ -728,8 +727,43 @@ The mapping is by error class, which is why §3.4 requires both transports to th
 | `RateLimitedError` (`:33`) | `retryable` |
 | `TimeoutError` (`:46`) | `timeout` |
 | `TransportError` (`:55`) | `transport-contract-violation` |
-| a result whose text the module's own contract marks as a reported failure | `agent-reported-failure` |
-| anything else, with a terminal result | `ok` |
+| no error, and `reportedFailure === true` | `agent-reported-failure` |
+| no error, otherwise, with a terminal result | `ok` |
+
+**`agent-reported-failure` has a literal predicate, and it is not `outcome.mjs`'s.** v1.0 said only
+"a result whose text the module's own contract marks as a reported failure", which no fixture can be
+written against; and any workable predicate is module-prose knowledge (`VERDICT:` grammar, `ERRATUM:`
+lines, POSTMORTEM conventions), which R-ARCH-2 forbids a layer-0 module from holding. Both are
+resolved the same way — **the predicate lives at layer 2 and `outcome.mjs` receives an already-tagged
+input**:
+
+```js
+// lib/adapter.mjs (layer 2) — the only place that reads a dispatch's text
+const REPORTED_FAILURE_RE = /^\s*(DISPATCH-FAILED|ERROR):\s*\S/m;
+const reportedFailure = REPORTED_FAILURE_RE.test(result.text);
+classifyOutcome({ error: null, result, reportedFailure });
+```
+
+The literal predicate is: **the result text contains a line whose first non-space content is
+`DISPATCH-FAILED:` or `ERROR:` followed by non-space text.** Upstream fixes only the member's
+*meaning* — "the dispatch ran and the agent reported failure" (`FSPEC:709`, `REQ:519`) — and
+deliberately leaves the predicate to this document (BR-FAIL-2 hands the *consequence* to the
+modules), so the token above is TSPEC-introduced, with no upstream id. Three consequences worth
+stating,
+because each is a way this could have gone wrong:
+
+- **It is engine vocabulary, not pipeline vocabulary.** It deliberately does *not* read `VERDICT:`,
+  `REVISION-COMPLETE:` or `ERRATUM:`. Those are the modules' own parses of an agent's prose, and a
+  dispatch carrying `VERDICT: Needs revision` is a **successful** dispatch — the module decides what
+  the verdict means (BR-FAIL-2). An engine that classified it as a failure would silently convert a
+  normal review round into a retry or a halt.
+- **The fixture is a transcription, not an echo.** §5.1's reverse-direction fixture for this member
+  is a recorded transport result whose text begins with `DISPATCH-FAILED: …`; it is written against
+  the predicate stated *here*, in the spec, not against whatever the classifier happens to look for.
+  The falsifying companion is a fixture whose text merely *mentions* the token mid-line, which must
+  classify `ok`.
+- **`outcome.mjs` stays policy-free** (R-ARCH-2): it holds the six-member enumeration and a total
+  map over `(error, reportedFailure)`, and knows nothing about phases, skills or prose.
 
 HEAD already funnels every thrown value into those four classes: `classifyThrown`
 (`transport.mjs:98`) passes the four through unchanged, maps a fired timer to `TimeoutError`
@@ -740,10 +774,13 @@ HEAD already funnels every thrown value into those four classes: `classifyThrown
 
 Two obligations follow, and both are tests rather than code:
 
-- **Forward (outputs ⊆ six), suite-wide.** Every `classifyOutcome` call records into
-  `observedOutcomes()`; one final test asserts that set is a subset of `OUTCOMES`. Scoping the
-  assertion to the provocation corpus alone would let a seventh member appear in any other test
-  unnoticed — the same accumulate-then-assert shape as the catalogue (§3.5).
+- **Forward (outputs ⊆ six), suite-wide.** Every `classifyOutcome` call records its result through
+  §7.4's cross-process observation seam; a final step asserts that union is a subset of `OUTCOMES`.
+  Scoping the assertion to the provocation corpus alone would let a seventh member appear in any
+  other test unnoticed — the same accumulate-then-assert shape as the catalogue (§3.5). **This
+  direction is the one that fails vacuously green** if the accumulator is not genuinely cross-process
+  (`observed ⊆ OUTCOMES` holds over the empty set), which is why §7.4's mechanism is specified rather
+  than assumed, and why the harness's own emptiness is a failure (§7.4).
 - **Reverse (six ⊆ outputs).** A named provocation fixture per member. A member no fixture reaches
   fails the check, and the repair is a new fixture, never a loosened oracle.
 
@@ -763,11 +800,25 @@ generalises its predicate:
   `retryable` and `timeout`** (BR-RETRY-1). A timeout retry is one of the three, never an extra one.
 - **A per-dispatch cap of one timeout retry** (BR-RETRY-2): a second `timeout` anywhere in the
   remaining attempts is terminal even with budget left. The cap is counted per dispatch *run*, not per
-  attempt position, so it is a counter beside `attempt`, not a comparison against it.
+  attempt position, so it is a counter beside `attempt`, not a comparison against it. **The terminal
+  reason is recorded, not just the terminality**: the last `RetryRow` (§4.4) carries
+  `terminal: "timeout-cap" | "budget-exhausted"`, because FSPEC §8.2's sequence 8
+  (`retryable, timeout, timeout`) ends by the cap with budget still left and is otherwise
+  indistinguishable in the report from budget exhaustion.
 - **Budgets are per dispatch** (BR-RETRY-4): `attempt` is a local of the `_agent` call
   (`adapter.mjs:285`, "number of pauses already taken for THIS dispatch"), so nothing accumulates across dispatches within a phase. That locality is the
   mechanism — a run-scoped counter would make one slow phase silently starve the next.
 - **`auth-failure` and `transport-contract-violation` are never retried**, at any budget.
+
+- **A `timeout` retry's delay is the backoff ladder's, with no rate-limit hints.** This is the one
+  delay v1.0 left unstated. `computeRateLimitWaitMs`'s preference order is rate-limit-shaped
+  (`retryAfterMs` → `resetsAt` → exponential), and a `TimeoutError` carries none of the first two, so
+  a timeout retry takes the **exponential arm alone**: `dispatch.retryBackoff`'s `baseMs × 2^attempt`
+  from 30 s (`adapter.mjs:58`), capped at 15 min (`:59`), with the same ≤1 s jitter (`:60`), using
+  the shared `attempt` counter. Mechanically that is `computeRateLimitWaitMs` called with an error
+  carrying no hints, so there is one ladder and not two. FSPEC §8.2's sequence 3 (`timeout, success`)
+  is therefore testable on its timing: the fixture asserts a 30 s delay at `attempt` 0, not merely
+  that a retry happened.
 
 Delays come from `computeRateLimitWaitMs` (`adapter.mjs:75`), unchanged in preference order:
 transport-supplied `retryAfterMs` if finite and positive → the remaining interval to a supplied
@@ -810,9 +861,17 @@ writes to land, then report `2`. Exiting `1` on a halt would erase the operator'
 for.
 
 The mapping lives in **one** function over the module's `outcome` field, called once at the top level,
-so `refused`, `idle`, `no-queue`, `halted`, `blocked` and `max-passes` (`run.mjs:273`) cannot acquire
+so `refused`, `idle`, `no-queue`, `halted`, `blocked` and `max-passes` (`run.mjs:282`) cannot acquire
 divergent codes down different paths. Under `--loop`, the loop's code is the worst iteration's,
 `1` > `2` > `0` (BR-EXIT-3); since a refusal stops the loop, the worst is always the last iteration's.
+
+**The exit code deliberately does not distinguish AC-1.3's two stop reasons**, and that is why they
+need a carrier elsewhere. `idle`, `no-queue` and `max-passes` all map to `0` — correctly, since all
+three are clean terminations an unattended wrapper must not treat as failures — so the code cannot
+tell "the queue is drained" from "the bound was reached with work remaining". §4.5's `loop.stopReason`
+and the loop's own outcome line carry that distinction (`exhausted` / `bound-reached`), and §8.1
+maps AC-1.3 to both. A wrapper reading only the exit code sees a clean stop; one that must not
+believe a queue is drained reads the report.
 
 ## 6. Guard Parity Design
 
