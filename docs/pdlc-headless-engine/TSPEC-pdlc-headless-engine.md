@@ -1384,6 +1384,14 @@ Three parts, each doing one job:
 |---|---|---|
 | `--import=./__tests__/_bootstrap.mjs` | preloads into **every** test-file process: §7.1's construction guard and socket trap, and the observation writer below | a bootstrap that is merely `import`ed by some test files is installed only in those files' processes; `--import` is the only thing that makes "a new test file inherits it without opting in" true |
 | observation directory | each process appends its observations as JSON lines to `${PDLC_TEST_RUN_DIR}/{pid}.jsonl`; the run dir is keyed by `PDLC_TEST_RUN_ID`, **minted once by the runner and inherited by every descendant** (above) — the bootstrap only ever *reads* it, and fails loudly if it is unset rather than minting a private one | append-only per-pid files need no locking and survive concurrent processes, unlike a shared file or a socket |
+
+**Append-only fixes *when* an observation may be written, not just how** (PM F-01, TE F-30). A line
+is never revisited once appended, so any observation with a terminal half must be appended after
+that half exists. For §7.4's dispatch descriptors this is stated in §4.1: one line per dispatch
+*attempt*, appended when the attempt **settles**, carrying that attempt's `outcome` and `errorText`;
+a dispatch composed but never executed (the inert transport behind `--dry-run`) is appended at
+composition with both terminal fields `null`. The other two accumulators (message ids, §3.5;
+`classifyOutcome` results, §5.1) have no terminal half and are appended at their one call.
 | step 4, `node __tests__/_assert-suite-wide.mjs` | reads the union of every `.jsonl` and makes §7.4's assertions | a *step*, not a test file, so it is ordered by the runner rather than by filename luck, and it runs once per suite by construction |
 
 **The two `_`-prefixed helpers live in `__tests__/` without being collected as test files** (TE Q-07).
