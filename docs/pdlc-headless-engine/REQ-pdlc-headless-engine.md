@@ -558,7 +558,7 @@ C-10)*
 - **R-2 — Subscription limits under unattended load.** A cron'd loop can exhaust weekly Max
   limits invisibly. Mitigation: AC-4.1 pause/resume, run-report pause records, optional
   headroom stats surfaced in the report.
-- **R-3 — Policy drift.** §1.1's auth facts are policy, not physics; Anthropic could change
+- **R-3 — Policy drift.** §1.3's auth facts are policy, not physics; Anthropic could change
   either side. The transport lives behind the `_agent` seam precisely so a future SDK (or
   API) transport is a swap, not a rewrite.
 - **R-4 — Session semantics.** `_sessionAgent` maps naturally onto `claude -p --resume`,
@@ -583,16 +583,19 @@ C-10)*
 
 ## 7. Obligations / Open Questions
 
-- **O-1** *(fallback-path obligation, per §1.3's transport swap)* Probe and record the exact
-  `claude -p` flag surface used (output format, model, settings/hook injection, `--resume`,
-  permission flags) against the installed CLI version before TSPEC, as the fallback transport's
-  interface contract with fixtures — the primary Agent-SDK transport's message-stream shape
-  (system/init, rate_limit_event, terminal result — per `SPIKE-agent-sdk-auth.md`) is probed and
-  fixtured the same way, and both are exercised behind the one `_agent` seam.
-- **O-2** Decide the guard-parity mechanism (C-5): per-dispatch `--settings` carrying the
-  PreToolUse hook vs. an engine-side pre-flight. Must be sourced from the engine's own
-  dispatch configuration, not from whatever hooks the plugin install happens to register
-  (AC-5.1) — the plugin being present (C-10) is no longer the open case to design for; hook
+- **O-1** *(partially discharged — SE F-07)* The **primary** transport's message-stream shape
+  (system/init, rate_limit_event, terminal result) is measured and in use:
+  `SPIKE-agent-sdk-auth.md` §4b plus the shipped parse at `pdlc/engine/lib/transport.mjs:180-205`
+  (`059750de`). Still open, before TSPEC: (a) the **fallback** `claude -p` flag surface (output
+  format, model, settings/hook injection, `--resume`, permission flags) against the installed
+  CLI version, with fixtures; (b) per-transport model-alias resolution semantics (C-7, SE
+  Q-01); (c) both transports exercised behind the one `_agent` seam.
+- **O-2** Decide the guard-parity mechanism per transport (C-5): for `claude -p`, per-dispatch
+  `--settings` carrying the PreToolUse hook; for the SDK path, the equivalent hook/permission
+  configuration the SDK accepts — **unmeasured, and no hook or settings wiring exists in
+  `pdlc/engine/lib/` at HEAD**, so this is the largest open safety gap. Must be sourced from
+  the engine's own dispatch configuration, not from whatever hooks the plugin install happens
+  to register (AC-5.1); the plugin being present (C-10) is no longer the open case — hook
   *provenance* is.
 - **O-3** Decide where engine config lives (reuse `.claude/pdlc.config.json` per consumer —
   likely, since `implementation.testCommand` etc. are consumer-specific — vs. engine-global
@@ -605,8 +608,15 @@ C-10)*
 - **O-7** Record the observed rate-limit behaviour under real unattended load and re-derive
   `dispatch.retryAttempts` / `dispatch.retryBackoff` (§4.1) from it before treating them as
   settled.
-- **O-8** Probe and record the pdlc plugin's installed-location discovery mechanism (C-10,
-  G-5) before TSPEC: the plugin cache layout under `~/.claude`, the marketplace-clone layout,
-  and how each resolves a specific plugin's version and its `skills/` directory. Cover the
-  case of multiple candidate install roots (e.g. a marketplace clone alongside a cache
-  install) and state which one wins, deterministically.
+- **O-8** *(discharged — SE F-07)* The plugin's installed-location discovery mechanism is
+  probed and shipped: candidate-root resolution with a deterministic precedence order, plus
+  the `--plugin-root` / `PDLC_PLUGIN_ROOT` overrides, in `pdlc/engine/lib/skills.mjs`
+  (`isPluginRoot` `:68`, `resolvePluginRoot` `:204`, `skillFilePath` `:267`) and the startup
+  handshake in `pdlc/engine/lib/startup.mjs` (`2ed13815`). TSPEC records the resolved
+  precedence as the measured fact; nothing further is owed here.
+- **O-9** *(new, round 1 — SE F-03)* Measure whether either transport can distinguish a
+  logged-in Claude Code session from a `CLAUDE_CODE_OAUTH_TOKEN` credential *from its own
+  reported auth state* (the spike measured exactly one value, `apiKeySource: "none"`, for the
+  subscription case). If it cannot, AC-2.1's startup mapping — which reads the environment and
+  settings, not the transport — stands as the whole answer, and TSPEC records the limitation
+  rather than inventing a discriminator.
