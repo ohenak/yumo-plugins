@@ -939,9 +939,13 @@ remote, so every clause below is asserted over each file **as created**; a harve
 absence is not an oracle failure.
 
 **BR-PARITY-5 — the hermetic double performs the agent's writes, or the oracle is vacuous.** Every
-artifact clauses 1–3 observe (`CROSS-REVIEW-*` files, their `VERDICT:` lines, the approval anchors)
-is written by the *dispatched agent's* tool calls, never by the modules: the modules compose those
-paths into prompts and read the files back, and no module code creates them. A transport double
+artifact clauses 1–2 observe (`CROSS-REVIEW-*` files and their `VERDICT:` lines) is written by the
+*dispatched agent's* tool calls, never by the modules: the modules compose those paths into prompts
+and read the files back, and no module code creates them. The **approval anchors are the
+exception, and they are the module's own write** — `orchestrate-dev.js:6190` appends
+`APPROVAL-HASH:` / `REVIEWED-COMMIT:` through `_appendFile` after its own pre-count check — so the
+double must **not** write them, or clause 3 asserts the fixture's bytes instead of the module's
+append logic, which is the vacuity this rule exists to prevent. A transport double
 that merely returns a response string therefore leaves `docs/{f}/` empty and clauses 1–3 pass on
 nothing. The double this oracle requires **replays each dispatch's file writes from its fixture**
 — for a reviewer dispatch, writing the cross-review file the prompt names, with the fixture's
@@ -1111,8 +1115,11 @@ delivery surface: no file is written for it, in the consumer repo or anywhere el
 NG-7). Progress lines print above it; the report is always exactly one line and always the last, so
 a cron wrapper parses the final line without scanning for a block. Two implications: a run whose
 stdout is not captured leaves no witness at all, and a run that died is distinguishable from one
-that refused, because a refusal still emits the line (EC-REP-1). This matches the shipped
-convention (`pdlc/engine/bin/pdlc.mjs:215-221`, emitted at `:236-237`).
+that refused, because a refusal still emits the line (EC-REP-1). The one-line/last-line half matches
+the shipped convention for a completed run (`pdlc/engine/bin/pdlc.mjs:208-215`, emitted at `:235`);
+**EC-REP-1's refusal half is red at HEAD** — a startup refusal returns before the report is stamped,
+printing the ladder and reason to stderr only (`:251-258` for `dev`, `:280-286` for `queue`), so a
+refusal emits no report line today and AT-ENG-68's refusal half starts red.
 
 **BR-REP-0a — a usage error is not a refusal, and emits no report line.** The rule above ranges over
 invocations the engine parsed into a well-formed command: those the ladder then rejects (rung-0
