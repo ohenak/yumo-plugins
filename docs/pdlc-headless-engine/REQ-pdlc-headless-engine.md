@@ -8,14 +8,24 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02) |
+| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md` (§7 adjudications DEC-HE-01…08); `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02) |
 | Downstream | FSPEC, TSPEC, PROPERTIES; successors `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`, `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.7 | 2026-08-10 |
+| pdlc | approved — ready | Claude | 0.8 | 2026-08-10 |
+
+*Change note (0.8, 2026-08-10):* the §7 obligations O-1 … O-8 were adjudicated or measured on
+2026-08-10 and recorded in `docs/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md`,
+now listed in Upstream so TSPEC grounding sees it. Every O-row carries a terminal resolution
+pointer to its DEC record; the obligation text itself is unchanged. C-6's permission posture is
+refined — not replaced — by DEC-HE-07. **No obligation is deleted:** the TSPEC-facing residue
+each one leaves (transport and plugin-discovery fixtures, the per-transport mapping layer, the
+setup-token renewal runbook, the first-run threshold re-derivation) is now stated in the DEC
+records rather than as an open question here. No goal, non-goal, constraint, acceptance
+criterion or risk is added, removed or changed in meaning.
 
 *Change note (0.7, 2026-08-10):* the operator confirmed §1.3's Agent-SDK-primary ruling on
 2026-08-10; this revision is a language-alignment pass only. Residual phrasing that still read
@@ -494,25 +504,44 @@ C-10)*
   interface contract with fixtures — the primary Agent-SDK transport's message-stream shape
   (system/init, rate_limit_event, terminal result — per `SPIKE-agent-sdk-auth.md`) is probed and
   fixtured the same way, and both are exercised behind the one `_agent` seam.
+  Resolved 2026-08-10 by DEC-HE-08 (`DECISIONS-headless-engine-obligations.md`); TSPEC inherits
+  the measured fixture inventory recorded there, including the per-transport mapping layer the
+  measured flag-surface mismatches require.
 - **O-2** Decide the guard-parity mechanism (C-5): per-dispatch hook/settings configuration
   carrying the PreToolUse hook (the SDK's hook/settings options on the primary transport, or
   `--settings` on the `claude -p` fallback) vs. an engine-side pre-flight. Must be sourced from
   the engine's own dispatch configuration, not from whatever hooks the plugin install registers
   (AC-5.1) — the plugin being present (C-10) is no longer the open case to design for; hook
   *provenance* is.
+  Resolved 2026-08-10 by DEC-HE-01 (`DECISIONS-headless-engine-obligations.md`): per-dispatch
+  hook injection on both transports; engine-side pre-flight is rejected as the mechanism.
 - **O-3** Decide where engine config lives (reuse `.claude/pdlc.config.json` per consumer —
   likely, since `implementation.testCommand` etc. are consumer-specific — vs. engine-global
   defaults with per-project override).
+  Resolved 2026-08-10 by DEC-HE-02 (`DECISIONS-headless-engine-obligations.md`): one config
+  surface — `.claude/pdlc.config.json` with a reserved `engine.*` key; no machine-global file.
 - **O-4** Confirm `claude setup-token` viability on the operator's account for cron
   contexts (token lifetime, renewal story), and document the renewal runbook.
+  Resolved 2026-08-10 by DEC-HE-06 (`DECISIONS-headless-engine-obligations.md`): operator
+  confirmed the setup-token flow is acceptable; TSPEC inherits the renewal-runbook obligation,
+  since the CLI documents no lifetime.
 - **O-5** Decide dry-run surface (AC-3.1/3.2) shape: `--dry-run` printing composed
   dispatches is the current assumption.
+  Resolved 2026-08-10 by DEC-HE-03 (`DECISIONS-headless-engine-obligations.md`): a
+  composed-dispatch manifest (table plus `--json`), stopping short of transport dispatch.
 - **O-6** Session-reuse flag design (R-4) — deferred, but the seam must not be painted shut.
+  Resolved 2026-08-10 by DEC-HE-04 (`DECISIONS-headless-engine-obligations.md`): reuse stays
+  deferred; TSPEC inherits the reserved key and the two named inert seam implementations.
 - **O-7** Record the observed rate-limit behaviour under real unattended load and re-derive
   `dispatch.retryAttempts` / `dispatch.retryBackoff` (§4.1) from it before treating them as
   settled.
+  Resolved 2026-08-10 by DEC-HE-05 (`DECISIONS-headless-engine-obligations.md`): the defaults
+  are provisional and re-derived from the first real `pdlc queue --loop` session's AC-4.5 rows.
 - **O-8** Probe and record the pdlc plugin's installed-location discovery mechanism (C-10,
   G-5) before TSPEC: the plugin cache layout under `~/.claude`, the marketplace-clone layout,
   and how each resolves a specific plugin's version and its `skills/` directory. Cover the
   case of multiple candidate install roots (e.g. a marketplace clone alongside a cache
   install) and state which one wins, deterministically.
+  Resolved 2026-08-10 by DEC-HE-08 (`DECISIONS-headless-engine-obligations.md`); TSPEC inherits
+  the fixture inventory recorded there, including the registry-based resolution order and the
+  two fail-closed edge cases measured on the operator's machine.
