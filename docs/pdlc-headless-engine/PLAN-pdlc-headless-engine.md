@@ -13,7 +13,27 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-11 |
+| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+
+**Changelog — v1.1** (addresses cross-review round 1, product-manager and test-engineer):
+
+| Change | Findings |
+|---|---|
+| T07 and its DoD item take DEC-ENG-05's **containment** oracle with no exemption list; TSPEC §3.3's exactly-equal allow-list is recorded as superseded and raised as an erratum. The oracle is content-keyed, so T16's edits cannot move it | TE F-01, TE F-08 |
+| The second matrix platform's `M-ENG-09` row is a named **operator step** in §5 with its command in §11; batch 5–11 gate wording says which platform's suite is expected red until it exists | TE F-02 |
+| AT-ENG-02, 05, 17, 18, 32, 40, 57 and 66 get owning rows (T21, T22, T31, T32, T47) and a §9 table; AT-ENG-17/18 are red tasks, being the billing-safety pair | PM F-01, TE F-03 |
+| §9's Acceptance-tests column restated **set-equal to FSPEC §14.1**, with this plan's additions marked as additions | PM F-01, PM F-03, TE F-04 |
+| T22 carries the `apiKeySource` policy clauses that were T36's missing red — the abort-before-billing positive and its flag-widened falsifier | TE F-05 |
+| `implementation.testCommand`'s post-T17 value quoted literally; the DoD requires **both** V1 and V2 with V2's ignore patterns preserved | PM F-02 |
+| T10 moved into AC-1.5's green column with clauses (a) and (b) separated; given a status glyph and explicitly exempted from §5's batch-2 red gate | PM F-04, TE F-12 |
+| §11's CI table corrected against `pr-tests.yml` at HEAD: `script-syntax` `:161`, `unit-tests` `:27`, `fresh-clone-bootstrap` `:103`, `npm ci` `:68`, `npm test` `:75` | PM F-05 |
+| T48 labelled **extended** for `smoke.test.js` (tracked, 387 lines at HEAD); v(a)'s malformed trailer and v(b)'s unparseable table pinned as fixture content | PM F-06, TE F-06 |
+| T25's absence oracles each paired with a positive on the same path | TE F-07 |
+| Property strategies named for `classifyOutcome`, `resolveAuthPosture`, `computeRateLimitWaitMs`, `resolveTunables`, `parseVersion`/`satisfiesRange` | TE F-09 |
+| ≥ 85 % branch-coverage floor on the four new modules, with V5 as its invoking command | TE F-10 |
+| `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` labelled **new** per TSPEC §8.3 | TE F-11 |
+| DoD's AT enumeration spelled as all 69, `AT-ENG-01…AT-ENG-68` plus `AT-ENG-11a` | TE F-13 |
+| AC-6.2's evidence stated as operator-recorded rather than suite-observed | PM F-07 |
 
 ## 1. Summary
 
@@ -395,7 +415,7 @@ integration is a known edit rather than a discovery made mid-wave.
 | T14 | strings are built inline at `handshake.mjs:124` (`REMEDY`), `startup.mjs:139`, `bin/pdlc.mjs:36` (`USAGE`) | each becomes a registered id; the inline sites are the closed list T05's test enumerates |
 | T15 | `startup.mjs:49`, `:64` and `handshake.mjs:183` `buildBanner` render an `apiKeyPolicy` row **from the CLI flag alone** — HEAD inspects neither environment nor login record | `lib/auth.mjs` supplies the observed posture; T41 rewires the banner row to it |
 | T16 | `PHASE_DISPATCH` exported at `orchestrate-dev.js:3337`, rows `:3344`–`:3435`; `ADVISORY_RUNG_SKILL` module-local at `:1797`; `orchestrate-queue.js:41` already imports from `orchestrate-dev.js` on one line, as `stripModuleSyntax` requires | five role keys are flattened out of `PHASE_DISPATCH`, six constants are promoted, and the queue's two-member set is derived; the single-line import at `:41` is extended, never wrapped |
-| T17 | `pr-tests.yml` runs four jobs — `unit-tests` `:27`, `artifact-freshness` `:77`, `fresh-clone-bootstrap` `:103`, `script-syntax` `:161` — and **none runs `pdlc/engine/`'s tests**; `.claude/pdlc.config.json` `implementation.testCommand` is `cd pdlc/workflows && npm test …` | a fifth job on the `unit-tests` matrix, and a `testCommand` that also runs the engine suite so this feature's own waves are gated on the code they are writing |
+| T17 | `pr-tests.yml` runs four jobs — `unit-tests` `:27`, `artifact-freshness` `:77`, `fresh-clone-bootstrap` `:103`, `script-syntax` `:161` — and **none runs `pdlc/engine/`'s tests**; `.claude/pdlc.config.json` `implementation.testCommand` is `cd pdlc/workflows && npm test …` | a fifth job on the `unit-tests` matrix, and a `testCommand` that runs **both** suites — engine first, then workflows with its ignore patterns preserved verbatim (§11 quotes the literal post-change value) — so this feature's own waves are gated on the code they are writing without blinding any other feature's |
 | T20 | `adapter.mjs:266-268`'s comment claims `opts.label` is one of two fields the modules pass; `:274` `const tag = label \|\| skill`; `:278-281` builds `dispatchOpts`; `:357-359` logs the phase label and discards it | the `_phase` seam is retained as run state and stamped; the stale comment is corrected in the same task, because leaving it is how the next reader keys something on `label` |
 | T22 | `transport.mjs:159` spreads the parent env; `:162-166` is the `AbortController` timer; `:170-174` pairs `permissionMode` with `allowDangerouslySkipPermissions`; `:176-178` assign `model`/`cwd`/`maxTurns`; `:199-206` reads `apiKeySource` from `system/init` | the shared child-env helper is factored out of `:159` so both transports carry one rule, and BR-PARITY-5's sentinel test asserts it survives on both |
 | T28 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh` — stdin JSON, unparseable ⇒ exit 0 (`:29-30`), scope match (`:35-38`), directory `LEARNINGS-*.md` check (`:53-57`), exit 2 blocks and feeds stderr back (`:6`) | both carriers invoke **the shipped script** and consume its exit code; no JavaScript reimplementation, so "exists on the branch" keeps one meaning (NG-1, DEC-ENG-03) |
@@ -519,7 +539,12 @@ by reading prose is not on this list.
 
 - [ ] `M-ENG-06`'s per-criterion rows are restated against the delivered engine (T53).
 - [ ] The errata this plan raises against TSPEC and DECISIONS are routed and confirmed, or explicitly
-      declined, before Phase DOD.
+      declined, before Phase DOD. Four are open: (i) TSPEC §8.3's edit surface omits
+      `.claude/pdlc.config.json`; (ii) `RungRecord = { rung: 0..5 }` (`TSPEC:834`, `:840`) cannot
+      represent FSPEC v1.6's rung 4a; (iii) TSPEC §3.3's exactly-equal allow-list oracle is the draft
+      DEC-ENG-05 supersedes, and TSPEC does not record the supersession; (iv) TSPEC §8.3's file table
+      does not classify `pdlc/engine/__tests__/smoke.test.js`, which is tracked at HEAD and is
+      **extended** by T48, not new.
 
 ## 9. Traceability — acceptance criteria to tasks
 
@@ -621,7 +646,7 @@ names where it would attach if answered.
 | O-ENG-T2 | two concurrent engine runs against one repo | out of scope (EC-RUN-4, DEC-ENG-14). No lock is invented; the in-process case is settled by `withCwd`'s `process.chdir` (`run.mjs:155`) and the cross-process case is recorded, not closed |
 | O-ENG-T3 | supplement inlining and prompt size | T38 implements DEC-ENG-06 as written — the identifier's whole prompt-file set. If measured prompt size becomes a problem, the alternative needs the measurement first, and T38 is where it would attach |
 | O-ENG-T4 | the M-ENG-09 gate's platform granularity | T29 keys on `process.platform`, matching T17's matrix; `sdkVersion` and `date` are recorded as provenance and are deliberately not part of the lookup (DEC-ENG-04) |
-| O-ENG-T5 | the unmeasured third platform | **a plan author hits this on day one, as TSPEC §9.2 predicted.** T29 makes an absent row red, and on a platform outside T17's matrix that is a red suite for a measurement the contributor cannot reasonably take. This plan does **not** decide it: T29 implements the refuse-and-require-a-row form, because it is the loud one, and the skip-with-a-notice form is a one-predicate change in the same test. Flagged for the operator, not resolved by an implementer mid-wave |
+| O-ENG-T5 | the unmeasured third platform | **a plan author hits this on day one, as TSPEC §9.2 predicted.** T29 makes an absent row red, and on a platform outside T17's matrix that is a red suite for a measurement the contributor cannot reasonably take. This plan does **not** decide it: T29 implements the refuse-and-require-a-row form, because it is the loud one, and the skip-with-a-notice form is a one-predicate change in the same test. Flagged for the operator, not resolved by an implementer mid-wave. **This is the *third*, off-matrix platform only.** The second *matrix* platform is not an open question and is not deferred here: it is on the critical path and §5 names the operator step that records its row |
 
 **One deferral this plan makes on its own authority, and states rather than hides.** `lib/skills.mjs`
 is extended by T38 for DEC-ENG-06's whole-file-set inlining, but no task caches composed prompts.
