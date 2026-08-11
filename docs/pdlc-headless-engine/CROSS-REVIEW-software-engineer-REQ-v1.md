@@ -31,8 +31,61 @@ Every existing-behaviour claim in the REQ was checked against HEAD of
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does the Agent SDK resolve bare model aliases (`opus`, `sonnet`, `haiku`) with the same semantics the CLI applies, including the error it raises for an unknown alias? C-7 deliberately delegates that job, and the modules do pass bare aliases — `MODEL_DEFAULT = "opus"` (`orchestrate-dev.js:1603`), `MODEL_IMPLEMENTATION = "sonnet"` (`:1646`), `MODEL_QUEUE = "sonnet"` (`orchestrate-queue.js:70`), plus a hard-coded `{ model: "haiku" }` at `orchestrate-dev.js:7463`. If the SDK's resolution differs, C-7's "the engine holds no model table" is still achievable but its stated rationale changes. |
+| Q-02 | AC-1.1 requires "the same artifact set as the workflow-runtime path produces for the same inputs". Is that a **set-equality** check over a declared enumeration of expected files, or containment? As phrased a TE cannot tell, and containment would let a silently dropped artifact pass. Naming the enumeration (or naming where it is declared) closes it without adding TSPEC detail here. |
+| Q-03 | NG-2 says "within this REQ the engine is run from a checkout of this repo", but `pdlc/engine/` already carries its own `package.json` with a real dependency (`@anthropic-ai/claude-agent-sdk`) and its own `test` script. Is installing that dependency inside the checkout in scope here, or does it belong to `pdlc-engine-distribution`? AC-6.1's "no network" and this install step want an explicit boundary. |
+| Q-04 | AC-4.2 says a `timeout` is "treated as retryable once, then terminal", which is a different budget from `dispatch.retryAttempts` (3). Is the timeout budget intentionally independent of the retry budget, and does a timeout consume a retry attempt or not? Two readings, two different tests. |
+
 ## Positive Observations
+
+- **Every measured fact in §1.2 verifies exactly at HEAD.** This is unusual and worth saying: `agent()` throwing at `orchestrate-dev.js:8458`, `parallel` at `:8464`, `pipeline` at `:8469`, `phase` at `:8474`, `defaultReadFile` at `:8492`, the two dynamic `child_process` imports at `:7680` and `:10754`, `orchestrate-queue.js`'s own `defaultReadFile` at `:948`, `rtSkillPrompt` at `runtime-adapter.js:47`, and `runtime-adapter.js` at exactly 53,056 bytes. Nothing was rounded or remembered. DC-02 is being honoured in the section that matters most.
+- **The skill-count claim is exact.** G-5's "17 skill prompt files — 15 `SKILL.md` plus the two `se-implement` language supplements" matches the tree precisely: 15 `skills/*/SKILL.md` plus `SKILL-python.md` and `SKILL-typescript.md`.
+- **C-10's handshake is a real constraint with a real range.** Engine `pdlcPluginCompat: "^0.22.0"` against plugin `0.22.0` — declared, checkable, and paired in the banner rather than assumed.
+- **AC-4.1 is written the way a boundary contract should be written**: a closed taxonomy plus an explicit totality rule ("unrecognised output classifies as `transport-contract-violation`, never as success"), and AC-4.4 correctly carves `auth-failure` out of the retry path instead of letting a dead credential burn a queue's wall clock.
+- **§4.1 declares its thresholds with owners and defaults, and admits its own uncertainty** (O-7 obliges re-deriving the retry defaults from observed behaviour rather than treating a guess as settled). That is the right posture for numbers nobody has measured yet.
+- **G-5's rejected alternative is recorded, not just decided.** The Skill-tool-invocation option and the reason it lost are both in the text, which is what makes the decision reviewable a year from now.
 
 ## Recommendation
 
+**Needs revision.**
+
+The shape of this REQ is sound and its measured-fact discipline is better than most documents
+that reach me. The problem is localised and mechanical: **v0.4 changed the primary transport
+and updated five items, and the mechanism layer did not follow.** Everything below G-3 still
+describes an engine that spawns `claude -p` children. That single root cause produces F-01,
+and it is also what leaves C-1's startup timing (F-02), AC-2.1's auth vocabulary (F-03) and
+AC-5.1's guard mechanism (F-06) pointing at a component the primary path no longer contains.
+
+To clear the High findings, the next revision needs exactly five changes:
+
+1. **F-01** — Sweep G-3, G-5, C-2, C-5, C-6, C-7, AC-2.3, AC-5.1, AC-6.1 into transport-neutral
+   wording over "the dispatch options handed to a transport"; let TSPEC bind mechanism per
+   transport. C-7 additionally needs a new owner for alias resolution, or an explicit statement
+   that the engine forwards and the *transport* owns rejection.
+2. **F-02** — Split C-1's obligation by observability: what startup can decide without billing
+   a dispatch, versus the per-dispatch `apiKeySource` equality gate. AC-2.2 follows.
+3. **F-03** — Either reduce AC-2.1's banner set to the value the engine can read, or add an
+   obligation to measure the session-vs-token discriminator before TSPEC (C-9 requires one or
+   the other).
+4. **F-04** — Name the queue drift gate in AC-1.2 and state its disposition, so AC-1.2 and
+   AC-1.3 stop contradicting each other for `pdlc queue`.
+5. **F-05** — Remove G-2's parenthetical seam enumeration (or mark it non-exhaustive and note
+   that the queue module's seam set differs), routing the seam contract to TSPEC. Do not fix
+   this by extending the list in the REQ — that is TSPEC material either way.
+
+F-06 and F-07 are worth addressing in the same pass but do not gate. F-08 through F-11 are
+citation and hygiene fixes.
+
+One note on sequencing rather than content: P1–P4 implementation commits are already on this
+branch while the REQ sits at "draft — awaiting operator review" in Phase R. That is the
+operator's call, not mine, but it does mean the five changes above should be checked against
+the shipped code as they are written — in at least two places (F-04, F-05) the implementation
+has already discovered the gap and worked around it, and the REQ is the document that is now
+behind.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 2, "low": 4}
