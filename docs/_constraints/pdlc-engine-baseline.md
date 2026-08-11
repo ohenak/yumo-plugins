@@ -68,3 +68,62 @@ path — only that it does, on this machine, on that date.
 Headless Claude Code accepts interactive `/login` state or a `claude setup-token` OAuth token
 via `CLAUDE_CODE_OAUTH_TOKEN`, and honors `ANTHROPIC_BASE_URL` / `ANTHROPIC_CUSTOM_HEADERS`
 (same docs retrieval, 2026-08-08).
+
+## M-ENG-07 — Pinned model map and the corpus that exercises every row
+
+The fixture table `REQ-pdlc-headless-engine.md` AC-3.3 asserts set-equality against, relocated
+here (v0.7) so the AC cites it by id. It is a **test fixture transcribed from the modules**,
+never imported from them: when a module changes a pinned model, this table changes in the same
+commit, and the drift between the two is what AC-3.3's set-equality exists to catch.
+
+**The corpus.** No single run exercises every row — the advisory tier ships disabled, the queue
+rung is not part of the dev phase graph, and two rows sit on conditional recovery paths a
+healthy run never enters. The corpus is therefore the union of the **recorded dispatch
+descriptors** of five runs. A descriptor is the model value a dispatch carries, recorded when
+the dispatch is composed, whether or not a model call is executed — so `--dry-run` and hermetic
+fixture-driven runs both yield descriptors, and no row depends on billed traffic:
+
+| # | Configuration | Provocation the fixture supplies |
+|---|---|---|
+| i | `pdlc dev`, full phase graph, advisory tier disabled | none — the healthy path: every reviewer emits a well-formed `VERDICT` trailer and the PLAN task table parses in-script |
+| ii | `pdlc queue` with one ready row | none |
+| iii | `pdlc dev`, `advisory.enabled: true`, reaching an advisory seam (a Phase-DOD A3/A4 assist is sufficient; any seam satisfies the row) | `fable` resolves normally |
+| iv | run iii repeated | `fable` model resolution forced to fail, so the fallback branch is reached |
+| v | `pdlc dev` with two response fixtures | (a) a reviewer response whose `VERDICT` trailer is malformed, provoking verdict recovery; (b) a PLAN whose task table the in-script parser rejects, provoking DAG extraction |
+
+**The map.** Every dispatch descriptor in the corpus appears here, and every row below is
+exercised by at least one descriptor in the corpus:
+
+| Dispatch site | Model value | Corpus run |
+|---|---|---|
+| every phase except Phase I (`MODEL_DEFAULT`) | `opus` | i |
+| Phase I implementation waves (`MODEL_IMPLEMENTATION`) | `sonnet` | i |
+| advisory-tier dispatch (`MODEL_ADVISORY`) | `fable` | iii |
+| advisory fallback (`MODEL_ADVISORY_FALLBACK`), reached only if `fable` fails to resolve | `opus` | iv |
+| queue Phase-0 readiness triage (`MODEL_QUEUE`) | `sonnet` | ii |
+| verdict-recovery re-emit dispatch, on a missing or malformed reviewer `VERDICT` trailer | `haiku` | v(a) |
+| PLAN-DAG extraction fallback, on a PLAN task table the in-script parser rejects | `haiku` | v(b) |
+
+Measured at HEAD: `orchestrate-dev.js:1603`, `:1646`, `:1652` (`MODEL_ADVISORY = "fable"`,
+dispatched at `:1851`), `:1653` (fallback, dispatched at `:1861` behind the model-resolution
+error check), `:7463` (verdict recovery, inside `recoverVerdict`), `:9968` (PLAN-DAG extraction,
+in the else-branch after `parsePlanTasks` returns no tasks), `orchestrate-queue.js:70`.
+
+## M-ENG-06 — Engine state at HEAD, per acceptance criterion (red / green)
+
+Relocated verbatim in substance from `REQ-pdlc-headless-engine.md` §1.2a (v0.6) under
+pm-author §5e. A partial engine is already committed on `feat-pdlc-headless-engine`:
+`pdlc/engine/` (`bin/pdlc.mjs`, 7 `lib/*.mjs` modules, 9 `__tests__/*.test.js` files,
+`pdlcPluginCompat: "^0.22.0"` in `pdlc/engine/package.json`), landed across `059750de` (P1, SDK
+transport + auth-policy gate + failure taxonomy), `2ed13815` (P2, plugin resolution, version
+handshake, skill inlining, `--dry-run`, `pdlc doctor`), `054d5292` (P3, `pdlc dev`/`queue`
+wiring + offline end-to-end smoke), `d0d2288b` (P4, retry/pause, run report, `queue --loop`)
+and `f6f8029a` (fixes). A test written today therefore either starts red or re-asserts green —
+the two demand different work.
+
+| AC | State at HEAD | Evidence |
+|---|---|---|
+| AC-1.2 (skill/plugin read containment), AC-1.3 (queue triage), AC-2.5 (`cwd`), AC-3.1 (composed prompt), AC-3.2 (handshake refusal), AC-3.4 (single permission setting), AC-4.1/4.2 (taxonomy, retry), AC-4.5 **except its per-dispatch auth clause** (report fields, pause rows) | **green — regression-protecting** | `pdlc/engine/__tests__/{transport,skills,startup,handshake,adapter,report,run,cli,smoke}.test.js` at `054d5292`, `d0d2288b` |
+| AC-1.5 (anti-fork) | green — both halves exist; only the specifier check is weaker than stated (it asserts a `file:` URL, not the repo-relative path under `pdlc/workflows/`) | `__tests__/run.test.js:48` (no vendored copy), `:64` (module URLs) |
+| AC-1.4 (halt recording), AC-4.3 (no orphan child, halt recorded), AC-6.1 (hermeticity guard) | partially green — the offline smoke halts and asserts git state, but no explicit guard fails a run that constructs the real transport | `smoke.test.js:294` (halt leaves history intact, on `feat-{f}`) |
+| AC-1.1 (parity oracle), AC-2.1/2.2/2.4 (banner mapping, startup refusal, billing oracle), AC-3.3 (model map), AC-3.5 (skill set-equality), AC-4.5's per-dispatch auth clause, AC-5.1/5.2 (guard parity), AC-6.2 (live smoke), AC-6.3 (fixtures), AC-6.4 (catalogue) | **red — open work** | no auth check exists in `startup.mjs` (only an `apiKeyPolicy` banner row, `:49`/`:64`); no hook/settings wiring exists in `pdlc/engine/lib/`; startup's skill probe is containment over a frozen 17-name list (`startup.mjs:20`, `:102`), not set-equality against files present; the auth source is recorded once, not per dispatch — `adapter.mjs:320` keeps a single `lastApiKeySource`, surfaced as one scalar (`report.mjs:51`, `bin/pdlc.mjs:227`) |

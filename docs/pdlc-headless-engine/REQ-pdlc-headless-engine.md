@@ -93,21 +93,15 @@ citation it was measured from (DC-02). Cited here by id, not re-carried:
 
 ### 1.2a State at HEAD — this is not a greenfield REQ
 
-A partial engine is already committed on `feat-pdlc-headless-engine`: `pdlc/engine/`
-(`bin/pdlc.mjs`, 7 `lib/*.mjs` modules, 9 `__tests__/*.test.js` files,
-`pdlcPluginCompat: "^0.22.0"` in `pdlc/engine/package.json`), landed across `059750de` (P1,
-SDK transport + auth-policy gate + failure taxonomy), `2ed13815` (P2, plugin resolution,
-version handshake, skill inlining, `--dry-run`, `pdlc doctor`), `054d5292` (P3, `pdlc
-dev`/`queue` wiring + offline end-to-end smoke), `d0d2288b` (P4, retry/pause, run report,
-`queue --loop`) and `f6f8029a` (fixes). The table records, per AC, whether a test written today
-starts red or re-asserts green — the two demand different work (TE F-07, SE F-07).
-
-| AC | State at HEAD | Evidence |
-|---|---|---|
-| AC-1.2 (skill/plugin read containment), AC-1.3 (queue triage), AC-2.5 (`cwd`), AC-3.1 (composed prompt), AC-3.2 (handshake refusal), AC-3.4 (single permission setting), AC-4.1/4.2 (taxonomy, retry), AC-4.5 **except its per-dispatch auth clause** (report fields, pause rows) | **green — regression-protecting** | `pdlc/engine/__tests__/{transport,skills,startup,handshake,adapter,report,run,cli,smoke}.test.js` at `054d5292`, `d0d2288b` |
-| AC-1.5 (anti-fork) | green — both halves exist; only the specifier check is weaker than stated (it asserts a `file:` URL, not the repo-relative path under `pdlc/workflows/`) | `__tests__/run.test.js:48` (no vendored copy), `:64` (module URLs) |
-| AC-1.4 (halt recording), AC-4.3 (no orphan child, halt recorded), AC-6.1 (hermeticity guard) | partially green — the offline smoke halts and asserts git state, but no explicit guard fails a run that constructs the real transport | `smoke.test.js:294` (halt leaves history intact, on `feat-{f}`) |
-| AC-1.1 (parity oracle), AC-2.1/2.2/2.4 (banner mapping, startup refusal, billing oracle), AC-3.3 (model map), AC-3.5 (skill set-equality), AC-4.5's per-dispatch auth clause, AC-5.1/5.2 (guard parity), AC-6.2 (live smoke), AC-6.3 (fixtures), AC-6.4 (catalogue) | **red — open work** | no auth check exists in `startup.mjs` (only an `apiKeyPolicy` banner row, `:49`/`:64`); no hook/settings wiring exists in `pdlc/engine/lib/`; startup's skill probe is containment over a frozen 17-name list (`startup.mjs:20`, `:102`), not set-equality against files present; the auth source is recorded once, not per dispatch — `adapter.mjs:320` keeps a single `lastApiKeySource`, surfaced as one scalar (`report.mjs:51`, `bin/pdlc.mjs:227`) (TE F-05) |
+A partial engine is already committed on `feat-pdlc-headless-engine` (`pdlc/engine/`, landed
+across `059750de`…`f6f8029a`), so for each AC below a test written today either starts red or
+re-asserts green — the two demand different work (TE v1 F-07, SE v1 F-07). The per-AC red/green
+table, with its evidence citations, is **M-ENG-06** in
+`docs/_constraints/pdlc-engine-baseline.md`, relocated there under pm-author §5e and cited by id
+rather than re-carried. Red at HEAD, in summary: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
+AC-4.5's per-dispatch auth clause, AC-5.1/5.2 and AC-6.2/6.3/6.4 — including the auth check
+`startup.mjs` does not yet make, the hook/settings wiring absent from `pdlc/engine/lib/` (O-2),
+and the per-dispatch auth source the adapter records once rather than per dispatch (TE v2 F-05).
 
 ### 1.3 Transport decision (superseded 2026-08-08 by Phase-0 spike)
 
@@ -318,15 +312,26 @@ question. `{f}` denotes a feature name throughout.
   through the phases enabled by that repo's config and satisfies each **structural** oracle
   below. The oracle is structural, not byte-equality, and needs no comparison run of the
   workflow-runtime path — two pipeline runs dispatch non-deterministic model calls, and AC-6.1
-  forbids a live comparison arm in CI (TE F-08). Expected sets are transcribed here:
+  forbids a live comparison arm in CI (TE v1 F-08). Every clause below observes the run's
+  **creation events** — AC-1.2's filesystem observation is the method — not the tree surviving at
+  exit: Phase H deletes each harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` file once the
+  LEARNINGS commit is confirmed on remote, so clauses 1–3 assert over each file as created, and a
+  harvested file's later absence is not an oracle failure (SE v3 F-20). Expected sets are
+  transcribed here:
   1. the artifact **filenames** created under `docs/{f}/` satisfy two rules, because only part
-     of the set is run-independent (TE F-06): (i) **set-equality** against the phase-declared
+     of the set is run-independent (TE v1 F-06): (i) **set-equality** against the phase-declared
      core — `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `LEARNINGS` (`REQ` pre-exists) — for the
-     phases that repo's config enables; (ii) for the two run-dependent members, a rule, not a
-     fixed set: `DECISIONS-{f}.md` exists **iff** the run report records the Phase-T decision
-     that warrants it, and the `CROSS-REVIEW-{role}-{doc}[-v{N}].md` set equals exactly one
-     file per `(role, doc, round)` the run's own recorded round windows name. No filename
-     outside (i) and (ii) may appear — the set is closed in both rules;
+     phases that repo's config enables; (ii) for each run-dependent member, a rule, not a fixed
+     set (SE v3 F-17) — `DECISIONS-{f}.md` iff the run report records the Phase-T decision that
+     warrants it; the `CROSS-REVIEW-{role}-{doc}[-v{N}].md` set equal to exactly one file per
+     `(role, doc, round)` the run's own recorded round windows name; `CODE_REVIEW-{f}-v{N}.md`
+     one file per DoD round the run report records, which is at least one whenever the run
+     reaches that phase, since the DoD gate is on for every run and is not a consumer-config
+     switch this AC's *Given* can disable; `POSTMORTEM-{phase}-{f}.md` iff the run report records
+     a halt of that phase — clause 4 admits `halted`, so this member is reachable on a passing
+     oracle; and `ADVISORY-{f}.md` iff the advisory tier is enabled, which the *Given* leaves at
+     its shipped default of off. No filename outside (i) and (ii) may appear — the set is closed
+     in both rules;
   2. every `CROSS-REVIEW-*` file carries a parseable `VERDICT:` line and a counts JSON object;
   3. approval anchors (`APPROVAL-HASH:`, `REVIEWED-COMMIT:`) are present on each cross-review
      that reached a terminal approval;
@@ -428,32 +433,23 @@ C-10)*
   engine **dispatches nothing** and exits non-zero with a message naming the engine's declared
   range, the plugin version found (or "not found"), and the remedy (C-10) — this replaces the
   earlier assumption that the engine has no plugin dependency to lose.
-- **AC-3.3** *Given* the **dispatch corpus** defined below, *when* the model each dispatch
-  carries is compared against this **literal** expected map, *then* the comparison is a
-  **set-equality** in both directions — every dispatch's model value in the corpus appears in
-  the map, and every map row is exercised by at least one dispatch **in the corpus** — so a
-  phase that silently stops pinning a model fails (TE F-04). No single run exercises every row:
-  the advisory tier ships disabled and the queue rung is not part of the dev phase graph, so
-  the corpus is the **union of three dry runs** and the oracle is asserted over that union only
-  (SE F-12, TE F-02): (i) `pdlc dev` over the full phase graph, advisory tier disabled;
-  (ii) `pdlc queue`; (iii) `pdlc dev` with `advisory.enabled: true`. The map is transcribed
-  here, not imported from the modules' constants:
-
-  | Dispatch site | Model value | Corpus run |
-  |---|---|---|
-  | every phase except Phase I (`MODEL_DEFAULT`) | `opus` | i |
-  | Phase I implementation waves (`MODEL_IMPLEMENTATION`) | `sonnet` | i |
-  | advisory-tier dispatch (`MODEL_ADVISORY`) | `fable` | iii |
-  | advisory fallback (`MODEL_ADVISORY_FALLBACK`), reached only if `fable` fails to resolve | `opus` | iii, with `fable` resolution forced to fail |
-  | queue Phase-0 readiness triage (`MODEL_QUEUE`) | `sonnet` | ii |
-  | verdict-recovery re-read dispatches | `haiku` | i |
-
-  Measured at HEAD: `orchestrate-dev.js:1603`, `:1646`, `:1652` (`MODEL_ADVISORY = "fable"`,
-  dispatched at `:1851`), `:1653` (fallback, dispatched at `:1861`), `:7463` and `:9968`
-  (`model: "haiku"`), `orchestrate-queue.js:70`. The engine substitutes no default of its own
-  for a model it does not recognise; the map is a **test fixture**, not an engine table (C-7).
-  When a module changes a pinned model, this table is updated in the same change — a drift
-  between the two is exactly the failure the set-equality is there to catch.
+- **AC-3.3** *Given* the **dispatch corpus** and the **pinned model map** that
+  `docs/_constraints/pdlc-engine-baseline.md` **M-ENG-07** fixes — seven map rows over a corpus
+  of five named configurations, relocated there under pm-author §5e and cited by id, not
+  re-carried — *when* the model each dispatch in the corpus carries is compared against that
+  **literal** map, *then* the comparison is a **set-equality** in both directions: every
+  dispatch descriptor's model value in the corpus appears in the map, and every map row is
+  exercised by at least one descriptor in the corpus, so a phase that silently stops pinning a
+  model fails (TE v1 F-04, SE v2 F-12). Two properties of the corpus make the second direction
+  satisfiable, and both are M-ENG-07's to supply rather than this AC's (SE v3 F-18/F-19, TE v3
+  F-02/F-03): each map row names the **configuration and the provocation** that reaches it — the
+  advisory rows need the tier enabled and, for the fallback row, `fable` resolution forced to
+  fail; the two `haiku` rows are distinct sites reached only by a malformed reviewer `VERDICT`
+  trailer and by a PLAN task table the in-script parser rejects, so a healthy run reaches
+  neither — and the corpus is defined over **recorded dispatch descriptors** (the model value a
+  dispatch carries when composed), not over executed model calls, so the oracle needs no billed
+  traffic and no live run (AC-6.1). The engine substitutes no default of its own for a model it
+  does not recognise; the map is a **test fixture**, never an engine table (C-7).
 - **AC-3.4** *Given* the permission posture passed to each dispatch, *when* the engine is
   inspected, *then* it comes from one named, reviewable setting applied uniformly, and no
   call site carries its own ad-hoc permission escalation (C-6).
