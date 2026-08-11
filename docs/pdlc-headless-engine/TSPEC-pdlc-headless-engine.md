@@ -1402,15 +1402,15 @@ vacuity §3.3 argues against:
 
 **Each row's witness is transcribed literally**, which is what makes the reverse direction writable
 without a field the run cannot produce. `corpusRun` is supplied by the harness — it configures the
-run, so it knows which of M-ENG-07's five it is executing — and `seq` is §4.1's monotonic dispatch
-index:
+run, so it knows which of M-ENG-07's five it is executing. No witness reads `seq`: it stays a
+reporting field (§4.1), and the one row that leaned on it is corrected below:
 
 | M-ENG-07 row | Model | Witness predicate over the recorded descriptors |
 |---|---|---|
-| 1 every phase except Phase I | `opus` | **quantified, not existential**: in run i, *every* descriptor with `phase !== "Phase I"` has `model === "opus"` (and ≥1 such descriptor exists) |
-| 2 Phase I implementation waves | `sonnet` | in run i, *every* descriptor with `phase === "Phase I"` has `model === "sonnet"` (and ≥1 exists) |
+| 1 every phase except Phase I | `opus` | **quantified, not existential**: in run i, *every* descriptor **outside the Phase-I wave set** (defined below) has `model === "opus"` (and ≥1 such descriptor exists) |
+| 2 Phase I implementation waves | `sonnet` | in run i, *every* descriptor **inside the Phase-I wave set** has `model === "sonnet"` (and ≥1 exists) |
 | 3 advisory-tier dispatch | `fable` | in run iii, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "fable"` |
-| 4 advisory fallback | `opus` | in run iv, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL`, `model === "opus"`, whose immediately preceding descriptor by `seq` is the same skill on `fable` **and whose dispatch raised the model-resolution error the fixture forces** — the ordering pair is the discriminator row 1 cannot supply |
+| 4 advisory fallback | `opus` | in run iv, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "opus"` **that was composed in response to the forced model-resolution failure the fixture plants on the `fable` dispatch** — that provenance is the whole discriminator; no `seq` adjacency (see below) |
 | 5 queue Phase-0 triage | `sonnet` | in run ii, ≥1 descriptor with `phase === "Queue"`, `skill === "se-author"`, `model === "sonnet"` |
 | 6 verdict-recovery re-emit | `haiku` | in run v(a) — the malformed-`VERDICT` fixture — ≥1 descriptor with `model === "haiku"` and a reviewer `skill` |
 | 7 PLAN-DAG extraction | `haiku` | in run v(b) — the unparseable-task-table fixture — ≥1 descriptor with `model === "haiku"` and `skill === "se-author"` |
@@ -1419,13 +1419,79 @@ Rows 1 and 2 being quantified is what preserves the property the pair form was r
 that stopped pinning is caught by row 1's *every*, not by a missing pair. The forward direction stays
 a plain containment over model values, which is total and needs no normalisation.
 
+**Rows 1 and 2 partition on the Phase-I *wave set*, not on the normalised phase string** (TE F-22).
+v1.2 wrote `phase !== "Phase I"` / `phase === "Phase I"`, and that transcription is red on correct
+code: Phase I's V-wave — the PROPERTIES-tests dispatch appended to the wave sequence — is *announced*
+as `phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)")` (`orchestrate-dev.js:10248`), so it
+normalises to `"Phase PT"` under §4.1's prefix rule, while it is *pinned* on `MODEL_IMPLEMENTATION`,
+i.e. `sonnet` (`:10253`). Row 1's *every* would be falsified by a correct dispatch and row 2 would
+miss it. M-ENG-07's prose ("Phase I implementation waves", `pdlc-engine-baseline.md:132-133`) covers
+that dispatch fine; it is the mechanised transcription onto the normalised phase that breaks, which
+is exactly the class of translation defect this section exists to catch — and §4.1's normalisation is
+*not* changed to hide it, because the announcement is honest run provenance and `byPhase` should keep
+reporting it as `"Phase PT"`.
+
+The set is therefore defined once, over recorded descriptor fields the harness already has:
+
+> **Phase-I wave set** = descriptors with `phase === "Phase I"`, **plus** the V-wave descriptor:
+> `phase === "Phase PT"` **and** `skill === SKILL_SE_IMPLEMENT`. Every other descriptor is outside it.
+
+That second clause is exact in run i rather than approximate, because **run i drives wave mode**, and
+this is the fixture decision v1.2 left unstated — the other half of F-22. Wave mode is selected by
+one condition: `waveMode = Boolean(iOwnership) && iContract.ok === true` (`orchestrate-dev.js:9995`),
+i.e. the PLAN carries a valid file-ownership manifest; the legacy worktree path is reachable by
+exactly one route, a PLAN approved before the manifest requirement with Phase P skipped on a recorded
+approval (`:9987-9990`). **Run i's fixture repo therefore ships a PLAN with a valid ownership
+manifest and a `implementation.testCommand` in `.claude/pdlc.config.json`**, so the run takes wave
+mode and the script-owned gate (`:10099-10100`). Two consequences the harness makes explicit rather
+than trusting:
+
+- **The mode is asserted, not assumed.** Run i's assertions include ≥1 descriptor inside the Phase-I
+  wave set and exactly one `phase === "Phase PT"` descriptor. In wave mode Phase PT has precisely one
+  dispatch — the V-wave (`:10248`→`:10253`); the legacy path's own Phase PT dispatch (`:10068`,
+  announced `"Phase PT: PROPERTIES Tests"`, no `model` option and therefore Opus) cannot occur in the
+  same run. Had the fixture silently drifted into legacy mode, the V-wave clause would be picking up
+  an Opus dispatch and row 2 would be red — a loud failure, not a quiet reinterpretation.
+- **Legacy mode is out of scope for rows 1 and 2, and named as such.** No corpus run drives it, so no
+  row asserts over it. Pinning legacy Phase PT is not an AC-3.3 obligation — M-ENG-07's row 2 speaks
+  of implementation *waves*, which the worktree path does not run — and a future corpus run vi for the
+  exception path would need its own witness rows, not a widening of these.
+
+**Row 4 drops `seq` adjacency and keeps the forced-failure provenance** (TE F-23). Requiring the
+fallback descriptor's "immediately preceding descriptor by `seq`" to be the same skill on `fable` is
+a flakiness source the row does not need: `seq` is §4.1's *run-wide* monotonic index, and adjacency in
+it holds only if no other dispatch is composed across the hop from `dispatchAt(MODEL_ADVISORY)` to
+`dispatchAt(MODEL_ADVISORY_FALLBACK)` (`orchestrate-dev.js:1851`→`:1861`) — which nothing in this
+design establishes, since run iv is a whole pipeline run and the A3/A4 seams sit in Phase DOD beside
+the verifier and remediator dispatches. The fixture's forced model-resolution failure is already
+sufficient and stable: no ordinary `opus` `se-review` dispatch can carry it. **The error is raised by
+the `fable` dispatch, not the `opus` one** — `:1861` is reached only behind `isModelResolutionError`,
+so the fallback descriptor is the *consequence* of the failure and never its source; v1.2's second
+"whose" was ambiguous on exactly this point and an implementer reading it as the `opus` descriptor
+would have written an assertion that is never true. The harness pairs the two descriptors by the
+advisory seam's own invocation, which the fixture controls, rather than by global ordering.
+
+**A fifth suite-wide assertion rides with this table: `byPhase["(no phase)"]` is absent or `0` on
+every run-shaped test** (§4.1, PM Q-01/TE Q-10). It is listed here so it is an assertion rather than
+a reported number nobody fails on — the first dispatch that drifts ahead of its phase banner is red.
+
+**Row 3's and row 4's advisory predicates are existential on purpose** (PM Q-02). `runAdvisorySeam`'s
+own model choice is memoised in `_state.resolved` (`orchestrate-dev.js:1844`): once a rung has
+resolved, every later seam invocation dispatches straight at the memoised model (`:1845`) and the
+`fable`→`opus` fallback branch (`:1851`→`:1861`) is never re-entered. A future revision that
+"strengthened" rows 3/4 into a quantifier over all `ADVISORY_RUNG_SKILL` descriptors would therefore
+be red on correct code — the later descriptors carry the memoised model with no failure behind them,
+and ordinary reviewer dispatches share the identifier entirely. The memo is left here because
+that is the shape of strengthening a later author is most likely to attempt.
+
 Its corpus is M-ENG-07's own: the union of **five run configurations** (dev healthy path, queue,
 advisory seam, advisory fallback, and the two `haiku` recovery paths), because no single run
 exercises every row. A descriptor is recorded when a dispatch is *composed*, whether or not a model
 call is executed, so no row depends on billed traffic. **The instrument is the fixture-driven run,
 recorded through §7.0's observation seam — not `--dry-run-skill`** (PM Q-03): that flag selects which
 single skill's composed prompt is printed (`FSPEC:190`), a one-prompt surface, whereas every row here
-needs a whole run's worth of descriptors and rows 1, 2 and 4 need their ordering and phase context.
+needs a whole run's worth of descriptors, rows 1 and 2 need a run's full phase context, and row 4
+needs the failure the fixture forces mid-run.
 `--dry-run-skill` remains §7.1's prompt-corpus instrument and is not cited for this property. A
 whole-run `--dry-run` stays open as O-5 and this harness deliberately does not depend on it.
 M-ENG-07's table stays a **transcription** of the modules' constants, never an import from them —
