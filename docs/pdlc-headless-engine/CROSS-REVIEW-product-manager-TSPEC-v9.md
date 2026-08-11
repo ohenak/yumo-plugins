@@ -21,6 +21,46 @@ All three resolved, and two of the three resolved by a stronger edit than I aske
 
 ## 2. What else changed, and what I checked
 
+This round also folds in TE F-40/41/42/43 and answers Q-18/Q-19. The bulk of the new material is
+§3.3's rewritten guard and the new §7.8. I re-grounded the load-bearing claims against HEAD rather
+than reading them:
+
+- **§3.3's PHASE_DISPATCH role-field census (class 2, "28")** — measured independently over
+  `orchestrate-dev.js:3337-3437`: 5 non-null `creator`, 7 `optimizer`, 7 two-member `reviewers`
+  arrays = 14, 1 `verifier`, 1 `remediator` → **28 ✓**, and the cited range ends exactly at `:3437` ✓.
+  Class 4's eleven dispatch call sites I verified individually in v8; unchanged this round.
+- **§3.3's "no string predicate exists" argument** — the decisive case checks out: `:6229-6231`
+  carries keys `"se-review"`/`"pm-review"`/`"te-review"` and values `"software-engineer"`/
+  `"product-manager"`/`"test-engineer"` on the same three lines, syntactically indistinguishable ✓.
+  The `meta.name` counter-examples at `orchestrate-dev.js:3316` and `orchestrate-queue.js:45` are
+  real ✓. The structural reframing is the right repair, and it is argued from measurement.
+- **§7.8's upstream anchors** — every one lands: `FSPEC:299` is the rung 4a ladder row ✓; `:406` is
+  EC-START-10 ✓; `:407` is EC-START-11, and its "the next candidate decides, and rung 4a refuses only
+  if none runs" is faithfully rendered as "rung 4a **passes**" in the branch table ✓; `:918-921` is
+  BR-GUARD-6's candidate set `python3, python, py` plus "never widens or narrows that set
+  independently" ✓; `:922-924` is "by **running** a candidate, not by finding it on `PATH`" ✓;
+  `:967` is AT-ENG-11a, and it carries **both** branches, which is why §7.8 owing two tests is right ✓.
+  `REQ:284` is C-11 ✓.
+- **§7.8's seam argument** — `_runCommand` is supplied to the workflow modules from `run.mjs:88` and
+  appears nowhere in `lib/startup.mjs` ✓, so "not on the startup path and cannot be reached from
+  `lib/startup.mjs`" is true, and declaring `probeGuardInterpreter({runProbe})` is not a redundant
+  seam. `spawnSync(candidate, ["-c", "import sys"])` matches the shipped script's probe verbatim
+  (`guard-harvest-before-delete.sh:16`) ✓ — the command is right; only its line anchor is not (F-01).
+- **§6.4's rung disambiguation** — "runs with the ladder's billing-posture rung (5)" checks out:
+  `FSPEC:301` is rung 5 = **billing posture** ✓. Separating EC-GUARD-4 from rung 4a in §6.4, §8.3 and
+  §4.3 closes the one place a reader could have conflated two different refusals.
+- **§7.5's sixth conjunct and §8.3's count** — §8.3's `_assert-suite-wide.mjs` row now says "six
+  suite-wide assertions (four set-equality properties + the pre-phase predicate, + §7.5's
+  corpus-scoping conjunct)" = 4+1+1 = **6 ✓**, internally consistent with §7.5's text. The conjunct
+  itself is set-equality, not containment, and it fails in both directions (unnamed sixth
+  configuration red; corpus configuration that recorded nothing red) — which is what Q-18 asked for.
+- **§7.8's "nothing dispatched" oracle** — asserted positively (`accumulator.length === 0` on a run
+  that reached the ladder) and paired with a companion control asserting a dispatching run records a
+  non-zero count. That is the absence-only oracle rule applied without being asked ✓.
+- **§6.5's M-ENG-09 clause (Q-19)** — presence **and** consistency, with all three cases spelled out
+  (`yes` + hook shipped green; `no` + hook shipped red; `no` after tightening green). No longer green
+  on a negative measurement the code has not answered ✓.
+
 ## 3. Findings
 
 ## 4. Questions
