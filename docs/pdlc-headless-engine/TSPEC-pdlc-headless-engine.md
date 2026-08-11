@@ -1288,25 +1288,64 @@ the end — because per-test assertions go vacuous the moment a test is skipped:
 |---|---|---|
 | message catalogue (§3.5) | `message(id, …)` records the id | emitted ids ≡ `messageIds()` |
 | outcome taxonomy (§5.1) | `classifyOutcome` records its result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
-| **pinned model map (§4.1, AC-3.3)** | the adapter records each `DispatchDescriptor`'s `{ skill, label, model }` | the observed `(phase, model)` pairs ≡ **M-ENG-07's seven rows, in both directions** |
+| **pinned model map (§4.1, AC-3.3)** | the adapter records each `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model }` | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
 | dispatchable skills (§3.3) | not an accumulator — computed once from imported data | both directions, §3.3's table |
 
 **The model-map row is new in v1.1** and closes AC-3.3, which v1.0 left owned by verbatim
 pass-through alone. `adapter.mjs:271` forwarding `model` untouched is necessary and correctly
 designed, but it proves neither direction: a phase that silently stopped pinning a model would pass
-a pass-through test, and a model reaching a phase no row names would too. AC-3.3 asks for
-set-equality over the recorded corpus and M-ENG-07's map in *both* directions, including that no
-provocation reaches an unnamed model such as `haiku`, so it needs an accumulator of its own. The
-forward direction catches a new model; the reverse catches a phase that stopped pinning — the
-failure that motivated the criterion.
+a pass-through test, and a model reaching a phase no row names would too. So it needs an accumulator
+of its own. The forward direction catches a new model; the reverse catches a phase that stopped
+pinning — the failure that motivated the criterion.
+
+**The assertion is AC-3.3's two directions, not a set-equality over `(phase, model)` pairs.** v1.1
+wrote the stronger-looking form, and it is not writable — it would have been red on correct code for
+three separate reasons, and the only available repair would have been to loosen the oracle, the exact
+vacuity §3.3 argues against:
+
+- **M-ENG-07 row 1 is a quantified statement, not a pair.** "Every phase except Phase I → `opus`"
+  (`docs/_constraints/pdlc-engine-baseline.md:132`) expands to one pair per phase label, so a literal
+  `pairs ≡ rows` comparison compares a dozen observations against one row and fails in the forward
+  direction for reasons unrelated to any defect. Row 1 is asserted as the quantifier it is.
+- **Rows 1 and 4 are indistinguishable by `(phase, skill, model)`.** The advisory fallback dispatches
+  `ADVISORY_RUNG_SKILL` (`se-review`) on `opus` from inside `runAdvisorySeam`
+  (`orchestrate-dev.js:1841`, reached again for the fallback at `:1861`), which is descriptor-identical
+  to an ordinary `opus` `se-review` reviewer dispatch. Without a discriminator, corpus run iv passes
+  while the fallback branch never executed — precisely the failure AC-3.3 names.
+- **Rows 6 and 7 carry no phase distinction and no label at all.** Both `haiku` sites pass `{ model }`
+  alone (`:7463` verdict recovery, `:9968` PLAN-DAG extraction), so `label` cannot separate them
+  (§4.1); `skill` plus the provoking fixture can.
+
+**Each row's witness is transcribed literally**, which is what makes the reverse direction writable
+without a field the run cannot produce. `corpusRun` is supplied by the harness — it configures the
+run, so it knows which of M-ENG-07's five it is executing — and `seq` is §4.1's monotonic dispatch
+index:
+
+| M-ENG-07 row | Model | Witness predicate over the recorded descriptors |
+|---|---|---|
+| 1 every phase except Phase I | `opus` | **quantified, not existential**: in run i, *every* descriptor with `phase !== "Phase I"` has `model === "opus"` (and ≥1 such descriptor exists) |
+| 2 Phase I implementation waves | `sonnet` | in run i, *every* descriptor with `phase === "Phase I"` has `model === "sonnet"` (and ≥1 exists) |
+| 3 advisory-tier dispatch | `fable` | in run iii, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "fable"` |
+| 4 advisory fallback | `opus` | in run iv, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL`, `model === "opus"`, whose immediately preceding descriptor by `seq` is the same skill on `fable` **and whose dispatch raised the model-resolution error the fixture forces** — the ordering pair is the discriminator row 1 cannot supply |
+| 5 queue Phase-0 triage | `sonnet` | in run ii, ≥1 descriptor with `phase === "Queue"`, `skill === "se-author"`, `model === "sonnet"` |
+| 6 verdict-recovery re-emit | `haiku` | in run v(a) — the malformed-`VERDICT` fixture — ≥1 descriptor with `model === "haiku"` and a reviewer `skill` |
+| 7 PLAN-DAG extraction | `haiku` | in run v(b) — the unparseable-task-table fixture — ≥1 descriptor with `model === "haiku"` and `skill === "se-author"` |
+
+Rows 1 and 2 being quantified is what preserves the property the pair form was reaching for: a phase
+that stopped pinning is caught by row 1's *every*, not by a missing pair. The forward direction stays
+a plain containment over model values, which is total and needs no normalisation.
 
 Its corpus is M-ENG-07's own: the union of **five run configurations** (dev healthy path, queue,
 advisory seam, advisory fallback, and the two `haiku` recovery paths), because no single run
 exercises every row. A descriptor is recorded when a dispatch is *composed*, whether or not a model
-call is executed, so all five are reachable hermetically through `--dry-run-skill` (§7.1) and
-fixture-driven runs, and no row depends on billed traffic. M-ENG-07's table stays a **transcription**
-of the modules' constants, never an import from them — importing it would make the drift AC-3.3
-exists to catch invisible.
+call is executed, so no row depends on billed traffic. **The instrument is the fixture-driven run,
+recorded through §7.0's observation seam — not `--dry-run-skill`** (PM Q-03): that flag selects which
+single skill's composed prompt is printed (`FSPEC:190`), a one-prompt surface, whereas every row here
+needs a whole run's worth of descriptors and rows 1, 2 and 4 need their ordering and phase context.
+`--dry-run-skill` remains §7.1's prompt-corpus instrument and is not cited for this property. A
+whole-run `--dry-run` stays open as O-5 and this harness deliberately does not depend on it.
+M-ENG-07's table stays a **transcription** of the modules' constants, never an import from them —
+importing it would make the drift AC-3.3 exists to catch invisible.
 
 The first three write through §7.0's observation seam, so the union is genuinely suite-wide across
 processes. The accumulator is per process by construction and never reset per test — resetting per
