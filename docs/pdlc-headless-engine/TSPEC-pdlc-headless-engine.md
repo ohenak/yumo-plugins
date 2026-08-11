@@ -974,8 +974,9 @@ RungRecord = { rung: RungId, name: string, state: "pass"|"fail"|"skipped", detai
 **The rung id is a string label drawn from `RUNG_ORDER`, never an integer index** (FSPEC v1.6 C-11,
 BR-GUARD-6). FSPEC inserts **rung 4a — guard executable** between rungs 4 and 5 (`FSPEC:299`;
 EC-START-10/11, AT-ENG-11a): the host must be able to run the shipped
-`guard-harvest-before-delete` script, i.e. an accepted interpreter is obtainable (§6.4, FSPEC §9.1),
-and failure refuses with the candidates tried and the remedy, exit `1`, nothing dispatched. An
+`guard-harvest-before-delete` script, i.e. an accepted interpreter is obtainable (**§7.8** for the
+probe seam and both branches' tests; FSPEC §9.1 — *not* §6.4, which is EC-GUARD-4's transport-capability
+probe), and failure refuses with the candidates tried and the remedy, exit `1`, nothing dispatched. An
 integer `0..5` typing cannot express `4a`, and an implementer working from this document alone would
 face exactly two bad repairs — drop the rung, or renumber the ladder to `0..6`. **Renumbering is
 forbidden**: FSPEC fixes rung numbers 0–5 and every `EC-START-*` message, `pdlc doctor` line and
@@ -2120,7 +2121,7 @@ gate that passes on every developer machine and proves nothing about the hosts i
 | present-but-not-runnable, then runnable | EC-START-11 (`FSPEC:407`) | rung 4a **passes** — presence is not executability, and a later candidate deciding is the correct outcome, not a tolerated one |
 
 **Neither branch is writable without a seam this document must name.** FSPEC fixes the observation as
-"by **running** a candidate, not by finding it on `PATH`" (`FSPEC:919-921`), so an EC-START-11 fixture
+"by **running** a candidate, not by finding it on `PATH`" (`FSPEC:922-924`), so an EC-START-11 fixture
 must present a `python3` that resolves and fails to execute while `python` succeeds. §7.0/§7.1's
 bootstrap traps sockets and records `fs`; neither observes process spawning, and `_runCommand` is a
 *workflow-module* seam (§3.1), supplied to `orchestrate-dev.js` for Phase I's wave gate — it is not on
@@ -2128,7 +2129,7 @@ the startup path and cannot be reached from `lib/startup.mjs`. So the seam is de
 
 ```js
 // pdlc/engine/lib/startup.mjs
-export const GUARD_INTERPRETERS = Object.freeze(["python3", "python", "py"]);  // FSPEC:916-918
+export const GUARD_INTERPRETERS = Object.freeze(["python3", "python", "py"]);  // FSPEC:918-921
 // Total: never throws. One probe attempt per candidate, in GUARD_INTERPRETERS order.
 // Returns the first candidate that ran, or null with the full attempt record.
 export function probeGuardInterpreter({ candidates = GUARD_INTERPRETERS, runProbe = defaultRunProbe })
@@ -2145,7 +2146,7 @@ rule — which governs what the engine injects into the two *workflow* modules �
 `GUARD_INTERPRETERS` is a transcription of the shipped script's own candidate list
 (`pdlc/hooks/scripts/guard-harvest-before-delete.sh:14`, the loop; fail-open at `:20`), never an
 import from it, and FSPEC's
-"the engine never widens or narrows that set independently" (`FSPEC:916-918`) is asserted as
+"the engine never widens or narrows that set independently" (`FSPEC:919-921`) is asserted as
 set-equality against a test-side transcription of those three names — the same discipline §3.3 and
 §7.4 apply, and the reason a script-side change turns a test red rather than drifting silently.
 
@@ -2351,7 +2352,7 @@ document's side of that correction.
 
 **No new erratum is raised by round 8 either.** Every upstream citation this revision touched was
 re-grounded against HEAD — FSPEC's rung 4a material (`FSPEC:299` the ladder row, `:406-407`
-EC-START-10/11, `:916-921` BR-GUARD-6's candidate set and "observed by running", `:967` AT-ENG-11a)
+EC-START-10/11, `:918-921` BR-GUARD-6's candidate set and `:922-924` "observed by running", `:967` AT-ENG-11a)
 and REQ's C-11 (`REQ:284`) — and each lands on the text it claims. One incidental note, below the
 threshold for an erratum because the cited range does contain the claimed content: FSPEC's citation
 of the shipped script as `guard-harvest-before-delete.sh:14-21` is a line off at each end — the
