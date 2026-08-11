@@ -44,6 +44,28 @@ erratum round existed to settle**.
 
 ## Iterations
 
+Phase T's own review loop, after the prior halt was cleared:
+
+| Round | Document | Version reviewed | PM verdict | TE verdict | Note |
+|---|---|---|---|---|---|
+| 1–5 | TSPEC | v1.0 → v1.4 | see §Prior Halt | see §Prior Halt | first halt: budget exhausted with v1.5 authored but unread |
+| **6** | TSPEC | **v1.5** | **Approved with minor changes** `{0, 1, 1}` (`75729c2f`) | **Approved with minor changes** (`6ae18f8a`) | converged. Anchors recorded in `7cd5caf8`. Confirmation round, exactly as the prior POSTMORTEM predicted |
+| **E1** | **FSPEC (erratum)** | **v1.4** | `se-review` **Needs revision** `{1, 0, 0}` (`14480fc5`) | `te-review` **Needs revision** `{1, 0, 0}` (`c417862d`) | delta confirmation of the erratum round — **the halt** |
+
+One erratum was routed upward, and it landed as one commit:
+
+| Commit | Erratum carried |
+|---|---|
+| `d98c7e88` | BR-MODEL-3: "reachable from dry runs and hermetic fixture-driven runs" → "reachable from hermetic fixture-driven runs", plus a new sentence bounding the dry-run surface at "at most one row"; FSPEC version `1.3 → 1.4` with a change note |
+
+The edit is small and correctly scoped by every measure the protocol asks for: `+12/−3`, two hunks,
+no new `AC`/`AT`/`EC`/`BR` id, `AT-ENG-29` (`:700`) and `EC-DISP-6` (`:691`) byte-identical to v1.3
+because both were already scoped to recorded descriptors, and no decision from v1.0–v1.3 reopened.
+Both reviewers said so explicitly and both listed it under Positive Observations.
+
+It failed on what it did **not** touch: `FSPEC:573-576`, the §6.3 preamble sentence that is the
+origin of the claim BR-MODEL-3 was corrected to deny.
+
 ## Reviewers
 
 ## Pattern of Disagreement
