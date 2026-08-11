@@ -9,7 +9,36 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.7 | 2026-08-10 |
+| pdlc | draft | Claude | 1.8 | 2026-08-10 |
+
+> **1.8 (erratum: absorb REQ v2.5 §4b / FSPEC v11.7's `AT-K3b` / TSPEC v2.8, and re-pin — no design
+> change, no graph change).** Round 7's two findings, raised on the same two cells by pm-review,
+> te-author and se-review. (i) **T20's obligation (i) carried the pre-erratum reading of REQ §4b and
+> planned one fixture where two are owed.** The row asserted that `renderConsumedPair`'s output
+> "contains **both** basenames"; REQ v2.5 §4b overturned that — an unreadable enumerated basename is
+> **not** consumed, so it is omitted from the pair and stays un-consolidated for the next pass — and
+> FSPEC v11.7 minted **`AT-K3b`** (`FSPEC:2210`) for the all-unreadable corpus, which TSPEC v2.8
+> assigns to `consolidationPass.test.js` (`TSPEC:2938`). The obligation now reads as **two fixtures in
+> one case, each the other's control**: the mixed corpus, whose pair assertion is **set equality with
+> `{readable}`** (not containment plus an absence), and the all-unreadable corpus discharging
+> `AT-K3b` — terminal `no-op`, empty pair, `|un-consolidated|` 2, no proposal file, no reason code.
+> Both land in the already-planned `T31 — pass lifecycle` block: **no new task, no new file, no batch
+> or ownership change**, which is why the gate numbers below are unmoved. (ii) **T05's pins were four
+> versions stale.** The row pinned FSPEC `11.5` / TSPEC `2.0`, the register range `:2089-2239` and
+> **99** ids; HEAD is FSPEC **v11.7** (`FSPEC:12`), TSPEC **v2.8** (`TSPEC:12`), range `:2116-2267`,
+> re-measured **100** (the delta being `AT-K3b`). Left as written, T05's version-pin conjunct would
+> have red-ed in batch 2 on a conforming tree, reading "the code is wrong" when the truth is "the
+> register moved" — the exact failure the pin exists to make legible — and its "green the moment it is
+> written" claim would have been false besides. Re-pinned in every live site: the upstream-versions
+> table (REQ **2.5**, FSPEC **11.7**, TSPEC **2.8**, erratum history `:67-68`), §1's TSPEC pin, T05,
+> §8.3's DoD row, §9.1's errata rows 4 and 5 and §10's risk row, plus the row locators those cells
+> cite (`AT-M3 :2159`, `AT-M11 :2160`, `AT-R7 :2181`, `AT-Q13 :2201`; AC-1.3 `:2387`, AC-1.4 `:2388`,
+> AC-3.2 `:2396`). §9.1 gains an **erratum 8** paragraph recording the absorption. The numbered
+> revision entries below are left as written: each states what it measured *at the time*, which is
+> history rather than a live claim, and the header now says so.
+> Gate re-run over the revised text: **34** tasks (`errors: []`), **34** ownership rows,
+> `validatePlanContract` `{"ok":true}`, **15** ready-sets, **15** waves — every number identical to
+> v1.4 through v1.7's, as a prose-only diff must leave them.
 
 > **1.7 (one instruction restored, one edge renamed — no design change, no graph change).** Round 6's
 > two open findings; the third (PM F-15 / TE F-01, the `Status` column) and TE F-02 (T17's stale `🔴`)
@@ -157,7 +186,7 @@ claims.
 
 ## 1. Overview
 
-Build the consolidation pass specified by `TSPEC-pdlc-consolidation-agent` v2.0: **one new workflow
+Build the consolidation pass specified by `TSPEC-pdlc-consolidation-agent` v2.8: **one new workflow
 module** (`pdlc/workflows/consolidate-learnings.js`), the two adapter seams it needs, a **third**
 built bundle, and sixteen jest suites that falsify it. Twenty-five of the thirty-four tasks below
 touch only files this feature creates; the remaining **nine** edit shipped files (T07, T08, T09, T10,
