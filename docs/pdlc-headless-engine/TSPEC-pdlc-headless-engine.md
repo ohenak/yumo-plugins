@@ -349,16 +349,19 @@ involved in any test, including row 5.
 
 **The identifier set is derived from the modules, not declared beside them.** A hand-typed array
 beside the dispatch sites is exactly the declaration BR-START-4 forbids, and a *source scanner*
-tying that array to the modules does not repair it: only three of the ten identifiers sit at an
-`_agent("…")` call site (`ship-pr` `orchestrate-dev.js:8008`, `:8112`; `se-implement` `:8064`). The
-rest are reached by other shapes — `agentFn("se-implement", …)` (`:10142`, `:10251`),
-`agentFn("harvest-learnings", …)` (`:10542`), a `skill:` object field (`:10448`), bare argument
-literals (`"dod-verify"` `:8035`, `"se-author"` `:9964`), a named constant (`ADVISORY_RUNG_SKILL`
-`:1797`) — and five of them (`pm-author`, `pm-review`, `te-author`, `te-review`, `se-review`) appear
-**only** as `PHASE_DISPATCH` role fields (`:3337` the export, `:3344`–`:3435` the rows). A scanner
-honouring "skill literals at dispatch call sites" derives `{ship-pr, se-implement}`, set-equality
-fails, and the only available repair is loosening the oracle — which is how the property goes
-quietly vacuous.
+tying that array to the modules does not repair it. Measured at HEAD across both modules, a scanner
+honouring "string literal in first argument position of a dispatch call" derives **five** of the ten
+identifiers — `{ship-pr, dod-verify, se-implement, se-author, harvest-learnings}` — from these sites:
+`ship-pr` (`orchestrate-dev.js:8008`, `:8112`), `dod-verify` (`:8035`, a multi-line call form),
+`se-implement` (`:8064`, `:10028`, `:10068`, `:10142`, `:10251`), `se-author` (`:9964` and
+`orchestrate-queue.js:1216`), `harvest-learnings` (`:10542`). The other **five** (`pm-author`,
+`pm-review`, `se-review`, `te-author`, `te-review`) never appear as a literal at any dispatch site in
+either module: they are reached through `PHASE_DISPATCH`'s role fields (`:3337` the export,
+`:3344`–`:3435` the rows) or, for `se-review`, through a module-local constant (`ADVISORY_RUNG_SKILL`
+`:1797`, dispatched at `:1841`). `harvest-learnings` also appears as a `skill:` object field
+(`:10448`), which is not a call site at all. So the scanner is short by half, and the sites it does
+find include two multi-line call forms a single-line grep misses — set-equality fails, and the only
+available repair is loosening the oracle, which is how the property goes quietly vacuous.
 
 **So the export is computed, not typed, and the oracle reads data rather than parsing source.** The
 change to each module is one derivation plus the promotion of the remaining bare literals to named
@@ -410,25 +413,29 @@ The tie is then two **workflows-side tests** (not production code), and neither 
 | Test | Assertion | What it catches |
 |---|---|---|
 | derivation | `DISPATCHABLE_SKILLS` ≡ the union recomputed in the test from `PHASE_DISPATCH` + the named constants, read as imported data | an identifier added to a phase row or a constant and not to the export — impossible by construction, so this is a regression guard on the derivation itself |
-| no-bare-literal | no string literal equal to a member of the union appears in either module's source outside the constant declarations, `PHASE_DISPATCH`, and the exemption below | a *new* dispatch site typed as a bare literal, which is the only way an identifier can escape the derivation |
+| no-bare-literal | every skill-identifier-shaped string literal in either module's source is a **member** of the exported union (containment, per DEC-ENG-05) | a *new* dispatch site naming an identifier the exports do not carry, which is the only way an identifier can escape the derivation |
 
-**The no-bare-literal test needs a stated exemption, and the exemption is a fixed list rather than a
-loosened pattern.** At HEAD the reviewer-role map keys three of the ten identifiers as object keys
-that are not dispatch sites at all — `"se-review": "software-engineer"` (`orchestrate-dev.js:6229`),
-`"pm-review": "product-manager"` (`:6230`), `"te-review": "test-engineer"` (`:6231`). Promoting these
-to computed keys is churn against correct code, so the test as first written would fail on HEAD and
-the only repairs would be a looser pattern or a deleted assertion — the pressure this section exists
-to remove. So the exemption is named here, in the spec, as a **closed allow-list of non-dispatch
-literal sites**, and the test asserts the observed exempt sites are **exactly** that list, not merely
-contained in it:
+**The no-bare-literal guard is containment, not absence, and this supersedes the allow-list framing
+an earlier draft of this section carried** (DEC-ENG-05). An absence test — "no literal equal to a
+union member appears outside the constant declarations, with a closed allow-list of exempt sites" —
+cannot be written against HEAD: bare literals sit at dispatch sites in eleven places across the two
+modules (enumerated above), so the allow-list would either leave the suite permanently red or have
+to exempt nearly every site it exists to police. The guard is therefore stated as:
 
-| Exempt site | Identifiers | Why it is not a dispatch |
-|---|---|---|
-| reviewer-role map keys, `orchestrate-dev.js:6229-6231` | `se-review`, `pm-review`, `te-review` | maps a skill id to a review *role* name for filename construction; no `_agent` call reads it |
+> Every string literal in either workflow module that matches a skill-identifier shape — at a
+> dispatch call site, in a `PHASE_DISPATCH` role field, in a `skill:` field, or bound to a
+> module-local constant — is a member of the two modules' exported `DISPATCHABLE_SKILLS` union.
 
-An added exemption is therefore a reviewed decision recorded in this table, never an implementer's
-local widening of a regex. A literal appearing anywhere else — including a fourth row added to that
-same map — fails the test.
+That is green at HEAD by measurement, and it needs **no exemption of any kind**. The reviewer-role
+map keys three identifiers as object keys that are not dispatch sites — `"se-review"`
+(`orchestrate-dev.js:6229`), `"pm-review"` (`:6230`), `"te-review"` (`:6231`) — and under containment
+they need no exemption because they are genuine members of the union; that map's *values*
+(`software-engineer`, `product-manager`, `test-engineer`) are role slugs, not skill identifiers, and
+do not match the shape. The guard fails exactly when the drift this section fears occurs: a new
+dispatch site naming an identifier the exports do not carry. Its own failure mode is stated rather
+than assumed — the test is only as good as the identifier-shape predicate, so the predicate is
+asserted against the known set rather than being a regex nobody re-reads. **Needing an exemption at
+all is the re-evaluation trigger** (DEC-ENG-05), not an implementer's local widening of a regex.
 
 At HEAD the derived union is **10 identifiers** — an observation, never the assertion; the assertion
 is set-equality.
@@ -831,14 +838,28 @@ them is a checked property, not an assumption (a run may start on row 1 and obse
 ```js
 StartupResult = {
   ok: boolean,
-  rungs: RungRecord[],     // always all six, 0..5, in order
+  rungs: RungRecord[],     // always all seven, in RUNG_ORDER, in order
   banner: string,
   pluginRoot: string|null,
   pluginVersion: string|null,
   reason: string|null,     // catalogue id + detail of the first failing rung
 }
-RungRecord = { rung: 0..5, name: string, state: "pass"|"fail"|"skipped", detail: string|null }
+// FSPEC §5's ladder, verbatim: rung ids are *labels*, not indices (FSPEC:293-301, v1.6)
+RUNG_ORDER = Object.freeze(["0", "1", "2", "3", "4", "4a", "5"]);
+RungRecord = { rung: RungId, name: string, state: "pass"|"fail"|"skipped", detail: string|null }
 ```
+
+**The rung id is a string label drawn from `RUNG_ORDER`, never an integer index** (FSPEC v1.6 C-11,
+BR-GUARD-6). FSPEC inserts **rung 4a — guard executable** between rungs 4 and 5 (`FSPEC:299`;
+EC-START-10/11, AT-ENG-11a): the host must be able to run the shipped
+`guard-harvest-before-delete` script, i.e. an accepted interpreter is obtainable (§6.4, FSPEC §9.1),
+and failure refuses with the candidates tried and the remedy, exit `1`, nothing dispatched. An
+integer `0..5` typing cannot express `4a`, and an implementer working from this document alone would
+face exactly two bad repairs — drop the rung, or renumber the ladder to `0..6`. **Renumbering is
+forbidden**: FSPEC fixes rung numbers 0–5 and every `EC-START-*` message, `pdlc doctor` line and
+acceptance test names them, so a renumber silently invalidates the upstream vocabulary. The ladder is
+therefore seven records long, ordered by `RUNG_ORDER`, and the set-equality of a run's emitted rung
+ids with `RUNG_ORDER` is itself asserted — so a later inserted rung cannot go unrecorded.
 
 **The ladder is total** (BR-START-1): a rung after a failure records `"skipped"` with the reason it
 was skipped, never absence. `pdlc doctor` prints the same array — the mechanism is one function, so
@@ -859,8 +880,8 @@ gains them as first-class fields rather than leaving them buried in `detail` pro
 `engine` block carries, from the same call — so the diagnostic and the report cannot disagree about
 a fact one of them observed. HEAD's `runStartupChecks` (`startup.mjs:60`) returns
 `{ok, banner, pluginRoot, pluginVersion, reason}` and pushes free-text check lines; the change is to
-make the records structured and to add rungs 0 (args/cwd) and 5 (billing posture), keeping the string
-banner as a rendering of the array (`formatStartup`, `:145`).
+make the records structured and to add rungs 0 (args/cwd), 4a (guard executable, C-11) and 5 (billing
+posture), keeping the string banner as a rendering of the array (`formatStartup`, `:145`).
 
 Rung 4's `EXPECTED_SKILLS` frozen literal (`startup.mjs:20`) is deleted, replaced by the derived set
 (§3.3) — the constant is the declaration BR-START-4 forbids.
