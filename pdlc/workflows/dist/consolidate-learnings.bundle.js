@@ -9266,6 +9266,8 @@ async function main({
     notices: [],
     deferred: [],
 
+    unread: [],
+
     advisory: null,
     seamCandidates: null,
     prUrl: null,
@@ -9349,20 +9351,26 @@ async function main({
   }
   state.markerHeld = take.taken;
 
-  await appendFileFn(logPath, renderConsumedPair(state.passId, state.consumed));
+  const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
+  const consumedBodies = [];
+  for (const basename of state.consumed) {
+    const path = basenameToPath.get(basename);
+    const text = path ? await readFileFn(path) : null;
+
+    consumedBodies.push({ basename, text });
+  }
+  const readableBasenames = consumedBodies
+    .filter((b) => typeof b.text === "string")
+    .map((b) => b.basename);
+  state.unread = consumedBodies
+    .filter((b) => typeof b.text !== "string")
+    .map((b) => b.basename);
+
+  await appendFileFn(logPath, renderConsumedPair(state.passId, readableBasenames));
 
   const rungState = { resolved: null };
   let clusterReplyText = null;
-  const consumedBodies = [];
-
-  const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
   if (corpusFiles.length > 0) {
-    for (const basename of state.consumed) {
-      const path = basenameToPath.get(basename);
-      const text = path ? await readFileFn(path) : null;
-
-      consumedBodies.push({ basename, text });
-    }
     let clusterResult;
     try {
       clusterResult = await resolveAdvisoryRung({
@@ -9405,8 +9413,10 @@ async function main({
 
   const escText = await readFileFn("docs/_queue/ESCALATIONS.md");
   const escalations = parseEscalations(escText);
-  if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
-  else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
+  if (readableBasenames.length > 0) {
+    if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
+    else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
+  }
   state.advisory = escalations;
 
   state.seamCandidates = seamCandidates(escalations);
@@ -10659,6 +10669,7 @@ function renderReportBody(state) {
   const s = state || {};
   const { legal, dropped } = classifyReasons(s.status, s.reasons);
   const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+  const unread = Array.isArray(s.unread) ? s.unread : [];
   const records = Array.isArray(s.records) ? s.records : [];
   const suppressions = Array.isArray(s.suppressions) ? s.suppressions : [];
   const effectiveness = Array.isArray(s.effectiveness) ? s.effectiveness : [];
@@ -10675,6 +10686,10 @@ function renderReportBody(state) {
   lines.push(`2. rung: ${s.rung ?? ""}`);
 
   lines.push(`3. consumed: ${consumed.length > 0 ? consumed.join(", ") : "none"}`);
+
+  if (unread.length > 0) {
+    lines.push(`unread: ${unread.join(", ")}`);
+  }
 
   if (records.length === 0) {
     lines.push(`4. promotions: none`);
