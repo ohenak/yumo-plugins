@@ -82,12 +82,20 @@ wiring + offline end-to-end smoke), `d0d2288b` (P4, retry/pause, run report, `qu
 and `f6f8029a` (fixes). A test written today therefore either starts red or re-asserts green —
 the two demand different work.
 
+**The table is total over the REQ's acceptance criteria** (correction, Phase-F erratum — AC-2.3
+and AC-4.4 had no row, while the REQ reads the table as covering every AC): every criterion
+AC-1.1…AC-6.4 appears in exactly one row below, and a criterion added to the REQ without a row
+here is a defect in this fact, not a gap the reader resolves. "Partially green" is a state in its
+own right: some half of the criterion is asserted at HEAD and the row names the unasserted half.
+
 | AC | State at HEAD | Evidence |
 |---|---|---|
 | AC-1.2 (skill/plugin read containment), AC-1.3 (queue triage), AC-2.5 (`cwd`), AC-3.1 (composed prompt), AC-3.2 (handshake refusal), AC-3.4 (single permission setting), AC-4.1/4.2 (taxonomy, retry), AC-4.5 **except its per-dispatch auth clause** (report fields, pause rows) | **green — regression-protecting** | `pdlc/engine/__tests__/{transport,skills,startup,handshake,adapter,report,run,cli,smoke}.test.js` at `054d5292`, `d0d2288b` |
 | AC-1.5 (anti-fork) | green — both halves exist; only the specifier check is weaker than stated (it asserts a `file:` URL, not the repo-relative path under `pdlc/workflows/`) | `__tests__/run.test.js:48` (no vendored copy), `:64` (module URLs) |
 | AC-1.4 (halt recording), AC-4.3 (no orphan child, halt recorded), AC-6.1 (hermeticity guard) | partially green — the offline smoke halts and asserts git state, but no explicit guard fails a run that constructs the real transport | `smoke.test.js:294` (halt leaves history intact, on `feat-{f}`) |
-| AC-1.1 (parity oracle), AC-2.1/2.2/2.4 (banner mapping, startup refusal, billing oracle), AC-3.3 (model map), AC-3.5 (skill set-equality), AC-4.5's per-dispatch auth clause, AC-5.1/5.2 (guard parity), AC-6.2 (live smoke), AC-6.3 (fixtures), AC-6.4 (catalogue) | **red — open work** | no auth check exists in `startup.mjs` (only an `apiKeyPolicy` banner row, `:49`/`:64`); no hook/settings wiring exists in `pdlc/engine/lib/`; startup's skill probe is containment over a frozen 17-name list (`startup.mjs:20`, `:102`), not set-equality against files present; the auth source is recorded once, not per dispatch — `adapter.mjs:320` keeps a single `lastApiKeySource`, surfaced as one scalar (`report.mjs:51`, `bin/pdlc.mjs:227`) |
+| AC-2.3 (environment passthrough) | partially green — the dispatch env is the parent env spread into a new object, so a first-dispatch assertion passes today; BR-ENV-3's *every-dispatch* half is unasserted, and no test pins the fallback transport's inherited child env | `pdlc/engine/lib/transport.mjs:159` (`{ ...env }`), `:168` (passed as the dispatch options' `env`) |
+| AC-4.4 (`auth-failure` never silently retried) | **red — open work** | the thrown-outcome classifier names timeout, rate-limit and transport-contract outcomes only (`transport.mjs:98`, `:189`, `:216`); no `auth-failure` member exists, so the stop-without-retry behaviour is unasserted |
+| AC-1.1 (parity oracle), AC-2.1/2.2/2.4 (banner mapping, startup refusal, billing oracle), AC-3.3 (model map), AC-3.5 (skill set-equality), AC-4.5's per-dispatch auth clause, AC-5.1/5.2 (guard parity), AC-6.2 (live smoke), AC-6.3 (fixtures), AC-6.4 (catalogue) | **red — open work** | no auth check exists in `startup.mjs` (only an `apiKeyPolicy` banner row, `:49`/`:64`); no hook/settings wiring exists in `pdlc/engine/lib/`; startup's skill probe is containment over a frozen 17-name list (`startup.mjs:20`, `:102`), not set-equality against files present — and that list also over-declares the dispatchable set (10 identifiers / 12 prompt files; the remaining names are operator-invoked skills no module dispatches); the auth source is recorded once, not per dispatch — `adapter.mjs:320` keeps a single `lastApiKeySource`, surfaced as one scalar (`report.mjs:51`, `bin/pdlc.mjs:227`) |
 
 ## M-ENG-07 — Pinned model map and the corpus that exercises every row
 
@@ -142,5 +150,9 @@ subscription with `ANTHROPIC_API_KEY` absent (the M-ENG-04 environment):
   keychain — so `oauthAccount`'s presence is *evidence of* a credential, never the credential.
 
 **Per-platform scope (C-9).** This is one platform's measurement. Whether Linux and Windows hosts
-carry the same record in the same path is unmeasured; a run on a host where no such evidence is
-readable is `auth.unknown` (AC-2.1 row 6), never a refusal — see FSPEC §5.1 BR-AUTH-0.
+carry the same record in the same path is unmeasured. On a host where no such evidence is
+readable, the outcome is decided by `ANTHROPIC_API_KEY`, not by the unreadability alone
+(correction, Phase-F erratum — the earlier closing clause "never a refusal" was over-broad by one
+case and contradicted AC-2.1 row 5): with the key **absent** the run proceeds as `auth.unknown`
+(AC-2.1 row 6, FSPEC §5.1 BR-AUTH-0); with the key **present** and `auth.allowApiKeyBilling` not
+passed the run refuses at row 5 (`auth.api-key-refused`).
