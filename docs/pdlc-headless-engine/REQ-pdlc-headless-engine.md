@@ -511,10 +511,12 @@ C-10)*
 
 - **AC-5.1** *Given* an engine-dispatched agent in a repo where `LEARNINGS-{f}.md` does not
   exist, *when* it attempts to delete a `CROSS-REVIEW-*`, `CODE_REVIEW-*` or `ADVISORY-*`
-  file, *then* the deletion is refused via the per-dispatch hook/settings the engine itself
-  passes to `claude -p` (C-5) — asserted independently of the plugin's own hook wiring, so the
-  guard is proven to travel with the engine's dispatch configuration rather than depend on
-  whatever hooks a plugin install happens to register.
+  file, *then* the deletion is refused by the guard configuration the engine itself supplies
+  with that dispatch (C-5), on **whichever transport the run uses** — asserted independently of
+  the plugin's own hook wiring (the assertion runs with no pdlc hooks registered), so the guard
+  is proven to travel with the engine's dispatch configuration rather than depend on whatever a
+  plugin install happens to register. The mechanism per transport is O-2's; the refusal, and
+  its independence from plugin hooks, is asserted for each transport the engine can use.
 - **AC-5.2** *Given* the same repo once `LEARNINGS-{f}.md` exists, *when* harvest deletes
   those files, *then* the deletion succeeds — the guard is not a blanket ban.
 
@@ -522,13 +524,27 @@ C-10)*
 
 - **AC-6.1** *Given* the engine's test suite, *when* it runs in CI, *then* it exercises the
   adapter against the modules' existing test doubles with **no live model calls and no
-  network**, and it fails if a test path would spawn a real `claude` process.
-- **AC-6.2** *Given* an explicit opt-in flag, *when* the live smoke path runs, *then* it
-  drives one real, small feature end-to-end against a scratch repo and asserts the artifact
-  set of AC-1.1; it is never part of the default suite.
-- **AC-6.3** *Given* the recorded CLI interface contract (O-1), *when* the transport is
-  tested, *then* it is tested against **recorded fixtures of real CLI output**, and a fixture
-  refresh against a newer CLI version is a documented, repeatable step rather than a rewrite.
+  network**, and the hermeticity gate is an observable of the run, not a counterfactual (TE
+  F-13): every test constructs the transport through the injected seam, a guard fails the suite
+  on any attempt to construct the real transport (SDK `query` or a `claude` child spawn), and
+  the suite asserts that no outbound network connection was attempted.
+- **AC-6.2** *Given* an explicit opt-in flag, *when* the live smoke path runs, *then* it drives
+  one real, small feature end-to-end against a scratch repo and asserts **the same structural
+  set as AC-1.1**, plus the one thing only a live run can show: at least one cross-review round
+  reaching a parseable terminal verdict produced by a real model call (TE Q-02). It is never
+  part of the default suite.
+- **AC-6.3** *Given* the recorded transport interface contracts (O-1), *when* a transport is
+  tested, *then* it is tested against **recorded fixtures of that transport's real output** —
+  one fixture set per transport (SDK message stream; `claude -p` headless output), since NG-6
+  keeps both in scope — and a fixture refresh against a newer SDK or CLI version is a
+  documented, repeatable step rather than a rewrite.
+- **AC-6.4** *Given* C-8's closed catalogue, *when* the suite runs, *then* two checks exist
+  (TE F-11): (a) **set-equality** between the catalogue ids the engine can emit and the ids
+  registered in the catalogue — an unregistered emitted string, and a registered id no path
+  emits, both fail; (b) for every value the engine parses out of a transport's output, a
+  defined outcome for malformed input is asserted by test, including an unrecognised
+  `apiKeySource` (→ dispatch aborted per AC-4.4, never mapped to a banner id) and unparseable
+  transport output (→ `transport-contract-violation` per AC-4.1).
 
 ## 6. Risks
 
