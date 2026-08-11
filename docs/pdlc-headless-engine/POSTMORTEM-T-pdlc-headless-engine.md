@@ -246,3 +246,39 @@ cited by id everywhere else — not a third erratum round chasing prose.
    claim they borrow or not make the claim.
 
 ## Prior Halt (2026-08-11, cleared — superseded by the record above)
+
+Summarised, not deleted: the full text is in git history at `9d044961` and its six predecessor
+commits (`1e4890a2` … `dab9c0c5`), and the clearing commit is `22eb0b3b`.
+
+**Shape.** Phase T's first halt was a genuine round-budget exhaustion: `MAX_REVIEW_ROUNDS = 5`, five
+rounds spent, TSPEC v1.5 authored and committed *after* the round-5 reviews landed and therefore
+never read. No reviewer was holding a rejection of the document on the branch.
+
+| Round | Version | PM | TE | Lead finding |
+|---|---|---|---|---|
+| 1 | v1.0 | Needs revision `{4,2,1}` | Needs revision `{7,7,2}` | broad first pass, 11 Highs |
+| 2 | v1.1 | Needs revision `{2,1,1}` | Needs revision `{2,2,1}` | §7.4 — the AC-3.3 model-map witness |
+| 3 | v1.2 | **Approved** `{0,1,2}` | Needs revision `{1,1,2}` | §7.4 rows 1/2 |
+| 4 | v1.3 | Needs revision `{2,0,1}` | Needs revision `{1,1,2}` | §7.4 row 4 — discriminator backed by no recorded field |
+| 5 | v1.4 | Needs revision `{1,1,1}` | Approved with minor changes `{0,3,3}` | §7.4 row 4 — record written before the fields exist |
+
+**Root cause as recorded.** One executable oracle (§7.4 row 4, the model-map witness for AC-3.3)
+spanned three surfaces — the recorded shape (§4.1), the observation seam's write timing (§7.0), and
+the predicate (§7.4) — and was correct only when all three agreed. Each round fixed one surface, so
+each round descended exactly one rung of a mechanisation ladder while the review budget was spent
+per *round*, not per *defect*. The phase ran out of rounds one rung before the ladder finished.
+Round 5's split was on severity, not substance: PM scored the defect High, TE scored the identical
+defect Medium, and under the High-only bar that call alone decided the round.
+
+**Clearing.** v1.5 was verified against PM `F-01`/`F-02`/`F-03` at HEAD without re-authoring
+anything, the marker was flipped, and Phase T was re-invoked with `forcePhases: "T"`. Round 6 was
+the predicted cheap confirmation: both roles approved with minor changes and anchors were recorded
+in `7cd5caf8`.
+
+**What carries forward.** The prior halt's four countermeasures remain unaddressed and should be
+harvested together with this halt's: multi-surface oracles want a finding that names every surface
+its fix must touch; severity needs a rubric for "correct design, unsatisfiable as written"; a
+re-opening revision should state its own scope for the approver it re-opens; and the round budget
+is per-invocation, which the halt path should say out loud. The two halts share a family
+resemblance worth naming at harvest — in both, the loop's unit of budget (a round) was smaller than
+the defect's unit of repair.
