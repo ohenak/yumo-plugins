@@ -72,6 +72,32 @@ Two further facts about these two files matter for recovery:
 
 ## Pattern of Disagreement
 
+**There is none.** This is the first halt in this feature's history with no disagreement of any
+kind to record — not between reviewers, not between reviewer and author, not between document and
+HEAD.
+
+- The two DECISIONS approvers agreed with each other in round 2 and approved.
+- The two REQ approvers agreed with each other in round E1 and approved.
+- The erratum author did what both erratum items asked, at the altitude both asked for, and both
+  confirming reviewers said so in their Positive Observations.
+- The only open items on the branch are one Medium and one Low per reviewer, all four explicitly
+  non-gating and routed to the next time the document is opened.
+
+Prior halts in this feature turned on real substance: POSTMORTEM-T on a claim duplicated at a
+search-resistant second site, POSTMORTEM-F on a reviewer re-deriving a cell another did not.
+This one turns on nothing a participant said. **The disagreement is between the run report and the
+branch.** The report names `se-review` as non-approving; `se-review`'s file, committed in
+`2d125f41` before the halt was written, ends:
+
+```
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
+```
+
+That is a pass under every rule the workflow states: the value is in the closed catalogue, the
+counts parse, `high === 0` clears the High-only bar. Two records of one reviewer's judgement
+disagree, and the one that decided the phase is the one no longer in existence.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
