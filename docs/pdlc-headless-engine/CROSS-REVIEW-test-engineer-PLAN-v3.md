@@ -30,6 +30,21 @@ not read back from the document.
 
 ## Checks re-run at HEAD
 
+| Check | Method | Result |
+|---|---|---|
+| CI matrix, the fact F-14 turned on | `sed -n '36,41p' .github/workflows/pr-tests.yml` | `os: [ubuntu-latest]` at `:40`, `node: ['20']` at `:41`. The stale comment at `:37-39` still describes both platforms — a comment, not a matrix, and now the plan reads the matrix |
+| `410f3a07` provenance | `git log -1 --format='%h %ad %s' 410f3a07` | `Sun Aug 2 23:55:23 2026`, "ci: drop macos-latest from the unit-test matrix" — nine days before this plan, as the plan says |
+| §11's re-cited CI lines, new `run:`-line convention | opened each in `pr-tests.yml` | all seven exact: `build-runtime.mjs --check` `:93`, rebuild-no-diff `:99`, fresh-clone build `:127`, `sync-workflows.sh` `:133`, `--check` `:148`, `bash -n` `:172`, executable-bit `:188`. Job lines `:27`, `:77`, `:103`, `:161` unchanged and correct. The stated convention ("the `run:` line that carries the command, not the `- name:` line") holds down the whole column — I checked each against its own `- name:` predecessor |
+| `testCommand` set-equality, all four patterns | `.claude/pdlc.config.json:3` | HEAD's value is `cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`. §8's and §11's post-change literals are that string, token for token, with the engine suite prepended. `'documentOracles'` present in both |
+| The coverage command actually produces a coverage table | ran both spellings on node v20.20.1 against a scratch suite | `node --test --experimental-test-coverage __tests__/` prints the coverage report. `node --test __tests__/ --experimental-test-coverage` exits non-zero with `Could not find '…/--experimental-test-coverage'` — the flag is positional-sensitive. This is what F-16 is about |
+| `scripts.test` at HEAD | `pdlc/engine/package.json:13` | `node --test __tests__/` — exactly as §11's V1 row and §8's coverage item state; no coverage flag, as claimed |
+| AC-1.5's cited observables | `pdlc/engine/lib/run.mjs:58`, `__tests__/run.test.js` | `workflowModulePath` is at `:58` with the AC-1.5 evidence comment at `:57`; the `:48` and `:64` assertions the T10/AC-1.5 cells name are present. §9's new "no red task" cell is therefore accurate, not a convenience |
+| Test files named as **new** in §3 | `ls pdlc/engine/__tests__/` | nine files exist (`adapter`, `cli`, `handshake`, `report`, `run`, `skills`, `smoke`, `startup`, `transport`). Every §3 row whose test file is outside that set carries a red-task or **new** marker — `ci-arrangement`, `fixtures-redaction`, `suite-spine`, `hermeticity`, `outcome`, `catalogue`, `auth`, `transport-cli`, `m-eng-09`, `assert-suite-wide` are all absent at HEAD and all declared |
+| §5's new batch-number note | `computeWaves` at `orchestrate-dev.js:8411-8441` | correct in substance: with an ownership manifest the runtime iterates `topologicalReadySets` and splits each ready-set into ownership-disjoint groups via `pathsCollide`, so waves ≥ batches and an operator should match a stopped wave to a task id. See Q-02 for the one word that overstates it |
+| §6's parser rule | `parsePlanTasks` at `orchestrate-dev.js:3730`, header logic `:3766-3771` | the two-cell rule as now stated is the parser's actual rule: an exact id cell **and** an exact deps cell, both required, exact-cell not substring. Stating the rule rather than enumerating tables is the more durable form |
+| §6's enumeration of confusable tables | grepped this PLAN's own table headers | §3 `:139` (`# … Deps`), §7 `:448`, §10 `:699`, §11 `:730`, §4 `:202`, plus the two new changelog tables (`Change | Findings`) and §9's `AC …` / `AT …` tables. Only §3 has a deps cell. One quoted header is misquoted — F-17, Low |
+| Upstream drift | `grep -n 'macos' TSPEC` | TSPEC still carries the false two-platform claim at `:1786`, `:1793` and `:1952-1955`. The PLAN's divergence is deliberate and stated; the TSPEC text is not fixed. Erratum re-emitted |
+
 ## Findings
 
 ## Questions
