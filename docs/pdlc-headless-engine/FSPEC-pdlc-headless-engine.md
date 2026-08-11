@@ -103,6 +103,13 @@ a test written today starts red or re-asserts green. Two consequences shape this
   auth check at startup and per dispatch (§5), guard parity (§9), the message catalogue (§12), and
   the skill-set equality check (§6.4). These are the sections a plan should schedule first.
 
+**AC-2.3 has no row in M-ENG-06's table**, so this document states its state directly: a test
+written today re-asserts **green** for the single-dispatch case — the primary transport spreads the
+parent environment into the dispatch options rather than constructing one
+(`pdlc/engine/lib/transport.mjs:159`, `:168`) — and starts **red** only for BR-ENV-3's
+every-dispatch quantifier (§7.1). The table's omission is raised as an erratum (§13.1 O-ENG-4);
+until it lands, this paragraph is the test author's answer.
+
 The measured facts every later section cites by id rather than re-deriving: **M-ENG-01** (the
 modules already run in plain Node; `agent()` is the only capability they take from the runtime),
 **M-ENG-04** (the SDK completing a call under subscription auth with a reported source of `"none"`,
@@ -114,9 +121,9 @@ that exercises every row), **A-ENG-01** (Skill-tool invocation considered and re
 
 ### 3.1 The commands
 
-The engine exposes one executable, `pdlc`, with a closed command set. Every command below is
-operator-visible surface; an invocation naming no command, or a command outside this set, prints
-usage and exits with the engine-refusal code (§3.3).
+The engine exposes one executable, `pdlc`, with a closed **operator-visible** command set. Every
+command below is that surface; an invocation naming no command, or a command outside the union of
+this set and the diagnostic set below, prints usage and exits with the engine-refusal code (§3.3).
 
 | Command | Purpose | Dispatches models? |
 |---|---|---|
@@ -126,9 +133,18 @@ usage and exits with the engine-refusal code (§3.3).
 | `pdlc doctor` | run the startup gate ladder and report every rung, then stop | no |
 | any of the above with `--dry-run` | resolve, handshake, compose, print; dispatch nothing | no |
 
+**BR-CMD-1 — the diagnostic commands are named, exempt, and not operator surface.** `pdlc hello`
+and `pdlc spike:sdk` exist at HEAD (`pdlc/engine/bin/pdlc.mjs:332`, `:335`; both in `USAGE`, `:41`)
+as development diagnostics. They are **exempt from the closed-set assertion** and carry no
+obligation of this document — no ladder, no report, no catalogue id — and `spike:sdk` dispatches a
+real call, so it is not a non-billing surface. AT-ENG-01's red state is therefore a *third*
+command name that is neither in §3.1's table nor in this exempt pair being accepted, and the
+exemption is the whole of the closed set's escape hatch: an addition to either set is a change to
+this section.
+
 `pdlc doctor` and `--dry-run` are the two **non-billing** surfaces, and their inertness is a
 contract, not an intention: on either path an attempted dispatch is itself a failure the run
-surfaces (§6.5, AT-ENG-14).
+surfaces (§6.5, AT-ENG-24).
 
 ### 3.2 Flags
 
@@ -141,6 +157,14 @@ surfaces (§6.5, AT-ENG-14).
 | `--plugin-root <path>` | all | override plugin discovery for this invocation |
 | `--cwd <path>` | all | the consumer repo the run operates on (§7.2) |
 | `--allow-api-key-billing` | all | the `auth.allowApiKeyBilling` opt-in of REQ §4.1 (§5) |
+| `--max-iterations <n>` | `queue --loop` | the opt-in iteration bound of BR-LOOP-2; a positive number, else a usage error (EC-Q-5). Shipped at `pdlc/engine/bin/pdlc.mjs:83`, parsed `:303`, rejected `:306-307` |
+| `--dry-run-skill <name>` | `dev`, `queue` with `--dry-run` | which skill's composed prompt the dry run prints (default `pm-author`); §6.3 fixes how the every-member assertion of §6.4 is reached over it |
+
+This table is the closed flag surface: a flag outside it is a usage error, and a flag the engine
+ships is a row here or a defect. **There is no transport selector.** In this feature every real
+run uses the primary transport; the fallback is exercised through recorded fixtures only (§12.4
+BR-VER-2), so "which transport ran" is answered by the report's `transport` field (§12.2) rather
+than chosen by the operator. Making the fallback runtime-selectable is O-1's, not this document's.
 
 Three grammar rules hold for every flag, because an unattended operator cannot see a typo:
 
@@ -163,7 +187,7 @@ three outcomes an operator must act on differently (AC-1.4):
 | Code | Meaning | Operator's next move |
 |---|---|---|
 | `0` | the pipeline finished, or a non-dispatching surface (`doctor`, `--dry-run`) passed | none |
-| `2` | the pipeline **halted** — a normal, recorded pdlc outcome | read the POSTMORTEM; the run did its job |
+| `2` | the pipeline **halted or was blocked** by its own gate — a normal, recorded pdlc outcome | read the POSTMORTEM or the block reason; the run did its job |
 | `1` | the **engine** refused or crashed — startup gate, auth policy, bad usage, unparseable transport output | fix the environment; the pipeline never got its chance |
 
 **BR-EXIT-1 — a halt is not a crash.** A halt is a pipeline outcome the modules produce and record
@@ -176,10 +200,13 @@ from "the host broke".
 refusal (§5.2), and the per-dispatch auth abort (§5.3) exit `1`, because in all of them the
 pipeline produced no verdict about the feature.
 
-**BR-EXIT-3 — `queue --loop` reports the worst iteration.** The loop's exit code is `0` only if
-every iteration it ran ended at `0`; a halted iteration yields `2` and an engine refusal yields `1`
-(§11.3 fixes what the loop does *next* in each case, which is a separate decision from what it
-finally reports).
+**BR-EXIT-3 — `queue --loop` reports the worst iteration, under a total order.** "Worst" is
+`1` > `2` > `0`: an engine refusal in *any* iteration is the loop's exit code even if a later or
+earlier iteration halted; absent a refusal, any halted-or-blocked iteration yields `2`; only an
+all-`0` loop exits `0`. The order is total over the three codes, so a loop whose iteration 1 halts
+(`2`) and whose iteration 2 refuses (`1`) exits `1` — a broken host outranks a recorded pipeline
+outcome, because it is the one an operator must fix before the next cron slot. (§11.3 fixes what
+the loop does *next* in each case, which is a separate decision from what it finally reports.)
 
 ### 3.4 Edge cases
 
@@ -211,6 +238,7 @@ anything, and `pdlc doctor` runs exactly this ladder and stops. The rungs, in or
 
 | # | Rung | Passes when | On failure |
 |---|---|---|---|
+| 0 | **argument and working-directory validation** | the invocation's flags carry values, and `--cwd` (or the process's working directory) names an existing git repository; for `dev`, the REQ path exists under it | usage error or refusal naming the offending argument or path, exit `1` (EC-CLI-2/3/5, EC-DISP-5) |
 | 1 | **plugin resolved** | an installed pdlc plugin is located (or `--plugin-root` / the plugin-root environment override names one) | refusal naming what was searched and both overrides |
 | 2 | **plugin manifest readable** | the located plugin's manifest is present and parseable | refusal naming the manifest path and why it failed |
 | 3 | **version handshake (C-10)** | the plugin version satisfies the engine's declared compatible range | refusal naming the declared range, the version found (or "not found"), and the remedy |
@@ -218,8 +246,17 @@ anything, and `pdlc doctor` runs exactly this ladder and stops. The rungs, in or
 | 5 | **billing posture** | the startup auth mapping of §5.1 does not land on the refusal row | refusal `auth.api-key-refused` naming the opt-in flag |
 
 **BR-START-1 — dispatch nothing until every rung passes.** No model call, and no probe of any kind,
-is made while the ladder is running; a failure at any rung ends the invocation with exit `1` and
-zero tokens billed. This is what makes a mis-installed machine cheap to discover.
+is made while the ladder is running; a failure at rungs 0–4 ends the invocation with exit `1` and
+zero tokens billed, and so does a rung-5 failure **on a dispatching path**. The one exception lives
+in the rule rather than in prose: under `--dry-run`, rung 5's finding is reported and is *not*
+fatal, because that path bills nothing either way (§4.2, EC-START-4). This is what makes a
+mis-installed machine cheap to discover.
+
+**BR-START-0 — rung 0 is part of the ladder, and `doctor` runs the part it can.** `pdlc doctor`
+takes no REQ path, so it runs rung 0's working-directory half (`--cwd` names a git repository) and
+reports the REQ-path half as *not applicable* — never as passing. Without rung 0 in the ladder,
+`doctor` would answer "will a run start here?" while ignoring the directory the run would operate
+in, which is exactly the dishonesty BR-START-3 exists to prevent.
 
 **BR-START-2 — the ladder is total and reports every rung, not the first failure.** Two broken
 things (say, an absent plugin *and* an API key with no subscription credential) produce one message
@@ -302,7 +339,7 @@ plugin at startup.
 | AT-ENG-06 | rungs run in §4.1's order, and a rung-1 failure leaves rungs 2/4 reported as skipped-with-reason, never passing (BR-START-2) |
 | AT-ENG-07 | every failing rung refuses with exit `1` and zero dispatches attempted (BR-START-1) |
 | AT-ENG-08 | the handshake refusal text names range, found-version, and remedy (§4.3, AC-3.2) |
-| AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture (BR-START-3) |
+| AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture, including rung 0's working-directory half and its "not applicable" REQ-path half (BR-START-0/3) |
 | AT-ENG-10 | Direction A refuses on a plugin missing one dispatchable skill's prompt file; Direction B reports without refusing on an extra file (§4.4) |
 | AT-ENG-11 | banner and run report both carry `engineVersion` and `pluginVersion` as a pair (§4.3) |
 | AT-ENG-12 | EC-START-3…EC-START-8, one case each |
