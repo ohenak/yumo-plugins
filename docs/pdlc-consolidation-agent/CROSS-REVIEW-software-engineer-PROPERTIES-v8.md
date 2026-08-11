@@ -85,6 +85,51 @@ Three standing checks, run over the delta only:
 
 ## 6. Positive Observations
 
+- **The re-pin was a re-measurement, not a relabelling.** The temptation on a
+  stale-literal finding is to retype `11.7` and move on, leaving the count
+  attached to a version that never produced it. This revision re-enumerated the
+  register, reported 100, and named the one-id delta — and I could confirm the
+  delta is `AT-K3b` by set difference rather than by arithmetic, which is only
+  possible because the range and version were re-stated together.
+- **Q-01 from v7 was answered in the document, not in a reply.** I asked which
+  of two defensible contracts was intended; the answer is now a sentence the
+  implementer reads — *"pin and measurement move together … so the pin can never
+  certify a count it did not produce"* — rather than a decision recorded in a
+  review file nobody opens at T05.
+- **The delegation was withdrawn on the merits.** v1.6 parked AT-K3b's fourth
+  conjunct on PROP-RTE-06(b) and the pm-review caught it; the revision does not
+  merely move the sentence, it states *why* the bridge fails (different Givens,
+  different AC-1.4 causes) and cites PROP-RTE-06's own body rejecting exactly
+  that reasoning. Deleting the v1.6 sentence rather than leaving both readings
+  in the file is the right kind of tidy — F-01 is the control that did not
+  travel with the conjunct, not a defect in the decision to reclaim it.
+- **The known-red is disclosed as a diagnosis, not just a warning.** *"A red at
+  T05 before erratum 8 is the routed erratum, not a parser defect — the failure
+  message's reported size and the one-id difference say which"* tells the
+  implementer how to tell the two apart from the test output alone. That is
+  materially more useful than "this may red", and it is why the non-vacuity
+  floor's reported size was worth keeping.
+
 ## 7. Recommendation
 
+**Approved with minor changes**
+
+Both v7 findings are resolved, and resolved by the layer that owned them —
+§10.4 for the pin, §12.4 / §11 / §10.4 for the set-equality shortfall. Every
+factual claim the delta makes about FSPEC, TSPEC and PLAN is exact at HEAD; I
+re-measured all seven, including the register id-set difference across FSPEC
+v11.6 → v11.7, which is precisely `AT-K3b` and nothing else. The property set is
+byte-for-byte the same 118 ids: nothing was added, dropped or re-homed to make
+the round converge.
+
+No High is open. F-01 is a Medium because the assertion it names is not wrong,
+only vacuously satisfiable, and the fix is one clause naming a write the fixture
+already performs — no new fixture, no new double, no re-measurement. F-02 is a
+Low: the substance is PLAN's defect and travels as an erratum, and the finding
+against this document is only that its own disclosure convention stopped one
+site short. Nothing the revision touched broke.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
