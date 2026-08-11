@@ -86,6 +86,40 @@ defects after round 1.
 
 ## Pattern of Disagreement
 
+Three shapes, in order of how much they cost.
+
+**1. Four of five rounds were spent on one table row's mechanisation ladder.** §7.4 exists because
+PM v1 `F-03` found AC-3.3's both-directions set-equality with no owning mechanism. Every round
+since has been the same row descending one rung toward being executable, each rung revealed only
+once the one above it was fixed:
+
+| Round | Rung reached | Finding that opened the next rung |
+|---|---|---|
+| 2 | the harness exists and asserts both directions (`66a384c8`) | PM `F-01` / TE `F-17` — it asserts over a key the run cannot produce |
+| 3 | keyed on the `_phase` seam, not `opts.label` (`59a789fd`) | TE `F-22` — rows 1/2 red on correct HEAD; TE `F-23` — row 4's `seq`-adjacency is flaky |
+| 4 | adjacency dropped, predicate re-framed (`cf434c48`) | PM `F-01` / TE `F-26` — the replacement discriminator is backed by no recorded field |
+| 5 | `outcome` + `errorText` recorded on the descriptor (`3020cca8`) | PM `F-01` / TE `F-30` — the record is written before those fields exist |
+| — | the record is written at settlement (`085101fc`, `12e4e8c7`) | *unreviewed* |
+
+Nobody was wrong at any rung. Each fix was correct and each next finding was real. What the loop
+had no way to do was see the whole ladder at once: a delta-scoped reviewer judges the revision in
+front of it, and "this is right but still one hop from executable" is exactly the verdict that
+consumes a round without converging.
+
+**2. The disagreements are between a document and HEAD, not between roles.** After round 1 there is
+no instance of PM wanting X and TE wanting not-X. Both reviewers re-derive claims from the modules
+and report where the text and the code differ — PM's F-01 lineage and TE's F-17/F-22/F-26/F-30
+lineage are the *same* lineage, discovered independently each round. This is the loop working: two
+lenses converging on one defect is strong evidence the defect is real. It is also why the round
+count is uninformative about disagreement — five rounds of agreement still spends five rounds.
+
+**3. Revisions that fixed a High opened the next one in the same section.** v1.3's fix to TE F-22
+and F-23 is what produced PM v4's two Highs; v1.4's fix to those produced PM v5's F-01. Round 3 is
+the sharpest case: PM had *approved* v1.2 with zero Highs, and the very next revision — which
+touched only what TE asked for — re-opened PM's lens with two. A revision that edits the predicate
+a previous approver validated re-opens that approver, and under a both-must-be-clean bar there is
+no credit carried forward for an approval whose subject just changed underneath it.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
