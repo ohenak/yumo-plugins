@@ -451,6 +451,16 @@ I's V-wave announces itself as `"Phase PT"` (`orchestrate-dev.js:10248`) while p
 that descriptor, rather than on the announced string. Dispatches occurring before any `_phase` call
 carry `null`, which is asserted rather than assumed away.
 
+That wave set is itself a second hand-maintained declaration — the very thing DEC-ENG-05 removes
+elsewhere — so its maintenance rule and failure mode are stated rather than left implicit. Deriving
+it from the implementation would only turn the oracle into an implementation echo, so it stays
+declared in the test, and the assertion is **set-equality in both directions**: the descriptors in
+the declared Phase-I wave set are exactly the descriptors carrying `sonnet`. Stated as containment
+in one direction only, the drift is toward green — a fourth `sonnet`-pinned site could appear and
+simply not be partitioned. Set-equality makes that case red, which is the point: the test fails when
+the code grows a wave the declaration does not know about, and the fix is to update the declaration
+deliberately.
+
 **Reversibility:** Easy, and asymmetric in a useful way: if per-dispatch labels ever become
 necessary, they can be added to the modules later without unwinding the run-state mechanism.
 
@@ -578,6 +588,16 @@ directory, with exactly one directory for the run. Two directories, or one direc
 record, fails. The inheritance property was silently false in an earlier draft, so it is asserted
 directly rather than implied by the harnesses that consume it.
 
+**Step 4 is defined over a whole run only, and says so when it is not one.** The three assertions are
+set-equality over every observation a full suite produces, so a *filtered* run (`node --test
+--test-name-pattern …`, `--test-only`, or a single file) produces a partial corpus against which
+registered-⊆-emitted is false by construction — a red that reports nothing about the code. Rather
+than weaken the assertion to survive filtering, the runner detects the filtered case (any
+test-selection argument forwarded to `node --test`) and reports step 4 as **skipped, with the
+reason**, rather than passing or failing it. Skipped-with-reason, not silence: a suite-wide oracle
+that quietly does not run is the same vacuity in a different costume, so the skip is printed and the
+run's summary carries it. Only an unfiltered run can turn step 4 green.
+
 **Reversibility:** Easy — three new test-support files and one `package.json` line; no production
 code depends on any of it.
 
@@ -598,9 +618,17 @@ with an allow (a `LEARNINGS-{f}.md` present in the directory makes the same call
 AC-5.2, so the guard is conditional and not a blanket refusal); the survival assertion is paired with
 the **same fixture and the same deletion step** under an allow verdict, which removes the file; and
 the reason-text assertion is paired with a deliberately mis-built configuration (matcher `"Write"`
-instead of `"Bash"`, or a hook path pointing at no script) that must produce no deny. The test runs
-with no pdlc hooks registered on the host, in a scratch tree with neither settings entries nor an
-installed plugin.
+instead of `"Bash"`, or a hook path pointing at no script). The test runs with no pdlc hooks
+registered on the host, in a scratch tree with neither settings entries nor an installed plugin.
+
+**The mis-built arm asserts positively, because "no deny" is an absence-only oracle.** Requiring only
+that the mis-built configuration *produce no deny* passes for at least three wrong reasons: the
+harness never invoked the hook at all, the fixture command never matched the guard's scope regex
+(`guard-harvest-before-delete.sh:35`, `:37`), or an error was swallowed on the way. So the mis-built
+arm must assert on the same path as the well-built one: the callback returns an explicit **allow**
+verdict, and the deletion the well-built arm blocks actually **completes** — the `CROSS-REVIEW-*`
+file is gone from the scratch tree afterwards. Both arms therefore observe a verdict and a
+filesystem effect; neither can pass by nothing having happened.
 
 **Alternatives considered:**
 
