@@ -109,7 +109,7 @@ today would start red or re-assert green — the two demand different work (TE F
 | AC | State at HEAD | Evidence |
 |---|---|---|
 | AC-1.2 (skill/plugin read containment), AC-1.3 (queue triage), AC-2.5 (`cwd`), AC-3.1 (composed prompt), AC-3.2 (handshake refusal), AC-3.4 (single permission setting), AC-4.1/4.2/4.5 (taxonomy, retry, report) | **green — regression-protecting** | `pdlc/engine/__tests__/{transport,skills,startup,handshake,adapter,report,run,cli,smoke}.test.js` at `054d5292`, `d0d2288b` |
-| AC-1.5 (anti-fork) | green in part — the module-specifier assertion exists (`__tests__/run.test.js`), the "no second copy under the engine tree" half does not | `run.test.js` |
+| AC-1.5 (anti-fork) | green — both halves exist; only the specifier check is weaker than stated (it asserts a `file:` URL, not the repo-relative path under `pdlc/workflows/`) | `__tests__/run.test.js:48` (no vendored copy), `:64` (module URLs) |
 | AC-1.4 (halt recording), AC-4.3 (no orphan child, halt recorded), AC-6.1 (hermeticity guard) | partially green — the offline smoke halts and asserts git state, but no explicit guard fails a run that constructs the real transport | `smoke.test.js:294`, `:309` |
 | AC-1.1 (parity oracle), AC-2.1/2.2/2.4 (banner mapping, startup refusal, billing oracle), AC-3.3 (model map), AC-3.5 (skill set-equality), AC-5.1/5.2 (guard parity), AC-6.2 (live smoke), AC-6.3 (fixtures), AC-6.4 (catalogue) | **red — open work** | no auth check exists in `startup.mjs` (only an `apiKeyPolicy` banner row, `:49`/`:64`); no hook/settings wiring exists in `pdlc/engine/lib/`; startup's skill probe is containment over a frozen 17-name list (`startup.mjs:20`, `:102`), not set-equality against files present |
 
