@@ -67,3 +67,6 @@ The batch order, §5's gate wording, §9's AT set-equality (re-confirmed unchang
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 2}
 
+
+APPROVAL-HASH: sha256:0a44d0521b94342423c38c57281accef204c4b605dbcd70ba71a25ade3123b3e
+REVIEWED-COMMIT: 06f5702a12730f8acead077450919a43bdd43b48
