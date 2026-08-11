@@ -900,18 +900,37 @@ harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` file once the LEARNINGS commit is
 remote, so every clause below is asserted over each file **as created**; a harvested file's later
 absence is not an oracle failure.
 
+**BR-PARITY-5 — the hermetic double performs the agent's writes, or the oracle is vacuous.** Every
+artifact clauses 1–3 observe (`CROSS-REVIEW-*` files, their `VERDICT:` lines, the approval anchors)
+is written by the *dispatched agent's* tool calls, never by the modules: the modules compose those
+paths into prompts and read the files back, and no module code creates them. A transport double
+that merely returns a response string therefore leaves `docs/{f}/` empty and clauses 1–3 pass on
+nothing. The double this oracle requires **replays each dispatch's file writes from its fixture**
+— for a reviewer dispatch, writing the cross-review file the prompt names, with the fixture's
+verdict line and counts object — so the oracle observes creation events that a real agent would
+have produced. A double that writes nothing fails AT-ENG-45 rather than passing it; asserting that
+is AT-ENG-45's first obligation, before any clause is checked.
+
+**BR-PARITY-6 — expected sets are the fixture's, never the run's own report.** Clause 1(ii)'s
+rules are evaluated against what the **fixture fixes** — its round windows, its DoD rounds, its
+Phase-T decision, its halt — and the expected filenames are transcribed literally into the test.
+The run report is then checked to *agree* with that same fixture, as a separate assertion. Deriving
+the expectation from the report the run under test produced would let a consistently-wrong run pass
+(a run that skipped a review round and omitted it from the report satisfies both halves), which is
+the failure §12.2 BR-REP-3 already avoids for dispatch counts.
+
 The clauses (AC-1.1):
 
 1. **Filenames under `docs/{f}/`** satisfy two rules, because only part of the set is
    run-independent:
    - *(i) set-equality* against the phase-declared core — `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`,
      `LEARNINGS` (`REQ` pre-exists) — for the phases that repo's config enables;
-   - *(ii) a rule, not a fixed set*, per run-dependent member: `DECISIONS-{f}.md` iff the run report
-     records the Phase-T decision that warrants it; the `CROSS-REVIEW-{role}-{doc}[-v{N}].md` set
-     equal to exactly one file per `(role, doc, round)` the run's own recorded round windows name;
-     `CODE_REVIEW-{f}-v{N}.md` one file per recorded DoD round, at least one whenever the run
-     reaches that phase; `POSTMORTEM-{phase}-{f}.md` iff the run report records a halt of that
-     phase; `ADVISORY-{f}.md` iff the advisory tier is enabled, which this posture leaves off.
+   - *(ii) a rule, not a fixed set*, per run-dependent member, evaluated against the fixture per
+     BR-PARITY-6: `DECISIONS-{f}.md` iff the fixture supplies the Phase-T decision that warrants
+     it; the `CROSS-REVIEW-{role}-{doc}[-v{N}].md` set equal to exactly one file per
+     `(role, doc, round)` the fixture's round windows name; `CODE_REVIEW-{f}-v{N}.md` one file per
+     DoD round the fixture drives, at least one whenever the run reaches that phase;
+     `POSTMORTEM-{phase}-{f}.md` iff the fixture halts that phase; `ADVISORY-{f}.md` iff the advisory tier is enabled, which this posture leaves off.
    - No filename outside (i) and (ii) may appear: the set is closed under both rules.
 2. Every `CROSS-REVIEW-*` file carries a parseable `VERDICT:` line and a counts object.
 3. Approval anchors are present on each cross-review that reached a terminal approval.
@@ -931,7 +950,12 @@ The clauses (AC-1.1):
 | (c) | the set of paths opened under the consumer's `.claude/workflows/` is **empty** |
 
 **BR-READ-1 — clause (c) is unconditional for a `pdlc dev` run.** The dev module has no drift gate
-of any kind, so no path under `.claude/workflows/` is reachable from it at all. The consumer-config
+of any kind, so it **opens or reads no path** under `.claude/workflows/` — the same vocabulary as
+clause (c), and the only claim the observation supports. The module does *name* that directory, as
+one member of the Phase-MERGE self-modification guard's prefix list
+(`pdlc/workflows/orchestrate-dev.js:48-53`, `:52`), where it is compared against a PR's changed
+files and never opened; a source-level "no reference to the path" reading of this rule would fail a
+correct engine, and is not what it says. The consumer-config
 opt-out AC-1.1's *Given* fixes is what keeps clause (c) true for a **`pdlc queue`** run, whose
 module does evaluate a drift gate: the config-side opt-out is evaluated *before* any drift-state
 read and short-circuits it, so the gate that C-4 forbids forking costs the engine no read under
@@ -963,8 +987,8 @@ installer and writes no engine-owned file into a consumer repo; it neither repai
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-45 | the five structural clauses of §10.2 over one hermetic fixture run, asserted over creation events (AC-1.1, BR-PARITY-3/4) |
-| AT-ENG-46 | clause 1(ii)'s rules: a run recording a Phase-T decision has `DECISIONS`, one without has none; the cross-review set matches the recorded round windows exactly (AC-1.1) |
+| AT-ENG-45 | first, that a write-less transport double fails this test; then the five structural clauses of §10.2 over one hermetic fixture run whose double replays each dispatch's file writes, asserted over creation events (AC-1.1, BR-PARITY-3/4/5) |
+| AT-ENG-46 | clause 1(ii)'s rules against fixture-fixed expectations: a fixture supplying a Phase-T decision yields `DECISIONS`, one without yields none; the cross-review set equals the filenames transcribed from the fixture's round windows; the run report is separately asserted to agree with the same fixture (AC-1.1, BR-PARITY-6) |
 | AT-ENG-47 | the three read-set clauses on one observed run, including the empty set under `.claude/workflows/` for a `pdlc dev` run with no opt-out configured (AC-1.2, BR-READ-1) |
 | AT-ENG-48 | a `pdlc queue` run with the opt-out configured opens no path under `.claude/workflows/`; without it, the run is blocked by the module's gate (BR-READ-1, EC-PAR-3) |
 | AT-ENG-49 | the anti-fork pair: resolved module locations and the absence of a second copy (AC-1.5) |
