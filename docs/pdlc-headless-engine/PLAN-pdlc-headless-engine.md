@@ -720,7 +720,7 @@ named, and the pre-change spelling is quoted so the delta is checkable rather th
 | V2 | `cd pdlc/workflows && npm test` | that the workflow-module edit changed no pipeline behaviour | `node --experimental-vm-modules node_modules/jest/bin/jest.js` (`pdlc/workflows/package.json:7`); unchanged by this feature |
 | V3 | `node pdlc/workflows/build-runtime.mjs --check` | that T16's rebuild was committed with its source change | passes at HEAD; goes red the moment `orchestrate-dev.js` is edited without the rebuild |
 | V4 | `pdlc/hooks/scripts/sync-workflows.sh --check` | that the consumer copy under `.claude/workflows/` is not silently stale | invoked by bare path, never `bash …`; a `126` exit means the execute bit was lost, not that the tree drifted |
-| V5 | `cd pdlc/engine && node --test --experimental-test-coverage __tests__/` | the ≥ 85 % branch-coverage floor over the four new modules (§8) | `scripts.test` carries no coverage flag at HEAD (`pdlc/engine/package.json:13`), so V5 is invoked explicitly rather than folded into V1 — a coverage flag on the suite command would change what CI runs, and T17's job body is deliberately `npm ci` then `npm test` and nothing else |
+| V5 | `cd pdlc/engine && npm test -- --experimental-test-coverage` | the ≥ 85 % branch-coverage floor over the four new modules (§8) | goes **through the runner**, per T11's forwarding clause, so the coverage number is read off a hermetic run: a bare `node --test __tests__/` mints no `PDLC_TEST_RUN_ID`, imports no `_bootstrap.mjs`, writes no observation records and skips the suite-wide step, which would leave V5 measuring a red run and contradicting §8's "one spelling in `scripts.test`" item. `scripts.test` carries no coverage flag at HEAD (`pdlc/engine/package.json:13`) and gains none: the flag is passed per invocation, so V5 stays a local check and T17's job body remains `npm ci` then `npm test` and nothing else |
 
 V1 and V2 are **not interchangeable and neither subsumes the other**: they are two suites, two
 runners, two working directories. A reviewer who runs only V2 has verified that this feature broke
@@ -759,26 +759,36 @@ containment (at least the engine suite). Note also that TSPEC §8.3's edit surfa
 file at all, so the change is authorised by this PLAN alone today; that omission is raised as an
 erratum rather than treated as permission.
 
-**The second `M-ENG-09` row's command**, since no CI job and no wave gate can produce it: a
-maintainer runs `PDLC_LIVE=1 node --test __tests__/live/guard-measurement.test.js` from
-`pdlc/engine` on a host of the matrix platform that lacks a row, and commits the appended row to
-`docs/_constraints/pdlc-engine-baseline.md` (§5).
+**The operator-recorded `M-ENG-09` row's command**, since no CI job and no wave gate can produce it:
+a maintainer runs `PDLC_LIVE=1 node --test __tests__/live/guard-measurement.test.js` from
+`pdlc/engine` on a host of the platform that lacks a row — in practice `linux`, the platform
+`engine-tests` runs on, when the Phase-I wave host is a Mac — and commits the appended row to
+`docs/_constraints/pdlc-engine-baseline.md` (§5). This spelling is a bare `node --test` on purpose:
+it names one opt-in file rather than the suite, so it neither needs nor wants the runner's run-id
+and bootstrap, and it is not the coverage case §8 rules out.
 
 **Where CI reads from.** `.github/workflows/pr-tests.yml` ships four jobs; T17 adds the fifth.
 
-| Job at HEAD | Line | Command | Relation to V1–V4 |
+Every line number in the `Command` column below cites the **`run:` line** that carries the command,
+not the `- name:` line of the step, so one convention holds down the column.
+
+| Job at HEAD | Job line | Command (`run:` line) | Relation to V1–V4 |
 |---|---|---|---|
-| `unit-tests` (`ubuntu-latest`/`macos-latest`, node 20) | `:27` | `npm ci` (`:68`) then `npm test` (`:75`), `working-directory: pdlc/workflows` (`:67`, `:71`) | V2, on both platforms |
-| `artifact-freshness` | `:77` | `build-runtime.mjs --check` (`:92`), then rebuild-produces-no-diff (`:98`) | V3, plus an independent-observer second half |
-| `fresh-clone-bootstrap` | `:103` | build (`:126`), then `pdlc/hooks/scripts/sync-workflows.sh` (`:129`), then `--check` (`:147`) | V4, from a tree with no consumer copy |
-| `script-syntax` (display name "Shell scripts parse") | `:161` | `bash -n` every shipped script (`:171`), then executable-bit check (`:184`) | neither; unaffected by this feature |
-| **new (T17)** | — | `npm ci` then `npm test`, `working-directory: pdlc/engine`, on the same two-platform matrix | V1 |
+| `unit-tests` (`ubuntu-latest`, node 20 — `os: [ubuntu-latest]` at `:40`) | `:27` | `npm ci` (`:68`) then `npm test` (`:75`), `working-directory: pdlc/workflows` (`:67`, `:71`) | V2, on the one platform the matrix has |
+| `artifact-freshness` | `:77` | `build-runtime.mjs --check` (`:93`), then rebuild-produces-no-diff (`:99`) | V3, plus an independent-observer second half |
+| `fresh-clone-bootstrap` | `:103` | build (`:127`), then `pdlc/hooks/scripts/sync-workflows.sh` (`:133`), then `--check` (`:148`) | V4, from a tree with no consumer copy |
+| `script-syntax` (display name "Shell scripts parse") | `:161` | `bash -n` every shipped script (`:172`), then executable-bit check (`:188`) | neither; unaffected by this feature |
+| **new (T17)** | — | `npm ci` then `npm test`, `working-directory: pdlc/engine`, on `unit-tests`' matrix as it stands (`ubuntu-latest`) | V1 |
 
 T17's job body is deliberately `npm ci` then `npm test` **and nothing else**: any command CI runs
 that a maintainer cannot run locally as V1 is a check that fails in a place it cannot be reproduced.
-The two-platform matrix is not decoration — C-9 requires every runtime fact measured per platform,
-and T42's `M-ENG-09` rows are keyed on `process.platform` (T29), so a single-platform job would
-leave the second row permanently absent and, by T29's own gate, the suite red on that platform.
+The matrix is single-platform because HEAD's is: `macos-latest` was dropped in `410f3a07` ("ci: drop
+macos-latest from the unit-test matrix"), and re-adding it for this feature would reverse a standing
+decision on a repo-wide file, in the same PR, for a reason no AC states. C-9's per-platform
+requirement is met where it actually bites — T29 keys `M-ENG-09` on `process.platform`, so the
+platform CI runs on (`linux`) and the platform the Phase-I wave runs on (`darwin` on the
+maintainer's macOS) each need a row, whether or not either has a CI job. That is the obligation §5
+schedules and §8 checks; a matrix entry is neither necessary nor sufficient for it.
 
 **Verifying the red batches.** Batches 2, 4 and 9 end red by construction (§5), so V1 exiting
 non-zero is the expected observation there and the gate is the split wording, never "suite green".
