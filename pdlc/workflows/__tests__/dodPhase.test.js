@@ -910,9 +910,11 @@ describe("classifyDodFindings", () => {
   it("the shipped grammar reads the real v6 CODE_REVIEW: L1 is an FSPEC finding", () => {
     // The corpus this routing was designed against. v6's sole finding is the
     // documentation erratum that was dispatched to se-implement on 2026-08-11.
+    // The live doc was swept by the harvest phase in a9899867; this fixture is
+    // a byte-verbatim copy of the pre-harvest corpus, preserved for this test.
     const corpus = resolve(
       __dirname,
-      "../../../docs/pdlc-consolidation-agent/CODE_REVIEW-pdlc-consolidation-agent-v6.md"
+      "fixtures/CODE_REVIEW-pdlc-consolidation-agent-v6.md"
     );
     const { docFindings, codeFindings } = classifyDodFindings(
       readFileSync(corpus, "utf8"),
@@ -924,9 +926,11 @@ describe("classifyDodFindings", () => {
   });
 
   it("the shipped grammar reads the real v5 CODE_REVIEW: both findings are code findings", () => {
+    // The live doc was swept by the harvest phase in a9899867; this fixture is
+    // a byte-verbatim copy of the pre-harvest corpus, preserved for this test.
     const corpus = resolve(
       __dirname,
-      "../../../docs/pdlc-consolidation-agent/CODE_REVIEW-pdlc-consolidation-agent-v5.md"
+      "fixtures/CODE_REVIEW-pdlc-consolidation-agent-v5.md"
     );
     const { docFindings, codeFindings } = classifyDodFindings(
       readFileSync(corpus, "utf8"),
