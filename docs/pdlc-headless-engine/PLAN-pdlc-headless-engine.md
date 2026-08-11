@@ -639,7 +639,7 @@ reviewer and CI all judge the same thing by running the same lines. Every comman
 against HEAD: where a command does not yet do what this plan needs, the task that changes it is
 named, and the pre-change spelling is quoted so the delta is checkable rather than remembered.
 
-**The four commands that constitute the local check.**
+**The five commands that constitute the local check.**
 
 | # | Command | Observes | State at HEAD |
 |---|---|---|---|
@@ -647,6 +647,7 @@ named, and the pre-change spelling is quoted so the delta is checkable rather th
 | V2 | `cd pdlc/workflows && npm test` | that the workflow-module edit changed no pipeline behaviour | `node --experimental-vm-modules node_modules/jest/bin/jest.js` (`pdlc/workflows/package.json:7`); unchanged by this feature |
 | V3 | `node pdlc/workflows/build-runtime.mjs --check` | that T16's rebuild was committed with its source change | passes at HEAD; goes red the moment `orchestrate-dev.js` is edited without the rebuild |
 | V4 | `pdlc/hooks/scripts/sync-workflows.sh --check` | that the consumer copy under `.claude/workflows/` is not silently stale | invoked by bare path, never `bash …`; a `126` exit means the execute bit was lost, not that the tree drifted |
+| V5 | `cd pdlc/engine && node --test --experimental-test-coverage __tests__/` | the ≥ 85 % branch-coverage floor over the four new modules (§8) | `scripts.test` carries no coverage flag at HEAD (`pdlc/engine/package.json:13`), so V5 is invoked explicitly rather than folded into V1 — a coverage flag on the suite command would change what CI runs, and T17's job body is deliberately `npm ci` then `npm test` and nothing else |
 
 V1 and V2 are **not interchangeable and neither subsumes the other**: they are two suites, two
 runners, two working directories. A reviewer who runs only V2 has verified that this feature broke
@@ -661,14 +662,36 @@ until T17 lands, batch gates 2–11 are being judged by V2 alone, which is the f
 `postWaveCommand` hook cannot compensate for (`:4` runs `build-runtime.mjs`, i.e. V3's builder,
 not V1).
 
+**T17's post-change value, stated literally rather than described.** The corrected
+`implementation.testCommand` is:
+
+```
+cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'
+```
+
+**Both** suites, V2's ignore patterns preserved verbatim. Replacing the value with
+`cd pdlc/engine && npm test` would satisfy "runs the engine suite" while **dropping V2**, and this
+plan's own §11 states V1 and V2 are not interchangeable and neither subsumes the other. The blast
+radius matters more than the wording: `.claude/pdlc.config.json` is repo-wide state, so a value that
+runs only the engine suite blinds *other* features' Phase I wave gates — an effect outside this
+feature and outside this REQ. The DoD item is therefore set-equality (both suites), never
+containment (at least the engine suite). Note also that TSPEC §8.3's edit surface does not list this
+file at all, so the change is authorised by this PLAN alone today; that omission is raised as an
+erratum rather than treated as permission.
+
+**The second `M-ENG-09` row's command**, since no CI job and no wave gate can produce it: a
+maintainer runs `PDLC_LIVE=1 node --test __tests__/live/guard-measurement.test.js` from
+`pdlc/engine` on a host of the matrix platform that lacks a row, and commits the appended row to
+`docs/_constraints/pdlc-engine-baseline.md` (§5).
+
 **Where CI reads from.** `.github/workflows/pr-tests.yml` ships four jobs; T17 adds the fifth.
 
 | Job at HEAD | Line | Command | Relation to V1–V4 |
 |---|---|---|---|
-| `unit-tests` (`ubuntu-latest`/`macos-latest`, node 20) | `:26`, `:70` | `npm ci` then `npm test`, `working-directory: pdlc/workflows` (`:71`) | V2, on both platforms |
-| `artifact-freshness` | `:77`, `:93` | `build-runtime.mjs --check`, then rebuild-produces-no-diff (`:99`) | V3, plus an independent-observer second half |
-| `fresh-clone-bootstrap` | `:104`, `:127`–`:148` | build, then `pdlc/hooks/scripts/sync-workflows.sh`, then `--check` | V4, from a tree with no consumer copy |
-| `shell-scripts` | `:162`, `:172` | `bash -n` every shipped script, then executable-bit check (`:188`) | neither; unaffected by this feature |
+| `unit-tests` (`ubuntu-latest`/`macos-latest`, node 20) | `:27` | `npm ci` (`:68`) then `npm test` (`:75`), `working-directory: pdlc/workflows` (`:67`, `:71`) | V2, on both platforms |
+| `artifact-freshness` | `:77` | `build-runtime.mjs --check` (`:92`), then rebuild-produces-no-diff (`:98`) | V3, plus an independent-observer second half |
+| `fresh-clone-bootstrap` | `:103` | build (`:126`), then `pdlc/hooks/scripts/sync-workflows.sh` (`:129`), then `--check` (`:147`) | V4, from a tree with no consumer copy |
+| `script-syntax` (display name "Shell scripts parse") | `:161` | `bash -n` every shipped script (`:171`), then executable-bit check (`:184`) | neither; unaffected by this feature |
 | **new (T17)** | — | `npm ci` then `npm test`, `working-directory: pdlc/engine`, on the same two-platform matrix | V1 |
 
 T17's job body is deliberately `npm ci` then `npm test` **and nothing else**: any command CI runs
