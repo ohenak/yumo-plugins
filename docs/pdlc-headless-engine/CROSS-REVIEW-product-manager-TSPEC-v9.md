@@ -126,4 +126,38 @@ dropped, no product decision taken inside a technical section.
 
 ## 6. Recommendation
 
+**Approved with minor changes**
+
+All three v8 findings are resolved, two of them more thoroughly than asked. The new material —
+§3.3's structural guard, §7.8's rung 4a design, §6.4's rung disambiguation, §7.5's sixth conjunct,
+§6.5's consistency clause — I grounded against HEAD wherever it claims repository state: roughly
+twenty citations checked individually this round, with the PHASE_DISPATCH census, the guard script,
+`run.mjs`, `pr-tests.yml:40`, `_runCommand`'s reach and every FSPEC/REQ anchor measured rather than
+read. Nothing previously approved regressed.
+
+From the product lens the document is done: every P0/P1 requirement traces, C-11 now has an owning
+component and two falsifiable branches where last round it had a ladder row and a promise, and §8.1
+states its own deliberate omissions instead of leaving them to a reviewer to find.
+
+**No High finding is open.** Three edits to fold into the next touch of the file, in priority order:
+
+1. **F-01 (Medium)** — scope §3.3's site class 3 to declaration sites (literal or module-level
+   constant reference) and reconcile the census figure. As written the guard is red at HEAD on four
+   `skill:` fields (`orchestrate-dev.js:5909`, `:5910`, `:9288`, `:9528`), which is the same failure
+   mode TE F-40 removed this round, one class over. One clause and one number.
+2. **F-02 (Medium)** — drop §9.3's incidental note (FSPEC's `:14-21` is correct) and re-anchor
+   §7.8's two script citations to `:16` and `:15-20` / `:21`.
+3. **F-03 (Low)** — say which census figures are measured at HEAD and which are counted from the
+   edit, in §3.3 and in the changelog line.
+
+F-01 is the one worth doing carefully; F-02 and F-03 are single-sentence corrections. None of the
+three changes what the design decides — only what it claims about the tree it is written against.
+
+**No erratum is raised by this round.** I re-measured the one upstream defect this revision
+alleges (§9.3's note about FSPEC's script citation) and found the upstream text correct; that is
+F-02, a finding against this document, not against FSPEC.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
