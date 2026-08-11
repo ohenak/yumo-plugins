@@ -67,6 +67,23 @@ needs a review round to confirm.
 
 ## Reviewers
 
+| Role | R5 verdict | Blocking finding | Character of the review |
+|---|---|---|---|
+| `pm-review` (product-manager) | **Needs revision** `{1, 1, 1}` | `F-01` (High): §7.4 row 4's new conjuncts are stamped on the descriptor, but §7.0's accumulator is append-only and §7.4 still writes the line at composition — so `F.outcome`/`F.errorText` do not exist on the record the harness reads, and the row is red on correct code | Product lens held on one question for four rounds: does AC-3.3 / BR-MODEL-3 still have a witness after each revision? Re-derived every citation against HEAD (`adapter.mjs:215`/`:224`/`:225`/`:266-268`/`:278-281`, `bin/pdlc.mjs:173`/`:205`, `orchestrate-dev.js:1780`/`:1791`/`:1844`/`:9968`/`:10248`) and named both acceptable repair shapes rather than only the defect |
+| `te-review` (test-engineer) | Approved with minor changes `{0, 3, 3}` | none | Same lead finding as PM, filed as `F-30` Medium rather than High because "the failure is loud, not silent — row 4 goes permanently red". Verified the v1.4 fix by hand-falsification: deleted `:1851`→`:1861` in thought, traced `_state.resolved` still `null` at `:3132`, confirmed the re-dispatch arm `:3143-3157` produces no `opus` sibling with a matching `promptHash`, so the row genuinely goes red |
+
+The two reviewers **agree on the substance and differ only on severity**. TE's F-30 and PM's F-01
+are the same defect with the same one-clause fix; TE scored it Medium (a false red, loud), PM
+scored it High (a false red that invites a repair-in-the-dark loosening back to the residue
+predicate v4 already rejected). Under the High-only convergence bar a single High from either
+reviewer fails the round, so the severity call — not any disagreement about the design — is what
+made round 5 non-converging.
+
+The same near-miss shape occurred in round 3 with the roles reversed: PM approved v1.2 with
+`{0, 1, 2}` while TE held one High (`F-22`). In three of the five rounds exactly one reviewer was
+clean. The two never both cleared in the same round, and never both held Highs on *different*
+defects after round 1.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
