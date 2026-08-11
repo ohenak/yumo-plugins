@@ -743,6 +743,20 @@ fields close that:
   included. A retry duplicate carries the same `skill`, `phase` and `model` as the attempt it
   repeats, so it can neither falsify rows 1/2's universals nor satisfy an existential the first
   attempt did not already satisfy.
+- **The record is appended when the dispatch settles — one line per attempt** (PM F-01, TE F-30).
+  The two timings above are different things and the document now says both: the descriptor is
+  *stamped* at composition (every field except the terminal half) and *written* to §7.0's
+  accumulator at settlement. It has to be that way round, because §7.0's file is **append-only**
+  (`${PDLC_TEST_RUN_DIR}/{pid}.jsonl`, no rewrite, no locking): a line appended at composition would
+  carry `outcome: null, errorText: null` forever no matter how the in-memory object was mutated
+  afterwards, `_assert-suite-wide.mjs` reads only the lines, and §7.4 row 4's terminal conjuncts
+  would be unsatisfiable — red on correct code, with "loosen row 4" as the only available repair.
+  A dispatch that is **composed but never executed** — the inert transport behind `--dry-run`
+  (`bin/pdlc.mjs:173`, §3.4) — has no settlement, so its line is appended at composition with both
+  terminal fields `null`. That keeps FSPEC BR-MODEL-3's "a descriptor exists when a dispatch is
+  composed … no row depends on billed traffic" (`FSPEC:654-656`) true in both halves: every composed
+  dispatch produces exactly one line per attempt, and the corpus's settlements are fixture
+  transports (§7.2), never billed traffic. §7.4 states which line each row's predicate reads.
 
 Neither field is engine-facing state: nothing in the run loop, the report projection or the exit-code
 mapping (§5.4) reads them. They are recorded fields, and §7.4 is their only consumer.
