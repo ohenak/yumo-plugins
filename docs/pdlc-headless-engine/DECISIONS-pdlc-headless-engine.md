@@ -8,7 +8,7 @@ feature: pdlc-headless-engine
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.9; `FSPEC-pdlc-headless-engine.md` v1.5; `TSPEC-pdlc-headless-engine.md` v1.5) |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-DECISIONS-v{N}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
@@ -863,7 +863,6 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
   plus two required keys rather than set-equality (DEC-ENG-12).
 - Catalogue ids are cheap to add and socially expensive to rename, which is why ids and not wording
   are the pinned half (DEC-ENG-13).
-- Two concurrent runs against one worktree remain undetected (DEC-ENG-14).
 
 **Consequences for reversibility.** Every decision above is individually easy to reverse — the index
 in §9 records this — with one qualification: DEC-ENG-04's gate is easy to remove, but the branch it
