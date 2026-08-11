@@ -110,8 +110,36 @@ so neither finding has to re-argue it:
 
 ## Recommendation
 
-<!-- filled below -->
+**Needs revision.** Two High findings, one root cause, and the revision otherwise converged hard:
+five of my seven v1 findings are closed outright, three of them (F-04, F-06, F-07) with materially
+more than they asked for, and nothing in the diff broke a section that had already passed.
+
+What is left is narrow and mechanical. The document now claims a per-phase view of the run in two
+places — §7.4's model-map oracle and §4.4/§4.5's per-phase counts — and both rest on a
+`DispatchDescriptor.label` that no module supplies at any dispatch site (`orchestrate-dev.js:7124`,
+`:8971`, `:1841`, `:7463`, `:9968`; `orchestrate-queue.js:1053`). The adapter's own stale comment
+(`adapter.mjs:266-268`) is what makes the assumption look safe. Both findings close the same way:
+
+1. **F-01 / F-02 — say where the phase comes from.** The `_phase` seam already carries it
+   (`adapter.mjs:357`, called from `orchestrate-dev.js:9516`, `:9951`, `:10136`, …); holding the last
+   announced label as run state and stamping it on each descriptor supplies both consumers without
+   touching a workflow module, which keeps §8.3's "no other file under `pdlc/workflows/` is modified"
+   true. If instead the modules are to pass labels, that change belongs in §8.3's table.
+2. **F-01 — make the model-map assertion well-typed.** M-ENG-07 row 1 quantifies over phases rather
+   than naming one, and rows 1 and 4 are indistinguishable by `(phase, skill, model)` because the
+   advisory fallback re-dispatches the same skill on `opus`. A site discriminator recorded per
+   dispatch, with M-ENG-07's seven site ids transcribed literally, fixes both; without it the reverse
+   direction fails permanently and the pressure will be to loosen the oracle — the failure mode §3.3
+   argues against so well elsewhere in this same revision.
+
+Then F-03 (a third `stopReason` for the refusal exit, or a scoping sentence) and F-04 (`Infinity` →
+`null` stated at the point the block is built, not left to `JSON.stringify`), both one sentence.
+
+No scope creep: the design still adds no product behaviour the REQ did not ask for, and §9's three
+open questions remain declared rather than silently decided. Every remaining gap is inside §§4.4,
+4.5, 7.4 and one line of §8.3.
 
 ## Verdict
 
-<!-- filled last -->
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
