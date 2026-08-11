@@ -1005,6 +1005,33 @@ round reaching a parseable terminal verdict produced by a real model call (AC-6.
 
 ## 13. Open questions
 
+### 13.1 Raised by this FSPEC against its upstream
+
+Three items are defects in the REQ's own text rather than decisions this FSPEC may take. Each is
+emitted as an erratum against the REQ; the rows below record what this document assumed in the
+meantime so a reviewer can see the exposure.
+
+| # | Item | This FSPEC's interim behaviour |
+|---|---|---|
+| O-ENG-1 | AC-3.5's set-equality between dispatchable identifiers and plugin prompt files is unsatisfiable on a correct install: the plugin ships prompt files no module dispatches (the operator-invoked entry and consolidation skills), so the reverse direction refuses on every healthy machine, and the "17" parenthetical counts files rather than dispatchable identifiers | §4.4: Direction A enforced, Direction B reported not refused |
+| O-ENG-2 | AC-1.2 clause (c) justifies an empty `.claude/workflows/` read-set for a **`pdlc dev`** run by citing the **queue** module's drift-gate ordering; the dev module has no drift gate at all, so the cited opt-out is not load-bearing for the observed run — it is load-bearing for AC-1.3's queue run | §10.3 BR-READ-1: clause (c) unconditional for dev, opt-out-dependent for queue |
+| O-ENG-3 | AC-1.3 states `--loop` "repeats … until no ready row remains" and REQ §4.1 declares no iteration bound, while the operator-visible loop surface offers an explicit maximum-iteration bound; the two terminations are not distinguishable under the AC as written | §11.2 BR-LOOP-2: bound is opt-in and its termination reason is reported distinctly |
+
+### 13.2 Carried from the REQ, unchanged
+
+These remain open exactly as the REQ states them; this FSPEC neither closes nor narrows them.
+
+| # | Item | Where it bites this document |
+|---|---|---|
+| O-1 | fallback `claude -p` flag surface measured with fixtures; per-transport model-alias semantics; both transports exercised behind the one seam | §7.3, §12.4 (BR-VER-2's per-transport fixture sets) |
+| O-2 | the guard-parity mechanism per transport | §9 — the largest open safety gap (BR-GUARD-4) |
+| O-3 | where engine configuration lives (consumer config vs. engine-global with override) | §3.2 BR-CLI-3's tunables |
+| O-4 | token viability and renewal runbook for cron contexts | §5.1 row 1 |
+| O-5 | dry-run surface shape | §6.3 |
+| O-6 | session-reuse flag design; the seam must not be painted shut | not specified here — fresh-per-dispatch is today's semantics (R-4) |
+| O-7 | re-derive the retry defaults from observed unattended load | §8.2's defaults are a starting point, not a measured floor |
+| O-9 | whether either transport can distinguish a logged-in session from a token credential from its own reported state | §5.1 vs §5.3 — if it cannot, the startup mapping is the whole answer |
+
 ## 14. Linked Requirements
 
 ## 15. Behavioral Flow
