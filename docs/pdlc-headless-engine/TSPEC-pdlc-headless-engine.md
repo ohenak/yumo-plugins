@@ -278,7 +278,7 @@ constants, so that every dispatched identifier is reachable as a module-level va
 // pdlc/workflows/orchestrate-dev.js — PHASE_DISPATCH is already exported (:3337)
 export const ADVISORY_RUNG_SKILL = "se-review";           // was module-local (:1797)
 export const SKILL_SHIP_PR = "ship-pr";                   // :8008, :8112
-export const SKILL_SE_IMPLEMENT = "se-implement";         // :8064, :10142, :10251, :10448
+export const SKILL_SE_IMPLEMENT = "se-implement";         // :8064, :10028, :10068, :10142, :10251, :10448
 export const SKILL_DOD_VERIFY = "dod-verify";             // :8035
 export const SKILL_HARVEST = "harvest-learnings";         // :10542
 export const SKILL_SE_AUTHOR = "se-author";               // :9964
@@ -311,7 +311,25 @@ The tie is then two **workflows-side tests** (not production code), and neither 
 | Test | Assertion | What it catches |
 |---|---|---|
 | derivation | `DISPATCHABLE_SKILLS` ≡ the union recomputed in the test from `PHASE_DISPATCH` + the named constants, read as imported data | an identifier added to a phase row or a constant and not to the export — impossible by construction, so this is a regression guard on the derivation itself |
-| no-bare-literal | no string literal equal to a member of the union appears in either module's source outside the constant declarations and `PHASE_DISPATCH` | a *new* dispatch site typed as a bare literal, which is the only way an identifier can escape the derivation |
+| no-bare-literal | no string literal equal to a member of the union appears in either module's source outside the constant declarations, `PHASE_DISPATCH`, and the exemption below | a *new* dispatch site typed as a bare literal, which is the only way an identifier can escape the derivation |
+
+**The no-bare-literal test needs a stated exemption, and the exemption is a fixed list rather than a
+loosened pattern.** At HEAD the reviewer-role map keys three of the ten identifiers as object keys
+that are not dispatch sites at all — `"se-review": "software-engineer"` (`orchestrate-dev.js:6229`),
+`"pm-review": "product-manager"` (`:6230`), `"te-review": "test-engineer"` (`:6231`). Promoting these
+to computed keys is churn against correct code, so the test as first written would fail on HEAD and
+the only repairs would be a looser pattern or a deleted assertion — the pressure this section exists
+to remove. So the exemption is named here, in the spec, as a **closed allow-list of non-dispatch
+literal sites**, and the test asserts the observed exempt sites are **exactly** that list, not merely
+contained in it:
+
+| Exempt site | Identifiers | Why it is not a dispatch |
+|---|---|---|
+| reviewer-role map keys, `orchestrate-dev.js:6229-6231` | `se-review`, `pm-review`, `te-review` | maps a skill id to a review *role* name for filename construction; no `_agent` call reads it |
+
+An added exemption is therefore a reviewed decision recorded in this table, never an implementer's
+local widening of a regex. A literal appearing anywhere else — including a fourth row added to that
+same map — fails the test.
 
 At HEAD the derived union is **10 identifiers** — an observation, never the assertion; the assertion
 is set-equality.
