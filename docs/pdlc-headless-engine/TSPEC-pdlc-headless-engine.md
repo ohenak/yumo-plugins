@@ -2223,11 +2223,13 @@ generated-artifact rows above — a gate that names one directory while the work
 
 ### 9.2 Raised by this document
 
-- **O-ENG-T1 — the CI job's cost and placement.** §7.6 adds a fifth job on the same two-platform
-  matrix. Whether the engine suite runs on both platforms every PR, or ubuntu-only with macos on
-  merge, is a maintainer decision about CI minutes that a plan can set either way. The technical
-  requirement is only that **both platforms are exercised somewhere**, because C-9 makes per-platform
-  measurement a constraint (`~/.claude.json` location, process spawning).
+- **O-ENG-T1 — the CI job's cost and placement.** §7.6 adds a fifth job on the existing matrix, which
+  is **one platform** at HEAD — `os: [ubuntu-latest]` (`pr-tests.yml:40`). Whether `macos-latest` is
+  added back so the engine suite runs on two platforms every PR, or on merge only, is a maintainer
+  decision about CI minutes that a plan can set either way. The technical requirement is only that
+  **both platforms are exercised somewhere**, because C-9 makes per-platform measurement a constraint
+  (`~/.claude.json` location, process spawning) — and §7.6 is explicit that today CI is not where the
+  second platform comes from.
 - **O-ENG-T2 — two concurrent engine runs in one repo.** §2.3 records the opposite of what v1.0
   wrote here: `withCwd` (`run.mjs:155`) **does** `process.chdir` for the run's duration, which is
   process-global and is exactly why one process hosts one pipeline at a time; `cwd` is *additionally*
@@ -2246,15 +2248,17 @@ generated-artifact rows above — a gate that names one directory while the work
   measurement first, and one this TSPEC deliberately does not pre-empt.
 - **O-ENG-T4 — the M-ENG-09 gate's platform granularity.** §6.5 makes an unrecorded guard
   measurement a red hermetic suite, keyed by platform. Whether "platform" means `process.platform`
-  (two values, matching §7.6's matrix) or a finer key including the SDK version is a maintainer
+  (which takes a distinct value per host the suite runs on — and deliberately does **not** track
+  §7.6's matrix, which is one platform) or a finer key including the SDK version is a maintainer
   decision: a version-keyed row is more honest and goes stale on every SDK bump, which on an
   unattended pipeline means a red suite for a reason no code change caused. The design records the
   SDK version in the row either way; only the *staleness predicate* is open.
 - **O-ENG-T5 — the unmeasured platform.** Both reviewers arrived at this independently (PM Q-01, TE
   Q-08), which is the reason it is promoted to an open question rather than answered in passing.
   §6.5's "unrecorded is red" makes a missing M-ENG-09 row for the running platform fail the hermetic
-  suite. On the two platforms §7.6's matrix runs, that is exactly right, and the same-task ordering
-  rule answers the fresh-clone case. But the row is keyed by platform, so a contributor on a third —
+  suite. On the one platform §7.6's matrix runs (`ubuntu-latest`) and on the maintainer's macOS, that
+  is exactly right, and the same-task ordering rule answers the fresh-clone case. But the row is keyed
+  by platform, so a contributor on a third —
   a Linux distribution that reports differently, a container host, Windows — gets a red suite for a
   measurement they cannot reasonably be asked to take. AC-6.1 scopes the suite to §7.6's matrix, so
   this is not a criterion gap, and it is deliberately **not** decided here: the candidate answers
