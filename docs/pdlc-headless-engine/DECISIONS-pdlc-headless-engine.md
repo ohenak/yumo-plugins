@@ -6,14 +6,26 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.9; `FSPEC-pdlc-headless-engine.md` v1.5; `TSPEC-pdlc-headless-engine.md` v1.5) |
+| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `FSPEC-pdlc-headless-engine.md` v1.6; `TSPEC-pdlc-headless-engine.md` v1.7) |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-11 |
+| pdlc | draft | Claude | 1.4 | 2026-08-11 |
+
+**Change note, v1.4** (TSPEC round-8 review, te F-40 — one entry, no decision reversed):
+DEC-ENG-05's no-bare-literal guard is restated with a **structural site predicate** in place of the
+"skill-identifier shape" predicate, which is not writable — as syntax it selects 54/24 unrelated
+hyphenated literals across the two modules, as membership it is a tautology, and the reviewer-role
+map's keys and values are syntactically indistinguishable on the same lines
+(`orchestrate-dev.js:6229-6231`). The four site classes are closed and enumerable, an unresolvable
+site is a failure rather than a skip, and the per-class **site census** is added as a second conjunct
+so containment cannot pass vacuously over an empty extraction. The re-evaluation trigger that named
+the shape predicate is replaced by "a fifth site class appears". The decision itself — derive the set
+from the modules' exports — is unchanged, as is its direction (containment, not absence). Upstream
+pin moves to TSPEC v1.7 (REQ v0.10, FSPEC v1.6).
 
 **Change note, v1.3** (POSTMORTEM-D resolution, Step 3, one sentence): DEC-ENG-03’s authority
 paragraph updated — the REQ half landed as C-11 (REQ v0.10, `6ff9871a`, confirmed at round v8),
@@ -39,7 +51,7 @@ costs), and names §0 as context and scope. No decision changed; the decision in
 
 ## 0. Context and scope of this document
 
-TSPEC v1.5 fixes the mechanism. This document records only the **load-bearing choices inside that
+TSPEC v1.7 fixes the mechanism. This document records only the **load-bearing choices inside that
 mechanism** — the ones where an alternative was live, where the rejection has a cost, and where a
 later reader would otherwise re-open the question from scratch. Each entry states what was decided,
 what was rejected and why, what constraint forced the shape, how reversible it is, and what would
