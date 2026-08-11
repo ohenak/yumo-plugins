@@ -330,27 +330,48 @@ question. `{f}` denotes a feature name throughout.
   `docs/{f}/REQ-{f}.md`, with **no `.claude/workflows/` directory at all** and the pdlc
   plugin installed machine-wide at a version within the engine's declared compatible range
   (C-10), *when* they run `pdlc dev docs/{f}/REQ-{f}.md`, *then* the pipeline runs end-to-end
-  through the phases enabled by that repo's config and produces the same artifact set as the
-  workflow-runtime path produces for the same inputs: the spec documents, the cross-review
-  files with parseable verdicts and approval anchors, the queue-row writes, and the final
-  report fields.
-- **AC-1.2** *Given* the same repo, *when* the run is observed at the filesystem level for
-  its whole duration, *then* **no path under the consumer's `.claude/workflows/` is opened**,
-  and the only files read outside the consumer repo are inside the engine install or the
-  installed pdlc plugin's `skills/` tree (resolved per G-5, C-10). Reads of the consumer's own
-  `docs/**` and `.claude/pdlc.config.json` are expected and do not violate this.
-- **AC-1.3** *Given* a queue with a ready row, *when* the operator runs `pdlc queue`, *then*
-  exactly one feature is selected by the module's own Phase-0 triage — same row, same
-  ordering, same blocked/halted handling as the workflow-runtime path — and `pdlc queue
-  --loop` repeats that one feature at a time until no ready row remains, then exits 0
-  (`queue.loopIdleExit`).
+  through the phases enabled by that repo's config and satisfies each **structural** oracle
+  below. The oracle is structural, not byte-equality, and needs no comparison run of the
+  workflow-runtime path — two pipeline runs dispatch non-deterministic model calls, and AC-6.1
+  forbids a live comparison arm in CI (TE F-08). Expected sets are transcribed here:
+  1. the set of artifact **filenames** created under `docs/{f}/` equals the set the enabled
+     phases declare (`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS` when
+     warranted, `LEARNINGS`, one `CROSS-REVIEW-{role}-{doc}[-v{N}].md` per review round run);
+  2. every `CROSS-REVIEW-*` file carries a parseable `VERDICT:` line and a counts JSON object;
+  3. approval anchors (`APPROVAL-HASH:`, `REVIEWED-COMMIT:`) are present on each cross-review
+     that reached a terminal approval;
+  4. the feature's `docs/_queue/QUEUE.md` row holds one of the lifecycle values the modules
+     write (`in-progress`, `awaiting-merge`, `halted`), with its pathspec-scoped commit;
+  5. the run report carries every field the modules already produce plus AC-4.5's engine fields.
+- **AC-1.2** *Given* the same repo, *when* the run is observed at the filesystem level for its
+  whole duration, *then* all three hold on that **same observed run** (TE F-09): (a) at least
+  one read of `{pluginRoot}/skills/{skill}/SKILL.md` is observed; (b) at least one read of the
+  consumer's `docs/{f}/REQ-{f}.md` is observed; (c) the set of paths opened under the
+  consumer's `.claude/workflows/` is empty **except** for `orchestrate-queue.js`'s own drift
+  gate, which reads `.claude/workflows/.pdlc-drift-state.json` through the injected
+  `_readFile` before `QUEUE.md` is read at all (`orchestrate-queue.js:64`, `:1074`). That read
+  is a module behaviour G-2/C-4 forbid forking, so its disposition is fixed here rather than
+  denied (SE F-04): **the engine's declared queue posture is `distribution.checkEnabled:
+  false` in the consumer's `.claude/pdlc.config.json`**, the documented opt-out the module
+  honours ahead of the drift-state record (`orchestrate-queue.js:1947`), and an engine run in
+  a repo with no `.claude/workflows/` tree and no opt-out is **expected** to be blocked by the
+  gate. Reads of the consumer's own `docs/**` and `.claude/pdlc.config.json`, and reads inside
+  the engine install or the installed plugin's `skills/` tree (G-5, C-10), are expected.
+- **AC-1.3** *Given* a queue with a ready row and the AC-1.2 posture configured, *when* the
+  operator runs `pdlc queue`, *then* exactly one feature is selected by the module's own
+  Phase-0 triage — same row, same ordering, same blocked/halted handling as the
+  workflow-runtime path — and `pdlc queue --loop` repeats that one feature at a time until no
+  ready row remains, then exits 0.
 - **AC-1.4** *Given* a pipeline that halts, *when* the run ends, *then* the halt is recorded
   exactly as the modules record it today — the POSTMORTEM file, the `halted` queue row and
   its pathspec-scoped commit — and the CLI's exit code distinguishes a halt from a crash of
   the engine itself.
-- **AC-1.5** *Given* the engine's own repository, *when* its test suite runs, *then* it
-  asserts that the workflow modules it loads are this repo's tested sources and not a
-  vendored or edited copy, so a fork is a test failure rather than a discovery (C-4).
+- **AC-1.5** *Given* the engine's own repository, *when* its test suite runs, *then* two
+  observable assertions hold, so "not a fork" is decidable without a reference copy to diff
+  against (TE F-12): (a) the module specifier the engine resolves for each workflow module is
+  the repo-relative path under `pdlc/workflows/`; (b) no second file named `orchestrate-dev.js`
+  or `orchestrate-queue.js` exists anywhere under the engine tree. A fork is then a test
+  failure rather than a discovery (C-4).
 
 **Group 2 — auth and environment** *(US-02, US-04; G-3, G-4; C-1, C-2)*
 
