@@ -13,7 +13,30 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+| pdlc | draft | Claude | 1.3 | 2026-08-11 |
+
+**v1.3 changelog** — revision round 3, addressing `CROSS-REVIEW-test-engineer-TSPEC-v3.md`
+(1 High, 1 Medium, 2 Low) and `CROSS-REVIEW-product-manager-TSPEC-v3.md` (0 High, 1 Medium, 2 Low).
+**The High (TE F-22) is a translation defect of the class §7.4 exists to catch, in §7.4 itself:**
+rows 1/2 quantified over the normalised phase, and Phase I's V-wave is announced as `"Phase PT"`
+(`orchestrate-dev.js:10248`) while pinned on `sonnet` (`:10253`), so row 1's *every* was red on
+correct code. Rows 1/2 now partition on a defined **Phase-I wave set** (normalised `"Phase I"` plus
+the V-wave descriptor), §4.1's normalisation is left honest rather than bent to hide it, and **run i
+is pinned to wave mode** — fixture PLAN with a valid ownership manifest plus
+`implementation.testCommand` (`:9995`) — with the mode asserted rather than assumed. **The Medium
+(PM F-01)** settles `timeoutMs`: it is engine-stamped on every dispatch from `resolveTunables`'
+`dispatch.timeoutMinutes`, §3.4's presence half becomes `cwd` **and** `timeoutMs`, `maxTurns` is the
+one declared-but-unreachable key, and §4.6 gains the effective-value oracle that makes BR-CLI-3's
+reported tunable honest (§3.4, §4.1, §4.6, §8.3). **TE F-23**: row 4 drops the run-wide `seq`
+adjacency conjunct — a flakiness source — keeping the fixture's forced model-resolution failure as
+the discriminator, and names the `fable` dispatch as the error's source. Lows: §4.1's `label:`
+enumeration gains `:9574` (`routeErrata`'s options object, TE F-24); §3.3's skill-constant site lists
+re-measured, moving `:10448` from `SKILL_SE_IMPLEMENT` to `SKILL_HARVEST` (TE F-25, PM F-03); §4.4
+states that `byPhase` is run-scoped and merges across `--loop` passes by design (PM F-02). Questions
+answered in the design: the `"(no phase)"` bucket is an asserted member of §7.4's suite-wide set
+rather than a reported number (PM Q-01, TE Q-10); §3.4's presence half is key-presence with the `cwd`
+*value* owned by AC-2.5's test (TE Q-09); rows 3/4's advisory predicates are existential because the
+seam memoises its resolved model (`:1844`), so quantifying them would be red on correct code (PM Q-02).
 
 **v1.2 changelog** — revision round 2, addressing `CROSS-REVIEW-product-manager-TSPEC-v2.md`
 (2 High, 1 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (2 High, 2 Medium, 1 Low).
@@ -588,7 +611,8 @@ run report (§3.6) and, when the operator asks for it, the report file itself.
 ### 4.1 `DispatchDescriptor` — the adapter's own per-dispatch record
 
 **This is an adapter-internal shape, not the transport boundary.** The transport receives §3.4's
-four-key options object (`{ model, cwd, timeoutMs, maxTurns }`, built at `adapter.mjs:278-281`);
+four-key options object (`{ model, cwd, timeoutMs, maxTurns }`, built at `adapter.mjs:278-281`, with
+`timeoutMs` engine-stamped rather than conditional — §3.4);
 `skill`, `label` and `attempt` stay adapter-local (`:272`, `:285`) and feed the logs, pause rows and
 `authSources` records instead. Two enumerations, two different boundary tests: set-equality over the
 transport's option keys, and field-presence over the descriptor.
@@ -1410,7 +1434,7 @@ reporting field (§4.1), and the one row that leaned on it is corrected below:
 | 1 every phase except Phase I | `opus` | **quantified, not existential**: in run i, *every* descriptor **outside the Phase-I wave set** (defined below) has `model === "opus"` (and ≥1 such descriptor exists) |
 | 2 Phase I implementation waves | `sonnet` | in run i, *every* descriptor **inside the Phase-I wave set** has `model === "sonnet"` (and ≥1 exists) |
 | 3 advisory-tier dispatch | `fable` | in run iii, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "fable"` |
-| 4 advisory fallback | `opus` | in run iv, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "opus"` **that was composed in response to the forced model-resolution failure the fixture plants on the `fable` dispatch** — that provenance is the whole discriminator; no `seq` adjacency (see below) |
+| 4 advisory fallback | `opus` | in run iv, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "opus"` **recorded within the same advisory-seam invocation whose `fable` descriptor raised the model-resolution error the fixture forces** — that provenance is the whole discriminator; no `seq` adjacency (see below) |
 | 5 queue Phase-0 triage | `sonnet` | in run ii, ≥1 descriptor with `phase === "Queue"`, `skill === "se-author"`, `model === "sonnet"` |
 | 6 verdict-recovery re-emit | `haiku` | in run v(a) — the malformed-`VERDICT` fixture — ≥1 descriptor with `model === "haiku"` and a reviewer `skill` |
 | 7 PLAN-DAG extraction | `haiku` | in run v(b) — the unparseable-task-table fixture — ≥1 descriptor with `model === "haiku"` and `skill === "se-author"` |
@@ -1446,12 +1470,14 @@ manifest and a `implementation.testCommand` in `.claude/pdlc.config.json`**, so 
 mode and the script-owned gate (`:10099-10100`). Two consequences the harness makes explicit rather
 than trusting:
 
-- **The mode is asserted, not assumed.** Run i's assertions include ≥1 descriptor inside the Phase-I
-  wave set and exactly one `phase === "Phase PT"` descriptor. In wave mode Phase PT has precisely one
-  dispatch — the V-wave (`:10248`→`:10253`); the legacy path's own Phase PT dispatch (`:10068`,
-  announced `"Phase PT: PROPERTIES Tests"`, no `model` option and therefore Opus) cannot occur in the
-  same run. Had the fixture silently drifted into legacy mode, the V-wave clause would be picking up
-  an Opus dispatch and row 2 would be red — a loud failure, not a quiet reinterpretation.
+- **The mode is asserted, not assumed.** Run i's assertions include ≥1 descriptor with
+  `phase === "Phase I"` and ≥1 with `phase === "Phase PT"` and `skill === SKILL_SE_IMPLEMENT` — the
+  V-wave. The two Phase-PT dispatch sites are mutually exclusive within a run: wave mode's V-wave
+  (`:10248`→`:10253`, `MODEL_IMPLEMENTATION`) sits in the `waveMode` branch and the legacy path's
+  Phase PT (`:10068`, announced `"Phase PT: PROPERTIES Tests"`, no `model` option and therefore Opus)
+  in the `!waveMode` branch. Had run i's fixture silently drifted into legacy mode, the V-wave clause
+  would be picking up an Opus dispatch and row 2 would be red — a loud failure, not a quiet
+  reinterpretation.
 - **Legacy mode is out of scope for rows 1 and 2, and named as such.** No corpus run drives it, so no
   row asserts over it. Pinning legacy Phase PT is not an AC-3.3 obligation — M-ENG-07's row 2 speaks
   of implementation *waves*, which the worktree path does not run — and a future corpus run vi for the
@@ -1636,7 +1662,7 @@ every file it touches; a component in **bold** is new in this feature.
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables`) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
-| **`__tests__/_assert-suite-wide.mjs`** | new — the four set-equality assertions | §7.0, §7.4 |
+| **`__tests__/_assert-suite-wide.mjs`** | new — the four set-equality assertions plus the `"(no phase)"` bucket assertion | §7.0, §7.4 |
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
 | `pdlc/engine/package.json` | changed — `scripts.test` becomes the runner invocation | §7.0 |
 | `pdlc/workflows/orchestrate-dev.js` | **exports added** (`DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants) + bare skill literals replaced by those constants at their dispatch sites | §3.3 |
