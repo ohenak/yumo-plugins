@@ -92,6 +92,38 @@ current one is neither, which is the worst of the three to hand to an implemente
 
 ## Pattern of Disagreement
 
+Three shapes, in order of how much they cost.
+
+**1. There is no disagreement between people to resolve.** This is the first round in this
+feature's twenty-plus review rounds where two reviewers filed the *identical* finding, at the
+identical site, with the identical fix and the identical severity. The prior Phase-T halt turned on
+a severity split (PM High vs TE Medium on one defect); the Phase-F halt turned on one reviewer
+re-deriving a cell the other did not. Here the roles are interchangeable. The dispute is entirely
+*within the document* — §6.3 and §7.3 assert opposite things — and it is mechanically checkable, so
+there is nothing for an operator to adjudicate. That is a good signal about the finding and a bad
+one about the cost: a phase halted over a defect that no participant disputes.
+
+**2. The erratum's change note cites the section that contains the defect, as if it were the
+authority for the fix.** The v1.4 note reads: "which this document already fixed in BR-SKILL-5/6,
+so the claim contradicted §6.3". That is half right in a way that is worse than being wrong.
+BR-SKILL-5/6 *do* live in §6.3 and *are* correct — the section's second half establishes exactly
+the one-skill-per-invocation bound the erratum needed. The author read down to them, took them as
+support, and never re-read the four lines of §6.3's preamble immediately above, which state the
+opposite. The correction then cited `§6.3, BR-SKILL-5/6` inline — pointing the next reader straight
+at the unfixed sentence. `se-review` records that this citation is precisely what made `F-24`
+findable. The edit contained its own falsifier.
+
+**3. An erratum names a site; the defect is a claim.** The routed item was
+"BR-MODEL-3 (`FSPEC:654-656`) claims …". Everything about that framing — a doctype, a line range,
+a quoted sentence — describes a *location*, and the targeted versioned edit is scoped to it by
+design. But the obligation the reviewers enforced is document-wide: after the round, the false
+statement must be gone from the document, not from the coordinates. The two are the same thing only
+when a claim is asserted once. Here it was asserted twice, and the second site was unfindable by
+the obvious search: §6.3's sentence refers to the surface as "it", so `grep dry.run` over the FSPEC
+returns the change note and the corrected BR-MODEL-3 and nothing else. `se-review` ran that search,
+got the misleadingly clean result, and read the section anyway. The author, working from the cited
+range, did not.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
