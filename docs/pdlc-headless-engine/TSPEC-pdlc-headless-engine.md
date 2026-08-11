@@ -13,7 +13,32 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-11 |
+| pdlc | draft | Claude | 1.5 | 2026-08-11 |
+
+**v1.5 changelog** — revision round 5, addressing `CROSS-REVIEW-product-manager-TSPEC-v5.md`
+(1 High, 1 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (0 High, 3 Medium, 3 Low).
+Both reviewers' leading finding is the same one and it is the last hop of v1.4's fix: **v1.4 stamped
+the terminal half on the descriptor but left the record's write timing at composition**, and §7.0's
+accumulator is append-only, so row 4's `outcome`/`errorText` conjuncts were unsatisfiable — red on
+correct code (PM F-01, TE F-30). Fixed by pinning the timing in the design: **one line per dispatch
+*attempt*, appended when the attempt settles**, carrying that attempt's `outcome`/`errorText`; a
+dispatch composed but never executed (the inert transport behind `--dry-run`) is appended at
+composition with both fields `null`. Row 4's `F` is a settlement line, and FSPEC BR-MODEL-3's
+composed-not-billed guarantee is restated with the timing attached (§4.1, §7.0, §7.4). Mediums:
+row 4 pins the **exact** outcome member `transport-contract-violation` — derived from §5.1 via
+`classifyThrown`'s unrecognised arm (`transport.mjs:123`) — instead of the complement of `ok`
+(TE F-32); the fifth suite-wide row names `corpusRun != null` as the filter that scopes it to
+run-shaped tests (PM F-02); and the two `createAdapter` sites are re-attributed — `bin/pdlc.mjs:173`
+is `emitDryRun`'s inert surface, `:205` is `liveAdapter`'s run path, and **`doctor` constructs no
+adapter at all** (`cmdDoctor:157`), so it is not a tunable resolution point (TE F-31, §3.4/§4.6/§8.3).
+Lows: the fifth row's predicate is stated over records (`phase === null`) with `byPhase["(no phase)"]`
+kept as the reader-facing gloss (PM F-03, TE F-35); §7.4's lead sentence says **three** accumulators
+rather than four (TE F-33); and run i's "zero `haiku`" assertion gains its second site — reviewer
+fixtures emit well-formed `VERDICT:` trailers so `recoverVerdict` (`orchestrate-dev.js:7454`→`:7463`)
+never fires (TE F-34). Questions answered in place: `promptHash` is over the **composed** prompt
+(`adapter.mjs:273`) and each retry attempt gets its own line, with no count asserted (TE Q-13/Q-14,
+PM Q-02); §7.5's live path writes no observation records, so `errorText` never leaves memory outside
+the hermetic suite (PM Q-01).
 
 **v1.4 changelog** — revision round 4, addressing `CROSS-REVIEW-product-manager-TSPEC-v4.md`
 (2 High, 0 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (1 High, 1 Medium, 2 Low).
@@ -1746,6 +1771,14 @@ Behind an explicit flag (never the default suite, never CI), one real small feat
 against a scratch repo, asserting §7.3's structural set plus the one thing only a live run shows: at
 least one cross-review round reaching a parseable terminal verdict produced by a real model call. The
 §6.5 guard measurement is the second live test, and it is the one that gates unattended use.
+
+**This path writes no observation records** (PM Q-01). §7.0's writer is installed by
+`__tests__/_bootstrap.mjs` through `--import`, so `errorText` — the one descriptor field that can
+carry a message the engine did not author — is only ever appended to a file under
+`PDLC_TEST_RUN_DIR` by the hermetic suite, where every rejection is fixture-injected. A live run
+carries the same descriptor shape in memory and drops it with the process. No REQ/FSPEC clause asks
+for redaction, and this design does not need one; if the live path is ever given an accumulator, the
+redaction question arrives with it.
 
 ### 7.6 CI arrangement
 
