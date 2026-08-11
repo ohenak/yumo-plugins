@@ -1225,6 +1225,16 @@ classification that stopped the run. Mechanically: the engine catches at the top
 (`run.mjs:187`, `:228`), stamps the report (§3.6), prints it, and exits — the module is never given a
 chance to write its own halt artefacts, because it is no longer running.
 
+**The classification is scoped to rejections that *escape* the module** (TE F-37). A member of the
+taxonomy is engine-fatal when it reaches that top-level catch — not whenever it is stamped on a
+descriptor. A module that catches its own dispatch error keeps the run alive and the descriptor
+recorded: the advisory rung's model-resolution failure is handled inside `resolveAdvisoryRung`'s
+rejection arm (`orchestrate-dev.js:1856`) and re-dispatched at the `opus` rung (`:1861`), and the
+non-model-resolution case is returned to the caller as a `{ kind: "dispatch-error" }` value
+(`orchestrate-dev.js:3143`), never rethrown. This is load-bearing for §7.4 row 4, whose `F` carries
+`outcome === "transport-contract-violation"` and is followed by a `B` **in the same run** — without
+this scope a harness author would read row 4 and §5.3 as contradictory.
+
 ### 5.4 Exit-code mapping (AC-1.4, BR-EXIT-1…3)
 
 | Code | Condition | Written where |
@@ -1593,7 +1603,7 @@ accumulator. All five are listed here rather than left in prose, because this ta
 |---|---|---|
 | message catalogue (§3.5) | `message(id, …)` records the id | emitted ids ≡ `messageIds()` |
 | outcome taxonomy (§5.1) | `classifyOutcome` records its result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
-| **pinned model map (§4.1, AC-3.3)** | the adapter appends one line per dispatch *attempt* at **settlement** (§4.1, §7.0), carrying that `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model, attempt, outcome, errorText, promptHash }`; a composed-but-never-executed dispatch is appended at composition with `outcome: null, errorText: null` | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
+| **pinned model map (§4.1, AC-3.3)** | the adapter appends one line per dispatch *attempt* at **settlement** (§4.1, §7.0), carrying that `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model, attempt, outcome, errorText, promptHash }`; **every line is a settlement line** — there is no composition-time line and no `null`-terminal line (§4.1) | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
 | dispatchable skills (§3.3) | not an accumulator — computed once from imported data | both directions, §3.3's table |
 | pre-phase window (§4.1) | the same model-map accumulator, read on its `phase` field | **no record with `corpusRun != null` has `phase === null`** — `corpusRun` is the field that scopes the assertion to run-shaped tests (PM F-02), and `phase === null` is the record-level predicate (PM F-03, TE F-35). Reader-facing gloss: `byPhase["(no phase)"]` is absent or `0` on every corpus run |
 
@@ -1735,8 +1745,8 @@ engine *can* record is that **the fallback re-dispatches the same prompt**: `dis
 one `prompt` (`orchestrate-dev.js:1840-1842`) and both rungs go out through it, so `F` and `B` are
 byte-identical in the composed prompt (`promptHash`) while differing in `model` — a pairing no
 ordinary reviewer dispatch produces, because it has no `fable` sibling at all, let alone one carrying
-a model-resolution rejection in `errorText`. Five properties of this witness are worth stating,
-because they are what F-26 asked for:
+a model-resolution rejection in `errorText`. Seven properties of this witness are worth stating,
+because they are what F-26 asked for and what a fixture author has to satisfy:
 
 - **It is falsified by the deletion it exists to catch.** Delete `:1851`→`:1861` and no `B` exists
   for the `fable` `F`: the pair is empty and row 4 is red, where the residue predicate stayed green.
@@ -1754,6 +1764,32 @@ because they are what F-26 asked for:
   an auth failure, i.e. a run that never exercised model resolution at all. If run iv's fixture is
   ever changed to inject a rejection of a different class, the row's literal is what makes the change
   visible instead of silently absorbed.
+- **The derivation runs through `classifyThrown`, so the injection point is part of the row** (PM
+  F-02, TE F-38). `classifyThrown` lives in the real transport, so the pinned member appears only if
+  run iv's rejection *enters through* one: run iv injects at **`queryFn`**, building its transport
+  with §7.1's own construction rule `createTransport({ queryFn })` (§7.2), and the adapter under test
+  is the real one. A fixture that instead substituted a transport double would bypass
+  `classifyThrown` entirely and the pinned literal would be red on correct code — the failure mode
+  TE F-32 asked for the pin to prevent. The injected rejection must also satisfy
+  `isModelResolutionError` (`orchestrate-dev.js:1791-1792`), whose `MODEL_ERROR_RE` (`:1780-1781`)
+  tests the *message*: one rejection carrying a message like `unknown model "fable"` satisfies both
+  obligations at once — `classifyThrown`'s unrecognised arm maps it to `TransportError`
+  (`transport.mjs:123`) so `F.outcome` is the pinned member, and the same message trips
+  `MODEL_ERROR_RE` so `:1856` takes the fallback arm and `B` exists at all. Neither obligation is
+  optional: a `TimeoutError` would fail the first, a `TransportError` reading `boom` would fail the
+  second and row 4 would be red with no `B` to pair.
+- **Run iv continues; it does not exit `1`** (TE F-37). §5.3 classifies
+  `transport-contract-violation` as engine-fatal — it "ends the run at exit `1` without a module
+  halt" — and row 4 requires an `F` carrying that member followed by a `B` on `opus` **in the same
+  run**. The two reconcile on *escape*: §5.3's catch sits at the top of `runDev`/`runQueue`
+  (`run.mjs:187`, `:228`), so the classification applies to a rejection that reaches the engine's
+  top-level catch, and the advisory rung's rejection never gets there. `resolveAdvisoryRung` handles
+  it inside its own `.then` rejection arm (`orchestrate-dev.js:1856`), re-enters at the `opus` rung
+  (`:1861`), and where a rejection *is* not a model-resolution one it is turned into a
+  `{ kind: "dispatch-error" }` **value** the caller consumes as a loop continue
+  (`orchestrate-dev.js:3143-3149`) rather than rethrowing. So run iv's fixture asserts a run that
+  survives the failure: the descriptor is recorded, the exit code is the run's ordinary one, and a
+  run that ended at exit `1` after `F` would be the regression, not the expectation.
 - **The failure half is paired with a positive conjunct on the same record**, so the pair is not an
   absence-only oracle: `F.errorText` must contain the literal string the fixture injects — a
   transcription of the fixture, not an import of `MODEL_ERROR_RE` (`orchestrate-dev.js:1780`), which
