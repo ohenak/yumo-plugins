@@ -1034,6 +1034,66 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 
 ## 14. Linked Requirements
 
+### 14.1 Acceptance criterion → section → tests
+
+| REQ AC | Section | Tests |
+|---|---|---|
+| AC-1.1 | §10.2 | AT-ENG-45, AT-ENG-46 |
+| AC-1.2 | §10.3 | AT-ENG-47, AT-ENG-48 |
+| AC-1.3 | §11.1, §11.2 | AT-ENG-52…AT-ENG-57 |
+| AC-1.4 | §3.3, §8.3 | AT-ENG-04, AT-ENG-38 |
+| AC-1.5 | §10.1 | AT-ENG-49 |
+| AC-2.1 | §5.1 | AT-ENG-13, AT-ENG-15 |
+| AC-2.2 | §5.2 | AT-ENG-14 |
+| AC-2.3 | §7.1 | AT-ENG-26, AT-ENG-27 |
+| AC-2.4 | §5.4 | AT-ENG-16 |
+| AC-2.5 | §7.2 | AT-ENG-28 |
+| AC-3.1 | §6.2, §6.4 | AT-ENG-20, AT-ENG-21, AT-ENG-23 |
+| AC-3.2 | §4.1, §4.3 | AT-ENG-08, AT-ENG-12 |
+| AC-3.3 | §7.3 | AT-ENG-29, AT-ENG-30 |
+| AC-3.4 | §7.4 | AT-ENG-31 |
+| AC-3.5 | §4.4 (with O-ENG-1) | AT-ENG-10 |
+| AC-4.1 | §8.1 | AT-ENG-33, AT-ENG-34 |
+| AC-4.2 | §8.2 | AT-ENG-35, AT-ENG-36, AT-ENG-37 |
+| AC-4.3 | §8.3 | AT-ENG-38 |
+| AC-4.4 | §8.4 | AT-ENG-39 |
+| AC-4.5 | §12.2 | AT-ENG-58, AT-ENG-59, AT-ENG-60 |
+| AC-5.1 | §9.1, §9.2 | AT-ENG-41, AT-ENG-43 |
+| AC-5.2 | §9.2 | AT-ENG-42 |
+| AC-6.1 | §12.4 | AT-ENG-63 |
+| AC-6.2 | §12.4 | AT-ENG-65 |
+| AC-6.3 | §12.4 | AT-ENG-64 |
+| AC-6.4 | §12.3 | AT-ENG-61, AT-ENG-62 |
+
+### 14.2 Constraints, goals, and non-goals
+
+| REQ item | Where honoured |
+|---|---|
+| C-1 (auth, two parts) | §5.1–§5.3 |
+| C-2 (environment passthrough) | §7.1 |
+| C-3 (`cwd`) | §7.2 |
+| C-4 (no fork) | §10.1 |
+| C-5 (guard parity) | §9 |
+| C-6 (permissions from one setting) | §7.4 |
+| C-7 (models forwarded, not re-mapped) | §7.3 |
+| C-8 (closed string catalogue, total parsing) | §12.3 |
+| C-9 (facts measured per platform) | §12.4 (fixtures per transport), §2 (M-ENG-* citations) |
+| C-10 (plugin handshake) | §4.1 rungs 1–3, §4.3 |
+| G-1, G-3, G-4, G-5, G-6, G-7 | §10.3, §5, §7.1, §6, §10.1, §8/§11 |
+| NG-1 (no semantic change) | §10.1, §9.3 EC-GUARD-3/5, §11.1 |
+| NG-6 (both transports in scope) | §6.1 BR-SKILL-2, §9.1, §12.4 BR-VER-2 |
+| NG-7 (no new consumer copy) | §10.3 BR-READ-3 |
+| NG-8 (no prompt rewrites) | §6.2, §6.5 EC-SKILL-5 |
+| R-1…R-6 | §12.3/§12.4 (R-1), §8.2/§12.2 (R-2), §5.3 (R-3), §13.2 O-6 (R-4), §6.5 EC-SKILL-5 (R-5), §4.3 (R-6) |
+
+### 14.3 Coverage direction
+
+Both directions are checked: every AC of the REQ appears in §14.1 with at least one section and one
+test, and every section §3–§12 traces to at least one AC or constraint in §14.1/§14.2. Two
+behaviours specified here have no AC of their own and are carried as constraints instead — the
+loop's per-outcome continuation (BR-LOOP-4, under AC-1.3's "same blocked/halted handling") and the
+exit-code triple (BR-EXIT-1…3, under AC-1.4's "distinguishes a halt from a crash").
+
 ## 15. Behavioral Flow
 
 ## 16. Business Rules
