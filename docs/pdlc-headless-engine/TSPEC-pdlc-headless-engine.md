@@ -398,8 +398,20 @@ createTransport({ queryFn, env, apiKeySourcePolicy, defaultTimeoutMs, permission
          -> Promise<DispatchResult> }
 ```
 
-**This four-key options object is the whole transport-facing boundary**, and the boundary test
-asserts set-equality over its keys, not containment. §4.1's `DispatchDescriptor` is a strictly wider
+**This four-key options object is the whole transport-facing boundary.** The boundary test is a
+**two-part contract, not a set-equality over one instance** — the distinction matters because the
+four keys are not all present on any real dispatch. `model`, `timeoutMs` and `maxTurns` are each
+assigned only when defined (`adapter.mjs:278-281`), and §4.1 records that `maxTurns` is never set by
+any module, so no dispatch this feature can produce carries all four. An instance-level set-equality
+would fail on every dispatch. Both halves are therefore stated:
+
+| Half | Assertion | What it catches |
+|---|---|---|
+| containment | every key observed on any `dispatchOpts` is a member of the permitted set `{ model, cwd, timeoutMs, maxTurns }` | a fifth key leaking across the boundary — the completeness half, and the reason this is not merely a spot check |
+| presence | `cwd` is present on **every** dispatch | the per-dispatch cwd discipline §2.3 depends on; `cwd` is the one unconditional key (`adapter.mjs:278`) |
+
+So it is set-equality against the *permitted* set, asserted as containment plus one required key —
+never equality against the keys of a single call. §4.1's `DispatchDescriptor` is a strictly wider
 *adapter-internal* shape: `skill`, `label` and `attempt` stay adapter-local (`adapter.mjs:272`,
 `:285`) and are never handed to a transport, which is why HEAD builds `dispatchOpts` as
 `{ cwd }` plus the three optional keys (`adapter.mjs:278-281`) rather than forwarding the
