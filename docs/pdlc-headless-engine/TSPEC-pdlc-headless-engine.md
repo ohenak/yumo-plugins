@@ -706,7 +706,10 @@ under `pdlc/workflows/` is modified" depends on. Three rules make it total:
   accumulator rather than owning one. Reporting alone would mean the first dispatch that drifted ahead of
   a phase banner landed in a bucket nobody fails on, which is the vacuity §7.4 exists to avoid. The
   assertion is on the pipeline-run tests, not on unit tests that dispatch through the adapter without
-  announcing a phase; those construct the adapter directly and are outside the run-shaped set.
+  announcing a phase; those construct the adapter directly and are outside the run-shaped set. The
+  field that draws that line is `corpusRun` (PM F-02): the assertion is **no record with
+  `corpusRun != null` has `phase === null`**, stated over records because `"(no phase)"` is §4.4's
+  report key and never appears in a recorded line (§7.4's fifth row).
 - **`phase` is provenance, never a verdict** (§4.5's second convention): it records what the run
   announced, and no engine decision reads it.
 
@@ -1580,7 +1583,14 @@ composed *after* `phaseFn("Phase I: Implementation")` (`:9951`), so it records `
 and therefore falls **inside** the wave set while carrying `model === "haiku"` — row 2's *every*
 would be red on it. It cannot arise in run i: it is the fallback taken only when `parsePlanTasks`
 returns no tasks (`:9959-9962`), and run i's fixture PLAN parses, which run i asserts directly —
-**zero descriptors with `model === "haiku"` in run i**. Run v(b) is where it is witnessed (row 7),
+**zero descriptors with `model === "haiku"` in run i**. That assertion covers **both** `haiku` sites,
+so run i's fixture owes a second property, stated here rather than left implicit (TE F-34):
+`recoverVerdict` (`orchestrate-dev.js:7454`, dispatching on `haiku` at `:7463`, called at `:5992` and
+`:6001`) fires only for a reviewer whose `VERDICT:` trailer is missing or malformed, so **run i's
+reviewer fixtures emit well-formed trailers throughout** — the same fixture property run v(a)
+deliberately violates to witness row 6. Both `haiku` routes are therefore closed in run i by fixture
+content, not by luck, and the "zero `haiku`" assertion is a real check on the fixture rather than a
+restatement of it. Run v(b) is where the PLAN-DAG site is witnessed (row 7),
 and rows 1/2 do not range over that run. This is recorded next to the wave-set definition for the
 same reason the memoisation note sits next to rows 3/4: the tempting "improvement" is to quantify
 rows 1/2 over the whole corpus, and it is wrong.
