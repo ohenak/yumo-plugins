@@ -737,6 +737,113 @@ which is why a plan should schedule this before any unattended use.
 
 ## 10. FSPEC-ENG-08 — Pipeline parity and the empty consumer read-set
 
+### 10.1 Why parity is preservation, not re-specification
+
+The phase graph, convergence behaviour, round windows, verdict parsing, erratum routing, POSTMORTEM
+lifecycle, queue lifecycle, halt-row commits and Phase MERGE ladder are unchanged **because the code
+that implements them is unchanged** (G-6). This FSPEC therefore does not restate them; it states the
+*oracle* by which "unchanged" is checked, and the two structural facts that keep it true.
+
+**BR-PARITY-1 — the modules are imported, never copied.** Any behaviour the engine cannot express
+through the modules' existing injection seams is a change to the modules — in this repo, with tests
+— never a patched copy (C-4). Two observables make "not a fork" decidable without a reference copy
+to diff against (AC-1.5): (a) the module the engine resolves for each workflow module is the one in
+this repo's `pdlc/workflows/` tree; (b) no second file bearing either module's name exists anywhere
+under the engine tree.
+
+**BR-PARITY-2 — the seam set the engine supplies differs per module.** It is complete enough that
+every dispatch a module makes reaches the engine's transport rather than the modules' own throwing
+stub. The exhaustive per-module seam contract is TSPEC's; the behavioural requirement here is that
+no dispatch path in either module falls through to the stub (a fall-through is observable as an
+engine failure, never as a silent skip).
+
+### 10.2 The parity oracle
+
+*Who:* the operator. *Given* a consumer repo on `feat-{f}` holding `docs/{f}/REQ-{f}.md`, with **no
+`.claude/workflows/` directory at all**, the declared queue posture set, and a compatible plugin
+installed, *when* they run `pdlc dev docs/{f}/REQ-{f}.md`, *then* the pipeline runs end-to-end
+through the phases that repo's config enables and satisfies the structural oracle below.
+
+**BR-PARITY-3 — the oracle is structural, and it needs no comparison run.** Two pipeline runs
+dispatch non-deterministic model calls, and a live comparison arm is forbidden in the default suite
+(AC-6.1). The oracle is over the *shape* of what a run produces, never over bytes.
+
+**BR-PARITY-4 — the oracle observes creation events, not the surviving tree.** Phase H deletes each
+harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` file once the LEARNINGS commit is confirmed on
+remote, so every clause below is asserted over each file **as created**; a harvested file's later
+absence is not an oracle failure.
+
+The clauses (AC-1.1):
+
+1. **Filenames under `docs/{f}/`** satisfy two rules, because only part of the set is
+   run-independent:
+   - *(i) set-equality* against the phase-declared core — `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`,
+     `LEARNINGS` (`REQ` pre-exists) — for the phases that repo's config enables;
+   - *(ii) a rule, not a fixed set*, per run-dependent member: `DECISIONS-{f}.md` iff the run report
+     records the Phase-T decision that warrants it; the `CROSS-REVIEW-{role}-{doc}[-v{N}].md` set
+     equal to exactly one file per `(role, doc, round)` the run's own recorded round windows name;
+     `CODE_REVIEW-{f}-v{N}.md` one file per recorded DoD round, at least one whenever the run
+     reaches that phase; `POSTMORTEM-{phase}-{f}.md` iff the run report records a halt of that
+     phase; `ADVISORY-{f}.md` iff the advisory tier is enabled, which this posture leaves off.
+   - No filename outside (i) and (ii) may appear: the set is closed under both rules.
+2. Every `CROSS-REVIEW-*` file carries a parseable `VERDICT:` line and a counts object.
+3. Approval anchors are present on each cross-review that reached a terminal approval.
+4. The feature's queue row holds one of the lifecycle values the modules write (`in-progress`,
+   `awaiting-merge`, `halted`), with its pathspec-scoped commit.
+5. The run report carries every field the modules already produce, plus the engine fields of §12.2.
+
+### 10.3 The consumer read-set
+
+*Given* the same repo, *when* the run is observed at the filesystem level for its whole duration,
+*then* all three hold **on that same observed run**:
+
+| Clause | Observable |
+|---|---|
+| (a) | at least one read of a skill prompt file under the located plugin's skills tree |
+| (b) | at least one read of the consumer's `docs/{f}/REQ-{f}.md` |
+| (c) | the set of paths opened under the consumer's `.claude/workflows/` is **empty** |
+
+**BR-READ-1 — clause (c) is unconditional for a `pdlc dev` run.** The dev module has no drift gate
+of any kind, so no path under `.claude/workflows/` is reachable from it at all. The consumer-config
+opt-out AC-1.1's *Given* fixes is what keeps clause (c) true for a **`pdlc queue`** run, whose
+module does evaluate a drift gate: the config-side opt-out is evaluated *before* any drift-state
+read and short-circuits it, so the gate that C-4 forbids forking costs the engine no read under
+that directory rather than one permitted read. Without the opt-out, the same queue run is
+**expected** to be blocked by the gate and the drift-state read is then observable — a different
+posture, not this clause's. (AC-1.2 attributes the dev-run clause to the queue module's gate; that
+attribution is raised as an erratum, §13 O-ENG-2.)
+
+**BR-READ-2 — what the engine *does* read is stated, so clause (c) is not vacuous.** The consumer's
+own `docs/**` and `.claude/pdlc.config.json`, and reads inside the engine install and the located
+plugin's skills tree, are all expected.
+
+**BR-READ-3 — nothing is written into the consumer on the engine's account.** The engine ships no
+installer and writes no engine-owned file into a consumer repo; it neither repairs nor reports on
+`.claude/workflows/` (NG-7). A project's existing copy is irrelevant to an engine run.
+
+### 10.4 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-PAR-1 | consumer repo *has* a populated `.claude/workflows/` tree | irrelevant: same run, same read-set, no report about it (BR-READ-3) |
+| EC-PAR-2 | consumer has no `.claude/pdlc.config.json` at all | the modules' own defaults govern; the engine adds no config of its own to the repo |
+| EC-PAR-3 | a queue run without the config-side opt-out on a repo with drift recorded | blocked by the module's own drift gate, reported as the module reports it — correct, and not an engine failure |
+| EC-PAR-4 | a phase disabled by the consumer's config | its artifacts are absent from clause 1(i)'s expected set; the oracle is over *enabled* phases |
+| EC-PAR-5 | a dispatch path reaches the modules' throwing stub | engine failure naming the seam that was missing, exit `1` — never a silently skipped phase (BR-PARITY-2) |
+| EC-PAR-6 | a second copy of a workflow module appears under the engine tree | AC-1.5's anti-fork check fails the engine's own suite (BR-PARITY-1) |
+
+### 10.5 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-45 | the five structural clauses of §10.2 over one hermetic fixture run, asserted over creation events (AC-1.1, BR-PARITY-3/4) |
+| AT-ENG-46 | clause 1(ii)'s rules: a run recording a Phase-T decision has `DECISIONS`, one without has none; the cross-review set matches the recorded round windows exactly (AC-1.1) |
+| AT-ENG-47 | the three read-set clauses on one observed run, including the empty set under `.claude/workflows/` for a `pdlc dev` run with no opt-out configured (AC-1.2, BR-READ-1) |
+| AT-ENG-48 | a `pdlc queue` run with the opt-out configured opens no path under `.claude/workflows/`; without it, the run is blocked by the module's gate (BR-READ-1, EC-PAR-3) |
+| AT-ENG-49 | the anti-fork pair: resolved module locations and the absence of a second copy (AC-1.5) |
+| AT-ENG-50 | no engine-owned file is created under a consumer repo across a full fixture run (BR-READ-3, NG-7) |
+| AT-ENG-51 | EC-PAR-1, EC-PAR-4, EC-PAR-5, one case each |
+
 ## 11. FSPEC-ENG-09 — Queue driving and `--loop`
 
 ## 12. FSPEC-ENG-10 — The run report and the closed message catalogue
