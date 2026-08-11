@@ -35,6 +35,12 @@ citations are to that state.
 
 ## 1. Transport
 
+How an engine dispatch actually reaches a model, and what happens when that fails. The two entries
+below settle one question jointly: the SDK is the only path a run can take, so a transport failure is
+the run's failure rather than a trigger for a second attempt down a different path. DEC-ENG-01 fixes
+which transport is live and why the other is still built; DEC-ENG-02 fixes what is *not* built
+between them.
+
 ## DEC-ENG-01: The Agent SDK is the primary transport; `claude -p` is built as a fallback but is not runtime-selectable
 
 **Context:** REQ G-5 wants an unattended pipeline that dispatches agents with no Claude Code session.
@@ -107,6 +113,11 @@ transport-local (so the fallback is a genuine recovery rather than a second samp
 fault); or an operator requirement for unattended completion that outranks per-run attributability.
 
 ## 2. Guard parity
+
+The shipped hook scripts are a consumer-facing safety property, so the engine must not acquire a
+second, drifting copy of them. These two entries keep the `.sh` file authoritative (DEC-ENG-03) and
+make the one place that could silently weaken it — an unrecorded measurement — fail loudly instead
+(DEC-ENG-04).
 
 ## DEC-ENG-03: The shipped hook script stays the guard's only definition — both transports invoke it, and its fail-open interpreter probe is an accepted, probed consequence
 
@@ -200,6 +211,10 @@ existence.
 
 ## 3. Skills and prompts
 
+What the engine is allowed to dispatch, and what text a dispatch carries. Both entries reject a
+scan-the-source approach in favour of deriving from structure the workflow modules already expose:
+DEC-ENG-05 fixes the dispatchable *set*, DEC-ENG-06 fixes the prompt *bytes* each member contributes.
+
 ## DEC-ENG-05: The dispatchable skill set is derived from the workflow modules' own exports, not declared engine-side and not scanned out of source text
 
 **Context:** Startup rung 4 must check that every skill the pipeline can dispatch is readable, in
@@ -286,6 +301,11 @@ third language supplement lands; a skill directory acquires a non-prompt `.md` f
 "whole file set" needs a stated membership rule rather than a directory listing.
 
 ## 4. Engine-side provenance
+
+Three entries about facts the engine records for itself without asking the workflow modules to change
+shape: which phase a dispatch belongs to (DEC-ENG-07), what the credential posture was at startup
+(DEC-ENG-08), and how a finished dispatch is classified (DEC-ENG-09). The common commitment is that
+provenance is bought engine-side, from seams that already exist.
 
 ## DEC-ENG-07: Phase provenance is bought entirely on the engine side, from the `_phase` seam the modules already call
 
@@ -398,6 +418,11 @@ itself the `transport-contract-violation` member and should surface, not widen t
 
 ## 5. Test mechanics
 
+Two decisions where the *test* design is load-bearing enough to outlive the code it checks: how an
+assertion that spans the whole suite accumulates without a shared process (DEC-ENG-10), and how a
+guard-parity test is stopped from passing vacuously (DEC-ENG-11). Both exist because the obvious
+cheaper mechanism produces a green suite that proves nothing.
+
 ## DEC-ENG-10: Suite-wide assertions accumulate through the filesystem, under a run id minted by a runner before any test process exists
 
 **Context:** Three of this feature's oracles are set-equality over *the whole run*: the outcome
@@ -486,6 +511,11 @@ under DEC-ENG-04's second branch, at which point the counterparts are re-derived
 `canUseTool` rather than a hook matcher.
 
 ## 6. Configuration and lifecycle
+
+What an operator can turn, what they can read, and what the engine declines to manage. DEC-ENG-12
+gives the one tunable a single resolution point, DEC-ENG-13 closes the set of messages that can reach
+an operator, and DEC-ENG-14 records a known concurrency gap as deliberately unclosed rather than
+overlooked.
 
 ## DEC-ENG-12: The resolved dispatch timeout is an adapter constructor option stamped onto every dispatch, resolved at exactly one point
 
