@@ -312,22 +312,24 @@ rather than inferring it, which is the entire mitigation R-6 offers for the skew
 ### 4.4 Rung 4: which skills must be readable
 
 AC-3.5 asks for **set-equality** between the skill identifiers the modules can dispatch and the
-skill prompt files present in the installed plugin, in both directions, checked before any dispatch.
-The intent — a missing or renamed prompt file is discovered at startup, not mid-run by the phase
-that needed it — is specified here as:
+prompt files the installed plugin holds **for those identifiers** — in both directions, checked
+before any dispatch. The equality is scoped to the **dispatchable subset**, never to the plugin's
+whole `skills/` tree, because the plugin also delivers skills only an operator invokes
+interactively, which no module dispatches (`REQ-pdlc-headless-engine.md:493-507`). Within that
+scope both directions are satisfiable on a correct install, and both **fail closed**:
 
 - **Direction A (dispatchable ⊆ readable), enforced.** Every skill identifier a module can dispatch
   has a present, non-empty prompt file in the located plugin, and the two `se-implement` language
   supplements are present. A failure names each missing identifier and refuses (exit `1`).
-- **Direction B (readable ⊆ dispatchable), reported.** A prompt file present in the plugin that no
-  module dispatches is reported at startup and does **not** refuse.
+- **Direction B (readable ⊆ dispatchable), enforced over the same scope.** A prompt file the plugin
+  holds **for a dispatchable identifier** that the engine cannot dispatch names that identifier and
+  refuses (exit `1`). A prompt file belonging to an operator-invoked skill is **outside the scoped
+  set**: it is reported, and does not refuse. The distinction is membership of the modules-derived
+  identifier set, never a judgement about the file.
 
-Direction B is stated as *report, not refuse*, because at HEAD the two sets are not equal and cannot
-be: the plugin ships prompt files the modules never dispatch (the operator-invoked entry and
-consolidation skills), so an equality gate would refuse on every correctly installed machine. This
-is a defect in AC-3.5's oracle rather than a decision this FSPEC may make on its own — it is raised
-as an erratum against the REQ, and §13 O-ENG-1 carries it. The count in AC-3.5's parenthetical is
-likewise a count of *files*, not of dispatchable identifiers.
+The intent is unchanged — a missing, renamed, or unreachable prompt file is discovered at startup,
+not mid-run by the phase that needed it — and it now holds symmetrically: neither an identifier
+without a file nor a file the engine cannot reach can pass the rung silently.
 
 **BR-START-4 — the count is never the assertion, and the identifier set is checked against the
 modules.** Neither direction is expressed as "17" or any other number: a count passes on a plugin
@@ -336,8 +338,9 @@ can dispatch — the union, for every command, so `pdlc dev` and `pdlc doctor` g
 queue-only skill missing from the plugin is discovered before the queue run that needs it. Whether
 the engine derives that set from the modules or declares it and verifies the declaration against
 them is TSPEC's; what this rule forbids is a declaration **no check ties to the modules**, since
-that is a second place to forget a skill. (At HEAD the probe is containment over a frozen 17-name
-list, `pdlc/engine/lib/startup.mjs:20`, `:102` — red against this rule, as M-ENG-06 records.)
+that is a second place to forget a skill. (At HEAD the probe is one-direction containment over the
+frozen 17-name `EXPECTED_SKILLS` list, `pdlc/engine/lib/startup.mjs:20` — red against this rule, as
+M-ENG-06 records.)
 
 ### 4.5 Edge cases
 
@@ -349,8 +352,9 @@ list, `pdlc/engine/lib/startup.mjs:20`, `:102` — red against this rule, as M-E
 | EC-START-4 | `--dry-run` on a machine that would refuse on rung 5 only | composition proceeds and prints; rung 5's finding is reported, not fatal (§4.2) |
 | EC-START-5 | `--plugin-root` naming a directory with no skills tree | rung 1 passes on the override, rung 4 refuses naming every unreadable identifier |
 | EC-START-6 | a prompt file present but empty | treated as unreadable by rung 4 — an empty prompt would dispatch an agent with no role |
-| EC-START-7 | plugin ships a prompt file no module dispatches | reported, not refused (§4.4 Direction B) |
+| EC-START-7 | plugin ships an operator-invoked skill's prompt file, outside the dispatchable set | outside the scoped equality: reported, not refused (§4.4) |
 | EC-START-8 | two rungs fail at once | one message lists both; skipped rungs report their reason (BR-START-2) |
+| EC-START-9 | a prompt file for a dispatchable identifier the engine cannot dispatch | rung 4 refuses naming that identifier (§4.4 Direction B) |
 
 ### 4.6 Acceptance tests
 
@@ -360,9 +364,9 @@ list, `pdlc/engine/lib/startup.mjs:20`, `:102` — red against this rule, as M-E
 | AT-ENG-07 | every failing rung refuses with exit `1` and zero dispatches attempted (BR-START-1) |
 | AT-ENG-08 | the handshake refusal text names range, found-version, and remedy (§4.3, AC-3.2) |
 | AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture, including rung 0's working-directory half and its "not applicable" REQ-path half (BR-START-0/3) |
-| AT-ENG-10 | Direction A refuses on a plugin missing one dispatchable skill's prompt file; Direction B reports without refusing on an extra file (§4.4) |
+| AT-ENG-10 | three fixtures over §4.4's scoped equality: a dispatchable identifier whose prompt file is missing ⇒ refuse, naming it; a prompt file for a dispatchable identifier the engine cannot dispatch ⇒ refuse, naming it; an operator-invoked skill's file present ⇒ pass, reported only (§4.4, EC-START-7/9) |
 | AT-ENG-11 | banner and run report both carry `engineVersion` and `pluginVersion` as a pair (§4.3) |
-| AT-ENG-12 | EC-START-3…EC-START-8, one case each |
+| AT-ENG-12 | EC-START-3…EC-START-9, one case each |
 
 ## 5. FSPEC-ENG-03 — Auth posture: startup banner and the per-dispatch assertion
 
