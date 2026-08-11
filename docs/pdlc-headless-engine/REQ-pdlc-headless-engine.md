@@ -15,7 +15,16 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.6 | 2026-08-10 |
+| pdlc | approved — ready | Claude | 0.7 | 2026-08-10 |
+
+*Change note (0.7, 2026-08-10):* the operator confirmed §1.3's Agent-SDK-primary ruling on
+2026-08-10; this revision is a language-alignment pass only. Residual phrasing that still read
+as though headless `claude -p` were the primary dispatch transport (G-3, G-4, G-5, C-2, C-5,
+C-6, C-7, C-8, C-9, AC-2.3, AC-4.3, AC-5.1, AC-6.1, AC-6.3, R-4, O-2) is restated as
+Agent-SDK-primary / `claude -p`-fallback, or transport-neutral where the requirement genuinely
+applies to both transports. Deliberately fallback-scoped text (§1.3's fallback paragraph, O-1's
+flag-surface probe) is left as written. No goal, non-goal, constraint, acceptance criterion,
+risk or obligation is added or removed, and no testable meaning is changed.
 
 *Change note (0.6, 2026-08-10):* `ready` flipped to `true` by operator review 2026-08-10; no
 queue-row reference in this document needed repointing (the D-DIST-07 citation in §1 names row 6
@@ -172,25 +181,26 @@ docs-derived claim, kept as the policy-risk baseline above).
   Node defaults untouched. Adding a seam is a change to the modules, in this repo, with
   tests — never a fork (C-4).
 - **G-3 — Subscription-first dispatch.** *(US-02)* Every model call runs on the operator's
-  Claude subscription through headless Claude Code, and the per-phase model each module
-  already pins is forwarded to the CLI verbatim, whatever its value (C-7) — the engine
-  introduces no model policy of its own and knows no model names.
+  Claude subscription through the dispatch transport — the Claude Agent SDK primarily, headless
+  `claude -p` on the fallback path (§1.3) — and the per-phase model each module already pins is
+  forwarded to that transport verbatim, whatever its value (C-7) — the engine introduces no
+  model policy of its own and knows no model names.
 - **G-4 — Proxy passthrough as contract.** *(US-04)* `ANTHROPIC_BASE_URL`,
-  `ANTHROPIC_CUSTOM_HEADERS` and headroom's own variables reach every spawned `claude`
-  process; the effective endpoint is reported at startup so a bypassed proxy is visible
-  immediately rather than discovered from a missing trace hours later.
+  `ANTHROPIC_CUSTOM_HEADERS` and headroom's own variables reach every dispatch the engine
+  makes, on either transport; the effective endpoint is reported at startup so a bypassed proxy
+  is visible immediately rather than discovered from a missing trace hours later.
 - **G-5 — Skills resolved from the installed plugin, inlined by the engine.** *(US-01)* All 17
   skill prompt files — 15 `SKILL.md` files plus the two `se-implement` language supplements —
   are **not** packaged inside the engine. The pdlc Claude Code plugin remains the single
   delivery vehicle for every `SKILL.md`, so `/pdlc:*` skills keep working standalone in
   interactive sessions; the engine locates the locally installed plugin at dispatch time,
-  reads each skill's prompt file from it, and inlines that text into the composed `claude -p`
+  reads each skill's prompt file from it, and inlines that text into the composed dispatch
   prompt. No Skill tool and no `pdlc:` namespace reference appear in a composed prompt — the
   plugin is a resolved-from-disk source of prompt text, not an in-session capability the
-  dispatched agent invokes. (A recorded alternative, not chosen: have the dispatched headless
+  dispatched agent invokes. (A recorded alternative, not chosen: have the dispatched
   session invoke the Skill tool `pdlc:{skill}` directly, since the plugin is installed
   machine-wide — rejected because it reintroduces a runtime dependency on the Skill tool's
-  namespace resolution inside a non-interactive headless session, rather than a plain file
+  namespace resolution inside a non-interactive dispatched session, rather than a plain file
   read the engine controls end to end; see C-10.)
 - **G-6 — Pipeline semantics preserved.** *(US-03)* Phase graph, convergence behavior, round
   windows, verdict parsing, erratum routing, POSTMORTEM lifecycle, queue lifecycle, halt-row
@@ -247,7 +257,8 @@ docs-derived claim, kept as the policy-risk baseline above).
   §4.1). The same fail-closed check applies to the `claude -p` fallback via its own reported
   auth source.
 - **C-2 — Environment passthrough is contractual.** *(operator hard constraint)* Every
-  spawned `claude` process inherits the parent environment, headroom's
+  dispatch — an SDK-spawned session on the primary transport, a spawned `claude` process on the
+  fallback — inherits the parent environment, headroom's
   `ANTHROPIC_BASE_URL` (`http://127.0.0.1:8787`) and `ANTHROPIC_CUSTOM_HEADERS` included.
   The engine never constructs a child environment from scratch — it only ever extends the
   parent's — and it never sets, unsets, or rewrites either variable. The startup banner
@@ -258,22 +269,26 @@ docs-derived claim, kept as the policy-risk baseline above).
   existing seams is a change to the modules (tested, in this repo), never a patched copy.
 - **C-5 — Guard parity.** The `guard-harvest-before-delete` invariant (no deletion of
   `CROSS-REVIEW-*` / `CODE_REVIEW-*` / `ADVISORY-*` without `LEARNINGS-{feature}.md`) must
-  hold for engine-dispatched agents, enforced via per-dispatch hook/settings configuration
-  passed to `claude -p` — not left to plugin installation.
-- **C-6 — Non-interactive permissions are explicit.** The permission mode passed to
-  `claude -p` (allowed tools, bypass level) is a named, reviewable engine setting, not an
-  ad-hoc `--dangerously-skip-permissions` scattered through call sites.
+  hold for engine-dispatched agents, enforced via per-dispatch hook/settings configuration the
+  engine passes on whichever transport it dispatches over (SDK hook/settings options on the
+  primary path, `--settings` on the `claude -p` fallback) — not left to plugin installation.
+- **C-6 — Non-interactive permissions are explicit.** The permission posture passed to each
+  dispatch (allowed tools, bypass level) is a named, reviewable engine setting — expressed as
+  the SDK's `permissionMode`/allowed-tools options on the primary transport and as the
+  equivalent CLI flags on the `claude -p` fallback — not an ad-hoc
+  `--dangerously-skip-permissions` scattered through call sites.
 - **C-7 — Model aliases forwarded, not re-mapped.** Whatever model a module names for a
-  dispatch passes through to the CLI untranslated. The engine holds no model table, no
-  alias map, and no fallback list: alias resolution and unknown-alias errors stay the CLI's
-  job, so a module that gains a new model tier needs no engine change.
+  dispatch passes through to the transport untranslated. The engine holds no model table, no
+  alias map, and no fallback list: alias resolution and unknown-alias errors stay the
+  transport's job, so a module that gains a new model tier needs no engine change.
 - **C-8 — Operator-visible strings are a closed catalogue** *(DC-01)*. Every banner line,
   refusal, warning, and failure message the engine emits is a registered catalogue entry
-  asserted by id in the test harness, and every value the engine parses out of the CLI is
+  asserted by id in the test harness, and every value the engine parses out of the transport is
   read by a **total** function with a defined outcome for malformed input. No ad-hoc regex
   over stderr, no string emitted outside the catalogue.
-- **C-9 — Every runtime fact is measured, per platform** *(DC-02)*. The CLI flag surface,
-  auth-source detection, and output shape are recorded from the installed CLI with the
+- **C-9 — Every runtime fact is measured, per platform** *(DC-02)*. The transport interface
+  surface (the SDK's message schema; the CLI's flag surface on the fallback path),
+  auth-source detection, and output shape are recorded from the installed SDK and CLI with the
   command that measured them (O-1), never inferred from documentation; the supported
   platform set is stated and each claim is measured on each member.
 - **C-10 — Plugin version handshake, hard constraint.** *(operator hard constraint,
@@ -351,14 +366,15 @@ question. `{f}` denotes a feature name throughout.
   non-zero naming the refusal and the opt-in flag; *and given* the same state with that flag
   passed, the run proceeds and the banner states that pay-per-token billing is in effect.
 - **AC-2.3** *Given* a parent environment carrying `ANTHROPIC_BASE_URL` and
-  `ANTHROPIC_CUSTOM_HEADERS`, *when* any dispatch is spawned, *then* the child process
-  environment contains both, unmodified, together with the rest of the parent environment —
-  asserted for every spawn the engine performs, not only the first.
+  `ANTHROPIC_CUSTOM_HEADERS`, *when* any dispatch is started on either transport, *then* the
+  dispatched process environment contains both, unmodified, together with the rest of the parent
+  environment — asserted for every dispatch the engine performs, not only the first.
 - **AC-2.4** *Given* an operator whose subscription auth is present, *when* the engine
   starts, *then* it neither reads nor requires `ANTHROPIC_API_KEY`, and setting one does not
   change which account is billed.
-- **AC-2.5** *Given* any dispatch, *when* it is spawned, *then* its working directory is the
-  consumer repo root (C-3), so every artifact path the modules use resolves consumer-relative
+- **AC-2.5** *Given* any dispatch, *when* it is started on either transport, *then* its
+  working directory is the consumer repo root (C-3), so every artifact path the modules use
+  resolves consumer-relative
   exactly as it does today.
 
 **Group 3 — prompt composition, plugin handshake, and model forwarding** *(G-5; C-6, C-7,
@@ -398,7 +414,7 @@ C-10)*
 - **AC-4.3** *Given* retries were exhausted, *when* the run ends, *then* the engine surfaces
   the failure through the modules' own failure path — the phase halts with its normal
   POSTMORTEM and halt-row semantics — and the engine process itself does not crash, leave an
-  orphan `claude` child, or exit before the halt is recorded.
+  orphan transport child process, or exit before the halt is recorded.
 - **AC-4.4** *Given* an `auth-failure` mid-run, *when* it occurs, *then* it is **not**
   retried silently: the run stops and the message names the auth source that failed, because
   a retry loop against a dead credential burns the wall clock a queue run depends on.
@@ -412,9 +428,10 @@ C-10)*
 
 - **AC-5.1** *Given* an engine-dispatched agent in a repo where `LEARNINGS-{f}.md` does not
   exist, *when* it attempts to delete a `CROSS-REVIEW-*`, `CODE_REVIEW-*` or `ADVISORY-*`
-  file, *then* the deletion is refused via the per-dispatch hook/settings the engine itself
-  passes to `claude -p` (C-5) — asserted independently of the plugin's own hook wiring, so the
-  guard is proven to travel with the engine's dispatch configuration rather than depend on
+  file, *then* the deletion is refused via the per-dispatch hook/settings configuration the
+  engine itself passes on the transport in use (C-5) — asserted independently of the plugin's
+  own hook wiring, so the guard is proven to travel with the engine's dispatch configuration
+  rather than depend on
   whatever hooks a plugin install happens to register.
 - **AC-5.2** *Given* the same repo once `LEARNINGS-{f}.md` exists, *when* harvest deletes
   those files, *then* the deletion succeeds — the guard is not a blanket ban.
@@ -423,13 +440,15 @@ C-10)*
 
 - **AC-6.1** *Given* the engine's test suite, *when* it runs in CI, *then* it exercises the
   adapter against the modules' existing test doubles with **no live model calls and no
-  network**, and it fails if a test path would spawn a real `claude` process.
+  network**, and it fails if a test path would perform a real dispatch on either transport —
+  an SDK call that reaches the network, or a spawned real `claude` process.
 - **AC-6.2** *Given* an explicit opt-in flag, *when* the live smoke path runs, *then* it
   drives one real, small feature end-to-end against a scratch repo and asserts the artifact
   set of AC-1.1; it is never part of the default suite.
-- **AC-6.3** *Given* the recorded CLI interface contract (O-1), *when* the transport is
-  tested, *then* it is tested against **recorded fixtures of real CLI output**, and a fixture
-  refresh against a newer CLI version is a documented, repeatable step rather than a rewrite.
+- **AC-6.3** *Given* the recorded transport interface contract (O-1) — the SDK message-stream
+  shape and the fallback CLI's output — *when* a transport is tested, *then* it is tested
+  against **recorded fixtures of real transport output**, and a fixture refresh against a newer
+  SDK or CLI version is a documented, repeatable step rather than a rewrite.
 
 ## 6. Risks
 
@@ -446,10 +465,11 @@ C-10)*
 - **R-3 — Policy drift.** §1.1's auth facts are policy, not physics; Anthropic could change
   either side. The transport lives behind the `_agent` seam precisely so a future SDK (or
   API) transport is a swap, not a rewrite.
-- **R-4 — Session semantics.** `_sessionAgent` maps naturally onto `claude -p --resume`,
-  but resumed-session behavior under headless mode is less traveled; ship fresh-per-dispatch
-  first (today's semantics), enable sessions behind a flag (AC deferred to that flag's
-  work).
+- **R-4 — Session semantics.** `_sessionAgent` maps naturally onto the Agent SDK's
+  session-resume capability on the primary transport (and onto `claude -p --resume` on the
+  fallback), but resumed-session behavior under non-interactive dispatch is less traveled on
+  either; ship fresh-per-dispatch first (today's semantics), enable sessions behind a flag (AC
+  deferred to that flag's work) — the seam must not be painted shut.
 - **R-5 — Watchdog assumptions baked into prompts.** The pacing contract and IO-transport
   prose in the modules assume the runtime's 180 s watchdog and agent-mediated IO. They are
   harmless when hosted in Node (pacing remains good practice), but prompts that *instruct*
@@ -474,9 +494,10 @@ C-10)*
   interface contract with fixtures — the primary Agent-SDK transport's message-stream shape
   (system/init, rate_limit_event, terminal result — per `SPIKE-agent-sdk-auth.md`) is probed and
   fixtured the same way, and both are exercised behind the one `_agent` seam.
-- **O-2** Decide the guard-parity mechanism (C-5): per-dispatch `--settings` carrying the
-  PreToolUse hook vs. an engine-side pre-flight. Must be sourced from the engine's own
-  dispatch configuration, not from whatever hooks the plugin install happens to register
+- **O-2** Decide the guard-parity mechanism (C-5): per-dispatch hook/settings configuration
+  carrying the PreToolUse hook (the SDK's hook/settings options on the primary transport, or
+  `--settings` on the `claude -p` fallback) vs. an engine-side pre-flight. Must be sourced from
+  the engine's own dispatch configuration, not from whatever hooks the plugin install registers
   (AC-5.1) — the plugin being present (C-10) is no longer the open case to design for; hook
   *provenance* is.
 - **O-3** Decide where engine config lives (reuse `.claude/pdlc.config.json` per consumer —
