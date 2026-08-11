@@ -908,6 +908,31 @@ either transport — it is the first thing O-2 must measure (§13.2), because a 
 setting disables would pass every well-formedness test and protect nothing. Until that measurement
 exists, §9's tests are the shape of the answer, not the answer.
 
+**BR-GUARD-6 — a host that cannot run the guard is refused at startup (C-11).** The shipped
+`guard-harvest-before-delete` script needs a Python interpreter and, where none is obtainable,
+allows the deletion (`pdlc/hooks/scripts/guard-harvest-before-delete.sh:14-21`) — fail-open, a
+defensible trade for an interactive session and not for an unattended run, where it yields exactly
+the green-and-vacuous loss C-5 exists to prevent. So the engine treats an obtainable interpreter as
+a **declared host precondition**, on four fixed terms:
+
+- **Which interpreters satisfy it:** the same candidate set the shipped script itself accepts —
+  `python3`, `python`, `py`, in that order. The engine never widens or narrows that set
+  independently; if the script's set changes, this one follows it, because a precondition that
+  disagrees with the script it stands for would refuse hosts the guard would have worked on.
+- **How it is observed:** by **running** a candidate, not by finding it on `PATH` — the Windows
+  store stub is on `PATH` and does not run (EC-START-11) — and **once at startup**, not per
+  dispatch, so the answer is one operator-visible fact rather than a discovery made mid-run by the
+  phase that needed it.
+- **What the refusal says:** a §4.3 catalogue entry like every other — what was expected (an
+  accepted interpreter), what was found (each candidate tried and its outcome), and the remedy
+  (install one) — never "guard unavailable" alone.
+- **Where it sits:** rung 4a, after the plugin's bytes are located and readable (the script is one
+  of them) and before rung 5, so the finding costs nothing to obtain and is reported alongside the
+  others under BR-START-2 rather than in a round-trip of its own.
+
+The engine alters no part of the script's own fail-open posture (NG-1); the plugin path keeps it.
+This is a refusal to *run unattended* on such a host, not a change to the guard.
+
 ### 9.2 Behaviour
 
 *Given* an engine-dispatched agent working in a repo where `LEARNINGS-{f}.md` does not exist,
@@ -939,6 +964,7 @@ which is why a plan should schedule this before any unattended use.
 | AT-ENG-42 | with `LEARNINGS-{f}.md` present, harvest's deletions succeed — asserted per transport (AC-5.2, BR-GUARD-2) |
 | AT-ENG-43 | a transport that cannot carry the guard configuration refuses to dispatch, and its refusal message satisfies all three of EC-GUARD-4's obligations — it names the missing capability, names the fallback transport as the known alternative, and states that selecting it is not yet available (EC-GUARD-4) |
 | AT-ENG-44 | EC-GUARD-1, EC-GUARD-5, one case each |
+| AT-ENG-11a | on a host where no candidate interpreter runs, the ladder refuses at rung 4a, dispatches nothing, and the message names each candidate tried, its outcome and the remedy; on a host where a later candidate runs while an earlier one is present-but-not-runnable, the ladder passes rung 4a (C-11, BR-GUARD-6, EC-START-10/11) |
 
 ## 10. FSPEC-ENG-08 — Pipeline parity and the empty consumer read-set
 
@@ -1347,6 +1373,7 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 | C-8 (closed string catalogue, total parsing) | §12.3 |
 | C-9 (facts measured per platform) | §12.4 (fixtures per transport), §2 (M-ENG-* citations) |
 | C-10 (plugin handshake) | §4.1 rungs 1–3, §4.3 |
+| C-11 (guard executable, or no unattended run) | §4.1 rung 4a, §9.1 BR-GUARD-6, §4.5 EC-START-10/11 |
 | G-1, G-3, G-4, G-5, G-6, G-7 | §10.3, §5, §7.1, §6, §10.1, §8/§11 |
 | G-2 (canonical modules, run unmodified behind their seams) | §10.1 (BR-PARITY-1/2), §10.4 EC-PAR-5/6 |
 | NG-1 (no semantic change) | §10.1, §9.3 EC-GUARD-3/5, §11.1 |
@@ -1463,6 +1490,7 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | BR-GUARD-3 | provenance asserted with no plugin hooks registered | §9.1 |
 | BR-GUARD-4 | this is the largest open gap at HEAD | §9.2 |
 | BR-GUARD-5 | the refusal is asserted under the production permission posture | §9.1 |
+| BR-GUARD-6 | a host that cannot run the guard is refused at startup, rung 4a (C-11) | §9.1, §4.1 |
 | BR-PARITY-1 | modules imported, never copied; anti-fork observable | §10.1 |
 | BR-PARITY-2 | seams complete enough that no dispatch reaches the stub | §10.1 |
 | BR-PARITY-3 | the oracle is structural, no comparison run | §10.2 |
