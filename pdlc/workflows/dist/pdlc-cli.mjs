@@ -1850,6 +1850,39 @@ const MODEL_DEFAULT = "opus"; // all phases except Phase I
 // branch-derived starting index.
 const MAX_REVIEW_ROUNDS = 5;
 
+/**
+ * DEC-ROUNDS-02 (operator decision, 2026-08-10) — the LIFETIME review-round cap.
+ *
+ * `MAX_REVIEW_ROUNDS` is a per-INVOCATION budget: `deriveRoundWindow` opens the
+ * window one past the highest `-v{N}` cross-review already on the branch, so a
+ * document that keeps getting re-opened — an approval anchor staled by an edit,
+ * an erratum cascading in from a sibling document, a forced re-run — accumulates
+ * rounds without bound. On pdlc-consolidation-agent the REQ reached round 21 and
+ * the FSPEC and TSPEC round 18, each round costing a full author + reviewer fan-out
+ * and each producing findings smaller than the one before it.
+ *
+ * The cap is the review loop's damping term. Past this many rounds on disk the
+ * marginal value of another finding is below the cost of the round that would find
+ * it, so the pipeline **accepts the document as-is and moves forward**. Accepted
+ * as-is is NOT approved: no approval anchor is written, no verdict is synthesised,
+ * and the phase row says so. It is also not a failure: no POSTMORTEM is written,
+ * because nothing failed — the loop simply stopped paying for itself.
+ *
+ * It is a LIFETIME cap because the round history is already content-addressed on
+ * disk (§5.2's filename grammar), so "how many rounds has this document had, ever,
+ * on this branch" is a total function of a directory listing the gate already
+ * takes. No new state, no clock, no config.
+ *
+ * **`forcePhases` overrides it.** An operator who names the phase has asked for
+ * the round explicitly, which is exactly the signal the cap exists to supply in
+ * the operator's absence (see `phaseGate`, and `lifetimeCapReached`'s callers).
+ *
+ * Exported — unlike `MAX_REVIEW_ROUNDS`, this number is operator-facing: it is
+ * named verbatim in the notice and the phase row, and tests pin the boundary
+ * (round 15 opens, round 16 does not) against the constant rather than a literal.
+ */
+const MAX_LIFETIME_ROUNDS = 15;
+
 const MAX_AUTHORING_ATTEMPTS = 3; // consecutive no-progress dispatches, per episode
 const MAX_AUTHORING_DISPATCHES = 6; // total dispatches, per episode
 const MAX_AUTHORING_WRITE_BYTES = 12000; // per-tool-call emission ceiling stated to authors
@@ -6729,6 +6762,32 @@ function windowEnd(startIndex) {
   return startIndex + MAX_REVIEW_ROUNDS - 1;
 }
 
+/**
+ * DEC-ROUNDS-02 — has this document spent its LIFETIME round budget?
+ *
+ * `startIndex` is the round the next dispatch WOULD open, so `startIndex - 1` is
+ * the number of rounds already on disk. The cap is reached when opening the next
+ * round would take the document past `MAX_LIFETIME_ROUNDS`: at 14 rounds on disk
+ * the loop still opens round 15; at 15 it does not open round 16.
+ *
+ * Synchronous, total, and takes no seam — the same discipline `deriveRoundWindow`
+ * lives under, and for the same reason: the decision is content-addressed, derived
+ * from the directory listing the gate already took, never from a clock.
+ *
+ * Non-numeric input answers `false` (do not cap): a window index this function
+ * cannot read is not evidence that the budget is spent, and failing OPEN here is
+ * the safe direction — the worst case is one more review round, which is the
+ * behaviour that predates the cap.
+ *
+ * @param {number} startIndex - the round index the next dispatch would open.
+ * @returns {boolean}
+ */
+function lifetimeCapReached(startIndex) {
+  const next = Number(startIndex);
+  if (!Number.isFinite(next)) return false;
+  return next > MAX_LIFETIME_ROUNDS;
+}
+
 // ─── TSPEC §5.6.3 — the two prompt kinds, and the section walk behind them ────
 
 /** The doc type an artifact path names, e.g. `docs/f/FSPEC-f.md` → `"FSPEC"`. */
@@ -9938,6 +9997,43 @@ async function main({
       );
     }
 
+    // ─── DEC-ROUNDS-02 — the lifetime round cap (the single choke point) ────
+    //
+    // Placed LAST, after step G, and that ordering is the design:
+    //
+    //   - after step 4, so a document with a fresh recorded approval still
+    //     reports the ordinary "approved round N, hash FRESH" skip rather than
+    //     being relabelled as capped;
+    //   - after step G, so an unresolved POSTMORTEM still REFUSES the phase.
+    //     The cap says "this document has had enough review"; it says nothing
+    //     about a recorded failure, and it must never clear one;
+    //   - before the return, so it covers every path that opens a review round
+    //     through this gate — a fresh review, a re-review re-opened by a staled
+    //     approval anchor, and a forced-but-unforced-phase re-entry alike. The
+    //     erratum protocol's delta-confirmation rounds open a window WITHOUT
+    //     passing through here, so `erratumRound` carries the same check against
+    //     the same predicate (there is no third round-opening path).
+    //
+    // `forced` overrides: an operator who named this phase asked for the round.
+    if (!forced && lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const detail =
+        `Accepted as-is — lifetime review cap of ${MAX_LIFETIME_ROUNDS} rounds reached ` +
+        `(${onDisk} rounds on disk); NOT approved`;
+      recordPhase(phaseId, label, "⏭", detail);
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — ${onDisk} review ` +
+        `round${onDisk === 1 ? "" : "s"} for ${docType} are on disk and the cap is ` +
+        `${MAX_LIFETIME_ROUNDS}. No author, reviewer or optimizer was dispatched for this ` +
+        `phase. The document is ACCEPTED AS-IS and the pipeline moves forward. This is NOT ` +
+        `an approval: no verdict was reached this run and no approval anchor was written. ` +
+        `It is also not a failure — no POSTMORTEM was written. To review it again anyway, ` +
+        `re-run with forcePhases including "${phaseId}".`;
+      notices.push(notice);
+      emit(notice);
+      return { skip: true };
+    }
+
     return { skip: false, window, forced };
   }
 
@@ -10052,6 +10148,9 @@ async function main({
    * (step 4c). Returns the responses so the caller can read any FURTHER errata
    * out of them — which is how a second batch for the same document becomes
    * observable, and therefore how the §5 decision 2 bound gets to fire.
+   *
+   * Returns `null` — and dispatches nothing at all — when the upstream document
+   * has spent its DEC-ROUNDS-02 lifetime round budget.
    */
   async function erratumRound({ phaseId, label, target, items }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
@@ -10059,6 +10158,35 @@ async function main({
     const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
     const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
     const itemText = items.map((e) => e.item).join("; ");
+
+    // Step 4c's window, derived BEFORE step 4b's author dispatch — DEC-ROUNDS-02.
+    //
+    // The derivation is unchanged and still content-addressed (§3.6): it reads
+    // `CROSS-REVIEW-*` basenames, and the erratum author writes the upstream
+    // DOCUMENT, never a cross-review, so no listing this reads can differ either
+    // side of that dispatch. Taking it first is what lets the cap dispatch
+    // NOTHING — a check placed after step 4b would already have paid for the
+    // author episode and, worse, would leave the document edited with no round
+    // able to confirm the edit.
+    //
+    // `forcePhases` deliberately does NOT reach here: it names a phase to re-run,
+    // and an erratum round is not a phase. The operator's escape from a capped
+    // upstream document is to force that document's OWN phase.
+    const window = await phaseWindow(target);
+    if (lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${upstreamPath} — erratum round ` +
+        `skipped, nothing dispatched. ${onDisk} review round${onDisk === 1 ? "" : "s"} for ` +
+        `${target} are on disk and the cap is ${MAX_LIFETIME_ROUNDS}. The document is ` +
+        `ACCEPTED AS-IS (not approved, and not failed — no POSTMORTEM was written) and the ` +
+        `pipeline moves forward. Unaddressed erratum item${items.length === 1 ? "" : "s"}: ` +
+        `${itemText}. To apply them anyway, re-run with forcePhases including ` +
+        `"${upstreamPhase}".`;
+      notices.push(notice);
+      emit(notice);
+      return null;
+    }
 
     // Step 4b. The upstream document's author skill — `creator` where the phase
     // has one, and its `optimizer` where it does not (Phase R's REQ arrives
@@ -10084,7 +10212,7 @@ async function main({
 
     // Step 4c. The confirmation is the next round of the upstream document's own
     // append-only window — derived, never assumed (§3.6's pinned invariant).
-    const window = await phaseWindow(target);
+    // The derivation happened above, before step 4b, for the reason stated there.
     const round = window.startIndex;
     const reviewers = upstream.reviewers;
     const confirmPaths = reviewers.map(
@@ -10306,6 +10434,10 @@ async function main({
         }
 
         const responses = await erratumRound({ phaseId, label, target, items });
+        // DEC-ROUNDS-02: the upstream document is capped. Nothing was dispatched
+        // and nothing was edited, so there is no round to report and no response
+        // to read follow-on errata out of. `erratumRound` said so in a notice.
+        if (responses === null) continue;
         routed.push(target);
         for (const reply of responses) {
           followOn.push(

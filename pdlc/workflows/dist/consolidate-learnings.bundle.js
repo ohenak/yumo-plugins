@@ -2032,6 +2032,8 @@ const MODEL_DEFAULT = "opus";
 
 const MAX_REVIEW_ROUNDS = 5;
 
+const MAX_LIFETIME_ROUNDS = 15;
+
 const MAX_AUTHORING_ATTEMPTS = 3; 
 const MAX_AUTHORING_DISPATCHES = 6; 
 const MAX_AUTHORING_WRITE_BYTES = 12000; 
@@ -5023,6 +5025,12 @@ function windowEnd(startIndex) {
   return startIndex + MAX_REVIEW_ROUNDS - 1;
 }
 
+function lifetimeCapReached(startIndex) {
+  const next = Number(startIndex);
+  if (!Number.isFinite(next)) return false;
+  return next > MAX_LIFETIME_ROUNDS;
+}
+
 function docTypeFromPath(path) {
   const m = /\/([A-Z]+)-[^/]+\.md$/.exec(String(path ?? ""));
   return m ? m[1] : null;
@@ -7132,6 +7140,25 @@ async function main({
       );
     }
 
+    if (!forced && lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const detail =
+        `Accepted as-is — lifetime review cap of ${MAX_LIFETIME_ROUNDS} rounds reached ` +
+        `(${onDisk} rounds on disk); NOT approved`;
+      recordPhase(phaseId, label, "⏭", detail);
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — ${onDisk} review ` +
+        `round${onDisk === 1 ? "" : "s"} for ${docType} are on disk and the cap is ` +
+        `${MAX_LIFETIME_ROUNDS}. No author, reviewer or optimizer was dispatched for this ` +
+        `phase. The document is ACCEPTED AS-IS and the pipeline moves forward. This is NOT ` +
+        `an approval: no verdict was reached this run and no approval anchor was written. ` +
+        `It is also not a failure — no POSTMORTEM was written. To review it again anyway, ` +
+        `re-run with forcePhases including "${phaseId}".`;
+      notices.push(notice);
+      emit(notice);
+      return { skip: true };
+    }
+
     return { skip: false, window, forced };
   }
 
@@ -7216,6 +7243,22 @@ async function main({
     const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
     const itemText = items.map((e) => e.item).join("; ");
 
+    const window = await phaseWindow(target);
+    if (lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${upstreamPath} — erratum round ` +
+        `skipped, nothing dispatched. ${onDisk} review round${onDisk === 1 ? "" : "s"} for ` +
+        `${target} are on disk and the cap is ${MAX_LIFETIME_ROUNDS}. The document is ` +
+        `ACCEPTED AS-IS (not approved, and not failed — no POSTMORTEM was written) and the ` +
+        `pipeline moves forward. Unaddressed erratum item${items.length === 1 ? "" : "s"}: ` +
+        `${itemText}. To apply them anyway, re-run with forcePhases including ` +
+        `"${upstreamPhase}".`;
+      notices.push(notice);
+      emit(notice);
+      return null;
+    }
+
     const authorSkill = upstream.creator ?? upstream.optimizer;
     const authorResponse = await wrappedDispatch({
       skill: authorSkill,
@@ -7234,7 +7277,6 @@ async function main({
       sessionKey: authorSessionKey(featureName, target, upstreamPhase),
     });
 
-    const window = await phaseWindow(target);
     const round = window.startIndex;
     const reviewers = upstream.reviewers;
     const confirmPaths = reviewers.map(
@@ -7399,6 +7441,8 @@ async function main({
         }
 
         const responses = await erratumRound({ phaseId, label, target, items });
+
+        if (responses === null) continue;
         routed.push(target);
         for (const reply of responses) {
           followOn.push(
