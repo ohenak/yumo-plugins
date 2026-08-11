@@ -13,7 +13,18 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-11 |
+| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+
+**v1.1 changelog** — revision round 1, addressing `CROSS-REVIEW-product-manager-TSPEC-v1.md`
+(4 High, 2 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (7 High, 7 Medium, 2 Low).
+Substantive changes: transport selection removed in favour of FSPEC §3.2's no-selector decision
+(§3.4, §4.5); the suite's accumulate-then-assert mechanism replaced with a cross-process one
+(§7.4, and its consumers §3.5, §5.1); the skill-set derivation oracle changed from a source scan to
+a data read (§3.3); the queue's dispatchable set corrected and rung 4's scope stated (§3.3);
+`agent-reported-failure` given a literal predicate and an owning layer (§5.1); the guard-parity
+oracle given an execution mechanism and falsifying counterparts (§6.3); AC-1.2's filesystem
+observation designed (new §7.7); the `engine` block enumerated against FSPEC §12.2 and given a
+loop-termination sub-block (§4.5); tunables collected into one resolver table (new §4.6).
 
 ## 1. Overview
 
@@ -140,7 +151,7 @@ filesystem consumer-relative and never call `process.cwd()` themselves — they 
 paths to `fs` (M-ENG-01: `defaultReadFile` at `orchestrate-dev.js:8492`) and shell `git` with no cwd
 option. This is process-global state, and it is why the engine dispatches no run concurrently with
 another in the same process. `dispatchOpts.cwd` is *also* set per dispatch
-(`adapter.mjs:281`) so the transport pins the agent's own working directory (AC-2.5, BR-CWD-1)
+(`adapter.mjs:278`) so the transport pins the agent's own working directory (AC-2.5, BR-CWD-1)
 independently of the process cwd.
 
 **Two engine runs against one consumer repo are out of scope** (EC-RUN-4): no lock is designed here.
