@@ -112,6 +112,96 @@ that exercises every row), **A-ENG-01** (Skill-tool invocation considered and re
 
 ## 3. FSPEC-ENG-01 — Command surface, invocation grammar, and exit codes
 
+### 3.1 The commands
+
+The engine exposes one executable, `pdlc`, with a closed command set. Every command below is
+operator-visible surface; an invocation naming no command, or a command outside this set, prints
+usage and exits with the engine-refusal code (§3.3).
+
+| Command | Purpose | Dispatches models? |
+|---|---|---|
+| `pdlc dev <REQ path>` | run the dev pipeline for one feature (the direct-invocation entry) | yes |
+| `pdlc queue` | run the queue driver for one ready feature | yes |
+| `pdlc queue --loop` | repeat one feature per iteration until none is ready (§11) | yes |
+| `pdlc doctor` | run the startup gate ladder and report every rung, then stop | no |
+| any of the above with `--dry-run` | resolve, handshake, compose, print; dispatch nothing | no |
+
+`pdlc doctor` and `--dry-run` are the two **non-billing** surfaces, and their inertness is a
+contract, not an intention: on either path an attempted dispatch is itself a failure the run
+surfaces (§6.5, AT-ENG-14).
+
+### 3.2 Flags
+
+| Flag | Applies to | Meaning |
+|---|---|---|
+| `--force-phases <list>` | `dev` | forwarded to the module verbatim; the module owns its token grammar and its rejection of an unknown token |
+| `--queue-path <path>` | `queue` | which queue file the module reads |
+| `--loop` | `queue` | iterate (§11) |
+| `--dry-run` | `dev`, `queue` | compose and print, dispatch nothing |
+| `--plugin-root <path>` | all | override plugin discovery for this invocation |
+| `--cwd <path>` | all | the consumer repo the run operates on (§7.2) |
+| `--allow-api-key-billing` | all | the `auth.allowApiKeyBilling` opt-in of REQ §4.1 (§5) |
+
+Three grammar rules hold for every flag, because an unattended operator cannot see a typo:
+
+- **BR-CLI-1.** A flag is accepted in both `--flag value` and `--flag=value` form, and the two are
+  equivalent in effect.
+- **BR-CLI-2.** `--allow-api-key-billing` is **flag-only, per invocation**. It is never read from a
+  config file, never from an environment variable, and never persists across invocations (REQ §4.1
+  names its owner as the operator, per invocation). A config file offering to enable it has no
+  effect — this is what makes "did this run bill me?" answerable from the command line alone.
+- **BR-CLI-3.** Every other tunable of REQ §4.1 (`dispatch.retryAttempts`, `dispatch.retryBackoff`,
+  `dispatch.timeoutMinutes`) comes from engine configuration, and the engine's *effective* value
+  for each is reported in the run report (§12.2) so a surprising pause is explainable after the
+  fact. Where that configuration lives is O-3, still open (§13).
+
+### 3.3 Exit codes
+
+The exit code is the only thing a cron slot or a wrapper script reads, so it distinguishes the
+three outcomes an operator must act on differently (AC-1.4):
+
+| Code | Meaning | Operator's next move |
+|---|---|---|
+| `0` | the pipeline finished, or a non-dispatching surface (`doctor`, `--dry-run`) passed | none |
+| `2` | the pipeline **halted** — a normal, recorded pdlc outcome | read the POSTMORTEM; the run did its job |
+| `1` | the **engine** refused or crashed — startup gate, auth policy, bad usage, unparseable transport output | fix the environment; the pipeline never got its chance |
+
+**BR-EXIT-1 — a halt is not a crash.** A halt is a pipeline outcome the modules produce and record
+(POSTMORTEM file, `halted` queue row, its pathspec-scoped commit); the engine's job on a halt is to
+stay alive long enough for those records to be written and then report `2`. An engine that exits
+`1` on a halt has destroyed the operator's ability to distinguish "pdlc stopped and told you why"
+from "the host broke".
+
+**BR-EXIT-2 — refusals are `1`, uniformly.** Every startup-gate refusal (§4), the startup billing
+refusal (§5.2), and the per-dispatch auth abort (§5.3) exit `1`, because in all of them the
+pipeline produced no verdict about the feature.
+
+**BR-EXIT-3 — `queue --loop` reports the worst iteration.** The loop's exit code is `0` only if
+every iteration it ran ended at `0`; a halted iteration yields `2` and an engine refusal yields `1`
+(§11.3 fixes what the loop does *next* in each case, which is a separate decision from what it
+finally reports).
+
+### 3.4 Edge cases
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-CLI-1 | no command given, or an unrecognised command | usage printed, exit `1`; nothing resolved, nothing dispatched |
+| EC-CLI-2 | `pdlc dev` with no REQ path | usage printed, exit `1` — the engine does not guess a feature |
+| EC-CLI-3 | `pdlc dev` with a REQ path that does not exist under `--cwd` | engine refusal naming the path, exit `1`, before startup dispatch |
+| EC-CLI-4 | `--force-phases` with a token the module rejects | the module's own refusal surfaces; the engine adds no token vocabulary of its own |
+| EC-CLI-5 | a value flag given with no value (`--cwd` as the last argument) | usage error, exit `1`; never silently treated as empty |
+| EC-CLI-6 | `--dry-run` on a repo whose plugin handshake fails | the handshake refusal wins (§4.2 ordering): a dry run is not a way to skip the gate |
+
+### 3.5 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-01 | each command in §3.1 is accepted; a command outside the set prints usage and exits `1` (EC-CLI-1) |
+| AT-ENG-02 | `--flag value` and `--flag=value` produce identical composed descriptors (BR-CLI-1) |
+| AT-ENG-03 | a config file setting `auth.allowApiKeyBilling: true` changes nothing; only the flag does (BR-CLI-2) |
+| AT-ENG-04 | a halting fixture run exits `2` and a startup-refusal run exits `1`, on the same repo (BR-EXIT-1/2) |
+| AT-ENG-05 | EC-CLI-2…EC-CLI-6, one case each |
+
 ## 4. FSPEC-ENG-02 — The startup gate ladder
 
 ## 5. FSPEC-ENG-03 — Auth posture: startup banner and the per-dispatch assertion
