@@ -869,14 +869,18 @@ return is what §4.5's `tunables` block reports, so the *effective* value is alw
 |---|---|---|---|---|
 | `dispatch.retryAttempts` | 3 retries after the first attempt | engine config | `resolveTunables` ← config, O-3 location | hard-coded `maxRateLimitPauses` default 3 (`adapter.mjs:57`) |
 | `dispatch.retryBackoff` | exponential from 30 s, capped at 15 min | engine config | same | hard-coded `baseMs` 30 s (`adapter.mjs:58`), cap 15 min (`:59`), ≤1 s jitter (`:60`) |
-| `dispatch.timeoutMinutes` | 30 min per dispatch | engine config | same | not a named tunable at HEAD; `timeoutMs` arrives per dispatch |
+| `dispatch.timeoutMinutes` | 30 min per dispatch | engine config | same; the adapter stamps the resolved value × 60 000 as `timeoutMs` on **every** dispatch (§3.4) | not a named tunable at HEAD: no module passes `timeoutMs`, so HEAD's conditional assignment (`adapter.mjs:280`) never fires and the transport's constructor default decides (`transport.mjs:152`) |
 | `auth.allowApiKeyBilling` | `false` | operator, per invocation | **flag only** — `--allow-api-key-billing` (`bin/pdlc.mjs:88-93`), never config, never env (BR-CLI-2) | green |
 | `queue.maxIterations` | **unbounded** | operator, per invocation | **flag only** — `--max-iterations` (`bin/pdlc.mjs:83`, `:303-307`) | green, and correctly unbounded: the flag omitted yields `Infinity` (`:304-305`), so `runQueueLoop`'s `maxPasses = 100` (`run.mjs:273`) is a *parameter* default the CLI always overrides, never the operator-visible one |
 
 Three rules make the table load-bearing rather than descriptive:
 
 - **One resolution point.** Every read of a tunable goes through `resolveTunables`; no call site
-  reaches config or a flag directly, which is what makes the reported effective values honest.
+  reaches config or a flag directly, which is what makes the reported effective values honest. For
+  `dispatch.timeoutMinutes` that honesty needs one assertion of its own, because the value only
+  becomes effective by being stamped on the dispatch (§3.4): **a test asserts that the `timeoutMs`
+  observed at the transport boundary equals the reported `tunables.timeoutMinutes` × 60 000**, so a
+  regression that dropped the stamp is red rather than silently served by `defaultTimeoutMs`.
 - **The two operator-owned rows are flag-only** and are not accepted from configuration at all
   (BR-CLI-2 for billing; the same rule extended to `--max-iterations`, since an unattended bound
   silently set by a config file is the failure BR-LOOP-2 exists to prevent).
