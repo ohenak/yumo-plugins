@@ -33,11 +33,13 @@ const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 const FSPEC_PATH = join(
   "docs",
+  "completed",
   "pdlc-consolidation-agent",
   "FSPEC-pdlc-consolidation-agent.md"
 );
 const TSPEC_PATH = join(
   "docs",
+  "completed",
   "pdlc-consolidation-agent",
   "TSPEC-pdlc-consolidation-agent.md"
 );
@@ -166,6 +168,7 @@ describe("T05 — traceability set-equality (FSPEC §13 register ↔ TSPEC §12.
 
 const PROPERTIES_PATH = join(
   "docs",
+  "completed",
   "pdlc-consolidation-agent",
   "PROPERTIES-pdlc-consolidation-agent.md"
 );

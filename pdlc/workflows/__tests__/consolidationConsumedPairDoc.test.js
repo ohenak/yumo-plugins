@@ -47,7 +47,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
-const FSPEC_REL = "docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md";
+const FSPEC_REL = "docs/completed/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md";
 const FSPEC_TEXT = readFileSync(join(REPO_ROOT, FSPEC_REL), "utf8");
 
 const LOG_PATH = "docs/_decisions/.consolidation-log.md";

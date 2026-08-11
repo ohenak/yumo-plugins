@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§5, AC-1.5, AC-1.6, REQ-CONS-06, BL-01, BL-01a, D-CONS-06) |
+| Cited by | `docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§5, AC-1.5, AC-1.6, REQ-CONS-06, BL-01, BL-01a, D-CONS-06) |
 | Version | 1.0 · 2026-08-06 |
 | Verified at | HEAD, 2026-08-06 |
 

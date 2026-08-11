@@ -94,7 +94,7 @@ describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enac
     });
 
     test("every other consuming-repo path routes proposal-file", () => {
-      expect(routeOf("docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md")).toBe("proposal-file");
+      expect(routeOf("docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md")).toBe("proposal-file");
     });
 
     test("a path merely resembling a guard-set prefix without it (no trailing separator match) does not route PR", () => {
@@ -115,7 +115,7 @@ describe("T28 — routing predicates: routeOf, routeProposal, enactedByLog, enac
     const guardTarget = "pdlc/hooks/scripts/nudge-consolidation.sh";
     const constraintsTarget = "docs/_constraints/DOMAIN-CONSTRAINTS.md";
     const decisionsTarget = "docs/_decisions/DECISIONS-x.md";
-    const otherTarget = "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md";
+    const otherTarget = "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md";
 
     test("a guard-set target takes the PR route on every action — the guard-set is a set of paths, not of promote-only paths", () => {
       for (const action of ["promote", "revise", "retire"]) {
@@ -528,7 +528,7 @@ function runPass(overrides = {}) {
 describe("T31 — AT-R1, AT-R2: routing takes effect for a guard-set path and a constraints append", () => {
   test("AT-R1: a promotion targeting a MERGE_GUARD_DEFAULTS path takes the PR route (set-equal to the constant, not a subset)", async () => {
     const pass = runPass({
-      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      corpusListing: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -560,7 +560,7 @@ describe("T31 — AT-R1, AT-R2: routing takes effect for a guard-set path and a 
 
   test("AT-R2: a promotion targeting DOMAIN-CONSTRAINTS.md is appended in the invoking tree and is inside the §5.4 commit", async () => {
     const pass = runPass({
-      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      corpusListing: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -594,7 +594,7 @@ describe("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixtures", (
   test("AT-R3: HEAD and branch are unchanged; the commit contains exactly the §5.4 pathspec; pre-staged files are not swept in", async () => {
     const git = fakeGit({
       "rev-parse": { ok: true, stdout: "feat-pdlc-consolidation-agent\n" },
-      "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
+      "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
     });
     const pass = runPass({
       git,
@@ -634,7 +634,7 @@ describe("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixtures", (
 
   test("AT-R4: git refuses the commit after the lock retries — the terminal status is unchanged, writes-uncommitted is recorded, and the writes remain correct on disk", async () => {
     const git = fakeGit({
-      "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
+      "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
       commit: { ok: false, stdout: "", stderr: "fatal: unable to write new index file" },
     });
     const pass = runPass({
@@ -684,7 +684,7 @@ describe("T31 — AT-R3, AT-R4, AT-R5: the §5.4 commit's own three fixtures", (
 
 describe("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/branch-exists fixtures", () => {
   test("AT-Q2: three promotions sharing one PR — three commits, each a distinct PDLC-PROMOTION-ID, and PDLC-CONSOLIDATION-PROMOTIONS set-equal to those three pairs", async () => {
-    const git = fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } });
+    const git = fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } });
     const ghRun = fakeGhRun({
       "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
       "gh pr create": { ok: true, stdout: "https://github.com/kaneho/yumo-plugins/pull/12\n" },
@@ -745,7 +745,7 @@ describe("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/bra
     });
     const pass = runPass({
       ghRun,
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -791,7 +791,7 @@ describe("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/bra
     });
     const pass = runPass({
       ghRun,
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -832,7 +832,7 @@ describe("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/bra
     });
     const pass = runPass({
       ghRun,
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -862,7 +862,7 @@ describe("T31 — AT-Q2…AT-Q6: the PR route's duplicate/reopen/remediation/bra
 
   test("AT-Q6: the remote head branch consolidation/{passId} already exists — reason code branch-exists; the fallback proposal file carries the full diff; the existing branch and any PR for it are named", async () => {
     const git = fakeGit({
-      "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
+      "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" },
       push: { ok: false, stdout: "", stderr: "! [rejected]        consolidation/2026-01-01-1 -> consolidation/2026-01-01-1 (already exists)" },
     });
     const ghRun = fakeGhRun({ "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) } });
@@ -921,7 +921,7 @@ describe("T31 — AT-Q8, AT-Q9: the PR API failure and the deleted-branch traile
     });
     const pass = runPass({
       ghRun,
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -964,7 +964,7 @@ describe("T31 — AT-Q8, AT-Q9: the PR API failure and the deleted-branch traile
     });
     const pass = runPass({
       ghRun,
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       logText: buildConsolidationLog({ blocks: [{ passId: "2025-12-01-1", basenames: ["LEARNINGS-pdlc-consolidation-agent.md"] }] }),
       agent: makeAgentDouble({
         script: [agentReply({ clusters: [] })],
@@ -1013,7 +1013,7 @@ describe("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier
       logText: buildConsolidationLog({
         legacy: `<!-- pdlc:record ${JSON.stringify(priorRecord)} -->\n`,
       }),
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1079,7 +1079,7 @@ describe("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier
       _writeFile: firstFs.writeFile,
       _appendFile: firstFs.appendFile,
       _checkFile: firstFs.checkFile,
-      _git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } })._git,
+      _git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } })._git,
       _ghRun: fakeGhRun({})._ghRun,
       _log: () => {},
       _phase: () => {},
@@ -1104,7 +1104,7 @@ describe("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier
       _writeFile: secondFs.writeFile,
       _appendFile: secondFs.appendFile,
       _checkFile: secondFs.checkFile,
-      _git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } })._git,
+      _git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } })._git,
       _ghRun: fakeGhRun({})._ghRun,
       _log: () => {},
       _phase: () => {},
@@ -1136,7 +1136,7 @@ describe("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier
       logText: buildConsolidationLog({
         legacy: `<!-- pdlc:record ${JSON.stringify(priorRecord)} -->\n`,
       }),
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1185,7 +1185,7 @@ describe("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligations,
       "gh pr create": { ok: true, stdout: "https://github.com/kaneho/yumo-plugins/pull/30\n" },
     });
     const CORPUS = [
-      "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md",
+      "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md",
       "docs/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md",
     ];
     const pass = runPass({
@@ -1235,8 +1235,8 @@ describe("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligations,
     });
     const pass = runPass({
       ghRun,
-      files: readableCorpus(["docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md"]),
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      files: readableCorpus(["docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md"]),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1278,7 +1278,7 @@ describe("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, written wh
     });
     const pass = runPass({
       ghRun,
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1326,7 +1326,7 @@ describe("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, written wh
     };
     const pass = runPass({
       logText: buildConsolidationLog({ legacy: `<!-- pdlc:record ${JSON.stringify(priorRecord)} -->\n` }),
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1360,7 +1360,7 @@ describe("T31 — AT-R7: docs/_decisions/CONSOLIDATION-PROPOSAL-*.md, written wh
     const pass = runPass({
       ghRun,
       envPresent: fakeEnvPresent(new Set()), // credentialEnv absent AND local-gh probe fails => credential-unavailable
-      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
+      git: fakeGit({ "ls-files": { ok: true, stdout: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1415,7 +1415,7 @@ describe("the shipped default (pluginRepository: null) — both gh surfaces targ
   function defaultConfigPass() {
     return runPass({
       // `config` is left entirely at `buildConfig`'s shipped defaults — `pluginRepository: null`.
-      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      corpusListing: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
       agent: makeAgentDouble({ script: [agentReply({ clusters: [GUARD_CLUSTER] })] }),
       ghRun: fakeGhRun({
         "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
@@ -1444,7 +1444,7 @@ describe("the shipped default (pluginRepository: null) — both gh surfaces targ
   test("a CONFIGURED pluginRepository is still named on both surfaces — the null arm is a branch, not a removal", async () => {
     const pass = runPass({
       config: { pluginRepository: "acme/widgets" },
-      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      corpusListing: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
       agent: makeAgentDouble({ script: [agentReply({ clusters: [GUARD_CLUSTER] })] }),
       ghRun: fakeGhRun({
         "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
@@ -1496,7 +1496,7 @@ describe("item 10 on the report body a real pass returns", () => {
           `<!-- pdlc:record ${JSON.stringify(openRecord("t-a-md"))} -->\n` +
           `<!-- pdlc:record ${JSON.stringify(openRecord("t-b-md"))} -->\n`,
       }),
-      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      corpusListing: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
       agent: makeAgentDouble({ script: [agentReply({ clusters: [] })] }),
     });
 
@@ -1509,7 +1509,7 @@ describe("item 10 on the report body a real pass returns", () => {
 
   test("an empty log reports 0 — the count is a real reading, not a constant", async () => {
     const pass = runPass({
-      corpusListing: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
+      corpusListing: "docs/completed/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n",
       agent: makeAgentDouble({ script: [agentReply({ clusters: [] })] }),
     });
 
