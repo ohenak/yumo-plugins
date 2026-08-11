@@ -661,15 +661,41 @@ Every dispatch outcome lands in **exactly one** member of this closed catalogue 
 | `transport-contract-violation` | output the engine cannot parse | no retry; the run stops as an engine failure (exit `1`) |
 | `agent-reported-failure` | the dispatch ran and the agent reported failure | hand it to the module — this is the modules' business, not the engine's |
 
-**BR-FAIL-1 — the catalogue is closed and the classifier is total.** Set-equality is asserted
-between the classifier's possible outputs and these six; a seventh member is a change to this
-section and to AC-4.1, never a configuration. Unrecognised output classifies as
+**BR-FAIL-1 — the catalogue is closed and the classifier is total, and both directions are
+observable.** Set-equality is asserted between the classifier's possible outputs and these six; a
+seventh member is a change to this section and to AC-4.1, never a configuration. "Possible outputs"
+is made observable the way §7.3 makes the model map observable, not by inspection of source:
+
+- *Forward (outputs ⊆ six).* The classifier's own member set is an **inspectable value** — one
+  enumeration the engine exposes to its suite — and every classification asserted over the corpus
+  below is a member of it.
+- *Reverse (six ⊆ outputs).* A named **provocation corpus** reaches every member at least once:
+  a completing fixture (`ok`), a rate-limit fixture (`retryable`), a fixture that emits nothing
+  within the timeout (`timeout`), a fixture reporting an out-of-policy auth source (`auth-failure`,
+  §5.3), a fixture emitting unparseable output (`transport-contract-violation`), and a fixture whose
+  agent response reports failure (`agent-reported-failure`). A member no fixture reaches fails the
+  check; the fix is a fixture or this table, never a loosened oracle (cf. EC-DISP-6).
+
+ Unrecognised output classifies as
 `transport-contract-violation` — never as success, and never as `retryable` (a retry loop over
 output nobody can parse burns the wall clock without a path to progress).
 
 **BR-FAIL-2 — `agent-reported-failure` is not the engine's to interpret.** The modules already own
 what a failed agent response means for a phase (re-dispatch, round exhaustion, POSTMORTEM). The
-engine classifies it, records it, and passes it through unchanged.
+engine classifies it, records it, and passes it through unchanged — **terminal for that dispatch**:
+it is never retried and consumes no attempt beyond the one that produced it, so it never appears in
+§8.2's sequences. A module that re-dispatches afterwards starts a new dispatch with a full budget
+(BR-RETRY-4).
+
+**BR-FAIL-3 — an engine-fatal stop leaves the report and nothing else.** `auth-failure` (§8.4) and
+`transport-contract-violation` both end the run at exit `1` without a module halt: **no POSTMORTEM
+is written, no `halted` row is committed, and the feature's queue row stays exactly as the modules
+last left it** (typically `in-progress`; recovery is the modules' own lifecycle, EC-Q-4). The only
+witness is the run report on stdout (§12.1), which carries the dispatches already made and the
+classification that stopped the run. This is deliberate — the engine never invents a pipeline
+outcome (BR-RETRY-5) and a fabricated POSTMORTEM would be exactly that — but an operator returning
+to a repo whose row still reads `in-progress` should know it means "the host stopped", not "the
+pipeline is still thinking".
 
 ### 8.2 The retry state machine
 
@@ -685,9 +711,25 @@ the `dispatch.retryAttempts` retries, not an extra one.
 been retried after one `timeout`, a second `timeout` anywhere in its remaining attempts is terminal
 even with budget left.
 
-**BR-RETRY-3 — backoff is `dispatch.retryBackoff`** (default: exponential from 30 s, capped at
-15 min), and **every pause is recorded** in the run report (§12.2), so an unattended run's wall
-clock is explainable afterwards rather than mysterious.
+**BR-RETRY-3 — backoff is `dispatch.retryBackoff`, and the delay of each pause is derived by a
+fixed ladder** — a transport-supplied retry-after value wins if it is finite and positive; else a
+transport-supplied reset time, as the remaining interval; else exponential from the 30 s base,
+doubling per pause. Every delay is capped at 15 min, and a jitter of at most 1 s is added (never
+subtracted, so the cap is a floor-of-the-capped-case, not a ceiling the jitter breaches). At the
+defaults the pause sequence is therefore transcribable, and a test asserts it rather than asserting
+"a pause happened":
+
+| Pause | Delay, no transport hint | With a transport retry-after of *d* | With a reset time *t* |
+|---|---|---|---|
+| 1st | 30 s (+jitter) | *d* (+jitter), capped | *t* − now (+jitter), capped, never negative |
+| 2nd | 60 s (+jitter) | *d* (+jitter), capped | as above |
+| 3rd | 120 s (+jitter) | *d* (+jitter), capped | as above |
+| any | capped at 15 min | capped at 15 min | capped at 15 min |
+
+(Measured at HEAD: `pdlc/engine/lib/adapter.mjs:58-59` for the base and cap, `:75-95` for the
+ladder.) **Every pause is recorded** in the run report (§12.2) with its observed delay, so an
+unattended run's wall clock is explainable afterwards rather than mysterious: three 30 s pauses and
+one 30 s/60 s/120 s sequence are different runs, and the report distinguishes them.
 
 At the default of 3, the observable sequences and their outcomes (AC-4.2's table, which a test
 transcribes row by row):
@@ -747,11 +789,12 @@ the remaining dispatches.
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-33 | set-equality between the classifier's possible outputs and the six members (AC-4.1, BR-FAIL-1) |
+| AT-ENG-33 | set-equality between the classifier's inspectable member set and the six, and every member reached by BR-FAIL-1's provocation corpus (AC-4.1, BR-FAIL-1) |
 | AT-ENG-34 | unrecognised output classifies as `transport-contract-violation`, never `ok`, never `retryable` (BR-FAIL-1, EC-FAIL-1) |
 | AT-ENG-35 | each of §8.2's eight sequences, one fixture each, yields its stated attempt count and terminal classification (AC-4.2) |
 | AT-ENG-36 | a dispatch succeeding on attempt 3 leaves the next dispatch a full budget (BR-RETRY-4) |
-| AT-ENG-37 | every pause appears in the run report with taxonomy member, phase, attempt number, and delay (BR-RETRY-3, §12.2) |
+| AT-ENG-37 | every pause appears in the run report with taxonomy member, phase, attempt number, and delay, and the delays match BR-RETRY-3's table on a three-pause fixture — with no hint, with a retry-after, and with a reset time (BR-RETRY-3, §12.2) |
+| AT-ENG-67 | an engine-fatal stop (`auth-failure`, `transport-contract-violation`) writes no POSTMORTEM, commits no `halted` row, leaves the queue row untouched, and still emits the report (BR-FAIL-3, §12.1) |
 | AT-ENG-38 | exhaustion yields the halt artifacts, an empty child-process set at exit, no engine crash, and exit `2` (AC-4.3, §8.3) |
 | AT-ENG-39 | an `auth-failure` fixture stops the run with the source named and zero retries attempted (AC-4.4) |
 | AT-ENG-40 | EC-FAIL-2…EC-FAIL-6, one case each |
