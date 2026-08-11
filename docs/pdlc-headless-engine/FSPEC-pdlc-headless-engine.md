@@ -388,7 +388,7 @@ M-ENG-06 records.)
 | AT-ENG-06 | rungs run in §4.1's order, and a rung-1 failure leaves rungs 2/4 reported as skipped-with-reason, never passing; a rung-0 refusal (EC-CLI-3) leaves rungs 1–5 reported the same way, under `dev` and `doctor` alike (BR-START-2, BR-START-0/3) |
 | AT-ENG-07 | every failing rung refuses with exit `1` and zero dispatches attempted (BR-START-1) |
 | AT-ENG-08 | the handshake refusal text names range, found-version, and remedy (§4.3, AC-3.2) |
-| AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture, including rung 0's working-directory half and its "not applicable" REQ-path half (BR-START-0/3) |
+| AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture, including rung 0's working-directory half and its "not applicable" REQ-path half; and its report carries BR-START-3's three fields — version pair, effective base URL, auth catalogue id — with zero dispatches attempted (BR-START-0/3, AC-2.1) |
 | AT-ENG-10 | three fixtures over §4.4's scoped equality: a dispatchable identifier whose prompt file is missing ⇒ refuse, naming it; a prompt file for a dispatchable identifier the engine cannot dispatch ⇒ refuse, naming it; an operator-invoked skill's file present ⇒ pass, reported only (§4.4, EC-START-7/9) |
 | AT-ENG-11 | banner and run report both carry `engineVersion` and `pluginVersion` as a pair (§4.3) |
 | AT-ENG-12 | EC-START-3…EC-START-9, one case each |
