@@ -472,8 +472,9 @@ by reading prose is not on this list.
 
 **Suite and gates**
 
-- [ ] `cd pdlc/engine && npm test` exits 0 on ubuntu-latest and macos-latest, node 20, through the
-      **one** spelling in `scripts.test` — the runner, not a bare `node --test`.
+- [ ] `cd pdlc/engine && npm test` exits 0 on `ubuntu-latest`, node 20 — the whole of `engine-tests`'
+      matrix at HEAD (`pr-tests.yml:40`) — through the **one** spelling in `scripts.test`: the
+      runner, not a bare `node --test`.
 - [ ] The suite-wide assertion step runs on every invocation and **fails on an empty observation
       set**; a run against an empty scratch run dir exits non-zero (T01, T03).
 - [ ] All five rows of TSPEC §7.4's property table are implemented in `_assert-suite-wide.mjs`, and
@@ -528,8 +529,15 @@ by reading prose is not on this list.
       totality (T30), `parseVersion`/`satisfiesRange`'s ordering laws (T41).
 - [ ] Branch coverage over the four new modules (`lib/outcome.mjs`, `lib/catalogue.mjs`,
       `lib/auth.mjs`, `lib/transport-cli.mjs`) is **≥ 85 %**, observed by
-      `cd pdlc/engine && node --test --experimental-test-coverage __tests__/` (available on node 20)
-      and read off that run's coverage table.
+      `cd pdlc/engine && npm test -- --experimental-test-coverage` (node 20) and read off that run's
+      coverage table. The command goes **through `scripts.test`**, per the first item in this
+      section: a bare `node --test __tests__/` skips T11's runner, so `PDLC_TEST_RUN_ID` is never
+      minted, `--import=./__tests__/_bootstrap.mjs` is never passed, no observation records are
+      written and DEC-ENG-10's suite-wide step never runs — a coverage number read off that run
+      would be read off a red, non-hermetic run. T11's runner therefore **forwards unrecognised
+      arguments to the spawned `node --test`** (its row states this as an obligation, not an
+      accident); a maintainer who prefers to be explicit can spell the same run as
+      `node __tests__/_run-suite.mjs --experimental-test-coverage`.
 - [ ] The six-member outcome taxonomy is asserted in **both** directions, the reverse by a named
       provocation fixture per member; a member no fixture reaches is a missing fixture, never a
       loosened oracle.
@@ -545,10 +553,15 @@ by reading prose is not on this list.
 - [ ] Each of §6.3's three clauses has its falsifying counterpart asserted in the same file, and the
       deny path performs the deletion it is guarding.
 - [ ] The provenance test runs with no pdlc hooks registered on the host.
-- [ ] `docs/_constraints/pdlc-engine-baseline.md` carries an `M-ENG-09` row for **each** platform in
-      T17's matrix — `ubuntu-latest` and `macos-latest`, both present, not one — and the hermetic
-      gate fails when a row for the running platform is absent. T42 supplies the wave host's row; the
-      other is the §5 operator step, and this item is not met while either is missing.
+- [ ] `docs/_constraints/pdlc-engine-baseline.md` carries an `M-ENG-09` row for **every
+      `process.platform` on which the hermetic suite is run** — `linux`, because that is
+      `engine-tests`' only platform (`pr-tests.yml:40`), plus the Phase-I wave host's platform when
+      it differs (`darwin` if waves run on the maintainer's macOS) — and the hermetic gate fails when
+      a row for the running platform is absent. T42 supplies the wave host's row; any remaining row
+      is the §5 operator step. The item is met when every platform that runs the suite has a row —
+      one row suffices when wave host and CI platform coincide. It is **not** met by a row for a
+      platform no job and no wave runs on, and no `macos-latest` row is required, `410f3a07` having
+      removed that platform from the matrix.
 - [ ] If any row records `denyFired: no`, TSPEC §6.5's branch is taken — the posture tightens or the
       guard moves to `canUseTool` — and this DoD is **not** met by noting the measurement.
 
