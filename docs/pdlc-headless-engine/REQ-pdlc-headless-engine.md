@@ -395,11 +395,26 @@ question. `{f}` denotes a feature name throughout.
   | # | Inspectable startup state | Banner catalogue id |
   |---|---|---|
   | 1 | `CLAUDE_CODE_OAUTH_TOKEN` set in the environment | `auth.oauth-token` |
-  | 2 | no `ANTHROPIC_API_KEY`, logged-in Claude Code settings state present | `auth.session` |
+  | 2 | no `ANTHROPIC_API_KEY`, **logged-in evidence readable** (M-ENG-08) | `auth.session` |
   | 3 | `ANTHROPIC_API_KEY` present **and** `auth.allowApiKeyBilling` passed | `auth.api-key-optin` |
-  | 4 | `ANTHROPIC_API_KEY` present, flag not passed, logged-in settings state present | `auth.session-key-ignored` — start proceeds, key unused; AC-2.4's state |
-  | 5 | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused` (AC-2.2) — no banner |
+  | 4 | `ANTHROPIC_API_KEY` present, flag not passed, **logged-in evidence readable** (M-ENG-08) | `auth.session-key-ignored` — start proceeds, key unused; AC-2.4's state |
+  | 5 | `ANTHROPIC_API_KEY` present, flag not passed, **no logged-in evidence readable** | refusal `auth.api-key-refused` (AC-2.2) — no banner |
   | 6 | none of the above (no credential the engine can see) | `auth.unknown` — start proceeds; C-1b decides at first dispatch |
+
+  **"Logged-in evidence readable" is a named, fixturable observable, not a posture** (Phase-F
+  erratum): it is the inspectable login record **M-ENG-08** measures — a named file carrying a
+  named field, cited by id rather than re-carried here (DC-02) — so every row of this list can be
+  fixtured by placing or withholding that record plus the environment variables, with no operator
+  credential involved and none needed for row 5. Where M-ENG-08's evidence is unreadable (a
+  platform it has not been measured on, or a host that is not logged in), the list still decides:
+  with `ANTHROPIC_API_KEY` present the run refuses at row 5, and only with it absent does the run
+  proceed at row 6 as `auth.unknown`.
+
+  The **same startup posture is readable without starting a run**, through a diagnostic command
+  that dispatches nothing and bills nothing — engine and plugin versions as a pair (C-10), the
+  effective base URL, and the auth catalogue id this table names. That command is this REQ's, not
+  an inheritance from the command set FSPEC enumerates (Phase-F erratum: `pdlc doctor` was an
+  operator-visible surface with no upstream authority); its name and flags are FSPEC's to fix.
 
   The banner reports **no** SDK `apiKeySource` value, because none exists before a dispatch;
   the per-dispatch value is a C-1b/AC-2.4 observable and appears in the run report (AC-4.5). A
