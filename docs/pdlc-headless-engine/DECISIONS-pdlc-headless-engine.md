@@ -16,7 +16,7 @@ feature: pdlc-headless-engine
 | pdlc | draft | Claude | 1.2 | 2026-08-11 |
 
 **Changelog.** v1.2 (round-1 cross-review, pm + te) corrects the record without reversing a decision.
-DEC-ENG-03's interpreter refusal no longer *originates* a host precondition or borrow EC-GUARD-4's
+DEC-ENG-03's interpreter refusal no longer *originates* a host precondition, no longer borrows EC-GUARD-4's
 message contract, and no longer pins a rung number — all three are filed upstream as errata and the
 entry is now explicitly conditional on that authority (pm F-01/F-02/F-03, te F-02). DEC-ENG-04
 re-cites BR-GUARD-5/O-2 for the measure-first obligation and states the gate's key (pm F-04, te
