@@ -361,19 +361,35 @@ in the scanner alternative above), so the allow-list would either leave the suit
 have to exempt nearly every site it exists to police. The guard is therefore **containment, not
 absence**:
 
-> Every string literal in either workflow module that matches a skill-identifier shape — at a
-> dispatch call site, in a `PHASE_DISPATCH` role field, in a `skill:` field, or bound to a
-> module-local constant — is a member of the two modules' exported `DISPATCHABLE_SKILLS` union.
+> Every **skill-naming site** in either workflow module resolves to a member of the two modules'
+> exported `DISPATCHABLE_SKILLS` union. A site is a syntactic position, not a string shape, and the
+> four classes are closed: the value of a module-level `SKILL_*` / `ADVISORY_RUNG_SKILL` constant
+> declaration; a `PHASE_DISPATCH` role field; a `skill:` object field; the first argument of a
+> dispatch call. A site the extractor cannot resolve to a literal or a module-level constant is a
+> **failure**, never a skip. Conjoined with the per-class site census (TSPEC §3.3).
 
-That is green at HEAD by measurement — every literal occurrence of the ten identifiers in either
-module is a member, including the reviewer-role map's *keys* (`se-review`, `pm-review`, `te-review`
-at `orchestrate-dev.js:6229-6231`), which need no exemption because they are genuine members; that
-map's *values* (`software-engineer`, `product-manager`, `test-engineer`) are role slugs, not skill
-identifiers, and do not match the shape. And it fails
-exactly when the drift this decision fears occurs: a new dispatch site naming an identifier the
-exports do not carry. Its own failure mode is stated rather than assumed: the test is only as good as
-the identifier-shape predicate, so the predicate is asserted against the known set rather than being
-a regex nobody re-reads. A second accepted cost: deleting `EXPECTED_SKILLS` means nothing asserts that the five
+**The predicate is structural because no string predicate exists** *(corrected in this round; an
+earlier form of this entry said "matches a skill-identifier shape", which is not writable)*. Read as
+syntax, "lowercase words joined by hyphens" selects 54 distinct literals in `orchestrate-dev.js` and
+24 in `orchestrate-queue.js` at HEAD — `"command-failed"`, `"dispatch-error"`, `"rev-parse"`,
+`"awaiting-merge"` among them — so containment is red on correct code. Read as membership in the
+derived set, containment becomes `x ∈ S for all x ∈ S`, a tautology no input can fail. Read as "a
+shipped skill directory name" it is red again: `name: "orchestrate-dev"` (`orchestrate-dev.js:3316`)
+and `name: "orchestrate-queue"` (`orchestrate-queue.js:45`) name directories under `pdlc/skills/`
+that are not in the derived 10. The decisive case is the reviewer-role map, which the earlier form
+of this entry cited in its own defence: its keys `"se-review"`, `"pm-review"`, `"te-review"` and its
+values `"software-engineer"`, `"product-manager"`, `"test-engineer"` sit on the same three lines
+(`orchestrate-dev.js:6229-6231`) and are **syntactically indistinguishable**, so no string predicate
+separates them. Structurally the map is none of the four site classes, so neither keys nor values are
+sites and no exemption is needed — which is the property the earlier form claimed but could not
+deliver.
+
+Containment over an extracted set is vacuously green whenever extraction returns ∅, so the guard
+carries the **per-class site census** as a second conjunct — 7 / 28 / 1 / 11 = 47 sites at HEAD after
+the edit, enumerated in TSPEC §3.3 — asserted test-side and updated deliberately. A call-form change
+or a reflow that drops sites from a class turns the census red instead of letting containment pass
+over a shrunken set. The guard then fails exactly when the drift this decision fears occurs: a new
+dispatch site naming an identifier the exports do not carry. A second accepted cost: deleting `EXPECTED_SKILLS` means nothing asserts that the five
 operator-invoked-only skills are readable. That is correct rather than lost — the engine can never
 dispatch them — but it is recorded here so a later reader does not read the reduction as an
 oversight.
@@ -383,8 +399,8 @@ change (with the old defect restored).
 
 **Re-evaluation triggers:** A dispatch path appears that is not reachable from `PHASE_DISPATCH` or a
 named constant; the containment test needs an exemption of any kind (which is the signal that
-dispatch-site discipline is eroding); a skill identifier stops matching the shape predicate the test
-relies on.
+dispatch-site discipline is eroding); a **fifth site class** appears — a syntactic position that names
+a skill and is none of the four — since the census is only closed over the classes it enumerates.
 
 ## DEC-ENG-06: A dispatch inlines the identifier's whole prompt-file set — `SKILL.md` plus every supplement in its directory
 
