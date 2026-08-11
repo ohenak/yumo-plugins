@@ -17,34 +17,22 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.9 | 2026-08-11 |
+| pdlc | draft — awaiting operator review | Claude | 0.10 | 2026-08-11 |
 
-*Change note (0.9, 2026-08-11, Phase-F erratum round 5 — targeted edit):* one erratum, nothing
-else changed. M-ENG-06 in `docs/_constraints/pdlc-engine-baseline.md` claimed every criterion
-appears in *exactly one* row while AC-4.5 is deliberately split (green except its per-dispatch
-auth clause; red for that clause); the fact now states at-least-one-row totality with clause-level
-splits named, and §1.2a's echo of the old wording follows it. No AC text changed.
+*Change note (0.10, 2026-08-11, Phase-D erratum round 6 — targeted edit):* one erratum, nothing
+else changed. DEC-ENG-03 records that the engine must refuse to run when no interpreter the
+shipped guard script will accept is obtainable, but declined to *establish* that precondition:
+refusing turns a host that previously ran with the guard silently inert into a host that cannot
+run at all, which is an operator-facing deployability rule this REQ owns. **C-11 now authorises
+it.** No AC, goal, non-goal or other constraint changed.
 
-*Change note (0.8, 2026-08-11, Phase-F erratum round — targeted edit, no re-authoring):* nine
-errata raised against this REQ while FSPEC was authored are absorbed, and nothing else changed.
-**Statements corrected to HEAD:** AC-1.2(c) now attributes the empty `.claude/workflows/`
-read-set per surface (the dev module opens nothing there on any posture; the config opt-out is
-the queue surface's, AC-1.3); AC-3.5's both-directions equality is scoped to the
-module-dispatchable subset (10 identifiers / 12 prompt files at HEAD), since the plugin also
-delivers operator-invoked skills no module dispatches; AC-2.1 rows 2/4/5 name the inspectable
-logged-in evidence (M-ENG-08) instead of an unobservable "settings state present", so row 5 is
-fixturable without an operator credential. **Gaps closed:** AC-4.5 records which transport ran
-per dispatch (NG-6, AC-5.1, AC-6.3 all bind per transport) and fixes where the operator reads the
-report (the run's output stream; no engine-owned file in the consumer repo, NG-7); AC-1.3 and
-§4.1 declare `queue.maxIterations` and make a bounded stop distinguishable from queue exhaustion;
-the diagnostic startup-posture surface gains upstream authority in AC-2.1 (`pdlc doctor` reached
-FSPEC through the command set alone). **In `docs/_constraints/pdlc-engine-baseline.md`:** M-ENG-06
-declares itself total over the ACs and gains its missing AC-2.3 and AC-4.4 rows; M-ENG-08's
-closing "never a refusal" is corrected — unreadable evidence with `ANTHROPIC_API_KEY` present is
-AC-2.1 row 5, not row 6. Every citation in the changed text was verified at HEAD.
-The earlier change notes are compressed to hold the size budget; no approved decision is reopened.
-
-*Earlier change notes.* **0.7** (round 3): AC-1.1's closed filename set widened to run-dependent
+*Earlier change notes.* **0.9** (erratum round 5): M-ENG-06 restated as at-least-one-row totality
+with AC-4.5's deliberate clause-level split named; §1.2a's echo followed. **0.8** (erratum round
+4): nine FSPEC-raised errata absorbed — AC-1.2(c)'s empty `.claude/workflows/` read-set attributed
+per surface, AC-3.5's equality scoped to the module-dispatchable subset, AC-2.1 rows 2/4/5 named
+inspectable evidence (M-ENG-08), AC-4.5 gained per-dispatch transport identity and report
+location, AC-1.3/§4.1 declared `queue.maxIterations`, AC-2.1 gained the `pdlc doctor` authority.
+**0.7** (round 3): AC-1.1's closed filename set widened to run-dependent
 members and its observation window fixed at creation time; AC-3.3's `haiku` row split by
 provocation over a five-configuration corpus; §1.2a's table and the model map relocated to
 `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-06/07. **0.6** (round 2): three literal
@@ -293,6 +281,21 @@ environment) remain hard constraints (§4).
   carry `engineVersion` and `pluginVersion` together, always as a pair. This makes the plugin a
   hard runtime dependency of the CLI — a change of premise from earlier drafts, which treated
   plugin absence as harmless — and reopens the skew axis R-6 carries.
+- **C-11 — A host that cannot run the guard is not a host that runs pdlc unattended.** *(authorises
+  DEC-ENG-03's startup refusal; new 2026-08-11)* C-5's guard parity is a claim about an invariant
+  actually holding, not about a hook having been configured. The shipped
+  `guard-harvest-before-delete` script is fail-open by design — where it cannot execute it allows
+  the deletion (`guard-harvest-before-delete.sh:14-21`) — a defensible trade for an interactive
+  session, and not a defensible one for an unattended pipeline, where it yields exactly the
+  green-and-vacuous outcome C-5 exists to prevent. So the engine's ability to execute that script is a
+  **declared host precondition**, observed once at startup rather than discovered per dispatch, and
+  its absence is a fail-closed startup refusal on the same footing as C-10's: the engine dispatches
+  nothing, exits non-zero, and its message names what was missing and the remedy. This is a change
+  of premise, stated rather than inherited: a host that previously ran pdlc with the guard silently
+  inert no longer runs it at all, and that is the intended outcome. The engine does not alter the
+  script's own fail-open posture (NG-1) — the plugin path keeps it. Which interpreters satisfy the
+  precondition, how the observation is made, its refusal string and where it sits among the startup
+  checks are FSPEC's and TSPEC's to specify; the catalogue obligation in C-8 covers the message.
 
 ### 4.1 Declared thresholds
 
