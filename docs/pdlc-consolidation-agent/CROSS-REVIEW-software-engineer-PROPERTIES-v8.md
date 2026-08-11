@@ -24,6 +24,27 @@ by deleting the obligation.
 
 ## 2. Independent re-measurement of the delta's claims
 
+The delta makes seven checkable assertions about files. I re-measured each
+against HEAD rather than reading the changelog's word for it:
+
+| Claim in the delta | Verdict |
+|---|---|
+| FSPEC's `Version` cell reads `11.7`, TSPEC's reads `2.7` | **Exact** (`FSPEC:12`, `TSPEC:12`) |
+| The register range is `FSPEC:2116-2267` | **Exact, and it is the whole of §13 with nothing else swept in.** `## 13. Acceptance tests` is at `:2116` and `## 14. Obligations and open questions` at `:2268`, so the range is closed on the section boundary — the old `:2089-2239` was the same section before v11.6/v11.7 shifted it |
+| De-duplicated `AT-…` tokens over that range give **100** | **Exact.** My own enumeration returns 100 distinct ids |
+| The delta from the 2026-08-06 measurement of 99 is **exactly `AT-K3b`** | **Exact, and stronger than "the count went up by one".** I diffed the id *sets*, not the counts: the register at FSPEC v11.6 (`48631bc6`) yields 99 ids, HEAD yields 100, and the symmetric difference is the single line `AT-K3b`. No id was silently swapped under a stable count |
+| TSPEC §12.3 assigns `AT-K3b` to no file, and AT-K1…AT-K7 sit in `consolidationCredential.test.js` | **Exact.** The credential row (`TSPEC:2929`) enumerates AT-K1…AT-K7 and stops; the `consolidationPass.test.js` row (`:2923`) carries its all-unreadable fixture under **(no FSPEC AT)**. So the register→file direction really is short exactly one id, which is what §12.4's new cell claims |
+| `PROP-RTE-06(b)`'s Given is a **duplicate-suppressed** pass, so it cannot witness AT-K3b's obligation | **Exact.** `(b)` is *"a `no-op` pass where everything was duplicate-suppressed"* (`PROPERTIES:1073-1075`) — AC-1.4's second cause, not the third |
+| PROP-RTE-06's body rejects the shared-terminal-status bridge — *"§5.3 decides on causes, not on terminal status"* | **Verbatim**, with one locator nit: the sentence wraps, beginning at `:1081` and finishing at `:1082`, and the citation names only `:1082`. Not worth a finding — the quote is exact and the reader lands inside it |
+| The property set is unchanged at **118** | **Exact, both ways.** Distinct `PROP-*` ids at HEAD: 118. Symmetric difference against the `7545fea1` blob: **empty**. Nothing added, removed, renumbered or re-homed, exactly as the changelog claims |
+
+One further check the delta did not claim but which its new conjunct depends
+on: *"the write double's recorded path set"* is not an oracle invented here.
+TSPEC already states AT-R7's negative in exactly that vocabulary — *"asserted
+through the write double's recorded path set"* (`TSPEC:2847`) — so the
+mechanism is precedent-reuse rather than a new fixture idiom, and it costs the
+implementer no new double (`TSPEC:2460` binds `_writeFile` to `fakeFs`).
+
 ## 3. Findings
 
 ## 4. Oracle-quality checks on what changed
