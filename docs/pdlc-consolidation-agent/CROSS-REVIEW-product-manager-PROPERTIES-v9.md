@@ -122,3 +122,6 @@ upstream and are not this document's to fix.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
+
+APPROVAL-HASH: sha256:b4ad69f2b45ca5f409f4dfe45d52913ae72eae01d137bcb0ac0a9ec1eeac1954
+REVIEWED-COMMIT: 3c1d68538b9501afdf3ad754a0aa51f4d548c84d
