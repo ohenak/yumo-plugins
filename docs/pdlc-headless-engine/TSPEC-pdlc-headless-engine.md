@@ -1631,7 +1631,7 @@ every file it touches; a component in **bold** is new in this feature.
 | **`lib/catalogue.mjs`** | new | §3.5 |
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
-| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, stale `opts.label` comment at `:266-268` corrected) | §3.6, §4.1, §4.4, §5.2 |
+| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **resolved `dispatch.timeoutMinutes` stamped as `timeoutMs` on every dispatch's options object** (§3.4), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
 | `lib/startup.mjs` | changed (structured rungs 0–5, derived skill set) | §4.3 |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables`) | §4.3, §4.6, §5.4, §7.1 |
