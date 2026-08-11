@@ -13,7 +13,24 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+
+**v1.2 changelog** — revision round 2, addressing `CROSS-REVIEW-product-manager-TSPEC-v2.md`
+(2 High, 1 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (2 High, 2 Medium, 1 Low).
+Both Highs from each reviewer reduce to two root causes, and both are now fixed at the source rather
+than in the assertions that consumed them. **(1) `opts.label` is `null` at every dispatch site** —
+measured, not assumed — so the phase is taken from the `_phase` seam held as adapter run state and
+stamped on each descriptor (§4.1), which makes `dispatches.byPhase`, `RetryRow`, `PauseRow` and
+`authSources` carry a real phase (§4.4, §4.5) while keeping §8.3's "no other file under
+`pdlc/workflows/` is modified" true. **(2) The suite's run id was minted per child process**, so no
+two test files shared an observation directory; it is now minted once by a runner before any child
+exists, with a self-test asserting both files' records land in one directory (§7.0). §7.4's model-map
+oracle is restated as AC-3.3's own two directions with a literal per-row witness table, since
+M-ENG-07 row 1 is quantified and rows 1/4 and 6/7 are not separable by `(phase, model)` pairs. Also:
+`stopReason` made total over the loop's actual exits and `maxIterations` converted to `null` where
+the block is built (§4.5); the transport boundary restated as containment plus `cwd` presence rather
+than instance set-equality (§3.4); a closed exemption allow-list for the no-bare-literal test (§3.3);
+rung 4's narrowing recorded as a decision (§3.3); new open question O-ENG-T5 (§9.2).
 
 **v1.1 changelog** — revision round 1, addressing `CROSS-REVIEW-product-manager-TSPEC-v1.md`
 (4 High, 2 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (7 High, 7 Medium, 2 Low).
@@ -668,10 +685,11 @@ Rung 4's `EXPECTED_SKILLS` frozen literal (`startup.mjs:20`) is deleted, replace
 
 ### 4.4 `PauseRow`, `RetryRow`, `DenialRow`, `DispatchCounts`
 
-`PauseRow` exists at HEAD (`adapter.mjs`, pushed on `RateLimitedError`) and its fields are unchanged:
+`PauseRow` exists at HEAD (`adapter.mjs`, pushed on `RateLimitedError`); it keeps every field it has
+and gains one, `phase` (see below — HEAD's `label` is the skill, never a phase):
 
 ```js
-{ timestamp, skill, label, attempt, waitedMs, rateLimitType, status, resetsAt, retryAfterMs }
+{ timestamp, skill, label, phase, attempt, waitedMs, rateLimitType, status, resetsAt, retryAfterMs }
 ```
 
 It is append-only and run-scoped: a pause is evidence of what the account did, so rows are never
@@ -679,7 +697,7 @@ coalesced or trimmed. `rateLimitType` and `status` carry the SDK's own vocabular
 (`"five_hour"`, `"rejected"` — SPIKE §3), never a normalised synonym, so the report can be read
 against Anthropic's semantics rather than the engine's.
 
-**`RetryRow` is new** (`{ timestamp, skill, label, attempt, outcome, delayMs }`) and is the row
+**`RetryRow` is new** (`{ timestamp, skill, phase, attempt, outcome, delayMs }`) and is the row
 FSPEC §12.2 asks for by name — "taxonomy member, phase, attempt number, delay". `PauseRow` alone
 could not carry it: it has no taxonomy-member field, and §5.2 now retries `timeout`, which produces
 no rate-limit pause at all and so would otherwise appear in the report nowhere. Every retry writes a
@@ -717,7 +735,7 @@ report.engine = {
   authSources: [{ skill, phase, attempt, apiKeySource }],   // per dispatch, AC-4.5 (§4.4)
   baseUrl: string|null,                    // ANTHROPIC_BASE_URL, or null when direct
   startup: RungRecord[],
-  dispatches: DispatchCounts,              // per phase label and per skill (§4.4)
+  dispatches: DispatchCounts,              // per normalised phase and per skill (§4.4)
   retries: RetryRow[],                     // every retry, §4.4 — empty array, never absent
   pauses: PauseRow[], denials: DenialRow[],
   tunables: { retryAttempts, retryBackoff, timeoutMinutes, maxIterations },  // effective, §4.6
@@ -737,13 +755,13 @@ completeness rather than infer it. Six rows are AC-4.5's own; three are FSPEC-ad
 | startup auth catalogue id | `startupAuth.{row, catalogueId}` | **added in v1.1** — v1.0 carried no startup-posture field, only the per-dispatch one |
 | transport-reported auth source, **per dispatch** | `authSources[]` | one row per dispatch, not a scalar (§3.6) |
 | effective base URL | `baseUrl` | `null` when direct, never absent |
-| per-phase dispatch counts | `dispatches` | keyed by phase label **and** skill; v1.0's `{[skill]: number}` alone could not answer "per phase" |
+| per-phase dispatch counts | `dispatches` | keyed by the normalised `_phase` value **and** by skill (§4.1, §4.4); v1.0's `{[skill]: number}` alone could not answer "per phase", and a `byPhase` keyed on `opts.label` would have answered it with one `null` bucket |
 | retry / pause rows: taxonomy member, phase, attempt, delay | `retries[]`, `pauses[]` | **`retries[]` added in v1.1** — v1.0 carried `PauseRow` only, so a `timeout` retry (§5.2 now retries them) had no row at all |
 | transport (FSPEC-added) | `transport` | §3.4 |
 | effective dispatch tunables (FSPEC-added, BR-CLI-3) | `tunables` | **added in v1.1** — §4.6 |
 | permission posture in force (FSPEC-added, BR-PERM-1/2) | `permissionMode` | **added in v1.1** — the single named setting's value, `transport.mjs:89` |
 
-`RetryRow` is `{ timestamp, skill, label, attempt, outcome, delayMs }` where `outcome` is the
+`RetryRow` is `{ timestamp, skill, phase, attempt, outcome, delayMs }` where `outcome` is the
 taxonomy member that provoked the retry (`retryable` or `timeout`) — the member FSPEC's row asks for
 by name. A `PauseRow` is the rate-limit-shaped specialisation and keeps its own richer fields
 (§4.4); a `retryable` retry produces one of each, a `timeout` retry produces a `RetryRow` only.
@@ -1273,7 +1291,8 @@ correctness depends entirely on the double:
   clause passes on nothing. So the double **replays each dispatch's file writes from its fixture** —
   for a reviewer dispatch, creating the cross-review file the prompt names, with the fixture's
   `VERDICT:` line and counts — reproducing the creation events a real agent would have produced.
-- **A fixture is bound to a dispatch by `(skill, phase label, round index)`, never by skill alone**
+- **A fixture is bound to a dispatch by `(skill, phase, round index)`** — §4.1's phase, from the
+  `_phase` run state, which is what makes this key available at all — **never by skill alone**
   (TE Q-03). Keying on skill would make a round-2 reviewer dispatch replay round 1's writes, so the
   double would overwrite `CROSS-REVIEW-{role}-{doc}-v1.md` instead of creating `-v2.md` — breaking
   the append-only property `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads from the directory
@@ -1458,7 +1477,7 @@ every file it touches; a component in **bold** is new in this feature.
 | AC-2.5 | dispatch cwd is the repo, per dispatch | §2.3, §4.1 | `lib/adapter.mjs:278`, `lib/run.mjs:155` |
 | AC-3.1 | a dispatch composes for every skill in the set | §3.3 | `lib/skills.mjs:312` |
 | AC-3.2 | no plugin installed ⇒ legible refusal | §3.3 (resolution), §4.3 rung 1 | `lib/skills.mjs:204-256` |
-| AC-3.3 | pinned model map, set-equality both directions | §4.1, **§7.4** (the model-map harness) | modules' constants; `lib/adapter.mjs:271` passes through; the descriptor accumulator asserts against M-ENG-07 |
+| AC-3.3 | pinned model map, set-equality both directions | §4.1 (descriptor + phase provenance), **§7.4** (the harness and its per-row witness table) | modules' constants; `lib/adapter.mjs:271` passes through; the descriptor accumulator asserts AC-3.3's two directions against M-ENG-07 |
 | AC-3.4 | permission posture is explicit | §6.2, §6.5 | `lib/transport.mjs:89`, `:170-174` |
 | AC-3.5 | dispatchable ≡ readable, both directions | §3.3, §7.4 | **`DISPATCHABLE_SKILLS`** exports + `lib/startup.mjs` rung 4 |
 | AC-4.1 | six-member outcome taxonomy | §4.2, §5.1 | **`lib/outcome.mjs`** |
