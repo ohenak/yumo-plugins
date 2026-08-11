@@ -68,7 +68,40 @@ Mediums below are both consequences of the erratum landing upstream without a do
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On severity for F-01: I have now recorded this at Medium three rounds running, and I want to be explicit rather than quietly consistent. It is a false statement about an approved rule, propagated into the edit surface — the shape that usually earns High. I am holding it at Medium because the product-lens test is user impact, and the worst case is a small dead branch and a misleading paragraph: no acceptance criterion narrows, no user-facing behavior changes, and §7.4's oracle is unaffected because no row reads that line. If the SE author reads it as a design commitment rather than an illustration, say so and I will escalate on the next round rather than argue severity here. |
+| Q-02 | §6.5's hermeticity guard: does the live path ever run under `--import=./__tests__/_bootstrap.mjs`? §7.5 says the live path installs no observation writer, so `errorText` never reaches disk outside the hermetic suite (`TSPEC:1775-1781`). Carried forward unanswered from v6 Q-02 — not gating, and it becomes moot if F-01's fix removes the composition-time append entirely. |
+
 ## Positive Observations
+
+- **The erratum went to the right document, and it went further than I asked.** My v6 F-01 offered
+  two ways out — drop the illustration, or re-ground it. The author took neither shortcut: they
+  traced the claim to its source in FSPEC BR-MODEL-3, corrected it there, and then found the *second*
+  site at §6.3 that the first edit had missed (POSTMORTEM-T v2.0, Option B). FSPEC v1.5's change note
+  even records the sweep — "§6.3 and §7.3 were the only two sites of the claim; every other dry-run
+  mention (§3.1, §3.2, §4.1–4.2, §6.4, §7.3, §16) was read in full and attributes no model-map
+  coverage to the surface" — which is exactly the completeness argument I would have asked for. That
+  is a finding fixed at the root instead of at the symptom.
+- **The corrected BR-MODEL-3 is stronger than the original.** v1.3 asserted a reachability claim that
+  was false; v1.5 asserts the true one *and* names the bound — "it exercises at most one row and is
+  never the corpus's source". A reader can now check the dry-run surface's reach against the code in
+  one hop (`bin/pdlc.mjs:190`, one `composePrompt` call, one skill). The rewrite closed a gap rather
+  than deleting the sentence that exposed it.
+- **AT-ENG-29 and EC-DISP-6 were held byte-identical, and the change note says so.** The erratum
+  touched the prose that was wrong and nothing that was approved. That is the discipline that makes a
+  late upstream edit safe to accept without re-reviewing the whole FSPEC, and it is why this round
+  costs one delta pass instead of a full re-read.
+- **The mechanism I most cared about is untouched.** v5's High — the record's write timing — is still
+  pinned at settlement, one line per attempt, in all four places v1.5 put it (`:781-792`, `:1425-1431`,
+  `:1546`, `:1589`). The upstream churn did not loosen row 4 or reopen the accumulator's contract.
+
+**Traceability:** AC-3.3's two directions are unchanged and remain decidable from the recorded file.
+AC-3.1's dry-run inspection surface is unchanged in intent — F-01 is about a description of that
+surface, not a change to it, and the FSPEC correction moved the description toward AC-3.1's actual
+shape. BR-MODEL-3's composed-not-billed guarantee survives the correction intact, since the corpus's
+settlements are fixture transports (§7.2) and none is billed. No scope creep, no requirement dropped,
+and no product decision was taken in the erratum.
 
 ## Recommendation
 
