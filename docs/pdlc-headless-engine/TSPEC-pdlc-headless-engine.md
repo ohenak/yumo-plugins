@@ -300,6 +300,96 @@ Plugin-root resolution is discharged and unchanged (O-8): explicit override → 
 extracted cache → marketplace checkout, with `tried[]` retained for a legible refusal
 (`skills.mjs:204-256`).
 
+### 3.4 The `Transport` interface and its two implementations (C-3, BR-TRANS-*)
+
+One interface, deliberately narrow — a transport dispatches a composed prompt and reports what it
+observed. It owns no policy: no retry, no backoff, no rate-limit pausing, no auth verdict. Those live
+one layer up in the adapter (R-ARCH-2).
+
+```js
+createTransport({ queryFn, env, apiKeySourcePolicy, defaultTimeoutMs, permissionMode })
+  -> { dispatch(prompt, { model, cwd, timeoutMs, maxTurns })
+         -> Promise<DispatchResult> }
+```
+
+`createTransport` (`transport.mjs:135`) and its `dispatch` JSDoc (`:143-150`) already declare exactly
+this shape at HEAD; the SDK implementation is the one that exists. **Both implementations return the
+same `DispatchResult`** (§4.2) and throw from the same four-class error set — `AuthPolicyError`
+(`:23`), `RateLimitedError` (`:33`), `TimeoutError` (`:46`), `TransportError` (`:55`) — which is why
+`classifyOutcome` (§5.1) can be transport-blind.
+
+| Concern | `transport.mjs` (SDK, primary) | `transport-cli.mjs` (`claude -p`, fallback, new) |
+|---|---|---|
+| dispatch | `queryFn({ prompt, options })`, consume the async stream | spawn `claude -p --output-format stream-json`, consume stdout lines |
+| model / cwd / turns | `options.model` / `.cwd` / `.maxTurns` (`:176-178`) | `--model`, child `cwd`, `--max-turns` |
+| child env | `{ ...env }`, **spread, never replaced** (`:159`) | identical rule, same helper |
+| timeout | `AbortController` + timer (`:162-166`) | same timer, `child.kill("SIGTERM")` then `SIGKILL` |
+| `apiKeySource` | `system/init` message (`:199-206`) | same field in the stream-json init line |
+| permission mode | `options.permissionMode` + paired `allowDangerouslySkipPermissions` (`:170-174`) | `--permission-mode`, `--dangerously-skip-permissions` |
+| guard parity | in-process `hooks.PreToolUse` (§6) | `--settings` file per dispatch (§6) |
+| absent terminal result | `TransportError` (`:236-243`) | identical: a stream that ends without a result is a contract violation, never an empty success |
+
+**The proxy-passthrough rule is a shared invariant, not two implementations of one idea** (C-2, G-4).
+The env spread at `transport.mjs:159` is what carries `ANTHROPIC_BASE_URL` and
+`ANTHROPIC_CUSTOM_HEADERS` (SPIKE §4) into every dispatch. A single exported helper builds the child
+env for both transports, and a shared parity test asserts a sentinel variable survives (BR-PARITY-5).
+
+**Per-dispatch auth assertion stays in the transport** (C-1b), because it is an observation of that
+dispatch, not a policy: the observed `apiKeySource` is checked against `apiKeySourcePolicy`
+(`DEFAULT_API_KEY_SOURCE_POLICY = ["none"]`, `:63`) and a mismatch throws `AuthPolicyError` **before
+any tool runs**. `startupFor` (`bin/pdlc.mjs:88`) widens that set to the five-member policy only under
+`--allow-api-key-billing` (`:93`).
+
+**Transport selection is explicit and recorded.** `resolveTransport({ env, flags })` returns
+`{ kind: "agent-sdk" | "cli", transport, reason }`; the primary is chosen unless the operator selects
+the fallback. There is **no silent failover**: an SDK failure is a failure (BR-TRANS-6), because a
+transport that quietly changes underneath a run makes every subsequent observation unattributable.
+
+### 3.5 The message catalogue seam (C-8, AC-6.4)
+
+Every operator-visible string the engine emits — refusals, gate reasons, pause notices, exit
+summaries — is registered, and emitted only through the registry:
+
+```js
+// lib/catalogue.mjs (new)
+export const MESSAGES = Object.freeze({ "auth.api-key-refused": { severity, template }, ... });
+export function message(id, params): string   // throws on unknown id or missing param
+export function messageIds(): string[]
+```
+
+Three properties, all mechanically checked rather than reviewed:
+
+- **Unknown id throws** at emission, so an unregistered string cannot reach an operator.
+- **Every registered id is emitted at least once by the suite, asserted once suite-wide**, not per
+  test: each `message()` call records its id into a run-scoped set, and a final test asserts
+  set-equality with `messageIds()`. Per-test assertions would make the property vacuous the moment a
+  test is skipped (this repo's `consolidation-agent-vacuous-green` lesson).
+- **Ids are stable identifiers, wording is not.** The catalogue id is the contract other documents
+  cite (`auth.*` rows in §3.2); the template may be reworded without a spec change, and no test
+  asserts prose.
+
+Severity is data on the entry, not the caller's choice, so the same condition cannot be a warning in
+one path and a refusal in another.
+
+### 3.6 Report and provenance seams (AC-4.5, BR-REP-0, NG-7)
+
+`buildEngineBlock()` (`report.mjs:36`) and `stampReport(report, engine)` (`:70`) keep their contract:
+the module's report is copied verbatim and extended with one `engine` key — `stampReport` never
+mutates and never edits a module-produced field (NG-7). Two fields change from declaration to
+observation:
+
+| Field | HEAD | Target |
+|---|---|---|
+| `transport` | hardcoded `"agent-sdk"` (`report.mjs:51`) | the `kind` `resolveTransport` chose, recorded once per run |
+| `apiKeySource` | one run-scoped `lastApiKeySource` (`adapter.mjs:245`, written `:320`, read `:381`) | a per-dispatch record; the block carries the observed set plus per-dispatch rows |
+
+`buildEngineBlock` therefore takes `transport` and `authSources` arguments instead of a constant and a
+scalar. Both are supplied by the adapter's getters, which is why the adapter already exposes
+`getPauseLog`, `getDenialLog`, `getDispatchCounts`, `getApiKeySource` — the last becomes
+`getAuthSources()`. **The engine writes the `engine` block and nothing else**, so a module field and
+an engine field can never collide silently: a test asserts `engine` is the only key `stampReport`
+adds.
+
 ## 4. Data Model
 
 ## 5. Error Handling
