@@ -419,8 +419,9 @@ question. `{f}` denotes a feature name throughout.
 **Group 3 — prompt composition, plugin handshake, and model forwarding** *(G-5; C-6, C-7,
 C-10)*
 
-- **AC-3.1** *Given* a dispatch for any of the 17 skill prompts, *when* the composed prompt is
-  inspected via the dry-run surface, *then* it contains the full text of that prompt file
+- **AC-3.1** *Given* a dispatch for **each** member of the skill-identifier set AC-3.5 fixes
+  (every member, not a sample), *when* the composed prompt is inspected via the dry-run
+  surface, *then* it contains the full text of that prompt file
   resolved from the **locally installed pdlc plugin's** `skills/{skill}/SKILL.md` (or its
   `se-implement` language-supplement file), and contains **no instruction to invoke the Skill
   tool** and no `pdlc:` namespace reference — the plugin supplies the bytes at dispatch time,
@@ -430,13 +431,36 @@ C-10)*
   engine **dispatches nothing** and exits non-zero with a message naming the engine's declared
   range, the plugin version found (or "not found"), and the remedy (C-10) — this replaces the
   earlier assumption that the engine has no plugin dependency to lose.
-- **AC-3.3** *Given* a dry run of the full phase graph, *when* the model passed to each
-  dispatch is compared against the model the corresponding module pins, *then* every dispatch
-  matches, for every model value the modules currently name, and the engine substitutes no
-  default of its own for a model it does not recognise.
+- **AC-3.3** *Given* a dry run of the full phase graph, *when* the model each dispatch carries
+  is compared against this **literal** expected map, *then* the comparison is a **set-equality**
+  in both directions — every dispatch's model value appears in the map, and every map row is
+  exercised by at least one dispatch, so a phase that silently stops pinning a model fails
+  (TE F-04). The map is transcribed here, not imported from the modules' constants:
+
+  | Dispatch site | Model value |
+  |---|---|
+  | every phase except Phase I (`MODEL_DEFAULT`) | `opus` |
+  | Phase I implementation waves (`MODEL_IMPLEMENTATION`) | `sonnet` |
+  | advisory-tier fallback (`MODEL_ADVISORY_FALLBACK`) | `opus` |
+  | queue Phase-0 readiness triage (`MODEL_QUEUE`) | `sonnet` |
+  | verdict-recovery re-read dispatches | `haiku` |
+
+  Measured at HEAD: `orchestrate-dev.js:1603`, `:1646`, `:1653`, `:7463` and `:9968`
+  (`model: "haiku"`), `orchestrate-queue.js:70`. The engine substitutes no default of its own
+  for a model it does not recognise; the map is a **test fixture**, not an engine table (C-7).
+  When a module changes a pinned model, this table is updated in the same change — a drift
+  between the two is exactly the failure the set-equality is there to catch.
 - **AC-3.4** *Given* the permission posture passed to each dispatch, *when* the engine is
   inspected, *then* it comes from one named, reviewable setting applied uniformly, and no
   call site carries its own ad-hoc permission escalation (C-6).
+- **AC-3.5** *Given* any engine start, *when* the startup checks run alongside the C-10
+  handshake and **before** any dispatch, *then* the set of skill identifiers the modules can
+  dispatch equals the set of skill prompt files present in the installed plugin — set-equality
+  in both directions, not containment (TE F-06): a prompt file present but not dispatchable,
+  and a dispatchable identifier with no readable file, both fail closed at startup with the
+  differing identifiers named. A missing or renamed `SKILL.md` is therefore discovered before
+  the run starts, not mid-run by the phase that needed it. The count (17 at HEAD = 15
+  `SKILL.md` + 2 `se-implement` supplements) is an observation, never the assertion.
 **Group 4 — dispatch failure taxonomy and endurance** *(US-02; G-7; DC-01)*
 
 - **AC-4.1** *Given* any dispatch outcome, *when* the engine classifies it, *then* it lands
