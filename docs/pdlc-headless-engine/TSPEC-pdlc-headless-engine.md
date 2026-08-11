@@ -511,6 +511,114 @@ to a Claude Code run (AC-1.1, `orchestrate-dev.js:6190`).
 
 ## 5. Error Handling
 
+### 5.1 `lib/outcome.mjs` — one total classifier (AC-4.1, BR-FAIL-1)
+
+The classification decision is extracted out of the transport into a new module so that it is (a)
+transport-blind and (b) testable without a dispatch:
+
+```js
+export const OUTCOMES = Object.freeze([
+  "ok", "retryable", "timeout", "auth-failure",
+  "transport-contract-violation", "agent-reported-failure",
+]);
+export function classifyOutcome({ error, result }): Outcome    // total: no throw, no undefined
+export function observedOutcomes(): Set<string>               // suite-wide accumulator, §7.4
+```
+
+The mapping is by error class, which is why §3.4 requires both transports to throw the same four:
+
+| Input | Outcome |
+|---|---|
+| `AuthPolicyError` (`transport.mjs:23`) | `auth-failure` |
+| `RateLimitedError` (`:33`) | `retryable` |
+| `TimeoutError` (`:46`) | `timeout` |
+| `TransportError` (`:55`) | `transport-contract-violation` |
+| a result whose text the module's own contract marks as a reported failure | `agent-reported-failure` |
+| anything else, with a terminal result | `ok` |
+
+HEAD already funnels every thrown value into those four classes: `classifyThrown`
+(`transport.mjs:98`) passes the four through unchanged, maps a fired timer to `TimeoutError`
+(`:107-109`), a rate-limit-shaped error to `RateLimitedError` (`:110-121`) forwarding `status`,
+`rateLimitType`, `resetsAt`, `retryAfterMs` verbatim, and **everything unrecognised to
+`TransportError`** (`:123`) — never to success and never to `retryable`. That last arm is the reason
+`classifyOutcome` can be total without a fallback branch of its own.
+
+Two obligations follow, and both are tests rather than code:
+
+- **Forward (outputs ⊆ six), suite-wide.** Every `classifyOutcome` call records into
+  `observedOutcomes()`; one final test asserts that set is a subset of `OUTCOMES`. Scoping the
+  assertion to the provocation corpus alone would let a seventh member appear in any other test
+  unnoticed — the same accumulate-then-assert shape as the catalogue (§3.5).
+- **Reverse (six ⊆ outputs).** A named provocation fixture per member. A member no fixture reaches
+  fails the check, and the repair is a new fixture, never a loosened oracle.
+
+`agent-reported-failure` is classified, recorded, and handed to the module unchanged (BR-FAIL-2). It
+is terminal for the dispatch: never retried, consuming no attempt beyond the one that produced it. The
+modules own what a failed agent response means — re-dispatch, round exhaustion, POSTMORTEM — and an
+engine that retried here would silently double a review round.
+
+### 5.2 The retry machine (AC-4.2, BR-RETRY-1…4)
+
+HEAD implements **rate-limit pausing only**: `_agent` retries the same dispatch on `RateLimitedError`
+up to `maxRateLimitPauses` (`adapter.mjs:290-318`, default 3 at `:57`) and rethrows every other error
+(`:291-292`). Timeouts are not retried at all. The target machine keeps that loop's shape and
+generalises its predicate:
+
+- **One budget, `dispatch.retryAttempts` (default 3 retries after the first attempt), shared by
+  `retryable` and `timeout`** (BR-RETRY-1). A timeout retry is one of the three, never an extra one.
+- **A per-dispatch cap of one timeout retry** (BR-RETRY-2): a second `timeout` anywhere in the
+  remaining attempts is terminal even with budget left. The cap is counted per dispatch *run*, not per
+  attempt position, so it is a counter beside `attempt`, not a comparison against it.
+- **Budgets are per dispatch** (BR-RETRY-4): `attempt` is a local of the `_agent` call
+  (`adapter.mjs:285`, "number of pauses already taken for THIS dispatch"), so nothing accumulates across dispatches within a phase. That locality is the
+  mechanism — a run-scoped counter would make one slow phase silently starve the next.
+- **`auth-failure` and `transport-contract-violation` are never retried**, at any budget.
+
+Delays come from `computeRateLimitWaitMs` (`adapter.mjs:75`), unchanged in preference order:
+transport-supplied `retryAfterMs` if finite and positive → the remaining interval to a supplied
+`resetsAt` (`< 1e12` guarded) → exponential `baseMs × 2^attempt` from 30 s (`:58`), every branch capped
+at 15 min (`:59`) with ≤ 1 s of jitter added (`:60`). Because the ladder is a pure function of
+`(err, attempt, options)` with `now`/`jitterFn` injected, FSPEC §8.2's pause table and its eight
+sequences are transcribed into fixtures directly — the tests assert the delay, not that "a pause
+happened".
+
+**Every pause is recorded** (§4.4) with the delay actually observed, so an unattended run's wall clock
+is explainable afterwards: three 30 s pauses and a 30/60/120 s ladder are distinguishable in the
+report.
+
+### 5.3 Engine-fatal stops (BR-FAIL-3)
+
+`auth-failure` and `transport-contract-violation` end the run at exit `1` **without any module halt**:
+no POSTMORTEM is written, no `halted` queue row is committed, and the feature's queue row stays
+exactly as the modules last left it (typically `in-progress`). The engine never fabricates a pipeline
+outcome — a POSTMORTEM it invented would be indistinguishable from one the review loop produced, and
+this repo's whole halt-clearing protocol (`RESOLVED: yes` against a real `## Recommendation`) depends
+on that distinction holding.
+
+The single witness is the run report on stdout, carrying the dispatches already made and the
+classification that stopped the run. Mechanically: the engine catches at the top of `runDev`/`runQueue`
+(`run.mjs:187`, `:228`), stamps the report (§3.6), prints it, and exits — the module is never given a
+chance to write its own halt artefacts, because it is no longer running.
+
+### 5.4 Exit-code mapping (AC-1.4, BR-EXIT-1…3)
+
+| Code | Condition | Written where |
+|---|---|---|
+| `0` | the pipeline finished, or a non-dispatching surface (`doctor`, `--dry-run`) passed | `bin/pdlc.mjs:236-238` |
+| `2` | the pipeline **halted or blocked at its own gate** — a normal, recorded pdlc outcome | the module's `outcome` field, mapped once |
+| `1` | the **engine** refused or crashed: startup gate, auth policy, bad usage, unparseable transport output | every refusal path, uniformly |
+
+**A halt is not a crash** (BR-EXIT-1). The modules produce a halt's record — POSTMORTEM file, `halted`
+queue row, pathspec-scoped commit — and the engine's only job is to stay alive long enough for those
+writes to land, then report `2`. Exiting `1` on a halt would erase the operator's ability to tell
+"pdlc stopped and told you why" from "the host broke", which is the distinction the exit code exists
+for.
+
+The mapping lives in **one** function over the module's `outcome` field, called once at the top level,
+so `refused`, `idle`, `no-queue`, `halted`, `blocked` and `max-passes` (`run.mjs:273`) cannot acquire
+divergent codes down different paths. Under `--loop`, the loop's code is the worst iteration's,
+`1` > `2` > `0` (BR-EXIT-3); since a refusal stops the loop, the worst is always the last iteration's.
+
 ## 6. Guard Parity Design
 
 ## 7. Test Strategy
