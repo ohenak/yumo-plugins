@@ -108,6 +108,96 @@ fault); or an operator requirement for unattended completion that outranks per-r
 
 ## 2. Guard parity
 
+## DEC-ENG-03: The shipped hook script stays the guard's only definition — both transports invoke it, and its fail-open interpreter probe is an accepted, probed consequence
+
+**Context:** `pdlc/hooks/scripts/guard-harvest-before-delete.sh` is the plugin path's blocking
+`PreToolUse` hook. Under Claude Code the harness runs it; under the engine, something must. The
+engine could invoke the script, or reproduce its decision procedure in JavaScript inside the
+transport layer where the hook callback already lives.
+
+**Decision:** Invoke the shipped script and consume its exit code, on both transports (TSPEC §6.1,
+§6.2). No JavaScript reimplementation. The engine builds one guard configuration and each transport
+is an adapter over it.
+
+**Alternatives considered:**
+
+- **Reimplement the decision procedure in JS** — rejected because "the guard exists on the branch"
+  would then mean two things that can drift, and the drift is silent: the script's scope test is
+  three substrings and one removal-form regex (`guard-harvest-before-delete.sh:35`, `:37`), its
+  protected-token extraction is another regex (`:43`, `:49`), and its refusal text is byte-read by
+  `orchestrate-dev.js`. A second definition would have to be kept byte-equivalent by review, which is
+  the class of obligation this repo has already learned not to take on.
+- **Port the script and delete the original** — rejected outright: NG-1, and the plugin path still
+  runs the hook for interactive sessions. One definition, two callers.
+
+**Constraint that forced this shape:** C-5 (guard parity) is a parity claim, and parity against a
+copy is not parity.
+
+**The consequence this decision accepts, stated rather than inherited.** The script is a bash
+wrapper around Python: it probes `python3`, `python`, `py` and, finding none, **exits 0 — allow**
+(`guard-harvest-before-delete.sh:14-21`, comment: "If none is available, fail open (allow) rather
+than erroring"). Under Claude Code that trade is defensible; a hook that errors on a Windows box
+would break every Bash tool call. Under the engine it is not the same trade: an unattended pipeline
+on a host without a usable interpreter would run with the guard silently inert, which is exactly the
+green-and-vacuous state DEC-ENG-04 exists to refuse. TSPEC §6.1's enumeration of the decision
+procedure begins at the JSON parse (`:29-30`) and does not carry this branch, so it is raised as an
+erratum rather than folded in here.
+
+**The decision, given that:** the interpreter probe is part of §6.4's startup capability probe, not
+a per-dispatch surprise. If the engine cannot obtain an interpreter the shipped script will accept,
+the run **refuses at startup** with a catalogue-registered message, on the same fail-closed footing
+as a transport that cannot carry the hook at all. The engine does not fix the script's fail-open
+posture (that would edit the plugin path's interactive behaviour, NG-1); it declines to *rely* on it.
+
+**Reversibility:** Easy. The probe is one rung-5 check and one catalogue id; changing the script's
+own posture later is an independent, plugin-path decision.
+
+**Re-evaluation triggers:** The guard script stops depending on an external interpreter; or M-ENG-09
+(DEC-ENG-04) records that the hook mechanism does not fire at all under the production permission
+posture, in which case the carrier changes and this decision is re-derived against the new one.
+
+## DEC-ENG-04: An unrecorded guard measurement is a red hermetic suite, not a silent omission
+
+**Context:** `DEFAULT_PERMISSION_MODE = "bypassPermissions"` (`pdlc/engine/lib/transport.mjs:89`),
+paired with `allowDangerouslySkipPermissions` as the SDK requires (`:170-174`; `sdk.d.ts:1772`).
+Whether a `PreToolUse` hook deny still fires under that mode is **not** settled by the SDK's own
+types: `sdk.d.ts:1759` documents bypass as "Bypass all permission checks", while `:4337` says
+PreToolUse hook denies "resolve before `canUseTool` runs" and are simply not covered by the
+permission-denied event — the two readings are compatible with either answer. So the guard's
+well-formedness tests (§6.3) can be green while the guard protects nothing.
+
+**Decision:** The live, opt-in measurement (§6.5) appends a dated `M-ENG-09` row to
+`docs/_constraints/pdlc-engine-baseline.md`, and the **hermetic** suite reads it: with no row for the
+running platform, the hermetic suite **fails** with a catalogue-registered message naming the
+measurement and the command that produces it.
+
+**Alternatives considered:**
+
+- **Live-only test, no durable record** — rejected: on a fresh clone nothing then states whether the
+  combination was ever measured, on which platform, or against which SDK version, and C-9 makes
+  per-platform measurement a constraint. This repo already records measured runtime facts beside the
+  code in exactly this form (`transport.mjs:70-89` is the precedent, and `M-ENG-06`/`M-ENG-07`
+  already live in the baseline file).
+- **Warn instead of fail when unrecorded** — rejected. A warning on an unattended pipeline is a
+  message nobody is present to read, and "unrecorded" is precisely the state in which the guard
+  suite is green and proves nothing. The repo has paid for a vacuous green once already.
+- **Gate on the measurement without seeding it** — rejected as an ordering error, and the ordering is
+  a PLAN obligation: the gate and the first `M-ENG-09` rows (one per CI platform) land in the *same*
+  task, or CI goes red for a reason unrelated to the change that turned it red.
+
+**Constraints that forced this shape:** C-9; BR-GUARD-4 (measure before unattended use); AC-6.1
+(the hermetic suite is the thing CI runs, so the gate has to live there, not in the live path).
+
+**Reversibility:** Easy per branch, hard in spirit. The gate is one assertion; but if the
+measurement comes back `denyFired: no`, §6.5's pre-committed branches bind — either the permission
+posture tightens or the guard moves to `canUseTool` (`sdk.d.ts:1404`), and that is a one-way-ish
+change to the transport's permission contract.
+
+**Re-evaluation triggers:** The measurement lands (then the branch is taken, not debated); the SDK
+documents the hook/bypass interaction normatively; O-ENG-T4 settles the staleness predicate, or
+O-ENG-T5 settles what an off-matrix platform does — both of which change this gate's *key*, not its
+existence.
+
 ## 3. Skills and prompts
 
 ## 4. Engine-side provenance
