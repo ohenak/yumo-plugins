@@ -270,6 +270,78 @@ describe("dodVerifyLoop", () => {
     expect(skillsCalled).toEqual(["dod-verify", "se-implement", "dod-verify"]);
   });
 
+  it("a se-implement remediation dispatch that throws once is retried with the same prompt and recovers silently", async () => {
+    const remediateCalls = [];
+    const logs = [];
+    let remediateAttempt = 0;
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      remediateAttempt++;
+      remediateCalls.push(prompt);
+      if (remediateAttempt === 1) throw new Error("dispatch stall-killed");
+      return "Remediated.";
+    };
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: mockAgent,
+      _log: (msg) => logs.push(msg),
+    });
+    // Same prompt both times — a same-episode retry, not a fresh remediation round.
+    expect(remediateCalls).toHaveLength(2);
+    expect(remediateCalls[0]).toBe(remediateCalls[1]);
+    expect(logs.some((m) => /Dispatch fault \(DOD remediation/.test(m))).toBe(true);
+    expect(result.iterations).toBe(2);
+  });
+
+  it("a se-implement remediation dispatch that throws twice propagates the original error, halting exactly as before this retry existed", async () => {
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      throw new Error("dispatch stall-killed");
+    };
+    await expect(
+      dodVerifyLoop({
+        feature: "test-feat",
+        maxIterations: 2,
+        _agent: mockAgent,
+        _log: () => {},
+      })
+    ).rejects.toThrow("dispatch stall-killed");
+  });
+
+  it("a remediation dispatch that succeeds on the first attempt is dispatched exactly once, with no fault notice", async () => {
+    let remediateCount = 0;
+    const logs = [];
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      remediateCount++;
+      return "Remediated.";
+    };
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: mockAgent,
+      _log: (msg) => logs.push(msg),
+    });
+    expect(remediateCount).toBe(1);
+    expect(logs.some((m) => /Dispatch fault/.test(m))).toBe(false);
+  });
+
   it("the remediator reads the matching CODE_REVIEW version", async () => {
     const remediatePrompts = [];
     const mockAgent = async (skill, prompt) => {

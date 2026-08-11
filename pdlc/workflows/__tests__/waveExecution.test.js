@@ -1352,6 +1352,75 @@ describe("Phase I's V-wave — PROPERTIES tests as the last wave (§3.2 row 2)",
   });
 });
 
+describe("Phase I's V-wave dispatch — same-prompt retry on a thrown/rejected dispatch", () => {
+  it("recovers silently when the dispatch throws once: one retry, one fault notice, no halt", async () => {
+    const events = [];
+    const logs = [];
+    let vWaveAttempts = 0;
+    const inner = makeAgent([]);
+    const result = await main(
+      makeOrderedArgs({
+        events,
+        extra: {
+          _log: (m) => logs.push(String(m)),
+          _agent: async (skill, prompt, opts) => {
+            events.push({ kind: "agent", skill, prompt: String(prompt), opts });
+            if (skill === "se-implement" && String(prompt).includes(V_WAVE_PROMPT_ANCHOR)) {
+              vWaveAttempts += 1;
+              if (vWaveAttempts === 1) throw new Error("dispatch stall-killed");
+            }
+            return inner(skill, prompt, opts);
+          },
+        },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(vWaveAttempts).toBe(2);
+    // Both attempts dispatched the identical prompt — a same-episode retry,
+    // never a second, fresh V-wave.
+    const vWaveEvents = events.filter(
+      (e) => e.kind === "agent" && e.prompt.includes(V_WAVE_PROMPT_ANCHOR)
+    );
+    expect(vWaveEvents.length).toBe(2);
+    expect(vWaveEvents[0].prompt).toBe(vWaveEvents[1].prompt);
+    expect(logs.some((m) => /Dispatch fault \(V-wave/.test(m))).toBe(true);
+  });
+
+  it("propagates the original error when the dispatch throws twice, halting exactly as before this retry existed", async () => {
+    const inner = makeAgent([]);
+    const result = await main(
+      makeOrderedArgs({
+        events: [],
+        extra: {
+          _agent: async (skill, prompt, opts) => {
+            if (skill === "se-implement" && String(prompt).includes(V_WAVE_PROMPT_ANCHOR)) {
+              throw new Error("dispatch stall-killed");
+            }
+            return inner(skill, prompt, opts);
+          },
+        },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe("dispatch stall-killed");
+  });
+
+  it("a V-wave dispatch that succeeds on the first attempt is dispatched exactly once, with no fault notice", async () => {
+    const events = [];
+    const logs = [];
+    const result = await main(
+      makeOrderedArgs({ events, extra: { _log: (m) => logs.push(String(m)) } })
+    );
+    expect(result.outcome).toBe("success");
+    const vWaveEvents = events.filter(
+      (e) => e.kind === "agent" && e.prompt.includes(V_WAVE_PROMPT_ANCHOR)
+    );
+    expect(vWaveEvents.length).toBe(1);
+    expect(logs.some((m) => /Dispatch fault/.test(m))).toBe(false);
+  });
+});
+
 // ─── Phase I: `implementation.startWave`, the resume pointer ──────────────────
 //
 // A wave-gate halt leaves the earlier waves' work committed on the branch. The
