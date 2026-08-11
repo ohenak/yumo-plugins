@@ -6112,6 +6112,13 @@ async function reviewLoop({
   iteration = 1,
   startIndex = iteration,
   endIndex = windowEnd(startIndex),
+  // DEC-FRZ-01. The round at which THIS document last carried a dual approval on
+  // disk, as the phase gate's approval search read it, or `null` when the gate
+  // found none (and on a forced phase, where the search is skipped). Supplied by
+  // the caller because the gate already paid for the read; `null` simply means no
+  // freeze can be justified from approval history, and the round-index trigger
+  // still applies.
+  priorApprovedRound = null,
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
@@ -6355,8 +6362,18 @@ async function reviewLoop({
     // (c) Dispatch reviewers in parallel. On iteration ≥2 each reviewer gets a
     // delta re-review prompt (read prior cross-review, diff-only scan) — see
     // reviewerPrompt. Iteration 1 is the full first-pass review.
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
+    // DEC-FRZ-01, decided ONCE per round and shared by both reviewers and the
+    // optimizer below, so the three cannot disagree about whether the round they
+    // are working is frozen.
+    const frozen = freezeInForce({ priorApprovedRound, nextRound: iteration });
+    if (frozen) {
+      emit(
+        `Decision freeze in force for ${doc} at round ${iteration} ` +
+          `(prior approved round: ${priorApprovedRound ?? "none"}, late-round threshold: ${FREEZE_LATE_ROUND}).`
+      );
+    }
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType, frozen);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType, frozen);
 
     // Each reviewer keeps ONE key across every round of this phase (M-1): a
     // transport that can resume therefore hands round N's reviewer its own
@@ -6441,7 +6458,7 @@ async function reviewLoop({
     }
 
     // (g) Invoke optimizer (FAIL path)
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType, frozen);
     // The optimizer shares the AUTHOR session with the phase's creator (M-2):
     // the agent revising the document is the agent that wrote it.
     const optEpisode = await runWrapped(
@@ -6909,6 +6926,51 @@ function lifetimeCapReached(startIndex) {
   const next = Number(startIndex);
   if (!Number.isFinite(next)) return false;
   return next > MAX_LIFETIME_ROUNDS;
+}
+
+/**
+ * DEC-FRZ-01 — the round index from which EVERY round is frozen, regardless of
+ * approval history. Late-round damping: a document on its tenth review round is
+ * not still deciding what it is, whatever its anchors say.
+ */
+const FREEZE_LATE_ROUND = 10;
+
+/**
+ * DEC-FRZ-01 — is the round about to open under DECISION FREEZE?
+ *
+ * The practice this mechanizes was imposed by hand in Phase F of
+ * `pdlc-consolidation-agent` and measured: the target finding class disappeared
+ * and the Medium rate fell ~75%. A matured document's review round decides
+ * nothing new — it exists to catch what the last delta broke — and a reviewer
+ * not told so files fresh decisions against text that was already approved.
+ *
+ * Two triggers, either sufficient:
+ *
+ *   1. **A prior approving round exists.** The document was approved at least
+ *      once before the round about to open, so what re-opened the round is bytes
+ *      moving (a staled anchor, a confirmed erratum), not an undecided document.
+ *   2. **`nextRound >= FREEZE_LATE_ROUND`.** Late-round damping, independent of
+ *      approval history.
+ *
+ * Pure, synchronous and total, the discipline `lifetimeCapReached` lives under:
+ * the decision is derived from the round record the gate already took, never
+ * from a clock. Unreadable input answers `false` — a freeze that cannot be
+ * justified from the record is not imposed, and failing OPEN here costs at most
+ * an ordinary unfrozen round, which is the behaviour that predates the freeze.
+ *
+ * @param {{priorApprovedRound: number|null, nextRound: number}} arg
+ * @returns {boolean}
+ */
+function freezeInForce({ priorApprovedRound, nextRound } = {}) {
+  const round = Number(nextRound);
+  if (Number.isFinite(round) && round >= FREEZE_LATE_ROUND) return true;
+
+  const prior = Number(priorApprovedRound);
+  if (!Number.isFinite(prior) || prior < 1) return false;
+  // "PRIOR" is load-bearing: an approval recorded at or after the round about to
+  // open is not history the freeze can rest on.
+  if (Number.isFinite(round) && prior >= round) return false;
+  return true;
 }
 
 // ─── TSPEC §5.6.3 — the two prompt kinds, and the section walk behind them ────
@@ -7826,6 +7888,44 @@ const ORACLE_QUALITY_CLAUSE = [
     "catalogues) need a set-equality check over the full enumeration, so a deleted case fails.",
 ].join("\n");
 
+/**
+ * DEC-FRZ-01's reviewer clause — on every reviewer prompt of a frozen round
+ * (`freezeInForce`), and on no other.
+ *
+ * `REVIEW_CONVERGENCE_CLAUSE` scopes the reviewer's ATTENTION and leaves the bar
+ * alone. This clause is the stronger statement the measured churn asked for: on
+ * a matured document it also scopes what may BLOCK. The escape hatch is the
+ * point — a reviewer who may not block on an improvement still has somewhere to
+ * put it, so the observation is recorded rather than smuggled into a High.
+ */
+const FREEZE_REVIEWER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Its content decisions are settled: this round " +
+    "exists to catch what the last revision broke, not to decide anything new.",
+  "A finding may block (VERDICT: Needs revision) ONLY if it is one of:",
+  "(i) a defect the revision under review introduced — something this delta broke that worked before; or",
+  "(ii) a factual contradiction with the repository at HEAD or with an upstream document, which makes " +
+    "a load-bearing claim in this document false.",
+  "Everything else — an improvement, a restructuring, extra coverage, wording, a decision you would " +
+    "have taken differently — is out of scope as a blocking finding in a frozen round. Do not open a " +
+    "new decision here. Record each such observation as its own line in your cross-review, in exactly " +
+    "this form:",
+  "DEFERRED: {one-line item}",
+  "and approve.",
+].join("\n");
+
+/**
+ * DEC-FRZ-01's author-side half, on the optimizer prompt of a frozen round.
+ *
+ * Without it the freeze is one-sided: a reviewer that defers an item correctly
+ * and an author that then acts on the deferred line anyway re-opens exactly the
+ * decision the freeze closed, and the next round has new text to review.
+ */
+const FREEZE_OPTIMIZER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Address the blocking findings and nothing else.",
+  "A line beginning DEFERRED: in a cross-review is recorded, not requested: do NOT act on it, do not " +
+    "restructure, do not re-open a settled decision, and do not improve text no finding names.",
+].join("\n");
+
 const REVIEW_CONVERGENCE_CLAUSE =
   "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
   "whether the revision broke anything — a narrower scope of attention, not a lower standard. " +
@@ -7869,7 +7969,11 @@ const ERRATUM_PROTOCOL_CLAUSE =
   "each item to that document's author for a targeted versioned edit and to its approvers for a " +
   "delta confirmation.";
 
-function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
+function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, frozen = false) {
+  // DEC-FRZ-01. Rendered here, decided by `freezeInForce` at the call site: the
+  // prompt builder never re-derives the trigger, so there is exactly one place
+  // the freeze can be turned on.
+  const freezePart = frozen ? `\n${FREEZE_REVIEWER_CLAUSE}` : "";
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
     branchPinClause(feature);
@@ -7898,7 +8002,7 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not derive a different file type from the artifact under review — this phase's round ` +
     `history is keyed by that exact name, and a file outside it is not counted.`;
 
-  if (iteration < 2) return `${base}${groundingPart}\n${targetClause}${oraclePart}`;
+  if (iteration < 2) return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
@@ -7916,12 +8020,15 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
     `Medium and Low findings do not block; file them and approve with minor changes.\n` +
+    // DEC-FRZ-01 sits directly beneath the delta protocol it qualifies: the
+    // protocol says where to look, the freeze says what may block.
+    `${freezePart ? `${freezePart.slice(1)}\n` : ""}` +
     `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart
   );
 }
 
-function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType, frozen = false) {
   const base =
     `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. ` +
     `Iteration ${iteration} reviewers found issues. Update and commit.\n` +
@@ -7957,14 +8064,17 @@ function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType
   // the paths just named, and before Phase T's trailer requirement, which must
   // stay the last instruction in the prompt.
   const continuing = `\n${CONTINUING_AUTHOR_CLAUSE}`;
+  // DEC-FRZ-01's author-side half, right after the continuing-author clause it
+  // sharpens, and still before Phase T's trailer requirement.
+  const freeze = frozen ? `\n${FREEZE_OPTIMIZER_CLAUSE}` : "";
   // §3.1 step 4. Placed after the continuing-author clause and BEFORE Phase T's
   // trailer requirement, which stays the last instruction in the prompt.
   const erratum = `\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
   if (phase === "T") {
-    return `${base}${feedback}${groundingPart}${continuing}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
+    return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
   }
-  return `${base}${feedback}${groundingPart}${continuing}${erratum}`;
+  return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}`;
 }
 
 /**
@@ -8029,9 +8139,18 @@ function creatorPrompt(phase, featureName, inputs) {
  * the upstream one. A targeted, versioned edit that addresses exactly the listed
  * items and changes nothing else is what made three FSPEC errata cost one round.
  */
-function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn }) {
+function erratumAuthorPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  raisedIn,
+  upstreamState = [],
+  movedSinceMinted = [],
+}) {
   return (
     `ERRATUM ROUND for ${docPath} (feature ${feature}).\n` +
+    upstreamHeadClause({ docType, upstreamState, movedSinceMinted }) +
     `Phase ${raisedIn} raised the following errata against this ${docType}:\n` +
     `${itemLines}\n` +
     `This is an erratum round, NOT a rewrite. Apply a targeted, versioned edit that addresses ` +
@@ -8043,6 +8162,45 @@ function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn })
 }
 
 /**
+ * DEC-ERR-03's first clause, rendered — the upstream state AT DISPATCH TIME, and
+ * the re-grounding instruction that reads it.
+ *
+ * The root cause it addresses (POSTMORTEM-T episode 2, RC-1/RC-2): an erratum
+ * wave has no synchronisation point. The routed list is minted when the wave
+ * opens and travels unchanged while the wave keeps editing documents above the
+ * target, so a list that was correct for the version it was cut against is stale
+ * for HEAD by the time the tail layer is dispatched — and an author that absorbs
+ * it fully and correctly still ships a hole.
+ *
+ * So the prompt states the upstream documents' digests as of THIS dispatch (an
+ * agent can compare them against what it reads), orders the re-grounding BEFORE
+ * the item list, and names the documents that actually moved since the list was
+ * minted when any did. Returns `""` when the target has nothing above it (REQ),
+ * so the REQ author's prompt is byte-identical to its pre-decision form.
+ */
+function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = [] }) {
+  if (!Array.isArray(upstreamState) || upstreamState.length === 0) return "";
+  const rows = upstreamState
+    .map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`)
+    .join("\n");
+  const moved =
+    Array.isArray(movedSinceMinted) && movedSinceMinted.length > 0
+      ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
+        `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
+        `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
+        `from the current text before you edit anything (DEC-ERR-03).\n`
+      : "";
+  return (
+    `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
+    `documents this ${docType} derives from, at their CURRENT version as of this dispatch:\n` +
+    `${rows}\n` +
+    `Read each of them at that version, then treat the item list below as a FLOOR, not a ceiling: ` +
+    `if HEAD says something the items do not, the list is stale and this ${docType} must match HEAD.\n` +
+    moved
+  );
+}
+
+/**
  * §3.1 step 4c — the delta-confirmation prompt for the upstream document's own
  * approvers.
  *
@@ -8050,7 +8208,15 @@ function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn })
  * are named on. That is what keeps their earlier approval from going stale —
  * the confirmation file is the round the fresh approval anchors are appended to.
  */
-function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, reviewFile }) {
+function erratumConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
   return (
     `DELTA CONFIRMATION for ${docPath} (feature ${feature}).\n` +
     `You previously approved this ${docType}. It has just received a targeted erratum edit ` +
@@ -8059,9 +8225,41 @@ function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, rev
     `Do not re-review the whole document. Read the items above and \`git diff\` the erratum edit ` +
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+/**
+ * DEC-ERR-03's second clause — on BOTH confirming channels, always.
+ *
+ * The episode it exists to prevent: the two confirming reviewers split on
+ * identical bytes because they were answering different questions. `pm-review`
+ * ran the protocol's *absorbed ⊇ raised* check and passed the document;
+ * `se-review` re-measured it against upstream HEAD and found one High. The
+ * outcome of a confirmation must not depend on which reviewer happens to
+ * over-deliver, so the superset read is stated in the prompt both of them get.
+ *
+ * "The routed items landed" stays necessary — the paragraph above this clause
+ * asks exactly that — and this clause is what makes it not sufficient.
+ */
+function erratumSupersetClause({ docType, upstreamState = [] }) {
+  const rows =
+    Array.isArray(upstreamState) && upstreamState.length > 0
+      ? `The upstream documents, at their current version as of this dispatch:\n` +
+        upstreamState.map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`).join("\n") +
+        `\n`
+      : "";
+  return (
+    `Your scope is this ${docType} measured against its upstream AT HEAD — not the item list. ` +
+    `The items landing is NECESSARY, NOT SUFFICIENT. Re-read the upstream text this ${docType} now ` +
+    `leans on, at its current version, and ask whether this document is still a faithful ` +
+    `compression of it. Anything it cites that upstream no longer says, or no longer says the same ` +
+    `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
+    `(DEC-ERR-03).\n` +
+    rows
   );
 }
 
@@ -10096,6 +10294,12 @@ async function main({
     // Step 2 — the branch-derived round window.
     const window = await phaseWindow(docType);
 
+    // DEC-FRZ-01's first trigger, read off the approval search below — the round
+    // this document last carried a dual approval at. Stays `null` on a forced
+    // phase, where the search does not run: a freeze is never inferred from a
+    // read that was not taken.
+    let priorApprovedRound = null;
+
     if (!forced) {
       // Step 3 — the approval search. Tier 1's reads already happened above.
       let record = tier1ApprovalRecord({
@@ -10119,6 +10323,11 @@ async function main({
       }
 
       if (record.approving) {
+        // DEC-FRZ-01: an approval was recorded at `record.candidate`. Whether or
+        // not it survives step 4's staleness comparison below, the document HAS
+        // been approved once — and the branch where it does not survive is
+        // exactly the frozen case: bytes moved under an approved document.
+        priorApprovedRound = record.candidate;
         // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
         // TIME, never from a read cached earlier in the run.
         // The digest is computed at the far side of the seam (`_hashFile`), so
@@ -10256,7 +10465,7 @@ async function main({
       return { skip: true };
     }
 
-    return { skip: false, window, forced };
+    return { skip: false, window, forced, priorApprovedRound };
   }
 
   /**
@@ -10320,6 +10529,65 @@ async function main({
   // once its OWN document has converged, so the upstream edit is never made on
   // behalf of a finding the phase itself was about to withdraw.
 
+  /** The path an erratum doc type names on this feature's branch. */
+  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+
+  /**
+   * The digest of one upstream document as it stands RIGHT NOW, through the same
+   * probe-then-hash pair every other observation in this module uses. `null` for
+   * a document that is not on the branch (an unwritten DECISIONS, say), which is
+   * how the callers below tell "absent" from "moved".
+   */
+  async function erratumDocHash(docType) {
+    const path = erratumDocPath(docType);
+    const probe = await probeDocument(probeDocFn, path, docType);
+    return (probe ? probe.hash : await hashFileFn(path)) ?? null;
+  }
+
+  /** The doc types ABOVE `target` in pipeline order — the layers it derives from. */
+  const erratumDocTypesAbove = (target) =>
+    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+  /**
+   * DEC-ERR-03 — the mint-time snapshot a routed list is dated against.
+   *
+   * Taken when a batch of errata is minted, once, for every document the wave
+   * could edit. It is the only thing that makes "has upstream moved since this
+   * list was cut?" a decidable question at dispatch time; without it the wave's
+   * layers have no shared clock at all, which is RC-1 stated as a data structure.
+   */
+  async function snapshotErratumDocs() {
+    const snapshot = new Map();
+    for (const docType of ERRATUM_DOC_TYPES) {
+      snapshot.set(docType, await erratumDocHash(docType));
+    }
+    return snapshot;
+  }
+
+  /**
+   * DEC-ERR-03, at dispatch time: the upstream layers of `target` as they stand
+   * NOW, plus which of them differ from the mint-time snapshot.
+   *
+   * A doc absent now is omitted entirely (there is nothing to re-ground on). A
+   * doc whose mint-time digest was not recorded is reported but never called
+   * moved — "not observed" is not "changed", the same asymmetry `refreshReviewState`
+   * keeps between unreadable and empty.
+   */
+  async function deriveUpstreamState(target, mintedHashes) {
+    const upstreamState = [];
+    const movedSinceMinted = [];
+    for (const docType of erratumDocTypesAbove(target)) {
+      const hash = await erratumDocHash(docType);
+      if (hash == null) continue;
+      upstreamState.push({ docType, path: erratumDocPath(docType), hash });
+      const minted = mintedHashes ? mintedHashes.get(docType) : undefined;
+      if (minted !== undefined && minted !== null && minted !== hash) {
+        movedSinceMinted.push(docType);
+      }
+    }
+    return { upstreamState, movedSinceMinted };
+  }
+
   /**
    * The erratum protocol's halt. It reuses the review loop's POSTMORTEM
    * lifecycle rather than inventing a second one: the CURRENT phase's
@@ -10375,10 +10643,10 @@ async function main({
    * Returns `null` — and dispatches nothing at all — when the upstream document
    * has spent its DEC-ROUNDS-02 lifetime round budget.
    */
-  async function erratumRound({ phaseId, label, target, items }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
-    const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+    const upstreamPath = erratumDocPath(target);
     const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
     const itemText = items.map((e) => e.item).join("; ");
 
@@ -10411,6 +10679,24 @@ async function main({
       return null;
     }
 
+    // ─── DEC-ERR-03 — re-derivation at DISPATCH time, not at wave open ───────
+    //
+    // Taken here, after the cap check and immediately before the author is
+    // dispatched, because that instant is the whole point: everything the wave
+    // edited between the list being minted and this dispatch has already landed
+    // on disk, and this observation is what makes it visible to the author. It
+    // must NOT be hoisted next to the mint-time snapshot — that would re-create
+    // exactly the stale list DEC-ERR-03 exists to defeat.
+    const { upstreamState, movedSinceMinted } = await deriveUpstreamState(target, mintedHashes);
+    if (movedSinceMinted.length > 0) {
+      const notice =
+        `Phase ${phaseId}: erratum round for ${target} — upstream moved since the routed list was ` +
+        `minted (${movedSinceMinted.join(", ")}). The author is re-grounded on upstream HEAD and ` +
+        `the routed items are a floor, not a ceiling (DEC-ERR-03).`;
+      notices.push(notice);
+      emit(notice);
+    }
+
     // Step 4b. The upstream document's author skill — `creator` where the phase
     // has one, and its `optimizer` where it does not (Phase R's REQ arrives
     // authored, so `pm-author` is its only writer).
@@ -10423,6 +10709,8 @@ async function main({
         docPath: upstreamPath,
         itemLines,
         raisedIn: phaseId,
+        upstreamState,
+        movedSinceMinted,
       }),
       targetPath: upstreamPath,
       docType: target,
@@ -10466,6 +10754,10 @@ async function main({
             itemLines,
             round,
             reviewFile: confirmPaths[i],
+            // DEC-ERR-03: the confirmers are pointed at the SAME upstream state
+            // the author was re-grounded on, so the superset question they are
+            // asked is answerable against the version the edit was made against.
+            upstreamState,
           }),
           targetPath: confirmPaths[i],
           docType: target,
@@ -10628,6 +10920,11 @@ async function main({
     const spent = new Map();
     const routed = [];
 
+    // DEC-ERR-03: the list has just been minted, so date it. Re-taken for each
+    // follow-on batch below, because a follow-on list is a NEW mint and must be
+    // dated against the tree the wave has already reshaped, not the original one.
+    let mintedHashes = await snapshotErratumDocs();
+
     while (pending.length > 0) {
       const followOn = [];
       // Pipeline order, so a run that raises errata against two documents edits
@@ -10652,7 +10949,7 @@ async function main({
 
         // Step 4a. An erratum against a document that does not exist on this
         // branch is noise, not a halt: the phase says so and carries on.
-        const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+        const upstreamPath = erratumDocPath(target);
         const exists = await checkFileFn(upstreamPath);
         if (!exists || !exists.ok) {
           notices.push(
@@ -10662,7 +10959,7 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items });
+        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
         // DEC-ROUNDS-02: the upstream document is capped. Nothing was dispatched
         // and nothing was edited, so there is no round to report and no response
         // to read follow-on errata out of. `erratumRound` said so in a notice.
@@ -10678,6 +10975,8 @@ async function main({
         }
       }
       pending = admit(followOn);
+      // A follow-on batch is a fresh mint (DEC-ERR-03), so it gets a fresh date.
+      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
@@ -10763,6 +11062,8 @@ async function main({
       iteration: window.startIndex,
       startIndex: window.startIndex,
       endIndex: window.endIndex,
+      // DEC-FRZ-01 — the gate's approval read, handed on rather than re-taken.
+      priorApprovedRound: gate.priorApprovedRound ?? null,
       _parallel: parallelFn,
       _checkFile: checkFileFn,
       ...wrapperSeams,

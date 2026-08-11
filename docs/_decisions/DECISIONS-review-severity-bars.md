@@ -293,3 +293,42 @@ finding-generating signal, not bookkeeping overhead.
 **Scope.** Applies to citations written into new feature documents (REQ, FSPEC, TSPEC, PLAN,
 PROPERTIES, DECISIONS) and into authoring/review SKILL prompts. Does not require retrofitting
 citations already committed in prior features' documents; it governs what gets written going forward.
+
+---
+
+## DEC-FRZ-01: a matured document's review round is frozen — only regressions and contradictions block
+
+**Context.** Recorded on 2026-08-10 from the measured churn of `pdlc-consolidation-agent`: 84
+lifetime review rounds on one feature, +25 of them after the code was complete. Phase F of that
+feature imposed a decision freeze by hand, mid-run, and the effect was measurable — the finding class
+it targeted disappeared entirely and the Medium rate fell roughly 75%. The mechanism the freeze
+answers is structural, not a reviewer failing: a review round dispatched over a document that has
+already been approved has no instruction telling it that the document's content decisions are
+settled, so a competent reviewer keeps deciding — filing improvements, restructurings and
+alternatives against text whose approval is already on disk. Each one costs an optimizer episode, a
+re-review, and a fresh chance to introduce something the next round can find.
+
+**Decision.** Decision freeze is a first-class mode of the review loop, decided by a pure exported
+predicate (`freezeInForce`) from the round record the phase gate already read. Two triggers, either
+sufficient:
+
+- *A prior approving round exists.* The document was approved at least once BEFORE the round about
+  to open, so what re-opened the round is bytes moving — a staled approval anchor, a confirmed
+  erratum — and not an undecided document.
+- *The round index is 10 or beyond*, regardless of approval history. Late-round damping: a document
+  on its tenth review round is not still deciding what it is, whatever its anchors say.
+
+In a frozen round, the reviewer prompt carries a FREEZE clause: a finding may block only if it is
+(i) a defect the revision under review introduced, or (ii) a factual contradiction with the
+repository at HEAD or with an upstream document that makes a load-bearing claim false. Everything
+else is recorded as a `DEFERRED: {item}` line and approved. The optimizer prompt of the same round
+carries the author-side half: address the blocking findings, act on no `DEFERRED:` line, re-open no
+settled decision. Without that half the freeze is one-sided — an author that acts on a deferred item
+re-opens exactly the decision the freeze closed, and the next round has new text to review.
+
+**Scope.** The freeze narrows what may BLOCK on a matured document; it does not narrow what may be
+observed, and the `DEFERRED:` channel is what keeps the observation on the record. It does not touch
+the High-only convergence bar (DEC-BAR-01), the lifetime round cap (DEC-ROUNDS-02) or the erratum
+protocol's delta confirmations, which are already delta-scoped by construction. The predicate fails
+OPEN: a round record it cannot read imposes no freeze, and a forced phase — where the approval search
+does not run — is frozen only by the round-index trigger.

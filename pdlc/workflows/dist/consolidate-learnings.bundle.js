@@ -4563,6 +4563,8 @@ async function reviewLoop({
   iteration = 1,
   startIndex = iteration,
   endIndex = windowEnd(startIndex),
+
+  priorApprovedRound = null,
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
@@ -4750,8 +4752,15 @@ async function reviewLoop({
       anchorCommit = await headCommitSha(_git); 
     }
 
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
+    const frozen = freezeInForce({ priorApprovedRound, nextRound: iteration });
+    if (frozen) {
+      emit(
+        `Decision freeze in force for ${doc} at round ${iteration} ` +
+          `(prior approved round: ${priorApprovedRound ?? "none"}, late-round threshold: ${FREEZE_LATE_ROUND}).`
+      );
+    }
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType, frozen);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType, frozen);
 
     const [r1, r2] = await _parallel([
       runWrapped(
@@ -4819,7 +4828,7 @@ async function reviewLoop({
       };
     }
 
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType, frozen);
 
     const optEpisode = await runWrapped(
       optimizer,
@@ -5082,6 +5091,19 @@ function lifetimeCapReached(startIndex) {
   const next = Number(startIndex);
   if (!Number.isFinite(next)) return false;
   return next > MAX_LIFETIME_ROUNDS;
+}
+
+const FREEZE_LATE_ROUND = 10;
+
+function freezeInForce({ priorApprovedRound, nextRound } = {}) {
+  const round = Number(nextRound);
+  if (Number.isFinite(round) && round >= FREEZE_LATE_ROUND) return true;
+
+  const prior = Number(priorApprovedRound);
+  if (!Number.isFinite(prior) || prior < 1) return false;
+
+  if (Number.isFinite(round) && prior >= round) return false;
+  return true;
 }
 
 function docTypeFromPath(path) {
@@ -5630,6 +5652,27 @@ const ORACLE_QUALITY_CLAUSE = [
     "catalogues) need a set-equality check over the full enumeration, so a deleted case fails.",
 ].join("\n");
 
+const FREEZE_REVIEWER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Its content decisions are settled: this round " +
+    "exists to catch what the last revision broke, not to decide anything new.",
+  "A finding may block (VERDICT: Needs revision) ONLY if it is one of:",
+  "(i) a defect the revision under review introduced — something this delta broke that worked before; or",
+  "(ii) a factual contradiction with the repository at HEAD or with an upstream document, which makes " +
+    "a load-bearing claim in this document false.",
+  "Everything else — an improvement, a restructuring, extra coverage, wording, a decision you would " +
+    "have taken differently — is out of scope as a blocking finding in a frozen round. Do not open a " +
+    "new decision here. Record each such observation as its own line in your cross-review, in exactly " +
+    "this form:",
+  "DEFERRED: {one-line item}",
+  "and approve.",
+].join("\n");
+
+const FREEZE_OPTIMIZER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Address the blocking findings and nothing else.",
+  "A line beginning DEFERRED: in a cross-review is recorded, not requested: do NOT act on it, do not " +
+    "restructure, do not re-open a settled decision, and do not improve text no finding names.",
+].join("\n");
+
 const REVIEW_CONVERGENCE_CLAUSE =
   "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
   "whether the revision broke anything — a narrower scope of attention, not a lower standard. " +
@@ -5653,7 +5696,9 @@ const ERRATUM_PROTOCOL_CLAUSE =
   "each item to that document's author for a targeted versioned edit and to its approvers for a " +
   "delta confirmation.";
 
-function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
+function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, frozen = false) {
+
+  const freezePart = frozen ? `\n${FREEZE_REVIEWER_CLAUSE}` : "";
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
     branchPinClause(feature);
@@ -5671,7 +5716,7 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not derive a different file type from the artifact under review — this phase's round ` +
     `history is keyed by that exact name, and a file outside it is not counted.`;
 
-  if (iteration < 2) return `${base}${groundingPart}\n${targetClause}${oraclePart}`;
+  if (iteration < 2) return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
@@ -5689,12 +5734,14 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
     `Medium and Low findings do not block; file them and approve with minor changes.\n` +
+
+    `${freezePart ? `${freezePart.slice(1)}\n` : ""}` +
     `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart
   );
 }
 
-function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType, frozen = false) {
   const base =
     `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. ` +
     `Iteration ${iteration} reviewers found issues. Update and commit.\n` +
@@ -5718,12 +5765,14 @@ function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType
 
   const continuing = `\n${CONTINUING_AUTHOR_CLAUSE}`;
 
+  const freeze = frozen ? `\n${FREEZE_OPTIMIZER_CLAUSE}` : "";
+
   const erratum = `\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
   if (phase === "T") {
-    return `${base}${feedback}${groundingPart}${continuing}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
+    return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
   }
-  return `${base}${feedback}${groundingPart}${continuing}${erratum}`;
+  return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}`;
 }
 
 async function recoverVerdict({ reviewer, rawResult, _agent = agent }) {
@@ -5761,9 +5810,18 @@ function creatorPrompt(phase, featureName, inputs) {
   );
 }
 
-function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn }) {
+function erratumAuthorPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  raisedIn,
+  upstreamState = [],
+  movedSinceMinted = [],
+}) {
   return (
     `ERRATUM ROUND for ${docPath} (feature ${feature}).\n` +
+    upstreamHeadClause({ docType, upstreamState, movedSinceMinted }) +
     `Phase ${raisedIn} raised the following errata against this ${docType}:\n` +
     `${itemLines}\n` +
     `This is an erratum round, NOT a rewrite. Apply a targeted, versioned edit that addresses ` +
@@ -5774,7 +5832,37 @@ function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn })
   );
 }
 
-function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, reviewFile }) {
+function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = [] }) {
+  if (!Array.isArray(upstreamState) || upstreamState.length === 0) return "";
+  const rows = upstreamState
+    .map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`)
+    .join("\n");
+  const moved =
+    Array.isArray(movedSinceMinted) && movedSinceMinted.length > 0
+      ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
+        `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
+        `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
+        `from the current text before you edit anything (DEC-ERR-03).\n`
+      : "";
+  return (
+    `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
+    `documents this ${docType} derives from, at their CURRENT version as of this dispatch:\n` +
+    `${rows}\n` +
+    `Read each of them at that version, then treat the item list below as a FLOOR, not a ceiling: ` +
+    `if HEAD says something the items do not, the list is stale and this ${docType} must match HEAD.\n` +
+    moved
+  );
+}
+
+function erratumConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
   return (
     `DELTA CONFIRMATION for ${docPath} (feature ${feature}).\n` +
     `You previously approved this ${docType}. It has just received a targeted erratum edit ` +
@@ -5783,9 +5871,28 @@ function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, rev
     `Do not re-review the whole document. Read the items above and \`git diff\` the erratum edit ` +
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+function erratumSupersetClause({ docType, upstreamState = [] }) {
+  const rows =
+    Array.isArray(upstreamState) && upstreamState.length > 0
+      ? `The upstream documents, at their current version as of this dispatch:\n` +
+        upstreamState.map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`).join("\n") +
+        `\n`
+      : "";
+  return (
+    `Your scope is this ${docType} measured against its upstream AT HEAD — not the item list. ` +
+    `The items landing is NECESSARY, NOT SUFFICIENT. Re-read the upstream text this ${docType} now ` +
+    `leans on, at its current version, and ask whether this document is still a faithful ` +
+    `compression of it. Anything it cites that upstream no longer says, or no longer says the same ` +
+    `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
+    `(DEC-ERR-03).\n` +
+    rows
   );
 }
 
@@ -7161,6 +7268,8 @@ async function main({
 
     const window = await phaseWindow(docType);
 
+    let priorApprovedRound = null;
+
     if (!forced) {
 
       let record = tier1ApprovalRecord({
@@ -7184,6 +7293,8 @@ async function main({
       }
 
       if (record.approving) {
+
+        priorApprovedRound = record.candidate;
 
         const probe = await probeDocument(probeDocFn, docPath, docType);
         const docHash = probe ? probe.hash ?? null : await hashFileFn(docPath);
@@ -7271,7 +7382,7 @@ async function main({
       return { skip: true };
     }
 
-    return { skip: false, window, forced };
+    return { skip: false, window, forced, priorApprovedRound };
   }
 
   const forcedDetail = (detail, forced) =>
@@ -7313,6 +7424,40 @@ async function main({
     return episode.response;
   }
 
+  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+
+  async function erratumDocHash(docType) {
+    const path = erratumDocPath(docType);
+    const probe = await probeDocument(probeDocFn, path, docType);
+    return (probe ? probe.hash : await hashFileFn(path)) ?? null;
+  }
+
+  const erratumDocTypesAbove = (target) =>
+    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+  async function snapshotErratumDocs() {
+    const snapshot = new Map();
+    for (const docType of ERRATUM_DOC_TYPES) {
+      snapshot.set(docType, await erratumDocHash(docType));
+    }
+    return snapshot;
+  }
+
+  async function deriveUpstreamState(target, mintedHashes) {
+    const upstreamState = [];
+    const movedSinceMinted = [];
+    for (const docType of erratumDocTypesAbove(target)) {
+      const hash = await erratumDocHash(docType);
+      if (hash == null) continue;
+      upstreamState.push({ docType, path: erratumDocPath(docType), hash });
+      const minted = mintedHashes ? mintedHashes.get(docType) : undefined;
+      if (minted !== undefined && minted !== null && minted !== hash) {
+        movedSinceMinted.push(docType);
+      }
+    }
+    return { upstreamState, movedSinceMinted };
+  }
+
   async function erratumPostmortemHalt({ phaseId, label, reason }) {
     const postmortemPath = `docs/${featureName}/POSTMORTEM-${phaseId}-${featureName}.md`;
     const prompt = [
@@ -7349,10 +7494,10 @@ async function main({
     );
   }
 
-  async function erratumRound({ phaseId, label, target, items }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
-    const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+    const upstreamPath = erratumDocPath(target);
     const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
     const itemText = items.map((e) => e.item).join("; ");
 
@@ -7372,6 +7517,16 @@ async function main({
       return null;
     }
 
+    const { upstreamState, movedSinceMinted } = await deriveUpstreamState(target, mintedHashes);
+    if (movedSinceMinted.length > 0) {
+      const notice =
+        `Phase ${phaseId}: erratum round for ${target} — upstream moved since the routed list was ` +
+        `minted (${movedSinceMinted.join(", ")}). The author is re-grounded on upstream HEAD and ` +
+        `the routed items are a floor, not a ceiling (DEC-ERR-03).`;
+      notices.push(notice);
+      emit(notice);
+    }
+
     const authorSkill = upstream.creator ?? upstream.optimizer;
     const authorResponse = await wrappedDispatch({
       skill: authorSkill,
@@ -7381,6 +7536,8 @@ async function main({
         docPath: upstreamPath,
         itemLines,
         raisedIn: phaseId,
+        upstreamState,
+        movedSinceMinted,
       }),
       targetPath: upstreamPath,
       docType: target,
@@ -7417,6 +7574,8 @@ async function main({
             itemLines,
             round,
             reviewFile: confirmPaths[i],
+
+            upstreamState,
           }),
           targetPath: confirmPaths[i],
           docType: target,
@@ -7528,6 +7687,8 @@ async function main({
     const spent = new Map();
     const routed = [];
 
+    let mintedHashes = await snapshotErratumDocs();
+
     while (pending.length > 0) {
       const followOn = [];
 
@@ -7549,7 +7710,7 @@ async function main({
         }
         spent.set(target, already + 1);
 
-        const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+        const upstreamPath = erratumDocPath(target);
         const exists = await checkFileFn(upstreamPath);
         if (!exists || !exists.ok) {
           notices.push(
@@ -7559,7 +7720,7 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items });
+        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
 
         if (responses === null) continue;
         routed.push(target);
@@ -7573,6 +7734,8 @@ async function main({
         }
       }
       pending = admit(followOn);
+
+      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
@@ -7627,6 +7790,8 @@ async function main({
       iteration: window.startIndex,
       startIndex: window.startIndex,
       endIndex: window.endIndex,
+
+      priorApprovedRound: gate.priorApprovedRound ?? null,
       _parallel: parallelFn,
       _checkFile: checkFileFn,
       ...wrapperSeams,
