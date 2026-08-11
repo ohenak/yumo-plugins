@@ -254,8 +254,31 @@ measurement and the command that produces it.
   a PLAN obligation: the gate and the first `M-ENG-09` rows (one per CI platform) land in the *same*
   task, or CI goes red for a reason unrelated to the change that turned it red.
 
-**Constraints that forced this shape:** C-9; BR-GUARD-4 (measure before unattended use); AC-6.1
-(the hermetic suite is the thing CI runs, so the gate has to live there, not in the live path).
+**Constraints that forced this shape:** C-9; **BR-GUARD-5** (the refusal is asserted under the
+production permission posture, `FSPEC:894`) and **O-2**, which is what actually requires the
+deny/bypass interaction to be settled first (`FSPEC:1285`); AC-6.1 (the hermetic suite is the thing
+CI runs, so the gate has to live there, not in the live path). BR-GUARD-4 is cited here as the *gap
+statement* it is — "this is the largest open safety gap at HEAD" (`FSPEC:909`, index row `:1454`) —
+not as a measurement obligation; an earlier draft glossed it as one.
+
+**The gate's key, stated so the fixtures are constructible.** A row is `date | platform | transport |
+sdkVersion | denyFired` (TSPEC §6.5, `TSPEC:1336`), but the gate keys on **`platform` and `transport`
+only**. `sdkVersion` and `date` are recorded as provenance and are *not* part of the lookup: the SDK
+is pinned by caret (`"@anthropic-ai/claude-agent-sdk": "^0.3.226"`, `pdlc/engine/package.json:16`),
+so a clean install resolving 0.3.227 would otherwise turn a hermetic, offline suite red with no code
+change — a gate that fires on `npm i` teaches maintainers to ignore it, which is the same oracle
+erosion this decision exists to prevent. The red fixture is therefore "no row whose `platform` and
+`transport` match the running pair"; the green fixture is a baseline containing one. Whether a
+version *skew* should ever be surfaced (as a warning, not this gate) is O-ENG-T4's staleness
+predicate, and O-ENG-T5 owns the off-matrix platform — both change this key, not its existence.
+
+Stated plainly, because it is a product call and not a side effect: with the key as above, a
+contributor on a platform outside the CI matrix meets a **red hermetic suite** on first run, and the
+remedy is to run the opt-in live measurement and seed their own `M-ENG-09` row — which the failure
+message names. That is intended for as long as C-9 makes measurement per-platform: an unmeasured
+platform is exactly the state where the guard suite is green and proves nothing. A friendlier
+first experience (for instance, off-matrix platforms reported as *unmeasured* rather than failed) is
+a real option and is what O-ENG-T5 exists to settle; it is not assumed here.
 
 **Reversibility:** Easy per branch, hard in spirit. The gate is one assertion; but if the
 measurement comes back `denyFired: no`, §6.5's pre-committed branches bind — either the permission
