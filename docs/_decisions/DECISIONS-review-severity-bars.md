@@ -243,7 +243,10 @@ a confirmation whose response carries no trailer and whose file approves — and
 pre-decision read. `24b`, `24c` and `24d` are green in both directions by design: they exist to
 show the fix let nothing new through.
 
-## DEC-ERR-02: a delta confirmation is a superset check against upstream HEAD, and routing lists are re-derived at dispatch
+## DEC-ERR-03: a delta confirmation is a superset check against upstream HEAD, and routing lists are re-derived at dispatch
+
+(Recorded as DEC-ERR-02 in the POSTMORTEM-T episode-2 resolution commit before the id collision
+with the entry above was noticed; renumbered, content unchanged.)
 
 **Context.** Recorded per `POSTMORTEM-T-pdlc-consolidation-agent.md` Episode 2 (2026-08-10),
 Recommendation step 5. A multi-layer erratum wave (`REQ → FSPEC → TSPEC → PROPERTIES`, 27 minutes)
