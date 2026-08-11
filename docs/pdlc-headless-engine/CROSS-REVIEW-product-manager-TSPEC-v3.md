@@ -37,7 +37,42 @@ operator-facing tunable, but it is a sentence and an oracle half, not a design g
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §4.1's `"(no phase)"` bucket is well designed as a visible failure, but the design says "at HEAD no such dispatch is expected" without naming who checks. Is a non-zero `"(no phase)"` count a *test* assertion in §7.4's suite-wide set, or an eyeball on the report? Both are defensible — the first makes it a gate, the second keeps it an observation — but as written a reader could implement either. |
+| Q-02 | Row 4's witness reads "immediately preceding descriptor by `seq` is the same skill on `fable`". `resolveAdvisoryRung` memoises through `_state.resolved` (`orchestrate-dev.js:1845`), so only the *first* advisory dispatch of run iv produces the fable→opus pair; every later one is a bare `opus` dispatch with an arbitrary predecessor. The witness is existential, so it still holds — but if a future harness turns it into a quantified check over all `ADVISORY_RUNG_SKILL` descriptors it will be red on correct code. Worth a half-sentence noting the memo, so the reason the predicate is existential is on the record. |
+
 ## Positive Observations
+
+- **Both Highs were fixed where they originated, not where they hurt.** The path of least resistance
+  on F-01 was to loosen the model-map oracle until it passed; on F-02, to declare `byPhase` "best
+  effort". The revision instead measured `opts.label` at every call site, found it `null`, and moved
+  the phase onto a seam that already knew it. §4.1's measurement paragraph — 13 `label:` occurrences
+  in `orchestrate-dev.js`, eight of them `PHASE_DISPATCH` row fields, none a dispatch argument — is
+  the kind of sentence that makes a reviewer's re-check cheap, and it survived re-checking.
+- **The `_phase`-as-run-state fix keeps §8.3's workflows-untouched promise true, and §8.3 now says
+  why.** That closing paragraph ("had the modules been asked to pass labels, the workflow-module rows
+  above would have to list the dispatch sites too, and this sentence would be false") converts a
+  constraint that was previously an assertion into one with a stated mechanism. It is also the
+  cheaper design on delivery: the alternative would have touched `pdlc/workflows/`, forcing a bundle
+  rebuild and a self-modification-guard interaction in Phase MERGE.
+- **§7.4's witness table is the right shape, and it argues its own limits.** Naming *why* the pair
+  form was unwritable — row 1 is a quantifier, rows 1/4 are descriptor-identical, rows 6/7 carry no
+  phase — is more useful than the fix itself, because it is the reasoning that stops the next author
+  from "restoring" the stronger-looking assertion. Keeping rows 1 and 2 as *every*-quantified is what
+  preserves the property AC-3.3 exists for (a phase that silently stops pinning), and the document
+  says so explicitly rather than leaving it to be inferred.
+- **§7.0's run-id correction is stated as a measured mistake, with the tempting bad repair named.**
+  "It fails **by construction on every run**, and the tempting repair under time pressure is to scan
+  all run directories and drop the emptiness guard" is exactly the note that keeps a future
+  implementer from walking into it. Minting the id in a runner before any child exists is the right
+  place; the inheritance self-test asserting *one* directory holding *both* files' records is a real
+  positive assertion, not an absence check.
+- **My Q-01 and Q-02 came back as a recorded open question and a recorded decision rather than as
+  prose.** O-ENG-T5 names the two candidate answers and why the choice is a maintainer's; §3.3's
+  narrowing paragraph states plainly that after `EXPECTED_SKILLS` is deleted nothing asserts the five
+  operator-invoked skills are readable, and that this is the answer rather than an oversight. A
+  question answered as "here is the decision and its cost" is worth more than one answered away.
 
 ## Recommendation
 
