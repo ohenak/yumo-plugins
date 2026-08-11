@@ -11,7 +11,22 @@
 |---|---|---|---|---|
 | pdlc | halted — awaiting operator resolution | Claude (se-author) | 1.0 | 2026-08-11 |
 
-RESOLVED: no
+RESOLVED: yes
+
+Resolution (2026-08-11, operator-directed): Step 1 verified before clearing — both REQ v8 files
+end `VERDICT: Approved with minor changes` / `{"high": 0, "medium": 1, "low": 1}` (exact bytes
+checked, not a paraphrase); the confirmations (`2d125f41`, `23a1a614`) postdate the erratum edit
+`6ff9871a`, which touches REQ only, `+31/−28`. The root-cause account stands: the branch's
+artifacts approve and the halt read only the response trailer. Step 2 — anchors appended to both
+v8 files in `b65861be`; the digest was recomputed at HEAD (`9176adf0…0957`) and matches the REQ
+at `6ff9871a` byte-for-byte. Step 3 — DECISIONS v1.3 (`d02d764e`) rewrites only DEC-ENG-03's
+authority paragraph: C-11 (`REQ:284`, verified present at HEAD) cited as the landed REQ
+authority, the FSPEC half kept outstanding (`grep -inE "python|interpreter"` over the FSPEC:
+zero hits, re-run at HEAD). Step 4 — the discarded FSPEC rung-placement erratum cannot be
+pre-filed from here (errata are per-invocation signals); DEC-ENG-03's updated paragraph states
+it "remains filed as an erratum" so the round-3 confirmation reviewers re-emit it, per this
+file's Step 4. Step 6 noted: if the re-run halts again on approving artifacts, fix the erratum
+gate (countermeasure 1) instead of re-invoking.
 
 ## Phase
 
