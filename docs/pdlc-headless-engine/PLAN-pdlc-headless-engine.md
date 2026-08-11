@@ -312,6 +312,64 @@ sanctioned simplification; splitting T42's rows away from T29's gate is not.
 
 ## 6. Task dependency notes
 
+The `Deps` column is complete; this section explains the edges whose *absence* would be the easy
+mistake, and the two places where an edge that looks natural is deliberately not there.
+
+**Edges that exist because a wrong order is silently green, not loudly red.**
+
+- **T13, T14 → T19 → T35.** The outcome and catalogue modules record through the observation seam,
+  and the assertion step reads it. Building the step before either module leaves it asserting over
+  an empty union, and the forward direction `observed ⊆ OUTCOMES` is *true* of the empty set. This
+  chain is why T19 depends on T13 and T14 rather than only on its own driver T03.
+- **T16 → T26, T16 → T24, T16 → T39.** Rung 4's set-equality, the per-identifier prompt-composition
+  sweep and `loadDispatchableSkills()` all read `DISPATCHABLE_SKILLS` as **imported data**. Without
+  the export they would fall back to a hand-typed array, which is the declaration BR-START-4 forbids
+  and the shape DEC-ENG-05 rejects; the edge is what makes the fallback unavailable.
+- **T18 → T22, T23, T28, T34, T48.** Every fixture-driven property reads the recorded sets. An
+  implementer who writes the transport tests first will invent a synthetic stream shape, and the
+  fixtures then get written to match the test — the transport upgrade that the fixtures exist to
+  catch becomes invisible (TSPEC §7.2).
+- **T43 → T46.** The consumer fixture is only meaningful once the recorder exists; a populated
+  `.claude/workflows/` tree with nothing watching it satisfies AC-1.2 clause 3 for the wrong reason,
+  which is exactly the failure §7.7 designs around.
+- **T44 → T47.** The CLI's `doctor` projection renders the ladder's three AC-2.1 facts, and the
+  `tunables` block is built at the same two `createAdapter` sites that resolve them. Wiring the CLI
+  before the ladder returns those fields produces a `doctor` that prints a rung array and a run that
+  reports different values — the divergence TSPEC §4.3 requires one function to prevent.
+- **T35, T36, T37, T38, T44, T45, T47 → T48.** The corpus is a whole-pipeline instrument. Rows 1 and
+  2 of the witness table need a run's full phase context, row 4 needs a mid-run forced failure, and
+  row 5 needs the queue's Phase-0 triage — none of which exists until the adapter, both transports,
+  the composer, the ladder, the retry machine and the CLI are all green.
+
+**Two edges deliberately absent.**
+
+- **T50 does not depend on T52, and T52 depends on T50.** The witness table is written as a test
+  over synthetic and recorded descriptors *before* the assertion step implements it. Reversing this
+  produces the failure DEC-ENG-10 and TSPEC §7.4 both name: an assertion step written first is
+  written against whatever the accumulator happens to contain, and the row that "passes" is the one
+  the data already satisfied.
+- **No task depends on T51.** The live smoke path is opt-in, never in CI, and gates nothing. T53
+  lists it only so the baseline refresh happens after someone has run it, not because any code path
+  waits on it. Making a hermetic task depend on a credentialed one would put a credential on the
+  critical path of an unattended pipeline.
+
+**The one dependency that is a `Deps` edge and also a same-task rule.** T16's three generated paths
+are not a downstream task. `stripModuleSyntax` (`pdlc/workflows/build-runtime.mjs:45`) inlines the
+whole module body, so the exports change the bundle bytes even though the bundles publish no such
+name (`:87`, `:107` are explicit publish lists), and `artifact-freshness`
+(`.github/workflows/pr-tests.yml:77`) gates on `build-runtime.mjs --check` producing no diff. A
+batch that commits `orchestrate-dev.js` without the rebuild leaves CI red at Phase PUB for a reason
+unrelated to the work, and the repair looks like a CI problem rather than a missed step.
+
+**Cycle check.** Every edge above points from a lower batch to a higher one, and the `Batch` column
+is `max(dep batches) + 1` on every row, so the graph is a DAG by construction: a cycle would require
+an edge into an equal-or-lower batch, which no row has. `parsePlanTasks` plus
+`computeTopologicalBatches` are run against this table at the close of Phase P, and the header cells
+above (`#`, `Deps`) are the exact spellings that parser accepts. §4's manifest is the only other
+table in this document with a `#`-like column, and it has none — its header is `Path | Owner(s), by
+batch`, which the parser's exact-cell grammar does not match, so it cannot be mistaken for the task
+table.
+
 ## 7. Integration points
 
 ## 8. Definition of Done
