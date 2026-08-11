@@ -15,7 +15,7 @@ feature: pdlc-headless-engine
 |---|---|---|---|---|
 | pdlc | draft | Claude | 1.0 | 2026-08-11 |
 
-## 0. Scope of this document
+## 0. Context and scope of this document
 
 TSPEC v1.5 fixes the mechanism. This document records only the **load-bearing choices inside that
 mechanism** — the ones where an alternative was live, where the rejection has a cost, and where a
