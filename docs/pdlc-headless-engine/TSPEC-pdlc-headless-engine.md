@@ -350,6 +350,15 @@ exemption list, and keeps BR-SKILL-3's intent (the supplements travel with `se-i
 with it). It is an engine-side *composition* choice, not a prompt rewrite (NG-8): no byte of any
 `SKILL.md` changes. See the FSPEC erratum this raises, §9.
 
+**The delimiter grammar is fixed and asserted** (TE Q-02). Each supplement is introduced by a line
+`--- BEGIN SUPPLEMENT: {basename} ---` and closed by `--- END SUPPLEMENT: {basename} ---`, matching
+the role-definition delimiters `composeDispatchPrompt` already emits (`skills.mjs:312`). AC-3.1's
+oracle is then **set-equality over the file set**, not containment of a supplement's text somewhere
+in the prompt: for each dispatched identifier, the set of basenames appearing in BEGIN markers ≡ the
+set of `.md` files in that identifier's skill directory (3 for `se-implement`, 1 for each of the
+other nine, 12 in total). Containment would pass a prompt that inlined a supplement twice, or one
+that inlined a file no longer in the directory.
+
 `composeDispatchPrompt(skillName, skillText, taskPrompt)` (`skills.mjs:312`) keeps its shape — role
 line, delimited role definition, task — and gains the supplement blocks between the role definition
 and the task. `skillFilePath()` (`:267`) keeps both identifier forms (`se-implement`,
@@ -1113,6 +1122,13 @@ correctness depends entirely on the double:
   clause passes on nothing. So the double **replays each dispatch's file writes from its fixture** —
   for a reviewer dispatch, creating the cross-review file the prompt names, with the fixture's
   `VERDICT:` line and counts — reproducing the creation events a real agent would have produced.
+- **A fixture is bound to a dispatch by `(skill, phase label, round index)`, never by skill alone**
+  (TE Q-03). Keying on skill would make a round-2 reviewer dispatch replay round 1's writes, so the
+  double would overwrite `CROSS-REVIEW-{role}-{doc}-v1.md` instead of creating `-v2.md` — breaking
+  the append-only property `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads from the directory
+  listing, *inside the oracle meant to prove parity*. The double derives the round index the same
+  way the module does, from the directory listing, and a test asserts that two successive reviewer
+  dispatches for one document produce two files rather than one rewritten one.
 - **The double must *not* write the approval anchors.** `APPROVAL-HASH:` / `REVIEWED-COMMIT:` are the
   module's own write (`orchestrate-dev.js:6190`, through `_appendFile`, after its own pre-count
   check). A double that wrote them would make the anchor clause assert the fixture's bytes instead of
@@ -1317,9 +1333,9 @@ ships for exactly that.
 
 | # | Question | Disposition here | Owner |
 |---|---|---|---|
-| O-1 | fallback `claude -p` flag surface; per-transport model-alias semantics | §3.4 fixes the *interface* both transports satisfy; the CLI's flag spellings are a PLAN task producing the §7.2 fixture set. **Not blocking**: the primary transport ships without it | PLAN |
-| O-2 | guard-parity mechanism per transport, and first **whether a PreToolUse deny fires at all under `bypassPermissions`** | §6.5 pre-commits both branches so a red measurement is not a design debate. **Blocking for unattended use**, and scheduled before it (BR-GUARD-4) | PLAN, first implementation wave |
-| O-3 | where engine configuration lives (consumer config vs. engine-global with override) | not decided here. §4.1/§5.2 read tunables through one resolver, so the *location* is a single function's business and the design does not depend on the answer | deferred |
+| O-1 | fallback `claude -p` flag surface; per-transport model-alias semantics | §3.4 fixes the *interface* both transports satisfy; the CLI's flag spellings are a PLAN task producing the §7.2 fixture set. **Not blocking**: the primary transport ships without it, and v1.1 removes the transport selector v1.0 had mistakenly designed here — `resolveTransport` returns a constant `kind` and `"cli"` is reachable only by direct unit construction, so making the fallback runtime-selectable remains wholly O-1's | PLAN |
+| O-2 | guard-parity mechanism per transport, and first **whether a PreToolUse deny fires at all under `bypassPermissions`** | §6.5 pre-commits both branches so a red measurement is not a design debate, and v1.1 gives the measurement a **durable record** (M-ENG-09) the hermetic suite reads: an unrecorded measurement is a red suite, not a silent omission. **Blocking for unattended use**, and scheduled before it (BR-GUARD-4) | PLAN, first implementation wave |
+| O-3 | where engine configuration lives (consumer config vs. engine-global with override) | still not decided, and now decidably so: **§4.6 fixes the set, the defaults and the single resolution point** (`resolveTunables`), and names all five of REQ §4.1's tunables including the two v1.0 never mentioned (`queue.maxIterations`, `dispatch.retryBackoff`). Only the *location* the resolver reads from is open, and no AC depends on it | deferred |
 | O-4 | token viability and renewal runbook for cron contexts | out of scope for TSPEC — an operational runbook, not a mechanism. §3.2 row 1 is the only code contact | deferred |
 | O-5 | dry-run surface shape | partly discharged: `--dry-run-skill` exists (`bin/pdlc.mjs:171-172`) and §7.1 makes it the hermetic prompt-corpus surface. Whether a whole-run `--dry-run` is added is a PLAN decision | PLAN |
 | O-6 | session-reuse flag design | **the seam must not be painted shut** (R-4). §3.1 keeps `_sessionAgent` unwired, so fresh-per-dispatch stays today's semantics and a future flag has somewhere to attach | deferred, deliberately |
@@ -1334,9 +1350,12 @@ ships for exactly that.
   merge, is a maintainer decision about CI minutes that a plan can set either way. The technical
   requirement is only that **both platforms are exercised somewhere**, because C-9 makes per-platform
   measurement a constraint (`~/.claude.json` location, process spawning).
-- **O-ENG-T2 — two concurrent engine runs in one repo.** §2.3 records that the design forbids
-  `process.chdir` and passes `cwd` per dispatch, which makes two runs in one *process* coherent — but
-  two runs against the same worktree share a git index and a branch. The engine does not currently
+- **O-ENG-T2 — two concurrent engine runs in one repo.** §2.3 records the opposite of what v1.0
+  wrote here: `withCwd` (`run.mjs:155`) **does** `process.chdir` for the run's duration, which is
+  process-global and is exactly why one process hosts one pipeline at a time; `cwd` is *additionally*
+  passed per dispatch (`adapter.mjs:278`) so the agent's own directory is pinned independently. So
+  the in-process case is settled by exclusion, not by coherence — and the open question is the
+  cross-process one: two runs against the same worktree share a git index and a branch. The engine does not currently
   detect this. The likely answer is an advisory lock file scoped to the repo, refusing the second run
   with a catalogue-registered message; it is not designed here because no acceptance criterion binds
   it and inventing a locking protocol without a stated requirement is how a lock becomes the thing
@@ -1347,6 +1366,12 @@ ships for exactly that.
   implementation dispatch. If measured prompt size becomes a problem, the alternative is a
   language-conditioned selection driven by the repo's own manifest — a decision that needs a
   measurement first, and one this TSPEC deliberately does not pre-empt.
+- **O-ENG-T4 — the M-ENG-09 gate's platform granularity.** §6.5 makes an unrecorded guard
+  measurement a red hermetic suite, keyed by platform. Whether "platform" means `process.platform`
+  (two values, matching §7.6's matrix) or a finer key including the SDK version is a maintainer
+  decision: a version-keyed row is more honest and goes stale on every SDK bump, which on an
+  unattended pipeline means a red suite for a reason no code change caused. The design records the
+  SDK version in the row either way; only the *staleness predicate* is open.
 
 ### 9.3 Errata raised against upstream documents
 
