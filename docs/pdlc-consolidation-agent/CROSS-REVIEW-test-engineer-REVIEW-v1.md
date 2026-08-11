@@ -36,12 +36,12 @@ history it keys is the one described here, not a fresh review of a tree nobody h
 
 | ID | Severity | Scope | Finding | Section ref |
 |----|----------|-------|---------|------------|
-| F-01 | High | Local | **The complete-ledger Phase I skip is guarded by an absence-only oracle; its one safety claim is asserted in a comment, never in a test.** `98b7429e` makes a matching complete ledger skip Phase I whole (`orchestrate-dev.js:10836-10847`, `:10883`) — zero implementation dispatches, zero wave gates. The property that makes that safe is that Phase PT's V-wave *and its script-owned gate* still run afterwards (`:11056-11078`), and in HEAD they do. But the test that covers the skip asserts only `expect(waveDispatches).toEqual([])` after filtering the PROPERTIES dispatch **out** of the record — the safety claim survives only as the comment "Phase PT's V-wave verification is its own phase and still runs". Mutate `break` (`:10883`) into an early return past the V-wave, or let a future refactor move the skip above `phaseFn("Phase PT…")`, and every test in the file stays green while the pipeline ships an invocation that runs no test command at all. Needs the positive conjunct on the same path: on the skip run, the V-wave dispatch **did** go out and `_runCommand(implConfig.testCommand)` **was** called. | `__tests__/waveExecution.test.js:1621-1645`, `:1757-1779`; `orchestrate-dev.js:10883, 11015-11078` |
-| F-02 | Medium | Local | **A complete ledger is honoured with no tree-side corroboration, and the "record complete but the tree isn't" case has no test.** Staleness is guarded by `feature` and `planHash` only (`orchestrate-dev.js:10826-10834`) — both functions of the PLAN document, neither a function of the tree. `.claude/pdlc-wave-state.json` is untracked local state, so a `git reset --hard`, a dropped rebase, or a re-cut `feat-{feature}` branch leaves a record claiming N green waves over a tree that carries none of the commits, and Phase I is skipped over it. The cheap oracle is available: record the HEAD sha alongside `lastGreenWave` and compare on resume (or, weaker, emit the recorded sha in the skip notice so the operator can see what is being trusted). Either way this wants a case — complete record, mismatched tree — that is red today. | `orchestrate-dev.js:10812-10847`; `__tests__/waveExecution.test.js:1621-1645` |
-| F-03 | Medium | Local | **`forcePhases` cannot force a wave re-run once the ledger is complete, and nothing pins that interaction.** The ledger consult is gated on `!explicitPointer` (`orchestrate-dev.js:10812`), which is the `implementation.startWave` config pointer — `forcePhases: "I"` does not reach it. `forcePhases` is the documented lever for overriding recorded state, so an operator forcing Phase I after a complete ledger now gets `⏭ Skipped`. The behaviour may well be intended (the skip notice does name `Delete {WAVE_STATE_PATH} to force a full run`), but "intended" and "asserted" are different things: no case in `forcePhases.test.js` or `waveExecution.test.js` states which of the two levers wins. One test either way turns a surprise into a contract. | `orchestrate-dev.js:10812`; `__tests__/forcePhases.test.js`; `__tests__/waveExecution.test.js:1621` |
-| F-04 | Medium | Local | **AT-M5's set-equality compares production against production — an implementation echo on the expected side.** The remediation (`0c966a46`) correctly replaced the exclusion-only body with a both-directions set comparison, and that is a real improvement. But the expected side is `new Set(result.writeSet)` — a value the pass under test computed and returned (`consolidate-learnings.js:511, 736, 859, 1058`). A defect that drops a path from *both* the commit pathspec and `state.writeSet` keeps the two sides equal and the row green. FSPEC §5.4 enumerates the write set; on this fixture (one-file corpus, nothing-found reply) the enumeration collapses to `[LOG_PATH]`, which is a literal transcription the test can carry. Keep the coherence conjunct, add the spec-anchored one beside it. | `__tests__/consolidationPass.test.js:450-478`; `consolidate-learnings.js:511, 1058`; FSPEC §5.4 |
-| F-05 | Medium | Process | **Two behaviour changes to the pipeline landed inside Phase CR with no requirement, no property, and no traceability row.** `98b7429e` (Phase I skip) changes when implementation runs at all; `202f92e1` (reviewer-prompt path) changes what every reviewer in every phase is told to write. Neither appears in this feature's REQ, FSPEC, TSPEC, PLAN or PROPERTIES — `consolidationTraceability.test.js`'s register set-equality covers `AT-…` ids only, so neither change is reachable from any traceability guard. The tests they carry are decent (that is why this is not a High), but they are self-contained: nothing downstream notices if a later feature deletes them. The durable fix is a PROPERTIES row for the wave-ledger resume contract, filed against `pdlc/workflows/` rather than against this feature. | `98b7429e`, `202f92e1`; `__tests__/consolidationTraceability.test.js:225-260` |
-| F-06 | Low | Local | **The consolidation bundle's generated banner names the wrong sources, and no test pins provenance per bundle.** `BANNER` is one fixed literal (`build-runtime.mjs:34-43`) listing `orchestrate-dev.js`, `orchestrate-queue.js`, `runtime-adapter.js`, and it is stamped onto `dist/consolidate-learnings.bundle.js:1-13`, whose actual source is `consolidate-learnings.js`. The banner's own instruction — "Edit those, then rebuild" — points a maintainer at three files, none of which is the one to edit. `runtimeBundle.test.js`'s `BUNDLES` axis now covers the artifact for every structural constraint but asserts nothing about the banner. | `build-runtime.mjs:34-43, 85`; `dist/consolidate-learnings.bundle.js:1-7` |
+| F-01 | High | Local | **[CLOSED at HEAD — see Re-verification]** **The complete-ledger Phase I skip is guarded by an absence-only oracle; its one safety claim is asserted in a comment, never in a test.** `98b7429e` makes a matching complete ledger skip Phase I whole (`orchestrate-dev.js:10836-10847`, `:10883`) — zero implementation dispatches, zero wave gates. The property that makes that safe is that Phase PT's V-wave *and its script-owned gate* still run afterwards (`:11056-11078`), and in HEAD they do. But the test that covers the skip asserts only `expect(waveDispatches).toEqual([])` after filtering the PROPERTIES dispatch **out** of the record — the safety claim survives only as the comment "Phase PT's V-wave verification is its own phase and still runs". Mutate `break` (`:10883`) into an early return past the V-wave, or let a future refactor move the skip above `phaseFn("Phase PT…")`, and every test in the file stays green while the pipeline ships an invocation that runs no test command at all. Needs the positive conjunct on the same path: on the skip run, the V-wave dispatch **did** go out and `_runCommand(implConfig.testCommand)` **was** called. | `__tests__/waveExecution.test.js:1621-1645`, `:1757-1779`; `orchestrate-dev.js:10883, 11015-11078` |
+| F-02 | Medium | Local | **[CLOSED at HEAD — see Re-verification]** **A complete ledger is honoured with no tree-side corroboration, and the "record complete but the tree isn't" case has no test.** Staleness is guarded by `feature` and `planHash` only (`orchestrate-dev.js:10826-10834`) — both functions of the PLAN document, neither a function of the tree. `.claude/pdlc-wave-state.json` is untracked local state, so a `git reset --hard`, a dropped rebase, or a re-cut `feat-{feature}` branch leaves a record claiming N green waves over a tree that carries none of the commits, and Phase I is skipped over it. The cheap oracle is available: record the HEAD sha alongside `lastGreenWave` and compare on resume (or, weaker, emit the recorded sha in the skip notice so the operator can see what is being trusted). Either way this wants a case — complete record, mismatched tree — that is red today. | `orchestrate-dev.js:10812-10847`; `__tests__/waveExecution.test.js:1621-1645` |
+| F-03 | Medium | Local | **[CLOSED at HEAD — see Re-verification]** **`forcePhases` cannot force a wave re-run once the ledger is complete, and nothing pins that interaction.** The ledger consult is gated on `!explicitPointer` (`orchestrate-dev.js:10812`), which is the `implementation.startWave` config pointer — `forcePhases: "I"` does not reach it. `forcePhases` is the documented lever for overriding recorded state, so an operator forcing Phase I after a complete ledger now gets `⏭ Skipped`. The behaviour may well be intended (the skip notice does name `Delete {WAVE_STATE_PATH} to force a full run`), but "intended" and "asserted" are different things: no case in `forcePhases.test.js` or `waveExecution.test.js` states which of the two levers wins. One test either way turns a surprise into a contract. | `orchestrate-dev.js:10812`; `__tests__/forcePhases.test.js`; `__tests__/waveExecution.test.js:1621` |
+| F-04 | Medium | Local | **[CLOSED at HEAD — see Re-verification]** **AT-M5's set-equality compares production against production — an implementation echo on the expected side.** The remediation (`0c966a46`) correctly replaced the exclusion-only body with a both-directions set comparison, and that is a real improvement. But the expected side is `new Set(result.writeSet)` — a value the pass under test computed and returned (`consolidate-learnings.js:511, 736, 859, 1058`). A defect that drops a path from *both* the commit pathspec and `state.writeSet` keeps the two sides equal and the row green. FSPEC §5.4 enumerates the write set; on this fixture (one-file corpus, nothing-found reply) the enumeration collapses to `[LOG_PATH]`, which is a literal transcription the test can carry. Keep the coherence conjunct, add the spec-anchored one beside it. | `__tests__/consolidationPass.test.js:450-478`; `consolidate-learnings.js:511, 1058`; FSPEC §5.4 |
+| F-05 | Medium | Process | **[OPEN]** **Two behaviour changes to the pipeline landed inside Phase CR with no requirement, no property, and no traceability row.** `98b7429e` (Phase I skip) changes when implementation runs at all; `202f92e1` (reviewer-prompt path) changes what every reviewer in every phase is told to write. Neither appears in this feature's REQ, FSPEC, TSPEC, PLAN or PROPERTIES — `consolidationTraceability.test.js`'s register set-equality covers `AT-…` ids only, so neither change is reachable from any traceability guard. The tests they carry are decent (that is why this is not a High), but they are self-contained: nothing downstream notices if a later feature deletes them. The durable fix is a PROPERTIES row for the wave-ledger resume contract, filed against `pdlc/workflows/` rather than against this feature. | `98b7429e`, `202f92e1`; `__tests__/consolidationTraceability.test.js:225-260` |
+| F-06 | Low | Local | **[CLOSED at HEAD — see Re-verification]** **The consolidation bundle's generated banner names the wrong sources, and no test pins provenance per bundle.** `BANNER` is one fixed literal (`build-runtime.mjs:34-43`) listing `orchestrate-dev.js`, `orchestrate-queue.js`, `runtime-adapter.js`, and it is stamped onto `dist/consolidate-learnings.bundle.js:1-13`, whose actual source is `consolidate-learnings.js`. The banner's own instruction — "Edit those, then rebuild" — points a maintainer at three files, none of which is the one to edit. `runtimeBundle.test.js`'s `BUNDLES` axis now covers the artifact for every structural constraint but asserts nothing about the banner. | `build-runtime.mjs:34-43, 85`; `dist/consolidate-learnings.bundle.js:1-7` |
 
 ## Questions
 
@@ -101,44 +101,68 @@ history it keys is the one described here, not a fresh review of a tree nobody h
   left un-un-skipped in the consolidation suites, and the only red in the run is the documented
   untracked-file document-oracle red that CI does not see.
 
+## Re-verification at HEAD (closing pass)
+
+The findings above were written mid-phase. Before closing this round I re-read every one of them
+against the tree as it now stands (`a193af11`) rather than against the state they were filed on, and
+five of the six are closed in the code, not merely promised. Line references below are HEAD's.
+
+| ID | State at HEAD | Evidence |
+|----|---------------|----------|
+| F-01 | **Closed** | The skip case is now a negative *and* a positive half in one test: after `expect(waveDispatches).toEqual([])` it asserts the V-wave dispatch went out (`expect(vWaveDispatches).toHaveLength(1)`) and that the script's own gate ran the configured command exactly once (`expect(gateCommands).toEqual([…implementation.testCommand])`). The comment above the pair names the mutation it exists to catch — turning the `break` into an early return past Phase PT — so the safety claim is asserted, not narrated. (`__tests__/waveExecution.test.js:1694-1748`) |
+| F-02 | **Closed** | The record now carries a fourth field, `head`, stamped from `rev-parse HEAD` (`orchestrate-dev.js:9675, 9696-9700`), and resume is corroborated against the tree by an ancestry probe. Two cases pin it: every record carries the sha, not only the last (`:1786-1795`), and a complete ledger whose commit is not an ancestor of HEAD is ignored with every wave running (`:1798`). That is Q-02's answer, implemented. |
+| F-03 | **Closed** | Precedence is now stated: the ledger wins over `forcePhases`, and the escape is deleting the file. The case asserts the notice text an operator actually receives, and carries the control that makes it a statement about precedence rather than about `forcePhases` being inert — same forced run, ledger removed, all three waves dispatch. (`__tests__/waveExecution.test.js:1899-1934`) |
+| F-04 | **Closed** | AT-M5 keeps the both-directions coherence comparison (`:579`) and now also asserts the spec-anchored literal beside it — `expect([...observed].sort()).toEqual([LOG_PATH])` (`__tests__/consolidationPass.test.js:592`). The expected side of that conjunct is a transcription of FSPEC §5.4 for this fixture, not a value the code under test returned, so the implementation echo is gone. |
+| F-05 | **Open** | Still no REQ or PROPERTIES row mentions the wave ledger: `grep -ni ledger` over `REQ-pdlc-consolidation-agent.md` and `PROPERTIES-pdlc-consolidation-agent.md` returns nothing. The behaviour is well tested but unowned by this feature's spec, which is exactly the scoping point the finding makes. Unchanged, and not blocking — see Recommendation. |
+| F-06 | **Closed** | `banner(sources)` is now a function taking each artifact's own source list, with the reasoning recorded above it (`build-runtime.mjs:34-49`), and `dist/consolidate-learnings.bundle.js:1-7` names `runtime-adapter.js`, `orchestrate-dev.js`, `consolidate-learnings.js` — its actual inputs. Provenance is pinned per artifact by a `describe.each` over `ARTIFACT_SOURCES`, so neither an over-broad banner nor a silently-added source passes (`__tests__/runtimeBundle.test.js:579-600`). |
+
+Gate re-run on the three suites these findings touch: `npm test -- __tests__/waveExecution.test.js
+__tests__/runtimeBundle.test.js __tests__/consolidationPass.test.js` → **208 passed, 3 suites, 0
+failed**. (Run them through `npm test`, not bare `npx jest`: the repo's ESM suites need the
+package's jest config.) The whole-suite red noted in **Method** remains the documented
+untracked-local-file document-oracle red, which CI does not see.
+
 ## Recommendation
 
-**Needs revision** — one High, and it is a small one.
+**Approved with minor changes** — the one High is closed in the tree, and the single Medium left
+open is a scoping question, not a test gap.
 
 The consolidation feature itself is in good shape from this lens: every blocking finding the
 previous round left open is closed, the oracles that replaced them are stronger than the findings
 asked for, and PROPERTIES now has a traceability guard that will catch the next one mechanically.
 Nothing in `consolidate-learnings.js` or its sixteen suites blocks.
 
-What blocks is the wave-ledger change that landed mid-phase. Skipping Phase I whole is the right
-optimisation and HEAD implements it correctly — the V-wave and its gate still run. The problem is
-that a test can no longer tell: the only assertion is that nothing was dispatched, which is exactly
-the shape that survives the mutation that would matter.
+What had blocked was the wave-ledger change that landed mid-phase: skipping Phase I whole is the
+right optimisation and HEAD implemented it correctly, but the test could not tell — the only
+assertion was that nothing was dispatched, exactly the shape that survives the mutation that would
+matter. That is now fixed in the tree, and fixed in the shape the finding asked for: the positive
+half asserts the V-wave went out *and* that the script's gate ran the configured command, with the
+mutation it catches written down beside it. F-02, F-03, F-04 and F-06 were all addressed at the same
+altitude — a `head` field with an ancestry probe, a precedence case with the ledger-removed control,
+a spec-anchored expected side beside the coherence one, and per-artifact banner provenance. Four of
+those five carry a control or a non-vacuity conjunct, which is the difference between a finding
+closed and a finding papered over.
 
-Order of work:
+Remaining work, none of it blocking:
 
-1. **F-01** — add the positive conjuncts to
-   `waveExecution.test.js:1621` ("a complete ledger skips every wave…"): assert the V-wave
-   dispatch went out (`record` contains the `se-implement` call whose prompt names the PROPERTIES
-   suite) and that `_runCommand` was called with `implementation.testCommand` on that same run. One
-   spy counter and two expectations. Then confirm it by mutation: turn `break` (`:10883`) into a
-   return past the V-wave and watch the case go red.
-2. **F-02 / Q-02** — decide whether the completion record should be corroborated against the tree,
-   and if so add the sha field plus the mismatched-tree case.
-3. **F-03 / Q-01** — one test stating which of `forcePhases` and the ledger wins.
-4. **F-04** — add `[LOG_PATH]` as the spec-anchored expected side of AT-M5, keeping the coherence
-   comparison beside it.
-5. **F-05 / Q-03** — a scoping decision more than a test task; if the two `orchestrate-dev.js`
-   changes stay on this branch, a PROPERTIES row for the wave-ledger resume contract is what keeps
-   them from silently regressing.
-6. **F-06** — per-bundle banner, or one test asserting each artifact's banner names its own source.
+1. **F-05 / Q-03** — a scoping decision more than a test task. The two `orchestrate-dev.js` changes
+   are now well tested but owned by no row of this feature's REQ or PROPERTIES, so nothing in the
+   traceability guard will notice if the contract regresses. Either write the PROPERTIES row for the
+   wave-ledger resume contract on this branch, or split the change out under its own REQ. Answering
+   Q-03 either way is enough to close this; it does not need to happen before ship.
+2. **Q-01** is answered by the code (the ledger wins, and the notice says so), and **Q-02** is
+   answered by the `head` field. Both can be closed.
 
-No errata are filed this round: every finding is about code and tests on this branch, not about a
+One erratum is filed this round, and it is F-05's spec-ownership gap rather than a code defect: the
+behaviour now shipping on this branch has no PROPERTIES row. Every other finding is about code and
+tests here, not about a defect in an upstream document.
+
+No further errata are filed this round: every finding is about code and tests on this branch, not about a
 defect in an upstream document. F-05 is the closest, and routing it as an erratum against this
 feature's PLAN would misfile it — the changes it names are out of this feature's scope entirely,
 which is the finding.
 
 ## Verdict
 
-VERDICT: Needs revision
-{"high": 1, "medium": 4, "low": 1}
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
