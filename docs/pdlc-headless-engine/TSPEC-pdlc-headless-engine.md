@@ -440,8 +440,8 @@ The tie is then two **workflows-side tests** (not production code), and neither 
 
 | Test | Assertion | What it catches |
 |---|---|---|
-| derivation | `DISPATCHABLE_SKILLS` ≡ the union recomputed in the test from `PHASE_DISPATCH` + the named constants, read as imported data | an identifier added to a phase row or a constant and not to the export — impossible by construction, so this is a regression guard on the derivation itself |
-| no-bare-literal | every skill-identifier-shaped string literal in either module's source is a **member** of the exported union (containment, per DEC-ENG-05) | a *new* dispatch site naming an identifier the exports do not carry, which is the only way an identifier can escape the derivation |
+| derivation | two conjuncts: (i) `DISPATCHABLE_SKILLS` ≡ the union recomputed in the test from `PHASE_DISPATCH` + the named constants, read as imported data; (ii) `DISPATCHABLE_SKILLS` ≡ the **ten identifiers transcribed test-side** (below) | (i) alone is impossible by construction — a regression guard on the derivation itself. (ii) is what makes deletion visible: remove a `PHASE_DISPATCH` role field and (i) shrinks on both sides and stays green, while (ii) turns red |
+| no-bare-literal | every **skill-naming site** in either module (the four site classes below, enumerated structurally, never by string shape) resolves to a **member** of the exported union — containment per DEC-ENG-05 — conjoined with the per-class site census | a *new* dispatch site naming an identifier the exports do not carry, which is the only way an identifier can escape the derivation; and an extractor that silently stops matching, which containment alone would score green |
 
 **The no-bare-literal guard is containment, not absence, and this supersedes the allow-list framing
 an earlier draft of this section carried** (DEC-ENG-05). An absence test — "no literal equal to a
@@ -450,23 +450,64 @@ cannot be written against HEAD: bare literals sit at dispatch sites in eleven pl
 modules (enumerated above), so the allow-list would either leave the suite permanently red or have
 to exempt nearly every site it exists to police. The guard is therefore stated as:
 
-> Every string literal in either workflow module that matches a skill-identifier shape — at a
-> dispatch call site, in a `PHASE_DISPATCH` role field, in a `skill:` field, or bound to a
-> module-local constant — is a member of the two modules' exported `DISPATCHABLE_SKILLS` union.
+> Every **skill-naming site** in either workflow module resolves to a member of the two modules'
+> exported `DISPATCHABLE_SKILLS` union. A site is a syntactic position, not a string shape, and the
+> four classes are closed: **(1)** the value of a module-level `SKILL_*` / `ADVISORY_RUNG_SKILL`
+> constant declaration; **(2)** a `PHASE_DISPATCH` role field (`creator`, `optimizer`, `verifier`,
+> `remediator`, `reviewers[]`); **(3)** a `skill:` object field; **(4)** the first argument of a
+> dispatch call. A site resolving to a string literal contributes that literal; a site resolving to a
+> module-level constant contributes that constant's value; a site the extractor cannot resolve to
+> either is a **failure**, never a skip.
 
-That is green at HEAD by measurement, and it needs **no exemption of any kind**. The reviewer-role
-map keys three identifiers as object keys that are not dispatch sites — `"se-review"`
-(`orchestrate-dev.js:6229`), `"pm-review"` (`:6230`), `"te-review"` (`:6231`) — and under containment
-they need no exemption because they are genuine members of the union; that map's *values*
-(`software-engineer`, `product-manager`, `test-engineer`) are role slugs, not skill identifiers, and
-do not match the shape. The guard fails exactly when the drift this section fears occurs: a new
-dispatch site naming an identifier the exports do not carry. Its own failure mode is stated rather
-than assumed — the test is only as good as the identifier-shape predicate, so the predicate is
-asserted against the known set rather than being a regex nobody re-reads. **Needing an exemption at
-all is the re-evaluation trigger** (DEC-ENG-05), not an implementer's local widening of a regex.
+**The predicate is structural because no string predicate exists** (TE F-40). "Skill-identifier
+shape" read as syntax — lowercase words joined by hyphens — selects 54 distinct literals in
+`orchestrate-dev.js` and 24 in `orchestrate-queue.js` at HEAD (`grep -oE '"[a-z]+(-[a-z]+)+"'`),
+including `"command-failed"`, `"dispatch-error"`, `"rev-parse"` and `"awaiting-merge"`; containment
+fails on every one of them, so the test would be red on correct code and the only repair would be
+loosening the predicate — the exact pressure this section exists to remove. Read as membership
+instead, containment becomes `x ∈ S for all x ∈ S`, a tautology that cannot fail on any input,
+including the drift it is written to catch. Read as "a shipped skill directory name" it is red again:
+`name: "orchestrate-dev"` (`orchestrate-dev.js:3316`) and `name: "orchestrate-queue"`
+(`orchestrate-queue.js:45`) are `meta` fields naming directories under `pdlc/skills/` that are not in
+the derived 10. The decisive case is the reviewer-role map: its keys `"se-review"`, `"pm-review"`,
+`"te-review"` and its values `"software-engineer"`, `"product-manager"`, `"test-engineer"` sit on the
+same three lines (`orchestrate-dev.js:6229-6231`) and are syntactically indistinguishable, so **no
+string predicate can separate them** — but structurally the map is none of the four classes, so
+neither keys nor values are sites, and the map needs no exemption. Sites are enumerable; shapes are
+not. This supersedes any reading of DEC-ENG-05's rule as a lexical filter; DEC-ENG-05 moves with it.
 
-At HEAD the derived union is **10 identifiers** — an observation, never the assertion; the assertion
-is set-equality.
+**Containment over an extracted set is vacuously green whenever extraction returns ∅**, so the guard
+carries a second conjunct: the **per-class site census**, asserted, not observed. At HEAD, after the
+edit §8.3 specifies, the four classes hold **7 / 28 / 1 / 11 = 47** sites — 7 constant declarations
+(6 in `orchestrate-dev.js`, `SKILL_TRIAGE` in `orchestrate-queue.js`); 28 role-field literals across
+`PHASE_DISPATCH`'s eight rows (`orchestrate-dev.js:3337-3437`, measured: 5 non-null `creator`, 7
+`optimizer`, 14 across seven two-member `reviewers` arrays, 1 `verifier`, 1 `remediator`); 1 `skill:`
+field (`:10448`); 11 dispatch-call first arguments (`:8008`, `:8112`, `:8035`, `:8064`, `:10028`,
+`:10068`, `:10142`, `:10251`, `:9964`, `:10542`, and `orchestrate-queue.js:1216`). Classes 3 and 4
+hold constant *references* after the edit, which is why the extractor must resolve references rather
+than match literals — and why "cannot resolve" is a failure. A prettier reflow of the two multi-line
+call forms, or a call-form change, drops sites from class 4 and turns the census red instead of
+letting containment pass over a shrunken set. **The census is a test-side transcription and is
+updated deliberately** when a phase row or dispatch site is added — that edit is the point at which a
+human confirms the new site names a union member.
+
+The guard then fails exactly when the drift this section fears occurs: a new dispatch site naming an
+identifier the exports do not carry. **Needing an exemption at all is the re-evaluation trigger**
+(DEC-ENG-05) — under structural scoping no exemption exists to widen.
+
+**Why the derived set earns a test-side transcription too, and why that is not the declaration
+BR-START-4 forbids** (TE F-42). At HEAD the derived union is **10 identifiers** — `{dod-verify,
+harvest-learnings, pm-author, pm-review, se-author, se-implement, se-review, ship-pr, te-author,
+te-review}` — and the derivation test transcribes exactly that list as its second conjunct. Without
+it, deleting a `PHASE_DISPATCH` role field shrinks the export and the test's recomputation together,
+both stay equal, and rung 4's Direction-A set-equality against readable prompt files also stays green
+because the deleted identifier's file is simply no longer expected — nothing anywhere goes red. This
+is the same reasoning §7.4 applies to M-ENG-07, which is "a transcription of the modules' constants,
+never an import from them", and the two sections now agree rather than choosing oppositely.
+BR-START-4 forbids a hand-maintained declaration **in production, beside the dispatch sites**, where
+it can disagree with the run; a test-side transcription is the opposite object — it is the spec
+asserting what production must derive, and it goes red rather than silently governing behaviour. The
+production side remains computed, never typed.
 
 Adding these exports is a change to the modules, in this repo, with tests (C-4). It is behaviourally
 bundle-safe: `stripModuleSyntax` (`pdlc/workflows/build-runtime.mjs:45`) rewrites `export const` to
