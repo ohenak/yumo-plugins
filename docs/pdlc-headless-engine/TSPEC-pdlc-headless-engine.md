@@ -6,14 +6,41 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → **TSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.9; `docs/pdlc-headless-engine/FSPEC-pdlc-headless-engine.md` v1.3) |
+| Upstream | REQ → FSPEC → **TSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `docs/pdlc-headless-engine/FSPEC-pdlc-headless-engine.md` v1.6) |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-11 |
+| pdlc | draft | Claude | 1.6 | 2026-08-11 |
+
+**v1.6 changelog** — revision round 6, addressing `CROSS-REVIEW-product-manager-TSPEC-v6.md`
+(0 High, 1 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (0 High, 2 Medium, 1 Low),
+and folding in the two findings the v7 reviews carried forward unchanged. Both reviewers' leading
+finding is the same and the FSPEC erratum this round settled it: **v1.5's "composed but never
+executed → both terminal fields `null`" branch has no producer**, and FSPEC v1.5's BR-MODEL-3 now
+says so upstream ("the dry-run surface is **not** a way to reach it … never the corpus's source",
+`FSPEC:680-684`). Repaired in the direction upstream took — the branch and its four restatements are
+**deleted** and replaced by the stronger rule, **every recorded line is a settlement line** (§4.1,
+§7.0, §7.4 row 4 and corpus preamble, §8.3), grounded in the seam rather than asserted: the
+accumulator hangs off `_agent` (`adapter.mjs:271`) and never off `composePrompt` (`:259`), and
+`emitDryRun` calls `composePrompt` directly (`bin/pdlc.mjs:190`), so the dry-run surface records
+nothing. Row 4 gains the two clauses its fixture author needs: the **injection point** — run iv
+injects at `queryFn` per §7.1's construction rule, and the injected rejection must both map to
+`TransportError` (`transport.mjs:123`, for the pinned `outcome`) and satisfy `MODEL_ERROR_RE`
+(`orchestrate-dev.js:1780-1781`, for `B` to exist at all) (PM F-02, TE F-38) — and the **escape
+scoping** that reconciles the pinned member with §5.3's engine-fatal rule: the classification applies
+to a rejection that reaches `runDev`/`runQueue`'s top-level catch, and `resolveAdvisoryRung` handles
+its own (`orchestrate-dev.js:1856`→`:1861`, `:3143`), so run iv continues rather than exiting `1`
+(TE F-37; stated in §5.3 too, so it is findable from both sides). The five stale `FSPEC:{line}`
+citations the erratum's change notes shifted are re-anchored against FSPEC v1.5, plus one stale
+`REQ:` line (PM F-02, TE F-39). Questions answered in the design: `corpusRun != null` is
+**essential, not defensive**, because `_bootstrap.mjs` is `--import`ed into every test-file process
+(TE Q-15/Q-16); the two live tests do inherit §7.0's writer, and what keeps §7.5's claim honest is
+that their records carry `corpusRun === null` (PM Q-02, TE Q-16); and the dry-run surface's complete
+oracle set is now stated — §5.4's exit-`0` row and §7.1's prompt-composition assertions, nothing
+else (TE Q-17).
 
 **v1.5 changelog** — revision round 5, addressing `CROSS-REVIEW-product-manager-TSPEC-v5.md`
 (1 High, 1 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (0 High, 3 Medium, 3 Low).
@@ -23,7 +50,8 @@ accumulator is append-only, so row 4's `outcome`/`errorText` conjuncts were unsa
 correct code (PM F-01, TE F-30). Fixed by pinning the timing in the design: **one line per dispatch
 *attempt*, appended when the attempt settles**, carrying that attempt's `outcome`/`errorText`; a
 dispatch composed but never executed (the inert transport behind `--dry-run`) is appended at
-composition with both fields `null`. Row 4's `F` is a settlement line, and FSPEC BR-MODEL-3's
+composition with both fields `null` — *superseded in v1.6: that branch has no producer and the
+clause is deleted.* Row 4's `F` is a settlement line, and FSPEC BR-MODEL-3's
 composed-not-billed guarantee is restated with the timing attached (§4.1, §7.0, §7.4). Mediums:
 row 4 pins the **exact** outcome member `transport-contract-violation` — derived from §5.1 via
 `classifyThrown`'s unrecognised arm (`transport.mjs:123`) — instead of the complement of `ok`
