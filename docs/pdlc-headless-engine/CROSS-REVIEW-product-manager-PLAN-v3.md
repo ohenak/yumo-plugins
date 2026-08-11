@@ -32,8 +32,38 @@ No High findings. All four v2 findings are closed; the four below are in text th
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The single-platform restatement is well argued, but it moves a C-9 obligation onto a host nobody schedules: the `darwin` row exists only because the maintainer's Mac happens to run the wave, and it disappears the day a wave runs on Linux. Is the operator content that `M-ENG-09`'s coverage is a function of *where Phase I ran*, rather than a fixed set the DoD can state up front? §8's item is now honest but not decidable in advance — a reader cannot tell how many rows "met" means without knowing the wave host. |
+| Q-02 | `.github/workflows/pr-tests.yml:37-39` still carries the comment explaining the matrix as "the maintainer's macOS (bash 3.2 …) **and** Linux CI (bash 5). Testing both is what keeps the 3.2 constraints honest", nine days after `410f3a07` removed `macos-latest` from that very matrix. That is repo state, not this plan's defect, and I am not asking the plan to own it — but T17 edits this file and the plan quotes `:40` as authority. Should T17's row carry a one-line "and correct the stale matrix comment while in the file", or is the deliberate answer "not this feature's scope"? |
+| Q-03 | Carried unresolved from v2 Q-02: §8's ≥ 85 % branch-coverage floor over the four new modules is still a feature-local number no REQ states and no other pdlc feature carries. Intended as a feature-local commitment, or a repo-wide bar for harvest to promote into `docs/_constraints/`? The answer changes what the next plan inherits. |
+
 ## Positive Observations
+
+- **The `'documentOracles'` fix is the whole fix, not the visible half.** I compared both plan literals to `.claude/pdlc.config.json:3` programmatically rather than by eye, and they are HEAD's string with the engine suite prepended, token for token, in *both* §8 and §11. The plan also generalised the lesson correctly — "dropping a pattern is as much a blast radius as dropping a suite" — which is the sentence that stops the next author re-opening this. Only the supporting citation is wrong (F-01), and that is a two-word repair.
+- **The `macos-latest` correction was taken as evidence, not as a reviewer's assertion.** The plan does not merely drop the second platform; it names the commit that dropped it (`410f3a07`, which I confirmed exists, dated 2026-08-02, message "ci: drop macos-latest from the unit-test matrix"), states that re-adding it would reverse a standing decision on a repo-wide file "for a reason no AC states", and threads the consequence through T17, T42, §5, §8, §9's C-9 note, §10's O-ENG-T1/T4/T5 and §11. Seven places, one story, no residue — I looked for a surviving "two-platform" claim and found none.
+- **O-ENG-T5 got sharper, not just edited.** It was "the unmeasured third platform"; it is now "platforms that run the suite without a CI job", which is the honest generalisation once the matrix is single-platform — a `darwin` wave host and a contributor's machine are the same case, and the plan says so while still refusing to decide the general question mid-wave. That is the right line between planning and operating.
+- **The V5 correction found a real hermeticity hole, and the plan closed it at the source.** Spelling the coverage run `npm test -- --experimental-test-coverage` and making T11's runner forward unrecognised arguments (with a test that a forwarded flag reaches the child's argv) is better than the alternative it replaces: a bare `node --test __tests__/` would have measured a run with no `PDLC_TEST_RUN_ID`, no bootstrap import and no suite-wide step. Verified the premise: `pdlc/engine/package.json:13` is `node --test __tests__/`, carrying no coverage flag, so V5 genuinely is a per-invocation flag rather than a change to what CI runs.
+- **AC-1.5's Red column now tells the truth, and the truth is checkable.** `run.test.js:64` asserts only `url.startsWith("file://")` today and `run.mjs:52-55` already builds the URLs from a repo-relative path, so T10's strengthened assertion does pass on landing — "no red task" is the accurate cell, and the batch-2 exemption is stated in the gate rather than left for a wave agent to infer as a defect.
+- **The parse-safety argument survives its own enumeration now.** Stating the two-cell rule first and the four tables second is the right order: I added a hypothetical `Deps` column to §10 mentally and the paragraph already tells the future author what breaks. F-04 is a completeness nit on the spellings, not a hole in the argument's shape.
 
 ## Recommendation
 
+**Approved with minor changes** — no High findings.
+
+The one High from v2 is closed properly: `'documentOracles'` is carried through in both places, set-equal to HEAD's repo-wide value, with the blast-radius reasoning generalised so the next author does not re-open it. The three Medium/Low from v2 are closed too, and the round's larger change — removing `macos-latest` from every claim and re-keying the `M-ENG-09` obligation on `process.platform` — is evidence-backed and consistently threaded.
+
+Nothing below blocks Phase P. In descending order of what I would fix before implementation starts:
+
+1. **F-01** — cite `documentOracles.test.js:62`, not `document-oracles.mjs`, as the source of CWD sensitivity (§8 and §11). The module's header explicitly disclaims `process.cwd()`.
+2. **F-02** — make §4's manifest parseable (`Task | Owned files` orientation), or record deliberately that Phase I runs the legacy worktree path for this feature. Currently the plan reads as if the script-owned wave gate applies, and `parsePlanOwnership` returns `null`.
+3. **F-03** — drop or re-caption the AT-ENG-57 row in §9's orphan sub-table; `FSPEC:1337` claims it as AC-1.3's range endpoint.
+4. **F-04** — replace §6's partial spelling lists with a citation of `PLAN_ID_HEADER_CELLS` / `PLAN_DEPS_HEADER_CELLS`.
+
+The batch order, §5's gate wording, §9's AT set-equality (re-confirmed unchanged this round) and the errata list all stay as they are. The Phase-P self-parse over the revised §3 is clean: 54 tasks, 17 batches, no cycle.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
+
