@@ -601,7 +601,7 @@ transport's option keys, and field-presence over the descriptor.
   prompt: string,         // composed: role line + role definition + supplements + task
   model: string,          // verbatim from the module's opts.model; never defaulted here
   cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
-  timeoutMs: number,      // dispatch.timeoutMinutes × 60 000 (§4.6)
+  timeoutMs: number,      // dispatch.timeoutMinutes × 60 000, engine-stamped on every dispatch (§3.4, §4.6)
   attempt: number }       // 0-based; 0 is the first try, not a retry
   // maxTurns is a transport option with no descriptor field: the modules never set it,
   // so it is absent per dispatch and the transport omits it (transport.mjs:178).
@@ -613,9 +613,11 @@ dispatcher passes `model ? { model } : undefined` (`orchestrate-dev.js:7124`), t
 passes `{ model: MODEL_DEFAULT, ...opts }` (`:8971`), and the four specially-pinned sites pass
 `{ model }` alone (`:1841` advisory and its fallback via `dispatchAt`, `:7463` verdict recovery,
 `:9968` PLAN-DAG extraction); the queue is the same (`orchestrate-queue.js:1053`). Of the 13
-`label:` occurrences in `orchestrate-dev.js`, eight are `PHASE_DISPATCH` row fields (`:3340`–`:3433`)
-and the rest are git-helper seam options (`:8710`, `:8730`) and JSDoc — **none is a dispatch
-argument**. The adapter's own comment, "`opts.model` and `opts.label` are the two fields the modules
+`label:` occurrences in `orchestrate-dev.js`, eight are `PHASE_DISPATCH` row fields (`:3340`–`:3433`),
+two are git-helper seam options (`:8710`, `:8730`), one is `label: dispatch.label` inside the options
+object handed to `routeErrata` (`:9574` — an internal helper's argument, not `_agent`'s), and the rest
+are JSDoc — **none is a dispatch argument**. (The `:9574` row was missing from v1.2's enumeration,
+TE F-24; the conclusion is unchanged, and re-measured for this revision.) The adapter's own comment, "`opts.model` and `opts.label` are the two fields the modules
 actually pass" (`adapter.mjs:266-268`), is stale; `const tag = label || skill` (`:274`) therefore
 always yields the skill. Correcting that comment is part of this feature's edit surface (§8.3).
 
@@ -632,10 +634,15 @@ under `pdlc/workflows/` is modified" depends on. Three rules make it total:
   and `"Phase I: Implementation"` both normalise to `"Phase I"`, and `"Queue: Triage"` to `"Queue"`.
   Per-phase counts (§4.4) bucket on this normalised value, so waves of one phase do not fan out into
   separate buckets.
-- **The pre-phase window is a named bucket, never a silent one.** A dispatch composed before the
-  first `_phase` call records `phase: null` and is reported under the literal key `"(no phase)"`. At
-  HEAD no such dispatch is expected; a non-zero `"(no phase)"` count is a finding, which is why it is
-  visible rather than folded into a neighbouring phase.
+- **The pre-phase window is a named bucket, never a silent one, and it is asserted rather than merely
+  reported.** A dispatch composed before the first `_phase` call records `phase: null` and is reported
+  under the literal key `"(no phase)"`. At HEAD no such dispatch exists, and that expectation is
+  carried by an assertion, not by prose (PM Q-01, TE Q-10): **`byPhase["(no phase)"]` is absent or `0`
+  on every run-shaped test** — an explicit member of §7.4's suite-wide assertion set, listed there
+  alongside the four accumulators. Reporting alone would mean the first dispatch that drifted ahead of
+  a phase banner landed in a bucket nobody fails on, which is the vacuity §7.4 exists to avoid. The
+  assertion is on the pipeline-run tests, not on unit tests that dispatch through the adapter without
+  announcing a phase; those construct the adapter directly and are outside the run-shaped set.
 - **`phase` is provenance, never a verdict** (§4.5's second convention): it records what the run
   announced, and no engine decision reads it.
 
