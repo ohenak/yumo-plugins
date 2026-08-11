@@ -2153,10 +2153,19 @@ generated-artifact rows above — a gate that names one directory while the work
 
 ### 9.3 Errata raised against upstream documents
 
-Emitted verbatim in this dispatch's final message, not folded into any document:
+Both were emitted in earlier dispatches, routed through the erratum channel, and are **resolved
+upstream** — recorded here so a later reader can see the round they closed in rather than re-raising
+them:
 
-- `ERRATUM: FSPEC: BR-SKILL-3` — the two `se-implement` language supplements are named nowhere in
-  `pdlc/workflows/*.js`; they are loaded by the agent per `pdlc/skills/se-implement/SKILL.md:3`.
-- `ERRATUM: REQ: AC-3.5`'s 12-prompt-file count (10 `SKILL.md` + 2 supplements) is only reachable if
-  the engine inlines a dispatched identifier's whole file set — §3.3's decision — because no module
-  dispatch names a supplement.
+- `ERRATUM: FSPEC: BR-SKILL-3` (**resolved**) — the two `se-implement` language supplements are named
+  nowhere in `pdlc/workflows/*.js`; they are loaded by the agent per
+  `pdlc/skills/se-implement/SKILL.md:3`. BR-SKILL-3 now reads "inlined when the module's dispatch
+  asks for them. The engine adds no language-detection policy of its own" (`FSPEC:562-564`).
+- `ERRATUM: REQ: AC-3.5` (**resolved**) — the 12-prompt-file count (10 `SKILL.md` + 2 supplements)
+  was only reachable if the engine inlined a dispatched identifier's whole file set, because no
+  module dispatch names a supplement. AC-3.5 is now scoped to "the set of prompt files the installed
+  plugin holds **for those identifiers**" (`REQ:502-506`), which is §3.3's decision stated upstream.
+
+A third was raised by the round-6 reviewers and resolved upstream before this revision: FSPEC v1.4/v1.5
+requalified BR-MODEL-3's dry-run reachability claim (`FSPEC:680-684`), and §4.1/§7.4 above are this
+document's side of that correction. **No new erratum is raised by this round.**
