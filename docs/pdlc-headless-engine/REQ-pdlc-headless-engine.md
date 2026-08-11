@@ -10,31 +10,35 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02) |
+| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…05) |
 | Downstream | FSPEC, TSPEC, PROPERTIES; successors `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`, `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.5 | 2026-08-11 |
+| pdlc | draft — awaiting operator review | Claude | 0.6 | 2026-08-11 |
 
-*Change note (0.5, 2026-08-11, round-1 cross-review):* the 0.4 transport swap is completed
-through the mechanism layer — every goal, constraint and AC that still named a spawned
-`claude -p` child is restated transport-neutrally (SE F-01, TE F-01); C-1's startup obligation
-is split from its per-dispatch gate (SE F-02); AC-2.1 gains a literal `apiKeySource` → banner
-mapping (SE F-03, TE F-03); AC-1.2 names the queue drift gate (SE F-04); G-2's seam list is
-marked non-exhaustive (SE F-05); §1.2 gains a state-at-HEAD subsection (TE F-07, SE F-07); and
-AC-1.1, AC-1.5, AC-2.4, AC-3.3, AC-4.1–4.3, AC-6.1/6.3 are restated with derivable oracles.
+*Change note (0.6, 2026-08-11, round-2 cross-review):* three literal oracles are corrected to
+match HEAD — AC-3.3 gains the `MODEL_ADVISORY` = `fable` row and scopes its set-equality to a
+named three-run dispatch corpus (SE F-12, TE F-02); AC-1.2(c) becomes an unqualified empty
+read-set with the config-side opt-out cited correctly (SE F-13, TE F-01/F-04); AC-2.1 becomes
+an ordered first-match list with the missing `auth.session-key-ignored` row (SE F-14, TE F-03).
+Also: AC-4.2's sixth sequence is arithmetically fixed and the `timeout` cap disambiguated
+(SE F-15, TE Q-02); AC-1.1's *Given* carries the queue posture and its filename oracle splits
+set-equality from run-dependent rules (TE F-06, SE Q-05); §1.2a files AC-4.5's per-dispatch
+auth clause red and drops an unsupported citation (TE F-05, F-07); §1.2/§1.3's measured facts
+are relocated to `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-01…05 (size budget).
+Verified against HEAD before writing; nothing outside these findings changed (SE F-16).
 
-*Change note (0.4, 2026-08-08):* Phase-0 spike (`SPIKE-agent-sdk-auth.md`) supersedes the
-docs-derived §1.3 ruling — the Agent SDK runs under subscription auth on the operator's machine
-(`apiKeySource: "none"`), so the SDK is the primary transport and headless `claude -p` the
-declared fallback, both behind the unchanged `_agent` seam.
-
-*Change note (0.3, 2026-08-08):* skills are not packaged inside the engine; the pdlc plugin is
-their sole delivery vehicle, the engine inlines `SKILL.md` from the installed plugin at dispatch
-time, and a version handshake against the plugin is a hard constraint (operator, 2026-08-08).
+*Earlier change notes.* **0.5** (round-1 cross-review): the 0.4 transport swap completed through
+the mechanism layer (SE/TE F-01), C-1 split into startup and per-dispatch parts (SE F-02),
+AC-2.1's banner mapping (SE F-03, TE F-03), AC-1.2 naming the queue drift gate (SE F-04), G-2's
+seam list marked non-exhaustive (SE F-05), §1.2a's state-at-HEAD table (TE F-07, SE F-07).
+**0.4**: the Phase-0 spike supersedes the docs-derived §1.3 ruling — SDK primary, `claude -p`
+fallback, both behind the unchanged `_agent` seam. **0.3**: skills are not packaged inside the
+engine; the plugin is their sole delivery vehicle and the version handshake is a hard constraint
+(operator, 2026-08-08).
 
 > **Scope in one line.** A standalone Node CLI (`pdlc dev`, `pdlc queue`) that executes the
 > canonical workflow modules **unmodified** and dispatches every agent via **the Claude Agent
@@ -72,28 +76,19 @@ REQs addresses is a property of that hop:
 
 ### 1.2 Why removal is cheap — three measured facts
 
-Verified against this repo on 2026-08-08 (per DC-02, each fact carries the citation it was
-measured from; the values below are the record, not a recollection):
+Measured against this repo on 2026-08-08 and relocated verbatim in substance to
+`docs/_constraints/pdlc-engine-baseline.md` (pm-author §5e), where each fact carries the
+citation it was measured from (DC-02). Cited here by id, not re-carried:
 
-1. **The modules already run in plain Node.** Of the four runtime capabilities the modules
-   declare, three already have working plain-Node bodies — `parallel`
-   (`orchestrate-dev.js:8464`), `pipeline` (`:8469`), `phase` (`:8474`) — and only
-   `agent()` (`:8458`) throws outside the Claude Code runtime. Every IO seam already
-   defaults to real Node: `defaultReadFile` → `fs.readFileSync` (`orchestrate-dev.js:8492`),
-   `execSync` resolved by dynamic import (`:7680`, `:10754`), and `orchestrate-queue.js`
-   carries its own `fs`-backed defaults (`:948`). `dist/pdlc-cli.mjs` is an existing
-   plain-Node artifact built from the same body. **The only capability the modules take from
-   the workflow runtime is `agent()`.**
-2. **The plugin coupling is one string, not a dependency to remove.** `runtime-adapter.js:47`
-   (`rtSkillPrompt`) tells the dispatched agent to invoke the Skill tool with
-   `"pdlc:{skill}"`. A dispatcher that reads each skill's `SKILL.md` by path and inlines it
-   removes the *Skill-tool invocation* from the unattended path — the pdlc plugin itself stays
-   installed as the one place those `SKILL.md` files live, since it must remain usable
-   standalone for interactive `/pdlc:*` sessions (operator decision, 2026-08-08; §4 C-10).
-3. **Everything else in `runtime-adapter.js` (53,056 bytes) is workaround**, re-expressing
-   `fs` and `git`/`gh` through IO agents because the runtime has nothing else — including the
-   prose-chunked, SHA-256-verified file transport built after four measured corruption modes.
-   Hosted in Node, that workaround is not ported; it is deleted.
+1. **M-ENG-01 — the modules already run in plain Node.** Three of four runtime capabilities
+   have working plain-Node bodies and every IO seam already defaults to real Node; **the only
+   capability the modules take from the workflow runtime is `agent()`**.
+2. **M-ENG-02 — the plugin coupling is one string**, not a dependency to remove: the
+   Skill-tool invocation in `runtime-adapter.js`. The plugin itself stays installed as the one
+   place `SKILL.md` files live, for interactive `/pdlc:*` sessions (§4 C-10).
+3. **M-ENG-03 — everything else in `runtime-adapter.js` (53,056 bytes) is workaround**,
+   re-expressing `fs`/`git`/`gh` through IO agents. Hosted in Node it is not ported; it is
+   deleted.
 
 ### 1.2a State at HEAD — this is not a greenfield REQ
 
@@ -103,8 +98,8 @@ A partial engine is already committed on `feat-pdlc-headless-engine`: `pdlc/engi
 SDK transport + auth-policy gate + failure taxonomy), `2ed13815` (P2, plugin resolution,
 version handshake, skill inlining, `--dry-run`, `pdlc doctor`), `054d5292` (P3, `pdlc
 dev`/`queue` wiring + offline end-to-end smoke), `d0d2288b` (P4, retry/pause, run report,
-`queue --loop`) and `f6f8029a` (fixes). The table below records, per AC, whether a test written
-today would start red or re-assert green — the two demand different work (TE F-07, SE F-07).
+`queue --loop`) and `f6f8029a` (fixes). The table records, per AC, whether a test written today
+starts red or re-asserts green — the two demand different work (TE F-07, SE F-07).
 
 | AC | State at HEAD | Evidence |
 |---|---|---|
@@ -115,39 +110,30 @@ today would start red or re-assert green — the two demand different work (TE F
 
 ### 1.3 Transport decision (superseded 2026-08-08 by Phase-0 spike)
 
-The docs-derived ruling below — that the Claude **Agent SDK is ruled out as the dispatch
+The docs-derived ruling — that the Claude **Agent SDK is ruled out as the dispatch
 transport** because Anthropic's authentication docs state the SDK must use
-`ANTHROPIC_API_KEY` — is **superseded by empirical measurement**. A Phase-0 spike
-(`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`) ran the installed
-`@anthropic-ai/claude-agent-sdk` on the operator's machine with `ANTHROPIC_API_KEY` verified
-absent from the process environment and both Claude Code settings files. The SDK's
-`system/init` message reported **`apiKeySource: "none"`**; the call completed with no
-exception and no key prompt; a `rate_limit_event` message carried `rateLimitType: "five_hour"`
-with `overageStatus: "rejected"` — the shape associated with subscription-plan rate limiting,
-not a pay-as-you-go key. **Architectural decision: the Agent SDK is the primary dispatch
+`ANTHROPIC_API_KEY` — is **superseded by empirical measurement**: the Phase-0 spike recorded
+as **M-ENG-04** (`docs/_constraints/pdlc-engine-baseline.md`, from
+`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`) observed the SDK completing a call under
+subscription auth with `apiKeySource: "none"` and subscription-shaped rate limiting, with
+`ANTHROPIC_API_KEY` absent from environment and settings.
+**Architectural decision: the Agent SDK is the primary dispatch
 transport; headless `claude -p` is the declared fallback, both behind the same unchanged
 `_agent` seam** (G-2). `apiKeySource` is reported only from *inside* a dispatch (the
 `system/init` message), so the auth obligation splits: a billing-free startup check over
 environment and settings state (C-1a), and the `apiKeySource == "none"` assertion at each
 dispatch (C-1b), both refusing absent an explicit opt-in flag.
 
-**Policy-risk caveat, kept from the superseded ruling:** the docs' third-party-product
-language ("the SDK requires `ANTHROPIC_API_KEY`") and the spike's observed behavior could
-diverge again — a future SDK release could start requiring a key, or an org-level policy
-change could disable the subscription path the proxy currently permits. The spike does not
-prove *why* subscription auth works (whether the local `headroom` proxy itself performs
-auth translation invisible to the SDK client, versus the SDK having a genuine subscription
-path) — only that it does, on this machine, today. The `apiKeySource` assertion is the
-tripwire: any dispatch where the SDK reports a source other than `"none"` fails closed rather
-than silently billing pay-per-token.
+**Policy-risk caveat, kept from the superseded ruling:** the docs' language and the spike's
+observed behavior could diverge again — a future SDK release could start requiring a key, or
+an org-level policy change could disable the subscription path the proxy currently permits;
+M-ENG-04 records that the spike shows *that* subscription auth works, never *why*. The
+`apiKeySource` assertion is the tripwire: any dispatch reporting a source other than `"none"`
+fails closed rather than silently billing pay-per-token.
 
-Headless Claude Code (`claude -p`) is the declared fallback: it accepts subscription auth
-(interactive `/login` state or a `claude setup-token` OAuth token via
-`CLAUDE_CODE_OAUTH_TOKEN`) and honors `ANTHROPIC_BASE_URL` / `ANTHROPIC_CUSTOM_HEADERS`. The
+Headless `claude -p` is the declared fallback and accepts subscription auth (M-ENG-05). The
 operator's subscription and headroom proxy (`http://127.0.0.1:8787`, ambient in the shell
-environment) remain hard constraints (§4). Sources: `SPIKE-agent-sdk-auth.md` (2026-08-08,
-empirical); code.claude.com authentication, env-vars and network-config docs, retrieved
-2026-08-08 (the superseded docs-derived claim, kept as the policy-risk baseline above).
+environment) remain hard constraints (§4).
 
 ## 2. Goals
 
@@ -190,9 +176,7 @@ empirical); code.claude.com authentication, env-vars and network-config docs, re
   prompt — the same composed prompt on either transport. No Skill tool and no `pdlc:` namespace
   reference appear in a composed prompt — the plugin is a resolved-from-disk source of prompt
   text, not an in-session capability the dispatched agent invokes. (Recorded alternative, not
-  chosen: have the dispatched session invoke the Skill tool `pdlc:{skill}` directly — rejected
-  because it reintroduces a dependency on Skill-tool namespace resolution inside a
-  non-interactive session, rather than a file read the engine controls end to end; see C-10.)
+  chosen: direct Skill-tool invocation — A-ENG-01 in `docs/_constraints/pdlc-engine-baseline.md`.)
 - **G-6 — Pipeline semantics preserved.** *(US-03)* Phase graph, convergence behavior, round
   windows, verdict parsing, erratum routing, POSTMORTEM lifecycle, queue lifecycle, halt-row
   commits, Phase MERGE ladder — all unchanged, because the code that implements them is
@@ -299,10 +283,8 @@ empirical); code.claude.com authentication, env-vars and network-config docs, re
   both the engine's declared range and the plugin version found (or "not found"), plus the
   remedy (install/upgrade/downgrade the plugin). Both the startup banner and every run report
   carry `engineVersion` and `pluginVersion` together, always as a pair. This makes the plugin a
-  hard runtime dependency of the CLI (a change of premise from earlier drafts of this REQ,
-  which treated plugin absence as harmless) and reopens a skills-vs-engine version-skew axis;
-  the handshake is the contained mitigation — skew is checked at every startup, never assumed
-  absent.
+  hard runtime dependency of the CLI — a change of premise from earlier drafts, which treated
+  plugin absence as harmless — and reopens the skew axis R-6 carries.
 
 ### 4.1 Declared thresholds
 
@@ -317,8 +299,7 @@ No AC may depend on a tunable that is not listed here.
 | `auth.allowApiKeyBilling` | `false` (flag-only opt-in, never a config file) | operator, per invocation | AC-2.2 |
 
 The retry defaults are a starting point chosen to absorb a transient rate-limit window
-without masking a persistent one, not a measured floor; O-7 obliges recording the observed
-rate-limit behaviour and re-deriving them before they are treated as settled.
+without masking a persistent one, not a measured floor — re-derivation is owed by O-7.
 
 ## 5. Acceptance Criteria
 
@@ -507,7 +488,12 @@ C-10)*
   | `timeout`, then success | 2 | `ok` |
   | `timeout`, `timeout` | 2 | `timeout`, terminal (second timeout is never retried) |
   | `retryable`, `timeout`, then success | 3 | `ok` |
-  | `timeout`, `retryable`, `retryable` | 4 | `retryable`, budget exhausted |
+  | `timeout`, `retryable`, `retryable` | 3 | non-terminal — one retry of the budget is still owed |
+  | `timeout`, `retryable`, `retryable`, `retryable` | 4 | `retryable`, budget exhausted |
+
+  The `timeout` cap is **per run of a dispatch, not per attempt position**: once a dispatch has
+  been retried after one `timeout`, a second `timeout` anywhere in its remaining attempts is
+  terminal (TE Q-02) — so `retryable`, `timeout`, `timeout` is terminal `timeout` at 3 attempts.
 - **AC-4.3** *Given* retries were exhausted, *when* the run ends, *then* the failure surfaces
   through the modules' own failure path — the phase halts with its normal POSTMORTEM and
   halt-row semantics — and both halves are asserted (TE F-14): *positively*, the halt artifacts
@@ -630,12 +616,11 @@ C-10)*
 - **O-7** Record the observed rate-limit behaviour under real unattended load and re-derive
   `dispatch.retryAttempts` / `dispatch.retryBackoff` (§4.1) from it before treating them as
   settled.
-- **O-8** *(discharged — SE F-07)* The plugin's installed-location discovery mechanism is
-  probed and shipped: candidate-root resolution with a deterministic precedence order, plus
-  the `--plugin-root` / `PDLC_PLUGIN_ROOT` overrides, in `pdlc/engine/lib/skills.mjs`
-  (`isPluginRoot` `:68`, `resolvePluginRoot` `:204`, `skillFilePath` `:267`) and the startup
-  handshake in `pdlc/engine/lib/startup.mjs` (`2ed13815`). TSPEC records the resolved
-  precedence as the measured fact; nothing further is owed here.
+- **O-8** *(discharged — SE F-07)* Plugin installed-location discovery is probed and shipped:
+  candidate-root resolution with a deterministic precedence order plus `--plugin-root` /
+  `PDLC_PLUGIN_ROOT` overrides (`pdlc/engine/lib/skills.mjs`, `resolvePluginRoot` `:204`), with
+  the startup handshake in `startup.mjs` (`2ed13815`). TSPEC records the resolved precedence as
+  the measured fact; nothing further is owed here.
 - **O-9** *(new, round 1 — SE F-03)* Measure whether either transport can distinguish a
   logged-in Claude Code session from a `CLAUDE_CODE_OAUTH_TOKEN` credential *from its own
   reported auth state* (the spike measured exactly one value, `apiKeySource: "none"`, for the
