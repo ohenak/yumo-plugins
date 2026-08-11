@@ -161,3 +161,72 @@ Two contributing factors, neither sufficient alone:
   touched my area" from "never approved".
 
 ## Recommendation
+
+**Verify that v1.5 answers the three PM items, flip the marker, and re-invoke Phase T. Do not
+re-author the TSPEC and do not re-open any section no round-5 finding named — round 5's revision is
+already on the branch, and the re-run's first act is a review of it, not another revision.**
+
+`MAX_REVIEW_ROUNDS` is a **per-invocation budget**, not a lifetime cap: `endIndex = startIndex +
+MAX_REVIEW_ROUNDS - 1` (`orchestrate-dev.js:6431`), and `deriveRoundWindow` will read the ten
+existing cross-review basenames and set `startIndex = 6`. A re-invocation therefore gets rounds
+6–10, and iteration 6 dispatches **reviewers first** (`:5952-5975`) against the document at HEAD —
+which is v1.5. The re-run is a confirmation round, not a fresh authoring pass.
+
+### Step 1 — Verify v1.5 against round 5, in the document, before flipping anything
+
+| Finding | Severity | Where v1.5 answers it | What to check |
+|---|---|---|---|
+| PM `F-01` | High | §4.1 (`085101fc`), §7.0 (`12e4e8c7`), §7.4 (`99dd1fef`, `a7ce620e`) | All three surfaces say the same thing: **one line per dispatch attempt, appended when the attempt settles**, carrying that attempt's `outcome`/`errorText`; a composed-but-never-executed dispatch (inert transport behind `--dry-run`) is appended at composition with both `null`. Confirm §7.0's append-only statement and §7.4's row-4 `F` are not still in tension anywhere in the file |
+| PM `F-02` | Medium | §7.4 (`31b24f0b`) | The fifth suite-wide row names `corpusRun != null` as the filter that scopes it to run-shaped tests |
+| PM `F-03` | Low | §7.4 (`99dd1fef`, `a7ce620e`) | The fifth row's predicate is stated over **records** (`phase === null`), with `byPhase["(no phase)"]` kept only as the reader-facing gloss |
+| TE `F-30`/`F-31`/`F-32` | Medium | §4.1/§7.0, §3.4/§4.6/§8.3, §7.4 | Settlement timing (same as PM F-01); `bin/pdlc.mjs:173` = `emitDryRun`'s inert surface, `:205` = `liveAdapter`'s run path, `doctor` constructs no adapter; row 4 pins the exact member `transport-contract-violation` |
+| TE `F-33`/`F-34`/`F-35` | Low | §7.4 (`99dd1fef`, `31b24f0b`, `2e736bc6`) | Lead sentence says **three** accumulators; run i's zero-`haiku` assertion names its second site `orchestrate-dev.js:7454`→`:7463`; fifth row's seam and assertion columns name the same field |
+
+Re-derive each cited `file:line` from HEAD rather than from the changelog. The whole phase is a
+record of what happens when a surface is fixed on the strength of the previous round's reading.
+
+### Step 2 — One consistency sweep, no new content
+
+The only edit this halt authorises is a contradiction sweep over the three surfaces PM F-01 spans
+(§4.1, §7.0, §7.4) plus §8.3's edit-surface row. If the sweep finds nothing, write nothing —
+touching the document to "show progress" before a confirmation round costs a round for nothing.
+
+### Step 3 — Flip the marker and re-invoke
+
+Set `RESOLVED: yes` in this file **only after** Step 1's checks are done against HEAD, and commit
+the flip with whatever Step 2 produced. Then:
+
+```
+/pdlc:orchestrate-dev { "reqPath": "docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md", "forcePhases": "T" }
+```
+
+`forcePhases: "T"` overrides the recorded approval state for Phase T only; it does not clear this
+POSTMORTEM, which is why the marker has to be flipped first.
+
+### Step 4 — If round 6 raises a *new* High in §7.4, stop and escalate rather than spending 7–10
+
+Five rounds on one row is already the signal. A sixth rung means the oracle as scoped cannot be
+specified against an unmodifiable `orchestrate-dev.js`, and the right move is an operator decision
+on the alternative — narrow AC-3.3's witness, or lift §8.3's no-modification constraint far enough
+to stamp what the assertion needs — not another revision.
+
+### Durable countermeasures (route to LEARNINGS at harvest; not blocking this halt)
+
+1. **An executable oracle spans surfaces; review it as one unit.** Row 4 needed §4.1's recorded
+   shape, §7.0's write timing and §7.4's predicate to agree. Each round fixed one. A reviewer
+   finding a defect in a multi-surface oracle should be asked to name **all** surfaces the fix must
+   touch, and the author should re-derive every one of them — the "one hop from executable" verdict
+   is what burned this budget.
+2. **Severity needs a rubric for "correct design, unsatisfiable as written".** PM scored it High,
+   TE Medium, and both gave sound reasons. Under a High-only bar that split is decisive. Worth a
+   project-level decision: a false *red* on correct code that has an obvious weakening repair is —
+   or is not — a High.
+3. **A re-opening revision should carry its own scope statement.** When a fix for reviewer A's
+   finding edits a predicate reviewer B approved, the changelog should say so explicitly, so B's
+   next round is scoped to the re-opened surface rather than re-deriving the section. Rounds 4 and
+   5 were both, in effect, B re-reading a section B had already cleared.
+4. **The round budget is per invocation — say so in the halt path.** The halt reads as terminal but
+   is not: re-invocation grants rounds 6–10 and reviews the document at HEAD. Every future
+   POSTMORTEM for a budget exhaustion should state which document version the re-run will actually
+   review, because when the last revision landed after the last review, the answer is "one nobody
+   has seen".
