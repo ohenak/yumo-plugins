@@ -31,8 +31,37 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §5 declares eleven batches; running the shipped `parsePlanTasks` + `computeTopologicalBatches` over §3's table yields **seventeen**. That is expected — the engine derives finer ready-sets than the plan's `max(dep batches) + 1` column — but §5's gates are written per *plan* batch, and three of them (2, 4, 9) are RED-terminal by construction. Which numbering does the operator read when a wave stops? If the answer is "plan batches are documentation, the runtime's ready-sets are what execute", one sentence in §5 saying so would keep a mid-run reader from looking for batch 9 in a seventeen-wave log. Not a product-lens objection, so recorded here rather than as a finding. |
+| Q-02 | §8's new ≥ 85 % branch-coverage floor over the four new modules is a genuine improvement, but it is a standard this REQ does not name and no other pdlc feature currently carries. Is it intended as a feature-local commitment, or as the first instance of a repo-wide bar that should be promoted to `docs/_constraints/` at harvest? The answer changes whether a future feature reading this plan inherits the number. |
+| Q-03 | The second `M-ENG-09` row is now honestly on the critical path as an operator step, and the DoD says the item is unmet while either row is missing. Does the operator accept that a maintainer with access to only one of `ubuntu-latest`/`macos-latest` cannot take this feature to green alone? That is the right trade against DEC-ENG-04's loudness, but it is a deployability commitment worth an explicit yes rather than an inferred one. |
+
 ## Positive Observations
+
+- **The set-equality fix is real, not asserted.** I checked §9's AT column against FSPEC §14.1 mechanically — expanding every `…` range in both documents and comparing the sets both directions — and they are equal at 69 members with the four widenings each labelled. This was v1's largest finding and it is closed properly: the plan did not just add the eight missing ATs, it restated the column against its source and marked its own additions so the next diff stays cheap.
+- **The eight orphan ATs got owners with reasons, not just cells.** AT-ENG-17/18 being kept as *red* tasks under T22 — "a feature that ships with no failing test for 'a disallowed key source stops a run' has no evidence the abort path works at all" — is the right call for the billing-safety pair, and the falsifier clause (iii) on the same path is what makes clause (i) mean something. Verified the anchor: `transport.mjs:201-206` is the policy check and it throws before returning model output.
+- **The T07 oracle change is documented as a supersession, with the receipt.** I read `DECISIONS:355-375` and the consequence row at `:846`: DEC-ENG-05 names the exactly-equal allow-list as the earlier draft and rejects it as unwritable against HEAD, and the plan implements the containment form and raises TSPEC §3.3's stale wording as an erratum rather than quietly diverging. That is the behaviour the erratum mechanism exists for.
+- **The M-ENG-09 operator step is named rather than assumed.** "A wave agent runs on one host and can therefore produce only one row" is the sentence that was missing in v1; it now appears in T42, in §5's batch-5 gate, in §11 with the literal command, and in §8 as a DoD item that is unmet while either row is missing. Four places, consistent, and O-ENG-T5 is narrowed to the genuinely-open third-platform case.
+- **Every code citation I sampled in the changed text resolves at HEAD.** `adapter.mjs:58/:59/:60/:75` (backoff base, cap, jitter, `computeRateLimitWaitMs`), `handshake.mjs:20/:86/:124/:183`, `run.mjs:58`, `run.test.js:48/:64`, `transport.mjs:199-206`, `pdlc/engine/package.json:13`, and `smoke.test.js` tracked at exactly 387 lines. The one table that was wrong in v1 is now right.
+- **`smoke.test.js` reclassified as extended, not new, with the erratum raised.** Getting this wrong is how an implementer deletes 387 lines of the only offline end-to-end proof of engine↔module wiring; the plan now says every existing assertion survives and T48 adds beside them.
 
 ## Recommendation
 
+**Needs revision** — one High finding, and it is a narrow one.
+
+Six of v1's seven findings are closed, and the two High ones were closed the way I hoped: §9 restated against its source rather than patched, and the eight orphan ATs given owners with stated reasons. What remains is a single token.
+
+Exactly what to change, in order:
+
+1. **F-01** — carry `'documentOracles'` into the post-T17 `implementation.testCommand` literal in both places it appears (`PLAN:463-467`, `PLAN:698`), so the value really is HEAD's plus the engine suite. If dropping the pattern is deliberate, it needs its own sentence of justification and it cannot be described as preserving the existing patterns "verbatim".
+2. **F-02** — replace §9's AC-1.5 Red-task cell with an explicit "no red task, and why", leaving T10 in the green column.
+3. **F-03** — either name all three `#`-opening tables in §6 or replace the enumeration with the two-cell rule that does not need to stay total.
+4. **F-04** — one citation convention in §11's CI table, or rename the column.
+
+Nothing in the batch order, the ownership manifest, §5's gate wording, §8's other DoD items or the errata list needs to move. I re-ran the Phase-P self-parse against §3 and it is clean (54 tasks, 17 batches, no cycle), so the parse gate is not at risk from any of the above.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
