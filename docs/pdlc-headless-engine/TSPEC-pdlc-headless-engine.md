@@ -1414,8 +1414,12 @@ three obligations, asserted as three separate expectations (AT-ENG-43): it names
 capability, names the fallback transport as the known alternative, and states that selecting it is not
 yet available. That is a state an operator can act on — measure or defer — rather than a dead end.
 
-The check is a startup-time capability probe, not a per-dispatch surprise: it belongs to the ladder's
-rung 5 neighbourhood, so a run that cannot be guarded never gets as far as touching the repo.
+The check is a startup-time capability probe, not a per-dispatch surprise: it runs with the ladder's
+billing-posture rung (5), so a run that cannot be guarded never gets as far as touching the repo.
+**This is not rung 4a.** EC-GUARD-4 asks whether the *transport* can carry the guard configuration;
+rung 4a (C-11, BR-GUARD-6) asks whether the *host* can run the shipped guard script at all. Different
+question, different failure, different test — rung 4a's design is §7.8, and a reader arriving from
+§8.3's `lib/startup.mjs` row should go there for it.
 
 ### 6.5 The measurement O-2 owes first (BR-GUARD-5, M-ENG-06)
 
@@ -2035,6 +2039,65 @@ absent one; an empty directory would satisfy clause 3 for the wrong reason. This
 AC-1.2 from "we found no read" into "we watched, and there was none" — and it is the reason the
 posture the run is given (`distribution.checkEnabled`, `REQ:365-374`, consumed at
 `orchestrate-queue.js:2068`, `:1071-1072`) is part of the fixture and named in §8.1's row.
+
+### 7.8 Rung 4a's probe seam and its two tests (C-11, BR-GUARD-6, AT-ENG-11a)
+
+Rung 4a is this revision's one new fail-closed refusal, and a refusal with no oracle is the class of
+gate that passes on every developer machine and proves nothing about the hosts it exists to refuse
+(TE F-41). It has two branches, both fixed upstream, and each needs its own test:
+
+| Branch | Upstream | Behaviour |
+|---|---|---|
+| no candidate runs | EC-START-10 (`FSPEC:406`) | refuse, naming every candidate tried, what each yielded, and the remedy; exit `1`; **nothing dispatched** |
+| present-but-not-runnable, then runnable | EC-START-11 (`FSPEC:407`) | rung 4a **passes** — presence is not executability, and a later candidate deciding is the correct outcome, not a tolerated one |
+
+**Neither branch is writable without a seam this document must name.** FSPEC fixes the observation as
+"by **running** a candidate, not by finding it on `PATH`" (`FSPEC:919-921`), so an EC-START-11 fixture
+must present a `python3` that resolves and fails to execute while `python` succeeds. §7.0/§7.1's
+bootstrap traps sockets and records `fs`; neither observes process spawning, and `_runCommand` is a
+*workflow-module* seam (§3.1), supplied to `orchestrate-dev.js` for Phase I's wave gate — it is not on
+the startup path and cannot be reached from `lib/startup.mjs`. So the seam is declared here:
+
+```js
+// pdlc/engine/lib/startup.mjs
+export const GUARD_INTERPRETERS = Object.freeze(["python3", "python", "py"]);  // FSPEC:916-918
+// Total: never throws. One probe attempt per candidate, in GUARD_INTERPRETERS order.
+// Returns the first candidate that ran, or null with the full attempt record.
+export function probeGuardInterpreter({ candidates = GUARD_INTERPRETERS, runProbe = defaultRunProbe })
+  : { interpreter: string|null, attempts: { candidate: string, outcome: string }[] }
+```
+
+`runProbe(candidate)` is the injectable seam, defaulting to a real
+`spawnSync(candidate, ["-c", "import sys"])` — **the shipped script's own probe command, verbatim**
+(`guard-harvest-before-delete.sh:15`), because a precondition that probes differently from the script
+it stands for can pass where the script fails. Its contract is narrow on purpose: it returns `{ ran: boolean, outcome: string }`, where `outcome`
+is the operator-facing phrase the refusal quotes (`"not found"`, `"found but exited 9009"`, …). It is
+a **startup-module seam, engine-side**, so §3.1's "every other probe seam keeps its Node default"
+rule — which governs what the engine injects into the two *workflow* modules — is untouched by it.
+`GUARD_INTERPRETERS` is a transcription of the shipped script's own candidate list
+(`pdlc/hooks/scripts/guard-harvest-before-delete.sh:14`, the loop; fail-open at `:20`), never an
+import from it, and FSPEC's
+"the engine never widens or narrows that set independently" (`FSPEC:916-918`) is asserted as
+set-equality against a test-side transcription of those three names — the same discipline §3.3 and
+§7.4 apply, and the reason a script-side change turns a test red rather than drifting silently.
+
+The two tests are hermetic, both driven by injecting `runProbe`:
+
+| Test | Fixture | Assertions |
+|---|---|---|
+| EC-START-10 — no candidate runs | `runProbe` returns `{ran: false}` for all three, with a distinct `outcome` each | rung 4a `state === "fail"`; the refusal text contains **each of the three candidate names and its own outcome phrase** (three separate expectations, as §6.4 does for EC-GUARD-4) and the remedy; exit code `1`; **and §7.0's dispatch accumulator holds exactly zero descriptors** |
+| EC-START-11 — presence is not executability | `runProbe` returns `{ran: false, outcome: "found but did not execute"}` for `python3` and `{ran: true}` for `python` | rung 4a `state === "pass"`; the returned `interpreter === "python"`; `attempts` records both, in order; rung 5 is reached (`state !== "skipped"`), which is what "the next candidate decides" means operationally |
+
+**"Nothing dispatched" is asserted positively, never as an absence.** The oracle is
+`accumulator.length === 0` over §7.0's dispatch-descriptor accumulator on a run that reached the
+ladder — an assertion that a live instrument recorded zero, not an assertion that no evidence was
+found. The same accumulator is what makes §4.1's settlement-line rule falsifiable, and a companion
+control in the same file asserts a run that *does* dispatch records a non-zero count, so an
+accumulator that was never installed cannot score the refusal green.
+
+Rung 4a's `RungRecord.detail` carries the `attempts` record rendered, so `pdlc doctor` shows the same
+per-candidate outcomes the refusal names, from the same call (§4.3) — the diagnostic and the gate
+cannot disagree about which interpreters were tried.
 
 ## 8. Traceability
 
