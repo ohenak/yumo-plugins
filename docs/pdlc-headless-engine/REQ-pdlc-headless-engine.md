@@ -1,5 +1,7 @@
 ---
 feature: pdlc-headless-engine
+# ready:false is deliberate: this feature is driven by direct `pdlc dev` /
+# `orchestrate-dev` invocation, never by queue auto-pickup (SE F-11, round 1).
 ready: false
 depends-on: []
 ---
@@ -15,18 +17,24 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.4 | 2026-08-08 |
+| pdlc | draft — awaiting operator review | Claude | 0.5 | 2026-08-11 |
+
+*Change note (0.5, 2026-08-11, round-1 cross-review):* the 0.4 transport swap is completed
+through the mechanism layer — every goal, constraint and AC that still named a spawned
+`claude -p` child is restated transport-neutrally (SE F-01, TE F-01); C-1's startup obligation
+is split from its per-dispatch gate (SE F-02); AC-2.1 gains a literal `apiKeySource` → banner
+mapping (SE F-03, TE F-03); AC-1.2 names the queue drift gate (SE F-04); G-2's seam list is
+marked non-exhaustive (SE F-05); §1.2 gains a state-at-HEAD subsection (TE F-07, SE F-07); and
+AC-1.1, AC-1.5, AC-2.4, AC-3.3, AC-4.1–4.3, AC-6.1/6.3 are restated with derivable oracles.
 
 *Change note (0.4, 2026-08-08):* Phase-0 spike (`SPIKE-agent-sdk-auth.md`) supersedes the
-docs-derived §1.3 ruling — the Claude Agent SDK runs under subscription auth on the operator's
-machine (`apiKeySource: "none"`), so the SDK becomes the primary dispatch transport with
-headless `claude -p` as the declared fallback, both behind the unchanged `_agent` seam; C-1,
-NG-6, O-1 and R-1 updated to match.
+docs-derived §1.3 ruling — the Agent SDK runs under subscription auth on the operator's machine
+(`apiKeySource: "none"`), so the SDK is the primary transport and headless `claude -p` the
+declared fallback, both behind the unchanged `_agent` seam.
 
-*Change note (0.3, 2026-08-08):* skills are no longer packaged inside the engine; the pdlc
-plugin remains their sole delivery vehicle, the engine resolves and inlines `SKILL.md` from
-the installed plugin at dispatch time, and a version-compatibility handshake against the
-plugin is now a hard constraint (operator decision, 2026-08-08).
+*Change note (0.3, 2026-08-08):* skills are not packaged inside the engine; the pdlc plugin is
+their sole delivery vehicle, the engine inlines `SKILL.md` from the installed plugin at dispatch
+time, and a version handshake against the plugin is a hard constraint (operator, 2026-08-08).
 
 > **Scope in one line.** A standalone Node CLI (`pdlc dev`, `pdlc queue`) that executes the
 > canonical workflow modules **unmodified** and dispatches every agent via **the Claude Agent
