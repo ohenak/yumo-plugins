@@ -483,12 +483,19 @@ C-10)*
   call site carries its own ad-hoc permission escalation (C-6).
 - **AC-3.5** *Given* any engine start, *when* the startup checks run alongside the C-10
   handshake and **before** any dispatch, *then* the set of skill identifiers the modules can
-  dispatch equals the set of skill prompt files present in the installed plugin — set-equality
-  in both directions, not containment (TE v1 F-06): a prompt file present but not dispatchable,
-  and a dispatchable identifier with no readable file, both fail closed at startup with the
-  differing identifiers named. A missing or renamed `SKILL.md` is therefore discovered before
-  the run starts, not mid-run by the phase that needed it. The count (17 at HEAD = 15
-  `SKILL.md` + 2 `se-implement` supplements) is an observation, never the assertion.
+  dispatch equals the set of prompt files the installed plugin holds **for those identifiers** —
+  set-equality in both directions, not containment (TE v1 F-06): a dispatchable identifier with no
+  readable file, and a prompt file for a dispatchable identifier that the engine cannot dispatch,
+  both fail closed at startup with the differing identifiers named. A missing or renamed
+  `SKILL.md` is therefore discovered before the run starts, not mid-run by the phase that needed
+  it. **The equality is over the dispatchable subset, not over the plugin's whole `skills/`
+  tree** (Phase-F erratum): the plugin also delivers skills only an operator invokes
+  interactively, which no module dispatches, and a both-directions equality against every file
+  present would fail on a correct install. Which identifiers are dispatchable is derived from the
+  modules, never from a list the engine maintains alongside them; at HEAD the derived set is 10
+  identifiers over 12 prompt files (10 `SKILL.md` + 2 `se-implement` language supplements), with 5
+  further operator-invoked skills present in the plugin and outside the set. Those counts are an
+  observation of HEAD, never the assertion.
 **Group 4 — dispatch failure taxonomy and endurance** *(US-02; G-7; DC-01)*
 
 - **AC-4.1** *Given* any dispatch outcome, *when* the engine classifies it, *then* it lands in
@@ -538,7 +545,20 @@ C-10)*
   auth catalogue id (AC-2.1), the transport-reported auth source observed per dispatch (C-1b;
   `apiKeySource` on the primary path), effective base URL, per-phase dispatch counts, and one
   row per retry and per pause (taxonomy member, phase, attempt number, delay). A run with zero
-  retries carries an empty set of such rows, not a missing field. Per-phase dispatch counts are
+  retries carries an empty set of such rows, not a missing field.
+  **Which transport ran is a recorded field, per dispatch** (Phase-F erratum): NG-6 keeps both
+  transports in scope and C-5/AC-5.1 and AC-6.3 bind obligations *per transport*, so a report that
+  does not name the transport a dispatch used leaves every per-transport obligation unattributable
+  after the fact. The field's value is one member of a closed two-member set (primary, declared
+  fallback), recorded from what the engine actually invoked, never from configuration intent; a
+  run that used both carries both, per dispatch. For `pdlc queue --loop` the report also names
+  which of AC-1.3's two stop reasons ended the loop.
+  **Where the operator reads the report is part of this criterion** (Phase-F erratum): the report
+  is delivered on the run's own operator-visible output stream, and the engine writes **no
+  engine-owned file into the consumer repo** to deliver it (NG-7) — a report that could only be
+  read from a file the engine dropped in the project would contradict that non-goal. Persisting a
+  copy elsewhere, if it is wanted at all, is out of scope here; the stream is the surface every AC
+  above may assume. Per-phase dispatch counts are
   **observable, not derivable** from this REQ for an arbitrary run (TE v1 Q-04): a test asserts
   their presence and internal consistency (counts sum to the recorded dispatch rows), and
   asserts exact values only for a fixture run whose dispatch sequence the fixture fixes.
