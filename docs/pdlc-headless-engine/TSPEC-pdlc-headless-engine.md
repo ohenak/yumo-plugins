@@ -1137,17 +1137,59 @@ permanently. So the invocation is fixed here, once:
 
 ```json
 "scripts": {
-  "test": "node --test --import=./__tests__/_bootstrap.mjs __tests__/ && node __tests__/_assert-suite-wide.mjs"
+  "test": "node __tests__/_run-suite.mjs"
 }
 ```
+
+**The run id is minted by the runner, before any child exists — not by the bootstrap on first use.**
+This is the one detail v1.1 got wrong, and it is worth stating why, because the mechanism looks
+correct until it is measured. `--import=./__tests__/_bootstrap.mjs` is preloaded into **every** test
+file's own child process (§7.1), and each of those processes is a sibling: an environment variable a
+child assigns is visible to that child alone, never to its siblings and never to its parent. A
+bootstrap that mints `PDLC_TEST_RUN_ID` "on first use" therefore mints a *different* id in every test
+file's process, and `_assert-suite-wide.mjs` — itself a fresh process — mints a further one. Each
+process writes into its own run directory and the final step reads a directory holding at most its
+own records. That fails loudly rather than passing vacuously, because §7.0's emptiness guard catches
+it — but it fails **by construction on every run**, and the tempting repair under time pressure is
+to scan all run directories and drop the emptiness guard, which walks straight back into the vacuity
+this section exists to prevent. So the fix is at the point the id is minted, not the point it is read.
+
+`__tests__/_run-suite.mjs` does four things in order, and nothing else:
+
+| Step | Action |
+|---|---|
+| 1 | mint one `PDLC_TEST_RUN_ID` and derive `PDLC_TEST_RUN_DIR` from it |
+| 2 | create the run directory empty, removing any prior contents, so a stale record from an earlier run can never be counted as this run's observation |
+| 3 | spawn `node --test --import=./__tests__/_bootstrap.mjs __tests__/` with that id in its environment, stdio inherited — **every** test-file process is a descendant, so all inherit the one value |
+| 4 | on success only, spawn `node __tests__/_assert-suite-wide.mjs` with the same environment, and exit on its status |
+
+A Node runner rather than `PDLC_TEST_RUN_ID=$(…) node --test … && …` in the npm script: the shell
+form is the same fix and was the alternative considered, but it puts the assignment in shell syntax
+`cmd.exe` does not accept, and it gives step 2 no ordered home. The runner keeps the whole decision
+in one file a test can drive directly.
+
+**A self-test proves the inheritance rather than assuming it** (the check TE F-18 asks for): two
+deliberately separate test files each write one observation record, and an assertion — run in the
+final step — requires that both records are found in **one** run directory, and that the directory
+count for the run is exactly one. Two directories, or one directory holding one record, fails. This
+is the property the whole cross-process mechanism rests on, and it is the property that was silently
+false in v1.1, so it is asserted directly instead of being implied by the harnesses that consume it.
 
 Three parts, each doing one job:
 
 | Part | Job | Why it must be this |
 |---|---|---|
 | `--import=./__tests__/_bootstrap.mjs` | preloads into **every** test-file process: §7.1's construction guard and socket trap, and the observation writer below | a bootstrap that is merely `import`ed by some test files is installed only in those files' processes; `--import` is the only thing that makes "a new test file inherits it without opting in" true |
-| observation directory | each process appends its observations as JSON lines to `${PDLC_TEST_RUN_DIR}/{pid}.jsonl`, created by the bootstrap; the run dir is keyed by `PDLC_TEST_RUN_ID` (set by the bootstrap on first use, inherited by every child) | append-only per-pid files need no locking and survive concurrent processes, unlike a shared file or a socket |
-| `&& node __tests__/_assert-suite-wide.mjs` | reads the union of every `.jsonl` and makes §7.4's assertions | a *step*, not a test file, so it is ordered by the shell rather than by filename luck, and it runs once per suite by construction |
+| observation directory | each process appends its observations as JSON lines to `${PDLC_TEST_RUN_DIR}/{pid}.jsonl`; the run dir is keyed by `PDLC_TEST_RUN_ID`, **minted once by the runner and inherited by every descendant** (above) — the bootstrap only ever *reads* it, and fails loudly if it is unset rather than minting a private one | append-only per-pid files need no locking and survive concurrent processes, unlike a shared file or a socket |
+| step 4, `node __tests__/_assert-suite-wide.mjs` | reads the union of every `.jsonl` and makes §7.4's assertions | a *step*, not a test file, so it is ordered by the runner rather than by filename luck, and it runs once per suite by construction |
+
+**The two `_`-prefixed helpers live in `__tests__/` without being collected as test files** (TE Q-07).
+`node --test {dir}` collects only files matching its test-file naming convention, and
+`_bootstrap.mjs` / `_assert-suite-wide.mjs` match none of them — measured on this repo's node
+v20.20.1: a directory holding `a.test.js` and `_helper.mjs` reports `# pass 1` and never executes the
+helper. So the helpers are reachable by path (`--import`, and step 4's explicit argument) while
+staying outside the collected suite, and no `_`-prefixed file needs to be moved out of `__tests__/`
+or guarded against double execution.
 
 `--test-concurrency=1` plus a single-process entry file was the alternative considered; it was
 rejected because it serialises the suite for a property that does not need serialisation, and
