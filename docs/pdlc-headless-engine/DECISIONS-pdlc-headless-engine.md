@@ -171,14 +171,55 @@ green-and-vacuous state DEC-ENG-04 exists to refuse. TSPEC §6.1's enumeration o
 procedure begins at the JSON parse (`:29-30`) and does not carry this branch, so it is raised as an
 erratum rather than folded in here.
 
-**The decision, given that:** the interpreter probe is part of §6.4's startup capability probe, not
-a per-dispatch surprise. If the engine cannot obtain an interpreter the shipped script will accept,
-the run **refuses at startup** with a catalogue-registered message, on the same fail-closed footing
-as a transport that cannot carry the hook at all. The engine does not fix the script's fail-open
-posture (that would edit the plugin path's interactive behaviour, NG-1); it declines to *rely* on it.
+**The engineering position, and where its authority has to come from.** The engine should not *rely*
+on the fail-open branch: it should observe at startup whether an interpreter the shipped script will
+accept is obtainable, and refuse the run rather than proceed with a silently inert guard. That is an
+engineering judgement about what C-5's parity claim is worth on a host where the script cannot
+execute, and it stands.
 
-**Reversibility:** Easy. The probe is one rung-5 check and one catalogue id; changing the script's
-own posture later is an independent, plugin-path decision.
+What this document may not do is *establish* the precondition. Refusing at startup makes a working
+interpreter a precondition for running pdlc unattended, and turns a host that previously ran (guard
+inert) into a host that cannot run at all — an operator-facing deployability rule. `grep -in
+"python\|interpreter"` over `REQ-pdlc-headless-engine.md` and `FSPEC-pdlc-headless-engine.md` returns
+**zero hits in both**: no constraint, business rule, acceptance criterion or EC row authorises it.
+So the refusal is filed upstream as errata (a REQ constraint and an FSPEC EC row with its own rule),
+and this entry **cites** that authority rather than originating it. Until those land, the decision
+recorded here is the narrow half that is already ours: *the engine does not rely on the fail-open
+branch, and the probe's observation is reported at startup rather than discovered per dispatch.*
+Whether the observation refuses the run or reports as a failed rung is upstream's call to authorise;
+the engine does not fix the script's own posture either way (that would edit the plugin path's
+interactive behaviour, NG-1).
+
+**Two things this entry deliberately does not settle, because they are not DECISIONS-local:**
+
+- **The message contract is not EC-GUARD-4's.** An earlier draft put this refusal "on the same
+  fail-closed footing" as EC-GUARD-4. That row's obligations are fixed and asserted as three separate
+  expectations — it "names the missing capability, names the fallback as the known alternative, and
+  states that selecting it is not yet available" (`FSPEC:921`, `AT-ENG-43` at `FSPEC:930`). On a host
+  with no interpreter the fallback is **not** an alternative: this very decision has both transports
+  invoke the same shipped `.sh`, so `transport-cli.mjs` fails identically, and naming it as the known
+  alternative would mislead the operator the message is written for. The interpreter case therefore
+  needs its own EC row and its own obligations (name the missing interpreter and the candidates
+  probed — `python3`, `python`, `py`, `guard-harvest-before-delete.sh:14-21` — and name the remedy),
+  with `AT-ENG-43`'s three-obligation assertion scoped to the transport-capability case. Filed as an
+  FSPEC erratum.
+- **The rung number is not fixed here.** TSPEC says only that the check "belongs to the ladder's rung
+  5 *neighbourhood*" (`TSPEC:1306-1307`), and the hedge is load-bearing: FSPEC's ladder assigns rung 5
+  to **billing posture** (`FSPEC:292`) and is closed at 0–5 under BR-START-2's totality contract
+  (`FSPEC:307-311`, `AT-ENG-06` enumerating "rungs 1–5"), with `RungRecord` pinned to `rung: 0..5`
+  and "always all six" (`TSPEC:834`, `:840`). Hardening this probe onto rung 5 would make two
+  derivable tests disagree on one fixture — on a host with clean auth and no interpreter, the
+  FSPEC-derived rung-5 test passes and a DECISIONS-derived one fails — and would leave `doctor`'s
+  `{rung, name, state}` report unable to say which capability failed. It would also silently inherit
+  EC-START-4's dry-run non-fatality (`FSPEC:392`) without that being stated as intended. So the
+  number stays upstream's: either a distinct rung 6 with its own FSPEC ladder row (so BR-START-2's
+  totality can report it) or an explicit redefinition of rung 5 as a two-predicate rung with
+  per-cause catalogue ids. Filed as an FSPEC erratum; dry-run fatality is to be stated there, not
+  inherited by placement.
+
+**Reversibility:** Easy. The probe is one startup check and one catalogue id, whichever rung the
+ladder ends up giving it; changing the script's own posture later is an independent, plugin-path
+decision.
 
 **Re-evaluation triggers:** The guard script stops depending on an external interpreter; or M-ENG-09
 (DEC-ENG-04) records that the hook mechanism does not fire at all under the production permission
