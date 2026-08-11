@@ -446,21 +446,28 @@ C-10)*
   engine **dispatches nothing** and exits non-zero with a message naming the engine's declared
   range, the plugin version found (or "not found"), and the remedy (C-10) — this replaces the
   earlier assumption that the engine has no plugin dependency to lose.
-- **AC-3.3** *Given* a dry run of the full phase graph, *when* the model each dispatch carries
-  is compared against this **literal** expected map, *then* the comparison is a **set-equality**
-  in both directions — every dispatch's model value appears in the map, and every map row is
-  exercised by at least one dispatch, so a phase that silently stops pinning a model fails
-  (TE F-04). The map is transcribed here, not imported from the modules' constants:
+- **AC-3.3** *Given* the **dispatch corpus** defined below, *when* the model each dispatch
+  carries is compared against this **literal** expected map, *then* the comparison is a
+  **set-equality** in both directions — every dispatch's model value in the corpus appears in
+  the map, and every map row is exercised by at least one dispatch **in the corpus** — so a
+  phase that silently stops pinning a model fails (TE F-04). No single run exercises every row:
+  the advisory tier ships disabled and the queue rung is not part of the dev phase graph, so
+  the corpus is the **union of three dry runs** and the oracle is asserted over that union only
+  (SE F-12, TE F-02): (i) `pdlc dev` over the full phase graph, advisory tier disabled;
+  (ii) `pdlc queue`; (iii) `pdlc dev` with `advisory.enabled: true`. The map is transcribed
+  here, not imported from the modules' constants:
 
-  | Dispatch site | Model value |
-  |---|---|
-  | every phase except Phase I (`MODEL_DEFAULT`) | `opus` |
-  | Phase I implementation waves (`MODEL_IMPLEMENTATION`) | `sonnet` |
-  | advisory-tier fallback (`MODEL_ADVISORY_FALLBACK`) | `opus` |
-  | queue Phase-0 readiness triage (`MODEL_QUEUE`) | `sonnet` |
-  | verdict-recovery re-read dispatches | `haiku` |
+  | Dispatch site | Model value | Corpus run |
+  |---|---|---|
+  | every phase except Phase I (`MODEL_DEFAULT`) | `opus` | i |
+  | Phase I implementation waves (`MODEL_IMPLEMENTATION`) | `sonnet` | i |
+  | advisory-tier dispatch (`MODEL_ADVISORY`) | `fable` | iii |
+  | advisory-tier fallback (`MODEL_ADVISORY_FALLBACK`), reached only when `fable` fails to resolve | `opus` | iii, with model resolution of `fable` forced to fail |
+  | queue Phase-0 readiness triage (`MODEL_QUEUE`) | `sonnet` | ii |
+  | verdict-recovery re-read dispatches | `haiku` | i |
 
-  Measured at HEAD: `orchestrate-dev.js:1603`, `:1646`, `:1653`, `:7463` and `:9968`
+  Measured at HEAD: `orchestrate-dev.js:1603`, `:1646`, `:1652` (`MODEL_ADVISORY = "fable"`,
+  dispatched at `:1851`), `:1653` (fallback, dispatched at `:1861`), `:7463` and `:9968`
   (`model: "haiku"`), `orchestrate-queue.js:70`. The engine substitutes no default of its own
   for a model it does not recognise; the map is a **test fixture**, not an engine table (C-7).
   When a module changes a pinned model, this table is updated in the same change — a drift
