@@ -105,4 +105,28 @@ and no product decision was taken in the erratum.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The TSPEC did not change this round, so nothing previously approved regressed, and the one v6 finding
+that mattered was resolved — at its root, in the FSPEC, which is where it belonged. No High finding is
+open. From the product lens this document is done: every P0/P1 requirement it carries traces, AC-3.3's
+two directions are decidable from a recorded file, and AC-3.1's surface is unchanged.
+
+Three non-gating edits to fold into the next touch of this file, all single-clause, none reopening a
+decision:
+
+1. **F-01 (Medium)** — delete the "composed but never executed / inert transport behind `--dry-run`"
+   clause at `:25-26`, `:789-791`, `:1430-1431`, `:1546` and `:1904`, and update the BR-MODEL-3 quote
+   at `:792` to v1.5's wording. The timing rule stands on its own without the example.
+2. **F-02 (Medium)** — re-anchor the five `FSPEC:{line}` citations (`:601`, `:792`, `:942`, `:1096`,
+   `:1753`), preferably to section anchors so the next upstream insertion does not rot them.
+3. **F-03 (Low)** — name `queryFn` as run iv's injection point in §7.4's row-4 bullet.
+
+F-02 is worth a line in harvest as a `Process` signal: an erratum round that edits an upstream
+document should re-anchor the downstream `file:line` citations it invalidates, in the same pass that
+already re-reads HEAD under DEC-ERR-01.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
