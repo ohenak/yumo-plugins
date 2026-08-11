@@ -13,7 +13,12 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+| pdlc | draft | Claude | 1.3 | 2026-08-11 |
+
+**Change note, v1.3** (POSTMORTEM-D resolution, Step 3, one sentence): DEC-ENG-03’s authority
+paragraph updated — the REQ half landed as C-11 (REQ v0.10, `6ff9871a`, confirmed at round v8),
+so the "zero hits in both" claim was half false; the FSPEC half remains outstanding. No other
+entry, alternative or consequence table changed.
 
 **Changelog.** v1.2 (round-1 cross-review, pm + te) corrects the record without reversing a decision.
 DEC-ENG-03's interpreter refusal no longer *originates* a host precondition, no longer borrows EC-GUARD-4's
@@ -184,16 +189,16 @@ execute, and it stands.
 
 What this document may not do is *establish* the precondition. Refusing at startup makes a working
 interpreter a precondition for running pdlc unattended, and turns a host that previously ran (guard
-inert) into a host that cannot run at all — an operator-facing deployability rule. `grep -in
-"python\|interpreter"` over `REQ-pdlc-headless-engine.md` and `FSPEC-pdlc-headless-engine.md` returns
-**zero hits in both**: no constraint, business rule, acceptance criterion or EC row authorises it.
-So the refusal is filed upstream as errata (a REQ constraint and an FSPEC EC row with its own rule),
-and this entry **cites** that authority rather than originating it. Until those land, the decision
-recorded here is the narrow half that is already ours: *the engine does not rely on the fail-open
-branch, and the probe's observation is reported at startup rather than discovered per dispatch.*
-Whether the observation refuses the run or reports as a failed rung is upstream's call to authorise;
-the engine does not fix the script's own posture either way (that would edit the plugin path's
-interactive behaviour, NG-1).
+inert) into a host that cannot run at all — an operator-facing deployability rule. That authority
+has now landed for the REQ half: **C-11 (`REQ-pdlc-headless-engine.md:284-298`, v0.10)** is the
+constraint that authorises the startup refusal, and this entry **cites** it rather than originating
+it. The FSPEC half is still outstanding: `grep -inE "python|interpreter"` over
+`FSPEC-pdlc-headless-engine.md` returns zero hits at HEAD, so the EC row with its own rule remains
+filed as an erratum. The decision recorded here stays the narrow half that is already ours: *the
+engine does not rely on the fail-open branch; the probe's observation is reported at startup rather
+than discovered per dispatch.* Whether that observation refuses the run or reports a failed rung is
+upstream's call to authorise; the engine does not fix the script's own posture either way (that
+would edit the plugin path's interactive behaviour, NG-1).
 
 **Two things this entry deliberately does not settle, because they are not DECISIONS-local:**
 
