@@ -530,6 +530,10 @@ export default async function main({
     suppressions: [],
     notices: [],
     deferred: [],
+    // TSPEC §12.2 v2.8 — the basenames from `state.consumed` that `_readFile` returned `null`
+    // for: still counted un-consolidated, still in the persisted `renderConsumedPair` block's
+    // complement, but named here so the report body can say which ones the pass could not read.
+    unread: [],
     // §7.7 — the advisory corpus counts and the §9.4/§9.5 candidates derived from them.
     // Both stay null until step 10 reads `ESCALATIONS.md`, so an early terminal reports
     // `advisory: none` rather than an invented corpus state.
@@ -626,25 +630,42 @@ export default async function main({
   }
   state.markerHeld = take.taken;
 
-  // Step 7 — the consumed pair (§3.3, NFR-5): complete, in one append, even when empty.
-  await appendFileFn(logPath, renderConsumedPair(state.passId, state.consumed));
+  // Step 6.5 — read every un-consolidated basename's body now (TSPEC §12.2 v2.8):
+  // readability has to be known BEFORE step 7's append, because the persisted
+  // consumed pair carries only the readable members, not the full un-consolidated
+  // set (§4b: an unreadable entry is still counted un-consolidated, but omitted
+  // from `renderConsumedPair`'s output — set equality, not containment plus an
+  // absence). Hoisted here (rather than left inside the clustering arm) so step
+  // 11 can resolve prior passes' basenames through the same map, so both halves
+  // read one corpus listing.
+  const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
+  const consumedBodies = [];
+  for (const basename of state.consumed) {
+    const path = basenameToPath.get(basename);
+    const text = path ? await readFileFn(path) : null;
+    // An unreadable member is still counted, still named (TSPEC §12.2).
+    consumedBodies.push({ basename, text });
+  }
+  const readableBasenames = consumedBodies
+    .filter((b) => typeof b.text === "string")
+    .map((b) => b.basename);
+  state.unread = consumedBodies
+    .filter((b) => typeof b.text !== "string")
+    .map((b) => b.basename);
 
-  // Step 8 — read the consumed LEARNINGS bodies and issue the first advisory
-  // dispatch (the clustering call) through `resolveAdvisoryRung`. An empty
-  // corpus has nothing to cluster and no rung to observe (FSPEC §12.1 S-05).
+  // Step 7 — the consumed pair (§3.3, NFR-5): complete, in one append, even when empty.
+  // TSPEC §12.2 v2.8 — set-equal to the READABLE members only.
+  await appendFileFn(logPath, renderConsumedPair(state.passId, readableBasenames));
+
+  // Step 8 — issue the first advisory dispatch (the clustering call) through
+  // `resolveAdvisoryRung`. An empty corpus has nothing to cluster and no rung to
+  // observe (FSPEC §12.1 S-05). Gated on the raw corpus listing, not on readability:
+  // an unreadable member still reaches the dispatch (as `(unreadable)` prose), same
+  // as before TSPEC §12.2 v2.8 — only step 7's persisted pair and step 10's reason
+  // codes changed with that erratum, not this gate.
   const rungState = { resolved: null };
   let clusterReplyText = null;
-  const consumedBodies = [];
-  // Hoisted out of the clustering arm: step 11 resolves prior passes' basenames through
-  // the same map, so both halves read one corpus listing.
-  const basenameToPath = new Map(corpusFiles.map((f) => [f.basename, f.path]));
   if (corpusFiles.length > 0) {
-    for (const basename of state.consumed) {
-      const path = basenameToPath.get(basename);
-      const text = path ? await readFileFn(path) : null;
-      // An unreadable member is still counted, still named (TSPEC §12.2).
-      consumedBodies.push({ basename, text });
-    }
     let clusterResult;
     try {
       clusterResult = await resolveAdvisoryRung({
@@ -690,10 +711,19 @@ export default async function main({
 
   // Step 10 — the advisory corpus (§7.7). Absent folds to `no-advisory-corpus`;
   // a present-but-entryless file to `advisory-corpus-empty` (§10.3 rows 15–16).
+  // The two reason codes ride only a pass that actually had something readable to
+  // consolidate (TSPEC §12.2 v2.8): a corpus with nothing readable in it derives no
+  // proposal at step 8 either, so it is `no-op` on the same footing as a genuinely
+  // quiet week — flagging the advisory corpus's own state on a run that consolidated
+  // nothing would name a condition vocabularies §1 has no row for. The corpus state
+  // is still parsed and rendered on `state.advisory` either way (item 7 reports the
+  // real state); only the reason code is withheld.
   const escText = await readFileFn("docs/_queue/ESCALATIONS.md");
   const escalations = parseEscalations(escText);
-  if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
-  else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
+  if (readableBasenames.length > 0) {
+    if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
+    else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
+  }
   state.advisory = escalations;
   // AC-6.2/AC-6.3 — the counts are an input, not an artifact: `seamCandidates` is called
   // here so report item 7 renders a real §9.4 candidate and §9.5 widening (`renderAdvisoryItem`).
@@ -2299,6 +2329,7 @@ export function renderReportBody(state) {
   const s = state || {};
   const { legal, dropped } = classifyReasons(s.status, s.reasons);
   const consumed = Array.isArray(s.consumed) ? s.consumed : [];
+  const unread = Array.isArray(s.unread) ? s.unread : [];
   const records = Array.isArray(s.records) ? s.records : [];
   const suppressions = Array.isArray(s.suppressions) ? s.suppressions : [];
   const effectiveness = Array.isArray(s.effectiveness) ? s.effectiveness : [];
@@ -2315,6 +2346,12 @@ export function renderReportBody(state) {
   lines.push(`2. rung: ${s.rung ?? ""}`);
 
   lines.push(`3. consumed: ${consumed.length > 0 ? consumed.join(", ") : "none"}`);
+  // TSPEC §12.2 v2.8 — the un-consolidated basenames `_readFile` could not read, named as
+  // an entry the pass could not read (no literal grammar pinned upstream; the "unread"
+  // word is what the caller reads for).
+  if (unread.length > 0) {
+    lines.push(`unread: ${unread.join(", ")}`);
+  }
 
   if (records.length === 0) {
     lines.push(`4. promotions: none`);

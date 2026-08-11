@@ -9,11 +9,15 @@
 //     written seconds ago and one older than `staleLockMinutes` — the older fixture is what stops
 //     an implementation routing every non-`IN-PROGRESS:` file through the `reclaim` arm.
 //
-//   T31 — pass lifecycle: AT-C1, AT-C1b, AT-C2 … AT-C8, AT-M1 … AT-M6, AT-M6b, AT-M9, AT-M11
-//     through `main()` with every seam doubled; plus the (no FSPEC AT) obligation TSPEC §12.2
-//     records — (i) the unreadable-corpus-entry case, and (ii) AT-M3's own fixture (a), the empty
-//     marker, written inside the AT-M3 case beside AT-M11 (TSPEC:2497). Both AT-M11 halves live in
-//     this one file, so T05's "exactly one file per register id" is undisturbed.
+//   T31 — pass lifecycle: AT-C1, AT-C1b, AT-C2 … AT-C8, AT-M1 … AT-M6, AT-M6b, AT-M9, AT-M11,
+//     AT-K3b through `main()` with every seam doubled; plus the (no FSPEC AT) obligation TSPEC
+//     §12.2 records — (i) the unreadable-corpus-entry case, now TWO fixtures, each the other's
+//     control (PLAN v1.8 erratum, absorbing REQ v2.5 §4b / FSPEC v11.7's AT-K3b / TSPEC v2.8): the
+//     mixed corpus (one readable, one unreadable member; renderConsumedPair set-equal to
+//     {readable}, not containment plus absence) and the all-unreadable corpus (AT-K3b's discharge:
+//     terminal no-op, consumed pair empty); and (ii) AT-M3's own fixture (a), the empty marker,
+//     written inside the AT-M3 case beside AT-M11 (TSPEC:2497). Both AT-M11 halves live in this
+//     one file, so T05's "exactly one file per register id" is undisturbed.
 //
 // `parseMarker`, `markerVerdict` and `main` are implemented (T28, T31); this header used to say
 // they throw `notImplemented`, a symbol deleted from the module in `4fdc7fac`. No oracle below is
@@ -27,6 +31,8 @@ import main, {
   parseMarker,
   markerVerdict,
   directFlag,
+  TERMINAL_STATUSES,
+  proposalPathFor,
 } from "../consolidate-learnings.js";
 import {
   fakeFs,
@@ -778,27 +784,131 @@ describe("T20 — the pass, end to end (L2)", () => {
     });
 
     // ═══════════════════════════════════════════════════════════════════
-    // (no FSPEC AT) — TSPEC §12.2's own obligation: an unreadable corpus
-    // entry is still treated correctly by the un-consolidated count, by
-    // `renderConsumedPair`'s output, and by the report body's naming.
+    // (no FSPEC AT) / AT-K3b — TSPEC §12.2's own obligation, PLAN v1.8 erratum
+    // (absorbing REQ v2.5 §4b, FSPEC v11.7's AT-K3b, TSPEC v2.8): an
+    // unreadable corpus entry is counted un-consolidated, OMITTED from
+    // `renderConsumedPair`'s output (not merely tolerated alongside it — set
+    // equality, not containment plus an absence), and named in the report
+    // body as an entry the pass could not read. Two fixtures, each the
+    // other's control: the mixed corpus below (no register id) and the
+    // all-unreadable corpus (AT-K3b, FSPEC:2210), which additionally
+    // discharges §10.3 row 1b's terminal status.
     // ═══════════════════════════════════════════════════════════════════
-    test("(no FSPEC AT) an unreadable corpus entry, beside a readable one, is still counted un-consolidated, still named in the consumed pair, and still named in the report body", () => {
-      const paths = ["docs/feat-a/LEARNINGS-feat-a.md", "docs/feat-b/LEARNINGS-feat-b.md"];
-      const bodies = {
-        // "feat-a" is omitted deliberately — `_readFile` reads it as `null` (absent-or-unreadable,
-        // §5.2), modelling an unreadable corpus member exactly as AT-P8 models an unreadable log.
-        "docs/feat-b/LEARNINGS-feat-b.md": "# LEARNINGS\n\n## 1. Domain / architectural invariant\nAlways validate at the boundary.\n",
-      };
-      const seams = buildSeams({ corpusPaths: paths, bodies, agentScript: ["no recurring failure mode pattern found across the corpus"] });
+    describe("(no FSPEC AT) / AT-K3b — an unreadable corpus entry (TSPEC §12.2 at v2.8)", () => {
+      const NOTHING_FOUND = "no recurring failure mode pattern found across the corpus";
 
-      return main({ ...seams, direct: true }).then((result) => {
-        expect(seams.fs.appends.length).toBeGreaterThan(0);
-        const consumedPair = seams.fs.appends[0].text;
-        expect(consumedPair).toContain("pdlc:consumed");
-        expect(consumedPair).toContain("LEARNINGS-feat-a.md");
-        expect(consumedPair).toContain("LEARNINGS-feat-b.md");
-        expect(result.body).toContain("LEARNINGS-feat-a.md");
-        expect(result.body).toContain("LEARNINGS-feat-b.md");
+      // `renderConsumedPair`'s own grammar (`:1401-1405`): one opener line, one
+      // basename per line, one closer line. Parsed rather than substring-matched
+      // so the oracle can assert set EQUALITY (§12.2: "not containment plus an
+      // absence") instead of merely containment.
+      function consumedPairBasenames(text) {
+        const OPENER = "<!-- pdlc:consumed";
+        const CLOSER = "<!-- /pdlc:consumed -->";
+        const start = text.indexOf(OPENER);
+        if (start === -1) return [];
+        const openerLineEnd = text.indexOf("\n", start);
+        const end = text.indexOf(CLOSER, start);
+        const body = end === -1 ? text.slice(openerLineEnd + 1) : text.slice(openerLineEnd + 1, end);
+        return body
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+      }
+
+      // The report body's naming obligation is stated in TSPEC prose ("named …
+      // as an entry the pass could not read") with no literal grammar pinned
+      // anywhere (§7.1's `unread:` field question is answered upstream: REQ §4b
+      // decided NO new field, TSPEC:3131-3145) — so this reads for the
+      // basename on any line that actually says the entry was unreadable,
+      // rather than pinning an unpublished literal.
+      function unreadLines(body) {
+        return String(body ?? "")
+          .split("\n")
+          .filter((line) => /unread|could not read|unreadable/i.test(line));
+      }
+
+      test("Fixture 1, the mixed corpus (no register id): un-consolidated counts both, renderConsumedPair is set-equal to {readable}, and the report body names the unreadable basename and not the readable one", () => {
+        const READABLE_BASENAME = "LEARNINGS-feat-a.md";
+        const UNREADABLE_BASENAME = "LEARNINGS-feat-b.md";
+        const READABLE_PATH = `docs/feat-a/${READABLE_BASENAME}`;
+        const UNREADABLE_PATH = `docs/feat-b/${UNREADABLE_BASENAME}`;
+
+        // volumeThreshold lowered to 2 (config, not a fixture literal) so this
+        // case's own corpus size is what decides trigger — conjunct (1)'s
+        // falsifier: an implementation that silently drops the unreadable
+        // member from the un-consolidated COUNT sees n=1 < 2 and falls through
+        // to cadence (empty log ⇒ datum null ⇒ trigger "cadence"), not volume.
+        const seams = buildSeams({
+          corpusPaths: [READABLE_PATH, UNREADABLE_PATH],
+          bodies: {
+            [READABLE_PATH]: "# LEARNINGS\n\n## 1. Domain / architectural invariant\nAlways validate at the boundary.\n",
+            // UNREADABLE_PATH is omitted deliberately — `_readFile` reads it as
+            // `null` (absent-or-unreadable, §5.2).
+            ".claude/pdlc.config.json": JSON.stringify({ consolidation: { volumeThreshold: 2 } }),
+          },
+          agentScript: [NOTHING_FOUND],
+        });
+
+        return main({ ...seams }).then((result) => {
+          // (1) the un-consolidated count counts both.
+          expect(result.trigger).toBe("volume");
+
+          // (2) renderConsumedPair's basename list is set-equal to {readable} —
+          // the readable basename present, the unreadable one absent, no third
+          // name.
+          expect(seams.fs.appends.length).toBeGreaterThan(0);
+          const consumedPairText = seams.fs.appends[0].text;
+          expect(consumedPairText).toContain("pdlc:consumed");
+          const basenames = consumedPairBasenames(consumedPairText);
+          expect(new Set(basenames)).toEqual(new Set([READABLE_BASENAME]));
+
+          // (3) the report body names the unreadable basename as an entry the
+          // pass could not read, and does not name the readable one in that
+          // list — the readable member is the control that keeps this conjunct
+          // from passing on a fixture where nothing was readable.
+          const lines = unreadLines(result.body);
+          expect(lines.some((l) => l.includes(UNREADABLE_BASENAME))).toBe(true);
+          expect(lines.some((l) => l.includes(READABLE_BASENAME))).toBe(false);
+        });
+      });
+
+      test("Fixture 2 (AT-K3b, FSPEC:2210): the all-unreadable corpus terminates no-op, not failed and not refused, with an empty consumed pair, |un-consolidated| 2 named in the body as unread, and no proposal file", () => {
+        const BASENAME_A = "LEARNINGS-feat-a.md";
+        const BASENAME_B = "LEARNINGS-feat-b.md";
+        const paths = [`docs/feat-a/${BASENAME_A}`, `docs/feat-b/${BASENAME_B}`];
+        // Both bodies omitted — every enumerated basename is unreadable.
+        const seams = buildSeams({ corpusPaths: paths, agentScript: [NOTHING_FOUND] });
+
+        return main({ ...seams, direct: true }).then((result) => {
+          // Terminal status pinned against §6.4's frozen catalogue, and against
+          // the two adjacent branches an implementer is most likely to reach
+          // for instead (row 1a's `failed`, and `refused`).
+          expect(TERMINAL_STATUSES).toContain(result.status);
+          expect(result.status).toBe("no-op");
+          expect(result.status).not.toBe("failed");
+          expect(result.status).not.toBe("refused");
+
+          // The consumed pair is appended EMPTY — no basename, readable or not.
+          expect(seams.fs.appends.length).toBeGreaterThan(0);
+          const consumedPairText = seams.fs.appends[0].text;
+          expect(consumedPairText).toContain("pdlc:consumed");
+          expect(consumedPairBasenames(consumedPairText)).toEqual([]);
+
+          // |un-consolidated| is 2, both basenames named in the body as unread —
+          // the discriminator against a quiet week (both sets empty, REQ §4b).
+          const lines = unreadLines(result.body);
+          expect(lines.some((l) => l.includes(BASENAME_A))).toBe(true);
+          expect(lines.some((l) => l.includes(BASENAME_B))).toBe(true);
+
+          // No reason code is minted for the condition (vocabularies §1 has no
+          // row for it).
+          expect(Array.from(result.reasons ?? [])).toHaveLength(0);
+
+          // No CONSOLIDATION-PROPOSAL-{passId}.md is written for this pass.
+          const proposalPath = proposalPathFor(result.passId);
+          expect(seams.fs.writes.some((w) => w.path === proposalPath)).toBe(false);
+          expect(Object.prototype.hasOwnProperty.call(seams.fs.files, proposalPath)).toBe(false);
+        });
       });
     });
   });
