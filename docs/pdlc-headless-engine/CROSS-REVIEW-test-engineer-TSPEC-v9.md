@@ -44,7 +44,46 @@ the one-platform matrix matches `pr-tests.yml:40` (`os: [ubuntu-latest]`).
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-20 | §7.8's probe runs a subprocess *during* the ladder, at rung 4a. FSPEC's BR-START-1 says "No model call, and no probe of any kind, is made while the ladder is running" (`FSPEC:302-303`), and its surrounding sentence is about billed tokens, so the intended reading is plainly "no *billable* probe". BR-GUARD-6 requires the opposite for rung 4a — observation "by **running** a candidate" (`FSPEC:922-924`). I have raised this upstream as an erratum rather than folding it into a finding, but §7.8 is where an implementer will meet it: one sentence saying rung 4a's `spawnSync` is a local process probe, not the kind BR-START-1 forbids, would stop a careful implementer stalling on the contradiction. |
+| Q-21 | §7.8 says `runProbe`'s default is `spawnSync(candidate, ["-c", "import sys"])`, "the shipped script's own probe command, verbatim". The script's test is a *conjunction*: `command -v "$cand"` **and** `"$cand" -c "import sys"` (`guard-harvest-before-delete.sh:16`). `spawnSync` on an absent binary yields `error.code === "ENOENT"` rather than a non-zero status, so the two agree on the accept/reject verdict — but they differ on the `outcome` phrase the refusal quotes, and EC-START-10's oracle asserts each candidate's own outcome phrase. Is the `{ran, outcome}` mapping from `spawnSync`'s three shapes (`ENOENT`, non-zero `status`, `status === 0`) meant to be fixed by this document, or left to the plan? Either answer is fine; a fixture author needs to know which. |
+
 ## Positive Observations
+
+- **The F-40 repair went to the harder, correct place, and its central argument is one I could
+  falsify and could not.** "Sites are enumerable; shapes are not" is the right generalisation, and
+  the reviewer-role map is the right proof: `"se-review"` and `"software-engineer"` sit on
+  `orchestrate-dev.js:6229` as key and value, and no string predicate separates them — but the map
+  is none of the four classes, so it needs no exemption. The section also anticipated the two
+  readings I had not written down (the `meta.name` reading, red at `:3316` and
+  `orchestrate-queue.js:45`) and closed them. Class 2's census re-derives exactly against HEAD:
+  5 non-null `creator`, 7 `optimizer`, 14 across seven two-member `reviewers` arrays, 1 `verifier`,
+  1 `remediator` = 28 over eight `PHASE_DISPATCH` rows. F-44 is a defect in two of the four class
+  definitions, not in the idea.
+- **§7.8 is the most complete new section this document has produced, and it answers F-41 in the
+  order a harness author reads.** Branch table → why no existing seam reaches it → the seam, typed,
+  with its totality and ordering stated → two fixtures → assertions. The `_runCommand` exclusion is
+  argued rather than asserted (it is a workflow-module seam supplied to `orchestrate-dev.js` for
+  Phase I's wave gate, not on the startup path), and I verified the candidate set against the shipped
+  script line by line: `python3 python py`, in that order, matching `GUARD_INTERPRETERS` and
+  FSPEC's "never widens or narrows that set independently".
+- **"Nothing dispatched" became exactly the positive conjunct I asked for, and then went one better.**
+  `accumulator.length === 0` over a live instrument, *plus* a companion control in the same file
+  asserting a dispatching run records non-zero — so an accumulator that was never installed cannot
+  score the refusal green. That control is the part I did not ask for and the part that makes the
+  oracle honest; it is the same move §7.5's sixth conjunct makes for corpus scoping.
+- **§5.3's correction is a reversal against the document's own interest, made on evidence.** v1.6
+  described the top-level catch as mechanism; HEAD's `run.mjs` has no `catch` at all, only
+  `withCwd`'s `try` at `:159` closing on `finally`. Saying "this is designed behaviour, not observed"
+  and threading it through §7.4 row 4, §8.1's AC-4.4 row and §8.3 is four edits where one would have
+  passed review. Documents that mark their own unbuilt parts are the ones whose citations stay
+  trustworthy.
+- **§6.5's Q-19 answer picked the load-bearing branch.** It would have been easy to answer "presence,
+  keyed on `process.platform`" and be done. Instead the gate is red on `denyFired: no` while the hook
+  carrier is still shipped, and green again once the posture is tightened — so the gate tracks the
+  agreement between the recorded fact and the shipped mechanism rather than the existence of a line
+  in a file. That is the difference between a measurement and a checkbox.
 
 ## Recommendation
 
