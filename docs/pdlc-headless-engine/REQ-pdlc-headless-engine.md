@@ -126,8 +126,10 @@ exception and no key prompt; a `rate_limit_event` message carried `rateLimitType
 with `overageStatus: "rejected"` — the shape associated with subscription-plan rate limiting,
 not a pay-as-you-go key. **Architectural decision: the Agent SDK is the primary dispatch
 transport; headless `claude -p` is the declared fallback, both behind the same unchanged
-`_agent` seam** (G-2). The engine asserts the SDK's reported `apiKeySource` is `"none"` at
-startup and at each dispatch, refusing otherwise absent an explicit opt-in flag (C-1).
+`_agent` seam** (G-2). `apiKeySource` is reported only from *inside* a dispatch (the
+`system/init` message), so the auth obligation splits: a billing-free startup check over
+environment and settings state (C-1a), and the `apiKeySource == "none"` assertion at each
+dispatch (C-1b), both refusing absent an explicit opt-in flag.
 
 **Policy-risk caveat, kept from the superseded ruling:** the docs' third-party-product
 language ("the SDK requires `ANTHROPIC_API_KEY`") and the spike's observed behavior could
@@ -139,15 +141,13 @@ path) — only that it does, on this machine, today. The `apiKeySource` assertio
 tripwire: any dispatch where the SDK reports a source other than `"none"` fails closed rather
 than silently billing pay-per-token.
 
-Headless Claude Code (`claude -p`) remains available as the declared fallback: it also accepts
-subscription auth (interactive `/login` state or a `claude setup-token` OAuth token via
-`CLAUDE_CODE_OAUTH_TOKEN`) and honors `ANTHROPIC_BASE_URL` / `ANTHROPIC_CUSTOM_HEADERS` from
-the environment. The operator runs the most expensive Claude subscription and routes all
-traffic through the local `headroom` proxy (`ANTHROPIC_BASE_URL=http://127.0.0.1:8787`,
-ambient in the shell environment); both remain hard constraints (§4). Sources:
-`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md` (2026-08-08, empirical); code.claude.com
-authentication, env-vars and network-config docs, retrieved 2026-08-08 (the superseded
-docs-derived claim, kept as the policy-risk baseline above).
+Headless Claude Code (`claude -p`) is the declared fallback: it accepts subscription auth
+(interactive `/login` state or a `claude setup-token` OAuth token via
+`CLAUDE_CODE_OAUTH_TOKEN`) and honors `ANTHROPIC_BASE_URL` / `ANTHROPIC_CUSTOM_HEADERS`. The
+operator's subscription and headroom proxy (`http://127.0.0.1:8787`, ambient in the shell
+environment) remain hard constraints (§4). Sources: `SPIKE-agent-sdk-auth.md` (2026-08-08,
+empirical); code.claude.com authentication, env-vars and network-config docs, retrieved
+2026-08-08 (the superseded docs-derived claim, kept as the policy-risk baseline above).
 
 ## 2. Goals
 
@@ -281,9 +281,10 @@ docs-derived claim, kept as the policy-risk baseline above).
   constraint nor the engine). A module that gains a new model tier needs no engine change.
 - **C-8 — Operator-visible strings are a closed catalogue** *(DC-01)*. Every banner line,
   refusal, warning, and failure message the engine emits is a registered catalogue entry
-  asserted by id in the test harness, and every value the engine parses out of the CLI is
-  read by a **total** function with a defined outcome for malformed input. No ad-hoc regex
-  over stderr, no string emitted outside the catalogue.
+  asserted by id in the test harness (AC-6.4), and every value the engine parses out of a
+  transport's output — SDK message stream or CLI stdout/stderr alike — is read by a **total**
+  function with a defined outcome for malformed input. No ad-hoc regex over stderr, no string
+  emitted outside the catalogue.
 - **C-9 — Every runtime fact is measured, per platform** *(DC-02)*. The transport flag /
   message surface, auth-source detection, and output shape are recorded from the installed
   SDK and CLI with the command that measured them (O-1), never inferred from documentation;
