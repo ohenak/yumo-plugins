@@ -17,28 +17,29 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.6 | 2026-08-11 |
+| pdlc | draft — awaiting operator review | Claude | 0.7 | 2026-08-11 |
 
-*Change note (0.6, 2026-08-11, round-2 cross-review):* three literal oracles are corrected to
-match HEAD — AC-3.3 gains the `MODEL_ADVISORY` = `fable` row and scopes its set-equality to a
-named three-run dispatch corpus (SE F-12, TE F-02); AC-1.2(c) becomes an unqualified empty
-read-set with the config-side opt-out cited correctly (SE F-13, TE F-01/F-04); AC-2.1 becomes
-an ordered first-match list with the missing `auth.session-key-ignored` row (SE F-14, TE F-03).
-Also: AC-4.2's sixth sequence is arithmetically fixed and the `timeout` cap disambiguated
-(SE F-15, TE Q-02); AC-1.1's *Given* carries the queue posture and its filename oracle splits
-set-equality from run-dependent rules (TE F-06, SE Q-05); §1.2a files AC-4.5's per-dispatch
-auth clause red and drops an unsupported citation (TE F-05, F-07); §1.2/§1.3's measured facts
-move to `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…05, size budget). Claims were
-re-verified at HEAD; nothing outside these findings changed (SE F-16).
+*Change note (0.7, 2026-08-11, round-3 cross-review):* two closed enumerations are widened to
+what a correct run at HEAD actually produces — AC-1.1 clause 1 admits `CODE_REVIEW-{f}-v{N}.md`
+and `POSTMORTEM-{phase}-{f}.md` as run-dependent members (SE v3 F-17), and AC-3.3's `haiku` row
+splits into its two distinct provocations over a corpus recounted as five recorded
+dispatch-descriptor sets (SE v3 F-18/F-19, TE v3 F-02/F-03, SE v3 Q-07). Also: AC-1.1 fixes its
+observation window at creation time, against Phase H's harvest deletion (SE v3 F-20); AC-4.2's
+seventh sequence becomes a row (SE v3 F-21); AC-2.4's *Given* pins the state that selects
+AC-2.1 row 4 (TE v3 F-01); finding-id back-references are qualified by round (TE v3 F-04).
+Every citation in the changed text was re-verified at HEAD; nothing outside these findings
+changed, and the edit is byte-compensated by compressing the change-note block.
 
-*Earlier change notes.* **0.5** (round-1 cross-review): the 0.4 transport swap completed through
-the mechanism layer (SE/TE F-01), C-1 split into startup and per-dispatch parts (SE F-02),
-AC-2.1's banner mapping (SE F-03, TE F-03), AC-1.2 naming the queue drift gate (SE F-04), G-2's
-seam list marked non-exhaustive (SE F-05), §1.2a's state-at-HEAD table (TE F-07, SE F-07).
-**0.4**: the Phase-0 spike supersedes the docs-derived §1.3 ruling — SDK primary, `claude -p`
-fallback, both behind the unchanged `_agent` seam. **0.3**: skills are not packaged inside the
-engine; the plugin is their sole delivery vehicle and the version handshake is a hard constraint
-(operator, 2026-08-08).
+*Earlier change notes.* **0.6** (round 2): three literal oracles corrected to HEAD — AC-3.3's
+`MODEL_ADVISORY` row and corpus-scoped set-equality, AC-1.2(c)'s unqualified empty read-set,
+AC-2.1's ordered first-match list; AC-4.2's `timeout` cap; AC-1.1's split of set-equality from
+run-dependent rules; measured facts relocated to `docs/_constraints/pdlc-engine-baseline.md`.
+**0.5** (round 1): transport swap completed through the mechanism layer, C-1 split into startup
+and per-dispatch parts, AC-2.1's banner mapping, AC-1.2's queue drift gate, G-2's seam list
+marked non-exhaustive, §1.2a's state-at-HEAD table. **0.4**: the Phase-0 spike supersedes the
+docs-derived §1.3 ruling — SDK primary, `claude -p` fallback, both behind the unchanged `_agent`
+seam. **0.3**: skills are not packaged inside the engine; the plugin is their sole delivery
+vehicle and the version handshake is a hard constraint (operator, 2026-08-08).
 
 > **Scope in one line.** A standalone Node CLI (`pdlc dev`, `pdlc queue`) that executes the
 > canonical workflow modules **unmodified** and dispatches every agent via **the Claude Agent
