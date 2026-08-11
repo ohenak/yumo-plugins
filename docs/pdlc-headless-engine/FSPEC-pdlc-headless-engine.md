@@ -496,6 +496,79 @@ supplements — and §4.4's erratum about AC-3.5's reference set applies here id
 
 ## 7. FSPEC-ENG-05 — What a dispatch carries: environment, working directory, model, permissions
 
+### 7.1 Environment: extended, never constructed
+
+**BR-ENV-1 — the dispatch environment is always the parent environment extended.** It is never
+assembled from a list of variables the engine believes are needed. On the primary transport this is
+the environment handed to the SDK for the call; on the fallback it is the inherited child
+environment. The distinction is the whole of G-4: a proxy variable the engine has never heard of
+still reaches the model call.
+
+**BR-ENV-2 — the proxy variables are carried through untouched.** `ANTHROPIC_BASE_URL` and
+`ANTHROPIC_CUSTOM_HEADERS` are never set, unset, or rewritten by the engine (C-2). The effective
+base URL is reported in the banner (§5.1) and the run report (§12.2).
+
+**BR-ENV-3 — asserted for every dispatch, not the first.** A long run that drifted its environment
+after dispatch 1 would bypass the observability the operator depends on; the assertion ranges over
+all dispatches of a run (AC-2.3).
+
+### 7.2 Working directory
+
+**BR-CWD-1 — every dispatch runs with the consumer repo root as its working directory** (C-3), so
+every artifact path the modules use resolves consumer-relative exactly as it does under the
+workflow runtime (AC-2.5). `--cwd` selects that root; absent the flag it is the process's working
+directory. The engine's own install location never becomes a dispatch's working directory, on
+either transport.
+
+### 7.3 Model forwarding
+
+**BR-MODEL-1 — forwarded verbatim, whatever the value.** The model a module pins for a dispatch
+reaches the transport untranslated. The engine holds no model table, no alias map, and no fallback
+list, and substitutes no default of its own for a value it does not recognise; the transport owns
+alias resolution and owns rejection of an unknown alias (C-7). A module that gains a model tier
+needs no engine change.
+
+**BR-MODEL-2 — the map is a test fixture, never an engine table.** The pinned model map and the
+five-configuration corpus that exercises every one of its rows are **M-ENG-07** in
+`docs/_constraints/pdlc-engine-baseline.md`, cited by id and not re-carried here. The comparison is
+a **set-equality in both directions** over that corpus — every descriptor's model value appears in
+the map, and every map row is exercised by at least one descriptor — so a phase that silently stops
+pinning a model fails the check (AC-3.3).
+
+**BR-MODEL-3 — the corpus is over recorded descriptors, not executed calls.** A descriptor exists
+when a dispatch is composed, so the whole corpus is reachable from dry runs and hermetic
+fixture-driven runs; no row of the map depends on billed traffic (AC-6.1, AC-3.3).
+
+### 7.4 Permission posture
+
+**BR-PERM-1 — one named setting, applied uniformly.** The permission posture each dispatch carries
+(allowed tools, bypass level) comes from a single named, reviewable engine setting on either
+transport. No call site carries its own escalation (C-6). "Which posture is in force" is therefore
+answerable by reading one value, and the run report records the value in force (§12.2).
+
+### 7.5 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-DISP-1 | parent environment has no proxy variables | nothing is invented; the banner reports the transport's default endpoint as effective |
+| EC-DISP-2 | `ANTHROPIC_CUSTOM_HEADERS` holds a value the engine cannot interpret | carried through unmodified — the engine is a courier, not a validator, for these two variables (BR-ENV-2) |
+| EC-DISP-3 | module pins a model the transport rejects | the transport's rejection surfaces as a dispatch outcome (§8.1); the engine neither retries with a different model nor substitutes one (BR-MODEL-1) |
+| EC-DISP-4 | module pins no model for a dispatch | the dispatch carries no engine-chosen model; the transport's own default applies, and the descriptor records "unpinned" rather than a fabricated value |
+| EC-DISP-5 | `--cwd` names a path that is not a git repository | engine refusal before dispatch — the pipeline's own git operations would otherwise fail deep inside a phase |
+| EC-DISP-6 | a map row of M-ENG-07 is unreachable in the corpus | the set-equality check fails; the fix is the corpus or the map, both M-ENG-07's, never a loosened oracle (BR-MODEL-2) |
+
+### 7.6 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-26 | every dispatch of a multi-dispatch fixture run receives both proxy variables unmodified, alongside the rest of the parent environment (AC-2.3, BR-ENV-1/3) |
+| AT-ENG-27 | the engine never sets or unsets either proxy variable, including when they are absent (BR-ENV-2, EC-DISP-1) |
+| AT-ENG-28 | every dispatch's working directory is the consumer repo root, on both transports (AC-2.5) |
+| AT-ENG-29 | set-equality between the corpus's descriptor model values and M-ENG-07's map, both directions, over recorded descriptors only (AC-3.3, BR-MODEL-2/3) |
+| AT-ENG-30 | an unrecognised model value is forwarded, not substituted (BR-MODEL-1, EC-DISP-3) |
+| AT-ENG-31 | the permission posture of every dispatch equals the single named setting; a fixture adding a per-call-site override fails (BR-PERM-1) |
+| AT-ENG-32 | EC-DISP-4, EC-DISP-5, one case each |
+
 ## 8. FSPEC-ENG-06 — Dispatch outcome taxonomy, retry, and timeout
 
 ## 9. FSPEC-ENG-07 — Guard parity for engine-dispatched agents
