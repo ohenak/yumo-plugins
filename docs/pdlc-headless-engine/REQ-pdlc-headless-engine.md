@@ -220,15 +220,18 @@ docs-derived claim, kept as the policy-risk baseline above).
   execution engine is explicitly rejected).
 - **NG-5** No interactive-session UX (watching phases inside a Claude Code session). A thin
   plugin front-door that shells out to the engine may come with `pdlc-plugin-retirement`.
-- **NG-6** *(superseded 2026-08-08 — see §1.3 change note 0.4)* No engine transport work
-  beyond the Agent-SDK-primary / `claude -p`-fallback design already decided in §1.3: no third
+- **NG-6** *(restated 0.5; the pre-0.4 wording "no Agent SDK usage, even optionally" is
+  withdrawn — it rested on the docs-derived ruling §1.3 superseded)* No engine transport work
+  beyond the Agent-SDK-primary / `claude -p`-fallback design decided in §1.3: no third
   transport, no model-routing logic, no transport auto-selection heuristic beyond the
-  `apiKeySource` fail-closed check (C-1). The prior wording of this non-goal ("no Agent SDK
-  usage, even optionally") depended on the docs-derived ruling §1.3 has since superseded and no
-  longer applies.
-- **NG-7** No new copy of anything into a consumer project. The engine ships no installer,
-  writes no engine-owned file into a consumer repo, and does not read, repair, or report on
-  `.claude/workflows/`. A project's existing copy is simply irrelevant to an engine run.
+  `apiKeySource` fail-closed check (C-1). **Both transports are in scope for this REQ's ACs**
+  (TE Q-01): an AC that binds a transport mechanism states the obligation for each, and AC-6.3
+  requires a fixture set per transport.
+- **NG-7** No new copy of anything into a consumer project. The engine ships no installer and
+  writes no engine-owned file into a consumer repo. It neither repairs nor reports on
+  `.claude/workflows/`, and reads nothing under it **on its own account** — the one permitted
+  read is the module's own drift gate, whose disposition AC-1.2 fixes. A project's existing
+  copy is otherwise irrelevant to an engine run.
 - **NG-8** No change to the skill prompts themselves. Prompt text that assumes the workflow
   runtime's mechanics is *audited* (R-5) and its disposition recorded, but rewriting SKILL.md
   bodies is out of scope here — a needed rewrite becomes an obligation, not a silent edit.
