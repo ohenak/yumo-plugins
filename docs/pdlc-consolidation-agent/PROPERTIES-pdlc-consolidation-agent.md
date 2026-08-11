@@ -457,11 +457,25 @@ nothing else to promote"* — and its Then — terminal `no-op`, the consumed pa
 **no** reason code minted for the condition — are the four observables above, so the register id is
 claimed here rather than left carrier-less. AT-K3b's remaining Then-conjunct — **no**
 `CONSOLIDATION-PROPOSAL-{passId}.md` for that pass — is asserted **on this same all-unreadable
-fixture**, through the write double's recorded path set: the set of paths the double was asked to
-write contains no `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` bearing this pass's `passId`. It is
+fixture**, and stated as a **set equality over the write double's recorded path set**, never as a
+bare absence (O-1, and PROP-MRK-04's precedent at `:1018`): the set of paths the double was asked to
+write is **set-equal to `{docs/_decisions/.consolidation-lock}`** — the marker path, and nothing
+else. The absence the register row asks for is then a *consequence* of that equality (no member
+matches `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` for any `passId`), not a standalone assertion
+a dead write recorder could green. The expected set is **non-empty by construction** on this Given,
+which is what makes the equality's positive half load-bearing: a `no-op` pass takes the marker **and**
+releases it (FSPEC §4.3's six-member release table, restated at `TSPEC:2853`), so `state.markerHeld`
+is true at step 16 and that one path is recorded **twice** — `IN-PROGRESS: {passId} …` on the take
+(`_checkFile → _readFile → _writeFile`, `TSPEC:1329`) and `RELEASED: {passId} {ISO-8601}` on the
+release (step 16 is *"`_writeFile` only"*, `TSPEC:2148`). An implementation whose write seam is never
+exercised, or one that stops writing altogether, therefore **reds on the equality** rather than
+passing the conjunct vacuously. Two things the expected set is deliberately *not*: it is not
+*"nothing under `docs/_decisions/`"* — the marker lives there too — and it is not the double's
+*call count*, since take and release make two recorded writes to the one path; the oracle is over
+the **path set**, so both writes collapse to a single member. The conjunct is
 *not* delegated to PROP-RTE-06(b): that fixture's Given is a **duplicate-suppressed** pass, AC-1.4's
 second cause, so it can only witness the obligation on its own Given, and PROP-RTE-06's own body
-records why the shared terminal status does not bridge them — *"§5.3 decides on causes, not on
+records why the shared terminal status does not bridge them — §5.3 *"decides on causes rather than on
 terminal status"* (`:1082`). All four of AT-K3b's Then-conjuncts therefore rest on AT-K3b's
 Given. The two fixtures are each other's controls: the all-unreadable
 fixture keeps *"pair empty"* from passing on a pass that enumerated nothing at all, and the mixed
