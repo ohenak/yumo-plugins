@@ -702,8 +702,8 @@ under `pdlc/workflows/` is modified" depends on. Three rules make it total:
   reported.** A dispatch composed before the first `_phase` call records `phase: null` and is reported
   under the literal key `"(no phase)"`. At HEAD no such dispatch exists, and that expectation is
   carried by an assertion, not by prose (PM Q-01, TE Q-10): **`byPhase["(no phase)"]` is absent or `0`
-  on every run-shaped test** — an explicit member of §7.4's suite-wide assertion set, listed there
-  alongside the four accumulators. Reporting alone would mean the first dispatch that drifted ahead of
+  on every run-shaped test** — the fifth row of §7.4's suite-wide property table, riding the model-map
+  accumulator rather than owning one. Reporting alone would mean the first dispatch that drifted ahead of
   a phase banner landed in a bucket nobody fails on, which is the vacuity §7.4 exists to avoid. The
   assertion is on the pipeline-run tests, not on unit tests that dispatch through the adapter without
   announcing a phase; those construct the adapter directly and are outside the run-shaped set.
@@ -1632,9 +1632,8 @@ because they are what F-26 asked for:
 
 **The fifth suite-wide assertion is the pre-phase bucket: `byPhase["(no phase)"]` is absent or `0` on
 every run-shaped test** (§4.1, PM Q-01/TE Q-10). It is a row of the property table above, not a note
-beneath it (TE F-29), so the table and `_assert-suite-wide.mjs` enumerate the same five things and
-§8.3's "the four set-equality assertions plus the `"(no phase)"` bucket assertion" describes the same
-module. It rides the model-map accumulator rather than owning one, because `phase` is already on
+beneath it (TE F-29), so the table, §8.3's row for `_assert-suite-wide.mjs` and the module itself
+enumerate the same five things. It rides the model-map accumulator rather than owning one, because `phase` is already on
 every record. Listing it makes it an assertion rather than a reported number nobody fails on — the
 first dispatch that drifts ahead of its phase banner is red.
 
