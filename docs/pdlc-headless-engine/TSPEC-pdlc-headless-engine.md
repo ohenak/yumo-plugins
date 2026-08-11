@@ -1484,6 +1484,17 @@ failure the task could have prevented. Introducing the gate *without* the local 
 pipeline red for a reason unrelated to the change that turned it red; that is what the first row
 above forbids. O-ENG-T5 remains the open question of what an off-matrix host should do with that red.
 
+**What the gate asserts about the row, stated as one clause** (TE Q-19). Presence keyed on
+`process.platform` is necessary but not sufficient: the gate asserts **presence *and* that the
+recorded `denyFired` value is consistent with the shipped mechanism**. Concretely — `denyFired: yes`
+with §6.2's hook carrier shipped is green; `denyFired: no` with the hook carrier still shipped is
+**red**, because that is exactly the state the second branch of the table above exists to force out;
+`denyFired: no` after the posture has been tightened or the guard moved to `canUseTool` is green
+again, because the recorded fact and the shipped mechanism now agree. So the gate is never green on a
+negative measurement that the code has not responded to. This matters because the alternative —
+green on any row, including one recording *guard did not fire* — would make every well-formedness
+test in §6 vacuous, proving only that a file has a line in it.
+
 Until that measurement exists, §6's tests are the *shape* of the answer, not the answer, and an
 engine run can delete review history the plugin path would have protected. **A plan schedules this
 before any unattended use** (BR-GUARD-4).
@@ -1969,6 +1980,16 @@ The residue is narrow and stated rather than denied: a live test's `errorText` c
 model's message into `${PDLC_TEST_RUN_DIR}` — a runner-owned scratch directory recreated empty on
 every suite run (§7.0 step 2), not a durable artefact.
 
+**That exclusion is asserted, not merely supplied** (TE Q-18). "The harness supplies `corpusRun` only
+for the five corpus configurations" is a construction fact, and a later live test written by copying a
+corpus run's helper would inherit a non-null `corpusRun` and land inside rows 1–4 carrying a real
+model's `errorText`. So `_assert-suite-wide.mjs` gains a sixth conjunct, the same shape as the four
+already there: **the set of distinct `corpusRun` values across all records with `corpusRun != null` is
+set-equal to the five named corpus configurations** — not containment, so an unnamed sixth
+configuration is red, and a corpus configuration that recorded nothing is red too. The live tests
+remain outside rows 1–4 by carrying `corpusRun === null`, and that scoping is now a property the suite
+can falsify rather than a convention a future author can break silently.
+
 ### 7.6 CI arrangement
 
 `.github/workflows/pr-tests.yml` currently runs four jobs — `unit-tests` (`:27`; matrix
@@ -2168,7 +2189,7 @@ they are carried by §8.2 instead, and named so the omission is deliberate rathe
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (**a top-level `catch` added to `runDev` (`:187`) and `runQueue` (`:228`) — HEAD's `run.mjs` has no `catch` clause, only `withCwd`'s `try/finally` at `:159`; §5.3 depends on it**, exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
-| **`__tests__/_assert-suite-wide.mjs`** | new — §7.4's five suite-wide assertions (four set-equality properties + the pre-phase predicate, `no record with corpusRun != null has phase === null`), one per row of that section's table, over three accumulators | §7.0, §7.4 |
+| **`__tests__/_assert-suite-wide.mjs`** | new — §7.4's six suite-wide assertions (four set-equality properties + the pre-phase predicate, `no record with corpusRun != null has phase === null`, + §7.5's corpus-scoping conjunct: the distinct non-null `corpusRun` values are set-equal to the five named configurations), over three accumulators | §7.0, §7.4 |
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
 | `pdlc/engine/package.json` | changed — `scripts.test` becomes the runner invocation | §7.0 |
 | `pdlc/engine/__tests__/smoke.test.js` | **extended** — the HEAD file (387 lines) that already runs the real `orchestrate-dev.js` against a write-replaying transport double; §7.3's parity oracle is this file grown, not a new one, and it is one of the nine `*.test.js` §1.1 counts | §7.3 |
