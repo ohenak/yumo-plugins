@@ -1,7 +1,7 @@
 ---
 feature: pdlc-headless-engine
 # ready:false is deliberate: this feature is driven by direct `pdlc dev` /
-# `orchestrate-dev` invocation, never by queue auto-pickup (SE F-11, round 1).
+# `orchestrate-dev` invocation, never by queue auto-pickup (SE v1 F-11).
 ready: false
 depends-on: []
 ---
@@ -10,7 +10,7 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…05, A-ENG-01) |
+| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…07, A-ENG-01) |
 | Downstream | FSPEC, TSPEC, PROPERTIES; successors `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`, `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
@@ -28,7 +28,9 @@ observation window at creation time, against Phase H's harvest deletion (SE v3 F
 seventh sequence becomes a row (SE v3 F-21); AC-2.4's *Given* pins the state that selects
 AC-2.1 row 4 (TE v3 F-01); finding-id back-references are qualified by round (TE v3 F-04).
 Every citation in the changed text was re-verified at HEAD; nothing outside these findings
-changed, and the edit is byte-compensated by compressing the change-note block.
+changed. The round is size-negative: §1.2a's red/green table and AC-3.3's model map moved to
+`docs/_constraints/pdlc-engine-baseline.md` as M-ENG-06/M-ENG-07 (pm-author §5e), so the REQ
+ends the round smaller than it started despite the widened enumerations.
 
 *Earlier change notes.* **0.6** (round 2): three literal oracles corrected to HEAD — AC-3.3's
 `MODEL_ADVISORY` row and corpus-scoped set-equality, AC-1.2(c)'s unqualified empty read-set,
@@ -81,24 +83,20 @@ Measured against this repo on 2026-08-08 and relocated verbatim in substance to
 `docs/_constraints/pdlc-engine-baseline.md` (pm-author §5e), where each fact carries the
 citation it was measured from (DC-02). Cited here by id, not re-carried:
 
-1. **M-ENG-01 — the modules already run in plain Node.** Three of four runtime capabilities
-   have working plain-Node bodies and every IO seam already defaults to real Node; **the only
-   capability the modules take from the workflow runtime is `agent()`**.
-2. **M-ENG-02 — the plugin coupling is one string**, not a dependency to remove: the
-   Skill-tool invocation in `runtime-adapter.js`. The plugin itself stays installed as the one
-   place `SKILL.md` files live, for interactive `/pdlc:*` sessions (§4 C-10).
-3. **M-ENG-03 — everything else in `runtime-adapter.js` (53,056 bytes) is workaround**,
-   re-expressing `fs`/`git`/`gh` through IO agents. Hosted in Node it is not ported; it is
-   deleted.
+1. **M-ENG-01 — the modules already run in plain Node**; the only capability they take from the
+   workflow runtime is `agent()`.
+2. **M-ENG-02 — the plugin coupling is one string**, not a dependency to remove. The plugin
+   stays installed as the one place `SKILL.md` files live, for `/pdlc:*` sessions (C-10).
+3. **M-ENG-03 — the rest of `runtime-adapter.js` is workaround**, re-expressing `fs`/`git`/`gh`
+   through IO agents. Hosted in Node it is not ported; it is deleted.
 
 ### 1.2a State at HEAD — this is not a greenfield REQ
 
 A partial engine is already committed on `feat-pdlc-headless-engine` (`pdlc/engine/`, landed
 across `059750de`…`f6f8029a`), so for each AC below a test written today either starts red or
 re-asserts green — the two demand different work (TE v1 F-07, SE v1 F-07). The per-AC red/green
-table, with its evidence citations, is **M-ENG-06** in
-`docs/_constraints/pdlc-engine-baseline.md`, relocated there under pm-author §5e and cited by id
-rather than re-carried. Red at HEAD, in summary: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
+table with its evidence citations is **M-ENG-06** in `docs/_constraints/pdlc-engine-baseline.md`,
+relocated under pm-author §5e and cited by id. Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
 AC-4.5's per-dispatch auth clause, AC-5.1/5.2 and AC-6.2/6.3/6.4 — including the auth check
 `startup.mjs` does not yet make, the hook/settings wiring absent from `pdlc/engine/lib/` (O-2),
 and the per-dispatch auth source the adapter records once rather than per dispatch (TE v2 F-05).
@@ -204,7 +202,7 @@ environment) remain hard constraints (§4).
   beyond the Agent-SDK-primary / `claude -p`-fallback design decided in §1.3: no third
   transport, no model-routing logic, no transport auto-selection heuristic beyond the
   `apiKeySource` fail-closed check (C-1). **Both transports are in scope for this REQ's ACs**
-  (TE Q-01): an AC that binds a transport mechanism states the obligation for each, and AC-6.3
+  (TE v1 Q-01): an AC that binds a transport mechanism states the obligation for each, and AC-6.3
   requires a fixture set per transport.
 - **NG-7** No new copy of anything into a consumer project. The engine ships no installer and
   writes no engine-owned file into a consumer repo. It neither repairs nor reports on
@@ -220,7 +218,7 @@ environment) remain hard constraints (§4).
 - **C-1 — Auth: subscription-first, fail-loud.** *(operator hard constraint)* The engine
   authenticates via the logged-in Claude Code state or `CLAUDE_CODE_OAUTH_TOKEN`, and must
   never *silently* fall back to `ANTHROPIC_API_KEY` billing. The obligation has two parts,
-  because the SDK reports its auth source only from inside a dispatch (SE F-02):
+  because the SDK reports its auth source only from inside a dispatch (SE v1 F-02):
   - **C-1a — startup, billing-free.** Before any dispatch the engine decides from
     *inspectable* state only — the process environment and the Claude Code settings files —
     whether pay-per-token billing is possible: `ANTHROPIC_API_KEY` present with no
@@ -255,7 +253,7 @@ environment) remain hard constraints (§4).
 - **C-7 — Model aliases forwarded, not re-mapped.** Whatever model a module names for a
   dispatch passes to the transport untranslated. The engine holds no model table, no alias
   map, and no fallback list: **the transport in use owns alias resolution and owns rejection
-  of an unknown alias** (SE Q-01 — whether the SDK resolves bare aliases with the CLI's
+  of an unknown alias** (SE v1 Q-01 — whether the SDK resolves bare aliases with the CLI's
   semantics is O-1's to measure, per transport, and the answer changes neither this
   constraint nor the engine). A module that gains a new model tier needs no engine change.
 - **C-8 — Operator-visible strings are a closed catalogue** *(DC-01)*. Every banner line,
@@ -271,7 +269,7 @@ environment) remain hard constraints (§4).
 - **C-10 — Plugin version handshake, hard constraint.** *(operator hard constraint,
   2026-08-08)* The engine declares a compatible pdlc-plugin version range **as data in one
   place a test can read** — the `pdlcPluginCompat` field of the engine package manifest (TE
-  Q-03; at HEAD `pdlc/engine/package.json` carries `"^0.22.0"`). At startup it
+  v1 Q-03; at HEAD `pdlc/engine/package.json` carries `"^0.22.0"`). At startup it
   locates the installed plugin (O-8) and reads its `.claude-plugin/plugin.json` version. A
   missing plugin install, or an installed version outside the declared range, is a fail-closed
   startup refusal — the engine dispatches nothing and exits non-zero with a message naming
@@ -306,7 +304,7 @@ question. `{f}` denotes a feature name throughout.
 - **AC-1.1** *Who:* the operator. *Given* a consumer repo on `feat-{f}` holding
   `docs/{f}/REQ-{f}.md`, with **no `.claude/workflows/` directory at all**, the engine's
   declared queue posture set — `distribution.checkEnabled: false` in the consumer's
-  `.claude/pdlc.config.json` (AC-1.2, SE Q-05) — and the pdlc
+  `.claude/pdlc.config.json` (AC-1.2, SE v2 Q-05) — and the pdlc
   plugin installed machine-wide at a version within the engine's declared compatible range
   (C-10), *when* they run `pdlc dev docs/{f}/REQ-{f}.md`, *then* the pipeline runs end-to-end
   through the phases enabled by that repo's config and satisfies each **structural** oracle
@@ -319,7 +317,7 @@ question. `{f}` denotes a feature name throughout.
   harvested file's later absence is not an oracle failure (SE v3 F-20). Expected sets are
   transcribed here:
   1. the artifact **filenames** created under `docs/{f}/` satisfy two rules, because only part
-     of the set is run-independent (TE v1 F-06): (i) **set-equality** against the phase-declared
+     of the set is run-independent (TE v2 F-06): (i) **set-equality** against the phase-declared
      core — `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `LEARNINGS` (`REQ` pre-exists) — for the
      phases that repo's config enables; (ii) for each run-dependent member, a rule, not a fixed
      set (SE v3 F-17) — `DECISIONS-{f}.md` iff the run report records the Phase-T decision that
@@ -339,7 +337,7 @@ question. `{f}` denotes a feature name throughout.
      write (`in-progress`, `awaiting-merge`, `halted`), with its pathspec-scoped commit;
   5. the run report carries every field the modules already produce plus AC-4.5's engine fields.
 - **AC-1.2** *Given* the same repo, *when* the run is observed at the filesystem level for its
-  whole duration, *then* all three hold on that **same observed run** (TE F-09): (a) at least
+  whole duration, *then* all three hold on that **same observed run** (TE v1 F-09): (a) at least
   one read of `{pluginRoot}/skills/{skill}/SKILL.md` is observed; (b) at least one read of the
   consumer's `docs/{f}/REQ-{f}.md` is observed; (c) the set of paths opened under the
   consumer's `.claude/workflows/` is **empty, with no exception** — under the posture AC-1.1's
@@ -347,7 +345,7 @@ question. `{f}` denotes a feature name throughout.
   opt-out is evaluated *before* any drift-state read and short-circuits it
   (`parseDistributionCheckEnabledOptOut`, `orchestrate-queue.js:2068`, called at `:1071-1072`;
   the drift-state read at `.claude/workflows/.pdlc-drift-state.json`, `:64`, lives only in the
-  else-branch, `:1074`) — so the drift gate that G-2/C-4 forbid forking (SE F-04) costs the
+  else-branch, `:1074`) — so the drift gate that G-2/C-4 forbid forking (SE v1 F-04) costs the
   engine no read under `.claude/workflows/` at all, rather than one permitted read. Without
   that opt-out the same run is **expected** to be blocked by the gate, and the drift-state read
   is then observable; that is a different posture, not this AC's. (`:1947`'s
@@ -366,7 +364,7 @@ question. `{f}` denotes a feature name throughout.
   the engine itself.
 - **AC-1.5** *Given* the engine's own repository, *when* its test suite runs, *then* two
   observable assertions hold, so "not a fork" is decidable without a reference copy to diff
-  against (TE F-12): (a) the module specifier the engine resolves for each workflow module is
+  against (TE v1 F-12): (a) the module specifier the engine resolves for each workflow module is
   the repo-relative path under `pdlc/workflows/`; (b) no second file named `orchestrate-dev.js`
   or `orchestrate-queue.js` exists anywhere under the engine tree. A fork is then a test
   failure rather than a discovery (C-4).
@@ -378,9 +376,9 @@ question. `{f}` denotes a feature name throughout.
   the effective `ANTHROPIC_BASE_URL` (with headroom's ambient environment present,
   `http://127.0.0.1:8787`), and **the startup auth posture C-1a can read without billing** —
   named by catalogue id from this mapping, so a test transcribes the expected string
-  from this table rather than from engine code (SE F-03, TE F-03). The rows are an **ordered
+  from this table rather than from engine code (SE v1 F-03, TE v1 F-03). The rows are an **ordered
   first-match list**, not disjoint predicates — the first row whose condition holds decides,
-  and row 6 makes the list total (SE F-14, TE F-03):
+  and row 6 makes the list total (SE v2 F-14, TE v2 F-03):
 
   | # | Inspectable startup state | Banner catalogue id |
   |---|---|---|
@@ -407,11 +405,14 @@ question. `{f}` denotes a feature name throughout.
   receives contains both unmodified together with the rest of the parent environment — the
   dispatch options' environment on the primary transport, the child process environment on the
   `claude -p` fallback — asserted for **every** dispatch the engine makes, not only the first.
-- **AC-2.4** *Given* an operator with subscription auth and `ANTHROPIC_API_KEY` also present in
-  the environment, *when* the run is made with `auth.allowApiKeyBilling` **not** passed, *then*
+- **AC-2.4** *Given* an operator whose subscription auth is **logged-in Claude Code settings
+  state with `CLAUDE_CODE_OAUTH_TOKEN` absent from the environment** — the state AC-2.1's
+  first-match list resolves to row 4, since an OAuth token present would match row 1 and yield
+  `auth.oauth-token` instead (TE v3 F-01) — and `ANTHROPIC_API_KEY` also present in the
+  environment, *when* the run is made with `auth.allowApiKeyBilling` **not** passed, *then*
   the positive observable holds: the banner carries `auth.session-key-ignored` (AC-2.1 row 4),
   every dispatch reports `apiKeySource == "none"` **and**
-  completes, and the run report records that value per dispatch (TE F-02). The negative ("no
+  completes, and the run report records that value per dispatch (TE v2 F-02). The negative ("no
   key was needed") is thereby paired with a positive on the same path rather than asserted by
   absence.
 - **AC-2.5** *Given* any dispatch, *when* it is made, *then* its working directory is the
@@ -456,7 +457,7 @@ C-10)*
 - **AC-3.5** *Given* any engine start, *when* the startup checks run alongside the C-10
   handshake and **before** any dispatch, *then* the set of skill identifiers the modules can
   dispatch equals the set of skill prompt files present in the installed plugin — set-equality
-  in both directions, not containment (TE F-06): a prompt file present but not dispatchable,
+  in both directions, not containment (TE v1 F-06): a prompt file present but not dispatchable,
   and a dispatchable identifier with no readable file, both fail closed at startup with the
   differing identifiers named. A missing or renamed `SKILL.md` is therefore discovered before
   the run starts, not mid-run by the phase that needed it. The count (17 at HEAD = 15
@@ -469,14 +470,14 @@ C-10)*
   (output the engine cannot parse), `agent-reported-failure` (the dispatch ran and the agent
   reported failure, which is the modules' business, not the engine's). The catalogue is closed:
   the test asserts **set-equality** between the classifier's possible outputs and these six
-  (TE F-05), and adding a seventh member is a change to this AC, not a configuration. Every
+  (TE v1 F-05), and adding a seventh member is a change to this AC, not a configuration. Every
   classification is a total function of the observed outcome: unrecognised output classifies as
   `transport-contract-violation`, never as success.
 - **AC-4.2** *Given* a `retryable` outcome, *when* it occurs, *then* the dispatch is retried up
   to `dispatch.retryAttempts` with `dispatch.retryBackoff`; *given* a dispatch producing no
   output for `dispatch.timeoutMinutes`, it is classified `timeout` and retried at most once.
   **The `timeout` retry is drawn from the same `dispatch.retryAttempts` budget, and a timeout
-  never resets it** (TE F-10, SE Q-04). At the default of 3, the total attempt counts are:
+  never resets it** (TE v1 F-10, SE v1 Q-04). At the default of 3, the total attempt counts are:
 
   | Observed sequence | Total attempts | Terminal classification |
   |---|---|---|
@@ -485,15 +486,18 @@ C-10)*
   | `timeout`, then success | 2 | `ok` |
   | `timeout`, `timeout` | 2 | `timeout`, terminal (second timeout is never retried) |
   | `retryable`, `timeout`, then success | 3 | `ok` |
-  | `timeout`, `retryable`, `retryable` | 3 | non-terminal — one retry of the budget is still owed |
+  | `timeout`, `retryable`, `retryable` | 3 | non-terminal — one retry of the budget is still owed, so a fourth attempt follows |
   | `timeout`, `retryable`, `retryable`, `retryable` | 4 | `retryable`, budget exhausted |
+  | `retryable`, `timeout`, `timeout` | 3 | `timeout`, terminal (the cap, not the budget, ends it) |
 
-  The `timeout` cap is **per run of a dispatch, not per attempt position**: once a dispatch has
-  been retried after one `timeout`, a second `timeout` anywhere in its remaining attempts is
-  terminal (TE Q-02) — so `retryable`, `timeout`, `timeout` is terminal `timeout` at 3 attempts.
+  The last row holds because the `timeout` cap is **per run of a dispatch, not per attempt
+  position** (TE v2 Q-02): once a dispatch has been retried after one `timeout`, a second
+  `timeout` anywhere in its remaining attempts is terminal even with budget left. Every
+  observable sequence a test transcribes is a row; this clause explains the table rather than
+  extending it (SE v3 F-21).
 - **AC-4.3** *Given* retries were exhausted, *when* the run ends, *then* the failure surfaces
   through the modules' own failure path — the phase halts with its normal POSTMORTEM and
-  halt-row semantics — and both halves are asserted (TE F-14): *positively*, the halt artifacts
+  halt-row semantics — and both halves are asserted (TE v1 F-14): *positively*, the halt artifacts
   exist (the POSTMORTEM file, the `halted` queue row, its pathspec-scoped commit), which is
   what proves the engine process stayed alive long enough to record the halt; *negatively*, the
   set of child processes the engine started is empty at exit and the engine itself did not
@@ -508,7 +512,7 @@ C-10)*
   `apiKeySource` on the primary path), effective base URL, per-phase dispatch counts, and one
   row per retry and per pause (taxonomy member, phase, attempt number, delay). A run with zero
   retries carries an empty set of such rows, not a missing field. Per-phase dispatch counts are
-  **observable, not derivable** from this REQ for an arbitrary run (TE Q-04): a test asserts
+  **observable, not derivable** from this REQ for an arbitrary run (TE v1 Q-04): a test asserts
   their presence and internal consistency (counts sum to the recorded dispatch rows), and
   asserts exact values only for a fixture run whose dispatch sequence the fixture fixes.
 
@@ -530,13 +534,13 @@ C-10)*
 - **AC-6.1** *Given* the engine's test suite, *when* it runs in CI, *then* it exercises the
   adapter against the modules' existing test doubles with **no live model calls and no
   network**, and the hermeticity gate is an observable of the run, not a counterfactual (TE
-  F-13): every test constructs the transport through the injected seam, a guard fails the suite
+  v1 F-13): every test constructs the transport through the injected seam, a guard fails the suite
   on any attempt to construct the real transport (SDK `query` or a `claude` child spawn), and
   the suite asserts that no outbound network connection was attempted.
 - **AC-6.2** *Given* an explicit opt-in flag, *when* the live smoke path runs, *then* it drives
   one real, small feature end-to-end against a scratch repo and asserts **the same structural
   set as AC-1.1**, plus the one thing only a live run can show: at least one cross-review round
-  reaching a parseable terminal verdict produced by a real model call (TE Q-02). It is never
+  reaching a parseable terminal verdict produced by a real model call (TE v1 Q-02). It is never
   part of the default suite.
 - **AC-6.3** *Given* the recorded transport interface contracts (O-1), *when* a transport is
   tested, *then* it is tested against **recorded fixtures of that transport's real output** —
@@ -544,7 +548,7 @@ C-10)*
   keeps both in scope — and a fixture refresh against a newer SDK or CLI version is a
   documented, repeatable step rather than a rewrite.
 - **AC-6.4** *Given* C-8's closed catalogue, *when* the suite runs, *then* two checks exist
-  (TE F-11): (a) **set-equality** between the catalogue ids the engine can emit and the ids
+  (TE v1 F-11): (a) **set-equality** between the catalogue ids the engine can emit and the ids
   registered in the catalogue — an unregistered emitted string, and a registered id no path
   emits, both fail; (b) for every value the engine parses out of a transport's output, a
   defined outcome for malformed input is asserted by test, including an unrecognised
@@ -588,7 +592,7 @@ C-10)*
 
 ## 7. Obligations / Open Questions
 
-- **O-1** *(partially discharged — SE F-07)* The **primary** transport's message-stream shape
+- **O-1** *(partially discharged — SE v1 F-07)* The **primary** transport's message-stream shape
   (system/init, rate_limit_event, terminal result) is measured and in use:
   `SPIKE-agent-sdk-auth.md` §4b plus the shipped parse at `pdlc/engine/lib/transport.mjs:180-205`
   (`059750de`). Still open, before TSPEC: (a) the **fallback** `claude -p` flag surface (output
@@ -613,12 +617,12 @@ C-10)*
 - **O-7** Record the observed rate-limit behaviour under real unattended load and re-derive
   `dispatch.retryAttempts` / `dispatch.retryBackoff` (§4.1) from it before treating them as
   settled.
-- **O-8** *(discharged — SE F-07)* Plugin installed-location discovery is probed and shipped:
+- **O-8** *(discharged — SE v1 F-07)* Plugin installed-location discovery is probed and shipped:
   candidate-root resolution with a deterministic precedence order plus `--plugin-root` /
   `PDLC_PLUGIN_ROOT` overrides (`pdlc/engine/lib/skills.mjs`, `resolvePluginRoot` `:204`), with
   the startup handshake in `startup.mjs` (`2ed13815`). TSPEC records the resolved precedence as
   the measured fact; nothing further is owed here.
-- **O-9** *(new, round 1 — SE F-03)* Measure whether either transport can distinguish a
+- **O-9** *(new — SE v1 F-03)* Measure whether either transport can distinguish a
   logged-in Claude Code session from a `CLAUDE_CODE_OAUTH_TOKEN` credential *from its own
   reported auth state* (the spike measured exactly one value, `apiKeySource: "none"`, for the
   subscription case). If it cannot, AC-2.1's startup mapping — which reads the environment and
