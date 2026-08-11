@@ -409,6 +409,78 @@ red rather than silent.
 
 ## 8. Definition of Done
 
+Every item is mechanically checkable, and the check is named. An item that could only be confirmed
+by reading prose is not on this list.
+
+**Suite and gates**
+
+- [ ] `cd pdlc/engine && npm test` exits 0 on ubuntu-latest and macos-latest, node 20, through the
+      **one** spelling in `scripts.test` — the runner, not a bare `node --test`.
+- [ ] The suite-wide assertion step runs on every invocation and **fails on an empty observation
+      set**; a run against an empty scratch run dir exits non-zero (T01, T03).
+- [ ] All five rows of TSPEC §7.4's property table are implemented in `_assert-suite-wide.mjs`, and
+      the module enumerates the same five things the table does (T19, T52).
+- [ ] The hermeticity guard and the socket trap each fire in a test written to trip them; a trap
+      that never fires would be indistinguishable from one never installed (AT-ENG-63).
+- [ ] `.github/workflows/pr-tests.yml` runs five jobs, the new one on the `unit-tests` matrix with a
+      body of `npm ci` then `npm test` and nothing else.
+- [ ] `.claude/pdlc.config.json` `implementation.testCommand` executes the engine suite, so a wave
+      gate in this feature's own Phase I runs the code the wave wrote.
+
+**Generated artifacts and the workflow modules**
+
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0, and `pdlc/hooks/scripts/sync-workflows.sh --check`
+      exits 0.
+- [ ] `pdlc/workflows/dist/` and `distribution-manifest.json` are committed in T16's own batch.
+- [ ] The workflows-side change is exactly two files: added exports plus bare literals replaced at
+      their dispatch sites. No pipeline behaviour changes, and `pdlc/workflows/`'s own suite is green.
+- [ ] The no-bare-literal test's exempt sites equal — not merely contain — the closed allow-list
+      (`orchestrate-dev.js:6229-6231`).
+
+**Acceptance criteria and acceptance tests**
+
+- [ ] All 26 of REQ v0.10's acceptance criteria have a passing test, per §9's table.
+- [ ] AT-ENG-01…AT-ENG-68 each map to at least one named test, and every AT that FSPEC scopes "per
+      transport" is asserted twice.
+- [ ] The six-member outcome taxonomy is asserted in **both** directions, the reverse by a named
+      provocation fixture per member; a member no fixture reaches is a missing fixture, never a
+      loosened oracle.
+- [ ] The message catalogue is asserted in both directions over ids accumulated across the whole
+      suite, not per test.
+- [ ] The dispatchable-skill set is asserted in both directions over imported data, never parsed
+      source.
+- [ ] AC-3.3's witness table has one passing witness per M-ENG-07 row, with rows 1 and 2 quantified
+      over the Phase-I wave set and run i asserting **zero** `haiku` descriptors.
+
+**Guard parity and the measurement that gates unattended use**
+
+- [ ] Each of §6.3's three clauses has its falsifying counterpart asserted in the same file, and the
+      deny path performs the deletion it is guarding.
+- [ ] The provenance test runs with no pdlc hooks registered on the host.
+- [ ] `docs/_constraints/pdlc-engine-baseline.md` carries an `M-ENG-09` row for each CI platform, and
+      the hermetic gate fails when a row for the running platform is absent.
+- [ ] If any row records `denyFired: no`, TSPEC §6.5's branch is taken — the posture tightens or the
+      guard moves to `canUseTool` — and this DoD is **not** met by noting the measurement.
+
+**Boundaries the feature must not have crossed**
+
+- [ ] No file under `pdlc/workflows/` other than the two modules and their generated artifacts is
+      modified; `git diff --stat` against the merge base is the check.
+- [ ] No engine-owned file is created under a consumer repo across a full fixture run (AT-ENG-50).
+- [ ] `stampReport` adds exactly one key, `engine`.
+- [ ] Only `lib/run.mjs` names a path under `pdlc/workflows/`; any other engine file doing so fails
+      the suite (R-ARCH-1).
+- [ ] `_sessionAgent` is unwired and `runtime-adapter.js`'s IO seams are un-overridden, both asserted
+      by T25 rather than left to review.
+- [ ] No fixture contains a credential, asserted by a scanner whose positive control is in the same
+      test.
+
+**Documents**
+
+- [ ] `M-ENG-06`'s per-criterion rows are restated against the delivered engine (T53).
+- [ ] The errata this plan raises against TSPEC and DECISIONS are routed and confirmed, or explicitly
+      declined, before Phase DOD.
+
 ## 9. Traceability — acceptance criteria to tasks
 
 ## 10. Risks, deferrals and open questions carried into implementation
