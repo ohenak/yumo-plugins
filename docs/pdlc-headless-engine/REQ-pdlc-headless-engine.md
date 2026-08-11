@@ -390,16 +390,19 @@ question. `{f}` denotes a feature name throughout.
   engine version, the installed plugin version confirmed compatible by the handshake (C-10),
   the effective `ANTHROPIC_BASE_URL` (with headroom's ambient environment present,
   `http://127.0.0.1:8787`), and **the startup auth posture C-1a can read without billing** —
-  named by catalogue id from this total mapping, so a test transcribes the expected string
-  from this table rather than from engine code (SE F-03, TE F-03):
+  named by catalogue id from this mapping, so a test transcribes the expected string
+  from this table rather than from engine code (SE F-03, TE F-03). The rows are an **ordered
+  first-match list**, not disjoint predicates — the first row whose condition holds decides,
+  and row 6 makes the list total (SE F-14, TE F-03):
 
-  | Inspectable startup state | Banner catalogue id |
-  |---|---|
-  | `CLAUDE_CODE_OAUTH_TOKEN` set in the environment | `auth.oauth-token` |
-  | no OAuth token, no `ANTHROPIC_API_KEY`, logged-in Claude Code settings state present | `auth.session` |
-  | `ANTHROPIC_API_KEY` present **and** `auth.allowApiKeyBilling` passed | `auth.api-key-optin` |
-  | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused` (AC-2.2) — no banner |
-  | none of the above (no credential the engine can see) | `auth.unknown` — start proceeds; C-1b decides at first dispatch |
+  | # | Inspectable startup state | Banner catalogue id |
+  |---|---|---|
+  | 1 | `CLAUDE_CODE_OAUTH_TOKEN` set in the environment | `auth.oauth-token` |
+  | 2 | no `ANTHROPIC_API_KEY`, logged-in Claude Code settings state present | `auth.session` |
+  | 3 | `ANTHROPIC_API_KEY` present **and** `auth.allowApiKeyBilling` passed | `auth.api-key-optin` |
+  | 4 | `ANTHROPIC_API_KEY` present, flag not passed, logged-in settings state present | `auth.session-key-ignored` — start proceeds, the key is unused; this is the state AC-2.4 exercises |
+  | 5 | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused` (AC-2.2) — no banner |
+  | 6 | none of the above (no credential the engine can see) | `auth.unknown` — start proceeds; C-1b decides at first dispatch |
 
   The banner reports **no** SDK `apiKeySource` value, because none exists before a dispatch;
   the per-dispatch value is a C-1b/AC-2.4 observable and appears in the run report (AC-4.5). A
@@ -419,7 +422,8 @@ question. `{f}` denotes a feature name throughout.
   `claude -p` fallback — asserted for **every** dispatch the engine makes, not only the first.
 - **AC-2.4** *Given* an operator with subscription auth and `ANTHROPIC_API_KEY` also present in
   the environment, *when* the run is made with `auth.allowApiKeyBilling` **not** passed, *then*
-  the positive observable holds: every dispatch reports `apiKeySource == "none"` **and**
+  the positive observable holds: the banner carries `auth.session-key-ignored` (AC-2.1 row 4),
+  every dispatch reports `apiKeySource == "none"` **and**
   completes, and the run report records that value per dispatch (TE F-02). The negative ("no
   key was needed") is thereby paired with a positive on the same path rather than asserted by
   absence.
