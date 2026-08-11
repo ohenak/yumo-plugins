@@ -95,3 +95,6 @@ the placement is routed to FSPEC — so re-filing it would duplicate an erratum 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
+
+APPROVAL-HASH: sha256:bce4becb0aaf444bd7ef9bb16da7a0b1fee6479fcdb01ca4348b2a689489292f
+REVIEWED-COMMIT: 07bb1b0a93e26f2af2e63d0f50b5cde1b2aea6d1
