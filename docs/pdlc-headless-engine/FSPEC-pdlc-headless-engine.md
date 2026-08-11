@@ -13,7 +13,17 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-11 |
+| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+
+**Change note, v1.1** (round 1, addressing `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1`):
+the parity oracle's hermetic double and fixture-fixed expectations (BR-PARITY-5/6), the report's
+delivery surface and `transport` field (BR-REP-0, §12.2), the named observable behind "logged-in
+settings state" (BR-AUTH-0, M-ENG-08) and the literal auth policy sets (§5.3), rung 0 of the ladder
+(BR-START-0), the exit-code order (BR-EXIT-3), the diagnostic-command exemption (BR-CMD-1), the
+guard's production permission posture (BR-PERM-2, BR-GUARD-5), observables for the two remaining
+set-equalities (BR-FAIL-1, BR-MSG-1) and the hermeticity trap (BR-VER-1), the pause-delay table
+(BR-RETRY-3), what an engine-fatal stop leaves behind (BR-FAIL-3), and two further errata
+(O-ENG-4/5). Decisions taken in v1.0 are unchanged.
 
 ## 0. Overview
 
@@ -137,9 +147,8 @@ this set and the diagnostic set below, prints usage and exits with the engine-re
 and `pdlc spike:sdk` exist at HEAD (`pdlc/engine/bin/pdlc.mjs:332`, `:335`; both in `USAGE`, `:41`)
 as development diagnostics. They are **exempt from the closed-set assertion** and carry no
 obligation of this document — no ladder, no report, no catalogue id — and `spike:sdk` dispatches a
-real call, so it is not a non-billing surface. AT-ENG-01's red state is therefore a *third*
-command name that is neither in §3.1's table nor in this exempt pair being accepted, and the
-exemption is the whole of the closed set's escape hatch: an addition to either set is a change to
+real call, so it is not a non-billing surface. AT-ENG-01's red state is a *third* command name, in
+neither §3.1's table nor this exempt pair, being accepted; an addition to either set is a change to
 this section.
 
 `pdlc doctor` and `--dry-run` are the two **non-billing** surfaces, and their inertness is a
@@ -214,7 +223,7 @@ the loop does *next* in each case, which is a separate decision from what it fin
 |---|---|---|
 | EC-CLI-1 | no command given, or an unrecognised command | usage printed, exit `1`; nothing resolved, nothing dispatched |
 | EC-CLI-2 | `pdlc dev` with no REQ path | usage printed, exit `1` — the engine does not guess a feature |
-| EC-CLI-3 | `pdlc dev` with a REQ path that does not exist under `--cwd` | engine refusal naming the path, exit `1`, before startup dispatch |
+| EC-CLI-3 | `pdlc dev` with a REQ path that does not exist under `--cwd` | rung-0 refusal naming the path, exit `1`, before anything is resolved (§4.1) |
 | EC-CLI-4 | `--force-phases` with a token the module rejects | the module's own refusal surfaces; the engine adds no token vocabulary of its own |
 | EC-CLI-5 | a value flag given with no value (`--cwd` as the last argument) | usage error, exit `1`; never silently treated as empty |
 | EC-CLI-6 | `--dry-run` on a repo whose plugin handshake fails | the handshake refusal wins (§4.2 ordering): a dry run is not a way to skip the gate |
@@ -375,13 +384,12 @@ engine reads. Two consequences a test transcribes:
 
 - A fixture selects any row of §5.1 by setting the process environment and pointing `HOME` at a
   scratch directory with, or without, that record. No row is unfixturable.
-- **Absent evidence is not evidence of absence, and row 5 refuses only on the state it can see.**
-  On a host whose credential the engine cannot observe (another platform, another storage
-  location — M-ENG-08 is one platform's measurement, C-9), a run *with* `ANTHROPIC_API_KEY`
-  present lands on row 5 and refuses. That refusal names the path it inspected, the opt-in flag,
-  and `CLAUDE_CODE_OAUTH_TOKEN` as the row-1 route, so the operator has two recourses rather than
-  none (EC-AUTH-8). Widening the evidence set as other platforms are measured is a change to
-  M-ENG-08 and this rule, never a silent per-platform special case.
+- **Row 5 refuses on the state it can see, and says so.** On a host whose credential the engine
+  cannot observe (another platform, another storage location — M-ENG-08 is one platform's
+  measurement, C-9), a run with `ANTHROPIC_API_KEY` present lands on row 5 and refuses; the
+  refusal names the path inspected, the opt-in flag, and `CLAUDE_CODE_OAUTH_TOKEN` as the row-1
+  route, so the operator has two recourses rather than none (EC-AUTH-8). Widening the evidence set
+  as platforms are measured changes M-ENG-08 and this rule, never a silent special case.
 
 **BR-AUTH-1 — first match wins, and row 6 makes the list total.** The rows are not disjoint
 predicates: a machine with both an OAuth token and an API key matches rows 1, 3 and 4, and row 1
@@ -419,11 +427,9 @@ before the model is billed, that the transport-reported source is in the **allow
 | with the opt-in flag | `{"none", "user", "project", "org", "temporary"}` | proceeds |
 
 Both sets are literal and closed, matching the policy the shipped CLI passes to the transport
-(`pdlc/engine/bin/pdlc.mjs:93`, `:201-203`). The **fallback transport's own vocabulary is not yet
-measured** — it is O-1's — and until it is, the fallback inherits these sets unchanged, so every
-value it reports that is not literally in them is outside the set and aborts the dispatch. That is
-the fail-closed direction, and it is the transcribed one: a test places a fixture outside the set
-by reporting any other string at all.
+(`pdlc/engine/bin/pdlc.mjs:93`, `:201-203`). The fallback's own vocabulary is unmeasured (O-1);
+until it lands the fallback inherits these sets unchanged, so any value not literally in them is
+outside the set and aborts the dispatch — the fail-closed direction, and the transcribed one.
 
 **BR-AUTH-4 — an unrecognised source is never mapped.** A transport reporting a source the engine
 does not recognise is treated as outside the allowed set and named verbatim in the failure; it is
@@ -636,7 +642,7 @@ dispatch (§9.1).
 | EC-DISP-2 | `ANTHROPIC_CUSTOM_HEADERS` holds a value the engine cannot interpret | carried through unmodified — the engine is a courier, not a validator, for these two variables (BR-ENV-2) |
 | EC-DISP-3 | module pins a model the transport rejects | the transport's rejection surfaces as a dispatch outcome (§8.1); the engine neither retries with a different model nor substitutes one (BR-MODEL-1) |
 | EC-DISP-4 | module pins no model for a dispatch | the dispatch carries no engine-chosen model; the transport's own default applies, and the descriptor records "unpinned" rather than a fabricated value |
-| EC-DISP-5 | `--cwd` names a path that is not a git repository | engine refusal before dispatch — the pipeline's own git operations would otherwise fail deep inside a phase |
+| EC-DISP-5 | `--cwd` names a path that is not a git repository | rung-0 refusal before anything is resolved (§4.1), and one `doctor` reports — the pipeline's own git operations would otherwise fail deep inside a phase |
 | EC-DISP-6 | a map row of M-ENG-07 is unreachable in the corpus | the set-equality check fails; the fix is the corpus or the map, both M-ENG-07's, never a loosened oracle (BR-MODEL-2) |
 
 ### 7.6 Acceptance tests
@@ -917,12 +923,11 @@ have produced. A double that writes nothing fails AT-ENG-45 rather than passing 
 is AT-ENG-45's first obligation, before any clause is checked.
 
 **BR-PARITY-6 — expected sets are the fixture's, never the run's own report.** Clause 1(ii)'s
-rules are evaluated against what the **fixture fixes** — its round windows, its DoD rounds, its
-Phase-T decision, its halt — and the expected filenames are transcribed literally into the test.
-The run report is then checked to *agree* with that same fixture, as a separate assertion. Deriving
-the expectation from the report the run under test produced would let a consistently-wrong run pass
-(a run that skipped a review round and omitted it from the report satisfies both halves), which is
-the failure §12.2 BR-REP-3 already avoids for dispatch counts.
+rules are evaluated against what the **fixture fixes** — round windows, DoD rounds, Phase-T
+decision, halt — with expected filenames transcribed literally into the test, and the run report
+checked *separately* to agree with the same fixture. Deriving the expectation from the report under
+test would pass a consistently-wrong run (one that skipped a review round and omitted it from the
+report satisfies both halves) — the failure BR-REP-3 already avoids for dispatch counts.
 
 The clauses (AC-1.1):
 
@@ -1075,14 +1080,12 @@ is to answer, without a re-run: *what did it do, on whose credential, through wh
 long did it wait and why, and which pair of versions produced this?*
 
 **BR-REP-0 — the report is emitted as one JSON line, the last line of stdout.** That is its whole
-delivery surface: no file is written for it, in the consumer repo or anywhere else (BR-READ-3
-forecloses the former, and NG-7 the latter). Human-readable progress lines print above it; the
-report is always exactly one line and always the last, so a cron wrapper takes the final line of
-stdout and parses it without scanning for a block. Two implications an operator lives with: a run
-whose stdout is not captured leaves no witness at all (the cron slot must redirect it somewhere),
-and a run that dies without emitting the line is distinguishable from one that refused, because a
-refusal still emits it (EC-REP-1). This matches the shipped convention
-(`pdlc/engine/bin/pdlc.mjs:215-221`, emitted at `:236-237`).
+delivery surface: no file is written for it, in the consumer repo or anywhere else (BR-READ-3,
+NG-7). Progress lines print above it; the report is always exactly one line and always the last, so
+a cron wrapper parses the final line without scanning for a block. Two implications: a run whose
+stdout is not captured leaves no witness at all, and a run that died is distinguishable from one
+that refused, because a refusal still emits the line (EC-REP-1). This matches the shipped
+convention (`pdlc/engine/bin/pdlc.mjs:215-221`, emitted at `:236-237`).
 
 **BR-REP-1 — the modules' report is extended, never replaced.** Every field the modules already
 produce survives verbatim; the engine adds fields alongside them (AC-4.5).
@@ -1238,8 +1241,8 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 | AC-4.1 | §8.1 | AT-ENG-33, AT-ENG-34 |
 | AC-4.2 | §8.2 | AT-ENG-35, AT-ENG-36, AT-ENG-37 |
 | AC-4.3 | §8.3 | AT-ENG-38 |
-| AC-4.4 | §8.4 | AT-ENG-39 |
-| AC-4.5 | §12.2 | AT-ENG-58, AT-ENG-59, AT-ENG-60 |
+| AC-4.4 | §8.4 | AT-ENG-39, AT-ENG-67 |
+| AC-4.5 | §12.1, §12.2 | AT-ENG-58, AT-ENG-59, AT-ENG-60, AT-ENG-68 |
 | AC-5.1 | §9.1, §9.2 | AT-ENG-41, AT-ENG-43 |
 | AC-5.2 | §9.2 | AT-ENG-42 |
 | AC-6.1 | §12.4 | AT-ENG-63 |
@@ -1288,7 +1291,8 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | Step | What happens | Owned by |
 |---|---|---|
 | 1 | the operator invokes a command; argv is parsed, unknown usage refuses (`1`) | §3 |
-| 2 | the startup ladder runs: plugin resolved → manifest read → version handshake → skill prompts readable → billing posture; any failure refuses (`1`), zero tokens | §4 |
+| 1a | rung 0: flag values, `--cwd` as a git repository, and (for `dev`) the REQ path's existence | §4.1 |
+| 2 | the rest of the ladder runs: plugin resolved → manifest read → version handshake → skill prompts readable → billing posture; any failure refuses (`1`), zero tokens | §4 |
 | 3 | the banner prints: version pair, effective base URL, startup auth id | §4.3, §5.1 |
 | 4 | the workflow module is loaded and run; the engine supplies the seams it declares | §10.1 |
 | 5 | for each dispatch the module makes: compose (skill prompt inlined, task text, model, environment, `cwd`, permission posture, guard configuration) | §6, §7, §9 |
@@ -1310,7 +1314,7 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | per-dispatch auth assertion | zero tokens for that dispatch; earlier dispatches already billed | `1` |
 | retry exhaustion | the attempts made | `2` (via the module's halt) |
 | module halt for any pipeline reason | whatever the run spent | `2` |
-| transport-contract violation | the dispatch that produced it | `1` |
+| transport-contract violation, or a mid-run `auth-failure` | the dispatches already made; no POSTMORTEM, no `halted` row, queue row untouched (BR-FAIL-3) | `1` |
 
 ### 15.3 Flow invariants
 
@@ -1426,7 +1430,7 @@ Four rules apply to every section and are the ones a reviewer should check a new
 |---|---|---|
 | §3.4 | command surface | EC-CLI-1…6 |
 | §4.5 | startup ladder | EC-START-1…8 |
-| §5.5 | auth | EC-AUTH-1…7 |
+| §5.5 | auth | EC-AUTH-1…8 |
 | §6.5 | prompt composition | EC-SKILL-1…6 |
 | §7.5 | dispatch payload | EC-DISP-1…6 |
 | §8.5 | taxonomy and retry | EC-FAIL-1…7 |
@@ -1470,9 +1474,11 @@ Three assertions cannot live in any single section because they range over the w
   `cwd`-pinned, model-forwarded, guard-configured. Per-section tests sample; this one quantifies.
 - **AT-ENG-X2 — zero spend before the ladder.** Across every refusal path in §15.2 that is marked
   "zero tokens", assert that no dispatch was attempted at all (not merely that none succeeded).
-- **AT-ENG-X3 — transport symmetry.** For every obligation stated per transport (BR-SKILL-2,
-  BR-GUARD-1, BR-VER-2, §8.3's negative half), assert the primary and fallback fixtures produce the
-  same obligation-level outcome.
+- **AT-ENG-X3 — transport symmetry, over fixtures.** For every obligation stated per transport
+  (BR-SKILL-2, BR-GUARD-1, BR-VER-2, §8.3's negative half), assert the primary and fallback
+  **recorded fixture sets** produce the same obligation-level outcome. No live fallback run is
+  implied: none is selectable in this feature (§3.2), and AT-ENG-65's live smoke is the primary
+  transport's alone.
 
 ### 18.3 What the suite is required to pin
 
