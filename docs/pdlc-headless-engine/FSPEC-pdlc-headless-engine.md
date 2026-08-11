@@ -309,6 +309,106 @@ plugin at startup.
 
 ## 5. FSPEC-ENG-03 — Auth posture: startup banner and the per-dispatch assertion
 
+### 5.1 Startup: an ordered first-match mapping
+
+Startup decides the auth posture from **inspectable state only** — the process environment and the
+Claude Code settings files — and never by issuing a probe dispatch, because a probe costs the very
+tokens the check exists to protect (C-1a). The mapping is AC-2.1's, restated here as the behaviour
+a banner test transcribes:
+
+| # | Inspectable startup state | Outcome |
+|---|---|---|
+| 1 | `CLAUDE_CODE_OAUTH_TOKEN` set in the environment | banner `auth.oauth-token`, start proceeds |
+| 2 | no `ANTHROPIC_API_KEY`, logged-in settings state present | banner `auth.session`, start proceeds |
+| 3 | `ANTHROPIC_API_KEY` present **and** the opt-in flag passed | banner `auth.api-key-optin`, start proceeds |
+| 4 | `ANTHROPIC_API_KEY` present, flag not passed, logged-in settings state present | banner `auth.session-key-ignored`, start proceeds, key unused |
+| 5 | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused`, exit `1`, no banner |
+| 6 | none of the above | banner `auth.unknown`, start proceeds; the first dispatch decides |
+
+**BR-AUTH-1 — first match wins, and row 6 makes the list total.** The rows are not disjoint
+predicates: a machine with both an OAuth token and an API key matches rows 1, 3 and 4, and row 1
+decides. Every reachable state lands on exactly one row, so "the banner said nothing about auth" is
+not a possible outcome.
+
+**BR-AUTH-2 — the banner reports no transport auth source.** No `apiKeySource` value exists before
+a dispatch (M-ENG-04), so the banner never carries one. The per-dispatch value is a §5.3 observable
+that reaches the operator through the run report.
+
+**BR-AUTH-3 — the banner also carries the effective base URL.** With headroom's ambient environment
+present that is `http://127.0.0.1:8787`. A bypassed proxy is therefore visible in the first lines
+of output rather than discovered hours later from a missing trace (G-4, C-2).
+
+### 5.2 The startup refusal (row 5)
+
+*Who:* the operator. *Given* `ANTHROPIC_API_KEY` present and no subscription credential the engine
+can inspect, *when* any dispatching command is run, *then* the engine dispatches nothing, exits
+`1`, and its message names both the refusal (`auth.api-key-refused`) and the opt-in flag that would
+permit the run. Zero tokens are billed reaching that decision (AC-2.2).
+
+*Given* the same state **with the flag passed**, the run proceeds and the banner carries
+`auth.api-key-optin` — the operator has taken the billing decision explicitly, which is the only way
+this engine ever bills pay-per-token.
+
+### 5.3 Per dispatch: the fail-closed assertion
+
+Startup passing says nothing about how the transport will actually authenticate, because the
+transport reports its auth source only from *inside* a call (M-ENG-04). So every dispatch asserts,
+before the model is billed, that the transport-reported source is in the **allowed policy set**:
+
+| Invocation | Allowed policy set | On a value outside it |
+|---|---|---|
+| without the opt-in flag | exactly the transport's "no API key" report — `"none"` on the primary transport, the fallback's equivalent | the dispatch is aborted before billing, naming the **raw reported value**; the run stops (§8.4) |
+| with the opt-in flag | the API-key-backed sources as well | proceeds |
+
+**BR-AUTH-4 — an unrecognised source is never mapped.** A transport reporting a source the engine
+does not recognise is treated as outside the allowed set and named verbatim in the failure; it is
+never coerced onto a banner id and never assumed benign (AC-6.4(b)).
+
+**BR-AUTH-5 — asserted per dispatch, not once per run.** The check runs on every dispatch, and the
+observed source is recorded per dispatch in the run report (§12.2). A run that recorded one source
+at its first dispatch and assumed it for the rest cannot detect a credential that changes mid-run,
+which is exactly the long unattended run this engine exists to enable.
+
+**BR-AUTH-6 — passing §5.1 and stopping at the first dispatch is a correct outcome.** The two checks
+read different evidence; the ordering is intended, not a gap (C-1).
+
+### 5.4 The paired positive (AC-2.4)
+
+The dangerous shape of "no key was needed" is an assertion by absence. §5.3's record makes it
+positive:
+
+*Given* an operator whose subscription auth is logged-in settings state with
+`CLAUDE_CODE_OAUTH_TOKEN` **absent** — the state that selects row 4 of §5.1's first-match list,
+since a token present would have matched row 1 — and `ANTHROPIC_API_KEY` also present, *when* the
+run is made **without** the opt-in flag, *then*: the banner carries `auth.session-key-ignored`,
+every dispatch reports a no-API-key source **and completes**, and the run report records that
+source once per dispatch. The negative ("the key was not used") is thereby paired with two
+positives on the same run — a completing dispatch and a recorded source.
+
+### 5.5 Edge cases
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-AUTH-1 | `ANTHROPIC_API_KEY` set to an empty string | treated as absent — an empty key cannot bill; the row that ignores it decides |
+| EC-AUTH-2 | settings files unreadable (permissions) | the settings-derived evidence is unavailable, so rows 2/4 cannot match; the first-match list falls through to row 5 or 6 and the reason is reported |
+| EC-AUTH-3 | both `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY` present, no flag | row 1 — banner `auth.oauth-token`; §5.3 still decides at the first dispatch |
+| EC-AUTH-4 | transport reports no auth source at all | outside the allowed set; dispatch aborted naming "absent" (BR-AUTH-4) |
+| EC-AUTH-5 | the source changes between dispatch *n* and *n+1* | dispatch *n+1* aborts; the report shows both values (BR-AUTH-5) |
+| EC-AUTH-6 | opt-in flag passed on a machine with no API key at all | permitted set is wider, nothing else changes; the run behaves as row 1/2 would |
+| EC-AUTH-7 | an auth failure reported by the transport mid-run | never retried; the run stops naming the source (§8.4, AC-4.4) |
+
+### 5.6 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-13 | each of §5.1's six rows, one fixture environment each, yields its banner id or refusal — including the overlap cases that prove first-match (BR-AUTH-1, EC-AUTH-3) |
+| AT-ENG-14 | row 5 refuses with exit `1`, names the flag, and attempts zero dispatches (AC-2.2, §5.2) |
+| AT-ENG-15 | the banner carries no transport-reported auth source, and does carry the effective base URL (BR-AUTH-2/3) |
+| AT-ENG-16 | AC-2.4's paired positive: banner id, a completing dispatch, and one recorded source per dispatch (§5.4) |
+| AT-ENG-17 | a fixture whose reported source is outside the allowed set aborts that dispatch before billing, naming the raw value (BR-AUTH-4) |
+| AT-ENG-18 | a fixture whose source changes at dispatch 3 of 5 stops there, with both values in the report (BR-AUTH-5, EC-AUTH-5) |
+| AT-ENG-19 | EC-AUTH-1, EC-AUTH-2, EC-AUTH-4, EC-AUTH-6, one case each |
+
 ## 6. FSPEC-ENG-04 — Skill resolution and prompt composition
 
 ## 7. FSPEC-ENG-05 — What a dispatch carries: environment, working directory, model, permissions
