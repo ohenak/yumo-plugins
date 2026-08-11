@@ -66,6 +66,74 @@ new blocking defect.
 
 ## Positive Observations
 
+- **F-14 was fixed on the correct axis, which was the harder of the two available fixes.** The cheap
+  repair was to delete "macos-latest" from four places and leave the obligation vaguely
+  per-platform. Instead the revision noticed that T29 keys on `process.platform` — a runtime fact —
+  and rebuilt the obligation on that axis: one row per platform that *runs the suite*, CI's `linux`
+  plus the wave host's, with the coincident case ("one row discharges the obligation and there is no
+  operator step") named. That is a stronger statement than the two-platform version it replaces,
+  because it is now true of a contributor's machine too, which is where O-ENG-T5 actually bites.
+- **The `410f3a07` citation is load-bearing rather than decorative.** T17 does not merely match HEAD's
+  matrix; it says re-adding macOS "would reverse a standing decision on a repo-wide file, in the same
+  PR, for a reason no AC states" (`:798-801`). That is the right frame for a repo-wide file, and it is
+  the same blast-radius argument the `testCommand` item makes — the plan now applies one principle
+  consistently to both repo-wide files it touches.
+- **`'documentOracles'` is argued in both directions.** §11 (`:284-291`) does not just restore the
+  fourth pattern; it explains that dropping it would re-admit CWD- and untracked-file-sensitive
+  oracles to *other* features' wave gates, "the same repo-wide blast radius … arriving through a
+  dropped token instead of a dropped suite". Set-equality over the pattern list, with a reason a
+  future editor can check rather than a rule they must trust.
+- **The V5 fix carries its own mechanism instead of assuming it.** The weak version of the F-15 repair
+  was to respell V5 and hope `npm test --` forwards. Instead T11 gained the forwarding obligation
+  *and* an assertion for it, and §8 states the failure mode being avoided (no run id, no bootstrap, no
+  records, no suite-wide step). F-16 is a refinement of that assertion's shape, not a disagreement
+  with the approach — the plan already put the test in the right place.
+- **§6 replaced an enumeration with a rule.** "The rule, stated once so it does not depend on an
+  enumeration staying total" is exactly the right instinct for a parse-safety argument, and the
+  operative sentence is framed as a constraint on future edits ("adding a `Deps`- … spelled column to
+  any of them would … break the Phase-P self-parse") rather than a property of today's text. That is
+  the version that survives the next section someone adds.
+- **§9's AC-1.5 cell now states the absence and its reason in the same cell.** "— (no red task:
+  clause (a)'s observable already exists at `run.mjs:58`…)" is checkable in one hop — I checked it,
+  `:58` is where `workflowModulePath` lives — and it stops the row reading as a hole in the red
+  column.
+- **§5's batch-number note pre-empts a real operator confusion.** Telling a reader to match a stopped
+  wave to a *task id* rather than a batch number in §5 is the kind of thing normally learned during
+  the incident. Modulo Q-02's one word, the mechanism is described correctly.
+- **The single-platform restatement did not weaken a single gate.** I looked for this specifically:
+  §8's M-ENG-09 item still fails closed on a missing row, still refuses to be met "by a row for a
+  platform no job and no wave runs on", and still keeps the `denyFired: no` branch. The revision
+  narrowed a false claim without narrowing an oracle, which is the failure mode I was most worried
+  about when I filed F-14.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. F-14 is closed on the right axis and closed everywhere it appeared — nine remaining
+`macos` mentions in the document are all either changelog, the `410f3a07` citation, or an explicit
+statement that no macOS row is required. F-15 is closed, with one refinement left (F-16). This plan is
+buildable as written: every task has a test file, the red/green split is stated per batch, the two
+repo-wide files it touches are argued as set-equality, and the one step no automation can perform is
+named with its command and its precondition.
+
+Two non-gating items for the next revision or for the implementer's hand, in order of value:
+
+1. **F-16** (Medium) — say in T11's row that forwarded node flags go in the node-option position,
+   before `--test`, and make the argv assertion pin position (or set-equality over the child argv)
+   rather than presence. `node --test __tests__/ --experimental-test-coverage` fails on node 20; the
+   flag only works ahead of the path list, and V5 plus §8's coverage floor both depend on that.
+2. **F-17** (Low) — §6 quotes §10's header as `Disposition here`; it is `Disposition` at `:699`.
+
+Q-02's "will run more waves than eleven" → "may run more, never fewer" and Q-03's per-module vs
+aggregate coverage reading are both one-clause edits and would each remove a way to satisfy a
+sentence without meeting it. Q-04 remains open from round 2 and is a fair thing to settle in T04
+rather than in the PLAN.
+
+One erratum against TSPEC is emitted in the dispatch response and deliberately not folded in here:
+TSPEC still carries the two-platform matrix claim this PLAN corrected.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
