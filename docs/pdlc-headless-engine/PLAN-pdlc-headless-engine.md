@@ -60,6 +60,43 @@ though TSPEC §8.3 does not list it** — measured at HEAD, `implementation.test
 the engine suite it is building. T17 corrects that; the omission is also raised as an erratum.
 
 
+## 2. Pre-flight gate and prior-phase baseline
+
+This feature extends a prior phase's baseline, so **T00 is a `P2-00` pre-flight gate and is the first
+task in the table**. It asserts only that the `BL-PREREQ` symbols this plan builds on are importable
+at HEAD — existence, never shape. A symbol whose *shape* a later task changes (`buildEngineBlock`'s
+argument list, `runStartupChecks`' return) is that task's business, not the gate's; a gate that
+asserted target shapes would be red by design for the whole feature.
+
+| `BL-PREREQ` symbol | Module | Measured at HEAD |
+|---|---|---|
+| `createAdapter`, `createGit`, `createRunCommand`, `computeRateLimitWaitMs` | `pdlc/engine/lib/adapter.mjs` | `:215`, `:116`, `:161`, `:75` |
+| `createTransport`, `DEFAULT_PERMISSION_MODE`, `AuthPolicyError`, `RateLimitedError`, `TimeoutError`, `TransportError` | `pdlc/engine/lib/transport.mjs` | `:135`, `:89`, `:23`, `:33`, `:46`, `:55` |
+| `runStartupChecks`, `formatStartup`, `EXPECTED_SKILLS` | `pdlc/engine/lib/startup.mjs` | `:60`, `:145`, `:20` |
+| `buildEngineBlock`, `stampReport` | `pdlc/engine/lib/report.mjs` | `:36`, `:70` |
+| `WORKFLOW_MODULE_URLS`, `workflowModulePath`, `devInjection`, `queueInjection` | `pdlc/engine/lib/run.mjs` | `:52`, `:58`, `:80`, `:114` |
+| `resolvePluginRoot`, `skillFilePath`, `loadSkill`, `composeDispatchPrompt` | `pdlc/engine/lib/skills.mjs` | `:204`, `:267`, `:290`, `:312` |
+| `checkCompat`, `buildBanner`, `parseVersion`, `satisfiesRange` | `pdlc/engine/lib/handshake.mjs` | `:137`, `:183`, `:20`, `:86` |
+| `PHASE_DISPATCH` (already exported) | `pdlc/workflows/orchestrate-dev.js` | `:3337` |
+| `runAdvisorySeam` (exported, and imported by the queue) | `pdlc/workflows/orchestrate-dev.js`, via `orchestrate-queue.js:41` | measured |
+
+`EXPECTED_SKILLS` is in the gate deliberately although T44 **deletes** it: the gate proves the
+starting state the deletion is against, and a plan that omitted it would make "the frozen list was
+removed" indistinguishable from "the frozen list was never there". The model constants the witness
+table reads (`MODEL_DEFAULT` `orchestrate-dev.js:1603`, `MODEL_IMPLEMENTATION` `:1646`,
+`MODEL_ADVISORY` `:1652`, `MODEL_ADVISORY_FALLBACK` `:1653`, `ADVISORY_RUNG_SKILL` `:1797`) are
+**module-local at HEAD**, and only `ADVISORY_RUNG_SKILL` is promoted (T16). The rest stay local
+because TSPEC §7.4 requires M-ENG-07's table to be a *transcription* in the harness, never an import
+— importing it would make the drift AC-3.3 exists to catch invisible. They are therefore not gate
+symbols.
+
+**What the gate does not cover, and why.** `pdlc/engine/node_modules/` is present in the working
+tree at HEAD but is not committed; `npm ci` under `pdlc/engine` is a step of T17's CI job and of any
+fresh clone, not a symbol the gate can assert. The gate runs `node --test` only, and it is inert on a
+tree where the SDK dependency is absent — it imports no module that reaches
+`@anthropic-ai/claude-agent-sdk`, because `transport.mjs`'s `defaultQueryFn` (`:17`) imports the SDK
+lazily, which is what makes that true.
+
 ## 3. Task table
 
 ## 4. File-ownership manifest
