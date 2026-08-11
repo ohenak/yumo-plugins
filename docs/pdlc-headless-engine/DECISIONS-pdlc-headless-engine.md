@@ -77,7 +77,12 @@ reachable only by direct unit construction. Making the fallback selectable stays
   exactly the places C-2/C-5/C-6 constrain (env passthrough, hook carriage, permission flags), and
   those differences are cheapest to discover while the interface is being written, not after the SDK
   path is the only thing anyone has run. The cost of the rejection is real: `transport-cli.mjs` is
-  code with no production caller this feature.
+  code with no production caller this feature. Stated plainly for the O-1 decision later: it delivers
+  **no operator-visible benefit** in this feature. It cannot be selected at runtime, and it cannot
+  rescue the guard cases — DEC-ENG-03 has both transports invoke the same shipped `.sh`, so a host
+  that fails the interpreter probe fails on either carrier. Its whole value is the design pressure of
+  writing the interface to two carriers, plus a fallback that is already a tested unit if O-1 ever
+  funds the measurement that makes it selectable.
 - **Ship a runtime selector (flag or env var)** — rejected, and this is a *reversal* of TSPEC v1.0,
   which had designed one. A selector is only honest once the CLI path has been measured against a
   live `claude` binary on both CI platforms (C-9), and nothing in this feature funds that
@@ -748,6 +753,15 @@ git index and a branch.
 **Decision:** Record the gap (EC-RUN-4, O-ENG-T2); build nothing. The engine does not detect the
 second run.
 
+**What the operator reads about it: nothing, today.** No banner line and no report field hints at the
+gap — the pipeline stays silent until a branch is corrupted. That is a consequence of building
+nothing rather than a separate judgement, and it is the weakest part of this decision. A one-line
+honest disclosure would not be the invented lock refused above, but it is not free either: every
+operator-visible string is a catalogue entry plus a suite-wide emit obligation (DEC-ENG-13), and no
+acceptance criterion binds the disclosure any more than it binds the lock. So it is named here as
+the cheapest available improvement and left to O-ENG-T2, which should settle disclosure and
+detection together rather than one at a time.
+
 **Alternatives considered:**
 
 - **An advisory lock file scoped to the repo, refusing the second run with a catalogue-registered
@@ -783,12 +797,12 @@ alternative with no cost is not a decision worth recording.
 | A runtime transport selector | DEC-ENG-01 | Reverses TSPEC v1.0; a selector is honest only after the CLI flag surface is measured on both platforms (C-9) | Operators get no switch this feature; O-1 owes the measurement |
 | Spawn `claude -p` as primary | DEC-ENG-01 | Puts a second process, its stdout framing and its own settings resolution between engine and dispatch | None material |
 | Automatic failover on transport error | DEC-ENG-02 | A run whose carrier can change is unattributable, and C-9's per-transport regime becomes unfalsifiable | An SDK outage halts the run rather than completing it on the fallback |
-| Reimplement the guard's decision procedure in JS | DEC-ENG-03 | Two definitions that drift silently across four regexes and a byte-read refusal string | The engine must be able to run the shipped `.sh`, which is why the interpreter probe becomes a startup rung |
+| Reimplement the guard's decision procedure in JS | DEC-ENG-03 | Two definitions that drift silently across four regexes and a byte-read refusal string | The engine must be able to run the shipped `.sh`, which is why an interpreter precondition exists at all — its authorisation, refusal message and rung placement are filed upstream, not settled here |
 | Port the guard script and delete the original | DEC-ENG-03 | NG-1; the plugin path still runs the hook interactively | None |
 | Live-only guard measurement, no durable record | DEC-ENG-04 | A fresh clone would state nothing about whether the combination was ever measured, on which platform, against which SDK version | The baseline file grows a per-platform row that must be seeded in the same task as the gate |
 | Warn instead of fail when the measurement is unrecorded | DEC-ENG-04 | A warning on an unattended pipeline is a message nobody reads; unrecorded is exactly the vacuous-green state | CI goes red on a platform nobody has measured yet — intended |
-| Keep an engine-side `EXPECTED_SKILLS` list | DEC-ENG-05 | The hand-maintained declaration BR-START-4 forbids, already wrong in both directions (17 frozen names at `pdlc/engine/lib/startup.mjs:20` against a derived 10) | Deleting it drops the assertion that operator-invoked-only skills are readable |
-| Scan module source text for skill literals | DEC-ENG-05 | Measured: only three of ten identifiers sit at a literal call site; a faithful scanner derives two names | The derivation instead depends on a no-bare-literal test with a closed allow-list |
+| Keep an engine-side `EXPECTED_SKILLS` list | DEC-ENG-05 | The hand-maintained declaration BR-START-4 forbids, and already wrong at HEAD by over-listing (17 frozen entries at `pdlc/engine/lib/startup.mjs:20-37` = 15 skills + 2 supplements; the derived 10 are a strict subset, so the five operator-invoked-only skills are the error) | Deleting it drops the assertion that operator-invoked-only skills are readable |
+| Scan module source text for skill literals | DEC-ENG-05 | Measured at HEAD: a faithful scanner derives five names (`ship-pr`, `dod-verify`, `se-implement`, `se-author`, `harvest-learnings`) and misses five that never appear as a literal at a dispatch site | The derivation instead depends on a containment test — every skill-identifier literal in either module is a member of the exported union |
 | Per-command scope for startup rung 4 | DEC-ENG-05 | `se-review` reaches the queue only via delegation, so a missing SKILL would surface mid-run | None — both modules are imported anyway |
 | Exempt `se-implement`'s supplements from Direction B | DEC-ENG-06 | An exemption list is where a genuinely unreachable prompt file hides | — |
 | Rewrite `SKILL.md` to absorb the supplements | DEC-ENG-06 | NG-8, and it would change interactive behaviour to serve a headless constraint | — |
@@ -822,11 +836,11 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
 | Consequence | From | Obligation it creates |
 |---|---|---|
 | `transport-cli.mjs` is written to the same interface with no production caller | DEC-ENG-01 | A test-only unit driven over recorded fixtures; parity clauses must not silently degrade to "the file exists" |
-| The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup rung-5 capability probe plus one catalogue id; refusal at startup, not per dispatch |
-| The `M-ENG-09` gate and its first rows must land together | DEC-ENG-04 | Single PLAN task — a gate landing before its seed rows turns CI red for an unrelated reason |
-| `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a no-bare-literal test carries a closed allow-list |
-| Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself |
-| Every guard clause needs a falsifying counterpart | DEC-ENG-11 | The negative half is written first; the survival clause reuses the same fixture and deletion step under an allow verdict |
+| The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup-time capability probe plus one catalogue id, observed at startup rather than per dispatch. **Blocked on upstream:** the precondition's authority (a REQ constraint), its own EC row and message obligations, its rung placement (a new rung 6, or rung 5 redefined as two predicates with per-cause ids) and whether it is fatal under dry run are FSPEC/REQ errata, not PLAN's to choose |
+| The `M-ENG-09` gate and its first rows must land together | DEC-ENG-04 | Single PLAN task — a gate landing before its seed rows turns CI red for an unrelated reason. The gate keys on `platform` + `transport` only; `sdkVersion` and `date` are provenance, so a caret-range SDK bump must not turn the hermetic suite red |
+| `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a containment test asserts every skill-identifier literal in either module is a member of that union (no exemption list) |
+| Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself; the runner detects a filtered invocation and reports the suite-wide step skipped-with-reason rather than passing or failing it |
+| Every guard clause needs a falsifying counterpart | DEC-ENG-11 | The negative half is written first; the survival clause reuses the same fixture and deletion step under an allow verdict; the mis-built-configuration arm asserts an explicit allow verdict **and** that the deletion completes, never merely that no deny occurred |
 | Every operator-visible string is a catalogue entry | DEC-ENG-13 | Including the strings DEC-ENG-03 and DEC-ENG-04 introduce; each must be emitted at least once in the suite |
 
 **Consequences accepted as standing costs, closing nothing.**
@@ -834,7 +848,10 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
 - Bytes, not correctness: every `se-implement` dispatch carries both language supplements (DEC-ENG-06).
 - Phase provenance is last-write-wins and inherits `_phase` discipline, including the V-wave that
   announces `"Phase PT"` while pinning `sonnet`; the model-map oracle partitions on a defined wave
-  set rather than on the announced string (DEC-ENG-07).
+  set rather than on the announced string, asserted as set-equality in both directions so a new
+  `sonnet`-pinned site cannot drift toward green (DEC-ENG-07).
+- Two concurrent runs are not merely undetected but undisclosed: nothing an operator reads mentions
+  the gap, and closing that is left to O-ENG-T2 alongside detection (DEC-ENG-14).
 - Nothing asserts that operator-invoked-only skills are readable, because the engine cannot dispatch
   them (DEC-ENG-05).
 - `maxTurns` stays a declared-but-unassigned option key, so the boundary test asserts containment
