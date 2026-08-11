@@ -310,7 +310,7 @@ making T42 the **sole** dependent of T29 — no other task can turn CI red-for-a
 between. If an implementer prefers TSPEC's literal single-task form, merging T29 into T42 is a
 sanctioned simplification; splitting T42's rows away from T29's gate is not.
 
-## 6. Task dependency notes
+## 6. Dependencies — task ordering and the edges that matter
 
 The `Deps` column is complete; this section explains the edges whose *absence* would be the easy
 mistake, and the two places where an edge that looks natural is deliberately not there.
@@ -565,4 +565,63 @@ the composed prompt, and a cache keyed wrongly would make two descriptors share 
 earn — turning row 4's pairing predicate into a false positive. If prompt composition becomes a cost,
 the fix is a measurement and a cache keyed on `(skill, prompt)` with the hash computed before the
 cache, not after.
+
+## 11. Verification
+
+§8 states *what* must hold; this section states the **commands that observe it**, so a wave gate, a
+reviewer and CI all judge the same thing by running the same lines. Every command below is measured
+against HEAD: where a command does not yet do what this plan needs, the task that changes it is
+named, and the pre-change spelling is quoted so the delta is checkable rather than remembered.
+
+**The four commands that constitute the local check.**
+
+| # | Command | Observes | State at HEAD |
+|---|---|---|---|
+| V1 | `cd pdlc/engine && npm ci && npm test` | the engine suite, including the suite-wide assertion step and its emptiness guard | `scripts.test` is `node --test __tests__/` (`pdlc/engine/package.json:13`); T11 replaces it with `node __tests__/_run-suite.mjs`, and until it does, V1 runs no assertion step at all |
+| V2 | `cd pdlc/workflows && npm test` | that the workflow-module edit changed no pipeline behaviour | `node --experimental-vm-modules node_modules/jest/bin/jest.js` (`pdlc/workflows/package.json:7`); unchanged by this feature |
+| V3 | `node pdlc/workflows/build-runtime.mjs --check` | that T16's rebuild was committed with its source change | passes at HEAD; goes red the moment `orchestrate-dev.js` is edited without the rebuild |
+| V4 | `pdlc/hooks/scripts/sync-workflows.sh --check` | that the consumer copy under `.claude/workflows/` is not silently stale | invoked by bare path, never `bash …`; a `126` exit means the execute bit was lost, not that the tree drifted |
+
+V1 and V2 are **not interchangeable and neither subsumes the other**: they are two suites, two
+runners, two working directories. A reviewer who runs only V2 has verified that this feature broke
+nothing and has verified nothing that it built.
+
+**Where the wave gate reads from, and the one edit that makes it real.** The dispatcher's gate runs
+`implementation.testCommand`, which at HEAD is
+`cd pdlc/workflows && npm test -- --testPathIgnorePatterns …` (`.claude/pdlc.config.json:3`) — V2
+only. Every wave of this feature's own Phase I would therefore be gated on a suite that never loads
+a single file the wave wrote, and each wave would commit green regardless. T17 owns the correction;
+until T17 lands, batch gates 2–11 are being judged by V2 alone, which is the failure mode the
+`postWaveCommand` hook cannot compensate for (`:4` runs `build-runtime.mjs`, i.e. V3's builder,
+not V1).
+
+**Where CI reads from.** `.github/workflows/pr-tests.yml` ships four jobs; T17 adds the fifth.
+
+| Job at HEAD | Line | Command | Relation to V1–V4 |
+|---|---|---|---|
+| `unit-tests` (`ubuntu-latest`/`macos-latest`, node 20) | `:26`, `:70` | `npm ci` then `npm test`, `working-directory: pdlc/workflows` (`:71`) | V2, on both platforms |
+| `artifact-freshness` | `:77`, `:93` | `build-runtime.mjs --check`, then rebuild-produces-no-diff (`:99`) | V3, plus an independent-observer second half |
+| `fresh-clone-bootstrap` | `:104`, `:127`–`:148` | build, then `pdlc/hooks/scripts/sync-workflows.sh`, then `--check` | V4, from a tree with no consumer copy |
+| `shell-scripts` | `:162`, `:172` | `bash -n` every shipped script, then executable-bit check (`:188`) | neither; unaffected by this feature |
+| **new (T17)** | — | `npm ci` then `npm test`, `working-directory: pdlc/engine`, on the same two-platform matrix | V1 |
+
+T17's job body is deliberately `npm ci` then `npm test` **and nothing else**: any command CI runs
+that a maintainer cannot run locally as V1 is a check that fails in a place it cannot be reproduced.
+The two-platform matrix is not decoration — C-9 requires every runtime fact measured per platform,
+and T42's `M-ENG-09` rows are keyed on `process.platform` (T29), so a single-platform job would
+leave the second row permanently absent and, by T29's own gate, the suite red on that platform.
+
+**Verifying the red batches.** Batches 2, 4 and 9 end red by construction (§5), so V1 exiting
+non-zero is the expected observation there and the gate is the split wording, never "suite green".
+The check that a red batch was *correctly* red is mechanical: the failing test files are exactly the
+ones that batch owns per §4's manifest, and no pre-existing test is among them. A batch-2 run whose
+failure list includes a file from batch 4 has a scheduling defect, not a TDD red.
+
+**Verifying the two claims no command can make.** Two DoD items are `git`-observed rather than
+suite-observed, and both are stated here as the exact invocation:
+`git diff --stat $(git merge-base HEAD main)..HEAD -- pdlc/workflows/` must list exactly
+`orchestrate-dev.js`, `orchestrate-queue.js` and paths under `dist/` — any fourth path is C-4's
+fork-by-accident. And `git status --porcelain .claude/workflows/` must stay empty of tracked
+entries: the consumer copy is generated and untracked, and a diff that shows it means it was
+committed, which V4 cannot detect because `--check` compares content, not tracking state.
 
