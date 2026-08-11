@@ -1164,23 +1164,34 @@ describe("T31 — AT-Q10, AT-Q11, AT-Q12: the consuming-repo suppression carrier
 });
 
 describe("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligations, beyond the three trailers", () => {
+  // A readable body per corpus path. Both fixtures below assert on `source:` /
+  // `PDLC-CONSOLIDATION-SOURCES`, which are drawn from the pass's CONSUMED set — and
+  // under TSPEC §12.2 v2.8 an enumerated-but-unreadable entry is not consumed at all.
+  // A listing-only fixture leaves both surfaces empty and the feature-name assertions
+  // pass off the evidence line instead, which is the wrong surface.
+  function readableCorpus(paths) {
+    return Object.fromEntries(
+      paths.map((p) => {
+        const feature = /LEARNINGS-(.+)\.md$/.exec(p)?.[1] ?? "unknown";
+        return [p, `# LEARNINGS — ${feature}\n\n## 1. Domain / architectural invariant\nAn invariant recorded by ${feature}.\n`];
+      })
+    );
+  }
+
   test("fixture (a) — recurrence across two named features: the body names both source LEARNINGS by feature name, the symptom line verbatim, and the recurrence evidence", async () => {
     const symptom = "the seam-verb spy's classifiers disagree at the clone-call boundary";
     const ghRun = fakeGhRun({
       "gh pr list --json url,state,body": { ok: true, stdout: JSON.stringify([]) },
       "gh pr create": { ok: true, stdout: "https://github.com/kaneho/yumo-plugins/pull/30\n" },
     });
+    const CORPUS = [
+      "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md",
+      "docs/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md",
+    ];
     const pass = runPass({
       ghRun,
-      git: fakeGit({
-        "ls-files": {
-          ok: true,
-          stdout: [
-            "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md",
-            "docs/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md",
-          ].join("\n") + "\n",
-        },
-      }),
+      files: readableCorpus(CORPUS),
+      git: fakeGit({ "ls-files": { ok: true, stdout: CORPUS.join("\n") + "\n" } }),
       agent: makeAgentDouble({
         script: [
           agentReply({
@@ -1224,6 +1235,7 @@ describe("T31 — AT-Q13: the PR body carries all three of AC-3.2's obligations,
     });
     const pass = runPass({
       ghRun,
+      files: readableCorpus(["docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md"]),
       git: fakeGit({ "ls-files": { ok: true, stdout: "docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md\n" } }),
       agent: makeAgentDouble({
         script: [

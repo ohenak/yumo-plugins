@@ -9366,6 +9366,8 @@ async function main({
     .filter((b) => typeof b.text !== "string")
     .map((b) => b.basename);
 
+  state.consumed = readableBasenames;
+
   await appendFileFn(logPath, renderConsumedPair(state.passId, readableBasenames));
 
   const rungState = { resolved: null };
@@ -9411,9 +9413,10 @@ async function main({
     clusterReplyText = clusterResult ? clusterResult.raw : null;
   }
 
+  const enumeratedNoneReadable = consumedBodies.length > 0 && readableBasenames.length === 0;
   const escText = await readFileFn("docs/_queue/ESCALATIONS.md");
   const escalations = parseEscalations(escText);
-  if (readableBasenames.length > 0) {
+  if (!enumeratedNoneReadable) {
     if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
     else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
   }

@@ -224,7 +224,10 @@ export const REASON_CODE_STATUSES = Object.freeze({
  * @property {Set<ReasonCode>} reasons - a row may carry several (§10.1)
  * @property {string|null} rung - the model id the pass actually ran on
  * @property {Credential} credential - "absent" until §7.2's resolution runs
- * @property {string[]} consumed - basenames, frozen at step 2
+ * @property {string[]} consumed - basenames the pass actually READ: seeded from the
+ *   un-consolidated set at step 2, then narrowed to the readable members at step 6.5
+ *   (TSPEC §12.2 v2.8). Every surface that renders "what this pass consumed" reads
+ *   this one field; the unreadable complement is `unread`.
  * @property {Proposal[]} proposals
  * @property {FailureModeRecord[]} records - appended one-per-proposal as each routes
  * @property {EffectivenessRow[]|null} effectiveness - null => step 11 never ran
@@ -530,9 +533,11 @@ export default async function main({
     suppressions: [],
     notices: [],
     deferred: [],
-    // TSPEC §12.2 v2.8 — the basenames from `state.consumed` that `_readFile` returned `null`
-    // for: still counted un-consolidated, still in the persisted `renderConsumedPair` block's
-    // complement, but named here so the report body can say which ones the pass could not read.
+    // TSPEC §12.2 v2.8 — the un-consolidated basenames `_readFile` returned `null` for:
+    // still counted un-consolidated, removed from `state.consumed` (they were not consumed
+    // at all), and named here so the report body can say which ones the pass could not read.
+    // `unread` non-empty with `consumed` empty is REQ §4b's discriminator against a quiet
+    // week, which has both empty.
     unread: [],
     // §7.7 — the advisory corpus counts and the §9.4/§9.5 candidates derived from them.
     // Both stay null until step 10 reads `ESCALATIONS.md`, so an early terminal reports
@@ -652,6 +657,19 @@ export default async function main({
   state.unread = consumedBodies
     .filter((b) => typeof b.text !== "string")
     .map((b) => b.basename);
+  // TSPEC §12.2 v2.8's decision, applied to the STATE and not only to step 7's
+  // argument: an unreadable entry is not consumed at all. `state.consumed` is the
+  // single field all four consumed-set surfaces read — the persisted pair (:658),
+  // the durable terminal row, report item 3 (AC-7.1's "LEARNINGS consumed by
+  // basename") and the PR trailer's `PDLC-CONSOLIDATION-SOURCES` provenance — so
+  // narrowing it here is what makes those four agree. Narrowing the pair alone made
+  // one log file carry two answers for one passId, and left AC-7.1's list naming
+  // files the pass could not open, which is exactly the discriminator REQ §4b relies
+  // on to tell an all-unreadable pass from a quiet week. The un-consolidated set is
+  // NOT narrowed: it was frozen into `predicate.unconsolidated` before this point
+  // (the trigger arithmetic and the count both still see the unreadable members),
+  // and the unreadable basenames stay individually named on `state.unread`.
+  state.consumed = readableBasenames;
 
   // Step 7 — the consumed pair (§3.3, NFR-5): complete, in one append, even when empty.
   // TSPEC §12.2 v2.8 — set-equal to the READABLE members only.
@@ -711,16 +729,22 @@ export default async function main({
 
   // Step 10 — the advisory corpus (§7.7). Absent folds to `no-advisory-corpus`;
   // a present-but-entryless file to `advisory-corpus-empty` (§10.3 rows 15–16).
-  // The two reason codes ride only a pass that actually had something readable to
-  // consolidate (TSPEC §12.2 v2.8): a corpus with nothing readable in it derives no
-  // proposal at step 8 either, so it is `no-op` on the same footing as a genuinely
-  // quiet week — flagging the advisory corpus's own state on a run that consolidated
-  // nothing would name a condition vocabularies §1 has no row for. The corpus state
-  // is still parsed and rendered on `state.advisory` either way (item 7 reports the
-  // real state); only the reason code is withheld.
+  // Both codes are UNCONDITIONAL on the corpus's own state (AC-6.1's absent-file row,
+  // FSPEC BR-38 / E-30 / S-13, TSPEC §10.3 rows 15–16) with exactly one exception:
+  // TSPEC §12.2 v2.8's all-unreadable pass, where enumeration returned basenames and
+  // none could be read. That is the condition AT-K3b names, and it is the ONLY one
+  // withheld here.
+  //
+  // The predicate is deliberately `enumerated ≥1 AND read 0`, not `read 0`: the
+  // latter is also true of the ordinary quiet week (an empty corpus — AC-1.4's first
+  // cause), which on this repo's shipping default (`ESCALATIONS.md` absent) is every
+  // quiet week there is, and BR-38 obliges the code precisely there. `state.advisory`
+  // carries the real corpus state to report item 7 in every case either way; only the
+  // reason code turns on this gate.
+  const enumeratedNoneReadable = consumedBodies.length > 0 && readableBasenames.length === 0;
   const escText = await readFileFn("docs/_queue/ESCALATIONS.md");
   const escalations = parseEscalations(escText);
-  if (readableBasenames.length > 0) {
+  if (!enumeratedNoneReadable) {
     if (escalations.corpusState === "absent") state.reasons.add("no-advisory-corpus");
     else if (escalations.corpusState === "empty") state.reasons.add("advisory-corpus-empty");
   }
