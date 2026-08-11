@@ -87,3 +87,56 @@ None. My v8 Q-01 asked which anchor the author intended for non-vacuity; the
 delta answers it in the document body rather than in a reply — the anchor is the
 marker path, the set is a path set, and take/release collapse to one member.
 That is the answer an implementer reads, which is where it needed to be.
+
+## 6. Positive Observations
+
+- **The non-vacuity argument is constructive, not aspirational.** The cheap way
+  to close my v8 F-01 was to bolt a positive control onto the fixture. The
+  revision did something better: it showed that the expected set is *already*
+  non-empty on the Given the register row dictates, by deriving it from the
+  release table (`no-op` ⇒ taken **and** released). That costs the implementer no
+  extra fixture and cannot be forgotten in the writing, because the equality
+  fails if the take never happened.
+- **The two deliberate non-choices are worth more than the choice.** Saying what
+  the expected set is *not* — not *"nothing under `docs/_decisions/`"* (the marker
+  lives there), not a call count (take and release are two writes to one path) —
+  pre-empts the two ways an implementer would naturally get this wrong. The
+  second is a genuine trap: a `toHaveBeenCalledTimes(1)` on the write double is
+  the obvious first draft and it would red on correct code.
+- **The ownership line is drawn correctly.** §10.4 records PLAN T05's staleness
+  and refuses to fix it here. That is the erratum discipline working as designed —
+  the defect is named at the site where it bites, and the repair is left to the
+  document that owns the text. F-02 is only that the routing step was not taken;
+  the judgment underneath it is right.
+- **Nothing the revision touched broke.** 118 properties, no fixture added, no
+  measurement re-taken — I verified all three independently rather than reading
+  the changelog. The `:1082` wording repair (pm-review F-03) is a real fidelity
+  fix: the old quote *"decides on causes, not on terminal status"* was a
+  paraphrase of PROP-RTE-06's actual sentence, and quoting a sibling property
+  loosely is how two properties drift into disagreeing.
+
+## 7. Recommendation
+
+**Approved with minor changes**
+
+Both v8 findings are resolved, and the Medium one is resolved at the layer I
+asked for — a set equality with a constructive non-vacuity argument, no new
+fixture, no new double, no re-measurement. I re-measured every claim the delta
+makes about FSPEC, TSPEC and PLAN against HEAD, including the one the delta did
+not claim but the new conjunct depends on: that no other `_writeFile` call site
+is reachable on an all-unreadable `no-op` pass. It holds, so the equality is
+tight rather than merely plausible.
+
+No High findings are open. F-01 is three stale line numbers the delta's own
+insertions created — mechanical, but they mislead a reader toward the wrong
+property, and two of them were correct before this round. F-02 is a routing gap:
+§10.4 correctly declines to fix PLAN and correctly names the erratum channel, but
+§13.3 opens no row, so nothing carries the repair. I route that item upstream as
+an `ERRATUM: PLAN` line in this response, so the T05 pin can be repaired before
+Phase I dispatches regardless of what this document does next. Neither finding
+touches an oracle, and nothing the revision touched broke.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
