@@ -398,6 +398,93 @@ itself the `transport-contract-violation` member and should surface, not widen t
 
 ## 5. Test mechanics
 
+## DEC-ENG-10: Suite-wide assertions accumulate through the filesystem, under a run id minted by a runner before any test process exists
+
+**Context:** Three of this feature's oracles are set-equality over *the whole run*: the outcome
+taxonomy (six members, AC-4.1), the message catalogue (both directions, AC-6.4), and the model map
+(AC-3.3). `node --test` runs each test file in its own child process and gives no ordering guarantee
+across files, so a module-scoped accumulator read by a "last" test file holds at most that file's own
+contributions. `docs/_decisions/DECISIONS-test-oracle-mechanics.md` DEC-ORACLE-01 already settled the
+general form of this — a run-wide assertion cannot live at module level — for jest; the same reasoning
+applies unchanged to `node --test`, and this decision applies it rather than re-deriving it.
+
+**Decision:** `package.json`'s `scripts.test` becomes `node __tests__/_run-suite.mjs`, which (1)
+mints one `PDLC_TEST_RUN_ID`, (2) creates its run directory empty, removing prior contents, (3)
+spawns `node --test --import=./__tests__/_bootstrap.mjs` with that id in the environment so every
+test process inherits the one value, and (4) on success only, spawns
+`__tests__/_assert-suite-wide.mjs`. Test processes append observation records to that directory;
+the final step asserts over them.
+
+**Alternatives considered:**
+
+- **Module-scoped `Set` read by a name-ordered last file** — rejected, and the failure mode is what
+  makes it worth recording: it is *asymmetric*. The catalogue's set-equality would fail loudly and
+  permanently, while the outcome harness's forward direction (`observed ⊆ OUTCOMES`) would pass
+  **vacuously green over the empty set** — precisely what that harness exists to prevent.
+- **Mint the run id in the bootstrap "on first use"** — rejected on measurement. `--import` is
+  preloaded into every test file's own child process, and those children are siblings: an environment
+  variable a child assigns is visible to that child alone. Every file would mint a different id, and
+  the assertion step a further one. This fails by construction on every run, and the tempting repair
+  under time pressure — scan all run directories, drop the emptiness guard — walks straight back into
+  the vacuity. So the id is minted where it can be inherited, not where it is first needed.
+- **`PDLC_TEST_RUN_ID=$(…) node --test … && node …` in the npm script** — the same fix, rejected on
+  two counts: the assignment is shell syntax `cmd.exe` does not accept (C-9 makes both platforms
+  real), and it gives step 2 — clearing the directory so a stale record from an earlier run cannot be
+  counted as this run's observation — no ordered home.
+
+**Constraints that forced this shape:** AC-6.1 (the suite is hermetic and CI runs it on both
+platforms); the repo's own history of a vacuous green (`consolidation-agent-vacuous-green`).
+
+**The mechanism is itself asserted, per DEC-ORACLE-01's testability note.** Two deliberately separate
+test files each write one record, and the final step requires both to be found in **one** run
+directory, with exactly one directory for the run. Two directories, or one directory holding one
+record, fails. The inheritance property was silently false in an earlier draft, so it is asserted
+directly rather than implied by the harnesses that consume it.
+
+**Reversibility:** Easy — three new test-support files and one `package.json` line; no production
+code depends on any of it.
+
+**Re-evaluation triggers:** `node --test` gains a supported run-wide hook (a reporter or global
+teardown), which would make the filesystem hop unnecessary; the suite grows a case where a record
+must survive a *failed* run, which today's "step 4 on success only" ordering deliberately does not
+support.
+
+## DEC-ENG-11: Every guard-parity clause carries a falsifying counterpart in the same file, and the deny path performs the deletion it is guarding
+
+**Context:** §6.3's clauses are the kind that pass for the wrong reason. "The file survives" is true
+when nobody attempted to delete it; "the refusal reaches the agent" is true of a constant string; and
+a green run on a developer machine where the plugin's hooks are live proves the *host*, not the
+engine.
+
+**Decision:** Each clause is asserted together with a counterpart that must fail: the deny is paired
+with an allow (a `LEARNINGS-{f}.md` present in the directory makes the same call permit the deletion,
+AC-5.2, so the guard is conditional and not a blanket refusal); the survival assertion is paired with
+the **same fixture and the same deletion step** under an allow verdict, which removes the file; and
+the reason-text assertion is paired with a deliberately mis-built configuration (matcher `"Write"`
+instead of `"Bash"`, or a hook path pointing at no script) that must produce no deny. The test runs
+with no pdlc hooks registered on the host, in a scratch tree with neither settings entries nor an
+installed plugin.
+
+**Alternatives considered:**
+
+- **Assert the callback's verdict only, without performing the deletion** — rejected: that is
+  precisely the unfalsifiable form, and it is the defect an earlier draft shipped.
+- **Drive a real tool call through the SDK to observe the deny end-to-end** — rejected here because
+  §7.1 forbids constructing a real client or spawning `claude` in the hermetic suite. The boundary is
+  stated rather than papered over: the hermetic suite proves the engine *builds and honours* the
+  guard; only DEC-ENG-04's live measurement proves the runtime *consults* it.
+
+**Constraints that forced this shape:** BR-GUARD-3 (provenance — the refusal must be the engine's,
+not the host's); AC-6.1's hermeticity.
+
+**Reversibility:** Easy; and the discipline is cheap to keep because the negative half is written
+first.
+
+**Re-evaluation triggers:** The live measurement lands and makes an end-to-end hermetic proxy
+possible (e.g. a recorded SDK session that replays a tool-use turn); the guard's carrier changes
+under DEC-ENG-04's second branch, at which point the counterparts are re-derived against
+`canUseTool` rather than a hook matcher.
+
 ## 6. Configuration and lifecycle
 
 ## 7. Decision index
