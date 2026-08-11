@@ -295,9 +295,9 @@ constants, so that every dispatched identifier is reachable as a module-level va
 // pdlc/workflows/orchestrate-dev.js — PHASE_DISPATCH is already exported (:3337)
 export const ADVISORY_RUNG_SKILL = "se-review";           // was module-local (:1797)
 export const SKILL_SHIP_PR = "ship-pr";                   // :8008, :8112
-export const SKILL_SE_IMPLEMENT = "se-implement";         // :8064, :10028, :10068, :10142, :10251, :10448
+export const SKILL_SE_IMPLEMENT = "se-implement";         // :8064, :10028, :10068, :10142, :10251
 export const SKILL_DOD_VERIFY = "dod-verify";             // :8035
-export const SKILL_HARVEST = "harvest-learnings";         // :10542
+export const SKILL_HARVEST = "harvest-learnings";         // :10448 (Phase H), :10542 (advisory distil)
 export const SKILL_SE_AUTHOR = "se-author";               // :9964
 
 const PHASE_ROLE_KEYS = ["creator", "optimizer", "verifier", "remediator", "reviewers"];
@@ -313,6 +313,15 @@ export const SKILL_TRIAGE = "se-author";                  // Phase-0 readiness t
 export const DISPATCHABLE_SKILLS = Object.freeze(
   [SKILL_TRIAGE, ADVISORY_RUNG_SKILL].sort());            // advisory reached via :1252 → :1258
 ```
+
+**Each constant's comment lists *every* dispatch site of that literal at HEAD**, re-measured for this
+revision by scanning both modules for the quoted identifier (TE F-25, PM F-03). The v1.1 lists put
+`:10448` on `SKILL_SE_IMPLEMENT` and left it off `SKILL_HARVEST`; the site is
+`skill: "harvest-learnings"` inside Phase H's `wrappedDispatch` (`orchestrate-dev.js:10448`), and
+`:10542` is the advisory-distil call. The lists are load-bearing rather than decorative: §8.3's edit
+surface is "bare skill literals replaced by these constants **at their dispatch sites**", so a site
+missing from a comment is a literal that survives the edit and turns §3.3's own no-bare-literal test
+red.
 
 Two corrections to v1.0 are folded in here, both grounded at HEAD. The queue's set is **not**
 `["se-author"] // A2 re-grounding`: `se-author` is the queue's **Phase-0 readiness triage** dispatch
