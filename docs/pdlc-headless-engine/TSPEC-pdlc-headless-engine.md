@@ -458,7 +458,7 @@ Three properties, all mechanically checked rather than reviewed:
 
 - **Unknown id throws** at emission, so an unregistered string cannot reach an operator.
 - **Every registered id is emitted at least once by the suite, asserted once suite-wide**, not per
-  test: each `message()` call appends its id to the run's observation directory (§7.4's
+  test: each `message()` call appends its id to the run's observation directory (§7.0's
   cross-process mechanism — a module-scoped `Set` would be per test *file*, not per run), and a
   final step asserts set-equality with `messageIds()`. Per-test assertions would make the property
   vacuous the moment a test is skipped (this repo's `consolidation-agent-vacuous-green` lesson).
@@ -784,7 +784,7 @@ HEAD already funnels every thrown value into those four classes: `classifyThrown
 Two obligations follow, and both are tests rather than code:
 
 - **Forward (outputs ⊆ six), suite-wide.** Every `classifyOutcome` call records its result through
-  §7.4's cross-process observation seam; a final step asserts that union is a subset of `OUTCOMES`.
+  §7.0's cross-process observation seam; a final step asserts that union is a subset of `OUTCOMES`.
   Scoping the assertion to the provocation corpus alone would let a seventh member appear in any
   other test unnoticed — the same accumulate-then-assert shape as the catalogue (§3.5). **This
   direction is the one that fails vacuously green** if the accumulator is not genuinely cross-process
