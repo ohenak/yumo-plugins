@@ -1445,15 +1445,19 @@ correctness depends entirely on the double:
 
 ### 7.4 Set-equality harnesses
 
-Four properties share one shape — accumulate through a seam across the whole suite, assert once at
-the end — because per-test assertions go vacuous the moment a test is skipped:
+Five suite-wide assertions share one shape — accumulate through a seam across the whole suite,
+assert once at the end — because per-test assertions go vacuous the moment a test is skipped. Four
+are properties with their own accumulator; the fifth (§4.1's pre-phase bucket) rides the model-map
+accumulator and is listed here rather than left in prose, because this table is the checklist
+`_assert-suite-wide.mjs` is built from (TE F-29):
 
 | Property | Seam (writes a record per observation) | Assertion in `_assert-suite-wide.mjs` |
 |---|---|---|
 | message catalogue (§3.5) | `message(id, …)` records the id | emitted ids ≡ `messageIds()` |
 | outcome taxonomy (§5.1) | `classifyOutcome` records its result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
-| **pinned model map (§4.1, AC-3.3)** | the adapter records each `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model }` | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
+| **pinned model map (§4.1, AC-3.3)** | the adapter records each `DispatchDescriptor`'s `{ corpusRun, seq, skill, phase, model, attempt, outcome, errorText, promptHash }` | AC-3.3's two directions verbatim: **every recorded model value appears in M-ENG-07's model column**, and **every one of M-ENG-07's seven rows is witnessed by ≥1 descriptor**, per the witness table below |
 | dispatchable skills (§3.3) | not an accumulator — computed once from imported data | both directions, §3.3's table |
+| pre-phase window (§4.1) | the same model-map accumulator, read on its `phase` field | `byPhase["(no phase)"]` absent or `0` on every run-shaped test |
 
 **The model-map row is new in v1.1** and closes AC-3.3, which v1.0 left owned by verbatim
 pass-through alone. `adapter.mjs:271` forwarding `model` untouched is necessary and correctly
@@ -1482,15 +1486,18 @@ vacuity §3.3 argues against:
 
 **Each row's witness is transcribed literally**, which is what makes the reverse direction writable
 without a field the run cannot produce. `corpusRun` is supplied by the harness — it configures the
-run, so it knows which of M-ENG-07's five it is executing. No witness reads `seq`: it stays a
-reporting field (§4.1), and the one row that leaned on it is corrected below:
+run, so it knows which of M-ENG-07's five it is executing. `promptHash` is a stable digest of the
+descriptor's composed `prompt` (sha-256, first 16 hex), recorded instead of the prompt so the
+cross-process accumulator (§7.0) carries a bounded record; only equality between two hashes is ever
+read, never the hash's value. No witness reads `seq` as an *ordering*: it stays a reporting field
+(§4.1), and the one row that leaned on its adjacency is corrected below:
 
 | M-ENG-07 row | Model | Witness predicate over the recorded descriptors |
 |---|---|---|
 | 1 every phase except Phase I | `opus` | **quantified, not existential**: in run i, *every* descriptor **outside the Phase-I wave set** (defined below) has `model === "opus"` (and ≥1 such descriptor exists) |
 | 2 Phase I implementation waves | `sonnet` | in run i, *every* descriptor **inside the Phase-I wave set** has `model === "sonnet"` (and ≥1 exists) |
 | 3 advisory-tier dispatch | `fable` | in run iii, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "fable"` |
-| 4 advisory fallback | `opus` | in run iv, ≥1 descriptor with `skill === ADVISORY_RUNG_SKILL` and `model === "opus"` **recorded within the same advisory-seam invocation whose `fable` descriptor raised the model-resolution error the fixture forces** — that provenance is the whole discriminator; no `seq` adjacency (see below) |
+| 4 advisory fallback | `opus` | in run iv, **a pair** `(F, B)` of recorded descriptors with `F.skill === B.skill === ADVISORY_RUNG_SKILL`, `F.promptHash === B.promptHash`, `B.seq > F.seq`, `F.model === "fable"`, `F.outcome !== "ok"` and `F.errorText` containing the literal message run iv's fixture injects, and `B.model === "opus"`. Every conjunct is a recorded field (§4.1); the discriminator is the re-dispatched prompt plus the recorded failure, not `seq` adjacency (see below) |
 | 5 queue Phase-0 triage | `sonnet` | in run ii, ≥1 descriptor with `phase === "Queue"`, `skill === "se-author"`, `model === "sonnet"` |
 | 6 verdict-recovery re-emit | `haiku` | in run v(a) — the malformed-`VERDICT` fixture — ≥1 descriptor with `model === "haiku"` and a reviewer `skill` |
 | 7 PLAN-DAG extraction | `haiku` | in run v(b) — the unparseable-task-table fixture — ≥1 descriptor with `model === "haiku"` and `skill === "se-author"` |
@@ -1516,10 +1523,24 @@ The set is therefore defined once, over recorded descriptor fields the harness a
 > **Phase-I wave set** = descriptors with `phase === "Phase I"`, **plus** the V-wave descriptor:
 > `phase === "Phase PT"` **and** `skill === SKILL_SE_IMPLEMENT`. Every other descriptor is outside it.
 
+**Rows 1 and 2 are scoped "in run i" for a reason, and widening them to the corpus would be red on
+correct code** (TE Q-12). The `haiku` PLAN-DAG extraction dispatch (`orchestrate-dev.js:9968`) is
+composed *after* `phaseFn("Phase I: Implementation")` (`:9951`), so it records `phase === "Phase I"`
+and therefore falls **inside** the wave set while carrying `model === "haiku"` — row 2's *every*
+would be red on it. It cannot arise in run i: it is the fallback taken only when `parsePlanTasks`
+returns no tasks (`:9959-9962`), and run i's fixture PLAN parses, which run i asserts directly —
+**zero descriptors with `model === "haiku"` in run i**. Run v(b) is where it is witnessed (row 7),
+and rows 1/2 do not range over that run. This is recorded next to the wave-set definition for the
+same reason the memoisation note sits next to rows 3/4: the tempting "improvement" is to quantify
+rows 1/2 over the whole corpus, and it is wrong.
+
 That second clause is exact in run i rather than approximate, because **run i drives wave mode**, and
 this is the fixture decision v1.2 left unstated — the other half of F-22. Wave mode is selected by
-one condition: `waveMode = Boolean(iOwnership) && iContract.ok === true` (`orchestrate-dev.js:9995`),
-i.e. the PLAN carries a valid file-ownership manifest; the legacy worktree path is reachable by
+one condition, transcribed as written (`orchestrate-dev.js:9995`, PM F-03/TE F-28):
+`const waveMode = Boolean(iOwnership) && iContract !== null && iContract.ok === true;` — i.e. the
+PLAN carries a valid file-ownership manifest (the `iContract !== null` conjunct is implied by the
+first, since `iContract` is `null` exactly when `iOwnership` is falsy — `:9994` — but this section's
+whole claim is that transcriptions are exact). The legacy worktree path is reachable by
 exactly one route, a PLAN approved before the manifest requirement with Phase P skipped on a recorded
 approval (`:9987-9990`). **Run i's fixture repo therefore ships a PLAN with a valid ownership
 manifest and a `implementation.testCommand` in `.claude/pdlc.config.json`**, so the run takes wave
@@ -1550,12 +1571,39 @@ sufficient and stable: no ordinary `opus` `se-review` dispatch can carry it. **T
 the `fable` dispatch, not the `opus` one** — `:1861` is reached only behind `isModelResolutionError`,
 so the fallback descriptor is the *consequence* of the failure and never its source; v1.2's second
 "whose" was ambiguous on exactly this point and an implementer reading it as the `opus` descriptor
-would have written an assertion that is never true. The harness pairs the two descriptors by the
-advisory seam's own invocation, which the fixture controls, rather than by global ordering.
+would have written an assertion that is never true.
 
-**A fifth suite-wide assertion rides with this table: `byPhase["(no phase)"]` is absent or `0` on
-every run-shaped test** (§4.1, PM Q-01/TE Q-10). It is listed here so it is an assertion rather than
-a reported number nobody fails on — the first dispatch that drifts ahead of its phase banner is red.
+**What pairs the two descriptors is the re-dispatched prompt, and it is a recorded field** (PM F-01,
+TE F-26). v1.3 replaced the adjacency with the prose "recorded within the same advisory-seam
+invocation", which no harness can evaluate: the seam is `orchestrate-dev`'s, the engine never sees an
+invocation identity, and stamping one would mean editing a workflow module — the thing §8.3's
+boundary forbids. An implementer could only write the computable residue, "∃ `se-review` descriptor
+on `opus`", which every pipeline run satisfies whether or not `:1851`→`:1861` exists. The link the
+engine *can* record is that **the fallback re-dispatches the same prompt**: `dispatchAt` closes over
+one `prompt` (`orchestrate-dev.js:1840-1842`) and both rungs go out through it, so `F` and `B` are
+byte-identical in the composed prompt (`promptHash`) while differing in `model` — a pairing no
+ordinary reviewer dispatch produces, because it has no `fable` sibling at all, let alone one carrying
+a model-resolution rejection in `errorText`. Three properties of this witness are worth stating,
+because they are what F-26 asked for:
+
+- **It is falsified by the deletion it exists to catch.** Delete `:1851`→`:1861` and no `B` exists
+  for the `fable` `F`: the pair is empty and row 4 is red, where the residue predicate stayed green.
+- **It reads no ordering beyond `B.seq > F.seq`.** That conjunct is a direction, not an adjacency —
+  it holds no matter how many dispatches interleave, so TE F-23's flakiness cannot return through it.
+  The `seq` values themselves are compared, never counted.
+- **`F.outcome !== "ok"` is a recorded classification, not an inference.** The `fable` dispatch
+  rejects, so the adapter stamps `classifyOutcome`'s member and the verbatim message (§4.1). The
+  harness matches `errorText` against the literal string its own fixture injects — a transcription of
+  the fixture, not an import of `MODEL_ERROR_RE` (`orchestrate-dev.js:1780`), which would make the
+  test agree with the module by construction.
+
+**The fifth suite-wide assertion is the pre-phase bucket: `byPhase["(no phase)"]` is absent or `0` on
+every run-shaped test** (§4.1, PM Q-01/TE Q-10). It is a row of the property table above, not a note
+beneath it (TE F-29), so the table and `_assert-suite-wide.mjs` enumerate the same five things and
+§8.3's "the four set-equality assertions plus the `"(no phase)"` bucket assertion" describes the same
+module. It rides the model-map accumulator rather than owning one, because `phase` is already on
+every record. Listing it makes it an assertion rather than a reported number nobody fails on — the
+first dispatch that drifts ahead of its phase banner is red.
 
 **Row 3's and row 4's advisory predicates are existential on purpose** (PM Q-02). `runAdvisorySeam`'s
 own model choice is memoised in `_state.resolved` (`orchestrate-dev.js:1844`): once a rung has
