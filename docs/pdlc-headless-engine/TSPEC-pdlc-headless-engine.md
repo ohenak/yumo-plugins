@@ -1813,7 +1813,12 @@ Two fields carry the scope, and both are on every record: `corpusRun` is harness
 which of the five run configurations is executing), so `corpusRun != null` is exactly "this record
 came from a run-shaped test" and excludes the unit tests that construct an adapter directly and
 dispatch without announcing a phase (PM F-02) — those legitimately record `phase === null` and must
-not turn the row red. It is a row of the property table above, not a note beneath it (TE F-29), so
+not turn the row red. **The filter is essential, not defensive** (TE Q-15/Q-16): `_bootstrap.mjs` is
+`--import`ed into *every* test-file process (§7.0), and the adapter those unit tests build is the
+real one, so their descriptors do land in `${PDLC_TEST_RUN_DIR}` alongside the corpus runs'. Drop
+`corpusRun != null` and the row goes red on a correctly-behaving unit test. This stays true under
+the settlement-only rule above: those unit tests dispatch through fixture transports, so their lines
+settle like any other. It is a row of the property table above, not a note beneath it (TE F-29), so
 the table, §8.3's row for `_assert-suite-wide.mjs` and the module itself enumerate the same five
 things. It rides the model-map accumulator rather than owning one, because `phase` is already on
 every record. Listing it makes it an assertion rather than a reported number nobody fails on — the
@@ -1844,6 +1849,11 @@ needs a whole run's worth of descriptors, rows 1 and 2 need a run's full phase c
 needs the failure the fixture forces mid-run.
 `--dry-run-skill` remains §7.1's prompt-corpus instrument and is not cited for this property. A
 whole-run `--dry-run` stays open as O-5 and this harness deliberately does not depend on it.
+**What the dry-run surface still carries an oracle for, in full** (TE Q-17), so the next reader does
+not re-derive it a fourth time: §5.4's exit-`0` row, and §7.1's prompt-composition assertions over
+the printed prompt — a surface testable without any transport at all, which is why §7.1 uses it.
+That is the whole set. It records nothing (§4.1), so no §7.4 row and no §7.0-recorded property can
+hang off it, and after FSPEC v1.5's requalification of BR-MODEL-3 nothing upstream asks one to.
 M-ENG-07's table stays a **transcription** of the modules' constants, never an import from them —
 importing it would make the drift AC-3.3 exists to catch invisible.
 
@@ -1861,13 +1871,25 @@ against a scratch repo, asserting §7.3's structural set plus the one thing only
 least one cross-review round reaching a parseable terminal verdict produced by a real model call. The
 §6.5 guard measurement is the second live test, and it is the one that gates unattended use.
 
-**This path writes no observation records** (PM Q-01). §7.0's writer is installed by
+**A live `pdlc` invocation writes no observation records** (PM Q-01). §7.0's writer is installed by
 `__tests__/_bootstrap.mjs` through `--import`, so `errorText` — the one descriptor field that can
 carry a message the engine did not author — is only ever appended to a file under
 `PDLC_TEST_RUN_DIR` by the hermetic suite, where every rejection is fixture-injected. A live run
 carries the same descriptor shape in memory and drops it with the process. No REQ/FSPEC clause asks
 for redaction, and this design does not need one; if the live path is ever given an accumulator, the
 redaction question arrives with it.
+
+**The two live tests are the named exception, and they are inside the claim rather than outside it**
+(PM Q-02, TE Q-16). Both live tests — the cross-review round above and §6.5's guard measurement —
+run under the same runner and therefore *do* inherit `_bootstrap.mjs`'s writer, so "the live path
+writes no records" is a claim about `pdlc` invoked by an operator, not about every process that ever
+dispatches for real. What keeps it safe is that the records these two write are never read by
+`_assert-suite-wide.mjs`: they carry `corpusRun === null` (the harness supplies `corpusRun` only for
+the five corpus configurations, §7.4), which excludes them from the fifth suite-wide row by the same
+filter that excludes the direct-adapter unit tests, and rows 1–4 are scoped to named corpus runs.
+The residue is narrow and stated rather than denied: a live test's `errorText` can carry a real
+model's message into `${PDLC_TEST_RUN_DIR}` — a runner-owned scratch directory recreated empty on
+every suite run (§7.0 step 2), not a durable artefact.
 
 ### 7.6 CI arrangement
 
