@@ -6086,6 +6086,48 @@ function parseErrata(text, onIgnored) {
   return found;
 }
 
+/**
+ * Retry a single dispatch exactly once when the dispatch itself THROWS or
+ * REJECTS — an engine-side transport fault (dropped connection, the engine's
+ * 30-minute dispatch ceiling) surfaces this way. A *parsed* content failure
+ * (an empty reply, a "Needs revision" verdict, a non-zero-exit string in the
+ * response) is not a throw and is never touched by this helper — those are
+ * evaluated, unchanged, by the caller after `withDispatchRetry` resolves.
+ *
+ * On the first throw this emits a loud, greppable notice and re-invokes
+ * `dispatchFn` with the exact same prompt/arguments (the caller's thunk
+ * closes over them, so "same prompt" is structural, not a parameter here).
+ * A second throw propagates unchanged — same error, same message, same halt
+ * and POSTMORTEM/report behavior as before this helper existed. Only ONE
+ * retry: this is a fault-recovery seam, not a resilience loop.
+ *
+ * Scoped deliberately to long, single-shot dispatch call sites (Phase CR's
+ * review-loop optimizer dispatch, Phase DOD's remediation dispatch, Phase
+ * PT's V-wave dispatch) — never to the round-loop reviewer dispatch: a
+ * faulted reviewer round already re-derives cleanly on the pipeline's next
+ * invocation, and double-dispatching a reviewer risks two cross-review files
+ * for one round.
+ *
+ * `onFault`, if given, fires once the FIRST attempt throws — before the
+ * retry is even dispatched — so a caller that must record "a fault was
+ * observed" as a distinct signal from "the dispatch ultimately failed" can
+ * do so even when the retry goes on to recover.
+ *
+ * @param {() => Promise<any>} dispatchFn - zero-arg thunk; invoked again, unchanged, on retry.
+ * @param {{ label: string, emit?: (msg: string) => void, onFault?: () => void }} opts
+ * @returns {Promise<any>}
+ */
+async function withDispatchRetry(dispatchFn, { label, emit = () => {}, onFault = () => {} } = {}) {
+  try {
+    return await dispatchFn();
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    emit(`Dispatch fault (${label}): ${message} — retrying once.`);
+    onFault();
+    return await dispatchFn();
+  }
+}
+
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
 
 /**
@@ -7701,7 +7743,25 @@ async function dispatchAndVerify({
 
     let faulted = false;
     try {
-      response = await _agent(skill, prompt, model ? { model } : undefined);
+      // Only the "authoring" episode (creator/optimizer, one document owner
+      // per episode) is a same-prompt retry candidate on a thrown/rejected
+      // dispatch. A "review" episode's dispatch is never retried here: a
+      // faulted reviewer round already re-derives cleanly on the pipeline's
+      // next invocation, and double-dispatching a reviewer risks two
+      // cross-review files for one round.
+      response =
+        dispatchKind === "review"
+          ? await _agent(skill, prompt, model ? { model } : undefined)
+          : await withDispatchRetry(
+              () => _agent(skill, prompt, model ? { model } : undefined),
+              {
+                label: `${skill} dispatch, phase ${phaseId}`,
+                emit,
+                onFault: () => {
+                  faulted = true;
+                },
+              }
+            );
     } catch {
       faulted = true;
       response = null;
@@ -8803,7 +8863,10 @@ async function dodVerifyLoop({
     // Dispatch remediation: se-implement addresses the findings recorded in this
     // version's CODE_REVIEW file, then the next iteration re-verifies.
     _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
-    await _agent("se-implement", dodRemediatePrompt(feature, iteration));
+    await withDispatchRetry(
+      () => _agent("se-implement", dodRemediatePrompt(feature, iteration)),
+      { label: `DOD remediation, iteration ${iteration}`, emit: _log }
+    );
   }
 
   // Should not reach here, but guard
@@ -12007,10 +12070,14 @@ async function main({
       // is on the feature branch where the next run, or a human, can fix it.
       phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)");
       const vWaveNum = waves.length + 1;
-      const vResult = await agentFn(
-        "se-implement",
-        propertiesTestPrompt(featureName),
-        { model: MODEL_IMPLEMENTATION }
+      const vResult = await withDispatchRetry(
+        () =>
+          agentFn(
+            "se-implement",
+            propertiesTestPrompt(featureName),
+            { model: MODEL_IMPLEMENTATION }
+          ),
+        { label: `V-wave ${vWaveNum} PROPERTIES tests`, emit }
       );
 
       // Dispatch-level failures halt whatever the gate is, exactly as for every

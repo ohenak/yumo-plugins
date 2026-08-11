@@ -4569,6 +4569,17 @@ function parseErrata(text, onIgnored) {
   return found;
 }
 
+async function withDispatchRetry(dispatchFn, { label, emit = () => {}, onFault = () => {} } = {}) {
+  try {
+    return await dispatchFn();
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    emit(`Dispatch fault (${label}): ${message} — retrying once.`);
+    onFault();
+    return await dispatchFn();
+  }
+}
+
 async function reviewLoop({
   doc,
   phase,
@@ -5547,7 +5558,20 @@ async function dispatchAndVerify({
 
     let faulted = false;
     try {
-      response = await _agent(skill, prompt, model ? { model } : undefined);
+
+      response =
+        dispatchKind === "review"
+          ? await _agent(skill, prompt, model ? { model } : undefined)
+          : await withDispatchRetry(
+              () => _agent(skill, prompt, model ? { model } : undefined),
+              {
+                label: `${skill} dispatch, phase ${phaseId}`,
+                emit,
+                onFault: () => {
+                  faulted = true;
+                },
+              }
+            );
     } catch {
       faulted = true;
       response = null;
@@ -6344,7 +6368,10 @@ async function dodVerifyLoop({
     }
 
     _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
-    await _agent("se-implement", dodRemediatePrompt(feature, iteration));
+    await withDispatchRetry(
+      () => _agent("se-implement", dodRemediatePrompt(feature, iteration)),
+      { label: `DOD remediation, iteration ${iteration}`, emit: _log }
+    );
   }
 
   return { passed: false, iterations: maxIterations };
@@ -8489,10 +8516,14 @@ async function main({
 
       phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)");
       const vWaveNum = waves.length + 1;
-      const vResult = await agentFn(
-        "se-implement",
-        propertiesTestPrompt(featureName),
-        { model: MODEL_IMPLEMENTATION }
+      const vResult = await withDispatchRetry(
+        () =>
+          agentFn(
+            "se-implement",
+            propertiesTestPrompt(featureName),
+            { model: MODEL_IMPLEMENTATION }
+          ),
+        { label: `V-wave ${vWaveNum} PROPERTIES tests`, emit }
       );
 
       evaluateWaveDispatch([vResult], waves.length, [{ id: "PROPERTIES tests" }]);
