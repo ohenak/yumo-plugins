@@ -6,14 +6,20 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → **FSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md`, v0.7) |
+| Upstream | REQ → **FSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md`, v0.8) |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+
+**Change note, v1.2** (upstream re-grounding, no new content): REQ v0.8 landed the Phase-F erratum
+round, so all five §13.1 items are resolved upstream and M-ENG-06 is total over the REQ's criteria
+with a three-state vocabulary. §2 now defers to that table (AC-2.3, AC-4.4 and AC-4.1's
+set-equality half are **partially green**, each naming its unasserted half) instead of stating
+AC-2.3's state itself, and the upstream cell cites v0.8. No decision or rule changed.
 
 **Change note, v1.1** (round 1, addressing `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1`):
 the parity oracle's hermetic double and fixture-fixed expectations (BR-PARITY-5/6), the report's
@@ -113,12 +119,12 @@ a test written today starts red or re-asserts green. Two consequences shape this
   auth check at startup and per dispatch (§5), guard parity (§9), the message catalogue (§12), and
   the skill-set equality check (§6.4). These are the sections a plan should schedule first.
 
-**AC-2.3 has no row in M-ENG-06's table**, so this document states its state directly: a test
-written today re-asserts **green** for the single-dispatch case — the primary transport spreads the
-parent environment into the dispatch options rather than constructing one
-(`pdlc/engine/lib/transport.mjs:159`, `:168`) — and starts **red** only for BR-ENV-3's
-every-dispatch quantifier (§7.1). The table's omission is raised as an erratum (§13.1 O-ENG-4);
-until it lands, this paragraph is the test author's answer.
+M-ENG-06 now records a third state, **partially green**, for a criterion whose asserted and
+unasserted halves differ; each such row names its unasserted half, and that named half is what this
+document schedules. AC-2.3 is one of them (green for the single-dispatch spread at
+`pdlc/engine/lib/transport.mjs:159`, `:168`, asserted at `__tests__/transport.test.js:170`; red for
+BR-ENV-3's every-dispatch quantifier, §7.1), as is AC-4.4 (§8.4) and AC-4.1's set-equality half
+(§12.4). The table is total over the REQ's criteria, so it — not this section — is the authority.
 
 The measured facts every later section cites by id rather than re-deriving: **M-ENG-01** (the
 modules already run in plain Node; `agent()` is the only capability they take from the runtime),
@@ -1190,16 +1196,17 @@ round reaching a parseable terminal verdict produced by a real model call (AC-6.
 
 ### 13.1 Raised by this FSPEC against its upstream
 
-Five items are defects in the REQ's own text rather than decisions this FSPEC may take. Each is
-emitted as an erratum against the REQ; the rows below record what this document assumed in the
-meantime so a reviewer can see the exposure.
+Five items were defects in the REQ's own text rather than decisions this FSPEC could take. All five
+were emitted as errata, routed in the Phase-F erratum round, and **resolved in REQ v0.8**; the
+"interim behaviour" column is what this document assumed while they were open, and each is now the
+REQ's own reading rather than this FSPEC's gap-filling. No row below is still open.
 
-| # | Item | This FSPEC's interim behaviour |
+| # | Item (resolved in REQ v0.8) | This FSPEC's behaviour, now confirmed upstream |
 |---|---|---|
 | O-ENG-1 | AC-3.5's set-equality between dispatchable identifiers and plugin prompt files is unsatisfiable on a correct install: the plugin ships prompt files no module dispatches (the operator-invoked entry and consolidation skills), so the reverse direction refuses on every healthy machine, and the "17" parenthetical counts files rather than dispatchable identifiers | §4.4: Direction A enforced, Direction B reported not refused |
 | O-ENG-2 | AC-1.2 clause (c) justifies an empty `.claude/workflows/` read-set for a **`pdlc dev`** run by citing the **queue** module's drift-gate ordering; the dev module has no drift gate at all, so the cited opt-out is not load-bearing for the observed run — it is load-bearing for AC-1.3's queue run | §10.3 BR-READ-1: clause (c) unconditional for dev, opt-out-dependent for queue |
 | O-ENG-3 | AC-1.3 states `--loop` "repeats … until no ready row remains" and REQ §4.1 declares no iteration bound, while the operator-visible loop surface offers an explicit maximum-iteration bound; the two terminations are not distinguishable under the AC as written | §11.2 BR-LOOP-2: bound is opt-in and its termination reason is reported distinctly |
-| O-ENG-4 | M-ENG-06's red/green table, relocated from the REQ under pm-author §5e, has **no row for AC-2.3** (environment passthrough), while §2 here and the REQ's §1.2 read it as total | §2: AC-2.3's state stated directly — green for the single-dispatch case, red for BR-ENV-3's every-dispatch quantifier |
+| O-ENG-4 | M-ENG-06's red/green table, relocated from the REQ under pm-author §5e, had **no row for AC-2.3** (environment passthrough) or AC-4.4, while §2 here and the REQ's §1.2a read it as total; both rows now exist and the table is declared total | §2: AC-2.3's state stated directly — green for the single-dispatch case, red for BR-ENV-3's every-dispatch quantifier |
 | O-ENG-5 | `pdlc doctor` is operator-visible surface with **no upstream authority**: no AC, constraint or goal names it, so it reaches this document only through §3.1's command set and BR-START-3 | §3.1, §4.1: specified as the ladder's read-only surface; §14.1 traces it to no AC, which is the gap |
 
 ### 13.2 Carried from the REQ, unchanged
