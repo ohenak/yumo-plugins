@@ -35,8 +35,69 @@ yet decidable from what the run records.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Run i's fixture now ships `implementation.testCommand` in `.claude/pdlc.config.json` so the run takes wave mode and the script-owned gate (`orchestrate-dev.js:9995`, `:10099`). That gate executes the command through `_runCommand`. Does the command the fixture ships stay inside §7.1's hermeticity guard — i.e. is it something like `true` or a local node script, never the repo's own suite — and does a red gate in run i halt the run before the descriptors reach `_assert-suite-wide.mjs`? Not a finding: the fixture's content is an implementation choice. But rows 1 and 2 now depend on run i completing Phase I, so a naïvely-chosen `testCommand` turns a model-map assertion into a suite-runtime problem. Half a sentence in §7.2 or §7.4 would fix where a reader looks when run i is slow or red. |
+| Q-02 | §4.1 and §7.4 both scope the `byPhase["(no phase)"]` assertion to "run-shaped tests" and exclude "unit tests that dispatch through the adapter without announcing a phase". Where does a test declare which set it is in? If the accumulator is suite-wide (§7.4's shape) and unit tests share it, the excluded tests still contribute records, and the assertion needs a per-record marker to filter on — plausibly `corpusRun` being set. Naming that field as the filter would make the exclusion mechanical rather than a convention an implementer has to infer. |
+
 ## Positive Observations
+
+- **The V-wave catch is the review loop working as designed, on the section built to catch exactly
+  this.** §7.4 exists because a mechanised transcription of M-ENG-07 can be red on correct code, and
+  v1.2's `phase !== "Phase I"` was that defect *inside* §7.4. What makes the fix good is the second
+  half: §4.1's normalisation was left honest — `"Phase PT: PROPERTIES Tests (Phase I V-wave)"`
+  (`orchestrate-dev.js:10248`) still buckets as `"Phase PT"` because that is what the run announced —
+  and the wave set was defined in the harness instead. Bending the normalisation would have been the
+  cheaper fix and would have silently degraded `byPhase`, an operator-facing report field, to protect
+  a test. The design chose the direction that keeps the product surface truthful.
+- **`timeoutMs` was settled at the root, not papered over.** The contradiction could have been closed
+  by deleting §4.1's comment and letting the tunable be decorative; instead the revision decided the
+  tunable must actually reach the dispatch, added the stamp to the adapter, and put it on §8.3's edit
+  surface with the section cross-refs updated (`§3.4, §3.6, §4.1, §4.4, §4.6, §5.2`). BR-CLI-3 now
+  describes something the engine does rather than something it prints.
+- **Run i's mode is asserted, not assumed, and the failure mode is named.** "Had run i's fixture
+  silently drifted into legacy mode, the V-wave clause would be picking up an Opus dispatch and row 2
+  would be red — a loud failure, not a quiet reinterpretation." I verified the exclusivity that rests
+  on: `:10066` `"Phase PT: PROPERTIES Tests"` sits in the `!waveMode` branch, `:10248`→`:10253`
+  (`MODEL_IMPLEMENTATION`) in the `waveMode` branch, and no dispatch occurs between the V-wave and
+  `"Phase CR"`, so no third descriptor can drift into the `"Phase PT"` bucket.
+- **The row 3/4 memo paragraph is written for the next author, not for this reviewer.** Answering my
+  Q-02 by recording *why* strengthening those rows into quantifiers would be red — `_state.resolved`
+  memoises at `:1844`, later invocations dispatch straight at `:1845` — is the kind of note that stops
+  a future well-intentioned "improvement". That instinct is right; F-01 above is the same paragraph's
+  unfinished half, where the design knows the identifier is shared but the row no longer says how the
+  harness tells the two apart.
+- **Site lists were re-measured, not patched.** My F-03 named one line; the revision re-scanned both
+  modules and moved `:10448` while stating why the lists are load-bearing (a site missing from a
+  comment is a literal that survives §8.3's edit and turns §3.3's own test red). I re-grepped both
+  identifiers at HEAD and the lists are exactly right, including the consistent exclusion of
+  `PHASE_DISPATCH` row fields.
 
 ## Recommendation
 
+**Needs revision.** Two High findings, both against text v1.3 introduced, neither a disagreement
+with a design decision. All three v3 findings are genuinely closed, and the two Highs here are the
+new assertions written to close them and to close TE F-23 — each one states the regression it
+catches, and each is green when that regression occurs. That is the one failure this document has
+been consistently good at refusing elsewhere, which is why it should not ship in these two rows.
+
+On product fidelity, nothing in the diff narrowed or reinterpreted a criterion: no scope creep, the
+V-wave fix moved toward M-ENG-07's prose rather than away from it, `byPhase`'s run-scoped shape is
+the shape FSPEC §12.2 and AC-4.5 ask for, and the `timeoutMs` decision makes BR-CLI-3 stronger, not
+weaker. The gap is coverage of AC-3.3 row 4 and BR-CLI-3, not meaning.
+
+To close:
+
+1. **F-01 (High)** — give §7.4 row 4 a discriminator that is a predicate over recorded descriptor
+   fields: either a new recorded field (seam invocation id, or terminal outcome), or an ordering link
+   scoped to `ADVISORY_RUNG_SKILL` descriptors alone. As written the row is satisfied by any ordinary
+   `opus` `se-review` dispatch, which §7.4 itself calls "precisely the failure AC-3.3 names".
+2. **F-02 (High)** — pin the timeout fixture to a non-default `dispatch.timeoutMinutes` (≠ 30, since
+   `transport.mjs:64` is 30 min) and assert the boundary value against the spec literal as well as the
+   reported tunable, so a dropped stamp is red.
+3. **F-03 (Low)** — quote `orchestrate-dev.js:9995` verbatim, including `iContract !== null`.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
