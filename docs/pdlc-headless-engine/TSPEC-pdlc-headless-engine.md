@@ -357,6 +357,18 @@ the dev module itself (`orchestrate-queue.js:41`). The equality is then computed
 | B: readable ⊆ dispatchable | every prompt file **belonging to a derived identifier's directory** is reachable by a composed dispatch | refusal naming each unreachable file |
 | out of scope | a prompt file under a skills directory no module dispatches (`tech-lead`, `consolidate-learnings`, …) | reported, never a refusal (EC-START-7) |
 
+**This narrows rung 4, and the narrowing is intended rather than incidental** (PM Q-02, TE Q-06).
+HEAD's `EXPECTED_SKILLS` literal (`startup.mjs:20`) carries 17 entries; the derived set carries 10.
+The arithmetic is REQ-conformant — 10 dispatchable + the 2 `se-implement` supplements + 5
+operator-invoked skills present in the plugin and outside the set (`consolidate-learnings`,
+`orchestrate-dev`, `orchestrate-queue`, `tech-lead`, `tech-lead-python`), matching `REQ:509-512` —
+so nothing is being lost by accident. But it means **after the constant is deleted, nothing asserts
+those five are readable, and that is the design's answer, not an oversight**: an operator who invokes
+`/pdlc:tech-lead` interactively is outside the engine entirely, the engine can never dispatch those
+identifiers, and a startup refusal over a file no engine run reads would be a false gate. They are
+reported by the out-of-scope row above and never refused. Recording it here so the reduction is a
+decision on the record rather than a silent consequence of the derivation.
+
 Direction B is what forces §3.3's supplement decision. `skills/se-implement/` holds three files
 (`SKILL.md`, `SKILL-typescript.md`, `SKILL-python.md`), and **no module dispatch names a supplement**
 — `SKILL-typescript`/`SKILL-python` appear nowhere in `pdlc/workflows/*.js`; the supplements are
@@ -1556,6 +1568,18 @@ ships for exactly that.
   decision: a version-keyed row is more honest and goes stale on every SDK bump, which on an
   unattended pipeline means a red suite for a reason no code change caused. The design records the
   SDK version in the row either way; only the *staleness predicate* is open.
+- **O-ENG-T5 — the unmeasured platform.** Both reviewers arrived at this independently (PM Q-01, TE
+  Q-08), which is the reason it is promoted to an open question rather than answered in passing.
+  §6.5's "unrecorded is red" makes a missing M-ENG-09 row for the running platform fail the hermetic
+  suite. On the two platforms §7.6's matrix runs, that is exactly right, and the same-task ordering
+  rule answers the fresh-clone case. But the row is keyed by platform, so a contributor on a third —
+  a Linux distribution that reports differently, a container host, Windows — gets a red suite for a
+  measurement they cannot reasonably be asked to take. AC-6.1 scopes the suite to §7.6's matrix, so
+  this is not a criterion gap, and it is deliberately **not** decided here: the candidate answers
+  (skip with a reported notice off-matrix, versus refuse and require a recorded row) differ in
+  whether an unattended run on an unexpected host fails loudly or quietly, which is a maintainer's
+  call and the same shape of call as O-ENG-T4's staleness predicate. A PLAN author hits this on day
+  one, so it is named rather than left to be discovered.
 
 ### 9.3 Errata raised against upstream documents
 
