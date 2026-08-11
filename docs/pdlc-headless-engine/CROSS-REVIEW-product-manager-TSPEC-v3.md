@@ -76,4 +76,30 @@ operator-facing tunable, but it is a sentence and an oracle half, not a design g
 
 ## Recommendation
 
+**Approved with minor changes.** No High findings. Both v2 Highs are closed at their root, all four
+v2 findings are resolved, and I re-verified every citation the fixes stand on rather than the
+document's account of them: `opts.label` really is absent at every dispatch site, the `_phase` seam
+really does announce every phase in a normalisable shape, the delegated pipeline really does inherit
+the adapter's `_phase` through `run.mjs`'s `_runPipeline` wrapper, and M-ENG-07's seven rows are
+transcribed accurately with each witness reachable in the run the row names.
+
+On product fidelity: no scope creep — the design still adds no behaviour REQ did not ask for, and the
+one place the revision could have quietly widened a criterion (AC-3.3's "set-equality in both
+directions") instead moved *closer* to REQ's own definition at `REQ:483-486`. AC-1.3's two stop
+reasons keep their exact meanings with the third member scoped to non-zero exits. Nothing in the diff
+narrowed or reinterpreted an acceptance criterion.
+
+The three remaining items are all one-liners and none blocks Phase P:
+
+1. **F-01 (Medium)** — decide whether `timeoutMs` is per-dispatch (§4.1, §4.6) or conditional (§3.4),
+   and make the presence half of the boundary contract match. Under the §4.1 reading it is
+   `{ model, cwd, timeoutMs }` present on every dispatch with `maxTurns` the one declared-unreachable
+   key, which is a stronger oracle for free.
+2. **F-02 (Low)** — one sentence in §4.4 that `byPhase` is run-scoped and aggregates across
+   `--loop` passes.
+3. **F-03 (Low)** — add `:10448` to §3.3's `SKILL_HARVEST` site comment.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
