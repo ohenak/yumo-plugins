@@ -161,32 +161,38 @@ docs-derived claim, kept as the policy-risk baseline above).
   every project at once.
 - **G-2 — Canonical modules, unmodified.** *(US-03)* `orchestrate-dev.js` and
   `orchestrate-queue.js` are imported as ES modules from this repo's tested sources and
-  remain the single source of truth. The engine adds one new adapter that supplies the
-  modules' existing injection seams (`_agent`, `_parallel`, `_pipeline`, `_phase`, `_log`,
-  `_runCommand`, and the session seam `_sessionAgent`); every other IO seam uses the modules'
-  Node defaults untouched. Adding a seam is a change to the modules, in this repo, with
+  remain the single source of truth. The engine adds one new adapter that supplies whichever
+  of the modules' existing injection seams each module's entry point declares; every other IO
+  seam uses the modules' Node defaults untouched. **The seam set is not enumerated here and
+  differs per module** — `orchestrate-queue.js`'s `main()` declares no `_parallel`,
+  `_pipeline`, `_runCommand` or `_sessionAgent` parameter and delegates the dev pipeline
+  through `_runPipeline` (`orchestrate-queue.js:1040`, called at `:1422` with no seams
+  forwarded), so an engine that supplied only the dev seam set would reach the modules'
+  throwing `agent()` stub (`orchestrate-dev.js:8458`). The exhaustive per-module seam
+  contract is owned by TSPEC; the requirement here is only that it is complete enough for
+  AC-1.1 and AC-1.3 to pass. Adding a seam is a change to the modules, in this repo, with
   tests — never a fork (C-4).
 - **G-3 — Subscription-first dispatch.** *(US-02)* Every model call runs on the operator's
-  Claude subscription through headless Claude Code, and the per-phase model each module
-  already pins is forwarded to the CLI verbatim, whatever its value (C-7) — the engine
+  Claude subscription through the configured transport, and the per-phase model each module
+  already pins is forwarded to that transport verbatim, whatever its value (C-7) — the engine
   introduces no model policy of its own and knows no model names.
 - **G-4 — Proxy passthrough as contract.** *(US-04)* `ANTHROPIC_BASE_URL`,
-  `ANTHROPIC_CUSTOM_HEADERS` and headroom's own variables reach every spawned `claude`
-  process; the effective endpoint is reported at startup so a bypassed proxy is visible
-  immediately rather than discovered from a missing trace hours later.
+  `ANTHROPIC_CUSTOM_HEADERS` and headroom's own variables reach every dispatch — as the
+  dispatch environment handed to the SDK on the primary path, as the inherited child
+  environment on the `claude -p` fallback; the effective endpoint is reported at startup so a
+  bypassed proxy is visible immediately rather than discovered from a missing trace hours later.
 - **G-5 — Skills resolved from the installed plugin, inlined by the engine.** *(US-01)* All 17
   skill prompt files — 15 `SKILL.md` files plus the two `se-implement` language supplements —
   are **not** packaged inside the engine. The pdlc Claude Code plugin remains the single
   delivery vehicle for every `SKILL.md`, so `/pdlc:*` skills keep working standalone in
   interactive sessions; the engine locates the locally installed plugin at dispatch time,
-  reads each skill's prompt file from it, and inlines that text into the composed `claude -p`
-  prompt. No Skill tool and no `pdlc:` namespace reference appear in a composed prompt — the
-  plugin is a resolved-from-disk source of prompt text, not an in-session capability the
-  dispatched agent invokes. (A recorded alternative, not chosen: have the dispatched headless
-  session invoke the Skill tool `pdlc:{skill}` directly, since the plugin is installed
-  machine-wide — rejected because it reintroduces a runtime dependency on the Skill tool's
-  namespace resolution inside a non-interactive headless session, rather than a plain file
-  read the engine controls end to end; see C-10.)
+  reads each skill's prompt file from it, and inlines that text into the composed dispatch
+  prompt — the same composed prompt on either transport. No Skill tool and no `pdlc:` namespace
+  reference appear in a composed prompt — the plugin is a resolved-from-disk source of prompt
+  text, not an in-session capability the dispatched agent invokes. (Recorded alternative, not
+  chosen: have the dispatched session invoke the Skill tool `pdlc:{skill}` directly — rejected
+  because it reintroduces a dependency on Skill-tool namespace resolution inside a
+  non-interactive session, rather than a file read the engine controls end to end; see C-10.)
 - **G-6 — Pipeline semantics preserved.** *(US-03)* Phase graph, convergence behavior, round
   windows, verdict parsing, erratum routing, POSTMORTEM lifecycle, queue lifecycle, halt-row
   commits, Phase MERGE ladder — all unchanged, because the code that implements them is
