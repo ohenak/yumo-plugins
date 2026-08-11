@@ -1481,13 +1481,14 @@ every file it touches; a component in **bold** is new in this feature.
 | **`lib/catalogue.mjs`** | new | §3.5 |
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
-| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record) | §3.6, §5.2 |
+| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, stale `opts.label` comment at `:266-268` corrected) | §3.6, §4.1, §4.4, §5.2 |
 | `lib/startup.mjs` | changed (structured rungs 0–5, derived skill set) | §4.3 |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables`) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
 | **`__tests__/_assert-suite-wide.mjs`** | new — the four set-equality assertions | §7.0, §7.4 |
-| `pdlc/engine/package.json` | changed — `scripts.test` gains `--import` and the assertion step | §7.0 |
+| **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
+| `pdlc/engine/package.json` | changed — `scripts.test` becomes the runner invocation | §7.0 |
 | `pdlc/workflows/orchestrate-dev.js` | **exports added** (`DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants) + bare skill literals replaced by those constants at their dispatch sites | §3.3 |
 | `pdlc/workflows/orchestrate-queue.js` | **exports added** (`DISPATCHABLE_SKILLS`, `SKILL_TRIAGE`); imports `ADVISORY_RUNG_SKILL` (`:41`) | §3.3 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js` | **regenerated** — `stripModuleSyntax` inlines the whole module body, so the added constants change the bundle bytes even though no name is published | §3.3 |
@@ -1495,7 +1496,12 @@ every file it touches; a component in **bold** is new in this feature.
 | `docs/_constraints/pdlc-engine-baseline.md` | one measurement added (**M-ENG-09**, PreToolUse deny under `bypassPermissions`) | §6.5 |
 | `.github/workflows/pr-tests.yml` | one job added (`engine-tests`) | §7.6 |
 
-No other file under `pdlc/workflows/` is modified (§2.4, §2.5).
+No other file under `pdlc/workflows/` is modified (§2.4, §2.5) — and this claim is now load-bearing
+in a second way. **The per-phase view is bought entirely on the engine side.** §4.1 takes the phase
+from the `_phase` seam the modules already call, held as adapter run state, rather than adding a
+`label` to the modules' dispatch sites; had the modules been asked to pass labels, the workflow-module
+rows above would have to list the dispatch sites too, and this sentence would be false. The two rows
+that touch `pdlc/workflows/` remain the export/constant change and nothing else.
 
 **The three generated rows are a PLAN obligation, not a footnote.** `node pdlc/workflows/build-runtime.mjs`
 must run in the **same task** that adds the module exports, and the regenerated `dist/` artifacts
