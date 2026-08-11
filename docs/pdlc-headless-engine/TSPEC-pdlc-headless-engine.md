@@ -917,11 +917,35 @@ The test that matters runs **with no pdlc hooks registered on the host** and ass
 still happens. A green test on a developer machine where the plugin's hooks are live proves nothing
 about the engine — it proves the host. Mechanically the test writes `CLAUDE_PROJECT_DIR` and
 `HOME`/settings into a scratch tree containing neither `.claude/settings.json` hook entries nor an
-installed plugin registration, and asserts (a) the deny, (b) the file surviving on disk, (c) the
-refusal text reaching the agent-visible channel.
+installed plugin registration.
 
-Both directions are asserted per transport: refusal with `LEARNINGS-{f}.md` absent (AC-5.1), success
-with it present (AC-5.2).
+**The execution mechanism, stated.** §7.1 forbids constructing the real SDK client or spawning a
+`claude` child, and FSPEC §18.2 (AT-ENG-X3) confirms the fallback is fixture-only, so nothing here
+issues a real tool call. What executes is the **deletion the guard is guarding**, driven by the test:
+
+1. The test builds the engine's guard configuration exactly as §6.2's carrier does, extracting the
+   `PreToolUse` callback (primary) or the `--settings` file's registration (fallback).
+2. It invokes that callback with a synthetic tool-input JSON naming an `rm` of a `CROSS-REVIEW-*`
+   file in the scratch tree — the same JSON shape the SDK passes (`sdk.d.ts:1545`).
+3. **It then performs the deletion the callback's verdict permits**: on `deny`, nothing; on `allow`,
+   the actual `fs.rm`. This is the step v1.0 omitted, and without it clause (b) is unfalsifiable —
+   the file survives because nobody ever tried to delete it.
+
+Each clause therefore has a falsifying counterpart, asserted in the same file, and the negative half
+is written first (§7.3's AT-ENG-45 discipline):
+
+| Clause | Positive assertion | Falsifying counterpart |
+|---|---|---|
+| (a) the deny | callback returns deny for `rm` of a `CROSS-REVIEW-*` with no `LEARNINGS-{f}.md` in the directory (AC-5.1) | with `LEARNINGS-{f}.md` present the same call **allows** (AC-5.2), so the guard is conditional and not a blanket refusal |
+| (b) the file survives | after step 3, the file is on disk | the **same fixture with the same deletion step** under an allow verdict **removes** the file — proving the harness can delete, so survival is the guard's doing |
+| (c) the agent sees the refusal | the deny's reason carries the script's stderr, byte-exact prefix and bracketed directory (§6.1 step 4) | a deliberately mis-built configuration (matcher `"Write"` instead of `"Bash"`, or the hook path pointed at a nonexistent script) produces **no deny**, and the test asserts it fails — proving the assertion is reading the engine's wiring and not a constant |
+
+Clause (c) asserts the callback's return value, which is what the SDK feeds back to the agent; that
+the SDK *does* feed it back is the SDK's contract, and the only thing that can check it on a real
+run is §6.5's live measurement. That boundary is stated rather than papered over: the hermetic suite
+proves the engine builds and honours the guard; the live test proves the runtime consults it.
+
+Both directions are asserted per transport, the fallback over its recorded fixture (AC-5.1, AC-5.2).
 
 ### 6.4 Fail-closed refusal when the guard cannot be carried (EC-GUARD-4)
 
@@ -952,6 +976,31 @@ red measurement does not become a design debate:
 |---|---|
 | deny fires under `bypassPermissions` | §6.2 stands as written |
 | deny does not fire | the posture and the guard are **one decision, not two**: either the posture tightens (drop the bypass, enumerate `allowedTools`) or the guard moves to a mechanism the posture cannot disable (the SDK's `canUseTool` callback, which is consulted on the tool-use path rather than registered as a hook) |
+
+**The measurement leaves a durable record, and the hermetic suite reads it.** A live-only test
+records nothing: on a fresh clone `bypassPermissions` (`transport.mjs:89`) and a hook-based guard
+coexist with no artefact saying whether that combination was ever measured, on which platform, or
+against which SDK version — and C-9 makes per-platform measurement a constraint. So the live test's
+last act is to append a dated row to `docs/_constraints/pdlc-engine-baseline.md`, in the same
+`M-ENG-*` form this repo already uses (`DEFAULT_PERMISSION_MODE`'s own comment at
+`transport.mjs:70-89` is the precedent for recording a measured runtime fact beside the code):
+
+**M-ENG-09 — PreToolUse deny under `bypassPermissions`**, columns
+`date | platform | transport | sdkVersion | denyFired`.
+
+Two assertions in the **hermetic** suite make the record load-bearing rather than decorative:
+
+- **The shipped mechanism matches the recorded verdict.** If a row records `denyFired: no` for the
+  current platform, a hermetic test fails while §6.2's hook carrier is still the shipped mechanism —
+  the red gate that forces the §6.5 branch to be taken rather than noted.
+- **Unrecorded is red, not silent** (PM Q-03, TE Q-05). With no M-ENG-09 row for the running
+  platform, the hermetic suite **fails** with a catalogue-registered message naming the missing
+  measurement. This is deliberate: an absent measurement is exactly the state in which the guard's
+  well-formedness tests are green and prove nothing, so it must not be the state a clean CI run
+  reports. The failure names the opt-in command that produces the row. **Ordering matters for the
+  PLAN**: the gate and the first M-ENG-09 rows (one per CI platform) land in the *same* task, so CI
+  never observes an unrecorded state; introducing the gate first would leave the pipeline red for a
+  reason unrelated to the change that turned it red.
 
 Until that measurement exists, §6's tests are the *shape* of the answer, not the answer, and an
 engine run can delete review history the plugin path would have protected. **A plan schedules this
