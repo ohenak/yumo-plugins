@@ -13,7 +13,49 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-11 |
+| pdlc | draft | Claude | 1.7 | 2026-08-11 |
+
+**v1.7 changelog** — revision round 8, addressing `CROSS-REVIEW-test-engineer-TSPEC-v8.md`
+(2 High, 1 Medium, 1 Low) and `CROSS-REVIEW-product-manager-TSPEC-v8.md` (0 High, 2 Medium, 1 Low).
+Upstream pins unchanged (REQ v0.10, FSPEC v1.6); no upstream text moved this round.
+
+- **F-40 (High) — §3.3's no-bare-literal guard is scoped by *site*, not by string shape.** The shape
+  predicate was unwritable: as syntax it selects 54 hyphenated literals in `orchestrate-dev.js` and
+  24 in `orchestrate-queue.js` (red on correct code); as membership it is a tautology; as a skill
+  directory name it is red on `meta.name` at `orchestrate-dev.js:3316` and `orchestrate-queue.js:45`.
+  The decisive case is the reviewer-role map, whose keys and values are syntactically
+  indistinguishable on the same three lines (`:6229-6231`). The guard now enumerates four closed
+  **site classes**, treats an unresolvable site as a failure rather than a skip, and adds the
+  **per-class site census** (7 / 28 / 1 / 11 = 47 at HEAD, each figure measured) so that an extractor
+  which silently stops matching turns the guard red instead of green over ∅. DEC-ENG-05 moved with it.
+- **F-41 (High) — rung 4a gains an oracle, a seam and a traceability row.** New **§7.8** declares
+  `GUARD_INTERPRETERS` and `probeGuardInterpreter({runProbe})` on `lib/startup.mjs` — the probe seam
+  neither §7.0/§7.1's bootstrap nor `_runCommand` provides — and specifies both upstream branches:
+  EC-START-10 (refusal names each candidate and its outcome plus the remedy, exit `1`, and **zero
+  descriptors in §7.0's accumulator**, a positive conjunct rather than an absence assertion) and
+  EC-START-11 (present-but-not-runnable `python3`, runnable `python` ⇒ rung 4a passes). The probe
+  command is the shipped script's own, verbatim (`guard-harvest-before-delete.sh:15`). §8.2 gains the
+  **C-11 row**, §8.1 names the two constraint-borne obligations that have no AC row, and §6.4 and
+  §8.3's `lib/startup.mjs` row now distinguish EC-GUARD-4 from rung 4a.
+- **F-42 (Medium) — the derivation test gains a transcription conjunct, reconciling §3.3 with §7.4.**
+  Deleting a `PHASE_DISPATCH` role field previously shrank both sides of the recomputation and stayed
+  green; the ten identifiers are now transcribed test-side, as §7.4 does for M-ENG-07, with the
+  reason the two are the same object stated: BR-START-4 forbids a *production-side* declaration, not
+  a test-side assertion of what production must derive.
+- **PM F-02 (Medium) — §5.3's top-level catch is marked as designed, not observed.** HEAD's
+  `pdlc/engine/lib/run.mjs` contains no `catch` clause at all (only `withCwd`'s `try/finally` at
+  `:159`); the catch in `runDev` (`:187`) / `runQueue` (`:228`) is part of this feature's edit, now
+  said so in §5.3, §7.4 row 4, §8.1's AC-4.4 row and §8.3's `run.mjs` row.
+- **PM F-01 (Medium) — §9.2 swept onto the one-platform matrix.** O-ENG-T1, O-ENG-T4 and O-ENG-T5 no
+  longer reason from a two-platform matrix that §7.6 had already corrected (`pr-tests.yml:40`).
+- **F-43 / PM F-03 (Low)** — §5.3 now cites `orchestrate-dev.js:1847` and `:1857` (where the
+  `{kind: "dispatch-error"}` value is constructed and returned) alongside `:3143-3149` (where the
+  caller reads it), matching §7.4 row 4.
+- **Q-18, Q-19 answered in the design.** `_assert-suite-wide.mjs` gains a sixth conjunct making the
+  corpus scoping falsifiable (distinct non-null `corpusRun` values set-equal to the five named
+  configurations, §7.5); §6.5 states that the M-ENG-09 gate asserts presence **and** consistency
+  between the recorded `denyFired` value and the shipped mechanism, so it is never green on a
+  negative measurement the code has not responded to.
 
 **v1.6 changelog** — revision round 6, addressing `CROSS-REVIEW-product-manager-TSPEC-v6.md`
 (0 High, 1 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (0 High, 2 Medium, 1 Low),
@@ -2305,4 +2347,13 @@ them:
 
 A third was raised by the round-6 reviewers and resolved upstream before this revision: FSPEC v1.4/v1.5
 requalified BR-MODEL-3's dry-run reachability claim (`FSPEC:680-684`), and §4.1/§7.4 above are this
-document's side of that correction. **No new erratum is raised by this round.**
+document's side of that correction.
+
+**No new erratum is raised by round 8 either.** Every upstream citation this revision touched was
+re-grounded against HEAD — FSPEC's rung 4a material (`FSPEC:299` the ladder row, `:406-407`
+EC-START-10/11, `:916-921` BR-GUARD-6's candidate set and "observed by running", `:967` AT-ENG-11a)
+and REQ's C-11 (`REQ:284`) — and each lands on the text it claims. One incidental note, below the
+threshold for an erratum because the cited range does contain the claimed content: FSPEC's citation
+of the shipped script as `guard-harvest-before-delete.sh:14-21` is a line off at each end — the
+candidate loop is `:14-19` and the fail-open is `:20`. §7.8 cites the precise lines; no upstream
+statement is wrong.
