@@ -13,7 +13,23 @@ feature: pdlc-consolidation-agent
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.7 | 2026-08-10 |
+| pdlc | draft | Claude | 1.8 | 2026-08-10 |
+
+**v1.8** — closes iteration 8's findings; no property added, removed or renumbered (the set stays
+118), no fixture added, and no measurement re-taken. `PROP-COR-09`'s AT-K3b proposal-file conjunct is
+restated from an absence over the write double to a **set equality**: the double's recorded path set
+is set-equal to `{docs/_decisions/.consolidation-lock}`, non-empty by construction because a `no-op`
+pass takes and releases the marker (FSPEC §4.3's release table, `TSPEC:2853`; take
+`_checkFile → _readFile → _writeFile`, `TSPEC:1329`; step 16 *"`_writeFile` only"*, `TSPEC:2148`), so
+a never-exercised write seam reds instead of greening the absence — the PROP-MRK-04 shape O-1 already
+records, one channel over (pm-review F-01, se-review F-01). Both reviewers' Q-01 is answered in the
+body: the anchor is the marker path, the set is a **path** set (take and release collapse to one
+member), and it is *not* "nothing under `docs/_decisions/`", where the marker itself lives. §7's O-1
+roll gains a `PROP-COR-09` bullet so the absence-oracle register lists its members (pm-review F-02),
+§10.4 records that PLAN T05 still carries the superseded `11.5` / `2.0` pin, `:2089-2239` range, 99
+count and unqualified green-on-write claim (se-review F-02), and the `:1082` citation in PROP-COR-09
+now matches PROP-RTE-06's actual wording, *"decides on causes rather than on terminal status"*
+(pm-review F-03). Errata 8 and 9 are unchanged and still route upstream; no new erratum is raised.
 
 **v1.7** — closes iteration 7's findings; no property added, removed or renumbered (the set stays
 118) and no fixture is dropped. `PROP-COR-09` now asserts `AT-K3b`'s fourth Then-conjunct — no
