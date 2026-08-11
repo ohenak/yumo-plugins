@@ -760,6 +760,17 @@ looking satisfied. The same correction applies to the three other rows that carr
 | `RetryRow` | `{ timestamp, skill, label, attempt, outcome, delayMs }` | `{ timestamp, skill, phase, attempt, outcome, delayMs }` — FSPEC §12.2 names *phase*, and this is the field that supplies it |
 | `authSources` (§4.5) | `{ skill, label, attempt, apiKeySource }` | `{ skill, phase, attempt, apiKeySource }` — the per-dispatch record AC-2.4 and AC-4.5 both read |
 
+**`byPhase` is run-scoped, not per-feature: in a `queue --loop` run its buckets merge across passes,
+by design** (PM F-02). The counter is §4.1's per-run state and is never reset between loop iterations,
+so pass 2's `"Phase T"` dispatches land in the same bucket as pass 1's, and the queue's own
+per-feature announcement — `` phaseFn(`Pipeline: ${entry.feature}`) `` (`orchestrate-queue.js:1400`) —
+normalises to the constant `"Pipeline"` (§4.1's prefix rule), carrying no feature name into the key.
+FSPEC §12.2 and AC-4.5 ask for per-phase counts, not per-phase-per-feature ones, so this is the asked
+shape rather than a shortfall; `loop.iterations` (§4.5) is the divisor a reader needs to interpret a
+multi-pass total, and a per-feature breakdown, if ever wanted, is a report change and not a counter
+change. Stated here because a twelve-`"Phase T"` bucket on a five-feature loop is otherwise read as
+a defect.
+
 `label` survives only where it is honestly a log tag. Every field that a reader would take to mean
 "which phase" is now supplied by the seam that actually knows.
 
