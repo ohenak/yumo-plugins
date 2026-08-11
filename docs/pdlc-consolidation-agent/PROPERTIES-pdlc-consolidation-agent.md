@@ -294,6 +294,11 @@ absence with a positive observed on the **same** run:
 - AT-R7's "no proposal file" negatives (a `promoted` pass, an all-suppressed `no-op` pass) sit in one
   case beside a **positive control** whose one degraded promotion writes exactly one file — §7,
   PROP-RTE-06.
+- AT-K3b's "no proposal file" negative, on the **all-unreadable** `no-op` pass, is stated as
+  **set-equality of the write double's recorded path set with `{the marker path}`** — non-empty by
+  construction, since a `no-op` takes and releases the marker — so the absence is a consequence of an
+  equality rather than an assertion of its own (§7, PROP-COR-09, `:458-476`). Same shape as
+  PROP-MRK-04's below, one channel over: `_writeFile` rather than the pathspec set.
 - AT-C3's four `skipped-cadence` absences sit beside the **returned report body carrying the terminal
   status**, which is what distinguishes a tick that evaluated and chose the branch from one that
   crashed at step 3 — §9, PROP-PASS-02.
