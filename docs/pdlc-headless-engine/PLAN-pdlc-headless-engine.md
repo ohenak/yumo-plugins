@@ -530,3 +530,39 @@ per-platform `M-ENG-09` rows; C-4 (the modules are not forked) by T10 and the Do
 check; C-8 (closed message catalogue) by T05/T14/T19.
 
 ## 10. Risks, deferrals and open questions carried into implementation
+
+**Risks this plan schedules against, rather than notes.**
+
+| Risk | Why it is real here | How the schedule answers it |
+|---|---|---|
+| The guard is green and vacuous under `bypassPermissions` | `DEFAULT_PERMISSION_MODE = "bypassPermissions"` (`transport.mjs:89`) is the production posture and whether a `PreToolUse` deny fires under it is unmeasured on either transport. Every well-formedness test in §6.3 would pass while the guard protected nothing | T29's gate makes an unrecorded measurement **red**, and T42 supplies the rows; both sit at batches 4–5, well before anything resembling unattended use (BR-GUARD-4) |
+| The suite-wide properties degrade back to vacuous green | The forward direction `observed ⊆ OUTCOMES` is true of the empty set, and the tempting repair under time pressure is to scan all run directories and drop the emptiness guard | The spine is batch 3, its inheritance self-test is batch 2's T01, and the emptiness guard is part of T19 rather than a later hardening |
+| The workflows edit lands without its rebuild | `artifact-freshness` gates on `build-runtime.mjs --check`, so the symptom is CI red at Phase PUB for a reason unrelated to the change | T16 owns source, rebuild and artifacts as one task, and `implementation.postWavePathspecs` already names `pdlc/workflows/dist/` |
+| The corpus is built too early and the witness rows are written to fit it | A witness written after the data is a restatement of the data | T50 (the witness table) precedes T52 (the assertion step) and both follow T48; the model constants stay module-local so M-ENG-07 remains a transcription, never an import |
+| Cost and time of a fifth CI job | The engine suite runs on two platforms on every PR | O-ENG-T1 is a maintainer decision; this plan takes the technical requirement only — both platforms exercised somewhere — and T17 defaults to matching the existing matrix, which is the reversible choice |
+
+**Open questions carried, with the disposition this plan takes.** None of these blocks a task; each
+names where it would attach if answered.
+
+| # | Question | Disposition here |
+|---|---|---|
+| O-1 | the fallback's `claude -p` flag surface | T37 fixes the flag spellings while producing T18's fixture set. There is still **no runtime selector** and none is added: `resolveTransport` returns a constant `kind`, `"cli"` is reachable only by direct unit construction, and making it selectable stays O-1's (DEC-ENG-01/02) |
+| O-2 | guard mechanism per transport, and the deny-under-bypass measurement | scheduled, not deferred — T29 and T42. Both branches of TSPEC §6.5 are pre-committed so a red measurement is a decision already taken, not a design debate |
+| O-3 | where engine configuration lives | untouched. T30 fixes the set, the defaults and the single resolution point; only the *location* `resolveTunables` reads from is open, and no AC depends on it |
+| O-5 | whole-run `--dry-run` | not built. `--dry-run-skill` (`bin/pdlc.mjs:171-172`) is the prompt-corpus surface T24 uses, and TSPEC §7.4 is explicit that the model-map harness does **not** depend on a whole-run dry run |
+| O-6 | session-reuse flag | `_sessionAgent` stays unwired and T25 asserts it, so the seam remains available |
+| O-ENG-T1 | the CI job's cost and placement | T17 takes the two-platform default; narrowing to ubuntu-on-PR is a one-line change to the same file |
+| O-ENG-T2 | two concurrent engine runs against one repo | out of scope (EC-RUN-4, DEC-ENG-14). No lock is invented; the in-process case is settled by `withCwd`'s `process.chdir` (`run.mjs:155`) and the cross-process case is recorded, not closed |
+| O-ENG-T3 | supplement inlining and prompt size | T38 implements DEC-ENG-06 as written — the identifier's whole prompt-file set. If measured prompt size becomes a problem, the alternative needs the measurement first, and T38 is where it would attach |
+| O-ENG-T4 | the M-ENG-09 gate's platform granularity | T29 keys on `process.platform`, matching T17's matrix; `sdkVersion` and `date` are recorded as provenance and are deliberately not part of the lookup (DEC-ENG-04) |
+| O-ENG-T5 | the unmeasured third platform | **a plan author hits this on day one, as TSPEC §9.2 predicted.** T29 makes an absent row red, and on a platform outside T17's matrix that is a red suite for a measurement the contributor cannot reasonably take. This plan does **not** decide it: T29 implements the refuse-and-require-a-row form, because it is the loud one, and the skip-with-a-notice form is a one-predicate change in the same test. Flagged for the operator, not resolved by an implementer mid-wave |
+
+**One deferral this plan makes on its own authority, and states rather than hides.** `lib/skills.mjs`
+is extended by T38 for DEC-ENG-06's whole-file-set inlining, but no task caches composed prompts.
+Every dispatch recomposes, which is measurably wasteful on a run that dispatches the same skill a
+dozen times. It is left alone because a cache is state at layer 3, `promptHash` (TSPEC §7.4) reads
+the composed prompt, and a cache keyed wrongly would make two descriptors share a hash they did not
+earn — turning row 4's pairing predicate into a false positive. If prompt composition becomes a cost,
+the fix is a measurement and a cache keyed on `(skill, prompt)` with the hash computed before the
+cache, not after.
+
