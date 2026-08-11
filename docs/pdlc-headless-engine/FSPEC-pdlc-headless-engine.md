@@ -314,10 +314,15 @@ is a defect in AC-3.5's oracle rather than a decision this FSPEC may make on its
 as an erratum against the REQ, and §13 O-ENG-1 carries it. The count in AC-3.5's parenthetical is
 likewise a count of *files*, not of dispatchable identifiers.
 
-**BR-START-4 — the count is never the assertion.** Neither direction is expressed as "17" or any
-other number. A frozen list of names, or a count, passes on a plugin whose files have been renamed
-underneath it; the assertion is over identifiers derived from the modules and files found in the
-plugin at startup.
+**BR-START-4 — the count is never the assertion, and the identifier set is checked against the
+modules.** Neither direction is expressed as "17" or any other number: a count passes on a plugin
+whose files have been renamed underneath it. The reference set is the identifiers **both** modules
+can dispatch — the union, for every command, so `pdlc dev` and `pdlc doctor` gate identically and a
+queue-only skill missing from the plugin is discovered before the queue run that needs it. Whether
+the engine derives that set from the modules or declares it and verifies the declaration against
+them is TSPEC's; what this rule forbids is a declaration **no check ties to the modules**, since
+that is a second place to forget a skill. (At HEAD the probe is containment over a frozen 17-name
+list, `pdlc/engine/lib/startup.mjs:20`, `:102` — red against this rule, as M-ENG-06 records.)
 
 ### 4.5 Edge cases
 
@@ -1182,7 +1187,7 @@ round reaching a parseable terminal verdict produced by a real model call (AC-6.
 
 ### 13.1 Raised by this FSPEC against its upstream
 
-Three items are defects in the REQ's own text rather than decisions this FSPEC may take. Each is
+Five items are defects in the REQ's own text rather than decisions this FSPEC may take. Each is
 emitted as an erratum against the REQ; the rows below record what this document assumed in the
 meantime so a reviewer can see the exposure.
 
@@ -1191,6 +1196,8 @@ meantime so a reviewer can see the exposure.
 | O-ENG-1 | AC-3.5's set-equality between dispatchable identifiers and plugin prompt files is unsatisfiable on a correct install: the plugin ships prompt files no module dispatches (the operator-invoked entry and consolidation skills), so the reverse direction refuses on every healthy machine, and the "17" parenthetical counts files rather than dispatchable identifiers | §4.4: Direction A enforced, Direction B reported not refused |
 | O-ENG-2 | AC-1.2 clause (c) justifies an empty `.claude/workflows/` read-set for a **`pdlc dev`** run by citing the **queue** module's drift-gate ordering; the dev module has no drift gate at all, so the cited opt-out is not load-bearing for the observed run — it is load-bearing for AC-1.3's queue run | §10.3 BR-READ-1: clause (c) unconditional for dev, opt-out-dependent for queue |
 | O-ENG-3 | AC-1.3 states `--loop` "repeats … until no ready row remains" and REQ §4.1 declares no iteration bound, while the operator-visible loop surface offers an explicit maximum-iteration bound; the two terminations are not distinguishable under the AC as written | §11.2 BR-LOOP-2: bound is opt-in and its termination reason is reported distinctly |
+| O-ENG-4 | M-ENG-06's red/green table, relocated from the REQ under pm-author §5e, has **no row for AC-2.3** (environment passthrough), while §2 here and the REQ's §1.2 read it as total | §2: AC-2.3's state stated directly — green for the single-dispatch case, red for BR-ENV-3's every-dispatch quantifier |
+| O-ENG-5 | `pdlc doctor` is operator-visible surface with **no upstream authority**: no AC, constraint or goal names it, so it reaches this document only through §3.1's command set and BR-START-3 | §3.1, §4.1: specified as the ladder's read-only surface; §14.1 traces it to no AC, which is the gap |
 
 ### 13.2 Carried from the REQ, unchanged
 
@@ -1199,7 +1206,7 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 | # | Item | Where it bites this document |
 |---|---|---|
 | O-1 | fallback `claude -p` flag surface measured with fixtures; per-transport model-alias semantics; both transports exercised behind the one seam | §7.3, §12.4 (BR-VER-2's per-transport fixture sets) |
-| O-2 | the guard-parity mechanism per transport | §9 — the largest open safety gap (BR-GUARD-4) |
+| O-2 | the guard-parity mechanism per transport — and, first, **whether any PreToolUse-style guard fires at all under the `bypassPermissions` posture §7.4 puts in force** (BR-GUARD-5); if it does not, the posture and the guard are one decision, not two | §9 — the largest open safety gap (BR-GUARD-4) |
 | O-3 | where engine configuration lives (consumer config vs. engine-global with override) | §3.2 BR-CLI-3's tunables |
 | O-4 | token viability and renewal runbook for cron contexts | §5.1 row 1 |
 | O-5 | dry-run surface shape | §6.3 |
@@ -1255,7 +1262,9 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 | C-9 (facts measured per platform) | §12.4 (fixtures per transport), §2 (M-ENG-* citations) |
 | C-10 (plugin handshake) | §4.1 rungs 1–3, §4.3 |
 | G-1, G-3, G-4, G-5, G-6, G-7 | §10.3, §5, §7.1, §6, §10.1, §8/§11 |
+| G-2 (canonical modules, run unmodified behind their seams) | §10.1 (BR-PARITY-1/2), §10.4 EC-PAR-5/6 |
 | NG-1 (no semantic change) | §10.1, §9.3 EC-GUARD-3/5, §11.1 |
+| NG-2…NG-5 | **no section, deliberately** — packaging and install UX (NG-2), retiring the plugin or the sync/drift machinery (NG-3), `pdlc-cli.mjs` (NG-4), and interactive-session UX (NG-5) are each work this document specifies none of. Their honouring is the absence of a section, checkable by finding no clause that reaches for the excluded work: §3.1's command set contains no install, no sync, no probe and no interactive surface |
 | NG-6 (both transports in scope) | §6.1 BR-SKILL-2, §9.1, §12.4 BR-VER-2 |
 | NG-7 (no new consumer copy) | §10.3 BR-READ-3 |
 | NG-8 (no prompt rewrites) | §6.2, §6.5 EC-SKILL-5 |
@@ -1320,16 +1329,19 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 
 | Rule | Statement (abbreviated) | Section |
 |---|---|---|
+| BR-CMD-1 | `hello` / `spike:sdk` are exempt diagnostics, not operator surface | §3.1 |
 | BR-CLI-1 | `--flag value` ≡ `--flag=value` | §3.2 |
 | BR-CLI-2 | the billing opt-in is flag-only, per invocation | §3.2 |
 | BR-CLI-3 | dispatch tunables come from config and are reported | §3.2 |
 | BR-EXIT-1 | a halt is `2`, not `1` | §3.3 |
 | BR-EXIT-2 | refusals are `1` | §3.3 |
-| BR-EXIT-3 | the loop exits with its worst iteration | §3.3 |
-| BR-START-1 | dispatch nothing until every rung passes | §4.1 |
+| BR-EXIT-3 | the loop exits with its worst iteration, `1` > `2` > `0` | §3.3 |
+| BR-START-0 | rung 0 is part of the ladder; `doctor` runs the part it can | §4.1 |
+| BR-START-1 | dispatch nothing until every rung passes (rung 5 non-fatal on `--dry-run`) | §4.1 |
 | BR-START-2 | the ladder is total and reports every rung | §4.1 |
 | BR-START-3 | `doctor` is the same ladder | §4.1 |
 | BR-START-4 | the count is never the assertion | §4.4 |
+| BR-AUTH-0 | "logged-in settings state" is one named observable (M-ENG-08) | §5.1 |
 | BR-AUTH-1 | first match wins; row 6 makes it total | §5.1 |
 | BR-AUTH-2 | the banner reports no transport auth source | §5.1 |
 | BR-AUTH-3 | the banner reports the effective base URL | §5.1 |
@@ -1341,6 +1353,7 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | BR-SKILL-3 | supplements inlined on the module's condition | §6.1 |
 | BR-SKILL-4 | prompt bytes read at dispatch time, from the approved plugin | §6.1 |
 | BR-SKILL-5 | dry-run inertness is asserted | §6.3 |
+| BR-SKILL-6 | one skill printed per invocation; the assertion ranges over the set | §6.3 |
 | BR-ENV-1 | the environment is the parent's, extended | §7.1 |
 | BR-ENV-2 | proxy variables untouched | §7.1 |
 | BR-ENV-3 | asserted for every dispatch | §7.1 |
@@ -1349,8 +1362,10 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | BR-MODEL-2 | the map is a fixture; set-equality both directions | §7.3 |
 | BR-MODEL-3 | the corpus is over descriptors, not calls | §7.3 |
 | BR-PERM-1 | one named permission setting, uniformly applied | §7.4 |
+| BR-PERM-2 | that posture is the permissive one, and §9's guard must hold under it | §7.4 |
 | BR-FAIL-1 | six-member closed catalogue, total classifier | §8.1 |
-| BR-FAIL-2 | agent-reported failure is the modules' business | §8.1 |
+| BR-FAIL-2 | agent-reported failure is the modules' business, terminal for the dispatch | §8.1 |
+| BR-FAIL-3 | an engine-fatal stop leaves the report and nothing else | §8.1 |
 | BR-RETRY-1 | timeouts draw from the attempt budget | §8.2 |
 | BR-RETRY-2 | the one-timeout cap is per dispatch run | §8.2 |
 | BR-RETRY-3 | backoff declared; every pause recorded | §8.2 |
@@ -1360,10 +1375,13 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | BR-GUARD-2 | the guard is not a blanket ban | §9.1 |
 | BR-GUARD-3 | provenance asserted with no plugin hooks registered | §9.1 |
 | BR-GUARD-4 | this is the largest open gap at HEAD | §9.2 |
+| BR-GUARD-5 | the refusal is asserted under the production permission posture | §9.1 |
 | BR-PARITY-1 | modules imported, never copied; anti-fork observable | §10.1 |
 | BR-PARITY-2 | seams complete enough that no dispatch reaches the stub | §10.1 |
 | BR-PARITY-3 | the oracle is structural, no comparison run | §10.2 |
 | BR-PARITY-4 | the oracle observes creation events | §10.2 |
+| BR-PARITY-5 | the hermetic double replays the agent's writes, or the oracle is vacuous | §10.2 |
+| BR-PARITY-6 | expected sets come from the fixture, never the run's own report | §10.2 |
 | BR-READ-1 | empty `.claude/workflows/` read-set, per module | §10.3 |
 | BR-READ-2 | expected reads stated, so (c) is not vacuous | §10.3 |
 | BR-READ-3 | nothing engine-owned written into the consumer | §10.3 |
@@ -1373,6 +1391,7 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | BR-LOOP-2 | an iteration bound is opt-in and distinctly reported | §11.2 |
 | BR-LOOP-3 | per-iteration outcomes are recorded | §11.2 |
 | BR-LOOP-4 | per-outcome continuation table | §11.2 |
+| BR-REP-0 | one JSON line, the last line of stdout; no file | §12.1 |
 | BR-REP-1 | the modules' report is extended, not replaced | §12.1 |
 | BR-REP-2 | an empty set is not a missing field | §12.2 |
 | BR-REP-3 | counts are observable, not derivable | §12.2 |
@@ -1389,8 +1408,10 @@ Four rules apply to every section and are the ones a reviewer should check a new
 
 - **Fail closed, and fail cheap.** Every refusal happens before the spend it protects (BR-START-1,
   BR-AUTH-4/5, BR-FAIL-1, EC-GUARD-4).
-- **Both transports or neither.** Any obligation stated for one transport is stated for the other
-  (BR-SKILL-2, BR-GUARD-1, BR-VER-2).
+- **Both transports or neither — as a test-level obligation.** Any obligation stated for one
+  transport is stated for the other and asserted against that transport's recorded fixtures
+  (BR-SKILL-2, BR-GUARD-1, BR-VER-2). It is not a runtime obligation in this feature: no transport
+  selector ships (§3.2), so every real run uses the primary and says so in the report.
 - **The engine owns hosting, the modules own the pipeline.** Nothing here decides a pipeline
   outcome (BR-FAIL-2, BR-RETRY-5, BR-QUEUE-1, BR-PARITY-1).
 - **Observability is a contract, not a courtesy.** Version pair, auth id and per-dispatch source,
@@ -1418,7 +1439,7 @@ Four rules apply to every section and are the ones a reviewer should check a new
 
 | # | Case | Behaviour |
 |---|---|---|
-| EC-RUN-1 | the plugin is uninstalled while a run is in flight | the run continues against the approved plugin's already-read bytes where it can; a prompt file it can no longer read fails that dispatch as an engine error (EC-SKILL-1), never a silent empty prompt |
+| EC-RUN-1 | the plugin is uninstalled while a run is in flight | prompt bytes are read per dispatch (BR-SKILL-4), so a dispatch needing a file it can no longer read fails as an engine error (EC-SKILL-1), never a silent empty prompt; whether an earlier read was cached within the run is TSPEC's and changes only how far the run gets, not what a failed read does |
 | EC-RUN-2 | the consumer repo's branch changes underneath the run | the modules' own branch checks govern; the engine introduces no branch policy (NG-1) |
 | EC-RUN-3 | disk fills mid-run | writes fail through the modules' own IO paths; the engine reports the failure rather than classifying it as a model-dispatch outcome |
 | EC-RUN-4 | two engine runs are started against the same consumer repo | out of scope for this feature: no locking is specified, and the modules' artifact-derived state is what it has always been (G-6). Recorded here so a reviewer sees the gap deliberately rather than by omission |
@@ -1436,7 +1457,7 @@ that falls the other way has found a defect.
 
 ### 18.1 The set
 
-AT-ENG-01…AT-ENG-66, defined in §3.5, §4.6, §5.6, §6.6, §7.6, §8.6, §9.4, §10.5, §11.4 and §12.6.
+AT-ENG-01…AT-ENG-68, defined in §3.5, §4.6, §5.6, §6.6, §7.6, §8.6, §9.4, §10.5, §11.4 and §12.6.
 Every test is derivable from its section without asking a question, and every one is hermetic
 except AT-ENG-65 (the opt-in live smoke, BR-VER-3).
 
@@ -1455,11 +1476,14 @@ Three assertions cannot live in any single section because they range over the w
 
 ### 18.3 What the suite is required to pin
 
-- Both directions of every set-equality this document names: the outcome taxonomy (§8.1), the model
-  map over its corpus (§7.3), the message catalogue (§12.3), and clause 1(i) of the parity oracle
-  (§10.2).
+- Both directions of every set-equality this document names, each with the observable its section
+  fixes: the outcome taxonomy over BR-FAIL-1's provocation corpus (§8.1), the model map over
+  M-ENG-07's corpus (§7.3), the message catalogue over ids accumulated through the emission seam
+  (§12.3), and clause 1(i) of the parity oracle against fixture-fixed expectations (§10.2). No
+  set-equality in this document is left to a reviewer's reading of the source.
 - Every row of every table a test can transcribe: §5.1's six auth rows, §8.2's eight retry
-  sequences, §11.2's four loop continuations, §3.3's three exit codes.
+  sequences and BR-RETRY-3's pause delays, §11.2's four loop continuations, §3.3's three exit codes
+  and BR-EXIT-3's order over them.
 - The hermeticity guard itself (§12.4 BR-VER-1) — a suite whose guard does not fail on a real
   transport construction is not hermetic, it is merely untested.
 
