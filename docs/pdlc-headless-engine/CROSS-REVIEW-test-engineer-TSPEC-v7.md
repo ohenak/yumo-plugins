@@ -48,6 +48,33 @@ forward verbatim in substance and re-verified at HEAD rather than restated on tr
 
 ## Positive Observations
 
+- **The erratum route worked exactly as designed, and it is worth recording that it did.** My v6
+  review declined to edit FSPEC and filed `ERRATUM: FSPEC: BR-MODEL-3 claims the model map's corpus
+  is reachable from dry runs`. FSPEC v1.4 corrected BR-MODEL-3, the POSTMORTEM-T v2.0 resolution
+  caught the *second* site of the same claim in §6.3 (`FSPEC:583-585`), and v1.5's change note names
+  the check that found it: "§6.3 and §7.3 were the only two sites of the claim; every other dry-run
+  mention (§3.1, §3.2, §4.1–4.2, §6.4, §7.3, §16) was read in full". That is a **set-equality sweep
+  over the claim, not a containment fix at the reported site** — the exact discipline this review
+  contract asks for from oracles, applied to a document edit. I re-ran the sweep myself
+  (`grep -n "dry.run" FSPEC-…`) and found no third site.
+- **The upstream fix chose the harder of the two repairs and stated why.** Option A (delete the
+  clause) would have left BR-MODEL-3 silent about the dry-run surface and let the same
+  misattribution grow back. Option B added the negative claim explicitly — "The dry-run surface is
+  **not** a way to reach it … it exercises at most one row and is never the corpus's source" — which
+  is a positive statement of the surface's actual reach, not an absence. A future reader cannot
+  re-derive the wrong answer from it.
+- **`AT-ENG-29` and `EC-DISP-6` are byte-identical across v1.3→v1.5, as the change note claims.**
+  I verified this rather than took it (`git diff 22eb0b3b HEAD -- FSPEC-…` touches only the header,
+  §6.3's preamble and BR-MODEL-3). This matters for TSPEC specifically: §7.4's model-map row derives
+  from AT-ENG-29's set-equality-both-directions wording, so an unnoticed edit there would have
+  silently rescoped row 4's sibling. Nothing downstream of the erratum moved.
+- **TSPEC needed no change to survive the upstream edit, which is itself the finding.** The document
+  had already declined `--dry-run-skill` as the model-map instrument (`TSPEC:1753-1758`, PM Q-03) and
+  already routed the corpus through fixture-driven runs recorded via §7.0's seam. FSPEC caught up to
+  a position TSPEC took two rounds ago. The only residue is the rationale sentence F-36 has been
+  asking about since v6 — the design was right; one justification clause was carrying a now-dead
+  reason.
+
 ## Recommendation
 
 ## Verdict
