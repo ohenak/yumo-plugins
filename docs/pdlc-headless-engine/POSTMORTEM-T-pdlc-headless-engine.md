@@ -122,4 +122,42 @@ no credit carried forward for an approval whose subject just changed underneath 
 
 ## Best-Guess Root Cause
 
+**The TSPEC was asked to specify an executable oracle over a runtime it does not own, and an
+executable oracle is only correct at the last rung — but the review loop's budget is spent per
+rung, not per defect.**
+
+The chain:
+
+1. AC-3.3 and FSPEC BR-MODEL-3 require a witness that the advisory fallback re-dispatches on
+   `opus` after a `fable` model-resolution failure — a property of `pdlc/workflows/orchestrate-dev.js`,
+   which §8.3 forbids this feature from modifying beyond declared exports. The TSPEC therefore had
+   to design an assertion over data the engine *already* emits, with no freedom to add a stamp
+   where one was missing.
+2. Under that constraint the only degrees of freedom are the recorded shape (§4.1's
+   `DispatchDescriptor`), the observation seam (§7.0's accumulator) and the predicate (§7.4's row).
+   A row is executable only when all three agree. Each round fixed one and left the other two at
+   the previous round's assumptions — v1.4 is the clearest instance: the field was added to the
+   descriptor (§4.1) and the predicate was written against it (§7.4), but the seam's write timing
+   (§7.0) was never revisited, so the field is never on the record the predicate reads.
+3. Both reviewers are strong falsifiers — they open the cited spans and trace control flow rather
+   than reading the document as self-certifying. That is exactly the behaviour the oracle-quality
+   clauses ask for, and it is why every rung was caught. It also guarantees no rung is ever missed
+   *late*: a weaker reviewer would have approved v1.2 and the false green would have shipped into
+   PLAN.
+4. `MAX_REVIEW_ROUNDS = 5` is a budget on rounds, and a three-surface oracle converging one surface
+   per round consumes it at exactly one round per rung. The phase ran out with the ladder finished
+   and unread.
+
+Two contributing factors, neither sufficient alone:
+
+- **Severity, not substance, decided round 5.** TE scored the identical defect Medium on the
+  explicit reasoning that a false *red* is loud and self-announcing. Under the High-only bar, PM's
+  High is what failed the round. If the two lenses had scored it the same way — either way — round
+  5 would have ended differently, and there is no shared rubric that says which is right for a
+  "correct design, unsatisfiable as written" defect.
+- **No credit carries across a re-opening revision.** PM's round-3 approval was real and was spent.
+  A design that must satisfy two lenses over interlocking surfaces will re-open one approver every
+  time it satisfies the other, and nothing in the loop distinguishes "re-opened because the fix
+  touched my area" from "never approved".
+
 ## Recommendation
