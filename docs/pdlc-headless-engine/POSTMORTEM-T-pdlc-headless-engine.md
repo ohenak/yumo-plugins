@@ -168,4 +168,81 @@ Two contributing factors, neither sufficient alone:
 
 ## Recommendation
 
+**One clause in the FSPEC, then re-run Phase T. Do not re-author the TSPEC, do not re-open §7.3,
+and do not touch any section no round-E1 finding named. The TSPEC is converged with anchors
+recorded (`7cd5caf8`); the FSPEC's v4 approvals stand; the only defect on the branch is one
+sentence that outlived its own correction.**
+
+### Step 1 — Strike or requalify the trailing clause of `FSPEC:573-576` (pm-author, one commit)
+
+The sentence today:
+
+> It is the mechanism by which every claim in §6.2 is checkable without billing a token, and by
+> which the model map of §7.3 is exercised over descriptors rather than executed calls.
+
+Both reviewers supplied acceptable repairs; pick one, do not invent a third:
+
+| Option | Text | Note |
+|---|---|---|
+| A (deletion) | end the sentence at "…without billing a token." | Smallest possible edit; removes the false claim and adds nothing |
+| B (requalify) | "…without billing a token; the model map of §7.3 is exercised over descriptors recorded by hermetic fixture-driven runs, not over this surface (BR-MODEL-3)." | Preferred — leaves the reader who arrives at §6.3 first with the correct pointer, and makes the cross-section claim greppable by id |
+
+Option B is the better of the two for the same reason `se-review` praised the BR-MODEL-3 edit: it
+states the bound positively instead of leaving a hole. Either way the edit adds no `AC`/`AT`/`EC`/`BR`
+id, changes no oracle, and reopens no decision. Bump the FSPEC to v1.5 with a one-line change note
+naming `F-24`/`F-01` and recording that §6.3 and §7.3 were the only two sites.
+
+### Step 2 — Confirm the claim is now gone from the document, not from the line range
+
+Before committing, enumerate the sites rather than grepping for a token. The phrase that duplicated
+was expressed once with the subject named (`--dry-run`) and once as a pronoun, so read every
+paragraph that mentions the dry-run surface — §3.1, §6.3, §6.4, §7.3, and §16.1's rule register — and
+confirm none of them attributes model-map coverage to it. `AT-ENG-29` (`:700`) and `EC-DISP-6`
+(`:691`) are already correct and must stay byte-identical; if a sweep tempts an edit there, it is
+out of scope.
+
+### Step 3 — Flip this file's resolution marker and re-invoke
+
+Change line 14's marker from `no` **only after** Step 1's edit is on the branch and Step 2's sweep
+is done, and commit the flip alongside the evidence. Then:
+
+```
+/pdlc:orchestrate-dev { "reqPath": "docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md", "forcePhases": "T" }
+```
+
+`forcePhases: "T"` overrides the recorded approval state for Phase T only; it does not clear this
+POSTMORTEM, which is why the marker is flipped first. As with the prior halt, the round window is
+per-invocation: `deriveRoundWindow` reads the twelve existing TSPEC cross-review basenames and
+starts at round 7, dispatching reviewers first against the TSPEC at HEAD — v1.5, already approved
+by both roles at round 6. Expect a cheap confirmation round, then an erratum step that finds
+nothing to route, because the item that would be routed no longer exists in the FSPEC.
+
+### Step 4 — If the re-run raises a *third* site for the same claim, stop and escalate
+
+Two sites was a duplicate; three is a document that has no single owner for the statement. In that
+case the right move is an operator decision on where the claim lives — one normative rule in §7.3,
+cited by id everywhere else — not a third erratum round chasing prose.
+
+### Durable countermeasures (route to LEARNINGS at harvest; not blocking this halt)
+
+1. **A targeted erratum edit is scoped to a claim, not to a line range.** The routed item names
+   coordinates because that is how a reviewer points; the obligation is that the false statement is
+   absent from the document afterwards. An erratum edit should end with an enumeration of sites
+   checked, stated in the change note ("§6.3 and §7.3 are the only two sites"), so the confirming
+   reviewer is auditing a claim the author made rather than a search the author may not have run.
+2. **Grep is not a de-duplication oracle for prose claims.** The second site here was invisible to
+   every reasonable search because its subject was a pronoun. Where a claim is worth an erratum, it
+   is worth carrying its owning id inline (`BR-MODEL-3`), which makes future duplicates findable by
+   the one search that does work.
+3. **The one-round erratum bound has now cost two consecutive phases for sub-clause repairs.**
+   POSTMORTEM-F halted on three cells and a word; this one on a single clause. Worth a project-level
+   decision: allow a second erratum batch when *every* blocking finding in the delta confirmation is
+   local-scope and carries reviewer-supplied replacement text — both conditions hold here, and both
+   held for `F-25`. The bound's purpose (no upstream churn) is untouched by that narrowing, since a
+   finding meeting both conditions reopens no decision.
+4. **A prose introduction that advertises another section's oracle is load-bearing text.** §6.3's
+   preamble was approved four times as scene-setting while asserting a testable property of §7.3's
+   corpus. Sections that enumerate "what this surface is good for" should either cite the id of each
+   claim they borrow or not make the claim.
+
 ## Prior Halt (2026-08-11, cleared — superseded by the record above)
