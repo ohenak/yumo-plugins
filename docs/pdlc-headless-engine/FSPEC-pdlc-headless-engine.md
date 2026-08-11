@@ -681,6 +681,60 @@ the remaining dispatches.
 
 ## 9. FSPEC-ENG-07 — Guard parity for engine-dispatched agents
 
+### 9.1 The invariant that must survive the host change
+
+Under the plugin, one PreToolUse hook refuses deletion of a `CROSS-REVIEW-*`, `CODE_REVIEW-*` or
+`ADVISORY-*` file unless `LEARNINGS-{f}.md` exists on the branch. That guard is the only thing
+standing between a harvest-order mistake and the permanent loss of every review round's findings.
+The engine dispatches agents outside a Claude Code session, so the guard does not come along by
+itself.
+
+**BR-GUARD-1 — the guard travels with the engine's own dispatch configuration.** Every engine
+dispatch carries the guard from configuration the engine itself supplies, on **whichever transport
+the run uses**. It is never left to whatever hooks a plugin install happens to have registered on
+the host (C-5). The mechanism differs per transport and is O-2's to decide; the invariant does not.
+
+**BR-GUARD-2 — the guard is not a blanket ban.** Once `LEARNINGS-{f}.md` exists, deletion of those
+files succeeds — that is Phase H doing its job (AC-5.2). A guard that refused unconditionally would
+make harvest impossible and would be discovered only at the end of a long run.
+
+**BR-GUARD-3 — provenance is the asserted property.** The proof that the guard belongs to the
+engine is an assertion made **with no pdlc hooks registered** on the host: the refusal must still
+happen. An assertion made on a host where the plugin's hooks are live proves nothing about the
+engine (AC-5.1).
+
+### 9.2 Behaviour
+
+*Given* an engine-dispatched agent working in a repo where `LEARNINGS-{f}.md` does not exist,
+*when* it attempts to delete a `CROSS-REVIEW-*`, `CODE_REVIEW-*` or `ADVISORY-*` file, *then* the
+deletion is refused, the agent sees the refusal (so it can proceed differently rather than
+silently continuing), and the file survives on disk. *Given* the same repo once `LEARNINGS-{f}.md`
+exists, *when* harvest deletes those files, *then* the deletions succeed.
+
+**BR-GUARD-4 — this is the largest open safety gap at HEAD.** M-ENG-06 records that no hook or
+settings wiring exists in the engine yet, on either transport. Until §9's tests are green on both
+transports, an engine run can delete review history that the plugin path would have protected —
+which is why a plan should schedule this before any unattended use.
+
+### 9.3 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-GUARD-1 | host has the plugin's hooks registered as well | the refusal still happens; the test that matters runs with them absent (BR-GUARD-3) |
+| EC-GUARD-2 | deletion attempted through a shell pipeline rather than a direct command | the guard's coverage is the invariant, not a command spelling; a form that evades it is a defect of the mechanism O-2 selects |
+| EC-GUARD-3 | `LEARNINGS-{f}.md` exists but is untracked / uncommitted | the existing guard's own definition of "exists on the branch" governs; the engine changes no part of that definition (NG-1) |
+| EC-GUARD-4 | the guard configuration cannot be applied on a transport | that transport is unusable for a real run: the engine refuses to dispatch rather than running unguarded (fail-closed, C-5) |
+| EC-GUARD-5 | a non-matching file is deleted (source file, scratch file) | unaffected — the guard's file classes are unchanged (NG-1) |
+
+### 9.4 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-41 | with no pdlc hooks registered on the host, an engine-dispatched deletion of each of the three protected classes is refused when `LEARNINGS-{f}.md` is absent — asserted per transport (AC-5.1, BR-GUARD-1/3) |
+| AT-ENG-42 | with `LEARNINGS-{f}.md` present, harvest's deletions succeed — asserted per transport (AC-5.2, BR-GUARD-2) |
+| AT-ENG-43 | a transport that cannot carry the guard configuration refuses to dispatch (EC-GUARD-4) |
+| AT-ENG-44 | EC-GUARD-1, EC-GUARD-5, one case each |
+
 ## 10. FSPEC-ENG-08 — Pipeline parity and the empty consumer read-set
 
 ## 11. FSPEC-ENG-09 — Queue driving and `--loop`
