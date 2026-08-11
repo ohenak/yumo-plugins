@@ -486,7 +486,13 @@ pipeline's documents, cross-reviews, queue table and drift-state file remain exa
 modules write them (NG-7). The only bytes the engine adds to disk are the `engine` block inside the
 run report (§3.6) and, when the operator asks for it, the report file itself.
 
-### 4.1 `DispatchDescriptor` — what the adapter hands a transport
+### 4.1 `DispatchDescriptor` — the adapter's own per-dispatch record
+
+**This is an adapter-internal shape, not the transport boundary.** The transport receives §3.4's
+four-key options object (`{ model, cwd, timeoutMs, maxTurns }`, built at `adapter.mjs:278-281`);
+`skill`, `label` and `attempt` stay adapter-local (`:272`, `:285`) and feed the logs, pause rows and
+`authSources` records instead. Two enumerations, two different boundary tests: set-equality over the
+transport's option keys, and field-presence over the descriptor.
 
 ```js
 { skill: string,          // a member of the derived dispatchable set (§3.3)
@@ -494,8 +500,10 @@ run report (§3.6) and, when the operator asks for it, the report file itself.
   prompt: string,         // composed: role line + role definition + supplements + task
   model: string,          // verbatim from the module's opts.model; never defaulted here
   cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
-  timeoutMs: number,      // dispatch.timeoutMinutes × 60 000
+  timeoutMs: number,      // dispatch.timeoutMinutes × 60 000 (§4.6)
   attempt: number }       // 0-based; 0 is the first try, not a retry
+  // maxTurns is a transport option with no descriptor field: the modules never set it,
+  // so it is absent per dispatch and the transport omits it (transport.mjs:178).
 ```
 
 `model` passes through untouched (`adapter.mjs:271`): the modules own phase→model pinning
@@ -550,7 +558,22 @@ RungRecord = { rung: 0..5, name: string, state: "pass"|"fail"|"skipped", detail:
 
 **The ladder is total** (BR-START-1): a rung after a failure records `"skipped"` with the reason it
 was skipped, never absence. `pdlc doctor` prints the same array — the mechanism is one function, so
-the diagnostic and the gate cannot diverge. HEAD's `runStartupChecks` (`startup.mjs:60`) returns
+the diagnostic and the gate cannot diverge.
+
+**`doctor` has a stated projection, not just "prints the array"** (AC-2.1's closing paragraph,
+`REQ:428-432`; FSPEC BR-START-3 `:303-305`). AC-2.1 requires three facts readable *without starting
+a run*, and a `RungRecord`'s `{rung, name, state, detail}` does not carry them, so `StartupResult`
+gains them as first-class fields rather than leaving them buried in `detail` prose:
+
+| AC-2.1 fact | Field | Rung that observed it |
+|---|---|---|
+| engine and plugin versions, always as a pair | `versions: { engine, plugin }` | 3 (handshake, C-10) |
+| effective base URL | `baseUrl: string\|null` | 5 (billing posture) |
+| auth catalogue id | `auth: { row, catalogueId }` (§3.2's `AuthPosture`, minus `refuses`) | 5 |
+
+`doctor` renders exactly those three plus the rung array, and the same three are the values §4.5's
+`engine` block carries, from the same call — so the diagnostic and the report cannot disagree about
+a fact one of them observed. HEAD's `runStartupChecks` (`startup.mjs:60`) returns
 `{ok, banner, pluginRoot, pluginVersion, reason}` and pushes free-text check lines; the change is to
 make the records structured and to add rungs 0 (args/cwd) and 5 (billing posture), keeping the string
 banner as a rendering of the array (`formatStartup`, `:145`).
@@ -558,9 +581,9 @@ banner as a rendering of the array (`formatStartup`, `:145`).
 Rung 4's `EXPECTED_SKILLS` frozen literal (`startup.mjs:20`) is deleted, replaced by the derived set
 (§3.3) — the constant is the declaration BR-START-4 forbids.
 
-### 4.4 `PauseRow`, `DenialRow`, `DispatchCounts`
+### 4.4 `PauseRow`, `RetryRow`, `DenialRow`, `DispatchCounts`
 
-`PauseRow` exists at HEAD (`adapter.mjs`, pushed on `RateLimitedError`) and is unchanged:
+`PauseRow` exists at HEAD (`adapter.mjs`, pushed on `RateLimitedError`) and its fields are unchanged:
 
 ```js
 { timestamp, skill, label, attempt, waitedMs, rateLimitType, status, resetsAt, retryAfterMs }
@@ -571,23 +594,74 @@ coalesced or trimmed. `rateLimitType` and `status` carry the SDK's own vocabular
 (`"five_hour"`, `"rejected"` — SPIKE §3), never a normalised synonym, so the report can be read
 against Anthropic's semantics rather than the engine's.
 
-`DenialRow` records permission denials (`{ timestamp, skill, tool, reason }`); `DispatchCounts` is
-`{ [skill]: number }`. Both feed the report, neither feeds a decision.
+**`RetryRow` is new** (`{ timestamp, skill, label, attempt, outcome, delayMs }`) and is the row
+FSPEC §12.2 asks for by name — "taxonomy member, phase, attempt number, delay". `PauseRow` alone
+could not carry it: it has no taxonomy-member field, and §5.2 now retries `timeout`, which produces
+no rate-limit pause at all and so would otherwise appear in the report nowhere. Every retry writes a
+`RetryRow`; a rate-limit retry additionally writes the `PauseRow` that records what the *account*
+did. The two are not redundant — one is the engine's decision, the other the provider's state.
+
+`DenialRow` records permission denials (`{ timestamp, skill, tool, reason }`). `DispatchCounts` is
+`{ bySkill: { [skill]: number }, byPhase: { [label]: number } }`: FSPEC §12.2 asks for **per-phase**
+counts, and HEAD's `{[skill]: number}` (`adapter.mjs` `dispatchCounts`) cannot answer that, since one
+skill is dispatched from several phases. Both keys are always present, empty objects included. All of
+these feed the report; none feeds a decision.
 
 ### 4.5 The `engine` report block
 
 ```js
 report.engine = {
   engineVersion, pluginVersion, pluginRoot,
-  transport: "agent-sdk" | "cli",          // observed choice, §3.6
+  startupAuth: { row, catalogueId },       // the §3.2 row that decided at startup
+  transport: "agent-sdk",                  // observed, §3.6; one value in this feature (§3.4)
   authSources: [{ skill, label, attempt, apiKeySource }],   // per dispatch, AC-4.5
   baseUrl: string|null,                    // ANTHROPIC_BASE_URL, or null when direct
   startup: RungRecord[],
-  pauses: PauseRow[], denials: DenialRow[], dispatches: DispatchCounts,
+  dispatches: DispatchCounts,              // per phase label and per skill (§4.4)
+  retries: RetryRow[],                     // every retry, §4.4 — empty array, never absent
+  pauses: PauseRow[], denials: DenialRow[],
+  tunables: { retryAttempts, retryBackoff, timeoutMinutes, maxIterations },  // effective, §4.6
+  permissionMode: string,                  // the single named setting in force (BR-PERM-1/2)
+  loop: { iterations, maxIterations, stopReason } | null,   // queue --loop only, below
   outcomes: { [Outcome]: number },         // all six keys, zeros included
   startedAt, finishedAt,
 }
 ```
+
+**Row-by-row against FSPEC §12.2** (`FSPEC:1149-1160`), because a reader must be able to check
+completeness rather than infer it. Six rows are AC-4.5's own; three are FSPEC-added:
+
+| FSPEC §12.2 row | Field here | Note |
+|---|---|---|
+| engine version with the plugin version, as a pair | `engineVersion`, `pluginVersion` | always both, never one |
+| startup auth catalogue id | `startupAuth.{row, catalogueId}` | **added in v1.1** — v1.0 carried no startup-posture field, only the per-dispatch one |
+| transport-reported auth source, **per dispatch** | `authSources[]` | one row per dispatch, not a scalar (§3.6) |
+| effective base URL | `baseUrl` | `null` when direct, never absent |
+| per-phase dispatch counts | `dispatches` | keyed by phase label **and** skill; v1.0's `{[skill]: number}` alone could not answer "per phase" |
+| retry / pause rows: taxonomy member, phase, attempt, delay | `retries[]`, `pauses[]` | **`retries[]` added in v1.1** — v1.0 carried `PauseRow` only, so a `timeout` retry (§5.2 now retries them) had no row at all |
+| transport (FSPEC-added) | `transport` | §3.4 |
+| effective dispatch tunables (FSPEC-added, BR-CLI-3) | `tunables` | **added in v1.1** — §4.6 |
+| permission posture in force (FSPEC-added, BR-PERM-1/2) | `permissionMode` | **added in v1.1** — the single named setting's value, `transport.mjs:89` |
+
+`RetryRow` is `{ timestamp, skill, label, attempt, outcome, delayMs }` where `outcome` is the
+taxonomy member that provoked the retry (`retryable` or `timeout`) — the member FSPEC's row asks for
+by name. A `PauseRow` is the rate-limit-shaped specialisation and keeps its own richer fields
+(§4.4); a `retryable` retry produces one of each, a `timeout` retry produces a `RetryRow` only.
+
+**The loop sub-block is what makes AC-1.3's two stop reasons distinguishable** without inspecting
+the queue. `pdlc queue --loop` ends for exactly two declared reasons (REQ:379-387, FSPEC BR-LOOP-2
+`:1074-1079`), and both exit `0`, so the exit code cannot carry the distinction:
+
+| `stopReason` | Condition | HEAD |
+|---|---|---|
+| `"exhausted"` | no ready row remains — the module reported `idle` or `no-queue` | `run.mjs:279-281` returns that outcome |
+| `"bound-reached"` | `queue.maxIterations` reached with ready work possibly remaining | `run.mjs:282` returns `outcome: "max-passes"` |
+
+`loop.iterations` is the number of passes actually run and `loop.maxIterations` the bound in force
+(`null` when unbounded — §4.6). The same two ids are the loop's own stdout outcome line
+(catalogue ids `loop.exhausted` and `loop.bound-reached`, §3.5), so the operator reads the
+distinction in the line *and* in the report, as AC-1.3 requires. `loop` is `null` for `pdlc dev` and
+for a single-pass `pdlc queue`, which is the one place an absent value is meaningful: no loop ran.
 
 Two conventions this repo already relies on carry over. **Counts are present-and-zero, never absent**,
 so a quiet run and a broken counter are distinguishable (the advisory tier's all-zero rows make the
@@ -597,6 +671,38 @@ same distinction). And **provenance is observation, never verdict**: `transport`
 `stampReport` places all of this under the single `engine` key of the module's own report object, so
 `outcome`, `phase`, `prUrl`, `ciStatus` and every other module field reach the operator byte-identical
 to a Claude Code run (AC-1.1, `orchestrate-dev.js:6190`).
+
+### 4.6 The tunable set and its single resolution point
+
+REQ §4.1 (`:302-308`) fixes the closed set of thresholds and rules that "no AC may depend on a
+tunable that is not listed here". All five are named here, with the one function that resolves each,
+so an AC that depends on one is decidable. `resolveTunables({ config, flags })` is that function; its
+return is what §4.5's `tunables` block reports, so the *effective* value is always observable
+(BR-CLI-3).
+
+| REQ §4.1 tunable | Default | Owner | Resolved from | HEAD |
+|---|---|---|---|---|
+| `dispatch.retryAttempts` | 3 retries after the first attempt | engine config | `resolveTunables` ← config, O-3 location | hard-coded `maxRateLimitPauses` default 3 (`adapter.mjs:57`) |
+| `dispatch.retryBackoff` | exponential from 30 s, capped at 15 min | engine config | same | hard-coded `baseMs` 30 s (`adapter.mjs:58`), cap 15 min (`:59`), ≤1 s jitter (`:60`) |
+| `dispatch.timeoutMinutes` | 30 min per dispatch | engine config | same | not a named tunable at HEAD; `timeoutMs` arrives per dispatch |
+| `auth.allowApiKeyBilling` | `false` | operator, per invocation | **flag only** — `--allow-api-key-billing` (`bin/pdlc.mjs:88-93`), never config, never env (BR-CLI-2) | green |
+| `queue.maxIterations` | **unbounded** | operator, per invocation | **flag only** — `--max-iterations` (`bin/pdlc.mjs:83`, `:303-307`) | green, and correctly unbounded: the flag omitted yields `Infinity` (`:304-305`), so `runQueueLoop`'s `maxPasses = 100` (`run.mjs:273`) is a *parameter* default the CLI always overrides, never the operator-visible one |
+
+Three rules make the table load-bearing rather than descriptive:
+
+- **One resolution point.** Every read of a tunable goes through `resolveTunables`; no call site
+  reaches config or a flag directly, which is what makes the reported effective values honest.
+- **The two operator-owned rows are flag-only** and are not accepted from configuration at all
+  (BR-CLI-2 for billing; the same rule extended to `--max-iterations`, since an unattended bound
+  silently set by a config file is the failure BR-LOOP-2 exists to prevent).
+- **`queue.maxIterations` unbounded is the shipped default**, and AC-1.3's promise depends on it:
+  with no flag the loop is bounded only by BR-LOOP-1 and `loop.maxIterations` reports `null`. A test
+  asserts `runQueueLoop`'s own `100` is never the effective value on a CLI-driven run — a defaulted
+  bound reached at pass 100 would be reported as `bound-reached` on a queue the operator believed
+  unbounded.
+
+Where engine configuration *lives* remains O-3 (§9.1); this section fixes the set, the defaults and
+the resolution point, none of which depend on that answer.
 
 ## 5. Error Handling
 
