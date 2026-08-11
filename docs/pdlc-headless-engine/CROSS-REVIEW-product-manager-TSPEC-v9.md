@@ -74,7 +74,55 @@ requirement lost coverage.
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01 is written from the product lens — a red-at-HEAD suite is a delivery risk to Phase I — but whether the class-3 scoping defect is *blocking* is a test-design judgement I am deliberately leaving to the test-engineer review rather than pre-empting with a severity of my own. If TE reads it as the same class of defect as F-40 (which was High), I will not argue the point; I have tagged it Medium because AC-3.5's set-equality is carried by the derivation test, which is sound, and this second guard is a supplementary escape check. |
+| Q-02 | §3.3 says class 4's eleven sites "hold constant *references* after the edit, which is why the extractor must resolve references rather than match literals" (`:521-523`). Does any of the eleven pass a *computed* first argument today, or does the edit make all eleven plain constant references? I checked the eleven line anchors in v8 and they were literals then; if any becomes computed, F-01's scoping question applies to class 4 as well and the census figure moves with it. No finding — I could not answer it from the document and it may already be settled in the author's head. |
+
 ## 5. Positive Observations
+
+- **F-02 last round was fixed in four places when I named two.** I asked for §5.3's catch to be
+  marked as designed rather than observed and pointed at two lines; the revision marked it in §5.3,
+  §7.4 row 4, §8.1's AC-4.4 row and §8.3's `run.mjs` row, and added the negative evidence in the
+  document's own voice — "at HEAD `pdlc/engine/lib/run.mjs` contains no `catch` clause at all, only
+  the `try` at `:159`". A reader now cannot construct the wrong mental model from any entry point.
+  That is the sweep discipline this document has now demonstrated twice running (v1.6 did the same
+  with the `--dry-run` branch).
+- **§3.3's rewrite argues from measurement rather than from assertion, and it argues against its own
+  previous draft.** "54 hyphenated literals in `orchestrate-dev.js` and 24 in `orchestrate-queue.js`,
+  including `"command-failed"`, `"dispatch-error"`, `"rev-parse"`" is the kind of number that ends an
+  argument, and the reviewer-role map case — keys and values indistinguishable on the same three
+  lines, so **no string predicate can separate them** — is a genuinely decisive observation, not a
+  rationalisation. Replacing a shape predicate with four closed syntactic classes is the right
+  repair, and "unresolvable is a failure, never a skip" is the correct default. F-01 is a scoping
+  gap inside a good idea, not a quarrel with the idea.
+- **BR-START-4 is reconciled honestly rather than routed around.** The paragraph at `:533-545`
+  distinguishes a hand-maintained declaration *in production, beside the dispatch sites* (forbidden,
+  because it can disagree with the run) from a test-side transcription (required, because it is the
+  spec asserting what production must derive, and it goes red rather than silently governing). That
+  reading matches `FSPEC:382-392`, which forbids "a declaration **no check ties to the modules**" —
+  and it makes §3.3 and §7.4's M-ENG-07 treatment agree where they previously chose oppositely. The
+  document noticed its own inconsistency and resolved it in the direction of the stricter test.
+- **§7.8 is the section this feature most needed and did not have.** Rung 4a arrived from FSPEC with
+  two branches, an AT and no oracle; §7.8 gives it a seam that did not exist (`probeGuardInterpreter
+  ({runProbe})`, correctly argued as unreachable from `_runCommand`), a hermetic test per branch, a
+  positively-asserted "nothing dispatched", a companion control so a never-installed accumulator
+  cannot score the refusal green, and a `RungRecord.detail` rule that stops `pdlc doctor` and the gate
+  disagreeing about which interpreters were tried. C-11 goes from a constraint with a ladder row to a
+  constraint with a falsifiable design in one round.
+- **§8.1 names its own omissions.** "Two upstream obligations are constraint-borne rather than
+  AC-borne and so have no row here … named so the omission is deliberate rather than invisible"
+  (`:2216-2219`), listing C-11/EC-START-10/EC-START-11/AT-ENG-11a and C-10/rung 3. A traceability
+  table that explains its gaps is worth more than one that quietly has none, and it is the direct
+  answer to the standing product question of whether anything upstream fell through.
+
+**Traceability:** AC-3.5's set-equality is unchanged and still carried by the derivation test, now
+strengthened with the ten-identifier transcription (TE F-42) — deletion of a `PHASE_DISPATCH` role
+field goes red where it previously stayed green in both directions. C-11 now reaches an owning
+component (`lib/startup.mjs`, §7.8) with per-branch tests, and is carried in §8.2's constraint table.
+C-9's per-platform obligation is stated accurately in §7.6 and §9.2 alike after last round's sweep.
+AC-4.4's owning component is honest about being partly new work. No scope creep, no P0/P1 requirement
+dropped, no product decision taken inside a technical section.
 
 ## 6. Recommendation
 
