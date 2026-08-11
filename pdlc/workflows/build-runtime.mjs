@@ -340,6 +340,7 @@ return await __cons.main({
 const CLI_DEV_EXPORTS = [
   "isComplete",
   "approvalHashOf",
+  "approvalHashOfNormalized",
   "sha256Hex",
   "approvalAnchorPreCount",
   "artifactClassOf",

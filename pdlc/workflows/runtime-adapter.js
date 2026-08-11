@@ -759,6 +759,28 @@ async function rtCliQuery(argv, label) {
 }
 
 /**
+ * `_hashNormalizedFile(path)` — DEC-APPROVAL-03's semantic approval digest.
+ *
+ * Answered through the CLI, not through a shell pipeline like `rtHashFile`'s.
+ * The raw digest canonicalises line endings, which `sed`/`tr` express exactly;
+ * the normalised digest additionally neutralises `file:line` anchors, and a
+ * second, shell-dialect implementation of that grammar is precisely the drift
+ * `rtHashFile`'s own comment warns about. `pdlc-cli.mjs` already computes it
+ * with the module's own `approvalHashOfNormalized`, beside the raw hash and in
+ * the same one dispatch, so there is one grammar and one implementation.
+ *
+ * Null whenever the CLI is unreachable or the file is absent — the module reads
+ * that as "no normalised anchor" and behaves exactly as it did before this seam
+ * existed. Note this is the FALLBACK path only: every call site prefers
+ * `_probeDoc`'s `normalizedHash`, which the same CLI query already carries, so
+ * a probing runtime never reaches here at all.
+ */
+async function rtHashNormalizedFile(path) {
+  const probed = await rtProbeDoc(path);
+  return probed && typeof probed.normalizedHash === "string" ? probed.normalizedHash : null;
+}
+
+/**
  * `_probeDoc(path, docType)`. `docType` is optional and omitted when absent —
  * the CLI derives the artifact class from the path either way.
  */
@@ -1129,6 +1151,7 @@ function rtDevInjections(devModule) {
     _checkFile: rtCheckFile,
     _readFile: rtReadFile,
     _hashFile: rtHashFile,
+    _hashNormalizedFile: rtHashNormalizedFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
     // TSPEC §3.10. `_writeFile`'s adapter existed since the first bundle but was

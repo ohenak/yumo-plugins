@@ -58,6 +58,12 @@ function docProbe(pathArg, docType) {
     exists,
     empty: body.trim() === "",
     hash: exists ? dev.approvalHashOf(text) : null,
+    // DEC-APPROVAL-03's semantic digest. Taken here, beside the raw one, for the
+    // same reason every other field is: the bytes are already in this process,
+    // so the module's `_hashNormalizedFile` seam costs the probing runtime no
+    // second dispatch. A probe that predates this field simply omits it, and
+    // `normalizedAnchorFor` reads the absence as "no normalised anchor".
+    normalizedHash: exists ? dev.approvalHashOfNormalized(text) : null,
     artifactClass,
     complete,
     missing,

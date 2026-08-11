@@ -4836,6 +4836,73 @@ export function approvalHashOf(text) {
   return `sha256:${sha256Hex(text)}`;
 }
 
+// ─── DEC-APPROVAL-03 (2026-08-10) — line-number-anchor neutralisation ─────────
+//
+// Operator decision, taken after a measured cost: on `pdlc-consolidation-agent`
+// six edits that changed NOTHING but a `file:line` anchor — `SKILL.md:70-78`
+// became `SKILL.md:70-79` because an unrelated line was inserted above it — each
+// staled a recorded approval and re-opened its phase's review loop. Four phases,
+// ~25 extra Opus rounds, zero semantic change under review.
+//
+// Approval freshness is therefore SEMANTIC: line-number-anchor churn is not a
+// change to what was approved. Every other byte still is. The normalisation
+// below is deliberately the smallest one that covers the measured failure and
+// nothing else — in doubt, a shape is LEFT ALONE, because the fallback of
+// leaving it alone is exactly today's behaviour (a re-review), while the
+// fallback of neutralising too much is an approval that outlives its document.
+
+/**
+ * The two token shapes neutralised, and only these two:
+ *
+ *   A. a path-anchored `:{digits}` / `:{digits}-{digits}` — the `file:line`
+ *      citation. The token BEFORE the colon must contain a `.` or a `/`, which
+ *      is what separates `orchestrate-dev.js:1842` and `docs/x/REQ-y.md:70-78`
+ *      from a clock time (`12:30`), a ratio (`3:1`) or a numbered list.
+ *   B. a backtick-opened `` `:{digits}` `` / `` `:{digits}-{digits}` `` — the
+ *      abbreviated cell anchor review tables use once the filename is in a
+ *      neighbouring column (`` `:70-79` ``).
+ *
+ * Both collapse the digit span to `*`, so `:70-78` and `:70-79` become `:*-*`
+ * and a single-line `:1842` becomes `:*`. A one-line anchor and a range anchor
+ * stay DISTINGUISHABLE (`:*` ≠ `:*-*`): widening a citation from one line to a
+ * range is an editorial change, not pure movement.
+ *
+ * Not touched, on purpose: `v1.5`, `T20`, `§5.3`, prose ("see line 70"),
+ * durations, versions, times, and any digits not immediately after a colon.
+ */
+const APPROVAL_PATH_ANCHOR_RE =
+  /([A-Za-z0-9_~@][A-Za-z0-9_@~.\-/]*[./][A-Za-z0-9_@~.\-/]*):(\d+)(?:-(\d+))?(?![\w.-])/g;
+const APPROVAL_CELL_ANCHOR_RE = /`:(\d+)(?:-(\d+))?`/g;
+
+/**
+ * Canonicalise `text` for the SEMANTIC approval comparison (DEC-APPROVAL-03).
+ *
+ * Pure, total, synchronous; no seam, no throw, no IO. Idempotent: the output
+ * contains no token either regex can still match, so normalising twice is
+ * normalising once — which is what lets a normalised digest be compared against
+ * a normalised digest without asking which side was normalised when.
+ *
+ * @param {string} text
+ * @returns {string} the same document with line-number anchors neutralised.
+ */
+export function normalizeForApproval(text) {
+  return String(text ?? "")
+    .replace(APPROVAL_PATH_ANCHOR_RE, (_m, head, _a, b) => `${head}:${b == null ? "*" : "*-*"}`)
+    .replace(APPROVAL_CELL_ANCHOR_RE, (_m, _a, b) => `\`:${b == null ? "*" : "*-*"}\``);
+}
+
+/**
+ * The digest an `APPROVAL-HASH-NORMALIZED:` line carries: `approvalHashOf` over
+ * `normalizeForApproval`'s output. One digest function, one prefix, one write
+ * path and one read path — the same A-11 discipline `approvalHashOf` states.
+ *
+ * @param {string} text
+ * @returns {string} `sha256:{64 lowercase hex}`
+ */
+export function approvalHashOfNormalized(text) {
+  return approvalHashOf(normalizeForApproval(text));
+}
+
 // ─── TSPEC §4.3 / §5.3 / §5.8 — the record parsers ────────────────────────────
 //
 // All five are total, synchronous, take no seam, and read the artifact through
@@ -4859,7 +4926,7 @@ const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
  * counts line, and must not be fed to `JSON.parse` as if it were. Anchor
  * well-formedness is `readApprovalRecord`'s job (§4.4), and it keeps it.
  */
-const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH|REVIEWED-COMMIT):/;
+const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
 
 /** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
@@ -4880,16 +4947,26 @@ const COMMIT_UNAVAILABLE = "unavailable";
  * and degrading such a record to UNEVALUABLE would re-run a converged phase over
  * a field nothing consults.
  *
+ * `APPROVAL-HASH-NORMALIZED:` (DEC-APPROVAL-03) is read the same way, with one
+ * deliberate asymmetry: it has no failure value either. Absent, duplicated or
+ * malformed, `normalizedHash` is `null` and `ok` is untouched — an approval
+ * recorded before this field existed must keep behaving exactly as it did, and
+ * the field can only ever GRANT freshness the raw hash already refused, never
+ * withdraw any.
+ *
  * @param {string} fileText
- * @returns {{ok: true, hash: string, reviewedCommit: string}
+ * @returns {{ok: true, hash: string, normalizedHash: string|null, reviewedCommit: string}
  *          |{ok: false, reason: string}} `reason` is a `HASH_FAILURES` member.
  */
 export function parseApprovalHash(fileText) {
   const hashes = [];
+  const normalized = [];
   const commits = [];
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
+    const n = /^\s*APPROVAL-HASH-NORMALIZED:\s*(\S*)\s*$/.exec(line);
+    if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
   });
@@ -4903,7 +4980,10 @@ export function parseApprovalHash(fileText) {
       ? commits[0]
       : COMMIT_UNAVAILABLE;
 
-  return { ok: true, hash: hashes[0], reviewedCommit };
+  const normalizedHash =
+    normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
+
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
 }
 
 // ─── TSPEC §5.1 — verdict extraction from a FILE ──────────────────────────────
@@ -6029,6 +6109,7 @@ export async function reviewLoop({
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
   _hashFile = defaultHashFile,
+  _hashNormalizedFile = defaultHashNormalizedFile,
   _appendFile = defaultAppendFile,
   // The optional probe seams (see `probeDocument` / `resolveReviewState`). They
   // default to `null` rather than to a working implementation on purpose: absent
@@ -6238,6 +6319,7 @@ export async function reviewLoop({
     // reviewed, not whatever the optimizer left behind afterwards. Phase CR's
     // target is a directory and carries no anchor.
     let anchorHash = null;
+    let anchorNormalizedHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
       // t0/t1 collapse into ONE seam call: the anchor never needed the bytes,
@@ -6251,6 +6333,13 @@ export async function reviewLoop({
       // probing runtime pays for no second observation here.
       const probe = await probeDocument(_probeDoc, doc, roundDocType);
       anchorHash = (probe ? probe.hash : await _hashFile(doc)) ?? null; // t0–t1
+      // DEC-APPROVAL-03's second anchor, taken at the SAME t0 from the SAME
+      // observation, so the two can never describe different documents.
+      anchorNormalizedHash = await normalizedAnchorFor({
+        probe,
+        path: doc,
+        _hashNormalizedFile,
+      });
       anchorCommit = await headCommitSha(_git); // t2
     }
 
@@ -6323,6 +6412,7 @@ export async function reviewLoop({
       await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
+        normalizedHash: anchorNormalizedHash,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -6441,9 +6531,32 @@ export function approvalAnchorPreCount(fileText) {
  *
  * Nothing here throws: `AT-17`'s "does not halt".
  */
+/**
+ * The `APPROVAL-HASH-NORMALIZED:` value to record beside a raw anchor
+ * (DEC-APPROVAL-03), taken at the same t0 instant and through the same two
+ * transports as the raw one: the probe's answer when a probe answered, the
+ * `_hashNormalizedFile` seam otherwise.
+ *
+ * Total, and `null` for everything it cannot establish — a probe that predates
+ * the field, a transport that declines, a missing file. `null` means "append
+ * the raw pair alone, exactly as before", so no caller has to distinguish
+ * "could not compute" from "chose not to".
+ */
+async function normalizedAnchorFor({ probe, path, _hashNormalizedFile }) {
+  if (probe) return typeof probe.normalizedHash === "string" ? probe.normalizedHash : null;
+  if (typeof _hashNormalizedFile !== "function") return null;
+  try {
+    const value = await _hashNormalizedFile(path);
+    return typeof value === "string" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function appendApprovalAnchors({
   paths,
   hash,
+  normalizedHash = null,
   commit,
   _readFile,
   _probeDoc,
@@ -6492,7 +6605,17 @@ async function appendApprovalAnchors({
       return;
     }
     try {
-      await _appendFile(path, `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ${commit}\n`);
+      // The RAW anchor stays first and stays the shape every existing reader
+      // (harvest's table, `approvalAnchorPreCount`, the fixtures) already pins;
+      // the normalised line is inserted between it and `REVIEWED-COMMIT:` only
+      // when one could be computed, so a legacy-shaped block is still emitted
+      // whenever it could not (`normalizedAnchorFor`'s `null`).
+      await _appendFile(
+        path,
+        `\nAPPROVAL-HASH: ${hash}\n` +
+          (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
+          `REVIEWED-COMMIT: ${commit}\n`
+      );
       appended = true;
     } catch (err) {
       emit(
@@ -6989,6 +7112,9 @@ export async function refreshReviewState({ feature, docType, _listFiles, _readFi
       high: parsedVerdict.ok ? parsedVerdict.high : null,
       verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
       anchorHash: anchor.ok ? anchor.hash : null,
+      // DEC-APPROVAL-03. `null` on every legacy record, which is what makes the
+      // normalised comparison opt-in per approval rather than retroactive.
+      anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -7221,7 +7347,14 @@ async function targetState({ targetPath, artifactClass, docType, _readFile, _pro
 
 /** The shape every non-approving exit of the search returns (§5.4). */
 function noApprovalRecord(candidate, unevaluable = []) {
-  return { approving: false, candidate, hash: null, unevaluable, tier1Empty: false };
+  return {
+    approving: false,
+    candidate,
+    hash: null,
+    normalizedHash: null,
+    unevaluable,
+    tier1Empty: false,
+  };
 }
 
 /**
@@ -7273,7 +7406,24 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
     return noApprovalRecord(candidate, records.map((r) => r.path));
   }
 
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+  // DEC-APPROVAL-03: the normalised anchor is adopted under the SAME unanimity
+  // rule as the raw one — every role must carry it and all must agree. A single
+  // role's normalised anchor is not a record, and a disagreement adopts neither
+  // value. Anything less than unanimous simply degrades to `null`, i.e. to the
+  // raw-only behaviour, and never to UNEVALUABLE: an approval that is legible
+  // under §5.5's rule must not be weakened by an advisory field.
+  const norms = records.map((r) => r.anchorNormalizedHash ?? null);
+  const normalizedHash =
+    norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
+
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 /** The `## 6. Approval Record` heading tier 2 reads by name (§4.4, §5.4). */
@@ -7328,7 +7478,18 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
   if (!hashes.every((h) => APPROVAL_HASH_VALUE_RE.test(h) && h === hashes[0])) {
     return noApprovalRecord(candidate);
   }
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+  // Tier 2's row grammar is harvest's six columns and carries no normalised
+  // anchor, so a LEARNINGS-sourced approval is raw-only by construction. Left
+  // that way DELIBERATELY: widening the harvested table is a change to the
+  // harvest artifact's shape, which this feature is not scoped to make.
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash: null,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 // ─── TSPEC §3.8 — dispatchAndVerify ──────────────────────────────────────────
@@ -9349,6 +9510,34 @@ function defaultHashFile(path) {
   }
 }
 
+/**
+ * Default `_hashNormalizedFile`: `defaultHashFile`'s twin over
+ * `normalizeForApproval`'s output (DEC-APPROVAL-03).
+ *
+ * A SEPARATE seam rather than a second return value from `_hashFile`, for the
+ * one reason that shaped this whole feature: the raw digest's economy is
+ * load-bearing (`hashFileSeam.test.js` pins that a converging round never puts
+ * the document's bytes on `_readFile`), and a normalised digest cannot be taken
+ * over a digest — it needs the text. Keeping them apart lets each side answer
+ * where its bytes already are, and lets a transport that cannot answer the
+ * normalised question decline it without disturbing the raw one.
+ *
+ * Declining is a first-class outcome. `null` here means exactly "no normalised
+ * anchor", which every consumer already treats as the pre-DEC-APPROVAL-03
+ * behaviour — including the workflow-runtime bundle, where `fs` does not exist
+ * and the adapter injects no override, so the `catch` returns `null` and the
+ * pipeline is byte-for-byte what it was. The runtime's live path is the probe
+ * (`probeDocument`'s `normalizedHash`), which computes this in the CLI process
+ * where the bytes already are, at no extra dispatch.
+ */
+function defaultHashNormalizedFile(path) {
+  try {
+    return approvalHashOfNormalized(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // ─── TSPEC §3.2 — the listing seam's Node default ─────────────────────────────
 
 /**
@@ -9740,7 +9929,7 @@ export async function gatherA5Context({ _git }) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function, _sessionAgent?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _hashNormalizedFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function, _sessionAgent?: function }} params
  * @returns {Promise<FinalReport>}
  */
 export default async function main({
@@ -9752,6 +9941,7 @@ export default async function main({
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
   _hashFile: hashFileFn = defaultHashFile,
+  _hashNormalizedFile: hashNormalizedFileFn = defaultHashNormalizedFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -9940,10 +10130,33 @@ export default async function main({
         // a recorded hash of an empty document, where `isStale` says FRESH.
         const probe = await probeDocument(probeDocFn, docPath, docType);
         const docHash = probe ? probe.hash ?? null : await hashFileFn(docPath);
-        const freshness =
+        let freshness =
           docHash == null
             ? isStale(record.hash, null)
             : isStaleByHash(record.hash, docHash);
+        // ─── DEC-APPROVAL-03 — the semantic second look ──────────────────────
+        //
+        // Reached ONLY when the raw comparison already refused the skip and the
+        // approval carries a normalised anchor, so it is strictly a widening of
+        // FRESH and can never stale an approval the byte comparison held. It is
+        // also the only place in the gate that spends the document's bytes:
+        // `normalizeForApproval` needs text, and paying for it here costs one
+        // read on a path that was otherwise about to re-run a whole phase.
+        //
+        // UNEVALUABLE is deliberately NOT retried — an unreadable recorded hash
+        // is not a citation that moved, and §5.5's fail-to-more-work stands.
+        let heldByNormalization = false;
+        if (freshness === "STALE" && record.normalizedHash) {
+          const docNormalized = await normalizedAnchorFor({
+            probe,
+            path: docPath,
+            _hashNormalizedFile: hashNormalizedFileFn,
+          });
+          if (docNormalized && docNormalized === record.normalizedHash) {
+            freshness = "FRESH";
+            heldByNormalization = true;
+          }
+        }
         if (freshness === "FRESH") {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
@@ -9954,7 +10167,16 @@ export default async function main({
             _readFile: readFileFn,
             _probePostmortem: probePostmortemFn,
           });
-          let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
+          let detail = heldByNormalization
+            ? `Skipped — approved round ${record.candidate}, approval held: only line-number anchors moved since review`
+            : `Skipped — approved round ${record.candidate}, hash FRESH`;
+          if (heldByNormalization) {
+            notices.push(
+              `Phase ${phaseId}: ${docPath} differs from the approved bytes only in ` +
+                `line-number anchors (\`file:line\` citations) — the recorded approval holds ` +
+                `and the phase is skipped (DEC-APPROVAL-03).`
+            );
+          }
           if (pm.status === "unresolved") {
             detail += `; unresolved POSTMORTEM at ${pm.path}`;
             skipPostmortem = pm;
@@ -10041,6 +10263,7 @@ export default async function main({
     _agent: agentFn,
     _readFile: readFileFn,
     _hashFile: hashFileFn,
+    _hashNormalizedFile: hashNormalizedFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _probeDoc: probeDocFn,
@@ -10216,6 +10439,11 @@ export default async function main({
     // `reviewLoop` uses, so what is pinned is the bytes the approvers confirmed.
     const probe = await probeDocument(probeDocFn, upstreamPath, target);
     const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
+    const anchorNormalizedHash = await normalizedAnchorFor({
+      probe,
+      path: upstreamPath,
+      _hashNormalizedFile: hashNormalizedFileFn,
+    });
     const anchorCommit = await headCommitSha(gitFn);
 
     const responses = await parallelFn(
@@ -10330,6 +10558,7 @@ export default async function main({
     await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
+      normalizedHash: anchorNormalizedHash,
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,

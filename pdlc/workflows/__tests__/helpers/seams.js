@@ -32,7 +32,7 @@
  * | Factory | Doubles | TSPEC |
  * |---|---|---|
  * | `fakeListFiles(spec)` | `_listFiles(dirPath)` | §3.2, §4.2 |
- * | `fakeFs(initialContents, opts)` | `_readFile` / `_hashFile` / `_writeFile` / `_appendFile` / `_checkFile` | §3.3 |
+ * | `fakeFs(initialContents, opts)` | `_readFile` / `_hashFile` / `_hashNormalizedFile` / `_writeFile` / `_appendFile` / `_checkFile` | §3.3 |
  * | `fakeGit(script)` | `_git(argv)` | §3.4, §6.5 |
  * | `recordingRecordQueueRow(result)` | `_recordQueueRow({ feature, status })` | §3.5 |
  *
@@ -45,7 +45,7 @@
 // return the module's own `approvalHashOf` form — a hand-rolled digest here
 // could disagree with `defaultHashFile` about canonicalisation and make every
 // staleness test quietly wrong.
-import { approvalHashOf } from "../../orchestrate-dev.js";
+import { approvalHashOf, approvalHashOfNormalized } from "../../orchestrate-dev.js";
 
 /**
  * The closed `ListFailure` catalogue (TSPEC §4.1 `LIST_FAILURES`), restated here
@@ -217,16 +217,18 @@ function maybeFail(option, path, text, verb) {
  *   files: Record<string, string>,                       // the live tree, readable and writable by the test
  *   readFile: (path: string) => (string|null),           // pass as `_readFile`
  *   hashFile: (path: string) => (string|null),           // pass as `_hashFile`
+ *   hashNormalizedFile: (path: string) => (string|null), // pass as `_hashNormalizedFile`
  *   writeFile: (path: string, contents: string) => void, // pass as `_writeFile`
  *   appendFile: (path: string, text: string) => void,    // pass as `_appendFile`
  *   checkFile: (path: string) => ({ok: true}|{ok: false, reason: string}), // pass as `_checkFile`
  *   reads: Array<{ path: string, result: string|null }>,
  *   hashes: Array<{ path: string, result: string|null }>,
+ *   normalizedHashes: Array<{ path: string, result: string|null }>,
  *   writes: Array<{ path: string, contents: string }>,
  *   appends: Array<{ path: string, text: string }>,
  *   checks: Array<{ path: string, result: object }>,
  *   calls: Array<{ op: "read"|"hash"|"write"|"append"|"check", path: string, text?: string, result?: any }>,
- *   injections: () => ({ _readFile, _hashFile, _writeFile, _appendFile, _checkFile }),
+ *   injections: () => ({ _readFile, _hashFile, _hashNormalizedFile, _writeFile, _appendFile, _checkFile }),
  *   reset: () => void
  * }}
  *   `calls` is the **cross-operation ordered log** — the one to assert on when
@@ -245,6 +247,7 @@ export function fakeFs(initialContents = {}, opts = {}) {
     files: { ...initialContents },
     reads: [],
     hashes: [],
+    normalizedHashes: [],
     writes: [],
     appends: [],
     checks: [],
@@ -272,6 +275,18 @@ export function fakeFs(initialContents = {}, opts = {}) {
     const result = has ? approvalHashOf(self.files[path]) : null;
     self.hashes.push({ path, result });
     self.calls.push({ op: "hash", path, result });
+    return result;
+  };
+
+  // `_hashNormalizedFile`: DEC-APPROVAL-03's twin of `hashFile`, and a separate
+  // double for the identical reason — the normalised digest must also be taken
+  // without the bytes crossing `readFile`, or the IO-economy assertions that
+  // pin "a converging round reads no document" would pass only vacuously.
+  self.hashNormalizedFile = (path) => {
+    const has = Object.prototype.hasOwnProperty.call(self.files, path);
+    const result = has ? approvalHashOfNormalized(self.files[path]) : null;
+    self.normalizedHashes.push({ path, result });
+    self.calls.push({ op: "hashNormalized", path, result });
     return result;
   };
 
@@ -308,13 +323,22 @@ export function fakeFs(initialContents = {}, opts = {}) {
   self.injections = () => ({
     _readFile: self.readFile,
     _hashFile: self.hashFile,
+    _hashNormalizedFile: self.hashNormalizedFile,
     _writeFile: self.writeFile,
     _appendFile: self.appendFile,
     _checkFile: self.checkFile,
   });
 
   self.reset = () => {
-    for (const log of [self.reads, self.hashes, self.writes, self.appends, self.checks, self.calls]) {
+    for (const log of [
+      self.reads,
+      self.hashes,
+      self.normalizedHashes,
+      self.writes,
+      self.appends,
+      self.checks,
+      self.calls,
+    ]) {
       log.length = 0;
     }
   };
