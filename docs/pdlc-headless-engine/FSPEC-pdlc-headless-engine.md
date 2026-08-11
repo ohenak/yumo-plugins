@@ -13,7 +13,15 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-11 |
+| pdlc | draft | Claude | 1.5 | 2026-08-11 |
+
+**Change note, v1.5** (POSTMORTEM-T v2.0 resolution, `F-24`/`F-01`, one clause): §6.3's preamble
+still attributed §7.3's model-map coverage to the dry-run surface — the claim v1.4's erratum edit
+corrected at BR-MODEL-3. The trailing clause is requalified per the reviewers' Option B: the map is
+exercised over descriptors recorded by hermetic fixture-driven runs, not over this surface
+(BR-MODEL-3). §6.3 and §7.3 were the only two sites of the claim; every other dry-run mention
+(§3.1, §3.2, §4.1–4.2, §6.4, §7.3, §16) was read in full and attributes no model-map coverage to
+the surface. AT-ENG-29 and EC-DISP-6 are byte-identical. No decision is reopened.
 
 **Change note, v1.4** (Phase-T erratum round, one item, no new content): BR-MODEL-3 claimed
 M-ENG-07's corpus was reachable from dry runs. It is not — a dry run composes one skill's prompt
@@ -572,8 +580,9 @@ beyond what this table names, because prompt semantics are the modules' and the 
 
 `--dry-run` is the inspection surface AC-3.1 assumes (O-5): it resolves the plugin, runs the startup
 ladder, composes the dispatch(es), prints the composed prompt, and dispatches nothing. It is the
-mechanism by which every claim in §6.2 is checkable without billing a token, and by which the model
-map of §7.3 is exercised over descriptors rather than executed calls.
+mechanism by which every claim in §6.2 is checkable without billing a token; the model map of §7.3
+is exercised over descriptors recorded by hermetic fixture-driven runs, not over this surface
+(BR-MODEL-3).
 
 **BR-SKILL-5 — dry-run inertness is asserted, not assumed.** On the dry-run path an attempted
 dispatch is a failure the surface reports, not a silently-executed call (§3.1).

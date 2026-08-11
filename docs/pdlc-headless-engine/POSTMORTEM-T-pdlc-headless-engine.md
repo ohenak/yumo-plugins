@@ -11,7 +11,18 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 2.0 | 2026-08-11 |
 
-RESOLVED: no
+RESOLVED: yes
+
+Resolution (2026-08-11, operator-directed): Step 1 applied as the reviewers' Option B — the
+trailing clause of `FSPEC:573-576` now reads "the model map of §7.3 is exercised over descriptors
+recorded by hermetic fixture-driven runs, not over this surface (BR-MODEL-3)", FSPEC bumped to
+v1.5 with a change note naming `F-24`/`F-01` and recording the two-site enumeration. Step 2's
+sweep was done by reading, not grep: every paragraph mentioning the dry-run surface (§3.1's
+command table, §3.2's `--dry-run-skill` row — which binds only §6.4's skill-coverage assertion —
+§4.1/§4.2's rung-5 rule and EC-START-4, §6.3, §7.3's BR-MODEL-3, EC-CLI-6, EC-SKILL-6, EC-Q-7,
+AT-ENG-24, §16's rule register) attributes no model-map coverage to it. No third site exists, so
+Step 4's escalation is not triggered. `AT-ENG-29` and `EC-DISP-6` are byte-identical to v1.4.
+The TSPEC was not touched.
 
 This is the **second** halt of Phase T on this feature. The first — five rounds spent on TSPEC
 §7.4's model-map witness — was cleared on 2026-08-11 (`22eb0b3b`) and round 6 converged the TSPEC
