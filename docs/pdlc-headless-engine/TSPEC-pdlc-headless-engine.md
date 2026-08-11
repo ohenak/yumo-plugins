@@ -658,7 +658,8 @@ transport's option keys, and field-presence over the descriptor.
 { skill: string,          // a member of the derived dispatchable set (§3.3)
   label: string|null,     // opts.label if a module ever passes one; null at HEAD (see below)
   phase: string|null,     // run state, from the `_phase` seam — NOT from opts (see below)
-  seq: number,            // 0-based monotonic dispatch index within the run
+  seq: number,            // 0-based, one value per dispatch, non-decreasing within the run;
+                          // a dispatch's retry attempts share its seq and differ in `attempt`
   prompt: string,         // composed: role line + role definition + supplements + task
   model: string,          // verbatim from the module's opts.model; never defaulted here
   cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
@@ -1514,8 +1515,9 @@ without a field the run cannot produce. `corpusRun` is supplied by the harness �
 run, so it knows which of M-ENG-07's five it is executing. `promptHash` is a stable digest of the
 descriptor's composed `prompt` (sha-256, first 16 hex), recorded instead of the prompt so the
 cross-process accumulator (§7.0) carries a bounded record; only equality between two hashes is ever
-read, never the hash's value. No witness reads `seq` as an *ordering*: it stays a reporting field
-(§4.1), and the one row that leaned on its adjacency is corrected below:
+read, never the hash's value. **No witness reads `seq` as an adjacency**; row 4 reads it only as a
+direction (`B.seq > F.seq`), which holds however many dispatches interleave, and the one row that
+leaned on adjacency is corrected below:
 
 | M-ENG-07 row | Model | Witness predicate over the recorded descriptors |
 |---|---|---|
@@ -1592,12 +1594,13 @@ than trusting:
 
 **Row 4 drops `seq` adjacency and keeps the forced-failure provenance** (TE F-23). Requiring the
 fallback descriptor's "immediately preceding descriptor by `seq`" to be the same skill on `fable` is
-a flakiness source the row does not need: `seq` is §4.1's *run-wide* monotonic index, and adjacency in
+a flakiness source the row does not need: `seq` is §4.1's *run-wide* dispatch index, and adjacency in
 it holds only if no other dispatch is composed across the hop from `dispatchAt(MODEL_ADVISORY)` to
 `dispatchAt(MODEL_ADVISORY_FALLBACK)` (`orchestrate-dev.js:1851`→`:1861`) — which nothing in this
 design establishes, since run iv is a whole pipeline run and the A3/A4 seams sit in Phase DOD beside
-the verifier and remediator dispatches. The fixture's forced model-resolution failure is already
-sufficient and stable: no ordinary `opus` `se-review` dispatch can carry it. **The error is raised by
+the verifier and remediator dispatches. What replaces it is the forced failure **as a recorded
+field**, paired with the re-dispatched prompt — v1.3 kept the failure as prose, which is the half
+F-26 rejected and the next paragraph repairs. **The error is raised by
 the `fable` dispatch, not the `opus` one** — `:1861` is reached only behind `isModelResolutionError`,
 so the fallback descriptor is the *consequence* of the failure and never its source; v1.2's second
 "whose" was ambiguous on exactly this point and an implementer reading it as the `opus` descriptor
@@ -1657,8 +1660,9 @@ whole-run `--dry-run` stays open as O-5 and this harness deliberately does not d
 M-ENG-07's table stays a **transcription** of the modules' constants, never an import from them —
 importing it would make the drift AC-3.3 exists to catch invisible.
 
-The first three write through §7.0's observation seam, so the union is genuinely suite-wide across
-processes. The accumulator is per process by construction and never reset per test — resetting per
+The first three properties — message catalogue, outcome taxonomy, model map — write through §7.0's
+observation seam, so the union is genuinely suite-wide across processes; the fourth is computed from
+imported data and the fifth reads the third's records, so neither adds a seam. The accumulator is per process by construction and never reset per test — resetting per
 test is how these degrade into the per-test assertions they replace. Each property's assertion also
 fails on an empty observation set (§7.0), so "no test exercised this" is a red result, not a green
 one.
