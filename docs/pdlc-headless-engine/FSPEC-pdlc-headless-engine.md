@@ -559,8 +559,9 @@ member with no invocation is a failing test, not a smaller sample.
 AC-3.1 requires the composition assertion for **each** member of the dispatchable skill set, not a
 sample, so a skill whose prompt file was renamed or whose composition path is special (the
 supplements) cannot hide behind a passing sample. The set the assertion ranges over is the
-dispatchable set of §4.4 Direction A — the identifiers the modules can dispatch, plus the two
-supplements — and §4.4's erratum about AC-3.5's reference set applies here identically.
+dispatchable set of §4.4 — the identifiers the modules can dispatch, plus the two supplements — the
+same modules-derived set AC-3.5's scoped equality ranges over, so a skill outside it (operator-
+invoked, dispatched by no module) is outside this assertion too.
 
 ### 6.5 Edge cases and error scenarios
 
@@ -1207,11 +1208,11 @@ REQ's own reading rather than this FSPEC's gap-filling. No row below is still op
 
 | # | Item (resolved in REQ v0.8) | This FSPEC's behaviour, now confirmed upstream |
 |---|---|---|
-| O-ENG-1 | AC-3.5's set-equality between dispatchable identifiers and plugin prompt files is unsatisfiable on a correct install: the plugin ships prompt files no module dispatches (the operator-invoked entry and consolidation skills), so the reverse direction refuses on every healthy machine, and the "17" parenthetical counts files rather than dispatchable identifiers | §4.4: Direction A enforced, Direction B reported not refused |
+| O-ENG-1 | AC-3.5's set-equality between dispatchable identifiers and plugin prompt files read as unsatisfiable on a correct install, since the plugin ships prompt files no module dispatches (the operator-invoked skills), and the parenthetical count read as a count of files. **Resolved by rescoping, not by weakening:** the equality is over the **dispatchable subset**, both directions fail closed, and the counts (10 identifiers, 12 prompt files, 5 operator-invoked skills outside the set) are an observation of HEAD, never the assertion (`REQ:493-507`) | §4.4: equality scoped to the modules-derived set, Direction A **and** Direction B both refuse; an operator-invoked skill's file is out of set, reported only. §6.4 ranges over the same set; AT-ENG-10 pins all three fixtures |
 | O-ENG-2 | AC-1.2 clause (c) justifies an empty `.claude/workflows/` read-set for a **`pdlc dev`** run by citing the **queue** module's drift-gate ordering; the dev module has no drift gate at all, so the cited opt-out is not load-bearing for the observed run — it is load-bearing for AC-1.3's queue run | §10.3 BR-READ-1: clause (c) unconditional for dev, opt-out-dependent for queue |
 | O-ENG-3 | AC-1.3 states `--loop` "repeats … until no ready row remains" and REQ §4.1 declares no iteration bound, while the operator-visible loop surface offers an explicit maximum-iteration bound; the two terminations are not distinguishable under the AC as written | §11.2 BR-LOOP-2: bound is opt-in and its termination reason is reported distinctly |
-| O-ENG-4 | M-ENG-06's red/green table, relocated from the REQ under pm-author §5e, had **no row for AC-2.3** (environment passthrough) or AC-4.4, while §2 here and the REQ's §1.2a read it as total; both rows now exist and the table is declared total | §2: AC-2.3's state stated directly — green for the single-dispatch case, red for BR-ENV-3's every-dispatch quantifier |
-| O-ENG-5 | `pdlc doctor` is operator-visible surface with **no upstream authority**: no AC, constraint or goal names it, so it reaches this document only through §3.1's command set and BR-START-3 | §3.1, §4.1: specified as the ladder's read-only surface; §14.1 traces it to no AC, which is the gap |
+| O-ENG-4 | M-ENG-06's red/green table, relocated from the REQ under pm-author §5e, had **no row for AC-2.3** (environment passthrough) or AC-4.4, while §2 here and the REQ's §1.2a read it as total; both rows now exist and the table is declared total | §2 defers to M-ENG-06's AC-2.3 row (partially green) and names the unasserted half it schedules — BR-ENV-3's every-dispatch quantifier, §7.1. The table, not §2, is the authority |
+| O-ENG-5 | `pdlc doctor` was operator-visible surface with **no upstream authority**: no AC, constraint or goal named it. **Resolved inside AC-2.1**, which now requires the startup posture to be readable without starting a run, through a command that dispatches nothing and bills nothing and reports the engine/plugin version pair, the effective base URL, and the auth catalogue id; the command's name and flags are FSPEC's to fix (`REQ:422-426`) | §3.1, §4.1, §4.6: the ladder's read-only surface, named `doctor`, reporting those three fields (§4.1). AC-2.1's diagnostic half now traces to AT-ENG-09/11/24 in §14.1 |
 
 ### 13.2 Carried from the REQ, unchanged
 
