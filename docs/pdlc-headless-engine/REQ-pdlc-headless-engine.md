@@ -17,28 +17,35 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.7 | 2026-08-11 |
+| pdlc | draft — awaiting operator review | Claude | 0.8 | 2026-08-11 |
 
-*Change note (0.7, 2026-08-11, round-3 cross-review):* two closed enumerations are widened to
-what a correct run at HEAD actually produces — AC-1.1 clause 1 admits `CODE_REVIEW-{f}-v{N}.md`
-and `POSTMORTEM-{phase}-{f}.md` as run-dependent members (SE v3 F-17), and AC-3.3's `haiku` row
-splits into its two distinct provocations over a corpus recounted as five recorded
-dispatch-descriptor sets (SE v3 F-18/F-19, TE v3 F-02/F-03, SE v3 Q-07). Also: AC-1.1 fixes its
-observation window at creation time, against Phase H's harvest deletion (SE v3 F-20); AC-4.2's
-seventh sequence becomes a row (SE v3 F-21); AC-2.4's *Given* pins the state that selects
-AC-2.1 row 4 (TE v3 F-01); finding-id back-references are qualified by round (TE v3 F-04).
-Every citation in the changed text was re-verified at HEAD; nothing outside these findings
-changed. The round is size-negative: §1.2a's red/green table and AC-3.3's model map moved to
-`docs/_constraints/pdlc-engine-baseline.md` as M-ENG-06/M-ENG-07 (pm-author §5e), so the REQ
-ends the round smaller than it started despite the widened enumerations.
+*Change note (0.8, 2026-08-11, Phase-F erratum round — targeted edit, no re-authoring):* nine
+errata raised against this REQ while FSPEC was authored are absorbed, and nothing else changed.
+**Statements corrected to HEAD:** AC-1.2(c) now attributes the empty `.claude/workflows/`
+read-set per surface (the dev module opens nothing there on any posture; the config opt-out is
+the queue surface's, AC-1.3); AC-3.5's both-directions equality is scoped to the
+module-dispatchable subset (10 identifiers / 12 prompt files at HEAD), since the plugin also
+delivers operator-invoked skills no module dispatches; AC-2.1 rows 2/4/5 name the inspectable
+logged-in evidence (M-ENG-08) instead of an unobservable "settings state present", so row 5 is
+fixturable without an operator credential. **Gaps closed:** AC-4.5 records which transport ran
+per dispatch (NG-6, AC-5.1, AC-6.3 all bind per transport) and fixes where the operator reads the
+report (the run's output stream; no engine-owned file in the consumer repo, NG-7); AC-1.3 and
+§4.1 declare `queue.maxIterations` and make a bounded stop distinguishable from queue exhaustion;
+the diagnostic startup-posture surface gains upstream authority in AC-2.1 (`pdlc doctor` reached
+FSPEC through the command set alone). **In `docs/_constraints/pdlc-engine-baseline.md`:** M-ENG-06
+declares itself total over the ACs and gains its missing AC-2.3 and AC-4.4 rows; M-ENG-08's
+closing "never a refusal" is corrected — unreadable evidence with `ANTHROPIC_API_KEY` present is
+AC-2.1 row 5, not row 6. Every citation in the changed text was verified at HEAD.
+The earlier change notes are compressed to hold the size budget; no approved decision is reopened.
 
-*Earlier change notes.* **0.6** (round 2): three literal oracles corrected to HEAD — AC-3.3's
-`MODEL_ADVISORY` row and corpus-scoped set-equality, AC-1.2(c)'s unqualified empty read-set,
-AC-2.1's ordered first-match list; AC-4.2's `timeout` cap; AC-1.1's split of set-equality from
-run-dependent rules; measured facts relocated to `docs/_constraints/pdlc-engine-baseline.md`.
-**0.5** (round 1): transport swap completed through the mechanism layer, C-1 split into startup
-and per-dispatch parts, AC-2.1's banner mapping, AC-1.2's queue drift gate, G-2's seam list
-marked non-exhaustive, §1.2a's state-at-HEAD table. **0.4**: the Phase-0 spike supersedes the
+*Earlier change notes.* **0.7** (round 3): AC-1.1's closed filename set widened to run-dependent
+members and its observation window fixed at creation time; AC-3.3's `haiku` row split by
+provocation over a five-configuration corpus; §1.2a's table and the model map relocated to
+`docs/_constraints/pdlc-engine-baseline.md` as M-ENG-06/07. **0.6** (round 2): three literal
+oracles corrected to HEAD (AC-3.3's `MODEL_ADVISORY` row, AC-1.2(c), AC-2.1's ordered first-match
+list); AC-4.2's `timeout` cap; measured facts relocated to the constraints file. **0.5** (round 1):
+transport swap completed through the mechanism layer; C-1 split into startup and per-dispatch
+parts; G-2's seam list marked non-exhaustive. **0.4**: the Phase-0 spike supersedes the
 docs-derived §1.3 ruling — SDK primary, `claude -p` fallback, both behind the unchanged `_agent`
 seam. **0.3**: skills are not packaged inside the engine; the plugin is their sole delivery
 vehicle and the version handshake is a hard constraint (operator, 2026-08-08).
@@ -96,7 +103,9 @@ A partial engine is already committed on `feat-pdlc-headless-engine` (`pdlc/engi
 across `059750de`…`f6f8029a`), so for each AC below a test written today either starts red or
 re-asserts green — the two demand different work (TE v1 F-07, SE v1 F-07). The per-AC red/green
 table with its evidence citations is **M-ENG-06** in `docs/_constraints/pdlc-engine-baseline.md`,
-relocated under pm-author §5e and cited by id. Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
+relocated under pm-author §5e and cited by id; that fact declares itself **total over the criteria
+below**, one row per AC (Phase-F erratum: AC-2.3 and AC-4.4 had no row while this section read the
+table as total). Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5, AC-4.4,
 AC-4.5's per-dispatch auth clause, AC-5.1/5.2 and AC-6.2/6.3/6.4 — including the auth check
 `startup.mjs` does not yet make, the hook/settings wiring absent from `pdlc/engine/lib/` (O-2),
 and the per-dispatch auth source the adapter records once rather than per dispatch (TE v2 F-05).
