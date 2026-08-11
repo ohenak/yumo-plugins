@@ -312,14 +312,27 @@ modules' sets on every invocation, not just the invoked command's.
 **Alternatives considered:**
 
 - **Keep an engine-side list** — rejected: it is exactly the hand-maintained declaration BR-START-4
-  forbids, and it is already wrong in both directions (17 names against a derived 10).
+  forbids, and it is already wrong today — in **one** direction, by over-listing. `startup.mjs:20-37`
+  freezes 17 entries (15 skill identifiers plus `se-implement`'s two supplement entries, as its own
+  comment says), and the derived 10 are a strict *subset* of those 15. What HEAD gets wrong is the
+  five operator-invoked-only skills it lists as dispatchable (`consolidate-learnings`,
+  `orchestrate-dev`, `orchestrate-queue`, `tech-lead`, `tech-lead-python`) — which is precisely REQ
+  AC-3.5's "5 operator-invoked" scoping note (`REQ:499-516`). An earlier draft said "wrong in both
+  directions"; it is not, and the correction matters because the oracle transcribes this claim.
 - **Scan the modules' source text for skill literals at dispatch call sites** — rejected on measured
-  evidence, and this is the alternative that looked cheapest. Only three of the ten identifiers sit
-  at a literal `_agent("…")` call site; the rest are reached as `agentFn(SKILL, …)`, as a `skill:`
-  object field, or as a module-local constant (`ADVISORY_RUNG_SKILL`, `orchestrate-dev.js:1797`,
-  dispatched at `:1841`), and five roles appear **only** inside `PHASE_DISPATCH` rows. A scanner
-  honouring "literals at dispatch sites" derives `{ship-pr, se-implement}`; the only repair is to
-  loosen the oracle until it stops being one.
+  evidence, and this is the alternative that looked cheapest. Measured at HEAD across both modules, a
+  scanner honouring "string literal in first argument position of a dispatch call" derives **five**
+  names — `{ship-pr, dod-verify, se-implement, se-author, harvest-learnings}` — from these sites:
+  `ship-pr` (`orchestrate-dev.js:8008`, `:8112`), `dod-verify` (`:8035`, multi-line), `se-implement`
+  (`:8064`, `:10028`, `:10068`, `:10142`, `:10251`), `se-author` (`:9964` and
+  `orchestrate-queue.js:1216`), `harvest-learnings` (`:10542`). The other **five** identifiers
+  (`pm-author`, `pm-review`, `se-review`, `te-author`, `te-review`) never appear as a literal at any
+  dispatch site in either module: they are reached through `PHASE_DISPATCH`'s role fields (`:3337`+)
+  or, for `se-review`, through a module-local constant (`ADVISORY_RUNG_SKILL`, `:1797`, dispatched at
+  `:1841`). `harvest-learnings` also appears as a `skill:` object field (`:10448`), which is not a
+  call site at all. So the scanner is short by half, and the sites it does find include two
+  multi-line call forms a single-line grep misses — the only repair is to loosen the oracle until it
+  stops being one.
 - **Per-command scope for rung 4** (`pdlc queue` checks only the queue module) — rejected: `se-review`
   reaches the queue only through the delegated dev pipeline and the advisory seam, so a missing
   `se-review/SKILL.md` would surface mid-run instead of at startup. The union is also free —
@@ -329,11 +342,28 @@ modules' sets on every invocation, not just the invoked command's.
 **Constraints that forced this shape:** C-4 (the modules are not forked — so the fact must be
 *exported* from them, not copied); BR-START-4; AC-3.5's two directions.
 
-**The cost this decision accepts:** the derivation is only as good as the guard against a new bare
-literal at a new dispatch site, so the design pairs it with a no-bare-literal test carrying a **closed
-allow-list** of non-dispatch literal sites — today exactly the reviewer-role map keys at
-`orchestrate-dev.js:6229-6231`. Widening that list is a reviewed spec change, not a regex edit. A
-second accepted cost: deleting `EXPECTED_SKILLS` means nothing asserts that the five
+**The cost this decision accepts:** the derivation is only as good as the guard against a *new*
+identifier appearing at a *new* dispatch site without being exported. An earlier draft named that
+guard "a no-bare-literal test with a closed allow-list of non-dispatch literal sites — today exactly
+the reviewer-role map keys at `orchestrate-dev.js:6229-6231`", and that test cannot be written
+against HEAD: bare literals sit at dispatch sites in eleven places across the two modules (enumerated
+in the scanner alternative above), so the allow-list would either leave the suite permanently red or
+have to exempt nearly every site it exists to police. The guard is therefore **containment, not
+absence**:
+
+> Every string literal in either workflow module that matches a skill-identifier shape — at a
+> dispatch call site, in a `PHASE_DISPATCH` role field, in a `skill:` field, or bound to a
+> module-local constant — is a member of the two modules' exported `DISPATCHABLE_SKILLS` union.
+
+That is green at HEAD by measurement — every literal occurrence of the ten identifiers in either
+module is a member, including the reviewer-role map's *keys* (`se-review`, `pm-review`, `te-review`
+at `orchestrate-dev.js:6229-6231`), which need no exemption because they are genuine members; that
+map's *values* (`software-engineer`, `product-manager`, `test-engineer`) are role slugs, not skill
+identifiers, and do not match the shape. And it fails
+exactly when the drift this decision fears occurs: a new dispatch site naming an identifier the
+exports do not carry. Its own failure mode is stated rather than assumed: the test is only as good as
+the identifier-shape predicate, so the predicate is asserted against the known set rather than being
+a regex nobody re-reads. A second accepted cost: deleting `EXPECTED_SKILLS` means nothing asserts that the five
 operator-invoked-only skills are readable. That is correct rather than lost — the engine can never
 dispatch them — but it is recorded here so a later reader does not read the reduction as an
 oversight.
@@ -342,8 +372,9 @@ oversight.
 change (with the old defect restored).
 
 **Re-evaluation triggers:** A dispatch path appears that is not reachable from `PHASE_DISPATCH` or a
-named constant; the allow-list needs a second entry (which is the signal that dispatch-site
-discipline is eroding).
+named constant; the containment test needs an exemption of any kind (which is the signal that
+dispatch-site discipline is eroding); a skill identifier stops matching the shape predicate the test
+relies on.
 
 ## DEC-ENG-06: A dispatch inlines the identifier's whole prompt-file set — `SKILL.md` plus every supplement in its directory
 
