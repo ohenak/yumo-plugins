@@ -200,6 +200,91 @@ existence.
 
 ## 3. Skills and prompts
 
+## DEC-ENG-05: The dispatchable skill set is derived from the workflow modules' own exports, not declared engine-side and not scanned out of source text
+
+**Context:** Startup rung 4 must check that every skill the pipeline can dispatch is readable, in
+both directions (AC-3.5, BR-START-4). HEAD does neither: `lib/startup.mjs:20` probes a frozen
+17-name `EXPECTED_SKILLS` list living in the engine, which is a second declaration of a fact the
+workflow modules own.
+
+**Decision:** Each workflow module exports its own `DISPATCHABLE_SKILLS`, computed at module load
+from the data that already drives dispatch — `PHASE_DISPATCH`'s role fields
+(`pdlc/workflows/orchestrate-dev.js:3337`) unioned with the named skill constants — and the engine
+imports it. `EXPECTED_SKILLS` goes away. Rung 4 checks set-equality over the **union** of both
+modules' sets on every invocation, not just the invoked command's.
+
+**Alternatives considered:**
+
+- **Keep an engine-side list** — rejected: it is exactly the hand-maintained declaration BR-START-4
+  forbids, and it is already wrong in both directions (17 names against a derived 10).
+- **Scan the modules' source text for skill literals at dispatch call sites** — rejected on measured
+  evidence, and this is the alternative that looked cheapest. Only three of the ten identifiers sit
+  at a literal `_agent("…")` call site; the rest are reached as `agentFn(SKILL, …)`, as a `skill:`
+  object field, or as a module-local constant (`ADVISORY_RUNG_SKILL`, `orchestrate-dev.js:1797`,
+  dispatched at `:1841`), and five roles appear **only** inside `PHASE_DISPATCH` rows. A scanner
+  honouring "literals at dispatch sites" derives `{ship-pr, se-implement}`; the only repair is to
+  loosen the oracle until it stops being one.
+- **Per-command scope for rung 4** (`pdlc queue` checks only the queue module) — rejected: `se-review`
+  reaches the queue only through the delegated dev pipeline and the advisory seam, so a missing
+  `se-review/SKILL.md` would surface mid-run instead of at startup. The union is also free —
+  `lib/run.mjs` imports both modules anyway, and the queue module already imports the dev module
+  (`orchestrate-queue.js:41`).
+
+**Constraints that forced this shape:** C-4 (the modules are not forked — so the fact must be
+*exported* from them, not copied); BR-START-4; AC-3.5's two directions.
+
+**The cost this decision accepts:** the derivation is only as good as the guard against a new bare
+literal at a new dispatch site, so the design pairs it with a no-bare-literal test carrying a **closed
+allow-list** of non-dispatch literal sites — today exactly the reviewer-role map keys at
+`orchestrate-dev.js:6229-6231`. Widening that list is a reviewed spec change, not a regex edit. A
+second accepted cost: deleting `EXPECTED_SKILLS` means nothing asserts that the five
+operator-invoked-only skills are readable. That is correct rather than lost — the engine can never
+dispatch them — but it is recorded here so a later reader does not read the reduction as an
+oversight.
+
+**Reversibility:** Easy. The exports are additive; reverting to an engine-side list is a one-file
+change (with the old defect restored).
+
+**Re-evaluation triggers:** A dispatch path appears that is not reachable from `PHASE_DISPATCH` or a
+named constant; the allow-list needs a second entry (which is the signal that dispatch-site
+discipline is eroding).
+
+## DEC-ENG-06: A dispatch inlines the identifier's whole prompt-file set — `SKILL.md` plus every supplement in its directory
+
+**Context:** Direction B of AC-3.5 requires every readable prompt file to be reachable by some
+dispatch. `pdlc/skills/se-implement/` holds three files (`SKILL.md`, `SKILL-typescript.md`,
+`SKILL-python.md`), and no module names a supplement: under Claude Code the *agent* loads them per
+`pdlc/skills/se-implement/SKILL.md`, which a headless dispatch cannot do because it is told no
+plugin path. REQ AC-3.5's 12-prompt-file count only closes if something reaches the two supplements.
+
+**Decision:** `composeDispatchPrompt` inlines the dispatched identifier's whole file set, `SKILL.md`
+first, each supplement introduced by a fixed delimiter (`--- BEGIN SUPPLEMENT: {basename} ---` /
+`--- END SUPPLEMENT: {basename} ---`, matching the existing role-definition delimiter in
+`pdlc/engine/lib/skills.mjs`).
+
+**Alternatives considered:**
+
+- **Exempt the supplements from Direction B** — rejected: an exemption list is a place where a real
+  unreachable prompt file can hide, and it would have to grow with every future supplement.
+- **Rewrite `SKILL.md` so the supplements are not separate files** — rejected: NG-8 (no prompt
+  rewrites), and it would change interactive behaviour to serve a headless constraint.
+- **Language-conditioned selection** (send only the supplement matching the repo's language) —
+  rejected *for now*, and deliberately not pre-empted: it needs a prompt-size measurement first, and
+  a manifest to read the language from. Recorded as O-ENG-T3.
+
+**Constraint that forced this shape:** NG-8, plus AC-3.5's set-equality in both directions — this is
+the smallest change that closes Direction B without an exemption.
+
+**The cost this decision accepts:** every `se-implement` dispatch carries both language supplements,
+including the irrelevant one. Bytes, not correctness.
+
+**Reversibility:** Easy — composition is one function, and the delimiter grammar is asserted, so a
+later narrowing has a test to change rather than a convention to guess.
+
+**Re-evaluation triggers:** Measured prompt size becomes a cost (context pressure or billing); a
+third language supplement lands; a skill directory acquires a non-prompt `.md` file, at which point
+"whole file set" needs a stated membership rule rather than a directory listing.
+
 ## 4. Engine-side provenance
 
 ## 5. Test mechanics
