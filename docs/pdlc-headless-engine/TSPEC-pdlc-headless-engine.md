@@ -638,7 +638,9 @@ transport's option keys, and field-presence over the descriptor.
   model: string,          // verbatim from the module's opts.model; never defaulted here
   cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
   timeoutMs: number,      // dispatch.timeoutMinutes × 60 000, engine-stamped on every dispatch (§3.4, §4.6)
-  attempt: number }       // 0-based; 0 is the first try, not a retry
+  attempt: number,        // 0-based; 0 is the first try, not a retry
+  outcome: Outcome|null,  // §4.2's member, stamped when the dispatch settles; null only in flight
+  errorText: string|null }// String(err?.message ?? err) verbatim when the dispatch threw, else null
   // maxTurns is a transport option with no descriptor field: the modules never set it,
   // so it is absent per dispatch and the transport omits it (transport.mjs:178).
 ```
@@ -687,6 +689,37 @@ under `pdlc/workflows/` is modified" depends on. Three rules make it total:
 `MODEL_ADVISORY_FALLBACK` `:1653`, `MODEL_QUEUE` `orchestrate-queue.js:70`). An engine-side default
 would silently re-price a phase, so there is none — an absent `model` is passed as absent and the
 transport omits the option (`transport.mjs:176`).
+
+**`outcome` and `errorText` are the descriptor's terminal half, and they exist because a
+composed-only record cannot witness a failure-driven behaviour** (PM F-01, TE F-26). Every field
+above is stamped when the dispatch is *composed*; a dispatch that ends by throwing was, until this
+revision, recorded identically to one that returned. That made §7.4 row 4 — the advisory fallback,
+whose only trigger is a `fable` dispatch failing to resolve — unwitnessable from recorded data, so
+the row reduced to "some `se-review` dispatch ran on Opus", which every pipeline run satisfies. Both
+fields close that:
+
+- **`outcome` is §4.2's member, not a new taxonomy.** The adapter is already the layer that calls
+  `classifyOutcome` (§5.1) — it is the only place that sees both the thrown value and the result
+  text — so the stamp is that call's return, written back onto the descriptor when the dispatch
+  settles. The six-member set (§4.2, AC-4.1) is unchanged and stays frozen; a seventh member for
+  "model did not resolve" is deliberately **not** added, because that string is `orchestrate-dev`'s
+  own vocabulary (`MODEL_ERROR_RE` `orchestrate-dev.js:1780`, `isModelResolutionError` `:1791`) and R-ARCH-2
+  keeps module prose out of `outcome.mjs`.
+- **`errorText` is verbatim, and the engine never parses it.** It is `String(err?.message ?? err)`
+  for a dispatch that threw and `null` otherwise. The engine takes no decision from it — `phase`'s
+  "provenance, never a verdict" convention (§4.5) applies unchanged. It exists so a *test* can
+  discriminate on a failure it forced: run iv's fixture injects the model-resolution rejection, so
+  the harness matches `errorText` against the literal string it injected, a transcription of the
+  fixture rather than an import of the module's regex.
+- **Retries stay legible.** `attempt` is a local of the one `_agent` call (§5.2, BR-RETRY-4) and
+  `seq` indexes the dispatch, so a retried dispatch records one descriptor per attempt under a
+  shared `seq`, each carrying its own terminal `outcome` — the intermediate `retryable` ones
+  included. A retry duplicate carries the same `skill`, `phase` and `model` as the attempt it
+  repeats, so it can neither falsify rows 1/2's universals nor satisfy an existential the first
+  attempt did not already satisfy.
+
+Neither field is engine-facing state: nothing in the run loop, the report projection or the exit-code
+mapping (§5.4) reads them. They are recorded fields, and §7.4 is their only consumer.
 
 ### 4.2 `DispatchResult` and `Outcome`
 
