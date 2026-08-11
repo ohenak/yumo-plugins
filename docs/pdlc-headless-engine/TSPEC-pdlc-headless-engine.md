@@ -169,6 +169,137 @@ seam whose default works is a defect here, with one deliberate exception (`_git`
 
 ## 3. Interfaces
 
+Every signature below is transcribed from the declaration cited beside it. Where the engine and the
+module disagree about a default, the module wins: the engine passes seams, never expectations.
+
+### 3.1 The per-module seam contract (G-2, BR-PARITY-2)
+
+`orchestrate-dev.js`'s `main()` declares 30+ injection parameters (`pdlc/workflows/orchestrate-dev.js:8916`);
+`orchestrate-queue.js`'s declares 12 (`orchestrate-queue.js:1033`). **The engine supplies only the
+seams whose module default does not work in plain Node, plus `_git`.** The complete contract, per
+module — this table is the exhaustive answer REQ G-2 defers to TSPEC:
+
+| Seam | Module default | dev | queue | Why supplied / left alone |
+|---|---|---|---|---|
+| `_agent(skill, prompt, opts)` | `agent()` **throws** (`orchestrate-dev.js:8458-8460`) | ✅ | ✅ | The one capability the runtime provided (M-ENG-01) |
+| `_parallel(promises)` | `Promise.all` (`:8464`) — works | ✅ | — *(not declared)* | Supplied for log symmetry; behaviour identical |
+| `_pipeline(label, fn)` | `fn()` (`:8469`) — works | ✅ | — *(not declared)* | Adds the section log line only |
+| `_phase(label)` | no-op (`:8474`) | ✅ | ✅ | Progress output |
+| `_log(message)` | `console.log` | ✅ | ✅ | Routed through the engine's log sink |
+| `_runCommand` | `NO_RUN_COMMAND` = `null` | ✅ | — *(not declared)* | **Load-bearing:** a null seam silently degrades Phase I's script-owned wave gate to the legacy self-report path |
+| `_git(argv)` | `defaultGit` (`:8609`) — works | ✅ | ✅ | **The one deliberate exception** (below) |
+| `_runPipeline(args)` | `realMain` (`orchestrate-queue.js:1040`) | — | ✅ | **Necessity:** the queue calls it at `:1422` with `{reqPath}` and *no seams*, so the delegated dev pipeline would reach the throwing stub |
+| every other IO / advisory / probe seam | working Node default | ✗ | ✗ | §2.5 — overriding is a defect |
+| `_sessionAgent` | declared without a default; `sessionBoundAgent` defaults it to `NO_SESSION_AGENT` (`orchestrate-dev.js:5567`) | ✗ | ✗ | Fresh-per-dispatch is today's semantics (R-4, O-6). The seam must stay unpainted, not be wired |
+
+**Why `_git` is supplied although its default works.** `branchGuardTransport`
+(`orchestrate-dev.js:3487`) returns a transport only when `_git` is a function *and*
+`_git !== defaultGit`: the guard refuses to mutate a checkout through a seam nobody explicitly chose.
+Leaving the default in place makes the branch guard announce itself inert and skip, and the pipeline
+then commits onto whatever branch the tree happens to be on — the precise failure the guard exists
+to prevent. **Distinct function identity is the contract**, so `createGit()` (`adapter.mjs:116`) must
+never be memoised into the module's own default and a test asserts the inequality.
+
+`devInjection(adapter)` (`run.mjs:80`) and `queueInjection(adapter, runPipeline)` (`:114`) are the two
+functions that build these objects; they forward the declared seams and nothing else (`composePrompt`
+and the getters are deliberately not forwarded, so the injection object reads against the module's
+parameter list).
+
+**Fall-through is fatal, never silent** (EC-PAR-5): if a dispatch path reaches the modules' throwing
+stub, the thrown `agent() not available outside Claude Code runtime` propagates as an engine failure
+naming the seam — it is never caught and turned into a skipped phase.
+
+### 3.2 `lib/auth.mjs` — the startup posture (new, C-1a)
+
+```js
+// Total: never throws for an environment problem; every input maps to a row.
+export function readLoginEvidence({ home, fs, env }): {
+  readable: boolean,          // ~/.claude.json parsed
+  loggedIn: boolean,          // it carries an `oauthAccount` object (M-ENG-08)
+  path: string,               // the file inspected, named in refusals
+  reason: string|null,        // "absent" | "unreadable: {code}" | "no oauthAccount"
+}
+
+export const AUTH_ROWS = Object.freeze([...]);   // the six, in first-match order
+export function resolveAuthPosture({ env, evidence, allowApiKeyBilling }): {
+  row: 1|2|3|4|5|6,
+  catalogueId: "auth.oauth-token" | "auth.session" | "auth.api-key-optin"
+             | "auth.session-key-ignored" | "auth.api-key-refused" | "auth.unknown",
+  refuses: boolean,           // true only for row 5
+  evidencePath: string,       // echoed into the refusal (BR-AUTH-0)
+}
+```
+
+Three properties are structural, not stylistic:
+
+- **First match, evaluated in order, row 6 total** (BR-AUTH-1). The rows are an ordered array and the
+  resolver returns on the first predicate that holds; the sixth predicate is `true`.
+- **`ANTHROPIC_API_KEY` set to the empty string counts as absent** (EC-AUTH-1) — an empty key cannot
+  bill. The predicate is `typeof v === "string" && v.trim() !== ""`, in one helper, used by every row.
+- **Unreadable evidence is distinguished from absent evidence in the *message*, never in the row**
+  (EC-AUTH-2): both leave `loggedIn: false`, so rows 2 and 4 cannot match and the list falls through
+  to 5 or 6 by the key's presence alone — exactly M-ENG-08's per-platform correction.
+
+`resolveAuthPosture` is pure over injected `env`/`evidence`, so every row is fixturable by pointing
+`HOME` at a scratch directory with or without the record (BR-AUTH-0) and no operator credential is
+involved in any test, including row 5.
+
+### 3.3 Skill resolution and the derived dispatchable set (AC-3.5, BR-START-4)
+
+**The identifier set is derived from the modules, not declared beside them.** Each workflow module
+gains one export:
+
+```js
+// pdlc/workflows/orchestrate-dev.js
+export const DISPATCHABLE_SKILLS = Object.freeze([
+  "dod-verify", "harvest-learnings", "pm-author", "pm-review", "se-author",
+  "se-implement", "se-review", "ship-pr", "te-author", "te-review",
+]);
+// pdlc/workflows/orchestrate-queue.js
+export const DISPATCHABLE_SKILLS = Object.freeze(["se-author"]); // A2 re-grounding
+```
+
+That is a declaration, which BR-START-4 forbids unless something ties it to the modules. The tie is a
+**workflows-side test** (not production code) that scans each module's own source for skill literals
+at dispatch call sites and asserts set-equality with the export. A skill added to a dispatch without
+being added to the export fails that test in this repo, before the engine ever sees it. At HEAD the
+derived union is **10 identifiers** — the count is an observation, never the assertion.
+
+Adding an export is a change to the modules, in this repo, with tests (C-4). It is bundle-safe:
+`stripModuleSyntax` (`pdlc/workflows/build-runtime.mjs:45`) rewrites `export const` to `const`, and
+the bundle's published-binding lists (`:87`, `:107`) are explicit, so the runtime bundles are
+unaffected by a name they do not publish.
+
+**Rung 4 therefore imports the two modules** (after rungs 1–3 pass, never before — R-ARCH-1 keeps that
+import inside `lib/run.mjs`, which exposes `loadDispatchableSkills()` for startup to call). The
+equality is then computed over that scope:
+
+| Direction | Statement | Failure |
+|---|---|---|
+| A: dispatchable ⊆ readable | every derived identifier has a present, non-empty prompt file under `{pluginRoot}/skills/{id}/` | refusal naming each missing identifier |
+| B: readable ⊆ dispatchable | every prompt file **belonging to a derived identifier's directory** is reachable by a composed dispatch | refusal naming each unreachable file |
+| out of scope | a prompt file under a skills directory no module dispatches (`tech-lead`, `consolidate-learnings`, …) | reported, never a refusal (EC-START-7) |
+
+Direction B is what forces §3.3's supplement decision. `skills/se-implement/` holds three files
+(`SKILL.md`, `SKILL-typescript.md`, `SKILL-python.md`), and **no module dispatch names a supplement**
+— `SKILL-typescript`/`SKILL-python` appear nowhere in `pdlc/workflows/*.js`; the supplements are
+loaded by the *agent* at runtime per `pdlc/skills/se-implement/SKILL.md:3`, which under a headless
+dispatch it cannot do (it is told no plugin path). **Decision: the engine inlines a dispatched
+identifier's whole prompt-file set**, `SKILL.md` first, each supplement following under a named
+delimiter. This makes the 12-file count REQ AC-3.5 fixes reachable, satisfies Direction B without an
+exemption list, and keeps BR-SKILL-3's intent (the supplements travel with `se-implement` and only
+with it). It is an engine-side *composition* choice, not a prompt rewrite (NG-8): no byte of any
+`SKILL.md` changes. See the FSPEC erratum this raises, §9.
+
+`composeDispatchPrompt(skillName, skillText, taskPrompt)` (`skills.mjs:312`) keeps its shape — role
+line, delimited role definition, task — and gains the supplement blocks between the role definition
+and the task. `skillFilePath()` (`:267`) keeps both identifier forms (`se-implement`,
+`se-implement:SKILL-typescript.md`) and its traversal guard (`:278-280`).
+
+Plugin-root resolution is discharged and unchanged (O-8): explicit override → install registry →
+extracted cache → marketplace checkout, with `tried[]` retained for a legible refusal
+(`skills.mjs:204-256`).
+
 ## 4. Data Model
 
 ## 5. Error Handling
