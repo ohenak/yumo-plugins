@@ -13,7 +13,11 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-11 |
+| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+
+**Changelog.** v1.1 adds §7 (options considered — the rejected alternatives collated across entries)
+and §8 (consequences — the costs each decision accepts, split into PLAN obligations and standing
+costs), and names §0 as context and scope. No decision changed; the decision index moved to §9.
 
 ## 0. Context and scope of this document
 
