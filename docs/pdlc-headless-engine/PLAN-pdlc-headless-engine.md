@@ -267,10 +267,10 @@ disjointness premise; and no prose note anywhere in this plan substitutes for a 
 | Batch | Tasks | Character | Gate wording |
 |---|---|---|---|
 | 1 | T00 | pre-flight, green-on-HEAD | full engine suite green |
-| 2 | T01–T10 | **RED-terminal** — nine failing test files plus one strengthening | the batch's new tests fail **for the reason each names** (missing module, missing export, missing job) and every pre-existing test stays green; a batch-2 test that *passes* is a defect in the test, not progress |
+| 2 | T01–T10 | **RED-terminal** — nine failing test files plus one strengthening | the batch's nine **new** tests (T01–T09) fail **for the reason each names** (missing module, missing export, missing job) and every pre-existing test stays green; a batch-2 test that *passes* is a defect in the test, not progress — **with T10 explicitly exempt**: it strengthens an assertion whose observable already exists at `run.mjs:58`, has no green counterpart, and is expected to pass on landing. A red T10 is the defect there |
 | 3 | T11–T18 | green over batch 2 | batch-2 tests now pass; full suite green; `node pdlc/workflows/build-runtime.mjs --check` exits 0 |
 | 4 | T19, T20–T34 | **mixed, and therefore RED-terminal** — T19 is green, T20–T34 are fifteen red test files | T19's assertion step passes its own driver; T20–T34 fail for their stated reasons; pre-existing tests green |
-| 5 | T35–T43 | green | batches 4's reds for these owners now pass; full suite green |
+| 5 | T35–T43 | green | batch 4's reds for these owners now pass; full suite green **on the platform the wave runs on**. Precondition, not an aspiration: T29's gate fails wherever no `M-ENG-09` row exists for `process.platform`, and T42's wave agent can record only its own host's row — so "full suite green" here and in batches 6–11 means *green on a platform that has a row*, and the operator step below supplies the second one |
 | 6 | T44, T45, T46 | green | full suite green |
 | 7 | T47 | green | full suite green |
 | 8 | T48, T49 | green (harness) | full suite green, and the corpus's five configurations each produce ≥1 record |
@@ -278,7 +278,19 @@ disjointness premise; and no prose note anywhere in this plan substitutes for a 
 | 10 | T52 | green | full suite green, **including** T50 |
 | 11 | T53 | documentation | full suite green; no code change |
 
-**Why two batches are deliberately RED-terminal and cannot be gated on "full suite green".** Batches
+**The one operator step on this plan's critical path, named rather than assumed.** `M-ENG-09` needs
+one row per platform in T17's matrix (`ubuntu-latest`, `macos-latest`), and the producing instrument
+— `__tests__/live/guard-measurement.test.js` — is credentialed and opt-in, so it never runs in CI
+and a wave agent can run it only on its own host. T42 records the row for the platform the batch-5
+wave runs on. **The other platform's row is recorded by hand, by a maintainer, before the feature
+can be green in CI**: run `PDLC_LIVE=1 node --test __tests__/live/guard-measurement.test.js` on a
+host of that platform and commit the appended row to
+`docs/_constraints/pdlc-engine-baseline.md`. Until that lands, T17's `engine-tests` job is red on
+the platform without a row — which is exactly what DEC-ENG-04 asks for (an unrecorded measurement is
+*loud*), and is not a defect to be repaired by loosening T29. It is a Phase-DOD precondition, and §8
+carries it as a DoD item.
+
+**Why three batches are deliberately RED-terminal and cannot be gated on "full suite green".** Batches
 2, 4 and 9 end with failing tests by construction — that is the red half of TDD, and a blanket
 "suite green after every batch" gate is unsatisfiable there. Their gate is the split form above.
 This repo's shipped wave gate runs `implementation.testCommand` and commits only on success, so
