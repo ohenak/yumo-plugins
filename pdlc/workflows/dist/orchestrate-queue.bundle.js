@@ -1,8 +1,8 @@
 // ⚠️  GENERATED FILE — DO NOT EDIT.
 // Built by `node pdlc/workflows/build-runtime.mjs` from:
+//   pdlc/workflows/runtime-adapter.js
 //   pdlc/workflows/orchestrate-dev.js
 //   pdlc/workflows/orchestrate-queue.js
-//   pdlc/workflows/runtime-adapter.js
 // Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this
 // bundle exists (the workflow runtime allows no imports, exports past meta, or fs).
 export const meta = {
@@ -493,6 +493,11 @@ async function rtCliQuery(argv, label) {
   return null;
 }
 
+async function rtHashNormalizedFile(path) {
+  const probed = await rtProbeDoc(path);
+  return probed && typeof probed.normalizedHash === "string" ? probed.normalizedHash : null;
+}
+
 async function rtProbeDoc(path, docType) {
   if (!path || typeof path !== "string") return null;
   const argv = ["doc-probe", path];
@@ -515,7 +520,7 @@ async function rtProbePostmortem(arg) {
 async function rtWriteFile(path, contents) {
   rtCacheInvalidate(path);
   await RT.agent(
-    `Write the following content to "${path}", relative to the repository root, ` +
+    `Write the following content to "${path}", relative to the repository root or as an absolute path, ` +
       `replacing the file's current contents exactly. Do not reformat, re-wrap, ` +
       `summarise, or add anything. Reply with "ok" when written.\n\n` +
       `<<<PDLC_CONTENT_BEGIN\n${contents}\nPDLC_CONTENT_END`,
@@ -537,6 +542,25 @@ async function rtCheckFile(path) {
   if (verdict.includes("OK")) return { ok: true };
   if (verdict.includes("EMPTY")) return { ok: false, reason: "file_empty" };
   return { ok: false, reason: "file_missing" };
+}
+
+async function rtEnvPresent(name) {
+  const out = await RT.agent(
+    `Run exactly:  [ -n "\${${name}:-}" ] && echo PRESENT || echo ABSENT\n` +
+      `Reply with that one word and nothing else.`,
+    { label: `env-present:${name}`, model: RT_IO_MODEL }
+  );
+  return String(out ?? "").trim() === "PRESENT";
+}
+
+async function rtMakeTempDir(passId) {
+  const out = await RT.agent(
+    `Run exactly:  mktemp -d -t pdlc-consolidation-${passId}\n` +
+      `Reply with the created path and nothing else.`,
+    { label: `make-temp-dir:${passId}`, model: RT_IO_MODEL }
+  );
+  const text = String(out ?? "").trim();
+  return /^\/\S+$/.test(text) ? text : null;
 }
 
 function rtMakeCheckCi(devModule) {
@@ -714,6 +738,7 @@ function rtDevInjections(devModule) {
     _checkFile: rtCheckFile,
     _readFile: rtReadFile,
     _hashFile: rtHashFile,
+    _hashNormalizedFile: rtHashNormalizedFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
 
@@ -730,6 +755,23 @@ function rtDevInjections(devModule) {
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
 
+  };
+}
+
+function rtConsInjections() {
+  return {
+    _agent: rtAgent,
+    _readFile: rtReadFile,
+    _writeFile: rtWriteFile,
+    _appendFile: rtAppendFile,
+    _checkFile: rtCheckFile,
+    _listFiles: rtListFiles,
+    _git: rtGit,
+    _ghRun: rtGhRun,
+    _log: rtLog,
+    _phase: rtPhase,
+    _envPresent: rtEnvPresent,
+    _makeTempDir: rtMakeTempDir,
   };
 }
 
@@ -835,6 +877,7 @@ const IMPLEMENTATION_DEFAULTS = Object.freeze({
   testCommand: null,
   postWaveCommand: null,
   postWavePathspecs: Object.freeze([]),
+  startWave: 1,
 });
 
 function parseImplementationConfig(text) {
@@ -878,11 +921,22 @@ function parseImplementationConfig(text) {
     }
   }
 
+  let startWave = IMPLEMENTATION_DEFAULTS.startWave;
+  if ("startWave" in section) {
+    const v = section.startWave;
+    if (Number.isInteger(v) && v >= 1) {
+      startWave = v;
+    } else {
+      invalidKeys.push("startWave");
+    }
+  }
+
   return {
     config: {
       testCommand: nonEmptyString("testCommand"),
       postWaveCommand: nonEmptyString("postWaveCommand"),
       postWavePathspecs,
+      startWave,
     },
     sectionMalformed: false,
     invalidKeys,
@@ -936,6 +990,10 @@ const MERGE_STATE_STATUS_VALUES = [
 ];
 const UNRECOGNISED_SENTINEL = "__unrecognised__";
 
+function repoFlag(repo) {
+  return repo == null ? "" : ` --repo ${repo}`;
+}
+
 function mergeCommandFor(surface, params = {}) {
   switch (surface) {
     case "prState":
@@ -966,10 +1024,144 @@ function mergeCommandFor(surface, params = {}) {
       }
       return cmd;
     }
+    case "consolidationPrs":
+
+      return `gh pr list${repoFlag(params.repo)} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
+    case "consolidationCreate":
+
+      return `gh pr create${repoFlag(params.repo)} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
     default:
       throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
   }
 }
+
+const CONSOLIDATION_LOG_PATH = "docs/_decisions/.consolidation-log.md";
+
+const LOG_RECORD_FIELD_MAP = [
+  ["failure-mode-id", "failureModeId"],
+  ["phase", "phase"],
+  ["symptom", "symptom"],
+  ["artifact", "artifact"],
+  ["target", "target"],
+  ["passId", "passId"],
+  ["action", "action"],
+  ["route", "route"],
+];
+
+function parseLogRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  const records = [];
+  const notices = [];
+
+  for (const block of blocks) {
+    const fieldValues = {};
+    for (const line of block.split("\n")) {
+      const colon = line.indexOf(":");
+      if (colon === -1) continue;
+      fieldValues[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+    }
+
+    const record = {};
+    for (const [textKey, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (Object.prototype.hasOwnProperty.call(fieldValues, textKey)) {
+        record[propKey] = fieldValues[textKey];
+      }
+    }
+
+    const subject = record.failureModeId;
+    for (const [, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (!Object.prototype.hasOwnProperty.call(record, propKey)) {
+        notices.push({ subject, missingField: propKey });
+      }
+    }
+
+    records.push(record);
+  }
+
+  return { records, notices };
+}
+
+const RECORD_COMMENT_RE = /<!--\s*pdlc:record\s+(\{.*?\})\s*-->/g;
+
+function jsonCommentRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const records = [];
+  RECORD_COMMENT_RE.lastIndex = 0;
+  let match;
+  while ((match = RECORD_COMMENT_RE.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && typeof parsed === "object" && typeof parsed.failureModeId === "string") {
+        records.push(parsed);
+      }
+    } catch {
+
+    }
+  }
+  return records;
+}
+
+function consolidationLogRecords(logText) {
+  return [
+    ...jsonCommentRecords(logText),
+    ...parseLogRecords(logText).records.filter((r) => typeof r.failureModeId === "string"),
+  ];
+}
+
+function openPromotionList(records) {
+  const list = Array.isArray(records) ? records : [];
+  const order = [];
+  const seen = new Set();
+  const closed = new Set();
+
+  for (const r of list) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!seen.has(r.failureModeId)) {
+      seen.add(r.failureModeId);
+      order.push(r.failureModeId);
+    }
+    if (r.action === "retire" && r.route !== undefined && r.route !== "degraded") {
+      closed.add(r.failureModeId);
+    }
+  }
+
+  return order.filter((id) => !closed.has(id));
+}
+
+function openPromotionsFromLog(logText) {
+  const records = consolidationLogRecords(logText);
+  const open = new Set(openPromotionList(records));
+  const byId = new Map();
+  for (const r of records) {
+    if (!open.has(r.failureModeId)) continue;
+    const entry = byId.get(r.failureModeId) || { failureModeId: r.failureModeId };
+    for (const field of ["phase", "symptom", "artifact"]) {
+      if (typeof r[field] === "string" && r[field].length > 0) entry[field] = r[field];
+    }
+    byId.set(r.failureModeId, entry);
+  }
+  return [...byId.values()];
+}
+
+function renderOpenPromotionList(entries) {
+  const list = Array.isArray(entries) ? entries : [];
+  if (list.length === 0) return "(none — no open promotions are recorded)";
+  return list
+    .map((e) => {
+      const phase = e.phase ? e.phase : UNAVAILABLE_FIELD;
+      const artifact = e.artifact ? e.artifact : UNAVAILABLE_FIELD;
+      const symptom = e.symptom ? e.symptom : UNAVAILABLE_FIELD;
+      return `  - failure-mode-id: ${e.failureModeId} | phase: ${phase} | artifact: ${artifact} | symptom: ${symptom}`;
+    })
+    .join("\n");
+}
+
+const UNAVAILABLE_FIELD = "unavailable";
 
 function parsePrRef(input) {
   if (typeof input !== "string") return null;
@@ -1838,6 +2030,8 @@ const MODEL_DEFAULT = "opus";
 
 const MAX_REVIEW_ROUNDS = 5;
 
+const MAX_LIFETIME_ROUNDS = 15;
+
 const MAX_AUTHORING_ATTEMPTS = 3; 
 const MAX_AUTHORING_DISPATCHES = 6; 
 const MAX_AUTHORING_WRITE_BYTES = 12000; 
@@ -1967,11 +2161,11 @@ function isModelResolutionError(err) {
 
 const ADVISORY_RUNG_SKILL = "se-review";
 
-function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+function resolveAdvisoryRung({ _agent, _log, _state, prompt, skill = ADVISORY_RUNG_SKILL }) {
   const log = typeof _log === "function" ? _log : () => {};
 
   function dispatchAt(model) {
-    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+    return _agent(skill, prompt, { model });
   }
 
   if (_state.resolved != null) {
@@ -3058,6 +3252,8 @@ const PHASE_DISPATCH = {
     grounding: [
       "The feature's full diff against the default branch — every finding must cite the actual changed lines.",
       "The documents under docs/{feature}/ — confirm the shipped code matches what they specify.",
+
+      "For each AC that claims an operator-visible artifact contains something: name the production caller that assembles it and the test that drives THAT caller, or file a finding. A builder covered only through its own unit tests is not wired.",
     ],
   },
   DOD: {
@@ -3802,9 +3998,23 @@ function approvalHashOf(text) {
   return `sha256:${sha256Hex(text)}`;
 }
 
+const APPROVAL_PATH_ANCHOR_RE =
+  /([A-Za-z0-9_~@][A-Za-z0-9_@~.\-/]*[./][A-Za-z0-9_@~.\-/]*):(\d+)(?:-(\d+))?(?![\w.-])/g;
+const APPROVAL_CELL_ANCHOR_RE = /`:(\d+)(?:-(\d+))?`/g;
+
+function normalizeForApproval(text) {
+  return String(text ?? "")
+    .replace(APPROVAL_PATH_ANCHOR_RE, (_m, head, _a, b) => `${head}:${b == null ? "*" : "*-*"}`)
+    .replace(APPROVAL_CELL_ANCHOR_RE, (_m, _a, b) => `\`:${b == null ? "*" : "*-*"}\``);
+}
+
+function approvalHashOfNormalized(text) {
+  return approvalHashOf(normalizeForApproval(text));
+}
+
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
 
-const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH|REVIEWED-COMMIT):/;
+const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
 
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
 
@@ -3814,10 +4024,13 @@ const COMMIT_UNAVAILABLE = "unavailable";
 
 function parseApprovalHash(fileText) {
   const hashes = [];
+  const normalized = [];
   const commits = [];
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
+    const n = /^\s*APPROVAL-HASH-NORMALIZED:\s*(\S*)\s*$/.exec(line);
+    if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
   });
@@ -3831,7 +4044,10 @@ function parseApprovalHash(fileText) {
       ? commits[0]
       : COMMIT_UNAVAILABLE;
 
-  return { ok: true, hash: hashes[0], reviewedCommit };
+  const normalizedHash =
+    normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
+
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
 }
 
 function extractFileVerdict(fileText, roleSlug) {
@@ -4329,6 +4545,17 @@ function parseErrata(text, onIgnored) {
   return found;
 }
 
+async function withDispatchRetry(dispatchFn, { label, emit = () => {}, onFault = () => {} } = {}) {
+  try {
+    return await dispatchFn();
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    emit(`Dispatch fault (${label}): ${message} — retrying once.`);
+    onFault();
+    return await dispatchFn();
+  }
+}
+
 async function reviewLoop({
   doc,
   phase,
@@ -4339,12 +4566,15 @@ async function reviewLoop({
   iteration = 1,
   startIndex = iteration,
   endIndex = windowEnd(startIndex),
+
+  priorApprovedRound = null,
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
   _hashFile = defaultHashFile,
+  _hashNormalizedFile = defaultHashNormalizedFile,
   _appendFile = defaultAppendFile,
 
   _probeDoc = NO_PROBE,
@@ -4421,8 +4651,7 @@ async function reviewLoop({
     }
   };
 
-  const reviewTargetPath = (skill, round) =>
-    `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
+  const reviewTargetPath = (skill, round) => crossReviewPath(feature, skill, reviewFileType, round);
 
   await verifyFeatureBranch({
     feature,
@@ -4511,16 +4740,30 @@ async function reviewLoop({
     }
 
     let anchorHash = null;
+    let anchorNormalizedHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
 
       const probe = await probeDocument(_probeDoc, doc, roundDocType);
       anchorHash = (probe ? probe.hash : await _hashFile(doc)) ?? null; 
+
+      anchorNormalizedHash = await normalizedAnchorFor({
+        probe,
+        path: doc,
+        _hashNormalizedFile,
+      });
       anchorCommit = await headCommitSha(_git); 
     }
 
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
+    const frozen = freezeInForce({ priorApprovedRound, nextRound: iteration });
+    if (frozen) {
+      emit(
+        `Decision freeze in force for ${doc} at round ${iteration} ` +
+          `(prior approved round: ${priorApprovedRound ?? "none"}, late-round threshold: ${FREEZE_LATE_ROUND}).`
+      );
+    }
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType, frozen);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType, frozen);
 
     const [r1, r2] = await _parallel([
       runWrapped(
@@ -4570,6 +4813,7 @@ async function reviewLoop({
       await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
+        normalizedHash: anchorNormalizedHash,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -4587,7 +4831,7 @@ async function reviewLoop({
       };
     }
 
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType, frozen);
 
     const optEpisode = await runWrapped(
       optimizer,
@@ -4643,9 +4887,21 @@ function approvalAnchorPreCount(fileText) {
   return found;
 }
 
+async function normalizedAnchorFor({ probe, path, _hashNormalizedFile }) {
+  if (probe) return typeof probe.normalizedHash === "string" ? probe.normalizedHash : null;
+  if (typeof _hashNormalizedFile !== "function") return null;
+  try {
+    const value = await _hashNormalizedFile(path);
+    return typeof value === "string" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function appendApprovalAnchors({
   paths,
   hash,
+  normalizedHash = null,
   commit,
   _readFile,
   _probeDoc,
@@ -4689,7 +4945,13 @@ async function appendApprovalAnchors({
       return;
     }
     try {
-      await _appendFile(path, `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ${commit}\n`);
+
+      await _appendFile(
+        path,
+        `\nAPPROVAL-HASH: ${hash}\n` +
+          (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
+          `REVIEWED-COMMIT: ${commit}\n`
+      );
       appended = true;
     } catch (err) {
       emit(
@@ -4719,6 +4981,10 @@ const REVIEWER_ROLE_SLUGS = Object.freeze(Object.values(MAP));
 
 function reviewerRoleSlug(skill) {
   return MAP[skill] || null;
+}
+
+function crossReviewPath(feature, skill, docType, round) {
+  return `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${docType}-v${round}.md`;
 }
 
 function reviewerSkillForSlug(slug) {
@@ -4822,6 +5088,25 @@ function deriveRoundWindow(basenames, docType) {
 
 function windowEnd(startIndex) {
   return startIndex + MAX_REVIEW_ROUNDS - 1;
+}
+
+function lifetimeCapReached(startIndex) {
+  const next = Number(startIndex);
+  if (!Number.isFinite(next)) return false;
+  return next > MAX_LIFETIME_ROUNDS;
+}
+
+const FREEZE_LATE_ROUND = 10;
+
+function freezeInForce({ priorApprovedRound, nextRound } = {}) {
+  const round = Number(nextRound);
+  if (Number.isFinite(round) && round >= FREEZE_LATE_ROUND) return true;
+
+  const prior = Number(priorApprovedRound);
+  if (!Number.isFinite(prior) || prior < 1) return false;
+
+  if (Number.isFinite(round) && prior >= round) return false;
+  return true;
 }
 
 function docTypeFromPath(path) {
@@ -4938,6 +5223,8 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
       high: parsedVerdict.ok ? parsedVerdict.high : null,
       verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
       anchorHash: anchor.ok ? anchor.hash : null,
+
+      anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -5056,7 +5343,14 @@ async function targetState({ targetPath, artifactClass, docType, _readFile, _pro
 }
 
 function noApprovalRecord(candidate, unevaluable = []) {
-  return { approving: false, candidate, hash: null, unevaluable, tier1Empty: false };
+  return {
+    approving: false,
+    candidate,
+    hash: null,
+    normalizedHash: null,
+    unevaluable,
+    tier1Empty: false,
+  };
 }
 
 function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
@@ -5082,7 +5376,18 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
     return noApprovalRecord(candidate, records.map((r) => r.path));
   }
 
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+  const norms = records.map((r) => r.anchorNormalizedHash ?? null);
+  const normalizedHash =
+    norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
+
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 const APPROVAL_RECORD_HEADING = /^\s*##\s+\d*\.?\s*Approval Record\s*$/;
@@ -5119,7 +5424,15 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
   if (!hashes.every((h) => APPROVAL_HASH_VALUE_RE.test(h) && h === hashes[0])) {
     return noApprovalRecord(candidate);
   }
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash: null,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 function authoringHaltError(message, trailerReason) {
@@ -5221,7 +5534,20 @@ async function dispatchAndVerify({
 
     let faulted = false;
     try {
-      response = await _agent(skill, prompt, model ? { model } : undefined);
+
+      response =
+        dispatchKind === "review"
+          ? await _agent(skill, prompt, model ? { model } : undefined)
+          : await withDispatchRetry(
+              () => _agent(skill, prompt, model ? { model } : undefined),
+              {
+                label: `${skill} dispatch, phase ${phaseId}`,
+                emit,
+                onFault: () => {
+                  faulted = true;
+                },
+              }
+            );
     } catch {
       faulted = true;
       response = null;
@@ -5342,6 +5668,27 @@ const ORACLE_QUALITY_CLAUSE = [
     "catalogues) need a set-equality check over the full enumeration, so a deleted case fails.",
 ].join("\n");
 
+const FREEZE_REVIEWER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Its content decisions are settled: this round " +
+    "exists to catch what the last revision broke, not to decide anything new.",
+  "A finding may block (VERDICT: Needs revision) ONLY if it is one of:",
+  "(i) a defect the revision under review introduced — something this delta broke that worked before; or",
+  "(ii) a factual contradiction with the repository at HEAD or with an upstream document, which makes " +
+    "a load-bearing claim in this document false.",
+  "Everything else — an improvement, a restructuring, extra coverage, wording, a decision you would " +
+    "have taken differently — is out of scope as a blocking finding in a frozen round. Do not open a " +
+    "new decision here. Record each such observation as its own line in your cross-review, in exactly " +
+    "this form:",
+  "DEFERRED: {one-line item}",
+  "and approve.",
+].join("\n");
+
+const FREEZE_OPTIMIZER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Address the blocking findings and nothing else.",
+  "A line beginning DEFERRED: in a cross-review is recorded, not requested: do NOT act on it, do not " +
+    "restructure, do not re-open a settled decision, and do not improve text no finding names.",
+].join("\n");
+
 const REVIEW_CONVERGENCE_CLAUSE =
   "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
   "whether the revision broke anything — a narrower scope of attention, not a lower standard. " +
@@ -5365,7 +5712,9 @@ const ERRATUM_PROTOCOL_CLAUSE =
   "each item to that document's author for a targeted versioned edit and to its approvers for a " +
   "delta confirmation.";
 
-function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
+function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, frozen = false) {
+
+  const freezePart = frozen ? `\n${FREEZE_REVIEWER_CLAUSE}` : "";
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
     branchPinClause(feature);
@@ -5375,14 +5724,20 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
 
   const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
-  if (iteration < 2) return `${base}${groundingPart}${oraclePart}`;
+  const type = docType || docTypeFromPath(doc) || "REVIEW";
+
+  const targetFile = crossReviewPath(feature, reviewer, type, iteration);
+  const targetClause =
+    `Write your cross-review to exactly this path: ${targetFile}. ` +
+    `Do not derive a different file type from the artifact under review — this phase's round ` +
+    `history is keyed by that exact name, and a file outside it is not counted.`;
+
+  if (iteration < 2) return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
-
-  const type = docType || docTypeFromPath(doc) || "REVIEW";
   const priorFile = role
-    ? `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${prev}.md (your reviewer role is "${role}")`
+    ? `${crossReviewPath(feature, reviewer, type, prev)} (your reviewer role is "${role}")`
     : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
@@ -5395,12 +5750,14 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
     `Medium and Low findings do not block; file them and approve with minor changes.\n` +
-    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
+
+    `${freezePart ? `${freezePart.slice(1)}\n` : ""}` +
+    `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart
   );
 }
 
-function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType, frozen = false) {
   const base =
     `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. ` +
     `Iteration ${iteration} reviewers found issues. Update and commit.\n` +
@@ -5424,12 +5781,14 @@ function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType
 
   const continuing = `\n${CONTINUING_AUTHOR_CLAUSE}`;
 
+  const freeze = frozen ? `\n${FREEZE_OPTIMIZER_CLAUSE}` : "";
+
   const erratum = `\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
   if (phase === "T") {
-    return `${base}${feedback}${groundingPart}${continuing}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
+    return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
   }
-  return `${base}${feedback}${groundingPart}${continuing}${erratum}`;
+  return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}`;
 }
 
 async function recoverVerdict({ reviewer, rawResult, _agent = agent }) {
@@ -5467,9 +5826,18 @@ function creatorPrompt(phase, featureName, inputs) {
   );
 }
 
-function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn }) {
+function erratumAuthorPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  raisedIn,
+  upstreamState = [],
+  movedSinceMinted = [],
+}) {
   return (
     `ERRATUM ROUND for ${docPath} (feature ${feature}).\n` +
+    upstreamHeadClause({ docType, upstreamState, movedSinceMinted }) +
     `Phase ${raisedIn} raised the following errata against this ${docType}:\n` +
     `${itemLines}\n` +
     `This is an erratum round, NOT a rewrite. Apply a targeted, versioned edit that addresses ` +
@@ -5480,7 +5848,37 @@ function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn })
   );
 }
 
-function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, reviewFile }) {
+function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = [] }) {
+  if (!Array.isArray(upstreamState) || upstreamState.length === 0) return "";
+  const rows = upstreamState
+    .map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`)
+    .join("\n");
+  const moved =
+    Array.isArray(movedSinceMinted) && movedSinceMinted.length > 0
+      ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
+        `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
+        `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
+        `from the current text before you edit anything (DEC-ERR-03).\n`
+      : "";
+  return (
+    `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
+    `documents this ${docType} derives from, at their CURRENT version as of this dispatch:\n` +
+    `${rows}\n` +
+    `Read each of them at that version, then treat the item list below as a FLOOR, not a ceiling: ` +
+    `if HEAD says something the items do not, the list is stale and this ${docType} must match HEAD.\n` +
+    moved
+  );
+}
+
+function erratumConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
   return (
     `DELTA CONFIRMATION for ${docPath} (feature ${feature}).\n` +
     `You previously approved this ${docType}. It has just received a targeted erratum edit ` +
@@ -5489,9 +5887,28 @@ function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, rev
     `Do not re-review the whole document. Read the items above and \`git diff\` the erratum edit ` +
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+function erratumSupersetClause({ docType, upstreamState = [] }) {
+  const rows =
+    Array.isArray(upstreamState) && upstreamState.length > 0
+      ? `The upstream documents, at their current version as of this dispatch:\n` +
+        upstreamState.map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`).join("\n") +
+        `\n`
+      : "";
+  return (
+    `Your scope is this ${docType} measured against its upstream AT HEAD — not the item list. ` +
+    `The items landing is NECESSARY, NOT SUFFICIENT. Re-read the upstream text this ${docType} now ` +
+    `leans on, at its current version, and ask whether this document is still a faithful ` +
+    `compression of it. Anything it cites that upstream no longer says, or no longer says the same ` +
+    `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
+    `(DEC-ERR-03).\n` +
+    rows
   );
 }
 
@@ -5540,7 +5957,7 @@ function propertiesTestPrompt(featureName) {
   );
 }
 
-function harvestPrompt(featureName) {
+function harvestPrompt(featureName, openPromotions = []) {
   return (
     `Harvest learnings for feature ${featureName}:\n` +
     `1. Read all CROSS-REVIEW-*.md and CODE_REVIEW-*.md files (every doc type, every -vN suffix) for docs/${featureName}/.\n` +
@@ -5549,6 +5966,13 @@ function harvestPrompt(featureName) {
     `4. Commit and push LEARNINGS before any delete operation.\n` +
     `5. Only after the LEARNINGS commit is confirmed on remote, delete the harvested CROSS-REVIEW-* and CODE_REVIEW-* files.\n` +
     `6. Commit and push the deletions.\n` +
+    `\nOpen-promotion list, computed from ${CONSOLIDATION_LOG_PATH} and handed to you (FSPEC §8.4 ` +
+    `step 1). For each §5 Open Item you write, ask one question per entry below: does this item ` +
+    `report the failure that entry's symptom describes, on that entry's artifact, in that ` +
+    `entry's phase? On a yes, copy that entry's id VERBATIM onto the item as ` +
+    `\`failure-mode-id: {id}\` — never re-slug, abbreviate, or mint a new id. On no matches, ` +
+    `write no line.\n` +
+    `${renderOpenPromotionList(openPromotions)}\n` +
     branchPinClause(featureName)
   );
 }
@@ -5920,7 +6344,10 @@ async function dodVerifyLoop({
     }
 
     _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
-    await _agent("se-implement", dodRemediatePrompt(feature, iteration));
+    await withDispatchRetry(
+      () => _agent("se-implement", dodRemediatePrompt(feature, iteration)),
+      { label: `DOD remediation, iteration ${iteration}`, emit: _log }
+    );
   }
 
   return { passed: false, iterations: maxIterations };
@@ -6183,6 +6610,304 @@ function computeWaves(tasks, ownership) {
   return waves;
 }
 
+const UNSKIP_TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+
+function maskNonCode(source) {
+  if (typeof source !== "string") return "";
+  const n = source.length;
+  const out = new Array(n);
+  const blank = (i) => {
+    out[i] = source[i] === "\n" ? "\n" : " ";
+  };
+
+  let prev = "";
+  let i = 0;
+
+  while (i < n) {
+    const c = source[i];
+    const c2 = i + 1 < n ? source[i + 1] : "";
+
+    if (c === "/" && c2 === "/") {
+      while (i < n && source[i] !== "\n") blank(i++);
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      blank(i++);
+      blank(i++);
+      while (i < n) {
+        if (source[i] === "*" && source[i + 1] === "/") {
+          blank(i++);
+          blank(i++);
+          break;
+        }
+        blank(i++);
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      blank(i++);
+      while (i < n) {
+        const d = source[i];
+        if (d === "\\") {
+          blank(i++);
+          if (i < n) blank(i++);
+          continue;
+        }
+        blank(i++);
+        if (d === c) break;
+      }
+
+      prev = '"';
+      continue;
+    }
+    if (c === "/" && regexOpensAfter(prev)) {
+      const end = regexLiteralEnd(source, i);
+      if (end > i) {
+        while (i < end) blank(i++);
+        prev = "/";
+        continue;
+      }
+    }
+
+    out[i] = c;
+    if (!/\s/.test(c)) prev = c;
+    i++;
+  }
+
+  return out.join("");
+}
+
+function regexOpensAfter(prev) {
+  return prev === "" || "([{;,=:!&|?+-*%^~<>".includes(prev);
+}
+
+function regexLiteralEnd(source, start) {
+  let i = start + 1;
+  let inClass = false;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\n") return -1;
+    if (c === "\\") {
+      i += 2;
+      continue;
+    }
+    if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) {
+      i++;
+      while (i < source.length && /[a-z]/.test(source[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+function scanSkipTokens(source) {
+  if (typeof source !== "string" || source === "") return [];
+  const masked = maskNonCode(source);
+  const found = [];
+  const re = /\b(describe|test|it)\.skip\s*\(/g;
+  let m;
+  while ((m = re.exec(masked)) !== null) {
+    const start = m.index;
+
+    let j = start - 1;
+    while (j >= 0 && (masked[j] === " " || masked[j] === "\t")) j--;
+    if (j >= 0 && masked[j] !== "\n") continue;
+
+    while (j >= 0 && /\s/.test(masked[j])) j--;
+    const prev = j >= 0 ? masked[j] : "";
+    if (prev !== "" && !";{})".includes(prev)) continue;
+
+    found.push({
+      line: source.slice(0, start).split("\n").length,
+      token: `${m[1]}.skip`,
+      title: firstStringArgument(source, start + m[0].length),
+    });
+  }
+  return found;
+}
+
+function firstStringArgument(source, idx) {
+  let i = idx;
+  while (i < source.length && /\s/.test(source[i])) i++;
+  const quote = source[i];
+  if (quote !== '"' && quote !== "'" && quote !== "`") return "";
+  let out = "";
+  i++;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\\") {
+      out += source[i + 1] || "";
+      i += 2;
+      continue;
+    }
+    if (c === quote) break;
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+function titleNamesTask(title, id) {
+  if (!title || !id) return false;
+  const escaped = String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}([^A-Za-z0-9_-]|$)`).test(title);
+}
+
+async function checkWaveUnskips({ waves, waveIndex, _readFile } = {}) {
+  const violations = [];
+  const notices = [];
+  const scanned = [];
+  const done = { violations, notices, scanned };
+
+  if (!Array.isArray(waves) || waves.length === 0) {
+    notices.push("no wave plan to scan");
+    return done;
+  }
+  if (typeof _readFile !== "function") {
+    notices.push("no _readFile transport — owned test files were not scanned");
+    return done;
+  }
+
+  const allIds = [];
+  const complete = new Set();
+  const ownersByFile = new Map();
+  for (let wi = 0; wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      if (!task || !task.id) continue;
+      if (!allIds.includes(task.id)) allIds.push(task.id);
+      if (wi <= waveIndex) complete.add(task.id);
+      for (const file of Array.isArray(task.files) ? task.files : []) {
+        if (!ownersByFile.has(file)) ownersByFile.set(file, []);
+        const owners = ownersByFile.get(file);
+        if (!owners.includes(task.id)) owners.push(task.id);
+      }
+    }
+  }
+
+  const targets = [];
+  for (let wi = 0; wi <= waveIndex && wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      for (const file of Array.isArray(task && task.files) ? task.files : []) {
+        if (UNSKIP_TEST_FILE_RE.test(file) && !targets.includes(file)) targets.push(file);
+      }
+    }
+  }
+  if (targets.length === 0) {
+    notices.push("no completed task owns a test file in the PLAN's manifest — nothing to scan");
+    return done;
+  }
+
+  for (const file of targets) {
+    let text = null;
+    try {
+      text = await _readFile(file);
+    } catch {
+      text = null;
+    }
+    if (typeof text !== "string" || text === "") {
+      notices.push(`${file} could not be read — not scanned`);
+      continue;
+    }
+    scanned.push(file);
+
+    for (const token of scanSkipTokens(text)) {
+      const named = allIds.filter((id) => titleNamesTask(token.title, id));
+      const owners = named.length > 0 ? named : ownersByFile.get(file) || [];
+
+      if (owners.length === 0) continue;
+
+      if (!owners.every((id) => complete.has(id))) continue;
+      violations.push({ ...token, file, owners });
+    }
+  }
+
+  return done;
+}
+
+function formatUnskipViolations(waveNum, violations) {
+  const rows = violations.map(
+    (v) =>
+      `  ${v.file}:${v.line} ${v.token}(${v.title ? `"${v.title}"` : ""}) — ` +
+      `owned by ${v.owners.join(", ")}, complete as of wave ${waveNum}`
+  );
+  return (
+    `Error: Wave ${waveNum} un-skip guard failed — ${violations.length} skipped ` +
+    `test block(s) are owned by a task that is already complete, so the wave's ` +
+    `gate passed on tests that never ran:\n${rows.join("\n")}\n` +
+    `Each 🟢 owner's first obligation is to remove the \`.skip\` wrapper on its own ` +
+    `block. A block owned by a LATER wave's task is legitimate and does not appear here.`
+  );
+}
+
+const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
+
+function computePlanHash(waves) {
+  const canonical = (Array.isArray(waves) ? waves : [])
+    .map((wave) =>
+      (Array.isArray(wave) ? wave : [])
+        .map((t) => {
+          const id = t && t.id != null ? String(t.id) : "";
+          const files = t && Array.isArray(t.files) ? t.files : [];
+          return `${id}:${files.join(",")}`;
+        })
+        .join("|")
+    )
+    .join(";");
+
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+function parseWaveLedger(text) {
+  if (text == null) return { state: null, reason: null };
+
+  const trimmed = String(text).trim();
+  if (trimmed === "" || trimmed === "{}") return { state: null, reason: null };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return { state: null, reason: "it is not readable JSON" };
+  }
+
+  if (!isPlainObject(parsed)) return { state: null, reason: "it is not a JSON object" };
+
+  const feature = parsed.feature;
+  const planHash = parsed.planHash;
+  const lastGreenWave = parsed.lastGreenWave;
+  const wellFormed =
+    typeof feature === "string" &&
+    feature.trim() !== "" &&
+    typeof planHash === "string" &&
+    planHash.trim() !== "" &&
+    Number.isInteger(lastGreenWave) &&
+    lastGreenWave >= 1;
+
+  if (!wellFormed) {
+    return { state: null, reason: "its fields are not the shape this workflow writes" };
+  }
+
+  const head = typeof parsed.head === "string" && parsed.head.trim() !== "" ? parsed.head.trim() : null;
+
+  return { state: { feature, planHash, lastGreenWave, head }, reason: null };
+}
+
+function formatWaveLedger(feature, planHash, lastGreenWave, head = null) {
+  const record =
+    typeof head === "string" && head.trim() !== ""
+      ? { version: 1, feature, planHash, lastGreenWave, head: head.trim() }
+      : { version: 1, feature, planHash, lastGreenWave };
+  return `${JSON.stringify(record, null, 2)}\n`;
+}
+
 async function agent(skill, prompt, opts) {
 
   throw new Error("agent() not available outside Claude Code runtime");
@@ -6222,6 +6947,14 @@ function defaultReadFile(path) {
 function defaultHashFile(path) {
   try {
     return approvalHashOf(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function defaultHashNormalizedFile(path) {
+  try {
+    return approvalHashOfNormalized(fs.readFileSync(path, "utf8"));
   } catch {
     return null;
   }
@@ -6468,6 +7201,7 @@ async function main({
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
   _hashFile: hashFileFn = defaultHashFile,
+  _hashNormalizedFile: hashNormalizedFileFn = defaultHashNormalizedFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -6553,6 +7287,8 @@ async function main({
 
     const window = await phaseWindow(docType);
 
+    let priorApprovedRound = null;
+
     if (!forced) {
 
       let record = tier1ApprovalRecord({
@@ -6577,12 +7313,27 @@ async function main({
 
       if (record.approving) {
 
+        priorApprovedRound = record.candidate;
+
         const probe = await probeDocument(probeDocFn, docPath, docType);
         const docHash = probe ? probe.hash ?? null : await hashFileFn(docPath);
-        const freshness =
+        let freshness =
           docHash == null
             ? isStale(record.hash, null)
             : isStaleByHash(record.hash, docHash);
+
+        let heldByNormalization = false;
+        if (freshness === "STALE" && record.normalizedHash) {
+          const docNormalized = await normalizedAnchorFor({
+            probe,
+            path: docPath,
+            _hashNormalizedFile: hashNormalizedFileFn,
+          });
+          if (docNormalized && docNormalized === record.normalizedHash) {
+            freshness = "FRESH";
+            heldByNormalization = true;
+          }
+        }
         if (freshness === "FRESH") {
 
           const pm = await resolvePostmortem({
@@ -6591,7 +7342,16 @@ async function main({
             _readFile: readFileFn,
             _probePostmortem: probePostmortemFn,
           });
-          let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
+          let detail = heldByNormalization
+            ? `Skipped — approved round ${record.candidate}, approval held: only line-number anchors moved since review`
+            : `Skipped — approved round ${record.candidate}, hash FRESH`;
+          if (heldByNormalization) {
+            notices.push(
+              `Phase ${phaseId}: ${docPath} differs from the approved bytes only in ` +
+                `line-number anchors (\`file:line\` citations) — the recorded approval holds ` +
+                `and the phase is skipped (DEC-APPROVAL-03).`
+            );
+          }
           if (pm.status === "unresolved") {
             detail += `; unresolved POSTMORTEM at ${pm.path}`;
             skipPostmortem = pm;
@@ -6622,7 +7382,26 @@ async function main({
       );
     }
 
-    return { skip: false, window, forced };
+    if (!forced && lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const detail =
+        `Accepted as-is — lifetime review cap of ${MAX_LIFETIME_ROUNDS} rounds reached ` +
+        `(${onDisk} rounds on disk); NOT approved`;
+      recordPhase(phaseId, label, "⏭", detail);
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — ${onDisk} review ` +
+        `round${onDisk === 1 ? "" : "s"} for ${docType} are on disk and the cap is ` +
+        `${MAX_LIFETIME_ROUNDS}. No author, reviewer or optimizer was dispatched for this ` +
+        `phase. The document is ACCEPTED AS-IS and the pipeline moves forward. This is NOT ` +
+        `an approval: no verdict was reached this run and no approval anchor was written. ` +
+        `It is also not a failure — no POSTMORTEM was written. To review it again anyway, ` +
+        `re-run with forcePhases including "${phaseId}".`;
+      notices.push(notice);
+      emit(notice);
+      return { skip: true };
+    }
+
+    return { skip: false, window, forced, priorApprovedRound };
   }
 
   const forcedDetail = (detail, forced) =>
@@ -6632,6 +7411,7 @@ async function main({
     _agent: agentFn,
     _readFile: readFileFn,
     _hashFile: hashFileFn,
+    _hashNormalizedFile: hashNormalizedFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _probeDoc: probeDocFn,
@@ -6661,6 +7441,40 @@ async function main({
       }),
     });
     return episode.response;
+  }
+
+  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+
+  async function erratumDocHash(docType) {
+    const path = erratumDocPath(docType);
+    const probe = await probeDocument(probeDocFn, path, docType);
+    return (probe ? probe.hash : await hashFileFn(path)) ?? null;
+  }
+
+  const erratumDocTypesAbove = (target) =>
+    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+  async function snapshotErratumDocs() {
+    const snapshot = new Map();
+    for (const docType of ERRATUM_DOC_TYPES) {
+      snapshot.set(docType, await erratumDocHash(docType));
+    }
+    return snapshot;
+  }
+
+  async function deriveUpstreamState(target, mintedHashes) {
+    const upstreamState = [];
+    const movedSinceMinted = [];
+    for (const docType of erratumDocTypesAbove(target)) {
+      const hash = await erratumDocHash(docType);
+      if (hash == null) continue;
+      upstreamState.push({ docType, path: erratumDocPath(docType), hash });
+      const minted = mintedHashes ? mintedHashes.get(docType) : undefined;
+      if (minted !== undefined && minted !== null && minted !== hash) {
+        movedSinceMinted.push(docType);
+      }
+    }
+    return { upstreamState, movedSinceMinted };
   }
 
   async function erratumPostmortemHalt({ phaseId, label, reason }) {
@@ -6699,12 +7513,38 @@ async function main({
     );
   }
 
-  async function erratumRound({ phaseId, label, target, items }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
-    const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+    const upstreamPath = erratumDocPath(target);
     const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
     const itemText = items.map((e) => e.item).join("; ");
+
+    const window = await phaseWindow(target);
+    if (lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${upstreamPath} — erratum round ` +
+        `skipped, nothing dispatched. ${onDisk} review round${onDisk === 1 ? "" : "s"} for ` +
+        `${target} are on disk and the cap is ${MAX_LIFETIME_ROUNDS}. The document is ` +
+        `ACCEPTED AS-IS (not approved, and not failed — no POSTMORTEM was written) and the ` +
+        `pipeline moves forward. Unaddressed erratum item${items.length === 1 ? "" : "s"}: ` +
+        `${itemText}. To apply them anyway, re-run with forcePhases including ` +
+        `"${upstreamPhase}".`;
+      notices.push(notice);
+      emit(notice);
+      return null;
+    }
+
+    const { upstreamState, movedSinceMinted } = await deriveUpstreamState(target, mintedHashes);
+    if (movedSinceMinted.length > 0) {
+      const notice =
+        `Phase ${phaseId}: erratum round for ${target} — upstream moved since the routed list was ` +
+        `minted (${movedSinceMinted.join(", ")}). The author is re-grounded on upstream HEAD and ` +
+        `the routed items are a floor, not a ceiling (DEC-ERR-03).`;
+      notices.push(notice);
+      emit(notice);
+    }
 
     const authorSkill = upstream.creator ?? upstream.optimizer;
     const authorResponse = await wrappedDispatch({
@@ -6715,6 +7555,8 @@ async function main({
         docPath: upstreamPath,
         itemLines,
         raisedIn: phaseId,
+        upstreamState,
+        movedSinceMinted,
       }),
       targetPath: upstreamPath,
       docType: target,
@@ -6724,7 +7566,6 @@ async function main({
       sessionKey: authorSessionKey(featureName, target, upstreamPhase),
     });
 
-    const window = await phaseWindow(target);
     const round = window.startIndex;
     const reviewers = upstream.reviewers;
     const confirmPaths = reviewers.map(
@@ -6734,6 +7575,11 @@ async function main({
 
     const probe = await probeDocument(probeDocFn, upstreamPath, target);
     const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
+    const anchorNormalizedHash = await normalizedAnchorFor({
+      probe,
+      path: upstreamPath,
+      _hashNormalizedFile: hashNormalizedFileFn,
+    });
     const anchorCommit = await headCommitSha(gitFn);
 
     const responses = await parallelFn(
@@ -6747,6 +7593,8 @@ async function main({
             itemLines,
             round,
             reviewFile: confirmPaths[i],
+
+            upstreamState,
           }),
           targetPath: confirmPaths[i],
           docType: target,
@@ -6807,6 +7655,7 @@ async function main({
     await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
+      normalizedHash: anchorNormalizedHash,
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,
@@ -6857,6 +7706,8 @@ async function main({
     const spent = new Map();
     const routed = [];
 
+    let mintedHashes = await snapshotErratumDocs();
+
     while (pending.length > 0) {
       const followOn = [];
 
@@ -6878,7 +7729,7 @@ async function main({
         }
         spent.set(target, already + 1);
 
-        const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+        const upstreamPath = erratumDocPath(target);
         const exists = await checkFileFn(upstreamPath);
         if (!exists || !exists.ok) {
           notices.push(
@@ -6888,7 +7739,9 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items });
+        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
+
+        if (responses === null) continue;
         routed.push(target);
         for (const reply of responses) {
           followOn.push(
@@ -6900,6 +7753,8 @@ async function main({
         }
       }
       pending = admit(followOn);
+
+      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
@@ -6954,6 +7809,8 @@ async function main({
       iteration: window.startIndex,
       startIndex: window.startIndex,
       endIndex: window.endIndex,
+
+      priorApprovedRound: gate.priorApprovedRound ?? null,
       _parallel: parallelFn,
       _checkFile: checkFileFn,
       ...wrapperSeams,
@@ -7391,9 +8248,127 @@ async function main({
           `(same tree, file-ownership disjoint)`
       );
 
+      let startWave = implConfig.startWave;
+
+      const explicitPointer = startWave > 1;
+      if (startWave > waves.length) {
+        emit(
+          `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
+            `last wave of this plan (${waves.length}) — running every wave from 1.`
+        );
+        startWave = 1;
+      }
+      if (startWave > 1) {
+
+        emit(
+          `Resuming at wave ${startWave} of ${waves.length} (implementation.startWave). ` +
+            `Waves 1–${startWave - 1} are skipped as previously completed; the first ` +
+            `executed wave's gate still verifies the whole tree. Clear ` +
+            `implementation.startWave before the next fresh run.`
+        );
+      }
+
+      const planHash = computePlanHash(waves);
+      let ledgerResume = false;
+      let allWavesRecorded = false;
+      if (!explicitPointer) {
+        const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
+        const ledger = parseWaveLedger(ledgerRaw);
+        const ignore = (why) =>
+          emit(
+            `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${why}. ` +
+              `Running every wave from 1.`
+          );
+
+        const headCorroborated = async (recordedHead) => {
+          if (!recordedHead) return true; 
+          const transport = branchGuardTransport(gitFn);
+          if (!transport) return true; 
+          try {
+            const reply = await transport([
+              "merge-base",
+              "--is-ancestor",
+              recordedHead,
+              "HEAD",
+            ]);
+            return !!(reply && reply.ok === true);
+          } catch {
+            return true; 
+          }
+        };
+
+        if (ledger.reason) {
+          ignore(ledger.reason);
+        } else if (ledger.state) {
+          const recorded = ledger.state;
+          if (recorded.feature !== featureName) {
+            ignore(
+              `it records feature "${recorded.feature}", not "${featureName}"`
+            );
+          } else if (recorded.planHash !== planHash) {
+            ignore("the PLAN's wave layout has changed since it was written");
+          } else if (!(await headCorroborated(recorded.head))) {
+            ignore(
+              `the commit it records (${String(recorded.head).slice(0, 12)}) is not an ` +
+                `ancestor of HEAD — the branch was reset or re-cut since it was written, ` +
+                `so the work it records is not in this tree`
+            );
+          } else if (recorded.lastGreenWave > waves.length) {
+            ignore(
+              `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
+                `only ${waves.length}`
+            );
+          } else if (recorded.lastGreenWave === waves.length) {
+
+            startWave = waves.length + 1;
+            ledgerResume = true;
+            allWavesRecorded = true;
+            emit(
+              `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
+                `${waves.length} waves of this plan were committed and recorded ` +
+                `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
+                `full run.`
+            );
+          } else {
+            startWave = recorded.lastGreenWave + 1;
+            ledgerResume = true;
+            emit(
+              `Resuming at wave ${startWave} of ${waves.length} (wave ledger ` +
+                `${WAVE_STATE_PATH}). Waves 1–${recorded.lastGreenWave} were committed ` +
+                `and recorded green by an earlier run of this same plan; the first ` +
+                `executed wave's gate still verifies the whole tree. Delete ` +
+                `${WAVE_STATE_PATH} to force a full run.`
+            );
+          }
+        }
+      }
+
+      const writeWaveLedger = async (contents, what) => {
+        try {
+          await writeFileFn(WAVE_STATE_PATH, contents);
+        } catch (err) {
+          emit(
+            `Notice: could not ${what} the wave ledger ${WAVE_STATE_PATH} — ` +
+              `${(err && err.message) || String(err)}. The run continues; a later ` +
+              `invocation will simply start from wave 1.`
+          );
+        }
+      };
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
+        if (allWavesRecorded) break;
+        if (waveNum < startWave) {
+          emit(
+            `Wave ${waveNum}/${waves.length}: skipped (` +
+              (ledgerResume
+                ? `wave ledger: waves 1–${startWave - 1} already green`
+                : `implementation.startWave=${startWave}`) +
+              `)`
+          );
+          continue;
+        }
         phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
 
         const waveResults = await parallelFn(
@@ -7433,6 +8408,24 @@ async function main({
           evaluateBatchGate(waveResults, waveIndex, wave);
         }
 
+        const unskip = await checkWaveUnskips({
+          waves,
+          waveIndex,
+          _readFile: readFileFn,
+        });
+        for (const notice of unskip.notices) {
+          emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
+        }
+        if (unskip.violations.length > 0) {
+          throw haltError(formatUnskipViolations(waveNum, unskip.violations));
+        }
+        if (unskip.scanned.length > 0) {
+          emit(
+            `Wave ${waveNum} un-skip guard: ${unskip.scanned.length} owned test ` +
+              `file(s) scanned, no skipped block owed by a completed task`
+          );
+        }
+
         if (waveGit) {
           for (const task of wave) {
             const paths = Array.isArray(task.files) ? task.files : [];
@@ -7462,23 +8455,51 @@ async function main({
               emit,
             });
           }
+
+          let waveHead = null;
+          if (waveGit) {
+            try {
+              const rev = await waveGit(["rev-parse", "HEAD"]);
+              if (rev && rev.ok === true) waveHead = String(rev.stdout ?? "").trim() || null;
+            } catch {
+              waveHead = null;
+            }
+          }
+          await writeWaveLedger(
+            formatWaveLedger(featureName, planHash, waveNum, waveHead),
+            `record wave ${waveNum} in`
+          );
         }
       }
 
-      recordPhase(
-        "I",
-        "Implementation",
-        "✅",
-        `All ${waves.length} waves complete (wave mode, ` +
-          `${scriptGate ? "script-owned gate" : "self-report gate"})`
-      );
+      if (allWavesRecorded) {
+        recordPhase(
+          "I",
+          "Implementation",
+          "⏭",
+          `Skipped — all ${waves.length} waves previously committed and ` +
+            `recorded green (wave ledger)`
+        );
+      } else {
+        recordPhase(
+          "I",
+          "Implementation",
+          "✅",
+          `All ${waves.length} waves complete (wave mode, ` +
+            `${scriptGate ? "script-owned gate" : "self-report gate"})`
+        );
+      }
 
       phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)");
       const vWaveNum = waves.length + 1;
-      const vResult = await agentFn(
-        "se-implement",
-        propertiesTestPrompt(featureName),
-        { model: MODEL_IMPLEMENTATION }
+      const vResult = await withDispatchRetry(
+        () =>
+          agentFn(
+            "se-implement",
+            propertiesTestPrompt(featureName),
+            { model: MODEL_IMPLEMENTATION }
+          ),
+        { label: `V-wave ${vWaveNum} PROPERTIES tests`, emit }
       );
 
       evaluateWaveDispatch([vResult], waves.length, [{ id: "PROPERTIES tests" }]);
@@ -7642,9 +8663,12 @@ async function main({
       } else {
         phaseFn("Phase H: Harvest");
         const learningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+
+        const consolidationLogText = await readFileFn(CONSOLIDATION_LOG_PATH);
+        const openPromotions = openPromotionsFromLog(consolidationLogText);
         const harvestResult = await wrappedDispatch({
           skill: "harvest-learnings",
-          basePrompt: harvestPrompt(featureName),
+          basePrompt: harvestPrompt(featureName, openPromotions),
           targetPath: learningsPath,
           docType: "LEARNINGS",
           dispatchKind: "harvest",
@@ -7969,7 +8993,7 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, parseLogRecords, jsonCommentRecords, openPromotionList };
 })();
 
 const __queue = (function () {

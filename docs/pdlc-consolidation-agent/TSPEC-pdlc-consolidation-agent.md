@@ -9,7 +9,176 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.0 | 2026-08-06 |
+| pdlc | draft | Claude | 2.8 | 2026-08-10 |
+
+> **v2.8 (erratum: FSPEC v11.7 minted AT-K3b; absorb it).** Round-16 erratum round, raised by
+> pm-review, te-author and se-review on the same cell. §12.2's unreadable-corpus row still asserted
+> that the whole-corpus observable — the pass terminating `no-op` with an empty consumed pair
+> (§10.3 row 1b) — was reached by "no register AT either". FSPEC **v11.7** minted **AT-K3b** (FSPEC
+> §13.6 register; bound to AC-1.4 as its third cause in §13.7) for exactly that condition, so the
+> clause was false at HEAD. **Absorbed, not re-litigated** (DEC-ERR-01): the gap sentence is replaced
+> by the citation, §12.2's second fixture is stated as AT-K3b's discharge with the register's
+> remaining conjuncts (no proposal file, no reason code, the empty-pair-while-un-consolidated-non-empty
+> discriminator), and §12.3 assigns **AT-K3b** to `consolidationPass.test.js` — the register
+> re-derivation moves to **v11.7 / 100 ids**, restoring the id→file set equality that was short one
+> id. AT-K1…AT-K7 stay in `consolidationCredential.test.js`: the split is by subject, so the AT-K
+> family spans two files, which the equality permits. No other section is touched.
+
+> **v2.7 (erratum: two HEAD claims about this feature's own landed edits).** te-review v15
+> erratum round: (a) §3.2's `CLAUDE.md` row still described the tracked-runtime-artifact
+> enumeration as `:58-60` with a three-count closing sentence at `:62` — the shape of the
+> *pre-feature baseline*. That edit has since landed on this branch (`927ecd15`, task T33):
+> HEAD carries five bullets at `CLAUDE.md:58-62` and a count-free sentence at `:64`. The row
+> now reads as landed and keeps only the rationale for the shape the edit took. (b) §12.2's
+> `CLAUDE.md` row asserted "verified at HEAD, where `rows[].id` is exactly `orchestrate-dev`,
+> `orchestrate-queue`, `pdlc-cli`" — `distribution-manifest.json` at HEAD carries **four** rows,
+> `consolidate-learnings` among them, since the rebuild landed. Both citations are re-anchored:
+> what was true of the baseline is said of the baseline, what is true at HEAD is said of HEAD.
+> §8.3 carried the same three-id claim in one clause and is re-anchored with it. No decision,
+> oracle or scope changes: the CLAUDE.md case remains set equality against the manifest's rows,
+> in both directions, which is precisely why a fourth row needed no oracle edit.
+>
+> **v2.6 (the all-unreadable pass gets a routing row and a case).** te-review v15 F-01 (**High**,
+> pm-review v15 F-01 the same finding at Medium): v2.5 absorbed REQ §4b's terminal status for a pass
+> that could read nothing — `no-op`, AC-1.4's third cause — into §10.4's *deliberately not handled*
+> list, where it bound no oracle: §10.3 had no row (its nearest neighbour, row 1a's unlistable
+> corpus, terminates `failed` and says *"Never `no-op`"*), §12.2's unreadable-corpus row carried a
+> **mixed** fixture whose consumed pair is non-empty by construction, and no register AT reaches the
+> third cause (FSPEC's AC-1.4 → AT map offers AT-R7's all-suppressed and AT-P6/E-08's empty-corpus
+> fixtures — the second and first causes). Fixed where the behaviour lives: **§10.3 row 1b** routes
+> it, carrying REQ's quiet-week discriminator (consumed empty **and** un-consolidated non-empty) and
+> its "not row 1a" clause; **§10.4** keeps only the genuinely-accepted part, the entry re-offered
+> until the operator fixes it; **§12.2** gains a **second fixture in the same case** (two enumerated
+> basenames, `_readFile` ⇒ `null` for both) asserting terminal status exactly `no-op`, an empty
+> consumed pair and `|un-consolidated| = 2`, with the mixed fixture as its control in both
+> directions; **§12.3** records the second fixture and mints no id. te-review F-02 (Low): §12.2's
+> conjunct (2) is now **set equality** against `{readable}` rather than containment-plus-absence,
+> the shape NFR-5's *"exactly the consumed set"* requires. pm-review F-02 (Low): §7.1 enumerated
+> *"two observables"* while §12.2/§12.3 said three — §7.1 now numbers three (count / omission /
+> report-body naming), the report-body obligation no longer living inside a sub-clause of (2). One
+> **ERRATUM: FSPEC** raised for the deeper cause te-review names: FSPEC §5.3's proposal-file table
+> still reads *"AC-1.4's **two named causes**"* against REQ's three. The **ERRATUM: PROPERTIES** of
+> v2.5 is re-emitted unresolved.
+>
+> **v2.5 (REQ §4b's consumed-pair decision absorbed — behaviour change).** pm-review v14 F-01
+> (**High**): §7.1's arm 2 decided an unreadable corpus entry **into** the consumed pair on a
+> convergence argument, while REQ §4b (erratum, REQ v2.1) had already decided the opposite remedy —
+> the entry is **omitted** from the pair, stays un-consolidated and is **retried next pass**, because
+> a consumed-but-unread entry can only push a verdict toward `prevented`/`insufficient-evidence` and
+> never toward `recurred`, corrupting REQ-CONS-05's falsifiability loop in one direction. **Absorbed,
+> not re-litigated** (DEC-ERR-01): §7.1's arm 2 rewritten to omission with REQ's reason quoted and
+> this layer's superseded convergence argument answered rather than deleted; §12.2's `(no FSPEC AT)`
+> row and §12.3's `consolidationPass.test.js` row now assert conjunct (2) as *the pair names the
+> readable basename and **not** the unreadable one*, keeping the readable member as the positive
+> control so the conjunct cannot pass on an empty pair; §13.3 re-cast from *answered here* to
+> **answered upstream and absorbed**, keeping only the falsifier (the same basename reported
+> unreadable on two consecutive passes) as the trigger to re-raise upstream; §10.4 gains the retried
+> entry as a third, explicitly **retryable** residue class beside the nested repository, set-equal
+> with §13.3's list, and records the `no-op` terminal status REQ §4b fixes for a pass that consumed
+> nothing. One **ERRATUM: PROPERTIES** emitted — PROP-COR-09's title and its conjunct (2) already
+> disagree across the boundary. te-review v14 F-01 (**Medium**): §11.1's ignored-fixture build-order
+> guard named `git status --ignored --porcelain`, which (measured) collapses the ignored member to
+> `!! docs/ign/`; the guard now specifies **`-uall`**, with `git check-ignore -v {path}` as the stated
+> alternative. F-02 (Low): `ls-files --error-unmatch` is an **exit-status probe** (measured: exit 1),
+> not a listing, and the bullet now says so. F-03 / pm-review F-02 (Low): §11.2's `seams.js` anchors
+> corrected — function form `:405-406`, array form `:407-408`, and `mergeDoubles.js`'s fall-through
+> `{ok:true, stdout:"", stderr:""}` at `:209`.
+
+> **2.4 (the new oracles made runnable; the round trip recorded as closed everywhere).** v2.3's
+> mechanism stands; this round repairs its own partial sweep. **te-review v13 F-01 (High) — the
+> mandated `_git` double could not express the mechanism it was mandated for.** §7.1 issues two
+> `ls-files` reads, but §11.2 bound `_git` to `mergeDoubles.js`'s `fakeGit`, which keys its script by
+> git *subcommand* (`mergeDoubles.js:200-207`) and so answers both calls identically — making the
+> `--deleted` set equal the enumeration set, the corpus **always empty**, AT-P1's conjuncts 2–3 red on
+> correct code, and every L2 corpus fixture silently green. §11.2 is re-pointed at `seams.js`'s
+> `fakeGit` (`:389`), whose script may be a per-call function or array and which records
+> `.calls`/`.invocations` — the capability already ships, so no factory is added and no helper is
+> widened; the map form is ruled out for corpus and clone fixtures, with the reason stated. (This also
+> reconciles T-13, which already drove `asAsync(fakeGit)` over a **sync** double.) **§13.1 row 6
+> (pm-review F-01 High, te-review F-02)** no longer presents a settled decision as erratum-pending:
+> REQ §3.1 step 1 withdrew the "one enumeration" half, §13.3 records the trip closed, and the
+> document's last surviving `REQ-…:NNN` pointer is re-cast per §12.3's own widened rule. **Row 10
+> (pm-review F-02)** now states two `_git` reads rather than one, naming the subtraction, since it is
+> what a PLAN task sizes the enumeration from. **te-review F-03:** the hook's line pointers were stale
+> in the same revision that forbade them — `:28`/`:41`/`:43`/`:29-30`/`:44-48` are re-anchored by
+> symbol (`CORPUS_GLOBS`, `region_split`, `pending`, `THRESHOLD`, `PDLC_PENDING:`, the `PY_BIN` probe)
+> across §7.1, §11.1, §11.3(f) and §12.2, and §7.1 stops narrating a landed edit in the future tense;
+> the quoted debug snippet is corrected to HEAD's `sorted(set(…))`. **te-review F-04:** `ls-files`
+> output is unordered (measured), so §7.1 now states that every corpus oracle is a **set** oracle and
+> binds §11.1's real-git case. **pm-review F-03:** §3.2's hook row keeps its ownership claim and adds
+> the landed-at-HEAD note (`b22834b7`) §10.4 already carried, so the two sections agree in tense.
+> Questions closed: the `unread:` field question is **answered no and no longer handed upstream** —
+> the subtraction removed the population that motivated it, leaving transient faults the report body
+> names, with the observation that would reverse it recorded (§13.3, §7.1); §11.1's ignored fixture
+> member gains the build-order guard (`.gitignore` written *before* `git add -A`, asserted) that keeps
+> it from passing for the wrong reason.
+
+> **2.3 (REQ v2.5's two corpus rules absorbed — a behaviour change, not bookkeeping).** v2.2 asserted
+> a re-pin to `REQ v2.5` without performing it; pm-review v12 F-01/F-02 caught that §7.1 still shipped
+> both corpus-membership rules against REQ §3.1 step 1's decision. **Absorbed, not re-raised** — the
+> REQ decided both classes, and routing a settled question back upstream is the anti-pattern
+> DEC-ERR-01 names. (a) **`--exclude-standard` is dropped** from §7.1's argv, AT-P1's pin, §9.3's
+> permitted-call row and §12.2's T-08 rows: an ignored LEARNINGS *is* corpus. The argument §10.4 made
+> for keeping it (promotion from a source no reviewer sees in a diff) is kept as recorded history and
+> its cost is now stated as *paid*, not avoided. (b) **A second `_git` read, `ls-files --deleted` over
+> the identical pathspec pair, is subtracted** from the enumeration, so an index entry with no
+> working-tree file is not corpus; this is an obligation, not residue. §10.4's class (ii) — "genuinely
+> not closable at this layer" — is corrected: it is closed by narrowing the *pass*, not by widening
+> the hook. (c) The divergence set falls from two classes to **one** (a LEARNINGS inside a nested git
+> repository, measured on a scratch tree), which §10.4 now names and accepts. (d) §13.3's enumeration
+> erratum is rewritten as **absorbed-and-closed** on both halves — REQ withdrew "one enumeration",
+> FSPEC v11.6 re-scoped AT-P7 to the predicate — keeping only the then-open `unread:` field
+> question, narrowed by (b) and closed at v2.4. (e) §11.1's L4 git case gains the two fixture members and conjuncts
+> it previously declined to add while the question was open, so the flag and the subtraction are
+> pinned against real git and not only against a scripted double. Lows folded in: AT-P7 re-cited to
+> FSPEC §13.2; §12.3's citation rule widened to **every** upstream document with the four stale REQ
+> pointers re-cast (scoping it to one document was itself the defect); §12.2's provenance sentence
+> scoped to FSPEC §13 as a whole; the hook row re-measured by symbol. te-review v12: §5.1's probe
+> comment now scopes its agreement claim to the *state* and not the reason's provenance (F-01);
+> §7.3 decides that surrounding whitespace is tolerated and §11.4's generator draws it into the
+> well-formed arm, closing a property that would have redded on conforming code (F-02); `_now` is a
+> **destructured** injection default at `:1623`/`:3182`/`:8417`, not a module-level one at the stale
+> `:1396` (F-03) — and the term is reconciled across all three sites that use it, not only in §5.6(b)
+> where the finding landed: §5.5's seam-default row and §12.2's `rtConsInjections()` exclusion both
+> said "module-level default" and now say "destructured parameter default", so the phrase survives in
+> exactly one place, §5.6(b)'s narration of what the earlier draft got wrong (F-03, second half).
+
+> **2.2 (round-10 Lows and one question, no mechanism change).** Five corrections, none touching a
+> decision, obligation, oracle strength or acceptance criterion. (a) **The FSPEC is no longer cited
+> by line anywhere.** pm-review F-01 and te-review L-01 both landed on hand-copied `FSPEC-…:NNNN`
+> coordinates going stale (v11.4 moved every register locator +34; v11.6 moved them again), so all
+> twelve are re-cast as *§-number + heading + id* and §12.3 states the rule — including its
+> corollary for erratum entries, which is pm-review v11's F-01. (b) §12.3's register measurement is
+> re-derived at FSPEC **v11.6**: still **99**, still set-equal to §12.3's table with an empty diff
+> both ways, and the version qualifier is now a re-derivation date rather than a pin, since
+> `consolidationTraceability.test.js` is what must red on a fourth drift. (c) §11.6 discloses that
+> `rtCheckFile`'s catch-all routes *any* unrecognised probe reply to `file_missing`
+> (`runtime-adapter.js:830`) while the double routes only genuine absence there, so §7.3 decision
+> 2's absent arm is **fail-open** on a garbled reply and no L2 fixture can reach it — te-review
+> L-02. §5.1's agreement claim is scoped to the file states, which is all decision 2 rests on. (d)
+> §11.4 gains the **`parseMarker`** strategy (te-review L-03), stated as an iff with a round-trip
+> conjunct, since v2.0 widened that grammar to two forms plus a `state` discriminant; T-09's row in
+> §12.2 now carries the count. (e) te-review Q-01 answered: T-13's conjunct (ii) and the
+> release-set case **pin `_now`** rather than shape-matching the timestamp, in the shape the shipped
+> suites already use, so `{ISO-8601}` is a literal expected value and a release stamped with the
+> take's instant reds.
+
+> **2.1 (erratum round 9, targeted edit — no restructuring).** Three cross-reference errata, nothing
+> else; no mechanism, decision or obligation changes. (a) §7.9's NFR-2 / §7.4 row (`:1418`) cited the
+> inbound-residual render sites by stale line — §10.3 row 1a is at `:1950`, not `:1832`, and
+> `openClone`'s signature is at `:1615`, not `:1522`; both pointers re-measured at HEAD and corrected.
+> (b) §10.3 row 4 and §13.1 row 13 both called the empty-or-neither-form marker state "FSPEC §4.2's
+> **fourth** row"; it is the **fifth** — *"Present but **empty**, or a line that is neither form"* —
+> and the fourth is the stale `IN-PROGRESS:` reclaim row, so an AT fixtured from the old wording
+> would have built the wrong state and proved nothing about **E-11**. Both sites now name the fifth
+> row. (The line numbers this entry originally carried for those two rows had themselves drifted by
+> 2.2 — see the citation rule in §12.3 — so both sites, and this entry, name the rows by their text.) (c) the 1.7 changelog entry located the NFR-2 row at "§8, `:1325`" — **the wrong section**;
+> the row lives in §7.9. (This entry originally added "a blank line at HEAD" of the stale target.
+> That was true when the erratum was raised and false by the time it was written, because this
+> entry's own 13-line insertion moved the content down. It is struck at 2.2, and the general rule
+> is now stated in §12.3: an erratum entry cites what a pointer **should** name, never narrates what
+> the stale one currently hits, because the edit that carries the narration invalidates it.) The same stale `TSPEC:1325` pointer in §13.1
+> row 1's inbound-residual note is corrected with it, being the same fact.
 
 > **2.0 (mechanism change, not a patch — hence the major bump).** The marker's **release form** is
 > re-decided on FSPEC v11.3, which answered the question v1.8 was still routing upstream. §7.3 now
@@ -49,7 +218,8 @@
 > and the raise withdrawn. This entry is retained as the decision record, not as a live statement.**
 
 > **1.7 (erratum round 7, targeted edit — no restructuring).** Two Phase-D errata, nothing else:
-> (a) the NFR-2 traceability row (§8, `:1325`) no longer states non-disclosure as unqualifiedly
+> (a) the NFR-2 / §7.4 row in §7.9's `renderPrBody` obligation table (`:1418` — *not* §8 `:1325`, as
+> this entry originally misrecorded; corrected at 2.1) no longer states non-disclosure as unqualifiedly
 > "structural" — it is structural **outbound**, and the row now records the inbound residual
 > (`rtGit`'s 300-character combined-output failure reply, `runtime-adapter.js:951`, rendered per
 > §10.3 row 1a and §9.1), carried under DEC-CONS-01's qualification; (b) §9.2's claim that the
@@ -66,8 +236,14 @@
 
 ## 1. Scope, inputs, and what this document decides
 
-This TSPEC is written against `FSPEC-pdlc-consolidation-agent` v11.1 and `REQ-…` v2.0. It adds no
-behaviour. Where the FSPEC names an observable, this document names the module, function, seam and
+This TSPEC is written against `FSPEC-pdlc-consolidation-agent` **v11.6** and `REQ-…` **v2.5** — the
+versions it has actually absorbed. The earlier "v11.1 / v2.0" was the pin the document opened at and
+had been false since v2.0 adopted FSPEC v11.3's **BR-14a** by name. The pin was re-taken at v2.2 and
+**performed at v2.3**: v2.2 asserted the re-pin while §7.1 still shipped REQ §3.1 step 1's two
+corpus-membership rules the other way round, which is the one thing a version pin must not do. v2.3
+absorbed both (§7.1, §10.4), so the pin and the mechanism now agree. Unlike the re-pin itself, that
+absorption **does** change behaviour — the enumeration drops `--exclude-standard` and subtracts an
+`ls-files --deleted` read. Where the FSPEC names an observable, this document names the module, function, seam and
 type that produce it, and the test level that falsifies it.
 
 **Binding upstream references, cited by pinned `Version`, never restated:**
@@ -91,7 +267,7 @@ type that produce it, and the test level that falsifies it.
 | T-05 | The `resolveAdvisoryRung` call site, `rungState` threading, and the shape of the signature widening | §8.1 |
 | T-06 | The `ESCALATIONS.md` parse implementation | §7.7 |
 | T-07 | The `.gitignore` pattern's exact text | §3.2 |
-| T-08 | Shared code vs. two implementations for the corpus enumeration | §7.1; the decision itself is §13.1 row 6 (**two implementations**). The predicate half is held **equal** (AT-P7); the enumeration half is held by **two literal pins** (§7.1) with §10.4's two divergence classes as the accepted residue, and §13.3 raises the relaxation of REQ `:115-116` upstream |
+| T-08 | Shared code vs. two implementations for the corpus enumeration | §7.1; the decision itself is §13.1 row 6 (**two implementations**). The predicate half is held **equal** (AT-P7); the enumeration half is held by **two literal pins** (§7.1) with §10.4's one remaining divergence class (a nested git repository) as the accepted residue. REQ §3.1 step 1 withdrew the "one enumeration" half and decided both former classes; §13.3 records that round trip as closed |
 | T-09 | At least one property strategy per parameterisable component | §11.4 |
 | T-10 | The spellings of the "unavailable" observables | §6.5 |
 
@@ -162,11 +338,11 @@ decomposition is by **exported pure function** (§4), not by file.
 | `pdlc/workflows/build-runtime.mjs` | one new `bundles` row (the array is `:448-471`), plus `consolidate-learnings.js` read alongside the other two sources (`:83-85`) and a `CONS_META` / `CONS_ENTRY` pair beside `QUEUE_META` (`:127`) / `QUEUE_ENTRY` (`:185`) | §8.2 |
 | `pdlc/workflows/runtime-adapter.js` | two new adapter functions — `rtEnvPresent` and `rtMakeTempDir` — plus a `rtConsInjections()` bundle beside `rtDevInjections` (`:1086`); **and** the absolute-path widening of `rtWriteFile` (`:802-811`) **alone**, whose prompt today says `relative to the repository root` (`:805`, the only occurrence of that string in the file). `rtReadFile` is **not** modified — see §5.6(a) | §5.3, §5.6, §9.1, §9.2 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`, `dist/pdlc-cli.mjs`, `dist/distribution-manifest.json` | rebuilt **in the same commit** as the two rows above | §8.3 |
-| `pdlc/hooks/scripts/nudge-consolidation.sh` | `:28`'s single `os.path.join` glob replaced by a named two-literal `CORPUS_GLOBS` tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; `:41` predicate scoped to the two §3.2 regions; `:29-30`'s early exit replaced by a `pending = []` fall-through; **and** one env-gated debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). All four are **production** edits in one shipped file ⇒ one owning task | §7.1 |
-| `pdlc/skills/consolidate-learnings/SKILL.md` | `:35`'s `Date Completed` boundary replaced by the block/legacy predicate; `:41`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
-| `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-78`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
+| `pdlc/hooks/scripts/nudge-consolidation.sh` | The single `os.path.join` glob replaced by a named two-literal **`CORPUS_GLOBS`** tuple and a comprehension over it, widening the corpus to `docs/completed/*/` and giving §7.1's pin (b) a declaration to read; the basename predicate scoped to the two §3.2 regions via **`region_split`**; the early exit replaced by a **`pending`** fall-through; **and** one env-gated **`PDLC_PENDING:`** debug line that emits the pending **set** on stderr, without which AT-P7 has no oracle (§7.1). Located by symbol, never by line index — the same rule §7.1 imposes on pin (b)'s oracle, and for the same reason: this feature's own edits to the heredoc shift every line in it. All four are **production** edits in one shipped file ⇒ one owning task. **All four have since landed** (commit `b22834b7`; §10.4, §7.1) — `CORPUS_GLOBS` and its comprehension, `region_split` and its use, the `pending` fall-through with no early exit above it, and the `PDLC_PENDING:` line are all at HEAD. The row stays because the *ownership* claim is what the PLAN's manifest derives from and that is unchanged: this file is still one task's, and its remaining work is the oracles that pin these edits, not the edits | §7.1, §10.4 |
+| `pdlc/skills/consolidate-learnings/SKILL.md` | `:56` (was the `Date Completed` date boundary) now carries the block/legacy predicate; `:62`'s `DECISIONS-{topic}.md` route gains `{topic} = failure-mode-id` | FSPEC §3.2, §5.2 |
+| `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row in the metadata table (`:72-79`, after the `Harvested from` row at `:77`); a `failure-mode-id` line in the §5 Open Items convention, stated as a **verbatim copy from the handed open-promotion list** | FSPEC §8.3, §8.4 |
 | `.gitignore` | **exact text** (T-07): a comment line `# pdlc consolidation in-progress marker — working tree only (AC-1.3)` followed by the single pattern `docs/_decisions/.consolidation-lock` | §3.3 |
-| `CLAUDE.md` | the tracked-runtime-artifact enumeration (`:58-60`) gains a `pdlc/workflows/dist/consolidate-learnings.bundle.js` bullet, and `:62`'s closing sentence — "Those three are the tracked, shipped outputs" — is rewritten to a count-free form. **The sentence is already false at HEAD**, before this feature changes anything: `pdlc/workflows/dist/pdlc-cli.mjs` is tracked (`git ls-files pdlc/workflows/dist/` returns four paths) and carries its own `distribution-manifest.json` row, so the enumeration lists three of four and the sentence miscounts them. This feature's bundle makes it wrong a second time, which is why the fix is the count-free rewrite plus the missing `pdlc-cli.mjs` bullet, not a `three` → `four` substitution that would be stale again on the next artifact. **This is a production edit in a shipped, tracked file** ⇒ one owning task, and it carries the falsifying oracle §12.2's CLAUDE.md row states — the enumeration is asserted set-equal to the manifest's artifact rows, so a future artifact that lands without a bullet reds rather than drifting | §8.3, §12.2 |
+| `CLAUDE.md` | the tracked-runtime-artifact enumeration gains a `pdlc/workflows/dist/consolidate-learnings.bundle.js` bullet and the closing sentence is rewritten count-free. **Landed on this branch in `927ecd15` (T33)**: HEAD carries five bullets at `CLAUDE.md:58-62` and the count-free sentence "These are the tracked, shipped outputs." at `:64`; the row is kept for the rationale, which is why the edit took that shape rather than a smaller one. **The sentence was already false at the pre-feature baseline** (`:58-60` enumerated, `:62` counted), before this feature changed anything: `pdlc/workflows/dist/pdlc-cli.mjs` is tracked (`git ls-files pdlc/workflows/dist/` returns four paths) and carries its own `distribution-manifest.json` row, so the enumeration lists three of four and the sentence miscounts them. This feature's bundle makes it wrong a second time, which is why the fix is the count-free rewrite plus the missing `pdlc-cli.mjs` bullet, not a `three` → `four` substitution that would be stale again on the next artifact. **This is a production edit in a shipped, tracked file** ⇒ one owning task, and it carries the falsifying oracle §12.2's CLAUDE.md row states — the enumeration is asserted set-equal to the manifest's artifact rows, so a future artifact that lands without a bullet reds rather than drifting | §8.3, §12.2 |
 
 `pdlc/.claude-plugin/plugin.json`'s `version` is bumped by the release step, not by this feature's
 implementation tasks; the manifest's `pluginVersion` stamp follows it (§8.3).
@@ -313,16 +489,24 @@ interface ConsolidationSeams {
 // __tests__/helpers/seams.js:298) — so a marker holding a single newline is {ok:true} in
 // production and {ok:false, reason:"file_empty"} under the double. Under §7.3 that divergence
 // cannot change a verdict: both replies are present, so both reach `markerVerdict` through
-// `parseMarker` over the same text. The two agree exactly on the one state this layer reads,
-// a missing file — recorded so it stays that way.
+// `parseMarker` over the same text. On the one state this layer reads — a missing file — the two
+// agree on the STATE but NOT on its provenance: the shipped adapter's catch-all routes any
+// unrecognised probe reply to `file_missing` (runtime-adapter.js:830), so in production that
+// reason has a wider producer than a genuinely absent file, while the double emits it only on a
+// genuinely absent key (__tests__/helpers/seams.js:292-306). Read this comment as scoping the
+// agreement to the state, never to the reason's provenance — §11.6 states the consequence in
+// full, including that AC-1.3's mutual exclusion is fail-open on that path and that no L2
+// fixture can reach it.
 type CheckReply = {ok: true} | {ok: false; reason: "file_missing" | "file_empty"};
 
 type ListReply = {ok: true; files: string[]}
                | {ok: false; reason: "dir_missing" | "not_a_directory"
                                    | "unreadable" | "bad_argument"};
 
-// NOT a seam. A module-level default, the shipped pattern (orchestrate-dev.js:1396,
-// `_now = () => Date.now()`) — see §5.6.
+// NOT a seam. A destructured injection default, the shipped pattern (orchestrate-dev.js:1623,
+// :3182, :8417 — each a `_now = () => Date.now()` default in a function's options
+// destructuring). That is what makes T-13's clock pin possible: a caller may pass _now,
+// while production supplies none and gets Date.now(). See §5.6(b).
 _now(): number;
 ```
 
@@ -414,7 +598,7 @@ trailer plus an output tail, which is the wrong shape for a call whose stdout th
 | Seam | Module default | Behaviour when the default stands |
 |---|---|---|
 | `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`, `_git`, `_log`, `_phase` | the module's own `default*` (the `orchestrate-queue.js:1034-1046` pattern) | ordinary operation **under jest only** — in the runtime every one of them throws; see below |
-| `_now` | `Date.now` — a **module-level default, not an adapter seam** (§5.6) | ordinary operation |
+| `_now` | `() => Date.now()` — a **destructured parameter default, not an adapter seam** (§5.6(b)) | ordinary operation; because the default is destructured it stays *caller-overridable*, which is what T-13's clock pin uses |
 | `_ghRun` | `null` | the PR route degrades with `api-failure` before any call is attempted; the proposal file still carries the diff (§10.3) |
 | `_envPresent` | `null` | treated as "no credential variable observable" ⇒ §7.2 falls through to the `local-gh` probe, then to `absent` |
 | `_makeTempDir` | `null` | the PR route degrades with `api-failure`; the pass never falls back to working in the invoking tree, which AC-3.8 forbids outright |
@@ -488,11 +672,18 @@ verbatim (one prompt, not two), and §11.6 no longer exempts it. Routing the clo
 rejected: git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index`,
 which is three mutating calls in the clone domain to replace one path argument.
 
-**(b) `_now` is a module-level default, not a seam.** `rtDevInjections` (`runtime-adapter.js:1086-1110`)
+**(b) `_now` is a destructured injection default, not a seam.** `rtDevInjections` (`runtime-adapter.js:1086-1110`)
 supplies no clock: its members are `_agent`, `_parallel`, `_pipeline`, `_phase`, `_log`, `_checkFile`,
 `_readFile`, `_hashFile`, `_checkCi`, `_mergeWorktree`, `_writeFile`, `_appendFile`, `_listFiles`,
-`_git`, `_ghRun`, `_runCommand` and the probe seams. The shipped pattern is the module-level default
-`_now = () => Date.now()` (`orchestrate-dev.js:1396`), and this pass takes it.
+`_git`, `_ghRun`, `_runCommand` and the probe seams. The shipped pattern is a **destructured default
+in the options object** — `_now = () => Date.now()` at `orchestrate-dev.js:1623`, `:3182` and `:8417`
+— and this pass takes it. The distinction matters and is not pedantry: a destructured default is
+*overridable by a caller*, which is exactly what lets §12.2's T-13 pin the clock and assert a literal
+`{ISO-8601}` rather than shape-match a regex, in the same way three shipped suites already do
+(`advisoryDodSeams.test.js:129`, `:1116`; `advisoryDisabled.test.js:276`). An earlier draft called
+this a "module-level default" and cited `orchestrate-dev.js:1396`, which does not name a `_now`
+default at HEAD — a line-drift of exactly the class §12.3's citation rule exists to prevent, under
+the very mechanism T-13 leans on.
 
 The consequence is observable and is stated so a test author knows what to pin: `Date.now()` in the
 bundle runs in the **workflow host process's** timezone, not in an operator-chosen one. §7.2's
@@ -548,7 +739,10 @@ interface PassState {
   reasons: Set<ReasonCode>;              // a row may carry several (§10.1)
   rung: string | null;                   // the model id the pass actually ran on
   credential: Credential;                // "absent" until §7.2's resolution runs
-  consumed: string[];                    // basenames, frozen at step 2
+  consumed: string[];                    // basenames the pass actually read: the step-2
+                                         // enumeration minus any entry whose body `_readFile`
+                                         // returned `null` for (REQ §4b, §7.1). Frozen once the
+                                         // bodies are read; it is what step 7's pair renders.
   proposals: Proposal[];
   records: FailureModeRecord[];          // appended one-per-proposal as each routes
   effectiveness: EffectivenessRow[] | null;   // null ⇒ step 11 never ran
@@ -686,14 +880,39 @@ while every unit test drove `fakeListFiles` (`__tests__/helpers/seams.js:132-166
 returns whatever the spec supplies — a double more capable than the seam it doubles, which is the
 DC-07 "production path ≠ unit path" failure exactly.
 
-The pass therefore asks git, in one call:
+The pass therefore asks git. **Two reads, not one**, because REQ §3.1 step 1 decides corpus
+membership by presence *on disk* and no single `ls-files` invocation expresses that:
 
 ```js
-_git(["ls-files", "--cached", "--others", "--exclude-standard", "--",
+_git(["ls-files", "--cached", "--others", "--",
+      ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"])
+_git(["ls-files", "--deleted", "--",
       ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"])
 ```
 
-Four properties of that call, each verified against this repository at HEAD:
+`enumerateCorpus` returns the **first set minus the second**. Both reads carry the identical
+pathspec pair, so the subtraction is over one namespace and cannot silently widen.
+
+**Why the second read exists (REQ §3.1 step 1, second bullet).** REQ decides that *"an index entry
+with no working-tree file is **not** corpus … the pass's enumeration is restricted to paths present
+in the working tree"*. `--cached` is precisely what admits such a path: measured on a scratch
+repository, a LEARNINGS committed and then deleted from the worktree is still returned by
+`--cached --others`, and `ls-files --deleted` over the same pathspecs returns exactly that path and
+nothing else. Subtracting the `--deleted` set is therefore the minimal mechanism that discharges the
+obligation, and it keeps `--cached` — which is still needed, since a tracked-and-present LEARNINGS
+appears under no other selector. This is an **obligation, not an accepted residue**: a staged-but-
+deleted LEARNINGS must not reach the volume count and must not enter a consumed pair.
+
+**Why `--exclude-standard` is absent (REQ §3.1 step 1, first bullet).** REQ decides that *"a
+`.gitignore`d LEARNINGS file **is** corpus. Membership is presence on disk under the two globs, not
+tracked-ness"*, and states the consequence by name: *"the pass's enumeration therefore does **not**
+apply `--exclude-standard`."* The flag is dropped here accordingly. Measured on the same scratch
+repository, dropping it admits an ignored `docs/{f}/LEARNINGS-{f}.md` and changes nothing else — in
+particular `docs/discarded/` stays at zero hits, because that exclusion is performed by `:(glob)`
+and never by the ignore rules (point 2 below). §10.4 records the argument that ran the other way and
+why REQ's decision governs.
+
+Four properties of the enumerating call, each verified against this repository at HEAD:
 
 1. **It returns repository-root-relative paths**, one per line, which is what `CorpusFile.path`
    needs anyway — the walk would have had to reassemble them from a directory and a basename.
@@ -703,31 +922,53 @@ Four properties of that call, each verified against this repository at HEAD:
    `docs/discarded/pdlc-review-convergence/`). With `:(glob)` the same pathspec matches exactly the
    one-level-deep set and those two hits are zero. Exclusion of `docs/discarded/` is therefore still
    by *not enumerating* — the pathspec cannot name it — and not by a filter a later edit can drop.
-3. **`--cached --others --exclude-standard`** is one set, not two calls: a LEARNINGS harvested but
-   not yet committed is still corpus, and an ignored file never is.
-4. **It is a read.** `ls-files` reads the index and the worktree and mutates nothing; §9.3 records it
-   as the `read-index` verb in the invoking-tree domain.
+3. **`--cached --others`** is one set, not two calls: a LEARNINGS harvested but not yet committed is
+   still corpus, and so — per REQ §3.1 step 1 — is an ignored one, which is why no
+   `--exclude-standard` appears. Tracked-ness is not the membership test; presence on disk is, and
+   the `--deleted` subtraction above is what makes "on disk" true rather than merely intended.
+4. **Both calls are reads.** `ls-files` reads the index and the worktree and mutates nothing; §9.3
+   records the pair as the `read-index` verb in the invoking-tree domain.
 
 `parseCorpusListing` is the pure half: split on newline, drop empty lines, and map each path to
 `{path, basename}` by its last `/`. `enumerateCorpus` **never opens a file**.
 
-**AT-P1's oracle is the argv, not the fixture.** AT-P1 (`FSPEC-…:2020`) is purely an enumeration
+**The corpus is a set, and every oracle over it is a set oracle.** `ls-files` does not sort its
+output and does not return it in pathspec order — measured on a scratch tree, `--cached --others`
+returned the untracked path *ahead* of the tracked ones — so the order of `parseCorpusListing`'s
+result is a fact about git, not about this feature, and **no assertion anywhere may depend on it**.
+Concretely: a `toEqual` over a `CorpusFile[]` or a basename array must sort both sides or compare as
+sets, membership conjuncts are the preferred form, and this binds the real-git L4 case in §11.1 most
+of all, since it is the one place an unsorted listing actually reaches an assertion. An order-sensitive
+oracle here would go intermittently red on a correct implementation. §11.4's determinism rows carry
+the same rule for the generated cases.
+
+**AT-P1's oracle is the argv, not the fixture.** AT-P1 (FSPEC §13.2 register, *The consumed predicate and the corpus*) is purely an enumeration
 claim — a LEARNINGS under `docs/completed/{feature}/` is in corpus, one under
 `docs/discarded/{feature}/` is not — and §12.3 runs it at **L1**, over the `_git` double. Run
 naively that is an implementation echo: the `docs/discarded/` exclusion would be decided by whatever
 lines the fixture author put in the double's scripted stdout, not by the pathspec, and it is the one
-exclusion the REQ calls out by name ("abandoned work is not evidence about a delivered pipeline",
-`REQ-…:113-114`). So the row's oracle is stated here and is **two conjuncts, one of them positive**:
+exclusion the REQ calls out by name (REQ §3.1 step 1, *"abandoned work is not evidence about a
+delivered pipeline"*). So the row's oracle is stated here and is **two conjuncts, one of them positive**:
 
-1. **Literal argv.** The array `enumerateCorpus` hands `_git` is asserted element-by-element against
-   the literal `["ls-files", "--cached", "--others", "--exclude-standard", "--",
-   ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"]`, **both `:(glob)`
-   prefixes included**, because point 2 above makes the magic prefix the thing that performs the
-   exclusion. An edit that drops a prefix, drops `--exclude-standard`, or adds a third pathspec is
-   red on this conjunct regardless of what any fixture contains.
+1. **Literal argv, both calls.** The two arrays `enumerateCorpus` hands `_git` are asserted
+   element-by-element against the literals `["ls-files", "--cached", "--others", "--",
+   ":(glob)docs/*/LEARNINGS-*.md", ":(glob)docs/completed/*/LEARNINGS-*.md"]` and
+   `["ls-files", "--deleted", "--", ":(glob)docs/*/LEARNINGS-*.md",
+   ":(glob)docs/completed/*/LEARNINGS-*.md"]`, **both `:(glob)` prefixes included in each**, because
+   point 2 above makes the magic prefix the thing that performs the `docs/discarded/` exclusion. An
+   edit that drops a prefix, adds a third pathspec, **re-introduces `--exclude-standard`**, or drops
+   the `--deleted` call is red on this conjunct regardless of what any fixture contains. The last two
+   arms are the ones that pin REQ §3.1 step 1's two decided classes: each is a one-token edit that
+   would otherwise revert a decided requirement in silence.
 2. **Positive membership over the parsed listing.** Given a scripted stdout carrying one
    `docs/completed/{f}/LEARNINGS-{f}.md` line, that basename is in the corpus — so the row is not
    an absence-only assertion about `docs/discarded/`.
+3. **The subtraction is observed, not assumed.** Given a first-call stdout carrying two LEARNINGS
+   paths and a second-call (`--deleted`) stdout carrying one of them, the corpus is exactly the
+   other — and, in the same case, the surviving basename is asserted *present*, so the conjunct
+   cannot be satisfied by an implementation that returns the empty set. This is the L1 oracle for
+   REQ §3.1 step 1's second bullet; the class is unreachable from the L4 fixture harness, which is
+   why §11.1's rule forbids a git-visibility fixture there.
 
 The second conjunct is deliberately *not* "a `docs/discarded/` line is filtered out": nothing in the
 module filters it, and a test asserting that would pin a filter that must never exist. The
@@ -752,7 +993,7 @@ empty one and would advance the cadence datum on a pass that read nothing. §10.
 1. `boundary = logText.indexOf("<!-- pdlc:consumed")`. `-1` (or `logText == null`) ⇒ the legacy
    region is the whole text and the block region is empty.
 2. **Legacy region** = `logText.slice(0, boundary)`; membership is bare substring containment — the
-   shipped test (`nudge-consolidation.sh:41`) applied to a bounded slice.
+   shipped test (the `pending` comprehension in `nudge-consolidation.sh`) applied to a bounded slice.
 3. **Block region** = the concatenation of every span from an opening `<!-- pdlc:consumed {id} -->`
    to the next `<!-- /pdlc:consumed -->`, or to end-of-text when no closer follows (the truncated
    append of E-04); membership is per-line equality against a trimmed line.
@@ -762,35 +1003,68 @@ empty one and would advance the cadence datum on a pass that read nothing. §10.
    basenames**; `basenameCollisions` records every group of ≥2 distinct paths sharing a basename
    (E-09), reported by §7.9 and never repaired.
 
-**An enumerated file whose body cannot be read, decided.** §10.4 class (ii) (a staged-but-deleted
-LEARNINGS) and AT-P8's IO-error case both produce an entry that is in the corpus but whose body
-`_readFile` returns `null` for. Two questions had no answer here and now do:
+**An enumerated file whose body cannot be read, decided.** The trigger for this class is a file that
+is **present in the working tree and enumerated, but whose body `_readFile` returns `null` for** —
+AT-P8's IO-error case, reachable on file permissions, a mid-pass unlink, or an IO error between the
+enumeration and the read. It is *not* the staged-but-deleted entry: since the `--deleted`
+subtraction above, such a path is never enumerated at all, so it can never reach this branch. Its
+three observables are fixed — the first by this layer, the second and third **upstream, and
+absorbed here**:
 
 1. **It counts toward `|un-consolidated|` for the AC-1.2 volume test.** The test is over the
    *enumeration*, and AC-1.1 forbids reading any LEARNINGS body at tick time, so the count cannot
-   depend on readability without violating the tick contract.
-2. **It appears in the consumed pair**, and its basename is named in the report body as an entry the
-   pass could not read. This is the arm that matters: excluding it would leave it un-consolidated
-   forever, tripping the threshold on every subsequent pass and being drawn and dropped again each
-   time — the "nudged forever, never clearable" shape §10.4 already treats as the worst outcome.
-   Including it makes the pass converge, and the report says exactly what it could not read.
+   depend on readability without violating the tick contract. REQ §4b decides the same thing in its
+   own words — such a basename *"stays in the un-consolidated set and so still counts toward
+   AC-1.2's volume trigger"*.
+2. **It is *omitted* from the consumed pair, stays un-consolidated, and the next pass retries it.**
+   This is REQ
+   §4b's decision (*"An enumerated basename whose body cannot be read is instead **not consumed** —
+   it is omitted from the `<!-- pdlc:consumed {passId} -->` pair"*), and this document **absorbs**
+   it rather than re-deciding it. An earlier revision of this section decided the opposite arm — the
+   entry *in* the pair — on a convergence argument: excluding it would leave the file
+   un-consolidated, tripping the threshold on every subsequent pass, the "nudged forever, never
+   clearable" shape §10.4 treats as the worst outcome. **REQ answered that argument rather than
+   overlooking it**, and the answer is the reason inclusion is wrong: an entry marked consumed while
+   contributing no evidence can only ever push a verdict toward `prevented` or
+   `insufficient-evidence` and never toward `recurred`, which corrupts REQ-CONS-05's falsifiability
+   loop in one direction. Convergence bought at the price of a one-directional bias in the
+   effectiveness loop is not a trade this layer may make. The retry is bounded by the population, not
+   by a counter: since the `--deleted` subtraction, what remains here is a permissions error or a
+   mid-pass unlink — an operator-visible fault the report body names on every pass until the operator
+   clears it at the source. §10.4 records the retried entry as accepted residue, and §13.3 carries the
+   observation that would falsify the "transient" premise.
+3. **Its basename is named in the report body** as an entry the pass could not read. Since the pair
+   omits it and no reason code is minted, this naming is the pass's only positive disclosure of the
+   fault, and it is re-emitted on every pass until the operator clears it at the source. It is stated
+   as its own observable rather than as a sub-clause of (2) because §12.2 binds it as its own
+   conjunct against a readable control.
+
+**A corpus in which *every* enumerated body is unreadable terminates `no-op`** — AC-1.4's third cause
+(REQ §4b, `REQ-pdlc-consolidation-agent.md:625-631`), reached by applying the omission of (2) to every
+member: the consumed set is empty, so no status and no reason code is added. §10.3 row 1b routes it,
+and it is not §10.3 row 1a's unlistable corpus, which terminates `failed`: there the *enumeration*
+failed and the corpus's size is unknown; here the enumeration succeeded, its members are known, and
+only their bodies are unreadable.
 
 No reason code is minted for it (REQ §4b; vocabularies §1 at `Version` 1.4 has no row), so the
 evidence is the report body's named list and nothing else. This is distinct from `{unlistable: true}`
 above, which is the *enumeration* failing and terminates `failed`; here the enumeration succeeded and
 one member of it is unreadable.
 
-**Answering the reviewer directly on the durability of that evidence.** The consequence was put
-plainly: a LEARNINGS file can be permanently marked consumed while contributing zero evidence to any
-promotion, and the only trace is one pass's transient report body. That is real, and this layer still
-does **not** add an `unread:` field beside `consumed` in the log row — not because it would be
-useless, but because the log record's field set is a `pdlc-consolidation-vocabularies.md` §3
-contract, and minting a field here is the same REQ §4b breach as minting a reason code. The three
-observables above are what this document decides; whether the durable record should carry the
-unreadable basenames is a product question about the log's field set, and §13.3 hands it upstream
-with the rest of the enumeration/corpus batch rather than settling it in a technical spec.
+**The `unread:` field question is answered upstream, and absorbed here.** An earlier revision of this
+section raised it: if such an entry were marked consumed while contributing zero evidence, the only
+trace would be one pass's transient report body — so should the durable log row carry the unreadable
+basenames (an `unread:` field beside `consumed`)? REQ §4b answers **no**, and answers it by removing
+the premise rather than by declining the field: the entry is not consumed at all, so there is nothing
+for a field to disclose that the un-consolidated set does not already carry (*"Omission needs no new
+field, no new reason code and no vocabulary row, and it is not silent: the basename remains in the
+un-consolidated set that both the hook and the next tick compute"*). This layer would in any case have
+been the wrong place to decide it — the log record's field set is a
+`pdlc-consolidation-vocabularies.md` §3 contract, and minting a field here is the same REQ §4b breach
+as minting a reason code — so §13.3 records the question as **answered upstream and absorbed**, not as
+answered here, and keeps only the observation that would reopen it upstream.
 
-These three obligations are not left to inspection either: §12.2 carries a `(no FSPEC AT)` row for
+These obligations are not left to inspection either: §12.2 carries a `(no FSPEC AT)` row for
 them and §12.3 assigns it a file.
 
 The two membership tests differ deliberately — substring in the legacy region, per-line in the block
@@ -799,15 +1073,16 @@ legacy region must reproduce the shipped predicate over prose that names full pa
 
 **T-08 decided: two implementations, whose predicates are held equal by a differential test.** The pass is JavaScript in
 a bundle that cannot import; the hook is a Python heredoc inside bash that no JS test can import
-(`nudge-consolidation.sh:22-50`). Extracting a shared implementation would need a third artifact and
-a language boundary neither side has today. The two are therefore written separately to one stated
-algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs both over one fixture table and
-asserts set equality (§11.3). The hook's edit is minimal and mechanical: `:28`'s single
-`os.path.join` glob becomes the two-literal `CORPUS_GLOBS` tuple and the comprehension over it given
-below, and `:41`'s comprehension tests against the two regions computed by a short helper rather than
-against `logtext` whole.
+(the `PY` heredoc in `nudge-consolidation.sh`). Extracting a shared implementation would need a third
+artifact and a language boundary neither side has today. The two are therefore written separately to
+one stated algorithm and pinned by AT-P7's differential harness (see 11.3(f)), which runs both over
+one fixture table and asserts set equality (§11.3). The hook's edit was minimal and mechanical, and
+**has landed at HEAD** — it is described here in the past tense and located by symbol, never by line
+index, per §12.3: the single `os.path.join` glob became the two-literal `CORPUS_GLOBS` tuple and the
+comprehension over it given below, and the membership comprehension (now bound to `pending`) tests
+against the two regions computed by the `region_split` helper rather than against `logtext` whole.
 
-**Both enumerations are pinned literally, so a divergence larger than §10.4's two classes reds.**
+**Both enumerations are pinned literally, so a divergence larger than §10.4's one remaining class reds.**
 AT-P7 feeds both sides one basename list and therefore holds the *predicate* half only (§11.3(f)).
 That leaves the enumeration pair with no equality oracle — but it does not leave it unguarded, and
 the guard is not "inspection". Two literal pins, **at two different levels and in two different
@@ -828,12 +1103,13 @@ REQ relaxation is being conceded against, so the weaker reading is not the one t
 owns an assertion is a PLAN-level fact, not prose. §11.1's level table, §12.2's T-08 row and §12.3's
 file table all state the split above; this paragraph now agrees with them.
 
-**Pin (b) needs a form the shipped script does not have, so this feature's edit gives it one.** At
-HEAD `:28` reads `learnings = glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))` — the
-pattern exists only as three `os.path.join` components, neither literal `docs/*/LEARNINGS-*.md` nor
-`docs/completed/*/LEARNINGS-*.md` occurs anywhere in the file, and a pin written over a line index is
-anyway invalidated by this feature's own edits to the same heredoc (a second glob, the relocated
-early exit, the `PDLC_PENDING:` line all shift it). Both problems are closed by one edit: the two
+**Pin (b) needs a form the shipped script did not have, so this feature's edit gives it one.** Before
+this feature the enumeration read `learnings = glob.glob(os.path.join(proj, "docs", "*",
+"LEARNINGS-*.md"))` — the pattern existed only as three `os.path.join` components, neither literal
+`docs/*/LEARNINGS-*.md` nor `docs/completed/*/LEARNINGS-*.md` occurred anywhere in the file, and a pin
+written over a line index would anyway have been invalidated by this feature's own edits to the same
+heredoc (a second glob, the relocated early exit, the `PDLC_PENDING:` line all shift it). The edit has
+since landed: `CORPUS_GLOBS` and its comprehension are at HEAD, located by name. Both problems are closed by one edit: the two
 patterns become **single string literals in one named module-level tuple**, and the enumeration
 ranges over that tuple:
 
@@ -852,28 +1128,31 @@ third pattern cannot be added through a second call site the set assertion would
 two, no third" is the falsifier and it is unchanged; only the anchor and the literal form move.
 
 Together they make the divergence set *derivable and closed*: the two enumerations differ only where
-`git ls-files --cached --others --exclude-standard` over those two `:(glob)` pathspecs differs from
-`glob.glob` over the same two patterns in `CORPUS_GLOBS`, which is exactly §10.4's two classes
-(git-ignored, and staged-but-deleted) and nothing else. An implementation that widens either side —
+`git ls-files --cached --others` minus `--deleted`, over those two `:(glob)` pathspecs, differs from
+`glob.glob` over the same two patterns in `CORPUS_GLOBS`. Since §7.1 absorbed REQ §3.1 step 1, the
+two classes this document previously accepted are **closed** — an ignored LEARNINGS is now in both
+sets, a staged-but-deleted one in neither — and what remains is the single class §10.4 names
+(a LEARNINGS inside a nested git repository). An implementation that widens either side —
 a third pathspec, a dropped flag, a third `CORPUS_GLOBS` member, a `**` in one of them — is red on a
 pin rather than silently admitting a third divergence class. That is the compensating falsifier for the half AT-P7 cannot reach; §12.2's T-08
-row and §13.1 row 6 carry it, and §13.3 raises the relaxation itself upstream, because whether "one
-enumeration" may be held by pins rather than by an equality is a REQ/FSPEC decision, not this
-layer's.
+row and §13.1 row 6 carry it. Whether "one enumeration" may be held by pins rather than by an
+equality was a REQ/FSPEC decision rather than this layer's, and it has been made: REQ §3.1 step 1
+**withdrew** the "one enumeration" half and FSPEC v11.6 re-scoped AT-P7 to the predicate alone, which
+is exactly the shape pinned here. §13.3 records that round trip as closed.
 
 **A third hook edit exists, and it is what makes AT-P7 an oracle at all.** The shipped hook cannot
-emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count**
-(`:44-48`), and it prints it only when `n >= THRESHOLD` with `THRESHOLD = 5` (`:25`, `:43`); below
-five it prints nothing and exits 0 (`:49`). Every fixture that discriminates the two-region
+emit a set: it prints one JSON object whose `additionalContext` is prose carrying a **count** (the
+`msg` / `json.dumps` block), and it prints it only when `n >= THRESHOLD` with `THRESHOLD = 5`; below
+five it prints nothing and exits 0. Every fixture that discriminates the two-region
 predicate — the truncated block (E-04), the stray closer (E-05), the basename collision (E-09), the
 legacy/block boundary — has fewer than five pending files, so an oracle reading that message is
 blind on all of them, and a count-above-five comparison would pass unchanged if the hook's
-two-region logic were deleted outright. The hook therefore gains, immediately before the threshold
-test:
+two-region logic were deleted outright. The hook therefore gained, immediately after `pending` is
+computed and before the threshold test, the block that stands at HEAD:
 
 ```python
 if os.environ.get("PDLC_CONSOLIDATION_DEBUG") == "1":
-    names = sorted(os.path.basename(p) for p in pending)
+    names = sorted(set(os.path.basename(p) for p in pending))
     sys.stderr.write("PDLC_PENDING:" + ",".join(names) + "\n")
 ```
 
@@ -888,32 +1167,36 @@ line T-08's "held equal by a differential test" is not true, and the decision wo
 re-argued on evidence a count-above-threshold oracle can actually supply; §13.1 row 6 records that
 dependency.
 
-**Placement: after `pending` is computed, but the early exit moves.** The shipped hook returns at
-`:29-30` (`if not learnings: sys.exit(0)`) before `pending` exists, so a zero-corpus fixture would
-emit no line at all and the harness would have to read `∅` from **silence** — an absence-only reading
-of the one channel the whole differential rests on, indistinguishable from "the hook did not run".
-The edit therefore replaces that early exit with a `pending = []` fall-through so the debug line is
-reached on every path, and the `n >= THRESHOLD` test at `:43` (which is already false for `n == 0`)
-carries the no-output behaviour unchanged. That keeps the shipped stdout contract byte-identical on a
-zero corpus while making `PDLC_PENDING:` (with an empty value) a **positive** observation of `∅`.
+**Placement: after `pending` is computed, and the early exit had to go.** The hook previously returned
+early (`if not learnings: sys.exit(0)`) before `pending` existed, so a zero-corpus fixture would emit
+no line at all and the harness would have to read `∅` from **silence** — an absence-only reading of
+the one channel the whole differential rests on, indistinguishable from "the hook did not run". The
+edit therefore replaced that early exit with a fall-through, so `pending` is always computed and the
+debug line is reached on every path; the `n >= THRESHOLD` test (already false for `n == 0`) carries
+the no-output behaviour unchanged. At HEAD there is no early exit between the corpus glob and
+`pending`, which is the state this describes. That keeps the shipped stdout contract byte-identical on
+a zero corpus while making `PDLC_PENDING:` (with an empty value) a **positive** observation of `∅`.
 §11.3(f)'s fixture table gains a zero-corpus row to exercise it.
 
 **How the PLAN must route this edit: production code, not test scaffolding.** It ships in
 `pdlc/hooks/scripts/nudge-consolidation.sh`, a consumer runs it on every `SessionStart`, and
 `bash -n` in CI's `Shell scripts parse` job covers it — so it belongs to the hook's owning
-implementation task with the `:28` glob and `:41` predicate edits (one file, one task, per
-batch-safety rule 2), never to a test-helper task. The release note names it as a new,
+implementation task alongside the `CORPUS_GLOBS` glob and `region_split`/`pending` predicate edits
+(one file, one task, per batch-safety rule 2), never to a test-helper task. Since all four edits are
+already at HEAD (§10.4), that task's remaining work is ownership of the file, not authorship of the
+edit — §3.2's row states it in those terms. The release note names it as a new,
 default-off debug channel, alongside §8.3's drift-gate notice.
 
-**One side effect of the relocated exit, named deliberately.** Removing `:29-30` means a zero-corpus
-session now reaches the log read at `:32-39`, where today the hook exits first. That is a new read on
-a `SessionStart` path in every repository that ships this plugin. It is safe — the read is already
+**One side effect of the relocated exit, named deliberately.** Removing the early exit means a
+zero-corpus session now reaches the `.consolidation-log.md` read (the `os.path.isfile(log)` guard and
+its `try`), where the hook previously exited first. That is a new read on a `SessionStart` path in
+every repository that ships this plugin. It is safe — the read is already
 guarded by `os.path.isfile` and wrapped in a `try` with `errors="ignore"` — and it is deliberate,
 because the debug line must be reached on every path for `∅` to be observable. It is **in scope for
 the release note**, which names both halves of this edit rather than only the visible one: a new
 default-off `PDLC_PENDING:` stderr channel, and one additional guarded read of
 `docs/_decisions/.consolidation-log.md` on zero-corpus sessions. Stdout is byte-unchanged either way
-(`n >= THRESHOLD` at `:43` is already false for `n == 0`).
+(the `n >= THRESHOLD` test is already false for `n == 0`).
 
 ### 7.2 Trigger, datum and `passId` (FSPEC §2.3, §2.5)
 
@@ -953,6 +1236,19 @@ releaseMarker(state, seams): Promise<void>                                      
 own outcome row (**E-11b**). Anything else — empty, truncated, multi-line, a third verb, an
 unparseable timestamp — yields `null`.
 
+**Surrounding whitespace is tolerated; interior structure is not.** `parseMarker` applies `.trim()`
+to the whole text before matching, so a leading or trailing newline — which an ordinary `_writeFile`
+of a one-line file leaves behind — parses exactly as the bare line does. What "exactly two one-line
+forms and nothing else" excludes is *interior* structure: a second non-empty line, an embedded
+newline, or padding **within** the line (between the verb, the `passId` and the instant, where the
+separator is a single space). This has to be decided here rather than left to the implementer,
+because §11.4's property generator draws "leading/trailing junk" as a near-miss expected to yield
+`null`: without this sentence an implementer who trims and a generator author who counts whitespace
+as junk produce a property that reds on conforming code. Whitespace is **not** junk; it is the
+adjacent boundary the `file_empty` probe already treats the same way (the double's
+`String(...).trim() === ""`, `__tests__/helpers/seams.js:298`), so trimming here keeps the two
+boundaries consistent rather than introducing a third convention.
+
 `markerVerdict` maps a **released** marker to `free` **without consulting its age**: staleness is a
 property of a *held* marker and a released one is not held, so neither the refusal arm nor the
 reclamation arm may fire and **no reason code is written**, at either side of `staleLockMinutes`
@@ -970,7 +1266,7 @@ in reach: §5.1's protocol declares none, and the adapter ships `rtWriteFile` (`
 `rtAppendFile` (`:863`), `rtListFiles` (`:905`), `rtGit` (`:945`) and no unlink of any kind; `git rm`
 is outside §9.3's invoking-tree verb set and would not apply anyway, since the marker is untracked
 and `.gitignore`d by §3.3. AC-1.3 also settles the shape upstream — taking and releasing it "are
-in-place rewrites of a whole small file" (`REQ-…:155-156`) — and **FSPEC §4.1's BR-14a settles the
+in-place rewrites of a whole small file" (REQ AC-1.3) — and **FSPEC §4.1's BR-14a settles the
 payload**: the marker "is released by an **in-place write** of `RELEASED: {passId} {ISO-8601}` —
 never by removing the file, which no seam can do". So:
 
@@ -1402,7 +1698,7 @@ land on it:
 |---|---|
 | AC-3.2 | one section per enacted promotion naming (i) the **source LEARNINGS by feature name**, derived from `state.consumed`'s basenames rather than restated, (ii) the failure mode the edit targets — its `failureModeId` and one-line `symptom` — and (iii) the AC-2.3 pattern evidence that cleared the bar, carried verbatim from the clustering reply |
 | AC-3.7(c), REQ-CONS-03 | the three vocabularies §4 trailers, last, in that section's order: `PDLC-CONSOLIDATION-PASS: {passId}`; `PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`; `PDLC-CONSOLIDATION-PROMOTIONS: {sorted `{failure-mode-id}:{action}` pairs}` |
-| NFR-2 / §7.4 | nothing derived from the credential. The renderer takes no credential argument at all, so non-disclosure **on the outbound path** is structural (§5.3) rather than reviewed. It is **not** structural inbound, and this row does not claim it is: on a non-zero exit `rtGit` asks its transport agent for "the LAST 300 characters of its **combined output**" (`pdlc/workflows/runtime-adapter.js:951`), which `rtParseTransportReply` (`:967`) surfaces as `stderr` (`:977`), and this feature renders that field into report bodies — §10.3 row 1a's "pathspec and `stderr` in the report body" (`TSPEC:1832`) and `openClone`'s `{failure, detail}` on the credentialed clone/push path (`TSPEC:1522`). That residual is bounded by what `git` prints on failure, not by the seam's interface, and it is carried — not closed — under the same qualification DEC-CONS-01 records ("honoured by construction outbound and by implementation discipline inbound"; `DECISIONS-…:93-120`). The rendered artifacts themselves stay credential-free because the value never becomes a JS string to render (§9.2) |
+| NFR-2 / §7.4 | nothing derived from the credential. The renderer takes no credential argument at all, so non-disclosure **on the outbound path** is structural (§5.3) rather than reviewed. It is **not** structural inbound, and this row does not claim it is: on a non-zero exit `rtGit` asks its transport agent for "the LAST 300 characters of its **combined output**" (`pdlc/workflows/runtime-adapter.js:951`), which `rtParseTransportReply` (`:967`) surfaces as `stderr` (`:977`), and this feature renders that field into report bodies — §10.3 row 1a's "pathspec and `stderr` in the report body" (`TSPEC:1950`) and `openClone`'s `{failure, detail}` on the credentialed clone/push path (`TSPEC:1615`). That residual is bounded by what `git` prints on failure, not by the seam's interface, and it is carried — not closed — under the same qualification DEC-CONS-01 records ("honoured by construction outbound and by implementation discipline inbound"; `DECISIONS-…:93-120`). The rendered artifacts themselves stay credential-free because the value never becomes a JS string to render (§9.2) |
 
 `PDLC-CONSOLIDATION-PROMOTIONS` is the NFR-4 duplicate key and is **derived from `enacted`, not
 assembled beside it**: the renderer computes the pair set from the same array it renders sections
@@ -1545,8 +1841,9 @@ its own copy rather than re-exporting the module's.
 ### 8.3 The manifest and the release stamp
 
 `distribution-manifest.json` carries one row per artifact with its own `sha1` (ids
-`orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` at HEAD). The rebuild adds a fourth row,
-`consolidate-learnings`, **and re-stamps the three existing rows** whose bytes changed because the
+`orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` at the pre-feature baseline). The rebuild adds
+a fourth row, `consolidate-learnings` — present at HEAD since the build landed — **and re-stamps
+the three existing rows** whose bytes changed because the
 dev module they inline changed. That is a property of the manifest, not a per-feature choice: it is
 touched once per artifact the rebuild changes, not once per feature.
 
@@ -1716,7 +2013,14 @@ proposal never runs it and reports `absent` as its null.
 The FSPEC froze these sets and made widening a **recorded TSPEC decision** under `DEC-LAYER-01`
 ("a widening is a recorded TSPEC decision against this set, never a silent reading of it"). This
 layer records **exactly four widenings**, every one in a permitted-but-not-obliged column, every one
-non-mutating, each marked ⊕ below. Every other cell is transcribed unchanged at FSPEC v11.1.
+non-mutating, each marked ⊕ below. Every other cell is transcribed unchanged from **FSPEC §6.5's own
+table** — the anchor, not a version, for the reason §12.3 states: the four ⊕ widenings are what this
+layer decides, and everything else is a transcription whose authority is the named FSPEC section at
+whatever version is current. Be clear about what does **not** police this: §11.3(a)'s containment
+oracle asserts `observed ⊆ permitted` against **this table**, transcribed into the test — it pins
+the implementation to the spec, not the spec to its upstream. A cell that drifts from FSPEC §6.5
+is caught by review of that section, which is why the anchor is named rather than a line or a
+version cited.
 
 | Domain | How a call is classified | Obliged | Permitted, not obliged | Absent always |
 |---|---|---|---|---|
@@ -1742,7 +2046,8 @@ verb for, and each gets its **own** verb:
 |---|---|---|
 | `git cat-file -e HEAD:{path}` | ⊕ `read-object` | FSPEC §8.5 row 3's file-existence test at HEAD (§7.5), which the runtime cannot ask of a filesystem it does not have |
 | `git remote get-url origin` | ⊕ `read-remote` | §9.1 step 2's clone source in the same-repo case |
-| `git ls-files --cached --others --exclude-standard -- :(glob)…` | ⊕ `read-index` | §7.1's corpus enumeration |
+| `git ls-files --cached --others -- :(glob)…` | ⊕ `read-index` | §7.1's corpus enumeration |
+| `git ls-files --deleted -- :(glob)…` | `read-index` (already widened by the row above) | §7.1's working-tree restriction — REQ §3.1 step 1's second bullet. Same verb, same domain, no further widening: it reads the index against the worktree and mutates neither |
 
 An earlier draft folded `read-remote` into `read-object` "because a two-verb widening is easier for
 a test author to transcribe exactly than a three-verb one". That is withdrawn, and it was wrong on
@@ -1935,9 +2240,10 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
 |---|---|---|---|
 | 1 | Log absent / unreadable | `_readFile` ⇒ `null`; `classifyCorpus` treats it as empty text | every basename un-consolidated; empty datum ⇒ `no-cadence-datum` |
 | 1a | **Corpus unlistable** — `_git(["ls-files", …])` returns `{ok:false}` (§7.1) | `enumerateCorpus` ⇒ `{unlistable: true, detail}`; `main` calls `failNoReason` | `failed`, **no** reason code (vocabularies §1 at 1.4 has no row for it, and §1.3 forbids minting one), the pathspec and `stderr` in the report body. Never `no-op`: an unlistable corpus and an empty one are different claims, and only the latter may advance the cadence datum |
+| 1b | **Every enumerated body unreadable** — `enumerateCorpus` succeeds and returns ≥1 basename, and `_readFile` ⇒ `null` for **every** one of them | §7.1's omission applied to every member: each is omitted from the consumed pair, so `state.consumed` is empty and no promotion can be derived | `no-op` — AC-1.4's **third** cause (REQ §4b, `REQ-…:625-631`) — with **no** reason code (none is minted for unreadability; vocabularies §1 at 1.4 has no row) and the consumed pair rendered **empty**. Every enumerated basename stays un-consolidated, still counts toward AC-1.2's volume trigger, is named in the report body as unreadable, and is retried next pass (§10.4). Distinguishable from a quiet week in enumerated values alone, per REQ §4b: here AC-7.1's consumed-by-basename list is empty **while** the un-consolidated set is non-empty; a quiet week has both empty. Not row 1a: there the *enumeration* failed and the corpus size is unknown, which must never read as `no-op`; here the enumeration succeeded. Consuming nothing, it advances the same streaks AC-1.4's first cause does, since AC-1.4 keys streak advance on consumed-set emptiness and never on the `no-op` label |
 | 2 | Log truncated mid-block | §7.1 step 3's open-span-to-EOF rule | consumption never lost |
 | 3 | Unparseable log row | `mintPassId` / `cadenceDatum` skip it | derivation never aborts |
-| 4 | Marker present and **unparseable** — either **empty** (a write truncated mid-take) or a line that is neither `IN-PROGRESS:` nor `RELEASED:` | `_checkFile` ⇒ `{ok:true}` or `{ok:false, reason:"file_empty"}`, both of which are `present` (§7.3 decision 2) ⇒ `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown`. This is FSPEC §4.2's fourth row and **E-11** in full — **both** arms reachable, because §4.1's `RELEASED:` sentinel (**BR-14a**) is what keeps a released marker out of this row: it parses, and **E-11b** sends it to `free` with no reason code. Falsified by **AT-M3**'s two fixtures — (a) the empty marker, (b) the non-`IN-PROGRESS:`/non-`RELEASED:` line — held in the same case against **AT-M11**'s two `RELEASED:` fixtures, which must record neither reason code at either age; without that pairing an implementation that reclaims on every take passes AT-M3, and one that never reclaims passes AT-M11 |
+| 4 | Marker present and **unparseable** — either **empty** (a write truncated mid-take) or a line that is neither `IN-PROGRESS:` nor `RELEASED:` | `_checkFile` ⇒ `{ok:true}` or `{ok:false, reason:"file_empty"}`, both of which are `present` (§7.3 decision 2) ⇒ `markerVerdict` ⇒ `reclaim` | `reclaimed-stale-lock`, abandoned id `unknown`. This is FSPEC §4.2's **fifth** data row — *"Present but **empty**, or a line that is neither form"*; the fourth is the stale `IN-PROGRESS:` reclaim row, and the two are named by their row text rather than by line, because both have already drifted twice and **E-11** in full — **both** arms reachable, because §4.1's `RELEASED:` sentinel (**BR-14a**) is what keeps a released marker out of this row: it parses, and **E-11b** sends it to `free` with no reason code. Falsified by **AT-M3**'s two fixtures — (a) the empty marker, (b) the non-`IN-PROGRESS:`/non-`RELEASED:` line — held in the same case against **AT-M11**'s two `RELEASED:` fixtures, which must record neither reason code at either age; without that pairing an implementation that reclaims on every take passes AT-M3, and one that never reclaims passes AT-M11 |
 | 5 | Marker held and fresh | `refuse` | `refused` + `consolidation-in-progress`; no consumed pair, no commit |
 | 5a | **Marker take did not land** — read-back absent, unparseable, or another pass's `passId` (§7.3) | `takeMarker`'s read-back conjunct; `rtWriteFile` (`runtime-adapter.js:802-811`) reports nothing, so the write alone is not evidence | `refused` + `consolidation-in-progress`; no consumed pair, no commit; the AT asserts the terminal status **and** the marker file's content on disk |
 | 6 | Neither rung resolves | §10.2's `catch` | `failed` + `advisory-model-unresolved` |
@@ -1964,59 +2270,80 @@ future edit repairs by inventing a code — which would breach REQ §4b until ER
   duplicate is FSPEC §4.5's stated exposure. Nothing here claims to close it.
 - **Recovering a corpus consumed by a pass that died at step 8** (O-C1). No vocabularies §1 field
   can express "re-consume these", and inventing a record type would breach REQ §4b.
+- **An enumerated LEARNINGS whose body cannot be read is re-offered on every pass until the
+  operator fixes it.** REQ §4b decides it is omitted from the consumed pair (§7.1), so it stays in
+  the un-consolidated set, keeps counting toward AC-1.2's volume trigger and is drawn again next
+  pass. That is a **retryable** residue, not a cleared one, and it is operator-visible twice over:
+  the hook nudges on the basename, and every pass's report body names it as an entry it could not
+  read. It is accepted rather than closed because the remaining population — a permissions error or
+  a mid-pass unlink — has a fix at the source that no pass can perform, and the alternative
+  (consuming it anyway) biases REQ-CONS-05's falsifiability loop in one direction, which REQ §4b
+  refuses. §13.3 carries the observation that would falsify the "transient fault" premise this
+  acceptance rests on. What is accepted here is only the *residue* — the entry re-offered until the
+  operator fixes it. The corpus-wide consequence, a pass that could read nothing terminating `no-op`,
+  is **handled, not accepted**: it is §10.3 row 1b, with a case in §12.2.
 - **Clone removal failure.** §9.1 issues no removal, so there is no failure to handle.
 - **The two enumerations disagreeing on a git-visibility edge case.** §7.1 enumerates the pass's
-  corpus with `git ls-files --cached --others --exclude-standard`; the hook keeps `glob.glob`
-  (`nudge-consolidation.sh:28`, over §7.1's `CORPUS_GLOBS`), which does not consult git. The two therefore answer different
-  questions about the same tree in exactly two classes, both accepted here rather than closed:
-  (i) a LEARNINGS file matched by `.gitignore` is in the **hook's** set and not the pass's — the
-  operator is nudged about a file no pass will consolidate, and no pass can clear the nudge;
-  (ii) a LEARNINGS file **staged but deleted from the worktree** is in the **pass's** set (`--cached`
-  lists it) and not the hook's — `_readFile` then returns `null` for its body, which
-  `classifyCorpus` treats as an unreadable corpus entry (§7.1) and the pass reports rather than
-  crashing on — counted in the volume test, carried in the consumed pair, and named in the report
-  body, per §7.1's decision, so it cannot recur forever.
+  corpus with `git ls-files --cached --others` minus `ls-files --deleted`; the hook keeps `glob.glob`
+  (`CORPUS_GLOBS`, `nudge-consolidation.sh:60-61`), which does not consult git. **The two classes this
+  section previously accepted are now closed, by REQ §3.1 step 1 rather than by this layer** — see
+  *What the REQ decided, and what it cost* below. One class survives and is accepted here:
 
-  **What closing each would actually cost, corrected.** An earlier draft of this bullet said that
-  dropping `--exclude-standard` "re-admits the two `docs/discarded/` directories §7.1's `:(glob)`
-  anchoring exists to exclude". That is **false, and it contradicted §7.1 point 2 of this same
-  document**, which says correctly that the exclusion is performed by `:(glob)`. Measured at HEAD:
+  **A LEARNINGS file inside a nested git repository** is in the **hook's** set and not the pass's.
+  `glob.glob` walks the filesystem and sees it; `ls-files` does not descend into another repository's
+  worktree, and reports neither its tracked nor its untracked contents (measured on a scratch tree: a
+  `docs/nested/` holding its own `git init` and one `LEARNINGS-nested.md` is returned by `glob.glob`
+  and by neither `--cached` nor `--others`). The operator-visible residue is the same shape class (i)
+  used to have — a nudge no pass can clear — but the population is far smaller and is not something
+  the REQ's evidence argument reaches: a LEARNINGS inside a vendored or nested repository is not this
+  repository's record of its own work. Closing it would mean teaching the hook to *exclude* nested
+  repositories, i.e. putting a `git` invocation on a `SessionStart` path that must also work in a
+  non-repository and with no git on `PATH` — the same shipped-hook robustness cost this feature
+  declined before, and declines again, for a rarer class.
+
+  **Dropping the flag does not re-admit `docs/discarded/`, and that is why REQ's answer was cheap to
+  absorb.** An earlier draft of this bullet said that dropping `--exclude-standard` "re-admits the two
+  `docs/discarded/` directories §7.1's `:(glob)` anchoring exists to exclude". That was **false, and
+  it contradicted §7.1 point 2 of this same document**, which says correctly that the exclusion is
+  performed by `:(glob)`. Measured at HEAD, the shipped call —
   `git ls-files --cached --others -- ':(glob)docs/*/LEARNINGS-*.md'
-  ':(glob)docs/completed/*/LEARNINGS-*.md'` — the same call with `--exclude-standard` dropped —
-  returns the **same five** paths and **zero** under `docs/discarded/`; it is dropping `:(glob)`
-  that re-admits them (seven paths). The two flags are independent, and only one of them excludes
-  `docs/discarded/`.
+  ':(glob)docs/completed/*/LEARNINGS-*.md'` — returns the **same five** paths the flagged call
+  returned and **zero** under `docs/discarded/`; it is dropping `:(glob)` that re-admits them (seven
+  paths). The two are independent, and only one of them excludes `docs/discarded/`. Had they not been
+  independent, absorbing REQ §3.1 step 1 would have cost this document the one exclusion the REQ
+  names by name.
 
-  So the real costs are asymmetric, and are stated rather than merged into one impossibility claim:
+  **What the REQ decided, and what it cost.** Both former classes were handed upstream as an erratum,
+  and REQ v2.1 answered both in §3.1 step 1. The answers, and this document's absorption of them:
 
-  - **Class (ii) is genuinely not closable at this layer.** Closing it means teaching the hook
-    `git ls-files`, i.e. putting a git invocation on a `SessionStart` path that must also work in a
-    non-repository and on a machine with no git on `PATH`. That is a shipped-hook robustness cost
-    this feature declines to take.
-  - **Class (i) is closable, at one stated price**: drop `--exclude-standard`, and a `.gitignore`d
-    LEARNINGS file becomes corpus. `:(glob)` still excludes `docs/discarded/` either way, so the
-    price is exactly §7.1 point 3's rule — "an ignored file never is [corpus]" — and nothing else.
-    Note the asymmetry, because it decides which way the upstream question should be answered if
-    convergence is the goal: the hook has **no** `--exclude-standard` to drop (`glob.glob` sees
-    ignored files unconditionally), so dropping it on the JS side is the one edit that makes the two
-    sides agree. §13.3 carries that to the REQ rather than presenting both directions as neutral.
+  - **Former class (i) — the ignored LEARNINGS — is closed by dropping `--exclude-standard`.** REQ
+    decided that a `.gitignore`d LEARNINGS *is* corpus, on the nag-that-never-quiesces argument: the
+    hook cannot see `.gitignore`, so keeping the flag left an operator nudged forever about a file
+    the pass was forbidden to consume. §7.1 drops the flag.
 
-  **The choice made here, and why it is provisional.** `--exclude-standard` is **kept**: a
-  `.gitignore`d LEARNINGS file is a file its own repository has said is not part of its record, and
-  consolidating it would promote evidence into `DOMAIN-CONSTRAINTS.md` from a source no reviewer
-  will ever see in a diff. That is the safe direction for a pass that writes to shared project-level
-  artifacts. But it is a **product** trade — "is an ignored LEARNINGS file corpus?" is a question
-  about evidence, not about mechanism — so it is not settled here alone: §13.3 raises it upstream
-  with the enumeration relaxation it belongs to, and if the REQ answers "yes, ignored files are
-  corpus", the change is one flag and one line of §7.1, with AT-P1's literal-argv conjunct going red
-  until it is updated deliberately.
+    **The argument that lost, kept as history because it is the real price.** An ignored LEARNINGS is
+    a file its own repository has said is not part of its record, and consolidating it promotes
+    evidence into `DOMAIN-CONSTRAINTS.md` from a source no reviewer will ever see in a diff. That
+    cost is now *paid*, not avoided, and it is worth a reader knowing it was weighed rather than
+    overlooked. REQ weighed it and chose convergence, and the asymmetry this section identified is
+    why that direction was the convergent one: the hook has **no** `--exclude-standard` to drop, so
+    dropping it on the JS side was the only edit that could make the two sides agree.
+  - **Former class (ii) — the staged-but-deleted LEARNINGS — is closed by the `--deleted`
+    subtraction.** REQ decided that an index entry with no working-tree file is *not* corpus, since
+    it has no body and is therefore evidence about nothing. This section previously called the class
+    "genuinely not closable at this layer", reasoning that closing it meant teaching the hook
+    `git ls-files`. **That reasoning was wrong in one direction and is corrected here:** it assumed
+    convergence had to be reached by widening the *hook*, when the class is closed by narrowing the
+    *pass* instead — one extra `ls-files --deleted` read on a side that already shells out to git,
+    at no cost to the hook's `SessionStart` robustness at all. The cost that argument correctly
+    identified applies to the surviving nested-repository class, where the hook really is the side
+    that would have to change; it did not apply here.
 
-  The residue accepted meanwhile, stated exactly: class (i) leaves an operator nudged about a file no
-  pass will consolidate and no pass can clear; class (ii) leaves a corpus entry the pass reports as
-  unreadable. Neither is a correctness divergence — the pass consumes only what its own enumeration
-  returned — and no *third* class can arise silently, because §7.1's two literal pins make the
-  divergence set derivable from the two enumerations' own text. This is why T-08 is narrowed to the
-  **predicate** (§12.2) and why §13.1 row 6 says which half AT-P7 holds equal.
+  The residue accepted meanwhile is now one class, not two, and it is stated above. It is not a
+  correctness divergence — the pass consumes only what its own enumeration returned — and no *further*
+  class can arise silently, because §7.1's literal pins make the divergence set derivable from the two
+  enumerations' own text. This is why T-08 is narrowed to the **predicate** (§12.2) and why §13.1
+  row 6 says which half AT-P7 holds equal.
 
 ## 11. Test strategy
 
@@ -2038,7 +2365,8 @@ uses.
 
 L4 is the only level that shells out. It never touches the repository's own `docs/` tree — the
 differential harness writes its fixture
-corpus into a temp directory and points the hook at it through `CLAUDE_PROJECT_DIR` (`:26`), which
+corpus into a temp directory and points the hook at it through `CLAUDE_PROJECT_DIR` (read into `proj`
+in the hook's heredoc, immediately above the `CORPUS_GLOBS` declaration), which
 is what makes the harness a pure function of an injected root (DC-04).
 
 **One further L4 case, and why it is worth a subprocess.** Pin (a) asserts the argv the pass hands
@@ -2055,18 +2383,46 @@ grows. It is **outside** the differential fixture table and therefore outside th
 below — its subject is git, not the hook, and folding it in would make `executed === TABLE.length`
 false for a reason that has nothing to do with the interpreter probe.
 
-**What that case deliberately does not cover, recorded so a later reader does not assume it does.**
-The fixture is built with `git init` + `git add -A`, so every path it asserts over is reached through
-`--cached` and `--exclude-standard` is **inert** in it: the case pins the `:(glob)` half of pin (a)'s
-argv and **not** the flag half. That is deliberate, and the reason is §13.3's: whether a `.gitignore`d
-LEARNINGS file is corpus is exactly the sub-question this layer hands upstream, and the two answers
-differ precisely in whether `--exclude-standard` stays. Adding an untracked-and-ignored file here to
-make the flag observable would pin the answer this document has declined to give, so the case pins
-what the erratum does not touch and the erratum decides the rest. If the answer comes back "an ignored
-LEARNINGS file is corpus", the flag is dropped and there is no flag behaviour left to pin; if it comes
-back "no", this case gains that fixture member and the flag conjunct with it.
+**What that case now also covers, since REQ §3.1 step 1 decided the two classes.** An earlier draft
+of this paragraph recorded a deliberate gap: the fixture was built with `git init` + `git add -A`, so
+every path was reached through `--cached`, `--exclude-standard` was **inert**, and pinning the flag
+half would have pinned an answer this document had declined to give. That reason has expired — REQ
+decided both classes — so the gap closes rather than being carried, and the fixture gains **two
+members** and **two conjuncts**:
 
-**A skipped L4 is distinguishable from a passing one.** The hook's own `PY_BIN` probe (`:13-20`)
+- **An ignored LEARNINGS.** The temp repository gains a `.gitignore` naming one feature directory and
+  a LEARNINGS inside it. The conjunct: that basename **is** in the result. Against a re-introduced
+  `--exclude-standard` this reds through a real `git`, which is the half AT-P1's argv pin cannot
+  reach — the argv pin catches the token, this catches the *behaviour* the token would change.
+  **Build order is load-bearing and the case must assert it.** The `.gitignore` must be written, and
+  must name the feature directory, **before** the `git add -A` above runs; otherwise that member is
+  committed as a *tracked* file, `--cached` returns it, and the conjunct passes for the wrong reason —
+  green while `--exclude-standard` is once again inert, which is precisely the state this member was
+  added to escape. The case therefore takes one guard conjunct alongside the membership one: the
+  ignored path is reported as ignored (`!!`) by **`git status --ignored --porcelain -uall`**, and does
+  not appear in `ls-files --cached` output. The `-uall` is load-bearing: measured on a scratch tree
+  built exactly as this fixture is (`.gitignore` naming the directory, written before `git add -A`),
+  plain `git status --ignored --porcelain` — and `--ignored=matching` — collapses the ignored member to
+  its **directory**, printing `!! docs/ign/`, and only `-uall` prints the file path
+  `!! docs/ign/LEARNINGS-ign.md`. Transcribing the flagless command reds the guard on a correct build,
+  and the cheapest wrong repair is to weaken it back to the state this member was added to escape.
+  `git check-ignore -v {path}` is the equally acceptable alternative, and answers for the exact path:
+  exit 0, naming the matching pattern (`.gitignore:1:docs/ign/`). `git ls-files --error-unmatch {path}`
+  may also be used, but it is an **exit-status probe, not a listing** — measured, it exits **1** and
+  writes `error: pathspec … did not match any file(s) known to git` to stderr — so a conjunct using it
+  asserts the non-zero status, never an absence from stdout. A fixture whose premise is untested
+  is an oracle that reports on the fixture rather than on the code.
+- **A staged-but-deleted LEARNINGS.** One fixture file is `git add`-ed and then unlinked from the
+  worktree. The conjunct: that basename is **not** in the result. This is the only oracle anywhere
+  that runs the `--deleted` subtraction against real git rather than against a scripted double.
+
+Both conjuncts are positive-and-negative in the sense §11.3 requires: each names a basename that must
+be present alongside the one that must be absent, so neither can be satisfied by an empty result. The
+case remains outside the differential fixture table and the executed-row counter — its subject is
+still git, not the hook.
+
+**A skipped L4 is distinguishable from a passing one.** The hook's own `PY_BIN` probe (the
+`for cand in python3 python py` loop and the `[ -z "$PY_BIN" ] && exit 0` guard after it)
 degrades to a silent `exit 0` when no usable interpreter is found, and a differential test that
 inherits that degradation silently is the test that will be skipped on the platform where it
 matters. So the suite uses jest's `test.skip` — which reports as **skipped**, not passed, in the run
@@ -2112,12 +2468,42 @@ is what makes `0` an asserted outcome rather than an unobserved one.
 | Seam | Double | Source |
 |---|---|---|
 | `_agent` | `makeAgentDouble({script, throwOn})` | `__tests__/helpers/advisoryDoubles.js` — already built to drive `isModelResolutionError` from a scripted rejection *message*, which is exactly what FSPEC §2.6 rows 2–4 need |
-| `_git` | `fakeGit(script)` | `mergeDoubles.js`, re-exported by `advisoryDoubles.js` as `makeGitDouble` |
+| `_git` | `fakeGit(script)` — **`seams.js`'s, not `mergeDoubles.js`'s** | `__tests__/helpers/seams.js:389`. Decided below: only this one can script two calls that share a subcommand, which §7.1's enumeration now issues |
 | `_ghRun` | `fakeGhRun(script)` — **not** `passingGh` | same. `matchKey` (`mergeDoubles.js:45-60`) keys both new surfaces cleanly (`gh pr list --json url,state,body`; `gh pr create`), so `fakeGhRun` needs no change. `passingGh`'s defaults (`:93+`) answer only the six shipped Phase MERGE surfaces, so the consolidation suites build their **own** script map rather than widening it, and `GH_SURFACE_NAMES` (`:181` — `Object.keys(SURFACE_KEY_BY_NAME)`) does **not** grow: it is the set `passingGh` is obliged to answer, and this feature adds no obligation to that helper |
 | `_readFile` / `_writeFile` / `_appendFile` / `_checkFile` | `fakeFs(initialContents, opts)` | `__tests__/helpers/seams.js` |
 | `_listFiles` | `fakeListFiles(spec)` | same — wired for protocol completeness only. **No consolidation test drives it**: the corpus is enumerated through `_git` (§7.1), precisely because the double is more capable than the seam it doubles. A test that reached for it would be re-introducing the DC-07 hazard §7.1 removes |
 | clock, sleep | `fakeNow`, `FIXED_NOW_MS`, `fakeSleep` | `mergeDoubles.js` |
 | PRNG | `seeded`, `resolveSeed` | `driftGenerators.js` — the repo's one seeded-PRNG library |
+
+**Which `fakeGit`, decided — the repo ships two and only one can express this feature's enumeration.**
+Since §7.1 issues **two** `_git` reads whose argv both begin `ls-files` (the `--cached --others`
+enumeration and the `--deleted` subtraction), a double keyed by the git *subcommand* returns the same
+value to both. `mergeDoubles.js`'s `fakeGit` is exactly that: it computes `key = argv[i]` after
+skipping `-C`/`-c` pairs and looks up `script[key]` (`mergeDoubles.js:200-207`), so both calls hit the
+one `ls-files` entry and an unscripted key returns `{ok:true, stdout:"", stderr:""}` (`:209`). Either way the
+`--deleted` set equals the enumeration set and **the corpus is always empty** — which reds AT-P1's
+conjuncts 2 and 3 on a *correct* implementation, and silently greens any absence-shaped assertion in
+every L2 fixture that scripts a listing (the AC-1.2 volume count, the consumed pair, the report body's
+unreadable-basename case, §12.2's whole-pass lifecycle rows). That is a double defeating the oracles,
+not an oracle defect, and the cheapest wrong repair is to weaken the assertion.
+
+`seams.js`'s `fakeGit` (`:389`) already has the capability and needs no edit, which is why this row is
+re-pointed rather than a third factory added or `mergeDoubles.js` widened: its `script` may be a
+**function** `(argv, callIndex) => result` (`:405-406`, the `typeof script === "function"` branch) or
+an **array** indexed per call with the last entry repeating (`:407-408`, the `Array.isArray(script)`
+branch, `script[Math.min(index, script.length - 1)]`), alongside the same subcommand-map form for
+tests that want it
+(`:409-413`); and it records `.calls` / `.invocations` / `.commands` / `.callCount` (`:421-426`),
+which is precisely what AT-P1's two-argv pin and the subtraction conjunct read. Corpus fixtures use
+the **function or array form**, never the map form, and the reason is a rule rather than a preference:
+the map form cannot distinguish two calls sharing a subcommand, so a corpus suite that reaches for it
+re-introduces the always-empty corpus above. Clone-domain tests (§9.2) must also use the function
+form, because `seams.js` keys its map on a raw `args[0]` and does **not** skip the `-C`/`-c` pairs
+those calls lead with — the one respect in which `mergeDoubles.js`'s version is the more convenient of
+the two, and it is not the respect this feature needs. This choice is consistent with a commitment the
+document already made elsewhere: T-13 drives `asAsync(fakeGit)`, and `asAsync` wraps the **sync**
+doubles `seams.js` ships — `mergeDoubles.js`'s factory is `async` and returns a `{calls, _git}` pair
+rather than a callable (`:193-211`), so it could not have been the subject there either.
 
 **Two new factories only**, both in `__tests__/helpers/consolidationDoubles.js`, because the seams
 they double do not exist yet: `fakeEnvPresent(presentNames: Set<string>)` and
@@ -2290,10 +2676,12 @@ in §11.6: a capability the feature *invents* is not in the same class as "the r
 these flags", so it does not get that section's exemption.
 
 **(f) AT-P7, the differential predicate harness (T-08).** The harness writes one fixture corpus into
-a temp directory, points both implementations at it (the hook through `CLAUDE_PROJECT_DIR`, `:26`;
+a temp directory, points both implementations at it (the hook through `CLAUDE_PROJECT_DIR`, read into
+`proj`;
 the JS through `classifyCorpus` over the same enumerated basenames and log text), and compares the
 **sets**. The hook's set is read from the `PDLC_PENDING:` stderr line §7.1 adds — the shipped hook
-emits only a count, and only above `THRESHOLD = 5` (`:25`, `:43`), which is blind on every
+emits only a count, and only above `THRESHOLD = 5` (the `THRESHOLD` binding and the `n >= THRESHOLD`
+test), which is blind on every
 discriminating fixture. Three conjuncts per fixture row, so the oracle is positive rather than
 invariance-only: the JS set equals the hook set in both directions, **and** each equals the expected
 set transcribed literally in the fixture table — without the third, two implementations that both
@@ -2302,11 +2690,12 @@ the basename collision (E-09), the legacy/block boundary, one row above the thre
 shipped `additionalContext` count is also compared, and a **zero-corpus** row that asserts
 `PDLC_PENDING:` is emitted with an empty value (§7.1's relocated early exit) — so `∅` is read
 positively rather than inferred from silence. L4 degrades exactly as the hook does when no
-usable Python interpreter is found (`PY_BIN`, `:13-20`); §11.1 states the recorded notice.
+usable Python interpreter is found (the `PY_BIN` probe loop and its guard); §11.1 states the recorded
+notice.
 
 **What this harness does not falsify, stated rather than implied.** Feeding both sides the same
 basename list holds the **predicate** equal and holds the **enumeration** equal by construction —
-so the enumeration pair (`git ls-files --cached --others --exclude-standard` on the JS side,
+so the enumeration pair (`git ls-files --cached --others` minus `--deleted` on the JS side,
 `glob.glob` over `CORPUS_GLOBS` on the hook's) is outside AT-P7's reach entirely. That is deliberate, and it is
 the reason the fixtures are fed rather than enumerated: the fixture temp directory is not a git
 repository, so `enumerateCorpus` could not run there without a `git init` and a staged index, and
@@ -2330,9 +2719,13 @@ a third class silently. "Held by inspection" would have been the wrong answer an
 given: an equality this harness cannot run is replaced by two pins it can.
 
 One consequence for the fixture table: `classifyCorpus` is driven directly, not through
-`enumerateCorpus`, so **no fixture may be written that depends on git visibility** (an ignored file,
-a staged-but-deleted file). Such a fixture would assert a divergence the harness cannot observe and
-would read as coverage of the enumeration half.
+`enumerateCorpus`, so **no fixture may be written that depends on git visibility** (an ignored file, a
+staged-but-deleted file, a nested repository). Such a fixture would assert a divergence the harness
+cannot observe and would read as coverage of the enumeration half. Note that the first two are no
+longer *divergences* since §7.1 absorbed REQ §3.1 step 1 — they are decided corpus rules — but the
+rule stands unchanged and for the same reason: this harness drives `classifyCorpus` directly, so it
+cannot observe any git-visibility fact whatever. Their oracles live in §11.1's L4 git case, which
+can.
 
 **That rule lives in the code, not only here.** It is written into the header of
 `consolidationDoubles.js`'s fixture builder — the same place `seams.js` and `advisoryDoubles.js`
@@ -2352,11 +2745,19 @@ header.
 | §7.2 `passId` | a random multiset of rows, a random subset made unparseable | the minted id is strictly greater than every parseable `{today}` id; unparseable rows change nothing; the result is invariant under row permutation |
 | §7.8 config parse | a random subset of keys corrupted by type | every uncorrupted key keeps its configured value; every corrupted key takes its documented default; `invalidKeys` is set-equal to the corrupted subset |
 | §7.7 escalation count | a random entry sequence with a random subset missing `Feature` or `Seam` | the total attributed count equals the number of entries carrying both rows; no count is attributed to a key absent from the input |
+| §7.3 `parseMarker` | random text: a random mix of (i) well-formed lines built from a drawn verb ∈ {`IN-PROGRESS:`, `RELEASED:`}, a drawn `passId` and a drawn ISO-8601 instant, (ii) near-misses — right verb wrong arity, wrong verb, a well-formed line plus a second line, leading/trailing **non-whitespace** junk, interior padding within the line — and (iii) arbitrary strings, plus the two edge inputs `""` and `null`. **Surrounding whitespace is drawn deliberately into the *well-formed* arm (i), not the near-miss arm**, per §7.3: a well-formed line wrapped in leading/trailing newlines or spaces must still parse, which is what stops the property reding on a conforming trimming implementation | the parser is **total** (never throws, on any input including `null`); it returns non-`null` **iff** the text, once trimmed, is exactly one line matching one of the two accepted forms — so the property carries both directions and cannot be satisfied by a parser that returns `null` always or one that accepts everything; and on a well-formed line the returned `state`, `passId` and `at` **round-trip the generated triple**, which is what stops the two verbs being conflated |
 
-Two further properties are added beyond T-09's four because they are the FSPEC's determinism claims
+The fifth row is `parseMarker`, added at v2.2 on the te-review round-10 finding: v2.0 widened its
+grammar from one accepted line to two plus a `state` discriminant (§7.3), which made "anything else
+yields `null`" a materially wider claim than it was when this table was first approved, and a
+two-form parser is a parameterisable component under T-09 on its face. It is stated as an **iff**
+for the reason the two rows below are: a one-directional totality claim is satisfied by a parser
+that returns `null` on everything.
+
+Two further properties are added beyond T-09's five because they are the FSPEC's determinism claims
 and an example cannot range over them. **Order-invariance alone is not an oracle** — a function
 returning a constant, `[]` or `null` satisfies it — so each pairs the invariance with a positive
-conjunct on the same path, the shape the four rows above already have:
+conjunct on the same path, the shape the five rows above already have:
 
 | Component | Generator | Invariant **and** positive conjunct |
 |---|---|---|
@@ -2395,6 +2796,23 @@ the REQ text would red a conforming implementation.
 - **`_envPresent`'s adapter transport.** It is an agent prompt; the module-side contract (a boolean,
   fail-closed on anything unparseable) is tested with a double, and the prompt itself is reviewed,
   not executed — the same posture every other `runtime-adapter.js` transport takes.
+- **`_checkFile`'s garbled-reply arm, and it is disclosed as fail-open rather than left implied.**
+  §7.3 decision 2 makes `file_missing` *verdict-deciding*: it is the sole absent state, and absence
+  means the marker is free. In production that reason has **two producers**, not one. `rtCheckFile`
+  (`pdlc/workflows/runtime-adapter.js:817-831`) maps the agent's reply `OK` ⇒ `{ok:true}`,
+  `EMPTY` ⇒ `file_empty`, and **everything else** — including a garbled, truncated or failed reply —
+  to `file_missing` by fall-through (`:830`). The double does not: `fakeFs.checkFile`
+  (`pdlc/workflows/__tests__/helpers/seams.js:292-306`) returns `file_missing` only when the key is
+  genuinely absent. So a probe that *fails* reads at this layer as *no marker*, the pass takes the
+  lock, and AC-1.3's mutual exclusion is **fail-open on that one path**. No L2 fixture can construct
+  it — §5.1's `CheckReply` is a three-value union with no failure member, by design — so this is
+  named here rather than tested. Two things bound the exposure and are why it is disclosed rather
+  than repaired: the conflation is **pre-existing** (it is the shipped adapter's behaviour, which
+  this feature drives and does not change), and it is the same posture §11.6 already takes for
+  `_envPresent` — an agent-transported reply is reviewed, not executed. **What §5.1's comment does
+  and does not claim:** the two implementations agree exactly on the three *file states* this layer
+  reads, which is what decision 2 rests on; they do **not** agree on the provenance of the
+  `file_missing` reason, and the comment is not to be read as claiming they do.
 
 **No longer on this list: the clone's writes.** An earlier draft exempted the whole PR route on the
 "real `gh` and the real network" ground, which also swept up `_writeFile`'s behaviour on an absolute
@@ -2434,23 +2852,24 @@ Every `FSPEC-CONS-0N` unit appears exactly once; no row names a unit the FSPEC d
 | T-05 | the resolver widening | §8.1 | AT-M10 (default unchanged on every path) |
 | T-06 | `ESCALATIONS.md` parse | §7.7 | AT-A7 (missing `Feature` row), the §11.4 count property |
 | T-07 | the `.gitignore` text | §3.3 | `consolidationBuild.test.js` — a jest case reading the tracked `.gitignore` and asserting the comment line and the pattern line verbatim and adjacent. **Not** a maintainer check: a human step goes nothing-red when the pattern is later rewritten slash-free or `**/`-prefixed, which is the exact drift §3.3 argues against |
-| T-08 | shared code vs. two implementations (FSPEC §14.1). **Decided**: two implementations (§13.1 row 6). The evidence is split by kind, not weakened by default: the two predicates are held **equal** by a differential; the two enumerations are held **pinned** (each side's question fixed literally) rather than equal, because they are not equal in general — §10.4's two divergence classes are the accepted residue, and §13.3 raises the relaxation of REQ `:115-116`'s "one enumeration" upstream as an erratum rather than settling it here | §7.1, §10.4, §13.1 row 6 | **Predicate half — AT-P7** (differential, L4): `classifyCorpus`'s two-region predicate against the hook's `:41` predicate, both fed the same basename list. **Enumeration half — two literal pins** (§7.1), not inspection: (a) **AT-P1**'s first conjunct asserts the argv handed `_git` element-by-element, both `:(glob)` prefixes included, so the `docs/discarded/` exclusion is decided by the pathspec and not by a fixture (its second conjunct is the positive membership case; §7.1 states why "a discarded line is filtered out" is deliberately *not* asserted); (b) an L3 source-text read in `consolidationHookParity.test.js` pins the hook's `CORPUS_GLOBS` declaration (located by name, never by line index — §7.1) to exactly two glob-pattern literals and no third, with the conjunct that `glob.glob(` occurs once and inside the comprehension over it. **The two pins sit at different levels and in different files deliberately** — (a) is L1 over the `_git` double because its subject is the array handed at runtime, (b) is L3 source text because the hook is a Python heredoc no JS test can call; §7.1 argues why the uniform-L3 reading an earlier draft carried was the weaker one. Together they make §10.4's divergence set derivable and closed: a widening on either side reds. AT-P7 itself does **not** falsify the enumeration pair, and this row says so rather than implying coverage it has not got |
-| T-09 | a property per component | §11.4 | the four properties themselves; the PLAN carries them as tasks, not as prose |
+| T-08 | shared code vs. two implementations (FSPEC §14.1). **Decided**: two implementations (§13.1 row 6). The evidence is split by kind, not weakened by default: the two predicates are held **equal** by a differential; the two enumerations are held **pinned** (each side's question fixed literally) rather than equal, because they are not equal in general — §10.4's one remaining divergence class (a LEARNINGS inside a nested git repository) is the accepted residue. REQ §3.1 step 1 has since **withdrawn** the "one enumeration" half and decided the two classes this row previously carried as open; §13.3 records that erratum as closed, and §7.1 absorbs both decisions | §7.1, §10.4, §13.1 row 6 | **Predicate half — AT-P7** (differential, L4): `classifyCorpus`'s two-region predicate against the hook's `pending` comprehension over `region_split` (located by
+symbol, never by line index — §12.3), both fed the same basename list. **Enumeration half — two literal pins** (§7.1), not inspection: (a) **AT-P1**'s first conjunct asserts both argvs handed `_git` element-by-element, both `:(glob)` prefixes included in each, so the `docs/discarded/` exclusion is decided by the pathspec and not by a fixture, and a re-introduced `--exclude-standard` or a dropped `--deleted` call — each a one-token reversal of a decided REQ rule — reds on it (its second conjunct is the positive membership case and its third observes the `--deleted` subtraction; §7.1 states why "a discarded line is filtered out" is deliberately *not* asserted); (b) an L3 source-text read in `consolidationHookParity.test.js` pins the hook's `CORPUS_GLOBS` declaration (located by name, never by line index — §7.1) to exactly two glob-pattern literals and no third, with the conjunct that `glob.glob(` occurs once and inside the comprehension over it. **The two pins sit at different levels and in different files deliberately** — (a) is L1 over the `_git` double because its subject is the array handed at runtime, (b) is L3 source text because the hook is a Python heredoc no JS test can call; §7.1 argues why the uniform-L3 reading an earlier draft carried was the weaker one. Together they make §10.4's divergence set derivable and closed: a widening on either side reds. AT-P7 itself does **not** falsify the enumeration pair, and this row says so rather than implying coverage it has not got |
+| T-09 | a property per component | §11.4 | the properties themselves — **five** T-09 rows (the two-region predicate, `passId`, config parse, escalation count, `parseMarker`) plus the two determinism rows; the PLAN carries them as tasks, not as prose, and the count is stated here rather than left implicit so a dropped strategy is visible from this table |
 | T-10 | the unavailable spellings | §6.5 | AT-Q10's literal-text conjunct; LD-1/LD-4's PROPERTIES fixtures |
-| T-11 | **the PR body** — AC-3.2's three citations, AC-3.7(c)/REQ-CONS-03's three vocabularies §4 trailers, `PDLC-CONSOLIDATION-PROMOTIONS` set-equal to the proposals the PR enacts (the NFR-4 duplicate key) | §7.9 `renderPrBody`, `renderPromotionCommitMessage` | `consolidationRoute.test.js`, re-bound to the register's actual text (`FSPEC-…:2064-2077`): **AT-Q2** — three promotions in one pass, one PR ⇒ three commits each carrying a distinct `PDLC-PROMOTION-ID: {id}:{action}` **and** `PDLC-CONSOLIDATION-PROMOTIONS` **set-equal** to the three pairs. AT-Q2 carries *both* trailer obligations; an earlier draft split them across AT-Q5, which is about a merged `promote` not suppressing a `revise`/`retire`. **AT-Q3** and **AT-Q9** — the writer↔reader round-trip: each supplies a prior PR carrying the trailer `renderPrBody` writes and asserts `enactedByPr` reads it back (AT-Q3 on an open PR ⇒ `duplicate-suppressed`, `suppressed-by:` naming the pair, `pr:` empty; AT-Q9 on a PR whose branch was deleted unmerged ⇒ the trailer survives and still suppresses). **AC-3.2's three body citations are now `AT-Q13`, and the gap this row recorded is closed.** The gap was real when this row was written: the FSPEC's own AC→AT map bound AC-3.2 to AT-Q2, which asserts only the trailers. It was recorded here rather than papered over by naming a nearby id, and raised upstream as an erratum; FSPEC v11.3 answered it by minting **AT-Q13** (`FSPEC-…:2126`, traced to AC-3.2 at `:2320`), which asserts exactly the three citations over two fixtures. **The case below is that id, not a duplicate of it** — as this row anticipated, the erratum landing turns the interim case into an id-bearing row, so it is written once and labelled `AT-Q13` in §12.3: `consolidationRoute.test.js` carries it as **AT-Q13** — one pass over two source LEARNINGS, asserting that `renderPrBody`'s output contains, for each promotion, the source feature name, the failure mode's name, and the AC-2.3 evidence string. **Where those three expected values come from is the whole oracle, so it is stated without ambiguity: they are transcribed from the fixture LEARNINGS corpus the pass was handed, never from `state.promotions[i]` or any other field of the produced record.** The case runs at L2, where the record is produced by the pass under test; reading the expected strings off the record would green it even when the pass and the renderer drop the same field together — which is exactly the AC-3.2 failure an operator sees (a PR body citing nothing). Reading them from the input corpus makes it a relational oracle between input and output. It now claims **AT-Q13**, the erratum having landed, so §12.3's set equality counts it on both sides |
-| T-12 | **the proposal file** — AC-3.5's full inline diff plus the failure class recorded by name; AC-3.4's second clause | §7.9 `renderProposalFile` | `consolidationRoute.test.js`, re-bound: the two degradation classes in the register are **AT-Q6** (`branch-exists` — "fallback proposal file carries the full diff, the existing branch and any PR for it are named") and **AT-Q8** (`api-failure` — "the API's status text recorded verbatim; fallback proposal file carries the full diff; the pass does not halt"). AT-Q9 is **not** a degradation class (it is the deleted-branch trailer-survival case) and AT-Q11 is **not** about the file's existence condition (it is the two-run byte-identity of `DOMAIN-CONSTRAINTS.md`); both were mis-bound in an earlier draft. **FSPEC §5.3's "when, and only when" is now `AT-R7`, and the gap this row recorded is closed.** The register carried the positive direction through AT-Q6/AT-Q8 and asserted the *negative* nowhere — that a pass which enacts everything writes no proposal file. It was recorded as a gap and raised upstream rather than bound to an id that asserts something else; FSPEC v11.3 answered with **AT-R7** (`FSPEC-…:2106`, traced to AC-1.4 at `:2312`), whose three fixtures list `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` before and after the pass. **The case below is that id, not a duplicate**: `consolidationRoute.test.js` carries it as **AT-R7** — a pass whose every promotion is enacted (the PR merged, or every target written) writes **no** `CONSOLIDATION-PROPOSAL-{passId}.md`, and so does an all-suppressed `no-op` pass (AT-R7's fixture (b), which reaches "no cause" by the other route), asserted through the write double's recorded path set, with the positive control in the same case that a one-degraded-promotion fixture *does* write exactly one named for that `passId` — so the negative cannot pass on a fixture that wrote nothing at all. It claims **AT-R7**, so §12.3's set equality counts it on both sides. **AC-3.4 answered explicitly:** the file carries `state.prUrl` when a PR was also opened; when the pass enacts everything there is no proposal file (FSPEC §5.3's "when, and only when") and AC-3.4's second clause is **vacuous** — the URL lives in the terminal row's `pr:` field alone |
+| T-11 | **the PR body** — AC-3.2's three citations, AC-3.7(c)/REQ-CONS-03's three vocabularies §4 trailers, `PDLC-CONSOLIDATION-PROMOTIONS` set-equal to the proposals the PR enacts (the NFR-4 duplicate key) | §7.9 `renderPrBody`, `renderPromotionCommitMessage` | `consolidationRoute.test.js`, re-bound to the register's actual text (FSPEC §13.5, *The PR route and idempotence*): **AT-Q2** — three promotions in one pass, one PR ⇒ three commits each carrying a distinct `PDLC-PROMOTION-ID: {id}:{action}` **and** `PDLC-CONSOLIDATION-PROMOTIONS` **set-equal** to the three pairs. AT-Q2 carries *both* trailer obligations; an earlier draft split them across AT-Q5, which is about a merged `promote` not suppressing a `revise`/`retire`. **AT-Q3** and **AT-Q9** — the writer↔reader round-trip: each supplies a prior PR carrying the trailer `renderPrBody` writes and asserts `enactedByPr` reads it back (AT-Q3 on an open PR ⇒ `duplicate-suppressed`, `suppressed-by:` naming the pair, `pr:` empty; AT-Q9 on a PR whose branch was deleted unmerged ⇒ the trailer survives and still suppresses). **AC-3.2's three body citations are now `AT-Q13`, and the gap this row recorded is closed.** The gap was real when this row was written: the FSPEC's own AC→AT map bound AC-3.2 to AT-Q2, which asserts only the trailers. It was recorded here rather than papered over by naming a nearby id, and raised upstream as an erratum; FSPEC v11.3 answered it by minting **AT-Q13** (FSPEC §13.5 register, traced to AC-3.2 in FSPEC §15's AC→AT map), which asserts exactly the three citations over two fixtures. **The case below is that id, not a duplicate of it** — as this row anticipated, the erratum landing turns the interim case into an id-bearing row, so it is written once and labelled `AT-Q13` in §12.3: `consolidationRoute.test.js` carries it as **AT-Q13** — one pass over two source LEARNINGS, asserting that `renderPrBody`'s output contains, for each promotion, the source feature name, the failure mode's name, and the AC-2.3 evidence string. **Where those three expected values come from is the whole oracle, so it is stated without ambiguity: they are transcribed from the fixture LEARNINGS corpus the pass was handed, never from `state.promotions[i]` or any other field of the produced record.** The case runs at L2, where the record is produced by the pass under test; reading the expected strings off the record would green it even when the pass and the renderer drop the same field together — which is exactly the AC-3.2 failure an operator sees (a PR body citing nothing). Reading them from the input corpus makes it a relational oracle between input and output. It now claims **AT-Q13**, the erratum having landed, so §12.3's set equality counts it on both sides |
+| T-12 | **the proposal file** — AC-3.5's full inline diff plus the failure class recorded by name; AC-3.4's second clause | §7.9 `renderProposalFile` | `consolidationRoute.test.js`, re-bound: the two degradation classes in the register are **AT-Q6** (`branch-exists` — "fallback proposal file carries the full diff, the existing branch and any PR for it are named") and **AT-Q8** (`api-failure` — "the API's status text recorded verbatim; fallback proposal file carries the full diff; the pass does not halt"). AT-Q9 is **not** a degradation class (it is the deleted-branch trailer-survival case) and AT-Q11 is **not** about the file's existence condition (it is the two-run byte-identity of `DOMAIN-CONSTRAINTS.md`); both were mis-bound in an earlier draft. **FSPEC §5.3's "when, and only when" is now `AT-R7`, and the gap this row recorded is closed.** The register carried the positive direction through AT-Q6/AT-Q8 and asserted the *negative* nowhere — that a pass which enacts everything writes no proposal file. It was recorded as a gap and raised upstream rather than bound to an id that asserts something else; FSPEC v11.3 answered with **AT-R7** (FSPEC §13.4 register, traced to AC-1.4 in FSPEC §15's AC→AT map), whose three fixtures list `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` before and after the pass. **The case below is that id, not a duplicate**: `consolidationRoute.test.js` carries it as **AT-R7** — a pass whose every promotion is enacted (the PR merged, or every target written) writes **no** `CONSOLIDATION-PROPOSAL-{passId}.md`, and so does an all-suppressed `no-op` pass (AT-R7's fixture (b), which reaches "no cause" by the other route), asserted through the write double's recorded path set, with the positive control in the same case that a one-degraded-promotion fixture *does* write exactly one named for that `passId` — so the negative cannot pass on a fixture that wrote nothing at all. It claims **AT-R7**, so §12.3's set equality counts it on both sides. **AC-3.4 answered explicitly:** the file carries `state.prUrl` when a PR was also opened; when the pass enacts everything there is no proposal file (FSPEC §5.3's "when, and only when") and AC-3.4's second clause is **vacuous** — the URL lives in the terminal row's `pr:` field alone |
 | — | `renderTerminalRow`'s **dropped**-code arm (§6.4, §7.9) | §7.9 | `consolidationReport.test.js`, under **AT-L5** — its "no enumerated value without a §1 row" direction is exactly what the illegal fixture discharges, so this mints no new id and §12.3's set equality is undisturbed. The report-body **notice** naming the dropped code is a TSPEC-added observable with no register id, in the same class as T-13's row. Two fixtures over one code: one whose `(status, code)` pair is legal at `Version` 1.4 and appears in the row, one whose pair is illegal and is dropped — the drop is then *observed* against a control rather than assumed. The AT asserts the row's field set **and** the report body's notice naming the dropped code. `no-cadence-datum` is deliberately not that code: vocabularies §1 permits it with `refused`, and REQ-CONS-01 decides it at step 3/4 before the marker check, so the drop must never fire for it — which the same test asserts as its control |
-| T-13 | **await discipline across `finishPass`** (§10.1) — the three terminal steps are seam writes reached through module functions, so neither §11.3(c)'s identifier scan nor any sync-double suite can see a missing `await` | §10.1 | `consolidationLifecycle.test.js`: one case driving `asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` / `asAsync(fakeGit)` (§11.2) and asserting, **after `main()`'s promise resolves**, that (i) the terminal row is present in the log double's accumulated text and (ii) the marker is **released** — the write double's **last** recorded contents for `docs/_decisions/.consolidation-lock` **match `RELEASED: {passId} {ISO-8601}`** (the sentinel §7.3 decides on FSPEC BR-14a, carrying this pass's own `passId`), having been the `IN-PROGRESS: {passId} …` line **earlier in the same double's recorded write history**. Conjunct (ii) is stated against that observable and not against "gone", because §7.3's release is an in-place `_writeFile` and no seam in this protocol removes a file. Its take-side precondition is load-bearing: a bare absence is equally true of a `refused` / `skipped-cadence` fixture or a take that never landed, so without it the AC-1.3 half passes vacuously. `asAsync` defers on a **macrotask** (§11.2): a microtask deferral is drained by the test's own `await main()` and would green both conjuncts on the broken implementation. Both conjuncts fail on a missing `await` inside `finishPass` and pass on an awaited one; this is the only row that distinguishes *written* from *scheduled*, so the PLAN task that writes it owes the mutation check §11.2 states (delete one `await`, expect RED) |
-| — | **an enumerated file whose body cannot be read** (§7.1, §10.4 class (ii)) — the decision mints three observables (it counts toward `\|un-consolidated\|`, it appears in the consumed pair, its basename is named in the report body) and no register AT reaches any of them: AT-P8 is the unreadable **log** file, not an unreadable LEARNINGS body | §7.1, §10.4 | `consolidationPass.test.js`, **(no FSPEC AT)** — **one fixture carrying both an unreadable and a readable corpus member**, so every conjunct has its control in the same case: the corpus enumerates two basenames, `_readFile` returns `null` for one and a body for the other, and the case asserts (1) `\|un-consolidated\|` counts **both** (the volume trigger fires on the same count it would with two readable members — a count that silently drops the unreadable one makes the trigger fire late and nothing else reds); (2) the consumed pair rendered by `renderConsumedPair` contains **both** basenames (the convergence argument §7.1 rests on: an implementation that drops the unreadable one from the pair passes every other row in this table and re-offers the file on every subsequent pass forever); (3) the report body **names the unreadable basename** as an entry the pass could not read, and does **not** name the readable one in that list. Stated as a pair rather than as an absence throughout — the readable member is the control that keeps (1) and (3) from passing on a fixture where nothing was readable |
+| T-13 | **await discipline across `finishPass`** (§10.1) — the three terminal steps are seam writes reached through module functions, so neither §11.3(c)'s identifier scan nor any sync-double suite can see a missing `await` | §10.1 | `consolidationLifecycle.test.js`: one case driving `asAsync(fakeAppendFile)` / `asAsync(fakeWriteFile)` / `asAsync(fakeGit)` (§11.2) and asserting, **after `main()`'s promise resolves**, that (i) the terminal row is present in the log double's accumulated text and (ii) the marker is **released** — the write double's **last** recorded contents for `docs/_decisions/.consolidation-lock` **match `RELEASED: {passId} {ISO-8601}`** (the sentinel §7.3 decides on FSPEC BR-14a, carrying this pass's own `passId`), having been the `IN-PROGRESS: {passId} …` line **earlier in the same double's recorded write history**. **Both halves of that expected string are transcribed from the fixture, never read off the record under test, and the clock is pinned rather than shape-matched**: `passId` is derived deterministically from the fixture log by §7.2, so the case computes it from its own input; and the case supplies `_now: () => {fixed}` in the injections — `_now` is a destructured parameter default (§5.6(b)), which is exactly how the shipped suites pin it (`pdlc/workflows/__tests__/advisoryDodSeams.test.js:129`, `:1116`; `advisoryDisabled.test.js:276`) — so `{ISO-8601}` is a **literal expected value**, not a regex over "any well-formed timestamp". A shape match was the available alternative and is rejected here for one reason: the only thing it can check about the instant is that it *looks* like a timestamp, so an implementation that stamped the release with the take's instant, or with a constant, would pass it — and a wrong instant in the marker is precisely what makes a later pass's staleness arithmetic wrong. Conjunct (ii) is stated against that observable and not against "gone", because §7.3's release is an in-place `_writeFile` and no seam in this protocol removes a file. Its take-side precondition is load-bearing: a bare absence is equally true of a `refused` / `skipped-cadence` fixture or a take that never landed, so without it the AC-1.3 half passes vacuously. `asAsync` defers on a **macrotask** (§11.2): a microtask deferral is drained by the test's own `await main()` and would green both conjuncts on the broken implementation. Both conjuncts fail on a missing `await` inside `finishPass` and pass on an awaited one; this is the only row that distinguishes *written* from *scheduled*, so the PLAN task that writes it owes the mutation check §11.2 states (delete one `await`, expect RED) |
+| — | **an enumerated file, present in the working tree, whose body cannot be read** (§7.1) — reachable on file permissions, a mid-pass unlink, or an IO error between the enumeration and the read; **not** the staged-but-deleted entry, which since §7.1's `--deleted` subtraction is never enumerated and so never reaches this branch. The decision mints three observables (it counts toward `\|un-consolidated\|`, it is **omitted** from the consumed pair per REQ §4b, its basename is named in the report body) and no register AT reaches any of them: AT-P8 is the unreadable **log** file, not an unreadable LEARNINGS body. A fourth observable follows when the class covers the **whole** corpus: the pass terminates `no-op` with an empty consumed pair (§10.3 row 1b). That one **is** now a register obligation: **FSPEC v11.7 mints AT-K3b** (FSPEC §13.6 register, AT-K3b) for the all-unreadable corpus, and §13.7's AC-1.4 row binds it as that criterion's **third** cause — the gap this row previously recorded against AT-K3, AT-L2, AT-F13 and AT-R7, whose `no-op` fixtures are the all-suppressed pass (AT-R7 fixture (b)) and the empty-corpus pass (AT-P6/E-08), i.e. AC-1.4's second and first causes. Absorbed, not re-raised: the second fixture below is AT-K3b's, and §12.3 assigns the id | §7.1, §10.3 rows 1a/1b, §10.4 | `consolidationPass.test.js` — **(no FSPEC AT)** for the mixed fixture, **AT-K3b** for the all-unreadable one. **One fixture carrying both an unreadable and a readable corpus member**, so every conjunct has its control in the same case: the corpus enumerates two basenames, `_readFile` returns `null` for one and a body for the other, and the case asserts (1) `\|un-consolidated\|` counts **both** (the volume trigger fires on the same count it would with two readable members — a count that silently drops the unreadable one makes the trigger fire late and nothing else reds); (2) the basename list rendered by `renderConsumedPair` is **set-equal to `{readable}`** — the readable basename present, the unreadable one absent, **and no third name** (set equality, not containment plus one absence: NFR-5 requires a block naming *exactly* the consumed set, which a containment oracle satisfied by an implementation that also names a basename the enumeration never returned) (REQ §4b: the unreadable entry is not consumed, so it stays un-consolidated and the next pass retries it — an implementation that puts it in the pair marks a file consumed that contributed no evidence, which biases REQ-CONS-05's loop toward `prevented`/`insufficient-evidence` and never toward `recurred`); (3) the report body **names the unreadable basename** as an entry the pass could not read, and does **not** name the readable one in that list. Stated as a pair rather than as an absence throughout — the readable member is the control that keeps (1) and (3) from passing on a fixture where nothing was readable, and in (2) it is the positive half that keeps the conjunct from passing on an implementation that renders an empty pair. **A second fixture in the same case carries the all-unreadable corpus** (§10.3 row 1b) and **discharges AT-K3b**: the corpus enumerates **two** basenames and `_readFile` returns `null` for **both**, and the case asserts positively that the terminal status is exactly `no-op` — not `failed` (row 1a's outcome, the adjacent branch an implementer is most likely to reach for) and not `refused` — that the rendered consumed pair's basename list is **empty**, and that `\|un-consolidated\|` is **2** with both basenames named in the report body as unread. AT-K3b's remaining conjuncts are asserted in the same fixture: **no** `CONSOLIDATION-PROPOSAL-{passId}.md` is written and **no** reason code is minted for the condition, so the register's discriminator — an empty consumed-basename list *while* the un-consolidated set is non-empty — is what separates AC-1.4's third cause from its first, where both sets are empty. The mixed fixture above is this fixture's control in both directions: it keeps "pair empty" from passing on a pass that enumerated nothing at all, and this fixture keeps the mixed one's status assertion from passing on an implementation that terminates every unreadable-touching pass `failed`. Both fixtures pin the status against the terminal-status catalogue §6.4 freezes, not against a retyped literal |
 | — | **the ER-6 interim's discriminator** (§7.6, §12.4) — a *routed* propose-only promotion and a *degraded* PR attempt both write `route: "degraded"`, so the report body is the only thing that tells them apart until ER-6 lands | §7.6, §7.9 item 4 | `consolidationReport.test.js`, **(no FSPEC AT)** — the two-fixture control: a `revise` on a `DOMAIN-CONSTRAINTS.md` target (routed propose-only, §7.6 table row 2) and a `branch-exists` degradation. Asserts the *sameness* that is the ER-6 loss (`route: "degraded"` in both records, asserted rather than hidden) **and** the *difference* that stands in for it (the degraded body names a vocabularies §1 reason code, the routed body names none), in both directions. It claims no register id, in the same class as T-13's row and the dropped-code notice, so §12.3's set equality is undisturbed. Recorded here because §12.4 leans on it as a mechanism, and a mechanism that lives only in §7.6's prose is one a PLAN task will not know it owes |
 | — | **three marker observations, three outcomes** (§7.3 decision 2, §10.3 row 4) — the decision that `present` reads `file_missing` **alone** as absent, so an **empty** marker is a *truncated* one and reclaims (**E-11**) while a **`RELEASED:`** marker is *free* and records nothing at any age (**E-11b**). This row was written when §7.3 decided the empty released form, and it then asserted the opposite of what it asserts now — an empty marker resolving `free` — as a local `(no FSPEC AT)` case, because under that form the zero-byte marker was the steady state of every consuming repo and no register id reached it. **FSPEC v11.3's BR-14a settled the release form as the `RELEASED:` sentinel and the register now covers both arms itself**, so the local case is retired into the ids rather than written twice; the decision it guarded is unchanged in substance — the presence probe, not the read, decides the absent arm | §7.3 decision 2, §10.3 row 4, §12.1 CONS-03 | `consolidationPass.test.js` — **one case holding the discriminating fixtures together**, because the pairing *is* the oracle: `""` ⇒ a normal terminal status (**not** `refused`) **and** `reclaimed-stale-lock` recorded with the abandoned id `unknown` (**AT-M3** fixture (a)); a line that is neither `IN-PROGRESS:` nor `RELEASED:` ⇒ the same (**AT-M3** fixture (b)); `RELEASED: {passId} {ISO-8601}` at **both** ages ⇒ taken, a normal terminal status, and **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress` (**AT-M11**). So neither the positive nor the negative is an absence-only assertion and neither can pass on a fixture where no marker logic ran at all: an implementation that reclaims on every take fails AT-M11, one that never reclaims fails AT-M3. `fakeFs` supports every input unchanged — an own property whose value trims to `""` returns `{ok:false, reason:"file_empty"}` (`__tests__/helpers/seams.js:296-299`) and `_readFile` returns `""` for it, which is exactly the present-but-unparseable state decision 2 routes to `reclaim`. It claims **AT-M3** and **AT-M11**, both already assigned to this file by §12.3, so that table's set equality is undisturbed. This subsumes the call-order oracle §7.3 declines to mint: it falsifies a wrong verdict by **behaviour** rather than by call shape, which is the stronger form — §7.3's `["check", "read", "write", "read"]` prefix survives as authoring guidance only, and no §12 row obliges it |
-| — | **release across the whole terminal-status set** (§7.3, FSPEC §4.3). `releaseMarker` became a named function with a decided observable in this document, and no register AT walks the set: FSPEC §4.3's table is a **six-member closed enumeration** (`FSPEC-…:458-465`) stating, per status, whether the marker was taken and whether this pass releases it — `promoted`, `promoted-degraded`, `no-op`, `failed` ⇒ taken **and** released at step 16; `refused` and `skipped-cadence` ⇒ **neither** (BR-15 `FSPEC-…:2502` restates the positive half). **Which `refused` this table keys on is stated, because there are two arms and they disagree**: the modelled one is the observed-fresh-marker refusal (§10.3 row 5, AT-M1), which takes nothing and releases nothing; §10.3 row 5a's **failed-take** `refused` wrote its `IN-PROGRESS` line and correctly releases nothing, so its observed pair is `{taken: true, released: false}` and it is row 5a's own obligation, not this table's. Keying on the status alone without that clause makes the row red on correct code for an implementer who reaches for the row-5a fixture. AT-M4 and AT-M6 each assert release on **one** `failed` fixture, which is containment, not the set | §7.3, §10.1, §12.1 CONS-03 | `consolidationLifecycle.test.js`, **(no FSPEC AT)** — one case per terminal status over a table **keyed on the module's own frozen catalogue** — §6.4's `TERMINAL_STATUSES` (`Object.freeze([...])`, a runtime value), **not a literal list retyped in the test** and not §6.1's `TerminalStatus`, which is a `ts`-fence type with no runtime existence in these plain ES modules. Ranging over a constant of the module under test would ordinarily be an implementation echo; it is legitimate here **only because §11.3(b) independently pins that catalogue** — its fourth leg asserts three-way set equality (module catalogue ≡ the doubles' literal transcription ≡ `docs/_constraints/pdlc-consolidation-vocabularies.md` §1's table, both directions, plus the `Version` 1.4 pin), so a maintainer who deletes a status from the catalogue reds there before this table can shrink with it. Cite that chain when writing the case. It asserts for each the pair `{taken?, released?}` against the write double's recorded write history for `docs/_decisions/.consolidation-lock`: `taken` iff the `IN-PROGRESS: {passId} …` line was written at some point, `released` iff the **last** recorded contents match `RELEASED: {passId} {ISO-8601}`, the sentinel §7.3 decides. The oracle is **set equality over the catalogue**, not containment: the table's key set is asserted set-equal to `TERMINAL_STATUSES`, so deleting a status arm reds rather than passing on the survivors — which is the whole point, since the arm most likely to be dropped is `failed`, the only one reached from step 8 rather than step 14. The operator-visible failure this row exists to catch is AC-1.3's: a marker left behind blocks every later pass until `staleLockMinutes` elapses. It claims **no** register id (§12.3's set equality is undisturbed), and its two negative rows are stated against a positive control in the same table — `refused` and `skipped-cadence` must show **neither** write, which cannot pass vacuously because the four positive rows in the same table show both |
-| — | **the composition root actually hands over §5.1's protocol** (§5.1, §5.3, §5.5, §8.2). `rtConsInjections()` is named in §3's file-touch table, §5.1, §8.2 and §13.2's PLAN list, and until this row nothing asserted its **contents**. The failure it guards is not hypothetical: this repo shipped an adapter function that existed and was never wired, and `runtime-adapter.js:1098-1100` says so in its own words. `_checkFile` is the member whose omission is silent — §5.5 argues why an unwired presence probe can read as "no marker present" and turn AC-1.3's mutual exclusion off in production while every L2 fixture stays green, because the `refused` path is exercised only through `fakeFs` | §5.1, §5.5, §8.2 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the **key set of `rtConsInjections()` asserted set-equal to §5.1's declared seam names**, minus the members §5.6 excludes by name (`_now`, which is a module-level default and not a seam). **Set equality, not containment**: containment is exactly the assertion that would still pass with `_checkFile` missing, which is the failure. `adapterProbe.test.js:253-258` ("wires all three into `rtDevInjections`") is the shape; it is widened from per-name identity to an equality here because §5.1 is an enumerated contract and a *surplus* key is as much a drift signal as a missing one. It claims no register id |
+| — | **release across the whole terminal-status set** (§7.3, FSPEC §4.3). `releaseMarker` became a named function with a decided observable in this document, and no register AT walks the set: FSPEC §4.3's table is a **six-member closed enumeration** (FSPEC §4.3, *Release, and what each terminal status does*) stating, per status, whether the marker was taken and whether this pass releases it — `promoted`, `promoted-degraded`, `no-op`, `failed` ⇒ taken **and** released at step 16; `refused` and `skipped-cadence` ⇒ **neither** (**BR-15**, FSPEC §18, restates the positive half). **Which `refused` this table keys on is stated, because there are two arms and they disagree**: the modelled one is the observed-fresh-marker refusal (§10.3 row 5, AT-M1), which takes nothing and releases nothing; §10.3 row 5a's **failed-take** `refused` wrote its `IN-PROGRESS` line and correctly releases nothing, so its observed pair is `{taken: true, released: false}` and it is row 5a's own obligation, not this table's. Keying on the status alone without that clause makes the row red on correct code for an implementer who reaches for the row-5a fixture. AT-M4 and AT-M6 each assert release on **one** `failed` fixture, which is containment, not the set | §7.3, §10.1, §12.1 CONS-03 | `consolidationLifecycle.test.js`, **(no FSPEC AT)** — one case per terminal status over a table **keyed on the module's own frozen catalogue** — §6.4's `TERMINAL_STATUSES` (`Object.freeze([...])`, a runtime value), **not a literal list retyped in the test** and not §6.1's `TerminalStatus`, which is a `ts`-fence type with no runtime existence in these plain ES modules. Ranging over a constant of the module under test would ordinarily be an implementation echo; it is legitimate here **only because §11.3(b) independently pins that catalogue** — its fourth leg asserts three-way set equality (module catalogue ≡ the doubles' literal transcription ≡ `docs/_constraints/pdlc-consolidation-vocabularies.md` §1's table, both directions, plus the `Version` 1.4 pin), so a maintainer who deletes a status from the catalogue reds there before this table can shrink with it. Cite that chain when writing the case. It asserts for each the pair `{taken?, released?}` against the write double's recorded write history for `docs/_decisions/.consolidation-lock`: `taken` iff the `IN-PROGRESS: {passId} …` line was written at some point, `released` iff the **last** recorded contents match `RELEASED: {passId} {ISO-8601}`, the sentinel §7.3 decides — **the same pinned-clock oracle T-13 states**, not a shape match: this case supplies `_now: () => {fixed}` in its injections (§5.6(b)) and transcribes the `passId` from its own fixture log, so the expected string is a literal on every arm of the table and no arm can green by reading the produced record back to itself. The oracle is **set equality over the catalogue**, not containment: the table's key set is asserted set-equal to `TERMINAL_STATUSES`, so deleting a status arm reds rather than passing on the survivors — which is the whole point, since the arm most likely to be dropped is `failed`, the only one reached from step 8 rather than step 14. The operator-visible failure this row exists to catch is AC-1.3's: a marker left behind blocks every later pass until `staleLockMinutes` elapses. It claims **no** register id (§12.3's set equality is undisturbed), and its two negative rows are stated against a positive control in the same table — `refused` and `skipped-cadence` must show **neither** write, which cannot pass vacuously because the four positive rows in the same table show both |
+| — | **the composition root actually hands over §5.1's protocol** (§5.1, §5.3, §5.5, §8.2). `rtConsInjections()` is named in §3's file-touch table, §5.1, §8.2 and §13.2's PLAN list, and until this row nothing asserted its **contents**. The failure it guards is not hypothetical: this repo shipped an adapter function that existed and was never wired, and `runtime-adapter.js:1098-1100` says so in its own words. `_checkFile` is the member whose omission is silent — §5.5 argues why an unwired presence probe can read as "no marker present" and turn AC-1.3's mutual exclusion off in production while every L2 fixture stays green, because the `refused` path is exercised only through `fakeFs` | §5.1, §5.5, §8.2 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the **key set of `rtConsInjections()` asserted set-equal to §5.1's declared seam names**, minus the members §5.6 excludes by name (`_now`, which is a destructured parameter default and not a seam — §5.6(b)). **Set equality, not containment**: containment is exactly the assertion that would still pass with `_checkFile` missing, which is the failure. `adapterProbe.test.js:253-258` ("wires all three into `rtDevInjections`") is the shape; it is widened from per-name identity to an equality here because §5.1 is an enumerated contract and a *surplus* key is as much a drift signal as a missing one. It claims no register id |
 | — | **the two `SKILL.md` production edits** (§3.2 rows 6 and 7). `pdlc/skills/consolidate-learnings/SKILL.md` and `pdlc/skills/harvest-learnings/SKILL.md` are shipped prompt files this feature edits — the block/legacy predicate and the `{topic} = failure-mode-id` route on one, the `Phases exercised` metadata row and the `failure-mode-id` Open-Items line on the other — and until this row **no test named either file**. The shipped `__tests__/skillFiles.test.js` covers only `se-review`, `te-review` and `pm-review` (`:13-17`, a three-member `reviewSkills` literal), so both edits would ship with no oracle: a later prompt rewrite could drop the `failure-mode-id` route and every suite in the repo would stay green while §5.2's derivation silently lost the topic it keys on | §3.2, FSPEC §3.2, §5.2, §8.3, §8.4 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3 source text, in the shape §11.3(e) establishes for `rtWriteFile`'s prompt: four verbatim conjuncts, two per file, each **located by the surrounding named heading and never by line index** (these files are edited by hand and line numbers drift). The conjuncts are the strings the FSPEC obliges, not paraphrases of them, and each is asserted to occur **exactly once** so a "harmonising" second copy reds too. It lives in this feature's own suite rather than as a fourth member of `skillFiles.test.js`'s `reviewSkills` list because these are **authoring** skills, not review skills, and that list's every existing assertion is about `VERDICT` trailers these two files do not and must not carry — widening it would force a per-member conditional, which is the shape §11.1 keeps out of shipped suites. It claims no register id, so §12.3's set equality is undisturbed |
-| — | **`CLAUDE.md`'s tracked-artifact enumeration** (§3.2's `CLAUDE.md` row, §8.3). The repo's own onboarding document enumerates the generated runtime artifacts and then counts them in prose; the count is already wrong at HEAD (three bullets, four tracked paths, `pdlc-cli.mjs` missing) and this feature adds a fifth. A prose count no test reads is a document that drifts once per artifact, forever | §3.2, §8.3 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the artifact paths `CLAUDE.md` enumerates under the build-runtime paragraph, parsed from its own source text, **minus `pdlc/workflows/dist/distribution-manifest.json` itself**, asserted **set-equal** to the manifest's own `rows[]`, each row's `pluginPath` read as the repo-relative path (`pdlc/` + `workflows/dist/…`). **The exclusion is named rather than absorbed, in the shape the `BUNDLES` half of this same case already uses for its own** (`.mjs`, not `.bundle.js`): the manifest is the *authority* this oracle reads and carries **no row for itself** — verified at HEAD, where `rows[].id` is exactly `orchestrate-dev`, `orchestrate-queue`, `pdlc-cli` — while the enumeration must keep advertising it as a shipped artifact. Without the exclusion the two sets are structurally unequal and the case is red on correct code. It stays **set equality, never containment**, in both directions — a manifest row with no bullet is the drift that already happened (`pdlc-cli.mjs`, tracked and stamped and unadvertised, which containment would pass), a bullet with no manifest row is a deleted artifact left advertised. Both are read at run time from the tracked files, so nothing here is a transcription that can itself go stale. The same case carries §11.3(c)'s third-axis falsifier — `runtimeBundle.test.js`'s `BUNDLES` constant, read from that file's source text, set-equal to the manifest's `.bundle.js` ids — because both are the same question (does the repo's own bookkeeping still name every shipped artifact?) held against the same authority, and splitting them across two files would duplicate the manifest parser. The prose count itself is **not** asserted: §3.2's edit removes it in favour of a count-free sentence, precisely so there is no number left for a test to pin. It claims no register id |
+| — | **`CLAUDE.md`'s tracked-artifact enumeration** (§3.2's `CLAUDE.md` row, §8.3). The repo's own onboarding document enumerates the generated runtime artifacts and then counts them in prose; the count was already wrong at the pre-feature baseline (three bullets, four tracked paths, `pdlc-cli.mjs` missing) and this feature adds a fifth artifact. A prose count no test reads is a document that drifts once per artifact, forever | §3.2, §8.3 | `consolidationBuild.test.js`, **(no FSPEC AT)** — L3: the artifact paths `CLAUDE.md` enumerates under the build-runtime paragraph, parsed from its own source text, **minus `pdlc/workflows/dist/distribution-manifest.json` itself**, asserted **set-equal** to the manifest's own `rows[]`, each row's `pluginPath` read as the repo-relative path (`pdlc/` + `workflows/dist/…`). **The exclusion is named rather than absorbed, in the shape the `BUNDLES` half of this same case already uses for its own** (`.mjs`, not `.bundle.js`): the manifest is the *authority* this oracle reads and carries **no row for itself** — verified at HEAD, where `rows[].id` is exactly `consolidate-learnings`, `orchestrate-dev`, `orchestrate-queue`, `pdlc-cli`, four rows and none of them the manifest itself (three at the pre-feature baseline, before this feature's bundle row landed) — while the enumeration must keep advertising it as a shipped artifact. Without the exclusion the two sets are structurally unequal and the case is red on correct code. It stays **set equality, never containment**, in both directions — a manifest row with no bullet is the drift that already happened (`pdlc-cli.mjs`, tracked and stamped and unadvertised, which containment would pass), a bullet with no manifest row is a deleted artifact left advertised. Both are read at run time from the tracked files, so nothing here is a transcription that can itself go stale. The same case carries §11.3(c)'s third-axis falsifier — `runtimeBundle.test.js`'s `BUNDLES` constant, read from that file's source text, set-equal to the manifest's `.bundle.js` ids — because both are the same question (does the repo's own bookkeeping still name every shipped artifact?) held against the same authority, and splitting them across two files would duplicate the manifest parser. The prose count itself is **not** asserted: §3.2's edit replaced it with a count-free sentence, precisely so there is no number left for a test to pin. It claims no register id |
 
 **Why the Falsified-by column quotes rather than paraphrases.** Every AT named above is described in
-the register's own words, taken from `FSPEC-…:2064-2077`, because §12.3's
+the register's own words, taken from the register rows of FSPEC §13 (§§13.1–13.9), because §12.3's
 `consolidationTraceability.test.js` asserts set equality over **ids** and is therefore structurally
 blind to a row that binds a real id to the wrong subject — the one class of error in this table that
 has no mechanical guard. Quoting is not a mechanism, and is not claimed as one; it is what makes the
@@ -2484,23 +2903,45 @@ last two by hand. That is not a bookkeeping slip in the `DEC-SEV-02` sense: this
 is what tells a PLAN task which ATs it owes. An AT with no file is an AT the PLAN will not name and
 the implementation will not write, and nothing goes red.
 
-The FSPEC's AT register carries **99** ids, measured at **v11.3** by enumerating `AT-…` tokens over
-§13 (`FSPEC-…:2041-2191`) and de-duplicating. The earlier "96, measured at v11.1" was stale: FSPEC
-v11.2/v11.3 added **AT-M11**, **AT-Q13** and **AT-R7** — the three ids that close the register gaps
-T-11, T-12 and §12.2's empty-marker row had recorded and raised upstream. All three are assigned
-below. The measurement is dated on purpose, and it is not the mechanism: `consolidationTraceability.test.js`
-re-derives both sides at run time, so this number is a reader's summary that the set-equality test
-falsifies if it drifts again. Every register id has exactly one file below:
+The FSPEC's AT register carries **100** ids, obtained by enumerating `AT-…` tokens over **FSPEC §13,
+"Acceptance tests"** (§§13.1–13.9) and de-duplicating; re-derived at FSPEC **v11.7**, where it is
+**100** — v11.7 minted **AT-K3b**, the all-unreadable-corpus `no-op` that §12.2 had recorded as a
+register gap and raised upstream, and it is assigned below to `consolidationPass.test.js`. The count
+is set-equal to this table in both directions with an empty diff each way. The earlier "96, at v11.1"
+was stale: FSPEC v11.2/v11.3 added **AT-M11**, **AT-Q13** and **AT-R7** — the three ids that close
+the register gaps T-11, T-12 and §12.2's empty-marker row had recorded and raised upstream. All
+three are assigned below.
+
+**Two things about that number, both deliberate.** First, it is a reader's summary and not the
+mechanism: `consolidationTraceability.test.js` re-derives *both* sides at run time, so a fourth
+drift of this count must go **red in the suite** rather than need a fourth erratum round — which is
+why the version qualifier is now a re-derivation date rather than a pin anything depends on.
+Second, the register is cited **by section name and id, never by line range**: three consecutive
+review rounds each spent a finding on a hand-copied `FSPEC-…:NNNN` coordinate that a later FSPEC
+revision had already shifted (v11.4 alone moved every register locator +34, and v11.6 moved them
+again), and no oracle in this document may locate anything by line index anyway — §11.3(e) and
+§12.2 already require source-text assertions to be anchored "by the surrounding named heading and
+never by line index". **That rule governs this document's own citations of *every* upstream document**: an
+FSPEC anchor is named as *§-number + heading + id* (`FSPEC §13.5 register, AT-Q13`), and a REQ anchor
+as *§-number + quoted phrase* (`REQ §3.1 step 1, "an index entry with no working-tree file"`), which
+survives the drift a line number cannot. **Scoping the rule to one upstream document was itself a
+defect**, found at v12: stated for the FSPEC alone, it left the REQ's line pointers looking
+sanctioned, and all four of them had gone stale across REQ v2.1–v2.5 while the FSPEC sweep was being
+celebrated. A citation rule is about the *form* of a pointer, so it can have no per-document scope. **The rule has a corollary for erratum changelog entries, learned
+the expensive way:** an entry cites what a pointer *should* name and never narrates what the stale
+one currently hits, because the insertion that carries the narration moves the content it describes
+and so invalidates itself in the same commit — which is exactly what the 2.1 entry's "a blank line
+at HEAD" did, and why it is struck at 2.2. Every register id has exactly one file below:
 
 | File | Level | ATs owned (exhaustive) |
 |---|---|---|
-| `consolidationPass.test.js` | L2 | AT-C1, **AT-C1b**, AT-C2, AT-C3, AT-C4, AT-C5, AT-C6, AT-C7, AT-C8, AT-M1, AT-M2, AT-M3, AT-M4, AT-M5, AT-M6, AT-M6b, AT-M9, **AT-M11**. Plus **(no FSPEC AT)** the unreadable-corpus-entry case §12.2 records — §7.1's three observables (counted, in the consumed pair, named in the report body) against a readable control. It lives here because its subject is the pass's own corpus handling end-to-end, which is this file's. **AT-M3 is owned here and is fully satisfiable at this layer**: its two fixtures — (a) the marker that is present but **empty**, and (b) the marker carrying a line that is neither `IN-PROGRESS:` nor `RELEASED:` — both reclaim, and both record `reclaimed-stale-lock` with the abandoned id `unknown` (§10.3 row 4). Fixture (a) is reachable precisely because FSPEC §4.1's **BR-14a** releases by writing a `RELEASED:` sentinel rather than by truncating, which §7.3 adopts, and **E-11** says so in the register's own terms. An earlier revision of this document decided the empty released form, which made that arm unreachable, and disclosed the partial coverage here rather than implying coverage it did not have; **that disclosure is withdrawn**, the FSPEC having decided the release form at v11.3. **The AT-M3 case is written together with AT-M11** (§12.2's marker row), because the pairing is the oracle: fixture (a) must be compared inside one case against a `RELEASED:` fixture that does *not* reclaim, or an implementation that reclaims on every take passes it. It mints no id and no new file, so this row's assignment set is unchanged. **AT-M11 is owned here because it is AT-M3's paired negative** — a marker in the *released* state, in two fixtures (written seconds ago, and older than `staleLockMinutes`), must be taken with **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress`, at either age. It is the sole register oracle for AC-1.3's negative half: without it an implementation that records `reclaimed-stale-lock` on every take passes AT-M1 through AT-M6b. It belongs beside AT-M3 rather than in a file of its own precisely because the pairing is the oracle, which is the same argument fixture (a) above makes. **No divergence remains to record here**: AT-M11's fixtures spell the released state as the `RELEASED: {passId} {ISO-8601}` sentinel FSPEC §4.1 decides, and §7.3 now decides **the same form** (BR-14a; E-11b gives it its outcome — free at any age, no reason code), so both fixtures pass against this layer's own mechanism rather than against a spelling it does not use. The erratum an earlier revision raised from this cell is **withdrawn**: the FSPEC answered the question at v11.3, and the correct action on a settled upstream question is to absorb the decision, not to route it again |
+| `consolidationPass.test.js` | L2 | AT-C1, **AT-C1b**, AT-C2, AT-C3, AT-C4, AT-C5, AT-C6, AT-C7, AT-C8, AT-M1, AT-M2, AT-M3, AT-M4, AT-M5, AT-M6, AT-M6b, AT-M9, **AT-M11**, **AT-K3b**. Plus **(no FSPEC AT)** the unreadable-corpus-entry case §12.2 records — §7.1's three observables (counted, **omitted from** the consumed pair, named in the report body) against a readable control, **in two fixtures**: the mixed corpus (one readable member, one unreadable) and the all-unreadable corpus, the latter additionally asserting §10.3 row 1b's terminal status `no-op` with an empty consumed pair, each fixture the other's control. Both fixtures live in the one case; the mixed one claims **no** register id, and the all-unreadable one claims **AT-K3b**, minted by FSPEC v11.7 for exactly that fixture's subject (AC-1.4's third cause) — so this row's assignment set gains that single id and the set equality below holds with it, the **K-lettered acceptance family** spanning two files (AT-K1…AT-K7 stay in `consolidationCredential.test.js`, whose subject is credential resolution rather than corpus handling). It lives here because its subject is the pass's own corpus handling end-to-end, which is this file's. **AT-M3 is owned here and is fully satisfiable at this layer**: its two fixtures — (a) the marker that is present but **empty**, and (b) the marker carrying a line that is neither `IN-PROGRESS:` nor `RELEASED:` — both reclaim, and both record `reclaimed-stale-lock` with the abandoned id `unknown` (§10.3 row 4). Fixture (a) is reachable precisely because FSPEC §4.1's **BR-14a** releases by writing a `RELEASED:` sentinel rather than by truncating, which §7.3 adopts, and **E-11** says so in the register's own terms. An earlier revision of this document decided the empty released form, which made that arm unreachable, and disclosed the partial coverage here rather than implying coverage it did not have; **that disclosure is withdrawn**, the FSPEC having decided the release form at v11.3. **The AT-M3 case is written together with AT-M11** (§12.2's marker row), because the pairing is the oracle: fixture (a) must be compared inside one case against a `RELEASED:` fixture that does *not* reclaim, or an implementation that reclaims on every take passes it. It mints no id and no new file, so this row's assignment set is unchanged. **AT-M11 is owned here because it is AT-M3's paired negative** — a marker in the *released* state, in two fixtures (written seconds ago, and older than `staleLockMinutes`), must be taken with **no** `reclaimed-stale-lock` and **no** `consolidation-in-progress`, at either age. It is the sole register oracle for AC-1.3's negative half: without it an implementation that records `reclaimed-stale-lock` on every take passes AT-M1 through AT-M6b. It belongs beside AT-M3 rather than in a file of its own precisely because the pairing is the oracle, which is the same argument fixture (a) above makes. **No divergence remains to record here**: AT-M11's fixtures spell the released state as the `RELEASED: {passId} {ISO-8601}` sentinel FSPEC §4.1 decides, and §7.3 now decides **the same form** (BR-14a; E-11b gives it its outcome — free at any age, no reason code), so both fixtures pass against this layer's own mechanism rather than against a spelling it does not use. The erratum an earlier revision raised from this cell is **withdrawn**: the FSPEC answered the question at v11.3, and the correct action on a settled upstream question is to absorb the decision, not to route it again |
 | `consolidationRung.test.js` | L2 | AT-M7, AT-M8, AT-M10 (AT-M10 is a regression over the shipped call site and lives beside the existing `advisoryRung.test.js` assertions) |
 | `consolidationPredicate.test.js` | L1 | **AT-P1** — whose first conjunct *is* §7.1's pin (a), the literal-argv assertion over the `_git` double — AT-P2, AT-P3, AT-P4, AT-P5, AT-P6, AT-P8, AT-P9, AT-P10, AT-P11 |
 | `consolidationHookParity.test.js` | L4 (+ L3) | AT-P7. Plus two **(no FSPEC AT)** cases: (1) §7.1's **pin (b)** — an L3 source-text read asserting the hook's `CORPUS_GLOBS` declaration carries exactly the two glob-pattern literals and no third (located by name, not by line index); (2) an L4 pathspec-semantics case running pin (a)'s exact argv through a real `git` in a temp repository the case builds (§11.1). Both live here because their subject is the two implementations' relationship, which is this file's. §7.1's **pin (a)** does **not** live here — it is AT-P1's L1 argv conjunct in `consolidationPredicate.test.js`, one row above |
 | `consolidationIdentity.test.js` | L1 | AT-R6, AT-R6b, AT-F1, AT-F2, AT-F3, AT-F4, AT-F5 |
 | `consolidationRoute.test.js` | L2 | AT-R1, AT-R2, AT-R3, AT-R4, AT-R5, AT-Q1, AT-Q2, AT-Q3, AT-Q4, AT-Q5, AT-Q6, AT-Q7, **AT-Q7b**, **AT-Q7c**, AT-Q8, AT-Q9, AT-Q10, AT-Q11, AT-Q12, **AT-Q13**, **AT-R7**. The last two are the ids FSPEC v11.3 minted for the two register gaps §12.2 had recorded and raised upstream, and they land in this file because it already owns their subjects: **AT-Q13** is AC-3.2's three PR-body citations (T-11) — source LEARNINGS named by feature name, the failure mode's `symptom` line verbatim, and the AC-2.3 pattern evidence — over two fixtures, a recurrence-across-two-features promotion and a single-occurrence one cleared on the standing-invariant argument, so an implementation that emits a recurrence list unconditionally reds on the second. **AT-R7** is FSPEC §5.3's "when, **and only when**" negative (T-12) — three fixtures whose `docs/_decisions/CONSOLIDATION-PROPOSAL-*.md` set is listed before and after the pass: a fully-`promoted` pass and an all-suppressed `no-op` pass must leave it **unchanged** (in particular no file named for that pass's `passId`), against a positive control whose one degraded promotion does write exactly one. **The two TSPEC-added cases this row used to carry are these ids, not duplicates of them**: the erratum landing is what §12.2's T-11 and T-12 rows anticipated — "the erratum landing turns it into an id-bearing row rather than a duplicate" — so the cases are re-labelled with their ids and are **not** written twice. This row's `(no FSPEC AT)` clause is therefore gone, which is the intended end state and not a coverage loss |
-| `consolidationCredential.test.js` | L2 | AT-K1, AT-K2, AT-K3, AT-K4, AT-K5, AT-K6, AT-K7 |
+| `consolidationCredential.test.js` | L2 | AT-K1, AT-K2, AT-K3, AT-K4, AT-K5, AT-K6, AT-K7. **AT-K3b is deliberately not here**: the split is by subject, and its subject is the pass's corpus handling, which `consolidationPass.test.js` owns — so the K-lettered acceptance family spans two files, which the id→file equality permits (it obliges exactly one file per id, not one file per id prefix) |
 | `consolidationEffectiveness.test.js` | L1 | AT-F6, AT-F7, AT-F8, AT-F9, AT-F10, AT-F11, AT-F12, AT-F13, AT-F14, AT-F15, AT-F16, AT-F17, AT-F18 |
 | `consolidationParse.test.js` | L1 | AT-F19, AT-F20, AT-F21 |
 | `consolidationAdvisory.test.js` | L1 | AT-A1, AT-A2, AT-A3, AT-A4, AT-A5, AT-A6, AT-A7 |
@@ -2575,19 +3016,19 @@ grammar the REQ's own NFR-4 obliges. §6.4's legality check is what keeps ER-4's
 
 | # | Decision | Rejected alternative | Why |
 |---|---|---|---|
-| 1 | The credential seam returns a **boolean**; the value reaches `gh` by shell expansion in the transported command and `git` through a **credential helper** `git` expands one process lower (§9.2 — `rtShellQuote` single-quotes every `_git` argv element, `runtime-adapter.js:668-670`, so transport-time expansion is impossible there) | a `_readEnv(name) => string` seam; or a second, unquoted command-string git transport | the value would enter the JS process **and** the agent transcript that transported it — a surface NFR-2 cannot redact. The boolean form makes non-disclosure structural **outbound** (inbound residual: `TSPEC:1325`, DEC-CONS-01). The second transport is rejected in §9.2: it moves the push out of §9.3's `_git`-argv domain classifier for a capability the helper form already gives |
+| 1 | The credential seam returns a **boolean**; the value reaches `gh` by shell expansion in the transported command and `git` through a **credential helper** `git` expands one process lower (§9.2 — `rtShellQuote` single-quotes every `_git` argv element, `runtime-adapter.js:668-670`, so transport-time expansion is impossible there) | a `_readEnv(name) => string` seam; or a second, unquoted command-string git transport | the value would enter the JS process **and** the agent transcript that transported it — a surface NFR-2 cannot redact. The boolean form makes non-disclosure structural **outbound** (inbound residual: §7.9's NFR-2 row, `TSPEC:1418`, DEC-CONS-01). The second transport is rejected in §9.2: it moves the push out of §9.3's `_git`-argv domain classifier for a capability the helper form already gives |
 | 2 | Reuse `resolveAdvisoryRung` by adding an optional `skill` parameter | restate the two rungs behind a drift observable (which corpus baseline §3 sanctions) | it would create the second copy of the ladder the resolver's own doc comment forbids (`:1800`) |
 | 3 | Inline the dev module into a fourth bundle | a shared artifact holding the resolver | the runtime forbids `import` entirely; there is no third option |
 | 4 | The clone is cut from `origin`'s URL, not from the working-tree path | `git clone {repoRoot} {dir}` | the working tree may be mid-pipeline on a `feat-*` branch; FSPEC §6.1 requires the **fetched default branch** |
 | 5 | Take the marker observe-then-write (§7.3's three seam calls: `_checkFile`, `_readFile`, `_writeFile`; the earlier "read-then-write" spelling is withdrawn — it prices a two-call take and reads as sanctioning the `_readFile(...) !== null` derivation decision 2 forbids) | an exclusive-create seam | no adapter transport offers `O_EXCL`, and an agent's report of prior existence is exactly as racy as the read |
-| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's two classes make an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct at **L1**, both `:(glob)` prefixes literal, in `consolidationPredicate.test.js`) and the hook's two glob patterns (an **L3** source-text read of the `CORPUS_GLOBS` declaration, in `consolidationHookParity.test.js`) — two levels and two files, for the reasons §7.1 gives — which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **This decision relaxes REQ `:115-116`'s "keeping one enumeration as well as one predicate", so it is not settled here**: §13.3 raises it as a REQ/FSPEC erratum, and this row records what this layer would ship if the relaxation is accepted |
+| 6 | Two predicate implementations, whose **predicate** half is held **equal** by AT-P7 and whose **enumeration** half is held **pinned** — each side's question fixed literally — rather than equal | (a) one shared implementation; (b) an enumeration *equality* assertion; (c) leaving the enumeration half to inspection | (a) the hook is a Python heredoc inside bash; sharing needs a third artifact and a language boundary neither side has. (b) the two enumerations are **not** equal in general — §10.4's surviving nested-repository class makes an equality red on correct code — and AT-P7 feeds both sides one basename list, so it cannot see the enumeration at all. (c) was an earlier draft's answer and is **withdrawn**: §7.1 now pins the JS argv (AT-P1's first conjunct at **L1**, both `:(glob)` prefixes literal, in `consolidationPredicate.test.js`) and the hook's two glob patterns (an **L3** source-text read of the `CORPUS_GLOBS` declaration, in `consolidationHookParity.test.js`) — two levels and two files, for the reasons §7.1 gives — which makes §10.4's divergence set derivable and closed — a third class cannot arise silently. Row 12's stderr channel is what makes even the predicate half observable. **The round trip on this is closed, and this row records a settled shape, not a contingent one**: REQ §3.1 step 1, *"One predicate, two enumerations (erratum, v2.1)"*, **withdrew** the "one enumeration as well as one predicate" half; FSPEC v11.6 re-scoped AT-P7 to the predicate alone; §7.1 absorbed both decisions; and §13.3 records the erratum as closed rather than raising one. What this row describes is what ships |
 | 7 | `parseConsolidationConfig` duplicates `parseAdvisoryConfig`'s shape | generalise the shipped parser | generalising edits a guard-set file for a second reason and risks a shipped advisory path for a cosmetic gain |
 | 8 | Extend `mergeCommandFor` rather than add a second `gh` builder | a consolidation-local builder | two builders in one bundle falsify the audit property the shipped comment claims |
 | 9 | Widen four §6.5 permitted sets — `read-auth` on the PR seam, and `read-object` / `read-remote` / `read-index` in the invoking tree — **one verb per read**, rather than mis-classify any of them into an existing verb | fold `gh auth status` into `read-pr`; fold `git cat-file -e` into `read-status`; fold `git remote get-url` into `read-object` (an earlier draft of §9.3 did the last of these, on transcription cost — withdrawn) | §6.5 forbids reading a further verb into a closed set silently; a mis-classified call is invisible to AT-Q7 at exactly the boundary it guards, and folding `remote` into `read-object` would have let a later `git remote add` pass containment (§9.3) |
-| 10 | Enumerate the corpus with one `_git(["ls-files", …])` read, `:(glob)`-anchored | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:915`, `:929-931`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
+| 10 | Enumerate the corpus with **two** `_git(["ls-files", …])` reads over one identical `:(glob)`-anchored pathspec pair — a `--cached --others` enumeration, minus a `--deleted` subtraction (REQ §3.1 step 1's second bullet: an index entry with no working-tree file is not corpus) | two `_listFiles` directory walks over `docs/*` and `docs/completed/*` | the seam structurally cannot return a subdirectory name (`runtime-adapter.js:915`, `:929-931`), so the walk finds an empty corpus in production while `fakeListFiles` hides it in every test — DC-07's "production path ≠ unit path". `ls-files` also returns the repo-root-relative paths `CorpusFile.path` needs (§7.1) |
 | 11 | Widen **`rtWriteFile` alone** to accept an absolute path, and leave `rtReadFile` untouched | (a) route the clone's writes through `_git`; (b) widen both prompts "for symmetry", as an earlier draft of §5.6(a) proposed | (a) git has no write-a-working-tree-file verb short of `hash-object -w` plus `update-index` — three mutating calls in the clone domain to replace one path argument. (b) was withdrawn on measurement, not taste: `rtReadFile` carries **no** path-resolution clause to widen — the string "relative to the repository root" occurs exactly once in `runtime-adapter.js`, at `:805` inside `rtWriteFile` — and its shell-command transport already resolves an absolute path verbatim (§5.6(a)). Widening it would have been a prompt edit to a shipped seam every pipeline phase reads through, with no behavioural motive, purely so §11.3(e) had a second thing to match |
 | 12 | Add an env-gated `PDLC_PENDING:` stderr line to the hook | keep the count-above-threshold message as AT-P7's oracle | the shipped hook emits a count and only above `THRESHOLD = 5`, which is blind on every fixture that discriminates the two-region predicate — so T-08's "held equal by a differential test" would not be true (§7.1). **Still worth the shipped-hook edit after row 6's narrowing**, and the question was asked directly: a predicate differential is not a consolation prize for the enumeration equality — the two-region predicate is where every edge case the FSPEC enumerates lives (E-04, E-05, E-09, the region boundary), and it is the half a maintainer will actually change. Extracting the predicate into a third shared artifact (row 6's rejected alternative (a)) remains more expensive than one env-gated stderr line in a script CI already `bash -n`s, and it would still leave the enumeration pair exactly where it is |
-| 13 | **Release is an in-place `_writeFile` of `RELEASED: {passId} {ISO-8601}`, and `present` reads `file_missing` *alone* as absent, so an empty marker is a truncated one** (§7.3, FSPEC **BR-14a**) | (a) release by truncating to `""`, with `file_empty ≡ absent`; (b) derive `present` from `_readFile(...) !== null`; (c) add a removal seam so release deletes the file | (a) was this document's own decision through v1.8 and is **withdrawn on the FSPEC's answer, not on taste**: under it a released marker and one truncated mid-take are the same observed state, so E-11's empty arm is unreachable and the choice is between a log that loses every pass which died inside its own take and one that records `reclaimed-stale-lock` on every steady-state pass. FSPEC v11.3 decided that trade — BR-14a fixes the sentinel, E-11b makes a `RELEASED:` marker free at any age, E-11 makes the empty arm mean *truncated* — and the sentinel needs **no unlink**, so §7.3's load-bearing premise ("no seam can remove a file") is satisfied unchanged rather than contradicted. (b) cannot name the one probe reason that decides the absent arm (`file_missing`) and conflates a missing file with an unreadable one. (c) is a new agent-transported mutation verb (no adapter ships an unlink — `rtWriteFile` `:802`, `rtAppendFile` `:863`, `rtListFiles` `:905`, `rtGit` `:945`) whose failure mode is deleting a lock another pass holds; AC-1.3 also settles the shape upstream as "in-place rewrites of a whole small file" (`REQ-…:155-156`). **No cost is carried upstream**: FSPEC §4.2's fourth row, E-11 and AT-M3 are satisfiable in full at this layer (§10.3 row 4), and AT-M11 passes against this document's own mechanism |
+| 13 | **Release is an in-place `_writeFile` of `RELEASED: {passId} {ISO-8601}`, and `present` reads `file_missing` *alone* as absent, so an empty marker is a truncated one** (§7.3, FSPEC **BR-14a**) | (a) release by truncating to `""`, with `file_empty ≡ absent`; (b) derive `present` from `_readFile(...) !== null`; (c) add a removal seam so release deletes the file | (a) was this document's own decision through v1.8 and is **withdrawn on the FSPEC's answer, not on taste**: under it a released marker and one truncated mid-take are the same observed state, so E-11's empty arm is unreachable and the choice is between a log that loses every pass which died inside its own take and one that records `reclaimed-stale-lock` on every steady-state pass. FSPEC v11.3 decided that trade — BR-14a fixes the sentinel, E-11b makes a `RELEASED:` marker free at any age, E-11 makes the empty arm mean *truncated* — and the sentinel needs **no unlink**, so §7.3's load-bearing premise ("no seam can remove a file") is satisfied unchanged rather than contradicted. (b) cannot name the one probe reason that decides the absent arm (`file_missing`) and conflates a missing file with an unreadable one. (c) is a new agent-transported mutation verb (no adapter ships an unlink — `rtWriteFile` `:802`, `rtAppendFile` `:863`, `rtListFiles` `:905`, `rtGit` `:945`) whose failure mode is deleting a lock another pass holds; AC-1.3 also settles the shape upstream as "in-place rewrites of a whole small file" (REQ AC-1.3). **No cost is carried upstream**: FSPEC §4.2's **fifth** data row (*"Present but **empty**, or a line that is neither form"*), E-11 and AT-M3 are satisfiable in full at this layer (§10.3 row 4), and AT-M11 passes against this document's own mechanism |
 
 Rows 1, 2, 4, 5, 6, 11 and 13 are load-bearing and reversible only at cost; §13.3 records that
 DECISIONS is warranted for them. Row 6's decision is now **conditional on row 12**: without the hook's
@@ -2658,34 +3099,58 @@ re-argued on what a count-above-threshold comparison can supply.
   permanent `docs/_decisions/.consolidation-lock` per consuming repo carrying the last pass's
   `RELEASED:` line — `.gitignore`d by §3.3, so invisible to every git-mediated surface — and a
   zero-byte file at that path is now a *signal* (a pass died mid-write) rather than the steady state.
-- **Upstream (REQ and FSPEC) — the enumeration relaxation, raised rather than absorbed.** REQ §3.1
-  step 1 closes with "Widening makes `nudge-consolidation.sh:28` an in-scope edit (§5), keeping one
-  enumeration as well as one predicate" (`REQ-…:115-116`), and FSPEC AT-P7's *When* is "**both the
-  pass's enumeration** and `pdlc/hooks/scripts/nudge-consolidation.sh` are run over each case", its
-  *Then* the two sets are set-equal (`FSPEC-…:2026`; BR-09 binds it at `:2489`). This layer cannot
-  deliver that as written: §7.1's repair moved the JS enumeration to `git ls-files` (because the
-  `_listFiles` seam structurally cannot walk directories — §13.1 row 10), and §10.4 measures two
-  classes in which a git-based enumeration and `glob.glob` **must** disagree, so a set-equality
-  assertion would be red on correct code. What this layer ships instead is stated above: predicates
-  held equal by AT-P7, enumerations held by two literal pins with a derivable, closed divergence
-  set. **Whether that satisfies "one enumeration" is a REQ/FSPEC decision, not this document's**, so
-  it is raised as an erratum against both, together with the sub-question §10.4 isolates — is a
-  `.gitignore`d LEARNINGS file corpus? (keeping `--exclude-standard` says no; dropping it closes
-  divergence class (i) at exactly that price, and at no other). **The two directions are not
-  symmetric, and the REQ reviewer should be told which is which**: the hook has no
-  `--exclude-standard` to drop — `glob.glob` sees ignored files unconditionally — so an answer of
-  "yes, an ignored LEARNINGS file is corpus" *closes* class (i) by making the two sides agree, while
-  "no" keeps it open. One of the two answers strictly reduces the divergence set the relaxation is
-  being requested for; the erratum says so rather than presenting them as neutral alternatives.
-  A third question rides with the batch, raised by the same reviewer: §7.1 puts an unreadable corpus
-  entry **in the consumed pair**, so a LEARNINGS file can be permanently marked consumed while
-  contributing no evidence to any promotion, and the only trace is one pass's transient report body.
-  Should the durable log row itself carry the unreadable basenames (an `unread:` field beside
-  `consumed`)? That is a `pdlc-consolidation-vocabularies.md` §3 field-set change, so this layer
-  declines to mint it (REQ §4b) and hands the question up with the rest. Accepted residue if the relaxation
-  stands: one operator-visible nudge that no pass can clear (class (i)) and one corpus entry the
-  pass reports as unreadable (class (ii)) — never a correctness divergence, since the pass consumes
-  only what its own enumeration returned.
+- **Upstream (REQ and FSPEC) — the enumeration relaxation, absorbed and closed.** This bullet raised
+  an erratum against both documents; **both halves came back answered, and §7.1 and §10.4 now carry
+  the answers.** It is kept in the past tense as the record of a closed round trip, not as a live
+  dependency — a PLAN reader owes nothing here.
+
+  - **"One enumeration as well as one predicate" was withdrawn, not granted.** REQ §3.1 step 1
+    previously closed with that clause; REQ v2.1 struck it and says so in place — *"The second half
+    is not deliverable and is **withdrawn**"* — on this document's own reasoning: the `_listFiles`
+    seam structurally cannot walk directories (§13.1 row 10), so the pass must enumerate through git
+    while the hook keeps `glob.glob`. REQ now states the settled shape directly: *"**One predicate
+    remains guaranteed by construction** … while the two enumerations are separate mechanisms whose
+    agreement is a stated, testable property rather than a shared code path."* That is exactly what
+    this layer ships — predicates held equal by AT-P7, enumerations held by literal pins over a
+    derivable divergence set.
+  - **FSPEC re-scoped AT-P7 to match.** Its *When* no longer reads "both the pass's enumeration and
+    `nudge-consolidation.sh` are run over each case"; FSPEC v11.6's row (FSPEC §13.2 register, *The
+    consumed predicate and the corpus*, AT-P7; **BR-09** binds it in FSPEC §18) reads that *"the two
+    **predicates** are evaluated over each case"* and scopes itself to "the predicate, and only the
+    predicate". The set-equality assertion that would have been red on correct code is gone from the
+    register, so §12.2's T-08 row and §11.1's harness no longer compensate for a claim upstream still
+    makes.
+  - **The `.gitignore`d-corpus sub-question was decided against this document's provisional choice.**
+    REQ §3.1 step 1 decided that an ignored LEARNINGS *is* corpus and that the pass therefore does
+    **not** apply `--exclude-standard`; it decided in the same paragraph that an index entry with no
+    working-tree file is *not* corpus. §7.1 absorbs both, §10.4 records the argument that lost and
+    the one reasoning error the old bullet contained. The divergence set is now one class (a nested
+    git repository), not two.
+
+  One question from that batch was **answered upstream, and is absorbed here — not answered here**:
+  the `unread:` field. This document raised it because an earlier revision of §7.1 put an unreadable
+  corpus entry **in** the consumed pair, so a LEARNINGS file could be permanently marked consumed
+  while contributing no evidence to any promotion, the only trace being one pass's transient report
+  body. **REQ §4b (erratum, REQ v2.1) decided it, and decided it by removing the premise rather than
+  by declining a field**: an enumerated basename whose body cannot be read *"is instead **not
+  consumed** — it is omitted from the `<!-- pdlc:consumed {passId} -->` pair, so it stays
+  un-consolidated and the next pass retries it"*, and *"Omission needs no new field, no new reason
+  code and no vocabulary row, and it is not silent: the basename remains in the un-consolidated set
+  that both the hook and the next tick compute"*. REQ's reason for refusing inclusion is the
+  falsifiability loop, not economy: a consumed-but-unread entry can only push a verdict toward
+  `prevented` or `insufficient-evidence` and never toward `recurred`, corrupting REQ-CONS-05 in one
+  direction. §7.1 now carries that decision, including the convergence argument this layer had used
+  to justify the opposite arm — the retry is bounded by its population, since the `--deleted`
+  subtraction removed the staged-but-deleted case and what remains is a permissions error or a
+  mid-pass unlink, each an operator-visible fault with a fix at the source. **Nothing is handed up,
+  and nothing is decided here.** **Re-evaluation trigger**, so the premise this absorption rests on
+  stays checkable rather than final: if a pass is ever observed reporting the same unreadable
+  basename on two consecutive passes, the fault is not transient, the bounded-retry argument fails,
+  and the question should be re-raised upstream with that observation as its evidence. Accepted
+  residue meanwhile, set-equal with §10.4's list: one operator-visible nudge that no pass can clear
+  (the nested-repository class) and one retryable unreadable corpus entry, re-offered and re-reported
+  each pass until the operator clears it — never a correctness divergence, since the pass consumes
+  only what its own enumeration returned and could read.
 - **Upstream (FSPEC) — two register gaps: raised, answered, closed. Nothing is handed on.** §12.2's
   re-binding surfaced two obligations that carried no acceptance test — AC-3.2's requirement that the
   PR body cite each source LEARNINGS by feature name, the failure mode and the AC-2.3 evidence (the
@@ -2693,8 +3158,8 @@ re-argued on what a count-above-threshold comparison can supply.
   only when**" negative direction for the proposal file. Both **were** raised as errata against the
   FSPEC rather than bound to a nearby id, and both **were covered locally in the meantime** by a
   `(no FSPEC AT)` case in `consolidationRoute.test.js`, which is why the gap was never a shipping
-  licence. FSPEC v11.3 answered both: **AT-Q13** (`FSPEC-…:2126`, traced to AC-3.2 at `:2320`) and
-  **AT-R7** (`FSPEC-…:2106`, traced to AC-1.4 at `:2312`). The two interim cases are **re-labelled
+  licence. FSPEC v11.3 answered both: **AT-Q13** (FSPEC §13.5 register, AC-3.2) and
+  **AT-R7** (FSPEC §13.4 register, AC-1.4). The two interim cases are **re-labelled
   with those ids in place**, not duplicated (§12.2 T-11/T-12, §12.3's route row), so no
   `(no FSPEC AT)` case remains for either and both ids count on both sides of §12.3's set equality.
   **The PLAN owes nothing here**: it should write the two cases as `AT-Q13` and `AT-R7`, and it must

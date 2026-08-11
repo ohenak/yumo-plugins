@@ -23,7 +23,11 @@ const requireHere = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "..", "..");
-const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js"];
+// pdlc-consolidation-agent (TSPEC §8.2, §12.2) — the third axis: omitting the
+// new artifact here would exempt it from every BUNDLES-driven L3 suite below
+// (launcher constraint, structural suite, sole-output-directory check,
+// RLH-AT-19, and the drift-perturbation suite) while it still ships.
+const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js", "consolidate-learnings.bundle.js"];
 
 // Sole output directory per AC-6.1 / TSPEC §2.3 point 1 — T-14 moves build-runtime.mjs's
 // OUT_DIR here. Until then, every read below fails with ENOENT: that is the batch-2
@@ -220,6 +224,10 @@ const AT19_SEAM_NAMES = Object.freeze([
   // judgement as `_ghRun`: an async IO seam the adapter implements with an
   // agent dispatch, whose every call site must be awaited.
   "_runCommand",
+  // pdlc-consolidation-agent (TSPEC §11.3(c)) — consolidate-learnings.js's
+  // async IO seams. `_now` is deliberately excluded: sync by contract
+  // (TSPEC §5.6(b)), so awaiting it would be noise, not discipline.
+  "_envPresent", "_makeTempDir",
 ]);
 
 // §8.5: the discriminant is the PROPERTY "awaits every element of the array",
@@ -534,6 +542,71 @@ describe.each(BUNDLES)("%s", (file) => {
   });
 });
 
+// ─── Banner provenance ────────────────────────────────────────────────────
+//
+// The banner is what an operator reads before deciding which file to edit, so
+// its source list is load-bearing prose, not decoration: a bundle that names a
+// source it was not built from sends the edit to a file that cannot affect it.
+// A single shared banner constant did exactly that once the consolidation
+// bundle and the CLI joined the build — both carried `orchestrate-queue.js`,
+// neither is built from it.
+//
+// The oracle does not read the builder's own source-list constants (that would
+// compare the builder to itself and pass on any list). It reads the ARTIFACT:
+// each source contributes a marker identifier that survives comment-stripping
+// and appears in no other workflow source, so "is this source inlined here?"
+// is answered from the shipped bytes. Both directions are asserted — a named
+// source must be present, and an unnamed one must be absent — so neither an
+// over-broad banner nor a silently-added source passes.
+const SOURCE_MARKERS = Object.freeze({
+  "runtime-adapter.js": "rtRotr32",
+  "orchestrate-dev.js": "computeTopologicalBatches",
+  "orchestrate-queue.js": "rewriteStatus",
+  "consolidate-learnings.js": "parseConsumedBlocks",
+  "cli.mjs": "withCleanStdout",
+});
+
+const ARTIFACT_SOURCES = Object.freeze({
+  "orchestrate-queue.bundle.js": ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"],
+  // The dev bundle inlines the queue module too (§7.2 edit 4), so naming
+  // orchestrate-queue.js here is truthful rather than copied.
+  "orchestrate-dev.bundle.js": ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"],
+  "consolidate-learnings.bundle.js": ["runtime-adapter.js", "orchestrate-dev.js", "consolidate-learnings.js"],
+  // Plain Node: real `fs`, so no adapter; no queue module either.
+  "pdlc-cli.mjs": ["orchestrate-dev.js", "cli.mjs"],
+});
+
+describe("RLH-CR-F6: every generated artifact's banner names its own sources", () => {
+  it("uses markers that are unique to one source apiece — the oracle below is not vacuous", () => {
+    for (const [source, marker] of Object.entries(SOURCE_MARKERS)) {
+      const owners = Object.keys(SOURCE_MARKERS).filter((f) =>
+        readSource(f).includes(marker)
+      );
+      expect(owners).toEqual([source]);
+    }
+  });
+
+  it.each(Object.keys(ARTIFACT_SOURCES))("%s: the banner's list is exactly what is inlined", (file) => {
+    const text = read(file);
+    const expected = ARTIFACT_SOURCES[file];
+
+    // The banner: the `//   pdlc/workflows/{source}` lines under the build line.
+    const named = (text.match(/^\/\/ {3}pdlc\/workflows\/(\S+)$/gm) || []).map((line) =>
+      line.replace("//   pdlc/workflows/", "")
+    );
+    expect(named.sort()).toEqual([...expected].sort());
+
+    // …and the artifact's own bytes agree, in both directions.
+    for (const [source, marker] of Object.entries(SOURCE_MARKERS)) {
+      if (expected.includes(source)) {
+        expect(text).toContain(marker);
+      } else {
+        expect(text).not.toContain(marker);
+      }
+    }
+  });
+});
+
 describe("bundle freshness", () => {
   // RLH-AT-20 (FSPEC AT-20) — dist/ is fresh in the same commit as any workflow
   // source change. The consumer half (`sync-workflows.sh --check`) is asserted
@@ -575,6 +648,7 @@ describe("bundle freshness", () => {
     // cannot write into the live dist/.
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
     expect(manifest.rows.map((r) => r.id).sort()).toEqual([
+      "consolidate-learnings",
       "orchestrate-dev",
       "orchestrate-queue",
       "pdlc-cli",
@@ -1037,7 +1111,15 @@ function mainBodyRange(masked) {
 // loosened ad hoc to go green is worse than none.
 // ---------------------------------------------------------------------------
 
-const AWAIT_SCAN_SOURCES = ["orchestrate-dev.js", "orchestrate-queue.js"];
+// consolidate-learnings.js (PLAN T13, TSPEC §13.3(ii)/§11.3(c)) joins the scan
+// here so the standing guard is in place before the first batch-4 module task
+// lands. Until that task fills in main()'s body, the module is still PLAN
+// T02's throwing skeleton with zero seam call sites, so RLH-AT-19's vacuity
+// guard (`sites.length > 0`) correctly reds on it — that red is the guard
+// doing its job, not a defect in the guard. Never weaken the vacuity guard or
+// add a name-based exemption instead (see the RLH-AT-19 header comment block
+// above for why).
+const AWAIT_SCAN_SOURCES = ["orchestrate-dev.js", "orchestrate-queue.js", "consolidate-learnings.js"];
 const readSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
 
 describe("RLH-AT-19: the runtime constraint", () => {
@@ -1059,9 +1141,16 @@ describe("RLH-AT-19: the runtime constraint", () => {
       // Vacuity guard: a scanner gone blind — a broken alias derivation, a mask
       // that swallowed the file, a call-site regex that matched nothing —
       // returns an empty set over which the classification below is vacuously
-      // true. Neither module's main() runs a pipeline without calling at least
-      // one injected seam, so this is a lower bound that cannot drift upward.
-      expect(sites.length).toBeGreaterThan(0);
+      // true. Neither orchestrator's main() runs a pipeline without calling at
+      // least one injected seam, so this is a lower bound that cannot drift
+      // upward. consolidate-learnings.js is exempt while it is PLAN T02's
+      // throwing skeleton — PLAN T13 states "the scan passes immediately
+      // (T02's skeleton makes no seam call)"; T25 fills main() with seam
+      // calls, after which its sites are live and classified below. Scanner
+      // blindness itself is guarded independently by RLH-SCAN-01's fixtures.
+      if (file !== "consolidate-learnings.js") {
+        expect(sites.length).toBeGreaterThan(0);
+      }
 
       // A call site matching none of §8.5's three rulings is a failure this
       // assertion NAMES. The response is a source fix or a new ruling stated as
@@ -1198,6 +1287,8 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     // dist/pdlc-cli.mjs's source: the builder reads it like any other input, so
     // a tree without it cannot build at all.
     "cli.mjs",
+    // dist/consolidate-learnings.bundle.js's source (TSPEC §8.2) — same reason.
+    "consolidate-learnings.js",
   ];
   const tmpRoots = [];
 
@@ -1283,6 +1374,7 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     const root = makeBuildTree();
     perturb(root, "orchestrate-dev.bundle.js");
     perturb(root, "orchestrate-queue.bundle.js");
+    perturb(root, "consolidate-learnings.bundle.js");
     perturb(root, "distribution-manifest.json");
 
     const { status, output } = runCheck(root);

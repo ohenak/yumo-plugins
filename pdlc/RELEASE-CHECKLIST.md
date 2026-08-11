@@ -195,6 +195,19 @@ delete this row.
 
 ---
 
+## 5. The consolidation bundle's drift-gate consequence (no owning AC — a distribution note)
+
+This row states a fact for the release note, not a gate: it owns no acceptance criterion because it
+describes a **distribution consequence**, not a behaviour.
+
+`pdlc/workflows/dist/` now ships `consolidate-learnings.bundle.js` alongside the existing bundles and
+`distribution-manifest.json`. The **first** `orchestrate-queue` invocation in a consuming repo after
+this feature's release lands is blocked by the SessionStart drift gate — `docs/_queue/QUEUE.md` is
+never even read — until `pdlc/hooks/scripts/sync-workflows.sh` runs and refreshes the untracked
+`.claude/workflows/` consumer copy to include the new artifact. Say so in the release note.
+
+---
+
 ## A note for anyone editing this file
 
 This document lives under `pdlc/`, which none of the document-drift scan's exemptions covers, so

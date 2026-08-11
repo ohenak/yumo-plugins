@@ -72,6 +72,12 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 4. Write structured feedback to the cross-review file (see format below).
 5. Re-verify the branch per **Git Workflow** step 2, then commit and push.
 
+**Citation Convention (DEC-DOC-01).** A citation into another document written as a raw `file:line`
+anchor — not a heading, spec id (`AC-…`, `BR-…`, `§N.M`), symbol name, or verbatim quote — is a
+finding, not a style nit: file it as `Process` scope, Low severity, unless the anchor is
+runtime-measured evidence (position itself is the claim under test), per
+`docs/_decisions/DECISIONS-review-severity-bars.md`, `DEC-DOC-01`.
+
 ---
 
 ## Delta Re-Review Protocol (iteration ≥2)

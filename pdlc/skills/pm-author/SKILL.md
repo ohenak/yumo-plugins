@@ -291,6 +291,15 @@ A continuation dispatch whose round is already fully applied should write nothin
 
 ---
 
+## Citation Convention (DEC-DOC-01)
+
+When a REQ or FSPEC cites another document — another feature artifact, a SKILL, or shipped code —
+cite **stable content, not a line number**: a heading, a spec id (`AC-…`, `BR-…`, `§N.M`), an
+exported symbol name, or a short verbatim quote. A raw `file:line` anchor is permitted only where the
+position itself is the claim being tested (see `docs/_decisions/DECISIONS-review-severity-bars.md`,
+`DEC-DOC-01`) — never as a general-purpose pointer. An unrelated edit above a cited line invalidates
+the citation without changing the claim it names; a stable-content citation survives that edit.
+
 ## Erratum Rounds — Re-ground Upstream First
 
 When you are dispatched to land erratum items against a document you authored (the targeted

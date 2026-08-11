@@ -242,3 +242,93 @@ state on this path.
 a confirmation whose response carries no trailer and whose file approves — and is red on the
 pre-decision read. `24b`, `24c` and `24d` are green in both directions by design: they exist to
 show the fix let nothing new through.
+
+## DEC-ERR-03: a delta confirmation is a superset check against upstream HEAD, and routing lists are re-derived at dispatch
+
+(Recorded as DEC-ERR-02 in the POSTMORTEM-T episode-2 resolution commit before the id collision
+with the entry above was noticed; renumbered, content unchanged.)
+
+**Context.** Recorded per `POSTMORTEM-T-pdlc-consolidation-agent.md` Episode 2 (2026-08-10),
+Recommendation step 5. A multi-layer erratum wave (`REQ → FSPEC → TSPEC → PROPERTIES`, 27 minutes)
+grew a second upstream arm after its routing list was minted; the tail layer absorbed the routed list
+fully and correctly and still shipped a hole, and the two confirming channels split on identical
+bytes — `pm-review` ran the protocol's *absorbed ⊇ raised* check (passed), `se-review` re-measured
+the document against upstream HEAD (failed, 1 High).
+
+**Decision.** Two clauses:
+
+- *Routing lists are re-derived at dispatch, not at wave open.* When any layer above the target has
+  moved since the list was minted, the dispatcher re-derives the routed items from the upstream
+  document's version **at dispatch time**. A list correct for the version it was cut against and
+  stale for HEAD is this episode's root cause (RC-1/RC-2: a wave has no synchronisation point; the
+  list travels unchanged while the wave keeps deciding).
+- *A confirming reviewer's scope is the document against upstream HEAD*, for **both** channels — the
+  superset read, not the routed-list equality read. The check "did the routed items land" is
+  necessary, not sufficient; whether the document is still a faithful compression of the upstream it
+  now cites is the confirmation's actual question, and the outcome must not depend on which reviewer
+  happens to over-deliver.
+
+---
+
+## DEC-DOC-01: cite content, not line number
+
+**Context.** pdlc feature documents (REQ/FSPEC/TSPEC/PLAN/PROPERTIES) grew a convention of citing
+other documents by raw line numbers — `` `orchestrate-dev.js:1842` ``, `` `SKILL.md:70-78` ``, table
+cells like `` (`:70-79`) ``. Measured on the `pdlc-consolidation-agent` feature: 104 of 558 branch
+commits existed purely for anchor/citation bookkeeping; a single row moving in a SKILL file (`:70-78`
+→ `:70-79`) consumed three Definition-of-Done rounds of re-approval across four documents; one REQ
+review round's fix (renumbering one enumerated value) obligated a pin migration across 13 cited
+locations in four files. A line number is a property of the file's current layout, not of the claim
+being cited — every unrelated edit above the cited line invalidates the citation without touching the
+claim it names.
+
+**Decision.** New feature documents cite **stable content, not line numbers**: unique headings,
+exported symbol names, spec IDs (`AC-…`, `BR-…`, `§N.M`), or a short verbatim quote — something that
+survives an unrelated edit to the cited file. A raw `file:line` anchor is permitted only where the
+position itself *is* the claim, i.e. runtime-measured evidence such as
+`pdlc/workflows/__tests__/consolidationSkillAnchors.test.js` asserts a specific line still resolves to
+a specific role; in that narrow case a stale-but-role-resolving anchor is itself the
+finding-generating signal, not bookkeeping overhead.
+
+**Scope.** Applies to citations written into new feature documents (REQ, FSPEC, TSPEC, PLAN,
+PROPERTIES, DECISIONS) and into authoring/review SKILL prompts. Does not require retrofitting
+citations already committed in prior features' documents; it governs what gets written going forward.
+
+---
+
+## DEC-FRZ-01: a matured document's review round is frozen — only regressions and contradictions block
+
+**Context.** Recorded on 2026-08-10 from the measured churn of `pdlc-consolidation-agent`: 84
+lifetime review rounds on one feature, +25 of them after the code was complete. Phase F of that
+feature imposed a decision freeze by hand, mid-run, and the effect was measurable — the finding class
+it targeted disappeared entirely and the Medium rate fell roughly 75%. The mechanism the freeze
+answers is structural, not a reviewer failing: a review round dispatched over a document that has
+already been approved has no instruction telling it that the document's content decisions are
+settled, so a competent reviewer keeps deciding — filing improvements, restructurings and
+alternatives against text whose approval is already on disk. Each one costs an optimizer episode, a
+re-review, and a fresh chance to introduce something the next round can find.
+
+**Decision.** Decision freeze is a first-class mode of the review loop, decided by a pure exported
+predicate (`freezeInForce`) from the round record the phase gate already read. Two triggers, either
+sufficient:
+
+- *A prior approving round exists.* The document was approved at least once BEFORE the round about
+  to open, so what re-opened the round is bytes moving — a staled approval anchor, a confirmed
+  erratum — and not an undecided document.
+- *The round index is 10 or beyond*, regardless of approval history. Late-round damping: a document
+  on its tenth review round is not still deciding what it is, whatever its anchors say.
+
+In a frozen round, the reviewer prompt carries a FREEZE clause: a finding may block only if it is
+(i) a defect the revision under review introduced, or (ii) a factual contradiction with the
+repository at HEAD or with an upstream document that makes a load-bearing claim false. Everything
+else is recorded as a `DEFERRED: {item}` line and approved. The optimizer prompt of the same round
+carries the author-side half: address the blocking findings, act on no `DEFERRED:` line, re-open no
+settled decision. Without that half the freeze is one-sided — an author that acts on a deferred item
+re-opens exactly the decision the freeze closed, and the next round has new text to review.
+
+**Scope.** The freeze narrows what may BLOCK on a matured document; it does not narrow what may be
+observed, and the `DEFERRED:` channel is what keeps the observation on the record. It does not touch
+the High-only convergence bar (DEC-BAR-01), the lifetime round cap (DEC-ROUNDS-02) or the erratum
+protocol's delta confirmations, which are already delta-scoped by construction. The predicate fails
+OPEN: a round record it cannot read imposes no freeze, and a forced phase — where the approval search
+does not run — is frozen only by the round-index trigger.

@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-06 |
+| pdlc | draft | Claude | 1.2 | 2026-08-10 |
 
 ## 1. Context
 
@@ -55,8 +55,12 @@ DEC-CONS-07 are direct applications of DEC-DIST-01 and DEC-ORACLE-02 respectivel
 | DEC-CONS-06 | Widen `rtWriteFile`'s prompt alone to resolve an absolute path verbatim; leave `rtReadFile` untouched | hard (shipped seam every phase writes through) | AC-3.1, AC-3.8 |
 | DEC-CONS-07 | Release is `_writeFile(markerPath, "")`; `_checkFile`'s `file_empty` is read as **absent** — **payload and probe both superseded** by `TSPEC:974-977` (release writes `RELEASED: {passId} {ISO-8601}`) and `TSPEC:987-988` (`file_missing` **alone** is absent; an empty marker is truncated and **reclaims**). Write downstream work against the TSPEC form, never against this row's | one-way door while no removal verb exists | AC-1.3 |
 
-Entries are numbered in the order the TSPEC weighed them (`TSPEC §13.1` rows 1, 2, 4, 5, 6, 11, 13);
-that section's remaining rows are dispositioned in §10 below rather than promoted here.
+| DEC-CONS-08 | The two mid-phase `orchestrate-dev.js` changes (`202f92e1` reviewer-prompt path, `98b7429e` complete-ledger Phase I skip) **stay on this branch** and ship in this feature's PR, rather than being split out | easy (both are additive, separately revertable commits) | none of this feature's ACs — pipeline scope (TE CR F-05 / Q-03) |
+
+Entries DEC-CONS-01…07 are numbered in the order the TSPEC weighed them (`TSPEC §13.1` rows 1, 2, 4,
+5, 6, 11, 13); that section's remaining rows are dispositioned in §10 below rather than promoted here.
+DEC-CONS-08 was taken later, in Phase CR, and is recorded in §12 — appended after §10 and §11 rather
+than renumbering sections whose anchors downstream documents already cite.
 
 ## 3. DEC-CONS-01: The credential seam returns a boolean, never the secret
 
@@ -657,7 +661,7 @@ recorded path arguments: every one of them is either repo-root-relative or begin
 **Context.** FSPEC §4.1's marker-lifetime row **said** the marker was "removed at step 16" at the
 revision this entry was written against. It no longer does: at HEAD the lifetime rows read "Released |
 at step 16 … an **in-place rewrite**" and "Removed | **never by the pass**"
-(`FSPEC-pdlc-consolidation-agent.md:435-436`), and `FSPEC:441-442` gives this entry's own reason for
+(`FSPEC-pdlc-consolidation-agent.md:449-450`), and `FSPEC:455-456` gives this entry's own reason for
 the change — "a lifetime that said 'removed at step 16' would state a capability the runtime does not
 have, so release is specified as the one operation available: an in-place write of the same path".
 No declared seam can remove a file:
@@ -681,15 +685,15 @@ and why, not as live direction:**
 The accepted cost is stated rather than absorbed: FSPEC §4.2's **empty-or-neither-form** row assigns
 "present but **empty**, or a line that is neither form" the outcome "treated as **stale and
 reclaimed**, recording `reclaimed-stale-lock` with the abandoned pass id reported as `unknown`"
-(`FSPEC:479` — the table's *fifth* row at HEAD; it was the fourth before the `RELEASED:` row at
-`FSPEC:476` was inserted, which is why this entry called it the fourth), bound again by E-11 and by
+(`FSPEC:493` — the table's *fifth* row at HEAD; it was the fourth before the `RELEASED:` row at
+`FSPEC:490` was inserted, which is why this entry called it the fourth), bound again by E-11 and by
 AT-M3's *Given*. The
 **unparseable-but-non-empty** arm behaves exactly as specified; the **empty** arm becomes
 **unreachable**. That was raised as an erratum against FSPEC, not reinterpreted here (§11).
 **The erratum has since been answered and the cost is no longer paid** — FSPEC v11.3's **BR-14a**
-(`FSPEC:2585`) releases by writing a `RELEASED:` sentinel, **E-11** (`FSPEC:2678`) is reachable
-*because* of that, and **E-11b** (`FSPEC:2679`) sends a `RELEASED:` marker to `free` at any age with
-no reason code. Both arms of §4.2's empty-or-neither-form row (`FSPEC:479`) are live; see the
+(`FSPEC:2600`) releases by writing a `RELEASED:` sentinel, **E-11** (`FSPEC:2693`) is reachable
+*because* of that, and **E-11b** (`FSPEC:2694`) sends a `RELEASED:` marker to `free` at any age with
+no reason code. Both arms of §4.2's empty-or-neither-form row (`FSPEC:493`) are live; see the
 supersession note below.
 
 There is a **second** accepted cost, and it is the one an *operator* meets rather than a spec reader:
@@ -796,10 +800,10 @@ the Decision above are superseded rather than merely re-priced.
 
 **Re-evaluation triggers.** The adapter gaining a removal verb; ~~the FSPEC answering the erratum's
 question — *when a pass dies mid-take, must the durable log witness it?*~~ (**answered: yes**,
-FSPEC v11.3 §4.2 / `FSPEC:2678`); ~~a marker representation that distinguishes "released" from
+FSPEC v11.3 §4.2 / `FSPEC:2693`); ~~a marker representation that distinguishes "released" from
 "truncated" without removal (e.g. a released sentinel line), which would restore the empty arm at the
 cost of making `parseMarker` total over two forms~~ (**taken**: BR-14a's `RELEASED:` line,
-`FSPEC:2585` / `TSPEC:974-977`, with `parseMarker` total over the two forms at `TSPEC:951`). What
+`FSPEC:2600` / `TSPEC:974-977`, with `parseMarker` total over the two forms at `TSPEC:951`). What
 remains live is the first trigger alone.
 
 **Testability:** the observable is the **write double's last recorded contents for the marker path** —
@@ -831,7 +835,8 @@ both are tested by the four fixtures above.
 
 ## 10. Alternatives considered but not recorded as decisions
 
-TSPEC §13.1 records thirteen rows. Seven are promoted above. The remaining six are listed here with
+TSPEC §13.1 records thirteen rows. Seven are promoted above, as DEC-CONS-01…07 (DEC-CONS-08 in §12
+is not a §13.1 row — it was taken in Phase CR). The remaining six are listed here with
 the reason each is *not* a decision, so a reader does not mistake omission for oversight — and so a
 future agent that finds one of them and thinks it is an open question can see it was closed and why.
 
@@ -848,7 +853,7 @@ Two further alternatives were weighed at the FSPEC/REQ layer and are **not** thi
 record, listed only so the boundary is visible: whether an ignored LEARNINGS file is corpus
 (DEC-CONS-05's upstream question, **still open**), and whether the durable log must witness a pass
 that dies mid-take (DEC-CONS-07's, **answered yes** by FSPEC v11.3 — BR-14a's `RELEASED:` sentinel,
-`FSPEC:2585`/`:2678`/`:2679`). Both are product judgements about what counts as evidence, not
+`FSPEC:2600`/`:2693`/`:2694`). Both are product judgements about what counts as evidence, not
 technical choices, and both were raised as errata rather than settled here; the second has since been
 decided upstream and this document records the consequence in §9 rather than re-deciding it.
 
@@ -897,11 +902,11 @@ must land as properties rather than as unit cases:
      `add`, `commit`, `push` observed in the clone domain.
   4. **the two `∅` equalities of AT-Q7c** (`TSPEC:2203` *names* the conjuncts but defines them
      nowhere — `grep -n AT-Q7c` on the TSPEC returns `:2192`, `:2203`, `:2481`, `:2502`, none a
-     definition; the definition is upstream, at `FSPEC:2154` and `FSPEC:1060-1063`). They are
+     definition; the definition is upstream, at `FSPEC:2169` and `FSPEC:1075-1077`). They are
      **whole-domain emptiness equalities on two of the three domains**, asserted on AT-Q7c's Given —
      a pass terminating **`promoted`** with **no** guard-set proposal, so every promotion routes to
      the consuming repo and nothing routes to a PR or a clone:
-     **PR-seam observed `= ∅`** and **clone-seam observed `= ∅`** (`FSPEC:2154`: "the PR seam and
+     **PR-seam observed `= ∅`** and **clone-seam observed `= ∅`** (`FSPEC:2169`: "the PR seam and
      the clone seam observing `∅` and the invoking tree observing a set **bounded on both sides**").
      Three things a property author must carry with them. (i) The **invoking tree is explicitly the
      domain that is not `∅`** on this Given: it contains `{add, commit}` and is contained in that
@@ -909,22 +914,33 @@ must land as properties rather than as unit cases:
      obliged `add` and `commit`, plus permitted
      `read-branch`, `read-status`, ⊕ `read-object`, ⊕ `read-remote`, ⊕ `read-index` — containment in
      both directions, never equality, because the read verbs are permitted and neither their presence
-     nor their absence is asserted. **Take the upper bound from `TSPEC:1724`, not from `FSPEC:2154`.**
-     `FSPEC:2154` renders it "(its permitted set)" and spells it `{add, commit, read-branch,
-     read-status}`, which is FSPEC §6.5's **pre-widening** set: TSPEC §9.3 widens this domain by three
-     non-mutating verbs (`TSPEC:1719` — "exactly four widenings … each marked ⊕ below"; the widening
-     table at `TSPEC:1743-1745` names `read-object` for `git cat-file -e HEAD:{path}`, `read-remote`
-     for `git remote get-url origin`, `read-index` for `git ls-files --cached --others
-     --exclude-standard -- :(glob)…`). At least one of the three is observed on AT-Q7c's **own**
-     Given: a `promoted` pass enumerated a corpus by definition, and §7.1's enumeration is the
-     `git ls-files` call — `read-index` — reached through `enumerateCorpus(_git)` (`TSPEC:672`,
-     `TSPEC:1745`). A property transcribing FSPEC's four-verb bound is therefore **red on correct
-     code**. This is the same defect §5 domain 1 of this document records as already withdrawn once
-     (`DECISIONS:293-297`), and the corrected five-read set there and the one here are the same set by
-     construction — if one moves, both move. `FSPEC:2154`'s parenthetical is stale and is raised as an
-     erratum against the FSPEC, not corrected here.
+     nor their absence is asserted. The two upstream statements of that bound now **agree**, and this
+     paragraph's earlier warning ("take the upper bound from `TSPEC:1724`, **not** from `FSPEC:2154`" —
+     quoted with the anchor it then carried; that row is `FSPEC:2169` at HEAD)
+     is **withdrawn as of FSPEC v11.5** — it was correct when written and is no longer. The erratum
+     this document raised has been **answered upstream, not carried**: FSPEC's changelog records it as
+     erratum (1) of the Phase D round (`FSPEC:14-22`) in the same terms this entry used — the row
+     "spelled §6.5's pre-widening literal `{add, commit, read-branch, read-status}` and called it 'its
+     permitted set'", `read-index` "is observed on AT-Q7c's own `promoted` Given via §7.1's corpus
+     enumeration — so an AT transcribing the row as it stood was red on correct code". At HEAD
+     `FSPEC:2169` states the bound as "§6.5's frozen `{add, commit, read-branch, read-status}` ∪ every
+     widening TSPEC has recorded against it under DEC-LAYER-01, which at TSPEC §9.3 is ⊕ `read-object`,
+     ⊕ `read-remote`, ⊕ `read-index`", spells the resulting seven-verb set out, and adds the reason in
+     its own voice: "a test transcribing §6.5's pre-widening literal is red on correct code". That is
+     the same set `TSPEC:1724` carries, reached by the same construction, so **either upstream source
+     may be transcribed now** — and the standing instruction is unchanged in substance: transcribe the
+     *recorded* set, never §6.5's frozen literal alone. The evidence for that set is still local:
+     TSPEC §9.3 widens this domain by three non-mutating verbs (`TSPEC:1719` — "exactly four widenings
+     … each marked ⊕ below"; the widening table at `TSPEC:1743-1745` names `read-object` for
+     `git cat-file -e HEAD:{path}`, `read-remote` for `git remote get-url origin`, `read-index` for
+     `git ls-files --cached --others --exclude-standard -- :(glob)…`), and at least one of the three is
+     observed on AT-Q7c's **own** Given: a `promoted` pass enumerated a corpus by definition, and
+     §7.1's enumeration is the `git ls-files` call — `read-index` — reached through
+     `enumerateCorpus(_git)` (`TSPEC:672`, `TSPEC:1745`). This was the same defect §5 domain 1 of this
+     document records as already withdrawn once (`DECISIONS:293-297`); the corrected five-read set
+     there and the one here remain the same set by construction — if one moves, both move.
      (ii) Neither `∅` equality is implied by conjunct 2: `∅ ⊆ permitted` is satisfied **vacuously**
-     by containment, which is exactly why `FSPEC:1060-1063` calls the two conjuncts equalities "with
+     by containment, which is exactly why `FSPEC:1075-1077` calls the two conjuncts equalities "with
      the empty set rather than with a permitted set" and warns that weakening them to containment
      "would leave that row nothing to catch" — a pass that quietly clones, branches, commits and
      pushes, or that quietly reads a PR, when nothing routes there. (iii) **No** obligation is
@@ -968,12 +984,29 @@ must land as properties rather than as unit cases:
   the stale ones were inherited by faithful quotation from the TSPEC's own stale cites and are
   raised as an erratum rather than corrected only here.
 
-  **This warranty covers `TSPEC:` anchors only.** The `FSPEC:` set was never swept mechanically, which
-  is why two stale FSPEC values survived two anchor rounds and were caught by a reviewer rather than by
-  the sweep (`FSPEC:415` for §4.1's lifetime row, retargeted to `:435-436` with `:441-442`;
-  `FSPEC:442` for §4.2's empty arm, retargeted to `:479`). The equivalent recipe is
-  `grep -onE 'FSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`, and it is stated here so the next sweep covers
-  both upstream documents rather than one.
+  **The `FSPEC:` set has now been swept too, and it needed it.** Until this revision the warranty
+  covered `TSPEC:` anchors only, which is why two stale FSPEC values survived two anchor rounds and
+  were caught by a reviewer rather than by the sweep (`FSPEC:415` for §4.1's lifetime row and
+  `FSPEC:442` for §4.2's empty arm). Those two were retargeted by hand; the retargets have since gone
+  stale in their turn, because FSPEC v11.4/v11.5 inserted material above every one of them. The
+  recipe is `grep -onE 'FSPEC[^ ]* ?§?[0-9.]*:[0-9]+(-[0-9]+)?'`; run at this revision it returned
+  **27** citation sites over **nine** distinct stale values, and **all nine** are retargeted here:
+  `:435-436`⇒`:449-450` (§4.1's lifetime rows), `:441-442`⇒`:455-456` (the reason the FSPEC gives for
+  them), `:476`⇒`:490` (§4.2's `RELEASED:` row), `:479`⇒`:493` (§4.2's empty-or-neither-form row, the
+  table's fifth), `:1060-1063`⇒`:1075-1077` (the two `∅` equalities and why they are equalities),
+  `:2154`⇒`:2169` (AT-Q7c), `:2585`⇒`:2600` (BR-14a), `:2678`⇒`:2693` (E-11), `:2679`⇒`:2694` (E-11b).
+  Every one was resolved against the FSPEC at HEAD, not shifted by a constant: the offsets differ per
+  region (+14 in §4.1/§4.2, +15 elsewhere), so a uniform re-base would have been wrong. **One site is
+  deliberately left carrying the old value** — §11.2's quotation of its own withdrawn warning, which
+  names `FSPEC:2154` because that is the anchor the withdrawn sentence cited; the sentence around it
+  says so and gives the HEAD anchor.
+
+  Two lessons are recorded rather than implied. The upstream that moves is the one nobody sweeps: the
+  TSPEC has not moved since the merge commit that carries this branch (spot-checked at HEAD for
+  `:974-977`, `:987-988`, `:1405`, `:1602`, `:1724`, `:1937`, `:1940`, `:2640`), while the FSPEC moved
+  under every anchor in this document. And a *retarget is not a fix* — it is a measurement with a
+  shelf life. Both recipes belong in any future round that touches either upstream, and the counts
+  they return are a function of the revision, never a constant.
 
   The v4 cross-reviews cite the §11.3(a) conjuncts at `TSPEC:2095-2100` / `:2098-2099`; those were
   correct at the TSPEC revision they reviewed, and the intervening TSPEC round moved them **+104**
@@ -1011,7 +1044,7 @@ writing a test that appears to cover it:
 | Not asserted | Why | Where recorded |
 |---|---|---|
 | The two-pass take race (`_checkFile`/`_readFile`/`_writeFile` window) | No oracle exists at any level available here; a test that appeared to cover it would assert a property the code does not have (DEC-ORACLE-02). The take's *shape* is asserted instead. Detection after the fact is operator-reported and un-instrumented, with a stated forensic signature | DEC-CONS-04 |
-| ~~FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm~~ — **row withdrawn; this arm IS asserted** | It was unreachable only under the empty release form. BR-14a's `RELEASED:` sentinel makes it reachable (`FSPEC:2678`), and it is asserted by the `""` fixture in the four-fixture marker case (`TSPEC:1940`, `:2640`). A PROPERTIES author must **not** read this row as licence to omit it | DEC-CONS-07 |
+| ~~FSPEC §4.2's `empty (truncated write)` ⇒ `reclaim` arm~~ — **row withdrawn; this arm IS asserted** | It was unreachable only under the empty release form. BR-14a's `RELEASED:` sentinel makes it reachable (`FSPEC:2693`), and it is asserted by the `""` fixture in the four-fixture marker case (`TSPEC:1940`, `:2640`). A PROPERTIES author must **not** read this row as licence to omit it | DEC-CONS-07 |
 | The inbound failure-reply channel (`rtGit`'s 300-character combined output reaching a rendered report body) | Bounded by what `git` prints, not by the seam interface; recorded as a residual. (The credentialed-argv question that once rode with it is **closed** — the push carries a credential helper, `TSPEC:1693-1698`, §11.3 item 3 — but the inbound channel itself stays unasserted for the reason in this row) | DEC-CONS-01 |
 
 ### 11.3 Errata raised, not settled here
@@ -1027,12 +1060,12 @@ erratum, stated in its own paragraph):
    — **CLOSED upstream; retained as the record of the round.** §4.1's lifetime row said "Removed at
    step 16", which no declared seam can do, and §4.2's empty-or-neither-form row then bound an
    `empty (truncated write)` arm unreachable under an empty release. Both rows have since been
-   rewritten: at HEAD `FSPEC:435-436` reads "Released … in-place rewrite" / "Removed | **never by the
-   pass**", `FSPEC:441-442` states why, and the empty arm now sits at `FSPEC:479`. FSPEC v11.3 answered the product
+   rewritten: at HEAD `FSPEC:449-450` reads "Released … in-place rewrite" / "Removed | **never by the
+   pass**", `FSPEC:455-456` states why, and the empty arm now sits at `FSPEC:493`. FSPEC v11.3 answered the product
    question — *must the durable log witness a pass that dies mid-take?* — **yes**, and answered it
    with a representation rather than a removal verb: **BR-14a** releases by writing
-   `RELEASED: {passId} {ISO-8601}` (`FSPEC:2585`), **E-11** is reachable *because* of that
-   (`FSPEC:2678`), **E-11b** takes a `RELEASED:` marker like an absent one at any age (`FSPEC:2679`).
+   `RELEASED: {passId} {ISO-8601}` (`FSPEC:2600`), **E-11** is reachable *because* of that
+   (`FSPEC:2693`), **E-11b** takes a `RELEASED:` marker like an absent one at any age (`FSPEC:2694`).
    TSPEC §7.3 adopts all three and raises no erratum of its own (`TSPEC:1015-1020`). Nothing is handed
    up here; what this closure costs **this** document is the two-halves supersession recorded in §9.
 2. **REQ §3.1 step 1 / FSPEC AT-P7 — the enumeration relaxation** (DEC-CONS-05). `REQ:115-116`'s
@@ -1082,3 +1115,60 @@ re-read in one sitting: DEC-CONS-01, DEC-CONS-04, DEC-CONS-06 and DEC-CONS-07 wo
 re-decided the same day, and DEC-CONS-05's shared-implementation alternative would become affordable.
 Until then, every one of them is a constraint wearing a decision's clothes, and the honest record of
 that is what this document is for.
+
+## 12. DEC-CONS-08: The two mid-phase `orchestrate-dev.js` changes ship on this branch
+
+*Taken in Phase CR, after §10 and §11 were written; appended here rather than renumbered in, so the
+section anchors downstream documents cite stay valid. Raised by TE Phase CR F-05 and Q-03.*
+
+**Context.** Two changes to `pdlc/workflows/orchestrate-dev.js` landed on
+`feat-pdlc-consolidation-agent` *during* Phase CR, neither of which this feature's REQ, FSPEC, TSPEC,
+PLAN or PROPERTIES asks for:
+
+| Commit | Change | Why it landed here |
+|---|---|---|
+| `202f92e1` | One `crossReviewPath` builder (`orchestrate-dev.js:6311-6325`) is the single place a cross-review path is spelled, so the name a reviewer is told to write is by construction the name `deriveRoundWindow` looks for | CR F-11: this feature's own Phase CR could not converge, because the reviewer prompt named a path the round window did not derive. The pipeline defect blocked the feature |
+| `98b7429e` | A matching complete wave ledger skips Phase I whole (`:10836-10847`, `:10883`) instead of re-dispatching finished waves | This feature's Phase I is a 30-wave PLAN; resuming it re-dispatched every green wave. The cost fell on this feature's run |
+
+Both are pipeline behaviour, not consolidation behaviour. Phase PUB will carry them into this
+feature's PR.
+
+**Decision.** They stay. This feature's PR ships them, and this row is the record that says so
+deliberately rather than by omission.
+
+**Alternatives considered:**
+
+- **Cherry-pick both onto a separate branch and PR them alone** — rejected. Both were *caused* by
+  this feature's run and are what let it proceed: `202f92e1` is the reason a Phase CR round can
+  converge at all, so a branch without it cannot reach a verdict, and the split PR would have to
+  merge first for this one to be reviewable. The dependency runs the wrong way for a clean split.
+- **Revert both and re-run without them** — rejected on the same ground for `202f92e1`, and on cost
+  for `98b7429e`: reverting it re-dispatches every green wave on the next resume, which is the
+  failure the commit exists to stop.
+- **Keep them, and say nothing** — rejected. That is the shape the finding is actually about: an
+  unremarked scope widening in a PR whose title names a different feature. A reviewer who cannot
+  tell a decision from an accident has to treat it as an accident.
+
+**Constraints that forced the shape:** the self-modification guard. Both files are under
+`pdlc/workflows/`, so Phase MERGE will not auto-merge this PR under any `mergeMode`
+(`orchestrate-dev.js`'s merge guard set) — a human reads it before it lands, which is the review the
+split PR would otherwise have bought.
+
+**Reversibility:** easy. Both are additive, separately revertable commits with their own tests
+(`reviewLoop.test.js:1302-1401`; `waveExecution.test.js:1621-1779`, plus the tree-corroboration and
+`forcePhases` cases added in Phase CR).
+
+**Consequence, and the half this document cannot discharge.** A decision to keep them is not a
+durable guard on them. `consolidationTraceability.test.js`'s register set-equality covers `AT-…` ids
+only, so neither change is reachable from any traceability row: nothing downstream notices if a later
+feature deletes them. The durable fix TE F-05 names is a PROPERTIES row for the **wave-ledger resume
+contract**, filed against `pdlc/workflows/` rather than against this feature. PROPERTIES is not this
+document's to write, and the row is raised as an erratum in this phase rather than minted here.
+
+**Re-evaluation triggers:**
+
+- The wave-ledger resume contract acquires a PROPERTIES row (or a REQ of its own) — at which point
+  the changes belong to that document's feature and this row becomes history.
+- A future feature's branch again needs a pipeline fix to converge its own phases. Twice is a
+  pattern, and the pattern's answer is a standing rule about pipeline-fix scope, not a third
+  per-feature decision.

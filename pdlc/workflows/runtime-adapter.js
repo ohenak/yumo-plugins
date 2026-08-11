@@ -759,6 +759,28 @@ async function rtCliQuery(argv, label) {
 }
 
 /**
+ * `_hashNormalizedFile(path)` — DEC-APPROVAL-03's semantic approval digest.
+ *
+ * Answered through the CLI, not through a shell pipeline like `rtHashFile`'s.
+ * The raw digest canonicalises line endings, which `sed`/`tr` express exactly;
+ * the normalised digest additionally neutralises `file:line` anchors, and a
+ * second, shell-dialect implementation of that grammar is precisely the drift
+ * `rtHashFile`'s own comment warns about. `pdlc-cli.mjs` already computes it
+ * with the module's own `approvalHashOfNormalized`, beside the raw hash and in
+ * the same one dispatch, so there is one grammar and one implementation.
+ *
+ * Null whenever the CLI is unreachable or the file is absent — the module reads
+ * that as "no normalised anchor" and behaves exactly as it did before this seam
+ * existed. Note this is the FALLBACK path only: every call site prefers
+ * `_probeDoc`'s `normalizedHash`, which the same CLI query already carries, so
+ * a probing runtime never reaches here at all.
+ */
+async function rtHashNormalizedFile(path) {
+  const probed = await rtProbeDoc(path);
+  return probed && typeof probed.normalizedHash === "string" ? probed.normalizedHash : null;
+}
+
+/**
  * `_probeDoc(path, docType)`. `docType` is optional and omitted when absent —
  * the CLI derives the artifact class from the path either way.
  */
@@ -802,7 +824,7 @@ async function rtProbePostmortem(arg) {
 async function rtWriteFile(path, contents) {
   rtCacheInvalidate(path);
   await RT.agent(
-    `Write the following content to "${path}", relative to the repository root, ` +
+    `Write the following content to "${path}", relative to the repository root or as an absolute path, ` +
       `replacing the file's current contents exactly. Do not reformat, re-wrap, ` +
       `summarise, or add anything. Reply with "ok" when written.\n\n` +
       `<<<PDLC_CONTENT_BEGIN\n${contents}\nPDLC_CONTENT_END`,
@@ -828,6 +850,42 @@ async function rtCheckFile(path) {
   if (verdict.includes("OK")) return { ok: true };
   if (verdict.includes("EMPTY")) return { ok: false, reason: "file_empty" };
   return { ok: false, reason: "file_missing" };
+}
+
+/**
+ * `_envPresent(name) => Promise<boolean>` (TSPEC §5.3). NEVER returns the
+ * value — only whether the named environment variable is set and non-empty.
+ * The reply is the fixed one-word protocol; anything other than exactly
+ * "PRESENT" (including an unparseable reply) is `false`, fail-closed onto
+ * §7.2's "no credential variable observable" degradation and never onto a
+ * claimed credential.
+ */
+async function rtEnvPresent(name) {
+  const out = await RT.agent(
+    `Run exactly:  [ -n "\${${name}:-}" ] && echo PRESENT || echo ABSENT\n` +
+      `Reply with that one word and nothing else.`,
+    { label: `env-present:${name}`, model: RT_IO_MODEL }
+  );
+  return String(out ?? "").trim() === "PRESENT";
+}
+
+/**
+ * `_makeTempDir(passId) => Promise<string|null>` (TSPEC §5.3). `mktemp -d -t`
+ * over a hand-built `/tmp/…` literal deliberately: `/tmp` is world-writable,
+ * and a path derived from `passId` is a symlink-attack surface and a
+ * cross-user collision. `-t` is honoured on both platforms the CI matrix
+ * runs (macOS bash 3.2, Linux bash 5). Returns `null` on anything other than
+ * a single trimmed absolute POSIX path — an §6.3 `api-failure`-class
+ * degradation input, not a halt.
+ */
+async function rtMakeTempDir(passId) {
+  const out = await RT.agent(
+    `Run exactly:  mktemp -d -t pdlc-consolidation-${passId}\n` +
+      `Reply with the created path and nothing else.`,
+    { label: `make-temp-dir:${passId}`, model: RT_IO_MODEL }
+  );
+  const text = String(out ?? "").trim();
+  return /^\/\S+$/.test(text) ? text : null;
 }
 
 /**
@@ -1093,6 +1151,7 @@ function rtDevInjections(devModule) {
     _checkFile: rtCheckFile,
     _readFile: rtReadFile,
     _hashFile: rtHashFile,
+    _hashNormalizedFile: rtHashNormalizedFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
     // TSPEC §3.10. `_writeFile`'s adapter existed since the first bundle but was
@@ -1120,5 +1179,31 @@ function rtDevInjections(devModule) {
     // `_recordQueueRow` is deliberately ABSENT: its implementation differs by
     // caller, which a caller-independent adapter bundle cannot express. It is
     // supplied per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
+  };
+}
+
+/**
+ * Injection bundle handed to the consolidation pass's main() (TSPEC §5.1,
+ * §12.2). Key set is set-equal to §5.1's `ConsolidationSeams` protocol minus
+ * `_now` (a module-level default, not a seam — §5.6(b)). Equality, not
+ * containment: this repo has shipped an adapter function that existed and
+ * was never wired once already (`rtDevInjections`'s own comment above), and
+ * a surplus or missing key here is exactly the drift a containment
+ * assertion cannot see.
+ */
+function rtConsInjections() {
+  return {
+    _agent: rtAgent,
+    _readFile: rtReadFile,
+    _writeFile: rtWriteFile,
+    _appendFile: rtAppendFile,
+    _checkFile: rtCheckFile,
+    _listFiles: rtListFiles,
+    _git: rtGit,
+    _ghRun: rtGhRun,
+    _log: rtLog,
+    _phase: rtPhase,
+    _envPresent: rtEnvPresent,
+    _makeTempDir: rtMakeTempDir,
   };
 }
