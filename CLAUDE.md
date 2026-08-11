@@ -100,11 +100,11 @@ With a valid ownership manifest, Phase I runs **same-tree waves instead of workt
 
 ### Continuous integration
 
-`.github/workflows/pr-tests.yml` is the gate Phase PUB polls. Five checks must pass:
+`.github/workflows/pr-tests.yml` is the gate Phase PUB polls. Four checks must pass:
 
 | Check | What it asserts |
 |---|---|
-| `Unit tests (ubuntu-latest, node 20)` / `(macos-latest, node 20)` | `npm test` on both platforms — the matrix exists because the shipped bash scripts must work on both bash 3.2 (maintainer's macOS) and bash 5 (Linux CI) |
+| `Unit tests (ubuntu-latest, node 20)` | `npm test` on Linux CI. There is deliberately no macOS job (operator decision, 2026-08-10): bash-3.2 portability of the shipped scripts is the maintainer's local concern, and a second platform job doubled CI wall time without ever failing independently |
 | `Generated artifacts are in sync` | `build-runtime.mjs --check`, then a rebuild that must produce no diff — an independent observer, since `--check` and the builder share code |
 | `Fresh-clone bootstrap works` | executes the two documented bootstrap commands as written, by bare path, and fails loudly on exit 126 (lost execute bit) |
 | `Shell scripts parse` | `bash -n` over every tracked `*.sh`, plus index-mode assertions (`100755` for the two entrypoints, `100644` for the sourced library) |
