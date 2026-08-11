@@ -137,7 +137,7 @@ in `Deps` as an explicit edge, never by id order.
 | T08 | 🔴 CI arrangement: `pr-tests.yml` declares an `engine-tests` job on the `unit-tests` matrix whose body is `npm test`; `.claude/pdlc.config.json` `implementation.testCommand` runs the engine suite (TSPEC §7.6) | `pdlc/engine/__tests__/ci-arrangement.test.js` | — | 2 | T00 | ⬚ |
 | T09 | 🔴 fixture redaction scanner with its positive control in the same test: scratch file carrying one instance of each documented rule **must** be flagged (AT-ENG-64, TSPEC §7.2) | `pdlc/engine/__tests__/fixtures-redaction.test.js` | — | 2 | T00 | ⬚ |
 | T10 | 🟢 Anti-fork strengthening — tighten `run.test.js:64` from "a `file:` URL" to the repo-relative `pdlc/workflows/` path assertion; keep `:48`'s no-second-copy clause (AC-1.5, AT-ENG-49). Test-only and **green on landing**: the observable already exists at `run.mjs:58`, so this task has no separate green counterpart and is **explicitly exempt from §5's batch-2 red-terminal gate** — a passing T10 is the intended outcome, not a defect in the test | `pdlc/engine/__tests__/run.test.js` | — | 2 | T00 | ⬚ |
-| T11 | 🟢 `[Fake first]` **new** `_run-suite.mjs` — suite runner: mint `PDLC_TEST_RUN_ID`, empty the run dir, spawn `node --test --import=./__tests__/_bootstrap.mjs __tests__/`, then the assertion step; `scripts.test` becomes the runner | `pdlc/engine/__tests__/suite-spine.test.js` | `pdlc/engine/__tests__/_run-suite.mjs`, `pdlc/engine/package.json` | 3 | T01 | ⬚ |
+| T11 | 🟢 `[Fake first]` **new** `_run-suite.mjs` — suite runner: mint `PDLC_TEST_RUN_ID`, empty the run dir, spawn `node --test --import=./__tests__/_bootstrap.mjs __tests__/`, then the assertion step; `scripts.test` becomes the runner. **The runner forwards its own unrecognised arguments through to the spawned `node --test`**, so `npm test -- --experimental-test-coverage` is a hermetic coverage run rather than a second, bootstrap-less spelling of the suite (§8's coverage item depends on this; a test asserts a forwarded flag reaches the child's argv) | `pdlc/engine/__tests__/suite-spine.test.js` | `pdlc/engine/__tests__/_run-suite.mjs`, `pdlc/engine/package.json` | 3 | T01 | ⬚ |
 | T12 | 🟢 `[Fake first]` **new** `_bootstrap.mjs` — bootstrap v1: construction guard, socket trap (`net`/`tls`), observation writer appending to `${PDLC_TEST_RUN_DIR}/{pid}.jsonl`, failing loudly if the id is unset rather than minting one | `pdlc/engine/__tests__/hermeticity.test.js` | `pdlc/engine/__tests__/_bootstrap.mjs` | 3 | T01, T02 | ⬚ |
 | T13 | 🟢 **new** `lib/outcome.mjs`: frozen six-member `OUTCOMES`, total `classifyOutcome({error, result, reportedFailure})`, records each result through the observation seam | `pdlc/engine/__tests__/outcome.test.js` | `pdlc/engine/lib/outcome.mjs` | 3 | T04 | ⬚ |
 | T14 | 🟢 **new** `lib/catalogue.mjs`: frozen `MESSAGES`, `message(id, params)` throwing on unknown id or missing param and recording the id, `messageIds()` | `pdlc/engine/__tests__/catalogue.test.js` | `pdlc/engine/lib/catalogue.mjs` | 3 | T05 | ⬚ |
@@ -609,7 +609,7 @@ DoD's "all 26 ACs have a passing test" is checked against.
 | AC-1.2 the run observed at the filesystem level | T33 | T43, T46 | AT-ENG-47, AT-ENG-48 (+ AT-ENG-50, this plan's addition) |
 | AC-1.3 queue surface, both stop reasons | T31 | T39, T47 | AT-ENG-52…AT-ENG-57 |
 | AC-1.4 halt exits `2`, not `1` | T31 | T47 | AT-ENG-04, AT-ENG-38 |
-| AC-1.5 not a fork | T10 | T10 — clause (a), the repo-relative path assertion, is closed by T10; clause (b), the no-second-copy assertion, is green at HEAD (`run.test.js:48`) | AT-ENG-49 |
+| AC-1.5 not a fork | — (no red task: clause (a)'s observable already exists at `run.mjs:58`, so T10's strengthened assertion passes the moment it is written; T10 is green on landing and exempt from §5's batch-2 red gate) | T10 — clause (a), the repo-relative path assertion, is closed by T10; clause (b), the no-second-copy assertion, is green at HEAD (`run.test.js:48`) | AT-ENG-49 |
 | AC-2.1 startup banner, six ordered auth rows | T06, T26 | T15, T41, T44 | AT-ENG-09, AT-ENG-11, AT-ENG-13, AT-ENG-15, AT-ENG-24 |
 | AC-2.2 key present without opt-in ⇒ refusal | T06 | T15, T44, T47 | AT-ENG-14 |
 | AC-2.3 proxy env reaches every dispatch | T22 | T36, T37 | AT-ENG-26, AT-ENG-27 |
@@ -632,7 +632,9 @@ DoD's "all 26 ACs have a passing test" is checked against.
 | AC-6.3 per-transport recorded fixtures | T09, T23 | T18, T37 | AT-ENG-64 (+ AT-ENG-22, this plan's addition) |
 | AC-6.4 closed message catalogue, both directions | T05, T03 | T14, T19 | AT-ENG-61, AT-ENG-62 |
 
-**Acceptance tests FSPEC §14.1 maps to no AC row, and the task that owns each.** FSPEC's AC→AT map
+**Acceptance tests FSPEC §14.1's AC rows do not claim as members, and the task that owns each.**
+One entry is a near-miss rather than an absence and is listed for the same reason: AT-ENG-57 appears
+in FSPEC's AC-1.3 row only parenthetically, so this plan pins its owner explicitly. FSPEC's AC→AT map
 is not total over FSPEC's 69 ATs — several ATs are edge-case families scoped by a BR or an EC rather
 than by an acceptance criterion. They are owned all the same, and named here so the DoD's total-AT
 claim is checkable without reading the task table twice:
