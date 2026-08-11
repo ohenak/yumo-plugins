@@ -49,12 +49,103 @@ test, and F-41 is the new rung 4a arriving in the data model without a test.
 
 ## Questions
 
-*(filled below)*
+| ID | Question |
+|----|---------|
+| Q-18 | §7.5 now says the two live tests inherit `_bootstrap.mjs`'s writer and are excluded from the suite-wide row by carrying `corpusRun === null`. Is that exclusion **asserted** anywhere, or only supplied? The design sentence is "the harness supplies `corpusRun` only for the five corpus configurations" — a construction fact. If a later live test is added by copying a corpus run's helper, it inherits a non-null `corpusRun` and lands inside rows 1–4 with a real model's `errorText`. One conjunct in `_assert-suite-wide.mjs` — every record with `corpusRun != null` names one of the five configurations, set-equality against that five-member set — would make the scoping falsifiable rather than conventional, and it is the same shape as the four properties already there. |
+| Q-19 | §6.5's obligation table is now satisfiable, and I agree with the split. One thing it leaves implicit: what does the M-ENG-09 gate assert *about* the row it demands — presence keyed on `process.platform`, or presence plus a specific measured value? "Unrecorded is red" is stated; "recorded as *guard did not fire*" is the outcome that would make every well-formedness test in §6 vacuous, and the document says exactly that in its own words two paragraphs above. Whether the gate is allowed to be green on a row recording a **negative** measurement is the question a harness author has to answer, and it is a one-clause answer either way. |
 
 ## Positive Observations
 
-*(filled below)*
+- **The F-36 repair chose the harder direction and grounded it in a seam, which is why I could
+  falsify it cheaply.** The v1.5 clause could have been deleted with a one-line "no producer" note.
+  Instead §4.1 now says *why* there is no producer — the accumulator hangs off `_agent`
+  (`adapter.mjs:271`) and `composePrompt` is a separate exported entry point (`:259`, `:373`) — and
+  then names the two things that follow from it (`emitDryRun` writes nothing at `bin/pdlc.mjs:190`;
+  had `_agent` been called, `inertTransport().dispatch()` throws and *that* settles as an error, so
+  still not a `null` line). Every one of those five citations lands. A reader can check the claim
+  without trusting the document, which is the property this whole review contract is about.
+- **§7.4 row 4's injection bullet is the best-specified fixture in the document.** It names where to
+  inject (`queryFn`), what to inject (a message like `unknown model "fable"`), and — the part most
+  specs omit — *why both obligations are load-bearing*, with a failing counter-example for each
+  (`TimeoutError` fails the classification, `TransportError("boom")` fails `MODEL_ERROR_RE` and
+  leaves no `B` to pair). I traced the conjunction through `classifyThrown` (`transport.mjs:91-96`,
+  `:123`) and `isModelResolutionError` (`orchestrate-dev.js:1791-1792`) and it holds. This is a
+  fixture an implementer can write on the first attempt.
+- **§8.3's `.claude/pdlc.config.json` row is a finding the author raised against their own plan, and
+  it is correct.** `implementation.testCommand` at HEAD is `cd pdlc/workflows && npm test …`
+  (`.claude/pdlc.config.json:3`) and nothing else, so Phase I's script-owned wave gate would run the
+  workflows suite and never `pdlc/engine`'s — every wave of this feature green without one engine
+  test executing, first execution deferred to `engine-tests` at Phase PUB. That is a green-and-proves-
+  nothing gate found by reading the gate rather than the code, and it is exactly the class of defect
+  the review checklist asks reviewers to look for. Naming the owning task ("the task that first adds
+  an engine test") makes it dischargeable rather than an observation.
+- **§7.6's matrix correction is a small, honest reversal.** v1.5 asserted a two-platform matrix
+  "same as `unit-tests`"; HEAD is `os: [ubuntu-latest]` (`pr-tests.yml:40`, narrowed in `410f3a07`),
+  and the surrounding comment still describes the two-platform intent — a stale comment that would
+  have propagated straight into the new job. v1.6 states the value, flags the comment as stale, and
+  then does the harder thing: it stops claiming per-platform coverage from CI and moves the
+  obligation onto `process.platform` keying, which is where the measurement actually lives.
+- **§9.3 converted from an open erratum list to a resolution record with the resolving upstream text
+  cited.** Both errata now carry the FSPEC/REQ line that closed them (`FSPEC:562-564`,
+  `REQ:502-506`), both of which I verified. A later reader can see the round each closed in instead
+  of re-raising it — this is the append-only discipline applied to the erratum channel itself.
 
 ## Recommendation
 
-*(filled below)*
+**Needs revision**
+
+The convergence question this round is whether the v7 findings were resolved and whether the
+revision broke anything. The first half is unambiguously yes: F-36, F-37, F-38 and F-39 are all
+discharged, each in the direction the finding argued for, and I re-verified every repair against
+HEAD rather than against the changelog. Q-16 and Q-17 are answered in the design where a later
+reader will find them. If the document had stopped there I would have approved it.
+
+It did not stop there, and both High findings are in the new material — which is the honest reading
+of "did the revision break anything", not a widening of scope. **F-40** is the more serious: §3.3
+replaced a test it correctly showed to be unwritable (the allow-list absence test, red at HEAD by
+its own eleven-site measurement) with one whose selector is undefined, and every way of defining it
+that I could measure lands in one of two failure modes — red at HEAD on ~78 unrelated hyphenated
+literals, or a tautology that cannot fail on any input. The document's own counter-example is the
+proof: it asserts that `"software-engineer"` does not match the shape while `"se-review"` does,
+and those two strings sit on the same line (`orchestrate-dev.js:6229`) as a key and its value. A
+guard that cannot fail is worse than the allow-list it replaced, because the allow-list at least
+failed loudly. The repair is available and small — scope by site rather than by shape, and assert
+the extracted site cardinality so an extractor that matches nothing cannot pass.
+
+**F-41** is the one I expect to be least welcome, because rung 4a arrived from upstream mid-round
+and §4.3 handled the part it was asked to handle — the typing — well. `RUNG_ORDER` as string
+labels with a set-equality assertion is the right shape, and the reasoning about why renumbering is
+forbidden is correct. But a rung is a refusal, and this refusal has two branches fixed upstream
+(EC-START-10 and EC-START-11, AT-ENG-11a), no oracle in §7, no probe seam anywhere in the seam
+inventory, and no C-11 row in §8.2 to make the omission visible. The EC-START-11 branch is the one
+that worries me: "presence is not executability" is precisely the distinction that goes untested by
+default, and a design that cannot express a present-but-not-runnable interpreter in a fixture will
+ship a rung 4a that passes on every developer machine and proves nothing about the hosts it exists
+to refuse. Note also that the "nothing dispatched" half needs a positive conjunct — zero records in
+§7.0's accumulator — rather than an absence assertion, which the document is well equipped to give
+it since the accumulator is already there.
+
+F-42 and F-43 are not gating. F-42 is a genuine tension rather than an error, and it may resolve
+into one sentence explaining the asymmetry with §7.4. F-43 is a citation swap.
+
+On the review contract's three oracle clauses, applied to the changed sections only: **no
+implementation echoes** — §7.4's transcription discipline is intact and strengthened (M-ENG-07 is
+still explicitly a transcription; row 4's `errorText` conjunct is a transcription of the fixture
+string, never an import of `MODEL_ERROR_RE`), but §3.3's derivation test *is* an echo by
+construction and F-42 records it. **No absence-only oracles** — the settlement-only rewrite removed
+a `null`-terminal case that rows had to exclude, which strictly improves this; the one new absence
+shape is rung 4a's "nothing dispatched", flagged inside F-41 with the positive conjunct that fixes
+it. **Completeness is set-equality** — §4.3's rung-id set-equality against `RUNG_ORDER` is new and
+correct, §7.5's live-test exclusion is supplied rather than asserted (Q-18), and §3.3's second
+guard is containment by an explicit same-phase decision (DEC-ENG-05) whose reasoning I accept —
+containment is the right *direction* there — but whose predicate is the F-40 defect.
+
+No erratum is raised. I re-grounded every upstream citation this revision touched, including the
+seven re-anchored ones and FSPEC v1.6's rung-4a material (`FSPEC:299`, `:406-407`, `:911-923`,
+`:967`, `:1376`, `:1493`), and found no defect in REQ, FSPEC, DECISIONS, PLAN or PROPERTIES. F-41
+is a TSPEC-side gap in covering upstream that is itself correct and complete.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
