@@ -1096,8 +1096,200 @@ exit-code triple (BR-EXIT-1…3, under AC-1.4's "distinguishes a halt from a cra
 
 ## 15. Behavioral Flow
 
+§15–§18 add no behaviour. They consolidate what §3–§12 already specify, so the document is readable
+as a whole without re-reading ten sections; each entry cites the section that owns it.
+
+### 15.1 One run, end to end
+
+| Step | What happens | Owned by |
+|---|---|---|
+| 1 | the operator invokes a command; argv is parsed, unknown usage refuses (`1`) | §3 |
+| 2 | the startup ladder runs: plugin resolved → manifest read → version handshake → skill prompts readable → billing posture; any failure refuses (`1`), zero tokens | §4 |
+| 3 | the banner prints: version pair, effective base URL, startup auth id | §4.3, §5.1 |
+| 4 | the workflow module is loaded and run; the engine supplies the seams it declares | §10.1 |
+| 5 | for each dispatch the module makes: compose (skill prompt inlined, task text, model, environment, `cwd`, permission posture, guard configuration) | §6, §7, §9 |
+| 6 | assert the transport-reported auth source is in the allowed policy set; outside it → abort before billing | §5.3 |
+| 7 | execute; classify the outcome into exactly one of six members | §8.1 |
+| 8 | on `retryable` / `timeout`: retry within the attempt budget and the one-timeout cap, recording every pause; on `auth-failure` / `transport-contract-violation`: stop | §8.2, §8.4 |
+| 9 | on exhaustion: hand the failure to the module, which halts with its normal artifacts | §8.3 |
+| 10 | the run report is written: modules' fields plus the engine's | §12.2 |
+| 11 | exit `0` finished / `2` halted / `1` engine refused-or-crashed | §3.3 |
+| 12 | under `--loop`: repeat from step 4 for the next ready feature, per BR-LOOP-4 | §11.2 |
+
+### 15.2 Where the run can stop, and what it costs
+
+| Stop point | Cost | Exit |
+|---|---|---|
+| usage error | nothing resolved | `1` |
+| startup ladder rung 1–4 | plugin reads only, zero tokens | `1` |
+| startup billing posture (row 5) | zero tokens | `1` |
+| per-dispatch auth assertion | zero tokens for that dispatch; earlier dispatches already billed | `1` |
+| retry exhaustion | the attempts made | `2` (via the module's halt) |
+| module halt for any pipeline reason | whatever the run spent | `2` |
+| transport-contract violation | the dispatch that produced it | `1` |
+
+### 15.3 Flow invariants
+
+- **I-1** Nothing bills before the ladder passes (§4 BR-START-1).
+- **I-2** Every dispatch carries the same seven parts (§6.2), on either transport.
+- **I-3** Every dispatch is auth-asserted, environment-extended, `cwd`-pinned, model-forwarded, and
+  guard-configured — no dispatch is exempt (§5.3, §7, §9).
+- **I-4** Every outcome is classified before anything else happens to it (§8.1).
+- **I-5** No pipeline outcome is invented by the engine; halts and queue rows come from the modules
+  (§8.3, §11.1).
+- **I-6** Nothing engine-owned is written into the consumer repo (§10.3 BR-READ-3).
+
 ## 16. Business Rules
+
+### 16.1 Register
+
+| Rule | Statement (abbreviated) | Section |
+|---|---|---|
+| BR-CLI-1 | `--flag value` ≡ `--flag=value` | §3.2 |
+| BR-CLI-2 | the billing opt-in is flag-only, per invocation | §3.2 |
+| BR-CLI-3 | dispatch tunables come from config and are reported | §3.2 |
+| BR-EXIT-1 | a halt is `2`, not `1` | §3.3 |
+| BR-EXIT-2 | refusals are `1` | §3.3 |
+| BR-EXIT-3 | the loop exits with its worst iteration | §3.3 |
+| BR-START-1 | dispatch nothing until every rung passes | §4.1 |
+| BR-START-2 | the ladder is total and reports every rung | §4.1 |
+| BR-START-3 | `doctor` is the same ladder | §4.1 |
+| BR-START-4 | the count is never the assertion | §4.4 |
+| BR-AUTH-1 | first match wins; row 6 makes it total | §5.1 |
+| BR-AUTH-2 | the banner reports no transport auth source | §5.1 |
+| BR-AUTH-3 | the banner reports the effective base URL | §5.1 |
+| BR-AUTH-4 | an unrecognised source is never mapped | §5.3 |
+| BR-AUTH-5 | asserted per dispatch, recorded per dispatch | §5.3 |
+| BR-AUTH-6 | passing startup and stopping at dispatch 1 is correct | §5.3 |
+| BR-SKILL-1 | resolved from disk, never invoked as a capability | §6.1 |
+| BR-SKILL-2 | one composed prompt, both transports | §6.1 |
+| BR-SKILL-3 | supplements inlined on the module's condition | §6.1 |
+| BR-SKILL-4 | prompt bytes read at dispatch time, from the approved plugin | §6.1 |
+| BR-SKILL-5 | dry-run inertness is asserted | §6.3 |
+| BR-ENV-1 | the environment is the parent's, extended | §7.1 |
+| BR-ENV-2 | proxy variables untouched | §7.1 |
+| BR-ENV-3 | asserted for every dispatch | §7.1 |
+| BR-CWD-1 | `cwd` is the consumer repo root | §7.2 |
+| BR-MODEL-1 | models forwarded verbatim, never substituted | §7.3 |
+| BR-MODEL-2 | the map is a fixture; set-equality both directions | §7.3 |
+| BR-MODEL-3 | the corpus is over descriptors, not calls | §7.3 |
+| BR-PERM-1 | one named permission setting, uniformly applied | §7.4 |
+| BR-FAIL-1 | six-member closed catalogue, total classifier | §8.1 |
+| BR-FAIL-2 | agent-reported failure is the modules' business | §8.1 |
+| BR-RETRY-1 | timeouts draw from the attempt budget | §8.2 |
+| BR-RETRY-2 | the one-timeout cap is per dispatch run | §8.2 |
+| BR-RETRY-3 | backoff declared; every pause recorded | §8.2 |
+| BR-RETRY-4 | budgets are per dispatch | §8.2 |
+| BR-RETRY-5 | exhaustion routes through the modules' failure path | §8.3 |
+| BR-GUARD-1 | the guard travels with engine dispatch configuration | §9.1 |
+| BR-GUARD-2 | the guard is not a blanket ban | §9.1 |
+| BR-GUARD-3 | provenance asserted with no plugin hooks registered | §9.1 |
+| BR-GUARD-4 | this is the largest open gap at HEAD | §9.2 |
+| BR-PARITY-1 | modules imported, never copied; anti-fork observable | §10.1 |
+| BR-PARITY-2 | seams complete enough that no dispatch reaches the stub | §10.1 |
+| BR-PARITY-3 | the oracle is structural, no comparison run | §10.2 |
+| BR-PARITY-4 | the oracle observes creation events | §10.2 |
+| BR-READ-1 | empty `.claude/workflows/` read-set, per module | §10.3 |
+| BR-READ-2 | expected reads stated, so (c) is not vacuous | §10.3 |
+| BR-READ-3 | nothing engine-owned written into the consumer | §10.3 |
+| BR-QUEUE-1 | selection is the module's | §11.1 |
+| BR-QUEUE-2 | `forcePhases` is not forwarded from the queue path | §11.1 |
+| BR-LOOP-1 | termination is a condition, not a count | §11.2 |
+| BR-LOOP-2 | an iteration bound is opt-in and distinctly reported | §11.2 |
+| BR-LOOP-3 | per-iteration outcomes are recorded | §11.2 |
+| BR-LOOP-4 | per-outcome continuation table | §11.2 |
+| BR-REP-1 | the modules' report is extended, not replaced | §12.1 |
+| BR-REP-2 | an empty set is not a missing field | §12.2 |
+| BR-REP-3 | counts are observable, not derivable | §12.2 |
+| BR-MSG-1 | closed catalogue, both directions | §12.3 |
+| BR-MSG-2 | every parse is total | §12.3 |
+| BR-MSG-3 | ids stable, readable, namespaced | §12.3 |
+| BR-VER-1 | hermeticity is observed, not assumed | §12.4 |
+| BR-VER-2 | per-transport recorded fixtures, refreshable | §12.4 |
+| BR-VER-3 | the live smoke is opt-in only | §12.4 |
+
+### 16.2 Cross-cutting rules
+
+Four rules apply to every section and are the ones a reviewer should check a new behaviour against:
+
+- **Fail closed, and fail cheap.** Every refusal happens before the spend it protects (BR-START-1,
+  BR-AUTH-4/5, BR-FAIL-1, EC-GUARD-4).
+- **Both transports or neither.** Any obligation stated for one transport is stated for the other
+  (BR-SKILL-2, BR-GUARD-1, BR-VER-2).
+- **The engine owns hosting, the modules own the pipeline.** Nothing here decides a pipeline
+  outcome (BR-FAIL-2, BR-RETRY-5, BR-QUEUE-1, BR-PARITY-1).
+- **Observability is a contract, not a courtesy.** Version pair, auth id and per-dispatch source,
+  base URL, and every pause are reported because an unattended run has no other witness (BR-AUTH-3,
+  BR-RETRY-3, BR-REP-1/2).
 
 ## 17. Edge Cases and Error Scenarios
 
+### 17.1 Index of the per-section tables
+
+| Section | Table | Cases |
+|---|---|---|
+| §3.4 | command surface | EC-CLI-1…6 |
+| §4.5 | startup ladder | EC-START-1…8 |
+| §5.5 | auth | EC-AUTH-1…7 |
+| §6.5 | prompt composition | EC-SKILL-1…6 |
+| §7.5 | dispatch payload | EC-DISP-1…6 |
+| §8.5 | taxonomy and retry | EC-FAIL-1…7 |
+| §9.3 | guard parity | EC-GUARD-1…5 |
+| §10.4 | pipeline parity | EC-PAR-1…6 |
+| §11.3 | queue and loop | EC-Q-1…7 |
+| §12.5 | report and catalogue | EC-REP-1…6 |
+
+### 17.2 Run-level cases spanning more than one section
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-RUN-1 | the plugin is uninstalled while a run is in flight | the run continues against the approved plugin's already-read bytes where it can; a prompt file it can no longer read fails that dispatch as an engine error (EC-SKILL-1), never a silent empty prompt |
+| EC-RUN-2 | the consumer repo's branch changes underneath the run | the modules' own branch checks govern; the engine introduces no branch policy (NG-1) |
+| EC-RUN-3 | disk fills mid-run | writes fail through the modules' own IO paths; the engine reports the failure rather than classifying it as a model-dispatch outcome |
+| EC-RUN-4 | two engine runs are started against the same consumer repo | out of scope for this feature: no locking is specified, and the modules' artifact-derived state is what it has always been (G-6). Recorded here so a reviewer sees the gap deliberately rather than by omission |
+| EC-RUN-5 | the run is invoked from inside the engine's own repository as the consumer | permitted; nothing distinguishes it — but the self-modification guard the pipeline's own merge phase applies is unchanged (NG-1) |
+
+### 17.3 The direction unhandled cases fall
+
+Every case in this document falls in one direction: **refuse, report, and cost nothing further**.
+Unrecognised transport output is a violation, not a success; an unrecognised auth source is outside
+the allowed set, not benign; an unreadable prompt file is a failed dispatch, not an empty prompt; a
+missing seam is an engine failure, not a skipped phase. A reviewer finding a case in this document
+that falls the other way has found a defect.
+
 ## 18. Acceptance Tests
+
+### 18.1 The set
+
+AT-ENG-01…AT-ENG-66, defined in §3.5, §4.6, §5.6, §6.6, §7.6, §8.6, §9.4, §10.5, §11.4 and §12.6.
+Every test is derivable from its section without asking a question, and every one is hermetic
+except AT-ENG-65 (the opt-in live smoke, BR-VER-3).
+
+### 18.2 The three cross-section assertions
+
+Three assertions cannot live in any single section because they range over the whole engine:
+
+- **AT-ENG-X1 — every dispatch, every property.** Over one multi-phase fixture run, assert I-2 and
+  I-3 of §15.3 for *every* dispatch: seven composed parts, auth-asserted, environment-extended,
+  `cwd`-pinned, model-forwarded, guard-configured. Per-section tests sample; this one quantifies.
+- **AT-ENG-X2 — zero spend before the ladder.** Across every refusal path in §15.2 that is marked
+  "zero tokens", assert that no dispatch was attempted at all (not merely that none succeeded).
+- **AT-ENG-X3 — transport symmetry.** For every obligation stated per transport (BR-SKILL-2,
+  BR-GUARD-1, BR-VER-2, §8.3's negative half), assert the primary and fallback fixtures produce the
+  same obligation-level outcome.
+
+### 18.3 What the suite is required to pin
+
+- Both directions of every set-equality this document names: the outcome taxonomy (§8.1), the model
+  map over its corpus (§7.3), the message catalogue (§12.3), and clause 1(i) of the parity oracle
+  (§10.2).
+- Every row of every table a test can transcribe: §5.1's six auth rows, §8.2's eight retry
+  sequences, §11.2's four loop continuations, §3.3's three exit codes.
+- The hermeticity guard itself (§12.4 BR-VER-1) — a suite whose guard does not fail on a real
+  transport construction is not hermetic, it is merely untested.
+
+### 18.4 Out of scope for this document
+
+Test *implementation* — file layout, doubles, fixture format, and which tests are unit versus
+integration — is TSPEC's and PROPERTIES' to decide. This section fixes what must be true, not how
+the suite is arranged.
