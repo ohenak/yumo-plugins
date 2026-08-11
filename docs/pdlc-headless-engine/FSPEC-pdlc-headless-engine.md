@@ -64,7 +64,8 @@ semantics they implement are unchanged by construction rather than by re-specifi
 
 **Reading order for a reviewer with limited time:** §3–§5 are the operator's first ten seconds
 (what can be typed, what refuses, what the banner says). §6–§8 are the dispatch. §9–§12 are what
-the run leaves behind. §13 lists what is still open; §14 traces every AC; §15–§18 consolidate the
+the run leaves behind. §13 lists what remains open — §13.1's errata are all resolved upstream, so
+what is still open is §13.2's carried set; §14 traces every AC; §15–§18 consolidate the
 flow, rules, edge cases, and tests already specified in §3–§12 without adding behaviour.
 
 ## 1. Scope and reading order
@@ -705,8 +706,11 @@ seventh member is a change to this section and to AC-4.1, never a configuration.
 is made observable the way §7.3 makes the model map observable, not by inspection of source:
 
 - *Forward (outputs ⊆ six).* The classifier's own member set is an **inspectable value** — one
-  enumeration the engine exposes to its suite — and every classification asserted over the corpus
-  below is a member of it.
+  enumeration the engine exposes to its suite — and every classification the suite observes is a
+  member of it. The scope is the **whole suite, not the corpus below**: classifications pass through
+  one seam the suite observes and accumulate across every test, the way BR-MSG-1 accumulates emitted
+  ids (§12.3), so a seventh member returned on any dispatch anywhere in the suite fails the check.
+  A forward direction asserted only over the six provoking fixtures could never observe one.
 - *Reverse (six ⊆ outputs).* A named **provocation corpus** reaches every member at least once:
   a completing fixture (`ok`), a rate-limit fixture (`retryable`), a fixture that emits nothing
   within the timeout (`timeout`), a fixture reporting an out-of-policy auth source (`auth-failure`,
@@ -827,11 +831,11 @@ the remaining dispatches.
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-33 | set-equality between the classifier's inspectable member set and the six, and every member reached by BR-FAIL-1's provocation corpus (AC-4.1, BR-FAIL-1) |
+| AT-ENG-33 | set-equality between the classifier's inspectable member set and the six; every member reached by BR-FAIL-1's provocation corpus; and every classification accumulated across the whole suite a member of the six (AC-4.1, BR-FAIL-1) |
 | AT-ENG-34 | unrecognised output classifies as `transport-contract-violation`, never `ok`, never `retryable` (BR-FAIL-1, EC-FAIL-1) |
 | AT-ENG-35 | each of §8.2's eight sequences, one fixture each, yields its stated attempt count and terminal classification (AC-4.2) |
 | AT-ENG-36 | a dispatch succeeding on attempt 3 leaves the next dispatch a full budget (BR-RETRY-4) |
-| AT-ENG-37 | every pause appears in the run report with taxonomy member, phase, attempt number, and delay, and the delays match BR-RETRY-3's table on a three-pause fixture — with no hint, with a retry-after, and with a reset time (BR-RETRY-3, §12.2) |
+| AT-ENG-37 | every pause appears in the run report with taxonomy member, phase, attempt number, and delay, and each delay falls in `[d, d+1000]` ms for that row's base delay `d` in BR-RETRY-3's table (the cells' "+jitter"), on a three-pause fixture — with no hint, with a retry-after, and with a reset time (BR-RETRY-3, §12.2) |
 | AT-ENG-67 | an engine-fatal stop (`auth-failure`, `transport-contract-violation`) writes no POSTMORTEM, commits no `halted` row, leaves the queue row untouched, and still emits the report (BR-FAIL-3, §12.1) |
 | AT-ENG-38 | exhaustion yields the halt artifacts, an empty child-process set at exit, no engine crash, and exit `2` (AC-4.3, §8.3) |
 | AT-ENG-39 | an `auth-failure` fixture stops the run with the source named and zero retries attempted (AC-4.4) |
@@ -897,7 +901,7 @@ which is why a plan should schedule this before any unattended use.
 |---|---|
 | AT-ENG-41 | with no pdlc hooks registered on the host, an engine-dispatched deletion of each of the three protected classes is refused when `LEARNINGS-{f}.md` is absent — asserted per transport, on a dispatch composed under the production permission posture (AC-5.1, BR-GUARD-1/3/5) |
 | AT-ENG-42 | with `LEARNINGS-{f}.md` present, harvest's deletions succeed — asserted per transport (AC-5.2, BR-GUARD-2) |
-| AT-ENG-43 | a transport that cannot carry the guard configuration refuses to dispatch (EC-GUARD-4) |
+| AT-ENG-43 | a transport that cannot carry the guard configuration refuses to dispatch, and its refusal message satisfies all three of EC-GUARD-4's obligations — it names the missing capability, names the fallback transport as the known alternative, and states that selecting it is not yet available (EC-GUARD-4) |
 | AT-ENG-44 | EC-GUARD-1, EC-GUARD-5, one case each |
 
 ## 10. FSPEC-ENG-08 — Pipeline parity and the empty consumer read-set
@@ -1002,8 +1006,8 @@ module does evaluate a drift gate: the config-side opt-out is evaluated *before*
 read and short-circuits it, so the gate that C-4 forbids forking costs the engine no read under
 that directory rather than one permitted read. Without the opt-out, the same queue run is
 **expected** to be blocked by the gate and the drift-state read is then observable — a different
-posture, not this clause's. (AC-1.2 attributes the dev-run clause to the queue module's gate; that
-attribution is raised as an erratum, §13 O-ENG-2.)
+posture, not this clause's. (AC-1.2 attributed the dev-run clause to the queue module's gate; that
+was erratum O-ENG-2, resolved in REQ v0.8 — §13.1.)
 
 **BR-READ-2 — what the engine *does* read is stated, so clause (c) is not vacuous.** The consumer's
 own `docs/**` and `.claude/pdlc.config.json`, and reads inside the engine install and the located
@@ -1063,8 +1067,8 @@ reports no ready feature. It does not stop because a fixed number of iterations 
 an explicit maximum-iteration bound, reaching it is a *distinct, reported* termination reason —
 "bound reached, ready work may remain" — never reported as "no ready work remains". An unattended
 operator who cannot tell those two apart will believe a queue is drained when it is not. Absent the
-flag, the loop is bounded only by BR-LOOP-1. (AC-1.3 admits no bound at all while the shipped CLI
-exposes one; the reconciliation is raised as an erratum, §13 O-ENG-3.)
+flag, the loop is bounded only by BR-LOOP-1. (AC-1.3 admitted no bound at all while the shipped CLI
+exposes one; that was erratum O-ENG-3, resolved in REQ v0.8 — §13.1.)
 
 **BR-LOOP-3 — the loop does not swallow an iteration's outcome.** Each iteration's outcome
 (completed, halted, blocked, engine refusal) is recorded per iteration, and §3.3's BR-EXIT-3 fixes
