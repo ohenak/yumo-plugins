@@ -362,6 +362,22 @@ a banner test transcribes:
 | 5 | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused`, exit `1`, no banner |
 | 6 | none of the above | banner `auth.unknown`, start proceeds; the first dispatch decides |
 
+**BR-AUTH-0 — "logged-in settings state present" names one inspectable observable.** Rows 2, 4 and
+5 turn on it, so it is fixed here rather than left to TSPEC: the evidence is present when
+`~/.claude.json` is readable and carries an **`oauthAccount`** record (**M-ENG-08**). Nothing else
+counts — settings files carry no credential, and the credential itself is not in any file the
+engine reads. Two consequences a test transcribes:
+
+- A fixture selects any row of §5.1 by setting the process environment and pointing `HOME` at a
+  scratch directory with, or without, that record. No row is unfixturable.
+- **Absent evidence is not evidence of absence, and row 5 refuses only on the state it can see.**
+  On a host whose credential the engine cannot observe (another platform, another storage
+  location — M-ENG-08 is one platform's measurement, C-9), a run *with* `ANTHROPIC_API_KEY`
+  present lands on row 5 and refuses. That refusal names the path it inspected, the opt-in flag,
+  and `CLAUDE_CODE_OAUTH_TOKEN` as the row-1 route, so the operator has two recourses rather than
+  none (EC-AUTH-8). Widening the evidence set as other platforms are measured is a change to
+  M-ENG-08 and this rule, never a silent per-platform special case.
+
 **BR-AUTH-1 — first match wins, and row 6 makes the list total.** The rows are not disjoint
 predicates: a machine with both an OAuth token and an API key matches rows 1, 3 and 4, and row 1
 decides. Every reachable state lands on exactly one row, so "the banner said nothing about auth" is
@@ -392,10 +408,17 @@ Startup passing says nothing about how the transport will actually authenticate,
 transport reports its auth source only from *inside* a call (M-ENG-04). So every dispatch asserts,
 before the model is billed, that the transport-reported source is in the **allowed policy set**:
 
-| Invocation | Allowed policy set | On a value outside it |
+| Invocation | Allowed policy set (literal) | On a value outside it |
 |---|---|---|
-| without the opt-in flag | exactly the transport's "no API key" report — `"none"` on the primary transport, the fallback's equivalent | the dispatch is aborted before billing, naming the **raw reported value**; the run stops (§8.4) |
-| with the opt-in flag | the API-key-backed sources as well | proceeds |
+| without the opt-in flag | `{"none"}` — the primary transport's "no API key" report (M-ENG-04) | the dispatch is aborted before billing, naming the **raw reported value**; the run stops (§8.4) |
+| with the opt-in flag | `{"none", "user", "project", "org", "temporary"}` | proceeds |
+
+Both sets are literal and closed, matching the policy the shipped CLI passes to the transport
+(`pdlc/engine/bin/pdlc.mjs:93`, `:201-203`). The **fallback transport's own vocabulary is not yet
+measured** — it is O-1's — and until it is, the fallback inherits these sets unchanged, so every
+value it reports that is not literally in them is outside the set and aborts the dispatch. That is
+the fail-closed direction, and it is the transcribed one: a test places a fixture outside the set
+by reporting any other string at all.
 
 **BR-AUTH-4 — an unrecognised source is never mapped.** A transport reporting a source the engine
 does not recognise is treated as outside the allowed set and named verbatim in the failure; it is
@@ -427,7 +450,8 @@ positives on the same run — a completing dispatch and a recorded source.
 | # | Case | Behaviour |
 |---|---|---|
 | EC-AUTH-1 | `ANTHROPIC_API_KEY` set to an empty string | treated as absent — an empty key cannot bill; the row that ignores it decides |
-| EC-AUTH-2 | settings files unreadable (permissions) | the settings-derived evidence is unavailable, so rows 2/4 cannot match; the first-match list falls through to row 5 or 6 and the reason is reported |
+| EC-AUTH-2 | `~/.claude.json` unreadable (permissions) or carrying no `oauthAccount` | the evidence is unavailable, so rows 2/4 cannot match; the list falls through to row 5 or 6 and the reason — unreadable vs. absent — is reported (BR-AUTH-0) |
+| EC-AUTH-8 | row 5 reached on a host whose credential the engine cannot inspect | still a refusal, but its message names the inspected path, the opt-in flag, and `CLAUDE_CODE_OAUTH_TOKEN`; an operator with a subscription is one environment variable from a run (BR-AUTH-0) |
 | EC-AUTH-3 | both `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY` present, no flag | row 1 — banner `auth.oauth-token`; §5.3 still decides at the first dispatch |
 | EC-AUTH-4 | transport reports no auth source at all | outside the allowed set; dispatch aborted naming "absent" (BR-AUTH-4) |
 | EC-AUTH-5 | the source changes between dispatch *n* and *n+1* | dispatch *n+1* aborts; the report shows both values (BR-AUTH-5) |
@@ -438,13 +462,13 @@ positives on the same run — a completing dispatch and a recorded source.
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-13 | each of §5.1's six rows, one fixture environment each, yields its banner id or refusal — including the overlap cases that prove first-match (BR-AUTH-1, EC-AUTH-3) |
+| AT-ENG-13 | each of §5.1's six rows, one fixture environment each — environment variables plus a scratch `HOME` with or without the `oauthAccount` record — yields its banner id or refusal, including the overlap cases that prove first-match (BR-AUTH-0/1, EC-AUTH-3) |
 | AT-ENG-14 | row 5 refuses with exit `1`, names the flag, and attempts zero dispatches (AC-2.2, §5.2) |
 | AT-ENG-15 | the banner carries no transport-reported auth source, and does carry the effective base URL (BR-AUTH-2/3) |
 | AT-ENG-16 | AC-2.4's paired positive: banner id, a completing dispatch, and one recorded source per dispatch (§5.4) |
 | AT-ENG-17 | a fixture whose reported source is outside the allowed set aborts that dispatch before billing, naming the raw value (BR-AUTH-4) |
 | AT-ENG-18 | a fixture whose source changes at dispatch 3 of 5 stops there, with both values in the report (BR-AUTH-5, EC-AUTH-5) |
-| AT-ENG-19 | EC-AUTH-1, EC-AUTH-2, EC-AUTH-4, EC-AUTH-6, one case each |
+| AT-ENG-19 | EC-AUTH-1, EC-AUTH-2, EC-AUTH-4, EC-AUTH-6, EC-AUTH-8, one case each |
 
 ## 6. FSPEC-ENG-04 — Skill resolution and prompt composition
 
