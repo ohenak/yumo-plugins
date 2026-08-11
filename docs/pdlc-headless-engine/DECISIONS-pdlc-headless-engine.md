@@ -6,16 +6,29 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.9; `FSPEC-pdlc-headless-engine.md` v1.3; `TSPEC-pdlc-headless-engine.md` v1.5) |
+| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.9; `FSPEC-pdlc-headless-engine.md` v1.5; `TSPEC-pdlc-headless-engine.md` v1.5) |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+| pdlc | draft | Claude | 1.2 | 2026-08-11 |
 
-**Changelog.** v1.1 adds §7 (options considered — the rejected alternatives collated across entries)
+**Changelog.** v1.2 (round-1 cross-review, pm + te) corrects the record without reversing a decision.
+DEC-ENG-03's interpreter refusal no longer *originates* a host precondition or borrow EC-GUARD-4's
+message contract, and no longer pins a rung number — all three are filed upstream as errata and the
+entry is now explicitly conditional on that authority (pm F-01/F-02/F-03, te F-02). DEC-ENG-04
+re-cites BR-GUARD-5/O-2 for the measure-first obligation and states the gate's key (pm F-04, te
+F-05). DEC-ENG-05's measurements are corrected against HEAD — the scanner alternative derives five
+names, not two; `EXPECTED_SKILLS` is wrong in one direction, not both — and the no-bare-literal
+guard is restated in a form that is writable at HEAD (te F-01/F-03/F-04, pm F-06). DEC-ENG-10 scopes
+the suite-wide step to unfiltered runs (te F-06); DEC-ENG-11's mis-built arm gains a positive
+assertion (te F-07); DEC-ENG-07 states the wave-set oracle's maintenance rule (te F-08). The upstream
+pin moves to FSPEC v1.5; v1.4/v1.5 changed BR-MODEL-3's model-map corpus only, which DEC-ENG-07
+already reads as hermetic fixture-driven runs, so no decision rested on superseded text (pm F-05).
+
+v1.1 adds §7 (options considered — the rejected alternatives collated across entries)
 and §8 (consequences — the costs each decision accepts, split into PLAN obligations and standing
 costs), and names §0 as context and scope. No decision changed; the decision index moved to §9.
 
