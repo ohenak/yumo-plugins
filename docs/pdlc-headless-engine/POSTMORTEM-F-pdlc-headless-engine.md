@@ -11,7 +11,19 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (pm-author) | 1.0 | 2026-08-11 |
 
-RESOLVED: no
+RESOLVED: yes
+
+Resolution (2026-08-11, operator-directed): the three M-ENG-06 cells in
+`docs/_constraints/pdlc-engine-baseline.md` were corrected per §Recommendation Step 1, each
+state re-derived from HEAD before writing — AC-4.4 restated partially green (`AuthPolicyError`
+at `transport.mjs:23`/`:100`/`:204`, retry exclusion at `adapter.mjs:291`, test at
+`__tests__/transport.test.js:50`/`:63`; run-stops assertion and AC-4.1's catalogue naming
+remain the named unasserted half), AC-4.1 moved out of the green row to its own partially-green
+row (no catalogue strings anywhere in `pdlc/engine/`, no set-equality assertion in
+`pdlc/engine/__tests__/`), and AC-2.3's evidence cell now cites `__tests__/transport.test.js:170`
+(F-27). AC-4.4 dropped from REQ §1.2a's "Red at HEAD" list (Step 2); the REQ ends the round
+smaller. TE's two Mediums are test-authoring notes routed to TSPEC, not taken into the REQ
+(Step 3).
 
 ## Phase
 

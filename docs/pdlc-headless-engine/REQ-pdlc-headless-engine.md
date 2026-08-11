@@ -105,7 +105,7 @@ re-asserts green — the two demand different work (TE v1 F-07, SE v1 F-07). The
 table with its evidence citations is **M-ENG-06** in `docs/_constraints/pdlc-engine-baseline.md`,
 relocated under pm-author §5e and cited by id; that fact declares itself **total over the criteria
 below**, one row per AC (Phase-F erratum: AC-2.3 and AC-4.4 had no row while this section read the
-table as total). Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5, AC-4.4,
+table as total). Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
 AC-4.5's per-dispatch auth clause, AC-5.1/5.2 and AC-6.2/6.3/6.4 — including the auth check
 `startup.mjs` does not yet make, the hook/settings wiring absent from `pdlc/engine/lib/` (O-2),
 and the per-dispatch auth source the adapter records once rather than per dispatch (TE v2 F-05).
