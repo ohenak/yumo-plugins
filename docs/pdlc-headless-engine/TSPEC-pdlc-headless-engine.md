@@ -535,7 +535,9 @@ transport's option keys, and field-presence over the descriptor.
 
 ```js
 { skill: string,          // a member of the derived dispatchable set (§3.3)
-  label: string|null,     // the module's phase label, for logs and pause rows
+  label: string|null,     // opts.label if a module ever passes one; null at HEAD (see below)
+  phase: string|null,     // run state, from the `_phase` seam — NOT from opts (see below)
+  seq: number,            // 0-based monotonic dispatch index within the run
   prompt: string,         // composed: role line + role definition + supplements + task
   model: string,          // verbatim from the module's opts.model; never defaulted here
   cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
@@ -544,6 +546,38 @@ transport's option keys, and field-presence over the descriptor.
   // maxTurns is a transport option with no descriptor field: the modules never set it,
   // so it is absent per dispatch and the transport omits it (transport.mjs:178).
 ```
+
+**`label` is `null` on every dispatch at HEAD, and nothing in this design may be keyed on it.**
+This is measured, not assumed: no `_agent` call site anywhere passes a `label`. The general
+dispatcher passes `model ? { model } : undefined` (`orchestrate-dev.js:7124`), the seam wrapper
+passes `{ model: MODEL_DEFAULT, ...opts }` (`:8971`), and the four specially-pinned sites pass
+`{ model }` alone (`:1841` advisory and its fallback via `dispatchAt`, `:7463` verdict recovery,
+`:9968` PLAN-DAG extraction); the queue is the same (`orchestrate-queue.js:1053`). Of the 13
+`label:` occurrences in `orchestrate-dev.js`, eight are `PHASE_DISPATCH` row fields (`:3340`–`:3433`)
+and the rest are git-helper seam options (`:8710`, `:8730`) and JSDoc — **none is a dispatch
+argument**. The adapter's own comment, "`opts.model` and `opts.label` are the two fields the modules
+actually pass" (`adapter.mjs:266-268`), is stale; `const tag = label || skill` (`:274`) therefore
+always yields the skill. Correcting that comment is part of this feature's edit surface (§8.3).
+
+**The phase comes from the `_phase` seam held as run state, not from the dispatch options.** The
+modules *do* announce every phase boundary — `phaseFn("Phase I: Wave 1/3")` (`orchestrate-dev.js:10136`),
+and likewise `:9516`, `:9951`, `:10066`, `:10248`, `:10289`, `:10314`, `:10445`, `:10500`, `:10573`;
+the queue announces `"Queue: Triage"` and its siblings (`orchestrate-queue.js:1065`, `:1130`, `:1144`,
+`:1170`, `:1400`). The adapter currently only logs the label (`adapter.mjs:357-359`). This design has
+it **retain the last announced label as run state and stamp it on each descriptor**, which supplies
+every per-phase consumer without touching a workflow module — the property §8.3's "no other file
+under `pdlc/workflows/` is modified" depends on. Three rules make it total:
+
+- **Normalisation.** `phase` is the announced label's prefix up to the first `:` — `"Phase I: Wave 1/3"`
+  and `"Phase I: Implementation"` both normalise to `"Phase I"`, and `"Queue: Triage"` to `"Queue"`.
+  Per-phase counts (§4.4) bucket on this normalised value, so waves of one phase do not fan out into
+  separate buckets.
+- **The pre-phase window is a named bucket, never a silent one.** A dispatch composed before the
+  first `_phase` call records `phase: null` and is reported under the literal key `"(no phase)"`. At
+  HEAD no such dispatch is expected; a non-zero `"(no phase)"` count is a finding, which is why it is
+  visible rather than folded into a neighbouring phase.
+- **`phase` is provenance, never a verdict** (§4.5's second convention): it records what the run
+  announced, and no engine decision reads it.
 
 `model` passes through untouched (`adapter.mjs:271`): the modules own phase→model pinning
 (`MODEL_DEFAULT` `orchestrate-dev.js:1603`, `MODEL_IMPLEMENTATION` `:1646`, `MODEL_ADVISORY` `:1652`,
