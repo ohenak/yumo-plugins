@@ -258,6 +258,58 @@ batch shows one path twice.
 
 ## 5. Batch-safety rules and wave gates
 
+These are dispatcher contract, not documentation. The `Batch` column re-derives mechanically as
+`max(batch of dependencies) + 1`, with T00 the single batch-1 source; §4's manifest is the
+disjointness premise; and no prose note anywhere in this plan substitutes for a `Deps` edge.
+
+**Batch composition and its gate wording.**
+
+| Batch | Tasks | Character | Gate wording |
+|---|---|---|---|
+| 1 | T00 | pre-flight, green-on-HEAD | full engine suite green |
+| 2 | T01–T10 | **RED-terminal** — nine failing test files plus one strengthening | the batch's new tests fail **for the reason each names** (missing module, missing export, missing job) and every pre-existing test stays green; a batch-2 test that *passes* is a defect in the test, not progress |
+| 3 | T11–T18 | green over batch 2 | batch-2 tests now pass; full suite green; `node pdlc/workflows/build-runtime.mjs --check` exits 0 |
+| 4 | T19, T20–T34 | **mixed, and therefore RED-terminal** — T19 is green, T20–T34 are fifteen red test files | T19's assertion step passes its own driver; T20–T34 fail for their stated reasons; pre-existing tests green |
+| 5 | T35–T43 | green | batches 4's reds for these owners now pass; full suite green |
+| 6 | T44, T45, T46 | green | full suite green |
+| 7 | T47 | green | full suite green |
+| 8 | T48, T49 | green (harness) | full suite green, and the corpus's five configurations each produce ≥1 record |
+| 9 | T50, T51 | **RED-terminal for T50**; T51 is flag-gated and does not run in the gate | T50 fails naming the missing suite-wide rows; T51 is not executed by the gate |
+| 10 | T52 | green | full suite green, **including** T50 |
+| 11 | T53 | documentation | full suite green; no code change |
+
+**Why two batches are deliberately RED-terminal and cannot be gated on "full suite green".** Batches
+2, 4 and 9 end with failing tests by construction — that is the red half of TDD, and a blanket
+"suite green after every batch" gate is unsatisfiable there. Their gate is the split form above.
+This repo's shipped wave gate runs `implementation.testCommand` and commits only on success, so
+**the batches that end red must be run with the split gate wording rather than the default**, and
+that is a scheduling instruction to the dispatcher, not a note.
+
+**Shared prerequisites are created serially in batch 1 or 3 by a single owning task.** There is no
+package marker to add (`pdlc/engine/package.json` exists at HEAD and is T11's), and the two shared
+test helpers have single owners created before any consumer: `_bootstrap.mjs` (T12, b3) and
+`_run-suite.mjs` (T11, b3). Every task that needs the observation seam depends on T12 through the
+chain T12 → T19 → T35, never on filename luck. The two `[Fake first]` harness modules that
+production tests read — `_corpus.mjs` (T48) and `_replay-double.mjs` (T49) — are created strictly
+upstream of their only consumers, T50 and T34's green run respectively.
+
+**Three single-writer hazards this plan resolves by serialisation rather than by prose.**
+
+| Hazard | Resolution |
+|---|---|
+| `lib/adapter.mjs` carries two distinct changes — the descriptor (T35) and the retry machine (T45) | split across batches 5 and 6 with `T45 Deps T35`, never merged into one oversized task and never co-scheduled |
+| `lib/run.mjs` carries the skill-set loader (T39) and the CLI-facing loop/exit wiring (T47) | split across batches 5 and 7 with `T47 Deps T39` |
+| `__tests__/_bootstrap.mjs` carries the hermeticity spine (T12) and the AC-1.2 `fs` recorder (T43) | split across batches 3 and 5 with `T43 Deps T12` |
+
+**The one ordering rule that is a correctness requirement, not a convenience.** T29 (the M-ENG-09
+gate) and T42 (the first rows) are adjacent by dependency and must land in the same wave-sequence
+without an intervening green gate that would observe an unrecorded state. TSPEC §6.5 words this as
+"the gate and the first M-ENG-09 rows land in the same task"; this plan splits them into a red task
+and its only green because the gate is a test and the rows are data, and preserves the property by
+making T42 the **sole** dependent of T29 — no other task can turn CI red-for-an-unrelated-reason in
+between. If an implementer prefers TSPEC's literal single-task form, merging T29 into T42 is a
+sanctioned simplification; splitting T42's rows away from T29's gate is not.
+
 ## 6. Task dependency notes
 
 ## 7. Integration points
