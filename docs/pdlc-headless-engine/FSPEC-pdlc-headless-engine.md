@@ -1069,6 +1069,16 @@ The run report is the only artifact an operator reads when a cron'd run finishes
 is to answer, without a re-run: *what did it do, on whose credential, through which endpoint, how
 long did it wait and why, and which pair of versions produced this?*
 
+**BR-REP-0 — the report is emitted as one JSON line, the last line of stdout.** That is its whole
+delivery surface: no file is written for it, in the consumer repo or anywhere else (BR-READ-3
+forecloses the former, and NG-7 the latter). Human-readable progress lines print above it; the
+report is always exactly one line and always the last, so a cron wrapper takes the final line of
+stdout and parses it without scanning for a block. Two implications an operator lives with: a run
+whose stdout is not captured leaves no witness at all (the cron slot must redirect it somewhere),
+and a run that dies without emitting the line is distinguishable from one that refused, because a
+refusal still emits it (EC-REP-1). This matches the shipped convention
+(`pdlc/engine/bin/pdlc.mjs:215-221`, emitted at `:236-237`).
+
 **BR-REP-1 — the modules' report is extended, never replaced.** Every field the modules already
 produce survives verbatim; the engine adds fields alongside them (AC-4.5).
 
@@ -1082,8 +1092,12 @@ produce survives verbatim; the engine adds fields alongside them (AC-4.5).
 | effective base URL | what §5.1's banner reported (BR-ENV-2) |
 | per-phase dispatch counts | how much work each phase cost |
 | retry / pause rows | one row per retry and per pause: taxonomy member, phase, attempt number, delay |
-| effective dispatch tunables | the retry-attempt, backoff and timeout values actually in force (BR-CLI-3) |
-| permission posture in force | the single named setting's value (BR-PERM-1) |
+| transport | which transport the run's dispatches were made through (**FSPEC-added**, §3.2) |
+| effective dispatch tunables | the retry-attempt, backoff and timeout values actually in force (BR-CLI-3; **FSPEC-added** under AC-4.5's "in addition to" clause) |
+| permission posture in force | the single named setting's value (BR-PERM-1/2; **FSPEC-added**) |
+
+The six unmarked rows are AC-4.5's own enumeration; the three marked **FSPEC-added** are this
+document's, so a test author transcribing AT-ENG-58 does not go looking for them in the REQ.
 
 **BR-REP-2 — an empty set is not a missing field.** A run with zero retries carries an *empty* set
 of retry rows. "Field absent" and "nothing happened" must not be the same observation, or a
@@ -1100,7 +1114,14 @@ fixture fixes.
 refusal, warning and failure message the engine emits is registered and asserted **by id** in the
 test harness. Two checks make the catalogue closed in both directions (AC-6.4(a)): an emitted
 string with no registered id fails, and a registered id no path can emit fails. The second half is
-what keeps the catalogue from accumulating dead entries that make it useless as a review surface.
+what keeps the catalogue from accumulating dead entries that make it useless as a review surface,
+and it has a named observable rather than a reviewer's judgement: **every emission passes through
+one seam the suite observes, ids emitted accumulate across the whole suite, and at the end of the
+run the accumulated set is compared to the registered set for equality**. An id no test provoked is
+indistinguishable from an id no path can emit, and that is the intended strictness — the fix is a
+test that provokes it or the entry's deletion, never an exemption list. (The provocation corpus of
+§8.1 BR-FAIL-1 and the six auth rows of §5.1 are already most of the emissions; the residue is
+what this check surfaces.)
 
 **BR-MSG-2 — every parse of transport output is a total function.** Every value the engine reads
 out of a transport's output — SDK message stream or CLI stdout/stderr alike — has a defined outcome
@@ -1116,9 +1137,11 @@ in a bug report must be quoting something greppable.
 
 **BR-VER-1 — the default suite is hermetic, and hermeticity is observed, not assumed.** Every test
 constructs the transport through the injected seam; a guard fails the suite on any attempt to
-construct the real transport (SDK client or a `claude` child spawn); and the suite asserts that no
-outbound network connection was attempted (AC-6.1). A "we don't call the network" comment is not
-this property.
+construct the real transport (SDK client or a `claude` child spawn); and the suite installs a
+**socket-level trap that fails the suite on any outbound connection attempt** (AC-6.1). The trap is
+itself asserted — one test deliberately attempts a connection and is expected to trip it — because
+a trap that never fires is indistinguishable from one that is not installed. A "we don't call the
+network" comment is not this property.
 
 **BR-VER-2 — each transport is tested against recorded fixtures of its own real output** — one
 fixture set per transport, since both remain in scope (NG-6) — and refreshing a fixture set against
@@ -1133,7 +1156,7 @@ round reaching a parseable terminal verdict produced by a real model call (AC-6.
 
 | # | Case | Behaviour |
 |---|---|---|
-| EC-REP-1 | run halts before any dispatch (startup refusal) | a report is still produced carrying the version pair, the startup auth id, and an empty dispatch set (BR-REP-2) |
+| EC-REP-1 | run halts before any dispatch (startup refusal) | the engine's own block is still emitted, in BR-REP-0's shape — one JSON line, last line of stdout — carrying the version pair, the startup auth id and an empty dispatch set, with no module fields to extend (BR-REP-2) |
 | EC-REP-2 | a dispatch's auth source differs from the startup id's implication | both are reported; neither overwrites the other (§5.3) |
 | EC-REP-3 | transport reports a rate-limit event with no delay value | the pause row records the observed delay as unknown rather than fabricating a number (BR-MSG-2) |
 | EC-REP-4 | a message is emitted from a path with no registered id | the catalogue check fails the suite (BR-MSG-1) |
@@ -1147,9 +1170,10 @@ round reaching a parseable terminal verdict produced by a real model call (AC-6.
 | AT-ENG-58 | every field of §12.2 is present on a completed fixture run, alongside every field the modules already produce (AC-4.5, BR-REP-1) |
 | AT-ENG-59 | a zero-retry run carries an empty retry-row set, not a missing field (BR-REP-2) |
 | AT-ENG-60 | dispatch counts sum to the recorded dispatch rows; a fixed-sequence fixture asserts exact values (BR-REP-3) |
-| AT-ENG-61 | catalogue set-equality, both directions (AC-6.4(a), EC-REP-4/5) |
+| AT-ENG-61 | catalogue set-equality, both directions, over ids accumulated across the whole suite through the emission seam (AC-6.4(a), BR-MSG-1, EC-REP-4/5) |
 | AT-ENG-62 | malformed-input outcomes for every parsed value, including the two AC-6.4(b) names (BR-MSG-2) |
-| AT-ENG-63 | the hermeticity guard fails a suite that constructs the real transport, and no outbound connection is attempted (AC-6.1, BR-VER-1) |
+| AT-ENG-63 | the hermeticity guard fails a suite that constructs the real transport; the socket trap fires on a deliberate connection attempt; and no other test attempts one (AC-6.1, BR-VER-1) |
+| AT-ENG-68 | the report is one JSON line and the last line of stdout, on a completed run and on a startup refusal alike (BR-REP-0, EC-REP-1) |
 | AT-ENG-64 | one fixture set exists per transport and a documented refresh step reproduces it (AC-6.3, BR-VER-2) |
 | AT-ENG-65 | the live smoke path runs only behind its flag and asserts §10.2's set plus a real terminal verdict (AC-6.2, BR-VER-3) |
 | AT-ENG-66 | EC-REP-1, EC-REP-2, EC-REP-3, one case each |
