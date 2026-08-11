@@ -13,7 +13,32 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-11 |
+| pdlc | draft | Claude | 1.4 | 2026-08-11 |
+
+**v1.4 changelog** — revision round 4, addressing `CROSS-REVIEW-product-manager-TSPEC-v4.md`
+(2 High, 0 Medium, 1 Low) and `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (1 High, 1 Medium, 2 Low).
+Both reviewers' Highs are the same finding, and it is one v1.3 introduced: **§7.4 row 4's replacement
+discriminator was not computable from any recorded field**, so the advisory-fallback witness reduced
+to "some `se-review` dispatch ran on Opus" — true of every pipeline run, green even with the
+`:1851`→`:1861` fallback branch deleted (PM F-01, TE F-26). Fixed where they asked, in the data:
+§4.1's `DispatchDescriptor` gains **`outcome`** (§4.2's member, stamped when the dispatch settles)
+and **`errorText`** (the rejection's message, verbatim, never parsed by the engine); §7.4's
+accumulator tuple gains those plus `attempt` and a `promptHash`; and row 4 becomes a **pair over
+recorded fields** — same skill, same `promptHash` (the fallback re-dispatches the same prompt,
+`dispatchAt` closing over one `prompt`, `orchestrate-dev.js:1840-1842`), `fable` with a non-`ok`
+outcome and the fixture's injected message, then `opus` at a greater `seq`. No seam identity is
+stamped and no workflow module is touched, so §8.3's boundary holds. **PM F-02 / TE F-27**: §4.6's
+effective-timeout oracle was green on the default, because `DEFAULT_TIMEOUT_MS` (`transport.mjs:64`)
+equals the tunable's own default; run i's fixture now pins `dispatch.timeoutMinutes: 7` and the test
+asserts the literal `420000` at the boundary and `7` in the report. Lows: §7.4 transcribes
+`orchestrate-dev.js:9995` verbatim including `iContract !== null` (PM F-03, TE F-28), and the
+`"(no phase)"` assertion becomes a fifth **row** of §7.4's property table so the table and
+`_assert-suite-wide.mjs` enumerate the same five things (TE F-29). Questions answered in the design:
+the adapter receives the resolved timeout as a `dispatchTimeoutMs` constructor option alongside
+`maxRateLimitPauses`/`retryBackoffBaseMs`, supplied at `bin/pdlc.mjs:173`/`:205` where
+`resolveTunables` is called (TE Q-11); run i's `testCommand` is a local exit-`0` script inside §7.1's
+hermeticity guard (PM Q-01); and rows 1/2 stay scoped to run i because the `haiku` PLAN-DAG dispatch
+(`:9968`) records `phase === "Phase I"` and would falsify row 2 in run v(b) (TE Q-12).
 
 **v1.3 changelog** — revision round 3, addressing `CROSS-REVIEW-test-engineer-TSPEC-v3.md`
 (1 High, 1 Medium, 2 Low) and `CROSS-REVIEW-product-manager-TSPEC-v3.md` (0 High, 1 Medium, 2 Low).
