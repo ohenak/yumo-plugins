@@ -41,6 +41,11 @@ forward verbatim in substance and re-verified at HEAD rather than restated on tr
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-16 | *(carried from v6, still unanswered because the document did not change.)* If F-36 is resolved by dropping the branch, does §7.4's fifth suite-wide row still need `corpusRun != null` as its scope filter? The answer turns on whether unit tests that construct an adapter directly write to `${PDLC_TEST_RUN_DIR}` at all — they do if `_bootstrap.mjs` is `--import`ed into every test-file process (§7.0) and those adapters are real ones. If they do, the filter is essential and correctly placed; if they do not, it is defensive and the row reads narrower than it is. Either answer is fine; the harness author should not have to discover which. |
+| Q-17 | Now that FSPEC v1.5 has requalified BR-MODEL-3, is any TSPEC oracle still reachable through `--dry-run` at all, or is the dry-run surface purely an inspection surface with no assertion hanging off it? §7.4 already routes the model-map corpus through fixture-driven runs and explicitly declines `--dry-run-skill` as the instrument (`TSPEC:1753-1758`), and §5.4 gives `--dry-run` an exit-`0` row (`TSPEC:1200`). If the exit-code row is its only oracle, saying so in one clause would let the next reader stop re-deriving the answer — this is the third round in which the dry-run surface's testing role has had to be re-established from source. |
+
 ## Positive Observations
 
 ## Recommendation
