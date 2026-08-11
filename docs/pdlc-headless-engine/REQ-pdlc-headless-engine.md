@@ -10,7 +10,7 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…05) |
+| Upstream | **REQ** — design discussion 2026-08-08 (this REQ is its record); `docs/_decisions/DECISIONS-plugin-distribution.md`; `docs/_constraints/DOMAIN-CONSTRAINTS.md` (DC-01, DC-02); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-01…05, A-ENG-01) |
 | Downstream | FSPEC, TSPEC, PROPERTIES; successors `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`, `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
@@ -381,7 +381,7 @@ question. `{f}` denotes a feature name throughout.
   | 1 | `CLAUDE_CODE_OAUTH_TOKEN` set in the environment | `auth.oauth-token` |
   | 2 | no `ANTHROPIC_API_KEY`, logged-in Claude Code settings state present | `auth.session` |
   | 3 | `ANTHROPIC_API_KEY` present **and** `auth.allowApiKeyBilling` passed | `auth.api-key-optin` |
-  | 4 | `ANTHROPIC_API_KEY` present, flag not passed, logged-in settings state present | `auth.session-key-ignored` — start proceeds, the key is unused; this is the state AC-2.4 exercises |
+  | 4 | `ANTHROPIC_API_KEY` present, flag not passed, logged-in settings state present | `auth.session-key-ignored` — start proceeds, key unused; AC-2.4's state |
   | 5 | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused` (AC-2.2) — no banner |
   | 6 | none of the above (no credential the engine can see) | `auth.unknown` — start proceeds; C-1b decides at first dispatch |
 
@@ -443,7 +443,7 @@ C-10)*
   | every phase except Phase I (`MODEL_DEFAULT`) | `opus` | i |
   | Phase I implementation waves (`MODEL_IMPLEMENTATION`) | `sonnet` | i |
   | advisory-tier dispatch (`MODEL_ADVISORY`) | `fable` | iii |
-  | advisory-tier fallback (`MODEL_ADVISORY_FALLBACK`), reached only when `fable` fails to resolve | `opus` | iii, with model resolution of `fable` forced to fail |
+  | advisory fallback (`MODEL_ADVISORY_FALLBACK`), reached only if `fable` fails to resolve | `opus` | iii, with `fable` resolution forced to fail |
   | queue Phase-0 readiness triage (`MODEL_QUEUE`) | `sonnet` | ii |
   | verdict-recovery re-read dispatches | `haiku` | i |
 
