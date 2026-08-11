@@ -945,11 +945,22 @@ return is what §4.5's `tunables` block reports, so the *effective* value is alw
 Three rules make the table load-bearing rather than descriptive:
 
 - **One resolution point.** Every read of a tunable goes through `resolveTunables`; no call site
-  reaches config or a flag directly, which is what makes the reported effective values honest. For
+  reaches config or a flag directly, which is what makes the reported effective values honest. It is
+  called at the two `createAdapter` construction sites in `bin/pdlc.mjs` (`:173`, `:205`), which both
+  build the adapter's tunable options and the `tunables` report block from one return (§3.4). For
   `dispatch.timeoutMinutes` that honesty needs one assertion of its own, because the value only
-  becomes effective by being stamped on the dispatch (§3.4): **a test asserts that the `timeoutMs`
-  observed at the transport boundary equals the reported `tunables.timeoutMinutes` × 60 000**, so a
-  regression that dropped the stamp is red rather than silently served by `defaultTimeoutMs`.
+  becomes effective by being stamped on the dispatch (§3.4). **The fixture pins a non-default value,
+  and both sides of the assertion are spec literals** (PM F-02, TE F-27): run i's
+  `.claude/pdlc.config.json` carries `dispatch.timeoutMinutes: 7`, and the test asserts the literal
+  `420000` as `timeoutMs` at the transport boundary on **every** dispatch of that run *and* the
+  literal `7` in the reported `tunables` block. Asserting boundary-equals-report at the *default*
+  would be the weaker oracle it looks like: `DEFAULT_TIMEOUT_MS = 30 * 60 * 1000` (`transport.mjs:64`,
+  the `defaultTimeoutMs` constructor default at `:139`, applied per dispatch at `:152`) is exactly
+  the tunable's own default, so a run whose config was never consulted
+  reports 30, is served 1 800 000 by the transport's constructor default, and passes — self-consistent
+  and false. At 7 the two are distinguishable: dropping the stamp (§3.4) leaves 1 800 000 at the
+  boundary against a reported 7, and a config never read leaves the report at 30 against an asserted
+  literal 7. Both failures are red, and neither is derived from the code under test.
 - **The two operator-owned rows are flag-only** and are not accepted from configuration at all
   (BR-CLI-2 for billing; the same rule extended to `--max-iterations`, since an unattended bound
   silently set by a config file is the failure BR-LOOP-2 exists to prevent).
