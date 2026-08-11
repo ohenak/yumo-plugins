@@ -375,23 +375,44 @@ question. `{f}` denotes a feature name throughout.
 
 **Group 2 — auth and environment** *(US-02, US-04; G-3, G-4; C-1, C-2)*
 
-- **AC-2.1** *Given* any successful start, *when* the banner is printed, *then* it reports
-  the engine version, the installed plugin version confirmed compatible by the handshake
-  (C-10), the resolved auth source as one of a closed set (logged-in session / OAuth token /
-  API key), and the effective `ANTHROPIC_BASE_URL`; with headroom's ambient environment
-  present it reports `http://127.0.0.1:8787`.
-- **AC-2.2** *Given* no subscription auth available and `ANTHROPIC_API_KEY` present, *when*
-  the operator runs any engine command, *then* the engine **dispatches nothing** and exits
-  non-zero naming the refusal and the opt-in flag; *and given* the same state with that flag
-  passed, the run proceeds and the banner states that pay-per-token billing is in effect.
+- **AC-2.1** *Given* any successful start, *when* the banner is printed, *then* it reports the
+  engine version, the installed plugin version confirmed compatible by the handshake (C-10),
+  the effective `ANTHROPIC_BASE_URL` (with headroom's ambient environment present,
+  `http://127.0.0.1:8787`), and **the startup auth posture C-1a can read without billing** —
+  named by catalogue id from this total mapping, so a test transcribes the expected string
+  from this table rather than from engine code (SE F-03, TE F-03):
+
+  | Inspectable startup state | Banner catalogue id |
+  |---|---|
+  | `CLAUDE_CODE_OAUTH_TOKEN` set in the environment | `auth.oauth-token` |
+  | no OAuth token, no `ANTHROPIC_API_KEY`, logged-in Claude Code settings state present | `auth.session` |
+  | `ANTHROPIC_API_KEY` present **and** `auth.allowApiKeyBilling` passed | `auth.api-key-optin` |
+  | `ANTHROPIC_API_KEY` present, flag not passed, no subscription credential | refusal `auth.api-key-refused` (AC-2.2) — no banner |
+  | none of the above (no credential the engine can see) | `auth.unknown` — start proceeds; C-1b decides at first dispatch |
+
+  The banner reports **no** SDK `apiKeySource` value, because none exists before a dispatch;
+  the per-dispatch value is a C-1b/AC-2.4 observable and appears in the run report (AC-4.5). A
+  transport-reported source outside the allowed policy set is not silently mapped: it aborts
+  the dispatch naming the raw value (AC-4.4). Discriminating "logged-in session" from "OAuth
+  token" *from the transport's own report*, if it is possible at all, is unmeasured — O-9.
+- **AC-2.2** *Given* no subscription credential inspectable at startup and `ANTHROPIC_API_KEY`
+  present, *when* the operator runs any engine command, *then* the engine **dispatches
+  nothing** and exits non-zero naming the refusal (`auth.api-key-refused`) and the opt-in flag,
+  reaching that decision from the environment and settings files alone — no probe dispatch,
+  zero tokens billed (C-1a); *and given* the same state with the flag passed, the run proceeds
+  and the banner carries `auth.api-key-optin`.
 - **AC-2.3** *Given* a parent environment carrying `ANTHROPIC_BASE_URL` and
-  `ANTHROPIC_CUSTOM_HEADERS`, *when* any dispatch is spawned, *then* the child process
-  environment contains both, unmodified, together with the rest of the parent environment —
-  asserted for every spawn the engine performs, not only the first.
-- **AC-2.4** *Given* an operator whose subscription auth is present, *when* the engine
-  starts, *then* it neither reads nor requires `ANTHROPIC_API_KEY`, and setting one does not
-  change which account is billed.
-- **AC-2.5** *Given* any dispatch, *when* it is spawned, *then* its working directory is the
+  `ANTHROPIC_CUSTOM_HEADERS`, *when* any dispatch is made, *then* the environment that dispatch
+  receives contains both unmodified together with the rest of the parent environment — the
+  dispatch options' environment on the primary transport, the child process environment on the
+  `claude -p` fallback — asserted for **every** dispatch the engine makes, not only the first.
+- **AC-2.4** *Given* an operator with subscription auth and `ANTHROPIC_API_KEY` also present in
+  the environment, *when* the run is made with `auth.allowApiKeyBilling` **not** passed, *then*
+  the positive observable holds: every dispatch reports `apiKeySource == "none"` **and**
+  completes, and the run report records that value per dispatch (TE F-02). The negative ("no
+  key was needed") is thereby paired with a positive on the same path rather than asserted by
+  absence.
+- **AC-2.5** *Given* any dispatch, *when* it is made, *then* its working directory is the
   consumer repo root (C-3), so every artifact path the modules use resolves consumer-relative
   exactly as it does today.
 
