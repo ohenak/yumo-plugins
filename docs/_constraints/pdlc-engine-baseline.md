@@ -84,9 +84,13 @@ the two demand different work.
 
 **The table is total over the REQ's acceptance criteria** (correction, Phase-F erratum — AC-2.3
 and AC-4.4 had no row, while the REQ reads the table as covering every AC): every criterion
-AC-1.1…AC-6.4 appears in exactly one row below, and a criterion added to the REQ without a row
-here is a defect in this fact, not a gap the reader resolves. "Partially green" is a state in its
-own right: some half of the criterion is asserted at HEAD and the row names the unasserted half.
+AC-1.1…AC-6.4 appears in at least one row below, and a criterion added to the REQ without a row
+here is a defect in this fact, not a gap the reader resolves. A criterion whose clauses differ in
+state is **split across rows, each row naming its clause explicitly** (correction, Phase-F erratum
+round 5 — AC-4.5 appears in the green row "except its per-dispatch auth clause" and in the red row
+as that clause; the earlier "exactly one row" wording contradicted it). Every clause of a split
+criterion carries a state, so the split is a partition, not a gap. "Partially green" is a state in
+its own right: some half of the criterion is asserted at HEAD and the row names the unasserted half.
 
 | AC | State at HEAD | Evidence |
 |---|---|---|

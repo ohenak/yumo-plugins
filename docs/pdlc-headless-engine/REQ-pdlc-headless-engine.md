@@ -17,7 +17,13 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.8 | 2026-08-11 |
+| pdlc | draft — awaiting operator review | Claude | 0.9 | 2026-08-11 |
+
+*Change note (0.9, 2026-08-11, Phase-F erratum round 5 — targeted edit):* one erratum, nothing
+else changed. M-ENG-06 in `docs/_constraints/pdlc-engine-baseline.md` claimed every criterion
+appears in *exactly one* row while AC-4.5 is deliberately split (green except its per-dispatch
+auth clause; red for that clause); the fact now states at-least-one-row totality with clause-level
+splits named, and §1.2a's echo of the old wording follows it. No AC text changed.
 
 *Change note (0.8, 2026-08-11, Phase-F erratum round — targeted edit, no re-authoring):* nine
 errata raised against this REQ while FSPEC was authored are absorbed, and nothing else changed.
@@ -104,8 +110,8 @@ across `059750de`…`f6f8029a`), so for each AC below a test written today eithe
 re-asserts green — the two demand different work (TE v1 F-07, SE v1 F-07). The per-AC red/green
 table with its evidence citations is **M-ENG-06** in `docs/_constraints/pdlc-engine-baseline.md`,
 relocated under pm-author §5e and cited by id; that fact declares itself **total over the criteria
-below**, one row per AC (Phase-F erratum: AC-2.3 and AC-4.4 had no row while this section read the
-table as total). Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
+below**; a criterion whose clauses differ in state is split across rows, each naming its clause
+(AC-4.5's per-dispatch auth clause). Red at HEAD: AC-1.1, AC-2.1/2.2/2.4, AC-3.3, AC-3.5,
 AC-4.5's per-dispatch auth clause, AC-5.1/5.2 and AC-6.2/6.3/6.4 — including the auth check
 `startup.mjs` does not yet make, the hook/settings wiring absent from `pdlc/engine/lib/` (O-2),
 and the per-dispatch auth source the adapter records once rather than per dispatch (TE v2 F-05).
