@@ -60,11 +60,53 @@ so neither finding has to re-argue it:
 
 ## Questions
 
-<!-- filled below -->
+| ID | Question |
+|----|---------|
+| Q-01 | §6.5's "unrecorded is red" makes a missing M-ENG-09 row for the running platform fail the **hermetic** suite. On the two CI platforms this is exactly right, and the same-task ordering rule is the correct answer to the fresh-clone problem. What does a contributor on a third platform see? The row is keyed by platform, so a Windows or a container host with no row gets a red suite for a measurement they cannot be expected to take. O-ENG-T4 already owns the *staleness* predicate; the *unmeasured-platform* case reads like the same decision and may belong in the same open question. Not a finding — AC-6.1 scopes the suite to §7.6's matrix — but a PLAN author will hit it on day one. |
+| Q-02 | §3.3 deletes rung 4's `EXPECTED_SKILLS` (`startup.mjs:20`) in favour of the derived set. I checked the arithmetic against AC-3.5's Phase-F erratum and it lands exactly: HEAD's frozen literal has 17 entries = the 10 dispatchable + the 2 `se-implement` supplements + the 5 operator-invoked skills (`consolidate-learnings`, `orchestrate-dev`, `orchestrate-queue`, `tech-lead`, `tech-lead-python`), which is REQ's "10 identifiers over 12 prompt files, with 5 further operator-invoked skills present in the plugin and outside the set" (`REQ:509-512`). So the narrowing is REQ-conformant and no finding follows. The question is whether anything still checks those 5 are *readable* after the constant is deleted — AC-3.5 deliberately excludes them from the equality, and an operator who invokes `/pdlc:tech-lead` interactively is outside the engine, so "nothing does, by design" is a perfectly good answer; it is just not written down. |
+| Q-03 | §7.4's corpus for the model map is "five run configurations … reachable hermetically through `--dry-run-skill` (§7.1) and fixture-driven runs". `--dry-run-skill` selects *which* skill's composed prompt is printed (`FSPEC:190`), which is a single-prompt surface; M-ENG-07 needs the descriptors of a whole run's worth of dispatches (corpus run i is the full phase graph). Is the intended instrument the dry-run surface, or a fixture-driven run whose descriptors are recorded through §7.0's observation seam with no prompt printed at all? §7.4 reads as the latter, and O-5 leaves a whole-run `--dry-run` open, so the citation of `--dry-run-skill` here may be doing more work than the flag can. |
 
 ## Positive Observations
 
-<!-- filled below -->
+- **§7.7 is the best answer this revision produced, and it is the one I asked for least specifically.**
+  F-04 asked for an owning section; what came back names the instrument (an `fs` wrapper installed by
+  the bootstrap), the rejected alternative and why (`strace`/`dtrace`, privileges and C-9), the
+  window (before `runLadder` to after the report is stamped, so the modules' dynamic `import()` is
+  inside it), and — decisively — *why one wrapper sees both readers*: the modules read through their
+  own Node defaults (`defaultReadFile`, `orchestrate-dev.js:8492`) which are also `node:fs`, so §2.5's
+  decision not to override their IO seams is what makes the instrument total. The absence clause is
+  never asserted alone, the fixture carries a **populated** `.claude/workflows/` tree so clause 3
+  cannot pass for the wrong reason, and a deliberate read inside the window must fail it. "We watched,
+  and there was none" instead of "we found no read" is exactly the distinction AC-1.2 is about.
+- **§3.3 corrected the queue's dispatchable set against the run, not against the document.** v1.0's
+  `["se-author"] // A2 re-grounding` was wrong twice over, and the revision says so plainly: `se-author`
+  is Phase-0 triage (`orchestrate-queue.js:1216`, verified) and the queue reaches a second identifier
+  through `runAdvisorySeamFn` at `:1252` with `_agent: rawAgentFn` (`:1258`, verified) into
+  `ADVISORY_RUNG_SKILL` (`orchestrate-dev.js:1797`, verified). The observation that a source scanner
+  "could never have caught that omission either, because the `"se-review"` literal lives in the *dev*
+  module's source, so declaration and scanner would have agreed with each other and both disagreed
+  with the run" is the sharpest sentence in the document. Replacing the scan with a data read is the
+  right call and it is argued from the ten identifiers' actual call shapes, not asserted.
+- **§7.0 fixed a defect nobody's review had raised, by measuring.** The v1.0 mechanism — a
+  module-scoped accumulator read by a file that "runs last by name ordering" — was accepted by both
+  reviewers in round 1. v1.1 measured `node --test`'s per-file process isolation on this repo's node
+  and reports the asymmetric failure mode honestly: the outcome harness would have gone **vacuously
+  green over the empty set** while the catalogue's equality failed permanently. Making the final
+  step's own emptiness a failure, with a self-test that runs it against an empty scratch dir, is the
+  guard that keeps the whole mechanism from degrading back into what it replaced.
+- **§3.4 took the correction further than the finding did.** F-07 asked for one sentence reconciling
+  a run-scalar `transport` with AC-4.5's wording. The revision found that v1.0 had designed an
+  operator-facing transport selector FSPEC had already ruled out (`FSPEC:193-196`), that v1.0
+  contradicted itself between §3.4 and §6.4, and that the `BR-TRANS-6` it cited **does not exist
+  upstream** — then renamed it `R-TRANS-1` as TSPEC-introduced rather than quietly keeping a
+  borrowed id. Retiring a designed feature during a review round is the harder direction to move in.
+- **§8.3's generated-artifact rows are a scope correction with a delivery consequence attached.**
+  Recognising that `stripModuleSyntax` inlines the whole module body, so the `dist/` bundles and
+  `distribution-manifest.json` change even though no added name is published — and that
+  `artifact-freshness` (`.github/workflows/pr-tests.yml:77`, verified) would therefore leave CI red
+  at Phase PUB for a reason unrelated to the work — is the kind of thing that is normally discovered
+  by a red pipeline. Naming `implementation.postWavePathspecs` as the mechanism hands PLAN something
+  it can act on rather than a warning.
 
 ## Recommendation
 
