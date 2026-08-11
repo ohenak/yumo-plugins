@@ -912,6 +912,97 @@ what the loop finally exits with.
 
 ## 12. FSPEC-ENG-10 — The run report and the closed message catalogue
 
+### 12.1 What the report is for
+
+The run report is the only artifact an operator reads when a cron'd run finishes at 4 a.m. Its job
+is to answer, without a re-run: *what did it do, on whose credential, through which endpoint, how
+long did it wait and why, and which pair of versions produced this?*
+
+**BR-REP-1 — the modules' report is extended, never replaced.** Every field the modules already
+produce survives verbatim; the engine adds fields alongside them (AC-4.5).
+
+### 12.2 The engine's added fields
+
+| Field | Content |
+|---|---|
+| engine version | with the plugin version, always as a pair (§4.3) |
+| startup auth catalogue id | the §5.1 row that decided |
+| transport-reported auth source | **per dispatch** (§5.3), not once per run |
+| effective base URL | what §5.1's banner reported (BR-ENV-2) |
+| per-phase dispatch counts | how much work each phase cost |
+| retry / pause rows | one row per retry and per pause: taxonomy member, phase, attempt number, delay |
+| effective dispatch tunables | the retry-attempt, backoff and timeout values actually in force (BR-CLI-3) |
+| permission posture in force | the single named setting's value (BR-PERM-1) |
+
+**BR-REP-2 — an empty set is not a missing field.** A run with zero retries carries an *empty* set
+of retry rows. "Field absent" and "nothing happened" must not be the same observation, or a
+reporting bug reads as a clean run.
+
+**BR-REP-3 — dispatch counts are observable, not derivable.** For an arbitrary run this FSPEC does
+not predict counts; a test asserts their **presence and internal consistency** (counts sum to the
+recorded dispatch rows) and asserts exact values only for a fixture run whose dispatch sequence the
+fixture fixes.
+
+### 12.3 The closed message catalogue
+
+**BR-MSG-1 — every operator-visible string is a registered catalogue entry.** Every banner line,
+refusal, warning and failure message the engine emits is registered and asserted **by id** in the
+test harness. Two checks make the catalogue closed in both directions (AC-6.4(a)): an emitted
+string with no registered id fails, and a registered id no path can emit fails. The second half is
+what keeps the catalogue from accumulating dead entries that make it useless as a review surface.
+
+**BR-MSG-2 — every parse of transport output is a total function.** Every value the engine reads
+out of a transport's output — SDK message stream or CLI stdout/stderr alike — has a defined outcome
+for malformed input. No ad-hoc pattern-matching over stderr. Two outcomes are pinned by test
+(AC-6.4(b)): an unrecognised auth source → dispatch aborted per §5.3, never mapped to a banner id;
+unparseable transport output → `transport-contract-violation` per §8.1.
+
+**BR-MSG-3 — catalogue ids are stable, human-readable, and namespaced by concern** (`auth.*` for
+the posture ids AC-2.1 fixes, and equivalently for the other concerns). An operator quoting an id
+in a bug report must be quoting something greppable.
+
+### 12.4 Verification posture (the report's own testability)
+
+**BR-VER-1 — the default suite is hermetic, and hermeticity is observed, not assumed.** Every test
+constructs the transport through the injected seam; a guard fails the suite on any attempt to
+construct the real transport (SDK client or a `claude` child spawn); and the suite asserts that no
+outbound network connection was attempted (AC-6.1). A "we don't call the network" comment is not
+this property.
+
+**BR-VER-2 — each transport is tested against recorded fixtures of its own real output** — one
+fixture set per transport, since both remain in scope (NG-6) — and refreshing a fixture set against
+a newer SDK or CLI version is a documented, repeatable step rather than a rewrite (AC-6.3).
+
+**BR-VER-3 — the live smoke path is opt-in and never part of the default suite.** Behind an
+explicit flag it drives one real, small feature end-to-end against a scratch repo and asserts the
+same structural set as §10.2, plus the one thing only a live run can show: at least one cross-review
+round reaching a parseable terminal verdict produced by a real model call (AC-6.2).
+
+### 12.5 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-REP-1 | run halts before any dispatch (startup refusal) | a report is still produced carrying the version pair, the startup auth id, and an empty dispatch set (BR-REP-2) |
+| EC-REP-2 | a dispatch's auth source differs from the startup id's implication | both are reported; neither overwrites the other (§5.3) |
+| EC-REP-3 | transport reports a rate-limit event with no delay value | the pause row records the observed delay as unknown rather than fabricating a number (BR-MSG-2) |
+| EC-REP-4 | a message is emitted from a path with no registered id | the catalogue check fails the suite (BR-MSG-1) |
+| EC-REP-5 | a registered id no code path can emit | the catalogue check fails the suite (BR-MSG-1) |
+| EC-REP-6 | a test constructs the real transport by accident | the hermeticity guard fails the suite (BR-VER-1) |
+
+### 12.6 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-58 | every field of §12.2 is present on a completed fixture run, alongside every field the modules already produce (AC-4.5, BR-REP-1) |
+| AT-ENG-59 | a zero-retry run carries an empty retry-row set, not a missing field (BR-REP-2) |
+| AT-ENG-60 | dispatch counts sum to the recorded dispatch rows; a fixed-sequence fixture asserts exact values (BR-REP-3) |
+| AT-ENG-61 | catalogue set-equality, both directions (AC-6.4(a), EC-REP-4/5) |
+| AT-ENG-62 | malformed-input outcomes for every parsed value, including the two AC-6.4(b) names (BR-MSG-2) |
+| AT-ENG-63 | the hermeticity guard fails a suite that constructs the real transport, and no outbound connection is attempted (AC-6.1, BR-VER-1) |
+| AT-ENG-64 | one fixture set exists per transport and a documented refresh step reproduces it (AC-6.3, BR-VER-2) |
+| AT-ENG-65 | the live smoke path runs only behind its flag and asserts §10.2's set plus a real terminal verdict (AC-6.2, BR-VER-3) |
+| AT-ENG-66 | EC-REP-1, EC-REP-2, EC-REP-3, one case each |
+
 ## 13. Open questions
 
 ## 14. Linked Requirements
