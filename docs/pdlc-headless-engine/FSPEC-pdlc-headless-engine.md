@@ -6,14 +6,21 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → **FSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md`, v0.8) |
+| Upstream | REQ → **FSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md`, v0.10) |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-11 |
+| pdlc | draft | Claude | 1.6 | 2026-08-11 |
+
+**Change note, v1.6** (Phase-D erratum round, one item): REQ v0.10's **C-11** authorises the
+guard-executability host precondition DEC-ENG-03 needed and declined to originate, and delegated
+the interpreter set, the observation, the refusal and the ordering here. This document carried none
+of it. Added: rung **4a** of §4.1's ladder, **BR-GUARD-6** (§9.1) stating the precondition,
+EC-START-10/11, AT-ENG-11a, and the BR-index row. Rung numbers 0–5 are unchanged — 4a is inserted,
+not a renumbering (DEC-ENG-03 pins no rung number). No other rule, criterion or decision changed.
 
 **Change note, v1.5** (POSTMORTEM-T v2.0 resolution, `F-24`/`F-01`, one clause): §6.3's preamble
 still attributed §7.3's model-map coverage to the dry-run surface — the claim v1.4's erratum edit
@@ -289,6 +296,7 @@ anything, and `pdlc doctor` runs exactly this ladder and stops. The rungs, in or
 | 2 | **plugin manifest readable** | the located plugin's manifest is present and parseable | refusal naming the manifest path and why it failed |
 | 3 | **version handshake (C-10)** | the plugin version satisfies the engine's declared compatible range | refusal naming the declared range, the version found (or "not found"), and the remedy |
 | 4 | **skill prompts readable** | every prompt file the run can need is present and non-empty (§4.4) | refusal naming each missing or unreadable identifier |
+| 4a | **guard executable (C-11)** | the host can run the shipped `guard-harvest-before-delete` script — an accepted interpreter is obtainable (§9.1, BR-GUARD-6) | refusal naming the candidates tried, what each yielded, and the remedy (install one); exit `1`, nothing dispatched (EC-START-10) |
 | 5 | **billing posture** | the startup auth mapping of §5.1 does not land on the refusal row | refusal `auth.api-key-refused` naming the opt-in flag |
 
 **BR-START-1 — dispatch nothing until every rung passes.** No model call, and no probe of any kind,
@@ -395,6 +403,8 @@ M-ENG-06 records.)
 | EC-START-7 | plugin ships an operator-invoked skill's prompt file, outside the dispatchable set | outside the scoped equality: reported, not refused (§4.4) |
 | EC-START-8 | two rungs fail at once | one message lists both; skipped rungs report their reason (BR-START-2) |
 | EC-START-9 | a prompt file for a dispatchable identifier the engine cannot dispatch | rung 4 refuses naming that identifier (§4.4 Direction B) |
+| EC-START-10 | no accepted interpreter on the host | rung 4a refusal naming every candidate tried and the remedy; exit `1`, nothing dispatched. The host previously ran with the guard silently inert and now does not run at all — the intended outcome (C-11) |
+| EC-START-11 | a candidate is on `PATH` but does not run (the Windows store stub) | not accepted — presence is not executability (BR-GUARD-6); the next candidate decides, and rung 4a refuses only if none runs |
 
 ### 4.6 Acceptance tests
 
