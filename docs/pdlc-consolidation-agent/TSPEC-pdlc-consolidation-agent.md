@@ -9,7 +9,20 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 2.7 | 2026-08-10 |
+| pdlc | draft | Claude | 2.8 | 2026-08-10 |
+
+> **v2.8 (erratum: FSPEC v11.7 minted AT-K3b; absorb it).** Round-16 erratum round, raised by
+> pm-review, te-author and se-review on the same cell. §12.2's unreadable-corpus row still asserted
+> that the whole-corpus observable — the pass terminating `no-op` with an empty consumed pair
+> (§10.3 row 1b) — was reached by "no register AT either". FSPEC **v11.7** minted **AT-K3b** (FSPEC
+> §13.6 register; bound to AC-1.4 as its third cause in §13.7) for exactly that condition, so the
+> clause was false at HEAD. **Absorbed, not re-litigated** (DEC-ERR-01): the gap sentence is replaced
+> by the citation, §12.2's second fixture is stated as AT-K3b's discharge with the register's
+> remaining conjuncts (no proposal file, no reason code, the empty-pair-while-un-consolidated-non-empty
+> discriminator), and §12.3 assigns **AT-K3b** to `consolidationPass.test.js` — the register
+> re-derivation moves to **v11.7 / 100 ids**, restoring the id→file set equality that was short one
+> id. AT-K1…AT-K7 stay in `consolidationCredential.test.js`: the split is by subject, so the AT-K
+> family spans two files, which the equality permits. No other section is touched.
 
 > **v2.7 (erratum: two HEAD claims about this feature's own landed edits).** te-review v15
 > erratum round: (a) §3.2's `CLAUDE.md` row still described the tracked-runtime-artifact
