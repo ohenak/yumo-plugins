@@ -571,6 +571,114 @@ answerable by reading one value, and the run report records the value in force (
 
 ## 8. FSPEC-ENG-06 — Dispatch outcome taxonomy, retry, and timeout
 
+### 8.1 The six-member catalogue
+
+Every dispatch outcome lands in **exactly one** member of this closed catalogue (AC-4.1):
+
+| Member | Means | Engine's response |
+|---|---|---|
+| `ok` | the dispatch completed and its output parsed | hand the result to the module |
+| `retryable` | rate limit, overload, transport interruption | retry within budget (§8.2) |
+| `timeout` | no output for the declared timeout | retry at most once, from the same budget (§8.2) |
+| `auth-failure` | the transport reported an auth problem, or §5.3's assertion failed | stop the run (§8.4) — never retried |
+| `transport-contract-violation` | output the engine cannot parse | no retry; the run stops as an engine failure (exit `1`) |
+| `agent-reported-failure` | the dispatch ran and the agent reported failure | hand it to the module — this is the modules' business, not the engine's |
+
+**BR-FAIL-1 — the catalogue is closed and the classifier is total.** Set-equality is asserted
+between the classifier's possible outputs and these six; a seventh member is a change to this
+section and to AC-4.1, never a configuration. Unrecognised output classifies as
+`transport-contract-violation` — never as success, and never as `retryable` (a retry loop over
+output nobody can parse burns the wall clock without a path to progress).
+
+**BR-FAIL-2 — `agent-reported-failure` is not the engine's to interpret.** The modules already own
+what a failed agent response means for a phase (re-dispatch, round exhaustion, POSTMORTEM). The
+engine classifies it, records it, and passes it through unchanged.
+
+### 8.2 The retry state machine
+
+Two budgets interact, and their interaction is the whole of this subsection:
+
+- **The attempt budget** — `dispatch.retryAttempts` (default 3 retries after the first attempt).
+- **The one-timeout cap** — a dispatch is retried after at most **one** `timeout`, ever.
+
+**BR-RETRY-1 — timeouts draw from the same budget and never reset it.** A `timeout` retry is one of
+the `dispatch.retryAttempts` retries, not an extra one.
+
+**BR-RETRY-2 — the cap is per run of a dispatch, not per attempt position.** Once a dispatch has
+been retried after one `timeout`, a second `timeout` anywhere in its remaining attempts is terminal
+even with budget left.
+
+**BR-RETRY-3 — backoff is `dispatch.retryBackoff`** (default: exponential from 30 s, capped at
+15 min), and **every pause is recorded** in the run report (§12.2), so an unattended run's wall
+clock is explainable afterwards rather than mysterious.
+
+At the default of 3, the observable sequences and their outcomes (AC-4.2's table, which a test
+transcribes row by row):
+
+| Observed sequence | Total attempts | Terminal classification |
+|---|---|---|
+| `retryable` × 3, then success | 4 | `ok` |
+| `retryable` × 4 | 4 | `retryable`, budget exhausted |
+| `timeout`, then success | 2 | `ok` |
+| `timeout`, `timeout` | 2 | `timeout`, terminal (second timeout is never retried) |
+| `retryable`, `timeout`, then success | 3 | `ok` |
+| `timeout`, `retryable`, `retryable` | 3 | non-terminal — a retry of the budget is still owed, so a fourth attempt follows |
+| `timeout`, `retryable`, `retryable`, `retryable` | 4 | `retryable`, budget exhausted |
+| `retryable`, `timeout`, `timeout` | 3 | `timeout`, terminal (the cap, not the budget, ends it) |
+
+**BR-RETRY-4 — retries are per dispatch, not per phase.** A dispatch that succeeds on attempt 3
+leaves the next dispatch of the same phase with a full budget; nothing accumulates across
+dispatches.
+
+### 8.3 Exhaustion: routed through the modules' own failure path
+
+**BR-RETRY-5 — the engine never invents a pipeline outcome.** When retries are exhausted the
+failure is handed to the module, which halts the phase with its normal POSTMORTEM and halt-row
+semantics (AC-4.3). Both halves are observable:
+
+- *Positively*: the halt artifacts exist — the POSTMORTEM file, the `halted` queue row, its
+  pathspec-scoped commit. Their existence is what proves the engine process stayed alive long
+  enough to record the halt.
+- *Negatively*: the set of child processes the engine started is empty at exit, and the engine
+  itself did not crash. On the primary transport that set is empty by construction (no child is
+  spawned); on the fallback it is over the children it spawned.
+
+The process then exits `2` (BR-EXIT-1) — a halt, not a crash.
+
+### 8.4 `auth-failure` is never retried
+
+*Given* an `auth-failure` mid-run, *when* it occurs, *then* the run stops and the message names the
+auth source that failed (AC-4.4). No backoff, no second attempt: a retry loop against a dead
+credential burns exactly the wall clock an unattended queue run depends on, and the credential will
+not heal itself within a 15-minute backoff. §5.3's assertion failure is classified here, so a
+transport that begins reporting an API-key-backed source mid-run stops the run rather than billing
+the remaining dispatches.
+
+### 8.5 Edge cases and error scenarios
+
+| # | Case | Behaviour |
+|---|---|---|
+| EC-FAIL-1 | transport emits partially-parseable output (a well-formed prefix, truncated tail) | `transport-contract-violation` — partial output is not a partial success |
+| EC-FAIL-2 | rate-limit signal arrives *after* a usable result | the result is `ok`; the rate-limit signal is recorded as a pause note, not a failure |
+| EC-FAIL-3 | `dispatch.retryAttempts` configured to 0 | no retries; the first `retryable` is terminal, and the report still carries the (empty) retry row set |
+| EC-FAIL-4 | a `timeout` on the very last attempt of the budget | terminal `timeout`; the cap and the budget agree |
+| EC-FAIL-5 | the transport is unavailable altogether (SDK import fails, `claude` binary absent) | engine failure, exit `1` — this is a host problem, not a pipeline outcome |
+| EC-FAIL-6 | a retry succeeds after a pause longer than the phase's own expectations | `ok`; the pause is in the report, and no module-visible behaviour changes |
+| EC-FAIL-7 | the engine is killed mid-run (host reboot, operator ^C) | nothing special is owed: all state is artifact-derived in the consumer repo, so re-invoking resumes exactly as it does today (G-6) |
+
+### 8.6 Acceptance tests
+
+| Test | Asserts |
+|---|---|
+| AT-ENG-33 | set-equality between the classifier's possible outputs and the six members (AC-4.1, BR-FAIL-1) |
+| AT-ENG-34 | unrecognised output classifies as `transport-contract-violation`, never `ok`, never `retryable` (BR-FAIL-1, EC-FAIL-1) |
+| AT-ENG-35 | each of §8.2's eight sequences, one fixture each, yields its stated attempt count and terminal classification (AC-4.2) |
+| AT-ENG-36 | a dispatch succeeding on attempt 3 leaves the next dispatch a full budget (BR-RETRY-4) |
+| AT-ENG-37 | every pause appears in the run report with taxonomy member, phase, attempt number, and delay (BR-RETRY-3, §12.2) |
+| AT-ENG-38 | exhaustion yields the halt artifacts, an empty child-process set at exit, no engine crash, and exit `2` (AC-4.3, §8.3) |
+| AT-ENG-39 | an `auth-failure` fixture stops the run with the source named and zero retries attempted (AC-4.4) |
+| AT-ENG-40 | EC-FAIL-2…EC-FAIL-6, one case each |
+
 ## 9. FSPEC-ENG-07 — Guard parity for engine-dispatched agents
 
 ## 10. FSPEC-ENG-08 — Pipeline parity and the empty consumer read-set
