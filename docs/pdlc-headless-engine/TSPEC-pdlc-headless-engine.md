@@ -1950,19 +1950,21 @@ every file it touches; a component in **bold** is new in this feature.
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
 | `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor, and the record appended to §7.0's accumulator at settlement — one line per attempt, at composition with `null` terminals when the dispatch never executes** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
-| `lib/startup.mjs` | changed (structured rungs 0–5, derived skill set) | §4.3 |
+| `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.6's rung 4a guard-executable check — derived skill set) | §4.3, §6.4 |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
 | **`__tests__/_assert-suite-wide.mjs`** | new — §7.4's five suite-wide assertions (four set-equality properties + the pre-phase predicate, `no record with corpusRun != null has phase === null`), one per row of that section's table, over three accumulators | §7.0, §7.4 |
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
 | `pdlc/engine/package.json` | changed — `scripts.test` becomes the runner invocation | §7.0 |
+| `pdlc/engine/__tests__/smoke.test.js` | **extended** — the HEAD file (387 lines) that already runs the real `orchestrate-dev.js` against a write-replaying transport double; §7.3's parity oracle is this file grown, not a new one, and it is one of the nine `*.test.js` §1.1 counts | §7.3 |
 | `pdlc/workflows/orchestrate-dev.js` | **exports added** (`DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants) + bare skill literals replaced by those constants at their dispatch sites | §3.3 |
 | `pdlc/workflows/orchestrate-queue.js` | **exports added** (`DISPATCHABLE_SKILLS`, `SKILL_TRIAGE`); imports `ADVISORY_RUNG_SKILL` (`:41`) | §3.3 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js` | **regenerated** — `stripModuleSyntax` inlines the whole module body, so the added constants change the bundle bytes even though no name is published | §3.3 |
 | `pdlc/workflows/dist/distribution-manifest.json` | **regenerated** — sha1 and byte counts follow the bundles | §3.3 |
 | `docs/_constraints/pdlc-engine-baseline.md` | one measurement added (**M-ENG-09**, PreToolUse deny under `bypassPermissions`) | §6.5 |
 | `.github/workflows/pr-tests.yml` | one job added (`engine-tests`) | §7.6 |
+| `.claude/pdlc.config.json` | **changed** — `implementation.testCommand` (`:3`) runs `cd pdlc/workflows && npm test …` and *only* that, so no Phase I wave gate executes the engine suite this feature builds; the command must additionally run `pdlc/engine`'s suite | §7.0, §7.6 |
 
 No other file under `pdlc/workflows/` is modified (§2.4, §2.5) — and this claim is now load-bearing
 in a second way. **The per-phase view is bought entirely on the engine side.** §4.1 takes the phase
@@ -1978,6 +1980,16 @@ must be in that task's owned-file set and its commit — `.github/workflows/pr-t
 the source change without the rebuild leaves CI red at Phase PUB for a reason unrelated to the work.
 `implementation.postWavePathspecs` naming `pdlc/workflows/dist/` is the mechanism this repo already
 ships for exactly that.
+
+**The wave gate is a fourth PLAN obligation, and it is currently blind to this feature.**
+`.claude/pdlc.config.json`'s `implementation.testCommand` (`:3`) is
+`cd pdlc/workflows && npm test …` — it runs the *workflows* suite and nothing else. Phase I's wave
+gate executes exactly that command, so **every wave of this feature would go green without a single
+`pdlc/engine/` test ever running**, and the first execution of the suite this document designs would
+be the `engine-tests` CI job at Phase PUB — the latest possible moment, past every gate meant to
+catch it. The config is therefore in the edit surface: `testCommand` must run both suites, and the
+task that first adds an engine test owns the change. This is the same class of omission as the
+generated-artifact rows above — a gate that names one directory while the work lands in another.
 
 ## 9. Open Questions
 
