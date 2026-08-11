@@ -76,3 +76,7 @@ and one is a jitter-vs-equality wording nit in AT-ENG-37.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 5, "low": 1}
+
+APPROVAL-HASH: sha256:494a860a6135f171f5211a16796b875acefec455354dff869f4e0455536fffaa
+APPROVAL-HASH-NORMALIZED: sha256:265d9debbfb996e056d7ef7ef8eebff46d1713b7c22fd24fd7c8b58edcf87815
+REVIEWED-COMMIT: cb3ab14ef8d48b18b9f0a09638300cdb0c6ae2a8
