@@ -239,22 +239,27 @@ docs-derived claim, kept as the policy-risk baseline above).
 ## 4. Constraints
 
 - **C-1 — Auth: subscription-first, fail-loud.** *(operator hard constraint)* The engine
-  authenticates via the logged-in Claude Code state or `CLAUDE_CODE_OAUTH_TOKEN`. It must
-  never *silently* fall back to `ANTHROPIC_API_KEY` billing: if subscription auth is
-  unavailable and an API key is present, the engine refuses to start unless the operator
-  passes an explicit opt-in flag; the startup banner names the auth source in use. The
-  refusal is at **startup**, before any dispatch — a run that has already billed a phase to
-  the wrong account has already failed. **Mechanical form (§1.3):** for the primary Agent-SDK
-  transport, the engine asserts the SDK-reported `apiKeySource` (from the `system/init`
-  message) is exactly `"none"` at startup and at each dispatch; any other value is a startup
-  refusal naming the reported source, absent the explicit opt-in flag (`auth.allowApiKeyBilling`,
-  §4.1). The same fail-closed check applies to the `claude -p` fallback via its own reported
-  auth source.
-- **C-2 — Environment passthrough is contractual.** *(operator hard constraint)* Every
-  spawned `claude` process inherits the parent environment, headroom's
-  `ANTHROPIC_BASE_URL` (`http://127.0.0.1:8787`) and `ANTHROPIC_CUSTOM_HEADERS` included.
-  The engine never constructs a child environment from scratch — it only ever extends the
-  parent's — and it never sets, unsets, or rewrites either variable. The startup banner
+  authenticates via the logged-in Claude Code state or `CLAUDE_CODE_OAUTH_TOKEN`, and must
+  never *silently* fall back to `ANTHROPIC_API_KEY` billing. The obligation has two parts,
+  because the SDK reports its auth source only from inside a dispatch (SE F-02):
+  - **C-1a — startup, billing-free.** Before any dispatch the engine decides from
+    *inspectable* state only — the process environment and the Claude Code settings files —
+    whether pay-per-token billing is possible: `ANTHROPIC_API_KEY` present with no
+    subscription credential is a startup refusal naming the opt-in flag
+    (`auth.allowApiKeyBilling`, §4.1). This check costs no tokens and issues no probe
+    dispatch; the banner reports what it found (AC-2.1).
+  - **C-1b — per-dispatch, fail-closed.** Every dispatch asserts the transport-reported auth
+    source is in the allowed policy set — on the primary transport, `apiKeySource` from the
+    SDK's `system/init` message is exactly `"none"`; on the `claude -p` fallback, its own
+    reported source (O-1). Any other value aborts that dispatch before the model is billed,
+    naming the reported source, absent the opt-in flag. A run may therefore pass C-1a and
+    still stop at its first dispatch; that ordering is intended, not a gap.
+- **C-2 — Environment passthrough is contractual.** *(operator hard constraint)* The
+  environment the engine hands a dispatch is always the parent environment extended, never
+  constructed from scratch: on the primary transport it is the dispatch environment passed to
+  the SDK, on the fallback the inherited child environment. headroom's `ANTHROPIC_BASE_URL`
+  (`http://127.0.0.1:8787`) and `ANTHROPIC_CUSTOM_HEADERS` are carried through unmodified on
+  either path — the engine never sets, unsets, or rewrites either variable. The startup banner
   reports the effective base URL.
 - **C-3 — `cwd` is the consumer project.** Every dispatch runs with the consumer repo as its
   working directory; all artifact paths remain consumer-relative exactly as today.
@@ -262,26 +267,31 @@ docs-derived claim, kept as the policy-risk baseline above).
   existing seams is a change to the modules (tested, in this repo), never a patched copy.
 - **C-5 — Guard parity.** The `guard-harvest-before-delete` invariant (no deletion of
   `CROSS-REVIEW-*` / `CODE_REVIEW-*` / `ADVISORY-*` without `LEARNINGS-{feature}.md`) must
-  hold for engine-dispatched agents, enforced via per-dispatch hook/settings configuration
-  passed to `claude -p` — not left to plugin installation.
-- **C-6 — Non-interactive permissions are explicit.** The permission mode passed to
-  `claude -p` (allowed tools, bypass level) is a named, reviewable engine setting, not an
-  ad-hoc `--dangerously-skip-permissions` scattered through call sites.
+  hold for engine-dispatched agents on **either** transport, enforced from the engine's own
+  per-dispatch configuration — not left to plugin installation. The mechanism differs per
+  transport and is O-2's to decide; the invariant does not.
+- **C-6 — Non-interactive permissions are explicit.** The permission posture each dispatch
+  carries (allowed tools, bypass level) comes from one named, reviewable engine setting on
+  either transport, not an ad-hoc escalation scattered through call sites.
 - **C-7 — Model aliases forwarded, not re-mapped.** Whatever model a module names for a
-  dispatch passes through to the CLI untranslated. The engine holds no model table, no
-  alias map, and no fallback list: alias resolution and unknown-alias errors stay the CLI's
-  job, so a module that gains a new model tier needs no engine change.
+  dispatch passes to the transport untranslated. The engine holds no model table, no alias
+  map, and no fallback list: **the transport in use owns alias resolution and owns rejection
+  of an unknown alias** (SE Q-01 — whether the SDK resolves bare aliases with the CLI's
+  semantics is O-1's to measure, per transport, and the answer changes neither this
+  constraint nor the engine). A module that gains a new model tier needs no engine change.
 - **C-8 — Operator-visible strings are a closed catalogue** *(DC-01)*. Every banner line,
   refusal, warning, and failure message the engine emits is a registered catalogue entry
   asserted by id in the test harness, and every value the engine parses out of the CLI is
   read by a **total** function with a defined outcome for malformed input. No ad-hoc regex
   over stderr, no string emitted outside the catalogue.
-- **C-9 — Every runtime fact is measured, per platform** *(DC-02)*. The CLI flag surface,
-  auth-source detection, and output shape are recorded from the installed CLI with the
-  command that measured them (O-1), never inferred from documentation; the supported
-  platform set is stated and each claim is measured on each member.
+- **C-9 — Every runtime fact is measured, per platform** *(DC-02)*. The transport flag /
+  message surface, auth-source detection, and output shape are recorded from the installed
+  SDK and CLI with the command that measured them (O-1), never inferred from documentation;
+  the supported platform set is stated and each claim is measured on each member.
 - **C-10 — Plugin version handshake, hard constraint.** *(operator hard constraint,
-  2026-08-08)* The engine declares a compatible pdlc-plugin version range. At startup it
+  2026-08-08)* The engine declares a compatible pdlc-plugin version range **as data in one
+  place a test can read** — the `pdlcPluginCompat` field of the engine package manifest (TE
+  Q-03; at HEAD `pdlc/engine/package.json` carries `"^0.22.0"`). At startup it
   locates the installed plugin (O-8) and reads its `.claude-plugin/plugin.json` version. A
   missing plugin install, or an installed version outside the declared range, is a fail-closed
   startup refusal — the engine dispatches nothing and exits non-zero with a message naming
@@ -304,7 +314,6 @@ No AC may depend on a tunable that is not listed here.
 | `dispatch.retryBackoff` | exponential from 30 s, capped at 15 min | engine config | AC-4.1 |
 | `dispatch.timeoutMinutes` | 30 min per dispatch | engine config | AC-4.2 |
 | `auth.allowApiKeyBilling` | `false` (flag-only opt-in, never a config file) | operator, per invocation | AC-2.2 |
-| `queue.loopIdleExit` | exit 0 when no ready row remains | engine | AC-1.2 |
 
 The retry defaults are a starting point chosen to absorb a transient rate-limit window
 without masking a persistent one, not a measured floor; O-7 obliges recording the observed
