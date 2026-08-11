@@ -252,6 +252,18 @@ A continuation dispatch whose round is already fully applied should write nothin
 
 ---
 
+## Citation Convention (DEC-DOC-01)
+
+When a TSPEC, DECISIONS, or PLAN cites another document — another feature artifact, a SKILL, or
+shipped code — cite **stable content, not a line number**: a heading, a spec id (`AC-…`, `BR-…`,
+`§N.M`), an exported symbol name, or a short verbatim quote. A raw `file:line` anchor is permitted
+only where the position itself is the claim being tested — e.g. runtime-measured evidence such as
+`pdlc/workflows/__tests__/consolidationSkillAnchors.test.js` asserts a specific line still resolves to
+a specific role (see `docs/_decisions/DECISIONS-review-severity-bars.md`, `DEC-DOC-01`). Never use a
+line number as a general-purpose pointer: an unrelated edit above the cited line invalidates it
+without changing the claim it names, and that churn is exactly what DEC-DOC-01 measured as
+bookkeeping cost, not progress.
+
 ## Erratum Rounds — Re-ground Upstream First
 
 When you are dispatched to land erratum items against a document you authored (the targeted

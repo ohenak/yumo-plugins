@@ -264,3 +264,29 @@ the document against upstream HEAD (failed, 1 High).
   necessary, not sufficient; whether the document is still a faithful compression of the upstream it
   now cites is the confirmation's actual question, and the outcome must not depend on which reviewer
   happens to over-deliver.
+
+---
+
+## DEC-DOC-01: cite content, not line number
+
+**Context.** pdlc feature documents (REQ/FSPEC/TSPEC/PLAN/PROPERTIES) grew a convention of citing
+other documents by raw line numbers — `` `orchestrate-dev.js:1842` ``, `` `SKILL.md:70-78` ``, table
+cells like `` (`:70-79`) ``. Measured on the `pdlc-consolidation-agent` feature: 104 of 558 branch
+commits existed purely for anchor/citation bookkeeping; a single row moving in a SKILL file (`:70-78`
+→ `:70-79`) consumed three Definition-of-Done rounds of re-approval across four documents; one REQ
+review round's fix (renumbering one enumerated value) obligated a pin migration across 13 cited
+locations in four files. A line number is a property of the file's current layout, not of the claim
+being cited — every unrelated edit above the cited line invalidates the citation without touching the
+claim it names.
+
+**Decision.** New feature documents cite **stable content, not line numbers**: unique headings,
+exported symbol names, spec IDs (`AC-…`, `BR-…`, `§N.M`), or a short verbatim quote — something that
+survives an unrelated edit to the cited file. A raw `file:line` anchor is permitted only where the
+position itself *is* the claim, i.e. runtime-measured evidence such as
+`pdlc/workflows/__tests__/consolidationSkillAnchors.test.js` asserts a specific line still resolves to
+a specific role; in that narrow case a stale-but-role-resolving anchor is itself the
+finding-generating signal, not bookkeeping overhead.
+
+**Scope.** Applies to citations written into new feature documents (REQ, FSPEC, TSPEC, PLAN,
+PROPERTIES, DECISIONS) and into authoring/review SKILL prompts. Does not require retrofitting
+citations already committed in prior features' documents; it governs what gets written going forward.

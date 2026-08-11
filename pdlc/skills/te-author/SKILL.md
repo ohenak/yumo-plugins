@@ -244,6 +244,16 @@ Max 3-5 E2E tests per feature. If you need more, the feature needs decomposition
 
 ---
 
+## Citation Convention (DEC-DOC-01)
+
+When a PROPERTIES document cites another document — another feature artifact, a SKILL, or shipped
+code — cite **stable content, not a line number**: a heading, a spec id (`AC-…`, `BR-…`, `§N.M`), an
+exported symbol name, or a short verbatim quote (this is on top of, not instead of, the fixture-string
+verbatim rule above). A raw `file:line` anchor is permitted only where the position itself is the
+claim being tested (see `docs/_decisions/DECISIONS-review-severity-bars.md`, `DEC-DOC-01`) — never as
+a general-purpose pointer. An unrelated edit above a cited line invalidates the citation without
+changing the claim it names.
+
 ## Erratum Rounds — Re-ground Upstream First
 
 When you are dispatched to land erratum items against a document you authored (the targeted
