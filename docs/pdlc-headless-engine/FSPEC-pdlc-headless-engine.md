@@ -16,16 +16,14 @@ feature: pdlc-headless-engine
 | pdlc | draft | Claude | 1.3 | 2026-08-11 |
 
 **Change note, v1.3** (round 3, addressing `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3`):
-the one High is §4.4 — AC-3.5's equality is **rescoped**, not weakened: it ranges over the
-modules-derived dispatchable subset and **both directions fail closed**, an operator-invoked skill's
-file is out of set (EC-START-7) and a file for a dispatchable identifier the engine cannot dispatch
-refuses (EC-START-9); AT-ENG-10 pins all three fixtures, and §6.4, §13.1 O-ENG-1, §14.1 and §18.3
-follow. Also: §13.1's O-ENG-4/5 cells restated as REQ v0.8 settled them, `doctor`'s three AC-2.1
-fields named (BR-START-3) and traced (§14.1), §2's AC-4.1 pointer corrected to §8.1, rung 0 brought
-inside BR-START-2 with the usage-error/refusal boundary stated (BR-REP-0a), the closed flag surface
-given EC-CLI-7 and a test, the approval anchors re-attributed to the module (BR-PARITY-5), the
-classifier's forward direction scoped suite-wide (BR-FAIL-1), and jitter/guard-message oracles
-tightened (AT-ENG-37, AT-ENG-43). No decision taken in v1.0–v1.2 is reopened.
+the High is §4.4: AC-3.5's equality is **rescoped**, not weakened — over the modules-derived
+dispatchable subset, **both directions failing closed** (EC-START-7/9, AT-ENG-10), with §6.4,
+§13.1 O-ENG-1, §14.1 and §18.3 following. Also: O-ENG-4/5 cells restated as REQ v0.8 settled them,
+`doctor`'s three AC-2.1 fields named (BR-START-3) and traced, §2's AC-4.1 pointer corrected to §8.1,
+rung 0 brought inside BR-START-2 with the usage-error/refusal boundary (BR-REP-0a), EC-CLI-7 for the
+closed flag surface, approval anchors re-attributed to the module (BR-PARITY-5), the classifier's
+forward direction scoped suite-wide (BR-FAIL-1), and the AT-ENG-37/43 oracles tightened. No decision
+taken in v1.0–v1.2 is reopened.
 
 **Change note, v1.2** (upstream re-grounding, no new content): REQ v0.8 landed the Phase-F erratum
 round, so all five §13.1 items are resolved upstream and M-ENG-06 is total over the REQ's criteria
@@ -297,12 +295,10 @@ listing both, because an operator fixing a cron host one round-trip at a time is
 this rule exists to prevent. Rungs whose evidence is unavailable because an earlier rung failed
 report as *skipped, with the reason* — never as passing.
 
-Rung 0 is inside this rule, not before it: a rung-0 **refusal** on a well-formed command (a `--cwd`
-that is not a git repository, a `dev` REQ path that does not exist — EC-CLI-3, EC-DISP-5) reports
-rungs 1–5 as skipped-with-reason in the same message, and emits the report line (BR-REP-0). A
-**usage error**, which never became a command, is outside the ladder entirely: usage on stderr,
-exit `1`, no rung report and no report line (BR-REP-0a). `doctor` inherits both behaviours
-unchanged, since it is the same ladder (BR-START-3).
+Rung 0 is inside this rule: a rung-0 **refusal** on a well-formed command (EC-CLI-3, EC-DISP-5)
+reports rungs 1–5 as skipped-with-reason in the same message and emits the report line (BR-REP-0).
+A **usage error** is outside the ladder entirely — usage on stderr, exit `1`, no rung report and no
+report line (BR-REP-0a). `doctor` inherits both, being the same ladder (BR-START-3).
 
 **BR-START-3 — `doctor` is the same ladder, not a second implementation.** Any divergence between
 what `doctor` reports and what a run's start enforces is a defect: `doctor` exists to answer "will a
@@ -1138,13 +1134,11 @@ printing the ladder and reason to stderr only (`:251-258` for `dev`, `:280-286` 
 refusal emits no report line today and AT-ENG-68's refusal half starts red.
 
 **BR-REP-0a — a usage error is not a refusal, and emits no report line.** The rule above ranges over
-invocations the engine parsed into a well-formed command: those the ladder then rejects (rung-0
-path and working-directory refusals, EC-CLI-3, EC-DISP-5, and rungs 1–5) always emit the line.
-An invocation the engine could not parse into a command at all — an unknown command, a missing
-required positional, a value flag with no value (EC-CLI-1, EC-CLI-2, EC-CLI-5) — prints usage on
-stderr and exits `1` with **no** report line, because there is no run to report on. This is the
-boundary a cron wrapper needs stated: a parseable last line is guaranteed for everything it was
-able to invoke, never for a malformed command line. HEAD already behaves this way
+invocations parsed into a well-formed command: those the ladder then rejects (EC-CLI-3, EC-DISP-5,
+rungs 1–5) always emit the line. An invocation that never became a command — unknown command,
+missing required positional, value flag with no value (EC-CLI-1/2/5) — prints usage on stderr and
+exits `1` with **no** report line. A cron wrapper is guaranteed a parseable last line for everything
+it was able to invoke, never for a malformed command line. HEAD already behaves this way
 (`pdlc/engine/bin/pdlc.mjs:243-247` — usage on stderr, exit code `1`, return before any report).
 
 **BR-REP-1 — the modules' report is extended, never replaced.** Every field the modules already
