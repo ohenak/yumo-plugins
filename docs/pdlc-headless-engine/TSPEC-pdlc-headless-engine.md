@@ -300,7 +300,7 @@ Plugin-root resolution is discharged and unchanged (O-8): explicit override → 
 extracted cache → marketplace checkout, with `tried[]` retained for a legible refusal
 (`skills.mjs:204-256`).
 
-### 3.4 The `Transport` interface and its two implementations (C-3, BR-TRANS-*)
+### 3.4 The `Transport` interface and its two implementations (C-2, C-6, BR-TRANS-*)
 
 One interface, deliberately narrow — a transport dispatches a composed prompt and reports what it
 observed. It owns no policy: no retry, no backoff, no rate-limit pausing, no auth verdict. Those live
@@ -811,5 +811,68 @@ that difference in its bash-3.2/bash-5 constraint. The job runs the hermetic sui
 CI dispatches a model call or reads a credential.
 
 ## 8. Traceability
+
+### 8.1 Acceptance criteria → design section → owning component
+
+Total over REQ v0.9's 26 acceptance criteria. "Owning component" names where the behaviour lives, not
+every file it touches; a component in **bold** is new in this feature.
+
+| AC | Subject | TSPEC § | Owning component |
+|---|---|---|---|
+| AC-1.1 | artifact parity with a Claude Code run | §3.1, §3.6, §7.3 | `lib/run.mjs`, `lib/report.mjs` (parity is a property of the seams, not a component) |
+| AC-1.2 | no consumer `.claude/workflows/` write; empty tree | §2.1, §2.4 | `lib/run.mjs` (`WORKFLOW_MODULE_URLS`) |
+| AC-1.3 | queue surface, both stop reasons named | §3.1 (`_runPipeline`), §5.4 | `lib/run.mjs`, `bin/pdlc.mjs` |
+| AC-1.4 | halt recorded, exit `2` not `1` | §5.4 | `bin/pdlc.mjs:236-238` |
+| AC-1.5 | the engine's own suite | §7.1, §7.6 | `__tests__/`, `.github/workflows/pr-tests.yml` |
+| AC-2.1 | startup banner, six ordered auth rows | §3.2, §4.3 | **`lib/auth.mjs`**, `lib/startup.mjs` |
+| AC-2.2 | key present without opt-in ⇒ refusal | §3.2 (row 5), §5.4 | **`lib/auth.mjs`**, `bin/pdlc.mjs:88-93` |
+| AC-2.3 | proxy env reaches every dispatch | §3.4 | `lib/transport.mjs:159` |
+| AC-2.4 | logged-in session, key ignored | §3.2 (row 4), §4.5 | **`lib/auth.mjs`**, `lib/report.mjs` |
+| AC-2.5 | dispatch cwd is the repo, per dispatch | §2.3, §4.1 | `lib/adapter.mjs:281`, `lib/run.mjs:155` |
+| AC-3.1 | a dispatch composes for every skill in the set | §3.3 | `lib/skills.mjs:312` |
+| AC-3.2 | no plugin installed ⇒ legible refusal | §3.3 (resolution), §4.3 rung 1 | `lib/skills.mjs:204-256` |
+| AC-3.3 | pinned model map, observable | §4.1 | modules' constants; `lib/adapter.mjs:271` passes through |
+| AC-3.4 | permission posture is explicit | §6.2, §6.5 | `lib/transport.mjs:89`, `:170-174` |
+| AC-3.5 | dispatchable ≡ readable, both directions | §3.3, §7.4 | **`DISPATCHABLE_SKILLS`** exports + `lib/startup.mjs` rung 4 |
+| AC-4.1 | six-member outcome taxonomy | §4.2, §5.1 | **`lib/outcome.mjs`** |
+| AC-4.2 | retry budget and timeout cap | §5.2 | `lib/adapter.mjs:285-318`, `computeRateLimitWaitMs :75` |
+| AC-4.3 | exhausted retries surface legibly | §5.2, §5.3, §3.5 | `lib/adapter.mjs`, **`lib/catalogue.mjs`** |
+| AC-4.4 | mid-run `auth-failure` is fatal, never retried | §5.1, §5.3 | **`lib/outcome.mjs`**, `lib/run.mjs:187/228` |
+| AC-4.5 | report carries module fields + engine block | §3.6, §4.5 | `lib/report.mjs:36`, `:70` |
+| AC-5.1 | guard refuses with `LEARNINGS` absent, per transport | §6.2, §6.3 | engine-supplied hook config; shipped `.sh` |
+| AC-5.2 | harvest's deletions succeed once it exists | §6.1, §6.3 | same |
+| AC-6.1 | hermetic suite, observed | §7.1 | `__tests__/` bootstrap (guard + socket trap) |
+| AC-6.2 | opt-in live smoke | §7.5 | `__tests__/live/` |
+| AC-6.3 | per-transport recorded fixtures | §7.2 | `__tests__/fixtures/` |
+| AC-6.4 | closed message catalogue, both directions | §3.5, §7.4 | **`lib/catalogue.mjs`** |
+
+### 8.2 Constraints → design section
+
+| C | TSPEC § | C | TSPEC § |
+|---|---|---|---|
+| C-1a startup billing posture | §3.2, §4.3 | C-6 permissions explicit, non-interactive | §6.2, §6.5 |
+| C-1b per-dispatch auth assertion | §3.4, §4.3 | C-7 model aliases forwarded, not re-mapped | §4.1 |
+| C-2 environment passthrough | §3.4 | C-8 closed message catalogue | §3.5 |
+| C-3 `cwd` is the consumer project | §2.3, §4.1 | C-9 every runtime fact measured, per platform | §6.5, §7.2, §7.6 |
+| C-4 the modules are not forked | §2.4, §2.5, §3.3 | C-10 plugin version handshake | §4.3 rung 3 |
+| C-5 guard parity | §6.2, §6.4 | | |
+
+### 8.3 New and changed files
+
+| File | State | Sections |
+|---|---|---|
+| **`lib/auth.mjs`** | new | §3.2, §4.3 |
+| **`lib/outcome.mjs`** | new | §4.2, §5.1 |
+| **`lib/catalogue.mjs`** | new | §3.5 |
+| **`lib/transport-cli.mjs`** | new | §3.4 |
+| `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
+| `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record) | §3.6, §5.2 |
+| `lib/startup.mjs` | changed (structured rungs 0–5, derived skill set) | §4.3 |
+| `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
+| `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor`, flags) | §5.4, §7.1 |
+| `pdlc/workflows/orchestrate-dev.js`, `orchestrate-queue.js` | **one export each** (`DISPATCHABLE_SKILLS`) | §3.3 |
+| `.github/workflows/pr-tests.yml` | one job added | §7.6 |
+
+No other file under `pdlc/workflows/` is modified (§2.4, §2.5).
 
 ## 9. Open Questions
