@@ -675,10 +675,25 @@ no rate-limit pause at all and so would otherwise appear in the report nowhere. 
 did. The two are not redundant — one is the engine's decision, the other the provider's state.
 
 `DenialRow` records permission denials (`{ timestamp, skill, tool, reason }`). `DispatchCounts` is
-`{ bySkill: { [skill]: number }, byPhase: { [label]: number } }`: FSPEC §12.2 asks for **per-phase**
+`{ bySkill: { [skill]: number }, byPhase: { [phase]: number } }`: FSPEC §12.2 asks for **per-phase**
 counts, and HEAD's `{[skill]: number}` (`adapter.mjs` `dispatchCounts`) cannot answer that, since one
 skill is dispatched from several phases. Both keys are always present, empty objects included. All of
 these feed the report; none feeds a decision.
+
+**`byPhase` is keyed on §4.1's `phase` — the normalised `_phase` run state — never on `label`.** This
+is the difference between a real per-phase view and a single bucket: `label` is `null` at every
+dispatch site (§4.1, measured), so a `byPhase` keyed on it would report `{ "null": N }` for the whole
+run and answer FSPEC §12.2 with strictly less information than `bySkill` already carries, while
+looking satisfied. The same correction applies to the three other rows that carry a phase:
+
+| Row / field | v1.1 wrote | This revision |
+|---|---|---|
+| `PauseRow.label`, `DenialRow.label` (`adapter.mjs:305`, `:340` push `label: tag`) | `tag`, i.e. always the skill | keep `label` as the log tag **and** add `phase`, so a pause is attributable to a phase rather than re-stating the skill |
+| `RetryRow` | `{ timestamp, skill, label, attempt, outcome, delayMs }` | `{ timestamp, skill, phase, attempt, outcome, delayMs }` — FSPEC §12.2 names *phase*, and this is the field that supplies it |
+| `authSources` (§4.5) | `{ skill, label, attempt, apiKeySource }` | `{ skill, phase, attempt, apiKeySource }` — the per-dispatch record AC-2.4 and AC-4.5 both read |
+
+`label` survives only where it is honestly a log tag. Every field that a reader would take to mean
+"which phase" is now supplied by the seam that actually knows.
 
 ### 4.5 The `engine` report block
 
