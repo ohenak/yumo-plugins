@@ -9,7 +9,34 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 11.7 | 2026-08-10 |
+| pdlc | draft | Claude | 11.8 | 2026-08-11 |
+
+**Erratum round (Phase DOD, CODE_REVIEW v6 L1), v11.8 — one erratum, two sites in §3.3, no rule, AC,
+BR, NFR, AT row or vocabulary pin changed.** `ERRATUM: FSPEC:` — §3.3's description of the consumed
+pair was falsified by two remediations on two different schedules, and neither round re-swept it.
+(1) `eb2a0e44` narrowed the pair to the **readable** members, falsifying the Membership row's
+"exactly the un-consolidated set computed at step 2" (`:425`); (2) `dcf708c7` moved that narrowing
+onto `state.consumed` itself at **step 6.5** — so that the pair, the durable terminal row, report
+item 3 and the PR trailer all read one field and agree — falsifying "The set is frozen at step 2 and
+is not recomputed later in the pass" (`:432`).
+
+**Absorbed, not re-litigated.** TSPEC §12.2 v2.8 (conjunct (2) is set equality with `{readable}`),
+REQ NFR-5 (which names the **consumed** set, not the un-consolidated one) and
+`pdlc-consolidation-vocabularies.md:133-134` (consumed is "fixed for the promotion work") already
+agreed with the shipped module at HEAD; FSPEC §3.3 was the lone dissenter, so this erratum re-anchors
+the downstream description and changes no upstream rule. The Membership row now states set equality
+with the **readable subset** and names the unreadable complement as counted-but-not-consumed; the
+freeze paragraph now distinguishes the **boundary** freeze (step 2, still absolute) from the
+**consumed-set** narrowing (step 6.5, a re-cut of that fixed set that can only remove members the
+boundary already admitted, never add one), and states why vocabularies §3's "fixed for the promotion
+work" clause remains true — step 6.5 still precedes step 7's append and step 8's dispatch.
+
+**Oracle.** `pdlc/workflows/__tests__/consolidationConsumedPairDoc.test.js` is the standing warranty
+so the next edit to the narrowing cannot leave §3.3 behind again. It is behaviour-grounded and
+conditional, not a prose match: conjunct A drives the real `main()` on a one-readable/one-unreadable
+corpus and observes the consumed set is a *strict* subset of the un-consolidated set, and only that
+observed fact licenses the doc conjuncts. Mutation-probed in both directions — restoring `:425`
+reddens B/C only, restoring `:432` reddens D/E only.
 
 **Erratum round (Phase T), v11.7 — one erratum, three sites, no rule or AC changed.** REQ v2.5 §4b
 added AC-1.4's **third** cause of `no-op`: every enumerated basename unreadable, so nothing was
@@ -422,16 +449,27 @@ LEARNINGS-{feature}.md
 
 | Property | Value | Source |
 |---|---|---|
-| Membership | **exactly** the un-consolidated set computed at step 2 — neither more nor fewer | NFR-5 |
+| Membership | **exactly** the **readable** subset of the un-consolidated set computed at step 2 — neither more nor fewer. An enumerated entry the pass cannot open is still counted un-consolidated and is still named individually (as `unread`), but it is **not** consumed and so is absent from the pair | NFR-5, TSPEC §12.2 v2.8 |
 | Ordering | one basename per line; no other record type inside the pair | vocabularies §3 |
 | Emptiness | emitted **even when the set is empty**, as an empty pair | NFR-5, vocabularies §3(a) |
 | Position | before any other record this pass writes | vocabularies §3(a) |
 | Write shape | one append at end of file; a whole-file read-modify-write is forbidden | vocabularies §3 |
 | Written by | every marker-holding pass — never a `refused` or `skipped-cadence` tick | AC-1.3, AC-7.2 |
 
-The set is **frozen at step 2** and is not recomputed later in the pass, so a LEARNINGS file that
-appears on disk mid-pass belongs to the next pass, not this one. That freeze is what makes the pair
-emittable in one append before any promotion work.
+The *boundary* is **frozen at step 2** — the enumeration and the un-consolidated set it computes are
+not re-taken later in the pass, so a LEARNINGS file that appears on disk mid-pass belongs to the next
+pass, not this one.
+
+The *consumed set* is narrowed once inside that frozen boundary, at **step 6.5**, when the pass opens
+the bodies and discovers which members it can actually read (TSPEC §12.2 v2.8). The narrowing is a
+re-cut of a fixed set, never a re-enumeration: it can only remove members the step-2 boundary already
+admitted, never add one. `state.consumed` is the single field all four consumed-set surfaces read —
+this pair, the durable terminal row, report item 3 (AC-7.1's "LEARNINGS consumed by basename") and the
+PR trailer's `PDLC-CONSOLIDATION-SOURCES` — which is what makes those four agree.
+
+Step 6.5 still precedes step 7's append and step 8's promotion dispatch, so the pair remains emittable
+in one append before any promotion work (vocabularies §3's "fixed for the promotion work" clause holds
+unchanged).
 
 The pair's durability is the AC-3.8b commit at step 15, which carries `.consolidation-log.md` in its
 pathspec (§5.4). A pass whose commit fails records `writes-uncommitted` and leaves the pair in the
@@ -547,7 +585,7 @@ That state has **two producers**, and the spec is deliberately conservative acro
 | Producer | What the dying pass had already done | What the reclaiming pass records |
 |---|---|---|
 | Killed inside the **take** at step 6 | nothing — it never survived its own take, so it appended no terminal row | `reclaimed-stale-lock`, abandoned id `unknown` |
-| Killed inside the **release** at step 16 | everything, including its terminal row (§4.3 `:578-579` orders release after the append) | the same `reclaimed-stale-lock` / `unknown` |
+| Killed inside the **release** at step 16 | everything, including its terminal row (§4.3 `:618-619` orders release after the append) | the same `reclaimed-stale-lock` / `unknown` |
 
 **The durable log must witness the first.** A take that stepped over an empty marker silently would
 erase the only trace of an abandonment: the pass killed at step 6 appended no terminal row, by
@@ -2144,7 +2182,7 @@ PROPERTIES' (DC-09).
 | AT-P4 | operator | an absent log file | the predicate runs | every enumerated basename is un-consolidated; no error |
 | AT-P5 | operator | an opening `<!-- pdlc:consumed {id} -->` with no closing marker | the predicate runs | the unterminated block extends to end of file and its basenames count as consumed |
 | AT-P6 | operator | an empty un-consolidated set | a pass runs | the consumed pair is still appended, **empty**, before any other record |
-| AT-P7 | operator | a **shared fixture table** of (corpus, log) cases spanning both §3.2 regions, an unterminated block, a dangling closer and a stray basename — the same table AT-P2…AT-P5 range over — each case materialised as a fixture root carrying `docs/…/LEARNINGS-*.md` files and a `docs/_decisions/.consolidation-log.md` | the **two predicates** are evaluated over each case against that root: the pass's own enumeration-and-membership decision, and the hook's, obtained by executing the shipped `nudge-consolidation.sh` Python block (`:36-41`, glob at `:28`) verbatim against the same root. The hook's set is observed as the block's **`pending` binding** (bound at `:41`, before the `THRESHOLD` comparison at `:43`), read out of the namespace the block was executed in — **not** from its stdout, which is threshold-gated. Two adjacent facts belong to that channel: the block early-exits at `if not learnings: sys.exit(0)` (`:29-30`), so on an empty-corpus case `pending` is unbound and the hook's set is read as empty rather than as an error; and §15.3's change register (`:2476`) has the glob at `:28` widened and the predicate at `:41` re-scoped **by this feature**, so "the shipped block" means the post-edit block and every line number here is a locator that will drift with the edit | the two **un-consolidated sets** are set-equal on every case. Scope is the predicate, and only the predicate: the hook's `THRESHOLD` gate (`:25`) and the advisory line it prints govern whether the hook *speaks*, not what it counts, and are asserted neither way here — a case whose set is smaller than the threshold is still a case, and an oracle that compared the hook's stdout would be red on it while the predicate agreed. This stays a differential test, not a source inspection: T-08 permits two implementations, and the hook's predicate is a Python heredoc inside bash that no JS test can import, so equality of the decided sets is the only assertable form of "one corpus, one predicate". Should T-08 resolve to shared code, the fixture table and the comparison are unchanged — the two evaluations simply route to one implementation |
+| AT-P7 | operator | a **shared fixture table** of (corpus, log) cases spanning both §3.2 regions, an unterminated block, a dangling closer and a stray basename — the same table AT-P2…AT-P5 range over — each case materialised as a fixture root carrying `docs/…/LEARNINGS-*.md` files and a `docs/_decisions/.consolidation-log.md` | the **two predicates** are evaluated over each case against that root: the pass's own enumeration-and-membership decision, and the hook's, obtained by executing the shipped `nudge-consolidation.sh` Python block (`:36-41`, glob at `:28`) verbatim against the same root. The hook's set is observed as the block's **`pending` binding** (bound at `:41`, before the `THRESHOLD` comparison at `:43`), read out of the namespace the block was executed in — **not** from its stdout, which is threshold-gated. Two adjacent facts belong to that channel: the block early-exits at `if not learnings: sys.exit(0)` (`:29-30`), so on an empty-corpus case `pending` is unbound and the hook's set is read as empty rather than as an error; and §15.3's change register (`:2515`) has the glob at `:28` widened and the predicate at `:41` re-scoped **by this feature**, so "the shipped block" means the post-edit block and every line number here is a locator that will drift with the edit | the two **un-consolidated sets** are set-equal on every case. Scope is the predicate, and only the predicate: the hook's `THRESHOLD` gate (`:25`) and the advisory line it prints govern whether the hook *speaks*, not what it counts, and are asserted neither way here — a case whose set is smaller than the threshold is still a case, and an oracle that compared the hook's stdout would be red on it while the predicate agreed. This stays a differential test, not a source inspection: T-08 permits two implementations, and the hook's predicate is a Python heredoc inside bash that no JS test can import, so equality of the decided sets is the only assertable form of "one corpus, one predicate". Should T-08 resolve to shared code, the fixture table and the comparison are unchanged — the two evaluations simply route to one implementation |
 | AT-P8 | operator | a log file present but **unreadable** (permissions or IO error) | the predicate runs | it is treated as **empty text** — every enumerated basename is un-consolidated, no error is raised, and the pass proceeds. Distinct from AT-P4's absent-file Given: E-01 and E-02 are different input states and each carries its own fixture |
 | AT-P9 | operator | a log carrying a closing `<!-- /pdlc:consumed -->` with **no opener** before it, and a real block elsewhere in the file | the predicate runs | the dangling closer opens no block and moves no boundary: basenames adjacent to it are un-consolidated, and the real block's basenames are unaffected. Distinct from AT-P2, whose Given is a stray basename |
 | AT-P10 | operator | two LEARNINGS sharing a basename under `docs/{f}/` and `docs/completed/{g}/` | a pass runs | the un-consolidated set has **one** member for the pair, **and** the §10.4 report names the collision explicitly — the report assertion is the one this row exists for, since the set-size assertion alone cannot distinguish "reported" from "silently resolved" |
