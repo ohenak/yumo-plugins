@@ -42,8 +42,60 @@ Scoped to text added in v1.2. Nothing already approved is re-litigated.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-09 | §3.4's presence half asserts `cwd` is *present* on every dispatch. `adapter.mjs:278` builds `{ cwd }` unconditionally, so the key exists even when the value is `undefined` (§4.1 types it `string\|undefined`) — a key-presence assertion would pass on a run where the cwd discipline silently degraded. AC-2.5's value is traced elsewhere (§2.3, `run.mjs:155`), so this may be deliberate division of labour; if so, one clause saying the *value* is asserted in the AC-2.5 test and not here would keep a later reader from taking §3.4's row as the whole guarantee. |
+| Q-10 | §4.1's "at HEAD no dispatch is composed before the first `_phase` call, so a non-zero `(no phase)` count is a finding" is the right shape, but it reads as an expectation rather than an assertion. Is the `(no phase)` bucket being zero part of the suite-wide assertion set (§7.4's table), or only reported? If only reported, the first dispatch that drifts ahead of a phase banner lands in a bucket nobody fails on. |
+
 ## Positive Observations
+
+- The F-18 fix is the honest version, not the cheap one. Moving the mint into
+  `_run-suite.mjs` and adding the two-file inheritance self-test attacks the property that
+  was silently false, and the paragraph naming the *tempting repair* ("scan all run
+  directories and drop the emptiness guard") is the sentence that will stop a future
+  implementer walking back into the vacuity. I reproduced the premise: one parent-set
+  `PDLC_TEST_RUN_ID` reaches both child test-file processes and the `--import` preload.
+- The Q-07 answer is a measurement, and it is correct — I re-ran it. `node --test` on a
+  directory holding `a.test.js`, `b.test.js` and `_bootstrap.mjs` reports `# pass 2` and
+  never executes the helper, so the `_`-prefixed helpers can live in `__tests__/` without a
+  double-execution guard.
+- §3.3's exemption is a *closed list asserted as exactly that list*, not a loosened regex,
+  and it is complete: scanning both modules for quoted members of the derived union turns up
+  nothing outside the constant declaration, `PHASE_DISPATCH`, the three role-map keys, and
+  real dispatch sites. That is the difference between an exemption and a hole.
+- §4.4's phase correction is the finding chased to its root. `byPhase` keyed on `label` would
+  have reported `{ "null": N }` for a whole run and *looked* satisfied — a false-green of the
+  worst kind, since it answers FSPEC §12.2 with strictly less than `bySkill` already carries.
+  Taking the phase from the `_phase` seam the modules already call (`orchestrate-dev.js:10136`
+  and siblings; `adapter.mjs:357` logs it today) buys the per-phase view without touching a
+  workflow module, which keeps §8.3's claim true rather than quietly false.
+- §7.4's own admission that the v1.1 oracle "would have been red on correct code for three
+  separate reasons" — and then enumerating them — is the kind of writing that makes a spec
+  auditable. F-22 is one more instance of the same class the section is already hunting.
 
 ## Recommendation
 
+**Needs revision**
+
+One High, and it is narrow: **F-22**. Both of v2's blocking findings are genuinely fixed —
+I verified the run-id fix by execution, not by reading — but the F-17 fix introduced one
+defect of the same family it was curing. §7.4's rows 1 and 2 quantify over the *normalised
+phase*, and HEAD's Phase-I V-wave is announced as `"Phase PT"` while pinned on Sonnet, so
+row 1's *every* is red on correct code in wave mode; and the spec does not say which
+Phase-I mode run i drives, so two implementers can build run i and disagree about green.
+Two sentences fix both halves — a normalisation rule for the V-wave banner, and one line
+naming run i's Phase-I mode.
+
+F-23 is a Medium worth taking in the same pass because it is the same shape: an
+over-strong conjunct (`seq` adjacency) that the row does not need, sitting next to a
+discriminator that is already sufficient. F-24 and F-25 are one edit each.
+
+Nothing in v1.2 broke a previously approved section. The phase-provenance change is the
+right root fix and it preserves §8.3's "no other file under `pdlc/workflows/` is modified",
+which I checked rather than assumed: the phase comes from a seam the modules already call.
+One round from close.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
