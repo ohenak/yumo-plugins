@@ -411,14 +411,22 @@ unrelated to the work, and the repair looks like a CI problem rather than a miss
 is `max(dep batches) + 1` on every row, so the graph is a DAG by construction: a cycle would require
 an edge into an equal-or-lower batch, which no row has. `parsePlanTasks` plus
 `computeTopologicalBatches` are run against this table at the close of Phase P, and the header cells
-above (`#`, `Deps`) are the exact spellings that parser accepts. Two other tables in this document
-could be mistaken for it and cannot be, for two different reasons. §4's manifest has no id-like
-column at all — its header is `Path | Owner(s), by batch`, which the exact-cell grammar does not
-match. §7's integration table *does* open with a `#` cell, but the parser requires **both** an exact
-id cell and an exact dependencies cell (`Deps`/`Dependencies`/`Depends on`/`Prerequisites`), and §7
-has no such column — its header is `# | Integration point at HEAD | What attaches`. So the task
-table at §3 is the only table in this file the parser accepts, and adding a `Deps`-spelled column to
-§7 would break that, which is why §7 names edges in prose rather than in a column.
+above (`#`, `Deps`) are the exact spellings that parser accepts. **The rule, stated once so it does
+not depend on an enumeration staying total:** the parser accepts a table only when its header
+carries **both** an exact id cell (`#`, `ID`, `Task ID`) **and** an exact dependencies cell
+(`Deps`, `Dependencies`, `Depends on`, `Prerequisites`); a `#` cell alone is not enough, and
+substring look-alikes are deliberately not matched. §3's task table is the only table in this file
+with the second cell, and is therefore the only one the parser accepts.
+
+Three other tables here open with a `#` cell and are safe for exactly that reason — §7's integration
+table (`# | Integration point at HEAD | What attaches`), §10's open questions
+(`# | Question | Disposition here`) and §11's command table
+(`# | Command | Observes | State at HEAD`) — and §4's ownership manifest is safe for a stronger one,
+having no id-like column at all (`Path | Owner(s), by batch`). The operative consequence is the same
+in all four cases and is a constraint on future edits, not a property of today's text: **adding a
+`Deps`-, `Dependencies`-, `Depends on`- or `Prerequisites`-spelled column to any of them would make
+that table parseable as a task table and break the Phase-P self-parse.** That is why §7 names its
+edges in prose rather than in a column, and why §10 and §11 should keep doing the same.
 
 ## 7. Integration points
 
