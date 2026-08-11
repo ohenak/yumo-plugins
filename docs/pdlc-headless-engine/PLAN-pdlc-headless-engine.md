@@ -461,12 +461,19 @@ by reading prose is not on this list.
 - [ ] `.github/workflows/pr-tests.yml` runs five jobs, the new one on the `unit-tests` matrix with a
       body of `npm ci` then `npm test` and nothing else.
 - [ ] `.claude/pdlc.config.json` `implementation.testCommand` runs **both** V1 and V2 — the engine
-      suite *and* the workflows suite — with `pdlc/workflows`' existing
-      `--testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'`
-      preserved verbatim. Post-T17 the value is literally
-      `cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'`.
+      suite *and* the workflows suite — with **all four** of `pdlc/workflows`' existing ignore
+      patterns
+      `--testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`
+      preserved verbatim (HEAD's value, `.claude/pdlc.config.json:3`). Post-T17 the value is literally
+      `cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`.
       Set-equality, not containment: this file is repo-wide state, so a value that runs only the
       engine suite would blind **other** features' wave gates — a blast radius outside this REQ.
+      The same argument runs in the other direction and is why `'documentOracles'` is carried
+      through rather than dropped: the document oracles are CWD- and untracked-file-sensitive
+      (`pdlc/workflows/lib/document-oracles.mjs` reads `process.cwd()`; a document oracle can be red
+      locally and green in CI), so re-admitting them to the wave gate would turn *other* features'
+      untracked docs into wave failures. Dropping a pattern is as much a blast radius as dropping a
+      suite.
 
 **Generated artifacts and the workflow modules**
 
@@ -695,10 +702,17 @@ not V1).
 `implementation.testCommand` is:
 
 ```
-cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'
+cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'
 ```
 
-**Both** suites, V2's ignore patterns preserved verbatim. Replacing the value with
+**Both** suites, and all **four** of V2's ignore patterns preserved verbatim — HEAD's value is
+`cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`
+(`.claude/pdlc.config.json:3`), and the post-change value is that string with the engine suite
+prepended, token for token. `'documentOracles'` is load-bearing, not noise: the document oracles
+resolve paths from `process.cwd()` and read the working tree, so they are red locally and green in
+CI depending on untracked files. Re-admitting them to the wave gate would make *other* features'
+untracked docs fail this repo's waves — the same repo-wide blast radius the item below argues
+against, arriving through a dropped token instead of a dropped suite. Replacing the value with
 `cd pdlc/engine && npm test` would satisfy "runs the engine suite" while **dropping V2**, and this
 plan's own §11 states V1 and V2 are not interchangeable and neither subsumes the other. The blast
 radius matters more than the wording: `.claude/pdlc.config.json` is repo-wide state, so a value that
