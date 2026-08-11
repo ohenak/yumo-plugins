@@ -112,3 +112,16 @@ per-criterion mapping lives in FSPEC §15.1; roll-up below.
 | US-03 | REQ-CONS-01 | §2 FSPEC-CONS-01, §3 FSPEC-CONS-02, §4 FSPEC-CONS-03 |
 | US-04 | REQ-CONS-05, REQ-CONS-07 | §8 FSPEC-CONS-07, §10 FSPEC-CONS-09 |
 | US-05 | REQ-CONS-05, REQ-CONS-06 | §8.5, §8.7, §9 FSPEC-CONS-08 |
+
+## pdlc-headless-engine
+
+Upstream: `docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` (v0.7). Downstream:
+`docs/pdlc-headless-engine/FSPEC-pdlc-headless-engine.md` (v1.0). The authoritative per-AC mapping
+lives in FSPEC §14.1; roll-up below.
+
+| User Story | Acceptance criteria | FSPEC |
+|---|---|---|
+| US-01 | AC-1.1, AC-1.2, AC-3.1, AC-3.2, AC-3.5 | FSPEC-ENG-02, FSPEC-ENG-04, FSPEC-ENG-08 |
+| US-02 | AC-1.3, AC-2.1, AC-2.2, AC-2.4, AC-4.1…AC-4.5 | FSPEC-ENG-03, FSPEC-ENG-06, FSPEC-ENG-09, FSPEC-ENG-10 |
+| US-03 | AC-1.1, AC-1.4, AC-1.5, AC-2.5 | FSPEC-ENG-01, FSPEC-ENG-05, FSPEC-ENG-08 |
+| US-04 | AC-2.1, AC-2.3 | FSPEC-ENG-03, FSPEC-ENG-05 |
