@@ -1474,9 +1474,11 @@ Three parts, each doing one job:
 **Append-only fixes *when* an observation may be written, not just how** (PM F-01, TE F-30). A line
 is never revisited once appended, so any observation with a terminal half must be appended after
 that half exists. For §7.4's dispatch descriptors this is stated in §4.1: one line per dispatch
-*attempt*, appended when the attempt **settles**, carrying that attempt's `outcome` and `errorText`;
-a dispatch composed but never executed (the inert transport behind `--dry-run`) is appended at
-composition with both terminal fields `null`. The other two accumulators (message ids, §3.5;
+*attempt*, appended when the attempt **settles**, carrying that attempt's `outcome` and `errorText`.
+**Every dispatch line is a settlement line** — the accumulator hangs off `_agent`
+(`lib/adapter.mjs:271`) and not off `composePrompt` (`:259`), so the composed-but-never-dispatched
+case writes nothing rather than writing a `null`-terminal line (§4.1, `bin/pdlc.mjs:190`;
+`FSPEC:682-684`). The other two accumulators (message ids, §3.5;
 `classifyOutcome` results, §5.1) have no terminal half and are appended at their one call.
 | step 4, `node __tests__/_assert-suite-wide.mjs` | reads the union of every `.jsonl` and makes §7.4's assertions | a *step*, not a test file, so it is ordered by the runner rather than by filename luck, and it runs once per suite by construction |
 
