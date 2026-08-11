@@ -87,4 +87,59 @@ the one-platform matrix matches `pr-tests.yml:40` (`os: [ubuntu-latest]`).
 
 ## Recommendation
 
+**Needs revision**
+
+Both v8 High findings were taken seriously and both repairs went in the direction the finding argued
+for. F-41's is complete — §7.8 gives rung 4a a seam, two hermetic tests, a positive "nothing
+dispatched" oracle with a control behind it, and the C-11 row — and I would not raise it again.
+F-42, F-43, Q-18 and Q-19 are closed against HEAD, and §5.3's self-correction about the top-level
+catch is the kind of reversal that makes the rest of the citations worth trusting.
+
+The one blocker is narrow and lives inside the F-40 repair. Scoping the guard by site is right;
+"sites are enumerable, shapes are not" is right; the census closes the ∅ hole; class 2's 28
+re-derives exactly. But two of the four class definitions are wider than the census that accompanies
+them, and the rule that an unresolvable site is a failure — the very rule that gives the census its
+teeth — turns that surplus into permanent red on correct code. HEAD dispatches through a variable in
+eleven places (`orchestrate-dev.js:5573`, `:5579`, `:5585`, `:5876`, `:7124`, `:7463`, `:9244`,
+`:5909`, `:5910`, `:9288`, `:9528`), and a harness author meeting them has the same two bad repairs
+F-40 named: leave the suite red, or loosen the rule to skip what it cannot resolve and re-open the
+hole. The resolvable case is not consistent either — `_agent(ADVISORY_RUNG_SKILL, …)` (`:1841`) obeys
+the rule perfectly and is not among the eleven. The repair is one clause plus one number: classify by
+argument syntax, name indirect dispatch as a third outcome that is neither site nor failure, and
+assert its count so a literal going indirect moves a figure instead of vanishing. This is genuinely
+the last mile of a repair that is otherwise done.
+
+F-45 and F-46 are not gating. F-45 is one conjunct in §7.8's second test that reads
+`state !== "skipped"` where the fixture can afford `state === "pass"`; the branch's positive
+assertions already carry it, which is why it is Medium and not the absence-only High I would file if
+it stood alone. F-46 is three line anchors into the shipped script, each off by one, plus a §9.3
+paragraph correcting FSPEC's `:14-21` when that range is in fact right — content correct throughout,
+so nothing an implementer would build wrongly, but a transcription justified by "a script-side change
+turns this red" should point at the lines it transcribes. F-47 is a two-word clarification.
+
+On the review contract's three oracle clauses, applied to changed sections only. **No implementation
+echoes:** strengthened this round — §3.3's derivation test gained the test-side transcription of the
+ten identifiers that F-42 asked for, and §7.8's `GUARD_INTERPRETERS` is explicitly "a transcription
+of the shipped script's own candidate list, never an import from it". §7.4's M-ENG-07 discipline is
+untouched, and the two sections now agree rather than choosing oppositely. **No absence-only
+oracles:** the EC-START-10 branch's "nothing dispatched" became a positive count over a live
+accumulator with a dispatching control beside it — better than what I asked for; the one remaining
+absence shape is EC-START-11's `state !== "skipped"` (F-45). **Completeness is set-equality:**
+§7.5's sixth conjunct is set-equality over the five corpus configurations, not containment, so both
+an unnamed sixth and a silent fifth are red; §4.3's rung-id set-equality over `RUNG_ORDER` stands;
+§3.3's containment remains containment by the same-phase DEC-ENG-05 decision, now backed by the
+census — sound in principle, and F-44 is about the enumeration feeding it, not about the shape.
+
+One erratum is raised against FSPEC and emitted in this dispatch's final message, not folded into any
+document: BR-START-1's "no probe of any kind ... while the ladder is running" (`FSPEC:302-303`) and
+BR-GUARD-6's requirement that rung 4a observe "by **running** a candidate" (`FSPEC:922-924`) are
+literally in conflict. The intended reading is clearly "no *billable* probe" — the sentence's own
+justification is "zero tokens billed" — but rung 4a was inserted after BR-START-1 was written and the
+qualifier was never added. No erratum against REQ, DECISIONS, PLAN or PROPERTIES; every upstream
+citation this revision touched (`FSPEC:299`, `:406-407`, `:918-924`, `:967`; `REQ:284`) lands on the
+text it claims.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
