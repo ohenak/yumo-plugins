@@ -2103,8 +2103,11 @@ cannot disagree about which interpreters were tried.
 
 ### 8.1 Acceptance criteria → design section → owning component
 
-Total over REQ v0.9's 26 acceptance criteria. "Owning component" names where the behaviour lives, not
-every file it touches; a component in **bold** is new in this feature.
+Total over REQ v0.10's 26 acceptance criteria (the count is unchanged from v0.9). "Owning component"
+names where the behaviour lives, not every file it touches; a component in **bold** is new in this
+feature. Two upstream obligations are constraint-borne rather than AC-borne and so have no row here;
+they are carried by §8.2 instead, and named so the omission is deliberate rather than invisible:
+**C-11 / EC-START-10, EC-START-11 / AT-ENG-11a** (rung 4a — §4.3, §7.8) and **C-10 / rung 3**.
 
 | AC | Subject | TSPEC § | Owning component |
 |---|---|---|---|
@@ -2144,7 +2147,7 @@ every file it touches; a component in **bold** is new in this feature.
 | C-2 environment passthrough | §3.4 | C-8 closed message catalogue | §3.5 |
 | C-3 `cwd` is the consumer project | §2.3, §4.1 | C-9 every runtime fact measured, per platform | §6.5, §7.2, §7.6 |
 | C-4 the modules are not forked | §2.4, §2.5, §3.3 | C-10 plugin version handshake | §4.3 rung 3 |
-| C-5 guard parity | §6.2, §6.4 | | |
+| C-5 guard parity | §6.2, §6.4 | C-11 host can run the shipped guard | §4.3 rung 4a, **§7.8** (probe seam + both branches) |
 
 ### 8.3 New and changed files
 
@@ -2156,7 +2159,7 @@ every file it touches; a component in **bold** is new in this feature.
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
 | `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor, and the record appended to §7.0's accumulator at settlement — one line per attempt, appended from the `_agent` body (`:271`) and never from `composePrompt` (`:259`), so every line is a settlement line** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
-| `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.6's rung 4a guard-executable check — derived skill set) | §4.3, §6.4 |
+| `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.6's rung 4a guard-executable check — derived skill set, plus **`GUARD_INTERPRETERS` and `probeGuardInterpreter({runProbe})`**, §7.8's injectable probe seam) | §4.3, **§7.8** (rung 4a); §6.4 is EC-GUARD-4, a different check |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
