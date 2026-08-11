@@ -630,7 +630,86 @@ corrupts a branch (the first real incident should produce the lock, with its sta
 path designed at the same time); or per-worktree consumer state (D-DIST-07) lands and makes
 concurrent worktree runs a supported workflow rather than an accident.
 
-## 7. Decision index
+## 7. Options considered — the rejected alternatives in one place
+
+Each entry above carries its own **Alternatives considered** block; this section collates them so a
+later reader can find a rejection by the shape they are about to re-propose, rather than by guessing
+which decision owns it. The right-hand column is the reason the rejection is *not* free — a rejected
+alternative with no cost is not a decision worth recording.
+
+| Rejected alternative | Rejected in | Reason | What the rejection costs |
+|---|---|---|---|
+| Ship only the SDK transport, no CLI module | DEC-ENG-01 | The carriers differ exactly where C-2/C-5/C-6 bind, and those differences are cheapest to find while the interface is written | `lib/transport-cli.mjs` is code with no production caller this feature (the file does not exist at HEAD — `pdlc/engine/lib/` holds seven modules, none of them a CLI transport) |
+| A runtime transport selector | DEC-ENG-01 | Reverses TSPEC v1.0; a selector is honest only after the CLI flag surface is measured on both platforms (C-9) | Operators get no switch this feature; O-1 owes the measurement |
+| Spawn `claude -p` as primary | DEC-ENG-01 | Puts a second process, its stdout framing and its own settings resolution between engine and dispatch | None material |
+| Automatic failover on transport error | DEC-ENG-02 | A run whose carrier can change is unattributable, and C-9's per-transport regime becomes unfalsifiable | An SDK outage halts the run rather than completing it on the fallback |
+| Reimplement the guard's decision procedure in JS | DEC-ENG-03 | Two definitions that drift silently across four regexes and a byte-read refusal string | The engine must be able to run the shipped `.sh`, which is why the interpreter probe becomes a startup rung |
+| Port the guard script and delete the original | DEC-ENG-03 | NG-1; the plugin path still runs the hook interactively | None |
+| Live-only guard measurement, no durable record | DEC-ENG-04 | A fresh clone would state nothing about whether the combination was ever measured, on which platform, against which SDK version | The baseline file grows a per-platform row that must be seeded in the same task as the gate |
+| Warn instead of fail when the measurement is unrecorded | DEC-ENG-04 | A warning on an unattended pipeline is a message nobody reads; unrecorded is exactly the vacuous-green state | CI goes red on a platform nobody has measured yet — intended |
+| Keep an engine-side `EXPECTED_SKILLS` list | DEC-ENG-05 | The hand-maintained declaration BR-START-4 forbids, already wrong in both directions (17 frozen names at `pdlc/engine/lib/startup.mjs:20` against a derived 10) | Deleting it drops the assertion that operator-invoked-only skills are readable |
+| Scan module source text for skill literals | DEC-ENG-05 | Measured: only three of ten identifiers sit at a literal call site; a faithful scanner derives two names | The derivation instead depends on a no-bare-literal test with a closed allow-list |
+| Per-command scope for startup rung 4 | DEC-ENG-05 | `se-review` reaches the queue only via delegation, so a missing SKILL would surface mid-run | None — both modules are imported anyway |
+| Exempt `se-implement`'s supplements from Direction B | DEC-ENG-06 | An exemption list is where a genuinely unreachable prompt file hides | — |
+| Rewrite `SKILL.md` to absorb the supplements | DEC-ENG-06 | NG-8, and it would change interactive behaviour to serve a headless constraint | — |
+| Language-conditioned supplement selection | DEC-ENG-06 | Needs a prompt-size measurement and a language manifest first (O-ENG-T3) | Every `se-implement` dispatch carries both supplements from `pdlc/skills/se-implement/` |
+| Add a phase argument at the modules' dispatch sites | DEC-ENG-07 | Would falsify the two-row claim about the `pdlc/workflows/` diff that C-4 rests on | Phase provenance is last-write-wins run state, only as accurate as `_phase` discipline |
+| Infer phase from the skill identifier | DEC-ENG-07 | Not a function — `se-implement` is dispatched from three phases | — |
+| Derive startup auth posture from the transport's `apiKeySource` | DEC-ENG-08 | Not available before a dispatch exists, so the banner would print after billing began | — |
+| Fold startup posture and per-dispatch assertion into one module | DEC-ENG-08 | O-9 is open: no transport is known to distinguish session from token credential | Two modules observing adjacent facts, one banner |
+| Extend the transport's error classes to six | DEC-ENG-09 | `agent-reported-failure` is not a transport fact; the CLI transport would have to reproduce the parsing | — |
+| Classify outcomes in the adapter | DEC-ENG-09 | Makes the taxonomy's totality testable only through a dispatch | — |
+| Module-scoped `Set` read by a name-ordered last test file | DEC-ENG-10 | Asymmetric failure: the catalogue direction fails loudly, the outcome direction passes vacuously green over the empty set | The suite gains a runner, a bootstrap and an assertion step |
+| Mint the test run id in the bootstrap on first use | DEC-ENG-10 | `--import` preloads into sibling child processes; an id assigned in a child is visible to that child alone | — |
+| Inline the run id in the npm script | DEC-ENG-10 | Shell assignment syntax `cmd.exe` does not accept, and the directory-clearing step gets no ordered home | — |
+| Assert the guard verdict without performing the deletion | DEC-ENG-11 | The unfalsifiable form — and the defect an earlier draft shipped | — |
+| Drive a real tool call through the SDK end-to-end | DEC-ENG-11 | §7.1 forbids a real client in the hermetic suite | The hermetic suite proves build-and-honour; only the live measurement proves consultation |
+| Leave the transport's timeout default as the only enforcement | DEC-ENG-12 | HEAD's behaviour, which makes BR-CLI-3's reported value decorative | — |
+| Have workflow modules pass `timeoutMs` per dispatch | DEC-ENG-12 | A second row under `pdlc/workflows/`, for no gain | — |
+| A second timeout resolver inside `run.mjs` | DEC-ENG-12 | Two resolution points is how a reported number and an enforced number start to differ | — |
+| A catalogue lookup that falls back to the passed string | DEC-ENG-13 | Makes the closed set advisory and reopens the unreviewed-message hole | Every new operator string is a catalogue edit plus an emit obligation |
+| Assert registered-equals-emitted per test file | DEC-ENG-13 | Vacuous the moment a test is skipped | Depends on DEC-ENG-10's accumulator |
+| An advisory repo lock refusing the second run | DEC-ENG-14 | No acceptance criterion binds it; an invented locking protocol is what halts an unattended run at 3am with a stale lock | Two concurrent runs against one worktree stay undetected (EC-RUN-4, O-ENG-T2) |
+| Rely on git's own index lock as protection | DEC-ENG-14 | Serialises git invocations, not pipeline phases — converts a data race into an intermittent mid-phase failure | — |
+
+## 8. Consequences
+
+The costs each decision accepts, gathered so PLAN and PROPERTIES can carry them as obligations rather
+than rediscover them. Nothing here is new: each row restates a cost stated in its own entry above.
+
+**Consequences that become work in PLAN.**
+
+| Consequence | From | Obligation it creates |
+|---|---|---|
+| `transport-cli.mjs` is written to the same interface with no production caller | DEC-ENG-01 | A test-only unit driven over recorded fixtures; parity clauses must not silently degrade to "the file exists" |
+| The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup rung-5 capability probe plus one catalogue id; refusal at startup, not per dispatch |
+| The `M-ENG-09` gate and its first rows must land together | DEC-ENG-04 | Single PLAN task — a gate landing before its seed rows turns CI red for an unrelated reason |
+| `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a no-bare-literal test carries a closed allow-list |
+| Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself |
+| Every guard clause needs a falsifying counterpart | DEC-ENG-11 | The negative half is written first; the survival clause reuses the same fixture and deletion step under an allow verdict |
+| Every operator-visible string is a catalogue entry | DEC-ENG-13 | Including the strings DEC-ENG-03 and DEC-ENG-04 introduce; each must be emitted at least once in the suite |
+
+**Consequences accepted as standing costs, closing nothing.**
+
+- Bytes, not correctness: every `se-implement` dispatch carries both language supplements (DEC-ENG-06).
+- Phase provenance is last-write-wins and inherits `_phase` discipline, including the V-wave that
+  announces `"Phase PT"` while pinning `sonnet`; the model-map oracle partitions on a defined wave
+  set rather than on the announced string (DEC-ENG-07).
+- Nothing asserts that operator-invoked-only skills are readable, because the engine cannot dispatch
+  them (DEC-ENG-05).
+- `maxTurns` stays a declared-but-unassigned option key, so the boundary test asserts containment
+  plus two required keys rather than set-equality (DEC-ENG-12).
+- Catalogue ids are cheap to add and socially expensive to rename, which is why ids and not wording
+  are the pinned half (DEC-ENG-13).
+- Two concurrent runs against one worktree remain undetected (DEC-ENG-14).
+
+**Consequences for reversibility.** Every decision above is individually easy to reverse — the index
+in §9 records this — with one qualification: DEC-ENG-04's gate is easy to remove, but the branch it
+forces is not. If the measurement returns `denyFired: no`, either the permission posture tightens or
+the guard moves to `canUseTool`, and that is a change to the transport's permission contract rather
+than to a test.
+
+## 9. Decision index
 
 | ID | Decision | Reversibility | Owning TSPEC § |
 |---|---|---|---|
