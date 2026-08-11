@@ -1290,17 +1290,21 @@ this repo's whole halt-clearing protocol (`RESOLVED: yes` against a real `## Rec
 on that distinction holding.
 
 The single witness is the run report on stdout, carrying the dispatches already made and the
-classification that stopped the run. Mechanically: the engine catches at the top of `runDev`/`runQueue`
-(`run.mjs:187`, `:228`), stamps the report (§3.6), prints it, and exits — the module is never given a
-chance to write its own halt artefacts, because it is no longer running.
+classification that stopped the run. Mechanically: the engine **gains** a top-level catch in
+`runDev` (`run.mjs:187`, the declaration) and `runQueue` (`:228`) — **this is designed behaviour, not
+observed: at HEAD `pdlc/engine/lib/run.mjs` contains no `catch` clause at all**, only the `try` at
+`:159` whose `withCwd` pairing is `try/finally`. Adding it is part of this feature's edit to that file
+(§8.3). The catch stamps the report (§3.6), prints it, and exits — the module is never given a chance
+to write its own halt artefacts, because it is no longer running.
 
 **The classification is scoped to rejections that *escape* the module** (TE F-37). A member of the
 taxonomy is engine-fatal when it reaches that top-level catch — not whenever it is stamped on a
 descriptor. A module that catches its own dispatch error keeps the run alive and the descriptor
 recorded: the advisory rung's model-resolution failure is handled inside `resolveAdvisoryRung`'s
 rejection arm (`orchestrate-dev.js:1856`) and re-dispatched at the `opus` rung (`:1861`), and the
-non-model-resolution case is returned to the caller as a `{ kind: "dispatch-error" }` value
-(`orchestrate-dev.js:3143`), never rethrown. This is load-bearing for §7.4 row 4, whose `F` carries
+non-model-resolution case is **returned** to the caller as a `{ kind: "dispatch-error" }` value
+(constructed and returned at `orchestrate-dev.js:1847` and `:1857`; the caller reads it at
+`:3143-3149`), never rethrown. This is load-bearing for §7.4 row 4, whose `F` carries
 `outcome === "transport-contract-violation"` and is followed by a `B` **in the same run** — without
 this scope a harness author would read row 4 and §5.3 as contradictory.
 
@@ -1854,8 +1858,9 @@ because they are what F-26 asked for and what a fixture author has to satisfy:
 - **Run iv continues; it does not exit `1`** (TE F-37). §5.3 classifies
   `transport-contract-violation` as engine-fatal — it "ends the run at exit `1` without a module
   halt" — and row 4 requires an `F` carrying that member followed by a `B` on `opus` **in the same
-  run**. The two reconcile on *escape*: §5.3's catch sits at the top of `runDev`/`runQueue`
-  (`run.mjs:187`, `:228`), so the classification applies to a rejection that reaches the engine's
+  run**. The two reconcile on *escape*: §5.3's catch — which this feature **adds** at the top of
+  `runDev` (`run.mjs:187`) and `runQueue` (`:228`); HEAD has no `catch` in that file — means the
+  classification applies to a rejection that reaches the engine's
   top-level catch, and the advisory rung's rejection never gets there. `resolveAdvisoryRung` handles
   it inside its own `.then` rejection arm (`orchestrate-dev.js:1856`), re-enters at the `opus` rung
   (`:1861`), and where a rejection *is* not a model-resolution one it is turned into a
@@ -2129,7 +2134,7 @@ they are carried by §8.2 instead, and named so the omission is deliberate rathe
 | AC-4.1 | six-member outcome taxonomy | §4.2, §5.1 | **`lib/outcome.mjs`** |
 | AC-4.2 | retry budget and timeout cap | §5.2 | `lib/adapter.mjs:285-318`, `computeRateLimitWaitMs :75` |
 | AC-4.3 | exhausted retries surface legibly | §5.2, §5.3, §3.5 | `lib/adapter.mjs`, **`lib/catalogue.mjs`** |
-| AC-4.4 | mid-run `auth-failure` is fatal, never retried | §5.1, §5.3 | **`lib/outcome.mjs`**, `lib/run.mjs:187/228` |
+| AC-4.4 | mid-run `auth-failure` is fatal, never retried | §5.1, §5.3 | **`lib/outcome.mjs`**, `lib/run.mjs:187/228` (the catch this feature adds there, §8.3) |
 | AC-4.5 | report carries module fields + engine block | §3.6, §4.5 (row-by-row vs FSPEC §12.2), §4.6 | `lib/report.mjs:36`, `:70` |
 | AC-5.1 | guard refuses with `LEARNINGS` absent, per transport | §6.2, §6.3 | engine-supplied hook config; shipped `.sh` |
 | AC-5.2 | harvest's deletions succeed once it exists | §6.1, §6.3 | same |
@@ -2161,7 +2166,7 @@ they are carried by §8.2 instead, and named so the omission is deliberate rathe
 | `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor, and the record appended to §7.0's accumulator at settlement — one line per attempt, appended from the `_agent` body (`:271`) and never from `composePrompt` (`:259`), so every line is a settlement line** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
 | `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.6's rung 4a guard-executable check — derived skill set, plus **`GUARD_INTERPRETERS` and `probeGuardInterpreter({runProbe})`**, §7.8's injectable probe seam) | §4.3, **§7.8** (rung 4a); §6.4 is EC-GUARD-4, a different check |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
-| `lib/run.mjs`, `bin/pdlc.mjs` | extended (exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
+| `lib/run.mjs`, `bin/pdlc.mjs` | extended (**a top-level `catch` added to `runDev` (`:187`) and `runQueue` (`:228`) — HEAD's `run.mjs` has no `catch` clause, only `withCwd`'s `try/finally` at `:159`; §5.3 depends on it**, exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
 | **`__tests__/_assert-suite-wide.mjs`** | new — §7.4's five suite-wide assertions (four set-equality properties + the pre-phase predicate, `no record with corpusRun != null has phase === null`), one per row of that section's table, over three accumulators | §7.0, §7.4 |
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
