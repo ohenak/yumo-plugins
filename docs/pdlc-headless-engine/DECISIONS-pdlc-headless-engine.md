@@ -487,4 +487,117 @@ under DEC-ENG-04's second branch, at which point the counterparts are re-derived
 
 ## 6. Configuration and lifecycle
 
+## DEC-ENG-12: The resolved dispatch timeout is an adapter constructor option stamped onto every dispatch, resolved at exactly one point
+
+**Context:** `dispatch.timeoutMinutes` is a REQ tunable and BR-CLI-3 requires the report to carry its
+effective value. At HEAD the number cannot reach a dispatch: the adapter assigns `timeoutMs` onto the
+options object only when the caller passed one (`pdlc/engine/lib/adapter.mjs:280`), no workflow module
+passes one, and the transport therefore always falls back to its constructor default
+(`transport.mjs:152`, `DEFAULT_TIMEOUT_MS` at `:64`). An operator-set value would be reported and
+enforce nothing — a reported number that no run obeys.
+
+**Decision:** `createAdapter` takes `dispatchTimeoutMs` as a constructor option, on the same footing
+as the two tunables it already takes that way (`maxRateLimitPauses` `adapter.mjs:224`,
+`retryBackoffBaseMs` `:225`), and the adapter stamps it as `timeoutMs` onto every dispatch's options
+object. `resolveTunables({ config, flags })` is the single resolution point, called at both
+`createAdapter` sites in `bin/pdlc.mjs` — `:173` (the dry-run surface, whose transport refuses to
+dispatch, `:97-101`) and `:205` (the live run path) — and the same return feeds the `tunables` report
+block. `doctor` (`:157`) constructs no adapter and is not a third resolution point.
+
+**Alternatives considered:**
+
+- **Leave the transport's constructor default as the only enforcement** — rejected: that is HEAD's
+  behaviour and it makes BR-CLI-3's reported value decorative.
+- **Have the workflow modules pass `timeoutMs` per dispatch** — rejected: it would put a second row
+  under `pdlc/workflows/` in the change set and falsify DEC-ENG-07's premise, for no gain — the
+  engine, not the module, owns the operator's tunable.
+- **A per-run seam or a second resolver inside `run.mjs`** — rejected: `run.mjs` receives an
+  already-built adapter, and two resolution points is how a reported number and an enforced number
+  start to differ. One call site returns both, so the identity is structural rather than a convention
+  someone must maintain.
+
+**Constraint that forced this shape:** BR-CLI-3, read as an *effective-value* obligation rather than
+a display obligation — which is also what makes it testable: the assertion is that the value reaching
+the transport equals the value in the report.
+
+**A related, deliberate asymmetry:** `maxTurns` stays a declared-but-unassigned option key. It is
+part of the transport's four-key interface but nothing supplies it, so the boundary test asserts
+**containment plus two required keys** (`cwd`, `timeoutMs`) rather than set-equality over one call.
+Key presence and key *value* are also split on purpose: `adapter.mjs:278` builds `{ cwd }`
+unconditionally so the key exists even when the value is `undefined`, and AC-2.5's own test owns the
+value.
+
+**Reversibility:** Easy — one constructor option and one assignment.
+
+**Re-evaluation triggers:** A workflow module acquires a legitimate per-dispatch timeout need (long
+implementation waves versus short reviews), at which point the stamp becomes a default rather than an
+override and the precedence rule has to be stated.
+
+## DEC-ENG-13: No message reaches an operator except through a closed catalogue, and an unknown id throws
+
+**Context:** Operator-visible strings at HEAD are scattered across modules — a remedy block in
+`lib/handshake.mjs`, a refusal in `lib/startup.mjs`, a usage block in `bin/pdlc.mjs`. C-8 and AC-6.4
+require a closed catalogue with both directions asserted.
+
+**Decision:** `lib/catalogue.mjs` (new, layer 0) holds every refusal, gate reason, pause notice and
+exit summary. Emission goes through `message(id, …)`; an unregistered id **throws** rather than
+falling back to the raw string, so an unregistered message cannot reach an operator by accident. Ids
+are the stable contract; wording is not, and no test asserts prose. Severity is data on the entry, so
+the same condition cannot be a warning on one path and a refusal on another.
+
+**Alternatives considered:**
+
+- **A lookup that falls back to the passed string on a miss** — rejected: it makes the closed set
+  advisory. The whole value of the catalogue is that "every message an operator can see is reviewed",
+  and a fallback is the hole through which an unreviewed one arrives.
+- **Assert registered-equals-emitted per test file** — rejected as vacuous the moment a test is
+  skipped; the assertion is suite-wide, over DEC-ENG-10's accumulator.
+
+**Constraints that forced this shape:** C-8; AC-6.4's *both directions* (every registered id is
+emitted somewhere in the suite, and every emitted id is registered).
+
+**The cost this decision accepts:** every new operator-visible string is now a catalogue edit plus a
+suite-wide obligation to emit it at least once — including the ones introduced by DEC-ENG-03's
+interpreter probe and DEC-ENG-04's missing-measurement gate. That is the intended friction.
+
+**Reversibility:** Easy structurally, harder socially — once ids are cited by docs and tests, renaming
+them is a coordinated change. That is why ids, not wording, are the pinned half.
+
+**Re-evaluation triggers:** A message needs runtime-variable severity; a consumer wants machine-
+readable output for messages (at which point the catalogue is already the right place and the change
+is a serialisation, not a redesign).
+
+## DEC-ENG-14: Two concurrent runs against one repo are out of scope, and no lock is invented
+
+**Context:** `withCwd` (`pdlc/engine/lib/run.mjs:155`) calls `process.chdir` for the run's duration,
+which is process-global — so one process hosts one pipeline at a time by exclusion, not by design
+(`cwd` is *additionally* pinned per dispatch at `adapter.mjs:278`, so the agent's own directory is
+independent of it). The open case is cross-process: two engine runs against the same worktree share a
+git index and a branch.
+
+**Decision:** Record the gap (EC-RUN-4, O-ENG-T2); build nothing. The engine does not detect the
+second run.
+
+**Alternatives considered:**
+
+- **An advisory lock file scoped to the repo, refusing the second run with a catalogue-registered
+  message** — this is the likely eventual answer and is deliberately *not* built here. No acceptance
+  criterion binds it, and a locking protocol invented without a stated requirement is how a lock
+  becomes the thing that halts unattended runs at 3am — stale lock, no human, no recovery path.
+- **Rely on git's own index lock** — rejected as a mitigation to *claim*: it serialises individual git
+  invocations, not pipeline phases, so it converts a data race into an intermittent command failure
+  mid-phase. Worth knowing, not worth calling protection.
+
+**Constraint that forced this shape:** none — which is exactly the point. This is a decision to leave
+a known gap open rather than close it speculatively, and it is recorded so the gap is not later read
+as an oversight.
+
+**Reversibility:** Easy to add; the refusal would be one startup rung and one catalogue id, both of
+which now exist as shapes.
+
+**Re-evaluation triggers:** An operator runs the queue and a direct pipeline concurrently and
+corrupts a branch (the first real incident should produce the lock, with its stale-lock recovery
+path designed at the same time); or per-worktree consumer state (D-DIST-07) lands and makes
+concurrent worktree runs a supported workflow rather than an accident.
+
 ## 7. Decision index
