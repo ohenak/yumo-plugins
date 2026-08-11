@@ -702,7 +702,7 @@ report.engine = {
   engineVersion, pluginVersion, pluginRoot,
   startupAuth: { row, catalogueId },       // the §3.2 row that decided at startup
   transport: "agent-sdk",                  // observed, §3.6; one value in this feature (§3.4)
-  authSources: [{ skill, label, attempt, apiKeySource }],   // per dispatch, AC-4.5
+  authSources: [{ skill, phase, attempt, apiKeySource }],   // per dispatch, AC-4.5 (§4.4)
   baseUrl: string|null,                    // ANTHROPIC_BASE_URL, or null when direct
   startup: RungRecord[],
   dispatches: DispatchCounts,              // per phase label and per skill (§4.4)
@@ -710,7 +710,7 @@ report.engine = {
   pauses: PauseRow[], denials: DenialRow[],
   tunables: { retryAttempts, retryBackoff, timeoutMinutes, maxIterations },  // effective, §4.6
   permissionMode: string,                  // the single named setting in force (BR-PERM-1/2)
-  loop: { iterations, maxIterations, stopReason } | null,   // queue --loop only, below
+  loop: { iterations, maxIterations, stopReason, lastOutcome } | null,  // queue --loop only, below
   outcomes: { [Outcome]: number },         // all six keys, zeros included
   startedAt, finishedAt,
 }
@@ -744,9 +744,27 @@ the queue. `pdlc queue --loop` ends for exactly two declared reasons (REQ:379-38
 |---|---|---|
 | `"exhausted"` | no ready row remains — the module reported `idle` or `no-queue` | `run.mjs:279-281` returns that outcome |
 | `"bound-reached"` | `queue.maxIterations` reached with ready work possibly remaining | `run.mjs:282` returns `outcome: "max-passes"` |
+| `"stopped"` | the loop ended on a non-clean exit — a refusal, or a pass whose outcome was not `ran` | `run.mjs:277-278` returns `outcome: "refused"`; `:280` returns `outcome \|\| "unknown"` |
 
-`loop.iterations` is the number of passes actually run and `loop.maxIterations` the bound in force
-(`null` when unbounded — §4.6). The same two ids are the loop's own stdout outcome line
+**`stopReason` is total over the loop's actual exits, not only over AC-1.3's two.** AC-1.3 scopes its
+two reasons to the loop that "then exits 0" (`REQ:379-387`), but `runQueueLoop` has two further
+exits, and a report field the operator reads to decide whether a queue is drained cannot be silent
+on them: a refusal returns `{ passes, outcome: "refused" }` (`run.mjs:277-278`) — the fact §5.4
+already relies on — and a non-`ran` pass returns `outcome || "unknown"` (`:280`). Both take
+`"stopped"`, and the pass-level `outcome` string is carried alongside in `loop.lastOutcome`, so the
+third member names *that* the loop stopped early while the pass record says why. AC-1.3's two
+members keep their exact meanings and remain the only two reachable on a zero-exit loop, so nothing
+that reads them has to widen.
+
+`loop.iterations` is the number of passes actually run and `loop.maxIterations` the bound in force.
+**`loop.maxIterations` is `null` for an unbounded run, converted where the block is built, never left
+to the serialiser.** The value in flight is `Infinity` (`bin/pdlc.mjs:304-305`, §4.6) and
+`JSON.stringify(Infinity)` is `null`, so the written file would look right by accident while an
+in-memory reader of the report object saw `Infinity` — two readers disagreeing about one field. The
+conversion is therefore explicit at the point the `loop` block is assembled, and a test asserts the
+in-memory object, not just the round-tripped JSON.
+
+The same two ids are the loop's own stdout outcome line
 (catalogue ids `loop.exhausted` and `loop.bound-reached`, §3.5), so the operator reads the
 distinction in the line *and* in the report, as AC-1.3 requires. `loop` is `null` for `pdlc dev` and
 for a single-pass `pdlc queue`, which is the one place an absent value is meaningful: no loop ran.
