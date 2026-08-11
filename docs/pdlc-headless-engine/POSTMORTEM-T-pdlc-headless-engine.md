@@ -126,6 +126,46 @@ range, did not.
 
 ## Best-Guess Root Cause
 
+**A duplicated claim meets a site-scoped edit protocol with a one-round budget. The edit fixes the
+cited site, the duplicate survives, and the round that would have caught the duplicate is the round
+that was spent.**
+
+The chain:
+
+1. §6.3 was written to introduce the dry-run surface, and its preamble does what an introduction
+   does — it lists what the surface is good for. One item on that list ("the model map of §7.3 is
+   exercised over descriptors rather than executed calls") is a claim about a *different section's*
+   oracle. It reads as scene-setting and was approved as scene-setting through v1–v4 by both FSPEC
+   approvers, who were reviewing §6.3's own behavioural rules.
+2. §7.3's BR-MODEL-3 then restated the same claim in the section that owns it, where it is
+   load-bearing for AC-3.3's corpus. Two sites, one claim, different registers: prose in one,
+   normative business rule in the other.
+3. Phase T's TSPEC work made the claim testable for the first time. Designing AT-ENG-29's corpus
+   forces the question "what run produces these descriptors?", and the answer is visible in the
+   engine at `bin/pdlc.mjs:97-104` (`inertTransport()` throws) and `:189-191` (one skill per
+   invocation). `te-review` raised it upward as an erratum — correctly, since editing the FSPEC
+   from the TSPEC is the mis-filing the erratum channel exists to prevent.
+4. The erratum was routed with its coordinates, as the protocol requires. The author edited those
+   coordinates, verified the new text against HEAD and against REQ AC-3.3, confirmed the downstream
+   artefacts (`AT-ENG-29`, `EC-DISP-6`) needed no change, and cited the supporting rules in §6.3 —
+   a careful edit by every criterion except one it was never asked for: *is this claim asserted
+   anywhere else?*
+5. The delta confirmation asked exactly that, found the second site, and had no round left to spend
+   on it. One erratum round per upstream document per phase is a shipped constant; a second batch
+   would have carried a one-clause deletion.
+
+Two contributing factors, neither sufficient alone:
+
+- **The duplicate was search-resistant.** The two sites share no distinguishing token: §7.3 names
+  "dry runs", §6.3 says "it". Any mechanical de-duplication an author could reasonably run before
+  editing — grep the quoted phrase, grep `dry.run`, grep the id — returns nothing. Finding it
+  required reading the section the erratum cited as support, in full, for a claim it was not about.
+- **The erratum bound is one round, and this is the second consecutive halt to hit it.**
+  POSTMORTEM-F halted the same way, on a REQ erratum round whose fix was "three cells and one
+  word"; this one halts on "one clause". The bound is right in purpose — it stops upstream churn
+  from reopening settled documents — but both halts to date have cost a phase for a repair smaller
+  than the postmortem describing it. That is now a pattern, not an incident.
+
 ## Recommendation
 
 ## Prior Halt (2026-08-11, cleared — superseded by the record above)
