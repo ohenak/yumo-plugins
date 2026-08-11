@@ -1664,7 +1664,13 @@ equality to make a failure legible rather than merely red:
 Measurement of record, re-taken 2026-08-10: enumerating `AT-…` tokens over FSPEC §13's register range
 (`:2116-2267`), de-duplicated, gives **100** ids at FSPEC v11.7 — one more than the **99** recorded at
 v11.5 on 2026-08-06, the delta being `AT-K3b` (§12.4). The pinned literals in conjunct 1 are the
-**recorded measurement's** versions, and the contract is that pin and measurement move together: both
+**recorded measurement's** versions, and **this section, not PLAN T05, is the current record**: PLAN's
+T05 row still instructs the implementer to pin FSPEC `11.5` / TSPEC `2.0`, measure over
+`FSPEC:2089-2239`, and expect **99** ids, and still closes *"the case is green the moment it is
+written"* (`PLAN:351`, restated `PLAN:123-128`) — all four superseded here. That divergence is
+PLAN's to repair through the erratum channel, not this document's to fix; it is written down only so
+an implementer who builds T05 from PLAN reds on the version pin and knows why. The contract is that
+pin and measurement move together: both
 are re-taken whenever §12.4 re-measures, so the pin can never certify a count it did not produce. The
 task's stated precondition — §9.1 erratum 4, which assigns `AT-M11`, `AT-Q13` and `AT-R7` — has
 **landed** at TSPEC v2.7. The property carries no `describe.skip`, but it is **green on write only
