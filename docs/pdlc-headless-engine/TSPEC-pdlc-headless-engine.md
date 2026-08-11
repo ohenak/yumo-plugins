@@ -199,7 +199,7 @@ module — this table is the exhaustive answer REQ G-2 defers to TSPEC:
 | `_log(message)` | `console.log` | ✅ | ✅ | Routed through the engine's log sink |
 | `_runCommand` | `NO_RUN_COMMAND` = `null` | ✅ | — *(not declared)* | **Load-bearing:** a null seam silently degrades Phase I's script-owned wave gate to the legacy self-report path |
 | `_git(argv)` | `defaultGit` (`:8609`) — works | ✅ | ✅ | **The one deliberate exception** (below) |
-| `_runPipeline(args)` | `realMain` (`orchestrate-queue.js:1040`) | — | ✅ | **Necessity:** the queue calls it at `:1422` with `{reqPath}` and *no seams*, so the delegated dev pipeline would reach the throwing stub |
+| `_runPipeline(args)` | `realMain` (`orchestrate-queue.js:1041`) | — | ✅ | **Necessity:** the queue calls it at `:1422` with `{reqPath}` and *no seams*, so the delegated dev pipeline would reach the throwing stub |
 | every other IO / advisory / probe seam | working Node default | ✗ | ✗ | §2.5 — overriding is a defect |
 | `_sessionAgent` | declared without a default; `sessionBoundAgent` defaults it to `NO_SESSION_AGENT` (`orchestrate-dev.js:5567`) | ✗ | ✗ | Fresh-per-dispatch is today's semantics (R-4, O-6). The seam must stay unpainted, not be wired |
 
@@ -257,33 +257,81 @@ involved in any test, including row 5.
 
 ### 3.3 Skill resolution and the derived dispatchable set (AC-3.5, BR-START-4)
 
-**The identifier set is derived from the modules, not declared beside them.** Each workflow module
-gains one export:
+**The identifier set is derived from the modules, not declared beside them.** A hand-typed array
+beside the dispatch sites is exactly the declaration BR-START-4 forbids, and a *source scanner*
+tying that array to the modules does not repair it: only three of the ten identifiers sit at an
+`_agent("…")` call site (`ship-pr` `orchestrate-dev.js:8008`, `:8112`; `se-implement` `:8064`). The
+rest are reached by other shapes — `agentFn("se-implement", …)` (`:10142`, `:10251`),
+`agentFn("harvest-learnings", …)` (`:10542`), a `skill:` object field (`:10448`), bare argument
+literals (`"dod-verify"` `:8035`, `"se-author"` `:9964`), a named constant (`ADVISORY_RUNG_SKILL`
+`:1797`) — and five of them (`pm-author`, `pm-review`, `te-author`, `te-review`, `se-review`) appear
+**only** as `PHASE_DISPATCH` role fields (`:3337` the export, `:3344`–`:3435` the rows). A scanner
+honouring "skill literals at dispatch call sites" derives `{ship-pr, se-implement}`, set-equality
+fails, and the only available repair is loosening the oracle — which is how the property goes
+quietly vacuous.
+
+**So the export is computed, not typed, and the oracle reads data rather than parsing source.** The
+change to each module is one derivation plus the promotion of the remaining bare literals to named
+constants, so that every dispatched identifier is reachable as a module-level value:
 
 ```js
-// pdlc/workflows/orchestrate-dev.js
-export const DISPATCHABLE_SKILLS = Object.freeze([
-  "dod-verify", "harvest-learnings", "pm-author", "pm-review", "se-author",
-  "se-implement", "se-review", "ship-pr", "te-author", "te-review",
-]);
-// pdlc/workflows/orchestrate-queue.js
-export const DISPATCHABLE_SKILLS = Object.freeze(["se-author"]); // A2 re-grounding
+// pdlc/workflows/orchestrate-dev.js — PHASE_DISPATCH is already exported (:3337)
+export const ADVISORY_RUNG_SKILL = "se-review";           // was module-local (:1797)
+export const SKILL_SHIP_PR = "ship-pr";                   // :8008, :8112
+export const SKILL_SE_IMPLEMENT = "se-implement";         // :8064, :10142, :10251, :10448
+export const SKILL_DOD_VERIFY = "dod-verify";             // :8035
+export const SKILL_HARVEST = "harvest-learnings";         // :10542
+export const SKILL_SE_AUTHOR = "se-author";               // :9964
+
+const PHASE_ROLE_KEYS = ["creator", "optimizer", "verifier", "remediator", "reviewers"];
+export const DISPATCHABLE_SKILLS = Object.freeze([...new Set([
+  ...Object.values(PHASE_DISPATCH).flatMap((p) =>
+    PHASE_ROLE_KEYS.flatMap((k) => (p[k] == null ? [] : [].concat(p[k])))),
+  ADVISORY_RUNG_SKILL, SKILL_SHIP_PR, SKILL_SE_IMPLEMENT,
+  SKILL_DOD_VERIFY, SKILL_HARVEST, SKILL_SE_AUTHOR,
+])].sort());
+
+// pdlc/workflows/orchestrate-queue.js — imports from orchestrate-dev.js already (:41)
+export const SKILL_TRIAGE = "se-author";                  // Phase-0 readiness triage (:1216)
+export const DISPATCHABLE_SKILLS = Object.freeze(
+  [SKILL_TRIAGE, ADVISORY_RUNG_SKILL].sort());            // advisory reached via :1252 → :1258
 ```
 
-That is a declaration, which BR-START-4 forbids unless something ties it to the modules. The tie is a
-**workflows-side test** (not production code) that scans each module's own source for skill literals
-at dispatch call sites and asserts set-equality with the export. A skill added to a dispatch without
-being added to the export fails that test in this repo, before the engine ever sees it. At HEAD the
-derived union is **10 identifiers** — the count is an observation, never the assertion.
+Two corrections to v1.0 are folded in here, both grounded at HEAD. The queue's set is **not**
+`["se-author"] // A2 re-grounding`: `se-author` is the queue's **Phase-0 readiness triage** dispatch
+(`orchestrate-queue.js:1216`), and the queue reaches a *second* identifier the v1.0 array omitted —
+`runAdvisorySeamFn` is called at `:1252` with `_agent: rawAgentFn` (`:1258`), and `runAdvisorySeam`
+(`orchestrate-dev.js:2943`) dispatches under `ADVISORY_RUNG_SKILL` (`:1841`). A source scan could
+never have caught that omission either, because the `"se-review"` literal lives in the *dev*
+module's source, so declaration and scanner would have agreed with each other and both disagreed
+with the run.
 
-Adding an export is a change to the modules, in this repo, with tests (C-4). It is bundle-safe:
-`stripModuleSyntax` (`pdlc/workflows/build-runtime.mjs:45`) rewrites `export const` to `const`, and
-the bundle's published-binding lists (`:87`, `:107`) are explicit, so the runtime bundles are
-unaffected by a name they do not publish.
+The tie is then two **workflows-side tests** (not production code), and neither parses source:
+
+| Test | Assertion | What it catches |
+|---|---|---|
+| derivation | `DISPATCHABLE_SKILLS` ≡ the union recomputed in the test from `PHASE_DISPATCH` + the named constants, read as imported data | an identifier added to a phase row or a constant and not to the export — impossible by construction, so this is a regression guard on the derivation itself |
+| no-bare-literal | no string literal equal to a member of the union appears in either module's source outside the constant declarations and `PHASE_DISPATCH` | a *new* dispatch site typed as a bare literal, which is the only way an identifier can escape the derivation |
+
+At HEAD the derived union is **10 identifiers** — an observation, never the assertion; the assertion
+is set-equality.
+
+Adding these exports is a change to the modules, in this repo, with tests (C-4). It is behaviourally
+bundle-safe: `stripModuleSyntax` (`pdlc/workflows/build-runtime.mjs:45`) rewrites `export const` to
+`const`, and the bundle's published-binding lists (`:87`, `:107`) are explicit, so the runtime
+bundles are unaffected by a name they do not publish. It is **not** byte-safe: `stripModuleSyntax`
+inlines the whole module body, so both `pdlc/workflows/dist/*.bundle.js` and
+`distribution-manifest.json` change and must be rebuilt and committed in the same task
+(`.github/workflows/pr-tests.yml:77` `artifact-freshness` gates on exactly that — §8.3).
 
 **Rung 4 therefore imports the two modules** (after rungs 1–3 pass, never before — R-ARCH-1 keeps that
-import inside `lib/run.mjs`, which exposes `loadDispatchableSkills()` for startup to call). The
-equality is then computed over that scope:
+import inside `lib/run.mjs`, which exposes `loadDispatchableSkills()` for startup to call).
+**Rung 4 checks the union of both modules' sets on every invocation, not the invoked command's
+module alone.** Under a per-command reading `pdlc queue` would pass rung 4 over a set excluding a
+skill it can dispatch — `se-review` reaches the queue only through the delegated dev pipeline and
+the advisory seam — and a missing `se-review/SKILL.md` would surface mid-run instead of at startup.
+The union is also cheap: `lib/run.mjs` imports both modules regardless, because the queue imports
+the dev module itself (`orchestrate-queue.js:41`). The equality is then computed over that scope:
 
 | Direction | Statement | Failure |
 |---|---|---|
