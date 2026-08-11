@@ -13,7 +13,19 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+| pdlc | draft | Claude | 1.3 | 2026-08-11 |
+
+**Change note, v1.3** (round 3, addressing `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3`):
+the one High is §4.4 — AC-3.5's equality is **rescoped**, not weakened: it ranges over the
+modules-derived dispatchable subset and **both directions fail closed**, an operator-invoked skill's
+file is out of set (EC-START-7) and a file for a dispatchable identifier the engine cannot dispatch
+refuses (EC-START-9); AT-ENG-10 pins all three fixtures, and §6.4, §13.1 O-ENG-1, §14.1 and §18.3
+follow. Also: §13.1's O-ENG-4/5 cells restated as REQ v0.8 settled them, `doctor`'s three AC-2.1
+fields named (BR-START-3) and traced (§14.1), §2's AC-4.1 pointer corrected to §8.1, rung 0 brought
+inside BR-START-2 with the usage-error/refusal boundary stated (BR-REP-0a), the closed flag surface
+given EC-CLI-7 and a test, the approval anchors re-attributed to the module (BR-PARITY-5), the
+classifier's forward direction scoped suite-wide (BR-FAIL-1), and jitter/guard-message oracles
+tightened (AT-ENG-37, AT-ENG-43). No decision taken in v1.0–v1.2 is reopened.
 
 **Change note, v1.2** (upstream re-grounding, no new content): REQ v0.8 landed the Phase-F erratum
 round, so all five §13.1 items are resolved upstream and M-ENG-06 is total over the REQ's criteria
@@ -377,7 +389,7 @@ M-ENG-06 records.)
 
 | Test | Asserts |
 |---|---|
-| AT-ENG-06 | rungs run in §4.1's order, and a rung-1 failure leaves rungs 2/4 reported as skipped-with-reason, never passing (BR-START-2) |
+| AT-ENG-06 | rungs run in §4.1's order, and a rung-1 failure leaves rungs 2/4 reported as skipped-with-reason, never passing; a rung-0 refusal (EC-CLI-3) leaves rungs 1–5 reported the same way, under `dev` and `doctor` alike (BR-START-2, BR-START-0/3) |
 | AT-ENG-07 | every failing rung refuses with exit `1` and zero dispatches attempted (BR-START-1) |
 | AT-ENG-08 | the handshake refusal text names range, found-version, and remedy (§4.3, AC-3.2) |
 | AT-ENG-09 | `doctor`'s reported rungs equal the rungs a run enforces, on the same fixture, including rung 0's working-directory half and its "not applicable" REQ-path half (BR-START-0/3) |
@@ -1445,6 +1457,7 @@ as a whole without re-reading ten sections; each entry cites the section that ow
 | BR-LOOP-3 | per-iteration outcomes are recorded | §11.2 |
 | BR-LOOP-4 | per-outcome continuation table | §11.2 |
 | BR-REP-0 | one JSON line, the last line of stdout; no file | §12.1 |
+| BR-REP-0a | a usage error is not a refusal and emits no report line | §12.1 |
 | BR-REP-1 | the modules' report is extended, not replaced | §12.1 |
 | BR-REP-2 | an empty set is not a missing field | §12.2 |
 | BR-REP-3 | counts are observable, not derivable | §12.2 |
@@ -1477,8 +1490,8 @@ Four rules apply to every section and are the ones a reviewer should check a new
 
 | Section | Table | Cases |
 |---|---|---|
-| §3.4 | command surface | EC-CLI-1…6 |
-| §4.5 | startup ladder | EC-START-1…8 |
+| §3.4 | command surface | EC-CLI-1…7 |
+| §4.5 | startup ladder | EC-START-1…9 |
 | §5.5 | auth | EC-AUTH-1…8 |
 | §6.5 | prompt composition | EC-SKILL-1…6 |
 | §7.5 | dispatch payload | EC-DISP-1…6 |
@@ -1532,7 +1545,9 @@ Three assertions cannot live in any single section because they range over the w
 ### 18.3 What the suite is required to pin
 
 - Both directions of every set-equality this document names, each with the observable its section
-  fixes: the outcome taxonomy over BR-FAIL-1's provocation corpus (§8.1), the model map over
+  fixes: the outcome taxonomy over BR-FAIL-1's provocation corpus in reverse and over
+  classifications accumulated suite-wide in forward (§8.1), the skill-set equality over §4.4's
+  dispatchable subset in both directions, the model map over
   M-ENG-07's corpus (§7.3), the message catalogue over ids accumulated through the emission seam
   (§12.3), and clause 1(i) of the parity oracle against fixture-fixed expectations (§10.2). No
   set-equality in this document is left to a reviewer's reading of the source.
