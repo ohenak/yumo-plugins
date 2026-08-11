@@ -711,6 +711,105 @@ asserted property in §6.3 and not an implementation detail.
 
 ## 7. Test Strategy
 
+The suite is `node --test __tests__/` under `pdlc/engine/` (`package.json`, `scripts.test`), no test
+framework beyond the runtime's. Everything below is a mechanism, not an aspiration: each subsection
+names the seam that makes the property assertable.
+
+### 7.1 Hermeticity, observed rather than asserted (AC-6.1, BR-VER-1)
+
+Three layers, in increasing order of paranoia:
+
+1. **Seam construction.** Every test builds a transport through `createTransport({ queryFn })`
+   (`transport.mjs:135`); the SDK's own `query` is reached only by `defaultQueryFn` (`:17`), which
+   imports the SDK lazily. A test that omits `queryFn` gets the real client.
+2. **Construction guard.** A suite-scoped guard fails the run on any attempt to construct the real
+   transport — the SDK client *or* a `claude` child spawn. It is a wrapper installed by the test
+   bootstrap, so a new test file inherits it without opting in.
+3. **Socket trap.** The bootstrap patches `net.Socket.prototype.connect` (and the `tls` path) to fail
+   the suite on any outbound connection attempt.
+
+**The trap is itself tested**: one test deliberately attempts a connection and expects to trip it
+(AT-ENG-63). A trap that never fires is indistinguishable from one that was never installed — the
+same vacuity argument as §3.5's catalogue and §5.1's classifier, and the reason none of these three
+properties is left to a comment.
+
+`--dry-run-skill` (`bin/pdlc.mjs:171-172`) composes a prompt without dispatching, so the whole prompt
+corpus is reachable hermetically, and the CLI's own surface is testable without a transport at all.
+
+### 7.2 Fixtures per transport (AC-6.3, BR-VER-2)
+
+One fixture set per transport, recorded from that transport's real output: SDK message streams
+(`system/init` with `apiKeySource`, `rate_limit_event`, terminal `result`) and `claude -p`
+stream-json lines. The SPIKE (`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`) is the first such
+recording. Refreshing a set against a newer SDK or CLI is a documented, repeatable step —
+a `__tests__/fixtures/README.md` naming the command and the redaction rules — rather than a rewrite,
+because the fixtures are the only thing standing between a transport upgrade and a silent contract
+change.
+
+Fixtures are redacted of account identifiers at recording time; no fixture may contain a credential,
+and a test asserts the fixture directory is free of key-shaped strings.
+
+### 7.3 The parity oracle and its write-replaying double (AC-1.1, BR-PARITY-3/4/5)
+
+The oracle asserts that an engine run produces the same artifacts a Claude Code run does. Its
+correctness depends entirely on the double:
+
+- **A double that only returns a response string leaves `docs/{f}/` empty**, and every structural
+  clause passes on nothing. So the double **replays each dispatch's file writes from its fixture** —
+  for a reviewer dispatch, creating the cross-review file the prompt names, with the fixture's
+  `VERDICT:` line and counts — reproducing the creation events a real agent would have produced.
+- **The double must *not* write the approval anchors.** `APPROVAL-HASH:` / `REVIEWED-COMMIT:` are the
+  module's own write (`orchestrate-dev.js:6190`, through `_appendFile`, after its own pre-count
+  check). A double that wrote them would make the anchor clause assert the fixture's bytes instead of
+  the module's append logic — the exact vacuity BR-PARITY-5 exists to prevent.
+- **The oracle observes creation events, not the surviving tree** (BR-PARITY-4): Phase H deletes
+  harvested `CROSS-REVIEW-*` / `CODE_REVIEW-*` files once the LEARNINGS commit is confirmed, so a
+  harvested file's later absence is not a failure. The double records a creation log and the clauses
+  read that log.
+- **The negative half is asserted first** (AT-ENG-45): a write-less double must *fail* this test.
+  Without that, a later refactor could silence the oracle and the suite would stay green.
+
+### 7.4 Set-equality harnesses
+
+Three properties share one shape — accumulate through a seam across the whole suite, assert once at
+the end — because per-test assertions go vacuous the moment a test is skipped:
+
+| Property | Seam | Assertion |
+|---|---|---|
+| message catalogue (§3.5) | `message(id, …)` records the id | emitted ids ≡ `messageIds()` |
+| outcome taxonomy (§5.1) | `classifyOutcome` records the result | observed ⊆ `OUTCOMES`, and provocation fixtures ⊇ `OUTCOMES` |
+| dispatchable skills (§3.3) | the derived set vs. readable prompt files | both directions, §3.3's table |
+
+Each is a single test file that runs last by name ordering and reads a module-scoped accumulator. The
+accumulator is reset per process, never per test — resetting per test is how these degrade into the
+per-test assertions they replace.
+
+### 7.5 The opt-in live path (AC-6.2, BR-VER-3)
+
+Behind an explicit flag (never the default suite, never CI), one real small feature runs end-to-end
+against a scratch repo, asserting §7.3's structural set plus the one thing only a live run shows: at
+least one cross-review round reaching a parseable terminal verdict produced by a real model call. The
+§6.5 guard measurement is the second live test, and it is the one that gates unattended use.
+
+### 7.6 CI arrangement
+
+`.github/workflows/pr-tests.yml` currently runs four jobs — `unit-tests` (`:27`; matrix
+ubuntu/macos, node 20, `working-directory: pdlc/workflows`), `artifact-freshness` (`:77`),
+`fresh-clone-bootstrap` (`:103`) and `script-syntax` (`:161`) — and **none of them runs
+`pdlc/engine/`'s tests**. A fifth job is therefore part of this feature, not a
+follow-up:
+
+```yaml
+engine-tests:
+  strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }   # same matrix as unit-tests
+  # working-directory: pdlc/engine ; npm ci ; npm test
+```
+
+Matching the existing matrix is deliberate: the engine spawns processes and reads `~/.claude.json`,
+both of which differ across the maintainer's macOS and CI's Linux, and this repo already pays for
+that difference in its bash-3.2/bash-5 constraint. The job runs the hermetic suite only; nothing in
+CI dispatches a model call or reads a credential.
+
 ## 8. Traceability
 
 ## 9. Open Questions
