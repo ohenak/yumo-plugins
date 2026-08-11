@@ -13,7 +13,19 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+
+**Changelog — v1.2** (addresses cross-review round 2, product-manager and test-engineer):
+
+| Change | Findings |
+|---|---|
+| The post-T17 `implementation.testCommand` literal carries **all four** of HEAD's ignore patterns, `'documentOracles'` included, in both §8 and §11; the reason it is carried rather than dropped is stated (document oracles are CWD- and untracked-file-sensitive, so re-admitting them would redden *other* features' wave gates) | PM F-01 |
+| `macos-latest` removed from every claim: HEAD's matrix is `os: [ubuntu-latest]` (`pr-tests.yml:40`, `macos-latest` dropped in `410f3a07`). T17 inherits that matrix, and the `M-ENG-09` obligation is restated as **one row per `process.platform` that runs the suite** — CI's `linux` plus the wave host's — which is what T29 actually keys on. Touches T17, T42, §5, §8, §9's C-9 note, §10 (O-ENG-T1, T4, T5) and §11 | TE F-14 |
+| V5 is spelled `npm test -- --experimental-test-coverage`, through the runner; T11's row states the flag-forwarding obligation, and §8's coverage item says why a bare `node --test` would measure a red, non-hermetic run | TE F-15 |
+| §9's AC-1.5 Red-task cell reads "no red task", with the reason; T10 stays in the green column | PM F-02 |
+| §6 states the parser's **two-cell rule** once and names all four confusable tables (§7, §10, §11 open with `#`; §4 has no id cell), so the argument does not depend on an enumeration staying total | PM F-03 |
+| §11's CI table cites the `run:` line throughout, one convention per column | PM F-04 |
+| §5 states that batch numbers are documentation and the runtime derives finer ready-sets from the same edges; §9's orphan-AT sub-table retitled, AT-ENG-57's parenthetical membership noted | PM Q-01, TE Q-05 |
 
 **Changelog — v1.1** (addresses cross-review round 1, product-manager and test-engineer):
 
@@ -664,8 +676,9 @@ absorbed silently: the `RungRecord` shape a TSPEC reader would build cannot repr
 implementer working from TSPEC alone would either drop the rung or renumber the ladder, and
 renumbering would break FSPEC's fixed rung numbers 0–5.
 
-C-9 (every runtime fact measured, per platform) is carried by T17's two-platform matrix and T42's
-per-platform `M-ENG-09` rows; C-4 (the modules are not forked) by T10 and the DoD's `git diff --stat`
+C-9 (every runtime fact measured, per platform) is carried by T42's `M-ENG-09` rows, which T29 keys
+on `process.platform` — so the measurement follows the platforms that actually run the suite (CI's
+`linux` plus the wave host's) rather than the CI matrix, which is `ubuntu-latest` alone at HEAD; C-4 (the modules are not forked) by T10 and the DoD's `git diff --stat`
 check; C-8 (closed message catalogue) by T05/T14/T19.
 
 ## 10. Risks, deferrals and open questions carried into implementation
@@ -678,7 +691,7 @@ check; C-8 (closed message catalogue) by T05/T14/T19.
 | The suite-wide properties degrade back to vacuous green | The forward direction `observed ⊆ OUTCOMES` is true of the empty set, and the tempting repair under time pressure is to scan all run directories and drop the emptiness guard | The spine is batch 3, its inheritance self-test is batch 2's T01, and the emptiness guard is part of T19 rather than a later hardening |
 | The workflows edit lands without its rebuild | `artifact-freshness` gates on `build-runtime.mjs --check`, so the symptom is CI red at Phase PUB for a reason unrelated to the change | T16 owns source, rebuild and artifacts as one task, and `implementation.postWavePathspecs` already names `pdlc/workflows/dist/` |
 | The corpus is built too early and the witness rows are written to fit it | A witness written after the data is a restatement of the data | T50 (the witness table) precedes T52 (the assertion step) and both follow T48; the model constants stay module-local so M-ENG-07 remains a transcription, never an import |
-| Cost and time of a fifth CI job | The engine suite runs on two platforms on every PR | O-ENG-T1 is a maintainer decision; this plan takes the technical requirement only — both platforms exercised somewhere — and T17 defaults to matching the existing matrix, which is the reversible choice |
+| Cost and time of a fifth CI job | The engine suite runs on `ubuntu-latest` on every PR | O-ENG-T1 is a maintainer decision; this plan takes the technical requirement only — the suite exercised in CI, and every platform that runs it carrying an `M-ENG-09` row — and T17 matches the existing matrix (`ubuntu-latest` at HEAD) rather than widening it, which is the reversible choice |
 
 **Open questions carried, with the disposition this plan takes.** None of these blocks a task; each
 names where it would attach if answered.
