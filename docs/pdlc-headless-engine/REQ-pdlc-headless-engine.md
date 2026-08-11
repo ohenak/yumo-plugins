@@ -290,6 +290,7 @@ No AC may depend on a tunable that is not listed here.
 | `dispatch.retryBackoff` | exponential from 30 s, capped at 15 min | engine config | AC-4.1 |
 | `dispatch.timeoutMinutes` | 30 min per dispatch | engine config | AC-4.2 |
 | `auth.allowApiKeyBilling` | `false` (flag-only opt-in, never a config file) | operator, per invocation | AC-2.2 |
+| `queue.maxIterations` | unbounded — loop ends on queue exhaustion unless the operator sets a positive bound for that invocation | operator, per invocation | AC-1.3 |
 
 The retry defaults are a starting point chosen to absorb a transient rate-limit window
 without masking a persistent one, not a measured floor — re-derivation is owed by O-7.
@@ -341,8 +342,15 @@ question. `{f}` denotes a feature name throughout.
   one read of `{pluginRoot}/skills/{skill}/SKILL.md` is observed; (b) at least one read of the
   consumer's `docs/{f}/REQ-{f}.md` is observed; (c) the set of paths opened under the
   consumer's `.claude/workflows/` is **empty, with no exception** — under the posture AC-1.1's
-  *Given* fixes, no path under that directory is opened at all. The module's config-side
-  opt-out is evaluated *before* any drift-state read and short-circuits it
+  *Given* fixes, no path under that directory is opened at all. **The two run surfaces reach that
+  empty read-set by different routes, and the `distribution.checkEnabled: false` posture is
+  load-bearing for only one of them** (Phase-F erratum): the dev module opens no path under
+  `.claude/workflows/` on any posture — its single occurrence of that string is a Phase-MERGE
+  self-modification guard path, not a read (`orchestrate-dev.js:52`) — so AC-1.1's run satisfies
+  (c) with or without the config opt-out, and the *Given* carries it for consistency with AC-1.3
+  rather than as this clause's cause. On the queue surface (AC-1.3) the opt-out is what the clause
+  rests on: the module's config-side opt-out is evaluated *before* any drift-state read and
+  short-circuits it
   (`parseDistributionCheckEnabledOptOut`, `orchestrate-queue.js:2068`, called at `:1071-1072`;
   the drift-state read at `.claude/workflows/.pdlc-drift-state.json`, `:64`, lives only in the
   else-branch, `:1074`) — so the drift gate that G-2/C-4 forbid forking (SE v1 F-04) costs the
@@ -356,8 +364,12 @@ question. `{f}` denotes a feature name throughout.
 - **AC-1.3** *Given* a queue with a ready row and the AC-1.2 posture configured, *when* the
   operator runs `pdlc queue`, *then* exactly one feature is selected by the module's own
   Phase-0 triage — same row, same ordering, same blocked/halted handling as the
-  workflow-runtime path — and `pdlc queue --loop` repeats that one feature at a time until no
-  ready row remains, then exits 0.
+  workflow-runtime path — and `pdlc queue --loop` repeats that one feature at a time until it
+  stops for one of exactly two declared reasons, then exits 0: **queue exhaustion** (no ready row
+  remains) or **the iteration bound `queue.maxIterations` (§4.1) being reached with ready rows
+  still present**. The two are distinguishable by the operator without inspecting the queue: the
+  loop's own outcome line, and the run report (AC-4.5), name which of the two ended it (Phase-F
+  erratum — an unbounded-only reading left a bounded stop indistinguishable from exhaustion).
 - **AC-1.4** *Given* a pipeline that halts, *when* the run ends, *then* the halt is recorded
   exactly as the modules record it today — the POSTMORTEM file, the `halted` queue row and
   its pathspec-scoped commit — and the CLI's exit code distinguishes a halt from a crash of
