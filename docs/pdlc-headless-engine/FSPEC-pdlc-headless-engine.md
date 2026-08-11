@@ -124,7 +124,8 @@ unasserted halves differ; each such row names its unasserted half, and that name
 document schedules. AC-2.3 is one of them (green for the single-dispatch spread at
 `pdlc/engine/lib/transport.mjs:159`, `:168`, asserted at `__tests__/transport.test.js:170`; red for
 BR-ENV-3's every-dispatch quantifier, §7.1), as is AC-4.4 (§8.4) and AC-4.1's set-equality half
-(§12.4). The table is total over the REQ's criteria, so it — not this section — is the authority.
+(§8.1, AT-ENG-33). The table is total over the REQ's criteria, so it — not this section — is the
+authority: where this restatement and M-ENG-06 drift, a test author transcribes the table.
 
 The measured facts every later section cites by id rather than re-deriving: **M-ENG-01** (the
 modules already run in plain Node; `agent()` is the only capability they take from the runtime),
@@ -279,9 +280,20 @@ listing both, because an operator fixing a cron host one round-trip at a time is
 this rule exists to prevent. Rungs whose evidence is unavailable because an earlier rung failed
 report as *skipped, with the reason* — never as passing.
 
+Rung 0 is inside this rule, not before it: a rung-0 **refusal** on a well-formed command (a `--cwd`
+that is not a git repository, a `dev` REQ path that does not exist — EC-CLI-3, EC-DISP-5) reports
+rungs 1–5 as skipped-with-reason in the same message, and emits the report line (BR-REP-0). A
+**usage error**, which never became a command, is outside the ladder entirely: usage on stderr,
+exit `1`, no rung report and no report line (BR-REP-0a). `doctor` inherits both behaviours
+unchanged, since it is the same ladder (BR-START-3).
+
 **BR-START-3 — `doctor` is the same ladder, not a second implementation.** Any divergence between
 what `doctor` reports and what a run's start enforces is a defect: `doctor` exists to answer "will a
-run start here?" and only a shared ladder can answer that honestly.
+run start here?" and only a shared ladder can answer that honestly. `doctor` is the surface AC-2.1
+requires — the startup posture readable **without starting a run** — so it dispatches nothing, bills
+nothing, and its report names three fields: the `engineVersion`/`pluginVersion` pair (§4.3), the
+effective base URL, and the auth catalogue id rung 5's mapping lands on (§5.1). Reporting the rungs
+without those three would answer "did the ladder pass?" rather than AC-2.1's question.
 
 ### 4.2 Ordering, and why it is fixed
 
@@ -1098,6 +1110,16 @@ stdout is not captured leaves no witness at all, and a run that died is distingu
 that refused, because a refusal still emits the line (EC-REP-1). This matches the shipped
 convention (`pdlc/engine/bin/pdlc.mjs:215-221`, emitted at `:236-237`).
 
+**BR-REP-0a — a usage error is not a refusal, and emits no report line.** The rule above ranges over
+invocations the engine parsed into a well-formed command: those the ladder then rejects (rung-0
+path and working-directory refusals, EC-CLI-3, EC-DISP-5, and rungs 1–5) always emit the line.
+An invocation the engine could not parse into a command at all — an unknown command, a missing
+required positional, a value flag with no value (EC-CLI-1, EC-CLI-2, EC-CLI-5) — prints usage on
+stderr and exits `1` with **no** report line, because there is no run to report on. This is the
+boundary a cron wrapper needs stated: a parseable last line is guaranteed for everything it was
+able to invoke, never for a malformed command line. HEAD already behaves this way
+(`pdlc/engine/bin/pdlc.mjs:243-247` — usage on stderr, exit code `1`, return before any report).
+
 **BR-REP-1 — the modules' report is extended, never replaced.** Every field the modules already
 produce survives verbatim; the engine adds fields alongside them (AC-4.5).
 
@@ -1240,7 +1262,7 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 | AC-1.3 | §11.1, §11.2 | AT-ENG-52…AT-ENG-57 |
 | AC-1.4 | §3.3, §8.3 | AT-ENG-04, AT-ENG-38 |
 | AC-1.5 | §10.1 | AT-ENG-49 |
-| AC-2.1 | §5.1 | AT-ENG-13, AT-ENG-15 |
+| AC-2.1 | §5.1 (mapping); §4.1, §4.6 (diagnostic surface) | AT-ENG-13, AT-ENG-15, AT-ENG-09, AT-ENG-11, AT-ENG-24 |
 | AC-2.2 | §5.2 | AT-ENG-14 |
 | AC-2.3 | §7.1 | AT-ENG-26, AT-ENG-27 |
 | AC-2.4 | §5.4 | AT-ENG-16 |
@@ -1249,7 +1271,7 @@ These remain open exactly as the REQ states them; this FSPEC neither closes nor 
 | AC-3.2 | §4.1, §4.3 | AT-ENG-08, AT-ENG-12 |
 | AC-3.3 | §7.3 | AT-ENG-29, AT-ENG-30 |
 | AC-3.4 | §7.4 | AT-ENG-31 |
-| AC-3.5 | §4.4 (with O-ENG-1) | AT-ENG-10 |
+| AC-3.5 | §4.4 | AT-ENG-10, AT-ENG-12 |
 | AC-4.1 | §8.1 | AT-ENG-33, AT-ENG-34 |
 | AC-4.2 | §8.2 | AT-ENG-35, AT-ENG-36, AT-ENG-37 |
 | AC-4.3 | §8.3 | AT-ENG-38 |
