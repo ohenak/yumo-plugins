@@ -545,9 +545,13 @@ by reading prose is not on this list.
       Set-equality, not containment: this file is repo-wide state, so a value that runs only the
       engine suite would blind **other** features' wave gates — a blast radius outside this REQ.
       The same argument runs in the other direction and is why `'documentOracles'` is carried
-      through rather than dropped: the document oracles are CWD- and untracked-file-sensitive
-      (`pdlc/workflows/lib/document-oracles.mjs` reads `process.cwd()`; a document oracle can be red
-      locally and green in CI), so re-admitting them to the wave gate would turn *other* features'
+      through rather than dropped: the document-oracle **tests** are working-tree-sensitive. The
+      module itself is not — `document-oracles.mjs:2-6` states it is a pure function of a supplied
+      `root` and explicitly disclaims `process.cwd()`. The sensitivity enters at the test's setup:
+      `documentOracles.test.js:62` binds `LIVE_ROOT` to the real repo tree and runs the oracles over
+      whatever `docs/` currently contains, tracked or not, so an oracle can be red locally (on a
+      working tree carrying another feature's untracked drafts) and green in CI (which clones only
+      tracked files). Re-admitting them to the wave gate would turn *other* features'
       untracked docs into wave failures. Dropping a pattern is as much a blast radius as dropping a
       suite.
 
@@ -799,9 +803,10 @@ cd pdlc/engine && npm test && cd ../workflows && npm test -- --testPathIgnorePat
 **Both** suites, and all **four** of V2's ignore patterns preserved verbatim — HEAD's value is
 `cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`
 (`.claude/pdlc.config.json:3`), and the post-change value is that string with the engine suite
-prepended, token for token. `'documentOracles'` is load-bearing, not noise: the document oracles
-resolve paths from `process.cwd()` and read the working tree, so they are red locally and green in
-CI depending on untracked files. Re-admitting them to the wave gate would make *other* features'
+prepended, token for token. `'documentOracles'` is load-bearing, not noise: the oracle **module** is
+a pure function of a supplied `root` and disclaims `process.cwd()` (`document-oracles.mjs:2-6`), but
+its **test file** binds `LIVE_ROOT` to the real repo tree (`documentOracles.test.js:62`) and reads
+the working tree, so those tests are red locally and green in CI depending on untracked files. Re-admitting them to the wave gate would make *other* features'
 untracked docs fail this repo's waves — the same repo-wide blast radius the item below argues
 against, arriving through a dropped token instead of a dropped suite. Replacing the value with
 `cd pdlc/engine && npm test` would satisfy "runs the engine suite" while **dropping V2**, and this
