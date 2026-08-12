@@ -88,7 +88,43 @@ No High or Medium finding is open. Both entries below are in the new §7.8 mater
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | I independently verified §9.3's BR-START-1 erratum against FSPEC HEAD and concur, so I re-emit it in my own dispatch message. If the orchestrator's one-erratum-per-upstream-doc-per-phase bound treats the two as one item, that is the intended reading — the concurrence is evidence, not a second request. |
+| Q-02 | The census asserts the **count** of indirect positions (11), not their identity. Two simultaneous edits — one direct site made indirect, one new direct site added — would move both counts consistently and stay green. Is a per-position transcription (line-anchored, as the direct classes effectively are) worth it here, or is the count the deliberate stopping point given indirect values are governed at their source anyway? No finding: the count already catches the single-edit case, which is the realistic one, and this is a test-design judgement I leave to the test-engineer lens. |
+
 ## 5. Positive Observations
+
+- **The rescope fixed the class I named and one I had not measured.** I raised class 3's four
+  uncounted `skill:` fields; the revision found seven more in class 4 (`:5573`, `:5579`, `:5585`,
+  `:5876`, `:7124`, `:7463`, `:9244`) and rescoped both classes together. My finding was the visible
+  half of the defect. Widening the sweep to the whole dispatch surface — rather than patching the one
+  class a reviewer happened to check — is the second time in three rounds this document has done that.
+- **"Indirect dispatch" is a third outcome with a stated reason, not an exemption.** The distinction
+  that makes it sound is provenance: an indirect argument's value "originates in a class-2 role field
+  or in a class-4 direct site upstream of the call", so scoring it again "would demand the extractor
+  evaluate the program" (`:547-551`). That keeps DEC-ENG-05's no-exemptions rule intact while making
+  the guard green on correct code — the failure mode I flagged as blocking Phase I is gone, and it
+  went away by sharpening the definition rather than by loosening the bar.
+- **The withdrawal in §9.3 is the honest version.** Round 8's incidental note about FSPEC's script
+  citation was wrong; the revision re-measured, said so plainly — "FSPEC's range spans exactly
+  initialisation through fail-open and is correct. The off-by-one was this document's, in §7.8"
+  (`:2444-2447`) — and corrected the stale anchor in the v1.7 changelog line as well as in §7.8. A
+  document that retracts its own upstream complaint in writing is one whose remaining upstream
+  complaints are worth routing, which is exactly what makes this round's BR-START-1 erratum credible.
+- **BR-START-1 vs BR-GUARD-6 was escalated, not designed around.** The easy move was to narrow rung
+  4a until it fit BR-START-1's literal words. Instead §7.8 states the reading an implementer should
+  build to and pushes the missing "billable" qualifier upstream where the product decision lives
+  (`:2233-2241`). That is the correct routing under the errata contract: a product-level ambiguity
+  belongs in FSPEC, not resolved silently inside a technical section.
+
+**Traceability:** C-11 still reaches its owning component (`lib/startup.mjs`, §7.8) with two
+falsifiable branches, and this round strengthened one of them (EC-START-11's rung-5 pass). AC-3.5's
+set-equality survives the site-class rescope in both directions — deletion of a direct site now moves
+a count rather than shrinking a set silently. Every P0/P1 requirement I traced last round still
+traces; no requirement was narrowed or dropped by this revision; no scope was added — the new
+material is entirely oracle and citation work on ground already claimed. No product decision was
+taken inside a technical section: the one that arose (BR-START-1's scope) was routed upstream.
 
 ## 6. Recommendation
 
