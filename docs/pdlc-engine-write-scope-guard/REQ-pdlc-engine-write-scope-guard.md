@@ -391,3 +391,45 @@ file does nothing:
   statements are not warnings — applied to the violation records as well.
 
 ## 7. Obligations / Open Questions
+
+### 7.1 Obligations (each carries a named owner)
+
+| # | Obligation | Named owner / surface |
+|---|---|---|
+| **O-1** | Judge whether pathspec-scoped per-task commits are adequate containment for shell-mediated writes, given NG-1 leaves that path unguarded. If the judgement is "inadequate", the disposition is a successor queue row filed in that round — this REQ does not pre-file one, because filing a row for a gap nobody has yet judged real is how dead rows are made. | `se-review` of this REQ, Phase R; recorded in that cross-review |
+| **O-2** | Every mechanism question this REQ deliberately does not answer — how a write is intercepted on the primary transport, how the owned set reaches the point of decision, what the guard is called at any layer, path-matching rules beyond C-7's observable semantics. | TSPEC |
+| **O-3** | Decide whether guard state and violation records extend the run report's existing field set or add a new one, and fix their shape. C-10 constrains the outcome (additive, no existing field changes meaning); the shape is not requirements material. | TSPEC |
+| **O-4** | Decide how a rejection is surfaced to the agent so it is both actionable and not mistakable for a tool failure. AC-1.1 fixes the content (refused path, owned set); the form is downstream. | TSPEC |
+| **O-5** | Confirm that Phase I's final V-wave (the PROPERTIES-test wave) is a guarded wave dispatch. Proposed default: **yes** — it is a Phase I wave with manifest-declared ownership, and excluding it would leave the last wave of every run unguarded for no stated reason. | `se-review` / `te-review` of this REQ |
+| **O-6** | Confirm the four-member guard-state vocabulary (C-8) is complete — specifically, that no fifth posture exists in which the engine dispatches a Phase I wave and none of the four applies. | `se-review` of this REQ |
+
+### 7.2 Labelled assumptions
+
+These are assumptions, not findings. Each is stated so a reviewer can veto it cheaply; none is
+load-bearing for an acceptance criterion.
+
+- **A-1 — Incident attribution.** §1.1 records what was observed of the 2026-08-12 run: the file
+  was modified in the tree, it belonged to a task outside that wave, and the gate reads it live.
+  It does **not** claim which agent performed the write, because that was not observed. If a
+  reviewer knows the answer, it belongs in §1.1; if the answer turns out to be "a shell command",
+  that is direct evidence for O-1 and should be recorded there rather than weakening §1.1.
+- **A-2 — Frequency.** One incident is one incident. This REQ assumes out-of-scope writes are
+  *possible and unobserved* rather than *frequent*, which is why nothing here halts a run and why
+  the first deliverable is evidence (AC-3.1) as much as prevention.
+- **A-3 — Manifest quality.** The design assumes existing PLAN ownership manifests are broadly
+  correct and that rejections will be rare. If the first guarded runs produce violations in bulk,
+  the reading is R-1, not "the guard is too strict" — and the fix is in the PLANs.
+
+### 7.3 Open questions
+
+| # | Question | Proposed default (adopt unless a reviewer objects) |
+|---|---|---|
+| **Q-1** | Should a task's violation records be visible *during* the run, or only in the final report? | Final report only. Live surfacing is a second reporting surface with its own failure modes, and AC-3.4 already covers the halt path. |
+| **Q-2** | Should the guard apply to the legacy worktree path when it is taken for a reason *other* than a missing manifest? | No. Worktree isolation already bounds writes to a separate tree, which is the outcome the guard exists to produce. |
+| **Q-3** | Should repeated identical rejections against the same path count once or many times toward `maxRecordedViolationsPerTask`? | Once per distinct path per task, with an attempt count — a retry loop is one manifest gap, not twenty. |
+
+---
+
+**Traceability.** `docs/requirements/traceability-matrix.md` carries this feature's
+US → requirement mapping. Queue row: `docs/_queue/QUEUE.md`, Order 22, depends on
+`pdlc-headless-engine`.
