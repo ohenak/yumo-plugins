@@ -217,6 +217,142 @@ count of suppressed records is reported (AC-3.3).
 
 ## 5. Acceptance Criteria
 
+| ID | Title | Priority | Phase | Source stories | Depends on |
+|---|---|---|---|---|---|
+| **REQ-WSG-01** | An out-of-scope write never reaches disk | P0 | 1 | US-01 | BL-01, BL-02 |
+| **REQ-WSG-02** | In-scope work is unaffected, and a rejection costs only the write | P0 | 1 | US-01, US-03 | REQ-WSG-01 |
+| **REQ-WSG-03** | Violations are recorded in the run report | P0 | 1 | US-02, US-06 | REQ-WSG-01 |
+| **REQ-WSG-04** | Transport posture is enforced and reported honestly | P0 | 1 | US-04 | BL-01 |
+| **REQ-WSG-05** | A PLAN with no ownership manifest is unaffected | P0 | 1 | US-05 | BL-02 |
+| **REQ-WSG-06** | Only Phase I wave dispatches are guarded | P1 | 1 | US-01 | REQ-WSG-01 |
+| **REQ-WSG-07** | The operator can turn the guard off, visibly | P1 | 1 | US-03, US-04 | BL-03 |
+
+Throughout, *the guarded posture* means: the primary transport, a PLAN whose ownership manifest
+parses, `engine.writeScopeGuard.enabled` at its `true` default, and a Phase I wave in flight.
+
+### REQ-WSG-01 — An out-of-scope write never reaches disk
+
+- **AC-1.1** *Who:* the operator. *Given* the guarded posture, *when* a wave agent attempts a
+  file-write-class tool call whose target is inside the repository working tree and is not in its
+  task's owned set, *then* the target is unchanged on disk — an existing file's bytes are the
+  bytes it had before the attempt, and a path that did not exist does not come into existence —
+  and the agent receives a rejection naming the refused path and that task's owned set.
+- **AC-1.2** *Given* the guarded posture, *when* the attempted write would **create** a new file
+  outside the owned set, *then* it is rejected on the same terms as AC-1.1. Creation is not a
+  weaker case than modification: an unowned file that appears mid-wave is exactly the state the
+  gate and the sibling agents must not read.
+- **AC-1.3** *Given* the guarded posture and two tasks in the same wave, *when* one attempts to
+  write a path owned by the *other* task in that same wave, *then* it is rejected. Membership of
+  the same wave grants no shared authority; each task's owned set is its own.
+- **AC-1.4** *Given* the guarded posture, *when* an agent writes a path outside the repository
+  working tree, *then* the write proceeds and no violation is recorded (C-7). The guard's claim
+  is about the tree the run reads, not about the machine.
+- **AC-1.5** *Given* the guarded posture and any number of rejected attempts, *when* the wave's
+  commits are inspected afterwards, *then* they are pathspec-scoped to each task's owned files
+  exactly as before (C-9) — the guard adds no commit, removes none, and changes no pathspec.
+
+### REQ-WSG-02 — In-scope work is unaffected, and a rejection costs only the write
+
+- **AC-2.1** *Given* the guarded posture, *when* a wave agent writes a path inside its own owned
+  set — including a file that row names but that does not exist yet (C-7) — *then* the write
+  succeeds unmodified and no violation is recorded.
+- **AC-2.2** *Given* the guarded posture and a wave in which no agent attempts an out-of-scope
+  write, *when* the wave completes, *then* the files it created and committed are byte-identical
+  to those from the same wave run with `engine.writeScopeGuard.enabled: false`.
+- **AC-2.3** *Given* a wave agent whose write was rejected, *when* the dispatch continues, *then*
+  the task is not terminated by the guard: the agent may keep working, may write other paths it
+  owns, and may complete. Whether it *does* is the agent's decision, not the guard's.
+- **AC-2.4** *Given* a run in which one or more violations were recorded, *when* the run ends,
+  *then* it reaches the same terminal phase and the same outcome it would have reached with the
+  guard disabled, given the same gate results. Nothing about a violation halts a wave, halts the
+  pipeline, writes a POSTMORTEM or changes an exit code.
+
+### REQ-WSG-03 — Violations are recorded in the run report
+
+- **AC-3.1** *Who:* the operator reading a finished run. *Given* a run in which at least one
+  out-of-scope write was rejected, *when* the run report is read, *then* it carries one record
+  per rejected attempt, and each record names: the task, the wave the task ran in, the refused
+  path relative to the repository root, and that task's owned set. Records appear in a
+  deterministic order, so two readings of one run report agree.
+- **AC-3.2** *Given* a run in which no write was rejected, *when* the run report is read, *then*
+  it still states the guard's state as one of C-8's four members. An operator can therefore
+  distinguish "nothing was attempted" from "nothing was watching" without inspecting anything
+  else (G-5).
+- **AC-3.3** *Given* a task that attempts more out-of-scope writes than
+  `engine.writeScopeGuard.maxRecordedViolationsPerTask` (§4.1), *when* the run report is read,
+  *then* it carries that many records for the task plus a count of the attempts it suppressed,
+  and every suppressed attempt was still rejected on disk per AC-1.1.
+- **AC-3.4** *Given* a run that halts for any reason after a violation was recorded, *when* the
+  halt report is read, *then* the violation records are present in it. A halt is when this
+  evidence matters most, so it is not carried only on the success path.
+- **AC-3.5** *Given* a wave in which a task recorded at least one violation and the wave's gate
+  passed, *when* the run report is read, *then* the task is distinguishable from a task that
+  recorded none. A wave that went green having refused writes is not reported as clean.
+
+### REQ-WSG-04 — Transport posture is enforced and reported honestly
+
+- **AC-4.1** *Given* a Phase I wave dispatched on the primary transport with a parseable manifest
+  and the guard enabled, *when* the run report is read, *then* the guard state is `enforcing`,
+  and REQ-WSG-01 holds for that run.
+- **AC-4.2** *Given* a Phase I wave dispatched on the `claude -p` fallback transport, *when* the
+  run report is read, *then* the guard state is `degraded-transport`, the report names the
+  transport as the reason, and the run proceeded to completion unguarded rather than refusing to
+  start (C-3). No run reports `enforcing` while nothing was enforced.
+- **AC-4.3** *Given* the fallback transport, *when* the run's created-file set, commits and
+  outcome are compared with the same run with this feature absent, *then* they are identical
+  apart from the guard-state line (C-4).
+
+### REQ-WSG-05 — A PLAN with no ownership manifest is unaffected
+
+- **AC-5.1** *Given* a PLAN with no parseable file-ownership manifest — the condition that
+  already routes Phase I away from same-tree waves — *when* the phase runs, *then* the guard is
+  inert, the run report states `inert-legacy` with that as the reason, and the run's created-file
+  set, commits, exit code and outcome are what the same run produces with this feature absent.
+- **AC-5.2** *Given* the same condition, *when* the run report is read, *then* the notice is a
+  statement of posture, not a warning about a defect: a manifest-less PLAN is a supported input,
+  and this feature adds no reason to fail it.
+
+### REQ-WSG-06 — Only Phase I wave dispatches are guarded
+
+- **AC-6.1** *Given* the guarded posture, *when* any dispatch outside a Phase I wave runs — an
+  author, a reviewer, the DoD verifier, the harvest step — *then* its writes are unrestricted and
+  it produces no guard record. Those roles have no owned set to be measured against (NG-2).
+- **AC-6.2** *Given* the guarded posture, *when* the script's own work runs between waves — the
+  gate command, the per-task commits, the post-wave build-output commit — *then* it is not
+  subject to the guard and produces no records. The guard judges dispatched agents, not the
+  engine.
+
+### REQ-WSG-07 — The operator can turn the guard off, visibly
+
+- **AC-7.1** *Given* `engine.writeScopeGuard.enabled: false`, *when* Phase I runs, *then* the
+  guard is inert, the run report states `inert-disabled`, and the run is byte-identical to one
+  with this feature absent (C-4). The three non-enforcing states are distinguishable from each
+  other: an operator can tell "I turned it off" from "this PLAN has no manifest" from "this
+  transport cannot enforce" without reading configuration.
+- **AC-7.2** *Given* a config file where the guard's section is absent, malformed, or carries an
+  unreadable value for either key of §4.1, *when* Phase I runs, *then* each key independently
+  falls back to its declared default and the run proceeds — one unreadable key never retunes the
+  other and never fails the run.
+
+### 5.1 Stopping rule for this REQ's review loop
+
+Pasted here deliberately, per DC-09, because a stopping rule that lives only in a constraints
+file does nothing:
+
+- A review round whose blocking findings are **all** implementability, mechanism or
+  oracle-precision defects — none contesting user need, scope, priority or phasing — means this
+  REQ has met its bar. **Approve it and move those findings downstream** as named entry
+  obligations for FSPEC or TSPEC.
+- A finding of the form "this AC has no oracle" is closable by **deferring** the oracle to TSPEC
+  or PROPERTIES. It does not require writing one into this document.
+- **Two consecutive rounds with a non-decreasing blocking count is a fixed point, not slow
+  convergence** — more so if the document grew while the count did not fall. Distinguish that
+  from churn (all prior findings closed, new blockers introduced by the latest revision), and if
+  it is churn, say so and pre-commit to escalating if the next round does not close them.
+- Any finding whose minimal fix requires naming a mechanism — how a write is intercepted, what
+  the guard is called at any layer, the shape of a report field — is **out of altitude for this
+  document** and is routed to O-2 rather than answered here.
+
 ## 6. Risks
 
 ## 7. Obligations / Open Questions
