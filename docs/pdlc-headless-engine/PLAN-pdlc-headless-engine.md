@@ -690,8 +690,11 @@ DoD's "all 26 ACs have a passing test" is checked against.
 | AC-6.4 closed message catalogue, both directions | T05, T03 | T14, T19 | AT-ENG-61, AT-ENG-62 |
 
 **Acceptance tests FSPEC §14.1's AC rows do not claim as members, and the task that owns each.**
-One entry is a near-miss rather than an absence and is listed for the same reason: AT-ENG-57 appears
-in FSPEC's AC-1.3 row only parenthetically, so this plan pins its owner explicitly. FSPEC's AC→AT map
+One entry is neither an absence nor a near-miss and is listed only to pin its owners: **AT-ENG-57 is
+a full member of FSPEC's AC-1.3 row**, which reads `AT-ENG-52…AT-ENG-57` (`FSPEC:1347`) — it is the
+range's endpoint, not a parenthetical, and §9's AC-1.3 row above carries the same range. It is
+repeated in this sub-table because a range endpoint is easy to lose when the red→green split is
+read off (`T31 red → T47 green`), not because FSPEC omits it. FSPEC's AC→AT map
 is not total over FSPEC's 69 ATs — several ATs are edge-case families scoped by a BR or an EC rather
 than by an acceptance criterion. They are owned all the same, and named here so the DoD's total-AT
 claim is checkable without reading the task table twice:
