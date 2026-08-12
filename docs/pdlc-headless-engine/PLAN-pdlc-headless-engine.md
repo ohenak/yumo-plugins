@@ -138,7 +138,7 @@ in `Deps` as an explicit edge, never by id order.
 
 | # | Task | Test File | Source File | Batch | Deps | Status |
 |---|---|---|---|---|---|---|
-| T00 | `P2-00` pre-flight gate — §2's `BL-PREREQ` symbols importable at HEAD; existence only, never shape | `pdlc/engine/__tests__/preflight.test.js` | — (gate) | 1 | — | ⬚ |
+| T00 | `P2-00` pre-flight gate — §2's `BL-PREREQ` symbols importable at HEAD; existence only, never shape | `pdlc/engine/__tests__/preflight.test.js` | — (gate) | 1 | — | ✅ |
 | T01 | 🔴 suite-spine: one run dir per suite, both probe files' records in it, runner mints the id before any child (TSPEC §7.0) | `pdlc/engine/__tests__/suite-spine.test.js`, `pdlc/engine/__tests__/spine-probe-a.test.js`, `pdlc/engine/__tests__/spine-probe-b.test.js` | — | 2 | T00 | ⬚ |
 | T02 | 🔴 hermeticity: construction guard fails on real-transport construction; socket trap fires on a deliberate connect (AT-ENG-63) | `pdlc/engine/__tests__/hermeticity.test.js` | — | 2 | T00 | ⬚ |
 | T03 | 🔴 suite-wide assertion step driven over synthetic run dirs: empty dir ⇒ non-zero exit; populated dir ⇒ each row's pass and fail case (AT-ENG-33, AT-ENG-61) | `pdlc/engine/__tests__/assert-suite-wide.test.js` | — | 2 | T00 | ⬚ |
