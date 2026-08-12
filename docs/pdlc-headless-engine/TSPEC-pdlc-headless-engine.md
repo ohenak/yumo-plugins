@@ -2196,24 +2196,46 @@ export function probeGuardInterpreter({ candidates = GUARD_INTERPRETERS, runProb
 
 `runProbe(candidate)` is the injectable seam, defaulting to a real
 `spawnSync(candidate, ["-c", "import sys"])` — **the shipped script's own probe command, verbatim**
-(`guard-harvest-before-delete.sh:15`), because a precondition that probes differently from the script
+(`guard-harvest-before-delete.sh:16`), because a precondition that probes differently from the script
 it stands for can pass where the script fails. Its contract is narrow on purpose: it returns `{ ran: boolean, outcome: string }`, where `outcome`
-is the operator-facing phrase the refusal quotes (`"not found"`, `"found but exited 9009"`, …). It is
+is the operator-facing phrase the refusal quotes. **The mapping from `spawnSync`'s three shapes is
+fixed here, not left to the plan** (TE Q-21), because EC-START-10's oracle asserts each candidate's
+own outcome phrase and a fixture author cannot write those expectations without it:
+
+| `spawnSync` result | `ran` | `outcome` |
+|---|---|---|
+| `error.code === "ENOENT"` | `false` | `"not found"` |
+| `status !== 0` | `false` | `` `found but exited ${status}` `` (e.g. `"found but exited 9009"` for the Microsoft Store stub) |
+| `status === 0` | `true` | `"ran"` |
+
+The script's own test is a *conjunction* — `command -v "$cand"` **and** `"$cand" -c "import sys"`
+(`guard-harvest-before-delete.sh:16`) — while `spawnSync` collapses "absent" into `ENOENT` rather
+than a non-zero status. The two therefore agree on every accept/reject verdict; the mapping above is
+what keeps them agreeing on the *phrase* as well. It is
 a **startup-module seam, engine-side**, so §3.1's "every other probe seam keeps its Node default"
 rule — which governs what the engine injects into the two *workflow* modules — is untouched by it.
 `GUARD_INTERPRETERS` is a transcription of the shipped script's own candidate list
-(`pdlc/hooks/scripts/guard-harvest-before-delete.sh:14`, the loop; fail-open at `:20`), never an
+(`pdlc/hooks/scripts/guard-harvest-before-delete.sh:15-20`, the candidate loop; fail-open at `:21`), never an
 import from it, and FSPEC's
 "the engine never widens or narrows that set independently" (`FSPEC:919-921`) is asserted as
 set-equality against a test-side transcription of those three names — the same discipline §3.3 and
 §7.4 apply, and the reason a script-side change turns a test red rather than drifting silently.
+
+**Rung 4a's probe is a local process spawn, not the kind BR-START-1 forbids** (TE Q-20). BR-START-1's
+"no model call, and no probe of any kind, is made while the ladder is running" (`FSPEC:302-303`) is
+justified in its own sentence by "zero tokens billed", so its subject is the *billable* probe — a
+model call, or a network round-trip to the provider. Rung 4a's `spawnSync(candidate, ["-c", "import
+sys"])` bills nothing, contacts nothing, and is the observation BR-GUARD-6 explicitly requires ("by
+**running** a candidate", `FSPEC:922-924`). An implementer meeting the two sentences together should
+build rung 4a as specified here; the missing "billable" qualifier in BR-START-1 is raised as an
+erratum against FSPEC (§9.3), not resolved by narrowing this design.
 
 The two tests are hermetic, both driven by injecting `runProbe`:
 
 | Test | Fixture | Assertions |
 |---|---|---|
 | EC-START-10 — no candidate runs | `runProbe` returns `{ran: false}` for all three, with a distinct `outcome` each | rung 4a `state === "fail"`; the refusal text contains **each of the three candidate names and its own outcome phrase** (three separate expectations, as §6.4 does for EC-GUARD-4) and the remedy; exit code `1`; **and §7.0's dispatch accumulator holds exactly zero descriptors** |
-| EC-START-11 — presence is not executability | `runProbe` returns `{ran: false, outcome: "found but did not execute"}` for `python3` and `{ran: true}` for `python` | rung 4a `state === "pass"`; the returned `interpreter === "python"`; `attempts` records both, in order; rung 5 is reached (`state !== "skipped"`), which is what "the next candidate decides" means operationally |
+| EC-START-11 — presence is not executability | `runProbe` returns `{ran: false, outcome: "found but did not execute"}` for `python3` and `{ran: true}` for `python` | rung 4a `state === "pass"`; the returned `interpreter === "python"`; `attempts` records both, in order; **rung 5's record exists with `state === "pass"`** under a green billing posture in the same fixture — the positive form of "the ladder continued", since `RungRecord.state` is three-valued (§4.3) and `state !== "skipped"` would be satisfied by a rung-5 *failure* as readily as by a pass |
 
 **"Nothing dispatched" is asserted positively, never as an absence.** The oracle is
 `accumulator.length === 0` over §7.0's dispatch-descriptor accumulator on a run that reached the
