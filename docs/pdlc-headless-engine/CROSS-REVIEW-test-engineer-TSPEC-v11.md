@@ -34,6 +34,46 @@ design did not.
 
 ## Regression check on the previously approved design
 
+A citation-only round can still do damage two ways: by editing a test contract while claiming to
+edit a citation, or by leaving an anchor pointing at plausible-but-wrong text so a later reader
+"corrects" a correct design. Both were checked mechanically.
+
+**No test contract moved.** Filtering the delta for lines containing `assert`, `fixture`, `test`,
+`oracle`, `spawnSync` or `state ===` yields exactly three changed lines, and all three are citation
+swaps inside surrounding prose that is otherwise byte-identical:
+
+| Changed line | Nature |
+|---|---|
+| EC-START-11 fixture sentence — `FSPEC:922-924` → `:932-933` | anchor only; the fixture (`python3` resolves and fails to execute, `python` succeeds) is unchanged |
+| set-equality sentence — `FSPEC:919-921` → `:929-931` | anchor only; the `GUARD_INTERPRETERS` set-equality assertion against the script's own `:15-20` is unchanged |
+| BR-START-1 paragraph — inferred reading → verbatim v1.7 quote | the *justification* changed, the design it justifies did not |
+
+The assertions this round's reviewers care about most are intact at HEAD: EC-START-11 still asserts
+rung 5's record **positively** (`state === "pass"` under a green billing posture), which was the
+F-45 repair and is the conjunct that stops a three-valued enum from false-greening the branch; the
+`{ran, outcome}` mapping still uses the exact phrases the fixture asserts (`"found but exited
+9009"`, `"ran"`), which was the Q-21 repair. Neither was touched. The `GUARD_INTERPRETERS` code
+comment moved `// FSPEC:918-921` → `// FSPEC:928-931` and now lands on the candidate-set bullet, so
+the set-equality test still has a citable upstream authority to be equal *to* — that test's whole
+value is that a script-side change to the candidate set turns it red rather than drifting silently,
+and it would have lost that if the anchor had gone stale in the other direction.
+
+**Every re-anchored citation was independently re-read**, not taken from the changelog's arrow
+list. Spot-checking the eight mechanical shifts the changelog claims: `FSPEC:218` is the
+`--dry-run-skill` row, `:223-225` the transport/`transport`-field text, `:572-574` BR-SKILL-3,
+`:690-694` BR-MODEL-3's corpus rule, `:747` the `agent-reported-failure` outcome row, `:977`
+AT-ENG-11a, `:1213-1223` the §12.2 report-field table. REQ citations are untouched and still land
+(`REQ:284` is C-11, `REQ:502-506` is AC-3.5) — correct, since REQ is still v0.10.
+
+**Prior-round findings.** F-48 (Medium — the skill-argument position is not named per dispatch
+function, so the indirect count is 11 by enumeration and 10 by rule) and F-49 (Low — §8.3's
+`orchestrate-dev.js` row says "the eleven class-4 literals" where ten of the eleven are in that
+file) are both **still open** at HEAD (`TSPEC:562`, `:593-601`, `:2344`). That is the right outcome
+for this round, not a regression: an erratum round re-grounds citations and must not smuggle in
+unrelated content edits. Both were non-blocking under round 10's *Approved with minor changes* and
+they remain non-blocking here; they belong to the next substantive revision, and neither affects a
+test that exists today.
+
 ## Findings
 
 ## Questions
