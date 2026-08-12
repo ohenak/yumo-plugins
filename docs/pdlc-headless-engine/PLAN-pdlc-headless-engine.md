@@ -13,7 +13,17 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-12 |
+| pdlc | draft | Claude | 1.5 | 2026-08-12 |
+
+**Changelog — v1.5** (addresses cross-review round 5, product-manager and test-engineer):
+
+| Change | Findings |
+|---|---|
+| **Self-referential line numbers are removed from this document, not re-pinned.** §6 cited §4's header as `:238` and the v1.4 changelog cited `:507`/`:765`/`:796` and `:211`; all four quotations were byte-exact but every pointer was stale, because a changelog that grows at the top moves every line below it. Each is now a section reference (§4, §7, §10, §11) carrying the same quoted header text. This is the third round to produce this defect class (v3 F-04, v4 F-01, v5 F-01/F-18), so the fix is the form that cannot recur rather than a corrected number. Citations *out* of this document keep line numbers — they are pinned to files this document does not edit | PM F-01, PM F-02, TE F-18 |
+| §3 states what the Status column is: **advisory, swept once at phase end, never a gate**, with the reason on both sides — no parser reads it (`orchestrate-dev.js:3808-3830` selects id, deps, description and batch cells only), and editing it mid-wave re-opens Phase P by changing bytes an approval anchor is pinned to. The red/green record stays where §5's gate reads it, at the head of each Task cell | PM Q-01 (carried from v4) |
+| T18's row repaired: the completion tick had been written into the **Task** cell, deleting the `🟢` phase marker and leaving Status at `⬚`. The marker is restored and the tick moved to the Status cell; verified in the parsed field, not the rendering — `parsePlanTasks` now returns T18's description with no tick in the string handed to a dispatched implementer | — |
+| §10 carries three new dispositions: **O-ENG-T6** — no task asserts this PLAN's own manifest parses, and none is added; the durable half is `planOwnership.test.js`/`waveExecution.test.js` over synthetic PLANs plus Phase P's own self-parse, and the mechanical form, if wanted, is a `docs/*/PLAN-*.md` sweep on `documentOracles.test.js`'s `LIVE_ROOT` pattern (repo infrastructure, not this feature). **O-ENG-T7** — T04's throwables corpus is pinned as a named export from `outcome.test.js`, not left to the implementer. **O-ENG-T8** — §8's ≥85 % floor is **per-module** over `pdlc/engine/lib/`, not an aggregate | TE Q-01, TE Q-02, TE Q-03 |
+| Re-derived at HEAD after these edits: `parsePlanTasks` 54 tasks, `parsePlanOwnership` 54 owning rows, `validatePlanContract` `{"ok":true}`, `computeWaves` 17 waves. Unchanged from v1.4 — the edits touched prose, one Status cell and one Task cell's leading glyph | — |
 
 **Changelog — v1.4** (addresses cross-review round 4, product-manager and test-engineer):
 
