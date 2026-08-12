@@ -364,7 +364,7 @@ that reads it vacuous, so each one below carries its own falsifying counterpart.
 | PROP-SUITE-8 | All **five** suite-wide assertions of TSPEC §7.4 **must** be present in `_assert-suite-wide.mjs`, riding **three** accumulators — catalogue, outcome taxonomy, model map (with the pre-phase property reading the model-map accumulator's `phase` field, and the dispatchable-skill property computed once from imported data) | TSPEC §7.4, AC-6.4(a), AC-3.3, AC-3.5 | Contract | Integration | red | T03 → T35 |
 | PROP-SUITE-9 | The `_`-prefixed helpers **must** live in `__tests__/` **without** being collected as test files, reachable only by path (`--import` and step 4's explicit argument) — asserted by the collected-file count, so a helper silently executed twice is caught | TSPEC §7.0 | Contract | Unit | red | T03 → T35 |
 | PROP-SUITE-10 | The parity double's negative half **must** be asserted **first**: a write-less double **must fail** the parity test. Without it a later refactor could silence the oracle and leave the suite green | AC-1.1, BR-PARITY-3, TSPEC §7.3, AT-ENG-45 | Contract | Integration | red | T34 → T39 |
-| PROP-SUITE-11 | A fixture **must** be bound to a dispatch by `(skill, phase, round index)`, **never by skill alone**: keying on skill makes a round-2 reviewer dispatch replay round 1's writes, overwriting `-v1.md` instead of creating `-v2.md` — breaking the append-only property `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads, *inside the oracle meant to prove parity* | BR-PARITY-3, TSPEC §7.3, AT-ENG-51 | Data Integrity | Integration | red | T34 → T39 |
+| PROP-SUITE-11 | A fixture **must** be bound to a dispatch by `(skill, phase, round index)`, **never by skill alone**: keying on skill makes a round-2 reviewer dispatch replay round 1's writes, overwriting `-v1.md` instead of creating `-v2.md` — breaking the append-only property `deriveRoundWindow` (`orchestrate-dev.js:6366`; TSPEC §7.3's `:2151` is stale, PROP-PARITY-8) reads, *inside the oracle meant to prove parity* | BR-PARITY-3, TSPEC §7.3, AT-ENG-51 | Data Integrity | Integration | red | T34 → T39 |
 | PROP-SUITE-12 | The double **must** derive the round index the way the module does — from the directory listing — and two successive reviewer dispatches for one document **must** produce **two files**, not one rewritten one | BR-PARITY-3, TSPEC §7.3, AT-ENG-51 | Data Integrity | Integration | red | T34 → T39 |
 | PROP-SUITE-13 | The double **must not** write the approval anchors: `APPROVAL-HASH:` / `REVIEWED-COMMIT:` are the module's own append (`orchestrate-dev.js:6190`). A double that wrote them would make the anchor clause assert the fixture's bytes instead of the module's append logic | BR-PARITY-5, TSPEC §7.3, AT-ENG-45 | Contract | Integration | red | T34 → T39 |
 | PROP-SUITE-14 | The oracle **must** observe **creation events**, not the surviving tree: Phase H deletes harvested review files once the LEARNINGS commit is confirmed, so a harvested file's later absence **must not** be a failure | BR-PARITY-4, TSPEC §7.3, AT-ENG-45 | Contract | Integration | red | T34 → T39 |
@@ -527,5 +527,54 @@ a passing test there is the intended outcome, not a defect.
 ## 15. Coverage matrix — properties to PLAN tasks and test files
 
 ## 16. Gaps, risks and open items
+
+### 16.1 Errata raised against upstream documents
+
+Emitted as errata rather than edited here, per the pipeline's routing rule — a defect in an upstream
+document is fixed by that document's author, not by the reader who found it.
+
+```
+ERRATUM: TSPEC: §7.3 cites `orchestrate-dev.js:2151` for `deriveRoundWindow`; at HEAD that line is
+the `out-of-envelope` return inside the envelope check, and `export function deriveRoundWindow` is
+`orchestrate-dev.js:6366`. The claim the citation supports (the double must derive the round index
+from the directory listing the way the module does) is correct and unaffected — only the anchor is
+stale. Same anchor appears in the CLAUDE.md review-loop section, which is repo documentation rather
+than a pipeline artifact and is noted here for the operator rather than routed.
+```
+
+### 16.2 Gaps this document cannot close
+
+| # | Gap | Why it is open | Who closes it |
+|---|---|---|---|
+| G-PROP-1 | **No property here proves that a real runtime consults the guard.** PROP-GUARD-1…15 prove the engine *builds and honours* the guard configuration; that the SDK feeds a `PreToolUse` deny back to the agent under `bypassPermissions` is the SDK's contract, and only §10's live measurement observes it. Until M-ENG-09 carries a row, §10's hermetic properties are the *shape* of the answer, not the answer | the boundary is stated in TSPEC §6.3 and is a property of the transport, not of this feature's code | the credentialed live run (T42), scheduled **before any unattended use** (BR-GUARD-4) |
+| G-PROP-2 | **The fallback transport's properties are asserted over recorded fixtures alone.** Every "per transport" property's fallback half reads a fixture, because the suite may not spawn a `claude` child (PROP-VER-3). A fallback contract change is therefore caught only when the fixture is refreshed | the same trade AC-6.3 makes deliberately: hermeticity over live coverage | the documented refresh step (PROP-VER-7), run on each CLI upgrade |
+| G-PROP-3 | **`_sessionAgent` stays unwired, so no property covers session resumption.** PROP-PARITY-14 asserts the absence *and* its positive (two dispatches ⇒ two independent sessions), which is the honest statement of today's behaviour — but the delta-scoped review economics the workflow describes are untested on the engine because they are unreachable | the seam is deferred, not defective | a later feature; the property is written the day the seam is wired |
+| G-PROP-4 | **Per-platform coverage is not delivered by CI.** The `engine-tests` job runs one platform (`pr-tests.yml:40`, `ubuntu-latest`); every other platform's M-ENG-09 row is a maintainer hand-measurement. PROP-GUARD-22's `process.platform` keying makes that honest rather than hidden, but an off-matrix contributor meets a red suite for a measurement they cannot take | O-ENG-T5, still open in TSPEC §9.2 | the operator, by deciding what an off-matrix host should do with that red |
+| G-PROP-5 | **AC-6.2's evidence is operator-recorded, not suite-observed.** PROP-VER-10/11 are real properties, but no command in the PLAN's §11 observes them; the trace is a dated line beside M-ENG-06/M-ENG-09 naming the commit the live smoke ran against | the live path is credentialed by construction | T51, with T53 owning the recorded line |
+| G-PROP-6 | **Timing-dependent properties are asserted over the seam, not the clock.** PROP-RETRY-8's `[d, d+1000]` band and PROP-RETRY-1's budget are asserted over recorded pause rows with an injected clock; a real-time flake would make them worthless. No property here asserts wall-clock behaviour of the shipped binary | deliberate: a clock-dependent oracle is a flaky oracle | nobody — this is the intended posture, recorded so a later author does not "improve" it |
+
+### 16.3 Risks in the properties themselves
+
+- **The suite-wide accumulator is a single point of vacuity.** Five set-equalities read one
+  mechanism (PROP-SUITE-1…9). If it silently degrades — a missing run id, a stale directory, a
+  sibling process writing elsewhere — the forward directions pass over a thin set rather than
+  failing. PROP-SUITE-4 and PROP-SUITE-6 exist precisely to make that failure loud, and they are the
+  two properties in this document whose own regression would be hardest to notice. They are worth
+  re-reading before any change to the runner.
+- **Fixture-fixed expectations are the standing hazard of §3.** PROP-PARITY-1's expected filename
+  set is derived from the fixture's own rules (PROP-PARITY-2), but a future author under time
+  pressure will be tempted to paste a filename list. PROP-PARITY-3's closure clause is the guard.
+- **`isComplete`-style containment is not used here.** Every set-equality in this document is over
+  identifiers or filenames, never over prose headings, so none of them can pass by containing a
+  word. That is deliberate and worth preserving.
+
+### 16.4 What a reviewer should check first
+
+1. Every **must-not** in §12 has a named positive in the same file — the single rule that keeps this
+   document from being a list of things that pass on an engine that does nothing.
+2. Every set-equality names **both** directions and says where each is observed (per test, or
+   suite-wide through the seam).
+3. Every property whose HEAD column says *green* or *partial* cites a `file:line` a reviewer can
+   open, and every *red* one names the PLAN task that turns it green.
 
 REVISION-COMPLETE: yes
