@@ -6,14 +6,32 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `FSPEC-pdlc-headless-engine.md` v1.6; `TSPEC-pdlc-headless-engine.md` v1.7) |
+| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `FSPEC-pdlc-headless-engine.md` v1.7; `TSPEC-pdlc-headless-engine.md` v1.7) |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-11 |
+| pdlc | draft | Claude | 1.5 | 2026-08-11 |
+
+**Change note, v1.5** (round-2 cross-review carry-forwards, pm + te — four edits, no decision
+reversed): the §7/§8 rows for DEC-ENG-05 are re-synced with the entry body's **structural site
+predicate**, which v1.4 changed without updating the collated tables; the summary rows had kept the
+unwritable "every skill-identifier literal is a member" wording, red at HEAD against
+`orchestrate-dev.js:3316` and `orchestrate-queue.js:45` (pm F-01, te F-01). DEC-ENG-10's filtered-run
+skip gains its missing positive counterpart — an unfiltered run must assert step 4 *ran* — so an
+over-matching detector cannot leave the suite permanently green (te F-02). DEC-ENG-13 states its
+boundary: suite-runner diagnostics are outside the catalogue and carry no id (pm F-03). DEC-ENG-03's
+authority paragraph and both deferred bullets are re-synced to HEAD, where the FSPEC half has now
+landed — BR-GUARD-6, rung **4a**, EC-START-10/11, `AT-ENG-11a`, and TSPEC §7.8's oracle — so the
+"zero hits for `python|interpreter` in FSPEC" claim, true in v1.2 and half-corrected in v1.3, is now
+false in its other half and is replaced by citations; the scheduling clause te F-03 asked for (no
+PROPERTIES row before the erratum lands) is recorded as discharged rather than imposed (te F-03,
+pm Q-01). The upstream pin moves to FSPEC v1.7. Two round-2 questions on test mechanics (whether a
+mis-built hook path yields `allow` or an execution error; whether DEC-ENG-04's red fixture reads the
+running platform/transport pair from the process or from fixture data) stay open and are TE's to
+settle when the PROPERTIES rows are written — neither changes a decision here.
 
 **Change note, v1.4** (TSPEC round-8 review, te F-40 — one entry, no decision reversed):
 DEC-ENG-05's no-bare-literal guard is restated with a **structural site predicate** in place of the
