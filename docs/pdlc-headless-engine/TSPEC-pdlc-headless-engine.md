@@ -797,7 +797,7 @@ any tool runs**. `startupFor` (`bin/pdlc.mjs:88`) widens that set to the five-me
 `--allow-api-key-billing` (`:93`).
 
 **There is no transport selector in this feature, and `resolveTransport` takes no operator input.**
-FSPEC §3.2 is explicit (`FSPEC:215-217`): every real run uses the primary transport, the fallback is
+FSPEC §3.2 is explicit (`FSPEC:223-225`): every real run uses the primary transport, the fallback is
 exercised through recorded fixtures only, and making it runtime-selectable is O-1's work, not this
 document's. v1.0 stated the opposite here and the correct thing in §6.4; this is the single place
 the question is settled.
@@ -998,7 +998,7 @@ fields close that:
   exists when a dispatch is composed "so the whole corpus is reachable from hermetic fixture-driven
   runs and no row of the map depends on billed traffic", and that "the dry-run surface is **not** a
   way to reach it … it exercises at most one row and is never the corpus's source"
-  (`FSPEC:680-684`). Both halves hold here: every *dispatched* composition produces exactly one line
+  (`FSPEC:690-694`). Both halves hold here: every *dispatched* composition produces exactly one line
   per attempt, and the corpus's settlements are fixture transports (§7.2), never billed traffic.
   §7.4 states which line each row's predicate reads, and row 4's `F` is a settlement line by this
   rule rather than by a condition it has to check.
@@ -1047,13 +1047,13 @@ StartupResult = {
   pluginVersion: string|null,
   reason: string|null,     // catalogue id + detail of the first failing rung
 }
-// FSPEC §5's ladder, verbatim: rung ids are *labels*, not indices (FSPEC:293-301, v1.6)
+// FSPEC §4.1's ladder, verbatim: rung ids are *labels*, not indices (FSPEC:300-308, v1.7)
 RUNG_ORDER = Object.freeze(["0", "1", "2", "3", "4", "4a", "5"]);
 RungRecord = { rung: RungId, name: string, state: "pass"|"fail"|"skipped", detail: string|null }
 ```
 
-**The rung id is a string label drawn from `RUNG_ORDER`, never an integer index** (FSPEC v1.6 C-11,
-BR-GUARD-6). FSPEC inserts **rung 4a — guard executable** between rungs 4 and 5 (`FSPEC:299`;
+**The rung id is a string label drawn from `RUNG_ORDER`, never an integer index** (FSPEC v1.7 C-11,
+BR-GUARD-6). FSPEC inserts **rung 4a — guard executable** between rungs 4 and 5 (`FSPEC:307`;
 EC-START-10/11, AT-ENG-11a): the host must be able to run the shipped
 `guard-harvest-before-delete` script, i.e. an accepted interpreter is obtainable (**§7.8** for the
 probe seam and both branches' tests; FSPEC §9.1 — *not* §6.4, which is EC-GUARD-4's transport-capability
@@ -1164,7 +1164,7 @@ report.engine = {
 }
 ```
 
-**Row-by-row against FSPEC §12.2** (`FSPEC:1203-1213`), because a reader must be able to check
+**Row-by-row against FSPEC §12.2** (`FSPEC:1213-1223`), because a reader must be able to check
 completeness rather than infer it. Six rows are AC-4.5's own; three are FSPEC-added:
 
 | FSPEC §12.2 row | Field here | Note |
@@ -1318,7 +1318,7 @@ classifyOutcome({ error: null, result, reportedFailure });
 
 The literal predicate is: **the result text contains a line whose first non-space content is
 `DISPATCH-FAILED:` or `ERROR:` followed by non-space text.** Upstream fixes only the member's
-*meaning* — "the dispatch ran and the agent reported failure" (`FSPEC:737`, `REQ:522`) — and
+*meaning* — "the dispatch ran and the agent reported failure" (`FSPEC:747`, `REQ:522`) — and
 deliberately leaves the predicate to this document (BR-FAIL-2 hands the *consequence* to the
 modules), so the token above is TSPEC-introduced, with no upstream id. Three consequences worth
 stating,
@@ -2331,7 +2331,7 @@ they are carried by §8.2 instead, and named so the omission is deliberate rathe
 | **`lib/transport-cli.mjs`** | new | §3.4 |
 | `lib/transport.mjs` | extended (guard config, transport selection) | §3.4, §6.2 |
 | `lib/adapter.mjs` | extended (retry machine, per-dispatch auth record, **`_phase` run state stamped on each descriptor**, **`dispatchTimeoutMs` constructor option stamped as `timeoutMs` on every dispatch's options object** (§3.4), **terminal `outcome` + verbatim `errorText` written back onto each descriptor, and the record appended to §7.0's accumulator at settlement — one line per attempt, appended from the `_agent` body (`:271`) and never from `composePrompt` (`:259`), so every line is a settlement line** (§4.1), stale `opts.label` comment at `:266-268` corrected) | §3.4, §3.6, §4.1, §4.4, §4.6, §5.2 |
-| `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.6's rung 4a guard-executable check — derived skill set, plus **`GUARD_INTERPRETERS` and `probeGuardInterpreter({runProbe})`**, §7.8's injectable probe seam) | §4.3, **§7.8** (rung 4a); §6.4 is EC-GUARD-4, a different check |
+| `lib/startup.mjs` | changed (structured rungs over `RUNG_ORDER` — seven labels `0,1,2,3,4,4a,5`, including FSPEC v1.7's rung 4a guard-executable check — derived skill set, plus **`GUARD_INTERPRETERS` and `probeGuardInterpreter({runProbe})`**, §7.8's injectable probe seam) | §4.3, **§7.8** (rung 4a); §6.4 is EC-GUARD-4, a different check |
 | `lib/report.mjs` | changed (observed transport, `authSources`) | §3.6, §4.5 |
 | `lib/run.mjs`, `bin/pdlc.mjs` | extended (**a top-level `catch` added to `runDev` (`:187`) and `runQueue` (`:228`) — HEAD's `run.mjs` has no `catch` clause, only `withCwd`'s `try/finally` at `:159`; §5.3 depends on it**, exit mapping, `doctor` projection, flags, `resolveTunables` — called at both `createAdapter` sites, `bin/pdlc.mjs:173` (`emitDryRun`, inert transport) and `:205` (`liveAdapter`, the run path); `doctor` (`:157`) constructs no adapter, feeding the adapter's tunable options and the `tunables` report block from one return) | §4.3, §4.6, §5.4, §7.1 |
 | **`__tests__/_bootstrap.mjs`** | new — hermeticity guard + socket trap + observation writer + `fs` recorder | §7.0, §7.1, §7.7 |
