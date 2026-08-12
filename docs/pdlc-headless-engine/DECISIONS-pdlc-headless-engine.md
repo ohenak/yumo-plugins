@@ -6,14 +6,34 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `FSPEC-pdlc-headless-engine.md` v1.7; `TSPEC-pdlc-headless-engine.md` v1.7) |
+| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `FSPEC-pdlc-headless-engine.md` v1.7; `TSPEC-pdlc-headless-engine.md` v1.8) |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-11 |
+| pdlc | draft | Claude | 1.6 | 2026-08-11 |
+
+**Change note, v1.6** (round-4 cross-review, pm + te — one High, three carry-forwards; no decision
+reversed, no alternative re-opened): the **upstream pin moves to TSPEC v1.8** in the header block and
+§0, and DEC-ENG-05's rule block and §7/§8 row are **re-synced with TSPEC §3.3 at v1.8**, which
+superseded the v1.7 wording this document had transcribed. Three substantive corrections follow from
+that one re-ground: resolution now has **three outcomes** rather than two — indirect dispatch
+(parameter, local, member expression) is *neither a site nor a failure*, where the transcribed v1.7
+rule made it a failure and so made the guard permanently red on the eleven indirect positions that
+exist in correct code at HEAD; the census reads **7 / 28 / 1 / 12 = 48 direct plus 11 indirect**
+rather than 47, the twelfth direct site being `_agent(ADVISORY_RUNG_SKILL, …)`
+(`orchestrate-dev.js:1841`); and **TSPEC §3.3 is named as the normative home of the census figures**,
+which this entry now cites rather than restates (both reviewers' Q-01 — the arithmetic has moved
+twice in two rounds and each move cost a DECISIONS round that settled no decision). Two smaller
+edits: §8's site-class enumeration now lists **four** items under its "four classes" quantifier, with
+the `DISPATCHABLE_SKILLS` member declaration folded into class 1 where it belongs (pm/te F-02); and
+DEC-ENG-13's boundary paragraph adds that catalogue-free is **not assertion-free** — the suite
+runner's two diagnostics are pinned once beside the runner in `_run-suite.mjs` and matched exactly by
+both DEC-ENG-10 assertions (te F-03). The decision DEC-ENG-05 owns — containment over structurally
+scoped sites, conjoined with a census so it cannot pass vacuously — is unchanged; only the rule and
+the numbers the test copies moved.
 
 **Change note, v1.5** (round-2 cross-review carry-forwards, pm + te — four edits, no decision
 reversed): the §7/§8 rows for DEC-ENG-05 are re-synced with the entry body's **structural site
@@ -69,7 +89,7 @@ costs), and names §0 as context and scope. No decision changed; the decision in
 
 ## 0. Context and scope of this document
 
-TSPEC v1.7 fixes the mechanism. This document records only the **load-bearing choices inside that
+TSPEC v1.8 fixes the mechanism. This document records only the **load-bearing choices inside that
 mechanism** — the ones where an alternative was live, where the rejection has a cost, and where a
 later reader would otherwise re-open the question from scratch. Each entry states what was decided,
 what was rejected and why, what constraint forced the shape, how reversible it is, and what would
@@ -406,16 +426,26 @@ identifier appearing at a *new* dispatch site without being exported. An earlier
 guard "a no-bare-literal test with a closed allow-list of non-dispatch literal sites — today exactly
 the reviewer-role map keys at `orchestrate-dev.js:6229-6231`", and that test cannot be written
 against HEAD: bare literals sit at dispatch sites in eleven places across the two modules (enumerated
-in the scanner alternative above), so the allow-list would either leave the suite permanently red or
+in the scanner alternative above — these are the pre-edit **class-4 literals** this feature replaces
+with constants, a different set from the eleven **indirect-dispatch positions** the census counts
+separately), so the allow-list would either leave the suite permanently red or
 have to exempt nearly every site it exists to police. The guard is therefore **containment, not
 absence**:
 
 > Every **skill-naming site** in either workflow module resolves to a member of the two modules'
 > exported `DISPATCHABLE_SKILLS` union. A site is a syntactic position, not a string shape, and the
-> four classes are closed: the value of a module-level `SKILL_*` / `ADVISORY_RUNG_SKILL` constant
-> declaration; a `PHASE_DISPATCH` role field; a `skill:` object field; the first argument of a
-> dispatch call. A site the extractor cannot resolve to a literal or a module-level constant is a
-> **failure**, never a skip. Conjoined with the per-class site census (TSPEC §3.3).
+> four classes are closed: **(1)** the value of a module-level `SKILL_*` / `ADVISORY_RUNG_SKILL`
+> constant declaration; **(2)** a `PHASE_DISPATCH` role field; **(3)** a `skill:` object field whose
+> value is a string literal or an identifier bound to a module-level constant; **(4)** the first
+> argument of a dispatch call, under the same restriction on argument syntax. Resolution has **three
+> outcomes, not two**: a site resolving to a literal or a module-level constant contributes that
+> value; **indirect dispatch** — a class 3/4 argument that is a bare parameter, a local binding, or a
+> member expression (`reviewers[0]`, `dispatch.creator`, a `skill` parameter threaded through a
+> wrapper) — is **neither a site nor a failure**, because it carries a value the derivation already
+> governs at its own source; and only a class 3/4 position that is neither of those two syntactic
+> forms *and* is not indirect dispatch is a **failure**, never a skip. The extractor counts the
+> indirect positions and asserts that count separately, so a direct site becoming indirect moves a
+> number rather than disappearing. Conjoined with the per-class site census (TSPEC §3.3).
 
 **The predicate is structural because no string predicate exists** *(corrected in this round; an
 earlier form of this entry said "matches a skill-identifier shape", which is not writable)*. Read as
@@ -434,10 +464,17 @@ sites and no exemption is needed — which is the property the earlier form clai
 deliver.
 
 Containment over an extracted set is vacuously green whenever extraction returns ∅, so the guard
-carries the **per-class site census** as a second conjunct — 7 / 28 / 1 / 11 = 47 sites at HEAD after
-the edit, enumerated in TSPEC §3.3 — asserted test-side and updated deliberately. A call-form change
-or a reflow that drops sites from a class turns the census red instead of letting containment pass
-over a shrunken set. The guard then fails exactly when the drift this decision fears occurs: a new
+carries the **per-class site census** as a second conjunct, asserted test-side and updated
+deliberately. **TSPEC §3.3 is the enumeration of record and the figures are normative there, not
+here**; at TSPEC v1.8 they are **7 / 28 / 1 / 12 = 48 direct sites plus 11 indirect-dispatch
+positions**, the twelfth direct site being `_agent(ADVISORY_RUNG_SKILL, …)`
+(`orchestrate-dev.js:1841`), which resolves to the module-level constant at `:1797` exactly as the
+rule prescribes. The decision this entry owns is *containment over structurally scoped sites,
+conjoined with a census so it cannot pass vacuously*; that survives any recount, so a later
+re-measurement is a TSPEC edit and not a DECISIONS round. A call-form change or a reflow that drops
+sites from a class turns the census red instead of letting containment pass over a shrunken set,
+while a direct site rewritten to dispatch through a variable moves one count from the direct total
+into the indirect one rather than vanishing from both. The guard then fails exactly when the drift this decision fears occurs: a new
 dispatch site naming an identifier the exports do not carry. A second accepted cost: deleting `EXPECTED_SKILLS` means nothing asserts that the five
 operator-invoked-only skills are readable. That is correct rather than lost — the engine can never
 dispatch them — but it is recorded here so a later reader does not read the reduction as an
@@ -825,6 +862,12 @@ step-4-ran line paired with it, are printed by `_run-suite.mjs` to a maintainer 
 so they carry **no catalogue id** and owe no once-per-suite emit obligation. The rule generalises —
 a string is a catalogue member if it can be read by an operator who never runs the suite — so PLAN
 can write the suite runner's diagnostics as plain prose without an accompanying catalogue edit.
+**Catalogue-free is not assertion-free.** Both strings are oracle-bearing under DEC-ENG-10 — the skip
+reason proves the filtered-run detector fires, the step-4-ran line proves it does not over-fire — so
+PLAN pins their expected text **once, beside the runner in `_run-suite.mjs`**, and both assertions
+match that single definition exactly rather than duplicating a literal per test. Without the single
+pin, a later reflow of the runner's output would silently drop the only proof the detector is
+falsifiable in both directions, which is exactly the failure DEC-ENG-10's pairing exists to prevent.
 
 **Reversibility:** Easy structurally, harder socially — once ids are cited by docs and tests, renaming
 them is a coordinated change. That is why ids, not wording, are the pinned half.
@@ -929,7 +972,7 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
 | `transport-cli.mjs` is written to the same interface with no production caller | DEC-ENG-01 | A test-only unit driven over recorded fixtures; parity clauses must not silently degrade to "the file exists" |
 | The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup-time capability probe plus one catalogue id, observed at startup rather than per dispatch. **No longer blocked — every upstream authority has landed and PLAN inherits a settled shape:** the precondition is C-11 (`REQ:284-298`, v0.10); the rule, candidate set, observation form and refusal contract are BR-GUARD-6 (`FSPEC:921-943`); the placement is **rung 4a**, not rung 6 (`FSPEC:307`); the cases are EC-START-10/11 (`FSPEC:416-417`) with refusal stated directly (exit `1`, nothing dispatched) rather than inherited from dry-run non-fatality; the oracle and seam are TSPEC §7.8 (`TSPEC:2171`+). The scheduling constraint that applied while these were outstanding — **no PROPERTIES row for the interpreter probe is authored before the FSPEC erratum lands**, since rows written against the conditional text would have to be rewritten — is discharged: the erratum landed at FSPEC v1.7, and the probe's PROPERTIES rows can be written against `AT-ENG-11a` and TSPEC §7.8's two fixtures now |
 | The `M-ENG-09` gate and its first rows must land together | DEC-ENG-04 | Single PLAN task — a gate landing before its seed rows turns CI red for an unrelated reason. The gate keys on `platform` + `transport` only; `sdkVersion` and `date` are provenance, so a caret-range SDK bump must not turn the hermetic suite red |
-| `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a containment test asserts that every skill identifier appearing at one of **four enumerated site classes** — a `DISPATCHABLE_SKILLS` member declaration, a module-level `SKILL_*`/`ADVISORY_RUNG_SKILL` constant, a `PHASE_DISPATCH` role field, a `skill:` object field, or the skill argument of a dispatch call — is a member of that union, conjoined with a per-class site census so containment cannot pass over an empty extraction. The predicate is **structural, not lexical**: it is scoped by syntactic position, not by string shape, and that scoping is what makes it green at HEAD — the exported `meta.name` literals (`orchestrate-dev.js:3316`, `orchestrate-queue.js:45`) and the reviewer-role map's keys and values (`orchestrate-dev.js:6229-6231`) sit at none of the four classes and are therefore out of scope rather than exempted. No exemption list exists, but the quantifier is bounded: a **fifth site class** escapes it, which is the re-evaluation trigger DEC-ENG-05 records |
+| `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a containment test asserts that every skill identifier appearing at one of **four enumerated site classes** — **(1)** a module-level `SKILL_*`/`ADVISORY_RUNG_SKILL` constant declaration (the form in which `DISPATCHABLE_SKILLS`' members are declared), **(2)** a `PHASE_DISPATCH` role field, **(3)** a `skill:` object field, **(4)** the first argument of a dispatch call — is a member of that union, conjoined with a per-class site census so containment cannot pass over an empty extraction. Classes 3 and 4 are restricted to a string literal or an identifier bound to a module-level constant; **indirect dispatch** (parameter, local, or member expression) is a **third outcome — neither a site nor a failure** — and its count is asserted separately. The census figures are normative in TSPEC §3.3 (at v1.8: 7 / 28 / 1 / 12 = 48 direct plus 11 indirect), not transcribed here. The predicate is **structural, not lexical**: it is scoped by syntactic position, not by string shape, and that scoping is what makes it green at HEAD — the exported `meta.name` literals (`orchestrate-dev.js:3316`, `orchestrate-queue.js:45`) and the reviewer-role map's keys and values (`orchestrate-dev.js:6229-6231`) sit at none of the four classes and are therefore out of scope rather than exempted. No exemption list exists, but the quantifier is bounded: a **fifth site class** escapes it, which is the re-evaluation trigger DEC-ENG-05 records |
 | Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself; the runner detects a filtered invocation and reports the suite-wide step skipped-with-reason rather than passing or failing it, **and** the paired obligation in the other direction — an unfiltered run asserts step 4 ran, carrying a pass rather than a skip — so an over-matching filtered-run detector cannot leave the suite permanently green |
 | Every guard clause needs a falsifying counterpart | DEC-ENG-11 | The negative half is written first; the survival clause reuses the same fixture and deletion step under an allow verdict; the mis-built-configuration arm asserts an explicit allow verdict **and** that the deletion completes, never merely that no deny occurred |
 | Every operator-visible string is a catalogue entry | DEC-ENG-13 | Including the strings DEC-ENG-03 and DEC-ENG-04 introduce; each must be emitted at least once in the suite. The boundary is the engine, not the harness: DEC-ENG-10's suite-runner diagnostics — the filtered-run skip reason and its paired step-4-ran line — are outside the catalogue, carry no id and owe no emit obligation |
