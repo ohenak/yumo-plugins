@@ -23,7 +23,14 @@ export function parseVersion(value) {
   return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) };
 }
 
-function compare(a, b) {
+/**
+ * Total order over two parsed `{major, minor, patch}` versions: -1, 0 or 1,
+ * never a throw. Exported (T41) so the comparator's ordering law — totality,
+ * antisymmetry, transitivity — can be asserted directly against a generated
+ * version-triple corpus (PROP-HAND-6) rather than re-derived through range
+ * strings.
+ */
+export function compare(a, b) {
   if (a.major !== b.major) return a.major < b.major ? -1 : 1;
   if (a.minor !== b.minor) return a.minor < b.minor ? -1 : 1;
   if (a.patch !== b.patch) return a.patch < b.patch ? -1 : 1;
@@ -176,7 +183,14 @@ export function checkCompat(engineCompatRange, pluginVersion) {
 /**
  * Startup banner lines (REQ AC-2.1): engine version, plugin version AND its root
  * path (always reported as a pair with the engine version per C-10), the
- * effective ANTHROPIC_BASE_URL or "direct", and the auth policy in force.
+ * effective ANTHROPIC_BASE_URL or "direct", and the auth catalogue id that
+ * decided at startup (§3.2's `AuthPosture`).
+ *
+ * BR-AUTH-2: the banner never carries a transport-reported `apiKeySource` —
+ * no dispatch has happened yet, so no such value exists. `auth` is the
+ * `{ row, catalogueId }` shape `resolveAuthPosture` (lib/auth.mjs) returns;
+ * this function renders only `catalogueId` and never re-derives a policy
+ * from a CLI flag (T41 — that flag-derived row is retired).
  *
  * @returns {string[]} one line per row; the caller decides where they go.
  */
@@ -185,22 +199,18 @@ export function buildBanner({
   pluginVersion,
   pluginRoot,
   pluginCompat,
-  apiKeyPolicy,
+  auth,
   baseUrl,
   permissionMode,
 } = {}) {
-  const policy = Array.isArray(apiKeyPolicy) ? apiKeyPolicy.join(", ") : String(apiKeyPolicy ?? "");
-  const policyNote =
-    Array.isArray(apiKeyPolicy) && apiKeyPolicy.length === 1 && apiKeyPolicy[0] === "none"
-      ? " (subscription only — pay-per-token billing refused)"
-      : "";
+  const catalogueId = auth && auth.catalogueId ? auth.catalogueId : "unknown";
   return [
     `pdlc-engine v${engineVersion ?? "unknown"}`,
     `plugin:   pdlc v${pluginVersion ?? "not found"}` +
       (pluginCompat ? ` (engine requires ${pluginCompat})` : ""),
     `          root: ${pluginRoot ?? "not found"}`,
     `base URL: ${baseUrl ? baseUrl : "direct (no ANTHROPIC_BASE_URL set)"}`,
-    `auth:     apiKeySource policy [${policy}]${policyNote}`,
+    `auth:     ${catalogueId}`,
     // Never silent: agents that cannot write files still report success, so the
     // mode that governs their tool calls is banner-level information.
     `tools:    permissionMode ${permissionMode ?? "(SDK default)"}` +
