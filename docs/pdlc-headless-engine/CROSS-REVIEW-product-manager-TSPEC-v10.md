@@ -159,3 +159,6 @@ and it belongs upstream in FSPEC, not in this document.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:18cdb56fec9a0b5694b198f2ae5a786cc83b2172d5c12238499e4832449ae483
+REVIEWED-COMMIT: ed0e0eecc6b19b3e17436fbb71d290670b09f8a4
