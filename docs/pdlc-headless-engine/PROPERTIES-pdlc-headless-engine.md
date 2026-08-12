@@ -372,6 +372,39 @@ that reads it vacuous, so each one below carries its own falsifying counterpart.
 
 ## 12. Negative properties — what must not happen
 
+Every row below is a **must-not**, and every row names the **positive assertion it is paired with in
+the same test file**. That pairing is the section's whole discipline: an absence asserted alone is
+satisfied by a mechanism that never ran (§2's second oracle rule), so no row here is a standalone
+`assert.equal(x.length, 0)`.
+
+| ID | Must not happen | Paired positive (same file) | Traces | Level | Task |
+|---|---|---|---|---|---|
+| NEG-1 | The engine **must not** copy, vendor, wrap or re-implement any part of `orchestrate-dev.js` / `orchestrate-queue.js`; no second copy of a workflow module may exist under the engine tree | the resolved module locations are the repo-relative `pdlc/workflows/` paths, asserted positively (`run.mjs:58`) | AC-1.5, EC-PAR-6, PROP-FORK-1…3 | Unit | T10 |
+| NEG-2 | A `pdlc dev` run **must not** open any path under `.claude/workflows/` | the same recorded read-set positively contains the `pdlc/workflows/` module paths and the consumer's `docs/{f}/` artifacts | AC-1.2, BR-READ-1, PROP-READ-* | Integration | T33 → T43 |
+| NEG-3 | The engine **must not** create an engine-owned file anywhere under a consumer repo — no run state, no report file, no lock, no temp artifact left behind | the same recorded write-set positively contains the artifacts the modules do write | BR-READ-3, NG-7, AT-ENG-50, PROP-REP-3 | Integration | T33 → T43 |
+| NEG-4 | A dispatch **must not** be made with an `apiKeySource` outside the policy set, and the flag **must not** be readable from config or environment | a dispatch under `{"none"}` proceeds and is recorded; the flag supplied on the command line widens the set | C-1a/C-1b, BR-CLI-2, PROP-AUTH-*, PROP-TUNE-3 | Unit | T20 → T44 |
+| NEG-5 | The option object reaching a transport **must not** carry a key outside `{model, cwd, timeoutMs, maxTurns}` — no smuggled system prompt, no injected tool list, no engine-authored instruction | the four keys are positively present with the values the module supplied | AC-3.1, PROP-DISP-1 | Unit | T18 → T38 |
+| NEG-6 | The engine **must not** translate, alias, default or substitute a model value, and **must not** retry a rejected model with a different one | the pinned value reaches the transport byte-identical, over the five-configuration corpus | AC-3.3, PROP-MODEL-1/10 | Unit | T18 → T38 |
+| NEG-7 | `forcePhases` **must not** be forwarded on the queue path | the dev path positively forwards it | BR-QUEUE-2, NG-1, PROP-QUEUE-3 | Unit | T31 → T47 |
+| NEG-8 | An engine-fatal stop **must not** write a POSTMORTEM, **must not** commit a `halted` row, and **must not** mutate the feature's queue row | the report line is positively emitted, carrying the dispatches made and the stopping classification | BR-FAIL-3, PROP-FAIL-9 | Integration | T31, T32 → T47 |
+| NEG-9 | An `auth-failure` **must not** be retried and **must not** be backed off | a `retryable` on the same fixture **is** retried, so the machine is running | AC-4.4, BR-RETRY-1, PROP-RETRY-13 | Unit | T21 → T45 |
+| NEG-10 | Unparseable transport output **must not** classify as `ok` and **must not** classify as `retryable` | it positively classifies as `transport-contract-violation`, and a parseable fixture positively classifies as `ok` | BR-FAIL-1, PROP-FAIL-6 | Unit | T04 → T13 |
+| NEG-11 | The engine **must not** leave a child process behind after a dispatch is abandoned at the retry budget | the POSTMORTEM, `halted` row and its commit positively exist, proving the engine stayed alive to record the halt | AC-4.3, PROP-RETRY-14/15 | Integration | T21 → T45 |
+| NEG-12 | An unattended run **must not** dispatch on a host where no guard interpreter runs, and **must not** dispatch on a transport that cannot carry the guard configuration | a host with a runnable interpreter and a guard-capable transport positively dispatches | C-5, C-11, EC-GUARD-4, PROP-GUARD-14/18 | Unit | T14, T28 → T36 |
+| NEG-13 | The guard **must not** be a blanket ban: with `LEARNINGS-{f}.md` present, deletion **must not** be refused | with it absent the same call positively denies, and the file positively survives a real deletion attempt | AC-5.2, BR-GUARD-2, PROP-GUARD-3/4 | Integration | T28 → T36 |
+| NEG-14 | The engine **must not** alter the shipped guard script, its fail-open posture, its file classes or its "exists on the branch" definition | the engine's configuration positively invokes that script at the resolved plugin path and consumes its exit code | NG-1, PROP-GUARD-9/11/19 | Unit | T28 → T36 |
+| NEG-15 | The suite **must not** open a socket, construct the real SDK client or spawn a `claude` child | the deliberate connection attempt positively trips the trap, and the seam-built transport positively serves every other test | AC-6.1, BR-VER-1, PROP-VER-3/4/5 | Unit | T02 → T35 |
+| NEG-16 | No fixture **must** contain a credential | the same scanner positively flags a scratch file holding one key-shaped string | AC-6.3, PROP-VER-8 | Unit | T05 → T35 |
+| NEG-17 | The report **must not** be written to a file, **must not** be more than one line, and **must not** be preceded by a later line on stdout | the final captured line positively parses as the report on a completed run **and** on a refusal | BR-REP-0, PROP-REP-1/3 | Integration | T32 → T40 |
+| NEG-18 | A missing field **must not** stand in for an empty one: `retries` **must not** be absent on a zero-retry run, counts **must not** be absent when zero | present-and-empty / present-and-zero are positively asserted by key presence | BR-REP-2, PROP-REP-11 | Unit | T32 → T40 |
+| NEG-19 | `stampReport` **must not** mutate the module's report and **must not** add a second key beside `engine` | the module-owned keys are positively deep-equal and the key-set difference is positively exactly one | AC-4.5, BR-REP-1, PROP-REP-6 | Unit | T32 → T40 |
+| NEG-20 | A set-equality **must not** be asserted in one direction only, and a forward direction **must not** be scoped to the provocation corpus that produced it | the reverse direction positively names a witness per member, and the forward direction is positively suite-wide | DEC-ENG-10, §2's rules, PROP-FAIL-2/3, PROP-MSG-1/2 | Integration | T03 → T35 |
+| NEG-21 | A refusal **must not** be asserted by status alone: no property here is satisfied by "it did not proceed" | each refusal property positively pins its catalogue id, its exit code and its retained evidence | §2's rules, DEC-ORACLE-01, PROP-START-*, PROP-EXIT-4 | Unit | T14 → T36 |
+| NEG-22 | A halt **must not** exit `1`, and an engine refusal **must not** exit `2` | both are positively asserted on the same repo, so the difference is the outcome's | AC-1.4, BR-EXIT-1/2, PROP-EXIT-2/4 | Integration | T31 → T47 |
+| NEG-23 | The M-ENG-09 gate **must not** be green on an absent row and **must not** be green on a negative measurement the shipped mechanism has not responded to | a consistent row positively passes, in all three of TSPEC §6.5's cases | AC-6.1, PROP-GUARD-20/21 | Unit | T29 → T42 |
+| NEG-24 | The parity double **must not** be write-less, **must not** key fixtures by skill alone, and **must not** write approval anchors | each has its positive counterpart asserted in `parity.test.js` before the clause it enables | AC-1.1, BR-PARITY-3/5, PROP-SUITE-10…13 | Integration | T34 → T39 |
+| NEG-25 | The live smoke path **must not** run in the default suite, and no default-suite test **must** read a credential | the flag-gated run positively performs one real dispatch reaching a parseable terminal verdict | AC-6.2, BR-VER-3, PROP-VER-10/11 | Integration | T51 |
+
 ## 13. Property-based testing strategies
 
 ## 14. Coverage matrix — acceptance criteria to properties
