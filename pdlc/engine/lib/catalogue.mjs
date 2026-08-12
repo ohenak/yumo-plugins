@@ -22,6 +22,18 @@ export const MESSAGES = Object.freeze({
     severity: "info",
     template: "Auth source: API key (opt-in)",
   },
+  "guard.measurement-missing": {
+    severity: "refusal",
+    template:
+      "no M-ENG-09 guard-deny measurement recorded for platform \"{platform}\" in " +
+      "docs/_constraints/pdlc-engine-baseline.md; run {command} on this platform and commit the row",
+  },
+  "guard.measurement-negative": {
+    severity: "refusal",
+    template:
+      "M-ENG-09 for platform \"{platform}\" records denyFired: no while the §6.2 PreToolUse hook " +
+      "carrier still ships; per DEC-ENG-04 this is a red measurement, not a silent posture note",
+  },
 });
 
 function formatTemplate(id, entry, params) {
