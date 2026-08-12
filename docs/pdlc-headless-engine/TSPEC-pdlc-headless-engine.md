@@ -2316,7 +2316,7 @@ they are carried by §8.2 instead, and named so the omission is deliberate rathe
 | **`__tests__/_run-suite.mjs`** | new — mints the run id, prepares the run dir, spawns the suite then the assertion step | §7.0 |
 | `pdlc/engine/package.json` | changed — `scripts.test` becomes the runner invocation | §7.0 |
 | `pdlc/engine/__tests__/smoke.test.js` | **extended** — the HEAD file (387 lines) that already runs the real `orchestrate-dev.js` against a write-replaying transport double; §7.3's parity oracle is this file grown, not a new one, and it is one of the nine `*.test.js` §1.1 counts | §7.3 |
-| `pdlc/workflows/orchestrate-dev.js` | **exports added** (`DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants) + bare skill literals replaced by those constants at their dispatch sites | §3.3 |
+| `pdlc/workflows/orchestrate-dev.js` | **exports added** (`DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants) + bare skill literals replaced by those constants at their **direct** dispatch sites (the eleven class-4 literals and the one class-3 `skill:` literal §3.3 enumerates; the eleven indirect-dispatch positions are untouched, since they carry values the derivation already governs at their source) | §3.3 |
 | `pdlc/workflows/orchestrate-queue.js` | **exports added** (`DISPATCHABLE_SKILLS`, `SKILL_TRIAGE`); imports `ADVISORY_RUNG_SKILL` (`:41`) | §3.3 |
 | `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js` | **regenerated** — `stripModuleSyntax` inlines the whole module body, so the added constants change the bundle bytes even though no name is published | §3.3 |
 | `pdlc/workflows/dist/distribution-manifest.json` | **regenerated** — sha1 and byte counts follow the bundles | §3.3 |
@@ -2430,11 +2430,23 @@ A third was raised by the round-6 reviewers and resolved upstream before this re
 requalified BR-MODEL-3's dry-run reachability claim (`FSPEC:680-684`), and §4.1/§7.4 above are this
 document's side of that correction.
 
-**No new erratum is raised by round 8 either.** Every upstream citation this revision touched was
+Round 8 raised no erratum. Every upstream citation that revision touched was
 re-grounded against HEAD — FSPEC's rung 4a material (`FSPEC:299` the ladder row, `:406-407`
 EC-START-10/11, `:918-921` BR-GUARD-6's candidate set and `:922-924` "observed by running", `:967` AT-ENG-11a)
-and REQ's C-11 (`REQ:284`) — and each lands on the text it claims. One incidental note, below the
-threshold for an erratum because the cited range does contain the claimed content: FSPEC's citation
-of the shipped script as `guard-harvest-before-delete.sh:14-21` is a line off at each end — the
-candidate loop is `:14-19` and the fail-open is `:20`. §7.8 cites the precise lines; no upstream
-statement is wrong.
+and REQ's C-11 (`REQ:284`) — and each lands on the text it claims.
+
+Round 8's incidental note alleging that FSPEC's `guard-harvest-before-delete.sh:14-21` was "a line
+off at each end" is **withdrawn**: re-measured at HEAD, `PY_BIN=""` is `:14`, the candidate loop is
+`:15-20` and the fail-open `[ -z "$PY_BIN" ] && exit 0` is `:21`, so FSPEC's range spans exactly
+initialisation through fail-open and is correct. The off-by-one was this document's, in §7.8, and is
+fixed there (TE F-46, PM F-02).
+
+**One new erratum is raised by round 9**, against FSPEC, and is emitted through the erratum channel
+rather than folded into this document:
+
+- `ERRATUM: FSPEC: BR-START-1` — "No model call, and no probe of any kind, is made while the ladder
+  is running" (`FSPEC:302-303`) is literally contradicted by BR-GUARD-6's requirement that rung 4a
+  observe interpreter availability "by **running** a candidate" (`FSPEC:922-924`). BR-START-1's own
+  justification is "zero tokens billed", so the intended scope is the *billable* probe; rung 4a was
+  inserted after BR-START-1 was written and the qualifier was never added. §7.8 states the reading an
+  implementer should build to, but the qualifier belongs upstream.
