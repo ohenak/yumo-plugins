@@ -450,8 +450,16 @@ with the second cell, and is therefore the only one the parser accepts.
 Three other tables here open with a `#` cell and are safe for exactly that reason — §7's integration
 table (`# | Integration point at HEAD | What attaches`), §10's open questions
 (`# | Question | Disposition here`) and §11's command table
-(`# | Command | Observes | State at HEAD`) — and §4's ownership manifest is safe for a stronger one,
-having no id-like column at all (`Path | Owner(s), by batch`). The operative consequence is the same
+(`# | Command | Observes | State at HEAD`) — and §4's ownership manifest, whose header at HEAD is
+`Files | Task | Batch` (`:211`), is safe for a *different* reason — not "no id-like column", which
+stopped being true in v1.3. It deliberately carries a `Task` cell now, and bare `task` is simply
+**not a member** of `PLAN_ID_HEADER_CELLS` (`orchestrate-dev.js:3814` — `task id`, `task-id`,
+`task_id`, `id`, `#`), while `Files` and `Batch` are members of neither header set the task-table
+parser reads. The invariant to preserve is therefore: **§4 stays unparseable as a task table for as
+long as its id-ish cell is spelled `Task` (never `Task ID`, `#` or `ID`) and it grows no
+`PLAN_DEPS_HEADER_CELLS`-spelled column** (`orchestrate-dev.js:3815-3824`: `dependencies`, `dependency`,
+`depends on`, `depends-on`, `depends_on`, `deps`, `prerequisites`, `prereqs`). Measured at HEAD:
+`parsePlanTasks` returns exactly 54 tasks — §3's rows only, none of §4's. The operative consequence is the same
 in all four cases and is a constraint on future edits, not a property of today's text: **adding a
 `Deps`-, `Dependencies`-, `Depends on`- or `Prerequisites`-spelled column to any of them would make
 that table parseable as a task table and break the Phase-P self-parse.** That is why §7 names its
