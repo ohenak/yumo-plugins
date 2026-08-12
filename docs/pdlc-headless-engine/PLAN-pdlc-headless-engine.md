@@ -160,6 +160,17 @@ lazily, which is what makes that true.
 ## 3. Task table
 
 Status key: ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done.
+
+**The Status column is advisory, and it is not a gate.** No parser reads it: `parsePlanTasks`
+selects only the id, description, deps and batch cells, so a stale or wrong Status cell cannot
+mis-execute a wave. Live task state lives where Phase I already keeps it — commit history and the
+queue row — and the phase marker at the head of each **Task** cell (🔴/🟢) is the red-before-green
+record that §5's gate is read off. Two consequences, both deliberate: the column is swept **once, at
+phase end**, never incrementally mid-wave, because editing it commit-by-commit re-opens Phase P by
+changing the bytes an approval anchor is pinned to; and a `⬚` here is never evidence that a task's
+deliverable is absent — check the branch. Where this column and the branch disagree, the branch
+wins.
+
 Paths are repo-relative and subpackage-qualified. `[Fake first]` marks the test-double and harness
 tasks that must precede the production tasks reading them. Every green task lists its red-test task
 in `Deps` as an explicit edge, never by id order.
@@ -184,7 +195,7 @@ in `Deps` as an explicit edge, never by id order.
 | T15 | 🟢 **new** `lib/auth.mjs`: `readLoginEvidence`, frozen `AUTH_ROWS`, pure `resolveAuthPosture` returning `{row, catalogueId, refuses, evidencePath}` | `pdlc/engine/__tests__/auth.test.js` | `pdlc/engine/lib/auth.mjs` | 3 | T06 | ✅ |
 | T16 | 🟢 workflows exports **and** bundle rebuild in one task: `DISPATCHABLE_SKILLS`, `ADVISORY_RUNG_SKILL`, the five `SKILL_*` constants, `SKILL_TRIAGE`; bare literals replaced at their dispatch sites; then `node pdlc/workflows/build-runtime.mjs`, with the regenerated artifacts in this task's commit | `pdlc/workflows/__tests__/dispatchableSkills.test.js` | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/workflows/dist/orchestrate-dev.bundle.js`, `pdlc/workflows/dist/orchestrate-queue.bundle.js`, `pdlc/workflows/dist/distribution-manifest.json` | 3 | T07 | ✅ |
 | T17 | 🟢 CI + wave gate: add the `engine-tests` job on **the matrix that exists at HEAD** — `os: [ubuntu-latest]`, node 20 (`pr-tests.yml:40`; `macos-latest` was dropped on purpose in `410f3a07`, "ci: drop macos-latest from the unit-test matrix", and this feature does not reverse that) — `working-directory: pdlc/engine`, `npm ci` then `npm test`; extend `implementation.testCommand` so a wave gate runs the engine suite too | `pdlc/engine/__tests__/ci-arrangement.test.js` | `.github/workflows/pr-tests.yml`, `.claude/pdlc.config.json` | 3 | T08 | ⬚ |
-| T18 | ✅ `[Fake first]` per-transport recorded fixture sets (SDK message streams: `system/init` with `apiKeySource`, `rate_limit_event`, terminal `result`; `claude -p` stream-json lines) plus the refresh/redaction README (AC-6.3, AT-ENG-64) | `pdlc/engine/__tests__/fixtures-redaction.test.js` | `pdlc/engine/__tests__/fixtures/README.md`, `pdlc/engine/__tests__/fixtures/transport-sdk/`, `pdlc/engine/__tests__/fixtures/transport-cli/` | 3 | T09 | ⬚ |
+| T18 | 🟢 `[Fake first]` per-transport recorded fixture sets (SDK message streams: `system/init` with `apiKeySource`, `rate_limit_event`, terminal `result`; `claude -p` stream-json lines) plus the refresh/redaction README (AC-6.3, AT-ENG-64) | `pdlc/engine/__tests__/fixtures-redaction.test.js` | `pdlc/engine/__tests__/fixtures/README.md`, `pdlc/engine/__tests__/fixtures/transport-sdk/`, `pdlc/engine/__tests__/fixtures/transport-cli/` | 3 | T09 | ✅ |
 | T19 | 🟢 `[Fake first]` **new** `_assert-suite-wide.mjs` — assertion step v1: emptiness guard, spine self-assertion (one run dir, both probes), catalogue row, outcome row — rows 1 and 2 of TSPEC §7.4's table | `pdlc/engine/__tests__/assert-suite-wide.test.js` | `pdlc/engine/__tests__/_assert-suite-wide.mjs` | 4 | T03, T11, T12, T13, T14 | ⬚ |
 | T20 | 🔴 adapter descriptor: `_phase` run state and its prefix normalisation, engine-stamped `timeoutMs`, terminal `outcome`/`errorText`, one settlement line per attempt, `byPhase`, `authSources`, `createGit` identity ≠ module default (AT-ENG-28, AT-ENG-29, AT-ENG-16) | `pdlc/engine/__tests__/adapter-descriptor.test.js` | — | 4 | T13, T14 | ⬚ |
 | T21 | 🔴 retry machine: FSPEC §8.2's eight sequences, one shared budget, the one-timeout-per-dispatch cap with `terminal` ∈ {`timeout-cap`, `budget-exhausted`}, per-dispatch budget locality, `auth-failure` never retried; EC-FAIL-2…EC-FAIL-6 one case each; **property strategy** — the wait function `computeRateLimitWaitMs` (`adapter.mjs:75`, base `:58`, cap `:59`, jitter `:60`) is checked over generated attempt indices for its three laws: monotone non-decreasing in the attempt, never above the 15-minute cap, always within the jitter band of the un-jittered value (AT-ENG-35, AT-ENG-36, AT-ENG-37, AT-ENG-39, AT-ENG-40) | `pdlc/engine/__tests__/adapter-retry.test.js` | — | 4 | T13 | ⬚ |
