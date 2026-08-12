@@ -407,6 +407,37 @@ satisfied by a mechanism that never ran (§2's second oracle rule), so no row he
 
 ## 13. Property-based testing strategies
 
+Five components in this feature are parameterisable functions whose contracts are **universally
+quantified** — "for every thrown value", "for any environment", "for every attempt index". Example
+tests under-serve those contracts: they pin the cases the author thought of, and the failures that
+matter are the ones nobody thought of. Each strategy below names the generator, the laws, and the
+**counter-property** that proves the generator is reaching the interesting region — a generated
+corpus that only ever produces well-formed input is an expensive way to write one example.
+
+| Strategy | Component (HEAD anchor) | Generator | Laws asserted | Counter-property | Properties | Task |
+|---|---|---|---|---|---|---|
+| S-1 | `classifyOutcome` (`lib/outcome.mjs`, to be created; today's four classes at `transport.mjs:23`/`:33`/`:46`/`:55`) | arbitrary thrown values: strings, numbers, `null`, `undefined`, plain objects, `Error`s with and without `cause`, nested causes, objects with a throwing `message` getter, frozen objects | **totality** — every result is a member of `OUTCOMES`; never a throw, never `undefined`; and **determinism** — the same input classifies identically twice | a deliberately unmapped shape is generated and **must** classify as `transport-contract-violation` rather than falling off the end; the corpus is asserted to contain ≥1 value of each generated shape, so a generator that degenerated to strings fails | PROP-FAIL-5, PROP-FAIL-6, PROP-FAIL-7 | T04 → T13 |
+| S-2 | `resolveAuthPosture` (`lib/auth.mjs`, to be created; the six rows of the startup catalogue) | the generated **product** of the six rows' input predicates over a scratch `HOME` and environment — each of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, a credentials file, a subscription token, `ANTHROPIC_BASE_URL` present / absent / present-but-empty / present-but-unreadable | **exactly one** of the six rows matches any environment, so first-match order can never be masking an overlap; and the resolution is **total** — no environment falls through to no row | an environment deliberately satisfying two rows' surface conditions is generated and **must** still yield exactly one match, with the earlier row winning by the catalogue's stated order — not by list position accident | PROP-AUTH-*, PROP-ENV-* | T06 → T44 |
+| S-3 | `computeRateLimitWaitMs` (`adapter.mjs:75`; base `:58`, cap `:59`, jitter `:60`) | generated attempt indices, including 0, 1, the budget boundary and absurdly large values; and generated transport hints (finite positive retry-after, reset timestamps in the past and the future, `null`, `NaN`, negative) | **monotone non-decreasing** in the attempt; **never above** the 15-minute cap; **always within the jitter band** of the un-jittered value, with jitter **added, never subtracted**; and BR-RETRY-3's ladder order honoured — hint beats reset beats exponential | a reset timestamp in the past **must not** yield a negative delay, and a `NaN` hint **must not** propagate into the delay; both are generated deliberately, since they are the values a real transport actually emits | PROP-RETRY-6, PROP-RETRY-7, PROP-RETRY-8 | T21 → T45 |
+| S-4 | `resolveTunables` (`lib/…`, to be created; TSPEC §4.6's five rows) | generated `(flag, config, default)` triples over the five tunables, each source independently present / absent / present-and-malformed | the resolution is a **total function** whose result equals the **highest-precedence present** source; the two operator-owned rows (`--allow-api-key-billing`, `--max-iterations`) **never** read config; and every resolved value appears in the report as the effective one | the fixture pins `dispatch.timeoutMinutes: 7` ⇒ literal `420000` at the boundary and `7` in the report, precisely because `DEFAULT_TIMEOUT_MS` equals the tunable's own default (`transport.mjs:64`) and an assertion taken at the default is self-consistent and false | PROP-TUNE-1…6, PROP-DISP-3 | T30 → T44 |
+| S-5 | `parseVersion` / `satisfiesRange` (`lib/handshake.mjs:20`, `:86`) | generated version triples, including pre-release and build-metadata suffixes, leading zeros, missing components and non-numeric segments | the comparator's **ordering laws** — totality, antisymmetry, transitivity — plus the round-trip that a version inside a range **stays** inside it under patch bumps | a malformed version **must** be rejected rather than silently ordered, so the handshake refuses instead of comparing garbage | PROP-HAND-*, PROP-VER-* | T41 |
+
+**Two rules govern all five**, and both come from this document's own oracle discipline:
+
+1. **A generated corpus never replaces a named fixture for a set-equality's reverse direction.**
+   Generation shows a law holds over a region; it cannot witness that a specific member is
+   reachable. So S-1 satisfies PROP-FAIL-5's totality but contributes nothing to PROP-FAIL-3, whose
+   six provocation fixtures remain named and individually written.
+2. **A failing case is minimised and then transcribed as a permanent example test.** A property run
+   that goes green again after a seed change has recorded nothing; the transcription is what makes
+   the regression durable, and it is the fixture a future reader will actually read.
+
+Components deliberately **not** given a property strategy, with the reason each is example-tested
+instead: the exit-code mapping (three values — enumeration is exhaustive and generation would be
+theatre), `stampReport` (one structural law, asserted directly as a key-set difference), the loop's
+stop-reason function (four members, enumerated), and the guard configuration builder (its input is
+one plugin root, not a space).
+
 ## 14. Coverage matrix — acceptance criteria to properties
 
 ## 15. Coverage matrix — properties to PLAN tasks and test files
