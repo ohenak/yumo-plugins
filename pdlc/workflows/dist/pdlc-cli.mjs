@@ -3446,6 +3446,48 @@ const PHASE_DISPATCH = {
   },
 };
 
+// ─── Named skill constants and the dispatchable skill set (TSPEC §3.3) ────────
+//
+// PHASE_DISPATCH names every skill the converge() primitive reaches, but four
+// dispatches sit outside it — the ship-pr rebase/PR calls, the wave-mode
+// se-implement and se-author calls, the DOD verify/remediate pair and the
+// harvest distil call. These constants name those, so the dispatchable set can
+// be DERIVED rather than transcribed: DISPATCHABLE_SKILLS is the union of
+// PHASE_DISPATCH's role fields with the named constants below, and there is no
+// second, hand-maintained list anywhere that could drift from it.
+const SKILL_SE_AUTHOR = "se-author";
+const SKILL_SE_IMPLEMENT = "se-implement";
+const SKILL_DOD_VERIFY = "dod-verify";
+const SKILL_HARVEST = "harvest-learnings";
+const SKILL_SHIP_PR = "ship-pr";
+
+/** The role fields of a PHASE_DISPATCH entry that carry skill identifiers. */
+const PHASE_DISPATCH_ROLE_KEYS = ["creator", "optimizer", "verifier", "remediator", "reviewers"];
+
+/**
+ * Every skill identifier this module can dispatch, derived — never transcribed.
+ * Frozen so a consumer (the headless engine's allow-list, T16) cannot mutate the
+ * set it is validating against.
+ * @type {readonly string[]}
+ */
+const DISPATCHABLE_SKILLS = Object.freeze(
+  [
+    ...new Set([
+      ...Object.values(PHASE_DISPATCH).flatMap((entry) =>
+        PHASE_DISPATCH_ROLE_KEYS.flatMap((key) =>
+          entry[key] == null ? [] : [].concat(entry[key])
+        )
+      ),
+      ADVISORY_RUNG_SKILL,
+      SKILL_SHIP_PR,
+      SKILL_SE_IMPLEMENT,
+      SKILL_DOD_VERIFY,
+      SKILL_HARVEST,
+      SKILL_SE_AUTHOR,
+    ]),
+  ].sort()
+);
+
 // ─── Halt helper ───────────────────────────────────────────────────────────────
 
 /**

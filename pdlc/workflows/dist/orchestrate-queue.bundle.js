@@ -3068,6 +3068,32 @@ const PHASE_DISPATCH = {
   },
 };
 
+const SKILL_SE_AUTHOR = "se-author";
+const SKILL_SE_IMPLEMENT = "se-implement";
+const SKILL_DOD_VERIFY = "dod-verify";
+const SKILL_HARVEST = "harvest-learnings";
+const SKILL_SHIP_PR = "ship-pr";
+
+const PHASE_DISPATCH_ROLE_KEYS = ["creator", "optimizer", "verifier", "remediator", "reviewers"];
+
+const DISPATCHABLE_SKILLS = Object.freeze(
+  [
+    ...new Set([
+      ...Object.values(PHASE_DISPATCH).flatMap((entry) =>
+        PHASE_DISPATCH_ROLE_KEYS.flatMap((key) =>
+          entry[key] == null ? [] : [].concat(entry[key])
+        )
+      ),
+      ADVISORY_RUNG_SKILL,
+      SKILL_SHIP_PR,
+      SKILL_SE_IMPLEMENT,
+      SKILL_DOD_VERIFY,
+      SKILL_HARVEST,
+      SKILL_SE_AUTHOR,
+    ]),
+  ].sort()
+);
+
 function haltError(message, fields) {
   const err = new Error(message);
   err.isHalt = true;
@@ -7948,6 +7974,10 @@ const meta = {
 };
 
 const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
+
+const SKILL_TRIAGE = "se-author";
+
+const DISPATCHABLE_SKILLS = Object.freeze([SKILL_TRIAGE, ADVISORY_RUNG_SKILL].sort());
 
 const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
