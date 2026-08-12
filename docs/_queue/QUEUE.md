@@ -45,6 +45,22 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
+| 22 | pending | pdlc-engine-write-scope-guard | docs/pdlc-engine-write-scope-guard/REQ-pdlc-engine-write-scope-guard.md | pdlc-headless-engine |
+
+**Row 22 (`pdlc-engine-write-scope-guard`) added 2026-08-12 from a live Phase I incident.** A
+wave-5 run of `pdlc-headless-engine` halted at the wave gate with `.claude/pdlc.config.json`
+modified in the working tree — a file the PLAN's ownership manifest assigns to task T17, which
+was not in that wave's ready set. Nothing committed the change (per-task commits are
+pathspec-scoped), but the wave gate reads that file live to resolve the test command it runs, so
+the gate judged the wave against state the run had not authorised. Today file ownership is
+enforced only by prompt-level scoping plus pathspec-scoped commits, and a consumer's repo
+permission settings do not bind engine-dispatched agents, so there is nothing an operator can
+turn on to close it. Row 22 makes an out-of-scope write by a Phase I wave agent fail before it
+reaches disk, on the engine's primary transport, and surfaces every rejection in the run report;
+in-scope work is untouched, no task is killed and nothing halts. `Depends-On` is
+`pdlc-headless-engine` (row 3) because enforcement lives on the engine's dispatch path, which is
+that row's deliverable. `Order` values are allocated and never reused; 22 is the next free
+after 21.
 
 **Row 21 (`pdlc-learnings-injection`) added 2026-08-10 from consumer-run feedback.** The
 `regime-ledger` consumer completed a full end-to-end run of `wheel-paper-portfolio` (~40 review
