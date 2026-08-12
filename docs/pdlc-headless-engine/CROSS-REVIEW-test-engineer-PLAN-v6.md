@@ -98,3 +98,6 @@ front of me, and every upstream citation re-checked in round 5 (`FSPEC:1347`,
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
+
+APPROVAL-HASH: sha256:85dfd56afb853419f2caf4cd808945b130126d27e1425df834f296341e5e40e2
+REVIEWED-COMMIT: 6fe6c01953083e9012e4f942c170c8f12ef093be
