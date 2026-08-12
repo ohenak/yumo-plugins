@@ -15,7 +15,7 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-09 |
+| pdlc | draft | Claude | 1.1 | 2026-08-11 |
 
 > **Scope in one line.** A sixth advisory seam — **A6**, at the Phase I implementation-wave gate —
 > so that a wave whose gate goes red gets one bounded, reversible, gate-verified remediation attempt
@@ -60,6 +60,20 @@ every suite that transitively imported the new module failed to load — reporte
 run rather than as a failing assertion. The gate went red and refused to commit, which is exactly
 right. The whole repair was one keyword, in a file the PLAN already named as a later task's
 deliverable. The pipeline had no way to make it, so an unattended run became an operator turn.
+
+**The corroborating incident (2026-08-11, `iv-snapshot-store-postgres`, consumer repo
+`regime-ledger`).** A Wave 2 `se-implement` agent delivered half of task T07's declared ownership:
+it wrote the NEW test module (`tests/shared/storage/test_file_discipline_array.py`) but never
+touched the MOD implementation file (`shared/storage/file_discipline.py`) the same PLAN row owned.
+The gate died at pytest *collection* — `ImportError: cannot import name 'read_committed_json_array'`
+— zero tests run, the whole scoped suite interrupted. Unlike the first incident, the repair lay
+entirely inside the failing wave's **own** owned paths: E-5 alone covers it, no E-6 needed, and it
+is the first live instance of the `wave-internal-defect` class (AC-2.2 #2). Recovery was manual:
+implement the missing symbol per the TSPEC section the test's own docstring cited, re-run the exact
+gate command to green, re-invoke. Two engine facts observed at this halt feed Q-4/Q-5 and D-AWG-06
+below: the halt report carried `haltPhase: null` with no structured record beyond the raw gate
+tail, and the recovery hint said "set the QUEUE row back to pending, then re-run the queue" although
+the run was a direct `pdlc dev` invocation with no queue in the loop.
 
 **The naive fix is the dangerous one.** Letting an agent decide that the gate should pass would put
 a model in charge of the gate that exists to catch it. This REQ takes the tier's existing split —
@@ -360,6 +374,18 @@ requirements altitude.
 - **Q-3** — Should `environmental` classifications be permitted to re-run the gate once without any
   repair, as seam A5's E-1 permits for a flaky check? Proposed **no** for v1 — a flaky suite is a
   test-quality defect this pipeline should surface, not absorb. Bound as D-AWG-05.
+- **Q-4** — Should the engine run a deterministic **per-task ownership-delivery check** when a wave
+  gate goes red, and feed it to A6 as diagnosis input: diff the tree against the PLAN ownership
+  manifest and name each dispatched task whose owned NEW/MOD file shows no change? In the
+  2026-08-11 incident this turns a cryptic collection ImportError into "T07 delivered its test but
+  not its owned impl file". Proposed **yes**, as diagnosis/reporting only — no model, no repair
+  authority — because it sharpens the class 1/2 split in AC-2.2. Whether it also runs on the
+  disabled-tier halt path (pure reporting; AC-1.4's created-file inertness must still hold) is the
+  operator's call.
+- **Q-5** — Should gate-output evidence (AC-2.3) distinguish a **collection error** (zero tests
+  run, suite interrupted) from failing assertions? A collection error indicates a missing
+  deliverable or a linkage defect (classes 1–2), almost never `environmental`. Proposed **yes**, as
+  an evidence signal inside the existing classes — not a fifth class.
 
 ## 9. Prerequisites
 
@@ -385,3 +411,4 @@ Every deferral binds to a queue row that exists today.
 | D-AWG-03 | A POSTMORTEM lifecycle and/or an approval skip for Phase I (M-WG-5, M-WG-6) | A real gap, but about re-invocation economics rather than about this seam | `pdlc-engineering-loop` (queue row 6) |
 | D-AWG-04 | Firing A6 on a post-wave command failure (Q-2) | Deliberately excluded from v1's single trigger | `pdlc-engineering-loop` (queue row 6) |
 | D-AWG-05 | Gate re-run without repair for `environmental` classifications (Q-3) | Absorbing flakiness is a decision that needs evidence it is flakiness | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-06 | Mode-aware Phase I halt reporting: recovery hint distinguishes a queue run from a direct `pdlc dev` invocation, and a wave-gate halt writes a structured halt record (observed 2026-08-11: `haltPhase: null`, reason only in the run-report JSON) | Engine report-surface work, not seam behaviour | `pdlc-engineering-loop` (queue row 6) |

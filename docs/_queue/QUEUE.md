@@ -75,7 +75,14 @@ lands, which is why that feature is in the `Depends-On` column rather than only 
 `Order 19` because values are allocated and never reused and 18 is the highest ever issued; the row
 carries `ready: false` so the driver cannot pick it up as drafted. Its five deferrals (D-AWG-01…05)
 all bind to row 6, which is why row 6 gains a `Depends-On` edge on it below — the engineering loop is
-the integration row that would inherit them.
+the integration row that would inherit them. **Update 2026-08-11:** a second live instance, from
+consumer repo `regime-ledger` (`iv-snapshot-store-postgres`, direct `pdlc dev` run), corroborates the
+seam: a wave-2 task delivered its owned NEW test file but never touched its owned MOD implementation
+file, and the gate died at pytest collection (ImportError, zero tests run) — the first live
+`wave-internal-defect` instance, repairable under E-5 alone. REQ revised to v1.1 with the incident,
+two new operator questions (Q-4 per-task ownership-delivery check, Q-5 collection-error evidence
+signal) and a sixth deferral D-AWG-06 (mode-aware Phase I halt reporting), which binds to row 6 like
+the other five.
 
 **Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
