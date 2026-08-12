@@ -13,7 +13,41 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.7 | 2026-08-11 |
+| pdlc | draft | Claude | 1.8 | 2026-08-11 |
+
+**v1.8 changelog** — revision round 9, addressing `CROSS-REVIEW-test-engineer-TSPEC-v9.md`
+(1 High, 2 Medium, 1 Low) and `CROSS-REVIEW-product-manager-TSPEC-v9.md` (0 High, 2 Medium, 1 Low).
+Upstream pins unchanged (REQ v0.10, FSPEC v1.6). One erratum is raised against FSPEC this round
+(BR-START-1's "no probe of any kind" versus BR-GUARD-6's rung-4a probe), emitted in the dispatch
+message, not folded into any document.
+
+- **F-44 (High) / PM F-01 (Medium) — §3.3's site classes 3 and 4 are scoped by argument syntax, and
+  indirect dispatch becomes a third outcome.** As written, class 3 selected five sites at HEAD, not
+  one (`skill: reviewers[0]`/`[1]` at `orchestrate-dev.js:5909`, `:5910`, `skill: authorSkill`
+  `:9288`, `skill: dispatch.creator` `:9528`), and class 4 selected seven more than the census
+  counted (`:5573`, `:5579`, `:5585`, `:5876`, `:7124`, `:7463`, `:9244`) — none statically
+  resolvable, so the "cannot resolve ⇒ failure" rule made the guard permanently red on correct code,
+  the F-40 failure mode one layer down. Classes 3 and 4 now require a string literal or an identifier
+  bound to a module-level constant; **indirect dispatch** (parameter, local, or member expression) is
+  neither a site nor a failure, because the derivation already governs those values at their source,
+  and its count is asserted too. The census re-derives from the class definitions: **7 / 28 / 1 / 12
+  = 48 direct plus 11 indirect**, the twelfth direct site being `_agent(ADVISORY_RUNG_SKILL, …)`
+  (`:1841`), which obeys the rule and was previously absent from the eleven.
+- **F-45 (Medium) — §7.8's EC-START-11 branch asserts rung 5's record positively.** `state !==
+  "skipped"` was satisfied by a rung-5 *failure* on a three-valued enum; the fixture is hermetic and
+  injected, so it now asserts rung 5's record exists with `state === "pass"` under a green billing
+  posture.
+- **F-46 (Medium) / PM F-02 (Medium) — §7.8's script anchors corrected and §9.3's incidental note
+  deleted.** At HEAD the probe is `guard-harvest-before-delete.sh:16`, the candidate loop `:15-20`
+  and the fail-open `:21`; FSPEC's `:14-21` range is **correct** and needs no upstream edit, so the
+  §9.3 paragraph alleging an off-by-one there is removed.
+- **F-47 (Low) / PM F-03 (Low) — the census says which figures are measured and which are counted
+  after the edit**, in §3.3 and in this changelog line, rather than labelling the whole census "at
+  HEAD".
+- **Q-20, Q-21 answered in §7.8.** Rung 4a's `spawnSync` is named as a local process probe, not the
+  billable kind BR-START-1's zero-tokens sentence forbids; and `runProbe`'s `{ran, outcome}` mapping
+  from `spawnSync`'s three shapes (`ENOENT`, non-zero `status`, `status === 0`) is fixed here rather
+  than left to the plan.
 
 **v1.7 changelog** — revision round 8, addressing `CROSS-REVIEW-test-engineer-TSPEC-v8.md`
 (2 High, 1 Medium, 1 Low) and `CROSS-REVIEW-product-manager-TSPEC-v8.md` (0 High, 2 Medium, 1 Low).
@@ -26,7 +60,8 @@ Upstream pins unchanged (REQ v0.10, FSPEC v1.6); no upstream text moved this rou
   The decisive case is the reviewer-role map, whose keys and values are syntactically
   indistinguishable on the same three lines (`:6229-6231`). The guard now enumerates four closed
   **site classes**, treats an unresolvable site as a failure rather than a skip, and adds the
-  **per-class site census** (7 / 28 / 1 / 11 = 47 at HEAD, each figure measured) so that an extractor
+  **per-class site census** (then 7 / 28 / 1 / 11 = 47 — classes 2 and 4 measured at HEAD, class 1
+  counted after the edit; superseded by v1.8's 48 direct + 11 indirect) so that an extractor
   which silently stops matching turns the guard red instead of green over ∅. DEC-ENG-05 moved with it.
 - **F-41 (High) — rung 4a gains an oracle, a seam and a traceability row.** New **§7.8** declares
   `GUARD_INTERPRETERS` and `probeGuardInterpreter({runProbe})` on `lib/startup.mjs` — the probe seam
@@ -496,10 +531,22 @@ to exempt nearly every site it exists to police. The guard is therefore stated a
 > exported `DISPATCHABLE_SKILLS` union. A site is a syntactic position, not a string shape, and the
 > four classes are closed: **(1)** the value of a module-level `SKILL_*` / `ADVISORY_RUNG_SKILL`
 > constant declaration; **(2)** a `PHASE_DISPATCH` role field (`creator`, `optimizer`, `verifier`,
-> `remediator`, `reviewers[]`); **(3)** a `skill:` object field; **(4)** the first argument of a
-> dispatch call. A site resolving to a string literal contributes that literal; a site resolving to a
-> module-level constant contributes that constant's value; a site the extractor cannot resolve to
-> either is a **failure**, never a skip.
+> `remediator`, `reviewers[]`); **(3)** a `skill:` object field **whose value is a string literal or
+> an identifier bound to a module-level constant**; **(4)** the first argument of a dispatch call,
+> **under the same restriction on argument syntax**. A site resolving to a string literal contributes
+> that literal; a site resolving to a module-level constant contributes that constant's value; a site
+> of class 1 or 2, or a class 3/4 position whose argument is neither of those two syntactic forms yet
+> is not **indirect dispatch** as defined next, that the extractor cannot resolve is a **failure**,
+> never a skip.
+>
+> **Indirect dispatch** — a class 3/4 argument that is a bare parameter, a local binding, or a member
+> expression (`reviewers[0]`, `dispatch.creator`, `PHASE_DISPATCH[phaseId].optimizer`, a `skill`
+> parameter threaded through a wrapper) — is a **third outcome: neither a site nor a failure**. Such
+> an argument carries a value the derivation already governs at its own source: it originates in a
+> class-2 role field or in a class-4 direct site upstream of the call, and scoring it a second time
+> at the point of use would demand the extractor evaluate the program. The extractor counts these
+> positions and asserts the count (below), so a direct site *becoming* indirect moves a number rather
+> than disappearing.
 
 **The predicate is structural because no string predicate exists** (TE F-40). "Skill-identifier
 shape" read as syntax — lowercase words joined by hyphens — selects 54 distinct literals in
@@ -519,17 +566,28 @@ neither keys nor values are sites, and the map needs no exemption. Sites are enu
 not. This supersedes any reading of DEC-ENG-05's rule as a lexical filter; DEC-ENG-05 moves with it.
 
 **Containment over an extracted set is vacuously green whenever extraction returns ∅**, so the guard
-carries a second conjunct: the **per-class site census**, asserted, not observed. At HEAD, after the
-edit §8.3 specifies, the four classes hold **7 / 28 / 1 / 11 = 47** sites — 7 constant declarations
-(6 in `orchestrate-dev.js`, `SKILL_TRIAGE` in `orchestrate-queue.js`); 28 role-field literals across
-`PHASE_DISPATCH`'s eight rows (`orchestrate-dev.js:3337-3437`, measured: 5 non-null `creator`, 7
-`optimizer`, 14 across seven two-member `reviewers` arrays, 1 `verifier`, 1 `remediator`); 1 `skill:`
-field (`:10448`); 11 dispatch-call first arguments (`:8008`, `:8112`, `:8035`, `:8064`, `:10028`,
-`:10068`, `:10142`, `:10251`, `:9964`, `:10542`, and `orchestrate-queue.js:1216`). Classes 3 and 4
-hold constant *references* after the edit, which is why the extractor must resolve references rather
-than match literals — and why "cannot resolve" is a failure. A prettier reflow of the two multi-line
-call forms, or a call-form change, drops sites from class 4 and turns the census red instead of
-letting containment pass over a shrunken set. **The census is a test-side transcription and is
+carries a second conjunct: the **per-class site census**, asserted, not observed. After the edit §8.3
+specifies, the four classes hold **7 / 28 / 1 / 12 = 48** direct sites plus **11 indirect-dispatch
+positions** — 7 constant declarations (6 in `orchestrate-dev.js`, `SKILL_TRIAGE` in
+`orchestrate-queue.js`); 28 role-field literals across `PHASE_DISPATCH`'s eight rows
+(`orchestrate-dev.js:3337-3437`, measured: 5 non-null `creator`, 7 `optimizer`, 14 across seven
+two-member `reviewers` arrays, 1 `verifier`, 1 `remediator`); 1 `skill:` field (`:10448`); 12
+dispatch-call first arguments (`:8008`, `:8112`, `:8035`, `:8064`, `:10028`, `:10068`, `:10142`,
+`:10251`, `:9964`, `:10542`, `orchestrate-queue.js:1216`, and the module-constant argument
+`_agent(ADVISORY_RUNG_SKILL, …)` at `:1841`, which resolves exactly as the rule prescribes and is
+therefore a site, not an omission). The 11 indirect positions are `skill: reviewers[0]` and
+`skill: reviewers[1]` (`:5909`, `:5910`), `skill: authorSkill` (`:9288`), `skill: dispatch.creator`
+(`:9528`), and the seven variable-argument dispatches at `:5573`, `:5579`, `:5585`, `:5876`, `:7124`,
+`:7463` and `:9244`. **Classes 2 and 4's figures are measured at HEAD** (28 and, for the pre-edit
+literals, the eleven above); **class 1's 7 is counted after the edit** — only `ADVISORY_RUNG_SKILL`
+(`orchestrate-dev.js:1797`) exists today, the six other `SKILL_*` constants and `SKILL_TRIAGE` are
+introduced by this feature — and class 3's single site becomes a constant reference by the same edit.
+Classes 3 and 4 hold constant *references* after the edit, which is why the extractor must resolve
+references rather than match literals — and why "cannot resolve", for a resolvable syntactic form, is
+a failure. A prettier reflow of the two multi-line call forms, or a call-form change, drops sites from
+class 4 and turns the census red instead of letting containment pass over a shrunken set; a direct
+site rewritten to dispatch through a variable moves one count out of the direct 12 and into the
+indirect 11 rather than vanishing from both. **The census is a test-side transcription and is
 updated deliberately** when a phase row or dispatch site is added — that edit is the point at which a
 human confirms the new site names a union member.
 
