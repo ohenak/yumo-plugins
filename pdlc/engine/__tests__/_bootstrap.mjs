@@ -35,6 +35,7 @@ import childProcess from "node:child_process";
 import net from "node:net";
 import tls from "node:tls";
 import path from "node:path";
+import fs from "node:fs";
 import { appendFileSync, mkdirSync } from "node:fs";
 
 export class HermeticityViolationError extends Error {
@@ -128,6 +129,85 @@ export function writeObservation(record) {
   mkdirSync(runDir, { recursive: true });
   const file = path.join(runDir, `${process.pid}.jsonl`);
   appendFileSync(file, `${JSON.stringify(record)}\n`);
+}
+
+// --- 4. fs read recorder (TSPEC §7.7, PLAN T43) ------------------------------
+//
+// A wrapper over `node:fs`'s read entry points, patched here so it is live for
+// the *whole* run once this bootstrap loads — including a later dynamic
+// `import()` of the workflow modules (TSPEC §7.7's "scope" row) — but only
+// collects while a test has opted in via `startFsReadRecording()`. Disabled
+// by default (`fsReadRecording === null`) so every other test file's `fs`
+// traffic pays only a null-check, not an array push.
+//
+// Patched on the shared `fs` object itself (the same reference this file's
+// own `fs.readFileSync` calls above use), not on a per-caller function
+// binding: a caller that does `import fs from "node:fs"` and then invokes
+// `fs.readFileSync(...)` (property access at call time, e.g. the engine's
+// `lib/skills.mjs`, `lib/handshake.mjs`) observes the patch; a caller that
+// destructures a named export (`import { readFileSync } from "node:fs"`)
+// captures Node's own frozen builtin binding at link time and is not
+// reachable this way — the same non-live-binding limitation §7.1 above
+// documents for `child_process.spawn`'s named-import shape, and, like that
+// guard, not the interception point this recorder relies on.
+
+let fsReadRecording = null; // null = disabled; an array once a test starts recording
+
+function resolvedReadPath(pathArg) {
+  if (typeof pathArg === "string") return path.resolve(pathArg);
+  if (Buffer.isBuffer(pathArg)) return path.resolve(pathArg.toString());
+  if (pathArg instanceof URL) return path.resolve(pathArg.pathname);
+  return null; // a file descriptor (number) or other non-path input — nothing to record
+}
+
+function recordFsRead(pathArg) {
+  if (fsReadRecording === null) return;
+  const resolved = resolvedReadPath(pathArg);
+  if (resolved !== null) fsReadRecording.push(resolved);
+}
+
+const realReadFileSync = fs.readFileSync;
+fs.readFileSync = function recordedReadFileSync(pathArg, ...rest) {
+  recordFsRead(pathArg);
+  return realReadFileSync.call(this, pathArg, ...rest);
+};
+
+const realOpenSync = fs.openSync;
+fs.openSync = function recordedOpenSync(pathArg, ...rest) {
+  recordFsRead(pathArg);
+  return realOpenSync.call(this, pathArg, ...rest);
+};
+
+const realCreateReadStream = fs.createReadStream;
+fs.createReadStream = function recordedCreateReadStream(pathArg, ...rest) {
+  recordFsRead(pathArg);
+  return realCreateReadStream.call(this, pathArg, ...rest);
+};
+
+const realPromisesReadFile = fs.promises.readFile;
+fs.promises.readFile = function recordedPromisesReadFile(pathArg, ...rest) {
+  recordFsRead(pathArg);
+  return realPromisesReadFile.call(this, pathArg, ...rest);
+};
+
+const realPromisesOpen = fs.promises.open;
+fs.promises.open = function recordedPromisesOpen(pathArg, ...rest) {
+  recordFsRead(pathArg);
+  return realPromisesOpen.call(this, pathArg, ...rest);
+};
+
+// Enables recording; call before the window whose reads should be observed.
+export function startFsReadRecording() {
+  fsReadRecording = [];
+}
+
+// Disables recording and returns the total, append-only list of resolved
+// absolute path strings read while recording was on, in read order,
+// duplicates included — never deduplicated into a set (TSPEC §7.7).
+export function stopFsReadRecording() {
+  const records = fsReadRecording === null ? [] : fsReadRecording;
+  fsReadRecording = null;
+  return records;
 }
 
 // --- install marker -----------------------------------------------------------
