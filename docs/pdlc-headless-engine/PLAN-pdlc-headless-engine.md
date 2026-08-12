@@ -13,7 +13,26 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-12 |
+| pdlc | draft | Claude | 1.4 | 2026-08-12 |
+
+**Changelog — v1.4** (addresses cross-review round 4, product-manager and test-engineer):
+
+| Change | Findings |
+|---|---|
+| T11's coverage-forwarding oracle is **positional**: forwarded node flags go before `--test`'s path list, and the assertion is set-equality over the child argv with the flag's index pinned below `__tests__/`. Re-measured on node v20.20.1 at HEAD: `node --test --experimental-test-coverage __tests__/` exits `0`, `node --test __tests__/ --experimental-test-coverage` exits `1` | TE F-16 |
+| §6's parse-safety argument transcribes §4's **live** header (`Files \| Task \| Batch`, `:211`) and states the invariant it actually rests on — bare `task` ∉ `PLAN_ID_HEADER_CELLS` (`orchestrate-dev.js:3814`) and no `PLAN_DEPS_HEADER_CELLS` member (`:3815-3824`) — rather than the v1.2 header and the now-false "no id-like column at all" | PM F-01, PM v3 F-04 |
+| §4's T16 note reconciled with the single `pdlc/workflows/dist/` entry: one directory, not three files, and why the directory entry is strictly safer under the prefix collision rule (`orchestrate-dev.js:3939-3940`) | PM F-02 |
+| §4 states that its `Batch` column is retained for human auditing and ignored by the parser (`orchestrate-dev.js:3932-3934`); the runtime derives 17 waves where the labels read `b1`…`b11`, and a stopped wave is matched by task id | TE Q-01 |
+| §8 and §11 attribute the document oracles' working-tree sensitivity to `documentOracles.test.js:62`'s `LIVE_ROOT` setup, not to `document-oracles.mjs`, whose header explicitly disclaims `process.cwd()` (`:2-6`) | PM v3 F-01 |
+| §9's orphan-AT sub-table no longer calls AT-ENG-57 a near-miss: it is the endpoint of AC-1.3's `AT-ENG-52…AT-ENG-57` range at `FSPEC:1347`, listed only to pin its red→green owners | PM v3 F-03 |
+| Verified unchanged at HEAD after these edits: `parsePlanTasks` 54 tasks, `parsePlanOwnership` 54 owning tasks / 76 pairs, `validatePlanContract` `{"ok":true}`, `computeWaves` 17 waves, 0 path collisions within any wave | — |
+
+TE F-17 (§6 misquotes §10's header) is **not open at HEAD** and needed no edit: §6's three
+quotations (`§6`, the "three tables open with a `#` cell" paragraph) are byte-identical to the live
+headers at `:507`, `:765` and `:796` —
+`# | Integration point at HEAD | What attaches`, `# | Question | Disposition here`,
+`# | Command | Observes | State at HEAD`. The v1.2 §6 rewrite that answered PM F-03 corrected the
+quotation as a side effect; the finding carried forward from a round that reviewed the earlier text.
 
 **Change note, v1.3** (operator, 2026-08-12, after the Phase-I wave-mode degradation): §4's
 manifest is re-formatted to `parsePlanOwnership`'s header grammar — header cells `Files` /
@@ -467,7 +486,7 @@ Three other tables here open with a `#` cell and are safe for exactly that reaso
 table (`# | Integration point at HEAD | What attaches`), §10's open questions
 (`# | Question | Disposition here`) and §11's command table
 (`# | Command | Observes | State at HEAD`) — and §4's ownership manifest, whose header at HEAD is
-`Files | Task | Batch` (`:211`), is safe for a *different* reason — not "no id-like column", which
+`Files | Task | Batch` (`:238`), is safe for a *different* reason — not "no id-like column", which
 stopped being true in v1.3. It deliberately carries a `Task` cell now, and bare `task` is simply
 **not a member** of `PLAN_ID_HEADER_CELLS` (`orchestrate-dev.js:3814` — `task id`, `task-id`,
 `task_id`, `id`, `#`), while `Files` and `Batch` are members of neither header set the task-table
