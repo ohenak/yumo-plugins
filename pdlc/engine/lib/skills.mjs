@@ -282,12 +282,53 @@ export function skillFilePath(pluginRoot, skillName) {
 }
 
 /**
- * Read one skill prompt file from the installed plugin.
+ * Inline every sibling `.md` supplement in a skill's directory beside its
+ * SKILL.md (DEC-ENG-06): a bare identifier's dispatch prompt-file set is
+ * SKILL.md plus every other prompt file that lives next to it, never
+ * SKILL.md alone. Directory listing is best-effort: an injected fs surface
+ * with no `readdirSync` (several dispatch-path test fixtures target skills
+ * with no supplements at all) is treated as "no supplements found", not a
+ * hard failure — and a supplement that vanishes between the listing and the
+ * read is skipped rather than sinking the whole dispatch.
+ */
+function withSupplements(fs, dir, skillMdText) {
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return skillMdText;
+  }
+  const supplements = names.filter((n) => n.endsWith(".md") && n !== "SKILL.md").sort();
+  if (supplements.length === 0) return skillMdText;
+  let combined = skillMdText;
+  for (const name of supplements) {
+    let supplementText;
+    try {
+      supplementText = fs.readFileSync(path.join(dir, name), "utf8");
+    } catch {
+      continue;
+    }
+    combined +=
+      `\n\n--- BEGIN SUPPLEMENT: ${name} ---\n` +
+      `${supplementText}\n` +
+      `--- END SUPPLEMENT: ${name} ---`;
+  }
+  return combined;
+}
+
+/**
+ * Read one skill prompt file from the installed plugin. For a bare
+ * identifier (e.g. "se-implement") this also inlines every supplement
+ * beside SKILL.md (DEC-ENG-06); an explicit identifier ("se-implement:
+ * SKILL-typescript.md" or "se-implement/SKILL-typescript.md") targets that
+ * one file only, unchanged from before.
  * @returns {{name: string, path: string, text: string}}
- * @throws when the file is missing or empty — a dispatch with no role prompt is
+ * @throws when SKILL.md is missing or empty — a dispatch with no role prompt is
  *   never better than a refusal.
  */
 export function loadSkill(pluginRoot, skillName, { fs = defaultFs } = {}) {
+  const raw = String(skillName || "").trim();
+  const isExplicit = raw.includes(":") || raw.includes("/");
   const file = skillFilePath(pluginRoot, skillName);
   let text;
   try {
@@ -300,7 +341,10 @@ export function loadSkill(pluginRoot, skillName, { fs = defaultFs } = {}) {
   if (!text || !text.trim()) {
     throw new Error(`skill "${skillName}" resolved to an empty file: ${file}`);
   }
-  return { name: skillName, path: file, text };
+  if (isExplicit) {
+    return { name: skillName, path: file, text };
+  }
+  return { name: skillName, path: file, text: withSupplements(fs, path.dirname(file), text) };
 }
 
 /**
