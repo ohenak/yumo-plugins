@@ -134,3 +134,16 @@ not yet authored — the REQ carries `ready: false` pending operator review.
 | US-02 | REQ-WVR-02, REQ-WVR-04 | (pending) |
 | US-03 | REQ-WVR-03, REQ-WVR-06 | (pending) |
 | US-04 | REQ-WVR-07 | (pending) |
+
+## pdlc-engine-write-scope-guard
+
+Source: `docs/pdlc-engine-write-scope-guard/REQ-pdlc-engine-write-scope-guard.md` (v0.1, Draft).
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-WSG-01, REQ-WSG-02, REQ-WSG-06 | — (pending) |
+| US-02 | REQ-WSG-03 | — (pending) |
+| US-03 | REQ-WSG-02, REQ-WSG-07 | — (pending) |
+| US-04 | REQ-WSG-04, REQ-WSG-07 | — (pending) |
+| US-05 | REQ-WSG-05 | — (pending) |
+| US-06 | REQ-WSG-03 | — (pending) |
