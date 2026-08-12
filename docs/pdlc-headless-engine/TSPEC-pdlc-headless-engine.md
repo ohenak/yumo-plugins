@@ -13,7 +13,17 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.9 | 2026-08-11 |
+| pdlc | draft | Claude | 1.10 | 2026-08-11 |
+
+**v1.10 changelog** — erratum round 10, citation re-grounding only; no design, decision or
+mechanism changed. **Upstream pins unchanged (REQ v0.10, FSPEC v1.7).**
+
+- **§7.3's `deriveRoundWindow` anchor re-grounded to HEAD** (raised as an erratum by both
+  se-review and te-author): the citation read `orchestrate-dev.js:2151`, but that line at HEAD is
+  an `out-of-envelope` return inside the envelope check. `export function deriveRoundWindow` is at
+  `orchestrate-dev.js:6366`. The supported claim — that the double must derive the round index from
+  the directory listing the same way the module does, or the parity oracle is vacuous — is
+  unaffected; only the anchor was stale.
 
 **v1.9 changelog** — Phase-T erratum round, citation re-grounding only; no design, decision or
 mechanism changed. **Upstream pin moves REQ v0.10 (unchanged), FSPEC v1.6 → v1.7.**
@@ -1786,7 +1796,7 @@ correctness depends entirely on the double:
   `_phase` run state, which is what makes this key available at all — **never by skill alone**
   (TE Q-03). Keying on skill would make a round-2 reviewer dispatch replay round 1's writes, so the
   double would overwrite `CROSS-REVIEW-{role}-{doc}-v1.md` instead of creating `-v2.md` — breaking
-  the append-only property `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads from the directory
+  the append-only property `deriveRoundWindow` (`orchestrate-dev.js:6366`) reads from the directory
   listing, *inside the oracle meant to prove parity*. The double derives the round index the same
   way the module does, from the directory listing, and a test asserts that two successive reviewer
   dispatches for one document produce two files rather than one rewritten one.
