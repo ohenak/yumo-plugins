@@ -85,6 +85,31 @@ does not consult a model and cannot be talked out of.
 
 ## 2. Goals
 
+- **G-1** An out-of-scope file write attempted by a wave agent is **rejected before it reaches
+  disk**, so the tree the gate and the sibling agents read only ever holds authorised state.
+- **G-2** The rejection is **legible to the agent that attempted it**: it names the path that was
+  refused and the files that task does own, so the agent can either correct course or stop.
+- **G-3** Violations are **visible to the operator after the run**, with enough detail to name the
+  task, the wave and the path — replacing today's evidence of record (a dirty tree).
+- **G-4** In-scope work is **untouched**. A wave with no violations produces exactly what it
+  produces today, and a violation costs the offending write, not the task and not the run.
+- **G-5** The guard's **state is always reported**, so an operator can tell an enforced run from
+  an unenforced one without inspecting anything else. Silence never means "enforced".
+- **G-6** Where the guard cannot enforce — the fallback transport, a PLAN with no manifest, an
+  operator switch turned off — the run behaves **exactly as it does today** and says so. This
+  feature introduces no new way for a pipeline to fail.
+
+### 2.1 User stories
+
+| ID | Story |
+|---|---|
+| **US-01** | As an operator running Phase I, I want a wave agent's out-of-scope write rejected before it lands, so the wave gate decides on state my run authorised. |
+| **US-02** | As an operator reading a finished run, I want every rejected attempt named — task, wave, path, owned set — so I can tell a clean wave from one that tried to escape its scope. |
+| **US-03** | As an operator, I want a rejection to cost only the offending write, so a scoping mistake does not kill a task or halt a pipeline that would otherwise finish. |
+| **US-04** | As an operator on the fallback transport, I want to be told the guard is not enforcing on this run, so I never assume protection I did not get. |
+| **US-05** | As an operator whose PLAN predates the ownership manifest, I want the guard to stay out of the way entirely, so adopting the engine costs me no new failure mode. |
+| **US-06** | As an engineer authoring a PLAN, I want a manifest gap to surface as a named rejection during the run, so an under-declared ownership row is a thing I can see and fix. |
+
 ## 3. Non-Goals
 
 ## 4. Constraints
