@@ -128,4 +128,34 @@ taken inside a technical section: the one that arose (BR-START-1's scope) was ro
 
 ## 6. Recommendation
 
+**Approved with minor changes**
+
+All three v9 findings are resolved, and the one that mattered — §3.3's site-class scoping — was
+resolved more thoroughly than I asked, across the whole dispatch surface rather than the one class I
+had measured. I re-derived the new census independently at HEAD: 12 direct plus 7 indirect
+dispatch-call positions is the complete enumeration of the nineteen
+`_agent`/`agentFn`/`_sessionAgent` calls in the two modules, with class 3's 1 direct + 4 indirect
+making up the rest. The partition is
+exhaustive, so the third outcome is a classification rather than a hole. Script anchors, the probe
+mapping, EC-START-11's rung-5 assertion and §9.3's withdrawal all check out against HEAD.
+
+**No High finding is open.** From my lens the document is ready to move on: every P0/P1 requirement
+traces, C-11 reaches an owning component with falsifiable branches, and the one product-level
+ambiguity found this round was routed upstream as an erratum instead of being decided here.
+
+Two Low items to fold into the next touch of the file, neither of which changes a design decision:
+
+1. **F-01 (Low)** — add a catch-all row to §7.8's probe mapping for non-`ENOENT` errors and
+   `status === null`, so no refusal can read "found but exited null".
+2. **F-02 (Low)** — one clause in EC-START-10's fixture row saying the three distinct outcome phrases
+   are a device for making per-candidate pairing falsifiable, not a property of a real all-absent host.
+
+**One erratum is re-emitted this round**, concurring with §9.3's own: FSPEC's BR-START-1 forbids "no
+probe of any kind" while BR-GUARD-6 requires rung 4a observe availability "by running a candidate".
+I verified both at FSPEC HEAD (`:302-303`, `:922-924`). The qualifier BR-START-1 needs is "billable",
+and it belongs upstream in FSPEC, not in this document.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
