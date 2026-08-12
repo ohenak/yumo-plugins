@@ -69,7 +69,8 @@ Upstream pins unchanged (REQ v0.10, FSPEC v1.6); no upstream text moved this rou
   EC-START-10 (refusal names each candidate and its outcome plus the remedy, exit `1`, and **zero
   descriptors in §7.0's accumulator**, a positive conjunct rather than an absence assertion) and
   EC-START-11 (present-but-not-runnable `python3`, runnable `python` ⇒ rung 4a passes). The probe
-  command is the shipped script's own, verbatim (`guard-harvest-before-delete.sh:15`). §8.2 gains the
+  command is the shipped script's own, verbatim (`guard-harvest-before-delete.sh:16`; this line said
+  `:15` when written — corrected in v1.8 per TE F-46). §8.2 gains the
   **C-11 row**, §8.1 names the two constraint-borne obligations that have no AC row, and §6.4 and
   §8.3's `lib/startup.mjs` row now distinguish EC-GUARD-4 from rung 4a.
 - **F-42 (Medium) — the derivation test gains a transcription conjunct, reconciling §3.3 with §7.4.**
@@ -2235,7 +2236,7 @@ The two tests are hermetic, both driven by injecting `runProbe`:
 | Test | Fixture | Assertions |
 |---|---|---|
 | EC-START-10 — no candidate runs | `runProbe` returns `{ran: false}` for all three, with a distinct `outcome` each | rung 4a `state === "fail"`; the refusal text contains **each of the three candidate names and its own outcome phrase** (three separate expectations, as §6.4 does for EC-GUARD-4) and the remedy; exit code `1`; **and §7.0's dispatch accumulator holds exactly zero descriptors** |
-| EC-START-11 — presence is not executability | `runProbe` returns `{ran: false, outcome: "found but did not execute"}` for `python3` and `{ran: true}` for `python` | rung 4a `state === "pass"`; the returned `interpreter === "python"`; `attempts` records both, in order; **rung 5's record exists with `state === "pass"`** under a green billing posture in the same fixture — the positive form of "the ladder continued", since `RungRecord.state` is three-valued (§4.3) and `state !== "skipped"` would be satisfied by a rung-5 *failure* as readily as by a pass |
+| EC-START-11 — presence is not executability | `runProbe` returns `{ran: false, outcome: "found but exited 9009"}` for `python3` (the store-stub shape of the mapping above) and `{ran: true, outcome: "ran"}` for `python` | rung 4a `state === "pass"`; the returned `interpreter === "python"`; `attempts` records both, in order; **rung 5's record exists with `state === "pass"`** under a green billing posture in the same fixture — the positive form of "the ladder continued", since `RungRecord.state` is three-valued (§4.3) and `state !== "skipped"` would be satisfied by a rung-5 *failure* as readily as by a pass |
 
 **"Nothing dispatched" is asserted positively, never as an absence.** The oracle is
 `accumulator.length === 0` over §7.0's dispatch-descriptor accumulator on a run that reached the
