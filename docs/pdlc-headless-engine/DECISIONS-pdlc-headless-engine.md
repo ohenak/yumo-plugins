@@ -204,15 +204,22 @@ interpreter a precondition for running pdlc unattended, and turns a host that pr
 inert) into a host that cannot run at all — an operator-facing deployability rule. That authority
 has now landed for the REQ half: **C-11 (`REQ-pdlc-headless-engine.md:284-298`, v0.10)** is the
 constraint that authorises the startup refusal, and this entry **cites** it rather than originating
-it. The FSPEC half is still outstanding: `grep -inE "python|interpreter"` over
-`FSPEC-pdlc-headless-engine.md` returns zero hits at HEAD, so the EC row with its own rule remains
-filed as an erratum. The decision recorded here stays the narrow half that is already ours: *the
-engine does not rely on the fail-open branch; the probe's observation is reported at startup rather
-than discovered per dispatch.* Whether that observation refuses the run or reports a failed rung is
-upstream's call to authorise; the engine does not fix the script's own posture either way (that
-would edit the plugin path's interactive behaviour, NG-1).
+it. **The FSPEC half has now landed too** (v1.7): `BR-GUARD-6` states the precondition on four fixed
+terms — candidate set, observation form, refusal contract, ladder position (`FSPEC:921-943`) — the
+ladder carries **rung 4a** as its own row (`FSPEC:307`), `EC-START-10` and `EC-START-11` carry the
+no-interpreter and present-but-not-runnable cases (`FSPEC:416-417`), `AT-ENG-11a` asserts both
+(`FSPEC:977`), and the traceability row binds C-11 to all three (`FSPEC:1386`). Every earlier version
+of this paragraph reported zero hits for `python|interpreter` in FSPEC; at HEAD the same grep returns
+eleven. The decision recorded here is unchanged by the landing and stays the narrow half that was
+always ours: *the engine does not rely on the fail-open branch; the probe's observation is reported
+at startup rather than discovered per dispatch.* What was conditional is now cited — the refusal, its
+wording obligations and its rung are upstream's, and this entry follows them. The engine still does
+not fix the script's own posture (that would edit the plugin path's interactive behaviour, NG-1), and
+FSPEC agrees explicitly (`FSPEC:943`).
 
-**Two things this entry deliberately does not settle, because they are not DECISIONS-local:**
+**Two things this entry deliberately did not settle, because they are not DECISIONS-local — both now
+settled upstream, and recorded here as resolved rather than deleted, so the next reader can see the
+decision did not grow to cover what it had deferred:**
 
 - **The message contract is not EC-GUARD-4's.** An earlier draft put this refusal "on the same
   fail-closed footing" as EC-GUARD-4. That row's obligations are fixed and asserted as three separate
@@ -223,8 +230,10 @@ would edit the plugin path's interactive behaviour, NG-1).
   alternative would mislead the operator the message is written for. The interpreter case therefore
   needs its own EC row and its own obligations (name the missing interpreter and the candidates
   probed — `python3`, `python`, `py`, `guard-harvest-before-delete.sh:14-21` — and name the remedy),
-  with `AT-ENG-43`'s three-obligation assertion scoped to the transport-capability case. Filed as an
-  FSPEC erratum.
+  with `AT-ENG-43`'s three-obligation assertion scoped to the transport-capability case. **Landed as
+  filed:** `EC-START-10` gives the case its own row and BR-GUARD-6's third term fixes the
+  obligations as expected/found/remedy — "never *guard unavailable* alone" (`FSPEC:936-939`,
+  `FSPEC:416`) — with no borrowing from EC-GUARD-4.
 - **The rung number is not fixed here.** TSPEC says only that the check "belongs to the ladder's rung
   5 *neighbourhood*" (`TSPEC:1306-1307`), and the hedge is load-bearing: FSPEC's ladder assigns rung 5
   to **billing posture** (`FSPEC:292`) and is closed at 0–5 under BR-START-2's totality contract
@@ -237,7 +246,17 @@ would edit the plugin path's interactive behaviour, NG-1).
   number stays upstream's: either a distinct rung 6 with its own FSPEC ladder row (so BR-START-2's
   totality can report it) or an explicit redefinition of rung 5 as a two-predicate rung with
   per-cause catalogue ids. Filed as an FSPEC erratum; dry-run fatality is to be stated there, not
-  inherited by placement.
+  inherited by placement. **Landed as a third resolution neither this entry nor the reviewers
+  named, and a better one:** a distinct **rung 4a** sited between the plugin-bytes rung and rung 5
+  (`FSPEC:307`), which keeps rung 5 as billing posture and lets `doctor` name the failing capability
+  — the two properties the hedge was protecting. Refusal is stated directly (exit `1`, nothing
+  dispatched) rather than inherited from `FSPEC:392`, as required. The cost the hedge anticipated
+  landed on the type rather than on a fixture: TSPEC v1.7 replaces the integer `rung: 0..5` with a
+  frozen seven-member `RUNG_ORDER` of string ids (`["0","1","2","3","4","4a","5"]`, `TSPEC:1029`),
+  stating plainly that integer typing "cannot express `4a`" (`TSPEC:1039`), and BR-START-2's totality
+  contract now reads "always all seven" (`TSPEC:1022`). No test derivable from this entry disagrees
+  with one derivable from FSPEC on any fixture — which was the whole reason the number was left
+  upstream.
 
 **Reversibility:** Easy. The probe is one startup check and one catalogue id, whichever rung the
 ladder ends up giving it; changing the script's own posture later is an independent, plugin-path
@@ -851,7 +870,7 @@ alternative with no cost is not a decision worth recording.
 | A runtime transport selector | DEC-ENG-01 | Reverses TSPEC v1.0; a selector is honest only after the CLI flag surface is measured on both platforms (C-9) | Operators get no switch this feature; O-1 owes the measurement |
 | Spawn `claude -p` as primary | DEC-ENG-01 | Puts a second process, its stdout framing and its own settings resolution between engine and dispatch | None material |
 | Automatic failover on transport error | DEC-ENG-02 | A run whose carrier can change is unattributable, and C-9's per-transport regime becomes unfalsifiable | An SDK outage halts the run rather than completing it on the fallback |
-| Reimplement the guard's decision procedure in JS | DEC-ENG-03 | Two definitions that drift silently across four regexes and a byte-read refusal string | The engine must be able to run the shipped `.sh`, which is why an interpreter precondition exists at all — its authorisation, refusal message and rung placement are filed upstream, not settled here |
+| Reimplement the guard's decision procedure in JS | DEC-ENG-03 | Two definitions that drift silently across four regexes and a byte-read refusal string | The engine must be able to run the shipped `.sh`, which is why an interpreter precondition exists at all — its authorisation, refusal message and rung placement were filed upstream rather than settled here, and have landed as C-11, BR-GUARD-6 and rung 4a |
 | Port the guard script and delete the original | DEC-ENG-03 | NG-1; the plugin path still runs the hook interactively | None |
 | Live-only guard measurement, no durable record | DEC-ENG-04 | A fresh clone would state nothing about whether the combination was ever measured, on which platform, against which SDK version | The baseline file grows a per-platform row that must be seeded in the same task as the gate |
 | Warn instead of fail when the measurement is unrecorded | DEC-ENG-04 | A warning on an unattended pipeline is a message nobody reads; unrecorded is exactly the vacuous-green state | CI goes red on a platform nobody has measured yet — intended |
@@ -890,7 +909,7 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
 | Consequence | From | Obligation it creates |
 |---|---|---|
 | `transport-cli.mjs` is written to the same interface with no production caller | DEC-ENG-01 | A test-only unit driven over recorded fixtures; parity clauses must not silently degrade to "the file exists" |
-| The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup-time capability probe plus one catalogue id, observed at startup rather than per dispatch. **Blocked on upstream:** the precondition's authority (a REQ constraint), its own EC row and message obligations, its rung placement (a new rung 6, or rung 5 redefined as two predicates with per-cause ids) and whether it is fatal under dry run are FSPEC/REQ errata, not PLAN's to choose |
+| The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup-time capability probe plus one catalogue id, observed at startup rather than per dispatch. **No longer blocked — every upstream authority has landed and PLAN inherits a settled shape:** the precondition is C-11 (`REQ:284-298`, v0.10); the rule, candidate set, observation form and refusal contract are BR-GUARD-6 (`FSPEC:921-943`); the placement is **rung 4a**, not rung 6 (`FSPEC:307`); the cases are EC-START-10/11 (`FSPEC:416-417`) with refusal stated directly (exit `1`, nothing dispatched) rather than inherited from dry-run non-fatality; the oracle and seam are TSPEC §7.8 (`TSPEC:2171`+). The scheduling constraint that applied while these were outstanding — **no PROPERTIES row for the interpreter probe is authored before the FSPEC erratum lands**, since rows written against the conditional text would have to be rewritten — is discharged: the erratum landed at FSPEC v1.7, and the probe's PROPERTIES rows can be written against `AT-ENG-11a` and TSPEC §7.8's two fixtures now |
 | The `M-ENG-09` gate and its first rows must land together | DEC-ENG-04 | Single PLAN task — a gate landing before its seed rows turns CI red for an unrelated reason. The gate keys on `platform` + `transport` only; `sdkVersion` and `date` are provenance, so a caret-range SDK bump must not turn the hermetic suite red |
 | `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a containment test asserts that every skill identifier appearing at one of **four enumerated site classes** — a `DISPATCHABLE_SKILLS` member declaration, a module-level `SKILL_*`/`ADVISORY_RUNG_SKILL` constant, a `PHASE_DISPATCH` role field, a `skill:` object field, or the skill argument of a dispatch call — is a member of that union, conjoined with a per-class site census so containment cannot pass over an empty extraction. The predicate is **structural, not lexical**: it is scoped by syntactic position, not by string shape, and that scoping is what makes it green at HEAD — the exported `meta.name` literals (`orchestrate-dev.js:3316`, `orchestrate-queue.js:45`) and the reviewer-role map's keys and values (`orchestrate-dev.js:6229-6231`) sit at none of the four classes and are therefore out of scope rather than exempted. No exemption list exists, but the quantifier is bounded: a **fifth site class** escapes it, which is the re-evaluation trigger DEC-ENG-05 records |
 | Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself; the runner detects a filtered invocation and reports the suite-wide step skipped-with-reason rather than passing or failing it, **and** the paired obligation in the other direction — an unfiltered run asserts step 4 ran, carrying a pass rather than a skip — so an over-matching filtered-run detector cannot leave the suite permanently green |
