@@ -112,6 +112,38 @@ does not consult a model and cannot be talked out of.
 
 ## 3. Non-Goals
 
+- **NG-1 — Writes performed by shell commands are not guarded.** The guarded surface is the
+  agent's file-write tool surface (the write / edit / notebook-edit class of tool calls). An
+  agent that writes a file by running a shell command instead is outside this feature. This is
+  a deliberate boundary, not an oversight, and the containment that remains for that path is
+  named and unchanged: **per-task commits stay pathspec-scoped**, so a shell-mediated write
+  outside a task's owned set still never enters history (M-WG-4). Whether that containment is
+  adequate is a judgement this REQ does not make alone — it is routed, with a named owner, in
+  **O-1**.
+- **NG-2 — Dispatches outside Phase I waves are not guarded.** Authoring and review dispatches
+  in every other phase write exactly as they do today. Those roles have no ownership manifest to
+  be measured against; inventing a scope vocabulary for them is a different feature.
+- **NG-3 — This is not a security boundary.** The guard exists to stop accidental scope drift by
+  a cooperative agent. It makes no claim against an agent actively trying to evade it, and no
+  acceptance criterion here should be read as one.
+- **NG-4 — Reads are not scoped.** Agents keep reading whatever they need; only writes are
+  judged.
+- **NG-5 — The ownership manifest itself does not change.** Its grammar, its authoring rules,
+  how waves are partitioned from it, and what gets committed after a wave are all unchanged.
+  This feature reads the manifest that already exists and adds nothing to it.
+- **NG-6 — No enforcement on the `claude -p` fallback transport.** The guard fails open there by
+  decision (C-3); the obligation that comes with that decision is to *say so* (AC-4.2), not to
+  emulate enforcement.
+- **NG-7 — No repair, rollback or cleanup.** The guard prevents a write; it never reverts one.
+  Writes already in the tree when a run starts — from an earlier run, from a human, from a shell
+  command — are not this feature's business.
+- **NG-8 — The guard does not replace the wave gate.** A wave with zero violations can still
+  fail its tests and halt, exactly as today. Staying in scope and passing are separate claims.
+- **NG-9 — A task's owned set is never widened at run time.** There is no approval prompt, no
+  escalation, no "allow this once". The manifest at dispatch time is the whole authorisation for
+  the run; a task that needs a file it does not own is a PLAN defect, surfaced as a violation
+  (US-06) and fixed in the PLAN.
+
 ## 4. Constraints
 
 ## 5. Acceptance Criteria
