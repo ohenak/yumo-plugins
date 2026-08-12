@@ -470,14 +470,14 @@ Reading in the other direction — properties to criteria — every property row
 | AC-1.1 | parity with a Claude Code run | PROP-PARITY-1…7, PROP-PARITY-11, PROP-SUITE-10…14 | yes |
 | AC-1.2 | the run observed at the filesystem level | PROP-READ-1…8, PROP-REP-3 | yes |
 | AC-1.3 | queue surface, both stop reasons | PROP-QUEUE-1…15 | yes |
-| AC-1.4 | a halt exits `2`, not `1` | PROP-EXIT-1…10, PROP-RETRY-14 | yes |
+| AC-1.4 | a halt exits `2`, not `1` | PROP-EXIT-1…10, PROP-CLI-1, PROP-CLI-2, PROP-RETRY-14 | yes |
 | AC-1.5 | the engine is not a fork | PROP-FORK-1…3, PROP-PARITY-12…15 | yes |
 | AC-2.1 | startup banner, six ordered auth rows | PROP-AUTH-1…7, PROP-AUTH-13, PROP-START-5/6, PROP-HAND-5, PROP-REP-16/17 | yes |
 | AC-2.2 | a key present without opt-in ⇒ refusal | PROP-AUTH-6, PROP-AUTH-7, PROP-EXIT-4, PROP-TUNE-3 | yes |
 | AC-2.3 | proxy environment reaches every dispatch | PROP-ENV-1…4 | yes |
 | AC-2.4 | logged-in session, key ignored | PROP-AUTH-5, PROP-AUTH-12 | yes |
 | AC-2.5 | dispatch cwd is the repo, per dispatch | PROP-ENV-5, PROP-ENV-6, PROP-DISP-1, PROP-DISP-7 | yes |
-| AC-3.1 | a dispatch composes for every skill in the set | PROP-SKILL-7…14, PROP-DISP-1…6 | yes |
+| AC-3.1 | a dispatch composes for every skill in the set | PROP-SKILL-7…15, PROP-DISP-1…6 | yes — the negative clause ("no Skill-tool instruction, no engine-added `pdlc:` reference") is **PROP-SKILL-15**; before it existed this row read `yes` over properties that covered only the positive half |
 | AC-3.2 | no plugin installed ⇒ a legible refusal | PROP-HAND-1…4, PROP-START-3 | yes |
 | AC-3.3 | the pinned model map, both directions | PROP-MODEL-1…10 | yes |
 | AC-3.4 | the permission posture is explicit | PROP-PERM-1…3, PROP-GUARD-7, PROP-TUNE-5 | yes |
@@ -490,17 +490,19 @@ Reading in the other direction — properties to criteria — every property row
 | AC-5.1 | the guard refuses with `LEARNINGS` absent, per transport | PROP-GUARD-1, PROP-GUARD-2, PROP-GUARD-4…10, PROP-GUARD-12…19 | yes |
 | AC-5.2 | harvest's deletions succeed once it exists | PROP-GUARD-3, PROP-GUARD-11 | yes |
 | AC-6.1 | a hermetic suite, observed rather than asserted | PROP-VER-1…6, PROP-SUITE-1…9, PROP-SUITE-15, PROP-GUARD-20…22 | yes |
-| AC-6.2 | the opt-in live smoke path | PROP-VER-10, PROP-VER-11, PROP-GUARD-23 | yes — **evidence is operator-recorded**, not suite-observed (PLAN §8); no hermetic command observes it |
+| AC-6.2 | the opt-in live smoke path | PROP-VER-10, PROP-VER-11, PROP-GUARD-23 | **properties yes, gate no** — the three properties exist and are written, but **no command in PLAN §11 observes them**, so nothing in a clean CI run can fail on AC-6.2. Its evidence is a dated operator-recorded line (G-PROP-5), deliberately **not** the mechanical gate AC-6.1 has. An operator reading only this column would otherwise conclude the two ACs are gated alike (PM Q-01) |
 | AC-6.3 | per-transport recorded fixtures | PROP-VER-7, PROP-VER-8, PROP-VER-9, PROP-SKILL-9, PROP-REP-10 | yes |
 | AC-6.4 | the closed message catalogue, both directions | PROP-MSG-1…6, PROP-FAIL-1, PROP-AUTH-11 | yes |
 
 **Constraints, separately.** Constraints are not acceptance criteria and a criterion-only matrix
 would leave them unchecked, so the six this document can observe are listed here with the properties
-that carry them: **C-1a/C-1b** (two-part auth policy) — PROP-AUTH-6…12; **C-5** (guard parity) —
+that carry them: **C-1a/C-1b** (two-part auth policy) — PROP-AUTH-6…12, plus **PROP-CLI-3**, which
+bounds BR-CMD-1's exempt diagnostics so the zero-token promise is never read as covering
+`spike:sdk`'s real dispatch; **C-5** (guard parity) —
 PROP-GUARD-1…15; **C-8** (closed message catalogue) — PROP-MSG-1…6; **C-9** (per-platform
 measurement) — PROP-GUARD-20…22, PROP-SUITE-15; **C-11** (fail-closed interpreter precondition) —
 PROP-GUARD-16…19; **NG-1** (the pdlc semantics are unchanged) — PROP-PARITY-*, PROP-FORK-*,
-PROP-GUARD-9/11/13/19, PROP-QUEUE-1/2/3.
+PROP-GUARD-9/11/13/19, PROP-QUEUE-1/2/3, PROP-CLI-4.
 
 ## 15. Coverage matrix — properties to PLAN tasks and test files
 
