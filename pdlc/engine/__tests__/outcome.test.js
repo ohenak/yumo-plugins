@@ -14,6 +14,9 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import os from "node:os";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 
 import {
   AuthPolicyError,
@@ -267,6 +270,69 @@ test("PROP-FAIL-5: classifyOutcome is total over a generated arbitrary-shaped co
     // Counter-property: an unmapped shape must land on the taxonomy's own
     // catch-all member, never silently fall off the end into "ok".
     assert.equal(out, "transport-contract-violation", `shape "${label}" must classify transport-contract-violation`);
+  }
+});
+
+// ── T13: classifyOutcome records each result through §7.0's observation
+// seam — one `{ kind: "outcome", value }` JSON line appended to
+// `${PDLC_TEST_RUN_DIR}/{pid}.jsonl`, the shape `_assert-suite-wide.test.js`
+// (T19, "outcome row") already assumes. This is the reverse of PM Q-01's
+// live-run guarantee: with `PDLC_TEST_RUN_DIR` unset (the live-CLI case),
+// classifyOutcome must write nothing at all.
+
+test("PROP-FAIL-2 seam: with PDLC_TEST_RUN_DIR set, classifyOutcome appends a {kind: \"outcome\", value} record to `${dir}/${pid}.jsonl`", () => {
+  const runDir = mkdtempSync(path.join(os.tmpdir(), "pdlc-outcome-seam-"));
+  const prior = process.env.PDLC_TEST_RUN_DIR;
+  process.env.PDLC_TEST_RUN_DIR = runDir;
+  try {
+    const out = classifyOutcome({ error: new RateLimitedError("slow down") });
+    assert.equal(out, "retryable");
+
+    const file = path.join(runDir, `${process.pid}.jsonl`);
+    const lines = readFileSync(file, "utf8").trim().split("\n");
+    const records = lines.map((line) => JSON.parse(line));
+    assert.ok(
+      records.some((r) => r.kind === "outcome" && r.value === "retryable"),
+      `expected a {kind: "outcome", value: "retryable"} record among ${JSON.stringify(records)}`,
+    );
+  } finally {
+    if (prior === undefined) delete process.env.PDLC_TEST_RUN_DIR;
+    else process.env.PDLC_TEST_RUN_DIR = prior;
+    rmSync(runDir, { recursive: true, force: true });
+  }
+});
+
+test("PROP-FAIL-2 seam: one record is appended per classifyOutcome call, in call order", () => {
+  const runDir = mkdtempSync(path.join(os.tmpdir(), "pdlc-outcome-seam-"));
+  const prior = process.env.PDLC_TEST_RUN_DIR;
+  process.env.PDLC_TEST_RUN_DIR = runDir;
+  try {
+    classifyOutcome({ error: new AuthPolicyError("nope") });
+    classifyOutcome({ error: null, result: { text: "ok" }, reportedFailure: false });
+    classifyOutcome({ error: new TimeoutError("slow") });
+
+    const file = path.join(runDir, `${process.pid}.jsonl`);
+    const lines = readFileSync(file, "utf8").trim().split("\n");
+    const values = lines.map((line) => JSON.parse(line)).map((r) => r.value);
+    assert.deepEqual(values.slice(-3), ["auth-failure", "ok", "timeout"]);
+  } finally {
+    if (prior === undefined) delete process.env.PDLC_TEST_RUN_DIR;
+    else process.env.PDLC_TEST_RUN_DIR = prior;
+    rmSync(runDir, { recursive: true, force: true });
+  }
+});
+
+test("with PDLC_TEST_RUN_DIR unset, classifyOutcome writes no observation record (PM Q-01: a live run records nothing)", () => {
+  const prior = process.env.PDLC_TEST_RUN_DIR;
+  delete process.env.PDLC_TEST_RUN_DIR;
+  try {
+    assert.doesNotThrow(() => {
+      const out = classifyOutcome({ error: null, result: { text: "ok" }, reportedFailure: false });
+      assert.equal(out, "ok");
+    });
+  } finally {
+    if (prior === undefined) delete process.env.PDLC_TEST_RUN_DIR;
+    else process.env.PDLC_TEST_RUN_DIR = prior;
   }
 });
 
