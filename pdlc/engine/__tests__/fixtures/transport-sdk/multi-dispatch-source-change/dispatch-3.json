@@ -1,0 +1,11 @@
+[
+  { "type": "system", "subtype": "init", "apiKeySource": "user", "session_id": "fixture-sess-multi-0003" },
+  {
+    "type": "result",
+    "subtype": "success",
+    "session_id": "fixture-sess-multi-0003",
+    "total_cost_usd": 0.01,
+    "usage": { "input_tokens": 5, "output_tokens": 8 },
+    "result": "dispatch 3 of 5, apiKeySource changed to user — this is the row PROP-AUTH-9 must catch"
+  }
+]
