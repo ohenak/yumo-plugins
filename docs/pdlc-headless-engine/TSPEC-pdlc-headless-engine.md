@@ -6,14 +6,36 @@ feature: pdlc-headless-engine
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → **TSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `docs/pdlc-headless-engine/FSPEC-pdlc-headless-engine.md` v1.6) |
+| Upstream | REQ → FSPEC → **TSPEC** (`docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` v0.10; `docs/pdlc-headless-engine/FSPEC-pdlc-headless-engine.md` v1.7) |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.8 | 2026-08-11 |
+| pdlc | draft | Claude | 1.9 | 2026-08-11 |
+
+**v1.9 changelog** — Phase-T erratum round, citation re-grounding only; no design, decision or
+mechanism changed. **Upstream pin moves REQ v0.10 (unchanged), FSPEC v1.6 → v1.7.**
+
+- **The BR-START-1 erratum v1.8 raised is discharged upstream.** FSPEC v1.7 landed the *billable*
+  qualifier ("no *billable* probe of any kind", `FSPEC:310-312`) and names rung 4a's local execution
+  a non-billing, non-dispatch check. §7.8's reading and §9.3's entry are updated from "raised,
+  outstanding" to "resolved upstream"; §7.8's design is unchanged, because it was already written to
+  the reading FSPEC has now adopted.
+- **§4.3 and §7.8's rung-4a anchors are re-grounded against FSPEC v1.7 HEAD**: the ladder row moves
+  `FSPEC:299` → `:307`, EC-START-10/11 `:406-407` → `:416-417`, BR-START-1 `:302-303` → `:310-312`,
+  BR-GUARD-6's candidate set `:918-921` → `:928-931`, its observation rule `:922-924` → `:932-933`,
+  AT-ENG-11a `:967` → `:977`. §4.3's "FSPEC §5's ladder" is corrected to **§4.1**, which is where
+  the ladder has always lived.
+- **Every other live-body FSPEC line citation is re-anchored by the same mechanical shift** (v1.7's
+  change note added eight lines at the head, its BR-START-1 clause two more): `:215-217` → `:223-225`,
+  `:210` → `:218`, `:562-564` → `:572-574`, `:680-684` → `:690-694`, `:682-684` → `:692-694`,
+  `:680-682` → `:690-692`, `:737` → `:747`, `:1203-1213` → `:1213-1223`. Each was re-read at HEAD and
+  lands on the text it claims. REQ citations are untouched — REQ is still v0.10.
+- **Prior changelog entries are not edited.** v1.8's and v1.7's "Upstream pins unchanged (… FSPEC
+  v1.6)" lines record the pin in force when those revisions were written and remain true as history;
+  the pin in force *now* is the one in the lineage header and in this entry.
 
 **v1.8 changelog** — revision round 9, addressing `CROSS-REVIEW-test-engineer-TSPEC-v9.md`
 (1 High, 2 Medium, 1 Low) and `CROSS-REVIEW-product-manager-TSPEC-v9.md` (0 High, 2 Medium, 1 Low).
