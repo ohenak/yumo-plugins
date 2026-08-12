@@ -61,15 +61,17 @@ test("the engine vendors no copy of the workflow modules (C-4)", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("module URLs are file: URLs inside the repo's canonical pdlc/workflows/ dir, not package specifiers", () => {
-  const workflowsDir = path.join(repoRoot, "pdlc", "workflows") + path.sep;
-  for (const url of Object.values(WORKFLOW_MODULE_URLS)) {
+test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not just a file: URL (PROP-FORK-1)", () => {
+  // Stronger than "starts with file://": each resolved specifier must equal
+  // the repo-relative orchestrate-{dev,queue}.js path exactly, so a fork
+  // sitting anywhere else under pdlc/workflows/ (or elsewhere) fails closed.
+  const expected = {
+    dev: path.join(repoRoot, "pdlc", "workflows", "orchestrate-dev.js"),
+    queue: path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js"),
+  };
+  for (const [name, url] of Object.entries(WORKFLOW_MODULE_URLS)) {
     assert.ok(url.startsWith("file://"), url);
-    const resolved = fileURLToPath(url);
-    assert.ok(
-      resolved.startsWith(workflowsDir),
-      `${resolved} must resolve under the repo-relative ${workflowsDir}`,
-    );
+    assert.equal(fileURLToPath(url), expected[name]);
   }
 });
 
