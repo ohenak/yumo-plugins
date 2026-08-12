@@ -63,3 +63,6 @@ One erratum is emitted against TSPEC in the response trailer (re-emitted from ro
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 1}
+
+APPROVAL-HASH: sha256:3664868f9cbe99aec8cfebf16d4121dbffbe4c6a9e6808f26dc6b5d0fc502a68
+REVIEWED-COMMIT: f6634427fede24d7bf552a27431d4dfecc7e7b67
