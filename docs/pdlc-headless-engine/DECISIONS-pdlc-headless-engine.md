@@ -780,6 +780,15 @@ emitted somewhere in the suite, and every emitted id is registered).
 suite-wide obligation to emit it at least once — including the ones introduced by DEC-ENG-03's
 interpreter probe and DEC-ENG-04's missing-measurement gate. That is the intended friction.
 
+**The catalogue's boundary is the engine, not the test harness.** "Operator-visible" means a string
+the *engine* emits to someone running `pdlc` — the refusal, the gate reason, the pause notice, the
+exit summary. Diagnostics written by the test suite's own runner are outside it, and the case that
+forces the line to be drawn is DEC-ENG-10's step 4: the filtered-run skip reason, and the
+step-4-ran line paired with it, are printed by `_run-suite.mjs` to a maintainer reading test output,
+so they carry **no catalogue id** and owe no once-per-suite emit obligation. The rule generalises —
+a string is a catalogue member if it can be read by an operator who never runs the suite — so PLAN
+can write the suite runner's diagnostics as plain prose without an accompanying catalogue edit.
+
 **Reversibility:** Easy structurally, harder socially — once ids are cited by docs and tests, renaming
 them is a coordinated change. That is why ids, not wording, are the pinned half.
 
@@ -886,7 +895,7 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
 | `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a containment test asserts that every skill identifier appearing at one of **four enumerated site classes** — a `DISPATCHABLE_SKILLS` member declaration, a module-level `SKILL_*`/`ADVISORY_RUNG_SKILL` constant, a `PHASE_DISPATCH` role field, a `skill:` object field, or the skill argument of a dispatch call — is a member of that union, conjoined with a per-class site census so containment cannot pass over an empty extraction. The predicate is **structural, not lexical**: it is scoped by syntactic position, not by string shape, and that scoping is what makes it green at HEAD — the exported `meta.name` literals (`orchestrate-dev.js:3316`, `orchestrate-queue.js:45`) and the reviewer-role map's keys and values (`orchestrate-dev.js:6229-6231`) sit at none of the four classes and are therefore out of scope rather than exempted. No exemption list exists, but the quantifier is bounded: a **fifth site class** escapes it, which is the re-evaluation trigger DEC-ENG-05 records |
 | Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself; the runner detects a filtered invocation and reports the suite-wide step skipped-with-reason rather than passing or failing it, **and** the paired obligation in the other direction — an unfiltered run asserts step 4 ran, carrying a pass rather than a skip — so an over-matching filtered-run detector cannot leave the suite permanently green |
 | Every guard clause needs a falsifying counterpart | DEC-ENG-11 | The negative half is written first; the survival clause reuses the same fixture and deletion step under an allow verdict; the mis-built-configuration arm asserts an explicit allow verdict **and** that the deletion completes, never merely that no deny occurred |
-| Every operator-visible string is a catalogue entry | DEC-ENG-13 | Including the strings DEC-ENG-03 and DEC-ENG-04 introduce; each must be emitted at least once in the suite |
+| Every operator-visible string is a catalogue entry | DEC-ENG-13 | Including the strings DEC-ENG-03 and DEC-ENG-04 introduce; each must be emitted at least once in the suite. The boundary is the engine, not the harness: DEC-ENG-10's suite-runner diagnostics — the filtered-run skip reason and its paired step-4-ran line — are outside the catalogue, carry no id and owe no emit obligation |
 
 **Consequences accepted as standing costs, closing nothing.**
 
