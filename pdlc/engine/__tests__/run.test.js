@@ -61,9 +61,15 @@ test("the engine vendors no copy of the workflow modules (C-4)", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("module URLs are file: URLs inside the repo, not package specifiers", () => {
+test("module URLs are file: URLs inside the repo's canonical pdlc/workflows/ dir, not package specifiers", () => {
+  const workflowsDir = path.join(repoRoot, "pdlc", "workflows") + path.sep;
   for (const url of Object.values(WORKFLOW_MODULE_URLS)) {
     assert.ok(url.startsWith("file://"), url);
+    const resolved = fileURLToPath(url);
+    assert.ok(
+      resolved.startsWith(workflowsDir),
+      `${resolved} must resolve under the repo-relative ${workflowsDir}`,
+    );
   }
 });
 
