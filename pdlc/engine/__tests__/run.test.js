@@ -15,7 +15,10 @@ import {
   runDev,
   runQueue,
   runQueueLoop,
+  loadDispatchableSkills,
 } from "../lib/run.mjs";
+import { DISPATCHABLE_SKILLS as DEV_SKILLS } from "../../workflows/orchestrate-dev.js";
+import { DISPATCHABLE_SKILLS as QUEUE_SKILLS } from "../../workflows/orchestrate-queue.js";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot)); // .../pdlc/engine -> repo root
@@ -325,4 +328,26 @@ test("runQueueLoop stops immediately on a halted pass", async () => {
   });
   assert.equal(passes.length, 1);
   assert.equal(outcome, "halted");
+});
+
+// ─── loadDispatchableSkills (TSPEC §3.3 / R-ARCH-1) ──────────────────────────
+
+test("loadDispatchableSkills returns the union of both modules' DISPATCHABLE_SKILLS, sorted, deduped", async () => {
+  const identifiers = await loadDispatchableSkills();
+
+  const expected = [...new Set([...DEV_SKILLS, ...QUEUE_SKILLS])].sort();
+  assert.deepEqual(identifiers, expected);
+  // se-review is reached only through the queue's delegated pipeline / advisory
+  // seam (TSPEC §3.3), so it must survive the union even though it is not a
+  // queue-module dispatch call site directly.
+  assert.ok(identifiers.includes("se-review"));
+});
+
+test("loadDispatchableSkills honours the importWorkflow seam (no real import required)", async () => {
+  const devStub = { DISPATCHABLE_SKILLS: ["b", "a"] };
+  const queueStub = { DISPATCHABLE_SKILLS: ["a", "c"] };
+  const identifiers = await loadDispatchableSkills({
+    importWorkflow: async (n) => (n === "dev" ? devStub : queueStub),
+  });
+  assert.deepEqual(identifiers, ["a", "b", "c"]);
 });

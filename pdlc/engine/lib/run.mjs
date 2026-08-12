@@ -122,6 +122,31 @@ export function queueInjection(adapter, runPipeline) {
   };
 }
 
+/**
+ * The union of both canonical modules' `DISPATCHABLE_SKILLS` exports (TSPEC
+ * §3.3, R-ARCH-1). This is the only site outside `devInjection`/`queueInjection`
+ * that imports the workflow modules — rung 4 (`lib/startup.mjs`) calls this
+ * rather than naming `pdlc/workflows/` itself.
+ *
+ * The union, not the invoked command's module alone: `pdlc queue` reaches
+ * `se-review` only through the delegated dev pipeline and the advisory seam,
+ * so a per-command reading would let a missing `se-review/SKILL.md` surface
+ * mid-run instead of at startup.
+ *
+ * @param {object} [args]
+ * @param {Function} [args.importWorkflow] test seam for the dynamic import
+ * @returns {Promise<string[]>} sorted, deduped identifiers
+ */
+export async function loadDispatchableSkills({ importWorkflow = defaultImportWorkflow } = {}) {
+  const [devMod, queueMod] = await Promise.all([
+    importWorkflow("dev"),
+    importWorkflow("queue"),
+  ]);
+  const dev = devMod.DISPATCHABLE_SKILLS || [];
+  const queue = queueMod.DISPATCHABLE_SKILLS || [];
+  return [...new Set([...dev, ...queue])].sort();
+}
+
 function requireAdapter(adapter) {
   if (!adapter || typeof adapter._agent !== "function") {
     throw new Error("run: an adapter with an _agent seam is required (see lib/adapter.mjs)");
