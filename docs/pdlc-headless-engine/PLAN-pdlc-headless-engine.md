@@ -208,6 +208,15 @@ Every path any task writes, with its owning task per batch. This is the table th
 disjointness premise **mechanically auditable** rather than asserted: read it column-wise and no
 batch shows one path twice.
 
+The `Batch` column is **retained for human column-wise auditing and is not what the runtime counts.**
+`parsePlanOwnership` parses the cell and then ignores it (`orchestrate-dev.js:3932-3934`): waves are
+derived from §3's `Deps` edges, and the derivation yields **17** waves over these 54 tasks where the
+`b1`…`b11` labels here name eleven declared batches. Both numbering systems are correct about
+different things; when a wave stops, match on the stopped wave's **task id**, never on a `b`-label
+(§5 states the same rule from the other side). Re-derived at HEAD over the 17 waves the runtime will
+actually build: **0 path collisions**, so the disjointness this table exists to guarantee holds under
+the derived partition as well as under the declared batches.
+
 | Files | Task | Batch |
 |---|---|---|
 | `pdlc/engine/__tests__/preflight.test.js` | T00 | b1 |
@@ -300,7 +309,14 @@ batch shows one path twice.
   implementation; there is no production module behind it, and this is the one row where the two
   columns coincide. It is not exempt from red-before-green so much as outside it: it is gated by a
   flag, never runs in CI (TSPEC §7.5), and cannot be red on a machine with no credential.
-- **T16 owns three generated paths it must not hand-edit.** `pdlc/workflows/dist/` is written by
+- **T16 owns one generated directory — `pdlc/workflows/dist/` — and must not hand-edit anything
+  inside it.** Since v1.3 the manifest carries that single directory entry rather than the three
+  files inside it (`orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`,
+  `distribution-manifest.json`, which §3's T16 row still enumerates because those are what the row
+  describes changing); a trailing-`/` directory entry collides with everything beneath it under
+  `computeWaves`' prefix rule (`orchestrate-dev.js:3939-3940`), so the coarser cell is strictly
+  safer than three file cells and covers files a future rebuild adds. Count the note's claim against
+  §4's rows and you will find one, not three — deliberately. `pdlc/workflows/dist/` is written by
   `node pdlc/workflows/build-runtime.mjs`, run inside T16; the repo also ships
   `implementation.postWavePathspecs: ["pdlc/workflows/dist/"]`, so batch 3's chore commit carries
   them even if the task's own pathspec set is read narrowly.
