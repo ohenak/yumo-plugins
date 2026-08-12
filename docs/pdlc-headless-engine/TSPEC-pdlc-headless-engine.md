@@ -2444,20 +2444,22 @@ them:
 - `ERRATUM: FSPEC: BR-SKILL-3` (**resolved**) — the two `se-implement` language supplements are named
   nowhere in `pdlc/workflows/*.js`; they are loaded by the agent per
   `pdlc/skills/se-implement/SKILL.md:3`. BR-SKILL-3 now reads "inlined when the module's dispatch
-  asks for them. The engine adds no language-detection policy of its own" (`FSPEC:562-564`).
+  asks for them. The engine adds no language-detection policy of its own" (`FSPEC:572-574`).
 - `ERRATUM: REQ: AC-3.5` (**resolved**) — the 12-prompt-file count (10 `SKILL.md` + 2 supplements)
   was only reachable if the engine inlined a dispatched identifier's whole file set, because no
   module dispatch names a supplement. AC-3.5 is now scoped to "the set of prompt files the installed
   plugin holds **for those identifiers**" (`REQ:502-506`), which is §3.3's decision stated upstream.
 
 A third was raised by the round-6 reviewers and resolved upstream before this revision: FSPEC v1.4/v1.5
-requalified BR-MODEL-3's dry-run reachability claim (`FSPEC:680-684`), and §4.1/§7.4 above are this
+requalified BR-MODEL-3's dry-run reachability claim (`FSPEC:690-694`), and §4.1/§7.4 above are this
 document's side of that correction.
 
 Round 8 raised no erratum. Every upstream citation that revision touched was
-re-grounded against HEAD — FSPEC's rung 4a material (`FSPEC:299` the ladder row, `:406-407`
-EC-START-10/11, `:918-921` BR-GUARD-6's candidate set and `:922-924` "observed by running", `:967` AT-ENG-11a)
-and REQ's C-11 (`REQ:284`) — and each lands on the text it claims.
+re-grounded against HEAD, and v1.9 has re-grounded the same material again against **FSPEC v1.7**,
+whose change note and BR-START-1 clause shifted every line below them — FSPEC's rung 4a material
+(`FSPEC:307` the ladder row, `:416-417` EC-START-10/11, `:928-931` BR-GUARD-6's candidate set and
+`:932-933` "observed by running", `:977` AT-ENG-11a) and REQ's C-11 (`REQ:284`, REQ still v0.10) —
+and each lands on the text it claims.
 
 Round 8's incidental note alleging that FSPEC's `guard-harvest-before-delete.sh:14-21` was "a line
 off at each end" is **withdrawn**: re-measured at HEAD, `PY_BIN=""` is `:14`, the candidate loop is
@@ -2465,12 +2467,15 @@ off at each end" is **withdrawn**: re-measured at HEAD, `PY_BIN=""` is `:14`, th
 initialisation through fail-open and is correct. The off-by-one was this document's, in §7.8, and is
 fixed there (TE F-46, PM F-02).
 
-**One new erratum is raised by round 9**, against FSPEC, and is emitted through the erratum channel
-rather than folded into this document:
+**The erratum round 9 raised is now resolved upstream** — recorded here, like the two above, so a
+later reader sees the round it closed in rather than re-raising it:
 
-- `ERRATUM: FSPEC: BR-START-1` — "No model call, and no probe of any kind, is made while the ladder
-  is running" (`FSPEC:302-303`) is literally contradicted by BR-GUARD-6's requirement that rung 4a
-  observe interpreter availability "by **running** a candidate" (`FSPEC:922-924`). BR-START-1's own
-  justification is "zero tokens billed", so the intended scope is the *billable* probe; rung 4a was
-  inserted after BR-START-1 was written and the qualifier was never added. §7.8 states the reading an
-  implementer should build to, but the qualifier belongs upstream.
+- `ERRATUM: FSPEC: BR-START-1` (**resolved in FSPEC v1.7**) — "No model call, and no probe of any
+  kind, is made while the ladder is running" was literally contradicted by BR-GUARD-6's requirement
+  that rung 4a observe interpreter availability "by **running** a candidate" (`FSPEC:932-933`).
+  BR-START-1's own justification is "zero tokens billed", so the intended scope was the *billable*
+  probe; rung 4a was inserted after BR-START-1 was written and the qualifier was never added.
+  BR-START-1 now reads "no *billable* probe of any kind" and names rung 4a's local execution a
+  non-billing, non-dispatch check (`FSPEC:310-312`). BR-GUARD-6, rung 4a's row, EC-START-10/11 and
+  AT-ENG-11a are byte-identical, so **§7.8's design needed no change** — it was already written to
+  this reading. No erratum against FSPEC or REQ is outstanding.
