@@ -19,7 +19,7 @@ feature: pdlc-headless-engine
 mechanism changed. **Upstream pin moves REQ v0.10 (unchanged), FSPEC v1.6 → v1.7.**
 
 - **The BR-START-1 erratum v1.8 raised is discharged upstream.** FSPEC v1.7 landed the *billable*
-  qualifier ("no *billable* probe of any kind", `FSPEC:310-312`) and names rung 4a's local execution
+  qualifier ("no *billable* probe of any kind", `FSPEC:310-313`) and names rung 4a's local execution
   a non-billing, non-dispatch check. §7.8's reading and §9.3's entry are updated from "raised,
   outstanding" to "resolved upstream"; §7.8's design is unchanged, because it was already written to
   the reading FSPEC has now adopted.
@@ -2246,9 +2246,10 @@ set-equality against a test-side transcription of those three names — the same
 
 **Rung 4a's probe is a local process spawn, not the kind BR-START-1 forbids** (TE Q-20). This is now
 settled upstream rather than inferred here: FSPEC v1.7's BR-START-1 reads "No model call, and no
-*billable* probe of any kind, is made while the ladder is running", and adds that "local checks the
+*billable* probe of any kind, is made while the ladder is running", and adds that "Local checks the
 ladder performs on the host's own bytes are not probes in this sense and are not dispatches — rung 4a
-observes interpreter availability that way" (`FSPEC:310-312`). Rung 4a's `spawnSync(candidate, ["-c",
+observes interpreter availability by running a candidate (BR-GUARD-6), which bills nothing"
+(`FSPEC:310-313`). Rung 4a's `spawnSync(candidate, ["-c",
 "import sys"])` bills nothing, contacts nothing, and is the observation BR-GUARD-6 explicitly
 requires ("by **running** a candidate", `FSPEC:932-933`). The two rules therefore agree on their face;
 v1.8's erratum against BR-START-1 is discharged (§9.3), and this design is unchanged by the
@@ -2476,6 +2477,6 @@ later reader sees the round it closed in rather than re-raising it:
   BR-START-1's own justification is "zero tokens billed", so the intended scope was the *billable*
   probe; rung 4a was inserted after BR-START-1 was written and the qualifier was never added.
   BR-START-1 now reads "no *billable* probe of any kind" and names rung 4a's local execution a
-  non-billing, non-dispatch check (`FSPEC:310-312`). BR-GUARD-6, rung 4a's row, EC-START-10/11 and
+  non-billing, non-dispatch check (`FSPEC:310-313`). BR-GUARD-6, rung 4a's row, EC-START-10/11 and
   AT-ENG-11a are byte-identical, so **§7.8's design needed no change** — it was already written to
   this reading. No erratum against FSPEC or REQ is outstanding.
