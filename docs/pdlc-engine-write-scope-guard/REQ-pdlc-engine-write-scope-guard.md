@@ -146,6 +146,75 @@ does not consult a model and cannot be talked out of.
 
 ## 4. Constraints
 
+- **C-1 — The engine is the delivery vehicle.** Enforcement lives on the path by which the
+  headless engine dispatches Phase I wave agents. That path is `pdlc-headless-engine`'s
+  deliverable, so this feature cannot ship before it (BL-01). The workflow-runtime path this
+  repo ships today is not a second implementation target.
+- **C-2 — The PLAN's ownership manifest is the sole authorisation.** A task's owned set is
+  exactly the manifest rows the wave partitioning already uses. The guard introduces no second
+  scope vocabulary, no per-task override file and no additional annotation for a PLAN author to
+  learn.
+- **C-3 — Enforcement is required on the primary transport only.** The engine's primary
+  dispatch transport (the Agent SDK) must enforce. On the `claude -p` fallback transport the
+  guard degrades **fail-open**: the run proceeds unguarded rather than refusing to run, and the
+  degradation is reported (AC-4.2). A transport that cannot enforce must never be reported as
+  enforcing.
+- **C-4 — Every non-enforcing posture is byte-identical to today.** With the guard disabled, or
+  inert for lack of a manifest, or degraded by transport, the run's created-file set, commits,
+  exit code and outcome are what the same run produces with this feature absent. The only
+  admitted difference is the guard-state line in the run report. This is the inertness bar the
+  advisory tier already meets in this repo, applied here.
+- **C-5 — No model judgement in the decision.** Whether a write is in scope is decided by
+  comparing the attempted path against the task's owned set. No agent is consulted, no network
+  call is made, and the decision is the same on every run given the same inputs.
+- **C-6 — Waves keep sharing one tree.** The guard must work with same-tree waves as they run
+  today; "isolate each agent in a worktree" is not an available answer, since worktrees are the
+  exception path Phase I deliberately moved off.
+- **C-7 — Ownership semantics are the ones already in force.** A manifest row naming a directory
+  covers everything beneath it, matching how ownership collisions are already computed when
+  waves are partitioned. A row naming a file covers that file whether or not it exists yet, so
+  creating an owned file is in scope. The guard's jurisdiction is paths **inside the repository
+  working tree**; paths outside it (a system temp directory, the operator's home) are not judged
+  and are not violations.
+- **C-8 — Guard state is a closed, four-member vocabulary.** Every run reports exactly one of
+  `enforcing`, `degraded-transport`, `inert-legacy`, `inert-disabled` (§4.1). The set is closed
+  on the emitting side and total on the reading side, per DC-01; "unknown" is not a member and
+  an absent value is a defect, not a fifth state.
+- **C-9 — What gets committed does not change.** Per-task pathspec-scoped commits, the post-wave
+  build-output commit and the gate's ordering are untouched. This feature changes what can reach
+  the tree, never what reaches history.
+- **C-10 — Reporting is additive.** Guard state and violation records join the run report the
+  engine already produces on both its success and halt paths. No existing report field changes
+  meaning, and no field is removed.
+
+### 4.1 Declared thresholds
+
+| Name | Default | Owner | Used by |
+|---|---|---|---|
+| `engine.writeScopeGuard.enabled` | `true` — the guard is on out of the box on the primary transport | engine config, in the consumer's `.claude/pdlc.config.json` under the reserved `engine.*` key | AC-1.1, AC-7.1 |
+| `engine.writeScopeGuard.maxRecordedViolationsPerTask` | `20` violation records per task per run; further attempts are counted, not itemised | engine config, same file | AC-3.3 |
+| Guard-state vocabulary | Exactly four members: `enforcing`, `degraded-transport`, `inert-legacy`, `inert-disabled` | this REQ (C-8) | AC-3.2, AC-4.2, AC-5.1, AC-7.1 |
+| Guard jurisdiction | Paths inside the repository working tree only | this REQ (C-7) | AC-1.4 |
+| Guarded tool surface | The file-write tool class (write / edit / notebook-edit) | this REQ (NG-1) | AC-1.1 |
+
+The default for `enabled` is `true` because the failure it prevents is silent and its cost when
+it fires is one refused write (G-4). An operator who wants today's behaviour sets it to `false`
+and the run report says so (AC-7.1) — the escape hatch is one key, and taking it is visible.
+
+`maxRecordedViolationsPerTask` exists so a looping agent cannot turn a run report into an
+unreadable log. `20` is a legibility bound, not a tuning value: it is well above the number of
+distinct paths a correct task touches and well below the point at which a human stops reading.
+Exceeding it never changes enforcement — every attempt past the cap is still rejected, and the
+count of suppressed records is reported (AC-3.3).
+
+### 4.2 Hard prerequisites
+
+| # | Dependency | Resolution form | Gating logic |
+|---|---|---|---|
+| BL-01 | `pdlc-headless-engine` — the engine and its Phase I wave dispatch on the primary transport | Queue row 3 merged to the default branch | Must exist at HEAD before FSPEC authoring |
+| BL-02 | The PLAN file-ownership manifest and the script-owned wave gate that reads the tree live | Shipped behaviour, measured once as M-WG-3 and M-WG-4 in `docs/_constraints/pdlc-wave-gate-baseline.md` (v1.0) | Must exist at HEAD before FSPEC authoring; re-verify the two facts against the base commit at that time |
+| BL-03 | An engine configuration surface at `.claude/pdlc.config.json` under a reserved `engine.*` key, which §4.1's two keys extend | Decision recorded in `docs/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md` (DEC-HE-02, which resolves O-3) | Must exist at HEAD before FSPEC authoring |
+
 ## 5. Acceptance Criteria
 
 ## 6. Risks
