@@ -355,4 +355,39 @@ file does nothing:
 
 ## 6. Risks
 
+- **R-1 — An incomplete manifest turns into refused work.** A task that legitimately needs a file
+  its manifest row does not name now hits a rejection where it previously wrote silently.
+  *Mitigation:* the rejection names the owned set (AC-1.1) so the gap is legible to the agent,
+  the violation record names it to the operator (AC-3.1), and nothing halts (AC-2.4), so the cost
+  is a task's completeness rather than a run. *Residual:* a task can finish and report success
+  having quietly skipped work it could not write. AC-3.5 makes such a task distinguishable in the
+  report; it does not make the skipped work visible. This is the risk this feature most likely
+  gets wrong in its first iteration, and the first weeks of violation records are the evidence
+  for whether manifests or the guard need adjusting.
+- **R-2 — Fail-open on the fallback transport means a whole run can be unguarded.** An operator
+  who does not read the report gets exactly today's behaviour while believing otherwise.
+  *Mitigation:* AC-4.2's explicit `degraded-transport` state, and C-8's rule that no run ever
+  reports `enforcing` unless it enforced. *Residual:* reporting is not enforcement, and a run on
+  the fallback transport is genuinely unprotected.
+- **R-3 — The shell side-channel makes the guard incomplete by construction.** The honest claim
+  after this feature ships is "the tool-mediated write path is closed", not "the tree is
+  protected". *Mitigation:* NG-1 states the boundary rather than blurring it, and O-1 routes the
+  adequacy judgement to a named reviewer. *Residual:* an agent that writes via a shell command
+  reproduces the incident of §1.1 exactly.
+- **R-4 — The guard is only as tight as the manifest.** A task owning a broad directory is
+  authorised for everything beneath it (C-7), so a coarse manifest yields a weak guard while
+  reporting `enforcing`. *Mitigation:* violation records give PLAN authors the first real
+  feedback loop they have had on manifest quality (US-06). *Residual:* nothing here measures
+  manifest tightness, and a PLAN can be made permissive to make rejections go away.
+- **R-5 — Rejections change agent behaviour in ways nobody has observed yet.** An agent that
+  meets a refusal may retry, work around it, or abandon its task early. *Mitigation:* AC-2.3
+  keeps the guard out of the termination decision, and the rejection names the owned set so the
+  most useful response — correct course, or stop and report — is the easiest one. *Residual:*
+  this is a behavioural change to a live loop, and the first runs after it ships should be read
+  for it.
+- **R-6 — A new report surface can be read as a new failure surface.** Operators may treat any
+  non-zero violation count as a run defect and start halting on it manually, re-introducing the
+  brittleness NG-8 and AC-2.4 exist to avoid. *Mitigation:* AC-5.2's framing rule — posture
+  statements are not warnings — applied to the violation records as well.
+
 ## 7. Obligations / Open Questions
