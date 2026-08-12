@@ -13,7 +13,13 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-11 |
+| pdlc | draft | Claude | 1.1 | 2026-08-11 |
+
+**v1.1** addresses cross-review round 1 (PM 2 High / 2 Medium / 2 Low, TE 4 High / 2 Medium / 2 Low):
+PROP-SKILL-15 for AC-3.1's negative clause; §15 regenerated from PLAN v1.2's task table so T01/T08/T09
+are traced and PROP-AUTH-8…12 land in a file; a PROP-CLI group for AT-ENG-01/02, BR-CMD-1 and EC-CLI-4;
+PROP-QUEUE-1/2 given a falsifiable oracle; §2's E2E budget corrected and made checkable; PROP-TUNE-4's
+default sources and G-PROP-4's CI claim corrected against HEAD.
 
 ## 1. Purpose and scope
 
@@ -629,4 +635,10 @@ than a pipeline artifact and is noted here for the operator rather than routed.
 2. Every set-equality names **both** directions and says where each is observed (per test, or
    suite-wide through the seam).
 3. Every property whose HEAD column says *green* or *partial* cites a `file:line` a reviewer can
-   open, and every *red* one names the PLAN task that turns it green.
+   open, and every *red* one names the PLAN task that turns it green — with `green` reserved for
+   "a test asserts this today", per §2.
+4. **§15 still agrees with PLAN in both directions.** Every file it names is a file a PLAN task
+   creates, and every property id in §§3–12 appears in exactly one of its rows. Both directions are
+   mechanically checkable against the two documents, and round 1 found the table had drifted in both
+   at once — naming seven files no task creates while leaving three tasks and five properties
+   unreferenced. It is the first thing to re-check after any PLAN edit.
