@@ -147,6 +147,71 @@ export async function loadDispatchableSkills({ importWorkflow = defaultImportWor
   return [...new Set([...dev, ...queue])].sort();
 }
 
+// ─── resolveTunables (TSPEC §4.6, REQ §4.1) ─────────────────────────────────
+
+const DEFAULT_RETRY_ATTEMPTS = 3; // "3 retries after the first attempt"
+const DEFAULT_RETRY_BACKOFF_BASE_MS = 30 * 1000; // exponential from 30s
+const DEFAULT_RETRY_BACKOFF_CAP_MS = 15 * 60 * 1000; // capped at 15 min
+const DEFAULT_TIMEOUT_MINUTES = 30; // 30 min per dispatch
+const DEFAULT_ALLOW_API_KEY_BILLING = false;
+const DEFAULT_MAX_ITERATIONS = Infinity; // unbounded
+
+/**
+ * The single resolution point for REQ §4.1's five tunables (TSPEC §4.6).
+ * Three engine-config rows (`retryAttempts`, `retryBackoff`, `timeoutMinutes`)
+ * resolve from `config.dispatch.*` with a default fallback; two
+ * operator-owned rows (`allowApiKeyBilling`, `maxIterations`) resolve from
+ * `flags.*` ONLY (BR-CLI-2, BR-LOOP-2) — a config file can never set either,
+ * even when both are present in `config`.
+ *
+ * @param {object} [args]
+ * @param {object} [args.config] engine configuration (O-3: location still open)
+ * @param {object} [args.flags] operator-supplied CLI flags for this invocation
+ * @returns {{retryAttempts: number, retryBackoff: {baseMs: number, capMs: number},
+ *   timeoutMinutes: number, timeoutMs: number, allowApiKeyBilling: boolean,
+ *   maxIterations: number}}
+ */
+export function resolveTunables({ config = {}, flags = {} } = {}) {
+  const dispatch = (config && config.dispatch) || {};
+  const configRetryBackoff = dispatch.retryBackoff || {};
+
+  const retryAttempts = dispatch.retryAttempts ?? DEFAULT_RETRY_ATTEMPTS;
+  const retryBackoff = {
+    baseMs: configRetryBackoff.baseMs ?? DEFAULT_RETRY_BACKOFF_BASE_MS,
+    capMs: configRetryBackoff.capMs ?? DEFAULT_RETRY_BACKOFF_CAP_MS,
+  };
+  const timeoutMinutes = dispatch.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES;
+  const timeoutMs = timeoutMinutes * 60 * 1000;
+
+  const allowApiKeyBilling = (flags && flags.allowApiKeyBilling) ?? DEFAULT_ALLOW_API_KEY_BILLING;
+  const maxIterations = (flags && flags.maxIterations) ?? DEFAULT_MAX_ITERATIONS;
+
+  return { retryAttempts, retryBackoff, timeoutMinutes, timeoutMs, allowApiKeyBilling, maxIterations };
+}
+
+// ─── exit-code mapping (TSPEC §3.3, PROP-EXIT-*) ────────────────────────────
+
+/**
+ * The one function every exit-code decision goes through (PROP-EXIT-1): a
+ * halt/block is `2`, an engine refusal (or the absence of a report at all —
+ * an engine crash) is `1`, and any other recorded module outcome is `0`.
+ *
+ * @param {{report?: object|null, refusal?: string|null}} result
+ * @returns {0|1|2}
+ */
+export function exitCodeFor({ report, refusal } = {}) {
+  if (refusal) return 1;
+  if (!report) return 1;
+  if (report.outcome === "halted" || report.outcome === "blocked") return 2;
+  return 0;
+}
+
+/**
+ * PROP-QUEUE-7: the closed, four-member set of `queue --loop` stop reasons.
+ * `halted` is BR-LOOP-4's continue row, not a stop, so it never appears here.
+ */
+export const LOOP_STOP_REASONS = Object.freeze(["exhausted", "bound-reached", "blocked", "refused"]);
+
 function requireAdapter(adapter) {
   if (!adapter || typeof adapter._agent !== "function") {
     throw new Error("run: an adapter with an _agent seam is required (see lib/adapter.mjs)");
@@ -289,20 +354,58 @@ export async function runQueue({
 }
 
 /**
- * `pdlc queue --loop` (REQ AC-1.3, `queue.loopIdleExit`): repeat one feature at
- * a time until no ready row remains, then stop. `idle` and `no-queue` are the
- * clean exits; `halted` and `blocked` stop the loop and are reported.
+ * `pdlc queue --loop` (REQ AC-1.3, `queue.loopIdleExit`, TSPEC §4.5, BR-LOOP-4,
+ * PROP-QUEUE-4…15): repeat one feature at a time, re-reading the queue fresh
+ * on every iteration, until one of `LOOP_STOP_REASONS`' four members applies.
  *
- * @returns {Promise<{passes: object[], outcome: string}>}
+ * BR-LOOP-4's continuation table: `ran` and `halted` both continue to the
+ * next iteration (a halted feature does not stop the loop — the queue's own
+ * row already records the halt); `idle`/`no-queue` stop as `"exhausted"`;
+ * `blocked` stops as `"blocked"`; an engine refusal stops as `"refused"`.
+ * `maxPasses`, when given, is a hard iteration bound whose exhaustion stops
+ * the loop as `"bound-reached"` — distinct from `"exhausted"`, which means
+ * the queue itself ran dry.
+ *
+ * @param {object} [args]
+ * @param {number|null} [args.maxPasses] iteration bound; `null`/omitted is unbounded
+ * @returns {Promise<{passes: object[], outcome: string|undefined, stopReason: string,
+ *   exitCode: 0|1|2, loop: {iterations: number, maxIterations: number|null}}>}
  */
-export async function runQueueLoop({ maxPasses = 100, ...args } = {}) {
+export async function runQueueLoop({ maxPasses = null, ...args } = {}) {
   const passes = [];
-  for (let i = 0; i < maxPasses; i++) {
+  let stopReason;
+  let outcome;
+  let iterations = 0;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if (maxPasses != null && iterations >= maxPasses) {
+      stopReason = "bound-reached";
+      break;
+    }
+
     const pass = await runQueue(args);
     passes.push(pass);
-    if (pass.refusal) return { passes, outcome: "refused" };
-    const outcome = pass.report && pass.report.outcome;
-    if (outcome !== "ran") return { passes, outcome: outcome || "unknown" };
+    iterations++;
+
+    if (pass.refusal) {
+      stopReason = "refused";
+      break;
+    }
+
+    outcome = pass.report && pass.report.outcome;
+    if (outcome === "blocked") {
+      stopReason = "blocked";
+      break;
+    }
+    if (outcome === "idle" || outcome === "no-queue") {
+      stopReason = "exhausted";
+      break;
+    }
+    // "ran" and "halted" (BR-LOOP-4 rows 1/2): fall through and continue.
   }
-  return { passes, outcome: "max-passes" };
+
+  const exitCode = passes.reduce((worst, pass) => Math.max(worst, exitCodeFor(pass)), 0);
+  const loop = { iterations, maxIterations: maxPasses == null ? null : maxPasses };
+  return { passes, outcome, stopReason, exitCode, loop };
 }

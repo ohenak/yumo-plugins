@@ -319,15 +319,22 @@ test("runQueueLoop repeats while the queue reports 'ran' and stops on 'idle'", a
   assert.equal(outcome, "idle");
 });
 
-test("runQueueLoop stops immediately on a halted pass", async () => {
-  const queueStub = { default: async () => ({ outcome: "halted", reason: "x" }) };
+// BR-LOOP-4 (TSPEC §4.5, PROP-QUEUE-6): a halted pass no longer stops the
+// loop — the queue's own row already records the halt, so the loop continues
+// to the next ready feature and only stops once the queue exhausts.
+test("runQueueLoop continues past a halted pass and stops on the following idle", async () => {
+  const outcomes = ["halted", "ran", "idle"];
+  let i = 0;
+  const queueStub = { default: async () => ({ outcome: outcomes[i++] }) };
   const devStub = { default: async () => ({}) };
-  const { passes, outcome } = await runQueueLoop({
+  const { passes, outcome, stopReason } = await runQueueLoop({
     adapter: fakeAdapter(),
     importWorkflow: async (n) => (n === "dev" ? devStub : queueStub),
   });
-  assert.equal(passes.length, 1);
-  assert.equal(outcome, "halted");
+  assert.equal(passes.length, 3, "a subsequent iteration must run after the halt");
+  assert.equal(passes[0].report.outcome, "halted");
+  assert.equal(outcome, "idle");
+  assert.equal(stopReason, "exhausted");
 });
 
 // ─── loadDispatchableSkills (TSPEC §3.3 / R-ARCH-1) ──────────────────────────
