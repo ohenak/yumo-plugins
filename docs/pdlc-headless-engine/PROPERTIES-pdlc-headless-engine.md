@@ -46,7 +46,7 @@ feature (REQ NG-1) and their properties live with the workflow modules' own suit
 document asserts only that the engine *hosts* them without altering them — that is
 `PROP-PARITY-*`'s job, and it is a structural claim, never a behavioural re-specification.
 
-## 2. How to read a property row
+## 2. How to read a property row: columns, levels and oracles
 
 **Identifier grammar.** `PROP-{DOMAIN}-{NUMBER}`. Domains are stable and each maps to one section:
 `PARITY`, `FORK`, `READ`, `START`, `HAND`, `SKILL`, `AUTH`, `ENV`, `DISP`, `MODEL`, `PERM`, `FAIL`,
