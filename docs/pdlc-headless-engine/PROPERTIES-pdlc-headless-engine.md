@@ -509,40 +509,70 @@ differ, the green task that makes it pass. This table rolls those up **per test 
 view an implementer opens: it answers "what am I writing in this file, and what must be true before
 I can". A property whose test file has no PLAN task is a gap, and §16 carries it.
 
+**This table is generated from PLAN v1.2's own task table, not written beside it** (PM F-02, TE
+F-01/F-02/F-08). The earlier draft named seven files no PLAN task creates, which sent the implementer
+to files nothing would produce, and left T01, T08 and T09 traced by no property at all. Three rules
+now keep the two views from drifting again: the `Test file` column holds **PLAN's filename verbatim**
+and its **full path** (`pdlc/engine/__tests__/…`, or `pdlc/workflows/__tests__/…` for the one
+workflows-side file — no bare `__tests__/…` spellings); the task ids are **PLAN's**, taken from its
+§9 ownership table; and every property id in §§3–12 appears in exactly one row's `Properties` cell,
+so a property cannot fall off the hand-off surface the way PROP-AUTH-8…12 did.
+
 | Test file | Properties | Red task | Green task | Prerequisite |
 |---|---|---|---|---|
-| `__tests__/outcome.test.js` | PROP-FAIL-1…8 | T04 | T13 | T00 |
-| `__tests__/catalogue.test.js` | PROP-MSG-1…6 | T05 | T35 | T00 |
-| `__tests__/auth.test.js` | PROP-AUTH-1…7, PROP-AUTH-13 | T06 | T44 | T00 |
+| `pdlc/engine/__tests__/preflight.test.js` | — (the `BL-PREREQ` pre-flight gate; it asserts HEAD's shape, not a property of this feature) | T00 | — (gate) | — |
+| `pdlc/engine/__tests__/suite-spine.test.js`, `…/spine-probe-a.test.js`, `…/spine-probe-b.test.js` | PROP-SUITE-1, PROP-SUITE-2, PROP-SUITE-3, PROP-SUITE-4, PROP-SUITE-5, PROP-SUITE-7, PROP-SUITE-9 | T01 | T11 | T00 |
+| `pdlc/engine/__tests__/hermeticity.test.js` | PROP-VER-1…6 | T02 | T12 | T00 |
+| `pdlc/engine/__tests__/assert-suite-wide.test.js` | PROP-SUITE-6, PROP-SUITE-8, PROP-FAIL-4, and the suite-wide halves of PROP-FAIL-2, PROP-MSG-3, PROP-MODEL-2, PROP-SKILL-3, PROP-DISP-4, PROP-VER-5 | T03 | T19, then T52 | T00 |
+| `pdlc/engine/__tests__/outcome.test.js` | PROP-FAIL-1, PROP-FAIL-3, PROP-FAIL-5…8 | T04 | T13 | T00 |
+| `pdlc/engine/__tests__/catalogue.test.js` | PROP-MSG-1, PROP-MSG-2, PROP-MSG-4, PROP-MSG-5, PROP-MSG-6 | T05 | T14 | T00 |
+| `pdlc/engine/__tests__/auth.test.js` | PROP-AUTH-1…7, PROP-AUTH-13 | T06 | T15 | T00 |
 | `pdlc/workflows/__tests__/dispatchableSkills.test.js` | PROP-SKILL-1…6 | T07 | T16 | T00 |
-| `__tests__/handshake.test.js` | PROP-HAND-1…6 | T41 (green on landing) | — | T26 |
-| `__tests__/startup.test.js` | PROP-START-1…8, PROP-GUARD-16…19 | T14 | T36 | T00 |
-| `__tests__/dispatch.test.js` | PROP-DISP-1…7, PROP-SKILL-7…14 | T24 | T38 | T18 |
-| `__tests__/adapter-retry.test.js` | PROP-RETRY-1…16, PROP-FAIL-9/10 | T21 | T45 | T13 |
-| `__tests__/exit-loop.test.js` | PROP-QUEUE-1…15, PROP-EXIT-1…10 | T31 | T47 | T14 |
-| `__tests__/report-engine.test.js` | PROP-REP-1…17 | T32 | T40 | T14 |
-| `__tests__/tunables.test.js` | PROP-TUNE-1…6 | T30 | T44 | T14 |
-| `__tests__/env-cwd.test.js` | PROP-ENV-1…6 | T22 | T36, T37 | T18 |
-| `__tests__/model-map.test.js` | PROP-MODEL-1…10 | T50 | T48, T52 | T18 |
-| `__tests__/permission.test.js` | PROP-PERM-1…3 | T22 | T36 | T18 |
-| `__tests__/guard-parity.test.js` | PROP-GUARD-1…15 | T28 | T36, T37 | T14, T18 |
-| `__tests__/guard-measurement-gate.test.js` | PROP-GUARD-20…22 | T29 | T42 | T28 |
-| `__tests__/live/guard-measurement.test.js` | PROP-GUARD-23, PROP-VER-10, PROP-VER-11 | — (flag-gated) | T51 | T42 |
-| `__tests__/fs-observation.test.js` | PROP-READ-1…8 | T33 | T43 | T12 |
-| `__tests__/parity.test.js` | PROP-PARITY-1…11, PROP-SUITE-10…14 | T34 | T39 | T18 |
-| `__tests__/seam-contract.test.js` | PROP-PARITY-12…15 | T25 | T35 | T16 |
-| `__tests__/run.test.js` | PROP-FORK-1…3 | — (green on landing, §5's batch-2 gate exemption) | T10 | T00 |
-| `__tests__/hermeticity.test.js` | PROP-VER-1…6 | T02 | T35 | T00 |
-| `__tests__/fixtures.test.js` | PROP-VER-7, PROP-VER-8, PROP-VER-9 | T05 | T35 | T00 |
-| `__tests__/suite-mechanics.test.js` | PROP-SUITE-1…9, PROP-SUITE-15 | T03 | T35 | T11 |
-| `__tests__/_assert-suite-wide.mjs` (a step, not a test file) | the suite-wide halves of PROP-FAIL-2, PROP-MSG-3, PROP-MODEL-2, PROP-SKILL-3, PROP-DISP-4 | T03 | T35 | T11 |
+| `pdlc/engine/__tests__/ci-arrangement.test.js` | PROP-SUITE-15 | T08 | T17 | T00 |
+| `pdlc/engine/__tests__/fixtures-redaction.test.js` | PROP-VER-7, PROP-VER-8, PROP-VER-9 | T09 | T18 | T00 |
+| `pdlc/engine/__tests__/run.test.js` | PROP-FORK-1, PROP-FORK-2, PROP-FORK-3 | — (T10 is green on landing, §5's batch-2 gate exemption) | T10, later touched by T39 and T47 | T00 |
+| `pdlc/engine/__tests__/adapter-descriptor.test.js` | PROP-DISP-2, PROP-DISP-4, PROP-DISP-5, PROP-DISP-6, PROP-PARITY-13, PROP-AUTH-12 | T20 | T35 | T13, T14 |
+| `pdlc/engine/__tests__/adapter-retry.test.js` | PROP-RETRY-1…16, PROP-FAIL-10 | T21 | T45 | T13 |
+| `pdlc/engine/__tests__/transport-boundary.test.js` | PROP-DISP-1, PROP-DISP-7, PROP-ENV-1…6, PROP-MODEL-1, PROP-MODEL-10, PROP-PERM-1, **PROP-AUTH-8…11** | T22 | T36 | T13, T18 |
+| `pdlc/engine/__tests__/transport-cli.test.js` | PROP-SKILL-9, PROP-REP-10, PROP-GUARD-8, and PROP-RETRY-15's fallback half | T23 | T37 | T13, T18 |
+| `pdlc/engine/__tests__/skills-composition.test.js` | PROP-SKILL-7, PROP-SKILL-8, PROP-SKILL-10…13, **PROP-SKILL-15** | T24 | T38 | T16 |
+| `pdlc/engine/__tests__/seam-contract.test.js` | PROP-PARITY-10, PROP-PARITY-11, PROP-PARITY-12, PROP-PARITY-14, PROP-PARITY-15 | T25 | T39 | T16 |
+| `pdlc/engine/__tests__/startup-ladder.test.js` | PROP-START-1…8, PROP-HAND-1, PROP-HAND-2, PROP-HAND-3, PROP-HAND-5, PROP-SKILL-14 | T26 | T44 | T15, T16 |
+| `pdlc/engine/__tests__/startup-guard-executable.test.js` | PROP-GUARD-16…19 | T27 | T44 | T15 |
+| `pdlc/engine/__tests__/guard-parity.test.js` | PROP-GUARD-1…15, PROP-PERM-2 | T28 | T36, T37 | T14, T18 |
+| `pdlc/engine/__tests__/m-eng-09.test.js` | PROP-GUARD-20, PROP-GUARD-21, PROP-GUARD-22 | T29 | T42 | T14 |
+| `pdlc/engine/__tests__/tunables.test.js` | PROP-TUNE-1…6, PROP-DISP-3 | T30 | T47 | T14 |
+| `pdlc/engine/__tests__/exit-loop.test.js` | PROP-QUEUE-1…15, PROP-EXIT-1…10 | T31 | T47 | T14 |
+| `pdlc/engine/__tests__/cli.test.js` | **PROP-CLI-1…4**, and the BR-REP-0a halves of PROP-REP-5 and PROP-EXIT-10 | T47 (red and green in one task; `bin/pdlc.mjs` is T47's own file) | T47 | T30, T31, T39, T40, T44 |
+| `pdlc/engine/__tests__/report-engine.test.js` | PROP-REP-1, PROP-REP-2, PROP-REP-4…17, PROP-PERM-3, PROP-FAIL-9 | T32 | T40 | T14 |
+| `pdlc/engine/__tests__/fs-observation.test.js` | PROP-READ-1…8, PROP-REP-3 | T33 | T43 (consumer fixture: T46) | T12 |
+| `pdlc/engine/__tests__/parity.test.js` | PROP-PARITY-1…9, PROP-SUITE-10…14 | T34 | T49 | T18 |
+| `pdlc/engine/__tests__/smoke.test.js` | PROP-PARITY-15's positive half (the tracked 387-line file already drives the Node-default IO path) and the five-configuration corpus drivers | — (**extended**, not new; green at HEAD) | T48 | T18, T35…T38, T44, T45, T47 |
+| `pdlc/engine/__tests__/corpus-model-map.test.js` | PROP-MODEL-2…9 | T50 | T52 | T48 |
+| `pdlc/engine/__tests__/handshake.test.js` | PROP-HAND-4, PROP-HAND-6 | — (T41 is green on landing) | T41 | T26 |
+| `pdlc/engine/__tests__/live/guard-measurement.test.js` | PROP-GUARD-23 | — (flag-gated, credentialed) | T42 | T29 |
+| `pdlc/engine/__tests__/live/smoke.test.js` | PROP-VER-10, PROP-VER-11 | — (flag-gated, credentialed) | T51 | T48 |
+| `pdlc/engine/__tests__/_run-suite.mjs`, `…/_bootstrap.mjs`, `…/_assert-suite-wide.mjs` | — (steps and harness, not test files; the properties *about* them sit in the four rows above that assert them) | — | T11, T12, T19, T43, T52 | T01…T03 |
 
-**Three ordering facts an implementer needs from this table.** The suite-wide step (T03/T11) is a
+**Three ordering facts an implementer needs from this table.** The suite-wide step (T03/T19) is a
 prerequisite of every set-equality's forward direction, so it lands before the properties that read
 it. The guard-measurement gate (T29) and its first row (T42) land in the **same batch** — introducing
 the gate without the local row leaves the pipeline red for a reason unrelated to the change that
 turned it red. And `run.test.js` is **green on landing**, exempt from the batch-2 red-terminal gate:
 a passing test there is the intended outcome, not a defect.
+
+**Two files carry no property, deliberately.** `preflight.test.js` (T00) asserts HEAD's prerequisite
+shape, which is a gate on starting rather than a property of the delivered engine; the `_`-prefixed
+harness files (`_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs`, `_corpus.mjs`,
+`_replay-double.mjs`) are the instruments, and every claim about them is a `PROP-SUITE-*` row asserted
+from a collected test file, never from inside the instrument itself.
+
+**The seven PLAN files absent from this table are the green side, not gaps.** `adapter.test.js`,
+`transport.test.js`, `skills.test.js`, `report.test.js`, `handshake.test.js`, `startup.test.js` and
+`run.test.js` are **tracked at HEAD** (§1's nine files) and appear in PLAN as files a *green* task
+edits when it changes the module beneath them. No property in this document is owned there: a property
+is written in the red file that fails first, and these files' existing assertions must keep passing —
+which is itself the regression obligation §5's batch gates enforce, not a coverage row.
 
 ## 16. Gaps, risks and open items
 
