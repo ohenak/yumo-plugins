@@ -27,7 +27,7 @@ import { PLUGIN_ROOT_ENV } from "../lib/skills.mjs";
 import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
-import { runDev, runQueue, runQueueLoop, workflowModulePath, resolveTunables } from "../lib/run.mjs";
+import { runDev, runQueue, runQueueLoop, workflowModulePath, resolveTunables, readEngineConfig } from "../lib/run.mjs";
 import { buildEngineBlock, stampReport } from "../lib/report.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -251,13 +251,18 @@ function emitDryRun(argv, startup, { command, target }) {
 }
 
 /**
- * REQ §4.1's five tunables, resolved for this invocation (TSPEC §4.6). `O-3`
- * (engine config's location) is still open, so `config` is always `{}` for
- * now — only the two flag-only rows can ever differ from their defaults.
+ * REQ §4.1's five tunables, resolved for this invocation (TSPEC §4.6).
+ * O-3 is resolved: the three engine-config rows come from the `dispatch`
+ * section of the CONSUMER's `.claude/pdlc.config.json` (`readEngineConfig`);
+ * the two operator-owned rows stay flag-only. Config-read notices are
+ * printed here — once, before any dispatch — so a value silently falling
+ * back to a default is never invisible.
  */
-function tunablesFor(argv) {
+function tunablesFor(argv, cwd) {
+  const { config, notices } = readEngineConfig({ cwd });
+  for (const line of notices) console.log(line);
   return resolveTunables({
-    config: {},
+    config,
     flags: {
       allowApiKeyBilling: hasFlag(argv, "allow-api-key-billing"),
       maxIterations: maxIterationsFlagOf(argv),
@@ -273,7 +278,7 @@ function maxIterationsFlagOf(argv) {
 /** Build the live adapter: real SDK transport, consumer cwd, parent env spread. */
 function liveAdapter(argv, startup) {
   const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
-  const tunables = tunablesFor(argv);
+  const tunables = tunablesFor(argv, cwd);
   const transport = createTransport({
     env: process.env,
     apiKeySourcePolicy: tunables.allowApiKeyBilling

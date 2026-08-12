@@ -45,7 +45,7 @@
 //    pipeline per process, which is what the CLI does.
 
 import path from "node:path";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, statSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /** The canonical workflow modules, by relative path inside this repo checkout. */
@@ -147,6 +147,93 @@ export async function loadDispatchableSkills({ importWorkflow = defaultImportWor
   return [...new Set([...dev, ...queue])].sort();
 }
 
+// ─── readEngineConfig (REQ O-3, resolved) ───────────────────────────────────
+//
+// O-3's answer: engine configuration lives in the CONSUMER's
+// `.claude/pdlc.config.json` — the same file the workflow modules already
+// read (`orchestrate-dev.js`'s MERGE_CONFIG_PATH), so a consumer has exactly
+// one pdlc config file. The engine reads ONLY the `dispatch` section; the
+// two operator-owned tunables stay flag-only (BR-CLI-2, BR-LOOP-2) and
+// `resolveTunables` below enforces that regardless of what the file carries.
+
+/** Consumer-relative engine config path — same file as MERGE_CONFIG_PATH. */
+export const ENGINE_CONFIG_PATH = ".claude/pdlc.config.json";
+
+/**
+ * Read the engine's slice of the consumer config, totally: every failure
+ * mode degrades to defaults with a notice, never a throw — a malformed
+ * config must not turn an unattended run into an engine crash (exit 1).
+ *
+ * Per-key validation mirrors the workflow modules' parseImplementationConfig
+ * discipline: an invalid value is dropped WITH a notice, never silently
+ * coerced (a string `timeoutMinutes` reaching `* 60 * 1000` would stamp a
+ * NaN timeout on every dispatch).
+ *
+ * @param {object} [args]
+ * @param {string} [args.cwd] consumer repo root the path resolves against
+ * @returns {{config: object, notices: string[]}} `config` is `{}` or
+ *   `{dispatch: {...}}` with only valid keys — shaped for `resolveTunables`.
+ */
+export function readEngineConfig({ cwd = process.cwd() } = {}) {
+  const file = path.join(cwd, ENGINE_CONFIG_PATH);
+  const notices = [];
+  if (!existsSync(file)) return { config: {}, notices };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(file, "utf8"));
+  } catch (err) {
+    notices.push(
+      `Notice: ${ENGINE_CONFIG_PATH} is not readable JSON (${err.message}) — ` +
+        `using defaults for every dispatch tunable.`
+    );
+    return { config: {}, notices };
+  }
+
+  const dispatch = parsed && typeof parsed === "object" ? parsed.dispatch : undefined;
+  if (dispatch === undefined) return { config: {}, notices };
+  if (dispatch === null || typeof dispatch !== "object" || Array.isArray(dispatch)) {
+    notices.push(
+      `Notice: the "dispatch" section of ${ENGINE_CONFIG_PATH} is not an object — ` +
+        `using defaults for every dispatch tunable.`
+    );
+    return { config: {}, notices };
+  }
+
+  const invalid = (key) =>
+    notices.push(
+      `Notice: dispatch.${key} in ${ENGINE_CONFIG_PATH} is not a valid value — using the default.`
+    );
+  const valid = {};
+  if (dispatch.retryAttempts !== undefined) {
+    if (Number.isFinite(dispatch.retryAttempts) && dispatch.retryAttempts >= 0) {
+      valid.retryAttempts = dispatch.retryAttempts;
+    } else invalid("retryAttempts");
+  }
+  if (dispatch.timeoutMinutes !== undefined) {
+    if (Number.isFinite(dispatch.timeoutMinutes) && dispatch.timeoutMinutes > 0) {
+      valid.timeoutMinutes = dispatch.timeoutMinutes;
+    } else invalid("timeoutMinutes");
+  }
+  if (dispatch.retryBackoff !== undefined) {
+    const rb = dispatch.retryBackoff;
+    if (rb !== null && typeof rb === "object" && !Array.isArray(rb)) {
+      const backoff = {};
+      if (rb.baseMs !== undefined) {
+        if (Number.isFinite(rb.baseMs) && rb.baseMs >= 0) backoff.baseMs = rb.baseMs;
+        else invalid("retryBackoff.baseMs");
+      }
+      if (rb.capMs !== undefined) {
+        if (Number.isFinite(rb.capMs) && rb.capMs >= 0) backoff.capMs = rb.capMs;
+        else invalid("retryBackoff.capMs");
+      }
+      if (Object.keys(backoff).length > 0) valid.retryBackoff = backoff;
+    } else invalid("retryBackoff");
+  }
+
+  return { config: Object.keys(valid).length > 0 ? { dispatch: valid } : {}, notices };
+}
+
 // ─── resolveTunables (TSPEC §4.6, REQ §4.1) ─────────────────────────────────
 
 const DEFAULT_RETRY_ATTEMPTS = 3; // "3 retries after the first attempt"
@@ -165,7 +252,8 @@ const DEFAULT_MAX_ITERATIONS = Infinity; // unbounded
  * even when both are present in `config`.
  *
  * @param {object} [args]
- * @param {object} [args.config] engine configuration (O-3: location still open)
+ * @param {object} [args.config] engine configuration — `readEngineConfig`'s
+ *   `config` (O-3, resolved: the consumer's `.claude/pdlc.config.json`)
  * @param {object} [args.flags] operator-supplied CLI flags for this invocation
  * @returns {{retryAttempts: number, retryBackoff: {baseMs: number, capMs: number},
  *   timeoutMinutes: number, timeoutMs: number, allowApiKeyBilling: boolean,
