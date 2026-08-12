@@ -440,6 +440,90 @@ one plugin root, not a space).
 
 ## 14. Coverage matrix — acceptance criteria to properties
 
+One row per acceptance criterion of REQ v0.10, all 26. The **set of criteria is the REQ's**, not a
+range: a criterion with no property is a gap, and §16 carries it rather than this table dropping it.
+Reading in the other direction — properties to criteria — every property row above carries its own
+`Traces` cell, so this table is a completeness check, not the only path between the documents.
+
+| AC | Criterion | Properties | Covered |
+|---|---|---|---|
+| AC-1.1 | parity with a Claude Code run | PROP-PARITY-1…7, PROP-PARITY-11, PROP-SUITE-10…14 | yes |
+| AC-1.2 | the run observed at the filesystem level | PROP-READ-1…8, PROP-REP-3 | yes |
+| AC-1.3 | queue surface, both stop reasons | PROP-QUEUE-1…15 | yes |
+| AC-1.4 | a halt exits `2`, not `1` | PROP-EXIT-1…10, PROP-RETRY-14 | yes |
+| AC-1.5 | the engine is not a fork | PROP-FORK-1…3, PROP-PARITY-12…15 | yes |
+| AC-2.1 | startup banner, six ordered auth rows | PROP-AUTH-1…7, PROP-AUTH-13, PROP-START-5/6, PROP-HAND-5, PROP-REP-16/17 | yes |
+| AC-2.2 | a key present without opt-in ⇒ refusal | PROP-AUTH-6, PROP-AUTH-7, PROP-EXIT-4, PROP-TUNE-3 | yes |
+| AC-2.3 | proxy environment reaches every dispatch | PROP-ENV-1…4 | yes |
+| AC-2.4 | logged-in session, key ignored | PROP-AUTH-5, PROP-AUTH-12 | yes |
+| AC-2.5 | dispatch cwd is the repo, per dispatch | PROP-ENV-5, PROP-ENV-6, PROP-DISP-1, PROP-DISP-7 | yes |
+| AC-3.1 | a dispatch composes for every skill in the set | PROP-SKILL-7…14, PROP-DISP-1…6 | yes |
+| AC-3.2 | no plugin installed ⇒ a legible refusal | PROP-HAND-1…4, PROP-START-3 | yes |
+| AC-3.3 | the pinned model map, both directions | PROP-MODEL-1…10 | yes |
+| AC-3.4 | the permission posture is explicit | PROP-PERM-1…3, PROP-GUARD-7, PROP-TUNE-5 | yes |
+| AC-3.5 | dispatchable ≡ readable, both directions | PROP-SKILL-1…6 | yes |
+| AC-4.1 | the six-member outcome taxonomy | PROP-FAIL-1…8 | yes |
+| AC-4.2 | retry budget and the timeout cap | PROP-RETRY-1…4, PROP-RETRY-6…12 | yes |
+| AC-4.3 | exhausted retries surface legibly | PROP-RETRY-14, PROP-RETRY-15, PROP-FAIL-10 | yes |
+| AC-4.4 | a mid-run `auth-failure` is fatal, never retried | PROP-RETRY-13, PROP-FAIL-9, PROP-RETRY-5 | yes |
+| AC-4.5 | the report carries module fields plus the engine block | PROP-REP-1…17, PROP-TUNE-1…6, PROP-PARITY-7 | yes |
+| AC-5.1 | the guard refuses with `LEARNINGS` absent, per transport | PROP-GUARD-1, PROP-GUARD-2, PROP-GUARD-4…10, PROP-GUARD-12…19 | yes |
+| AC-5.2 | harvest's deletions succeed once it exists | PROP-GUARD-3, PROP-GUARD-11 | yes |
+| AC-6.1 | a hermetic suite, observed rather than asserted | PROP-VER-1…6, PROP-SUITE-1…9, PROP-SUITE-15, PROP-GUARD-20…22 | yes |
+| AC-6.2 | the opt-in live smoke path | PROP-VER-10, PROP-VER-11, PROP-GUARD-23 | yes — **evidence is operator-recorded**, not suite-observed (PLAN §8); no hermetic command observes it |
+| AC-6.3 | per-transport recorded fixtures | PROP-VER-7, PROP-VER-8, PROP-VER-9, PROP-SKILL-9, PROP-REP-10 | yes |
+| AC-6.4 | the closed message catalogue, both directions | PROP-MSG-1…6, PROP-FAIL-1, PROP-AUTH-11 | yes |
+
+**Constraints, separately.** Constraints are not acceptance criteria and a criterion-only matrix
+would leave them unchecked, so the six this document can observe are listed here with the properties
+that carry them: **C-1a/C-1b** (two-part auth policy) — PROP-AUTH-6…12; **C-5** (guard parity) —
+PROP-GUARD-1…15; **C-8** (closed message catalogue) — PROP-MSG-1…6; **C-9** (per-platform
+measurement) — PROP-GUARD-20…22, PROP-SUITE-15; **C-11** (fail-closed interpreter precondition) —
+PROP-GUARD-16…19; **NG-1** (the pdlc semantics are unchanged) — PROP-PARITY-*, PROP-FORK-*,
+PROP-GUARD-9/11/13/19, PROP-QUEUE-1/2/3.
+
+## 15. Coverage matrix — properties to PLAN tasks and test files
+
+Every property row above carries its own `Task` cell — the red task that writes it and, where they
+differ, the green task that makes it pass. This table rolls those up **per test file**, which is the
+view an implementer opens: it answers "what am I writing in this file, and what must be true before
+I can". A property whose test file has no PLAN task is a gap, and §16 carries it.
+
+| Test file | Properties | Red task | Green task | Prerequisite |
+|---|---|---|---|---|
+| `__tests__/outcome.test.js` | PROP-FAIL-1…8 | T04 | T13 | T00 |
+| `__tests__/catalogue.test.js` | PROP-MSG-1…6 | T05 | T35 | T00 |
+| `__tests__/auth.test.js` | PROP-AUTH-1…7, PROP-AUTH-13 | T06 | T44 | T00 |
+| `pdlc/workflows/__tests__/dispatchableSkills.test.js` | PROP-SKILL-1…6 | T07 | T16 | T00 |
+| `__tests__/handshake.test.js` | PROP-HAND-1…6 | T41 (green on landing) | — | T26 |
+| `__tests__/startup.test.js` | PROP-START-1…8, PROP-GUARD-16…19 | T14 | T36 | T00 |
+| `__tests__/dispatch.test.js` | PROP-DISP-1…7, PROP-SKILL-7…14 | T24 | T38 | T18 |
+| `__tests__/adapter-retry.test.js` | PROP-RETRY-1…16, PROP-FAIL-9/10 | T21 | T45 | T13 |
+| `__tests__/exit-loop.test.js` | PROP-QUEUE-1…15, PROP-EXIT-1…10 | T31 | T47 | T14 |
+| `__tests__/report-engine.test.js` | PROP-REP-1…17 | T32 | T40 | T14 |
+| `__tests__/tunables.test.js` | PROP-TUNE-1…6 | T30 | T44 | T14 |
+| `__tests__/env-cwd.test.js` | PROP-ENV-1…6 | T22 | T36, T37 | T18 |
+| `__tests__/model-map.test.js` | PROP-MODEL-1…10 | T50 | T48, T52 | T18 |
+| `__tests__/permission.test.js` | PROP-PERM-1…3 | T22 | T36 | T18 |
+| `__tests__/guard-parity.test.js` | PROP-GUARD-1…15 | T28 | T36, T37 | T14, T18 |
+| `__tests__/guard-measurement-gate.test.js` | PROP-GUARD-20…22 | T29 | T42 | T28 |
+| `__tests__/live/guard-measurement.test.js` | PROP-GUARD-23, PROP-VER-10, PROP-VER-11 | — (flag-gated) | T51 | T42 |
+| `__tests__/fs-observation.test.js` | PROP-READ-1…8 | T33 | T43 | T12 |
+| `__tests__/parity.test.js` | PROP-PARITY-1…11, PROP-SUITE-10…14 | T34 | T39 | T18 |
+| `__tests__/seam-contract.test.js` | PROP-PARITY-12…15 | T25 | T35 | T16 |
+| `__tests__/run.test.js` | PROP-FORK-1…3 | — (green on landing, §5's batch-2 gate exemption) | T10 | T00 |
+| `__tests__/hermeticity.test.js` | PROP-VER-1…6 | T02 | T35 | T00 |
+| `__tests__/fixtures.test.js` | PROP-VER-7, PROP-VER-8, PROP-VER-9 | T05 | T35 | T00 |
+| `__tests__/suite-mechanics.test.js` | PROP-SUITE-1…9, PROP-SUITE-15 | T03 | T35 | T11 |
+| `__tests__/_assert-suite-wide.mjs` (a step, not a test file) | the suite-wide halves of PROP-FAIL-2, PROP-MSG-3, PROP-MODEL-2, PROP-SKILL-3, PROP-DISP-4 | T03 | T35 | T11 |
+
+**Three ordering facts an implementer needs from this table.** The suite-wide step (T03/T11) is a
+prerequisite of every set-equality's forward direction, so it lands before the properties that read
+it. The guard-measurement gate (T29) and its first row (T42) land in the **same batch** — introducing
+the gate without the local row leaves the pipeline red for a reason unrelated to the change that
+turned it red. And `run.test.js` is **green on landing**, exempt from the batch-2 red-terminal gate:
+a passing test there is the intended outcome, not a defect.
+
 ## 15. Coverage matrix — properties to PLAN tasks and test files
 
 ## 16. Gaps, risks and open items
