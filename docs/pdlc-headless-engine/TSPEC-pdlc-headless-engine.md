@@ -1700,7 +1700,7 @@ that half exists. For §7.4's dispatch descriptors this is stated in §4.1: one 
 **Every dispatch line is a settlement line** — the accumulator hangs off `_agent`
 (`lib/adapter.mjs:271`) and not off `composePrompt` (`:259`), so the composed-but-never-dispatched
 case writes nothing rather than writing a `null`-terminal line (§4.1, `bin/pdlc.mjs:190`;
-`FSPEC:682-684`). The other two accumulators (message ids, §3.5;
+`FSPEC:692-694`). The other two accumulators (message ids, §3.5;
 `classifyOutcome` results, §5.1) have no terminal half and are appended at their one call.
 | step 4, `node __tests__/_assert-suite-wide.mjs` | reads the union of every `.jsonl` and makes §7.4's assertions | a *step*, not a test file, so it is ordered by the runner rather than by filename luck, and it runs once per suite by construction |
 
@@ -2050,14 +2050,14 @@ Its corpus is M-ENG-07's own: the union of **five run configurations** (dev heal
 advisory seam, advisory fallback, and the two `haiku` recovery paths), because no single run
 exercises every row. **A descriptor exists for every dispatch that is *composed* through `_agent`,
 and every settlement is a fixture transport's, so no row depends on billed traffic** (FSPEC
-BR-MODEL-3, `FSPEC:680-682`) — with the write timing §4.1 fixes: the line is appended at
+BR-MODEL-3, `FSPEC:690-692`) — with the write timing §4.1 fixes: the line is appended at
 **settlement**, one per attempt, so it carries the terminal `outcome`/`errorText` rows 3 and 4 read.
 Every line in the corpus is a settlement line; there is no `null`-terminal line for a row to have to
 exclude. **The instrument is the fixture-driven run,
 recorded through §7.0's observation seam — not `--dry-run-skill`** (PM Q-03, and FSPEC BR-MODEL-3
 now says the same upstream: "the dry-run surface is **not** a way to reach it … it exercises at most
-one row and is never the corpus's source", `FSPEC:682-684`): that flag selects which
-single skill's composed prompt is printed (`FSPEC:210`), a one-prompt surface, whereas every row here
+one row and is never the corpus's source", `FSPEC:692-694`): that flag selects which
+single skill's composed prompt is printed (`FSPEC:218`), a one-prompt surface, whereas every row here
 needs a whole run's worth of descriptors, rows 1 and 2 need a run's full phase context, and row 4
 needs the failure the fixture forces mid-run.
 `--dry-run-skill` remains §7.1's prompt-corpus instrument and is not cited for this property. A
@@ -2198,11 +2198,11 @@ gate that passes on every developer machine and proves nothing about the hosts i
 
 | Branch | Upstream | Behaviour |
 |---|---|---|
-| no candidate runs | EC-START-10 (`FSPEC:406`) | refuse, naming every candidate tried, what each yielded, and the remedy; exit `1`; **nothing dispatched** |
-| present-but-not-runnable, then runnable | EC-START-11 (`FSPEC:407`) | rung 4a **passes** — presence is not executability, and a later candidate deciding is the correct outcome, not a tolerated one |
+| no candidate runs | EC-START-10 (`FSPEC:416`) | refuse, naming every candidate tried, what each yielded, and the remedy; exit `1`; **nothing dispatched** |
+| present-but-not-runnable, then runnable | EC-START-11 (`FSPEC:417`) | rung 4a **passes** — presence is not executability, and a later candidate deciding is the correct outcome, not a tolerated one |
 
 **Neither branch is writable without a seam this document must name.** FSPEC fixes the observation as
-"by **running** a candidate, not by finding it on `PATH`" (`FSPEC:922-924`), so an EC-START-11 fixture
+"by **running** a candidate, not by finding it on `PATH`" (`FSPEC:932-933`), so an EC-START-11 fixture
 must present a `python3` that resolves and fails to execute while `python` succeeds. §7.0/§7.1's
 bootstrap traps sockets and records `fs`; neither observes process spawning, and `_runCommand` is a
 *workflow-module* seam (§3.1), supplied to `orchestrate-dev.js` for Phase I's wave gate — it is not on
@@ -2210,7 +2210,7 @@ the startup path and cannot be reached from `lib/startup.mjs`. So the seam is de
 
 ```js
 // pdlc/engine/lib/startup.mjs
-export const GUARD_INTERPRETERS = Object.freeze(["python3", "python", "py"]);  // FSPEC:918-921
+export const GUARD_INTERPRETERS = Object.freeze(["python3", "python", "py"]);  // FSPEC:928-931
 // Total: never throws. One probe attempt per candidate, in GUARD_INTERPRETERS order.
 // Returns the first candidate that ran, or null with the full attempt record.
 export function probeGuardInterpreter({ candidates = GUARD_INTERPRETERS, runProbe = defaultRunProbe })
@@ -2240,18 +2240,19 @@ rule — which governs what the engine injects into the two *workflow* modules �
 `GUARD_INTERPRETERS` is a transcription of the shipped script's own candidate list
 (`pdlc/hooks/scripts/guard-harvest-before-delete.sh:15-20`, the candidate loop; fail-open at `:21`), never an
 import from it, and FSPEC's
-"the engine never widens or narrows that set independently" (`FSPEC:919-921`) is asserted as
+"the engine never widens or narrows that set independently" (`FSPEC:929-931`) is asserted as
 set-equality against a test-side transcription of those three names — the same discipline §3.3 and
 §7.4 apply, and the reason a script-side change turns a test red rather than drifting silently.
 
-**Rung 4a's probe is a local process spawn, not the kind BR-START-1 forbids** (TE Q-20). BR-START-1's
-"no model call, and no probe of any kind, is made while the ladder is running" (`FSPEC:302-303`) is
-justified in its own sentence by "zero tokens billed", so its subject is the *billable* probe — a
-model call, or a network round-trip to the provider. Rung 4a's `spawnSync(candidate, ["-c", "import
-sys"])` bills nothing, contacts nothing, and is the observation BR-GUARD-6 explicitly requires ("by
-**running** a candidate", `FSPEC:922-924`). An implementer meeting the two sentences together should
-build rung 4a as specified here; the missing "billable" qualifier in BR-START-1 is raised as an
-erratum against FSPEC (§9.3), not resolved by narrowing this design.
+**Rung 4a's probe is a local process spawn, not the kind BR-START-1 forbids** (TE Q-20). This is now
+settled upstream rather than inferred here: FSPEC v1.7's BR-START-1 reads "No model call, and no
+*billable* probe of any kind, is made while the ladder is running", and adds that "local checks the
+ladder performs on the host's own bytes are not probes in this sense and are not dispatches — rung 4a
+observes interpreter availability that way" (`FSPEC:310-312`). Rung 4a's `spawnSync(candidate, ["-c",
+"import sys"])` bills nothing, contacts nothing, and is the observation BR-GUARD-6 explicitly
+requires ("by **running** a candidate", `FSPEC:932-933`). The two rules therefore agree on their face;
+v1.8's erratum against BR-START-1 is discharged (§9.3), and this design is unchanged by the
+discharge — it was already written to the reading v1.7 adopted.
 
 The two tests are hermetic, both driven by injecting `runProbe`:
 
