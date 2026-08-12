@@ -574,5 +574,3 @@ than a pipeline artifact and is noted here for the operator rather than routed.
    suite-wide through the seam).
 3. Every property whose HEAD column says *green* or *partial* cites a `file:line` a reviewer can
    open, and every *red* one names the PLAN task that turns it green.
-
-REVISION-COMPLETE: yes
