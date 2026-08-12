@@ -161,3 +161,9 @@ readable, the outcome is decided by `ANTHROPIC_API_KEY`, not by the unreadabilit
 case and contradicted AC-2.1 row 5): with the key **absent** the run proceeds as `auth.unknown`
 (AC-2.1 row 6, FSPEC §5.1 BR-AUTH-0); with the key **present** and `auth.allowApiKeyBilling` not
 passed the run refuses at row 5 (`auth.api-key-refused`).
+
+## M-ENG-09 — PreToolUse deny under bypassPermissions
+
+| date | platform | transport | sdkVersion | denyFired |
+|---|---|---|---|---|
+| 2026-08-12 | darwin | agent-sdk | 0.3.226 | yes |
