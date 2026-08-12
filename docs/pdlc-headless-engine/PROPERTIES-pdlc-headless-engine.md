@@ -524,8 +524,6 @@ the gate without the local row leaves the pipeline red for a reason unrelated to
 turned it red. And `run.test.js` is **green on landing**, exempt from the batch-2 red-terminal gate:
 a passing test there is the intended outcome, not a defect.
 
-## 15. Coverage matrix — properties to PLAN tasks and test files
-
 ## 16. Gaps, risks and open items
 
 ### 16.1 Errata raised against upstream documents
