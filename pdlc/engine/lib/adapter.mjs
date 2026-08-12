@@ -26,35 +26,45 @@ import { loadSkill, composeDispatchPrompt } from "./skills.mjs";
 import { RateLimitedError } from "./transport.mjs";
 import { classifyOutcome } from "./outcome.mjs";
 
-// ─── rate-limit pause/resume (REQ AC-4.1, Phase 4) ─────────────────────────────
+// ─── the generalised retry machine (REQ AC-4.1/AC-4.2, TSPEC §5.2) ─────────────
 //
-// Decision ladder, applied on every `_agent` dispatch that throws
-// `RateLimitedError` (the transport already classifies it — see
-// lib/transport.mjs — carrying `rateLimitType` / `status` / `resetsAt` /
-// `retryAfterMs`):
+// Decision ladder, applied on every `_agent` dispatch outcome classified
+// `retryable` (`RateLimitedError`) or `timeout` (`TimeoutError`) — the
+// transport already classifies it, see lib/transport.mjs / lib/outcome.mjs.
+// `auth-failure` and `transport-contract-violation` are never retried, at any
+// budget (§5.2) — they fall straight through to the throw below.
 //
-//   1. Has this dispatch already paused `maxRateLimitPauses` times (default 3,
-//      REQ `dispatch.retryAttempts` = "3 retries after first attempt")?
-//      Yes -> rethrow the RateLimitedError as-is. The module that called
-//      `_agent` sees an ordinary dispatch failure and applies its own halt
-//      semantics (REQ: "exhausting bound rethrows RateLimitedError — module
-//      then handles it as an ordinary dispatch failure"). The engine process
-//      itself never crashes here.
-//   2. Otherwise compute how long to wait, in this priority order:
-//        a. `retryAfterMs` if the error carries a finite, positive value.
-//        b. else `resetsAt - now()` (clamped to >= 0) if `resetsAt` is present.
-//        c. else exponential backoff: `retryBackoffBaseMs * 2^attempt`
-//           (attempt is 0-indexed: first pause = base, second = 2x, ...).
-//      Whatever the source, the wait is capped at `retryBackoffCapMs` and then
-//      has a small amount of jitter added (never subtracted, so the cap is a
-//      floor for the capped case, not a hard ceiling breached by jitter is
-//      fine — jitter only ever delays a little further, it never reduces
-//      below any computed floor).
-//   3. Append one row to the run's pause log: timestamp (via the injected
-//      clock), the attempt number (1-indexed, i.e. "this is pause #N"),
-//      waitedMs, and the rate-limit fields the error carried.
+//   1. One shared budget, `maxRateLimitPauses` (default 3, REQ
+//      `dispatch.retryAttempts` = "3 retries after first attempt"), spent by
+//      EITHER outcome (BR-RETRY-1) — a `timeout` retry is one of the three,
+//      never an extra one. PLUS a per-dispatch cap of exactly one `timeout`
+//      retry ever (BR-RETRY-2), counted independently of the budget.
+//      Exhausting either rethrows the triggering error as-is; the last
+//      `RetryRow` actually written (if any — a budget of 0 writes none, see
+//      EC-FAIL-3) is annotated with WHY the chain ended:
+//      `terminal: "timeout-cap"` when the cap is what stopped it (even with
+//      budget left), else `terminal: "budget-exhausted"`. The module that
+//      called `_agent` sees an ordinary dispatch failure and applies its own
+//      halt semantics — the engine process itself never crashes here.
+//   2. Otherwise compute how long to wait, via `computeRateLimitWaitMs` with
+//      the SAME shared `attempt` counter regardless of outcome: `retryAfterMs`
+//      if the error carries a finite, positive value -> else
+//      `resetsAt - now()` (clamped to >= 0) if `resetsAt` is present -> else
+//      exponential backoff: `retryBackoffBaseMs * 2^attempt` (attempt is
+//      0-indexed: first pause = base, second = 2x, ...). A `TimeoutError`
+//      carries neither hint, so a timeout retry always takes the exponential
+//      arm. Whatever the source, the wait is capped at `retryBackoffCapMs`
+//      and then has a small amount of jitter added (never subtracted).
+//   3. Append one `RetryRow` to the run's retry log (every retry, either
+//      outcome) and, for a `retryable` retry ONLY, additionally append a
+//      `PauseRow` to the run's pause log (a `timeout` retry has no rate-limit
+//      state to record, so it produces a `RetryRow` alone — TSPEC §4.4).
 //   4. Sleep for the computed duration (via the injected sleep function) and
 //      retry the SAME dispatch (same composed prompt, same dispatch options).
+//
+// A rate-limit signal arriving on an otherwise-successful result (EC-FAIL-2)
+// is not a retry at all — it is recorded as a zero-wait `PauseRow` note, and
+// the successful result is still returned.
 //
 // Clock and sleep are both injectable so tests never touch a real timer.
 
@@ -251,7 +261,7 @@ export function createRunCommand({
  * @param {Function} [args.sleep] Injectable sleep (`(ms) => Promise<void>`). Test seam.
  * @param {Function} [args.jitterFn] Injectable jitter (`(jitterMs) => ms`). Test seam.
  * @returns {{_agent, _parallel, _pipeline, _phase, _log, _runCommand,
- *            composePrompt: Function, getPauseLog: Function,
+ *            composePrompt: Function, getPauseLog: Function, getRetryLog: Function,
  *            getDispatchCounts: Function, getApiKeySource: Function, getAuthSources: Function}}
  */
 export function createAdapter({
@@ -284,6 +294,7 @@ export function createAdapter({
   // adapter instance makes (one adapter per run — see bin/pdlc.mjs). Consumed
   // by the CLI's report-provenance stamp (REQ AC-4.5 / G-7), never reset mid-run.
   const pauseLog = [];
+  const retryLog = [];
   const denialLog = [];
   const authSourcesLog = [];
   const dispatchCounts = new Map(); // per skill
@@ -349,7 +360,9 @@ export function createAdapter({
     const phaseKey = phase == null ? "(no phase)" : phase;
     dispatchCountsByPhase.set(phaseKey, (dispatchCountsByPhase.get(phaseKey) || 0) + 1);
 
-    let attempt = 0; // number of pauses already taken for THIS dispatch; also this try's 0-based index
+    let attempt = 0; // shared retry budget already spent for THIS dispatch; also this try's 0-based index (BR-RETRY-1/4)
+    let timeoutRetriesTaken = 0; // per-dispatch cap of exactly one timeout retry (BR-RETRY-2)
+    let lastRetryRow = null; // the RetryRow most recently written for THIS dispatch, if any
     for (;;) {
       const attemptIndex = attempt;
       let result;
@@ -378,9 +391,36 @@ export function createAdapter({
       });
 
       if (thrown) {
-        if (!(thrown instanceof RateLimitedError) || attempt >= maxRateLimitPauses) {
+        // `auth-failure` and `transport-contract-violation` are never
+        // retried, at any budget (§5.2) — only `retryable` (rate-limit) and
+        // `timeout` draw from the shared budget below.
+        const isRetryable = outcome === "retryable";
+        const isTimeout = outcome === "timeout";
+        if (!isRetryable && !isTimeout) {
           throw thrown;
         }
+
+        let allowed;
+        let terminalReason = null;
+        if (isTimeout) {
+          allowed = timeoutRetriesTaken < 1 && attempt < maxRateLimitPauses;
+          if (!allowed) terminalReason = timeoutRetriesTaken >= 1 ? "timeout-cap" : "budget-exhausted";
+        } else {
+          allowed = attempt < maxRateLimitPauses;
+          if (!allowed) terminalReason = "budget-exhausted";
+        }
+
+        if (!allowed) {
+          // Only annotate a row that was actually written — a budget of 0
+          // (EC-FAIL-3) retries nothing, so there is no "last RetryRow" to
+          // carry a terminal reason and the log stays empty.
+          if (lastRetryRow) lastRetryRow.terminal = terminalReason;
+          throw thrown;
+        }
+
+        // Same shared `attempt` counter regardless of outcome — a timeout
+        // carries neither `retryAfterMs` nor `resetsAt`, so it always takes
+        // the exponential arm of the same ladder (TSPEC §5.2).
         const waitedMs = computeRateLimitWaitMs(thrown, attempt, {
           now,
           baseMs: retryBackoffBaseMs,
@@ -389,26 +429,59 @@ export function createAdapter({
           jitterFn,
         });
         attempt += 1;
+        if (isTimeout) timeoutRetriesTaken += 1;
+
+        const retryRow = { timestamp: now(), skill, phase, attempt, outcome, delayMs: waitedMs };
+        retryLog.push(retryRow);
+        lastRetryRow = retryRow;
+
+        // A `retryable` (rate-limit) retry additionally writes the richer
+        // PauseRow that records what the account did; a `timeout` retry has
+        // no rate-limit state to record and produces the RetryRow alone
+        // (TSPEC §4.4).
+        if (isRetryable) {
+          pauseLog.push({
+            timestamp: now(),
+            skill,
+            label: tag,
+            phase,
+            attempt,
+            waitedMs,
+            rateLimitType: thrown.rateLimitType ?? null,
+            status: thrown.status ?? null,
+            resetsAt: thrown.resetsAt ?? null,
+            retryAfterMs: thrown.retryAfterMs ?? null,
+          });
+          log(
+            `[rate-limit] ${tag}: pause ${attempt}/${maxRateLimitPauses}, waiting ${waitedMs}ms` +
+              (thrown.rateLimitType ? ` (${thrown.rateLimitType})` : "")
+          );
+        } else {
+          log(`[timeout] ${tag}: retry ${attempt}/${maxRateLimitPauses}, waiting ${waitedMs}ms`);
+        }
+        await sleep(waitedMs);
+        continue; // retry the SAME dispatch
+      }
+      if (result && result.apiKeySource != null) lastApiKeySource = result.apiKeySource;
+      // A rate-limit signal arriving on an otherwise-successful result
+      // (EC-FAIL-2) is not a retry — nothing was waited for, and the result
+      // is still `ok`. Recorded as a zero-wait PauseRow note so the account
+      // event is visible in the report without being mistaken for a failure.
+      if (result && Array.isArray(result.rateLimitEvents) && result.rateLimitEvents.length > 0) {
+        const evt = result.rateLimitEvents[0];
         pauseLog.push({
           timestamp: now(),
           skill,
           label: tag,
           phase,
-          attempt,
-          waitedMs,
-          rateLimitType: thrown.rateLimitType ?? null,
-          status: thrown.status ?? null,
-          resetsAt: thrown.resetsAt ?? null,
-          retryAfterMs: thrown.retryAfterMs ?? null,
+          attempt: attemptIndex,
+          waitedMs: 0,
+          rateLimitType: evt.rateLimitType ?? evt.type ?? null,
+          status: evt.status ?? null,
+          resetsAt: evt.resetsAt ?? null,
+          retryAfterMs: evt.retryAfterMs ?? null,
         });
-        log(
-          `[rate-limit] ${tag}: pause ${attempt}/${maxRateLimitPauses}, waiting ${waitedMs}ms` +
-            (thrown.rateLimitType ? ` (${thrown.rateLimitType})` : "")
-        );
-        await sleep(waitedMs);
-        continue; // retry the SAME dispatch
       }
-      if (result && result.apiKeySource != null) lastApiKeySource = result.apiKeySource;
       // One row per dispatch attempt, AC-2.4 / AC-4.5's per-dispatch record —
       // never a single run-scoped scalar (TSPEC §3.6, §4.5).
       authSourcesLog.push({
@@ -480,6 +553,15 @@ export function createAdapter({
     composePrompt,
     /** Append-only pause log accumulated across every `_agent` call so far (REQ AC-4.5). */
     getPauseLog: () => pauseLog.slice(),
+    /**
+     * Append-only `RetryRow[]` — one row per retry actually taken, either
+     * outcome (`retryable` or `timeout`), across every `_agent` call so far
+     * (TSPEC §4.4). The last row of an exhausted dispatch carries
+     * `terminal: "timeout-cap" | "budget-exhausted"`; a dispatch that never
+     * retried, or that succeeded without exhausting anything, leaves no row
+     * so annotated.
+     */
+    getRetryLog: () => retryLog.slice(),
     /** Append-only record of dispatches whose tool calls were denied — see `_agent`. */
     getDenialLog: () => denialLog.slice(),
     /**
