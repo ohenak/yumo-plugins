@@ -3,10 +3,12 @@
 //
 //   1. mint one PDLC_TEST_RUN_ID and derive PDLC_TEST_RUN_DIR from it
 //   2. create that run directory EMPTY, removing any prior contents
-//   3. spawn `node --test --import=./__tests__/_bootstrap.mjs __tests__/`
-//      with that id in its environment, stdio inherited
-//   4. on success only, spawn `node __tests__/_assert-suite-wide.mjs` with
-//      the same environment, and exit on its status
+//   3. spawn `node --test`, preloading the bootstrap module found under
+//      this same __tests__/ directory, with that id in its environment,
+//      stdio inherited
+//   4. on success only, spawn the suite-wide assertion script found under
+//      this same __tests__/ directory, with the same environment, and
+//      exit on its status
 //
 // Any of this runner's own unrecognised argv is forwarded through to the
 // spawned `node --test` invocation, in node-option position (before the
