@@ -1,4 +1,10 @@
-# Per-transport fixtures (`AC-6.3`, `BR-VER-2`, `AT-ENG-64`, TSPEC §7.2)
+# Fixtures
+
+This directory holds fixtures for more than one concern. See `consumer-ac12/README.md` for the
+AC-1.2 filesystem-observation consumer fixture (TSPEC §7.7, PROP-READ-4, PLAN T46). The rest of
+this file documents the per-transport dispatch fixtures below.
+
+## Per-transport fixtures (`AC-6.3`, `BR-VER-2`, `AT-ENG-64`, TSPEC §7.2)
 
 This directory holds one recorded fixture set per dispatch transport:
 

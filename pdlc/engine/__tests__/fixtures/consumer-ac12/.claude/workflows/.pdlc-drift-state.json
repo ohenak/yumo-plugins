@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-08-01T00:00:00Z",
+  "generatedBy": "sync",
+  "pluginVersion": "0.22.0",
+  "checkEnabled": true,
+  "syncCommand": "pdlc/hooks/scripts/sync-workflows.sh",
+  "baselineStatus": "resolved",
+  "baselineReason": null,
+  "retiredPresent": [],
+  "writeFailures": [],
+  "rows": [
+    {
+      "id": "orchestrate-dev",
+      "state": "in-sync",
+      "reason": null,
+      "pluginHash": "18ea3f9e8dac6a00b1c515556b079471e3d7b17a",
+      "consumerHash": "18ea3f9e8dac6a00b1c515556b079471e3d7b17a",
+      "pluginArtifactVersion": "0.22.0",
+      "consumerArtifactVersion": "0.22.0"
+    },
+    {
+      "id": "orchestrate-queue",
+      "state": "in-sync",
+      "reason": null,
+      "pluginHash": "93710c950d944d7ce2de8584848dee3a8b32f80a",
+      "consumerHash": "93710c950d944d7ce2de8584848dee3a8b32f80a",
+      "pluginArtifactVersion": "0.22.0",
+      "consumerArtifactVersion": "0.22.0"
+    },
+    {
+      "id": "pdlc-cli",
+      "state": "in-sync",
+      "reason": null,
+      "pluginHash": "02c76c40c03f40bb5b021f1c8b7a411ac1e6afd1",
+      "consumerHash": "02c76c40c03f40bb5b021f1c8b7a411ac1e6afd1",
+      "pluginArtifactVersion": "0.22.0",
+      "consumerArtifactVersion": "0.22.0"
+    }
+  ]
+}
