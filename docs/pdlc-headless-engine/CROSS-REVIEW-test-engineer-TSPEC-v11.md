@@ -76,10 +76,49 @@ test that exists today.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-50 | Low | Local | **The v1.9 changelog's BR-START-1 span stops one line short of the clause that discharges the erratum.** The changelog records the move as BR-START-1 `:302-303` → `:310-312` (`TSPEC:27`), but the body cites `:310-313` in both places it quotes the rule (`TSPEC:22`, `:2252`), and `:313` is the correct end: `FSPEC:313` carries "availability by running a candidate (BR-GUARD-6), which bills nothing" — precisely the sentence that makes rung 4a's `spawnSync` lawful and the reason the erratum is closed. `:310-312` stops at "rung 4a observes interpreter", mid-clause. The body is right and the changelog is one line short, so nothing downstream reads the wrong text; the cost is that a future re-grounding pass driven off the changelog's arrow list would re-anchor to a span that omits the operative clause. Fix is one character in `TSPEC:27`. | v1.9 changelog (`TSPEC:27`) vs §1/§7.8 (`:22`, `:2252`) |
+
 ## Questions
+
+None. The three erratum items are closed by the landed FSPEC v1.7 text, and the round introduced no
+new ambiguity — no design, decision, mechanism or assertion changed.
 
 ## Positive Observations
 
+- **The erratum was discharged by quoting upstream, not by paraphrasing it.** §7.8 previously had to
+  *argue* the billable reading from BR-START-1's "zero tokens billed" justification; it now quotes
+  the qualifier FSPEC actually landed (`FSPEC:310-313`). A test-facing document that reasons its way
+  to an upstream reading is one upstream edit away from being wrong; one that quotes the text in
+  force fails loudly instead. This is the more durable of the two forms.
+- **The design was held while the erratum was routed, and that judgement is now vindicated.** Round 9
+  could have narrowed rung 4a to a `PATH` lookup to fit the un-qualified prose. That would have
+  satisfied BR-START-1's letter and destroyed EC-START-11, whose only content is that presence is
+  not executability. Holding the design and raising the erratum upstream kept the falsifying test
+  alive; §7.8 is byte-identical across the round, which is exactly what a correctly-routed erratum
+  looks like from the test lens.
+- **The re-anchoring was verified, not asserted.** The changelog claims each citation "was re-read at
+  HEAD and lands on the text it claims" (`TSPEC:34-35`), and independent re-reading of all fourteen
+  shifted anchors — plus a grep proving no superseded anchor survives in the live body — bears that
+  out. The distinction between live-body anchors (re-grounded) and historical changelog anchors
+  (deliberately left) is stated up front (`TSPEC:36-38`) rather than left for a reviewer to guess.
+- **§9.3 closes the ledger explicitly** with "No erratum against FSPEC or REQ is outstanding"
+  (`TSPEC:2480`), and the round-8 incidental note about the guard script's line span stays withdrawn
+  rather than quietly reappearing.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+All three erratum items are discharged and verified against the committed HEAD blob: the upstream
+pin moves to FSPEC v1.7, every rung-4a anchor lands on the text it claims, and BR-START-1's
+"billable" qualifier is quoted from the landed v1.7 rather than inferred. No test contract, fixture,
+oracle or assertion changed in this round — the delta is citations and erratum status only, which is
+what a Phase-T erratum round should be. F-50 is a one-character changelog span; it blocks nothing and
+can ride along with the next revision.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
