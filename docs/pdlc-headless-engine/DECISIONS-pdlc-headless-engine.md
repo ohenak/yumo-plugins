@@ -636,6 +636,18 @@ reason**, rather than passing or failing it. Skipped-with-reason, not silence: a
 that quietly does not run is the same vacuity in a different costume, so the skip is printed and the
 run's summary carries it. Only an unfiltered run can turn step 4 green.
 
+**The skip is falsifiable in both directions, because a one-directional detector fails green.** The
+filtered-case detector is itself code, and it can over-match: a flag added to the npm script, a CI
+wrapper passing `--test-reporter`, an argv-parsing slip that reads any argument as a selection. If
+the only stated obligation were "a filtered run reports skipped-with-reason", an over-matching
+detector would report skipped-with-reason on *every* run, the three set-equality assertions would
+never execute again, and the suite would be permanently green — the same vacuity in a third costume,
+arrived at through the mechanism built to refuse it. So the obligation is paired: an **unfiltered**
+run must assert that step 4 actually *ran* — the run summary carries a pass for it, not a skip and
+not silence — and the CI invocation (`npm test` with no arguments, the same one AC-6.1's hermetic
+suite pins) is the unfiltered case that carries the assertion. One direction proves the detector
+fires when it should; the other proves it does not fire when it should not.
+
 **Reversibility:** Easy — three new test-support files and one `package.json` line; no production
 code depends on any of it.
 
@@ -872,7 +884,7 @@ than rediscover them. Nothing here is new: each row restates a cost stated in it
 | The guard script's fail-open interpreter probe is not relied upon | DEC-ENG-03 | A startup-time capability probe plus one catalogue id, observed at startup rather than per dispatch. **Blocked on upstream:** the precondition's authority (a REQ constraint), its own EC row and message obligations, its rung placement (a new rung 6, or rung 5 redefined as two predicates with per-cause ids) and whether it is fatal under dry run are FSPEC/REQ errata, not PLAN's to choose |
 | The `M-ENG-09` gate and its first rows must land together | DEC-ENG-04 | Single PLAN task — a gate landing before its seed rows turns CI red for an unrelated reason. The gate keys on `platform` + `transport` only; `sdkVersion` and `date` are provenance, so a caret-range SDK bump must not turn the hermetic suite red |
 | `EXPECTED_SKILLS` is deleted | DEC-ENG-05 | Both workflow modules export `DISPATCHABLE_SKILLS`; rung 4 checks set-equality over the union; a containment test asserts that every skill identifier appearing at one of **four enumerated site classes** — a `DISPATCHABLE_SKILLS` member declaration, a module-level `SKILL_*`/`ADVISORY_RUNG_SKILL` constant, a `PHASE_DISPATCH` role field, a `skill:` object field, or the skill argument of a dispatch call — is a member of that union, conjoined with a per-class site census so containment cannot pass over an empty extraction. The predicate is **structural, not lexical**: it is scoped by syntactic position, not by string shape, and that scoping is what makes it green at HEAD — the exported `meta.name` literals (`orchestrate-dev.js:3316`, `orchestrate-queue.js:45`) and the reviewer-role map's keys and values (`orchestrate-dev.js:6229-6231`) sit at none of the four classes and are therefore out of scope rather than exempted. No exemption list exists, but the quantifier is bounded: a **fifth site class** escapes it, which is the re-evaluation trigger DEC-ENG-05 records |
-| Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself; the runner detects a filtered invocation and reports the suite-wide step skipped-with-reason rather than passing or failing it |
+| Suite-wide assertions need a runner | DEC-ENG-10 | `_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs` and one `package.json` line, plus a test asserting the inheritance property itself; the runner detects a filtered invocation and reports the suite-wide step skipped-with-reason rather than passing or failing it, **and** the paired obligation in the other direction — an unfiltered run asserts step 4 ran, carrying a pass rather than a skip — so an over-matching filtered-run detector cannot leave the suite permanently green |
 | Every guard clause needs a falsifying counterpart | DEC-ENG-11 | The negative half is written first; the survival clause reuses the same fixture and deletion step under an allow verdict; the mis-built-configuration arm asserts an explicit allow verdict **and** that the deletion completes, never merely that no deny occurred |
 | Every operator-visible string is a catalogue entry | DEC-ENG-13 | Including the strings DEC-ENG-03 and DEC-ENG-04 introduce; each must be emitted at least once in the suite |
 
