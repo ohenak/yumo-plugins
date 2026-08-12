@@ -1,0 +1,1 @@
+{"implementation":{"testCommand":"(cd pdlc/engine && npm test) && cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'","postWaveCommand":"node pdlc/workflows/build-runtime.mjs","postWavePathspecs":["pdlc/workflows/dist/"]}}
