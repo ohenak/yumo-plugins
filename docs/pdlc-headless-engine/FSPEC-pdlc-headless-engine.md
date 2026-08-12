@@ -13,7 +13,15 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-11 |
+| pdlc | draft | Claude | 1.7 | 2026-08-11 |
+
+**Change note, v1.7** (Phase-T erratum round, one item, one clause): BR-START-1's "no probe of any
+kind ... while the ladder is running" (§4.1) literally contradicted BR-GUARD-6's rung-4a
+requirement to observe interpreter availability **by running** a candidate (§9.1). BR-START-1's own
+justification is "zero tokens billed", so the missing qualifier is *billable*: the clause now reads
+"no *billable* probe of any kind" and names rung 4a's local execution as a non-billing, non-dispatch
+check. BR-GUARD-6 is byte-identical; rung 4a's row, EC-START-10/11 and AT-ENG-11a are unchanged. No
+decision is reopened.
 
 **Change note, v1.6** (Phase-D erratum round, one item): REQ v0.10's **C-11** authorises the
 guard-executability host precondition DEC-ENG-03 needed and declined to originate, and delegated
@@ -299,9 +307,11 @@ anything, and `pdlc doctor` runs exactly this ladder and stops. The rungs, in or
 | 4a | **guard executable (C-11)** | the host can run the shipped `guard-harvest-before-delete` script — an accepted interpreter is obtainable (§9.1, BR-GUARD-6) | refusal naming the candidates tried, what each yielded, and the remedy (install one); exit `1`, nothing dispatched (EC-START-10) |
 | 5 | **billing posture** | the startup auth mapping of §5.1 does not land on the refusal row | refusal `auth.api-key-refused` naming the opt-in flag |
 
-**BR-START-1 — dispatch nothing until every rung passes.** No model call, and no probe of any kind,
-is made while the ladder is running; a failure at rungs 0–4 ends the invocation with exit `1` and
-zero tokens billed, and so does a rung-5 failure **on a dispatching path**. The one exception lives
+**BR-START-1 — dispatch nothing until every rung passes.** No model call, and no *billable* probe
+of any kind, is made while the ladder is running. Local checks the ladder performs on the host's own
+bytes are not probes in this sense and are not dispatches — rung 4a observes interpreter
+availability by running a candidate (BR-GUARD-6), which bills nothing. A failure at rungs 0–4 ends
+the invocation with exit `1` and zero tokens billed, and so does a rung-5 failure **on a dispatching path**. The one exception lives
 in the rule rather than in prose: under `--dry-run`, rung 5's finding is reported and is *not*
 fatal, because that path bills nothing either way (§4.2, EC-START-4). This is what makes a
 mis-installed machine cheap to discover.
