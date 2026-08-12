@@ -50,7 +50,7 @@ document asserts only that the engine *hosts* them without altering them — tha
 
 **Identifier grammar.** `PROP-{DOMAIN}-{NUMBER}`. Domains are stable and each maps to one section:
 `PARITY`, `FORK`, `READ`, `START`, `HAND`, `SKILL`, `AUTH`, `ENV`, `DISP`, `MODEL`, `PERM`, `FAIL`,
-`RETRY`, `QUEUE`, `EXIT`, `REP`, `TUNE`, `GUARD`, `VER`, `MSG`, `SUITE`. Numbers are never reused;
+`RETRY`, `QUEUE`, `EXIT`, `CLI`, `REP`, `TUNE`, `GUARD`, `VER`, `MSG`, `SUITE`. Numbers are never reused;
 a withdrawn property keeps its id with a `withdrawn` state rather than being deleted.
 
 **Columns.** Every property table carries: the id; the property statement (`must` / `must not`,
@@ -76,9 +76,18 @@ tables below; `State at HEAD`; and `Task` (the PLAN task that owns the red test,
 | E2E | The observable requires a whole pipeline run (hermetic, doubled transport) or a live credentialed run |
 
 **E2E budget.** Five E2E properties exist and no more: `PROP-PARITY-1`, `PROP-PARITY-2`,
-`PROP-READ-1`, `PROP-READ-2` and `PROP-VER-6` (the opt-in live smoke, which never runs in CI).
+`PROP-READ-1`, `PROP-READ-2` and `PROP-VER-11` (the opt-in live smoke, which never runs in CI).
 Everything else falsifies at unit or integration level. The five-configuration corpus (PLAN T48) is
 an integration instrument driven over recorded descriptors, not a fifth pipeline run per property.
+
+The budget is **checkable, not declarative**: it is asserted as a set-equality between the five ids
+named above and the set of rows in §§3–12 whose `Level` cell reads `E2E`, so a sixth E2E row cannot
+be added without editing this clause. Two live-credentialed properties sit **outside** the budget and
+are typed `Integration` deliberately, because neither observes a pipeline run: `PROP-VER-10` asserts
+a property of **the default suite's own records** (zero live dispatches when the flag is unset), and
+`PROP-GUARD-23` asserts the **provenance of a baseline row** rather than the run that produced it.
+`PROP-VER-6` is `Unit` and always was — it is the per-process trap-scope property, not the live
+smoke; the earlier draft of this clause named it by mistake (PM F-05, TE F-03).
 
 **Three oracle rules this document applies to itself**, each because a plausible-looking oracle here
 would be vacuous:
@@ -347,7 +356,7 @@ that reads it vacuous, so each one below carries its own falsifying counterpart.
 | PROP-VER-8 | **No fixture may contain a credential**, and the scan **must** be paired with a positive control **in the same test**: the same scanner run over a scratch file holding one deliberately key-shaped string **must** flag it. An absence-only scan passes identically whether its pattern is right, wrong or empty | AC-6.3, BR-VER-2, TSPEC §7.2, DEC-ORACLE-01 | Security | Unit | red | T05 → T35 |
 | PROP-VER-9 | The scanner's pattern **must** be the named one — `sk-ant-` followed by ≥20 `[A-Za-z0-9_-]`, plus any assignment of `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` to a non-empty value — and the README's documented rules and the scanner's pattern **must** be asserted **equal**, with the positive control carrying one instance of each rule | AC-6.3, TSPEC §7.2 | Data Integrity | Unit | red | T05 → T35 |
 | PROP-VER-10 | The live smoke path **must** be opt-in behind an explicit flag and **must never** run in the default suite — asserted by the default suite recording zero live dispatches, not by reading the flag's default | AC-6.2, BR-VER-3, AT-ENG-65 | Security | Integration | red | T51 |
-| PROP-VER-11 | The live path **must** assert §10.2's structural set **plus** the one thing only a live run shows: at least one cross-review round reaching a **parseable terminal verdict produced by a real model call** | AC-6.2, BR-VER-3, AT-ENG-65 | Functional | Integration | red | T51 |
+| PROP-VER-11 | The live path **must** assert §10.2's structural set **plus** the one thing only a live run shows: at least one cross-review round reaching a **parseable terminal verdict produced by a real model call** | AC-6.2, BR-VER-3, AT-ENG-65 | Functional | E2E | red | T51 |
 | PROP-MSG-1 | Every operator-visible string — banner line, refusal, warning, failure — **must** be a registered catalogue entry, asserted **by id**, and an emitted string with **no** registered id **must** fail the suite | AC-6.4(a), BR-MSG-1, EC-REP-4, AT-ENG-61 | Contract | Integration | red | T03, T06 → T35 |
 | PROP-MSG-2 | A registered id **no path can emit must** fail the suite — the direction that stops the catalogue accumulating dead entries. The fix **must** be a test that provokes the id or the entry's deletion; an exemption list is not a repair | AC-6.4(a), BR-MSG-1, EC-REP-5, AT-ENG-61 | Contract | Integration | red | T03, T06 → T35 |
 | PROP-MSG-3 | The equality **must** be over ids accumulated across the **whole suite** through **one** emission seam — `message(id, …)` — never per test file, since a per-file assertion goes vacuous the moment a test is skipped | AC-6.4(a), TSPEC §7.4, DEC-ENG-10, AT-ENG-61 | Contract | Integration | red | T03 → T35 |
