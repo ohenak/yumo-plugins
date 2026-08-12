@@ -64,6 +64,24 @@ mechanism; the family removes the copy) and D-DIST-07 closes by construction;
 by `pdlc-engine-distribution` (its §Obligations). Those two rows are left untouched until the
 decision is recorded here.
 
+**Row 3 (`pdlc-headless-engine`) — 2026-08-12 direct-run halt at Phase I Wave 3, repaired same
+day; row left `pending` for re-pickup.** A direct `orchestrate-dev` run under the new headless
+engine (v0.1.0) halted at Wave 3's test gate: 14 red tests, two causes, both introduced by Wave 3
+tasks. (1) The TSPEC §7.6 CI-arrangement task edited `.claude/pdlc.config.json`'s
+`implementation.testCommand` to chain `pdlc/engine`'s suite mid-implementation, breaking
+`advisoryPreflight.test.js`'s §2.4 pre-flight pin (whose regex captures everything after
+`--testPathIgnorePatterns` to end-of-line) — and, had a later gate picked the new command up, every
+subsequent wave gate would have gone red on the engine's deliberately-red TDD tests. The config was
+reverted to the workflows-only command; `ci-arrangement.test.js`'s config assertion stays honestly
+red inside the *ungated* engine suite until a late wave flips the command as its final act.
+(2) `dispatchableSkills.test.js` landed as a red test inside the **gated** `pdlc/workflows` suite
+with its green implementation scheduled for a later wave — red-before-green cannot span a wave
+boundary in the gated suite, so the `DISPATCHABLE_SKILLS` exports were implemented operator-side to
+green it. Two engine-v0.1.0 observations from the same run: the halting run wrote **no** `halted`
+row here (report `queueRow: "none"`, despite CLAUDE.md's direct-run-records-own-halt rule) and
+**no** POSTMORTEM; both were recorded after the fact — see
+`docs/pdlc-headless-engine/POSTMORTEM-I-pdlc-headless-engine.md` (`RESOLVED: yes`).
+
 **Rows 0, 10, 11, 12, 17 and 18 removed 2026-08-02 by operator direction.** The `pdlc-rcv` family
 (rows 10–12, 17, 18 — the five-way split of the superseded row 0, `pdlc-review-convergence`) is
 **abandoned**, not shipped: its process cost proved disproportionate to its code delta (see
