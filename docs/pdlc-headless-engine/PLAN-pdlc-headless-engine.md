@@ -13,7 +13,16 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-11 |
+| pdlc | draft | Claude | 1.3 | 2026-08-12 |
+
+**Change note, v1.3** (operator, 2026-08-12, after the Phase-I wave-mode degradation): §4's
+manifest is re-formatted to `parsePlanOwnership`'s header grammar — header cells `Files` /
+`Task` / `Batch` (the batch column is carried but ignored by the parser, waves being derived),
+bare task ids, one row per owning task. v1.2's `Owner(s), by batch` / `Path` headers parsed as
+no manifest at all, so Phase I fell back to the legacy worktree path and halted on T00's
+merge-back. Content is unchanged: same 76 path–owner pairs, same batches; the T16 dist cell is
+narrowed to `pdlc/workflows/dist/` (the manifest file lives inside it). Verified at HEAD:
+`validatePlanContract` ok over 54/54 tasks, `computeWaves` yields 17 ownership-disjoint waves.
 
 **Changelog — v1.2** (addresses cross-review round 2, product-manager and test-engineer):
 
@@ -199,76 +208,84 @@ Every path any task writes, with its owning task per batch. This is the table th
 disjointness premise **mechanically auditable** rather than asserted: read it column-wise and no
 batch shows one path twice.
 
-| Path | Owner(s), by batch |
-|---|---|
-| `pdlc/engine/__tests__/preflight.test.js` | T00 (b1) |
-| `pdlc/engine/__tests__/suite-spine.test.js` | T01 (b2) |
-| `pdlc/engine/__tests__/spine-probe-a.test.js` | T01 (b2) |
-| `pdlc/engine/__tests__/spine-probe-b.test.js` | T01 (b2) |
-| `pdlc/engine/__tests__/hermeticity.test.js` | T02 (b2) |
-| `pdlc/engine/__tests__/assert-suite-wide.test.js` | T03 (b2) |
-| `pdlc/engine/__tests__/outcome.test.js` | T04 (b2) |
-| `pdlc/engine/__tests__/catalogue.test.js` | T05 (b2) |
-| `pdlc/engine/__tests__/auth.test.js` | T06 (b2) |
-| `pdlc/workflows/__tests__/dispatchableSkills.test.js` | T07 (b2) |
-| `pdlc/engine/__tests__/ci-arrangement.test.js` | T08 (b2) |
-| `pdlc/engine/__tests__/fixtures-redaction.test.js` | T09 (b2) |
-| `pdlc/engine/__tests__/run.test.js` | T10 (b2), T39 (b5), T47 (b7) |
-| `pdlc/engine/__tests__/_run-suite.mjs` | T11 (b3) |
-| `pdlc/engine/package.json` | T11 (b3) |
-| `pdlc/engine/__tests__/_bootstrap.mjs` | T12 (b3), T43 (b5) |
-| `pdlc/engine/lib/outcome.mjs` | T13 (b3) |
-| `pdlc/engine/lib/catalogue.mjs` | T14 (b3) |
-| `pdlc/engine/lib/auth.mjs` | T15 (b3) |
-| `pdlc/workflows/orchestrate-dev.js` | T16 (b3) |
-| `pdlc/workflows/orchestrate-queue.js` | T16 (b3) |
-| `pdlc/workflows/dist/` (both bundles + `distribution-manifest.json`) | T16 (b3) |
-| `.github/workflows/pr-tests.yml` | T17 (b3) |
-| `.claude/pdlc.config.json` | T17 (b3) |
-| `pdlc/engine/__tests__/fixtures/README.md` | T18 (b3) |
-| `pdlc/engine/__tests__/fixtures/transport-sdk/` | T18 (b3) |
-| `pdlc/engine/__tests__/fixtures/transport-cli/` | T18 (b3) |
-| `pdlc/engine/__tests__/_assert-suite-wide.mjs` | T19 (b4), T52 (b10) |
-| `pdlc/engine/__tests__/adapter-descriptor.test.js` | T20 (b4) |
-| `pdlc/engine/__tests__/adapter-retry.test.js` | T21 (b4) |
-| `pdlc/engine/__tests__/transport-boundary.test.js` | T22 (b4) |
-| `pdlc/engine/__tests__/transport-cli.test.js` | T23 (b4) |
-| `pdlc/engine/__tests__/skills-composition.test.js` | T24 (b4) |
-| `pdlc/engine/__tests__/seam-contract.test.js` | T25 (b4) |
-| `pdlc/engine/__tests__/startup-ladder.test.js` | T26 (b4) |
-| `pdlc/engine/__tests__/startup-guard-executable.test.js` | T27 (b4) |
-| `pdlc/engine/__tests__/guard-parity.test.js` | T28 (b4) |
-| `pdlc/engine/__tests__/m-eng-09.test.js` | T29 (b4) |
-| `pdlc/engine/__tests__/tunables.test.js` | T30 (b4) |
-| `pdlc/engine/__tests__/exit-loop.test.js` | T31 (b4) |
-| `pdlc/engine/__tests__/report-engine.test.js` | T32 (b4) |
-| `pdlc/engine/__tests__/fs-observation.test.js` | T33 (b4) |
-| `pdlc/engine/__tests__/parity.test.js` | T34 (b4) |
-| `pdlc/engine/lib/adapter.mjs` | T35 (b5), T45 (b6) |
-| `pdlc/engine/__tests__/adapter.test.js` | T35 (b5), T45 (b6) |
-| `pdlc/engine/lib/transport.mjs` | T36 (b5) |
-| `pdlc/engine/__tests__/transport.test.js` | T36 (b5) |
-| `pdlc/engine/lib/transport-cli.mjs` | T37 (b5) |
-| `pdlc/engine/lib/skills.mjs` | T38 (b5) |
-| `pdlc/engine/__tests__/skills.test.js` | T38 (b5) |
-| `pdlc/engine/lib/run.mjs` | T39 (b5), T47 (b7) |
-| `pdlc/engine/lib/report.mjs` | T40 (b5) |
-| `pdlc/engine/__tests__/report.test.js` | T40 (b5) |
-| `pdlc/engine/lib/handshake.mjs` | T41 (b5) |
-| `pdlc/engine/__tests__/handshake.test.js` | T41 (b5) |
-| `pdlc/engine/__tests__/live/guard-measurement.test.js` | T42 (b5) |
-| `docs/_constraints/pdlc-engine-baseline.md` | T42 (b5), T53 (b11) |
-| `pdlc/engine/lib/startup.mjs` | T44 (b6) |
-| `pdlc/engine/__tests__/startup.test.js` | T44 (b6) |
-| `pdlc/engine/__tests__/fixtures/consumer-ac12/` | T46 (b6) |
-| `pdlc/engine/bin/pdlc.mjs` | T47 (b7) |
-| `pdlc/engine/__tests__/cli.test.js` | T47 (b7) |
-| `pdlc/engine/__tests__/_corpus.mjs` | T48 (b8) |
-| `pdlc/engine/__tests__/fixtures/corpus/` | T48 (b8) |
-| `pdlc/engine/__tests__/smoke.test.js` | T48 (b8) |
-| `pdlc/engine/__tests__/_replay-double.mjs` | T49 (b8) |
-| `pdlc/engine/__tests__/corpus-model-map.test.js` | T50 (b9) |
-| `pdlc/engine/__tests__/live/smoke.test.js` | T51 (b9) |
+| Files | Task | Batch |
+|---|---|---|
+| `pdlc/engine/__tests__/preflight.test.js` | T00 | b1 |
+| `pdlc/engine/__tests__/suite-spine.test.js` | T01 | b2 |
+| `pdlc/engine/__tests__/spine-probe-a.test.js` | T01 | b2 |
+| `pdlc/engine/__tests__/spine-probe-b.test.js` | T01 | b2 |
+| `pdlc/engine/__tests__/hermeticity.test.js` | T02 | b2 |
+| `pdlc/engine/__tests__/assert-suite-wide.test.js` | T03 | b2 |
+| `pdlc/engine/__tests__/outcome.test.js` | T04 | b2 |
+| `pdlc/engine/__tests__/catalogue.test.js` | T05 | b2 |
+| `pdlc/engine/__tests__/auth.test.js` | T06 | b2 |
+| `pdlc/workflows/__tests__/dispatchableSkills.test.js` | T07 | b2 |
+| `pdlc/engine/__tests__/ci-arrangement.test.js` | T08 | b2 |
+| `pdlc/engine/__tests__/fixtures-redaction.test.js` | T09 | b2 |
+| `pdlc/engine/__tests__/run.test.js` | T10 | b2 |
+| `pdlc/engine/__tests__/run.test.js` | T39 | b5 |
+| `pdlc/engine/__tests__/run.test.js` | T47 | b7 |
+| `pdlc/engine/__tests__/_run-suite.mjs` | T11 | b3 |
+| `pdlc/engine/package.json` | T11 | b3 |
+| `pdlc/engine/__tests__/_bootstrap.mjs` | T12 | b3 |
+| `pdlc/engine/__tests__/_bootstrap.mjs` | T43 | b5 |
+| `pdlc/engine/lib/outcome.mjs` | T13 | b3 |
+| `pdlc/engine/lib/catalogue.mjs` | T14 | b3 |
+| `pdlc/engine/lib/auth.mjs` | T15 | b3 |
+| `pdlc/workflows/orchestrate-dev.js` | T16 | b3 |
+| `pdlc/workflows/orchestrate-queue.js` | T16 | b3 |
+| `pdlc/workflows/dist/` | T16 | b3 |
+| `.github/workflows/pr-tests.yml` | T17 | b3 |
+| `.claude/pdlc.config.json` | T17 | b3 |
+| `pdlc/engine/__tests__/fixtures/README.md` | T18 | b3 |
+| `pdlc/engine/__tests__/fixtures/transport-sdk/` | T18 | b3 |
+| `pdlc/engine/__tests__/fixtures/transport-cli/` | T18 | b3 |
+| `pdlc/engine/__tests__/_assert-suite-wide.mjs` | T19 | b4 |
+| `pdlc/engine/__tests__/_assert-suite-wide.mjs` | T52 | b10 |
+| `pdlc/engine/__tests__/adapter-descriptor.test.js` | T20 | b4 |
+| `pdlc/engine/__tests__/adapter-retry.test.js` | T21 | b4 |
+| `pdlc/engine/__tests__/transport-boundary.test.js` | T22 | b4 |
+| `pdlc/engine/__tests__/transport-cli.test.js` | T23 | b4 |
+| `pdlc/engine/__tests__/skills-composition.test.js` | T24 | b4 |
+| `pdlc/engine/__tests__/seam-contract.test.js` | T25 | b4 |
+| `pdlc/engine/__tests__/startup-ladder.test.js` | T26 | b4 |
+| `pdlc/engine/__tests__/startup-guard-executable.test.js` | T27 | b4 |
+| `pdlc/engine/__tests__/guard-parity.test.js` | T28 | b4 |
+| `pdlc/engine/__tests__/m-eng-09.test.js` | T29 | b4 |
+| `pdlc/engine/__tests__/tunables.test.js` | T30 | b4 |
+| `pdlc/engine/__tests__/exit-loop.test.js` | T31 | b4 |
+| `pdlc/engine/__tests__/report-engine.test.js` | T32 | b4 |
+| `pdlc/engine/__tests__/fs-observation.test.js` | T33 | b4 |
+| `pdlc/engine/__tests__/parity.test.js` | T34 | b4 |
+| `pdlc/engine/lib/adapter.mjs` | T35 | b5 |
+| `pdlc/engine/lib/adapter.mjs` | T45 | b6 |
+| `pdlc/engine/__tests__/adapter.test.js` | T35 | b5 |
+| `pdlc/engine/__tests__/adapter.test.js` | T45 | b6 |
+| `pdlc/engine/lib/transport.mjs` | T36 | b5 |
+| `pdlc/engine/__tests__/transport.test.js` | T36 | b5 |
+| `pdlc/engine/lib/transport-cli.mjs` | T37 | b5 |
+| `pdlc/engine/lib/skills.mjs` | T38 | b5 |
+| `pdlc/engine/__tests__/skills.test.js` | T38 | b5 |
+| `pdlc/engine/lib/run.mjs` | T39 | b5 |
+| `pdlc/engine/lib/run.mjs` | T47 | b7 |
+| `pdlc/engine/lib/report.mjs` | T40 | b5 |
+| `pdlc/engine/__tests__/report.test.js` | T40 | b5 |
+| `pdlc/engine/lib/handshake.mjs` | T41 | b5 |
+| `pdlc/engine/__tests__/handshake.test.js` | T41 | b5 |
+| `pdlc/engine/__tests__/live/guard-measurement.test.js` | T42 | b5 |
+| `docs/_constraints/pdlc-engine-baseline.md` | T42 | b5 |
+| `docs/_constraints/pdlc-engine-baseline.md` | T53 | b11 |
+| `pdlc/engine/lib/startup.mjs` | T44 | b6 |
+| `pdlc/engine/__tests__/startup.test.js` | T44 | b6 |
+| `pdlc/engine/__tests__/fixtures/consumer-ac12/` | T46 | b6 |
+| `pdlc/engine/bin/pdlc.mjs` | T47 | b7 |
+| `pdlc/engine/__tests__/cli.test.js` | T47 | b7 |
+| `pdlc/engine/__tests__/_corpus.mjs` | T48 | b8 |
+| `pdlc/engine/__tests__/fixtures/corpus/` | T48 | b8 |
+| `pdlc/engine/__tests__/smoke.test.js` | T48 | b8 |
+| `pdlc/engine/__tests__/_replay-double.mjs` | T49 | b8 |
+| `pdlc/engine/__tests__/corpus-model-map.test.js` | T50 | b9 |
+| `pdlc/engine/__tests__/live/smoke.test.js` | T51 | b9 |
 
 **Four notes the manifest cannot carry in a cell, each a place a wave could otherwise collide.**
 
