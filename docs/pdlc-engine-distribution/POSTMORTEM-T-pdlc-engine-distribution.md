@@ -11,7 +11,33 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 1.0 | 2026-08-13 |
 
-RESOLVED: no
+RESOLVED: yes
+
+**Verification (2026-08-13, operator).** Step 1 of the Recommendation was carried out against
+`TSPEC-pdlc-engine-distribution.md` at HEAD (`v0.6`, commit range `c9466b29..4f90b960`). Every
+round-5 blocking finding was read at the line the Recommendation names, in the document itself,
+not in a changelog row:
+
+| Finding | Severity | Verified at |
+|---|---|---|
+| TE `F-32` | High | §7.2's *hand off (process entry)* row names all three `bin/cli.mjs` sites — `runDev` (`:385`), `runQueueLoop` (`:434`), `runQueue` (`:457`) — at `:785`; the injections leg of the production-path level repeats the three at `:1449`; S-6 carries them at `:1306`; §13's sequencing rule at `:1502` |
+| PM `F-01` / TE `F-33` | High / Medium | §9.3 clause 3 now scans **non-comment** source (`:1222`) and the replacement bullet mandates comment-stripping before matching (`:1249`), so the mandated header comment can no longer turn the oracle red |
+| PM `F-02` | Medium | The `PROP-PARITY-12` edit is scoped to `:47-63` with the `:79-90` exclusion list explicitly unchanged, and `PROP-PARITY-15` (`:268-282`) named as the third reader — §7.2 (`:814`), §12.1 (`:1447`), §12.4 (`:1540`) |
+| PM `F-03` | Low | §12.1's production-path row now says two **runners**, citing `PROP-PARITY-10`'s real-module import (`seam-contract.test.js:299`) as sanctioned precedent (`:1449`) |
+| TE `F-34` | Low | §9.3's closing paragraph no longer claims the dropped parse coverage; the subset claim lives only in the documented-constraint bullet (`:1259-1262`) |
+| TE `F-35` | Low | The runner citation is corrected to `_run-suite.mjs:50` (`:1241`) |
+| PM `Q-01` | Question | Answered as named risk `R-E` in §14.2 (`:1623`) |
+| TE `Q-15` | Question | §7.2 (`:791`): one frozen `Provenance` per run, shared across every queue pass |
+| TE `Q-16` | Question | §12.1 (`:1449`): asserted by identity plus `Object.isFrozen`, not structural equality |
+
+No gap was found, so no TSPEC edit was needed. One round-5 item remains **deliberately open**:
+PM `Q-02` (whether the green-direct-run fixture's remaining setup — repo capabilities, mergeable
+state, CI status below `decideMerge`'s guard 1 — is enumerated anywhere PLAN can transcribe).
+It is a question, not a finding, and it gates nothing; answering it here would add unreviewed
+prose of exactly the kind this post-mortem's root cause identifies. It is left for the round-6
+reviewer to raise or drop.
+
+Phase T may be re-invoked per Step 3 of the Recommendation.
 
 ## Phase
 
