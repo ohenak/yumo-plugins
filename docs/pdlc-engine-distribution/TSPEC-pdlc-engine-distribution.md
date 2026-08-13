@@ -1197,16 +1197,37 @@ unit suite, in-process, needing no old runtime: parse `bin/pdlc.mjs`'s source an
 1. it contains **zero** static `import` declarations,
 2. its only non-comment top-level statements are the floor comparison, the refusal, and the
    single dynamic `import("./cli.mjs")`, and
-3. its source contains **no top-level `await`** and no construct outside the declared
-   syntax subset — i.e. the file parses under a parser configured for the ES version Node
-   12.17 supports.
+3. its source contains **zero occurrences of the `await` keyword token** — not merely no
+   *top-level* `await`.
 
 Clause 3 exists because clauses 1 and 2 count statements and imports, not syntax level: a guard
 that satisfies both can still be unparseable on the runtime it promises to refuse on, and
 nothing else in the test set can see that. AT-2.5's runner is `node:18-alpine`, which parses
-top-level `await` happily, so the container leg is structurally blind to it. With clause 3 the
-Node-12.17 claim is falsifiable in the unit suite instead of being an assertion in a section
-whose whole subject is falsifiability.
+top-level `await` happily, so the container leg is structurally blind to it.
+
+**Clause 3 is deliberately narrower than "parses under an ES-2020 parser", because the engine
+has no parser and this is not the feature that should add one** (TE v4 F-30). The engine ships
+exactly one dependency (`@anthropic-ai/claude-agent-sdk`, `pdlc/engine/package.json:15-17`) and
+runs on `node --test` (`:12-14`); adding `acorn` as a `devDependency` to configure an
+`ecmaVersion` would put a new dependency row into the very manifest §5.4's packed-set equality
+and §5.1's dependency posture are under test in this same feature — a cost out of proportion to
+the risk, and one that would have to be paid inside the packaging task. So the broader
+"no construct outside the declared syntax subset" claim is **dropped from the oracle** rather
+than left as an assertion the test author must invent a mechanism for. What replaces it:
+
+- The **zero-`await`** form above is a plain source scan (a token match over the file's text,
+  which contains no functions of its own beyond the `.then(…)` callback), needs no parser, and
+  is *strictly stronger* than "no top-level `await`" — it cannot be satisfied by hiding an
+  `await` inside the continuation. It is the exact falsifier for the regression that motivated
+  this round: the promise chain silently rewritten back to `await import("./cli.mjs")`.
+- The Node-12.17 subset claim survives as a **documented constraint on the file, not a test**:
+  a header comment in `bin/pdlc.mjs` states the subset and the reason, and the file is short
+  enough (three top-level statements, clause 2) to read in full at review time. An unfalsifiable
+  clause is worth less than an honest note about what is and is not mechanically checked.
+
+With clause 3 in its narrowed form the one regression the container leg is blind to *is*
+falsifiable in the unit suite, and the section makes no claim its own test set cannot back —
+which is what its subject demands.
 
 That goes red on exactly the regressions the container leg cannot see, and the legs together
 cover the claim: the container proves the *refusal* works below the floor, the structural
