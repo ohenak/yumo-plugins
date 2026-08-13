@@ -210,6 +210,14 @@ source. The reversal cost is one branch in one function, so this is not a one-wa
 | `scripts.prepack` | absent | `node scripts/prepack.mjs` | §5.2. Build-time only, and therefore **not packed** (§5.4) |
 | `scripts.postinstall` | absent | `node scripts/postinstall.mjs` | §9.2's store population. The script is packed (`files` lists it explicitly), because a `postinstall` whose script file is absent from the tarball fails in the consumer's terminal at install time |
 | `README.md` | absent at HEAD (verified: `ls pdlc/engine/` → `__tests__ bin lib node_modules package-lock.json package.json`) | **new file, created by this feature** | npm packs `package.json`, `README*` and `LICENSE*` regardless of `files`, so the packed set contains a README whether or not one is authored. Authoring one makes the member intentional rather than accidental, and gives the npm listing a page |
+| `.npmignore` | absent at HEAD (same listing) | **new file, created by this feature**, one line: `!vendor/workflows/` | DEC-EDIST-01's decided mechanism, transcribed here rather than left implicit. `vendor/` is git-ignored (§5.2), and npm's precedence between a `files` entry and an ignore-file fallback *for paths inside a listed directory* has varied across npm majors; a shipped negation makes the inclusion explicit instead of inferred. It is **never a packed member** — npm always excludes `.npmignore` (and `.gitignore`) from the tarball — so PF-4's PK-* set is unchanged by it (§5.4) |
+
+**O-8 blocker 1 is closed here, by this feature, not by an operator.** V-01 records three
+blockers standing at HEAD. Blocker 1 is `"private": true` (`pdlc/engine/package.json:4`), and
+the row above removes it as ordinary engineering work, with PF-3 asserting `private` is absent
+at publish time (§8.3). Blockers 2 (npm scope, N-6) and 3 (`license`, N-2) remain
+operator-owned and are the only two left. Downstream records citing "three blockers" should
+cite this closure rather than repeat the HEAD count.
 
 ### 5.2 Build-time vendoring
 
