@@ -286,3 +286,28 @@ Stated as claims a reviewer can check against §2 and §3 mechanically.
 **Rule 7 — the manifest and the task table are in bijection.** 55 tasks in §2, 55 rows in §3, same identifiers, no row without a task and no task without a row — the condition `validatePlanContract` checks after `parsePlanTasks` and `parsePlanOwnership` in Phase P.
 
 ## 7. Definition of Done
+
+The plan is done when all of the following hold on `feat-pdlc-engine-distribution`. Each is an observation someone else can repeat, not a judgement.
+
+**Suites.**
+
+1. `cd pdlc/engine && npm test` is green, including the suite-wide oracles: `checkMessageCatalogue` reports no emitted-but-unregistered and no registered-but-unemitted id (`pdlc/engine/__tests__/_assert-suite-wide.mjs:195-213`), and `seam-contract.test.js`'s two `deepEqual`s pass against the widened injections.
+2. `cd pdlc/workflows && npm test` is green, with the six new `__tests__/provenance*|artifactPaths|devModeKinds|runtimeProvenanceWiring` files collected by jest and no existing test edited except where §3 names it.
+3. `node pdlc/workflows/build-runtime.mjs --check` exits 0, and `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0 — in that order, on a tree with no untracked strays (the document oracles skip only `.git/` and `node_modules/`, so a stray editor backup reddens them for a reason unrelated to this feature).
+
+**Behaviour, at the level the acceptance tests state it.**
+
+4. AT-1.1, AT-1.4: the launcher `exec`s the resolved version, re-raises a numeric child `status` verbatim, and exits `128 + signum` for a signalled child.
+5. AT-5.1, AT-5.2, AT-5.4, AT-5.5, AT-5.6: every one of the resolver's branches 0–7 announces, including the inert `update.unavailable` probe and the `PDLC_PLUGIN_ROOT`-ignored notice with its `--dev PDLC_PLUGIN_ROOT=…` remedy.
+6. AT-5.3, AT-5.3b, AT-4.2: `_provenance` reaches every commit site and both `QUEUE.md` row-write paths; `provenance-path.test.js` asserts its capture counts *before* its identity comparisons on both legs.
+7. AT-2.4: `bin/pdlc.mjs` holds only its dependency-free floor guard and the dynamic `import("./cli.mjs")`; `bin/cli.mjs` exports `main(argv, deps)` and the five-key `deps`, and importing it runs nothing.
+8. AT-3.8b, AT-6.1: `git ls-files` lists no vendored copy of the workflow modules, `prepack` produces one, and the two-root resolver loads from the vendor root when it exists and the checkout root otherwise.
+9. AT-2.1, AT-2.3, AT-2.5, AT-2.6: the fixture machine installs, upgrades, records two distinct `{resolvedVersion, resolvedStoreEntry}` pairs, passes on `node:18-alpine`, and reproduces the plugin-tree hash pairing.
+
+**Artefacts and evidence.**
+
+10. `.github/workflows/pr-tests.yml` is byte-unchanged: its five rendered job names still satisfy FSPEC §5.1's set-equality (C-5, BR-7.5).
+11. `docs/pdlc-engine-distribution/EVIDENCE-AT-6.2.md` and `EVIDENCE-BR-3.9.md` exist, dated, each naming what was observed and — for AT-6.2 — the stated limit of the conjunction as a discriminator.
+12. `docs/_decisions/DECISIONS-plugin-distribution.md` carries the npm scope (T02) and the licence (T05); no file in the tree still contains a placeholder for either.
+
+**Not in scope of this plan's done-ness.** N-1, N-3, N-4 and N-5 remain unbuilt by design (§1.2). N-6 and N-2 are discharged as decisions by T02 and T05, not as code. The three errata raised against TSPEC in this phase must be resolved upstream before Phase I begins: two of them (§10.3's below-floor emission, §12.1's fixture-machine home) change what T45 and T50 are allowed to write, and the third (§9.3's statement count) decides which of two disagreeing documents an implementer should believe.
