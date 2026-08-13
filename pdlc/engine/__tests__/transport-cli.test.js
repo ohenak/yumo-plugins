@@ -227,10 +227,15 @@ test("the composed prompt for the same dispatch is byte-identical across the SDK
 // message shape is needed, clones it from an already-recorded `.jsonl`
 // fixture rather than hand-inventing a new one — same rule the file's own
 // header states for every other case here. Deliberately does not attempt to
-// exercise `defaultSpawnFn` or `parseStreamJsonLines`: both are reachable
-// only via a real `claude` child process, which the hermeticity guard
-// (`_bootstrap.mjs`) blocks by construction inside this suite (TSPEC §7.1) —
-// see this file's own DoD report for the residual coverage note.
+// exercise `defaultSpawnFn`: it is reachable only via a real `claude` child
+// process, which the hermeticity guard (`_bootstrap.mjs`) blocks by
+// construction inside this suite (TSPEC §7.1). `parseStreamJsonLines`
+// (`lib/transport-cli.mjs:117-140`) is not in the same boat — it is a pure
+// `async function*` over any async-iterable of chunks and never touches
+// `spawn`, so it could be exercised directly with a fixture-byte generator
+// if it were exported; it currently is not (module-private), so this file
+// covers it only indirectly through `dispatch()` — see this file's own DoD
+// report for the residual coverage note (v1 F-07, still open).
 
 test("a stream message missing a `type` field is classified as TransportError (malformed message)", async () => {
   const spawnFn = async () => streamOf([{ hello: "world" }]);
