@@ -531,4 +531,59 @@ plausibly be invoked, which makes top-level `await` safe and the promise chain u
 
 ## 11. DEC-EDIST-10: `publish.yml` duplicates the gate jobs rather than extracting a reusable workflow
 
+*Mechanism: TSPEC §8.1, §8.2, §8.5.*
+
+**Context.** C-6 requires publishing to be gated on the same evidence a PR is. The repo has one
+workflow file (`.github/workflows/pr-tests.yml`) carrying the five gate jobs whose **rendered**
+check names Phase PUB polls literally. The tag-triggered `publish.yml` must re-run those five
+job bodies at the tagged commit. The obvious DRY move is to extract them into a reusable
+workflow both files `uses:`.
+
+**Decision.** `publish.yml` carries its **own copy** of the five gate jobs' bodies.
+`pr-tests.yml` is not touched at all, so its five rendered names cannot change because nothing
+edits them.
+
+**Alternatives considered.**
+
+- **Extract the five bodies into a reusable `gate.yml`** — rejected, and the reason is
+  mechanical rather than taste. GitHub renders a job that `uses:` a reusable workflow as
+  `{caller job name} / {called job name}`. Extraction therefore changes all five **rendered**
+  check names — the names a consumer's Phase PUB polls literally — while leaving the caller's
+  authored `name:` keys byte-identical. That is the worst combination available: the break is
+  invisible to the very oracle offered against it. §8.5's expander reads job-level `name:` keys
+  and expands declared matrix axes only; it models no `uses:` nesting, and BR-7.3's
+  "unexpandable name expression" guard does not fire because there is no expression in the name.
+  The oracle would stay green while the live checks were renamed. An oracle that cannot detect
+  the failure it is nominated against is not a mitigation. Secondarily, C-5 says the publish
+  workflow is **additive** — "a new workflow file with its own trigger" — and rewriting
+  `pr-tests.yml`'s five job bodies into `uses:` calls is not additive by any reading.
+- **Add publish jobs to `pr-tests.yml` under a tag condition** — rejected on C-5/BR-7.5 for the
+  same reason: it edits the file whose rendered names are a consumer contract.
+- **Trust the tag to point at an already-green commit and skip the re-run** — rejected: a tag
+  can be moved or created on any commit, so "was green once on a PR" is not evidence about the
+  tagged tree.
+
+**How the duplication's cost is paid.** By an oracle, not by discipline. §8.5's
+`ci-arrangement.test.js` asserts a **set-equality between `publish.yml`'s gate job run commands
+and `pr-tests.yml`'s five**, so a command that drifts in one file and not the other fails the
+gate. Duplication with an equality check is safer than extraction with a blind one. The rejected
+path is additionally made *mechanically unavailable*: **a job carrying `uses:` fails the
+arrangement gate as unexpandable**, symmetric with BR-7.3/E-19 — so a future attempt at
+extraction goes red in CI instead of silently renaming a consumer's checks.
+
+**Constraints that forced the shape.** C-5 (additive publish workflow); C-6 (same evidence);
+BR-7.5 (`pr-tests.yml`'s rendered set is the contract); the fact that Phase PUB polls check
+names as literals. Note `pr-tests.yml` already contains `uses:` at step level (action
+invocations, nine at HEAD) — the gate's prohibition is on **job-level** `uses:`, and §8.5's
+reader is job-level throughout.
+
+**Reversibility.** Hard in practice, though easy in YAML. Reversal renames live check names that
+consumers poll, which is a coordinated change across repos rather than a refactor — which is
+precisely why the arrangement gate refuses it rather than merely discouraging it.
+
+**Re-evaluation triggers.** Phase PUB stopping polling literal check names (e.g. moving to a
+required-status API keyed on job ids), which removes the renaming hazard entirely and makes
+extraction cheap; the gate growing past five jobs, where the duplication cost starts to exceed
+what the command set-equality comfortably covers.
+
 ## 12. Decisions deliberately not taken here
