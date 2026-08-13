@@ -46,7 +46,45 @@ at `bin/pdlc.mjs:22-24`, six local modules at `:26-31`.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §2's Reversibility now says AF-2 is deleted with the vendor step. Does the *reversal* then leave the two-file vendored set unasserted in any form, or is AF-1's tracked-ness reading intended to be the whole assertion in a repo that vendors nothing? The entry reads as the latter, which is right — a one-clause confirmation would close it, since a future reverser reading "delete AF-2" and nothing else may reasonably wonder what replaces it. |
+| Q-02 | §7's `128 + signum` mapping is decided launcher-side. Is the fake target's self-kill signal in the nominated oracle fixed by the test (so the expected exit number is a literal transcription, e.g. SIGTERM → 143), or derived from the observed signal at assert time? Only the literal form avoids the implementation echo — deriving `128 + observed` passes even if the launcher and the test share a wrong mapping. |
+| Q-03 | §5's assertion 2 covers `devDeclared: true` with the variable set. Is the fourth row of §6.5's table — `devDeclared: true`, variable **unset** — also asserted, or does the pair (1) + (2) leave the flag's no-op case to §6.5's own coverage? The entry names two rows of a four-row table as this decision's own, which may be exactly right; it is not stated either way. |
+
 ## Positive Observations
+
+- **Both High findings were fixed at the level they were raised, not papered over.** §5 could
+  have kept its conclusion and added a test sentence; instead it retracted the coverage claim
+  in writing ("that was checked against HEAD and it is wrong in two ways"), explained the
+  reverse direction as an *emitter obligation*, and named path-blindness as the specific
+  reason registration is not coverage. §7 likewise did the hard half: it did not just promise
+  a signal test, it **decided the number** (`128 + signum`) so the test has a literal to
+  transcribe. A decision record that leaves the expected value undecided guarantees an
+  implementation-echo oracle later; this one closed that door.
+- **The oracle prose now rejects weak assertions by name, in the document's own voice.** "A
+  positive assertion on the id, not 'no override was applied', which would also pass if the
+  variable had never been set" (§5) and "a positive assertion on the exact number, not merely
+  `!== 0`, since a passing `!== 0` would not distinguish the decided mapping from an accidental
+  crash" (§7) are absence-only-oracle rejections written by the author rather than imposed by
+  review. That is the standard propagating into the artifact, which is where it survives.
+- **The relocation cost got *worse* under re-derivation, and the entry says so.** Three
+  consumers became five, two of the original citations turned out to point at a comment and a
+  generated banner, and consumer 4 — `MERGE_GUARD_DEFAULTS`'s literal `"pdlc/workflows/"` —
+  is the one that does not go red but silently stops covering a path. Discovering that the
+  rejected alternative is *more* expensive than first priced, and publishing the correction
+  with a table, is the opposite of the usual drift; I re-derived all five and they hold.
+- **Q-03's answer changed an oracle, not just a sentence.** §8 row (a) now compares launcher
+  stdout against the report's engine block rather than each against the pinned literal, with
+  the two-read-paths reason (`--version` reads the store entry's `package.json`; the block is
+  built from `pkg.version` in the child, `bin/pdlc.mjs:323-325`). Comparing observed outputs to
+  each other is strictly more falsifying than comparing both to a constant, and the entry now
+  explains why in a form a test author can act on.
+- **Row (c) is written as observable state.** "Prints branch 0's parse-error text, names the
+  file, prints the store root and the installed versions, exit 0" is four conjuncts a test can
+  assert, with the reason it exists (it is the only route out of branch 0) attached. The §9
+  carve-out table's new fourth row closes the loop from the other side, so neither table can be
+  edited into inconsistency without the other looking wrong.
 
 ## Recommendation
 
