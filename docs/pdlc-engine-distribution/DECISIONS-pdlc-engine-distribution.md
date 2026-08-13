@@ -174,7 +174,9 @@ measured answer is that the three criteria are in three different states.
   therefore wrong — raised as an erratum, not fixed here.
 - **AC-6.2 — engine half only.** `Provenance.loadRoot` is real, run-bound evidence
   (`workflowModulePath`, `pdlc/engine/lib/run.mjs:57-62`). The bundle half stays open because
-  C-4 forbids teaching `.claude/workflows/`'s runtime to self-report; recorded as N-3 in §12.
+  C-4 forbids teaching `.claude/workflows/`'s runtime to self-report; recorded as **N-1** in §12
+  (TSPEC §14 numbers it the same way, `TSPEC:1948`; N-3 is BL-03's transcription, an unrelated
+  operator item, and an earlier draft of this bullet pointed there).
 
 **Alternatives considered.**
 
@@ -210,10 +212,23 @@ asset and the raw fields become the contract); `artifactPaths` growing a second 
 *Closes FSPEC O-2's execution half — "how does the pin actually execute?". Mechanism: TSPEC
 §6.1, §6.2, §6.3.*
 
-**Context.** The REQ asks for two things at once: `pdlc` runs the **latest** installed engine
-by default (AC-5.1), and a repo pinning a version that is **not installed** is **refused**
-rather than silently upgraded or downgraded (AC-5.5). AC-5.5's wording — "refuse when the
-pinned version is not installed, run it when it is" — presumes a plural "what is installed".
+**Context.** The REQ asks for three things at once, and it is worth naming which criterion says
+which, because an earlier draft of this entry attributed the default-to-latest half to the wrong
+one:
+
+- **AC-5.1** (`REQ:397-403`) is the *pinned* criterion — a project pinned to X while Y is the
+  latest installed runs X, and the run announces the pin, with the "a newer version exists"
+  half behind an injectable probe that never fails or blocks.
+- **AC-5.2** (`REQ:404-406`) is the *unpinned* criterion — with no pin the latest installed
+  version executes and the run says so, so the absence of a pin is as visible as its presence.
+- **AC-5.5** (`REQ:419`) refuses a pin naming a version that is not installed, rather than
+  silently upgrading or downgrading.
+
+AC-5.1's own wording already forces the shape: "version X executes while version Y is the
+latest installed" is a statement about two versions resident at once. AC-5.2 and AC-5.5 then
+say what happens at the two ends of that residency — latest when unpinned, a refusal when the
+pin names something absent. AC-5.5's "refuse when the pinned version is not installed, run it
+when it is" presumes the same plural "what is installed".
 
 **Decision.** Installed engine versions live side by side under one store root
 (`$PDLC_HOME/versions/{version}/`, defaulting to `~/.pdlc/versions/`), populated by a
@@ -227,9 +242,10 @@ Resolution happens exactly once per invocation, which is BR-1.5's structural pre
 **Alternatives considered.**
 
 - **A single global install** (`npm i -g` one version, upgrade in place) — rejected. It cannot
-  answer "what is installed" in the plural, so AC-5.1 and AC-5.5 are jointly unsatisfiable: with
-  one resident version the engine can only run that one, and a pin naming any other must either
-  fetch or lie.
+  answer "what is installed" in the plural, so AC-5.1, AC-5.2 and AC-5.5 are jointly
+  unsatisfiable: with one resident version the engine can only run that one, so AC-5.1's "X
+  executes while Y is the latest installed" has no state that satisfies it, and a pin naming
+  any other version must either fetch or lie.
 - **A global install plus `npx @{scope}/pdlc-engine@{pin}` per pinned repo** — rejected on
   NG-3. `npx` **fetches on a miss**, which is precisely the "never fetches, never
   auto-upgrades" prohibition; the failure would also be a network error rather than AC-5.5's
@@ -242,7 +258,20 @@ Resolution happens exactly once per invocation, which is BR-1.5's structural pre
   recorded separately as DEC-EDIST-06 because the reasoning is about process semantics rather
   than about the store.
 
-**Constraints that forced the shape.** AC-5.1 + AC-5.5 jointly (side-by-side residency);
+**Two operator-facing halves that follow from putting resolution in the launcher** (PM Q-01,
+Q-02). AC-5.1 asks the run to *announce* the pin and AC-5.2 asks the absence of a pin to be as
+visible as its presence; the mechanism is TSPEC §6.4 and §7.1, but the choice of surface is a
+decision, so it is recorded: the announcement rides the **`Provenance` value** built once per
+run (DEC-EDIST-02), so it reaches the banner, the run report and the commit rows through one
+renderer rather than being a banner-only string — an unpinned run carries the same field with
+`mode: "latest"`, which is what makes absence as visible as presence rather than merely
+inferable from silence. AC-5.1's "a newer version exists" probe is observed by the **resolved
+child**, not the launcher: the child is what prints the report, the probe's output belongs
+beside the version it is commenting on, and keeping the launcher free of it keeps the launcher's
+ladder pure and total (§6.3) rather than giving it an injectable seam it would otherwise not
+need.
+
+**Constraints that forced the shape.** AC-5.1 + AC-5.2 + AC-5.5 jointly (side-by-side residency);
 NG-3 (no fetching); C-2/BR-2.1 (machine-level, not repo-level); AC-2.5/BR-2.6 (the engine
 install must not touch the plugin's tree under `~/.claude/`, which a store under `$PDLC_HOME`
 satisfies by construction rather than by discipline).
