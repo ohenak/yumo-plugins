@@ -1313,7 +1313,10 @@ So the guard is **its own dependency-free entry point**:
      `cmdQueue`'s loop branch and so the `runQueueLoop` call site; `--max-iterations` is
      captured as `maxPasses` in the recorded argument object, `bin/pdlc.mjs:425-439`, and drives
      no passes here, because the recorder stands in for the loop — the ≥2-pass fixture is the
-     injection-level leg's, §7.2.) Passing `["dev", "docs/…"]`
+     injection-level leg's, §7.2.) The array deliberately carries **no `--plugin-root` and no
+     `--cwd`**: those pin startup inputs, and the startup rung is injected through `deps`
+     (exception 2), not reached for real — argv here selects a command and a branch, nothing
+     more. Passing `["dev", "docs/…"]`
      instead lands in the `default:` branch (`bin/pdlc.mjs:498-501`), prints `USAGE`, sets
      `process.exitCode = 1` and leaves the recorder uncalled; the tempting "fix" — deleting
      the skip — changes what the real `pdlc` entry parses, which is why the shape is stated
@@ -1822,8 +1825,11 @@ is stated so a dropped bullet is visible):
   one batch is rejected by the manifest, which is the point of stating the edge here.
   **The split task is red-first on its own behaviour change** (TE v7 F-40): it also creates
   `pdlc/engine/__tests__/provenance-path.test.js` with §9.3's two assertions — the import is
-  inert (`process.exitCode` unchanged, no `USAGE` on `stderr`) and `main` plus the default
-  `deps` object are exported and pinned — both of which are red against HEAD's bare
+  inert (`process.exitCode` unchanged, no `USAGE` on `stderr`, measured around a dynamic
+  `await import()` with both restored afterwards, PM v8 Q-01) and `main` plus the default
+  five-key `deps` object are exported and pinned — the gate keys `startupFor`/`liveAdapter`
+  included, since the split task is what introduces them (§9.3, TE v8 F-43) — both of which are
+  red against HEAD's bare
   `main().catch(…)` (`bin/pdlc.mjs:505`) and zero exports. Without them the split task would
   ship the entry guard and the `deps` seam with no test until the next batch. The wiring task
   then **extends the same file** with the process-entry and injection-level legs; the manifest
