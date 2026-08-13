@@ -781,9 +781,17 @@ composition root — `runDev` at `:392`, `runQueue` at `:450-453` — and spread
 | Hop | Site | Change |
 |---|---|---|
 | Build | `lib/provenance.mjs` (§3.1, §7.1) | The single construction site. `bin/cli.mjs` builds the frozen `Provenance` **after** resolution, since the value needs the resolved version, `mode`, `pin` and `loadRoot` (BR-1.5's "resolved once per run") |
+| Hand off (process entry) | `bin/cli.mjs`'s command bodies → `run*()` argument objects | **Three call sites, not two** (TE v5 F-32). At HEAD they are `runDev({reqPath, forcePhases, cwd, adapter, startup})` (`pdlc/engine/bin/pdlc.mjs:385`), `runQueueLoop({queuePath, cwd, adapter, startup, maxPasses})` (`:434`, taken when `cmdQueue` runs in loop mode) and `runQueue({queuePath, cwd, adapter, startup})` (`:457`, the single-pass mode). **Each of the three gains `provenance`** in its argument object. Omitting `:434` is the live failure mode: `runQueueLoop` (`run.mjs:478`) forwards `{maxPasses = null, ...args}` into `runQueue` (`:491`), so it inherits provenance **iff `cli.mjs` put it in the object** — `pdlc queue --loop` would emit `NO_PROVENANCE` while every §12 oracle stayed green |
 | Carry (dev) | `devInjection(adapter, provenance = NO_PROVENANCE)` (`run.mjs:80`) | Gains an **eighth key**, `_provenance`. `runDev` gains a `provenance` argument and passes it here |
 | Carry (queue) | `queueInjection(adapter, runPipeline, provenance = NO_PROVENANCE)` (`:114`) | Gains a **sixth key**, `_provenance`, for `orchestrate-queue.js`'s own `main()` — the module that owns C-c, C-d and kind 3's R-3…R-5 rows. This answers TE Q-12: the queue takes it as an injected seam of its own, **not** through `_runPipeline`'s wrapper, because `commitAdvisoryRecord` (C-d) and `rewriteStatus` are reached by the queue's own `main()`, which `_runPipeline` never enters |
 | Carry (delegated dev) | `runQueue`'s `runPipeline` wrapper (`:450-451`, `const devSeams = devInjection(adapter); (args) => devMain({...args, ...devSeams})`) | **No separate change.** The wrapper spreads `devInjection`'s result, so the dev pipeline a queue run delegates to inherits `_provenance` from the same key. This is the reason the queue key is additive rather than a re-route |
+
+**One `Provenance` per run, not one per pass** (TE v5 Q-15). The value is built once in
+`cli.mjs`'s command body, before `run*()` is called, and `runQueueLoop` passes the **same frozen
+object** into every pass — its loop body calls `runQueue(args)` (`run.mjs:491`) with the very
+`args` it received, and nothing in it rebuilds or re-resolves. That is BR-1.5's "resolved once
+per run" read literally: a queue loop is one run, so all its passes carry identical provenance,
+and a PLAN task must **not** re-derive the value inside the loop.
 
 **The seam sets are pinned by a shipped no-more-no-less equality, so the wiring task edits it in
 the same task or turns a green test red.** `PROP-PARITY-12`
