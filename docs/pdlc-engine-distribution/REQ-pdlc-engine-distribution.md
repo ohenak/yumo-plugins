@@ -234,7 +234,7 @@ default and an owner; none is left to be invented downstream.
 | T-4 | Release trigger | a pushed git tag naming an **engine** version (T-1a), matching the repo's version-tag convention | Operator; fixed in FSPEC |
 | T-5 | Pin scope and precedence | per-consumer-project pin; an explicit pin beats the installed latest; no pin means latest installed | This REQ (AC-5.1); mechanism in O-2 |
 | T-6 | Dev-mode selector | explicit and opt-in; never inferred from cwd, env presence, or the existence of a checkout | This REQ (AC-5.3); flag shape in O-5 |
-| T-7 | Publish gate | **the set of literal required-check names enumerated at M-ENG-10 — that enumeration is the authoritative list, not a count** — every member green on the tagged commit. Adding or removing a member is a change to M-ENG-10 first | `.github/workflows/` (repo) |
+| T-7 | Publish gate | **the required-check names enumerated at M-ENG-10 — that enumeration is authoritative, not a count — in both alphabets it records (authored `name:` and rendered)** — every member green on the tagged commit. Adding, removing or re-rendering a member (including by matrix edit) is a change to M-ENG-10 first | `.github/workflows/` (repo) |
 
 ## 5. Acceptance Criteria
 
@@ -328,10 +328,14 @@ This requirement is the D-DIST-06 release-automation remainder in its new form (
   — two things hold positively and are asserted on both: the published bytes for version N are
   byte-identical before and after the re-run, and the run's own output names version N.
 - **AC-3.4** *Who:* a verifier. *Given:* the repo after this feature lands. *When:* they read
-  the required-check names off the PR gate. *Then:* that set **equals** M-ENG-10's enumerated
-  literal names — a deletion, a rename **and** an unreviewed addition all fail — and every
-  member still runs on pull requests and still gates them; the publish workflow is a separate,
-  additively-added trigger (C-5).
+  the required-check names off the PR gate. *Then:* **two** set-equalities hold, one per alphabet
+  M-ENG-10 records, because they are not the same set: the workflow's authored `name:` strings
+  equal M-ENG-10's authored column, **and** the names GitHub reports after matrix expansion equal
+  M-ENG-10's rendered column — the alphabet Phase PUB polls. A deletion, a rename, a matrix edit
+  that changes only the rendered set, and any addition all fail; every member still runs on pull
+  requests and still gates them; the publish workflow is a separate, additively-added trigger
+  (C-5). "Any addition fails" is literal, not a judgement about review: a check this feature or
+  REQ-EDIST-03 adds must land in M-ENG-10 first — that is the change-control point (T-7).
 - **AC-3.5** *Who:* a verifier. *Given:* a published package. *When:* they inspect its
   contents and any log the publish produced. *Then:* no credential, token or secret value
   appears in either (C-8).
@@ -375,8 +379,12 @@ the committed artifacts.
   constant that happens to match once fails the second observation.
 - **AC-4.5** *Who:* a verifier. *Given:* an existing consumer repo whose artifacts predate
   this feature. *When:* the engine runs there. *Then:* every file under `docs/{feature}/` that
-  existed before the run hashes identically after it, except those the run itself authors as
-  part of its normal phase work — no prior artifact is back-filled with provenance or
+  existed before the run hashes identically after it, **except files the run's own final report
+  enumerates as authored by it** — that enumeration is the comparison set, so membership of the
+  exception is decidable from the run's output rather than from judgement about "normal phase
+  work". Files belonging to any other feature hash identically with no exception at all. If the
+  report does not enumerate authored files today, making it do so is new work of the same kind as
+  AC-4.2's, and is owned with it at **O-9**. No prior artifact is back-filled with provenance or
   invalidated; provenance appears from that run forward (NG-5).
 
 ### REQ-EDIST-05 — Explicit pinning and explicit dev-mode *(P1, Phase 2; US-05, US-06; G-5)*
@@ -422,11 +430,15 @@ the committed artifacts.
   exits 0 with every manifest row in sync — the literal transcription, not "as before".
 - **AC-6.2** *Who:* a verifier. *Given:* a machine with both the plugin and the engine
   installed. *When:* a pipeline run is started through either. *Then:* the run's output
-  identifies which channel and which version executed it (C-9). Because the bundle channel
-  executes inside the Claude Code workflow runtime and cannot read its own provenance, its
-  channel is identified **positively by the engine's absence of an engine provenance block**,
-  which is itself asserted; and the two installs' write roots are disjoint enumerated paths
-  (the plugin's `.claude/workflows/` versus the engine's own install location).
+  identifies which channel and which version executed it (C-9). The bundle channel executes
+  inside the Claude Code workflow runtime and cannot emit a provenance block of its own (C-4
+  forbids touching that path to add one), so its identification is a **conjunction of three
+  observations bound to one run**, not an absence: (1) the run completed and emitted its own
+  named output artifacts; (2) that output carries no engine provenance block; (3) the write root
+  it touched is the plugin's `.claude/workflows/`. A run that crashed before emitting anything
+  fails (1); an engine run fails (2) and (3). The two installs' write roots are disjoint
+  enumerated paths — the plugin's `.claude/workflows/` versus the engine's own install location —
+  and (3) is the positive that conjunct 2 alone cannot carry.
 
 ## 6. Risks
 
