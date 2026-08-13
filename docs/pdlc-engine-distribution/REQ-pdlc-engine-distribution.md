@@ -10,19 +10,29 @@ depends-on: [pdlc-headless-engine]
 |---|---|
 | Upstream | `pdlc-headless-engine`; proposes superseding the `pdlc-install-mechanism` deferrals D-DIST-01/02/03/05; proposes absorbing/renarrowing `pdlc-release-ci` (D-DIST-06 release remainder) |
 | Downstream | `pdlc-plugin-retirement` |
-| Cross-Reviews | — |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.6 | 2026-08-13 |
+| pdlc | Draft — in review (Phase R) | Claude | 0.7 | 2026-08-13 |
+
+*0.7 (2026-08-13, review round 1): §1.1 re-measured at `89babe8e` and its code-level facts moved
+to `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-10…M-ENG-13, cited by id. BL-03 resolved
+by new **O-7** (two versions of record; the tag is an engine tag), so T-1, AC-1.4 and AC-3.6 name
+which value they read. O-8 extended to all three publish blockers (licence, `private`, unscoped
+name). T-7/AC-3.4 restated as set-equality over M-ENG-10's literal check names. Packaging↔anti-fork
+collision recorded as **R-5** and AC-1.3 restated as set-equality over the packed file list. New
+**O-9** owns the provenance carrier AC-4.2 needs. Absence-only oracles paired with positives
+(AC-2.3, AC-2.5, AC-3.3, AC-4.4, AC-6.1, AC-6.2); new **AC-5.6** for the `PDLC_PLUGIN_ROOT`
+tension. The false "prompt corpus is embedded in `orchestrate-dev.js`" clause deleted from NG-1
+and O-1 (raised as an erratum against DECISIONS-plugin-distribution.md).*
 
 *0.6 (2026-08-13): O-1 and O-3 decided (operator delegated adjudication). O-1 — public npm,
 scoped package, recorded as DEC-DIST-05 in `docs/_decisions/DECISIONS-plugin-distribution.md`;
-the licence field must stop saying `UNLICENSED` before first publish (new O-8). O-3 — queue row 7
-`pdlc-install-mechanism` closed as superseded, row 8 `pdlc-release-ci` kept and renarrowed to
-release automation for that package; both dispositions written into `docs/_queue/QUEUE.md`. No
-obligation in this REQ is open.*
+the licence field must stop saying `UNLICENSED` before first publish (new O-8). O-3 —
+`pdlc-install-mechanism` closed as superseded, `pdlc-release-ci` kept and renarrowed to release
+automation for that package; both dispositions written into `docs/_queue/QUEUE.md`.*
 
 *0.5 (2026-08-13): §7 obligations corrected against already-shipped/adjudicated fact — O-2, O-4,
 O-5 and O-6 answered and closed against citations in the headless-engine and plugin-retirement
@@ -58,20 +68,23 @@ checkout the operator runs by path, which reproduces the failure this family exi
 one level up: two machines, two checkouts, two versions, and nothing in any artifact that
 says which one ran.
 
-### 1.1 What is true at HEAD (verified 2026-08-08)
+### 1.1 What is true at HEAD (re-measured 2026-08-13 at `89babe8e`)
 
-Every claim this REQ rests on was checked against the repo on the authoring date. These are
-observations, not contracts — the contracts are the TSPEC's.
+Every claim this REQ rests on was re-checked against the repo at review round 1. These are
+observations, not contracts — the contracts are the TSPEC's. Code-level facts live once, in
+`docs/_constraints/pdlc-engine-baseline.md`, and are cited here by id so a later drift is a
+one-file correction rather than a stale snapshot inside this REQ.
 
 | # | Observation | Where |
 |---|---|---|
 | O-A | There is **no release automation of any kind**. `.github/workflows/` contains exactly one file, the PR-test gate. No tag trigger, no publish step, no marketplace step. | `.github/workflows/pr-tests.yml` |
-| O-B | The PR gate is **four** required checks — unit tests, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on a matrix of **ubuntu-latest × Node 20 only**. | `.github/workflows/pr-tests.yml` |
-| O-C | The single version of record is the plugin manifest; the build reads it and stamps it into the distribution manifest. Nothing else in the repo declares a pdlc version. | `pdlc/.claude-plugin/plugin.json` (0.22.0), `pdlc/workflows/build-runtime.mjs` |
+| O-B | The PR gate is **five** required checks — unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on **ubuntu-latest × Node 20 only**. The literal check names Phase PUB and T-7 match on are enumerated in **M-ENG-10**, which is the authoritative list; the words here are a gloss, not the names. | M-ENG-10 |
+| O-C | **Two** version numbers exist: the plugin manifest's, which the build stamps into the distribution manifest, and the engine package's own, independent of it. Neither reads the other. Which one is "the version of record" for which purpose is settled at O-7. | M-ENG-11; `pdlc/workflows/build-runtime.mjs` |
 | O-D | The distribution manifest already establishes the packaging discipline this REQ inherits: a schema version, the version the bytes were built at, and one row per artifact carrying a path pair and a content hash, plus a retired-predecessor list. | `pdlc/workflows/dist/distribution-manifest.json` |
 | O-E | The prompt corpus is **15 `SKILL.md` files plus two `se-implement` language supplements**. (The design brief and the upstream REQ both say "14"; that count is stale.) | `pdlc/skills/**` |
-| O-F | **No run report carries a version today.** The final report's fields (outcome, `prUrl`, `ciStatus`, `mergeStatus`, `queueRow`, advisory rows) contain no engine or plugin version, so "which semantics ran?" is not answerable from a consumer repo's artifacts. | `pdlc/workflows/orchestrate-dev.js` |
-| O-G | The only npm project in the repo is the workflow test package; there is no root package and no publishable package today. | `pdlc/workflows/package.json` |
+| O-F | **Provenance exists on one side of the seam only.** The engine-side report already carries the engine/plugin pair; the workflow layer that writes the committed halt artifacts carries no version and cannot obtain one. So "which semantics ran?" is answerable from the CLI's printed report but *not* from a consumer repo's committed artifacts — which is the gap REQ-EDIST-04 closes. | M-ENG-13 |
+| O-G | There are **two** npm projects: the workflow test package and the engine package. Neither is publishable as declared (M-ENG-11). | `pdlc/workflows/package.json`, `pdlc/engine/package.json` |
+| O-H | The engine package **cannot contain the workflow modules as arranged**: they are resolved by relative escape above its root, and two shipped tests fail if a copy is vendored under `pdlc/engine/`. This is the packaging constraint R-5 prices. | M-ENG-12 |
 
 The incident that motivates the family is the same one: on 2026-08-08 the consumer
 `regime-ledger` ran engine bytes built at plugin 0.21.0 against a 0.22.0 plugin — versions
@@ -86,8 +99,10 @@ files, never from the run's own output. O-F is why.
 | `pdlc-install-mechanism`, cont. | D-DIST-07 (per-worktree consumer state) | **Closes by construction** once `pdlc-headless-engine` ships: the engine reads no worktree-local `.claude/workflows/`. Recording that closure is part of O-3. |
 | `pdlc-release-ci` (blocked, REQ never authored) | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Absorb or renarrow.** The tag → build → publish pipeline this REQ needs (§5, REQ-EDIST-03) *is* that remainder. Operator decision — O-3. |
 
-Both rows stay exactly as they are — `blocked`, untouched — until the operator records
-the decision in `docs/_queue/QUEUE.md`. This REQ does not retire them; it argues for it.
+Both dispositions have since been recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13):
+`pdlc-install-mechanism` is closed as superseded and `pdlc-release-ci` is kept, renarrowed to
+release automation for this package and made dependent on this feature. Rows are named here by
+**feature name, not queue Order** — Order numbers renumber, the feature name is the identity.
 
 ### 1.3 User stories
 
@@ -106,8 +121,8 @@ the decision in `docs/_queue/QUEUE.md`. This REQ does not retire them; it argues
 |---|---|---|---|
 | BL-01 | `pdlc-headless-engine` delivered: a CLI entry that executes the canonical modules and dispatches via headless Claude Code | PR merged to the default branch, queue row `done` | Must hold at HEAD before FSPEC authoring — there is no engine to package otherwise |
 | BL-02 | Distribution channel chosen (O-1), against the privacy posture in NG-1 | Decision recorded in `docs/_decisions/DECISIONS-plugin-distribution.md` | Must exist before FSPEC authoring; every install/upgrade criterion in §5 is stated over "the chosen channel" |
-| BL-03 | Version-of-record settled (T-1) — whether the plugin manifest stays the sole source or the package manifest becomes it | Decision recorded in `docs/_decisions/DECISIONS-plugin-distribution.md` | Must exist before FSPEC authoring; provenance (REQ-EDIST-04) and publish gating (REQ-EDIST-03) both read it |
-| BL-04 | Operator decision on rows 6 and 7 (O-3) | Prose recorded in `docs/_queue/QUEUE.md` per its conventions | Must exist before this REQ is accepted; otherwise this REQ silently duplicates two bound deferrals |
+| BL-03 | Version-of-record settled (T-1) — which manifest each of the two version numbers at O-C is the record for, and which one a release tag names | **Resolved at O-7**, to be transcribed into `docs/_decisions/DECISIONS-plugin-distribution.md` before FSPEC authoring | Must exist before FSPEC authoring; provenance (REQ-EDIST-04) and publish gating (REQ-EDIST-03) both read it |
+| BL-04 | Operator decision on the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows (O-3) | Prose recorded in `docs/_queue/QUEUE.md` per its conventions | **Met 2026-08-13** — both dispositions are in `QUEUE.md`; without them this REQ silently duplicates two bound deferrals |
 
 ## 2. Goals
 
