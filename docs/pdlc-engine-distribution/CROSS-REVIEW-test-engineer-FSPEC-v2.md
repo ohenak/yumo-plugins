@@ -58,8 +58,56 @@ findings below are new, all in changed passages, none blocking.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-5.3b asserts "the two absent kinds are **not asserted vacuously**". That is a property of the *test*, not of the run, and I cannot see how a test suite falsifies it about itself. Is the intent a mutation-style check — a fixture that produces a POSTMORTEM *unmarked* must turn AT-5.3b red, proving the kind is really being examined and not skipped? If so, that is already the second clause of the same bullet, and the first clause can simply be dropped as unwritable prose. |
+| Q-02 | BR-9.2 replaces literal four-kind equality with "every kind produced is marked and no kind outside this table is produced". The closure half — *no kind outside* — needs a decidable universe of kinds to quantify over. BR-9.1 says kinds are read off the run's own authored-file enumeration, which is O-9's deliverable and does not exist at HEAD; §5.3 is not marked `[blocked on O-9]` though AT-4.2/AT-4.5 are for the same carrier. Is §5.3's carrier a *different* enumeration that already exists, or does AT-5.3/AT-5.3b share AT-4's blocker? |
+| Q-03 | AT-3.4 now runs mutations against fixture copies (BR-7.6) while the expected sets are transcribed from the live `pr-tests.yml`. What keeps a fixture copy from drifting from the live file — is the fixture generated from the live file at test time (in which case mutation is applied to a copy of the real bytes and drift is impossible), or checked in (in which case a live-file edit silently stops being exercised)? One clause in BR-7.6 settles it. |
+
 ## Positive Observations
 
+- **The three Highs were fixed at the mechanism, not at the sentence.** Each repair changed what
+  a test can *observe*, not how the document reads: a literal member list replacing a directory
+  listing, a named alphabet and a named file replacing "the repo's workflow files", an injectable
+  seam where there was no seam. That is the difference between an addressed finding and a
+  paraphrased one.
+- **The split of AT-3.8 into `a`/`b` is the right shape for a blocked half.** The writable half
+  keeps full member-for-member equality with literal expected values *today*; only the genuinely
+  undecidable half is deferred, and it says exactly what decision unblocks it. Compare the easy
+  wrong move — marking the whole AT blocked — which would have lost coverage that exists.
+- **BR-9.2 states the hard part of set-equality honestly.** "A green single-feature run writes no
+  POSTMORTEM … so literal equality against all four would fail every such run" is the observation
+  most specs skip, and the answer given (equality over kinds produced, each kind paired with a
+  positive and an unmarked-fails fixture) keeps the check falsifiable instead of quietly relaxing
+  it to containment.
+- **BR-3.9 reuses BR-7.4's shape rather than inventing a second one.** A named, dated, one-time,
+  explicitly non-gating observation for the leg a stub cannot reach — with the reason the stub is
+  mandatory (`DECISIONS-plugin-distribution.md:125`) written down — is the same pattern already
+  approved for rendered check names. One idiom, used twice, is much cheaper to review than two.
+- **E-29 is a negative-space row done right.** "A step-level `name:`, or a publish-workflow job
+  `name:`, is added or edited ⇒ the set-equality is **unaffected**" turns an exclusion that was
+  prose into something a test can fail on. Most specs state exclusions and never test them.
+- **The environment labels close the cheapest-reading loophole.** `[auto]` / `[fixture]` /
+  `[manual]`, plus "an unlabelled family is a defect", plus AT-2's explicit "never the maintainer's
+  own machine", makes it impossible to discharge AC-2.1…AC-2.5 by having run it once locally.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+All three v1 High findings are resolved, verified against HEAD rather than against the document's
+own account: §5.2 enumerates its twelve `lib/*.mjs` members literally and forbids the directory
+listing that would have derived them; BR-7.1 scopes both set-equalities to the five job-level names
+of a named PR-gate file and pushes step-level names and the publish workflow out of the set with a
+testable row (E-29); BR-3.9 gives the publish channel an injectable seam, which makes AT-3.1,
+AT-3.3 and AT-3.5 runnable offline and makes AT-3.3's no-op branch observable at all. The four
+Medium/Low items of v1 are also addressed, and the delta broke nothing I had previously approved.
+
+The four new findings are recorded, not gating. Two are worth folding into the next authoring pass
+regardless of the verdict, because both cost one sentence and both get more expensive later:
+AT-3.5's scan needs a positive that the credential path is live (F-01, whose root shape is an
+erratum against the REQ's AC-3.5), and §5.2 needs a partition rule so AT-3.8a and AT-3.8b compose
+into one member-for-member equality when O-10 lands in the TSPEC (F-02). E-22's missing
+`[blocked on O-10]` mark (F-03) and AT-2.2's undecided grep key (F-04) are one-line edits.
 
 ## Verdict
