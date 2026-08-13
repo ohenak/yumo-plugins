@@ -101,4 +101,41 @@ and are restated below rather than dropped.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. The one edit this round was correct, complete against what it promised, and
+verifiable against HEAD in every particular I checked: `exitCodeFor`'s mapping
+(`run.mjs:290-294`), its pinning test (`exit-loop.test.js:88`), AC-1.4's actual text
+(`REQ:266-270`), and the absence of any third un-repaired occurrence. The revision broke nothing
+reviewed in rounds 1–2 — I specifically re-read §7's oracle paragraph to confirm the
+exact-number assertion survived the rewrite of the paragraph above it. It did.
+
+Seven findings, none blocking, and they fall into two piles the author should treat differently.
+
+**Three are bookkeeping the remediation could not have known to do** (F-01, F-02, F-03), and
+they share one cause: a single-finding repair landed inside a document whose surrounding text
+had assumed the pre-repair world. §7 now cites the right invariant but still tells the reader
+upstream under-covers a behaviour upstream now covers (F-02); the new citation lacks the
+coordinates every other citation in the document carries (F-03); and the document's own version
+label no longer distinguishes the approved bytes from the current ones, while its sibling TSPEC
+bumped to v0.11 in the same remediation (F-01). F-01 is the one I would fix first — not for
+tidiness, but because PLAN and PROPERTIES are about to be authored against "DECISIONS v0.3", and
+two byte-states now answer to that name.
+
+**Four are round-2 findings that were never in scope for this remediation** (F-05, F-06, F-07,
+plus the still-open half of the `.npmignore` question). They were non-blocking when raised and
+remain so. Worth noting that upstream moved under two of them: TSPEC v0.10 discharged my v2
+erratum about D-5, and in doing so *confirmed* F-06's mechanism — `TSPEC:314` states the
+`.npmignore` is never a packed member, which settles that PF-4 structurally cannot observe its
+deletion. That finding is now better evidenced than when I first raised it, and its fix is still
+two clauses.
+
+The pattern I flagged in round 2 held again this round, in the good direction: the fix decided a
+mechanism (`exitCodeFor` as the named constraint) and nominated the oracle that pins it in the
+same edit. What it did not do is sweep the sentences that the fix made false — a cheaper and
+more mechanical obligation, and the whole of F-02.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 5, "low": 2}
