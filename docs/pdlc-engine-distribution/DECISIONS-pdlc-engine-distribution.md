@@ -350,6 +350,58 @@ a platform where signal and stdio pass-through through `spawnSync` proves unreli
 
 ## 8. DEC-EDIST-07: `--version` and `doctor` resolve but never refuse
 
+*Mechanism: TSPEC §6.2, §11.*
+
+**Context.** AC-1.1 puts `pdlc doctor` outside the compat gate — the diagnostic that explains a
+refusal must itself still run. At HEAD that holds: `cmdDoctor` checks and dispatches nothing
+(`pdlc/engine/bin/pdlc.mjs:208`, invoked at `:489-491`). DEC-EDIST-03 adds a *new* gate,
+resolution, which runs in the launcher **structurally earlier** than the compat gate — so
+without an explicit exemption the diagnostic becomes unreachable in exactly the state that most
+needs it (TSPEC R-B: `--ignore-scripts` leaves the store empty, ladder branch 7 refuses, and the
+operator cannot run the one command that would explain why).
+
+**Decision.** `--version` and `doctor` **resolve, but never refuse**. They run the same ladder,
+for reporting only: they never hand off to a resolved child, and a refusing branch is downgraded
+to a notice rather than an exit.
+
+- **Resolution succeeds** — report the **resolved** engine's triple, read from the resolved
+  store entry's own `package.json`, with `mode` reported.
+- **Resolution fails** — fall back to the launcher's **own** version, `mode: "unresolved"`, the
+  refusing branch's text carried as a notice; `doctor` additionally prints the store root and
+  the installed versions ("versions installed: none" is what turns R-B from a mystery into an
+  instruction).
+- **Exit code is 0 in both states.** A diagnostic that exits non-zero because the thing it
+  diagnoses is broken is not a diagnostic.
+
+**Why report the resolved triple rather than the launcher's own.** AC-1.4 requires that the
+triple `--version` prints is the same triple the startup banner and the run report carry
+(`runStartupChecks` already returns `versions: {engine, plugin}`,
+`pdlc/engine/lib/startup.mjs:319`, `:453`). In a pinned repo the resolved version differs from
+the launcher's, so reporting the launcher's own would put exactly AC-1.4's forbidden divergence
+in front of the one operator debugging a pin.
+
+**Alternatives considered.**
+
+- **Exempt them from resolution entirely** (always report the launcher's own version) —
+  rejected: simplest, but it breaks AC-1.4 in precisely the pinned case, per the paragraph
+  above. AC-1.1 asks that these commands never *refuse*, not that they never *resolve*.
+- **Let them refuse like every other command** — rejected: it makes R-B unrecoverable and
+  contradicts AC-1.1.
+- **Exit non-zero on the unresolved path** while still printing — rejected: callers and CI treat
+  non-zero as "the command failed", and the command did not fail.
+
+**Constraints that forced the shape.** AC-1.1 (diagnostic outside the gate); AC-1.4 (one
+triple, everywhere); R-B's `--ignore-scripts` reality.
+
+**Reversibility.** Easy — it is a branch in the launcher. Both states are asserted, so a
+regression is caught: (a) pinned repo with the pin in the store → `--version`'s triple equals
+the run report's equals the pinned version, `mode: "pin"`; (b) empty store → the launcher's own
+version, `mode: "unresolved"`, notice, exit 0.
+
+**Re-evaluation triggers.** A third exempt command appearing (the exemption list stops being two
+special cases and wants a declared property); `doctor` growing an action that mutates state, at
+which point "never refuses" becomes unsafe.
+
 ## 9. DEC-EDIST-08: An unreadable consumer config refuses, even when no pin was declared
 
 ## 10. DEC-EDIST-09: A dependency-free guard entry point; the CLI body moves to `bin/cli.mjs`
