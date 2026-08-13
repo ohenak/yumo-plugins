@@ -453,10 +453,26 @@ target version, because the two versions may declare different
 signal handling, exit-code propagation and stdio buffering, and calling it replacement would
 hide exactly the behaviours that need asserting.
 
+**The signalled child is decided here, not merely named.** "Re-raise the child's exit code"
+is undefined when the child is terminated by a signal: `spawnSync` returns
+`{status: null, signal: "SIGINT"}` in that case, so a literal `process.exit(result.status)`
+exits **0** on a Ctrl-C'd pipeline — a run that was interrupted reporting success, which
+collides with AC-1.4's exit-code contract in the one case an operator is most likely to
+produce by hand. Per DEC-EDIST-06: when `status` is `null` and `signal` is set, **the
+launcher exits `128 + signum`** — the conventional shell encoding, non-zero for every
+signal, not colliding with 1 or 2, and recoverable back to the signal number by the caller.
+When `status` is a number it is re-raised verbatim, unchanged from the paragraph above.
+
 Because pass-through is a claim about a real process, it gets a real oracle rather than
 resting on S-3's descriptor double: **one test spawns through the launcher against a trivial
 fake target** and asserts a non-zero exit code is propagated verbatim, that stdout and stderr
-each arrive unchanged, and that they are not interleaved into one stream. S-3's descriptor
+each arrive unchanged, and that they are not interleaved into one stream. **The signalled
+case gets its own leg in the same test**, because the exit-code assertion above cannot reach
+it: the fake target kills itself with a known signal, and the leg asserts the launcher's own
+exit status **equals the exact decided number** (`128 + signum` — e.g. `130` for `SIGINT`),
+a positive assertion on a literal rather than a `!== 0` that `null`-coerced-to-0 would also
+have satisfied on the very defect this closes. Signal handling therefore stops being a
+behaviour §6.2 names as needing assertion and becomes one it specifies an oracle for. S-3's descriptor
 recorder (path, argv, env) stays for the resolution assertions, where not spawning a second
 Node is the point; it cannot falsify pass-through, so it is not asked to. The claim that
 "every existing CLI oracle keeps working" is load-bearing precisely because the shipped
