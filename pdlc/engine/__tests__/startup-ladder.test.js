@@ -398,3 +398,49 @@ test("EC-START-4's converse: the SAME rung-5 refusal on a dispatching (non-dry-r
   assert.equal(result.ok, false);
   assert.equal(rung(result, "5").state, "fail");
 });
+
+// ─── AC-2.1 / §5.1's six auth rows, driven through the real startup path ────
+//
+// Rows 1 (`auth.oauth-token`), 5 (`auth.api-key-refused`) and 6
+// (`auth.unknown`) are already exercised above — by the doctor-projection
+// test, by the two EC-START-4 cases, and by `baseOpts()`'s own empty
+// environment respectively. The three rows below are the residue, and they
+// are here for the same reason the others are: rung 5 renders the posture
+// through the catalogue seam (`message(...)`, `catalogue.mjs`), so a row no
+// test provokes is a registered id no path emits — exactly what
+// `_assert-suite-wide.mjs`'s catalogue row fails on (PROP-MSG-2, AT-ENG-61).
+
+/** A `~/.claude.json` fixture carrying an oauth account — §3.2's "logged in". */
+function loggedInFs() {
+  return {
+    readFileSync: () => JSON.stringify({ oauthAccount: { emailAddress: "tester@example.com" } }),
+  };
+}
+
+test("AC-2.1 row 2: a logged-in session with no API key resolves auth.session and passes rung 5", () => {
+  const result = runStartupChecks(baseOpts({ env: {}, fs: loggedInFs() }));
+  assert.equal(result.auth.catalogueId, "auth.session");
+  assert.equal(result.auth.row, 2);
+  assert.equal(rung(result, "5").state, "pass", rung(result, "5").detail || "");
+  assert.match(rung(result, "5").detail, /auth\.session/);
+});
+
+test("AC-2.1 row 3: an API key WITH the billing opt-in resolves auth.api-key-optin and passes rung 5", () => {
+  const result = runStartupChecks(
+    baseOpts({ env: { ANTHROPIC_API_KEY: "sk-live" }, allowApiKeyBilling: true })
+  );
+  assert.equal(result.auth.catalogueId, "auth.api-key-optin");
+  assert.equal(result.auth.row, 3);
+  assert.equal(rung(result, "5").state, "pass", rung(result, "5").detail || "");
+});
+
+test("AC-2.4 row 4: an API key WITHOUT opt-in but with a logged-in session is ignored, not refused", () => {
+  const result = runStartupChecks(
+    baseOpts({ env: { ANTHROPIC_API_KEY: "sk-live" }, allowApiKeyBilling: false, fs: loggedInFs() })
+  );
+  assert.equal(result.auth.catalogueId, "auth.session-key-ignored");
+  assert.equal(result.auth.row, 4);
+  assert.equal(rung(result, "5").state, "pass", rung(result, "5").detail || "");
+  // The key is unused, so the refusal row must not have been reached.
+  assert.doesNotMatch(rung(result, "5").detail, /refuses to dispatch/);
+});

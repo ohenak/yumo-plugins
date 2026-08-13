@@ -26,6 +26,16 @@ import { resolvePluginRoot, loadSkill, PLUGIN_ROOT_ENV } from "./skills.mjs";
 import { readPluginVersion, checkCompat, buildBanner } from "./handshake.mjs";
 import { DEFAULT_PERMISSION_MODE, buildGuardHooksOption, assertCwdIsGitRepository } from "./transport.mjs";
 import { readLoginEvidence, resolveAuthPosture } from "./auth.mjs";
+import { message } from "./catalogue.mjs";
+
+/**
+ * The one parameterised entry among §5.1's six auth rows: the refusal names
+ * the credential the policy set excluded. The other five templates take no
+ * params, so an absent key here is "no params", not "unknown row".
+ */
+const AUTH_MESSAGE_PARAMS = Object.freeze({
+  "auth.api-key-refused": { source: "ANTHROPIC_API_KEY" },
+});
 
 /** FSPEC §4.1's ladder, verbatim: rung ids are LABELS, never integer indices. */
 export const RUNG_ORDER = Object.freeze(["0", "1", "2", "3", "4", "4a", "5"]);
@@ -424,7 +434,11 @@ export function runStartupChecks({
     : { ok: true, reason: null };
 
   if (r0.ok) {
-    const authDetail = `auth catalogue ${posture.catalogueId} (row ${posture.row})${
+    // The posture's operator-visible sentence comes from the catalogue seam
+    // (§3.5, BR-MSG-1) — the id and row stay alongside it because AC-2.1 makes
+    // the id the greppable fact, not the prose.
+    const authText = message(posture.catalogueId, AUTH_MESSAGE_PARAMS[posture.catalogueId]);
+    const authDetail = `${authText} [auth catalogue ${posture.catalogueId}, row ${posture.row}]${
       posture.refuses ? " refuses to dispatch" : ""
     }`;
     const rung5Ok = !posture.refuses && guardCheck.ok;
