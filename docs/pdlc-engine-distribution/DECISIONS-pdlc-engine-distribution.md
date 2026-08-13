@@ -16,8 +16,9 @@
 | Version | Change |
 |---|---|
 | 0.1 | Initial draft — DEC-EDIST-01…10 recorded from TSPEC v0.9 §4, §6.2, §6.4, §8.2, §9.3 |
+| 0.2 | §1 retitled to expose the context concept; §13 decision register added. No entry's substance changed — both edits are navigational. |
 
-## 1. Scope
+## 1. Scope and Context
 
 This document records the load-bearing decisions the TSPEC takes, with the alternatives that
 were rejected and why. It is the *record*, not a second authority: where a mechanism is
