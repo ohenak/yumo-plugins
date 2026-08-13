@@ -612,3 +612,35 @@ the same file PF-3 already reads.
 entries above are R-A (DEC-EDIST-01's tracked-ness weakening, §2), R-B (`postinstall` fragility,
 mitigated structurally by DEC-EDIST-07) and R-E (the Node-12.17 syntax-subset claim is
 documented, not tested, with the mechanical reversal trigger in DEC-EDIST-09).
+
+## 13. Decision register: options considered, decision, consequences
+
+An index, not a second authority. Each row compresses the entry named in its first column; where
+this table and the entry disagree, the entry governs, and where the entry and the TSPEC section it
+cites disagree, the TSPEC governs. It exists so a reader arriving at a 600-line record can find
+the entry that bears on the change in front of them without reading all ten.
+
+| ID | § | Decision | Principal option rejected | Consequence carried | Reversal |
+|---|---|---|---|---|---|
+| DEC-EDIST-01 | §2 | `prepack` vendors the two workflow modules into `pdlc/engine/vendor/workflows/`, tarball-only, hash-manifested; two-root resolution | Relocating the modules under the package root — a three-consumer edit today (`build-runtime.mjs`, `sync-workflows.sh`, `run.test.js:45-46`), not a `git mv` | AF-1 weakens to tracked-ness, so an untracked byte-identical copy is uncovered (R-A) | Easy — delete the step and the second root |
+| DEC-EDIST-02 | §3 | One optional `_provenance = NO_PROVENANCE` parameter carrying engine-rendered `line`/`block`; AC-4.5 needs no carrier, AC-6.2 gets the engine half only | Three separate carriers, one per criterion — two of the three turned out to need none | Two injection objects and `PROP-PARITY-12`'s pinned seam lists grow a member each | Easy per placement; moderate whole |
+| DEC-EDIST-03 | §4 | Side-by-side version store under `$PDLC_HOME/versions/`, populated by `postinstall`, fronted by a resolving launcher (`dev ≻ pin ≻ latest`) | A single global install — cannot answer "what is installed" in the plural, so AC-5.1 and AC-5.5 are jointly unsatisfiable | On-disk machine state; a two-process hop (R-C); `postinstall` fragility (R-B) | **Hard** — retreat re-opens AC-5.5 |
+| DEC-EDIST-04 | §5 | A bare `PDLC_PLUGIN_ROOT` is ignored with a catalogue notice; the `--plugin-root` flag keeps precedence | Refusing on it — but the variable is the product's own shipped remedy text (`handshake.mjs:131-134`), so refusal punishes operators mid-refusal | One branch, one message, plus the `REMEDY` text update | Easy — same single branch either way |
+| DEC-EDIST-05 | §6 | An explicit `files` allow-list, checked by member-for-member equality against §5.4's literal table via a real `npm pack` | An `.npmignore` deny-list — a forgotten entry **ships** what should not, silently, to consumers | §5.4's table is hand-maintained; a glob would make PF-4 vacuous | Easy in code; the equality discipline is not |
+| DEC-EDIST-06 | §7 | The launcher hop is `spawnSync` with `stdio: "inherit"`, re-raising the child's exit code | In-process `import()` — one ESM registry would force resident versions to share one SDK tree | Two Node startups per run (R-C); pass-through needs a real spawning oracle, not a double | Easy |
+| DEC-EDIST-07 | §8 | `--version` and `doctor` **resolve but never refuse**; refusing branches degrade to notices, exit 0 in both states | Exempting them from resolution entirely — breaks AC-1.4's one-triple rule in exactly the pinned case | An exemption list of two, asserted in both states | Easy — a branch in the launcher |
+| DEC-EDIST-08 | §9 | `readEngineConfig`'s `engine` read returns `absent`/`no-pin`/`unreadable`; ladder branch 0 refuses on `unreadable` **even with no pin declared** | "Unparseable, therefore assume no pin" — indistinguishable by construction from the case AC-5.5 exists to prevent | The one **operator-visible** change: a previously-running corrupt-config repo now refuses | Easy in code, visible in behaviour |
+| DEC-EDIST-09 | §10 | `bin/pdlc.mjs` becomes a dependency-free guard (promise-chained `import("./cli.mjs")`); the CLI body moves to `bin/cli.mjs` | A guard atop the existing file — ESM static imports evaluate first, so six imports throw before its first statement | No top-level `await` (parse-level, Node 14.8+); the move is not byte-identical; syntax subset is documented, not parsed (R-E) | Mechanically easy; load-bearing for AC-2.4 |
+| DEC-EDIST-10 | §11 | `publish.yml` carries its **own copy** of the five gate job bodies; `pr-tests.yml` is not touched | A reusable `gate.yml` — renders as `{caller} / {called}`, renaming all five checks a consumer polls while the arrangement oracle stays green | Duplication, paid for by a run-command set-equality; job-level `uses:` is made to fail the gate | **Hard in practice** — reversal renames live consumer-polled checks |
+
+Two shapes recur across the table and are worth naming, because they are the reasoning this
+feature reuses rather than ten independent judgements:
+
+- **Prefer the failure caught offline to the one caught by a consumer.** DEC-EDIST-05's
+  allow-list, DEC-EDIST-08's branch-0 refusal and DEC-EDIST-10's job-level `uses:` prohibition
+  are the same trade: accept a loud, local, remediable stop in exchange for never shipping the
+  silent wrong thing.
+- **An oracle that cannot detect the failure it is nominated against is not a mitigation.** It
+  is why DEC-EDIST-10 rejects extraction, why DEC-EDIST-05 rejects a globbed expected set, why
+  DEC-EDIST-06 will not let a descriptor double falsify pass-through, and why §12's N-2/N-6 are
+  asserted against this record rather than against the tree.
