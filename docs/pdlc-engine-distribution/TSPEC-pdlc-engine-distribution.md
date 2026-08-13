@@ -450,6 +450,97 @@ This is raised as an erratum against the FSPEC rather than silently re-scoped he
 
 ## 8. Publish pipeline (F-5)
 
+### 8.1 Shape
+
+A **new** file, `.github/workflows/publish.yml`, triggered on `push: tags: ['engine-v*']`.
+It adds no job to `pr-tests.yml` and edits no `name:` in it (C-5, BR-7.5), so V-18's five
+rendered check names are untouched and Phase PUB's literal polling keeps working.
+
+| Job | Depends on | Does |
+|---|---|---|
+| `gate` | — | Re-runs the five PR-gate jobs' commands at the tagged commit (§8.2) |
+| `preflight` | — | Offline manifest and version checks (§8.3). Runs in parallel with `gate`: it needs no network and no gate result |
+| `publish` | `gate`, `preflight` | Writes the pairing record, packs, publishes through the channel seam (§8.4) |
+
+`preflight` failing while `gate` is still running is a **failed workflow run** either way
+(BR-3.2); no job is `continue-on-error`, and none is conditional on anything but its
+dependencies' success.
+
+### 8.2 How the gate is re-run without duplicating it (C-5, BR-3.1)
+
+The gate's five jobs are extracted into a reusable workflow,
+`.github/workflows/gate.yml`, called by `pr-tests.yml` (via `uses:`) **and** by
+`publish.yml`. The job-level `name:` strings stay in the caller `pr-tests.yml`, because
+that is where V-18's rendered names come from and BR-7.1's oracle reads *the PR-gate
+workflow file's* job-level names.
+
+**This is the highest-risk edit in the feature and it is called out, not buried.** Moving
+job bodies can change rendered check names, which would break Phase PUB's poll in the
+consumer — a live pipeline, not a test. Two mitigations, both mechanical:
+
+1. FSPEC §5.1's two set-equalities (§12's AT-3.4) run in the same PR that makes the move,
+   and they fail on a rename, a deletion, an addition or a matrix re-render.
+2. If the set-equality cannot be satisfied by a reusable workflow while keeping all five
+   rendered names byte-identical, the fallback is **duplicating the five job bodies in
+   `publish.yml`** — more YAML, zero risk to the rendered names. The PLAN carries this as
+   an explicit decision point with the set-equality as its gate, not as a hope.
+
+### 8.3 Preflight — everything decidable offline (BR-3.8, BR-3.9)
+
+All five checks below are repo-local computations. No network, no credential, no version
+number consumed. Each failure names the offending value and fails the run.
+
+| # | Check | AC |
+|---|---|---|
+| PF-1 | Tag version equals `pdlc/engine/package.json`'s `version` at the tagged commit. Compared against T-1a **only**; the plugin's number is never a tag subject | AC-3.6, BR-3.4 |
+| PF-2 | `pdlcPluginCompat` at that commit includes `pdlc/.claude-plugin/plugin.json`'s version at that commit, evaluated by `satisfiesRange` — the same function the runtime handshake uses, so CI and runtime cannot disagree about the range grammar | AC-3.7, C-1 |
+| PF-3 | Manifest is publishable: `private` absent, `name` scoped per DEC-DIST-05, `license` a real SPDX id | AC-3.1 precondition, O-8 |
+| PF-4 | `npm pack --dry-run`'s file list equals FSPEC §5.2 member-for-member, in **both** directions | AC-1.3, BR-8.1 |
+| PF-5 | Vendor manifest hashes equal the canonical sources at that commit (AF-2) | §5.3, BR-8.2 |
+
+### 8.4 Publish, behind the channel seam (BR-3.9)
+
+The publish step calls a `PublishChannel` (§10.2), not `npm publish` directly. The real
+implementation shells out to `npm publish --access public`; the stub records the bytes and
+the version it was asked to publish.
+
+- **Pairing record (O-6, AC-1.5).** The `publish` job — the same job that computed PF-1 and
+  PF-2 — writes `pdlcPairing: {engineVersion, pluginCompat, pluginVersionAtTag, tag,
+  commit}` into the packed `package.json` before packing. **Single writer** (BR-3.7): any
+  release-notes rendering is generated from this object in the same job, never authored
+  independently.
+- **Immutability (C-7, AC-3.3).** The chosen branch is **loud failure**, not silent no-op:
+  the channel is asked whether the version exists and the job fails naming the collision if
+  it does. Public npm refuses a re-publish by design
+  (`docs/_decisions/DECISIONS-plugin-distribution.md`, DEC-DIST-05's channel table), so the
+  no-op branch is unreachable against the real registry — and rehearsing it there would
+  burn a version number irreversibly. Both branches are therefore exercised **over the
+  stub** (AT-3.3), which is where the byte-identity assertion lives.
+- **Secrets (C-8, AC-3.5).** `NODE_AUTH_TOKEN` from repository secrets, consumed only by
+  the publish step. The positive halves AC-3.5 requires: with the secret present the stub
+  channel records an authenticated publish; with it absent or empty the job **fails at the
+  publish step naming the missing secret**, publishing nothing. The absence half scans the
+  packed tarball and the captured log for a known sentinel value.
+
+### 8.5 What the expected-check-set oracle reads (BR-7.1, BR-7.3, BR-7.6)
+
+The carrier is `pdlc/engine/__tests__/ci-arrangement.test.js`, extended, and it absorbs
+that file's existing overlapping matrix assertions (V-19) so one arrangement change has one
+failure and one remedy.
+
+- Reads **job-level `name:` keys only**, from `.github/workflows/pr-tests.yml` only.
+  Step-level names — the file carries roughly sixteen, e.g. `:46,53,66,70,92` — are not
+  members, and neither are `publish.yml`'s jobs (BR-7.5).
+- Renders by expanding **declared matrix axes only**. A `name:` containing any non-matrix
+  expression (`github.*`, `inputs.*`) or an axis introduced by a matrix `include` entry is a
+  **failure of the gate** reported as `unexpandable name expression` — never silently
+  under-rendered and never skipped (BR-7.3, E-19).
+- Mutations are exercised against **fixture copies** of the YAML, never the live file
+  (BR-7.6).
+- The rendered column's dated cross-check against GitHub's real reporting stays a
+  **one-time, non-gating seed record** in the FSPEC (BR-7.4). This TSPEC adds no second gate
+  over it.
+
 ## 9. Install and upgrade (F-2, F-3)
 
 ## 10. Types and protocols
