@@ -81,3 +81,7 @@ F-04 is v4's still-open baseline authority overlap, re-recorded so it is not los
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 3, "low": 1}
+
+APPROVAL-HASH: sha256:f570fb72dd31d9e264b7c3d9292ef6af94e263332df0af3e74787558825457e1
+APPROVAL-HASH-NORMALIZED: sha256:0b47ea40012e30684d7811672cd9c24c0259724dd2179f48e8a72be9052bc3a2
+REVIEWED-COMMIT: c38feb616cd05964cf1e2327b7440ffd1e2f7d26
