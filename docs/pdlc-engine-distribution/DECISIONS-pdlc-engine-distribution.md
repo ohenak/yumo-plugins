@@ -407,7 +407,20 @@ TSPEC §5.4's literal expected set, run against a real `npm pack` into a temp di
 
 **Constraints that forced the shape.** AC-1.3 (an added file that should not ship fails);
 BR-8.1 (both-directions equality); the `vendor/workflows/` rows from DEC-EDIST-01, which exist
-only after `prepack` and are why PF-4 packs for real rather than using `--dry-run`.
+only after `prepack`.
+
+**PF-4 packs for real for two independent reasons, and a future reader must not retire one
+while satisfying the other.** The first is the one above: the vendor rows do not exist before
+`prepack`, so a `--dry-run` against the checkout is auditing a set that has not been built yet.
+The second is DEC-EDIST-01's interaction with this entry. `vendor/` is git-ignored (a rule that
+entry adds) and this package ships no `.npmignore` at HEAD, and npm's precedence between a
+`files` entry and an ignore-file fallback *for paths inside a listed directory* has varied
+across npm majors. DEC-EDIST-01 decides the inclusion explicitly — a shipped `.npmignore`
+negating `vendor/workflows/` — precisely so the packed set does not depend on which rule the
+installed npm implements; PF-4's real pack is what would catch that mechanism failing, and
+AF-3's vendor-root path equality would too. The hazard being closed is a *cheaper* way to
+satisfy the first reason (staging vendor rows without running `prepack`) silently removing the
+only cover for the second, so both reasons are recorded here rather than one.
 
 **Reversibility.** Easy — deleting the `files` key restores default behaviour. What is not
 cheap to reverse is the expected-set discipline: relaxing PF-4 from equality to a subset check
@@ -427,7 +440,8 @@ mechanisms were available: `import()` the resolved `bin/cli.mjs` in the launcher
 or spawn it.
 
 **Decision.** Spawn: `child_process.spawnSync` with `stdio: "inherit"`, re-raising the child's
-exit code as the launcher's own. Two engine versions may declare different
+exit code as the launcher's own — **and, when the child was terminated by a signal rather than
+by exiting, the launcher exits `128 + signum`.** Two engine versions may declare different
 `@anthropic-ai/claude-agent-sdk` ranges (`pdlc/engine/package.json` pins `^0.3.226` today) and
 must not share one module registry, which in-process loading would force.
 
@@ -442,13 +456,37 @@ must not share one module registry, which in-process loading would force.
   difference is observable in signal handling, exit-code propagation and stdio buffering.
   Calling it "replacement" would hide exactly the behaviours that need asserting.
 
+**The signalled child is decided, not merely named.** This entry rejects the word "replacement"
+because signal handling, exit-code propagation and stdio buffering are observably different for
+a child — and having named signal handling as a behaviour that needs asserting, it has to
+decide it. `spawnSync` returns `{status: null, signal: "SIGINT"}` when the child is terminated
+by a signal, so "re-raise the child's exit code" is **undefined** in that case, and the obvious
+implementation, `process.exit(result.status)`, exits **0** on a Ctrl-C'd pipeline. Under
+`stdio: "inherit"` the terminal delivers SIGINT to the whole foreground process group, so this
+is the *common* interruption path rather than an exotic one, and a CI or `/loop` caller reading
+exit 0 concludes the run succeeded — which collides directly with AC-1.4's exit-code contract
+(crash 1, halt 2) that this entry cites as a constraint. **Decision: `status === null` means the
+launcher exits `128 + signum`**, the conventional shell encoding, which is non-zero for every
+signal, does not collide with 1 or 2, and lets a caller recover the signal number. It is a
+launcher-side mapping only; nothing about the child's own exit codes changes.
+
 **How the choice is paid for in tests.** Because the hop is a real process, the pass-through
-claim gets a real oracle: one test spawns through the launcher at a trivial fake target and
-asserts a non-zero exit code propagates verbatim and that stdout and stderr each arrive
-unchanged rather than interleaved. S-3's descriptor recorder (path, argv, env) stays for the
-*resolution* assertions and is not asked to falsify pass-through — a double cannot. The shipped
-end-to-end CLI oracle already spawns for real (`pdlc/engine/__tests__/cli.test.js:13,22`,
-`spawnSync(process.execPath, [BIN, ...args])`), so this stays inside a shipped precedent.
+claim gets a real oracle, and it covers all three named behaviours rather than two:
+
+1. **Exit code and stdio** — one test spawns through the launcher at a trivial fake target and
+   asserts a non-zero exit code propagates verbatim and that stdout and stderr each arrive
+   unchanged rather than interleaved.
+2. **Signals** — a second test spawns through the launcher at a fake target that kills itself
+   with a known signal, and asserts the launcher's own exit status **equals the decided value**
+   (`128 + signum`, a positive assertion on the exact number, not merely `!== 0`, since a
+   passing `!== 0` would not distinguish the decided mapping from an accidental crash).
+
+S-3's descriptor recorder (path, argv, env) stays for the *resolution* assertions and is not
+asked to falsify pass-through — a double cannot. The shipped end-to-end CLI oracle already
+spawns for real (`pdlc/engine/__tests__/cli.test.js:13,22`,
+`spawnSync(process.execPath, [BIN, ...args])`), so both stay inside a shipped precedent. Raised
+as an erratum against TSPEC §6.2, which carries the same three-behaviour sentence and pays for
+two.
 
 **Constraints that forced the shape.** Independent SDK ranges per resident version; AC-1.4's
 exit-code contract (an engine crash is exit 1, a pipeline halt exit 2 — both must survive the
