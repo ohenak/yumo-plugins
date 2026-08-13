@@ -51,7 +51,7 @@ the symbol is the identity (DC-02).
 |---|---|---|
 | V-01 | The engine package declares `"private": true`, the unscoped name `pdlc-engine`, `"license": "UNLICENSED"`, and `"pdlcPluginCompat": "^0.22.0"`. All three O-8 blockers stand. | `pdlc/engine/package.json:2,3,4,10,11` |
 | V-02 | The plugin manifest version is `0.22.7` — **inside** the engine's declared `^0.22.0`. The handshake passes at HEAD; the compat machinery is exercised green, not merely present. | `pdlc/.claude-plugin/plugin.json:4` |
-| V-03 | The engine's `lib/` holds **exactly twelve** `.mjs` modules — the FSPEC §5.2 seed is accurate: `adapter, auth, catalogue, guard-measurement, handshake, outcome, report, run, skills, startup, transport-cli, transport`. | `pdlc/engine/lib/` |
+| V-03 | The engine's `lib/` holds **exactly twelve** `.mjs` modules **at HEAD**, and **fifteen after §3.1 lands**: `adapter, auth, catalogue, guard-measurement, handshake, outcome, report, run, skills, startup, transport-cli, transport` today, plus §3.1's `resolve-version`, `store` and `provenance`. The FSPEC §5.2 seed is accurate as a HEAD measurement and is *not* the post-feature set — §5.4's expected packed set (E-5…E-19) carries the fifteen. | `pdlc/engine/lib/` |
 | V-04 | The workflow modules are reached by **relative escape above the package root**: `new URL("../../workflows/orchestrate-dev.js", import.meta.url)`. A tarball rooted at `pdlc/engine/` installs without them. R-5 is real. | `pdlc/engine/lib/run.mjs:52-55` (`WORKFLOW_MODULE_URLS`) |
 | V-05 | The anti-fork oracle is **two** assertions, and the first is a filesystem walk over the whole engine root that fails on *any* file named `orchestrate-{dev,queue}.js`. A build-time vendor directory under `pdlc/engine/` turns it red — exactly as R-5 predicts. | `pdlc/engine/__tests__/run.test.js:51-65` (`walk`, `offenders`), `:67-79` (`PROP-FORK-1`, `fileURLToPath(url)` equality) |
 | V-06 | `pdlc/engine/.gitignore` contains only `node_modules/`. There is no ignore rule a build-time vendor directory could hide behind today; adding one is part of this feature's work. | `pdlc/engine/.gitignore` |
@@ -295,11 +295,23 @@ was always going to contain.
 | E-3 | `LICENSE` | npm, unconditionally — **present only once N-2's operator licence decision lands.** The member's presence in the *expected* set is read from **N-2's recorded decision in `DECISIONS-plugin-distribution.md`** — has a licence been recorded — exactly as PF-3 reads the scope, and **never** from whether `pdlc/engine/LICENSE` exists. See the note below |
 | E-4 | `bin/pdlc.mjs` | `files` entry `bin/` — the Node-floor guard entry (§9.3) |
 | E-4b | `bin/cli.mjs` | `files` entry `bin/` — the launcher body the guard dynamically imports (§9.3, §3.1) |
-| E-5…E-16 | the twelve `lib/*.mjs` (V-03) | `files` entry `lib/` |
-| E-17 | `vendor/workflows/orchestrate-dev.js` | `files` entry `vendor/workflows/` |
-| E-18 | `vendor/workflows/orchestrate-queue.js` | same |
-| E-19 | `vendor/workflows/VENDOR-MANIFEST.json` | same |
-| E-20 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
+| E-5…E-16 | the twelve `lib/*.mjs` present at HEAD (V-03) | `files` entry `lib/` |
+| E-17 | `lib/resolve-version.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
+| E-18 | `lib/store.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
+| E-19 | `lib/provenance.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
+| E-20 | `vendor/workflows/orchestrate-dev.js` | `files` entry `vendor/workflows/` |
+| E-21 | `vendor/workflows/orchestrate-queue.js` | same |
+| E-22 | `vendor/workflows/VENDOR-MANIFEST.json` | same |
+| E-23 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
+
+**E-17…E-19 are listed literally because `files` packs a directory, not a file list.** The
+entry `lib/` packs whatever is in the tree at pack time, so the three modules §3.1 creates
+become packed members the moment they land. An expected set naming only V-03's twelve would
+therefore go red against a *correct* implementation once this feature ships — the same defect
+as E-4b's, one row down. The fix that must **not** be taken is globbing `lib/*.mjs` at test
+time: that reads the tree under test and reintroduces exactly what E-3's note below exists to
+remove. New `lib/` modules are added to this table by hand, as a visible edit, or PF-4 is not
+an expectation.
 
 **Why E-3's boolean comes from the decision record and not from the tree.** An expected set
 that reads the artifact under test is not an expectation. If E-3 were "expected iff
@@ -310,12 +322,14 @@ from the decision record instead, the two states are:
 
 | N-2 recorded? | Expected set | A missing `pdlc/engine/LICENSE` |
 |---|---|---|
-| no | E-1, E-2, E-4, E-4b, E-5…E-20 (no `LICENSE` member) | consistent — nothing to ship yet |
+| no | E-1, E-2, E-4, E-4b, E-5…E-23 (no `LICENSE` member) | consistent — nothing to ship yet |
 | yes | the above **plus** E-3 | **red**, which is the point |
 
 The flip is therefore a visible edit to one record (the same record PF-3 already reads), not
-an inference the oracle makes from the tree it is auditing. The expected set is 20 members
-before N-2 and 21 after.
+an inference the oracle makes from the tree it is auditing. The expected set is **23 members
+before N-2 and 24 after**: four manifest-adjacent and `bin/` members (E-1, E-2, E-4, E-4b),
+fifteen `lib/*.mjs` (E-5…E-19 — V-03's twelve plus §3.1's three), three vendored workflow
+members (E-20…E-22) and `scripts/postinstall.mjs` (E-23).
 
 **The `bin/` contents are enumerated once, here, and §9.3 does not create a member this set
 lacks.** The guard keeps the name `bin/pdlc.mjs` (E-4) and the body moves to `bin/cli.mjs`
@@ -328,10 +342,16 @@ the body may import `bin/cli.mjs` directly; the existing end-to-end oracles do n
 
 **This disagrees with FSPEC §5.2 as written, and the disagreement is raised, not papered
 over.** FSPEC §5.2 enumerates the manifest, `bin/pdlc.mjs`, the twelve `lib/*.mjs` and the
-workflow modules, and explicitly excludes "repo-level documentation" — so E-2, E-3, E-4b and
-E-20 are members this TSPEC's design requires and the FSPEC's expected set does not contain. An
-erratum is raised against FSPEC §5.2 rather than leaving the two documents disagreeing while
-a both-directions equality gates on them.
+workflow modules, and explicitly excludes "repo-level documentation" — so **seven** members
+this TSPEC's design requires are absent from the FSPEC's expected set: `README.md` (E-2),
+`LICENSE` (E-3), `bin/cli.mjs` (E-4b), the three new `lib/*.mjs` (E-17…E-19) and
+`scripts/postinstall.mjs` (E-23). **One** erratum is raised against FSPEC §5.2 naming all
+seven, rather than one per divergence: the members arrive from a single design decision
+(§3.1's component map plus §5.1's authoring), and one erratum is cheaper to confirm than
+several against the same row (TE Q-09). FSPEC §5.2's `lib/` line reads as a **HEAD seed**
+that this TSPEC extends, not as a closed post-feature set — but the seed is stated in the
+FSPEC as the packed set, so the disagreement is raised rather than left standing while a
+both-directions equality gates on it.
 
 **Note for the FSPEC's §5.2 workflow-module row.** That row is marked *"[blocked on O-10],
 not enumerable yet"*. This section unblocks it: the members are exactly E-17, E-18 and E-19.
