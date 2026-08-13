@@ -635,3 +635,43 @@ cannot be written until an obligation lands, and say which.
   distinguishes nothing must not be written as though it did — see §9 Q-2.
 
 ## 9. Open questions
+
+Carried from the REQ's obligations, plus what authoring this document surfaced. Nothing here is
+resolved by silence: each names an owner and what it blocks.
+
+- **Q-1 — O-9's three carriers: one decision or three?** (SE Q-08, TE Q-01.) The version pair
+  (AC-4.2) and the authored-file enumeration (AC-4.5) are values the engine already holds and must
+  push *across* the engine↔module seam; the load root (AC-6.2) is a fact only the module loader
+  knows and the engine cannot supply from outside. If the TSPEC can settle the first two on one
+  carrier but not the third, saying so keeps Phase 1 scoped instead of waiting for one answer to
+  close all three. *Owner:* TSPEC. *Blocks:* AT-4.2, AT-4.5, and the load-root half of AT-6.2.
+- **Q-2 — AC-6.2's interim test is a precondition, not an oracle.** (TE round-4 F-02.) Until Q-1
+  lands, AT-6.2 rests on independently known install state, and its only discriminating conjunct
+  is absence-shaped. The FSPEC's position: write it as stated and **document the limit in the test
+  itself**, rather than dress a non-discriminating fixture as a channel test. *Owner:* TSPEC/te-author.
+- **Q-3 — Range-widening cadence.** (SE Q-05, carried unanswered from round 3.) A prompt-only
+  plugin minor can put an installed engine outside `pdlcPluginCompat` and trip AC-1.1's refusal
+  until an engine republish lands. Is "the engine republishes on a plugin minor" the accepted
+  operating cost, or does O-6's per-release record need a range-widening path that is not a
+  republish? *Owner:* operator. *Blocks:* nothing in Phase 1; shapes R-2's mitigation.
+- **Q-4 — Which dev-mode branch for `PDLC_PLUGIN_ROOT`?** (SE Q-06.) AC-5.6 permits refusal or
+  ignore-with-notice, and the shipped `REMEDY` text (`pdlc/engine/lib/handshake.mjs`) currently
+  *recommends* the variable as the remedy for a compat refusal — so "refuse on its presence" would
+  contradict advice the engine itself prints. Whichever branch the TSPEC picks, the remedy text is
+  part of the change. *Owner:* TSPEC.
+- **Q-5 — Excluding the test corpus from the packed set.** (TE Q-02.) `pdlc/engine/__tests__/`
+  sits inside the package root and `files` is absent (M-ENG-11), so §5.2's exclusion needs a
+  deliberate packaging mechanism. Confirm it is the TSPEC's/O-10's call and not an omission here.
+  *Owner:* TSPEC.
+- **Q-6 — BL-03 is not discharged.** O-7 decided the two-records position, but the REQ's own gating
+  form is *transcription into* `docs/_decisions/DECISIONS-plugin-distribution.md` before FSPEC
+  authoring, and no such entry exists in that file at HEAD (DEC-DIST-01…05 only). Raised as an
+  erratum against DECISIONS; this FSPEC is written on O-7's decided position, which the
+  transcription must match rather than re-open. *Owner:* operator. *Blocks:* nothing already
+  written here, but leaves the version-of-record decision unrecorded at project level.
+- **Q-7 — M-ENG-10's change-control tail.** (SE F-26, TE F-01, both Medium, both deferred to this
+  pass.) With §5.1 authoritative, the baseline's closing sentence — "a change to either is a change
+  to this fact first" — names a second change-control point for one set. The fix is one sentence in
+  the constraints file ("a change to either means the fact is re-measured"), leaving the *gate* to
+  §5.1. Not fixed here because a measured-facts file is not this FSPEC's to edit mid-phase.
+  *Owner:* operator/se-author, in the same pass that implements §5.1's carrier.
