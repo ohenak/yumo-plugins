@@ -86,7 +86,7 @@ Three trees, one new, two extended.
 
 | Component | Path | New / extended | Role |
 |---|---|---|---|
-| Node-floor guard entry | `pdlc/engine/bin/pdlc.mjs` | extended | The `bin` entry, and **only** the floor comparison plus `await import("./cli.mjs")` (§9.3). Keeps its name so the manifest's `bin` field, `AC-2.1`'s `PATH` entry and the shipped `cli.test.js`'s invocation target are all unchanged |
+| Node-floor guard entry | `pdlc/engine/bin/pdlc.mjs` | extended | The `bin` entry, and **only** the floor comparison plus a promise-chained `import("./cli.mjs").then(…)` — no top-level `await`, which would not parse below Node 14.8 (§9.3). Keeps its name so the manifest's `bin` field, `AC-2.1`'s `PATH` entry and the shipped `cli.test.js`'s invocation target are all unchanged |
 | Launcher body | `pdlc/engine/bin/cli.mjs` | **new** | Everything `bin/pdlc.mjs` does at HEAD, moved unchanged: argument parse, version-resolution entry, `exec` into the resolved engine (§6.3), or run in-process when it *is* the resolved engine. New file only because the guard must import nothing statically (§9.3); no behaviour moves with it |
 | Version resolver | `pdlc/engine/lib/resolve-version.mjs` | **new** | Total ordered decision `dev-mode ≻ pin ≻ latest installed` (BR-4.1); pure over an injected store listing + config object |
 | Version store reader | `pdlc/engine/lib/store.mjs` | **new** | Enumerates installed engine versions and maps a version to its install root; the only module that knows the store's on-disk shape |
