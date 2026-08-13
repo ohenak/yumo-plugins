@@ -225,7 +225,7 @@ corpus fixture** parameterised on `(n corpus files, k named in the legacy region
 never over the repository. With that said, at the commit this section was written: step 2 enumerates
 5 LEARNINGS —
 `docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md`,
-`docs/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md`,
+`docs/completed/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md`,
 `docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md`,
 `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md`,
 `docs/completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md`. The first and
@@ -384,7 +384,7 @@ increase.
 | # | Path | Region under §3.2 |
 |---|---|---|
 | 1 | `docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md` | legacy — named in Pass 1's consumed table |
-| 2 | `docs/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md` | un-consolidated |
+| 2 | `docs/completed/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md` | un-consolidated |
 | 3 | `docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` | un-consolidated |
 | 4 | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` | un-consolidated |
 | 5 | `docs/completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` | legacy — named in Pass 1's consumed table |

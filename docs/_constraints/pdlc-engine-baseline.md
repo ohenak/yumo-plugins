@@ -2,7 +2,7 @@
 
 > **What this is.** The measured facts about this repo that the `pdlc-headless-engine`,
 > `pdlc-engine-distribution` and `pdlc-plugin-retirement` REQs are stated over. Extracted
-> verbatim in substance from `docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` §1.2
+> verbatim in substance from `docs/completed/pdlc-headless-engine/REQ-pdlc-headless-engine.md` §1.2
 > (v0.5), and its §1.2a state table and AC-3.3 model map at v0.7, so the REQs cite facts by id
 > rather than re-carrying them (pm-author §5e).
 >
@@ -49,7 +49,7 @@ non-interactive session, rather than a file read the engine controls end to end.
 
 ## M-ENG-04 — The Agent SDK runs under subscription auth on the operator's machine
 
-Measured by the Phase-0 spike `docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`
+Measured by the Phase-0 spike `docs/completed/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`
 (2026-08-08), which ran the installed `@anthropic-ai/claude-agent-sdk` with
 `ANTHROPIC_API_KEY` verified absent from the process environment and from both Claude Code
 settings files. Observed: the SDK's `system/init` message reported **`apiKeySource: "none"`**;

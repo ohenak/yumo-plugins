@@ -8,7 +8,7 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) |
+| Upstream | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) |
 | Downstream | `pdlc-engineering-loop` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |

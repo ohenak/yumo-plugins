@@ -29,7 +29,7 @@ Scenarios recorded, mirrored by basename across both directories where applicabl
 | `transport-sdk/multi-dispatch-source-change/dispatch-{1..5}.json` | Five independent single-dispatch SDK streams standing in for one 5-dispatch run (`PROP-AUTH-9`, `AT-ENG-18`, `BR-AUTH-5`). Dispatches 1, 2, 4, 5 report `apiKeySource: "none"`; dispatch 3 reports `"user"` — the source changing mid-run that the per-dispatch (not per-run) auth assertion must catch, with both observed values present in the run report. |
 
 Every scenario is a hand-authored, redacted stand-in built from the shapes the SPIKE
-(`docs/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`) recorded from the real SDK and a real
+(`docs/completed/pdlc-headless-engine/SPIKE-agent-sdk-auth.md`) recorded from the real SDK and a real
 `claude -p --output-format stream-json` run — no session id, cost figure or usage count here was
 copied verbatim from a real account; all are illustrative values in the right shape and range.
 
