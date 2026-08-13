@@ -419,23 +419,31 @@ names.
 | 4 | `Fresh-clone bootstrap works` | `Fresh-clone bootstrap works` |
 | 5 | `Shell scripts parse` | `Shell scripts parse` |
 
-Rules governing this set:
+Rules governing this set. **They are numbered `BR-7.x` / `BR-8.x` / `BR-9.x`, in a namespace
+disjoint from §4's `BR-5` (Provenance)** — the former `BR-5.1.x` / `BR-5.2.x` numbering read as
+sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE round-1 F-03).
 
-- **BR-5.1.1 — Two set-equalities, one per alphabet.** The authored `name:` strings of the repo's
-  workflow files equal the authored column, **and** the locally expanded names equal the rendered
-  column. A deletion, a rename, a matrix edit that changes only the rendered set, and **any
-  addition** all fail. "Any addition fails" is literal: a check this feature adds lands in this
-  table first.
-- **BR-5.1.2 — Decidable offline.** The carrier reads the workflow files and expands the declared
-  matrix axes locally: no PR, no network, no credentials. Observing what GitHub reported on a live
-  run is explicitly **not** the carrier — that check cannot run inside the gate it asserts on.
-- **BR-5.1.3 — Interpolation is bounded to matrix axes** (SE round-4 F-25). A job `name:` may
+- **BR-7.1 — Two set-equalities, one per alphabet, over job-level names of the PR-gate file.**
+  The oracle reads the **job-level `name:` keys** of the **PR-gate workflow file(s)** — at HEAD
+  exactly `.github/workflows/pr-tests.yml` — and nothing else. **Step-level `name:` strings are
+  not members** (that file carries ~16 of them, e.g. `:46,53,66,70,92`; an oracle over "the
+  authored `name:` strings" of the file would be red before anyone edited anything), and **the
+  publish workflow F-5 adds is outside the set**, because its jobs are not PR checks (BR-7.5).
+  The job-level authored keys equal the authored column, **and** their local expansions equal the
+  rendered column. A deletion, a rename, a matrix edit that changes only the rendered set, and
+  **any addition** to the PR-gate file all fail: a PR check this feature adds lands in this table
+  first.
+- **BR-7.2 — Decidable offline.** The carrier reads the named workflow file(s) and expands the
+  declared matrix axes locally: no PR, no network, no credentials. Observing what GitHub reported
+  on a live run is explicitly **not** the carrier — that check cannot run inside the gate it
+  asserts on.
+- **BR-7.3 — Interpolation is bounded to matrix axes** (SE round-4 F-25). A job `name:` may
   contain interpolations of **declared matrix axes only**. Any other expression in a `name:` —
   context expressions such as `github.*` or `inputs.*`, or a name axis introduced by a matrix
   `include` entry — makes the local expander a partial evaluator that can silently under-render,
   passing this set-equality while Phase PUB's poll breaks. Such a `name:` is therefore itself a
   failure of this gate, reported as "unexpandable name expression", not skipped.
-- **BR-5.1.4 — The expansion rule carries a dated provenance seed, not a second gate** (TE round-4
+- **BR-7.4 — The expansion rule carries a dated provenance seed, not a second gate** (TE round-4
   F-03). The rendered column is derived by re-implementing GitHub's expansion rule locally, so the
   rule is otherwise only ever compared against itself. The expected rendered names above were
   cross-checked once against names GitHub reported on a real PR run, and that cross-check is
@@ -443,8 +451,15 @@ Rules governing this set:
   when the matrix shape changes; it never gates a build.
   *Seed record: rendered names per M-ENG-10's measurement of GitHub-reported check names,
   2026-08-13. Re-confirm on the first PR run after any matrix edit.*
-- **BR-5.1.5 — Every member still runs on pull requests and still gates them.** The publish
-  workflow is a separate, additively-added trigger (C-5).
+- **BR-7.5 — Every member still runs on pull requests and still gates them.** The publish workflow
+  is a separate, additively-added trigger (C-5) whose own jobs are **not** members of this set:
+  they gate no pull request, and Phase PUB does not poll them.
+- **BR-7.6 — Mutation evidence runs over fixture copies, and this set owns the matrix.** The
+  mutations BR-7.1 requires to fail cannot be performed on the live `pr-tests.yml`, so they are
+  exercised against fixture copies of it. `pdlc/engine/__tests__/ci-arrangement.test.js:44-60`
+  already regex-asserts that file's matrix and job set; on landing, **§5.1's carrier owns the
+  matrix and job-name assertions** and the older test's overlapping assertions are removed, so a
+  matrix edit produces one failure with one remedy, not two (TE round-1 F-08).
 
 ### 5.2 Expected packed-content set *(AC-1.3)*
 
@@ -452,13 +467,15 @@ The oracle is **the contents of the packed tarball** — what a consumer actuall
 declared intent: `pdlc/engine/package.json` has no `files` field today (M-ENG-11), so a
 "declared list" oracle would pass vacuously. The check is decidable offline, without publishing.
 
+Members are **enumerated literally**, the way §5.1 transcribes check names, so the expectation
+never derives from a directory listing of the code under test (TE round-1 F-01).
+
 | Class | Expected members | Note |
 |---|---|---|
-| Package manifest | the engine package manifest | carries the compat range (T-3) and the pairing record (F-5 step 6) |
-| CLI entry | the single executable entry the `bin` mapping names — `bin/pdlc.mjs` at HEAD | one entry, not a directory of scripts |
-| Engine modules | the engine's own library modules — at HEAD the twelve `lib/*.mjs` files, whose decomposition is the TSPEC's | seeded from HEAD; a module added or removed by implementation updates this row **before** it lands |
-| Workflow modules | the canonical workflow modules the engine executes, in whatever arrangement O-10 chooses | the arrangement is O-10's; their **presence** is not optional (F-2 step 5 depends on it) |
-| Engine adapter | the adapter that re-expresses the runtime's capabilities | — |
+| Package manifest | `package.json` | carries the compat range (T-3) and the pairing record (F-5 step 6) |
+| CLI entry | `bin/pdlc.mjs` | the single executable the `bin` mapping names — one entry, not a directory of scripts |
+| Engine modules | `lib/adapter.mjs`, `lib/auth.mjs`, `lib/catalogue.mjs`, `lib/guard-measurement.mjs`, `lib/handshake.mjs`, `lib/outcome.mjs`, `lib/report.mjs`, `lib/run.mjs`, `lib/skills.mjs`, `lib/startup.mjs`, `lib/transport-cli.mjs`, `lib/transport.mjs` | the class is *every* `lib/*.mjs` module of the engine package; the twelve names are the seed measured at HEAD, and a decomposition change updates this row **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
+| Workflow modules **[blocked on O-10]** | not enumerable yet | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`), so *which* files this class contains is exactly what O-10 decides. Their **presence** is not optional (F-2 step 5 depends on it), but the member list — and therefore this class's half of AT-3.8 — is blocked |
 
 **Excluded, by set-equality rather than by absence-checking:**
 
@@ -469,28 +486,44 @@ declared intent: `pdlc/engine/package.json` has no `files` field today (M-ENG-11
   (TE round-4 Q-02); which mechanism achieves it is the TSPEC's;
 - no `node_modules/`, no lockfile-adjacent build residue, no repo-level documentation.
 
-**BR-5.2.1** The equality is member-for-member in both directions: an **added** file fails and a
-removed module fails. A subset check is not acceptable — a vendored skills copy is exactly the
-failure this AC exists to catch, and a subset check would pass it.
+There is **no separate "engine adapter" row**: the adapter is `lib/adapter.mjs`, already a member
+of the engine-modules row, and a second row would double-count it (TE round-1 Q-01).
+`pdlc/workflows/runtime-adapter.js` is *not* a member — `lib/adapter.mjs:8-13` records that its
+IO-agent machinery is deliberately not ported.
 
-**BR-5.2.2** R-5/O-10's choice of how the workflow modules get inside the package may not leave
+**BR-8.1** The equality is member-for-member in both directions: an **added** file fails and a
+removed module fails. A subset check is not acceptable — a vendored skills copy is exactly the
+failure this AC exists to catch, and a subset check would pass it. The expected side is the
+literal list above, never a listing of the shipped tree: an oracle that reads
+`pdlc/engine/lib/` for its expectation passes a deleted module and is a defect.
+
+**BR-8.2** R-5/O-10's choice of how the workflow modules get inside the package may not leave
 the anti-fork property (M-ENG-12) unstated. Whatever the TSPEC chooses, the anti-fork oracle is
 either preserved or deliberately restated to distinguish "vendored in the repo" from "vendored in
 a build artefact" — never silently dropped.
 
 ### 5.3 Expected dev-mode artifact-kind set *(AC-5.3)*
 
-A dev-mode run's mark appears in **exactly** these artifact kinds, checked by set-equality so an
-unmarked kind fails and a newly added kind forces this enumeration to be revisited:
+A dev-mode run marks **exactly** these artifact kinds:
 
 1. the run report;
 2. every POSTMORTEM the run writes;
 3. the `QUEUE.md` row the run rewrites;
 4. the commit message of every commit the run makes.
 
-**Deliberately out of the set:** cross-review and `CODE_REVIEW-*` files. They are authored by
-dispatched agents, not by the run harness. A dev-mode run is never mistakable for a released one
-in the consumer's history.
+- **BR-9.1 — The carrier is the run's own authored-file enumeration** (Q-6/BR-5.3), partitioned
+  into the four kinds above, plus the run's commit list for kind 4. Kinds are not read off a disk
+  listing; they are read off what the run says it wrote — which also makes "a kind the run
+  produced that this table does not name" mechanically detectable.
+- **BR-9.2 — Equality is over the kinds the run actually produced.** A green single-feature run
+  writes no POSTMORTEM and rewrites no `QUEUE.md` row, so equality against all four literally
+  would fail every such run. The check is: every kind the run produced is marked, no kind it
+  produced is unmarked, and it produced no kind outside this table. Because a satisfied-by-absence
+  reading is exactly the failure §5.2 rejects, **each kind is also paired with a positive**: for
+  every kind in the table there is a run that produces it, and a run producing it unmarked fails.
+- **BR-9.3 — Deliberately out of the set:** cross-review and `CODE_REVIEW-*` files, authored by
+  dispatched agents rather than by the run harness. A mark on one fails. A dev-mode run is never
+  mistakable for a released one in the consumer's history.
 
 ## 6. Input / output
 
