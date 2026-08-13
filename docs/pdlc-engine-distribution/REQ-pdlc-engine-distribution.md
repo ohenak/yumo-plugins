@@ -160,9 +160,12 @@ Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows
 - **NG-5 — Changing any pipeline semantics.** Phase graph, review bars, completeness
   criteria, queue lifecycle, report shape (beyond *adding* the provenance fields of
   REQ-EDIST-04) are untouched. This feature moves bytes, not behaviour.
-- **NG-6 — Consumer-side generated state.** Nothing installs, syncs, writes or version-checks
-  a file inside a consumer project. Consumer-owned config (`.claude/pdlc.config.json`)
-  stays consumer-owned and is neither read nor written by install or upgrade.
+- **NG-6 — Consumer-side generated state.** The scope of this non-goal is **install and
+  upgrade**, not every engine activity: install and upgrade neither create, sync, write,
+  read nor version-check any file inside a consumer project, and consumer-owned config
+  (`.claude/pdlc.config.json`) stays consumer-owned throughout. A *run* is outside this
+  non-goal and does read the consumer's `engine.*` config surface for its pin (O-2, AC-5.1);
+  it still never writes it.
 - **NG-7 — Absorbing the state-probe CLI** (`pdlc/workflows/dist/pdlc-cli.mjs`). It stays a
   project-local artifact of the plugin build unless O-4 decides otherwise; the default is
   to leave it where it is.
