@@ -2881,7 +2881,8 @@ async function runAdvisorySeam({
   _git,
   _log,
   _now = () => Date.now(),
-  _sleep = sleep,
+
+  _sleep = deadlineSleep,
   _notice,
   _waitMs,
   _summarise,
@@ -3271,6 +3272,32 @@ const PHASE_DISPATCH = {
     remediator: "se-implement",
   },
 };
+
+const SKILL_SE_AUTHOR = "se-author";
+const SKILL_SE_IMPLEMENT = "se-implement";
+const SKILL_DOD_VERIFY = "dod-verify";
+const SKILL_HARVEST = "harvest-learnings";
+const SKILL_SHIP_PR = "ship-pr";
+
+const PHASE_DISPATCH_ROLE_KEYS = ["creator", "optimizer", "verifier", "remediator", "reviewers"];
+
+const DISPATCHABLE_SKILLS = Object.freeze(
+  [
+    ...new Set([
+      ...Object.values(PHASE_DISPATCH).flatMap((entry) =>
+        PHASE_DISPATCH_ROLE_KEYS.flatMap((key) =>
+          entry[key] == null ? [] : [].concat(entry[key])
+        )
+      ),
+      ADVISORY_RUNG_SKILL,
+      SKILL_SHIP_PR,
+      SKILL_SE_IMPLEMENT,
+      SKILL_DOD_VERIFY,
+      SKILL_HARVEST,
+      SKILL_SE_AUTHOR,
+    ]),
+  ].sort()
+);
 
 function haltError(message, fields) {
   const err = new Error(message);
@@ -7131,7 +7158,9 @@ function formatWaveLedger(feature, planHash, lastGreenWave, head = null) {
 
 async function agent(skill, prompt, opts) {
 
-  throw new Error("agent() not available outside Claude Code runtime");
+  const err = new Error("agent() not available outside Claude Code runtime");
+  err.seamUnavailable = "_agent";
+  throw err;
 }
 
 async function parallel(promises) {
@@ -7155,6 +7184,13 @@ function log(message) {
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function deadlineSleep(ms) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    if (timer && typeof timer.unref === "function") timer.unref();
+  });
 }
 
 function defaultReadFile(path) {
@@ -9026,6 +9062,8 @@ async function main({
       recordPhase("MERGE", "Merge PR", mergeGlyph, mergeDetail);
     });
   } catch (err) {
+
+    if (err && err.seamUnavailable) throw err;
     haltReason = err.message;
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;

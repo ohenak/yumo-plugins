@@ -38,7 +38,7 @@
  */
 
 // Single-line on purpose: stripModuleSyntax recognises imports line-wise.
-import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, advisorySummaryRows, commitPaths } from "./orchestrate-dev.js";
+import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, advisorySummaryRows, commitPaths, ADVISORY_RUNG_SKILL } from "./orchestrate-dev.js";
 
 // ─── Exported meta object (mirrors orchestrate-dev) ──────────────────────────
 export const meta = {
@@ -58,6 +58,21 @@ export const meta = {
 
 // Default location of the queue file.
 export const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
+
+// ─── Dispatchable skill set (TSPEC §3.3) ─────────────────────────────────────
+//
+// This module dispatches exactly two skills of its own: the Phase-0 readiness
+// triage, and — through the imported `runAdvisorySeam` — the advisory rung.
+// Everything else it reaches goes out under orchestrate-dev's own set, which
+// this one deliberately does not restate.
+export const SKILL_TRIAGE = "se-author";
+
+/**
+ * Every skill identifier this module can dispatch. Frozen so a consumer (the
+ * headless engine's allow-list, T16) cannot mutate the set it validates against.
+ * @type {readonly string[]}
+ */
+export const DISPATCHABLE_SKILLS = Object.freeze([SKILL_TRIAGE, ADVISORY_RUNG_SKILL].sort());
 
 // Location of the drift-state artifact the queue's gate reads (FSPEC §6.1). Written by the
 // sync hook / manual sync / manifest check — never by this module.

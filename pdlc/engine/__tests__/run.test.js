@@ -15,7 +15,10 @@ import {
   runDev,
   runQueue,
   runQueueLoop,
+  loadDispatchableSkills,
 } from "../lib/run.mjs";
+import { DISPATCHABLE_SKILLS as DEV_SKILLS } from "../../workflows/orchestrate-dev.js";
+import { DISPATCHABLE_SKILLS as QUEUE_SKILLS } from "../../workflows/orchestrate-queue.js";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot)); // .../pdlc/engine -> repo root
@@ -61,9 +64,17 @@ test("the engine vendors no copy of the workflow modules (C-4)", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("module URLs are file: URLs inside the repo, not package specifiers", () => {
-  for (const url of Object.values(WORKFLOW_MODULE_URLS)) {
+test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not just a file: URL (PROP-FORK-1)", () => {
+  // Stronger than "starts with file://": each resolved specifier must equal
+  // the repo-relative orchestrate-{dev,queue}.js path exactly, so a fork
+  // sitting anywhere else under pdlc/workflows/ (or elsewhere) fails closed.
+  const expected = {
+    dev: path.join(repoRoot, "pdlc", "workflows", "orchestrate-dev.js"),
+    queue: path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js"),
+  };
+  for (const [name, url] of Object.entries(WORKFLOW_MODULE_URLS)) {
     assert.ok(url.startsWith("file://"), url);
+    assert.equal(fileURLToPath(url), expected[name]);
   }
 });
 
@@ -308,13 +319,42 @@ test("runQueueLoop repeats while the queue reports 'ran' and stops on 'idle'", a
   assert.equal(outcome, "idle");
 });
 
-test("runQueueLoop stops immediately on a halted pass", async () => {
-  const queueStub = { default: async () => ({ outcome: "halted", reason: "x" }) };
+// BR-LOOP-4 (TSPEC §4.5, PROP-QUEUE-6): a halted pass no longer stops the
+// loop — the queue's own row already records the halt, so the loop continues
+// to the next ready feature and only stops once the queue exhausts.
+test("runQueueLoop continues past a halted pass and stops on the following idle", async () => {
+  const outcomes = ["halted", "ran", "idle"];
+  let i = 0;
+  const queueStub = { default: async () => ({ outcome: outcomes[i++] }) };
   const devStub = { default: async () => ({}) };
-  const { passes, outcome } = await runQueueLoop({
+  const { passes, outcome, stopReason } = await runQueueLoop({
     adapter: fakeAdapter(),
     importWorkflow: async (n) => (n === "dev" ? devStub : queueStub),
   });
-  assert.equal(passes.length, 1);
-  assert.equal(outcome, "halted");
+  assert.equal(passes.length, 3, "a subsequent iteration must run after the halt");
+  assert.equal(passes[0].report.outcome, "halted");
+  assert.equal(outcome, "idle");
+  assert.equal(stopReason, "exhausted");
+});
+
+// ─── loadDispatchableSkills (TSPEC §3.3 / R-ARCH-1) ──────────────────────────
+
+test("loadDispatchableSkills returns the union of both modules' DISPATCHABLE_SKILLS, sorted, deduped", async () => {
+  const identifiers = await loadDispatchableSkills();
+
+  const expected = [...new Set([...DEV_SKILLS, ...QUEUE_SKILLS])].sort();
+  assert.deepEqual(identifiers, expected);
+  // se-review is reached only through the queue's delegated pipeline / advisory
+  // seam (TSPEC §3.3), so it must survive the union even though it is not a
+  // queue-module dispatch call site directly.
+  assert.ok(identifiers.includes("se-review"));
+});
+
+test("loadDispatchableSkills honours the importWorkflow seam (no real import required)", async () => {
+  const devStub = { DISPATCHABLE_SKILLS: ["b", "a"] };
+  const queueStub = { DISPATCHABLE_SKILLS: ["a", "c"] };
+  const identifiers = await loadDispatchableSkills({
+    importWorkflow: async (n) => (n === "dev" ? devStub : queueStub),
+  });
+  assert.deepEqual(identifiers, ["a", "b", "c"]);
 });
