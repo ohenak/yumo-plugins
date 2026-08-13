@@ -382,33 +382,50 @@ the committed artifacts.
 
 - **AC-5.1** *Who:* the operator mid-feature. *Given:* a project pinned to version X (T-5)
   while version Y is the latest installed. *When:* they run the pipeline in that project.
-  *Then:* version X executes, and the run announces both the pin and that a newer version
-  exists — a pin in effect is never silent.
+  *Then:* version X executes, and the run announces the pin. The "a newer version exists"
+  half is a **probe behind an injectable seam**, not an unconditional network call: when the
+  probe is unavailable (offline, CI, registry down) the run states that it could not check and
+  proceeds — never fails, never blocks — so the pin assertion is testable without a network
+  and NG-3's "may notice, never fetches" boundary is testable by stubbing the seam.
 - **AC-5.2** *Who:* the operator. *Given:* a project with no pin. *When:* they run the
   pipeline. *Then:* the latest installed version executes and the run says so; the absence
   of a pin is as visible as its presence.
 - **AC-5.3** *Who:* the operator developing the pipeline. *Given:* a checkout of this repo
   and the explicit dev-mode selector (T-6). *When:* they run the pipeline against a consumer
-  repo. *Then:* the checkout's prompts and modules execute, and **every artifact that run
-  writes is marked as a dev-mode run** — a dev-mode run is never mistakable for a released
-  one in the consumer's history.
+  repo. *Then:* the checkout's prompts and modules execute, and the run's dev-mode mark appears
+  in **exactly** this enumerated set of artifact kinds, checked by set-equality so an
+  unmarked kind fails and a newly added kind forces the enumeration to be revisited: (1) the
+  run report, (2) every POSTMORTEM the run writes, (3) the `QUEUE.md` row the run rewrites,
+  (4) the commit message of every commit the run makes. Cross-review and CODE_REVIEW files are
+  deliberately **out** of the set — they are authored by dispatched agents, not by the run
+  harness. A dev-mode run is never mistakable for a released one in the consumer's history.
 - **AC-5.4** *Who:* the operator. *Given:* a checkout present on the machine but no dev-mode
   selector passed. *When:* they run the pipeline. *Then:* the installed released version
   executes — dev-mode is never inferred (T-6).
 - **AC-5.5** *Who:* the operator. *Given:* a pin naming a version that is not installed.
   *When:* they run the pipeline. *Then:* the run refuses with a message naming the pinned
   version and what is installed; it never silently falls back to latest.
+- **AC-5.6** *Who:* the operator. *Given:* `PDLC_PLUGIN_ROOT` exported in the environment
+  (the shipped override, honoured on presence alone today — O-5) and **no** per-invocation
+  dev-mode declaration. *When:* they run the pipeline. *Then:* the run either refuses naming
+  the exported variable, or executes the released version and states that the variable was
+  ignored — it never silently switches skill source on env presence (T-6). Which of the two
+  the engine does is the TSPEC's to fix; that it does one of them, loudly, is fixed here.
 
 ### REQ-EDIST-06 — Non-regression of the existing distribution path *(P0, Phase 1; US-02; G-6, C-4)*
 
 - **AC-6.1** *Who:* a verifier. *Given:* the repo after this feature lands. *When:* the
-  documented fresh-clone bootstrap is executed as written and the drift check is run.
-  *Then:* both succeed exactly as before — this feature adds a channel, it does not disturb
-  the bundle/sync channel.
+  two documented bootstrap commands are executed in the documented order and the drift check
+  is run. *Then:* `node pdlc/workflows/build-runtime.mjs` and the bare-path invocation of
+  `pdlc/hooks/scripts/sync-workflows.sh` both exit 0, and `sync-workflows.sh --check` then
+  exits 0 with every manifest row in sync — the literal transcription, not "as before".
 - **AC-6.2** *Who:* a verifier. *Given:* a machine with both the plugin and the engine
   installed. *When:* a pipeline run is started through either. *Then:* the run's output
-  identifies which channel and which version executed it (C-9), and the two installs share
-  no mutable state.
+  identifies which channel and which version executed it (C-9). Because the bundle channel
+  executes inside the Claude Code workflow runtime and cannot read its own provenance, its
+  channel is identified **positively by the engine's absence of an engine provenance block**,
+  which is itself asserted; and the two installs' write roots are disjoint enumerated paths
+  (the plugin's `.claude/workflows/` versus the engine's own install location).
 
 ## 6. Risks
 
@@ -454,6 +471,22 @@ the committed artifacts.
   Mitigation direction: C-9 and AC-6.2 already require every run's output to name its
   channel and version; the risk itself is retired only when `pdlc-plugin-retirement`
   removes the second channel, not by anything in this REQ.
+- **R-5 — The package cannot contain the workflow modules as the repo is arranged, and the
+  obvious fix breaks a shipped green test.** Per M-ENG-12 the modules sit above the engine
+  package root and are reached by relative escape, so a package built from `pdlc/engine/`
+  installs without them and fails at first dispatch — AC-1.3 and AC-2.1 both rest on an
+  arrangement that does not exist yet. This is the largest unpriced cost in the feature.
+  Three resolutions are visible, each with a consequence this REQ names rather than hides:
+  (a) copy the modules into the package at build time — cheapest to publish, but turns
+  `run.test.js`'s anti-fork assertions (M-ENG-12) red, so that oracle must be deliberately
+  revised to distinguish "vendored in the repo" from "vendored in a build artefact", and a
+  weakened anti-fork oracle is exactly the guard that stops a fork drifting; (b) publish from
+  a workspace root that legitimately contains both trees — no test changes, but the published
+  package's shape and the repo's layout become coupled; (c) relocate the modules under the
+  package root — cleanest end state, largest blast radius, and it touches the plugin channel
+  that C-4 and G-6 promise not to disturb. Mitigation direction: the choice is the TSPEC's
+  (O-10), but AC-1.3's set-equality over the packed file list makes whichever is chosen
+  falsifiable, and no option may be taken that leaves the anti-fork property unstated.
 
 ## 7. Obligations / Open Questions
 
