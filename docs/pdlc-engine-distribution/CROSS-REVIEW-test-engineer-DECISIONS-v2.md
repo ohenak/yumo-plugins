@@ -88,4 +88,29 @@ at `bin/pdlc.mjs:22-24`, six local modules at `:26-31`.
 
 ## Recommendation
 
+**Approved with minor changes** — no High findings remain.
+
+Both round-1 High findings are resolved at the level they were raised: §5 retracted the
+"covers it for free" claim and replaced it with two assertions that are positive in both
+directions and cover rendered text, and §7 decided the signalled-child exit value instead of
+naming signal handling and paying for two behaviours out of three. Every Medium is resolved
+too, and each of the three round-1 questions is answered in the document rather than in a
+reply — Q-03's answer changed an oracle's shape, which is the outcome a question is for.
+
+The three findings here are all register-and-oracle bookkeeping on the *new* material, none of
+them blocking. F-01 and F-03 are single-clause corrections to §13 rows the consistency pass
+did not reach. F-02 is the one worth the author's attention: fixing round-1's F-05 introduced
+a shipped artifact (`pdlc/engine/.npmignore`) whose absence no nominated oracle detects,
+because PF-4 is single-npm-major evidence and the decision's claim is cross-major. It needs a
+repo-shape assertion and a scope sentence, not a redesign — and it needs the TSPEC erratum
+below, since §5.2 does not create the file and D-5 (`TSPEC:151`) records the opposite choice.
+
+The revision did not break anything reviewed in round 1. The one pattern worth carrying
+forward: a fix that *decides a new mechanism* inherits the obligation to nominate the oracle
+for it, and both of this round's substantive findings are that same obligation, once met (§7's
+`128 + signum`) and once missed (§2's `.npmignore`).
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
