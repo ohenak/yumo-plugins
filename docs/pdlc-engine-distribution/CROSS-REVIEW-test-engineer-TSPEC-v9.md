@@ -73,8 +73,68 @@ this round changed.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-23 | The two gate values are pinned `===` `cli.mjs`'s **own** exports, which catches the swap (`startupFor: liveAdapter`) but cannot see a `startupFor` that stopped calling `runStartupChecks` — unlike the three runners, pinned across a module boundary to `run.mjs`'s exports. §9.3 acknowledges the swap case; is it worth one sentence naming the residual gap too, so a later reader does not read the five pins as five equally strong ones? Not a finding — the pin is as strong as a same-module pin can be |
+| Q-24 | With the gates stubbed, the process-entry leg still executes `emitReport`, which reads `process.env.ANTHROPIC_BASE_URL` (`bin/pdlc.mjs:333`) and writes a JSON line to stdout. Nothing asserts on it, so this is harmless — but is stdout also captured/restored alongside `stderr` and `process.exitCode`, or deliberately left to the runner's own capture? §9.3's rule names two of the three |
+
 ## Positive Observations
+
+- **F-43 was fixed by moving the seam, not by adding an assertion around the
+  hazard.** The revision could have pinned env vars and called it hermetic;
+  instead it found the two gates, widened the seam past them, and wrote down
+  the silent-zero shape it was closing — naming it as TE F-39 "one level out",
+  which is exactly the right diagnosis. The rejected alternative is recorded
+  with its actual cost (four ambient preconditions for a leg whose question is
+  what the command body put in an argument object), so the next reader can
+  reopen the decision on evidence rather than re-derive it.
+- **Naming each stub's return shape is the detail that makes the leg
+  writable.** A recorder returning `undefined` throws *inside* the command body
+  rather than failing an assertion — a genuinely confusing failure mode — and
+  §9.3 pre-empts it field by field. I checked every field against the lines
+  that read them and found no decoration and no omission; `stampReport`'s
+  totality (`lib/report.mjs:111`) is what saves the `passes: []` case, and the
+  spec's shape happens to be exactly right there.
+- **The per-leg key table turns a likely copy-paste bug into a documented
+  fork.** `captured[i].provenance` at process entry versus
+  `captured[i]._provenance` at injection level, plus the observation that the
+  plausible repair is itself red at `PROP-PARITY-12` — that is the rare kind of
+  guidance that predicts the wrong turn and prices it.
+- **F-44's fix asserts the premise on the leg that depends on it.**
+  `captured.length === 2` plus a comparison against a *named member* of a
+  closed set, chosen so a decayed fixture lands on a different member rather
+  than on a missing field. That distinction — wrong value, not absent value —
+  is why the assertion cannot rot into an absence oracle.
+- **PM Q-01's answer generalises into a rule rather than a fix.** Capture and
+  restore `process.exitCode` and `stderr` in a `finally` around every `main()`
+  call, and use a dynamic `await import()` so the inert-import observation
+  happens inside its measurement window. Stating that test registration order
+  is *not* load-bearing is the property worth having in a file two tasks in two
+  batches write, and it is stated as a property, not as a convention.
 
 ## Recommendation
 
+**Approved with minor changes** — no High findings.
+
+Both round-8 findings are resolved, and F-43's fix is the one I hoped for: the
+seam moved past the two gates that actually stand between `main()` and any
+runner, capture counts are asserted before capture contents, and the
+silent-zero failure mode is written down rather than merely avoided. I
+re-resolved about thirty citations across the changed regions and walked
+`cmdQueue`'s loop branch statement by statement with §9.3's stubs in hand —
+the recipe executes, including the `passes: []` case that would have thrown
+against a less total `stampReport`. Nothing previously approved regressed.
+
+The two findings left are both improvable-in-place, neither gates
+implementation. F-45 is a justification sentence that names coverage which does
+not exist (`liveAdapter` has no test caller at HEAD); the honest version —
+"ladder covered at those three addresses, adapter uncovered and not widened by
+this feature" — is stronger than the current one, because it stops an
+implementer from trusting a net that is not there. F-46 is two line numbers.
+Both fit in one pass with F-45's clause and F-46's two addresses; neither
+requires re-opening a decision.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
