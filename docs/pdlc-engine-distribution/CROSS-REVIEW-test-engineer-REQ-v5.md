@@ -63,4 +63,21 @@ what they replaced. Three Mediums and one Low, all about what can be *asserted* 
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All four erratum items landed, and landed at the right document: the read/write muddle was NG-6's,
+so NG-6 changed, and O-2's gloss now restates the scope instead of contradicting it. Re-grounded
+against upstream — DEC-HE-02 still says the consumer file is the only config the engine reads, and
+FSPEC BR-2.2/BR-4.7 already stated the scope reading — the REQ remains a faithful compression.
+Nothing outside the four sites moved.
+
+No High finding is open. The three Mediums and one Low are about assertability, not correctness:
+name the locus that discharges "install and upgrade read nothing" (F-01), give AC-3.5(a) an
+observable in AC-3.3's existing vocabulary and say whether the stub channel is its carrier (F-02),
+and let the FSPEC's own confirmation carry E-18 and AT-3.5 up to AC-3.5's new strength (F-03).
+F-04 is v4's still-open baseline authority overlap, re-recorded so it is not lost.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 1}
