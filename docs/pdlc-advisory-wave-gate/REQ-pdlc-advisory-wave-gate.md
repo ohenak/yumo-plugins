@@ -15,7 +15,13 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-13 |
+| pdlc | draft | Claude | 1.3 | 2026-08-13 |
+
+*v1.3 changelog: the three questions left open in v1.2 are decided (operator delegated
+adjudication, 2026-08-13). Q-1 — `advisory.waveBudgetPerRun` default is **1**, not the proposed 2.
+Q-2 — **no**; A6 does not fire on post-wave command failure, and the build-breaking defect class is
+named unreachable and routed to O-7. Q-4's disabled-tier half — routed to D-AWG-06; AC-1.4 and
+PROP-DIS-03 are untouched. No question in this REQ is open.*
 
 *v1.2 changelog: Q-3, Q-4's diagnosis half, and Q-5 answered; Q-1, Q-2, and Q-4's disabled-tier half
 left open for the operator; AC-1.2's "already attempted" rationale corrected to the single-run
@@ -175,9 +181,9 @@ AC id. Reuse of the model-rung resolver rather than restatement of its literals 
 | `advisory.attemptBudget` | `3` | existing, reused | remediation attempts per wave invocation (AC-2.4) |
 | `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per wave invocation, excluding gate-command run time (NFR-4) |
 | `advisory.envelope` | gains `E-5`, `E-6` (AC-3.1) | existing, extended | the per-seam allow-list |
-| `advisory.waveBudgetPerRun` | `2` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
+| `advisory.waveBudgetPerRun` | `1` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
 
-`advisory.waveBudgetPerRun`'s default of 2 is a proposal, not a confirmed operator decision — Q-1.
+`advisory.waveBudgetPerRun`'s default `1` is an operator decision recorded under Q-1 (2026-08-13); the earlier proposal of `2` is superseded.
 
 **C-3 — Closed vocabularies.** A6's root-cause classification (AC-2.2) is a closed catalogue on the
 emitting side and a total function on the receiving side, per DC-01: an unrecognised or absent
@@ -366,7 +372,7 @@ requirements altitude.
   right failure direction: a seam that does nothing is recoverable, a seam that does the wrong thing
   is not.
 - **R-3 — Compounding drift across waves.** Several repairs in one run can carry the branch away
-  from what the PLAN describes, with no review between them. `advisory.waveBudgetPerRun` (default 2)
+  from what the PLAN describes, with no review between them. `advisory.waveBudgetPerRun` (default 1)
   bounds it; Q-1 asks the operator to confirm the number.
 - **R-4 — This seam treats a symptom.** The motivating incident's root cause was a PLAN whose task
   ordering did not reflect a real dependency. A6 makes that class survivable; it does not make the
@@ -396,15 +402,19 @@ requirements altitude.
 - **O-6** — Improving the PLAN's dependency derivation so that a task cannot be scheduled before the
   task that promotes what it consumes. Explicitly out of scope here (§4). Owner:
   `pdlc-engineering-loop` (queue row 6).
+- **O-7** — Build-breaking source defects (post-wave command red) are outside A6's reach by
+  decision, not by oversight (Q-2, 2026-08-13). Any remedy is a separate mechanism with its own
+  trigger and budget, and must not be modelled as a widened A6. Owner: `pdlc-engineering-loop`
+  (queue row 6).
 
-**Open questions for the operator:**
+**Open questions for the operator** — all resolved 2026-08-13; kept with their analysis for provenance:
 
-- **Q-1** — `advisory.waveBudgetPerRun` default of **2** is proposed, not confirmed. Alternatives: 1
+- **Q-1** — `advisory.waveBudgetPerRun` default of **2** was proposed, not confirmed, and is superseded by the decision below. Alternatives: 1
   (one repair per run, maximally conservative) or unbounded-within-`attemptBudget` (no cross-wave
   cap). Proposed default is 2 because the motivating incident would have consumed one and left
   headroom for a second unrelated failure without letting a run repair itself indefinitely.
 
-  **OPEN — awaiting operator.** The analysis recommends **1, not 2**: (a) no shipped advisory budget
+  **Decided 2026-08-13 — `1`.** The analysis recommends **1, not 2**: (a) no shipped advisory budget
   is cross-invocation — every one is per-invocation — so `waveBudgetPerRun` would be the tier's first
   cross-invocation counter, new machinery rather than reuse of A1–A5's `runAdvisorySeam` attempt
   counter (`pdlc/workflows/orchestrate-dev.js:3350-3457`); (b) the "headroom for a second unrelated
@@ -415,11 +425,22 @@ requirements altitude.
   wording slightly overclaims what the knob controls. The operator's actual question: after A6 has
   repaired one wave unreviewed in this invocation, may it repair a second unrelated one before any
   human has seen the first?
+
+  **Decision: default `1`.** `advisory.waveBudgetPerRun` ships at `1`; A6 may resolve at most one
+  distinct wave per run, and a second red wave in the same run escalates. The deciding argument is
+  the one the analysis names: a second unattended repair would land on top of a first repair no
+  human has seen, and re-invocation is cheap. Two costs are accepted rather than hidden. (i) The
+  "budget 1 costs one wave, not the phase" consolation depends on the interim ledger resuming the
+  failed wave, and the ledger is not observably firing (the operational finding at
+  `docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md` §1, queue row 20) — so today a budget of 1 can cost a full Phase-I re-run. (ii)
+  R-3's "compounding drift across waves" wording still overclaims what a per-run knob controls;
+  FSPEC should narrow it. Revisiting to `2` is in scope once wave resume lands and re-invocation
+  demonstrably resumes the failed wave — recorded as revisitable, not settled forever.
 - **Q-2** — Should A6 also fire on a post-wave command failure (M-WG-2)? Proposed **no** (AC-1.2),
   because that failure is a build failure the script has already attempted and its repair is
   usually the same repair a wave task owes. Bound as D-AWG-04 if the operator wants it revisited.
 
-  **OPEN — awaiting operator; rationale corrected 2026-08-13.** The claim above and in AC-1.2's
+  **Decided 2026-08-13 — no; rationale corrected same day.** The claim above and in AC-1.2's
   original text — that the post-wave failure "is a rebuild the script has already attempted" — is
   **false**: `postWaveCommand` runs exactly once and its failure halts immediately
   (`orchestrate-dev.js:12331-12343`); the single run is the detection, not an attempted remediation.
@@ -430,6 +451,16 @@ requirements altitude.
   build on wave-owned sources inside the class of mechanical in-scope defects to be repaired
   unattended? (AC-1.2 itself now states the single-run behaviour accurately without changing what it
   requires.)
+
+  **Decision: no.** A6 does not fire on post-wave command failure. AC-1.2 stands as written, but on
+  the corrected rationale rather than the original one: A6's trigger is the script-owned test gate,
+  `postWaveCommand` failure precedes that gate, and widening A6 to cover it would mean firing on a
+  signal whose failure semantics the tier has never modelled (single run, no retry, no classifier).
+  The consequence is accepted and named rather than left implicit: **a source defect that breaks the
+  post-wave command is permanently outside A6's reach** — in this repo, exactly the class "breaks
+  `node pdlc/workflows/build-runtime.mjs`". That gap is recorded as **O-7** and routed to
+  `pdlc-engineering-loop` (queue row 6), where the remedy — if one is wanted — is a separate
+  build-failure remediation with its own trigger and its own budget, not a widened A6.
 - **Q-3** — Should `environmental` classifications be permitted to re-run the gate once without any
   repair, as seam A5's E-1 permits for a flaky check? Proposed **no** for v1 — a flaky suite is a
   test-quality defect this pipeline should surface, not absorb. Bound as D-AWG-05.
@@ -454,7 +485,7 @@ requirements altitude.
   disabled-tier halt path (pure reporting; AC-1.4's created-file inertness must still hold) is the
   operator's call.
 
-  **Answered 2026-08-13 — yes for the diagnosis half; the disabled-tier half stays OPEN.** The check
+  **Answered 2026-08-13 — yes for the diagnosis half; the disabled-tier half is routed to D-AWG-06.** The check
   is feasible with the existing wave git transport, because on a red gate all wave work is
   uncommitted and prior waves are committed. Two binding caveats: (i) **drop "NEW/MOD" from the
   wording** — `parsePlanOwnership` (`orchestrate-dev.js:4259`) retains only `{taskId, files[]}` and
@@ -469,6 +500,15 @@ requirements altitude.
   wave halt carry a deterministic diagnosis line at the price of the halt message no longer being
   byte-identical to the pre-A6 baseline? An alternative is routing the disabled-path half to
   D-AWG-06 instead, keeping A6's inertness contract clean.
+
+  **Decision on the disabled-tier half, 2026-08-13: option (c) — route it to D-AWG-06.** The
+  ownership-delivery check runs only when the tier is enabled, as an A6 diagnosis input. With
+  `advisory.enabled: false` the wave-gate halt stays byte-identical to the pre-A6 baseline: no
+  classification line, no created file, AC-1.4 and `advisoryDisabled.test.js`/PROP-DIS-03 unamended.
+  Tier-off operators get the same diagnosis from D-AWG-06's mode-aware halt reporting, which is
+  engine report-surface work and already owns the halt message. Rejected: an AC-1.4 carve-out — it
+  would trade the tier's one mechanically provable property, inertness when disabled, for a
+  convenience line, and that property is what made the tier shippable disabled-by-default.
 - **Q-5** — Should gate-output evidence (AC-2.3) distinguish a **collection error** (zero tests
   run, suite interrupted) from failing assertions? A collection error indicates a missing
   deliverable or a linkage defect (classes 1–2), almost never `environmental`. Proposed **yes**, as
@@ -516,7 +556,7 @@ Every deferral binds to a queue row that exists today.
 | D-AWG-03 | A POSTMORTEM lifecycle and/or an approval skip for Phase I (M-WG-5, M-WG-6) | A real gap, but about re-invocation economics rather than about this seam | `pdlc-engineering-loop` (queue row 6) |
 | D-AWG-04 | Firing A6 on a post-wave command failure (Q-2) | Deliberately excluded from v1's single trigger | `pdlc-engineering-loop` (queue row 6) |
 | D-AWG-05 | Gate re-run without repair for `environmental` classifications (Q-3) | Absorbing flakiness is a decision that needs evidence it is flakiness | `pdlc-engineering-loop` (queue row 6) |
-| D-AWG-06 | Mode-aware Phase I halt reporting: recovery hint distinguishes a queue run from a direct `pdlc dev` invocation, and a wave-gate halt writes a structured halt record (observed 2026-08-11: `haltPhase: null`, reason only in the run-report JSON) | Engine report-surface work, not seam behaviour | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-06 | Mode-aware Phase I halt reporting: recovery hint distinguishes a queue run from a direct `pdlc dev` invocation, and a wave-gate halt writes a structured halt record (observed 2026-08-11: `haltPhase: null`, reason only in the run-report JSON) | Engine report-surface work, not seam behaviour | `pdlc-engineering-loop` (queue row 6) Also owns the tier-off ownership-delivery diagnosis line routed here by Q-4b (2026-08-13). |
 
 **D-AWG-03 ownership, noted 2026-08-13.** The approval-skip half of D-AWG-03 (M-WG-6) already ships:
 the interim wave ledger and `implementation.startWave`'s resume-at-failed-wave behaviour (the M-WG-6
