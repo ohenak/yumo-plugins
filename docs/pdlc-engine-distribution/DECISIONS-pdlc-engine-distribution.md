@@ -213,6 +213,52 @@ against the dispatch path; a package manager the store cannot be populated from.
 
 ## 5. DEC-EDIST-04: Ignore a bare `PDLC_PLUGIN_ROOT`, with a notice
 
+*Closes FSPEC Q-4 (which branch AC-5.6 takes). Mechanism: TSPEC §6.5.*
+
+**Context.** T-6 says dev-mode must be declared **per invocation**, explicitly. At HEAD the env
+var `PDLC_PLUGIN_ROOT` is an equal-ranking explicit override alongside the `--plugin-root` flag
+(`pdlc/engine/lib/skills.mjs:212-217`) — an ambient variable exported once in a shell can
+therefore steer every subsequent run at a checkout, which is what T-6 objects to. AC-5.6 leaves
+open which of two branches to take: refuse when the variable is set without a per-invocation
+dev declaration, or ignore it.
+
+**Decision.** Ignore, with a notice. `resolvePluginRoot` gains a `devDeclared: boolean` input;
+when it is false and `PDLC_PLUGIN_ROOT` is set, discovery proceeds as if the variable were
+unset and the run emits `PDLC_PLUGIN_ROOT was set (<value>) and ignored — dev-mode was not
+declared; pass --dev to honour it`. The `--plugin-root` **flag** keeps its current precedence in
+all four rows: it is explicit and per-invocation, which is exactly what T-6 asks for. The notice
+is a catalogue entry (TSPEC §10.3), so `lib/catalogue.mjs`'s shipped registered-message
+set-equality covers it without a bespoke test. In the same change, the compat-refusal `REMEDY`
+text (`pdlc/engine/lib/handshake.mjs:131-134`) is updated to recommend
+`--dev PDLC_PLUGIN_ROOT=…` rather than the bare variable.
+
+**Alternatives considered.**
+
+- **Refuse on a bare `PDLC_PLUGIN_ROOT`** — the stricter branch, seriously considered because it
+  reads T-6 unconditionally. Rejected because the variable is *shipped and documented in the
+  product's own refusal text today* (`handshake.mjs:131-134`): it is currently an operator's
+  remedy for a compat refusal. Turning the documented remedy into a second refusal punishes
+  operators for following the product's own instruction, and does so at the worst moment — while
+  they are already blocked by the first refusal.
+- **Honour it silently, as today** — rejected: it is the status quo AC-5.6 exists to change,
+  and it makes dev-mode ambient rather than per-invocation.
+- **Honour it but warn** — rejected as the worst of both. The warning admits the input is
+  suspect while still letting it steer the run, so nothing about T-6's ambient-state problem
+  changes and the warning becomes noise operators learn to skip.
+
+**Constraints that forced the shape.** T-6 (per-invocation declaration); the variable's
+existing role in shipped refusal text; the principle that a product must not ignore an operator
+input *silently* — hence the notice, which is the whole difference between this branch and the
+status quo.
+
+**Reversibility.** Easy — one branch in one function. Not a one-way door in either direction:
+flipping to refusal later costs the same single branch, plus the message.
+
+**Re-evaluation triggers.** Evidence that operators are hitting the notice repeatedly and not
+acting on it (the ignore is then failing to teach, and refusal becomes the better teacher);
+`REMEDY` losing its `PDLC_PLUGIN_ROOT` recommendation entirely, which removes the reason this
+branch was chosen over refusal.
+
 ## 6. DEC-EDIST-05: A `files` allow-list, not an `.npmignore` deny-list
 
 ## 7. DEC-EDIST-06: The launcher hop is a child process, not a dynamic import
