@@ -799,10 +799,22 @@ the same task or turns a green test red.** `PROP-PARITY-12`
 `Object.keys(devInjection(...)).sort()` equals `TSPEC_3_1_DEV_SEAMS` and the queue equivalent,
 with the expected constants transcribed literally at `:47-63`. Adding `_provenance` to either
 injection without editing those two constants is **red**; editing the constants without wiring
-is red the other way. The PLAN therefore carries the constant edit (`:47-63`) and the third
-`PROP-PARITY-12` case at `:79-82` (the "rows do not leak each other's seams" assertion, which
-gains `_provenance` on **both** sides) **inside the same task** as the injection change — not as
-a follow-up, and not in a different batch, since the two files are one atomic contract.
+is red the other way. The PLAN therefore carries the **constant edit at `:47-63`** — adding
+`"_provenance"` to `TSPEC_3_1_DEV_SEAMS` and `TSPEC_3_1_QUEUE_SEAMS` — **inside the same task**
+as the injection change, not as a follow-up and not in a different batch, since the two files
+are one atomic contract. Two adjacent readers of those constants need naming so a task author
+does not edit the wrong one (PM v5 F-02):
+
+- **`PROP-PARITY-12`'s third case (`:79-90`) needs no change.** It is an *exclusion* list — it
+  asserts `devKeys.has("_runPipeline") === false` and, for each of `_parallel`/`_pipeline`/
+  `_runCommand`, `queueKeys.has(…) === false`. `_provenance` goes onto **both** rows, so it
+  belongs in neither exclusion, and its presence is already pinned no-more-no-less by the two
+  `deepEqual`s at `:65-73`. Adding it here would assert the opposite of the wiring.
+- **`PROP-PARITY-15` (`:268-282`) is the third reader of the same constant**, asserting every
+  produced key is in `TSPEC_3_1_DEV_SEAMS` and not in `UNOVERRIDDEN_IO_SEAMS` (`:223-238`). It
+  turns green on the `:47-63` edit alone, provided `_provenance` is kept **out** of the
+  un-overridden list — where it does not belong, since it is an injected seam, not an
+  `adapter` field the modules default for themselves (§2.5).
 
 **Why this hop is the one that had to be named.** §12.1's module-side tests inject a populated
 `Provenance` straight into `main()`, so kinds 1–4 all go green whether or not either injection
