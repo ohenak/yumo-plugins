@@ -11,7 +11,35 @@
 |---|---|---|---|---|
 | pdlc | Halted — Phase D erratum confirmation | Claude (se-author) | 1.0 | 2026-08-13 |
 
-RESOLVED: no
+RESOLVED: yes
+
+**Resolution record (operator, 2026-08-13).** The three round-10 findings are addressed on
+`feat-pdlc-engine-distribution` in commits `3da19d51…0dcda6b2` (TSPEC v0.10 → **v0.11**, plus one
+DECISIONS §7 citation repair). Verified against HEAD after the edit landed, not against the plan
+above:
+
+| Finding | Fix site | Verified |
+|---|---|---|
+| `F-45` (High) — AC-5.6's path-level oracle half-unwritable | TSPEC §3.1 (two rows), §6.5, §10.1 (new seam `S-7 PluginRootResolver`), §12.1 | `resolvePluginRoot`'s return is specified as **extended, not replaced** — `{ok, root, source, reason, tried, notices}` — so both halves are assertable at the one named unit |
+| `F-46` — honour direction unasserted | TSPEC §6.5, §12.1 | Four-row oracle; the `devDeclared: true` × set row now asserts resolved root `===` env value, `source` unchanged, `notices` empty |
+| `F-47` / PM `F-01` — AC-1.4 mis-citation | DECISIONS §7 (**both** occurrences), TSPEC §6.2 and the v0.10 changelog sentence | Replaced with `exitCodeFor` (`pdlc/engine/lib/run.mjs`, `PROP-EXIT-1`); per PM `Q-02` the constraint is stated once, in DECISIONS, and §6.2 defers |
+| PM `F-02` — blocker-1 routing | TSPEC §5.1 | Narrow option (b): the closure stops instructing downstream records; O-8's owner field is named as upstream and unchanged. No FSPEC erratum opened |
+| PM `F-03` — count | TSPEC v0.10 changelog row | "Four items" → "Five items" |
+
+**One deliberate deviation from `## Recommendation` step 1.** The recommendation proposed answering
+`F-45` by moving assertion (b) up to the startup unit. That was not taken: DECISIONS §5
+(DEC-EDIST-04) assertion 1 says `resolvePluginRoot` itself "returns a notice list", so asserting one
+level up would have left approved decided text false and re-opened DECISIONS. Extending the
+resolver's return instead is TE's own primary suggestion under S-2's "the shipped function's shape,
+extended", honours both DECISIONS §5 assertions verbatim, needs no DECISIONS §5 edit, and matches
+the shipped idiom — `readEngineConfig` already returns `{config, notices}` (`pdlc/engine/lib/run.mjs`)
+and `bin/pdlc.mjs` already drains those notices to the operator. Render ownership is stated
+explicitly in all four sites: **the resolver decides and renders; `runStartupChecks` surfaces**
+through the `resolveFn` seam it already calls the resolver by.
+
+No code was changed, no REQ/FSPEC edit was made, and nothing settled in rounds 1–9 was re-opened.
+TSPEC v0.11 is an unreviewed hand-edit until Phase D's re-invocation confirms it at round 11
+(lifetime 11 of 15).
 
 ## What Halted
 
