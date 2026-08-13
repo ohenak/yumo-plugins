@@ -247,6 +247,24 @@ Two shorter chains: `lib/run.mjs` is written by T28 (b3), T41 (b6) and T48 (b10)
 
 ## 5. Integration points
 
+## 5. Integration points
+
+Seven places where this feature's tasks meet machinery that already exists at HEAD. Each names the file and line an implementer will actually open.
+
+**1. The engine test suite collects new files automatically.** `pdlc/engine/__tests__/_run-suite.mjs` mints a run id, empties the run directory, and spawns `node --test … __tests__/`, so any new `*.test.js` under `pdlc/engine/__tests__/` is picked up with no registration step; leading-underscore modules (`_doubles.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs`) are not collected. `suite-spine.test.js` reads the directory listing dynamically, so the eighteen new test files in §2 do not require editing it. Consequence for §2: the plan never contains a "register the new test" task, because there is nothing to register.
+
+**2. The suite-wide message oracle fails in both directions.** `pdlc/engine/__tests__/_assert-suite-wide.mjs:195-213` (`checkMessageCatalogue`) compares the ids `messageIds()` registers against the ids the run actually emitted, and pushes a failure for *either* an emitted-but-unregistered id or a registered-but-never-emitted one. This is the single strongest constraint on the shape of §2: a task may not register a message id in one batch and emit it in a later one. Every catalogue-touching task (T28, T32, T37, T41, T43, T45) therefore registers *and* emits within itself. The erratum raised against TSPEC §10.3 concerns exactly this: `node.below-floor` is registered in `lib/catalogue.mjs` but the guard that would emit it (`bin/pdlc.mjs`, three static top-level statements) cannot import the catalogue.
+
+**3. `seam-contract.test.js`'s constants are a hand-maintained mirror.** `pdlc/engine/__tests__/seam-contract.test.js:47` (`TSPEC_3_1_DEV_SEAMS`) and `:57` (`TSPEC_3_1_QUEUE_SEAMS`) are literal key lists compared by `deepEqual` at `:67` and `:72` against the real injection objects. Adding `_provenance` to `devInjection` (`pdlc/engine/lib/run.mjs:80`) or `queueInjection` (`:114`) reddens those two assertions immediately. T48 owns the widening and the mirror in the same task for that reason; `:79-90`'s exclusion list and `UNOVERRIDDEN_IO_SEAMS` (`:223`) are left alone, and PROP-PARITY-15 (`:277-280`) is unaffected.
+
+**4. The anti-fork oracle currently walks the tree; vendoring replaces it.** `pdlc/engine/__tests__/run.test.js:45-79` asserts that the engine vendors no copy of the workflow modules (C-4) by walking `pdlc/engine/` for matching filenames. Build-time vendoring (DEC-EDIST-01) makes that walk false by construction the moment `prepack` runs locally. T33 replaces the walk with AF-1's *tracked-ness* test — `git ls-files` must list no vendored copy — and extends `PROP-FORK-1` to AF-3's exact-path form. The two edits are one task because the interval between them is a suite that fails for a reason unrelated to the change.
+
+**5. `build-runtime.mjs` generates the closures that call `rewriteStatus`.** `pdlc/workflows/build-runtime.mjs:274` and `:307` emit the queue-driven and in-module call sites of `__queue.rewriteStatus(...)`. Widening `rewriteStatus` to an 8th positional argument (T39) without widening both generated closures leaves the bundles calling the old arity. T44 therefore owns `build-runtime.mjs` **and** the regenerated `pdlc/workflows/dist/`, and its Definition of Done is that `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0. Note the ordering the repo documents: build first, sync second.
+
+**6. `pr-tests.yml`'s job names are a frozen contract.** FSPEC §5.1 asserts set-equality over the five rendered job names in `.github/workflows/pr-tests.yml`, and C-5 / BR-7.5 make that set closed. No task in §2 adds a job to that file. T49's `publish.yml` is tag-triggered (`push: tags: ['engine-v*']`) and duplicates the five gate job *bodies* rather than reusing them, precisely so the PR-gate file is untouched. T50's fixture-machine legs go into a new, additive workflow file for the same reason — and that is what the erratum raised against TSPEC §12.1 is about: those legs currently have no stated home that both runs on PRs and leaves the frozen set intact.
+
+**7. The queue table gains a column, additively.** `pdlc/workflows/orchestrate-queue.js` already carries `ensureEvidenceColumn` and two row-write paths inside `updateQueueStatus` — the `evidence == null` quick path and `writeEvidenceCarryingRow`. T36 mirrors that helper as `ensureEngineColumn` and writes the `Engine` cell on **both** paths; a table with neither column, with `Evidence` only, or with both is exercised by T04's fixtures. Existing `QUEUE.md` files without the column keep parsing, which is why this is an integration point and not a migration.
+
 ## 6. Batch-safety rules honoured
 
 ## 7. Definition of Done
