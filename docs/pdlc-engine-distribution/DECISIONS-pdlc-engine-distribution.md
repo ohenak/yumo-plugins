@@ -544,10 +544,31 @@ in front of the one operator debugging a pin.
 **Constraints that forced the shape.** AC-1.1 (diagnostic outside the gate); AC-1.4 (one
 triple, everywhere); R-B's `--ignore-scripts` reality.
 
-**Reversibility.** Easy — it is a branch in the launcher. Both states are asserted, so a
-regression is caught: (a) pinned repo with the pin in the store → `--version`'s triple equals
-the run report's equals the pinned version, `mode: "pin"`; (b) empty store → the launcher's own
-version, `mode: "unresolved"`, notice, exit 0.
+**Reversibility.** Easy — it is a branch in the launcher. **Three** states are asserted, so a
+regression is caught:
+
+| # | State | Asserted behaviour |
+|---|---|---|
+| a | pinned repo, the pin is in the store | `--version`'s triple **equals the run report's triple** and equals the pinned version, `mode: "pin"` |
+| b | empty store (R-B's `--ignore-scripts`) | the launcher's own version, `mode: "unresolved"`, the refusing branch's text as a notice, exit 0 |
+| c | **unreadable `.claude/pdlc.config.json`, no pin ever declared** | `pdlc doctor` prints ladder **branch 0**'s parse-error text as a notice, naming the file, plus the store root and the installed versions; exit 0 |
+
+Row (c) is the composition with DEC-EDIST-08 and it is the recovery path that matters most, so
+it is enumerated rather than left to the generic clause above. DEC-EDIST-08 makes an unreadable
+config refuse at branch 0 **even when no pin was declared** — the one operator-visible
+regression this feature ships — and once every command refuses, `doctor` is the *only* way to
+learn why. The generic "a refusing branch is downgraded to a notice" does specify the
+behaviour, but branch 0 is a **new** refusal introduced in a different entry, and an
+unenumerated composition is how a product becomes unrecoverable in exactly the state its
+diagnostic exists for. Cross-referenced from §9's carve-out table.
+
+Row (a)'s equality is between the **two observed outputs** — the launcher's `--version` stdout
+and the run report's engine block — not between each and the pinned literal (TE Q-03). Under a
+pin these are two different reads of two different files: `--version` reads the resolved store
+entry's own `package.json`, while the report's engine block is built from `pkg.version` inside
+the running child (`pdlc/engine/bin/pdlc.mjs:323-325`). Only comparing the outputs to each
+other falsifies a drift between the two read paths; comparing each to the literal passes even
+when the two paths have diverged in a way AC-1.4 forbids.
 
 **Re-evaluation triggers.** A third exempt command appearing (the exemption list stops being two
 special cases and wants a declared property); `doctor` growing an action that mutates state, at
@@ -610,6 +631,7 @@ explicitly rather than letting a reader assume "this one degrades":
 | file unparseable, `engine.version` **was** declared | 0 → refuse | the case the branch exists for |
 | file unparseable, **no pin ever declared** | 0 → refuse | newly-refusing; asserted explicitly |
 | file parses, `dispatch` tunable malformed | not branch 0 | degrades with a notice, exactly as at HEAD |
+| file unparseable, under `pdlc doctor` | 0 → **notice, not refusal** | DEC-EDIST-07 downgrades it: `doctor` prints branch 0's parse-error text, names the file, and exits 0 — asserted as row (c) of §8's state table. This is the only way out of the row above |
 
 **Re-evaluation triggers.** Field reports of the newly-refusing row firing on repos that never
 pinned anything (the refusal would then be costing more than the silent-wrong-engine risk it
