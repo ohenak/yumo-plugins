@@ -122,6 +122,59 @@ range check rather than pulling in `semver` — one range grammar in the product
 
 ## 4. Decisions this TSPEC takes
 
+Five decisions the FSPEC parked. Each is load-bearing, each had a real alternative, and
+each is recorded with its rejected alternatives in
+`docs/pdlc-engine-distribution/DECISIONS-pdlc-engine-distribution.md`.
+
+| # | Question | Decision | Recorded as |
+|---|---|---|---|
+| D-1 | O-10 / R-5 — how the workflow modules get inside the package | **Build-time vendoring into the packed tarball only** (R-5 option a), with a two-root resolver and a *restated*, not weakened, anti-fork oracle | DEC-EDIST-01 |
+| D-2 | O-9 — the provenance carrier | **One optional, default-inert `_provenance` seam** on `main()`, carrying a frozen pre-rendered value. Closes AC-4.2 and AC-4.1; AC-4.5 needs **no carrier at all** (V-14); AC-6.2's load root is closed **engine-side only** and stays open bundle-side | DEC-EDIST-02 |
+| D-3 | O-2 — how a pin *executes*, not just resolves | **Version store plus thin launcher**: many versions installed side by side under one store root, one launcher on `PATH` that `exec`s the resolved one | DEC-EDIST-03 |
+| D-4 | Q-4 — which AC-5.6 branch | **Ignore-with-notice.** `PDLC_PLUGIN_ROOT` without an explicit per-invocation dev declaration is ignored, the released version runs, and the run states the variable was ignored | DEC-EDIST-04 |
+| D-5 | Q-5 — how `__tests__/` is kept out of the tarball | **A `files` allow-list**, not an `.npmignore` deny-list | DEC-EDIST-05 |
+
+### 4.1 Why D-1, in one paragraph each
+
+**Vendor at build time (chosen).** V-04 says a tarball rooted at `pdlc/engine/` cannot see
+the modules; something must move. Vendoring at pack time moves the fewest things: the repo
+layout is untouched, so C-4's promise to the plugin channel is kept literally, and
+`pdlc/workflows/` stays the single edited source. Its cost is exactly the one R-5 names —
+V-05's walk goes red — and §5.3 pays it by *restating* the oracle rather than deleting it.
+
+**Publish from a workspace root (rejected).** No test changes, but the published package's
+internal shape becomes the repo's directory shape: `pdlc/workflows/` and `pdlc/engine/`
+both land inside the tarball, and every future repo reorganisation becomes a consumer-
+visible breaking change. It also drags the plugin's own tree toward the package boundary
+that C-4 says must not move.
+
+**Relocate the modules under the package root (rejected).** The cleanest end state and the
+right answer *after* `pdlc-plugin-retirement`. Today it moves the files the bundle build
+(`pdlc/workflows/build-runtime.mjs`) and the sync script read, which is the plugin channel
+C-4 and G-6 promise not to disturb — a Phase-1 blast radius bought for an end state that a
+later, dedicated feature already owns.
+
+### 4.2 Why D-3
+
+AC-5.5 is the constraint that settles it: *"a pin naming a version that is not installed →
+refuse, naming the pinned version and what is installed"*. A single-version global install
+cannot say "what is installed" in the plural, and cannot execute version X while Y is
+latest (AC-5.1) without fetching — which NG-3 forbids. Both criteria are only satisfiable
+if **several versions can be resident at once**. That is a store. The alternative — one
+global install plus `npx @scope/pdlc-engine@X` per pin — was rejected because `npx` fetches
+on miss, which is precisely NG-3's "never fetches, never applies".
+
+### 4.3 Why D-4
+
+Refusing on a bare `PDLC_PLUGIN_ROOT` is the stricter branch and was seriously considered:
+it makes T-6 unconditional. It was rejected because the variable is *shipped, documented in
+the product's own refusal text* (V-10) and is today the operator's remedy for a compat
+refusal. Turning the remedy the error message recommends into a second error is a poor
+trade. Ignore-with-notice satisfies AC-5.6's letter — the run "executes the released
+version and states that the variable was ignored" — while leaving the explicit
+per-invocation selectors (`--dev`, `--plugin-root`) as the only ways to change the skill
+source. The reversal cost is one branch in one function, so this is not a one-way door.
+
 ## 5. Package composition and the anti-fork oracle (O-10)
 
 ## 6. Version resolution: store, launcher, pin, dev-mode (F-4)
