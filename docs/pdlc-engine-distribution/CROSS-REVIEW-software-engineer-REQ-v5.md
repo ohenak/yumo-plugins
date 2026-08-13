@@ -44,6 +44,13 @@ carried forward unchanged rather than silently dropped; both remain non-gating.
 
 ## Findings
 
+New this round, scoped to the three edited sites. Both are Low; neither blocks.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-27 | Low | Local | **AC-3.5(b)'s "naming the missing secret" is not what the channel tool does natively — it requires an explicit preflight step the FSPEC should own.** With DEC-DIST-05's channel (public npm), the natural implementation of a publish step is `npm publish` with `NODE_AUTH_TOKEN` from a secret. Absent or empty, npm fails with `ENEEDAUTH`/401 naming the *registry*, not the repository secret — the failure is loud, so (b)'s "fails, publishing nothing" half holds, but the "naming the missing secret" half does not, and a reviewer reading only the CI log cannot tell a missing secret from a revoked token. Cheap to satisfy — one guard step asserting the secret is non-empty before the publish step — but it is a step someone must author deliberately, and it is invisible in the AC as written. FSPEC's F-5/publish flow should state the preflight explicitly so the implementer does not read (b) as free. No REQ edit needed: the AC states a correct outcome, and this is the cost note the outcome hides. | AC-3.5, C-8, O-1 |
+| F-28 | Low | Process | **FSPEC F-3 step 5 now carries a stale erratum-pending clause — the REQ fixed what it says is unfixed.** `FSPEC:141-142` reads "NG-6's own wording is an erratum against the REQ, not fixed here." As of v0.10 it *is* fixed: NG-6 now scopes itself to install/upgrade in its own text. Left as-is, a later reader of the FSPEC is told to distrust an NG-6 that no longer says the thing being distrusted, and the erratum channel's record of the round ends up pointing at a resolved defect as open. This is an FSPEC-side one-line deletion, not a REQ change — filed here because this confirmation round is where the two documents were read against each other, and the FSPEC pass is the natural place to land it. | FSPEC F-3 step 5 (downstream), NG-6 |
+
 ## Questions
 
 ## Positive Observations
