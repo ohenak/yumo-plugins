@@ -191,7 +191,7 @@ release automation for this package and made dependent on this feature. Rows are
 - **C-1 — The compatible-plugin range is declared and verified at publish, not just at
   runtime.** The engine package's manifest states a semver range of compatible plugin
   versions (O-6). The publish workflow fails the build — producing no publishable artifact —
-  if that declared range does not include the repo's `plugin.json` version (T-1) at the
+  if that declared range does not include the plugin version of record (T-1b) at the
   tagged commit: a release is never cut already excluding the plugin it is meant to pair
   with. The package's manifest carries the range and the engine's own content hashes,
   following the discipline already established at O-D; it carries no skills-file hashes,
@@ -263,12 +263,15 @@ copying bytes across the boundary.
   dispatches using the `SKILL.md` prompts read from that installed plugin's `skills/` tree
   at dispatch time — never a copy bundled in the engine package, because the engine package
   ships none.
-- **AC-1.3** *Who:* a verifier. *Given:* the built engine package. *When:* they inspect its
-  contents. *Then:* it contains the CLI entry, the workflow modules, and the engine
-  adapter, and no `skills/` directory or prompt file of any kind — decidable from the
-  package's own contents without network access.
+- **AC-1.3** *Who:* a verifier. *Given:* the built engine package. *When:* they enumerate the
+  file list the package declares it ships. *Then:* that list **equals**, member for member, an
+  expected set stated in the FSPEC — so an added file fails and a removed module fails, not
+  merely a missing one. The expected set contains the CLI entry, the workflow modules and the
+  engine adapter, and contains no `skills/` directory and no `SKILL*.md` file. Decidable from
+  the package's own declared contents, offline. (R-5 prices how the modules get inside the
+  package at all; this AC states the outcome, not the mechanism.)
 - **AC-1.4** *Who:* the operator. *Given:* an installed package. *When:* they ask the CLI
-  for its version. *Then:* it reports the engine version (T-1), the declared
+  for its version. *Then:* it reports the engine version (T-1a), the declared
   compatible-plugin range (T-3), and the version of the plugin it currently finds installed
   (or that none is installed) — the same triple the startup banner and every run report
   carry (REQ-EDIST-04).
@@ -279,9 +282,12 @@ copying bytes across the boundary.
 ### REQ-EDIST-02 — One-command install and upgrade *(P0, Phase 1; US-01, US-02; G-2, C-2)*
 
 - **AC-2.1** *Who:* the operator on a clean machine with Node ≥ T-2 and nothing else pdlc
-  installed. *Given:* the documented install command, copied verbatim from the README.
-  *When:* they run it once. *Then:* the CLI is on `PATH` and a pipeline command runs to the
-  point of dispatch; no second command, no manual step, no repo clone is required.
+  installed. *Given:* the documented install command, transcribed verbatim from
+  `README.md`'s install section. *When:* they run it once. *Then:* the CLI is on `PATH`, it
+  reports its version triple (AC-1.4), and a pipeline command reaches the compat handshake —
+  where, with no plugin installed, it emits AC-1.1's refusal naming the declared range. That
+  refusal **is** the pass condition on a plugin-free machine: install is proven by reaching
+  the handshake, not by dispatching. No second command, manual step or repo clone is required.
 - **AC-2.2** *Who:* the operator. *Given:* version N installed and two distinct consumer
   repos that have each completed a run at N. *When:* they run the documented upgrade command
   once, on the machine, and then invoke the pipeline in each repo. *Then:* both runs execute
@@ -289,15 +295,18 @@ copying bytes across the boundary.
   (REQ-EDIST-04) — with **no command executed inside either repo** other than the pipeline
   invocation itself.
 - **AC-2.3** *Who:* a verifier. *Given:* a consumer repo with a clean working tree and index.
-  *When:* an install and an upgrade are performed. *Then:* the repo's working tree and index
-  are unchanged — no file created, modified or deleted anywhere under the project (C-2), and
-  in particular nothing under `.claude/`.
+  *When:* an install and an upgrade are performed. *Then:* on that same run, **both** hold:
+  the CLI resolves on `PATH` at the new engine version and its own install location changed
+  (the positive that proves the install was not a silent no-op), **and** the repo's working
+  tree and index are unchanged — no file created, modified or deleted anywhere under the
+  project (C-2), in particular nothing under `.claude/`.
 - **AC-2.4** *Who:* the operator on a machine whose Node is below T-2. *Given:* an install
   attempt or a pipeline invocation. *When:* it runs. *Then:* it fails with a message naming
   the required floor and the version found — never a stack trace, never a partial run.
 - **AC-2.5** *Who:* the operator. *Given:* the engine installed. *When:* the pdlc plugin is
-  also installed and in use in interactive sessions. *Then:* both continue to work, and
-  neither install path modifies the other's files (C-4).
+  also installed and in use in interactive sessions. *Then:* on the same run, both paths still
+  work positively — the engine reaches dispatch and an interactive plugin session invokes a
+  skill — **and** neither install path modifies the other's files (C-4).
 
 ### REQ-EDIST-03 — Tag-driven, gated publish *(P0, Phase 1; US-03; G-3, C-5–C-8)*
 
@@ -421,7 +430,7 @@ which pipeline decided it.
   the plugin version itself was not bumped for the edit. This is the skew axis the operator's
   design change explicitly *accepts and contains*, not eliminates — stated honestly rather
   than implied away by the handshake's existence. Mitigation direction: bumping the plugin's
-  own version (T-1) for any behaviour-affecting skill edit is the discipline this REQ assumes
+  own version (T-1b) for any behaviour-affecting skill edit is the discipline this REQ assumes
   but does not enforce; recorded here as a known residual risk, not closed by any AC in §5.
 - **R-4 — Two live distribution channels coexist through the whole transition window.**
   Until `pdlc-plugin-retirement` (NG-2) lands, the bundle/sync path
