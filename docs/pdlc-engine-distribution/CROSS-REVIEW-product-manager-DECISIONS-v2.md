@@ -23,6 +23,21 @@ issues, and every `file:line` the revision added or repointed was opened at HEAD
 
 ## Findings
 
+No High findings. Two non-gating findings, both against text the revision added.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | **§13's DEC-EDIST-05 row now contradicts the entries.** §2 and §6 decide that `pdlc/engine/.npmignore` **is shipped**, carrying a negation for `vendor/workflows/`, so packing never depends on npm's precedence rule. The register's DEC-EDIST-05 row still reads, unchanged, "Principal option rejected: An `.npmignore` deny-list". Both statements are defensible in context — the entries explain the shipped file *negates* an ignore rather than acting as a deny-list — but §13 exists precisely so a reader can "find the entry that bears on the change in front of them without reading all ten", and a reader consulting only the register concludes that no `.npmignore` ships. That is the one wrong conclusion available from this table. Fix: add the shipped-negation clause to DEC-EDIST-05's *Consequence carried* cell (e.g. "…plus a one-purpose `.npmignore` negating `vendor/workflows/`, which does not reopen the allow-list choice"), or mirror it in DEC-EDIST-01's row where the decision is actually made. | AC-1.3, BR-8.1 |
+| F-02 | Low | Local | **§2's restated re-evaluation trigger reads as already-satisfied on a first pass.** The trigger is now "**any new literal `pdlc/workflows/` path appearing outside the tree itself**". Two of the five enumerated consumers — `sync-workflows.sh` and `run.test.js:45-46` — are already outside that tree at HEAD, so the condition only works if "new" is read as "beyond the five enumerated above", which the sentence leaves to inference. This is the same failure the original trigger had (my v1 F-01 flagged it as dead on arrival), in a milder form: the intent is now checkable, the baseline is not stated. Fix: one clause — "beyond the five enumerated above" — which also makes the trigger something an oracle could grep for against a pinned baseline, as the sentence claims. | R-5, C-4 |
+
+Neither finding asks for a different decision. I re-read §2, §4, §5, §6, §7, §8, §9, §10, §12 and
+§13 — the sections the diff touches — against REQ and FSPEC and found no scope creep introduced by
+the revision: every added paragraph either prices a rejected alternative, names an oracle, or
+records a surface for a criterion that already existed (AC-5.1's announcement, AC-5.6's notice
+text, AC-1.4's triple, AC-2.4's floor). The one operator-visible behaviour change in the feature
+is still DEC-EDIST-08's newly-refusing row, still declared as such, and §8's new row (c) now gives
+it a recovery path rather than leaving the operator in it.
+
 ## Questions
 
 ## Positive Observations
