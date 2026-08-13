@@ -382,17 +382,30 @@ would otherwise make the new gate *structurally earlier* than that exemption —
 `--ignore-scripts` scenario is the concrete case: the store is never populated, ladder branch
 7 refuses, and the operator cannot run the one command that would explain why. So:
 
-- `--version` and `doctor` run the **launcher's own** `bin/pdlc.mjs` in place. They do not
-  `exec` a resolved child and they never refuse on an unresolvable version.
-- What they report when the store has no usable entry is stated, not left open: the launcher's
-  own engine version (from its own `package.json`), the plugin version resolved by the normal
-  discovery path or `null` if none is found, and the declared `pdlcPluginCompat` range — the
-  same AC-1.4 triple, with `mode` reported as `unresolved` and the ladder's refusal text
-  carried as a **notice** rather than as an exit. `doctor` additionally prints the store root,
-  the enumerated versions (possibly none) and the install command, which is what makes it the
-  diagnostic AC-1.1 says it is.
-- Exit code stays 0 for both in this state. A diagnostic that exits non-zero because the thing
-  it is diagnosing is broken is not a diagnostic.
+- **They resolve, and they never refuse.** The exemption AC-1.1 asks for is *never refuse*,
+  not *never resolve*. Both commands run the ladder (§6.3) for **reporting only**: they never
+  `exec` a resolved child, and a refusing branch is downgraded to a notice instead of an exit.
+- **When resolution succeeds** — the pinned, latest or dev branch — they report **the resolved
+  engine's** triple, read from the resolved store entry's own `package.json`, with the resolved
+  `mode` and `pin`. This is what keeps AC-1.4's "the same triple the startup banner and the run
+  report carry" true in the AC-5.1/AC-5.2 world this feature exists to create: in a repo pinned
+  to a version other than the launcher's own, the run report carries the **resolved** version
+  (§7.1), and a `--version` reporting the launcher's would disagree with it — the exact
+  divergence AC-1.4 forbids, in front of the one operator who is debugging a pin.
+- **When resolution fails** — no usable store entry, an unreadable config (ladder 0), a missing
+  pin (ladder 4) — they fall back to the launcher's **own** engine version (from its own
+  `package.json`), the plugin version resolved by the normal discovery path or `null` if none is
+  found, and the declared `pdlcPluginCompat` range, with `mode` reported as `unresolved` and the
+  refusing branch's text carried as a **notice** rather than as an exit. `doctor` additionally
+  prints the store root, the enumerated versions (possibly none) and the install command, which
+  is what makes it the diagnostic AC-1.1 says it is, and what keeps R-B's `--ignore-scripts`
+  scenario explicable rather than mysterious.
+- Exit code stays 0 for both in **both** states. A diagnostic that exits non-zero because the
+  thing it is diagnosing is broken is not a diagnostic.
+- Both states are asserted, because AC-1.4 has two and a design that answers one is only half
+  testable: **(a)** pinned repo, store holds the pin → `--version`'s triple equals the run
+  report's triple and equals the pinned version, `mode: "pin"`; **(b)** empty store →
+  launcher's own version, `mode: "unresolved"`, the refusal text present as a notice, exit 0.
 
 ### 6.3 The resolution ladder (BR-4.1)
 
@@ -1026,7 +1039,8 @@ operator is a defect (AC-2.4), and so is a partial run.
 | Node below floor | E-06 | §9.3's dependency-free guard entry; message names floor and found version | non-zero |
 | Store empty / missing | new (ladder 7) | Names the store root and the documented install command | non-zero |
 | Config file present but unparseable | new (ladder 0) | Names the file path and the parse error. Never read as "no pin" (§6.4) | non-zero |
-| `--version` / `doctor` with no resolvable version | AC-1.4, AC-1.1 | **Not an error.** The launcher reports its own triple with `mode: unresolved`, carries the ladder's refusal text as a notice, and `doctor` adds the store root, the enumerated versions and the install command (§6.2) | 0 |
+| `--version` / `doctor` with no resolvable version | AC-1.4, AC-1.1 | **Not an error.** The launcher reports its own triple with `mode: unresolved`, carries the refusing branch's text as a notice, and `doctor` adds the store root, the enumerated versions and the install command (§6.2) | 0 |
+| `--version` / `doctor` **with** a resolvable version | AC-1.4 | **Not an error, and not the launcher's own triple.** Both resolve for reporting and report the **resolved** engine's triple with its `mode`/`pin`, which is what makes AC-1.4's "same triple the run report carries" hold under a pin (§6.2). Neither ever `exec`s a child | 0 |
 | Pinned version not installed | E-08 | Names the pin **and** the enumerated installed versions. Never falls back | non-zero |
 | `engine.version` malformed | E-10 | Names the offending value. Never read as "no pin" | non-zero |
 | Config file absent / no `engine` section | E-11 | **Not an error.** Announced as "no pin", nothing created | 0 |
@@ -1125,7 +1139,7 @@ no row is a defect in this table.
 | AC-1.1 | `handshake.checkCompat` (shipped, V-09) + launcher refusal path | §11 |
 | AC-1.2 | `skills.loadSkill` at dispatch time; `files` allow-list ships no skills | §5.4 |
 | AC-1.3 | `files` allow-list; PF-4's real-`npm pack` equality against §5.4's literal expected set | §5.4, §8.3 |
-| AC-1.4 | `runStartupChecks.versions` (shipped, V-08) surfaced by `pdlc --version`/`doctor`, which are exempt from the launcher's resolution gate and report the triple even with an empty store | §6.2, §11 |
+| AC-1.4 | `runStartupChecks.versions` (shipped, V-08) surfaced by `pdlc --version`/`doctor`, which **resolve for reporting** but never refuse: the resolved engine's triple when resolution succeeds (so it equals the run report's under a pin), the launcher's own with `mode: unresolved` when it does not | §6.2, §11 |
 | AC-1.5 | `PairingRecord` in the packed manifest, single writer | §8.4 |
 | AC-2.1 | README section; launcher on `PATH`; handshake reached | §9.1, §9.2 |
 | AC-2.2 | Store + launcher: upgrade changes the resolved version machine-wide | §9.2 |
