@@ -261,6 +261,50 @@ branch was chosen over refusal.
 
 ## 6. DEC-EDIST-05: A `files` allow-list, not an `.npmignore` deny-list
 
+*Closes FSPEC Q-5 (how `__tests__/` and friends stay out of the tarball). Mechanism: TSPEC
+§5.4.*
+
+**Context.** `pdlc/engine/package.json` declares no `files` and there is no `.npmignore`
+(verified at HEAD), so the packed set is npm's default: everything not ignored. That currently
+includes `__tests__/` — a corpus that copies skill and workflow text — and `package-lock.json`.
+AC-1.3 asks that an added file which *should not* ship fails the gate.
+
+**Decision.** An explicit `files` allow-list:
+`["bin/", "lib/", "vendor/workflows/", "scripts/postinstall.mjs"]`. It excludes `__tests__/`,
+`package-lock.json`, `.gitignore` and `scripts/prepack.mjs` without naming any of them.
+Q-5 is answered as: the exclusion is a deliberate packaging mechanism, not an omission. The
+allow-list is paired with PF-4's **member-for-member equality in both directions** against
+TSPEC §5.4's literal expected set, run against a real `npm pack` into a temp directory.
+
+**Alternatives considered.**
+
+- **`.npmignore` deny-list** — rejected because the failure modes are asymmetric. A deny-list
+  that forgets an entry **ships something that should not ship** — silently, to consumers,
+  exactly AC-1.3's scenario and exactly how the `__tests__/` corpus would leak. An allow-list
+  that forgets an entry **ships too little** and fails AT-3.8a loudly at build time. We prefer
+  the failure caught offline over the one caught by a consumer.
+- **Allow-list with a glob for `lib/*.mjs` in the expected set** — rejected, and this is the
+  subtle one. Globbing at test time makes the *expectation* read the tree under test, so the
+  equality can only ever be vacuously true. New `lib/` modules are added to §5.4's table by
+  hand, as a visible edit; PF-4's failure message names the table as the expected set's source
+  so an operator meeting a red PF-4 is told the table is stale rather than left reading "the
+  package is wrong".
+- **Leave the default packed set and assert it** — rejected: it makes the assertion the only
+  control, so every new repo-local file is a potential leak until someone updates a test.
+
+**Constraints that forced the shape.** AC-1.3 (an added file that should not ship fails);
+BR-8.1 (both-directions equality); the `vendor/workflows/` rows from DEC-EDIST-01, which exist
+only after `prepack` and are why PF-4 packs for real rather than using `--dry-run`.
+
+**Reversibility.** Easy — deleting the `files` key restores default behaviour. What is not
+cheap to reverse is the expected-set discipline: relaxing PF-4 from equality to a subset check
+would remove exactly the direction AC-1.3 needs.
+
+**Re-evaluation triggers.** The packed set growing to where hand-maintaining §5.4's table is a
+recurring stale-row cost (the answer then is a generated-and-committed expectation, not a glob);
+npm changing how `files` interacts with `README*`/`LICENSE*`, which the expected set encodes as
+always-packed regardless of the list.
+
 ## 7. DEC-EDIST-06: The launcher hop is a child process, not a dynamic import
 
 ## 8. DEC-EDIST-07: `--version` and `doctor` resolve but never refuse
