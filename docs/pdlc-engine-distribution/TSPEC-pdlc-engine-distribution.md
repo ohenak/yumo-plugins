@@ -95,6 +95,7 @@ Three trees, one new, two extended.
 | Handshake / startup | `pdlc/engine/lib/handshake.mjs`, `lib/startup.mjs` | extended | Unchanged decision logic (V-09); startup gains the resolution announcement (BR-4.1) and the ignored-env notice (§6.5) |
 | Plugin-root resolution | `pdlc/engine/lib/skills.mjs` | extended | `resolvePluginRoot` gains a `devDeclared` input so the env var stops being honoured on presence alone (V-11, §6.5) |
 | Workflow modules | `pdlc/workflows/orchestrate-dev.js`, `orchestrate-queue.js` | extended | One optional, default-inert `_provenance` seam (§7.2), following V-15's idiom. **No behaviour change when absent** |
+| Seam injections (the production carrier) | `pdlc/engine/lib/run.mjs` (`devInjection` `:80-91`, `queueInjection` `:114-123`) | extended | The **only** two objects the engine hands the workflow modules. `devInjection` gains an 8th key and `queueInjection` a 6th, both `_provenance`; `runQueue`'s `_runPipeline` wrapper (`:450-451`) inherits the dev key by spreading `devInjection`'s result. Both key sets are pinned by `PROP-PARITY-12` (`__tests__/seam-contract.test.js:47-63`), whose constants are edited in the **same task** (§7.2, §12.4) |
 | Packaging | `pdlc/engine/scripts/prepack.mjs`, `pdlc/engine/package.json` | **new / extended** | Build-time vendoring of the workflow modules and the `files` allow-list (§5) |
 | Publish CI | `.github/workflows/publish.yml` | **new** | Tag-triggered, additive; reuses the PR gate's jobs, adds none to it (C-5, BR-7.5) |
 | Expected-set carrier | `pdlc/engine/__tests__/ci-arrangement.test.js` | extended | Owns FSPEC §5.1's two set-equalities; absorbs its own older overlapping matrix assertions (V-19, BR-7.6) |
@@ -694,7 +695,7 @@ Three things this pins down that the earlier draft left loose:
   | R | Route | Status it writes |
   |---|---|---|
   | R-1 | `build-runtime.mjs:274`'s generated closure — the **queue-driven** run's `_recordQueueRow` | whatever `orchestrate-dev` records |
-  | R-2 | `build-runtime.mjs:307`'s second generated closure — the **direct dev invocation**, whose own comment reads "a direct dev invocation still owns its queue row" | `halted` (`orchestrate-dev.js:12913` → `:1753`, and Phase MERGE) |
+  | R-2 | `build-runtime.mjs:307`'s second generated closure — the **direct dev invocation**, whose own comment reads "a direct dev invocation still owns its queue row" | `halted` **or** `done` (evidence-carrying): the halt path writes `{status: "halted"}` (`orchestrate-dev.js:12913`) and Phase MERGE writes `{status: "done", evidence}` (`:1753`). The two are different statuses on different row-write paths, and §12.3's green-direct-run leg turns on the second (TE v4 F-31) |
   | R-3 | `orchestrate-queue.js:1426` — the queue driver marking a feature `in-progress` | `in-progress` |
   | R-4 | `orchestrate-queue.js:1439` — the queue driver's in-module write | per call |
   | R-5 | `orchestrate-queue.js:1464` — the queue driver's terminal write | `awaiting-merge` / `done` / `halted` |
@@ -766,6 +767,41 @@ reach. Measured at HEAD, each route is:
 
 Without this table AT-5.3's "none is unmarked" is unimplementable as specified for three of the
 five members of the closed set, which is the same defect kind 3 had one level up.
+
+**The production carrier: how a real `Provenance` reaches either module's `main()`.** Every
+route above starts at a `main()` keyword parameter, and until now nothing named who supplies it
+in production — the last unnamed hop, and the one that decides whether the whole chain is wired
+or merely wireable (TE v4 F-28). The engine hands the workflow modules **exactly two frozen seam
+objects**, and no others: `devInjection(adapter)` (`pdlc/engine/lib/run.mjs:80-91`, seven keys)
+and `queueInjection(adapter, runPipeline)` (`:114-123`, five keys). Both are constructed in the
+composition root — `runDev` at `:392`, `runQueue` at `:450-453` — and spread into the module's
+`main()` call. So:
+
+| Hop | Site | Change |
+|---|---|---|
+| Build | `lib/provenance.mjs` (§3.1, §7.1) | The single construction site. `bin/cli.mjs` builds the frozen `Provenance` **after** resolution, since the value needs the resolved version, `mode`, `pin` and `loadRoot` (BR-1.5's "resolved once per run") |
+| Carry (dev) | `devInjection(adapter, provenance = NO_PROVENANCE)` (`run.mjs:80`) | Gains an **eighth key**, `_provenance`. `runDev` gains a `provenance` argument and passes it here |
+| Carry (queue) | `queueInjection(adapter, runPipeline, provenance = NO_PROVENANCE)` (`:114`) | Gains a **sixth key**, `_provenance`, for `orchestrate-queue.js`'s own `main()` — the module that owns C-c, C-d and kind 3's R-3…R-5 rows. This answers TE Q-12: the queue takes it as an injected seam of its own, **not** through `_runPipeline`'s wrapper, because `commitAdvisoryRecord` (C-d) and `rewriteStatus` are reached by the queue's own `main()`, which `_runPipeline` never enters |
+| Carry (delegated dev) | `runQueue`'s `runPipeline` wrapper (`:450-451`, `const devSeams = devInjection(adapter); (args) => devMain({...args, ...devSeams})`) | **No separate change.** The wrapper spreads `devInjection`'s result, so the dev pipeline a queue run delegates to inherits `_provenance` from the same key. This is the reason the queue key is additive rather than a re-route |
+
+**The seam sets are pinned by a shipped no-more-no-less equality, so the wiring task edits it in
+the same task or turns a green test red.** `PROP-PARITY-12`
+(`pdlc/engine/__tests__/seam-contract.test.js:65-73`) asserts
+`Object.keys(devInjection(...)).sort()` equals `TSPEC_3_1_DEV_SEAMS` and the queue equivalent,
+with the expected constants transcribed literally at `:47-63`. Adding `_provenance` to either
+injection without editing those two constants is **red**; editing the constants without wiring
+is red the other way. The PLAN therefore carries the constant edit (`:47-63`) and the third
+`PROP-PARITY-12` case at `:79-82` (the "rows do not leak each other's seams" assertion, which
+gains `_provenance` on **both** sides) **inside the same task** as the injection change — not as
+a follow-up, and not in a different batch, since the two files are one atomic contract.
+
+**Why this hop is the one that had to be named.** §12.1's module-side tests inject a populated
+`Provenance` straight into `main()`, so kinds 1–4 all go green whether or not either injection
+carries the key — while a real engine-driven run emits `NO_PROVENANCE` into every kind and
+AC-5.3 fails in production with every stated oracle green. That is `builder-not-wired`, the same
+false green §7.4 was corrected for, one level further out; §12.3's oracle 2 therefore gains a
+**production-path leg** that reaches a module through the engine's injection rather than through
+a hand-built parameter object (§12.3).
 
 **Kind 4's literal scope needs an upstream decision, and it is raised rather than assumed.**
 AC-5.3 says "the commit message of **every** commit the run makes". A run also produces
@@ -1207,7 +1243,7 @@ tell "needs no wiring" from "someone forgot to wire it" — the discipline alrea
 | S-3 | `Launcher` — `exec(binPath, argv, env)` → exit code | `bin/pdlc.mjs` | `spawnSync`, stdio inherited | tests assert the *descriptor* (path, argv, env) without spawning |
 | S-4 | `UpdateProbe` — `latestPublished()` → `{version}` \| `{unavailable, reason}` | `lib/store.mjs` | **`NO_PROBE`-shaped inert default: never called unless injected** | AC-5.1's offline test needs no network and no stub-of-a-network |
 | S-5 | `PublishChannel` — `exists(name, version)`, `publish(tarball, opts)` | publish job | real `npm` | CI passes the stub for every test; the real one runs only in the tagged job |
-| S-6 | `_provenance` — frozen `Provenance` (§7.1) | workflow modules | `NO_PROVENANCE` | the engine's `run.mjs` |
+| S-6 | `_provenance` — frozen `Provenance` (§7.1) | workflow modules | `NO_PROVENANCE` | **`devInjection` (`run.mjs:80-91`) and `queueInjection` (`:114-123`)** — the two frozen seam objects the engine constructs at `runDev:392` / `runQueue:450-453`, and the only carriers a production run has (§7.2's production-carrier table). Named, not "the engine", because both key sets are pinned by `PROP-PARITY-12` |
 
 **S-2's shape is the shipped function's, extended — not a new one.** The earlier draft declared
 `readEngineConfig(cwd) → {version?} | null`, but the shipped signature is
