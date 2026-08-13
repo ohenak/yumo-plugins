@@ -616,8 +616,8 @@ call site verified at HEAD:
 |---|---|---|
 | 1 — the run report | `provenance` field on the final report object | `buildFinalReport`'s returned record (`orchestrate-dev.js:13088` is the sibling `artifactPaths` field) |
 | 2 — every POSTMORTEM | `block` appended by `_appendFile` after `_checkFile` confirms the file (P-4) | `orchestrate-dev.js:11077-11110` (V-16) |
-| 3 — the `QUEUE.md` row the run rewrites | **both** the row's own text (a new `Engine` cell) **and** the commit message that lands it | `rewriteStatus` (`orchestrate-queue.js:1522`, writes the row at `:1571`); `commitQueueRow` (`:1598`) composes the message |
-| 4 — every commit the run makes | `line` composed into the message inside each of **four** marked helpers, never at a call site | the closed set below |
+| 3 — the `QUEUE.md` row the run rewrites | **both** the row's own text (a new `Engine` cell) **and** the commit message that lands it | `rewriteStatus` (`orchestrate-queue.js:1522`, writes the row at `:1571`); `commitQueueRow` (`:1598`) composes the message. The mark is applied **inside `rewriteStatus`**, so all five of its call routes inherit it — see below |
+| 4 — every commit the run makes | `line` composed into the message inside each of **five** marked helpers, never at a call site | the closed set below |
 
 Three things this pins down that the earlier draft left loose:
 
@@ -627,7 +627,7 @@ Three things this pins down that the earlier draft left loose:
 
 - **Kind 4's marked sites are a closed enumeration, not a single helper — the earlier draft's
   "every script-owned commit funnels through `commitPaths`" is false at HEAD.** Measured by
-  grepping every `git commit` invocation in both modules, there are **four** script-owned
+  grepping every `git commit` invocation in both modules, there are **five** script-owned
   commit sites and only one of them is `commitPaths`:
 
   | # | Site | What it commits | Reached from |
@@ -636,50 +636,115 @@ Three things this pins down that the earlier draft left loose:
   | C-b | `appendApprovalAnchors` (`orchestrate-dev.js:6660`; `_git(["commit", "-m", "chore(pdlc): record approval anchors …"])` at `:6736`) | the `APPROVAL-HASH:`/`REVIEWED-COMMIT:` lines appended at `:6716-6721` | `orchestrate-dev.js`, **not** via `commitPaths` |
   | C-c | `commitQueueRow` (`orchestrate-queue.js:1598`, `git commit` at `:1603`) | the `QUEUE.md` row (kind 3's own commit) | `orchestrate-queue.js`, a different module — it issues its own `git add`/`git commit` through `gitFn` and never touches `commitPaths` |
   | C-d | `commitAdvisoryRecord` (`orchestrate-queue.js:1637`, `git commit` at `:1645`) | `ADVISORY-{feature}.md` | `orchestrate-queue.js` |
+  | C-e | the advisory **A5 seam's `apply`**, an arrow inside the exported factory `buildA5SeamOps` (`orchestrate-dev.js:2743`; bare `_git(["commit", "-m", "advisory(A5): … branch-introduced CI fix"])` at `:2837-2841`) | whatever is staged at that point — **no `git add`, no pathspec** | `main()`'s `buildA5SeamOps({…})` call (`:11718`) |
 
-  (`orchestrate-dev.js:2839` is the advisory A5 seam's `apply`, which commits through the same
-  injected `_git`; it is covered by C-a's rule below only if routed through `commitPaths`, and
-  the PLAN carries that routing as part of the same task. It is named here so the set stays
-  closed rather than approximately closed.)
+  **C-e is marked in place; it is not re-routed through `commitPaths`.** The earlier draft
+  deferred it to a PLAN routing task, which made the expected set below conditional on a
+  sibling task's merge order rather than on correctness (TE F-26). Routing is also not the free
+  move that framing implied: `commitPaths` performs a pathspec-scoped `git add` and composes
+  its own message, whereas C-e deliberately commits **whatever is already staged** with a
+  message an advisory-tier assertion may pin — so re-routing would change both the committed
+  content and the message. The cheap, shape-preserving fix is the one C-b already uses:
+  compose `provenance.line` into the message string at the call to `_git`, leaving the staging
+  behaviour and the `advisory(A5):` prefix exactly as they are. `buildA5SeamOps` therefore
+  gains `provenance` in its destructured parameter object, defaulted to `NO_PROVENANCE`, and
+  `main()` passes it at `:11718` alongside the seams it already passes.
 
-  All four compose `line` internally, so no call site carries the responsibility. The
+  All five compose `line` internally, so no call site carries the responsibility. The
   structural claim is then the honest one — **"no script-owned `git commit` exists outside
-  these four helpers"** — and it is *assertable*, not merely asserted: a source-level oracle in
+  these five helpers"** — and it is *assertable*, not merely asserted: a source-level oracle in
   the arrangement suite greps both workflow modules for `git commit` invocations and asserts
-  the set of enclosing function names equals `{commitPaths, appendApprovalAnchors,
-  commitQueueRow, commitAdvisoryRecord}`. A new commit site added anywhere else turns that row
-  red, which is the property "a new site inherits the mark by construction" was reaching for
-  and did not have. Without this correction AT-5.3's "none is unmarked" would go red against a
-  correct implementation of the earlier design — the same failure mode §7.4 was corrected for.
+  the set of **enclosing named functions** equals `{commitPaths, appendApprovalAnchors,
+  commitQueueRow, commitAdvisoryRecord, buildA5SeamOps}`. "Enclosing *named* function" is the
+  precise reading the oracle needs: C-e's commit sits in an anonymous `apply` arrow, so the
+  oracle walks out to the nearest named function declaration, which is the exported
+  `buildA5SeamOps`. The expected set is stated **unconditionally** — five members, no
+  parenthetical, no dependence on another task landing — so the row is red or green on the
+  code's shape and nothing else. A new commit site added anywhere else turns that row red,
+  which is the property "a new site inherits the mark by construction" was reaching for and did
+  not have. Without this correction AT-5.3's "none is unmarked" would go red against a correct
+  implementation of the earlier design — the same failure mode §7.4 was corrected for.
 
-- **Kind 3's mark reaches the queue-side writer by one named parameter, and lands in one named
-  cell.** The carriers are queue-side while `_provenance` is a parameter of `orchestrate-dev`'s
-  `main()`, and the two are joined by a **generated** closure whose argument list is fixed
-  (`build-runtime.mjs:273-274`: `__queue.rewriteStatus(__queuePath, feature, status, rtReadFile,
-  rtWriteFile, rtGit, evidence)` — verified at HEAD). The route is therefore specified, not left
-  to the test author to invent:
+- **Kind 3's mark is applied inside `rewriteStatus`, because `rewriteStatus` has five call
+  routes and only one of them was named.** The earlier draft specified a single route
+  (`main()`'s `_recordQueueRow` → the generated closure) and treated it as the way rows get
+  written. Measured at HEAD, `rewriteStatus` is reached **five** ways:
 
-  1. `main()`'s `_recordQueueRow` call object gains `provenance` beside the existing
-     `{feature, status, evidence}` (`orchestrate-dev.js:12913` is the call site).
-  2. `rewriteStatus` gains an **8th positional parameter** `provenance = NO_PROVENANCE`,
-     defaulted so every existing caller and every existing test is unchanged.
-  3. `build-runtime.mjs`'s closure passes it through as the 8th argument, and
-     `dist/` is rebuilt — the change crosses a generated artifact, so `build-runtime.mjs
-     --check` and `sync-workflows.sh` are part of the task, not an afterthought (K-3).
-  4. `rewriteStatus` hands `provenance.line` to `commitQueueRow` for the message, and to the
-     row writer for the cell.
+  | R | Route | Status it writes |
+  |---|---|---|
+  | R-1 | `build-runtime.mjs:274`'s generated closure — the **queue-driven** run's `_recordQueueRow` | whatever `orchestrate-dev` records |
+  | R-2 | `build-runtime.mjs:307`'s second generated closure — the **direct dev invocation**, whose own comment reads "a direct dev invocation still owns its queue row" | `halted` (`orchestrate-dev.js:12913` → `:1753`, and Phase MERGE) |
+  | R-3 | `orchestrate-queue.js:1426` — the queue driver marking a feature `in-progress` | `in-progress` |
+  | R-4 | `orchestrate-queue.js:1439` — the queue driver's in-module write | per call |
+  | R-5 | `orchestrate-queue.js:1464` — the queue driver's terminal write | `awaiting-merge` / `done` / `halted` |
+
+  **Marking at the call sites would leave four of the five rows unmarked**, and the four
+  include the two a *green* queue-driven run actually produces (R-3's `in-progress` and R-5's
+  `awaiting-merge`) — so AC-5.3's kind 3 would be produced-and-unmarked on the default happy
+  path and AT-5.3's "none is unmarked" would go red against a correct implementation. This is
+  v2's F-01 in a different kind: kind 4's carrier set was closed by enumeration, and kind 3's
+  was not. So the mark is placed in **one writer, not five callers**:
+
+  1. `rewriteStatus` gains an **8th positional parameter** `provenance = NO_PROVENANCE`,
+     defaulted so every existing caller and every existing test is unchanged (it takes seven
+     parameters at HEAD, `orchestrate-queue.js:1522-1530`, so `provenance` is genuinely 8th).
+  2. **`rewriteStatus` itself** hands `provenance.line` to `commitQueueRow` for the message and
+     to the row writer for the cell. Every one of R-1…R-5 inherits the mark by construction;
+     none of the five call sites has to remember anything. A route that passes nothing yields
+     `NO_PROVENANCE` and today's exact bytes (P-1).
+  3. The two routes that *can* carry a real provenance thread it explicitly: `main()`'s
+     `_recordQueueRow` call object gains `provenance` beside `{feature, status, evidence}`
+     (`orchestrate-dev.js:12913`), and **both** generated closures widen their argument list to
+     pass it as the 8th argument — `build-runtime.mjs:274` **and** `:307`, not just the first.
+     `dist/` is then rebuilt, so `build-runtime.mjs --check` and `sync-workflows.sh` are part of
+     the task rather than an afterthought (K-3).
+  4. The queue driver's own three callers (R-3…R-5) pass the queue run's provenance directly,
+     since they are in the module that owns it.
+
+  **One route needs a second look inside the writer.** `updateQueueStatus` — the row rewriter
+  `rewriteStatus` calls — has **two** row-write paths, not one: an `evidence == null` quick
+  path (`orchestrate-queue.js:445-450`, commented "exactly today's code path, byte for byte")
+  and `writeEvidenceCarryingRow` (`:462`). The queue driver's three callers take the first and
+  Phase MERGE's evidence-carrying write takes the second, so writing the `Engine` cell in only
+  one of them reproduces the same gap in miniature. **Both paths write the cell.**
 
   **The cell is a new `Engine` column, not the existing `Evidence` one** (PM Q-03). `Evidence`
   carries merge semantics of its own — `mergeEvidenceCell`'s no-downgrade rule and the
   evidence-free identity property PROP-M-12 (`orchestrate-queue.js:621`, `:559`) — and writing
   a provenance string through it would corrupt both. The `Engine` column is added by an
   `ensureEngineColumn` helper mirroring `ensureEvidenceColumn` exactly (`:559`): append once,
-  never twice, header + separator + one cell per data row. The round trip is safe because both
-  `parseQueue` (`:132`) and `updateQueueStatus` (`:415`) resolve columns **by header name**,
-  not by position, and a trailing column they do not name is ignored; `Engine` collides with
-  none of the names they match on (`order`/`#`, `status`, `feature`, `req`/`path`,
-  `depends`/`deps`, `evidence`). A hand-edited queue table that lacks the column gets it on the
-  next write, and one that has it keeps it.
+  never twice, header + separator + one cell per data row.
+
+  **The round trip is safe, but for a weaker reason than the earlier draft gave.** Both
+  `parseQueue` (`:132`) and `updateQueueStatus` (`:415`) resolve columns by **lowercased
+  substring containment, first matching column wins** — not by name equality
+  (`colIndex`, `orchestrate-queue.js:154-160`: `names.some((n) => cols[i].includes(n))`, with
+  the same logic re-implemented at `:427-433`) — and `parseQueue` falls back to **fixed
+  positions** when no header row is found (`:169`). The conclusion still holds: `Engine`
+  contains none of `order`/`#`/`status`/`feature`/`req`/`path`/`depends`/`deps`/`evidence`, so
+  it collides with nothing and a trailing unnamed column is genuinely ignored. But it holds
+  because of the literal string chosen, not because resolution is by name, so the guarantee a
+  future column addition inherits is the weaker "no header cell **contains** a matcher token".
+  The `ensureEngineColumn` round-trip test therefore **asserts the header literal**, so a later
+  rename to something containing a matched substring goes red rather than silently shadowing a
+  column. A hand-edited queue table that lacks the column gets it on the next write, and one
+  that has it keeps it.
+
+**Each of the five commit helpers gets a named route to `_provenance`, not just kind 3's.**
+"All five compose `line` internally" is a statement about where the mark is written; it says
+nothing about how `line` arrives, and three of the five are in scopes the kind-3 route does not
+reach. Measured at HEAD, each route is:
+
+| Helper | How `provenance` reaches it |
+|---|---|
+| C-a `commitPaths` | Same module as `main()`'s `_provenance`; `commitPaths` gains `provenance = NO_PROVENANCE` in its parameter object and `main()` passes it. Its wave callers (`:12390`, `:12401`, `:12801`) are all inside `main()`'s scope |
+| C-b `appendApprovalAnchors` | **Module-scope** (`orchestrate-dev.js:6660`) and takes no provenance today: its destructured object is `{paths, hash, normalizedHash, commit, _readFile, _probeDoc, _appendFile, _git, emit}`. It gains `provenance` as one more member of that object, and **both** call sites thread it — `:6516` in the review-round body and `:11336` in the erratum-confirmation body. The second passes differently-named seams (`readFileFn`/`gitFn`), so the PLAN task names both sites explicitly rather than "the caller" |
+| C-c `commitQueueRow` | Reached from `rewriteStatus`, which now holds the mark (kind 3's route above). No separate plumbing |
+| C-d `commitAdvisoryRecord` | Signature is `(recordPath, feature, gitFn, emit)` (`orchestrate-queue.js:1637`), reached from the queue module's advisory path at `:1300` — **not** from `rewriteStatus`, so the 8th-parameter route carries nothing to it. `orchestrate-queue.js` has no `_provenance` seam of its own at HEAD (grepped: no match). The queue module's `main()` therefore gains the same `_provenance` keyword parameter `orchestrate-dev`'s does, and passes it to `commitAdvisoryRecord` as a fifth argument |
+| C-e `buildA5SeamOps` | `provenance` joins its destructured parameter object; `main()` passes it at the single call site (`:11718`) |
+
+Without this table AT-5.3's "none is unmarked" is unimplementable as specified for three of the
+five members of the closed set, which is the same defect kind 3 had one level up.
 
 **Kind 4's literal scope needs an upstream decision, and it is raised rather than assumed.**
 AC-5.3 says "the commit message of **every** commit the run makes". A run also produces
