@@ -54,11 +54,11 @@ the symbol is the identity (DC-02).
 | V-11 | `resolvePluginRoot` honours `PDLC_PLUGIN_ROOT` **on presence alone**, ahead of every discovery candidate, and labels its source `explicit override (PDLC_PLUGIN_ROOT)`. This is the T-6 tension AC-5.6 exists to resolve. | `pdlc/engine/lib/skills.mjs:54` (`PLUGIN_ROOT_ENV`), `:204-231` (`resolvePluginRoot`, `explicit` branch) |
 | V-12 | `pdlc doctor` is a distinct `switch` arm that runs startup checks and dispatches nothing. AC-1.1's "doctor sits outside the gate" has a carrier. | `pdlc/engine/bin/pdlc.mjs:208` (`cmdDoctor`), `:489-491` |
 | V-13 | Provenance stamping **already exists on the engine side**: `buildEngineBlock` carries `engineVersion`/`pluginVersion` and `stampReport` returns a new report with an `engine` block, never mutating. O-F's gap is downstream of this, not here. | `pdlc/engine/lib/report.mjs:54` (`buildEngineBlock`), `:110` (`stampReport`); wired at `pdlc/engine/bin/pdlc.mjs:323-325` (`emitReport`) |
-| V-14 | **The workflow module's final report already enumerates the files it authored**, as `artifactPaths` — seeded with `reqPath` and pushed per authored document. | `pdlc/workflows/orchestrate-dev.js:11659` (seed), `:11507` (`artifactPaths.push(docPath)`), `:13088` (returned field) |
+| V-14 | **The workflow module's final report enumerates authored files as `artifactPaths`, but not all of them.** Seeded with `reqPath`; the single push site is **conditional** (`if (pushArtifact)`, defaulted `true`) and reachable **only from `converge()`** — so FSPEC/TSPEC/DECISIONS/PLAN/PROPERTIES reach it and LEARNINGS, `CODE_REVIEW-*`, POSTMORTEM and `ADVISORY-*` do not. §7.4 depends on this corrected reading. | `pdlc/workflows/orchestrate-dev.js:11659` (seed), `:11498` (`pushArtifact = true` default), `:11507` (`if (pushArtifact) artifactPaths.push(docPath)` — the only push site), `:12690-12704` (LEARNINGS authored outside it), `:13088` (returned field) |
 | V-15 | `main()` is a large keyword-argument seam list whose optional capabilities default to inert module constants (`NO_PROBE`, `NO_RUN_COMMAND`). Adding one more optional, default-inert parameter is the shipped extension idiom, not a new pattern. | `pdlc/workflows/orchestrate-dev.js:10619-10665` |
 | V-16 | The halt path writes the POSTMORTEM through an **agent prompt**, then confirms it with `_checkFile` rather than trusting the agent's claim, and throws `haltError` carrying `haltPhase`/`postmortemPath`/`postmortemStatus`. A provenance line placed in the prompt alone would be agent-dependent; the confirmed-write point is script-owned. | `pdlc/workflows/orchestrate-dev.js:11077-11110` (`erratumPostmortemHalt`) |
-| V-17 | The halted queue row is written by `_recordQueueRow` from within `main()`, pathspec-scoped and committed by the module. | `pdlc/workflows/orchestrate-dev.js:12913` (`recordQueueRowFn({feature, status: "halted"})`), `:10650` (seam default) |
-| V-18 | `.github/workflows/` holds exactly one workflow, and its five job-level `name:` strings match FSPEC §5.1's authored column verbatim, on an `os: [ubuntu-latest]` / `node: ['20']` matrix. | `.github/workflows/pr-tests.yml:28,78,112,138,196`; matrix `:40-41`, `:87` |
+| V-17 | The halted queue row is written through the `_recordQueueRow` **seam**, called from `main()`. The dev-side default is a **no-op stub** returning `{queueRow: "none"}`; the real writer is supplied by `build-runtime.mjs`'s entry closure and lives queue-side, where the row text and its commit are composed. §7.2's kind-3 carrier is therefore queue-side, not `orchestrate-dev.js:12913` (which is only the call site). | call site `pdlc/workflows/orchestrate-dev.js:12913`, seam default `:10650`, stub `:10490` (`defaultRecordQueueRow`); real writer `pdlc/workflows/orchestrate-queue.js:1572` (`rewriteStatus`) → `:1598` (`commitQueueRow`); wiring `pdlc/workflows/build-runtime.mjs:273-274` |
+| V-18 | `.github/workflows/` holds exactly one workflow, and its five job-level `name:` strings match FSPEC §5.1's authored column verbatim. The five jobs do **not** share one matrix, and §8.5's expander is per-job for that reason: `unit-tests` declares `os` **and** `node`; `engine-tests` declares `os` only; `artifact-freshness`, `fresh-clone-bootstrap` and `script-syntax` declare no matrix at all. | `.github/workflows/pr-tests.yml:28,78,112,138,196`; axes `:40-41` (`os`, `node`), `:86-87` (`os`) |
 | V-19 | `ci-arrangement.test.js` already regex-asserts the `unit-tests` and `engine-tests` job blocks and their matrices against the live `pr-tests.yml`. FSPEC BR-7.6's "older overlapping assertions removed" has a concrete target. | `pdlc/engine/__tests__/ci-arrangement.test.js:42-64` |
 | V-20 | The consumer config path the engine already reads is `.claude/pdlc.config.json`, exported as a module constant. The pin has an existing file and an existing reader to live in. | `pdlc/engine/lib/run.mjs:160` (`ENGINE_CONFIG_PATH`), `pdlc/engine/bin/pdlc.mjs:256` |
 | V-21 | `DECISIONS-plugin-distribution.md` carries DEC-DIST-01…05 and no version-of-record entry. FSPEC Q-6 is accurate: BL-03's transcription is still undone. | `docs/_decisions/DECISIONS-plugin-distribution.md` (`## DEC-DIST-05:` is the last decision heading) |
@@ -635,6 +635,14 @@ A **new** file, `.github/workflows/publish.yml`, triggered on `push: tags: ['eng
 It adds no job to `pr-tests.yml` and edits no `name:` in it (C-5, BR-7.5), so V-18's five
 rendered check names are untouched and Phase PUB's literal polling keeps working.
 
+**`engine-v*` is a new convention this TSPEC establishes, not an existing one it matches.**
+T-4 refers to "the repo's version-tag convention"; the repository has **zero tags at HEAD**
+(verified: `git tag | wc -l` → 0), so there is no convention to match and the phrase has no
+referent. The `engine-` prefix is chosen deliberately over a bare `v*`: the plugin and the
+engine version independently (T-1a/T-1b), and a bare prefix would make a future plugin tag
+trigger an engine publish. This is called out so a reader does not go hunting for a
+convention that does not exist.
+
 | Job | Depends on | Does |
 |---|---|---|
 | `gate` | — | Re-runs the five PR-gate jobs' commands at the tagged commit (§8.2) |
@@ -645,24 +653,39 @@ rendered check names are untouched and Phase PUB's literal polling keeps working
 (BR-3.2); no job is `continue-on-error`, and none is conditional on anything but its
 dependencies' success.
 
-### 8.2 How the gate is re-run without duplicating it (C-5, BR-3.1)
+### 8.2 How the gate is re-run (C-5, BR-3.1)
 
-The gate's five jobs are extracted into a reusable workflow,
-`.github/workflows/gate.yml`, called by `pr-tests.yml` (via `uses:`) **and** by
-`publish.yml`. The job-level `name:` strings stay in the caller `pr-tests.yml`, because
-that is where V-18's rendered names come from and BR-7.1's oracle reads *the PR-gate
-workflow file's* job-level names.
+**`publish.yml` carries its own copy of the five gate jobs' bodies. `pr-tests.yml` is not
+touched at all.** The reusable-workflow extraction the earlier draft made primary is
+**rejected**, and the reason is mechanical rather than a matter of taste.
 
-**This is the highest-risk edit in the feature and it is called out, not buried.** Moving
-job bodies can change rendered check names, which would break Phase PUB's poll in the
-consumer — a live pipeline, not a test. Two mitigations, both mechanical:
+GitHub renders a job that `uses:` a reusable workflow as `{caller job name} / {called job
+name}` (with matrix suffixes attached to the *called* job). Extracting the five bodies into
+`gate.yml` therefore changes all five **rendered** check names — the names Phase PUB polls
+literally — while leaving the caller's authored `name:` keys byte-identical. That combination
+is the worst possible one: the break is invisible to the very oracle offered against it.
+§8.5's expander reads job-level `name:` keys and expands **declared matrix axes only**; it
+models no `uses:` nesting, and BR-7.3's "unexpandable name expression" guard does not fire
+because there is no expression in the name. The oracle would stay **green** while the live
+checks were renamed, and the blast radius is a consumer's Phase PUB poll, not a test. An
+oracle that cannot detect the failure it is nominated against is not a mitigation.
 
-1. FSPEC §5.1's two set-equalities (§12's AT-3.4) run in the same PR that makes the move,
-   and they fail on a rename, a deletion, an addition or a matrix re-render.
-2. If the set-equality cannot be satisfied by a reusable workflow while keeping all five
-   rendered names byte-identical, the fallback is **duplicating the five job bodies in
-   `publish.yml`** — more YAML, zero risk to the rendered names. The PLAN carries this as
-   an explicit decision point with the set-equality as its gate, not as a hope.
+Two further reasons the extraction was the wrong primary:
+
+- **C-5 says the publish workflow is additive** — "a new workflow file with its own trigger".
+  Rewriting `pr-tests.yml`'s five job bodies into `uses:` calls is not additive by any
+  reading.
+- The duplication's only cost is YAML that must be kept in step, and that cost is **paid by an
+  oracle rather than by discipline**: §8.5's set-equality already compares `publish.yml`'s gate
+  job commands against `pr-tests.yml`'s, so a command that drifts in one file and not the other
+  fails the gate. Duplication with an equality check is safer than extraction with a blind one.
+
+So the risk C-5 priced is not mitigated, it is **removed**: `pr-tests.yml` keeps its five job
+bodies and its five `name:` keys, V-18's rendered names cannot change because nothing edits
+them, and `publish.yml` re-runs the same commands at the tagged commit. §8.5 additionally makes
+the rejected path *mechanically* unavailable rather than merely discouraged: a job carrying
+`uses:` fails the arrangement gate as unexpandable, so a future attempt at extraction goes red
+in CI instead of silently renaming a consumer's checks.
 
 ### 8.3 Preflight — everything decidable offline (BR-3.8, BR-3.9)
 
@@ -673,8 +696,8 @@ number consumed. Each failure names the offending value and fails the run.
 |---|---|---|
 | PF-1 | Tag version equals `pdlc/engine/package.json`'s `version` at the tagged commit. Compared against T-1a **only**; the plugin's number is never a tag subject | AC-3.6, BR-3.4 |
 | PF-2 | `pdlcPluginCompat` at that commit includes `pdlc/.claude-plugin/plugin.json`'s version at that commit, evaluated by `satisfiesRange` — the same function the runtime handshake uses, so CI and runtime cannot disagree about the range grammar | AC-3.7, C-1 |
-| PF-3 | Manifest is publishable: `private` absent, `name` scoped per DEC-DIST-05, `license` a real SPDX id | AC-3.1 precondition, O-8 |
-| PF-4 | `npm pack --dry-run`'s file list equals FSPEC §5.2 member-for-member, in **both** directions | AC-1.3, BR-8.1 |
+| PF-3 | Manifest is publishable: `private` absent, `license` a real SPDX id, and `name` equals **the scope recorded in `DECISIONS-plugin-distribution.md`** (N-6) — asserted against the recorded decision, never against a literal authored in this TSPEC, so an operator who registers a different scope changes one record rather than chasing a string through the design | AC-3.1 precondition, O-8 |
+| PF-4 | The packed file list equals §5.4's expected set member-for-member, in **both** directions. Run against a **real `npm pack` into a temp directory**, not `--dry-run`: the expected set includes `vendor/workflows/*`, which only exists once `prepack` has run, and `--dry-run`'s lifecycle behaviour varies by npm version. Excluding the vendor rows to make `--dry-run` work would make AT-3.8b vacuous, which is the opposite of the point (TE Q-01) | AC-1.3, BR-8.1 |
 | PF-5 | Vendor manifest hashes equal the canonical sources at that commit (AF-2) | §5.3, BR-8.2 |
 
 ### 8.4 Publish, behind the channel seam (BR-3.9)
@@ -685,9 +708,22 @@ the version it was asked to publish.
 
 - **Pairing record (O-6, AC-1.5).** The `publish` job — the same job that computed PF-1 and
   PF-2 — writes `pdlcPairing: {engineVersion, pluginCompat, pluginVersionAtTag, tag,
-  commit}` into the packed `package.json` before packing. **Single writer** (BR-3.7): any
+  commit}` into `package.json` before packing. **Single writer** (BR-3.7): any
   release-notes rendering is generated from this object in the same job, never authored
   independently.
+- **Ordering, so the equalities see what ships (PM Q-01).** The sequence is fixed:
+  (1) `preflight` runs PF-1…PF-5 on the unmutated tree; (2) the `publish` job writes
+  `pdlcPairing`; (3) `prepack` vendors and packs; (4) **PF-4 and PF-5 are re-asserted against
+  the packed tarball** before the channel is called. Step 4 is what stops the mutation being
+  a member no check ever saw. The mutation adds a *key to `package.json`*, not a file, so the
+  packed **file list** is unchanged and PF-4 still holds — but that is asserted rather than
+  argued, because "the manifest is a member of its own expected set" is exactly the kind of
+  claim that silently stops being true.
+- **Reader path for AC-1.5 (PM Q-02).** The record travels inside the packed manifest, so the
+  operator-facing read is `npm view @{scope}/pdlc-engine pdlcPairing`, which hits the registry
+  metadata and does **not** require downloading or installing the package. That command is
+  named in `pdlc/README.md` alongside the install commands (§9.1); naming it is what makes the
+  pairing "not left to be reverse-engineered" true for an operator rather than only for a test.
 - **Immutability (C-7, AC-3.3).** The chosen branch is **loud failure**, not silent no-op:
   the channel is asked whether the version exists and the job fails naming the collision if
   it does. Public npm refuses a re-publish by design
@@ -710,10 +746,27 @@ failure and one remedy.
 - Reads **job-level `name:` keys only**, from `.github/workflows/pr-tests.yml` only.
   Step-level names — the file carries roughly sixteen, e.g. `:46,53,66,70,92` — are not
   members, and neither are `publish.yml`'s jobs (BR-7.5).
-- Renders by expanding **declared matrix axes only**. A `name:` containing any non-matrix
-  expression (`github.*`, `inputs.*`) or an axis introduced by a matrix `include` entry is a
-  **failure of the gate** reported as `unexpandable name expression` — never silently
-  under-rendered and never skipped (BR-7.3, E-19).
+- Separately from the rendered-name set, it asserts that **`publish.yml`'s gate jobs run the
+  same commands as `pr-tests.yml`'s five**, as a set-equality over the run commands. This is
+  what pays for §8.2's duplication: the two files are kept in step by a test, not by memory.
+  It is not part of the rendered-check-set membership, which stays `pr-tests.yml`-only.
+- Renders by expanding **declared matrix axes only**, and the axes are read **per job**, not
+  once for the file. V-18's "same matrix" compression is corrected in §2: `unit-tests`
+  declares `os` **and** `node` (`.github/workflows/pr-tests.yml:40-41`), `engine-tests`
+  declares `os` only (`:86-87`), and `artifact-freshness`, `fresh-clone-bootstrap` and
+  `script-syntax` declare none. A single file-wide axis set would render the wrong expected
+  column for four of the five jobs.
+- A `name:` containing any non-matrix expression (`github.*`, `inputs.*`) or an axis
+  introduced by a matrix `include` entry is a **failure of the gate** reported as
+  `unexpandable name expression` — never silently under-rendered and never skipped (BR-7.3,
+  E-19).
+- **A job carrying `uses:` is unexpandable and fails the gate**, symmetric with BR-7.3/E-19.
+  A reusable-workflow call renders as `{caller job name} / {called job name}`, which this
+  expander does not model and which no `name:`-key comparison can detect (§8.2). Rather than
+  teach the expander a nesting rule whose correctness could only be confirmed against live
+  GitHub rendering, the arrangement is declared out of bounds and fails loudly. This is what
+  makes §8.2's duplication decision **mechanically enforced** rather than left to the
+  judgement of whoever next edits the workflow.
 - Mutations are exercised against **fixture copies** of the YAML, never the live file
   (BR-7.6).
 - The rendered column's dated cross-check against GitHub's real reporting stays a
