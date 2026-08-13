@@ -106,16 +106,16 @@ const FSPEC_TEXT = [
   "## 2. Linked Requirements",
   `- ${REQ_PATH} (AC-1.1).`,
   "",
-  "## 3. Flow",
+  "## 3. Behavioral Flow",
   "- The widget appears.",
   "",
-  "## 4. Rules",
+  "## 4. Business Rules",
   "- BR-1 One widget per ask.",
   "",
   "## 5. Edge Cases and Error Scenarios",
   "- E-1 No widget available.",
   "",
-  "## 6. Tests",
+  "## 6. Acceptance Tests",
   "- AT-1 Ask, receive widget.",
   "",
   "## 7. Open Questions",
@@ -466,7 +466,10 @@ test("PROP-SUITE-14: creation events survive a later deletion — the oracle rea
     assertClause1(
       double.createdFiles.map((e) => e.path),
       FEATURE,
-      { core: [], extra: [relPath] }
+      // `extra` names run-dependent FILENAMES (clause 1's set is over
+      // basenames under `docs/{f}/`), so the creation event's basename is what
+      // the fixture's own rule warrants here.
+      { core: [], extra: [path.basename(relPath)] }
     )
   );
 });
