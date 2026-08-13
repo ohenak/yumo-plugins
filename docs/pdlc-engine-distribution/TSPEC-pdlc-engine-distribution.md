@@ -570,9 +570,12 @@ dressing the interim state as a solution:
   two enumerated trees.
 - The bundle-side conjunction stays FSPEC F-7 step 3's (1)+(2) — run completed and emitted
   named artifacts; output carries no engine provenance block.
-- Per Q-2, **the test documents its own limit in the test itself**: AT-6.2 asserts the
-  conjunction and carries an explicit comment that it discriminates only on a machine whose
-  installed channels are known independently. It is not dressed as a channel oracle.
+- Per Q-2, **the limit is documented alongside the observation**. AT-6.2 is labelled
+  `[manual]` in FSPEC §8 — an operator observation with recorded evidence, not a test file —
+  so "the test itself" was the wrong carrier and §12.1's "One-time manual" row was right. The
+  limit statement lives in **the recorded evidence document** for that observation: it states
+  that the conjunction discriminates only on a machine whose installed channels are known
+  independently. It is not dressed as a channel oracle.
 
 This is the "settle the first two on one carrier but not the third, and say so" branch Q-1
 explicitly permits — taken deliberately, to keep Phase 1 scoped, and re-opened by name in
@@ -986,8 +989,10 @@ operator is a defect (AC-2.4), and so is a partial run.
 
 | Scenario | FSPEC | Handling | Exit |
 |---|---|---|---|
-| Node below floor | E-06 | §9.3's pre-parse guard; message names floor and found version | non-zero |
+| Node below floor | E-06 | §9.3's dependency-free guard entry; message names floor and found version | non-zero |
 | Store empty / missing | new (ladder 7) | Names the store root and the documented install command | non-zero |
+| Config file present but unparseable | new (ladder 0) | Names the file path and the parse error. Never read as "no pin" (§6.4) | non-zero |
+| `--version` / `doctor` with no resolvable version | AC-1.4, AC-1.1 | **Not an error.** The launcher reports its own triple with `mode: unresolved`, carries the ladder's refusal text as a notice, and `doctor` adds the store root, the enumerated versions and the install command (§6.2) | 0 |
 | Pinned version not installed | E-08 | Names the pin **and** the enumerated installed versions. Never falls back | non-zero |
 | `engine.version` malformed | E-10 | Names the offending value. Never read as "no pin" | non-zero |
 | Config file absent / no `engine` section | E-11 | **Not an error.** Announced as "no pin", nothing created | 0 |
@@ -1004,7 +1009,9 @@ operator is a defect (AC-2.4), and so is a partial run.
 **The refusal path writes nothing.** BR-1.1's all-or-nothing property extends unchanged to
 every new refusal above: version resolution happens in the launcher, before the resolved
 engine is even executed, so a refusal cannot have started a dispatch, read a prompt, or
-touched the consumer tree.
+touched the consumer tree. The two exempt commands of §6.2 (`--version`, `doctor`) are not a
+hole in this: they resolve nothing, execute no child, and also write nothing — they are the
+one path that *reports* rather than refuses, which is what AC-1.1 asks for.
 
 ## 12. Test strategy
 
@@ -1013,9 +1020,9 @@ touched the consumer tree.
 | Level | Runs | Covers |
 |---|---|---|
 | Unit, in-process | `pdlc/engine/__tests__/`, the shipped `node --test` suite | Resolution ladder, store enumeration, provenance rendering, catalogue closure, config read discipline, handshake/env-var branch. All pure over injected seams — no temp dirs, no network, no spawn |
-| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.2's packed-set equality over `npm pack --dry-run`, AF-1…AF-3 |
-| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the three placements |
-| Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it |
+| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3 |
+| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements |
+| Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it; the launcher pass-through spawn test (§6.2); **AT-2.5 on a below-floor image (`node:18-alpine`)**, since the PR gate is `node: ['20']` only |
 | One-time manual | recorded, dated | Real-channel publish (BR-3.9), AT-6.2's channel observation (Q-2) |
 
 ### 12.2 Test doubles
@@ -1030,9 +1037,9 @@ touched the consumer tree.
 | Fixture YAML copies | live `pr-tests.yml` | BR-7.6: mutations must not be applied to the file that gates the PR making them |
 | `NO_PROVENANCE` and a populated `Provenance` | S-6 | Proves P-1's byte-identical inert path and the three placements from the same test file |
 
-### 12.3 The three oracles that must not be satisfiable by absence
+### 12.3 The four oracles that must not be satisfiable by absence
 
-The FSPEC is explicit that absence-only oracles pass vacuously, and three here need
+The FSPEC is explicit that absence-only oracles pass vacuously, and four here need
 deliberate positive pairing:
 
 1. **Packed-set equality (AC-1.3).** Member-for-member in both directions, with the
@@ -1046,21 +1053,33 @@ deliberate positive pairing:
 3. **Install non-interference (AC-2.3, AC-2.5).** Hashing "nothing changed" is vacuous if
    nothing ran. Paired per leg with §9.2's positives — install: CLI resolves on `PATH` at
    the expected version from an existing location; upgrade: resolved version **and**
-   location differ from pre-recorded values.
+   resolved store entry (§9.2's named observable, *not* the launcher's `PATH` location)
+   differ from pre-recorded values.
+4. **Vendor-manifest hash equality (AF-2, §5.3).** True over the empty set in any ordinary
+   checkout, where `vendor/` does not exist. Paired with the positive precondition that makes
+   it non-vacuous: run `prepack` into a temp dir, assert the manifest enumerates **exactly**
+   the two modules, and carry a one-byte mutation falsifier in the same test.
 
 ### 12.4 TDD order
 
 `[Fake first]` throughout: every seam in §10.1 gets its double before the production module
 that consumes it, and every implementation task depends on a red-test task naming the same
-test file. Three sequencing constraints the PLAN must honour:
+test file. Four sequencing constraints the PLAN must honour:
 
 - §5.3's oracle restatement (AF-1…AF-3) lands **in the same task** as the vendoring change.
   Vendoring first turns V-05 red for a real reason; restating first removes a guard while
   nothing replaces it. Neither ordering is acceptable, so they are one task.
-- §8.2's gate extraction lands **after** AT-3.4's set-equality is green, so the check that
-  catches a rendered-name break exists before the change that could break one.
+- §8.5's `uses:`-unexpandable rule and the `publish.yml`/`pr-tests.yml` command equality land
+  **before** `publish.yml` itself, so the arrangement gate exists before the arrangement it
+  governs. (The earlier draft sequenced a *gate extraction* here; §8.2 no longer performs one,
+  and the constraint that replaces it is this.)
 - `_provenance`'s inertness test (P-1) lands **before** any placement, so byte-identity of
   the disabled path is proven before the enabled path exists.
+- **Catalogue ids are registered with their emitters, never before them** (§10.3). The
+  suite-wide equality's reverse direction fails on a registered-but-unemitted id, so a
+  fake-first reading that registers all twelve up front turns the whole suite red. This is the
+  one place `[Fake first]` does **not** apply, and the PLAN pairs each id with its emitting
+  task in the same batch.
 
 ## 13. Requirements traceability
 
@@ -1071,34 +1090,34 @@ no row is a defect in this table.
 |---|---|---|
 | AC-1.1 | `handshake.checkCompat` (shipped, V-09) + launcher refusal path | §11 |
 | AC-1.2 | `skills.loadSkill` at dispatch time; `files` allow-list ships no skills | §5.4 |
-| AC-1.3 | `files` allow-list; PF-4's `npm pack --dry-run` equality | §5.4, §8.3 |
-| AC-1.4 | `runStartupChecks.versions` (shipped, V-08) surfaced by `pdlc --version`/`doctor` | §3.1, §7.1 |
+| AC-1.3 | `files` allow-list; PF-4's real-`npm pack` equality against §5.4's literal expected set | §5.4, §8.3 |
+| AC-1.4 | `runStartupChecks.versions` (shipped, V-08) surfaced by `pdlc --version`/`doctor`, which are exempt from the launcher's resolution gate and report the triple even with an empty store | §6.2, §11 |
 | AC-1.5 | `PairingRecord` in the packed manifest, single writer | §8.4 |
 | AC-2.1 | README section; launcher on `PATH`; handshake reached | §9.1, §9.2 |
 | AC-2.2 | Store + launcher: upgrade changes the resolved version machine-wide | §9.2 |
-| AC-2.3 | Store is outside every consumer repo; per-leg positives | §9.2, §12.3 |
-| AC-2.4 | `engines.node` + pre-parse guard | §9.3 |
+| AC-2.3 | Store is outside every consumer repo; per-leg positives over `{resolvedVersion, resolvedStoreEntry}` | §9.2, §12.3 |
+| AC-2.4 | `engines.node` + dependency-free guard entry that dynamic-imports the rest; rendered-text assertion names floor and found version | §9.3, §10.3 |
 | AC-2.5 | Disjoint install locations | §9.4 |
 | AC-3.1 | `publish.yml` gate → preflight → publish | §8.1 |
 | AC-3.2 | No `continue-on-error`, no conditional jobs | §8.1 |
 | AC-3.3 | `PublishChannel.exists` → loud failure; byte-identity over the stub | §8.4 |
-| AC-3.4 | `ci-arrangement.test.js`'s two set-equalities | §8.5 |
+| AC-3.4 | `ci-arrangement.test.js`'s set-equalities, per-job matrix expansion, and the `uses:`-unexpandable rule | §8.5 |
 | AC-3.5 | Secret consumed only by the publish step; sentinel scan + two positives | §8.4 |
 | AC-3.6 | PF-1 | §8.3 |
 | AC-3.7 | PF-2, via the runtime's own `satisfiesRange` | §8.3 |
 | AC-4.1 | `Provenance` in the run report, success and halt paths | §7.1, §7.2 |
-| AC-4.2 | `_provenance` P-3(b), script-owned append after `_checkFile` | §7.2 |
+| AC-4.2 | `_provenance` kind 2, script-owned append after `_checkFile` | §7.2 |
 | AC-4.3 | Distinct `engineVersion` in committed artifacts | §7.2 |
 | AC-4.4 | Single resolution (V-08) read by every emitter; change-check test | §7.1, §12.2 |
-| AC-4.5 | **`artifactPaths`, already shipped** (V-14) + completeness task | §7.4 |
+| AC-4.5 | `artifactPaths` ships but is `converge()`-only (V-14 corrected); four missing classes added + literal set-equality | §7.4 |
 | AC-5.1 | Ladder branch 3 + inert-by-default `UpdateProbe` | §6.3, §10.1 |
 | AC-5.2 | Ladder branch 6's announcement | §6.3 |
-| AC-5.3 | `Provenance.line`/`block` placed in exactly four kinds | §7.2, §12.3 |
-| AC-5.4 | `--dev` required; checkout presence is not an input to the ladder | §6.3 |
+| AC-5.3 | `Provenance.line`/`block` in exactly four kinds, kind 4 composed inside one marked commit helper; kind-4 scope raised as an erratum | §7.2, §12.3 |
+| AC-5.4 | `--dev` required; `location.isCheckout` is a *conjunct* of branch 1, never sufficient on its own, so a checkout with no declaration runs the released version | §6.3 |
 | AC-5.5 | Ladder branch 4, enumerating installed versions | §6.3 |
 | AC-5.6 | D-4's ignore-with-notice branch | §6.5 |
 | AC-6.1 | Nothing here touches `build-runtime.mjs`, the bundles or the sync scripts | §3.1, §14 |
-| AC-6.2 | Engine half closed via `loadRoot`; bundle half **open**, limit documented in the test | §7.3, §14 |
+| AC-6.2 | Engine half closed via `loadRoot`; bundle half **open**, limit documented in AT-6.2's recorded evidence (it is `[manual]`) | §7.3, §14 |
 
 ## 14. Costs, risks, and what is deliberately not closed here
 
@@ -1134,11 +1153,12 @@ no row is a defect in this table.
 
 | # | Item | Why, and who owns it |
 |---|---|---|
-| N-1 | **AC-6.2's load-root half on the bundle side** | C-4 forbids teaching that path to self-report. §7.3 closes the engine half only and documents the interim limit inside the test itself (Q-2). Re-opens against `pdlc-plugin-retirement`, which removes the second channel and dissolves the question |
+| N-1 | **AC-6.2's load-root half on the bundle side** | C-4 forbids teaching that path to self-report. §7.3 closes the engine half only and documents the interim limit in AT-6.2's recorded evidence (Q-2). Re-opens against `pdlc-plugin-retirement`, which removes the second channel and dissolves the question |
 | N-2 | **`license` (O-8 blocker 3)** | An operator decision with a dependency's terms to check, not an engineering choice. The PLAN carries it as a gate task blocking the first real publish, not as a code task |
 | N-3 | **BL-03's transcription into `DECISIONS-plugin-distribution.md`** | Still undone at HEAD (V-21, FSPEC Q-6). This TSPEC is written on O-7's decided position; if the transcription lands saying something else, this document re-opens. Operator-owned |
 | N-4 | **Q-3, range-widening cadence** | Operator-owned, shapes R-2's mitigation, blocks nothing here |
 | N-5 | **Q-7, M-ENG-10's change-control tail** | One sentence in the constraints file, owned by the same pass that lands §5.1's carrier (§8.5). The deferral expires when that carrier lands |
+| N-6 | **The npm scope in the published package name (O-8 blocker 2)** | DEC-DIST-05 chose "scoped public npm" and named no scope; the operator-facing repo is `ohenak/yumo-plugins`. A scope the operator does not own on npm blocks the first publish exactly like N-2's licence does, and the package name is the most consumer-visible string this feature ships — so it is a product/operator decision, recorded in `DECISIONS-plugin-distribution.md`, not a literal invented in this TSPEC. PF-3 asserts the manifest against the recorded value; §9.1's README ships the resolved literal. Operator-owned, blocks the first publish and nothing before it |
 
 ### 14.4 Definition of done for this TSPEC
 
@@ -1146,5 +1166,11 @@ no row is a defect in this table.
 - Every FSPEC-parked obligation (O-9, O-10, O-2's execution half, Q-4, Q-5) is decided in
   §4 with its rejected alternatives, or explicitly listed in §14.3 with an owner.
 - Every claim about existing behaviour in §2 carries a `file:line` citation verified in the
-  working tree.
-- No oracle is deleted without a strictly stronger replacement named in the same table.
+  working tree, **including the ones a review round corrected** — V-14's `converge()`-only
+  scope, V-17's queue-side writer and V-18's per-job axes were each re-measured rather than
+  re-asserted.
+- No oracle is deleted without a strictly stronger replacement named in the same table, and
+  no oracle is left satisfiable by absence without a positive pairing named in §12.3.
+- Where this design's needs disagree with an upstream document, the disagreement is raised as
+  an erratum rather than resolved silently in this layer: FSPEC §5.2's expected packed set,
+  FSPEC's `[blocked on O-9]` marking of AT-4.5, and REQ AC-5.3's kind-4 scope.
