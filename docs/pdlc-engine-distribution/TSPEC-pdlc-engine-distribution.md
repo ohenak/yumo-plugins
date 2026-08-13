@@ -84,7 +84,8 @@ Three trees, one new, two extended.
 
 | Component | Path | New / extended | Role |
 |---|---|---|---|
-| Launcher | `pdlc/engine/bin/pdlc.mjs` | extended | Argument parse, version-resolution entry, `exec` into the resolved engine (§6.3), or run in-process when it *is* the resolved engine |
+| Node-floor guard entry | `pdlc/engine/bin/pdlc.mjs` | extended | The `bin` entry, and **only** the floor comparison plus `await import("./cli.mjs")` (§9.3). Keeps its name so the manifest's `bin` field, `AC-2.1`'s `PATH` entry and the shipped `cli.test.js`'s invocation target are all unchanged |
+| Launcher body | `pdlc/engine/bin/cli.mjs` | **new** | Everything `bin/pdlc.mjs` does at HEAD, moved unchanged: argument parse, version-resolution entry, `exec` into the resolved engine (§6.3), or run in-process when it *is* the resolved engine. New file only because the guard must import nothing statically (§9.3); no behaviour moves with it |
 | Version resolver | `pdlc/engine/lib/resolve-version.mjs` | **new** | Total ordered decision `dev-mode ≻ pin ≻ latest installed` (BR-4.1); pure over an injected store listing + config object |
 | Version store reader | `pdlc/engine/lib/store.mjs` | **new** | Enumerates installed engine versions and maps a version to its install root; the only module that knows the store's on-disk shape |
 | Provenance | `pdlc/engine/lib/provenance.mjs` | **new** | Builds the frozen `Provenance` value and its rendered block; the single writer of provenance text (BR-1.5, BR-5.1) |
@@ -290,18 +291,44 @@ was always going to contain.
 |---|---|---|
 | E-1 | `package.json` | npm, unconditionally |
 | E-2 | `README.md` | npm, unconditionally; authored by this feature (§5.1) |
-| E-3 | `LICENSE` | npm, unconditionally — **present only once N-2's operator licence decision lands.** Until then the member is absent and the expected set omits it. The equality is therefore parameterised on one boolean the repo can read (does `pdlc/engine/LICENSE` exist), never hand-maintained |
-| E-4 | `bin/pdlc.mjs` | `files` entry `bin/` |
+| E-3 | `LICENSE` | npm, unconditionally — **present only once N-2's operator licence decision lands.** The member's presence in the *expected* set is read from **N-2's recorded decision in `DECISIONS-plugin-distribution.md`** — has a licence been recorded — exactly as PF-3 reads the scope, and **never** from whether `pdlc/engine/LICENSE` exists. See the note below |
+| E-4 | `bin/pdlc.mjs` | `files` entry `bin/` — the Node-floor guard entry (§9.3) |
+| E-4b | `bin/cli.mjs` | `files` entry `bin/` — the launcher body the guard dynamically imports (§9.3, §3.1) |
 | E-5…E-16 | the twelve `lib/*.mjs` (V-03) | `files` entry `lib/` |
 | E-17 | `vendor/workflows/orchestrate-dev.js` | `files` entry `vendor/workflows/` |
 | E-18 | `vendor/workflows/orchestrate-queue.js` | same |
 | E-19 | `vendor/workflows/VENDOR-MANIFEST.json` | same |
 | E-20 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
 
+**Why E-3's boolean comes from the decision record and not from the tree.** An expected set
+that reads the artifact under test is not an expectation. If E-3 were "expected iff
+`pdlc/engine/LICENSE` exists", a `LICENSE` lost to a bad merge after N-2 lands would shrink
+*both* sides of the equality together, PF-4 would stay green, and the package would publish
+unlicensed — the deletion-tolerant hole a both-directions equality exists to close. Sourced
+from the decision record instead, the two states are:
+
+| N-2 recorded? | Expected set | A missing `pdlc/engine/LICENSE` |
+|---|---|---|
+| no | E-1, E-2, E-4, E-4b, E-5…E-20 (no `LICENSE` member) | consistent — nothing to ship yet |
+| yes | the above **plus** E-3 | **red**, which is the point |
+
+The flip is therefore a visible edit to one record (the same record PF-3 already reads), not
+an inference the oracle makes from the tree it is auditing. The expected set is 20 members
+before N-2 and 21 after.
+
+**The `bin/` contents are enumerated once, here, and §9.3 does not create a member this set
+lacks.** The guard keeps the name `bin/pdlc.mjs` (E-4) and the body moves to `bin/cli.mjs`
+(E-4b), so the manifest's `bin` field (`pdlc/engine/package.json:6-8`, `"pdlc":
+"bin/pdlc.mjs"`) is untouched, AC-2.1's `PATH` entry is untouched, and the shipped
+`cli.test.js` keeps invoking the same path — now exercising the guard plus the dynamic import,
+which is the end-to-end behaviour it was always proving (PM Q-01, TE Q-06). Unit coverage of
+the body may import `bin/cli.mjs` directly; the existing end-to-end oracles do not move. The
+`files` entry `bin/` packs both without change.
+
 **This disagrees with FSPEC §5.2 as written, and the disagreement is raised, not papered
 over.** FSPEC §5.2 enumerates the manifest, `bin/pdlc.mjs`, the twelve `lib/*.mjs` and the
-workflow modules, and explicitly excludes "repo-level documentation" — so E-2, E-3 and E-20
-are members this TSPEC's design requires and the FSPEC's expected set does not contain. An
+workflow modules, and explicitly excludes "repo-level documentation" — so E-2, E-3, E-4b and
+E-20 are members this TSPEC's design requires and the FSPEC's expected set does not contain. An
 erratum is raised against FSPEC §5.2 rather than leaving the two documents disagreeing while
 a both-directions equality gates on them.
 
