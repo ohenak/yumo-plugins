@@ -261,6 +261,93 @@ artifacts, and it is **[new]** work whose carrier is owned at **O-9**.
 
 ## 4. Business rules
 
+Rules are numbered by the flow they govern. Each is stated so a failing test can be derived from
+it without a further question.
+
+**BR-1 — Handshake**
+
+- **BR-1.1** The handshake runs before any dispatch, and is all-or-nothing: on refusal, no prompt
+  is read, no agent starts, no file in the consumer project is written, and the exit is non-zero.
+- **BR-1.2** The plugin has **three** states — absent, present-and-outside-range,
+  present-and-inside-range. Refusal messages for the first two differ: the first states that none
+  is installed, the second names the version found. Collapsing them is a defect.
+- **BR-1.3** *Present but unreadable* (manifest missing, unparseable, or version field absent) is
+  **not** treated as absent: it refuses naming the root that was inspected and what was wrong with
+  it. A run must never silently degrade a broken plugin into a missing one.
+- **BR-1.4** Every refusal message names the declared range (T-3). A refusal that does not let the
+  operator compute their own remedy is a defect.
+- **BR-1.5** The version triple is resolved **once per run** and all emitters read that resolution.
+  Two emitters that resolve independently can disagree, and a disagreement is unfalsifiable from
+  the artifacts.
+- **BR-1.6** If the engine cannot resolve its own version (T-1a), it refuses with a message naming
+  the corrupt install; it never reports "unknown" and proceeds.
+- **BR-1.7** The diagnostic command is the **only** exemption from BR-1.1, and it reports the same
+  triple as the version query.
+
+**BR-2 — Install and upgrade**
+
+- **BR-2.1** Install and upgrade write **nothing** into any consumer project (C-2, NG-6): no file
+  created, modified or deleted under the project, in particular nothing under `.claude/`.
+- **BR-2.2** Consumer-owned config is read, never written. The engine reads only the `engine.*`
+  namespace of `.claude/pdlc.config.json`; the rest of that file is not its business.
+- **BR-2.3** The install command has exactly one documented source (F-2 step 1). A second copy in
+  another file is a defect the moment it exists, not when it drifts.
+- **BR-2.4** Below the Node floor (T-2), install and every pipeline invocation fail with a message
+  naming the floor and the version found — never a stack trace, never a partial run.
+- **BR-2.5** Upgrade is a machine-level action with a project-level effect: after it, every
+  consumer project runs the new version with zero per-project action.
+- **BR-2.6** Neither install path (plugin, engine) modifies the other's files (C-4).
+
+**BR-3 — Publish**
+
+- **BR-3.1** Publishing is gated on the same evidence a PR is: every member of §5.1 green on the
+  tagged commit (C-6).
+- **BR-3.2** A failed precondition produces a **failed workflow run**. Silent no-op, skip, and
+  green-but-inert are all defects (AC-3.2).
+- **BR-3.3** A version number identifies exactly one set of bytes, forever (C-7). Re-publishing an
+  existing version never overwrites it.
+- **BR-3.4** The tag is compared against T-1a only; the plugin's number enters only through the
+  compat range check (AC-3.6, AC-3.7, O-7).
+- **BR-3.5** The publish workflow is additive and may not weaken, rename, re-render or make
+  conditional any member of §5.1 (C-5).
+- **BR-3.6** No credential value appears in the published contents or in any publish log (C-8);
+  no distribution-channel credential is required to run the engine.
+- **BR-3.7** The per-release pairing record has exactly **one** writer (F-5 step 6); every other
+  rendering is derived from it.
+
+**BR-4 — Version resolution**
+
+- **BR-4.1** Resolution is total and ordered: dev-mode ≻ pin ≻ latest installed. Exactly one
+  branch is taken and it is always announced.
+- **BR-4.2** Dev-mode is explicit and per-invocation. It is never inferred from cwd, from the
+  presence of an environment variable, or from a checkout existing on the machine (T-6).
+- **BR-4.3** A pin naming an uninstalled version refuses; it never falls back to latest (AC-5.5).
+- **BR-4.4** Absence of a pin is stated as explicitly as a pin (AC-5.2).
+- **BR-4.5** The update probe sits behind an injectable seam, never blocks, never fails a run, and
+  never fetches or applies a version (NG-3, AC-5.1).
+- **BR-4.6** `PDLC_PLUGIN_ROOT` present without a dev-mode declaration resolves loudly — refuse
+  naming the variable, or run released and state the variable was ignored (AC-5.6). Silence is not
+  a permitted third branch.
+
+**BR-5 — Provenance**
+
+- **BR-5.1** Both halves of the pair travel together. An artifact carrying one version and not the
+  other does not satisfy F-6; "which semantics ran?" is a two-axis question (G-4).
+- **BR-5.2** Provenance appears from the emitting run forward. No prior artifact is back-filled or
+  invalidated (NG-5).
+- **BR-5.3** The comparison set for "what did this run touch?" is the run report's own enumeration
+  of authored files. Judgement about "normal phase work" is not a permitted oracle (AC-4.5).
+- **BR-5.4** Reported provenance tracks reality: change the current plugin version and the next
+  run's pair changes; revert and it reverts (AC-4.4). A constant that matches once is a defect.
+
+**BR-6 — Coexistence**
+
+- **BR-6.1** The bundle path stays green and untouched throughout the transition (C-4, AC-6.1).
+- **BR-6.2** Every run makes plain which channel and which version executed it, to the limit
+  stated at F-7 step 4 — and that limit is documented in the run's own terms, not implied.
+- **BR-6.3** This feature moves bytes, not behaviour: phase graph, review bars, completeness
+  criteria, queue lifecycle and report shape are unchanged beyond *adding* provenance (NG-5).
+
 ## 5. Expected sets owned by this FSPEC
 
 ## 6. Input / output
