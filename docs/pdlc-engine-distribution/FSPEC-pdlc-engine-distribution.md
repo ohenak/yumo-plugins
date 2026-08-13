@@ -475,7 +475,7 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 | Package manifest | `package.json` | carries the compat range (T-3) and the pairing record (F-5 step 6) |
 | CLI entry | `bin/pdlc.mjs` | the single executable the `bin` mapping names — one entry, not a directory of scripts |
 | Engine modules | `lib/adapter.mjs`, `lib/auth.mjs`, `lib/catalogue.mjs`, `lib/guard-measurement.mjs`, `lib/handshake.mjs`, `lib/outcome.mjs`, `lib/report.mjs`, `lib/run.mjs`, `lib/skills.mjs`, `lib/startup.mjs`, `lib/transport-cli.mjs`, `lib/transport.mjs` | the class is *every* `lib/*.mjs` module of the engine package; the twelve names are the seed measured at HEAD, and a decomposition change updates this row **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
-| Workflow modules **[blocked on O-10]** | not enumerable yet | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`), so *which* files this class contains is exactly what O-10 decides. Their **presence** is not optional (F-2 step 5 depends on it), but the member list — and therefore this class's half of AT-3.8 — is blocked |
+| Workflow modules **[blocked on O-10]** | not enumerable yet | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`), so *which* files this class contains is exactly what O-10 decides. Their **presence** is not optional (F-2 step 5 depends on it), but the member list — and therefore this class's half of AT-3.8 (AT-3.8b) — is blocked |
 
 **Excluded, by set-equality rather than by absence-checking:**
 
@@ -799,3 +799,15 @@ resolved by silence: each names an owner and what it blocks.
   the constraints file ("a change to either means the fact is re-measured"), leaving the *gate* to
   §5.1. Not fixed here because a measured-facts file is not this FSPEC's to edit mid-phase.
   *Owner:* operator/se-author, in the same pass that implements §5.1's carrier.
+  Bounded, not open-ended: the deferral expires **when §5.1's carrier lands**, in that same pass
+  (TE round-1 Q-03). Until then two sentences claim change-control over one set, and the FSPEC's
+  is the gate.
+- **Q-8 — O-8's three publish blockers are live and unowned in this document until now.** (SE
+  round-1 F-01.) The manifest at HEAD is `"private": true` (`pdlc/engine/package.json:4`),
+  unscoped `pdlc-engine` (`:2`) against DEC-DIST-05's scoped-public decision, and `"license":
+  "UNLICENSED"` (`:11`). The first is tool-enforced — `npm publish` refuses outright — the other
+  two are decision-enforced and npm catches neither. Until an operator clears all three, AC-3.1
+  cannot be discharged against the real channel at all, which is why F-5 step 7 marks it and
+  BR-3.8 turns the first two into an offline gate rather than a first-tag-push surprise.
+  *Owner:* operator. *Blocks:* AC-3.1's real-channel leg and BR-3.9's one-time observation; blocks
+  nothing that runs over the stub.
