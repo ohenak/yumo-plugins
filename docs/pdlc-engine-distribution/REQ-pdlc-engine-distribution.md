@@ -73,7 +73,7 @@ one-file correction rather than a stale snapshot inside this REQ.
 | # | Observation | Where |
 |---|---|---|
 | O-A | There is **no release automation of any kind**. `.github/workflows/` contains exactly one file, the PR-test gate. No tag trigger, no publish step, no marketplace step. | `.github/workflows/pr-tests.yml` |
-| O-B | The PR gate is **five** required checks — unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on **ubuntu-latest × Node 20 only**. The check names Phase PUB and T-7 match on are enumerated in **M-ENG-10**, in both alphabets it distinguishes (authored `name:` vs rendered); that fact is the authoritative list, the words here are a gloss. | M-ENG-10 |
+| O-B | The PR gate is **five** required checks — unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on **ubuntu-latest × Node 20 only**. The check names Phase PUB polls are measured in **M-ENG-10**, in both alphabets it distinguishes (authored `name:` vs rendered); T-7's expected set is seeded from that measurement, and the words here are a gloss on both. | M-ENG-10 |
 | O-C | **Two** version numbers exist: the plugin manifest's, which the build stamps into the distribution manifest, and the engine package's own, independent of it. Neither reads the other. Which one is "the version of record" for which purpose is settled at O-7. | M-ENG-11; `pdlc/workflows/build-runtime.mjs` |
 | O-D | The distribution manifest already establishes the packaging discipline this REQ inherits: a schema version, the version the bytes were built at, and one row per artifact carrying a path pair and a content hash, plus a retired-predecessor list. | `pdlc/workflows/dist/distribution-manifest.json` |
 | O-E | The prompt corpus is **15 `SKILL.md` files plus two `se-implement` language supplements**. (The design brief and the upstream REQ both say "14"; that count is stale.) | `pdlc/skills/**` |
@@ -199,8 +199,8 @@ Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows
   `pdlc/workflows/dist/`, or the sync/drift scripts.
 - **C-5 — The existing PR gate stays green and stays required.** The publish workflow is
   **additive**: a new workflow file with its own trigger. It may reuse the gate's jobs but
-  must not weaken, rename, or make conditional any check in M-ENG-10's set, because Phase
-  PUB polls them by their literal names.
+  must not weaken, rename, or make conditional any check in T-7's set, because Phase
+  PUB polls them by their literal rendered names.
 - **C-6 — Publishing is gated on the same evidence a PR is.** A tag whose commit does not
   pass the full gate publishes nothing, and the failure is visible as a failed workflow run
   — never a silent no-op.
@@ -231,7 +231,7 @@ default and an owner; none is left to be invented downstream.
 | T-4 | Release trigger | a pushed git tag naming an **engine** version (T-1a), matching the repo's version-tag convention | Operator; fixed in FSPEC |
 | T-5 | Pin scope and precedence | per-consumer-project pin; an explicit pin beats the installed latest; no pin means latest installed | This REQ (AC-5.1); mechanism in O-2 |
 | T-6 | Dev-mode selector | explicit and opt-in; never inferred from cwd, env presence, or the existence of a checkout | This REQ (AC-5.3); flag shape in O-5 |
-| T-7 | Publish gate | **the required-check names enumerated at M-ENG-10 — that enumeration is authoritative, not a count — in both alphabets it records (authored `name:` and rendered)** — every member green on the tagged commit. Adding, removing or re-rendering a member (including by matrix edit) is a change to M-ENG-10 first | `.github/workflows/` (repo) |
+| T-7 | Publish gate | **the FSPEC's expected required-check set, in both alphabets M-ENG-10 distinguishes (authored `name:` and rendered), seeded from M-ENG-10's measurement at authoring time** — an enumeration, not a count; every member green on the tagged commit. Adding, removing or re-rendering a member (including by matrix edit) is a change to that expected set first | FSPEC (set); `.github/workflows/` (repo) |
 
 ## 5. Acceptance Criteria
 
@@ -324,15 +324,20 @@ This requirement is the D-DIST-06 release-automation remainder in its new form (
   permitted branch — an explicit no-op statement or a loud failure naming the collision (C-7)
   — two things hold positively and are asserted on both: the published bytes for version N are
   byte-identical before and after the re-run, and the run's own output names version N.
-- **AC-3.4** *Who:* a verifier. *Given:* the repo after this feature lands. *When:* they read
-  the required-check names off the PR gate. *Then:* **two** set-equalities hold, one per alphabet
-  M-ENG-10 records, because they are not the same set: the workflow's authored `name:` strings
-  equal M-ENG-10's authored column, **and** the names GitHub reports after matrix expansion equal
-  M-ENG-10's rendered column — the alphabet Phase PUB polls. A deletion, a rename, a matrix edit
-  that changes only the rendered set, and any addition all fail; every member still runs on pull
-  requests and still gates them; the publish workflow is a separate, additively-added trigger
-  (C-5). "Any addition fails" is literal, not a judgement about review: a check this feature or
-  REQ-EDIST-03 adds must land in M-ENG-10 first — that is the change-control point (T-7).
+- **AC-3.4** *Who:* a verifier. *Given:* the repo after this feature lands. *When:* they read the
+  workflow files' authored `name:` strings **and expand the declared matrix axes locally** —
+  decidable offline, without a PR, a network or credentials, as at AC-1.3; observing what GitHub
+  reported on a live run is *not* the carrier, because that check cannot run inside the gate it
+  asserts on. *Then:* **two** set-equalities hold against an expected set stated in the FSPEC,
+  one per alphabet, because they are not the same set: the authored `name:` strings equal the
+  expected authored column, **and** the locally expanded names equal the expected rendered column
+  — the alphabet Phase PUB polls. The FSPEC's expected set is *seeded from* M-ENG-10's
+  measurement and is thereafter the change-control point (T-7); M-ENG-10 stays a point-in-time
+  observation, not a gate. A deletion, a rename, a matrix edit that changes only the rendered set,
+  and any addition all fail; every member still runs on pull requests and still gates them; the
+  publish workflow is a separate, additively-added trigger (C-5). "Any addition fails" is literal,
+  not a judgement about review: a check this feature or REQ-EDIST-03 adds lands in the expected
+  set first.
 - **AC-3.5** *Who:* a verifier. *Given:* a published package. *When:* they inspect its
   contents and any log the publish produced. *Then:* no credential, token or secret value
   appears in either (C-8).
