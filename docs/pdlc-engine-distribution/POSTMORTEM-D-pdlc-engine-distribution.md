@@ -95,4 +95,51 @@ a test file exist.
 
 ## Best-Guess Root Cause
 
+**The erratum edit transcribed DECISIONS' decided text into the TSPEC faithfully, and the
+defect was already inside the text being transcribed. `resolvePluginRoot` never had a notices
+channel; DECISIONS §5 (`:332`) says it "returns a notice list containing the
+`env.plugin-root-ignored` id", and §6.5 carried that sentence up one layer unchanged.
+Fidelity to the item list is exactly what the erratum protocol asks for, and it is what
+propagated the one thing no reviewer had yet checked.**
+
+Three contributing conditions, in order of leverage:
+
+1. **The originating correction was reviewed for its retraction, not for its replacement.**
+   DECISIONS §5 is a *good* entry: it names the earlier draft's error, proves it false at HEAD
+   with three exact citations, and replaces it with two assertions. TE's DECISIONS round-2
+   review scored it "Resolved" on precisely those grounds
+   (`CROSS-REVIEW-test-engineer-DECISIONS-v2.md:19`), and the round-2 questions probed the
+   assertions' *coverage* (`Q-03`: is the fourth row asserted?) rather than their *addressability*
+   (on what object is a notice observed?). A retraction verified against HEAD reads as
+   well-grounded work, and it was — the grounding just stopped one clause short of the new
+   claim. Both reviewers approved, so nothing flagged the shape before it was promoted.
+
+2. **An erratum round is a transcription task by construction, and transcription suppresses
+   re-grounding.** In a normal authoring round the author is writing a claim for the first time
+   and the standing instruction is to verify it against code and cite `file:line`. In an
+   erratum round the claim already exists, decided, in a sibling record; the author's success
+   condition is that the upstream document now says what was decided. Six of the seven items
+   here were genuinely of that kind — a manifest row, a schedule line, a wording reconciliation
+   — and were done well. Item 6/7 was not: it required specifying a *new test* against a
+   *shipped function signature*, which is authoring work wearing an erratum's clothes. The same
+   mechanism explains `F-46`: the round carried assertion 1 of DECISIONS §5 and left assertion
+   2 behind, because the raised item named the false claim to withdraw, not the decision record
+   to reproduce in full.
+
+3. **One erratum round per upstream document means the first transcription is the only one,
+   and this round spent its single attempt on its hardest item twice.** Items 6 and 7 are the
+   same §6.5 defect entered from two directions, so seven raised items were really six, and the
+   hardest of them — the only one requiring a new oracle rather than a reworded sentence — had
+   no second hop available. The budget is right; the observation is only that a round mixing
+   five reword-grade items with one specify-a-new-test item will be judged on the latter.
+
+**What was not the cause.** Not reviewer disagreement — the two reviewers agree on every item
+and on all shared findings; they applied different, individually correct grounding sets. Not
+round exhaustion — DECISIONS spent 2 of 5, TSPEC stands at 10 of 15 lifetime. Not upstream
+drift — REQ v0.10 and FSPEC v0.2 are stable and both reviewers verified the anchor ordering.
+Not re-litigation — zero settled decisions were re-opened, and both reviewers confirmed that
+by diff. Not authoring stall — the seven-commit edit landed in section-sized commits with no
+`MAX_AUTHORING_ATTEMPTS` pressure. Not a wrong decision — DEC-EDIST-04 and DEC-EDIST-06 are
+both endorsed by both reviewers; only their *expression* upstream is defective.
+
 ## Recommendation
