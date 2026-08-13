@@ -669,6 +669,32 @@ assertions — the reuse-over-reinvention call this repo's DC-08 asks for.
 
 ## 11. Error handling
 
+One rule governs the table: **every failure exits non-zero, names the offending value and
+the remedy, and writes nothing into the consumer project.** A stack trace reaching the
+operator is a defect (AC-2.4), and so is a partial run.
+
+| Scenario | FSPEC | Handling | Exit |
+|---|---|---|---|
+| Node below floor | E-06 | §9.3's pre-parse guard; message names floor and found version | non-zero |
+| Store empty / missing | new (ladder 7) | Names the store root and the documented install command | non-zero |
+| Pinned version not installed | E-08 | Names the pin **and** the enumerated installed versions. Never falls back | non-zero |
+| `engine.version` malformed | E-10 | Names the offending value. Never read as "no pin" | non-zero |
+| Config file absent / no `engine` section | E-11 | **Not an error.** Announced as "no pin", nothing created | 0 |
+| `--dev` with a failing conjunct | new (ladder 2) | Names which conjunct failed. Never downgrades to pin or latest | non-zero |
+| `PDLC_PLUGIN_ROOT` set, no `--dev` | E-13 | **Not an error.** Ignored with notice, released version runs (§6.5) | 0 |
+| Workflow modules found at neither root | E-22 runtime analogue | Refuses at startup naming both paths tried; never dispatches module-less | non-zero |
+| No plugin / out-of-range / unreadable plugin | E-01…E-03 | Unchanged — already shipped and distinct (V-09, V-10) | non-zero |
+| Engine version unresolvable | E-05 | Refuses naming a corrupt install; never reports "unknown" and proceeds | non-zero |
+| Update probe unavailable | E-12 | States it could not check and **proceeds**. Never fails, never blocks, never fetches | 0 |
+| Any publish precondition fails | E-14…E-16, E-28 | Job fails naming the offending value; nothing published. Never skipped, never green-but-inert | job failure |
+| Publish credential missing/empty | E-18 | Fails at the publish step naming the missing secret; no partial publish; no credential value in any log | job failure |
+| Re-publish of an existing version | E-17 | Loud failure naming the collision; stored bytes unchanged; output names the version | job failure |
+
+**The refusal path writes nothing.** BR-1.1's all-or-nothing property extends unchanged to
+every new refusal above: version resolution happens in the launcher, before the resolved
+engine is even executed, so a refusal cannot have started a dispatch, read a prompt, or
+touched the consumer tree.
+
 ## 12. Test strategy
 
 ## 13. Requirements traceability
