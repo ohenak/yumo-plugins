@@ -789,7 +789,7 @@ composition root — `runDev` at `:392`, `runQueue` at `:450-453` — and spread
 | Hop | Site | Change |
 |---|---|---|
 | Build | `lib/provenance.mjs` (§3.1, §7.1) | The single construction site. `bin/cli.mjs` builds the frozen `Provenance` **after** resolution, since the value needs the resolved version, `mode`, `pin` and `loadRoot` (BR-1.5's "resolved once per run") |
-| Hand off (process entry) | `bin/cli.mjs`'s command bodies → `run*()` argument objects | **Three call sites, not two** (TE v5 F-32). At HEAD they are `runDev({reqPath, forcePhases, cwd, adapter, startup})` (`pdlc/engine/bin/pdlc.mjs:385`), `runQueueLoop({queuePath, cwd, adapter, startup, maxPasses})` (`:434`, taken when `cmdQueue` runs in loop mode) and `runQueue({queuePath, cwd, adapter, startup})` (`:457`, the single-pass mode). **Each of the three gains `provenance`** in its argument object. Omitting `:434` is the live failure mode: `runQueueLoop` (`run.mjs:478`) forwards `{maxPasses = null, ...args}` into `runQueue` (`:491`), so it inherits provenance **iff `cli.mjs` put it in the object** — `pdlc queue --loop` would emit `NO_PROVENANCE` while every §12 oracle stayed green |
+| Hand off (process entry) | `bin/cli.mjs`'s command bodies → `run*()` argument objects | **Three call sites, not two** (TE v5 F-32). **All line numbers in this row, in §11's S-6, in §12.1's production-path level and in §14.1's K-3 are HEAD's, in `bin/pdlc.mjs`; after the E-4b split (§9.3) these three statements live in `bin/cli.mjs` at different lines** — resolve them by name, not by address (TE v6 F-38). At HEAD they are `runDev({reqPath, forcePhases, cwd, adapter, startup})` (`pdlc/engine/bin/pdlc.mjs:385`), `runQueueLoop({queuePath, cwd, adapter, startup, maxPasses})` (`:434`, taken when `cmdQueue` runs in loop mode) and `runQueue({queuePath, cwd, adapter, startup})` (`:457`, the single-pass mode). **Each of the three gains `provenance`** in its argument object. Omitting `:434` is the live failure mode: `runQueueLoop` (`run.mjs:478`) forwards `{maxPasses = null, ...args}` into `runQueue` (`:491`), so it inherits provenance **iff `cli.mjs` put it in the object** — `pdlc queue --loop` would emit `NO_PROVENANCE` while every §12 oracle stayed green |
 | Carry (dev) | `devInjection(adapter, provenance = NO_PROVENANCE)` (`run.mjs:80`) | Gains an **eighth key**, `_provenance`. `runDev` gains a `provenance` argument and passes it here |
 | Carry (queue) | `queueInjection(adapter, runPipeline, provenance = NO_PROVENANCE)` (`:114`) | Gains a **sixth key**, `_provenance`, for `orchestrate-queue.js`'s own `main()` — the module that owns C-c, C-d and kind 3's R-3…R-5 rows. This answers TE Q-12: the queue takes it as an injected seam of its own, **not** through `_runPipeline`'s wrapper, because `commitAdvisoryRecord` (C-d) and `rewriteStatus` are reached by the queue's own `main()`, which `_runPipeline` never enters |
 | Carry (delegated dev) | `runQueue`'s `runPipeline` wrapper (`:450-451`, `const devSeams = devInjection(adapter); (args) => devMain({...args, ...devSeams})`) | **No separate change.** The wrapper spreads `devInjection`'s result, so the dev pipeline a queue run delegates to inherits `_provenance` from the same key. This is the reason the queue key is additive rather than a re-route |
@@ -800,6 +800,16 @@ object** into every pass — its loop body calls `runQueue(args)` (`run.mjs:491`
 `args` it received, and nothing in it rebuilds or re-resolves. That is BR-1.5's "resolved once
 per run" read literally: a queue loop is one run, so all its passes carry identical provenance,
 and a PLAN task must **not** re-derive the value inside the loop.
+
+**One assertion, applied per pass — identity, not structural equality** (PM v6 Q-01). The
+loop leg of §12.1 writes a single assertion form, `captured[i].provenance === p` (plus
+`Object.isFrozen`), and evaluates it for **every** pass the fixture produces; there is no
+second, weaker structural assertion anywhere in the leg. "Same frozen value" and "identity"
+name one bar, not two, and a task author transcribing this writes one comparison inside a
+loop over the captured calls. For the comparison to have anything to compare, the fixture
+drives **≥2 passes** — `maxPasses: 2` (the bound `runQueueLoop` reads at `run.mjs:478`) — since
+a single-pass fixture satisfies "same object every pass" trivially and cannot falsify a
+per-pass rebuild (TE v6 Q-18).
 
 **The seam sets are pinned by a shipped no-more-no-less equality, so the wiring task edits it in
 the same task or turns a green test red.** `PROP-PARITY-12`
