@@ -595,19 +595,70 @@ call site verified at HEAD:
 |---|---|---|
 | 1 — the run report | `provenance` field on the final report object | `buildFinalReport`'s returned record (`orchestrate-dev.js:13088` is the sibling `artifactPaths` field) |
 | 2 — every POSTMORTEM | `block` appended by `_appendFile` after `_checkFile` confirms the file (P-4) | `orchestrate-dev.js:11077-11110` (V-16) |
-| 3 — the `QUEUE.md` row the run rewrites | **both** the row's own text **and** the commit message that lands it | `rewriteStatus` (`orchestrate-queue.js:1572`) writes the row; `commitQueueRow` (`:1598`) composes the message |
-| 4 — every commit the run makes | `line` composed into the message by **one marked helper**, not by each call site | `commitPaths` (`orchestrate-dev.js:10408`; `git commit -m message` at `:10432`) and `commitQueueRow` |
+| 3 — the `QUEUE.md` row the run rewrites | **both** the row's own text (a new `Engine` cell) **and** the commit message that lands it | `rewriteStatus` (`orchestrate-queue.js:1522`, writes the row at `:1571`); `commitQueueRow` (`:1598`) composes the message |
+| 4 — every commit the run makes | `line` composed into the message inside each of **four** marked helpers, never at a call site | the closed set below |
 
-Two things this pins down that the earlier draft left loose:
+Three things this pins down that the earlier draft left loose:
 
 - **Kind 3 has two artifacts, not one.** The `QUEUE.md` row *text* and the commit message
   that lands it are separate bytes on disk; marking only the message leaves the row itself
   unmarked, and AC-5.3 asks about the row. Both get the mark.
-- **Kind 4 goes through a single helper.** Every script-owned commit already funnels through
-  `commitPaths` — the Phase I wave commits (`:12390`, `:12401`, `:12801`) and the queue row's
-  own commit — so `line` is composed into the message *inside* the helper. Marking each call
-  site individually would make "none is unmarked" depend on nobody forgetting; composing it in
-  one place makes it structural, and a new commit site inherits the mark by construction.
+
+- **Kind 4's marked sites are a closed enumeration, not a single helper — the earlier draft's
+  "every script-owned commit funnels through `commitPaths`" is false at HEAD.** Measured by
+  grepping every `git commit` invocation in both modules, there are **four** script-owned
+  commit sites and only one of them is `commitPaths`:
+
+  | # | Site | What it commits | Reached from |
+  |---|---|---|---|
+  | C-a | `commitPaths` (`orchestrate-dev.js:10408`, `git commit -m message` at `:10429`) | every pathspec-scoped artifact commit, including the Phase I wave commits (`:12390`, `:12401`, `:12801`) | `orchestrate-dev.js` |
+  | C-b | `appendApprovalAnchors` (`orchestrate-dev.js:6660`; `_git(["commit", "-m", "chore(pdlc): record approval anchors …"])` at `:6736`) | the `APPROVAL-HASH:`/`REVIEWED-COMMIT:` lines appended at `:6716-6721` | `orchestrate-dev.js`, **not** via `commitPaths` |
+  | C-c | `commitQueueRow` (`orchestrate-queue.js:1598`, `git commit` at `:1603`) | the `QUEUE.md` row (kind 3's own commit) | `orchestrate-queue.js`, a different module — it issues its own `git add`/`git commit` through `gitFn` and never touches `commitPaths` |
+  | C-d | `commitAdvisoryRecord` (`orchestrate-queue.js:1637`, `git commit` at `:1645`) | `ADVISORY-{feature}.md` | `orchestrate-queue.js` |
+
+  (`orchestrate-dev.js:2839` is the advisory A5 seam's `apply`, which commits through the same
+  injected `_git`; it is covered by C-a's rule below only if routed through `commitPaths`, and
+  the PLAN carries that routing as part of the same task. It is named here so the set stays
+  closed rather than approximately closed.)
+
+  All four compose `line` internally, so no call site carries the responsibility. The
+  structural claim is then the honest one — **"no script-owned `git commit` exists outside
+  these four helpers"** — and it is *assertable*, not merely asserted: a source-level oracle in
+  the arrangement suite greps both workflow modules for `git commit` invocations and asserts
+  the set of enclosing function names equals `{commitPaths, appendApprovalAnchors,
+  commitQueueRow, commitAdvisoryRecord}`. A new commit site added anywhere else turns that row
+  red, which is the property "a new site inherits the mark by construction" was reaching for
+  and did not have. Without this correction AT-5.3's "none is unmarked" would go red against a
+  correct implementation of the earlier design — the same failure mode §7.4 was corrected for.
+
+- **Kind 3's mark reaches the queue-side writer by one named parameter, and lands in one named
+  cell.** The carriers are queue-side while `_provenance` is a parameter of `orchestrate-dev`'s
+  `main()`, and the two are joined by a **generated** closure whose argument list is fixed
+  (`build-runtime.mjs:273-274`: `__queue.rewriteStatus(__queuePath, feature, status, rtReadFile,
+  rtWriteFile, rtGit, evidence)` — verified at HEAD). The route is therefore specified, not left
+  to the test author to invent:
+
+  1. `main()`'s `_recordQueueRow` call object gains `provenance` beside the existing
+     `{feature, status, evidence}` (`orchestrate-dev.js:12913` is the call site).
+  2. `rewriteStatus` gains an **8th positional parameter** `provenance = NO_PROVENANCE`,
+     defaulted so every existing caller and every existing test is unchanged.
+  3. `build-runtime.mjs`'s closure passes it through as the 8th argument, and
+     `dist/` is rebuilt — the change crosses a generated artifact, so `build-runtime.mjs
+     --check` and `sync-workflows.sh` are part of the task, not an afterthought (K-3).
+  4. `rewriteStatus` hands `provenance.line` to `commitQueueRow` for the message, and to the
+     row writer for the cell.
+
+  **The cell is a new `Engine` column, not the existing `Evidence` one** (PM Q-03). `Evidence`
+  carries merge semantics of its own — `mergeEvidenceCell`'s no-downgrade rule and the
+  evidence-free identity property PROP-M-12 (`orchestrate-queue.js:621`, `:559`) — and writing
+  a provenance string through it would corrupt both. The `Engine` column is added by an
+  `ensureEngineColumn` helper mirroring `ensureEvidenceColumn` exactly (`:559`): append once,
+  never twice, header + separator + one cell per data row. The round trip is safe because both
+  `parseQueue` (`:132`) and `updateQueueStatus` (`:415`) resolve columns **by header name**,
+  not by position, and a trailing column they do not name is ignored; `Engine` collides with
+  none of the names they match on (`order`/`#`, `status`, `feature`, `req`/`path`,
+  `depends`/`deps`, `evidence`). A hand-edited queue table that lacks the column gets it on the
+  next write, and one that has it keeps it.
 
 **Kind 4's literal scope needs an upstream decision, and it is raised rather than assumed.**
 AC-5.3 says "the commit message of **every** commit the run makes". A run also produces
@@ -616,10 +667,20 @@ mode the V-wave agent commits its own work. The script cannot promise those mess
 mark for exactly P-4's reason — an agent may paraphrase or omit a prompt instruction. So
 either kind 4 means *every commit the script makes* (satisfiable, and what the helper above
 delivers) or it means every commit including agent-made ones (not satisfiable by any
-script-owned mechanism this design has). An erratum is raised against REQ AC-5.3 to settle it;
-this TSPEC builds the satisfiable reading and says so, rather than shipping a design whose
-AT-5.3 ("every kind it produced carries the mark and none is unmarked") would go red against a
-correct implementation.
+script-owned mechanism this design has). **Upstream has in fact already decided the principle,
+and this TSPEC reads it rather than re-asking it.** FSPEC BR-9.3 puts cross-review and
+`CODE_REVIEW-*` files outside the marked set on exactly this ground — "authored by dispatched
+agents rather than by the run harness" — and REQ AC-5.3 repeats it. Kind 4 is therefore read as
+**every commit the run *harness* makes**, i.e. the closed set C-a…C-d above, and the erratum
+against REQ AC-5.3 is reduced to a **wording confirmation**: that "every commit the run makes"
+be read with BR-9.3's harness/agent distinction, which the criterion's own text already relies
+on for its file set. This keeps AT-5.3 ("every kind it produced carries the mark and none is
+unmarked") satisfiable against a correct implementation instead of red by construction.
+
+One consequence worth stating, because the two sets meet here: C-b **is** a harness commit, so
+its *message* carries the mark, while the cross-review *file* it commits stays unmarked per
+BR-9.3. Marked commit, unmarked file, no contradiction — §12.3's oracle 2 asserts both halves
+(cross-review and `CODE_REVIEW-*` contents unmarked; every harness commit message marked).
 
 ### 7.3 The load root, and the half that stays open (AC-6.2, Q-2)
 
