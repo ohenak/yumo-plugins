@@ -148,7 +148,7 @@ each is recorded with its rejected alternatives in
 | D-2 | O-9 — the provenance carrier | **One optional, default-inert `_provenance` seam** on `main()`, carrying a frozen pre-rendered value. Closes AC-4.2 and AC-4.1; AC-4.5 needs **no carrier at all** (V-14); AC-6.2's load root is closed **engine-side only** and stays open bundle-side | DEC-EDIST-02 |
 | D-3 | O-2 — how a pin *executes*, not just resolves | **Version store plus thin launcher**: many versions installed side by side under one store root, one launcher on `PATH` that `exec`s the resolved one | DEC-EDIST-03 |
 | D-4 | Q-4 — which AC-5.6 branch | **Ignore-with-notice.** `PDLC_PLUGIN_ROOT` without an explicit per-invocation dev declaration is ignored, the released version runs, and the run states the variable was ignored | DEC-EDIST-04 |
-| D-5 | Q-5 — how `__tests__/` is kept out of the tarball | **A `files` allow-list**, not an `.npmignore` deny-list | DEC-EDIST-05 |
+| D-5 | Q-5 — how `__tests__/` is kept out of the tarball | **A `files` allow-list decides the packed set**, rather than an `.npmignore` deny-list. A one-line `.npmignore` *is* shipped, carrying only `!vendor/workflows/` to negate the vendor git-ignore rule (§5.1, §5.2); it adds no deny-list entry, is never a packed member, and cannot widen the set (§5.4) | DEC-EDIST-05, DEC-EDIST-01 |
 
 ### 4.1 Why D-1, in one paragraph each
 
@@ -297,6 +297,22 @@ caught by a consumer.**
 The list is `["bin/", "lib/", "vendor/workflows/", "scripts/postinstall.mjs"]`. It excludes
 `__tests__/`, `package-lock.json`, `.gitignore` and `scripts/prepack.mjs` without naming any
 of them. Q-5 is answered: the exclusion is a deliberate packaging mechanism, not an omission.
+
+**This does not mean the package ships no `.npmignore`.** §5.1 and §5.2 create one, and
+D-5's shorthand — "an allow-list, not an `.npmignore` deny-list" — is about *who decides the
+packed set*, not about whether the file exists. The shipped file carries one line,
+`!vendor/workflows/`, and its only job is to negate the `vendor/` git-ignore rule inside a
+directory `files` already lists (DEC-EDIST-01, DEC-EDIST-05's own "the inclusion is made
+explicit rather than inferred"). No deny-list entry is ever added to it: the day it would
+need one, the answer is a `files` edit. Two consequences worth stating so no reader has to
+re-derive them:
+
+- **It is never a packed member.** npm excludes `.npmignore` (and `.gitignore`) from every
+  tarball regardless of `files`, so the `PK-*` table below and PF-4's both-directions
+  equality are unaffected — no `PK-` row is added for it, and none should be.
+- **It cannot widen the packed set.** A negation only readmits paths an ignore rule removed;
+  what ships is still exactly what `files` lists, which is what keeps D-5's asymmetry
+  argument true after the addition.
 
 **`files` does not by itself determine the packed set, and the earlier draft's arithmetic was
 wrong.** npm packs `package.json`, `README*` and `LICENSE*` **regardless of `files`**, and
