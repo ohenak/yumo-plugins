@@ -86,8 +86,8 @@ files, never from the run's own output. O-F is why.
 | `pdlc-install-mechanism`, cont. | D-DIST-07 (per-worktree consumer state) | **Dissolved, not transferred** — it is a property of the `.claude/workflows/` copy; re-opens against `pdlc-engineering-loop` if `pdlc-plugin-retirement` does not land (O-3). |
 | `pdlc-release-ci` | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Kept and renarrowed** to the tag → build → publish pipeline of §5, REQ-EDIST-03, and made dependent on this feature. |
 
-Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows are named here by
-**feature name, not queue Order** — Order numbers renumber, the feature name is the identity.
+Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows are named by
+**feature name, not queue Order**: Order numbers renumber; the name is the identity.
 
 ### 1.3 User stories
 
@@ -148,9 +148,8 @@ Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows
   chooses otherwise in O-1. **Fact recorded 2026-08-13:** the repo is public today
   (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), so the whole prompt
   corpus — `pdlc/skills/**` — is already world-readable in the tree; this disqualifier
-  therefore excludes no candidate channel as of today. Whether the repo stays public is an
-  operator intent, not a fact this REQ can settle; NG-1 itself is unchanged and not weakened by
-  this note (see O-1).
+  therefore excludes no candidate channel as of today. Whether it stays public is operator intent,
+  not a fact this REQ settles; NG-1 itself is unchanged, not weakened, by this note (see O-1).
 - **NG-2 — Retiring the plugin, the bundles, or the sync/drift machinery.** That is
   `pdlc-plugin-retirement` (its own queue row), and only after the engine is proven in a real
   consumer repo. Bound deferral, not prose intent.
@@ -447,8 +446,8 @@ the committed artifacts.
   the operator does not control. A git-tag install channel fails differently: it needs a
   reachable git remote and a tool that can resolve a tag to a tarball, and it has no
   built-in yank/deprecate primitive, so a bad release is harder to un-publish (tension with
-  C-7). Neither mode is eliminated by this REQ; O-1 picks which one the operator accepts, and a
-  failed install/upgrade defeats G-2 outright. Mitigation direction: REQ-EDIST-02's
+  C-7). Neither mode is eliminated here; O-1 picks which the operator accepts, and a failed
+  install/upgrade defeats G-2. Mitigation direction: REQ-EDIST-02's
   failure-message ACs (AC-2.1, AC-2.4) are re-validated against the channel actually picked.
 - **R-2 — Two-artifact release coordination is a new, recurring operator burden.** Every
   release now means deciding an engine version *and* a compatible-plugin range *and*
@@ -474,10 +473,9 @@ the committed artifacts.
 - **R-4 — Two live distribution channels coexist through the whole transition window.**
   Until `pdlc-plugin-retirement` (NG-2) lands, the bundle/sync path
   (`pdlc/workflows/dist/` → `.claude/workflows/`) and the engine path both run in parallel,
-  possibly on the same machine (C-9, AC-6.2). Two channels double the surface an operator
-  must reason about when a run behaves unexpectedly — "which channel produced this?" is a
-  question that did not exist before this feature, and a regression on one channel can be
-  misdiagnosed against the other. Mitigation direction: C-9 and AC-6.2 require every run's output
+  possibly on the same machine (C-9, AC-6.2). "Which channel produced this?" is a question that
+  did not exist before this feature, and a regression on one channel can be misdiagnosed against
+  the other. Mitigation direction: C-9 and AC-6.2 require every run's output
   to name its channel and version; the risk retires only when `pdlc-plugin-retirement` removes the
   second channel, not by anything in this REQ.
 - **R-5 — The package cannot contain the workflow modules as the repo is arranged, and the
