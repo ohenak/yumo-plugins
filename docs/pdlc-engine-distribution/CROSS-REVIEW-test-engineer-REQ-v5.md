@@ -38,7 +38,28 @@ what they replaced. Three Mediums and one Low, all about what can be *asserted* 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | FSPEC F-3 step 5 (`:140-141`) still carries the hand-off sentence "NG-6's own wording is an erratum against the REQ, not fixed here". The REQ has now fixed it, so that sentence is stale the moment this round closes. Is its removal part of the FSPEC's delta-confirmation, or does it need naming explicitly so the downstream edit is not lost between rounds? |
+| Q-02 | Does the scope restatement change anything for a *run* that writes under `.claude/` for reasons other than config — the drift-state file the SessionStart hook writes, and whatever AC-6.2's load root implies? NG-6's title is still "Consumer-side generated state" while its body is now purely about install and upgrade, so the title over-promises relative to the text. Not a finding at REQ altitude, but the title is what a reader greps for. |
+| Q-03 | Round-4's Q-02 stands unanswered and still non-blocking: AC-1.3's "no test corpus in the packed set" implies either a `files` field or an `.npmignore`, and M-ENG-11 records `files` absent at HEAD. |
+
 ## Positive Observations
+
+- The erratum was fixed at the source rather than glossed downstream. NG-6's own wording was the
+  defect; NG-6 is what changed. FSPEC BR-2.2 and BR-4.7 already said the honest thing and now
+  inherit rather than contradict.
+- Both channels of the read/write rule are now stated positively — install/upgrade touch nothing,
+  a run reads `engine.*` and writes nothing — instead of one being defined as the negation of the
+  other. Two positive statements are two testable statements; "not writing" was one.
+- AC-3.5's added sentence *says why* the absence oracle needed pairing ("absence alone holds
+  vacuously if the credential is never consumed"). Recording the reasoning, not just the fix, is
+  what stops the pairing being deleted as verbose in a later compression pass.
+- The (b) branch was written as a distinct *Given*, not as a clause on the same fixture. Two
+  fixtures, two outcomes — the shape that can actually fail. Contrast AC-2.3, where the positive
+  had to be split per leg for the same reason.
+- The diff is minimal and the changelog is accurate to it. A four-item erratum round that touches
+  exactly four places, with no opportunistic edits riding along, is cheap to confirm.
 
 ## Recommendation
 
