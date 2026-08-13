@@ -1265,6 +1265,19 @@ So the guard is **its own dependency-free entry point**:
      behind an entry guard — `if (process.argv[1] && import.meta.url ===
      pathToFileURL(process.argv[1]).href) main().catch(…)` — so `pdlc dev …` behaves exactly as
      at HEAD while an import is inert.
+
+     **`argv` keeps HEAD's convention, and the parameter is defaulted to `process.argv`**
+     (PM v7 F-02). HEAD's body opens `const [, , cmd, ...rest] = process.argv`
+     (`bin/pdlc.mjs:479`), i.e. it destructures the **full** `process.argv` with execPath and
+     script path included. The signature is therefore `main(argv = process.argv, deps = …)`
+     and the first statement becomes `const [, , cmd, ...rest] = argv`: the two-element skip
+     stays, unchanged, because the shipped subprocess entry still parses through it. A caller
+     in a test passes a **process-argv-shaped** array — `["node", "pdlc", "queue", "--loop",
+     "--max-iterations", "2"]` — not a sliced argument list. Passing `["dev", "docs/…"]`
+     instead lands in the `default:` branch (`bin/pdlc.mjs:498-501`), prints `USAGE`, sets
+     `process.exitCode = 1` and leaves the recorder uncalled; the tempting "fix" — deleting
+     the skip — changes what the real `pdlc` entry parses, which is why the shape is stated
+     here rather than inferred at task-writing time.
   2. **Runner seam.** `runDev`, `runQueue` and `runQueueLoop` arrive as static ESM bindings
      (`bin/pdlc.mjs:30`) and cannot be substituted by an importer; `node:test`'s `mock.module`
      is experimental and absent from the pinned runner (`engines.node: ">=20"`, local Node
@@ -1273,6 +1286,28 @@ So the guard is **its own dependency-free entry point**:
      `run.mjs` already uses for `importWorkflow` (`run.mjs:387`, `:427`). Production behaviour
      is unchanged because the defaults *are* the static imports; §12.1's process-entry leg
      passes recorders instead.
+
+     **Which runtime "pinned" means, so the seam is not simplified away later** (PM v7 Q-01):
+     the justification is the **declared floor**, `engines.node: ">=20"` — a field this feature
+     adds (§5.1), so the citation is forward-looking rather than a HEAD reading. Any runtime the
+     floor admits must be able to run this suite, and the floor admits Node 20, where
+     `mock.module` does not exist. That a *newer* admitted runtime (22.3+) happens to offer it
+     does not make the seam optional, because the seam must work on the whole admitted range,
+     not on whichever runtime the maintainer's laptop has (currently v20.20.1). The seam is
+     re-decidable only if the floor itself is raised above 22.3.
+
+     **The defaults are pinned, or nothing observes the real runners** (TE v7 F-41). "Production
+     behaviour is unchanged because the defaults *are* the static imports" is a claim, and it is
+     exactly the claim a mis-wired default (`runQueueLoop: runQueue`) falsifies while every test
+     stays green — the process-entry leg always supplies its own recorders, and the shipped
+     subprocess tests never reach a real runner either (`cli.test.js` covers `--dry-run` returns
+     at `:70`, `:78`, `--max-iterations` refusals *before* the loop starts at `:149-156`, and
+     startup-rung refusals at `:86`, `:102`, `:114`). So `cli.mjs` **exports its default `deps`
+     object**, and one assertion in the process-entry leg pins it two ways: its key set equals
+     exactly `{runDev, runQueue, runQueueLoop}` by set-equality against a literal (a dropped or
+     renamed key fails), and each value is `===` the correspondingly-named export of
+     `lib/run.mjs` (`run.mjs:381`, `:422`, `:478`). A swapped or aliased default is red at that
+     one assertion, on the level that introduces it.
 
   Both exceptions are behaviour-visible only to a test, and both are priced in K-3 (§14.1) and
   owned by the wiring task (§12.4). The alternative shapes were weighed: exporting the bodies
@@ -1287,6 +1322,26 @@ So the guard is **its own dependency-free entry point**:
   *evaluation order on an old runtime*. `cli.mjs` has no such hazard, and a later edit that
   restored a bare `main()` call would break every process-entry test at once and loudly — the
   entry guard is pinned by the tests that depend on it, so no fourth clause is added.
+
+- **But the pin must land in the split task's own batch, not one batch later** (TE v7 F-40).
+  Both shape changes above ship in the split task (§12.4), while the process-entry leg lands
+  with the *wiring* task in a later batch — so on the strength of the bullet above the split
+  task would ship a behaviour change with no red test at all. It therefore carries its own
+  two-assertion red test, small and permanent, in the same engine-side file the process-entry
+  leg later extends (§12.1):
+
+  1. **The import is inert, asserted positively.** Import `bin/cli.mjs` and assert
+     `process.exitCode` is unchanged (`undefined`/`0`, captured before the import) and that
+     nothing was written to `stderr` — specifically no `USAGE` text. "Nothing happened" stated
+     as an absence would pass against a file that does not exist; these two are observations of
+     a value and a captured stream.
+  2. **`main` is exported and callable** — `typeof mod.main === "function"` — alongside the
+     exported default `deps` object and its two pins from exception 2 above.
+
+  Both assertions fail against HEAD's shape: HEAD has zero `^export` lines and ends in a bare
+  `main().catch(…)` (`bin/pdlc.mjs:505`), so importing it today runs the CLI against the
+  importer's `process.argv`, prints `USAGE` and sets `process.exitCode = 1`. The red is real,
+  not a formality, and the split task's `[Fake first]` ordering has something to be first of.
 
 **The container leg cannot falsify the hazard on its own, so it is paired with a structural
 oracle.** AT-2.5's runner is Node 18 (below the `>=20` floor, see below), but Node 18 parses
