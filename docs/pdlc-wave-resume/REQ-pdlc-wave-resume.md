@@ -10,11 +10,16 @@ depends-on: [pdlc-consolidation-agent, pdlc-advisory-wave-gate]
 |---|---|
 | Status | Draft |
 | Author | pm-author (operator-directed session, 2026-08-09) |
-| Version | 1.1 |
+| Version | 1.2 |
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | (none yet) |
 | LEARNINGS | docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md |
+
+**Amendment, 2026-08-13 (v1.2).** The two decisions this REQ was waiting on are recorded
+(operator delegated adjudication). REQ-WVR-05 is restated as **retention with invalidation**,
+aligning the requirement with the shipped interim ledger; OQ-1 resolves to **record deletion as the
+only force-full-run hatch**, with no new config knob. No question in this REQ is open.
 
 **Amendment, 2026-08-13.** OB-1, OB-2, and OB-3 (§9) are answered against the shipped interim
 mechanism, which reconciliation confirms is already merged to main. OQ-1 (§9) remains open pending
@@ -219,14 +224,17 @@ starts. **Then:** the manual point wins, the run announces provenance as operato
 and a documented, announced escape hatch exists to force a full run despite a valid
 record. *Source: US-02.*
 
-### REQ-WVR-05 — self-clearing lifecycle (P1, Phase 1)
+### REQ-WVR-05 — resume-state lifecycle: retained, never able to skip unverified work (P1, Phase 1)
 
-**Who:** pipeline operator. **Given:** a Phase I that completes all waves. **When:** the
-run finishes the phase. **Then:** no resume state survives for a later fresh run of any
-feature to inherit; a subsequent invocation behaves as if no halted run ever existed.
-*Source: US-01.*
+**Who:** the pipeline operator. **Given:** a resume record exists, whether or not Phase I has since
+completed all its waves. **When:** any later run reads it. **Then:** the record may survive the
+completed phase, but it can never cause a run to skip work it has not verified — it is usable only
+while it validates against the feature key, the PLAN hash, and commit ancestry from the current
+HEAD, and a record failing any of those checks is treated exactly as an absent record: full run,
+announced reason (C-2). Staleness is therefore a property the reader proves, not a property the
+writer promises. *Source: US-01.*
 
-**OPEN — awaiting operator.** The shipped interim ledger conflicts with this requirement
+**Decided 2026-08-13 — retention with invalidation.** The shipped interim ledger conflicts with this requirement
 as written and is not being changed here. WVR-05 requires self-*clearing*: after Phase I
 completes, no resume state survives. The shipped ledger deliberately **persists** after
 Phase I completes (`orchestrate-dev.js:12429` ff.; complete-record skip at
@@ -237,8 +245,18 @@ self-clearing. Because BL-03's gating logic (§5) is "formalize and replace, nev
 duplicate," this REQ as written forces either a regression (make the shipped ledger
 clear itself) or a rewrite of this requirement. The operator has two options: reword
 WVR-05 to retention-with-invalidation, matching shipped behaviour; or keep WVR-05 as
-written and demand true clearing, changing shipped behaviour. This REQ does not decide
-between them.
+written and demand true clearing, changing shipped behaviour. The first is chosen
+below; WVR-05 above is already restated accordingly.
+
+**Decision: retention with invalidation; the requirement moves, not the code.** WVR-05 is restated
+above. The shipped ledger's persistence past Phase I is deliberate and load-bearing — a halt in CR,
+DOD or PUB must not re-dispatch a green wave — so demanding true self-clearing would have required
+deleting a behaviour that already earns its keep, for a guarantee that invalidation supplies more
+cheaply. What the shipped code owes under the restated requirement is the invalidation half, not a
+clearing step: feature key, PLAN hash and ancestry checks must be total and must fail closed, which
+is exactly what REQ-WVR-03's verification independence already demands. Note the honest cost: a
+stale record is now permitted to exist indefinitely, so every skip decision rests on those three
+checks being correct — PROPERTIES should treat them as the feature's highest-value oracles.
 
 ### REQ-WVR-06 — completion evidence is never commit presence (P1, Phase 1)
 
@@ -354,7 +372,7 @@ would under REQ-WVR-01..05, with no queue-specific configuration. *Source: US-04
 - **OQ-1.** Should the escape hatch of REQ-WVR-04 be a config value, a record-removal
   action, or both? Product requirement is only that one exists and is announced;
   form is the TSPEC's choice unless the operator states a preference at FSPEC review.
-  **OPEN — awaiting operator.** What exists at HEAD: exactly one hatch, the
+  **Decided 2026-08-13 — deletion only.** What exists at HEAD: exactly one hatch, the
   record-removal action, announced in both banners ("Delete
   `.claude/pdlc-wave-state.json` to force a full run", `orchestrate-dev.js:12265` and
   `:12276`). No config value can force a full run today — `implementation.startWave`
@@ -368,6 +386,16 @@ would under REQ-WVR-01..05, with no queue-specific configuration. *Source: US-04
   awkward in unattended or worktree contexts. The operator's question: is deletion
   acceptable as the sole documented force-full-run hatch, or is a config knob wanted —
   and if so, what shape, given `startWave: 1` cannot express it?
+
+  **Decision: the record-removal action is the only hatch; no config value is added.** It already
+  exists, it is already announced in the halt banners, and it is the one hatch that cannot be
+  silently wrong: an absent record has exactly one meaning, whereas a `forceFullRun`-style knob left
+  set to true in a consumer's `.claude/pdlc.config.json` would defeat resume permanently and
+  invisibly. The named cost is accepted: deletion is imperative rather than declarative and is
+  awkward in unattended or worktree contexts. If that cost is ever observed rather than predicted —
+  a queue run that needed a full re-run and could not express it — a declarative knob becomes a
+  follow-up, not a v1 requirement. FSPEC must state the hatch and its wording; `startWave` remains a
+  resume-point selector, never a full-run switch.
 
 ## 10. Traceability
 

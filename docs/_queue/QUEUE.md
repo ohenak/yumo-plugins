@@ -42,14 +42,32 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > says "row 1", "row 2" or "row 3" is historical record and keeps its meaning: the feature name,
 > not the row, is the identity.
 
+> **Row 7 (`pdlc-install-mechanism`) removed from the table on 2026-08-13 — closed as superseded,
+> not delivered.** Its deferrals D-DIST-01/02/03/05 are absorbed by `pdlc-engine-distribution`'s
+> renarrowed REQ-EDIST-03: once the engine is installed as a package, the per-project copy
+> mechanism they wanted to improve no longer exists to improve. D-DIST-07 (per-worktree consumer
+> state) dissolves for the same reason — it is a property of the `.claude/workflows/` consumer copy,
+> which row 5 `pdlc-plugin-retirement` removes. **Conditional, recorded so it cannot vanish
+> silently:** if plugin retirement does not land, D-DIST-07 re-opens against row 6
+> `pdlc-engineering-loop`. No REQ was ever authored at the row's `REQ Path` — the row was a
+> placeholder holding the deferrals, so closing it deletes no document and nothing moves to
+> `docs/completed/`. `Order` value 7 is retired and is not reused. Decision:
+> `pdlc-engine-distribution` REQ v0.6, O-3.
+>
+> **Row 8 (`pdlc-release-ci`) kept, renarrowed on 2026-08-13.** Its PR-test half was discharged out
+> of band in `3ef6ac7`; what remains is release automation for the public npm package chosen in
+> DEC-DIST-05 — tag, publish, and the rendered version lines. It therefore now depends on
+> `pdlc-engine-distribution` as well, and stays `blocked` until that feature's FSPEC settles the
+> package name and pin mechanism. Its `REQ Path` is likewise still a placeholder: no REQ exists at
+> that path yet, and one must be authored before the row can be picked up. Decision: same, O-3.
+
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
 | 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
-| 7 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
-| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
+| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
 | 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
