@@ -543,6 +543,59 @@ failure and one remedy.
 
 ## 9. Install and upgrade (F-2, F-3)
 
+### 9.1 The two commands, and their single documented home (BR-2.3)
+
+Both live in `pdlc/README.md`'s `## Install in another repo` section — the section that
+documents the plugin install today at `pdlc/README.md:132` — added beneath it:
+
+| Purpose | Command |
+|---|---|
+| Install | `npm i -g @kaneho/pdlc-engine` |
+| Upgrade | `npm i -g @kaneho/pdlc-engine@latest` |
+
+The uniqueness rule is keyed on the **engine's own** invocation — the distinguishable
+package name `@kaneho/pdlc-engine` — so the plugin's three existing `claude plugin install`
+occurrences (`README.md:115`, `pdlc/README.md:139,145`) are outside the set and AT-2.2 does
+not trip on them. A second copy of either engine command anywhere else in the tree is a
+defect the moment it exists.
+
+### 9.2 How a global install populates the store (§6.1)
+
+The published package's `postinstall` places the installed tree into
+`$PDLC_HOME/versions/<version>/` and leaves the global `bin` shim pointing at the launcher.
+Consequences, each of which an AC depends on:
+
+- Installing a second version **adds** a store entry rather than replacing one, which is
+  what makes AC-5.1 (execute X while Y is latest) and AC-5.5 (name what *is* installed)
+  satisfiable without a network.
+- Upgrading changes both the resolved version and the launcher's resolved install location,
+  which is exactly AC-2.3's upgrade-leg positive — a *change* against pre-recorded values,
+  the observation that proves the upgrade was not a silent no-op.
+- Nothing in either path reads or writes a consumer project. C-2/BR-2.1 holds structurally,
+  not by discipline: the code paths take a store root and a package tarball, and are given
+  no consumer path at all.
+
+### 9.3 Node floor (C-3, T-2, BR-2.4, AC-2.4)
+
+Two enforcement points, because the criterion covers both an install attempt and a pipeline
+invocation:
+
+1. `engines.node: ">=20"` in the manifest (§5.1), so `npm` refuses or warns at install time
+   with the floor in its own message.
+2. A guard at the top of the launcher, before any other work, comparing `process.versions.node`
+   against the floor and exiting non-zero with `pdlc requires Node >= 20; found <v>`. It
+   runs before argv parsing and before any import that could itself fail on an old runtime
+   — a syntax error from a modern construct on Node 16 is the "stack trace" AC-2.4 forbids,
+   so the guard file uses only syntax valid on the oldest Node that could plausibly run it.
+
+### 9.4 Non-interference and coexistence (AC-2.5, BR-2.6, C-4)
+
+The engine install writes to the npm global prefix and `$PDLC_HOME`. The plugin install
+writes under `~/.claude/`. The sets are disjoint, and AT-2.6 asserts it by hashing the
+plugin's install tree before and after an engine install and upgrade, paired with the
+positives: an engine run reaches dispatch **and** an interactive plugin session invokes a
+skill, on the same run.
+
 ## 10. Types and protocols
 
 ## 11. Error handling
