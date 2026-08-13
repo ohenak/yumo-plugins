@@ -1319,10 +1319,47 @@ So the guard is **its own dependency-free entry point**:
      (`bin/pdlc.mjs:30`) and cannot be substituted by an importer; `node:test`'s `mock.module`
      is experimental and absent from the pinned runner (`engines.node: ">=20"`, local Node
      v20.20.1). So `main(argv, deps)` and the command bodies take a **default-valued `deps`
-     object** — `{runDev, runQueue, runQueueLoop}` defaulting to those imports — the shape
-     `run.mjs` already uses for `importWorkflow` (`run.mjs:387`, `:427`). Production behaviour
-     is unchanged because the defaults *are* the static imports; §12.1's process-entry leg
-     passes recorders instead.
+     object**, the shape `run.mjs` already uses for `importWorkflow` (`run.mjs:387`, `:427`).
+     Production behaviour is unchanged because the defaults *are* the module's own bindings;
+     §12.1's process-entry leg passes recorders instead.
+
+     **The seam covers five members, not three, because two gates stand between `main()` and
+     any runner** (TE v8 F-43, PM v8 F-02, and the choice TE v8 Q-21 asked to be made here
+     rather than by the PLAN author). A runner is unreachable at HEAD until two things happen
+     first, and neither is a runner:
+
+     - `const startup = startupFor(argv)` is `cmdQueue`'s **first** statement (`bin/pdlc.mjs:397`)
+       and `cmdDev`'s statement after positional parsing (`:362`); both `return` on `!startup.ok`
+       after printing a refusal (`:397-408`, `:362-374`), leaving every runner uncalled. Behind
+       it is the real `runStartupChecks` (`:139-146`, `lib/startup.mjs:319-343`), whose ladder
+       resolves a plugin root (rung 1), reads its manifest and compat range (rungs 2–3), loads
+       dispatchable skills (rung 4), probes a guard interpreter on `PATH` (rung 4a) and resolves
+       an auth posture from `process.env` plus login evidence under `os.homedir()` (rung 5,
+       `lib/auth.mjs:113-123`). Note the one input argv cannot pin: `startupFor` passes **no
+       `cwd`**, so rung 0's git-repo check reads `process.cwd()` (`lib/startup.mjs:328`, `:348`)
+       — `--cwd` reaches `liveAdapter` only (`bin/pdlc.mjs:283`).
+     - `liveAdapter(argv, startup)` (`:279-298`, called at `:382`/`:417`) then builds a **real**
+       SDK transport and adapter before the runner call at `:434`.
+
+     Three keys therefore leave the leg's outcome decided by the environment it happens to run
+     in rather than by the code under test. Worse, the failure is *silent-zero*: on a machine
+     that exports `ANTHROPIC_API_KEY` with no login evidence, auth row 5 refuses
+     (`lib/auth.mjs:88-95`), `cmdQueue` returns at `:407`, and a leg that only loops over
+     `captured` asserts nothing — the same shape TE v7 F-39 removed one level down. So `deps` is
+     **`{runDev, runQueue, runQueueLoop, startupFor, liveAdapter}`**, each defaulting to the
+     binding of that name in `cli.mjs`, and all five are exported so §12.1 can pin them.
+
+     The alternative — keep three keys and pin the ladder through argv and env — was weighed and
+     rejected. It is *writable*: `--plugin-root` and `--allow-api-key-billing` are both in
+     `queue`'s and `dev`'s closed flag sets (`bin/pdlc.mjs:93-103`), and the opt-in flag widens
+     `apiKeyPolicy` (`:144`) so no auth row refuses (`lib/auth.mjs:61-99` — row 5 is the only
+     refusing row and it requires `allowApiKeyBilling !== true`). But it leaves four ambient
+     preconditions load-bearing for a leg whose entire question is *what the command body put in
+     the argument object*: a git-repo `process.cwd()`, a readable plugin tree, a guard
+     interpreter on `PATH`, and a real transport constructed for a run that dispatches nothing.
+     Two more seam keys buy a hermetic leg; the shipped subprocess tests (`__tests__/cli.test.js`)
+     remain the place the real ladder and the real adapter are exercised, which is the division
+     of labour those tests already have.
 
      **Which runtime "pinned" means, so the seam is not simplified away later** (PM v7 Q-01):
      the justification is the **declared floor**, `engines.node: ">=20"` — a field this feature
@@ -1341,10 +1378,38 @@ So the guard is **its own dependency-free entry point**:
      at `:70`, `:78`, `--max-iterations` refusals *before* the loop starts at `:149-156`, and
      startup-rung refusals at `:86`, `:102`, `:114`). So `cli.mjs` **exports its default `deps`
      object**, and one assertion in the process-entry leg pins it two ways: its key set equals
-     exactly `{runDev, runQueue, runQueueLoop}` by set-equality against a literal (a dropped or
-     renamed key fails), and each value is `===` the correspondingly-named export of
-     `lib/run.mjs` (`run.mjs:381`, `:422`, `:478`). A swapped or aliased default is red at that
-     one assertion, on the level that introduces it.
+     exactly `{runDev, runQueue, runQueueLoop, startupFor, liveAdapter}` by set-equality against
+     a literal (a dropped or renamed key fails), and each value is `===` the binding it is meant
+     to be — the three runners against `lib/run.mjs`'s correspondingly-named exports
+     (`run.mjs:381`, `:422`, `:478`), the two gate constructors against `cli.mjs`'s own exports
+     of the same names (which is why the split exports them: `startupFor: liveAdapter` is a
+     swap set-equality alone cannot see). A swapped or aliased default is red at that one
+     assertion, on the level that introduces it.
+
+     **What the five recorders must return, since the command bodies keep running after the
+     call.** The seam does not end the command body: `cmdQueue` destructures the loop result and
+     reaches `emitReport` (`bin/pdlc.mjs:437-452`), which reads `startup.pluginVersion` /
+     `startup.pluginRoot` and calls `adapter.getApiKeySource()` and `adapter.getPauseLog()`
+     (`:323-342`), while `formatStartup(startup)` spreads `startup.banner` first
+     (`lib/startup.mjs:485-486`). A recorder returning `undefined` throws inside the command body
+     rather than failing an assertion, so the leg names its stubs: `startupFor` returns
+     `{ok: true, banner: [], pluginVersion, pluginRoot, rungs: []}`; `liveAdapter` returns
+     `{adapter: {getApiKeySource: () => null, getPauseLog: () => []}, cwd, tunables: null}`;
+     `runDev`/`runQueue` return `{report: {outcome: "ran"}}`; `runQueueLoop` returns
+     `{passes: [], outcome: "ran", stopReason: "bound-reached", exitCode: 0,
+     loop: {iterations: 0, maxIterations: 2}}` (`:441-452`). None of this is fixture decoration
+     — each field is read by a line the leg executes.
+
+     **`process.exitCode` and `stderr` are per-process, so the leg restores them** (PM v8 Q-01).
+     `emitReport`'s return is assigned to `process.exitCode` on every command path
+     (`:393`/`:444`/`:459`), and a startup or usage refusal sets it to `1` and writes `USAGE` to
+     `stderr`. Since §12.1 puts every engine-side leg in one file, that state outlives the test
+     that produced it and would falsify the split task's inert-import assertions if they ran
+     after it. The rule, stated once here rather than rediscovered: **each leg that calls
+     `main()` captures `process.exitCode` and installs a `console.error` capture before the call
+     and restores both in a `finally`** — the same discipline the inert-import test uses around
+     its own `await import()` (below). Test *registration order* is then not load-bearing, which
+     is the property worth having in a file two tasks in two batches write.
 
   Both exceptions are behaviour-visible only to a test, and both are priced in K-3 (§14.1) and
   owned by the wiring task (§12.4). The alternative shapes were weighed: exporting the bodies
@@ -1371,7 +1436,12 @@ So the guard is **its own dependency-free entry point**:
      `process.exitCode` is unchanged (`undefined`/`0`, captured before the import) and that
      nothing was written to `stderr` — specifically no `USAGE` text. "Nothing happened" stated
      as an absence would pass against a file that does not exist; these two are observations of
-     a value and a captured stream.
+     a value and a captured stream. The import is a **dynamic `await import()`** inside the
+     test, with the `process.exitCode` reading and the `console.error` capture installed
+     immediately around it and restored in a `finally`, so the observation is of *this* import
+     and not of whatever a neighbouring test in the same file left on the process (PM v8 Q-01;
+     the same capture-and-restore rule the process-entry leg follows, exception 2 above). A
+     module-level `import` would be hoisted out of the window it is supposed to be measured in.
   2. **`main` is exported and callable** — `typeof mod.main === "function"` — alongside the
      exported default `deps` object and its two pins from exception 2 above.
 
