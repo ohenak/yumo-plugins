@@ -161,10 +161,12 @@ release automation for this package and made dependent on this feature. Rows are
   audience is the operator's own machines and projects. The prompt corpus is the product;
   a channel that can only work by publishing it publicly is disqualified unless the operator
   chooses otherwise in O-1. **Fact recorded 2026-08-13:** the repo is public today
-  (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), and the whole prompt
-  corpus — `pdlc/skills/**` — is already embedded, world-readable, in
-  `pdlc/workflows/orchestrate-dev.js`; this disqualifier therefore excludes no candidate
-  channel as of today. Whether the repo stays public is an operator intent, not a fact this
+  (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), so the whole prompt
+  corpus — `pdlc/skills/**` — is already world-readable in the tree; this disqualifier
+  therefore excludes no candidate channel as of today. (An earlier draft added that the corpus
+  is also "embedded in `pdlc/workflows/orchestrate-dev.js`". That is false — the module
+  references skills by path and embeds no prompt text — and is deleted here; the public-repo
+  fact alone carries the conclusion.) Whether the repo stays public is an operator intent, not a fact this
   REQ can settle; NG-1 itself is unchanged and not weakened by this note (see O-1).
 - **NG-2 — Retiring the plugin, the bundles, or the sync/drift machinery.** That is
   `pdlc-plugin-retirement` (its own queue row), and only after the engine is proven in a real
@@ -206,8 +208,8 @@ release automation for this package and made dependent on this feature. Rows are
   `pdlc/workflows/dist/`, or the sync/drift scripts.
 - **C-5 — The existing PR gate stays green and stays required.** The publish workflow is
   **additive**: a new workflow file with its own trigger. It may reuse the gate's jobs but
-  must not weaken, rename, or make conditional any of the four checks at O-B, because Phase
-  PUB polls them by name.
+  must not weaken, rename, or make conditional any check in M-ENG-10's set, because Phase
+  PUB polls them by their literal names.
 - **C-6 — Publishing is gated on the same evidence a PR is.** A tag whose commit does not
   pass the full gate publishes nothing, and the failure is visible as a failed workflow run
   — never a silent no-op.
@@ -215,8 +217,9 @@ release automation for this package and made dependent on this feature. Rows are
   already-published version must not overwrite it; it either no-ops or fails loudly. A
   version number identifies exactly one set of bytes, forever.
 - **C-8 — Secrets stay in CI.** Whatever credential the chosen channel needs (O-1) exists
-  only as a repository secret consumed by the publish workflow. No credential is required to
-  *run* the engine, and none is written into the package or into any artifact.
+  only as a repository secret consumed by the publish workflow. No **distribution-channel**
+  credential is required to run the engine (the engine still needs the operator's own Claude
+  credential to dispatch), and none is written into the package or into any artifact.
 - **C-9 — Two channels may coexist on one machine but must be distinguishable.** While the
   plugin is still installed (C-4), any run must make plain which channel and version
   executed it, so the transition period cannot reproduce the ambiguity of O-F.
@@ -230,13 +233,14 @@ default and an owner; none is left to be invented downstream.
 
 | ID | Value | Default | Owner |
 |---|---|---|---|
-| T-1 | Version of record — the file whose version number the release, the package and the provenance field all read | `pdlc/.claude-plugin/plugin.json` (O-C), unless BL-03 moves it | Operator (decision doc) |
+| T-1a | **Engine version of record** — the number a release tag names, the published package carries, and the `engineVersion` half of every provenance pair reads | `pdlc/engine/package.json`'s `version` (M-ENG-11) | Operator (decision doc), per O-7 |
+| T-1b | **Plugin version of record** — the number the compat range (T-3) is checked against and the `pluginVersion` half of every provenance pair reads | `pdlc/.claude-plugin/plugin.json`'s `version` (M-ENG-11) | Operator (decision doc), per O-7 |
 | T-2 | Minimum supported Node | 20 | Repo CI matrix (O-B); raising it is a CI change first |
-| T-3 | Compatible-plugin-range declaration — where the engine's semver constraint on plugin versions lives and what it constrains | a field in the engine package manifest (e.g. `compatiblePluginRange`; the shipped field is named `pdlcPluginCompat` per M-ENG-06 — the name here is illustrative only), read by the CLI startup banner, every run report, and the publish workflow (T-7) | This REQ; field name and syntax fixed in TSPEC |
-| T-4 | Release trigger | a pushed git tag matching the repo's version-tag convention | Operator; fixed in FSPEC |
+| T-3 | Compatible-plugin-range declaration — where the engine's semver constraint on plugin versions lives and what it constrains | the engine package manifest's `pdlcPluginCompat` field (M-ENG-11), read by the CLI startup banner, every run report, and the publish workflow (T-7) | This REQ; range syntax fixed in TSPEC |
+| T-4 | Release trigger | a pushed git tag naming an **engine** version (T-1a), matching the repo's version-tag convention | Operator; fixed in FSPEC |
 | T-5 | Pin scope and precedence | per-consumer-project pin; an explicit pin beats the installed latest; no pin means latest installed | This REQ (AC-5.1); mechanism in O-2 |
 | T-6 | Dev-mode selector | explicit and opt-in; never inferred from cwd, env presence, or the existence of a checkout | This REQ (AC-5.3); flag shape in O-5 |
-| T-7 | Publish gate | the full set of required checks at O-B — currently four — all green on the tagged commit | `.github/workflows/` (repo) |
+| T-7 | Publish gate | **the set of literal required-check names enumerated at M-ENG-10 — that enumeration is the authoritative list, not a count** — every member green on the tagged commit. Adding or removing a member is a change to M-ENG-10 first | `.github/workflows/` (repo) |
 
 ## 5. Acceptance Criteria
 
