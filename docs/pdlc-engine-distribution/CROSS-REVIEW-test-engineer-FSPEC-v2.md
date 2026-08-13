@@ -27,6 +27,23 @@ changed sections scanned for new defects; unchanged sections not re-reviewed.
 
 ## Grounding checks (changed passages only)
 
+Every new code citation in the delta was checked against the working tree, not against the REQ's
+or the FSPEC's account of it.
+
+| New claim in v0.2 | Checked at | Result |
+|---|---|---|
+| F-1 step 2: `bin/pdlc.mjs:143` reads `pkg.pdlcPluginCompat`, passes it as `engineCompat` into `startup.mjs:302`; `satisfiesRange` is the comparison, not the resolution | `pdlc/engine/bin/pdlc.mjs:140-145` (`engineCompat: pkg.pdlcPluginCompat` inside the `runStartupChecks` call); `package.json:10` (`"pdlcPluginCompat": "^0.22.0"`) | **Correct**, and the round-1 SE correction it encodes is right |
+| F-1 step 6 / BR-1.7: the diagnostic is `pdlc doctor`, shipped at `bin/pdlc.mjs:489` | `bin/pdlc.mjs:487-491` — `case "doctor": … cmdDoctor(rest)` | **Correct**; naming the command closes the "fixed by the TSPEC" hole without over-specifying |
+| F-5 preamble: `.github/workflows/` holds exactly one file, so the publish pipeline is wholly new | `ls .github/workflows/` → `pr-tests.yml` only | **Correct** |
+| F-5 step 7 / E-28 / Q-8: three manifest blockers at HEAD | `pdlc/engine/package.json:4,2,11` | **Correct**, all three, at the cited lines |
+| §5.2: twelve named `lib/*.mjs` members | `ls pdlc/engine/lib/` | **Correct**, exact set equality with the table |
+| §5.2 / AT-3.8b: workflow modules reached outside the package root | `pdlc/engine/lib/run.mjs:51-55` | **Correct** |
+| §5.2 note: `runtime-adapter.js` deliberately not ported | `pdlc/engine/lib/adapter.mjs:8-13` | **Correct** |
+| BR-7.1: five job-level names; step-level names at `:46,53,66,70,92` | `.github/workflows/pr-tests.yml:27,28,77,78,111,112,137,138,195,196` | **Correct** — job keys `unit-tests, engine-tests, artifact-freshness, fresh-clone-bootstrap, script-syntax`, names byte-identical to §5.1's authored column |
+| F-7 step 2 / AT-6.1: plain sync exits non-zero on `local-edit`/`unverified`, `sync-workflows.sh:703-722` | `pdlc/hooks/scripts/sync-workflows.sh:713-722` — `exit 3` unknown, `exit 2` local-edit/unverified, `exit 1` stale/missing | **Correct** ("exits non-zero" is accurate; the code is finer-grained than the claim, which is the safe direction) |
+| AT-6.1: CI establishes the fresh-clone precondition at `pr-tests.yml:138,152` | `.github/workflows/pr-tests.yml:137-158` — job `Fresh-clone bootstrap works`, step `No consumer copy exists yet` asserting `.claude/workflows` absent | **Correct**, and the precondition is genuinely *asserted* by that job, not merely assumed |
+| AT-2.2: `claude plugin install` occurrences outside the engine set | `README.md:115`, `pdlc/README.md:139,145` | **Correct** — three occurrences, one of them the local-marketplace variant |
+
 ## Findings
 
 ## Questions
