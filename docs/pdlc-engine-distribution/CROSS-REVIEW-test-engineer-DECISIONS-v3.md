@@ -62,7 +62,42 @@ and are restated below rather than dropped.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **Re-asked from v2 Q-02, because it is the one open question with a test consequence and §7's oracle is now the settled shape.** The signalled-child leg asserts the launcher's exit status equals `128 + signum`. Is the expected number a **literal transcription** in the test (fake target self-kills with `SIGTERM`, test asserts `143`), or computed from the observed `signal`? Only the literal form falsifies: `128 + observedSignum` passes even when launcher and test share the same wrong mapping. TSPEC `:479` already writes it the right way ("e.g. `130` for `SIGINT`") — one clause in §7 saying "the expected value is written as a literal, not derived from the observed signal" would put the decision where PROPERTIES transcribes from, and closes this for good |
+| Q-02 | Following F-03: when `PROPERTIES-pdlc-engine-distribution.md` is authored, does this feature's property register **re-state** the `exitCodeFor` invariant under a new local id (with a cross-reference to the completed feature's `PROP-EXIT-1`), or **cite the foreign id directly** as an inherited invariant it does not own? Either is defensible; the entry should say which, because the two produce different PROPERTIES tables and different answers to "who re-verifies this if `run.mjs:290` changes" |
+
 ## Positive Observations
+
+- **The repair moved the constraint from a document to an executing test, which is a strict
+  upgrade in falsifiability.** The old text rested the decision on "AC-1.4's exit-code contract
+  (crash 1, halt 2)" — a claim about a spec. The new text rests it on `exitCodeFor`
+  (`run.mjs:290`) pinned by `PROP-EXIT-1` (`exit-loop.test.js:88`). If someone changes the
+  mapping, a test goes red; the old citation would have gone quietly false, exactly as it did.
+  A citation repair that lands on a *shipped oracle* rather than on a differently-numbered AC is
+  the version of this fix worth having.
+- **The withdrawal is stated, not just silently swapped.** `:470-471` says outright that the
+  invariant "is the engine's own, **not** REQ's AC-1.4 — AC-1.4 is the version-triple
+  criterion". Deleting the wrong citation and inserting the right one would have passed review;
+  writing down *what was wrong* is what stops the phrase being re-introduced by anyone who
+  remembers the old wording. Same discipline as §5's round-1 retraction.
+- **Both promised sites were repaired, and I could confirm it mechanically.** The post-mortem
+  committed to §7's "**both** occurrences" (`POSTMORTEM-D:25`); the body paragraph and the
+  "Constraints that forced the shape" row were both rewritten, and a grep for `AC-1.4` over the
+  document leaves only §8/§13's legitimate version-triple uses. A promise of "both" that turns
+  out to be exactly both, verifiable by one grep, is the kind of remediation record that does
+  not need to be re-audited later.
+- **The decision itself was left untouched.** `128 + signum`, the exact-number oracle, the
+  three-behaviour accounting and the rejection of `!== 0` all survive the edit verbatim. This
+  was a citation repair scoped as one, and nothing settled in rounds 1–2 was re-opened — I
+  re-read §7's oracle paragraph (`:474-487`) specifically to check the exact-number assertion
+  had not been softened while the paragraph above it was rewritten. It had not.
+- **The post-mortem's deviation note is the artifact I would want to find in six months.** It
+  records that recommendation step 1 was *not* taken, and why: moving assertion (b) up a level
+  would have falsified approved DECISIONS §5 text and re-opened this document
+  (`POSTMORTEM-D:31-40`). Choosing the option that honours approved text verbatim, and writing
+  down that the cheaper option was rejected for that reason, is what keeps an approval anchor
+  meaningful.
 
 ## Recommendation
 
