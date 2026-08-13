@@ -1302,7 +1302,7 @@ tell "needs no wiring" from "someone forgot to wire it" — the discipline alrea
 | S-3 | `Launcher` — `exec(binPath, argv, env)` → exit code | `bin/pdlc.mjs` | `spawnSync`, stdio inherited | tests assert the *descriptor* (path, argv, env) without spawning |
 | S-4 | `UpdateProbe` — `latestPublished()` → `{version}` \| `{unavailable, reason}` | `lib/store.mjs` | **`NO_PROBE`-shaped inert default: never called unless injected** | AC-5.1's offline test needs no network and no stub-of-a-network |
 | S-5 | `PublishChannel` — `exists(name, version)`, `publish(tarball, opts)` | publish job | real `npm` | CI passes the stub for every test; the real one runs only in the tagged job |
-| S-6 | `_provenance` — frozen `Provenance` (§7.1) | workflow modules | `NO_PROVENANCE` | **`devInjection` (`run.mjs:80-91`) and `queueInjection` (`:114-123`)** — the two frozen seam objects the engine constructs at `runDev:392` / `runQueue:450-453`, and the only carriers a production run has (§7.2's production-carrier table). Named, not "the engine", because both key sets are pinned by `PROP-PARITY-12` |
+| S-6 | `_provenance` — frozen `Provenance` (§7.1) | workflow modules | `NO_PROVENANCE` | **`devInjection` (`run.mjs:80-91`) and `queueInjection` (`:114-123`)** — the two frozen seam objects the engine constructs at `runDev:392` / `runQueue:450-453`, and the only carriers a production run has (§7.2's production-carrier table). Named, not "the engine", because both key sets are pinned by `PROP-PARITY-12`. Upstream of them, the value reaches `runDev`/`runQueueLoop`/`runQueue` from `bin/cli.mjs`'s three command bodies (`bin/pdlc.mjs:385`, `:434`, `:457`) — the seam is only as wired as its least-wired call site |
 
 **S-2's shape is the shipped function's, extended — not a new one.** The earlier draft declared
 `readEngineConfig(cwd) → {version?} | null`, but the shipped signature is
@@ -1496,7 +1496,12 @@ deliberate positive pairing:
    `Provenance` and asserts the seam object the module actually receives carries it. Every other
    leg here injects into `main()` directly and is green whether or not `devInjection` /
    `queueInjection` carry the key, so without this one the whole oracle is satisfiable by a
-   build that emits `NO_PROVENANCE` in production.
+   build that emits `NO_PROVENANCE` in production. **The same leg starts at process entry, not
+   at `run*()`** (TE v5 F-32): it drives `cli.mjs`'s three command bodies and asserts all of
+   `runDev` (`bin/pdlc.mjs:385`), `runQueueLoop` (`:434`) and `runQueue` (`:457`) are handed
+   provenance. The loop site is the one a green suite would otherwise hide — `runQueueLoop`
+   forwards `...args` (`run.mjs:478`, `:491`), so it carries provenance only if `cli.mjs` put
+   it in the object, and `pdlc queue --loop` is a shipped mode.
    Cross-review and `CODE_REVIEW-*` file **contents** are asserted
    **unmarked** (BR-9.3), while the harness commit that lands an anchor append (§7.2's C-b)
    carries the mark in its **message** — the two halves are asserted separately, because they
@@ -1529,12 +1534,17 @@ test file. Four sequencing constraints the PLAN must honour:
 - **The injection change and `PROP-PARITY-12`'s constants are one task, never two.**
   `devInjection`'s 8th key and `queueInjection`'s 6th (§7.2's production-carrier table) are
   pinned by a no-more-no-less equality whose expected constants sit in a different file
-  (`pdlc/engine/__tests__/seam-contract.test.js:47-63`, plus the leak assertion at `:79-82`).
-  Wiring without the constant edit turns a shipped green test red; editing the constants first
-  turns it red the other way. Both files are therefore owned by a single PLAN task, and the
-  file-ownership manifest lists `lib/run.mjs` and `seam-contract.test.js` under it. The
-  production-path leg (§12.1) lands in the same task, since it is the assertion that the wiring
-  happened at all.
+  (`pdlc/engine/__tests__/seam-contract.test.js:47-63`). That constant is the **only** required
+  edit in the test file: the leak case at `:79-90` is an exclusion list and stays as it is
+  (`_provenance` is on both rows, so it belongs in neither exclusion), and `PROP-PARITY-15`
+  (`:268-282`), the third reader of the constant, turns green on the `:47-63` edit alone so
+  long as `_provenance` is not added to `UNOVERRIDDEN_IO_SEAMS` (`:223-238`). Wiring without
+  the constant edit turns a shipped green test red; editing the constant first turns it red the
+  other way. Both files are therefore owned by a single PLAN task, and the file-ownership
+  manifest lists `lib/run.mjs` and `seam-contract.test.js` under it. **`bin/cli.mjs` joins that
+  task**, since its three `run*()` call sites (§7.2) are the other half of the same wiring, and
+  the production-path leg (§12.1) — which asserts both halves happened at all — lands with
+  them.
 - **Catalogue ids are registered with their emitters, never before them** (§10.3). The
   suite-wide equality's reverse direction fails on a registered-but-unemitted id, so a
   fake-first reading that registers all twelve up front turns the whole suite red. This is the
@@ -1609,6 +1619,16 @@ no row is a defect in this table.
   instruction. AC-2.1's "the CLI is on `PATH`" also survives: the global `bin` shim is placed
   by npm's own linking, not by the `postinstall`, so the launcher exists even when the store
   does not (PM Q-03).
+- **R-E — The Node-12.17 syntax-subset claim is documented, not tested** (PM v5 Q-01). §9.3
+  drops the "parses under an ES-2020 parser" clause rather than add `acorn` to the one manifest
+  this feature's packed-set equality is auditing, and keeps the claim as a header comment. The
+  consequence is worth stating where the risks are read, not only where the trade is argued: a
+  future edit to `bin/pdlc.mjs` using a post-12.17 construct is caught **only at review**, and
+  what it breaks is the user-visible half of AC-2.4 — an operator on an old Node sees a stack
+  trace instead of a named floor. The mitigations are that the file is three top-level
+  statements long, that clause 3 mechanically covers the specific regression that has already
+  happened once (`await import(…)`), and that the comment states the constraint at the point of
+  edit. Accepted knowingly; reversible by adding a parser if the file ever grows.
 - **R-C — Two Node processes per run** (launcher plus resolved engine). Startup cost is
   paid twice. Measured concern only; the dispatch path dominates.
 - **R-D — R-2, R-3, R-4 from the REQ are unchanged by this design.** Nothing here narrows
