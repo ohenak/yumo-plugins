@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase T) | Claude | 0.2 | 2026-08-13 |
+| pdlc | Draft — in review (Phase T) | Claude | 0.3 | 2026-08-13 |
 
 **Changelog**
 
@@ -17,6 +17,7 @@
 |---|---|
 | 0.1 | Initial draft |
 | 0.2 | Round-1 cross-review revisions (PM + TE). Packed set reconciled with FSPEC §5.2 and `postinstall` given a packed home (§5.1, §5.4); AF-2 given a `prepack` precondition, set-equality and falsifier (§5.3); `--version`/`doctor` exempted from the launcher's resolution gate (§6.2, §11); config read made three-way with a new ladder branch 0 (§6.3, §6.4); provenance placements corrected from three to four with kind 4 composed in one marked commit helper (§7.2); §7.4's `artifactPaths` grounding corrected — the push is conditional and `converge()`-only, so four document classes are missing and a literal set-equality replaces the prose (§7.4, V-14); the reusable-workflow gate extraction **rejected** in favour of duplicated job bodies, with a `uses:`-is-unexpandable rule making the rejection mechanical (§8.2, §8.5); Node-floor guard moved to a dependency-free entry with a named below-floor runner (§9.3); inert update probe made to still emit "could not check" (§10.1); S-2 corrected to the shipped signature; catalogue registration scheduled with emitters and paired with rendered-text assertions (§10.3, §12.4); npm scope routed to the operator as N-6. Three errata raised upstream (FSPEC §5.2, FSPEC's AT-4.5 blocking, REQ AC-5.3 kind 4) |
+| 0.3 | Round-2 cross-review revisions (PM F-01…F-05, TE F-14…F-21). `bin/` enumerated once and identically: the guard keeps the name `bin/pdlc.mjs`, the body moves to the new `bin/cli.mjs` (E-4b), §3.1 reconciled (§3.1, §5.4, §9.3); E-3's `LICENSE` expectation re-sourced from N-2's **recorded decision** instead of from the tree under test (§5.4); `--version`/`doctor` now **resolve for reporting** and report the resolved triple under a pin, falling back to the launcher's own with `mode: unresolved` only when resolution fails (§6.2, §11, §13); ladder branch 0's no-pin consequence stated and given its own ladder case (§6.4, §11); §7.2's false "one helper" claim replaced by the measured closed set of **four** commit helpers (C-a…C-d) plus a source-level set-equality, and kind 3 given a named route to the queue-side writer (`_recordQueueRow` → `rewriteStatus`'s 8th parameter → `build-runtime.mjs`'s closure) and a named carrier (a new `Engine` column, not `Evidence`) (§7.2); §7.4 gains class 11, the anchor-appended `CROSS-REVIEW-*`, with `QUEUE.md` scoped out of AC-4.5 explicitly (§7.4, §13); guard-entry **structural oracle** paired with the below-floor container (§9.3, §12.1); §12.1's module-side row split per module; K-3 repriced honestly (§14.1); the REQ AC-5.3 kind-4 erratum reduced to a wording confirmation against FSPEC BR-9.3 (§7.2, §14.4) |
 
 ## 1. Scope and altitude
 
@@ -1290,7 +1291,7 @@ no row is a defect in this table.
 | AC-4.5 | `artifactPaths` ships but is `converge()`-only (V-14 corrected); five missing classes added, including the anchor-appended `CROSS-REVIEW-*`, + literal set-equality | §7.4 |
 | AC-5.1 | Ladder branch 3 + inert-by-default `UpdateProbe` | §6.3, §10.1 |
 | AC-5.2 | Ladder branch 6's announcement | §6.3 |
-| AC-5.3 | `Provenance.line`/`block` in exactly four kinds, kind 4 composed inside one marked commit helper; kind-4 scope raised as an erratum | §7.2, §12.3 |
+| AC-5.3 | `Provenance.line`/`block` in exactly four kinds; kind 4 composed inside a **closed set of four commit helpers** (C-a…C-d) with a source-level set-equality guarding it; kind 3 routed to the queue-side writer and an `Engine` cell; kind-4 scope read via BR-9.3's harness/agent distinction, with the erratum reduced to a wording confirmation | §7.2, §12.3 |
 | AC-5.4 | `--dev` required; `location.isCheckout` is a *conjunct* of branch 1, never sufficient on its own, so a checkout with no declaration runs the released version | §6.3 |
 | AC-5.5 | Ladder branch 4, enumerating installed versions | §6.3 |
 | AC-5.6 | D-4's ignore-with-notice branch | §6.5 |
@@ -1352,9 +1353,14 @@ no row is a defect in this table.
 - Every claim about existing behaviour in §2 carries a `file:line` citation verified in the
   working tree, **including the ones a review round corrected** — V-14's `converge()`-only
   scope, V-17's queue-side writer and V-18's per-job axes were each re-measured rather than
-  re-asserted.
+  re-asserted — as was round 2's correction of the commit-site claim, where the enumeration in
+  §7.2 was produced by grepping every `git commit` invocation in both modules rather than by
+  reasoning about which helper "should" own them.
 - No oracle is deleted without a strictly stronger replacement named in the same table, and
   no oracle is left satisfiable by absence without a positive pairing named in §12.3.
 - Where this design's needs disagree with an upstream document, the disagreement is raised as
-  an erratum rather than resolved silently in this layer: FSPEC §5.2's expected packed set,
-  FSPEC's `[blocked on O-9]` marking of AT-4.5, and REQ AC-5.3's kind-4 scope.
+  an erratum rather than resolved silently in this layer: FSPEC §5.2's expected packed set
+  (now also missing `bin/cli.mjs`), FSPEC's `[blocked on O-9]` marking of AT-4.5, and REQ
+  AC-5.3's kind-4 scope — the last reduced in round 2 to a wording confirmation, because
+  FSPEC BR-9.3 already decided the harness/agent principle it turned on and re-asking a
+  settled question is the anti-pattern DEC-ERR-01 names.
