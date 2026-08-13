@@ -434,12 +434,19 @@ the committed artifacts.
   installed. *When:* a pipeline run is started through either. *Then:* the run's output
   identifies which channel and which version executed it (C-9). The bundle channel executes
   inside the Claude Code workflow runtime and cannot emit a provenance block of its own (C-4
-  forbids touching that path to add one), so its identification is a **conjunction of three
-  observations bound to one run**, not an absence: (1) the run completed and emitted its own
-  named output artifacts; (2) that output carries no engine provenance block; (3) the write root
-  it touched is the plugin's `.claude/workflows/`. A run that crashed before emitting anything
-  fails (1); an engine run fails (2) and (3). The two installs' write roots are disjoint
-  enumerated paths: the plugin's `.claude/workflows/` versus the engine's own install location.
+  forbids touching that path to add one), so its identification is a **conjunction of observations
+  bound to one run**, not an absence: (1) the run completed and emitted its own named output
+  artifacts; (2) that output carries no engine provenance block. A run that crashed before emitting
+  anything fails (1); an engine run fails (2). The fact that actually separates the two channels is
+  the **load root** — the tree the executing modules were loaded from, the plugin's
+  `.claude/workflows/` versus the engine's own install location, two disjoint enumerated paths (a
+  *load* root, not a write root: no run writes `.claude/workflows/`; `sync-workflows.sh` and the
+  SessionStart drift hook do, and the runtime's own contact with that tree is a read). **No
+  run-bound observation of the load root exists on the bundle side today**: C-4 forbids teaching
+  that path to self-report, and installing only one channel is the precondition of an experiment,
+  not an observation the run makes, so it cannot discharge this oracle. Supplying one is new work
+  of the same kind as AC-4.2's carrier, and is owned with it at **O-9**; until it lands, (1)+(2)
+  distinguish the channels only on a machine whose installed channels are known independently.
 
 ## 6. Risks
 
