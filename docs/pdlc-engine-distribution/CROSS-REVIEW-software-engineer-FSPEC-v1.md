@@ -46,8 +46,48 @@ batching rule. Results, so a later round does not re-litigate them:
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | If F-02 is resolved by substituting the registry, does the same substitution serve AC-3.7's range check and AC-1.5's pairing record, or do those stay repo-local computations that never touch a registry? Answering shapes whether F-5 needs one seam or none. |
+| Q-02 | §9 Q-3 (range-widening cadence) has now been open since REQ round 3 and is owned by the operator. It blocks nothing in Phase 1, but AC-3.7 makes it a hard publish gate — is the operator content to hit the first forced republish before answering it, or should it be closed before F-5's carrier is implemented? |
+| Q-03 | E-27 correctly declares R-3 (a `SKILL.md` edit without a plugin bump) undetectable and forbids a test that pretends otherwise. Is the plugin-version-bump discipline recorded anywhere enforceable — `pdlc/RELEASE-CHECKLIST.md`, for instance — or does it stay an unwritten operator habit? Not a gap in this FSPEC; a question about where the residual risk lives. |
+
 ## Positive Observations
+
+- The three expected sets in §5 are the strongest part of the document. Each names its oracle,
+  its seed and its change-control point, and §5.1's BR-5.1.2 correctly rules out the tempting
+  carrier ("observe what GitHub reported") on the grounds that it cannot run inside the gate it
+  asserts on. I re-measured §5.1 against `.github/workflows/pr-tests.yml` and it is exact in both
+  alphabets, including the asymmetric matrix on the engine job.
+- BR-5.1.3's bound on `name:` interpolation is a genuinely good catch: without it the local
+  expander silently under-renders and the set-equality passes while Phase PUB's literal poll
+  breaks. Reporting an unexpandable expression as a *failure* rather than a skip is the right
+  fail-closed default.
+- F-7 step 4's "honest residue" and §9 Q-2 are exemplary. The document identifies that its own
+  AC-6.2 oracle is absence-shaped, refuses to dress it up, routes the missing observation to O-9,
+  and instructs the test to claim no more than it can. That is the opposite of the vacuous-green
+  failure this pipeline keeps re-learning.
+- AT-1.5's marker fixture is a real positive oracle for AC-1.2 rather than an absence check on
+  engine-resident bytes, and it pairs correctly with §5.2's structural exclusion.
+- AC-4.4's anti-echo half as a *change* check (change the plugin version, the pair moves; revert,
+  it reverts) defeats the hardcoded-constant failure that a single agreement assertion would pass.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both about the publish leg. F-01 is an omission of an inherited obligation:
+O-8's three shipped blockers (`private: true`, unscoped name, `UNLICENSED` — all measured at
+M-ENG-11 and confirmed at HEAD) are the difference between AT-3.1 being unimplemented and being
+refused by the tool, and no row in this document owns them. F-02 is the cost finding: every other
+verification surface in the FSPEC names a carrier that is decidable offline or behind an injectable
+seam, and the publish surface — whose channel was chosen precisely for irreversibility — names
+none, so its three acceptance tests are today only executable by burning real version numbers. One
+§9 row for the first and one sentence at F-5 for the second, plus the Medium items, would move
+this to approved; nothing here questions the document's structure, which is sound.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 8, "low": 2}
+
