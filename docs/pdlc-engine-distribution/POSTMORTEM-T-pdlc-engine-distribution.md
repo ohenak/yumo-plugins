@@ -112,3 +112,99 @@ Two chains account for the entire five-round spend:
 The reviewers were never the constraint. Round 5's two Highs together are a `+12/−3`-scale edit,
 and the author landed them plus four Mediums/Lows and three questions in eleven minutes across
 six commits. What ran out was the round counter, which counts *rounds* and not *defect mass*.
+
+## Best-Guess Root Cause
+
+**The document converged in substance but not inside five rounds, because the revision loop
+answered findings at the level they were raised instead of closing the chain the finding pointed
+at — so each round's fix was itself new, unreviewed, falsifiable specification, and the reviewers'
+High bar found roughly one defect per round of it, indefinitely.**
+
+Three contributing conditions, in order of leverage:
+
+1. **One-hop-at-a-time repair on a multi-hop chain.** The provenance carrier crosses
+   `cli.mjs` → `run*()` → injection object → workflow `main()` → five commit helpers → four
+   placement kinds. Rounds 2–5 each named exactly one more hop. The author had the whole chain
+   available at every round — the hops are all readable at HEAD in `bin/pdlc.mjs` and
+   `lib/run.mjs` — and a single "name this chain end-to-end, from process entry to the byte
+   written" pass in round 2 or 3 would have collapsed four rounds into one. Answering the finding
+   as literally written is normally the correct discipline; on a chain-shaped defect it
+   guarantees the next round finds the next link.
+
+2. **Density: this TSPEC's own quality is its review cost.** 1668 lines, five expected sets, an
+   oracle table whose every row carries a verified `file:line`. Reviewers who check citations
+   against HEAD — as both did, correctly and repeatedly (`orchestrate-queue.js:1598`,
+   `seam-contract.test.js:299`, `_run-suite.mjs:50`) — will find a defect in any newly written
+   section of that density. The failure mode is not sloppiness; the document is unusually
+   well-grounded. It is that ~150 KB of mechanically-checkable claims cannot be added in five
+   increments without each increment carrying one.
+
+3. **`MAX_REVIEW_ROUNDS` is a per-invocation budget on rounds, and this document's remaining work
+   per round was falling but non-zero.** Highs went `4+7 → 3+2 → 2+2 → 1+1 → 1+1`. The trajectory
+   is convergent and the last two rounds are indistinguishable in count, which is exactly the
+   regime the budget is designed to stop — it cannot tell "one High per round forever" from "one
+   High left". Here the evidence favours the latter: round 5's two Highs are both single-clause
+   edits in prose written that same round, and `v0.6` closes the recursion at process entry, which
+   is where a chain of this kind terminates by construction — there is no hop above `cli.mjs`.
+
+**What is not the cause.** Not reviewer disagreement (there is none of substance). Not
+re-litigation (zero instances; both reviewers explicitly scope out settled sections). Not a
+contested design (both reviewers endorse the design and the round-4/5 fixes on the record). Not
+authoring stall (no `MAX_AUTHORING_ATTEMPTS` exhaustion; every round's revision landed in minutes,
+in section-sized commits). Not upstream drift (REQ `v0.10` and FSPEC `v0.2` were stable throughout
+Phase T).
+
+## Recommendation
+
+The halt should be cleared by **verification, not by re-authoring**. `v0.6` already answers every
+round-5 finding and every open question. Concretely:
+
+**Step 1 — Verify `v0.6` against the round-5 findings.** Read the eight findings and three
+questions in `CROSS-REVIEW-product-manager-TSPEC-v5.md` and `CROSS-REVIEW-test-engineer-TSPEC-v5.md`
+against the document at HEAD. The sites are:
+
+| Finding | Where the repair lives in `v0.6` |
+|---|---|
+| TE `F-32` (High) | §7.2's *hand off (process entry)* row (`:785`); §12.1's production-path level (`:1449`); §11's S-6 (`:1306`); §13's sequencing rule (`:1502`) — all three call sites named, `:434` called out as the mode a green suite hides |
+| PM `F-01` / TE `F-33` (High / Medium) | §9.3 clause 3, now "**non-comment** source" (`:1222`) with the comment-stripping filter stated (`:1249`); mirrored in §12.1's arrangement row (`:1447`) |
+| PM `F-02` (Medium) | §7.2 (`:814`), §12.1 (`:1447`), §12.4 (`:1540`) — `:47-63` named as the only required edit, `:79-90` stated as an unchanged exclusion list, `PROP-PARITY-15` named as third reader |
+| PM `F-03` (Low) | §12.1 (`:1449`) — "two **runners**", with `seam-contract.test.js:299` cited as sanctioned precedent |
+| TE `F-34`, `F-35` (Low) | §9.3 — stale closing claim removed; runner citation corrected to `_run-suite.mjs:50` |
+| PM `Q-01` | answered as named risk `R-E` in §14.2 (`:1623`) |
+| TE `Q-15`, `Q-16` | §7.2 (`:791`) one frozen `Provenance` per run shared by every loop pass; §12.1 (`:1449`) identity + `Object.isFrozen`, not structural equality |
+
+**Step 2 — Flip the marker.** If Step 1 holds, set `RESOLVED: yes` at the top of this file with
+the verification date and the commit range checked (`c9466b29..4f90b960`), and commit. If Step 1
+finds a gap, fix it in the TSPEC first, in the same commit style, and record what was missing.
+
+**Step 3 — Re-invoke Phase T only.**
+
+```
+/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md", "forcePhases": "T"}
+```
+
+This opens rounds 6–10. Lifetime usage is 5 of `MAX_LIFETIME_ROUNDS = 15`, so the cap is not near.
+Expect round 6 to be a **confirmation round**: both reviewers re-read their own v5 cross-review,
+diff `v0.5 → v0.6`, and judge only whether their blocking findings are resolved and whether the
+revision broke anything. On the evidence above, approval in round 6 is the likely outcome.
+
+**Step 4 — Run the erratum protocol, which never ran.** §14.4 declares three upstream errata that
+have had no erratum round: FSPEC §5.2's expected packed set (seven divergences, now also missing
+`bin/cli.mjs`), FSPEC's `[blocked on O-9]` marking of AT-4.5, and REQ AC-5.3's kind-4 wording
+confirmation. FSPEC is still `v0.2`. These must be routed in the re-invoked phase, bounded at one
+erratum round per upstream document. Do not let them fall into Phase P as PLAN-time surprises —
+§5.4's packed-set equality is a both-directions gate and its expected side lives in the FSPEC.
+
+**Step 5 — If round 6 does not converge, change the repair discipline, not the budget.** The
+instruction to the author should be: for any finding that names a hop in a chain, close the chain
+end-to-end in that revision — enumerate every link from the process entry to the observable byte,
+and name the oracle that is red if any single link is missing — rather than adding the one hop the
+finding named. The same instruction applies to oracle clauses: state the scan's domain
+(non-comment, non-string, statement position) exhaustively the first time. Raising
+`MAX_REVIEW_ROUNDS` would buy rounds without changing the rate at which new sections generate
+findings; this changes the rate.
+
+**Not recommended.** Forcing Phase P on the strength of `v0.6` without a reviewer round. The two
+round-5 Highs were both cases of "the honest implementation goes red", i.e. defects that PLAN and
+PROPERTIES authors would faithfully transcribe into a red suite. That is precisely the class of
+defect a confirmation round is cheap at catching and Phase I is expensive at catching.
