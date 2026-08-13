@@ -52,7 +52,7 @@ the symbol is the identity (DC-02).
 |---|---|---|
 | V-01 | The engine package declares `"private": true`, the unscoped name `pdlc-engine`, `"license": "UNLICENSED"`, and `"pdlcPluginCompat": "^0.22.0"`. All three O-8 blockers stand. | `pdlc/engine/package.json:2,3,4,10,11` |
 | V-02 | The plugin manifest version is `0.22.7` — **inside** the engine's declared `^0.22.0`. The handshake passes at HEAD; the compat machinery is exercised green, not merely present. | `pdlc/.claude-plugin/plugin.json:4` |
-| V-03 | The engine's `lib/` holds **exactly twelve** `.mjs` modules **at HEAD**, and **fifteen after §3.1 lands**: `adapter, auth, catalogue, guard-measurement, handshake, outcome, report, run, skills, startup, transport-cli, transport` today, plus §3.1's `resolve-version`, `store` and `provenance`. The FSPEC §5.2 seed is accurate as a HEAD measurement and is *not* the post-feature set — §5.4's expected packed set (E-5…E-19) carries the fifteen. | `pdlc/engine/lib/` |
+| V-03 | The engine's `lib/` holds **exactly twelve** `.mjs` modules **at HEAD**, and **fifteen after §3.1 lands**: `adapter, auth, catalogue, guard-measurement, handshake, outcome, report, run, skills, startup, transport-cli, transport` today, plus §3.1's `resolve-version`, `store` and `provenance`. The FSPEC §5.2 seed is accurate as a HEAD measurement and is *not* the post-feature set — §5.4's expected packed set (PK-5…PK-19) carries the fifteen. | `pdlc/engine/lib/` |
 | V-04 | The workflow modules are reached by **relative escape above the package root**: `new URL("../../workflows/orchestrate-dev.js", import.meta.url)`. A tarball rooted at `pdlc/engine/` installs without them. R-5 is real. | `pdlc/engine/lib/run.mjs:52-55` (`WORKFLOW_MODULE_URLS`) |
 | V-05 | The anti-fork oracle is **two** assertions, and the first is a filesystem walk over the whole engine root that fails on *any* file named `orchestrate-{dev,queue}.js`. A build-time vendor directory under `pdlc/engine/` turns it red — exactly as R-5 predicts. | `pdlc/engine/__tests__/run.test.js:51-65` (`walk`, `offenders`), `:67-79` (`PROP-FORK-1`, `fileURLToPath(url)` equality) |
 | V-06 | `pdlc/engine/.gitignore` contains only `node_modules/`. There is no ignore rule a build-time vendor directory could hide behind today; adding one is part of this feature's work. | `pdlc/engine/.gitignore` |
@@ -287,35 +287,49 @@ defect AC-1.3 exists to catch. The fix is on both sides: the allow-list drops `R
 (§5.1 authors the file instead), and the expected set gains the manifest-adjacent members it
 was always going to contain.
 
-**The literal expected packed set** (the right-hand side of PF-4 and AT-3.8a):
+**The literal expected packed set** (the right-hand side of PF-4 and AT-3.8a).
+
+**The members carry a `PK-` prefix, not `E-`, and the rename is deliberate** (PM v4 F-02).
+The FSPEC's error catalogue uses `E-nn` too, and from `E-17` up the two series render
+identically (below that, zero-padding distinguishes `E-01` from `E-1`) — so the literal string
+`E-17` denoted a packed member here and a publish-collision error in §11, with nothing marking
+the switch. That collision is not hypothetical: it is the likeliest cause of the stale
+cross-reference PM v4 F-01 found in this very section. A PLAN or PROPERTIES author transcribing
+a member id must not have to read two tables to learn which catalogue is meant, so the packed
+set gets its own namespace. §11 and §8.5's `E-nn` citations are FSPEC error ids and are
+unchanged; earlier changelog rows quote the old `E-nn` member ids as written at the time.
 
 | # | Member | Why it is packed |
 |---|---|---|
-| E-1 | `package.json` | npm, unconditionally |
-| E-2 | `README.md` | npm, unconditionally; authored by this feature (§5.1) |
-| E-3 | `LICENSE` | npm, unconditionally — **present only once N-2's operator licence decision lands.** The member's presence in the *expected* set is read from **N-2's recorded decision in `DECISIONS-plugin-distribution.md`** — has a licence been recorded — exactly as PF-3 reads the scope, and **never** from whether `pdlc/engine/LICENSE` exists. See the note below |
-| E-4 | `bin/pdlc.mjs` | `files` entry `bin/` — the Node-floor guard entry (§9.3) |
-| E-4b | `bin/cli.mjs` | `files` entry `bin/` — the launcher body the guard dynamically imports (§9.3, §3.1) |
-| E-5…E-16 | the twelve `lib/*.mjs` present at HEAD (V-03) | `files` entry `lib/` |
-| E-17 | `lib/resolve-version.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
-| E-18 | `lib/store.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
-| E-19 | `lib/provenance.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
-| E-20 | `vendor/workflows/orchestrate-dev.js` | `files` entry `vendor/workflows/` |
-| E-21 | `vendor/workflows/orchestrate-queue.js` | same |
-| E-22 | `vendor/workflows/VENDOR-MANIFEST.json` | same |
-| E-23 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
+| PK-1 | `package.json` | npm, unconditionally |
+| PK-2 | `README.md` | npm, unconditionally; authored by this feature (§5.1) |
+| PK-3 | `LICENSE` | npm, unconditionally — **present only once N-2's operator licence decision lands.** The member's presence in the *expected* set is read from **N-2's recorded decision in `DECISIONS-plugin-distribution.md`** — has a licence been recorded — exactly as PF-3 reads the scope, and **never** from whether `pdlc/engine/LICENSE` exists. See the note below |
+| PK-4 | `bin/pdlc.mjs` | `files` entry `bin/` — the Node-floor guard entry (§9.3) |
+| PK-4b | `bin/cli.mjs` | `files` entry `bin/` — the launcher body the guard dynamically imports (§9.3, §3.1) |
+| PK-5…PK-16 | the twelve `lib/*.mjs` present at HEAD (V-03) | `files` entry `lib/` |
+| PK-17 | `lib/resolve-version.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
+| PK-18 | `lib/store.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
+| PK-19 | `lib/provenance.mjs` | `files` entry `lib/` — **created by this feature** (§3.1) |
+| PK-20 | `vendor/workflows/orchestrate-dev.js` | `files` entry `vendor/workflows/` |
+| PK-21 | `vendor/workflows/orchestrate-queue.js` | same |
+| PK-22 | `vendor/workflows/VENDOR-MANIFEST.json` | same |
+| PK-23 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
 
-**E-17…E-19 are listed literally because `files` packs a directory, not a file list.** The
+**PK-17…PK-19 are listed literally because `files` packs a directory, not a file list.** The
 entry `lib/` packs whatever is in the tree at pack time, so the three modules §3.1 creates
 become packed members the moment they land. An expected set naming only V-03's twelve would
 therefore go red against a *correct* implementation once this feature ships — the same defect
-as E-4b's, one row down. The fix that must **not** be taken is globbing `lib/*.mjs` at test
-time: that reads the tree under test and reintroduces exactly what E-3's note below exists to
+as PK-4b's, one row down. The fix that must **not** be taken is globbing `lib/*.mjs` at test
+time: that reads the tree under test and reintroduces exactly what PK-3's note below exists to
 remove. New `lib/` modules are added to this table by hand, as a visible edit, or PF-4 is not
-an expectation.
+an expectation. **The failure message says so** (PM v4 Q-01): PF-4's inequality report names
+this section as the expected set's source — "expected set is TSPEC §5.4's literal table; a new
+`lib/` module needs a row there" — so an operator meeting a red PF-4 after adding `lib/foo.mjs`
+is told the table is stale rather than left to read it as "the package is wrong". The PLAN
+schedules that message text with the oracle, not after it.
 
-**Why E-3's boolean comes from the decision record and not from the tree.** An expected set
-that reads the artifact under test is not an expectation. If E-3 were "expected iff
+**Why PK-3's boolean comes from the decision record and not from the tree.** An expected set
+that reads the artifact under test is not an expectation. If PK-3 were "expected iff
 `pdlc/engine/LICENSE` exists", a `LICENSE` lost to a bad merge after N-2 lands would shrink
 *both* sides of the equality together, PF-4 would stay green, and the package would publish
 unlicensed — the deletion-tolerant hole a both-directions equality exists to close. Sourced
@@ -323,18 +337,18 @@ from the decision record instead, the two states are:
 
 | N-2 recorded? | Expected set | A missing `pdlc/engine/LICENSE` |
 |---|---|---|
-| no | E-1, E-2, E-4, E-4b, E-5…E-23 (no `LICENSE` member) | consistent — nothing to ship yet |
-| yes | the above **plus** E-3 | **red**, which is the point |
+| no | PK-1, PK-2, PK-4, PK-4b, PK-5…PK-23 (no `LICENSE` member) | consistent — nothing to ship yet |
+| yes | the above **plus** PK-3 | **red**, which is the point |
 
 The flip is therefore a visible edit to one record (the same record PF-3 already reads), not
 an inference the oracle makes from the tree it is auditing. The expected set is **23 members
-before N-2 and 24 after**: four manifest-adjacent and `bin/` members (E-1, E-2, E-4, E-4b),
-fifteen `lib/*.mjs` (E-5…E-19 — V-03's twelve plus §3.1's three), three vendored workflow
-members (E-20…E-22) and `scripts/postinstall.mjs` (E-23).
+before N-2 and 24 after**: four manifest-adjacent and `bin/` members (PK-1, PK-2, PK-4, PK-4b),
+fifteen `lib/*.mjs` (PK-5…PK-19 — V-03's twelve plus §3.1's three), three vendored workflow
+members (PK-20…PK-22) and `scripts/postinstall.mjs` (PK-23).
 
 **The `bin/` contents are enumerated once, here, and §9.3 does not create a member this set
-lacks.** The guard keeps the name `bin/pdlc.mjs` (E-4) and the body moves to `bin/cli.mjs`
-(E-4b), so the manifest's `bin` field (`pdlc/engine/package.json:6-8`, `"pdlc":
+lacks.** The guard keeps the name `bin/pdlc.mjs` (PK-4) and the body moves to `bin/cli.mjs`
+(PK-4b), so the manifest's `bin` field (`pdlc/engine/package.json:6-8`, `"pdlc":
 "bin/pdlc.mjs"`) is untouched, AC-2.1's `PATH` entry is untouched, and the shipped
 `cli.test.js` keeps invoking the same path — now exercising the guard plus the dynamic import,
 which is the end-to-end behaviour it was always proving (PM Q-01, TE Q-06). Unit coverage of
@@ -344,9 +358,9 @@ the body may import `bin/cli.mjs` directly; the existing end-to-end oracles do n
 **This disagrees with FSPEC §5.2 as written, and the disagreement is raised, not papered
 over.** FSPEC §5.2 enumerates the manifest, `bin/pdlc.mjs`, the twelve `lib/*.mjs` and the
 workflow modules, and explicitly excludes "repo-level documentation" — so **seven** members
-this TSPEC's design requires are absent from the FSPEC's expected set: `README.md` (E-2),
-`LICENSE` (E-3), `bin/cli.mjs` (E-4b), the three new `lib/*.mjs` (E-17…E-19) and
-`scripts/postinstall.mjs` (E-23). **One** erratum is raised against FSPEC §5.2 naming all
+this TSPEC's design requires are absent from the FSPEC's expected set: `README.md` (PK-2),
+`LICENSE` (PK-3), `bin/cli.mjs` (PK-4b), the three new `lib/*.mjs` (PK-17…PK-19) and
+`scripts/postinstall.mjs` (PK-23). **One** erratum is raised against FSPEC §5.2 naming all
 seven, rather than one per divergence: the members arrive from a single design decision
 (§3.1's component map plus §5.1's authoring), and one erratum is cheaper to confirm than
 several against the same row (TE Q-09). FSPEC §5.2's `lib/` line reads as a **HEAD seed**
@@ -355,8 +369,14 @@ FSPEC as the packed set, so the disagreement is raised rather than left standing
 both-directions equality gates on it.
 
 **Note for the FSPEC's §5.2 workflow-module row.** That row is marked *"[blocked on O-10],
-not enumerable yet"*. This section unblocks it: the members are exactly E-17, E-18 and E-19.
-AT-3.8b is therefore writable, and the PLAN schedules it in Phase 1 rather than deferring it.
+not enumerable yet"*. This section unblocks it: the **vendored workflow members** are exactly
+**PK-20 (`vendor/workflows/orchestrate-dev.js`), PK-21 (`vendor/workflows/orchestrate-queue.js`)
+and PK-22 (`vendor/workflows/VENDOR-MANIFEST.json`)** — the three rows under the `files` entry
+`vendor/workflows/`, and nothing else. (Round 3's renumbering moved these off `E-17…E-19`,
+which now denote the three new `lib/` modules; the stale reference is corrected here, PM v4
+F-01. AT-3.8b's expected set is defined by *this* sentence, so it names the vendored three, not
+the `lib/` three.) AT-3.8b is therefore writable, and the PLAN schedules it in Phase 1 rather
+than deferring it.
 
 ## 6. Version resolution: store, launcher, pin, dev-mode (F-4)
 
@@ -1053,7 +1073,7 @@ documents the plugin install today at `pdlc/README.md:132` — added beneath it:
 decision is recorded; the README ships the resolved literal, not the placeholder.
 
 **`pdlc/README.md` is the operator-facing page; `pdlc/engine/README.md` is not** (PM Q-02).
-The engine README exists to make E-2 an intentional member rather than an accidental one and to
+The engine README exists to make PK-2 an intentional member rather than an accidental one and to
 give the npm listing a page (§5.1); it states what the package is and **links** to
 `pdlc/README.md`'s install section. It must **not** repeat the three commands above — under
 AT-2.2's uniqueness rule a second copy of either engine command anywhere in the tree is a
@@ -1126,7 +1146,7 @@ So the guard is **its own dependency-free entry point**:
   there. Earlier 12.x patch releases are outside the claim, and stating the real number is
   worth more than a rounder one the file cannot back.
 - Everything currently in `bin/pdlc.mjs` moves **unchanged** into the new `bin/cli.mjs`
-  (E-4b), behind that dynamic import; the guard file imports nothing statically, so there is no
+  (PK-4b), behind that dynamic import; the guard file imports nothing statically, so there is no
   graph to evaluate early. No behaviour moves with the code — the split exists only to satisfy
   the evaluation-order constraint above.
 
