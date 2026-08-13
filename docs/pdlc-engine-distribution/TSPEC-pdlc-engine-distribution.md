@@ -1218,8 +1218,14 @@ unit suite, in-process, needing no old runtime: parse `bin/pdlc.mjs`'s source an
 1. it contains **zero** static `import` declarations,
 2. its only non-comment top-level statements are the floor comparison, the refusal, and the
    single dynamic `import("./cli.mjs")`, and
-3. its source contains **zero occurrences of the `await` keyword token** — not merely no
-   *top-level* `await`.
+3. its **non-comment** source contains **zero occurrences of the `await` keyword token** — not
+   merely no *top-level* `await`. The qualifier is clause 2's own word, and it is load-bearing
+   rather than shorthand: this same section requires a header comment stating the Node-12.17
+   subset *and its reason*, and the reason **is** top-level `await` ("a Node 14.8+ parse-level
+   feature", above). A scan over raw text would go red against the most faithful implementation
+   of this section, pressuring the implementer to weaken the mandated comment (PM v5 F-01, TE
+   v5 F-33). Comments are stripped before the scan; strings are not, and need not be — the file
+   has three top-level statements and no string containing the token.
 
 Clause 3 exists because clauses 1 and 2 count statements and imports, not syntax level: a guard
 that satisfies both can still be unparseable on the runtime it promises to refuse on, and
@@ -1229,18 +1235,26 @@ top-level `await` happily, so the container leg is structurally blind to it.
 **Clause 3 is deliberately narrower than "parses under an ES-2020 parser", because the engine
 has no parser and this is not the feature that should add one** (TE v4 F-30). The engine ships
 exactly one dependency (`@anthropic-ai/claude-agent-sdk`, `pdlc/engine/package.json:15-17`) and
-runs on `node --test` (`:12-14`); adding `acorn` as a `devDependency` to configure an
+runs on `node --test` — reached via the `test` script (`pdlc/engine/package.json:13`), which
+runs `__tests__/_run-suite.mjs`, which spawns the `--test` runner itself
+(`pdlc/engine/__tests__/_run-suite.mjs:50`); adding `acorn` as a `devDependency` to configure an
 `ecmaVersion` would put a new dependency row into the very manifest §5.4's packed-set equality
 and §5.1's dependency posture are under test in this same feature — a cost out of proportion to
 the risk, and one that would have to be paid inside the packaging task. So the broader
 "no construct outside the declared syntax subset" claim is **dropped from the oracle** rather
 than left as an assertion the test author must invent a mechanism for. What replaces it:
 
-- The **zero-`await`** form above is a plain source scan (a token match over the file's text,
-  which contains no functions of its own beyond the `.then(…)` callback), needs no parser, and
-  is *strictly stronger* than "no top-level `await`" — it cannot be satisfied by hiding an
-  `await` inside the continuation. It is the exact falsifier for the regression that motivated
-  this round: the promise chain silently rewritten back to `await import("./cli.mjs")`.
+- The **zero-`await`** form above is a plain source scan (a token match over the file's
+  **non-comment** text, which contains no functions of its own beyond the `.then(…)` callback),
+  needs no parser, and is *strictly stronger* than "no top-level `await`" — it cannot be
+  satisfied by hiding an `await` inside the continuation. It is the exact falsifier for the
+  regression that motivated this round: the promise chain silently rewritten back to
+  `await import("./cli.mjs")`. Stripping comments needs no parser either, and the oracle must
+  not acquire one here: drop `//`-to-end-of-line and `/* … */` spans from the text before
+  matching. That filter is sufficient **because of clause 2** — the file is three top-level
+  statements with no comment-like content inside a string — and the test states that
+  dependency, so a later file that outgrows the assumption fails review rather than silently
+  outrunning its own oracle.
 - The Node-12.17 subset claim survives as a **documented constraint on the file, not a test**:
   a header comment in `bin/pdlc.mjs` states the subset and the reason, and the file is short
   enough (three top-level statements, clause 2) to read in full at review time. An unfalsifiable
@@ -1252,7 +1266,10 @@ which is what its subject demands.
 
 That goes red on exactly the regressions the container leg cannot see, and the legs together
 cover the claim: the container proves the *refusal* works below the floor, the structural
-oracle proves the *guard still runs first* and *still parses low enough to run at all*.
+oracle proves the *guard still runs first* and *carries no `await` anywhere in its executable
+source*. It does **not** prove the file parses low enough to run at all — that broader claim was
+dropped from the oracle above, and it lives only in the documented-constraint bullet, where the
+revision deliberately put it (TE v5 F-34).
 
 **AT-2.5 needs a named runner, and the PR gate is not one.** The gate is `node: ['20']` only
 (`.github/workflows/pr-tests.yml:41`), so a below-floor runtime does not exist in CI. §12.1's
