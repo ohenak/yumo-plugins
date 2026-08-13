@@ -2963,7 +2963,10 @@ async function runAdvisorySeam({
   _git,
   _log,
   _now = () => Date.now(),
-  _sleep = sleep,
+  // `deadlineSleep`, not `sleep`: this seam's only use is the attempt deadline in the
+  // `Promise.race` below, whose losing timer would otherwise hold a headless process open
+  // for the rest of `seamBudgetMinutes`. See `deadlineSleep`'s own comment.
+  _sleep = deadlineSleep,
   _notice,
   _waitMs,
   _summarise,
@@ -8508,8 +8511,17 @@ function computeWaves(tasks, ownership) {
 
 // eslint-disable-next-line no-unused-vars
 async function agent(skill, prompt, opts) {
-  // Provided by runtime
-  throw new Error("agent() not available outside Claude Code runtime");
+  // Provided by runtime.
+  //
+  // EC-PAR-5 / PROP-PARITY-10: reaching this stub means the caller supplied no
+  // `_agent` seam at all — a WIRING failure, categorically different from a
+  // phase that ran and did not converge. The tag below is what lets `main()`'s
+  // pipeline catch re-throw it instead of folding it into `haltReason`, where a
+  // headless embedder (`pdlc/engine`) would see an ordinary `outcome:"halted"`
+  // report and exit 2, indistinguishable from a review non-convergence.
+  const err = new Error("agent() not available outside Claude Code runtime");
+  err.seamUnavailable = "_agent";
+  throw err;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -8537,6 +8549,29 @@ function log(message) {
 // Real wall-clock sleep used by Phase PUB's poll loop. Injectable in tests via _sleep.
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * The wall-clock deadline `runAdvisorySeam` races each attempt against — identical to
+ * `sleep` except the timer is UNREF'd.
+ *
+ * `Promise.race` cannot cancel the loser, so a deadline that loses to its dispatch leaves a
+ * live timer for the whole remaining `seamBudgetMinutes` (10 by default). Under the
+ * long-lived Claude Code runtime that is invisible; under a headless embedder
+ * (`pdlc/engine`, whose process exits when the pipeline resolves) it keeps `pdlc dev` /
+ * `pdlc queue` alive for up to ten minutes after the run has finished, with no output and
+ * no way to tell it from a hang. An unref'd timer still fires and still preempts a genuinely
+ * slow attempt; it just stops being a reason for the loop to stay open.
+ *
+ * Unref'ing is correct HERE and only here: this timer is always raced against an in-flight
+ * dispatch, so it is never the only live work. The general `sleep` above — Phase PUB's CI
+ * poll, the git index-lock retry — stays ref'd, because there the pending timer IS the work.
+ */
+async function deadlineSleep(ms) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    if (timer && typeof timer.unref === "function") timer.unref();
+  });
 }
 
 // Default file read — real fs, returns null on any error (mirrors orchestrate-queue's
@@ -10656,6 +10691,14 @@ async function main({
       recordPhase("MERGE", "Merge PR", mergeGlyph, mergeDetail);
     });
   } catch (err) {
+    // EC-PAR-5 / PROP-PARITY-10 — a dispatch that fell through to the module's
+    // own throwing `agent()` stub is a missing-seam failure, not a pipeline
+    // halt. It must propagate to the caller (the engine maps a rejection to
+    // exit 1) rather than be classified as `outcome:"halted"` (exit 2), which
+    // is reserved for a phase that ran and did not converge. Re-thrown before
+    // any halt bookkeeping so no POSTMORTEM/queue-row side effect is attributed
+    // to a run that never had a transport.
+    if (err && err.seamUnavailable) throw err;
     haltReason = err.message;
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;

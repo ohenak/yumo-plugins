@@ -2679,7 +2679,8 @@ async function runAdvisorySeam({
   _git,
   _log,
   _now = () => Date.now(),
-  _sleep = sleep,
+
+  _sleep = deadlineSleep,
   _notice,
   _waitMs,
   _summarise,
@@ -6208,7 +6209,9 @@ function computeWaves(tasks, ownership) {
 
 async function agent(skill, prompt, opts) {
 
-  throw new Error("agent() not available outside Claude Code runtime");
+  const err = new Error("agent() not available outside Claude Code runtime");
+  err.seamUnavailable = "_agent";
+  throw err;
 }
 
 async function parallel(promises) {
@@ -6232,6 +6235,13 @@ function log(message) {
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function deadlineSleep(ms) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    if (timer && typeof timer.unref === "function") timer.unref();
+  });
 }
 
 function defaultReadFile(path) {
@@ -7753,6 +7763,8 @@ async function main({
       recordPhase("MERGE", "Merge PR", mergeGlyph, mergeDetail);
     });
   } catch (err) {
+
+    if (err && err.seamUnavailable) throw err;
     haltReason = err.message;
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;
