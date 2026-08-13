@@ -10,22 +10,24 @@ depends-on: [pdlc-headless-engine]
 |---|---|
 | Upstream | `pdlc-headless-engine`; proposes superseding the `pdlc-install-mechanism` deferrals D-DIST-01/02/03/05; proposes absorbing/renarrowing `pdlc-release-ci` (D-DIST-06 release remainder) |
 | Downstream | `pdlc-plugin-retirement` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v1.md`, `…-v2.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v1.md`, `…-v2.md`, `…-v3.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase R) | Claude | 0.8 | 2026-08-13 |
+| pdlc | Draft — in review (Phase R) | Claude | 0.9 | 2026-08-13 |
 
-*0.8 (2026-08-13, review round 2): M-ENG-10 now records **two** alphabets — the authored `name:`
-strings and the rendered names GitHub reports — because rows 1–2 differ and Phase PUB polls the
-rendered set; AC-3.4 and T-7 require equality in both. AC-1.3's oracle is the packed tarball, not
-a `files` declaration M-ENG-11 records as absent. AC-4.5's exception set is the run report's own
-authored-file enumeration (routed to O-9). AC-6.2's bundle channel became a three-conjunct
-observation. O-8 relabelled: `private` is tool-enforced, the unscoped name and `UNLICENSED` are
-decision-enforced, no failure ordering claimed. O-5's selector repointed from M-ENG-06 to
-`handshake.mjs:130-133`. AC-2.3 split per leg; AC-2.1 names one transcription source; AC-1.1
-exempts `pdlc doctor`.*
+*0.9 (2026-08-13, review round 3): AC-6.2's distinguishing observation is the **load root**, not a
+write root — no run writes `.claude/workflows/` — and the fact that no run-bound observation of it
+exists on the bundle side is routed to **O-9** rather than read as already solved. AC-3.4 names its
+carrier: local matrix expansion, offline; its expected check-name set is the FSPEC's, seeded from
+M-ENG-10, which stays a measurement (T-7). O-5 cites the `REMEDY` symbol, not a line window.*
+
+*0.8 (2026-08-13, review round 2): M-ENG-10 records **two** alphabets (authored `name:` vs
+rendered) and AC-3.4/T-7 require equality in both; AC-1.3's oracle is the packed tarball; AC-4.5's
+exception set is the run report's authored-file enumeration (O-9); AC-6.2 became a conjunction;
+O-8 relabelled tool- vs decision-enforced, no ordering claimed; AC-2.3 split per leg; AC-2.1 names
+one transcription source; AC-1.1 exempts `pdlc doctor`.*
 
 *0.7 (2026-08-13, review round 1): §1.1 re-measured at `89babe8e`, code-level facts moved to
 `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-10…M-ENG-13 and cited by id. BL-03 resolved
