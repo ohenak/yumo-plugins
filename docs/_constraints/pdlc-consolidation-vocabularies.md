@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, §5, REQ-CONS-01, REQ-CONS-03 preamble, AC-1.3, AC-3.3, AC-3.7, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
+| Cited by | `docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, §5, REQ-CONS-01, REQ-CONS-03 preamble, AC-1.3, AC-3.3, AC-3.7, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
 | Version | 1.4 · 2026-08-06 |
 
 **Why this file exists.** The consolidation REQ's enumerated vocabularies and the phase observable
@@ -25,7 +25,11 @@ sections is **symmetric in both directions**: a value that REQ names with no row
 here naming a value that REQ never uses, are equally defects — so a *deleted* row is as much a breach
 as a missing one, which is what makes the downstream set-equality oracle meaningful rather than a
 one-sided containment check. Consumers cite this file **at its `Version`**; a row change that is not
-accompanied by a version bump is itself a defect.
+accompanied by a version bump is itself a defect. **A row's *enumerated value* is what that rule is
+about.** Re-measuring a `file:line` coordinate inside a row's gloss — the discipline DECISIONS §960
+obliges and `consolidationSkillAnchors.test.js` mechanises — changes no value, invalidates no
+downstream transcription, and is therefore **not** a version-bumping change; bumping for it would
+falsify every consumer's `at Version N` pin for no semantic delta.
 
 ## 1. Enumerated vocabularies
 
@@ -77,11 +81,12 @@ carries no code at all — it writes no log row (AC-7.2).
 
 ## 2. The phase observable
 
-A LEARNINGS at HEAD carries no phase field: its metadata table is `Feature` / `REQ` / `Date Completed` /
-`Total Iterations` / `Upstream` / `Harvested from` / `DoD rounds` (`pdlc/skills/harvest-learnings/SKILL.md:70-78`),
-and `## 6. Approval Record` (`:105`) is keyed by document type, not phase. The consolidation feature
-therefore adds a **`Phases exercised`** row to that table, carrying the set of phase ids the feature's
-run executed. For a LEARNINGS predating the convention the value is derived, by this stated and total
+A LEARNINGS predating this feature carried no phase field: its metadata table was `Feature` / `REQ` /
+`Date Completed` / `Total Iterations` / `Upstream` / `Harvested from` / `DoD rounds`, and
+`## 6. Approval Record` (`pdlc/skills/harvest-learnings/SKILL.md:110`) is keyed by document type, not
+phase. The consolidation feature therefore adds a **`Phases exercised`** row, carrying the set of phase
+ids the feature's run executed, to that table — now eight fields at `:70-79`, the new row itself at
+`:78`. For a LEARNINGS predating the convention the value is derived, by this stated and total
 mapping, from `Harvested from` (`:77`) — the one field that already names phase-bearing artifacts:
 
 | `Harvested from` basename class | Phases it evidences | Shipped naming |
@@ -160,7 +165,7 @@ ordinal of that pass on that calendar date — so two same-day passes never coll
 
 | Thing | Name |
 |---|---|
-| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, superseding the `{date}`-only name at `pdlc/skills/consolidate-learnings/SKILL.md:49` |
+| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, the name the skill states at `pdlc/skills/consolidate-learnings/SKILL.md:70` (it superseded a `{date}`-only name, which no longer appears in that file) |
 | Promotion branch | `consolidation/{passId}` |
 
 The PR body carries exactly three trailers, and each promotion commit carries one:

@@ -47,7 +47,7 @@ Every plugin follows this layout:
 | `tech-lead` | `skills/tech-lead/SKILL.md` | Parses PLAN, dispatches parallel se-implement agents (TypeScript) |
 | `tech-lead-python` | `skills/tech-lead-python/SKILL.md` | Same as tech-lead for Python repos |
 | `harvest-learnings` | `skills/harvest-learnings/SKILL.md` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes harvested files |
-| `consolidate-learnings` | `skills/consolidate-learnings/SKILL.md` | Merges LEARNINGS across features into project-level knowledge |
+| `consolidate-learnings` | `skills/consolidate-learnings/SKILL.md` | Merges LEARNINGS across features into project-level knowledge; `/pdlc:consolidate-learnings` now resolves to a skill and a runtime bundle sharing one name, the same shape `orchestrate-queue` already has |
 
 ### Workflow scripts and the runtime build
 
@@ -57,9 +57,11 @@ Every plugin follows this layout:
 
 - `pdlc/workflows/dist/orchestrate-dev.bundle.js`
 - `pdlc/workflows/dist/orchestrate-queue.bundle.js` (inlines `orchestrate-dev` too — the queue calls it in-process)
+- `pdlc/workflows/dist/consolidate-learnings.bundle.js`
+- `pdlc/workflows/dist/pdlc-cli.mjs`
 - `pdlc/workflows/dist/distribution-manifest.json` — one row per artifact (id, plugin path, sha1, retired predecessors), plus the plugin version those bytes were built at
 
-Those three are the tracked, shipped outputs. The copy the workflow runtime actually loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
+These are the tracked, shipped outputs. The copy the workflow runtime actually loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
 
 All are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when an artifact under `pdlc/workflows/dist/` is stale, `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints, and `pdlc/hooks/scripts/sync-workflows.sh --check` exits non-zero when the consumer copy has drifted from the built artifacts.
 
@@ -75,7 +77,7 @@ One consequence worth knowing before you debug a mystery red: `coveredViolations
 
 Three behaviours of the review loop are load-bearing and easy to violate accidentally:
 
-- **Round indices are derived, never assumed.** `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads the directory listing and computes the round window from the `CROSS-REVIEW-{role}-{doc}-v{N}` basenames actually present. It is synchronous, total, takes no seam, and never consults a clock — the decision is purely content-addressed. The loop refuses to overwrite an existing review file, so review history is append-only. `MAX_REVIEW_ROUNDS = 5`; exhausting it writes a POSTMORTEM and halts.
+- **Round indices are derived, never assumed.** `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads the directory listing and computes the round window from the `CROSS-REVIEW-{role}-{doc}-v{N}` basenames actually present. It is synchronous, total, takes no seam, and never consults a clock — the decision is purely content-addressed. The loop refuses to overwrite an existing review file, so review history is append-only. `MAX_REVIEW_ROUNDS = 5`; exhausting it writes a POSTMORTEM and halts. That budget is **per-invocation**, so a document that keeps being re-opened (staled approval anchor, erratum cascade, forced re-run) accumulates rounds without bound; `MAX_LIFETIME_ROUNDS = 15` (DEC-ROUNDS-02, operator decision 2026-08-10) is the damping term. Once that many rounds for a doc type are on disk, the phase gate (and the erratum protocol's confirmation round) **dispatches nothing** and the document is **accepted as-is** — reported as a `⏭` row plus a loud notice, explicitly *not* an approval and explicitly *not* a failure (no POSTMORTEM, no halt, the pipeline moves forward). `forcePhases` overrides the cap; an unresolved POSTMORTEM still refuses the phase, because the cap is evaluated after step G. Phases CR and DOD keep their own budgets and are unaffected.
 - **Documents are gated on structural completeness, not on an agent saying "done".** `isComplete(artifactClass, docType, fileText)` (`:1310`) scores a document per artifact class — `spec`, `cross-review`, `code-review`, `LEARNINGS` — and returns `{complete, missing, T, S}`. **`spec`-class rows match required *concepts* by normalised, word-boundary CONTAINMENT against the canonical title or a curated alias (`REQUIRED_HEADINGS[docType][].alts`) — numbered/descriptive headings are honored**, so a concern-organized spec (`## 4. The advisory core — types, SeamOps protocol, …` ⇒ `Interfaces` + `Data Model`) passes without carrying canonical headings verbatim. Word-bounded on `[a-z0-9-]`, so `non-goals` never satisfies `Goals` and a plural `## Decisions` never satisfies `Decision`. `LEARNINGS` is scored **positionally**: sections `1.`…`5.` must exist with non-empty bodies, whatever they are titled, plus the `Harvested from` row. Section 6 (Approval Record) is deliberately excluded from the criterion.
 - **Authoring is incremental because it has to be.** The workflow runtime kills any dispatch that makes no progress for **180 seconds**, which a whole-file write of a large spec reliably trips — losing everything not yet flushed. Every authoring dispatch therefore carries `PACING_CONTRACT_CLAUSE` (`:2279`): skeleton first, one top-level section per edit, every write under 12,000 bytes, commit after each section. `MAX_AUTHORING_ATTEMPTS = 3` consecutive no-progress dispatches per episode ends the attempt rather than looping forever. When that halt fires and the completeness probe still reports a non-empty `missing` set, the halt message **names the still-missing rows and flags a likely heading-naming mismatch** (not a content gap), so a stall on a substantively-complete document is legible without re-reading it. **Follow this pacing yourself when authoring these artifacts by hand** — the watchdog is runtime-side and not configurable from this repo.
 
@@ -98,11 +100,11 @@ With a valid ownership manifest, Phase I runs **same-tree waves instead of workt
 
 ### Continuous integration
 
-`.github/workflows/pr-tests.yml` is the gate Phase PUB polls. Five checks must pass:
+`.github/workflows/pr-tests.yml` is the gate Phase PUB polls. Four checks must pass:
 
 | Check | What it asserts |
 |---|---|
-| `Unit tests (ubuntu-latest, node 20)` / `(macos-latest, node 20)` | `npm test` on both platforms — the matrix exists because the shipped bash scripts must work on both bash 3.2 (maintainer's macOS) and bash 5 (Linux CI) |
+| `Unit tests (ubuntu-latest, node 20)` | `npm test` on Linux CI. There is deliberately no macOS job (operator decision, 2026-08-10): bash-3.2 portability of the shipped scripts is the maintainer's local concern, and a second platform job doubled CI wall time without ever failing independently |
 | `Generated artifacts are in sync` | `build-runtime.mjs --check`, then a rebuild that must produce no diff — an independent observer, since `--check` and the builder share code |
 | `Fresh-clone bootstrap works` | executes the two documented bootstrap commands as written, by bare path, and fails loudly on exit 126 (lost execute bit) |
 | `Shell scripts parse` | `bash -n` over every tracked `*.sh`, plus index-mode assertions (`100755` for the two entrypoints, `100644` for the sourced library) |

@@ -101,8 +101,8 @@ of the FSPEC; roll-up below.
 
 ## pdlc-consolidation-agent
 
-Upstream: `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (v2.0). Downstream:
-`docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` (v1.0). The authoritative
+Upstream: `docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (v2.0). Downstream:
+`docs/completed/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` (v1.0). The authoritative
 per-criterion mapping lives in FSPEC §15.1; roll-up below.
 
 | User Story | Requirement | FSPEC sections |
@@ -113,15 +113,24 @@ per-criterion mapping lives in FSPEC §15.1; roll-up below.
 | US-04 | REQ-CONS-05, REQ-CONS-07 | §8 FSPEC-CONS-07, §10 FSPEC-CONS-09 |
 | US-05 | REQ-CONS-05, REQ-CONS-06 | §8.5, §8.7, §9 FSPEC-CONS-08 |
 
-## pdlc-headless-engine
+## pdlc-advisory-wave-gate
 
-Upstream: `docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md` (v0.7). Downstream:
-`docs/pdlc-headless-engine/FSPEC-pdlc-headless-engine.md` (v1.0). The authoritative per-AC mapping
-lives in FSPEC §14.1; roll-up below.
+Upstream: `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (v1.0). Downstream: FSPEC
+not yet authored — the REQ carries `ready: false` pending operator review.
 
-| User Story | Acceptance criteria | FSPEC |
+| User Story | Requirement | FSPEC |
 |---|---|---|
-| US-01 | AC-1.1, AC-1.2, AC-3.1, AC-3.2, AC-3.5 | FSPEC-ENG-02, FSPEC-ENG-04, FSPEC-ENG-08 |
-| US-02 | AC-1.3, AC-2.1, AC-2.2, AC-2.4, AC-4.1…AC-4.5 | FSPEC-ENG-03, FSPEC-ENG-06, FSPEC-ENG-09, FSPEC-ENG-10 |
-| US-03 | AC-1.1, AC-1.4, AC-1.5, AC-2.5 | FSPEC-ENG-01, FSPEC-ENG-05, FSPEC-ENG-08 |
-| US-04 | AC-2.1, AC-2.3 | FSPEC-ENG-03, FSPEC-ENG-05 |
+| US-01 | REQ-AWG-01, REQ-AWG-03, REQ-AWG-05 | — (pending) |
+| US-02 | REQ-AWG-01, REQ-AWG-02, REQ-AWG-05, REQ-AWG-06 | — (pending) |
+| US-03 | REQ-AWG-01, REQ-AWG-02, REQ-AWG-03, REQ-AWG-04 | — (pending) |
+| US-04 | REQ-AWG-02, REQ-AWG-03, REQ-AWG-05 | — (pending) |
+| US-05 | REQ-AWG-01, REQ-AWG-02, REQ-AWG-06 | — (pending) |
+
+## pdlc-wave-resume
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05 | (pending) |
+| US-02 | REQ-WVR-02, REQ-WVR-04 | (pending) |
+| US-03 | REQ-WVR-03, REQ-WVR-06 | (pending) |
+| US-04 | REQ-WVR-07 | (pending) |

@@ -158,10 +158,15 @@ export function parseMergeConfig(text) {
 // "the suite" in this repo, which is per-repo knowledge the script cannot guess —
 // so `testCommand` has NO default. Its absence is not an error: it degrades the
 // wave gate to the legacy self-report scan, announced once per run.
+//
+// `startWave` is the resume pointer: after a wave-gate halt, an operator sets it
+// so the re-invocation does not re-dispatch agents over waves whose work is
+// already committed. Default 1 — every fresh run starts at the first wave.
 export const IMPLEMENTATION_DEFAULTS = Object.freeze({
   testCommand: null,
   postWaveCommand: null,
   postWavePathspecs: Object.freeze([]),
+  startWave: 1,
 });
 
 /**
@@ -220,11 +225,25 @@ export function parseImplementationConfig(text) {
     }
   }
 
+  // A resume pointer is a wave NUMBER: 1-indexed, integral. Anything else (0, a
+  // negative, a fraction, a numeric string, null) falls back to 1 — starting
+  // from the first wave is the only safe reading of an unreadable pointer.
+  let startWave = IMPLEMENTATION_DEFAULTS.startWave;
+  if ("startWave" in section) {
+    const v = section.startWave;
+    if (Number.isInteger(v) && v >= 1) {
+      startWave = v;
+    } else {
+      invalidKeys.push("startWave");
+    }
+  }
+
   return {
     config: {
       testCommand: nonEmptyString("testCommand"),
       postWaveCommand: nonEmptyString("postWaveCommand"),
       postWavePathspecs,
+      startWave,
     },
     sectionMalformed: false,
     invalidKeys,
@@ -307,12 +326,31 @@ const MERGE_STATE_STATUS_VALUES = [
 const UNRECOGNISED_SENTINEL = "__unrecognised__";
 
 /**
- * `mergeCommandFor` — TSPEC §4.1: the SOLE place every `gh` command string
- * used by Phase MERGE is built, so a single audit of this function's body
- * accounts for every literal command the phase can run.
+ * `--repo {slug}`, or nothing at all. `consolidation.pluginRepository` ships as `null`, whose
+ * contract (REQ:575, FSPEC:1990) is **the current repository** — and `gh` targets the current
+ * repository precisely when `--repo` is ABSENT. Substituting any slug for the null case (a
+ * placeholder, the string "null") would point the NFR-4 duplicate poll and the AC-3.1 PR
+ * creation at a repository that need not exist, so the null arm omits the flag rather than
+ * filling it. The same-repo case is thus honoured identically here and in `openClone`, which
+ * clones `origin` on exactly this condition.
+ *
+ * @param {string|null|undefined} repo
+ * @returns {string} `" --repo {repo}"`, or `""`
+ */
+function repoFlag(repo) {
+  return repo == null ? "" : ` --repo ${repo}`;
+}
+
+/**
+ * `mergeCommandFor` — TSPEC §4.1/§9.2: the SOLE place every `gh` command string
+ * used by Phase MERGE **and** the consolidation pass's PR route is built, so a
+ * single audit of this function's body accounts for every literal command
+ * either surface can run. Widened by TSPEC §9.2 rather than a second builder
+ * being written, to keep that audit property repo-wide.
  *
  * @param {string} surface - one of prState, ci, repoCaps, changedFiles,
- *   changedFilesFallback, merge, mergeReadback, reviewThreads
+ *   changedFilesFallback, merge, mergeReadback, reviewThreads,
+ *   consolidationPrs, consolidationCreate
  * @param {object} params - surface-specific parameters (see call sites)
  * @returns {string}
  */
@@ -346,10 +384,199 @@ export function mergeCommandFor(surface, params = {}) {
       }
       return cmd;
     }
+    case "consolidationPrs":
+      // §9.2's duplicate poll: one call supplies §7.6's prStates. `--state all` with a
+      // `--json state` field is what lets §7.6 apply the FSPEC state table with one call.
+      return `gh pr list${repoFlag(params.repo)} --state all --limit 100 --search "PDLC-CONSOLIDATION-PASS in:body" --json url,state,body`;
+    case "consolidationCreate":
+      // `--body-file` rather than `--body` is deliberate and load-bearing for NFR-2/§7.4: the
+      // body is written to a file in the clone, so no part of it is ever an argv element in a
+      // command string the adapter logs on failure.
+      return `gh pr create${repoFlag(params.repo)} --head ${params.head} --base ${params.base} --title ${params.title} --body-file ${params.bodyFile}`;
     default:
       throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The consolidation log's record readers (FSPEC §8.1, §8.4) — shared, not copied
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// These live HERE, not in `consolidate-learnings.js`, because both sides of §8.4's hand-off need
+// the identical arithmetic: the consolidation pass writes the records, and Phase H's harvest
+// dispatch reads them back to hand the harvest agent the open-promotion list.
+// `consolidate-learnings.js` imports these; the reverse direction is impossible (it already
+// imports from this module, and the build inlines this module into its bundle). One
+// implementation is the point — two would let the list the pass reports and the list the harvest
+// is asked about disagree silently, which is precisely the failure §8.4 exists to prevent.
+
+/** The tracked file both sides read (FSPEC §5.4). */
+export const CONSOLIDATION_LOG_PATH = "docs/_decisions/.consolidation-log.md";
+
+// The eight `FailureModeRecord` fields, on-disk key -> camelCased property name (FSPEC §8.1).
+const LOG_RECORD_FIELD_MAP = [
+  ["failure-mode-id", "failureModeId"],
+  ["phase", "phase"],
+  ["symptom", "symptom"],
+  ["artifact", "artifact"],
+  ["target", "target"],
+  ["passId", "passId"],
+  ["action", "action"],
+  ["route", "route"],
+];
+
+/** @returns {{records: object[], notices: object[]}} */
+export function parseLogRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  const records = [];
+  const notices = [];
+
+  for (const block of blocks) {
+    const fieldValues = {};
+    for (const line of block.split("\n")) {
+      const colon = line.indexOf(":");
+      if (colon === -1) continue;
+      fieldValues[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+    }
+
+    const record = {};
+    for (const [textKey, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (Object.prototype.hasOwnProperty.call(fieldValues, textKey)) {
+        record[propKey] = fieldValues[textKey];
+      }
+    }
+
+    const subject = record.failureModeId;
+    for (const [, propKey] of LOG_RECORD_FIELD_MAP) {
+      if (!Object.prototype.hasOwnProperty.call(record, propKey)) {
+        notices.push({ subject, missingField: propKey });
+      }
+    }
+
+    records.push(record);
+  }
+
+  return { records, notices };
+}
+
+// FSPEC §7.4's second on-disk record grammar — one full FailureModeRecord as JSON inside an HTML
+// comment, `<!-- pdlc:record {…} -->`. Unparseable JSON is skipped, never an abort (DC-01 receive
+// side).
+const RECORD_COMMENT_RE = /<!--\s*pdlc:record\s+(\{.*?\})\s*-->/g;
+
+/** @returns {object[]} */
+export function jsonCommentRecords(logText) {
+  const text = typeof logText === "string" ? logText : "";
+  const records = [];
+  RECORD_COMMENT_RE.lastIndex = 0;
+  let match;
+  while ((match = RECORD_COMMENT_RE.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && typeof parsed === "object" && typeof parsed.failureModeId === "string") {
+        records.push(parsed);
+      }
+    } catch {
+      // skipped — a malformed comment contributes no record
+    }
+  }
+  return records;
+}
+
+/**
+ * Every record the log carries, in both admitted grammars. A record short of `failure-mode-id`
+ * contributes nothing (FSPEC §8.4 step 1: "a list of ids takes none from a record that carries
+ * none") — its parse notice is the pass's report, not this reader's business.
+ *
+ * @returns {object[]}
+ */
+export function consolidationLogRecords(logText) {
+  return [
+    ...jsonCommentRecords(logText),
+    ...parseLogRecords(logText).records.filter((r) => typeof r.failureModeId === "string"),
+  ];
+}
+
+/**
+ * FSPEC §7.5/§8.4 step 1 — the ids for which no record carries a landed (non-`degraded`) retire.
+ * A record short of `action` or `route` cannot close an id (it stays open); a record short of
+ * `failureModeId` contributes no member at all.
+ *
+ * @returns {string[]}
+ */
+export function openPromotionList(records) {
+  const list = Array.isArray(records) ? records : [];
+  const order = [];
+  const seen = new Set();
+  const closed = new Set();
+
+  for (const r of list) {
+    if (!r || typeof r.failureModeId !== "string") continue;
+    if (!seen.has(r.failureModeId)) {
+      seen.add(r.failureModeId);
+      order.push(r.failureModeId);
+    }
+    if (r.action === "retire" && r.route !== undefined && r.route !== "degraded") {
+      closed.add(r.failureModeId);
+    }
+  }
+
+  return order.filter((id) => !closed.has(id));
+}
+
+/**
+ * FSPEC §8.4 step 1, in the shape the harvest prompt is handed: one entry per OPEN id, carrying
+ * the three fields step 2's question is asked on (`symptom`, `artifact` — the subject the mode was
+ * observed on, never the `target` the promotion wrote — and `phase`). Where several records share
+ * an id, the LAST one wins: the log is append-only, so the last record is the promotion's most
+ * recent recorded state. A field no record supplies is omitted rather than guessed; the skill
+ * states the missing half as unavailable.
+ *
+ * @param {*} logText - the raw `.consolidation-log.md` text, or anything at all
+ * @returns {{failureModeId: string, phase?: string, symptom?: string, artifact?: string}[]}
+ */
+export function openPromotionsFromLog(logText) {
+  const records = consolidationLogRecords(logText);
+  const open = new Set(openPromotionList(records));
+  const byId = new Map();
+  for (const r of records) {
+    if (!open.has(r.failureModeId)) continue;
+    const entry = byId.get(r.failureModeId) || { failureModeId: r.failureModeId };
+    for (const field of ["phase", "symptom", "artifact"]) {
+      if (typeof r[field] === "string" && r[field].length > 0) entry[field] = r[field];
+    }
+    byId.set(r.failureModeId, entry);
+  }
+  return [...byId.values()];
+}
+
+/**
+ * The list as the harvest prompt carries it. Explicitly empty rather than absent when there is
+ * nothing open: the harvest SKILL's §5 convention is conditioned on having been handed a list, so
+ * an omitted section and an empty one must not read the same.
+ *
+ * @returns {string}
+ */
+export function renderOpenPromotionList(entries) {
+  const list = Array.isArray(entries) ? entries : [];
+  if (list.length === 0) return "(none — no open promotions are recorded)";
+  return list
+    .map((e) => {
+      const phase = e.phase ? e.phase : UNAVAILABLE_FIELD;
+      const artifact = e.artifact ? e.artifact : UNAVAILABLE_FIELD;
+      const symptom = e.symptom ? e.symptom : UNAVAILABLE_FIELD;
+      return `  - failure-mode-id: ${e.failureModeId} | phase: ${phase} | artifact: ${artifact} | symptom: ${symptom}`;
+    })
+    .join("\n");
+}
+
+// The one spelling of a field the log did not carry — never a blank, never a guess (FSPEC §6.5).
+const UNAVAILABLE_FIELD = "unavailable";
 
 /**
  * `parsePrRef` — TSPEC §4.4: pure parse of a PR URL into
@@ -1614,6 +1841,39 @@ const MODEL_DEFAULT = "opus"; // all phases except Phase I
 // branch-derived starting index.
 const MAX_REVIEW_ROUNDS = 5;
 
+/**
+ * DEC-ROUNDS-02 (operator decision, 2026-08-10) — the LIFETIME review-round cap.
+ *
+ * `MAX_REVIEW_ROUNDS` is a per-INVOCATION budget: `deriveRoundWindow` opens the
+ * window one past the highest `-v{N}` cross-review already on the branch, so a
+ * document that keeps getting re-opened — an approval anchor staled by an edit,
+ * an erratum cascading in from a sibling document, a forced re-run — accumulates
+ * rounds without bound. On pdlc-consolidation-agent the REQ reached round 21 and
+ * the FSPEC and TSPEC round 18, each round costing a full author + reviewer fan-out
+ * and each producing findings smaller than the one before it.
+ *
+ * The cap is the review loop's damping term. Past this many rounds on disk the
+ * marginal value of another finding is below the cost of the round that would find
+ * it, so the pipeline **accepts the document as-is and moves forward**. Accepted
+ * as-is is NOT approved: no approval anchor is written, no verdict is synthesised,
+ * and the phase row says so. It is also not a failure: no POSTMORTEM is written,
+ * because nothing failed — the loop simply stopped paying for itself.
+ *
+ * It is a LIFETIME cap because the round history is already content-addressed on
+ * disk (§5.2's filename grammar), so "how many rounds has this document had, ever,
+ * on this branch" is a total function of a directory listing the gate already
+ * takes. No new state, no clock, no config.
+ *
+ * **`forcePhases` overrides it.** An operator who names the phase has asked for
+ * the round explicitly, which is exactly the signal the cap exists to supply in
+ * the operator's absence (see `phaseGate`, and `lifetimeCapReached`'s callers).
+ *
+ * Exported — unlike `MAX_REVIEW_ROUNDS`, this number is operator-facing: it is
+ * named verbatim in the notice and the phase row, and tests pin the boundary
+ * (round 15 opens, round 16 does not) against the constant rather than a literal.
+ */
+export const MAX_LIFETIME_ROUNDS = 15;
+
 const MAX_AUTHORING_ATTEMPTS = 3; // consecutive no-progress dispatches, per episode
 const MAX_AUTHORING_DISPATCHES = 6; // total dispatches, per episode
 const MAX_AUTHORING_WRITE_BYTES = 12000; // per-tool-call emission ceiling stated to authors
@@ -1825,12 +2085,12 @@ export const ADVISORY_RUNG_SKILL = "se-review";
  * depth as the deadline. An `async`/`await` body here would add hops and let the deadline win a
  * race on hop-count alone rather than on elapsed time.
  *
- * @param {{ _agent: Function, _log: Function, prompt: string,
+ * @param {{ _agent: Function, _log: Function, prompt: string, skill?: string,
  *           _state: { resolved: {model: string, fallback: boolean}|null } }} deps
  * @returns {Promise<{kind: "response", raw: string} | {kind: "dispatch-error", err: unknown}>}
  * @throws  haltError (as a rejection) when neither rung resolves (M-3)
  */
-export function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
+export function resolveAdvisoryRung({ _agent, _log, _state, prompt, skill = ADVISORY_RUNG_SKILL }) {
   const log = typeof _log === "function" ? _log : () => {};
 
   // `dispatchAt` exists for §8.5's returned-promise ruling: `return _agent(…);` is a classified
@@ -1838,7 +2098,7 @@ export function resolveAdvisoryRung({ _agent, _log, _state, prompt }) {
   // the hop-count note above), so the seam call moves into a body the ruling covers and the chain
   // hangs off the returned promise, adding no microtask hop.
   function dispatchAt(model) {
-    return _agent(ADVISORY_RUNG_SKILL, prompt, { model });
+    return _agent(skill, prompt, { model });
   }
 
   if (_state.resolved != null) {
@@ -3429,6 +3689,12 @@ export const PHASE_DISPATCH = {
     grounding: [
       "The feature's full diff against the default branch — every finding must cite the actual changed lines.",
       "The documents under docs/{feature}/ — confirm the shipped code matches what they specify.",
+      // PM F-06 (CR round 1, pdlc-consolidation-agent): four builder-not-wired gaps
+      // reached final review green because every acceptance test drove a pure builder
+      // with hand-built inputs, and no row asked who calls it in production. The
+      // pm-review SKILL carries the sweep, but only as one bullet among many; naming
+      // it as CR grounding puts it in every CR reviewer's prompt, both lenses.
+      "For each AC that claims an operator-visible artifact contains something: name the production caller that assembles it and the test that drives THAT caller, or file a finding. A builder covered only through its own unit tests is not wired.",
     ],
   },
   DOD: {
@@ -4225,13 +4491,42 @@ export function parseVerdict(result, skillName) {
     return fallback;
   }
 
-  // Find next non-empty line after the VERDICT line
+  // Find the next non-empty line after the VERDICT line, SKIPPING the tier-1
+  // approval anchors (DEC-BAR-02, 2026-08-09).
+  //
+  // The anchors are the one write this system sanctions to a cross-review file
+  // after its verdict: CLAUDE.md instructs agents to append them "verbatim
+  // without hesitation", and harvest copies them into the Approval Record. So
+  // they are not foreign matter between the verdict and its counts — they are
+  // expected matter, and the parser has to know that.
+  //
+  // Left unskipped they were destructive out of all proportion to the defect.
+  // A reviewer who omits the counts line entirely is already TOLERATED: with
+  // nothing after the verdict, the truncated-output case below returns the
+  // verdict with zero counts, which converges under the High-only bar. Append
+  // the anchors to that same file and `APPROVAL-HASH: sha256:…` lands in the
+  // slot this scan insists is JSON — `JSON.parse` throws, the whole review
+  // reads as malformed, and an approval already granted is re-run as "Needs
+  // revision". Two individually sound mechanisms, mutually destructive.
+  //
+  // Measured across all 102 cross-review files in docs/ (2026-08-09): 29 failed
+  // to parse, ALL 29 on an anchor line sitting where counts should be, and ALL
+  // 29 carrying an APPROVED verdict — 16 rounds of accumulated approval on
+  // pdlc-consolidation-agent alone, invisible. In every one the counts line was
+  // absent rather than pushed below, so this skip is not recovering a displaced
+  // line; it is declining to be broken by a line that belongs there.
+  //
+  // This does NOT relax the bar. The verdict VALUE still governs and a real
+  // counts line, wherever the anchors sit relative to it, is still read and
+  // still validated: "Needs revision" stays Needs revision, and a High count
+  // still blocks.
   let nextNonEmpty = null;
   for (let j = verdictLineIndex + 1; j < lines.length; j++) {
-    if (lines[j].trim() !== "") {
-      nextNonEmpty = lines[j].trim();
-      break;
-    }
+    const candidate = lines[j].trim();
+    if (candidate === "") continue;
+    if (APPROVAL_ANCHOR_LINE.test(candidate)) continue;
+    nextNonEmpty = candidate;
+    break;
   }
 
   // Truncated-output special case (TSPEC-PARSE-03)
@@ -4586,6 +4881,73 @@ export function approvalHashOf(text) {
   return `sha256:${sha256Hex(text)}`;
 }
 
+// ─── DEC-APPROVAL-03 (2026-08-10) — line-number-anchor neutralisation ─────────
+//
+// Operator decision, taken after a measured cost: on `pdlc-consolidation-agent`
+// six edits that changed NOTHING but a `file:line` anchor — `SKILL.md:70-78`
+// became `SKILL.md:70-79` because an unrelated line was inserted above it — each
+// staled a recorded approval and re-opened its phase's review loop. Four phases,
+// ~25 extra Opus rounds, zero semantic change under review.
+//
+// Approval freshness is therefore SEMANTIC: line-number-anchor churn is not a
+// change to what was approved. Every other byte still is. The normalisation
+// below is deliberately the smallest one that covers the measured failure and
+// nothing else — in doubt, a shape is LEFT ALONE, because the fallback of
+// leaving it alone is exactly today's behaviour (a re-review), while the
+// fallback of neutralising too much is an approval that outlives its document.
+
+/**
+ * The two token shapes neutralised, and only these two:
+ *
+ *   A. a path-anchored `:{digits}` / `:{digits}-{digits}` — the `file:line`
+ *      citation. The token BEFORE the colon must contain a `.` or a `/`, which
+ *      is what separates `orchestrate-dev.js:1842` and `docs/x/REQ-y.md:70-78`
+ *      from a clock time (`12:30`), a ratio (`3:1`) or a numbered list.
+ *   B. a backtick-opened `` `:{digits}` `` / `` `:{digits}-{digits}` `` — the
+ *      abbreviated cell anchor review tables use once the filename is in a
+ *      neighbouring column (`` `:70-79` ``).
+ *
+ * Both collapse the digit span to `*`, so `:70-78` and `:70-79` become `:*-*`
+ * and a single-line `:1842` becomes `:*`. A one-line anchor and a range anchor
+ * stay DISTINGUISHABLE (`:*` ≠ `:*-*`): widening a citation from one line to a
+ * range is an editorial change, not pure movement.
+ *
+ * Not touched, on purpose: `v1.5`, `T20`, `§5.3`, prose ("see line 70"),
+ * durations, versions, times, and any digits not immediately after a colon.
+ */
+const APPROVAL_PATH_ANCHOR_RE =
+  /([A-Za-z0-9_~@][A-Za-z0-9_@~.\-/]*[./][A-Za-z0-9_@~.\-/]*):(\d+)(?:-(\d+))?(?![\w.-])/g;
+const APPROVAL_CELL_ANCHOR_RE = /`:(\d+)(?:-(\d+))?`/g;
+
+/**
+ * Canonicalise `text` for the SEMANTIC approval comparison (DEC-APPROVAL-03).
+ *
+ * Pure, total, synchronous; no seam, no throw, no IO. Idempotent: the output
+ * contains no token either regex can still match, so normalising twice is
+ * normalising once — which is what lets a normalised digest be compared against
+ * a normalised digest without asking which side was normalised when.
+ *
+ * @param {string} text
+ * @returns {string} the same document with line-number anchors neutralised.
+ */
+export function normalizeForApproval(text) {
+  return String(text ?? "")
+    .replace(APPROVAL_PATH_ANCHOR_RE, (_m, head, _a, b) => `${head}:${b == null ? "*" : "*-*"}`)
+    .replace(APPROVAL_CELL_ANCHOR_RE, (_m, _a, b) => `\`:${b == null ? "*" : "*-*"}\``);
+}
+
+/**
+ * The digest an `APPROVAL-HASH-NORMALIZED:` line carries: `approvalHashOf` over
+ * `normalizeForApproval`'s output. One digest function, one prefix, one write
+ * path and one read path — the same A-11 discipline `approvalHashOf` states.
+ *
+ * @param {string} text
+ * @returns {string} `sha256:{64 lowercase hex}`
+ */
+export function approvalHashOfNormalized(text) {
+  return approvalHashOf(normalizeForApproval(text));
+}
+
 // ─── TSPEC §4.3 / §5.3 / §5.8 — the record parsers ────────────────────────────
 //
 // All five are total, synchronous, take no seam, and read the artifact through
@@ -4599,6 +4961,17 @@ export function approvalHashOf(text) {
  * silently teaching the operator the old five-token set.
  */
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
+
+/**
+ * A tier-1 approval anchor LINE, by key alone (DEC-BAR-02).
+ *
+ * Deliberately keyed on the field name and not on the value grammar: this is
+ * used by `parseVerdict` to recognise "a line the append step is allowed to put
+ * here", and a MALFORMED anchor is still an anchor — it is emphatically not a
+ * counts line, and must not be fed to `JSON.parse` as if it were. Anchor
+ * well-formedness is `readApprovalRecord`'s job (§4.4), and it keeps it.
+ */
+const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
 
 /** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
@@ -4619,16 +4992,26 @@ const COMMIT_UNAVAILABLE = "unavailable";
  * and degrading such a record to UNEVALUABLE would re-run a converged phase over
  * a field nothing consults.
  *
+ * `APPROVAL-HASH-NORMALIZED:` (DEC-APPROVAL-03) is read the same way, with one
+ * deliberate asymmetry: it has no failure value either. Absent, duplicated or
+ * malformed, `normalizedHash` is `null` and `ok` is untouched — an approval
+ * recorded before this field existed must keep behaving exactly as it did, and
+ * the field can only ever GRANT freshness the raw hash already refused, never
+ * withdraw any.
+ *
  * @param {string} fileText
- * @returns {{ok: true, hash: string, reviewedCommit: string}
+ * @returns {{ok: true, hash: string, normalizedHash: string|null, reviewedCommit: string}
  *          |{ok: false, reason: string}} `reason` is a `HASH_FAILURES` member.
  */
 export function parseApprovalHash(fileText) {
   const hashes = [];
+  const normalized = [];
   const commits = [];
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
+    const n = /^\s*APPROVAL-HASH-NORMALIZED:\s*(\S*)\s*$/.exec(line);
+    if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
   });
@@ -4642,7 +5025,10 @@ export function parseApprovalHash(fileText) {
       ? commits[0]
       : COMMIT_UNAVAILABLE;
 
-  return { ok: true, hash: hashes[0], reviewedCommit };
+  const normalizedHash =
+    normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
+
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
 }
 
 // ─── TSPEC §5.1 — verdict extraction from a FILE ──────────────────────────────
@@ -5736,6 +6122,48 @@ export function parseErrata(text, onIgnored) {
   return found;
 }
 
+/**
+ * Retry a single dispatch exactly once when the dispatch itself THROWS or
+ * REJECTS — an engine-side transport fault (dropped connection, the engine's
+ * 30-minute dispatch ceiling) surfaces this way. A *parsed* content failure
+ * (an empty reply, a "Needs revision" verdict, a non-zero-exit string in the
+ * response) is not a throw and is never touched by this helper — those are
+ * evaluated, unchanged, by the caller after `withDispatchRetry` resolves.
+ *
+ * On the first throw this emits a loud, greppable notice and re-invokes
+ * `dispatchFn` with the exact same prompt/arguments (the caller's thunk
+ * closes over them, so "same prompt" is structural, not a parameter here).
+ * A second throw propagates unchanged — same error, same message, same halt
+ * and POSTMORTEM/report behavior as before this helper existed. Only ONE
+ * retry: this is a fault-recovery seam, not a resilience loop.
+ *
+ * Scoped deliberately to long, single-shot dispatch call sites (Phase CR's
+ * review-loop optimizer dispatch, Phase DOD's remediation dispatch, Phase
+ * PT's V-wave dispatch) — never to the round-loop reviewer dispatch: a
+ * faulted reviewer round already re-derives cleanly on the pipeline's next
+ * invocation, and double-dispatching a reviewer risks two cross-review files
+ * for one round.
+ *
+ * `onFault`, if given, fires once the FIRST attempt throws — before the
+ * retry is even dispatched — so a caller that must record "a fault was
+ * observed" as a distinct signal from "the dispatch ultimately failed" can
+ * do so even when the retry goes on to recover.
+ *
+ * @param {() => Promise<any>} dispatchFn - zero-arg thunk; invoked again, unchanged, on retry.
+ * @param {{ label: string, emit?: (msg: string) => void, onFault?: () => void }} opts
+ * @returns {Promise<any>}
+ */
+export async function withDispatchRetry(dispatchFn, { label, emit = () => {}, onFault = () => {} } = {}) {
+  try {
+    return await dispatchFn();
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    emit(`Dispatch fault (${label}): ${message} — retrying once.`);
+    onFault();
+    return await dispatchFn();
+  }
+}
+
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
 
 /**
@@ -5762,12 +6190,20 @@ export async function reviewLoop({
   iteration = 1,
   startIndex = iteration,
   endIndex = windowEnd(startIndex),
+  // DEC-FRZ-01. The round at which THIS document last carried a dual approval on
+  // disk, as the phase gate's approval search read it, or `null` when the gate
+  // found none (and on a forced phase, where the search is skipped). Supplied by
+  // the caller because the gate already paid for the read; `null` simply means no
+  // freeze can be justified from approval history, and the round-index trigger
+  // still applies.
+  priorApprovedRound = null,
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
   _hashFile = defaultHashFile,
+  _hashNormalizedFile = defaultHashNormalizedFile,
   _appendFile = defaultAppendFile,
   // The optional probe seams (see `probeDocument` / `resolveReviewState`). They
   // default to `null` rather than to a working implementation on purpose: absent
@@ -5869,8 +6305,7 @@ export async function reviewLoop({
   };
 
   /** The cross-review path a reviewer episode writes this round (§5.2). */
-  const reviewTargetPath = (skill, round) =>
-    `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
+  const reviewTargetPath = (skill, round) => crossReviewPath(feature, skill, reviewFileType, round);
 
   // The branch guard's cheap re-check: `main()` placed the tree on
   // feat-{feature} at entry, but phases run for a long time and a tree can drift
@@ -5978,6 +6413,7 @@ export async function reviewLoop({
     // reviewed, not whatever the optimizer left behind afterwards. Phase CR's
     // target is a directory and carries no anchor.
     let anchorHash = null;
+    let anchorNormalizedHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
       // t0/t1 collapse into ONE seam call: the anchor never needed the bytes,
@@ -5991,14 +6427,31 @@ export async function reviewLoop({
       // probing runtime pays for no second observation here.
       const probe = await probeDocument(_probeDoc, doc, roundDocType);
       anchorHash = (probe ? probe.hash : await _hashFile(doc)) ?? null; // t0–t1
+      // DEC-APPROVAL-03's second anchor, taken at the SAME t0 from the SAME
+      // observation, so the two can never describe different documents.
+      anchorNormalizedHash = await normalizedAnchorFor({
+        probe,
+        path: doc,
+        _hashNormalizedFile,
+      });
       anchorCommit = await headCommitSha(_git); // t2
     }
 
     // (c) Dispatch reviewers in parallel. On iteration ≥2 each reviewer gets a
     // delta re-review prompt (read prior cross-review, diff-only scan) — see
     // reviewerPrompt. Iteration 1 is the full first-pass review.
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
+    // DEC-FRZ-01, decided ONCE per round and shared by both reviewers and the
+    // optimizer below, so the three cannot disagree about whether the round they
+    // are working is frozen.
+    const frozen = freezeInForce({ priorApprovedRound, nextRound: iteration });
+    if (frozen) {
+      emit(
+        `Decision freeze in force for ${doc} at round ${iteration} ` +
+          `(prior approved round: ${priorApprovedRound ?? "none"}, late-round threshold: ${FREEZE_LATE_ROUND}).`
+      );
+    }
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType, frozen);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType, frozen);
 
     // Each reviewer keeps ONE key across every round of this phase (M-1): a
     // transport that can resume therefore hands round N's reviewer its own
@@ -6063,6 +6516,7 @@ export async function reviewLoop({
       await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
+        normalizedHash: anchorNormalizedHash,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -6082,7 +6536,7 @@ export async function reviewLoop({
     }
 
     // (g) Invoke optimizer (FAIL path)
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType, frozen);
     // The optimizer shares the AUTHOR session with the phase's creator (M-2):
     // the agent revising the document is the agent that wrote it.
     const optEpisode = await runWrapped(
@@ -6181,9 +6635,32 @@ export function approvalAnchorPreCount(fileText) {
  *
  * Nothing here throws: `AT-17`'s "does not halt".
  */
+/**
+ * The `APPROVAL-HASH-NORMALIZED:` value to record beside a raw anchor
+ * (DEC-APPROVAL-03), taken at the same t0 instant and through the same two
+ * transports as the raw one: the probe's answer when a probe answered, the
+ * `_hashNormalizedFile` seam otherwise.
+ *
+ * Total, and `null` for everything it cannot establish — a probe that predates
+ * the field, a transport that declines, a missing file. `null` means "append
+ * the raw pair alone, exactly as before", so no caller has to distinguish
+ * "could not compute" from "chose not to".
+ */
+async function normalizedAnchorFor({ probe, path, _hashNormalizedFile }) {
+  if (probe) return typeof probe.normalizedHash === "string" ? probe.normalizedHash : null;
+  if (typeof _hashNormalizedFile !== "function") return null;
+  try {
+    const value = await _hashNormalizedFile(path);
+    return typeof value === "string" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function appendApprovalAnchors({
   paths,
   hash,
+  normalizedHash = null,
   commit,
   _readFile,
   _probeDoc,
@@ -6232,7 +6709,17 @@ async function appendApprovalAnchors({
       return;
     }
     try {
-      await _appendFile(path, `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ${commit}\n`);
+      // The RAW anchor stays first and stays the shape every existing reader
+      // (harvest's table, `approvalAnchorPreCount`, the fixtures) already pins;
+      // the normalised line is inserted between it and `REVIEWED-COMMIT:` only
+      // when one could be computed, so a legacy-shaped block is still emitted
+      // whenever it could not (`normalizedAnchorFor`'s `null`).
+      await _appendFile(
+        path,
+        `\nAPPROVAL-HASH: ${hash}\n` +
+          (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
+          `REVIEWED-COMMIT: ${commit}\n`
+      );
       appended = true;
     } catch (err) {
       emit(
@@ -6281,6 +6768,23 @@ const REVIEWER_ROLE_SLUGS = Object.freeze(Object.values(MAP));
 
 export function reviewerRoleSlug(skill) {
   return MAP[skill] || null;
+}
+
+/**
+ * The one place a `CROSS-REVIEW-…` path is spelled (§5.2).
+ *
+ * CR F-11: this used to be spelled once inside `reviewLoop` (for the path the loop
+ * READS back) while the reviewer prompt named no output path at all, leaving the
+ * reviewer role to infer a file type from the artifact under review. For Phase CR
+ * that inference lands OUTSIDE the round window — CR passes a directory, so
+ * `docTypeFromPath` yields null and `reviewFileType` degrades to the literal
+ * "REVIEW", which is what `deriveRoundWindow` counts; a reviewer who inferred
+ * "IMPLEMENTATION" wrote a file the window could not see and the phase's round
+ * history read as empty. Both the loop and the prompt now derive from here, so the
+ * name the reviewer is told to write is by construction the name the loop looks for.
+ */
+export function crossReviewPath(feature, skill, docType, round) {
+  return `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${docType}-v${round}.md`;
 }
 
 /**
@@ -6474,6 +6978,77 @@ export function deriveRoundWindow(basenames, docType) {
  */
 function windowEnd(startIndex) {
   return startIndex + MAX_REVIEW_ROUNDS - 1;
+}
+
+/**
+ * DEC-ROUNDS-02 — has this document spent its LIFETIME round budget?
+ *
+ * `startIndex` is the round the next dispatch WOULD open, so `startIndex - 1` is
+ * the number of rounds already on disk. The cap is reached when opening the next
+ * round would take the document past `MAX_LIFETIME_ROUNDS`: at 14 rounds on disk
+ * the loop still opens round 15; at 15 it does not open round 16.
+ *
+ * Synchronous, total, and takes no seam — the same discipline `deriveRoundWindow`
+ * lives under, and for the same reason: the decision is content-addressed, derived
+ * from the directory listing the gate already took, never from a clock.
+ *
+ * Non-numeric input answers `false` (do not cap): a window index this function
+ * cannot read is not evidence that the budget is spent, and failing OPEN here is
+ * the safe direction — the worst case is one more review round, which is the
+ * behaviour that predates the cap.
+ *
+ * @param {number} startIndex - the round index the next dispatch would open.
+ * @returns {boolean}
+ */
+export function lifetimeCapReached(startIndex) {
+  const next = Number(startIndex);
+  if (!Number.isFinite(next)) return false;
+  return next > MAX_LIFETIME_ROUNDS;
+}
+
+/**
+ * DEC-FRZ-01 — the round index from which EVERY round is frozen, regardless of
+ * approval history. Late-round damping: a document on its tenth review round is
+ * not still deciding what it is, whatever its anchors say.
+ */
+export const FREEZE_LATE_ROUND = 10;
+
+/**
+ * DEC-FRZ-01 — is the round about to open under DECISION FREEZE?
+ *
+ * The practice this mechanizes was imposed by hand in Phase F of
+ * `pdlc-consolidation-agent` and measured: the target finding class disappeared
+ * and the Medium rate fell ~75%. A matured document's review round decides
+ * nothing new — it exists to catch what the last delta broke — and a reviewer
+ * not told so files fresh decisions against text that was already approved.
+ *
+ * Two triggers, either sufficient:
+ *
+ *   1. **A prior approving round exists.** The document was approved at least
+ *      once before the round about to open, so what re-opened the round is bytes
+ *      moving (a staled anchor, a confirmed erratum), not an undecided document.
+ *   2. **`nextRound >= FREEZE_LATE_ROUND`.** Late-round damping, independent of
+ *      approval history.
+ *
+ * Pure, synchronous and total, the discipline `lifetimeCapReached` lives under:
+ * the decision is derived from the round record the gate already took, never
+ * from a clock. Unreadable input answers `false` — a freeze that cannot be
+ * justified from the record is not imposed, and failing OPEN here costs at most
+ * an ordinary unfrozen round, which is the behaviour that predates the freeze.
+ *
+ * @param {{priorApprovedRound: number|null, nextRound: number}} arg
+ * @returns {boolean}
+ */
+export function freezeInForce({ priorApprovedRound, nextRound } = {}) {
+  const round = Number(nextRound);
+  if (Number.isFinite(round) && round >= FREEZE_LATE_ROUND) return true;
+
+  const prior = Number(priorApprovedRound);
+  if (!Number.isFinite(prior) || prior < 1) return false;
+  // "PRIOR" is load-bearing: an approval recorded at or after the round about to
+  // open is not history the freeze can rest on.
+  if (Number.isFinite(round) && prior >= round) return false;
+  return true;
 }
 
 // ─── TSPEC §5.6.3 — the two prompt kinds, and the section walk behind them ────
@@ -6686,6 +7261,9 @@ export async function refreshReviewState({ feature, docType, _listFiles, _readFi
       high: parsedVerdict.ok ? parsedVerdict.high : null,
       verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
       anchorHash: anchor.ok ? anchor.hash : null,
+      // DEC-APPROVAL-03. `null` on every legacy record, which is what makes the
+      // normalised comparison opt-in per approval rather than retroactive.
+      anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -6918,7 +7496,14 @@ async function targetState({ targetPath, artifactClass, docType, _readFile, _pro
 
 /** The shape every non-approving exit of the search returns (§5.4). */
 function noApprovalRecord(candidate, unevaluable = []) {
-  return { approving: false, candidate, hash: null, unevaluable, tier1Empty: false };
+  return {
+    approving: false,
+    candidate,
+    hash: null,
+    normalizedHash: null,
+    unevaluable,
+    tier1Empty: false,
+  };
 }
 
 /**
@@ -6970,7 +7555,24 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
     return noApprovalRecord(candidate, records.map((r) => r.path));
   }
 
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+  // DEC-APPROVAL-03: the normalised anchor is adopted under the SAME unanimity
+  // rule as the raw one — every role must carry it and all must agree. A single
+  // role's normalised anchor is not a record, and a disagreement adopts neither
+  // value. Anything less than unanimous simply degrades to `null`, i.e. to the
+  // raw-only behaviour, and never to UNEVALUABLE: an approval that is legible
+  // under §5.5's rule must not be weakened by an advisory field.
+  const norms = records.map((r) => r.anchorNormalizedHash ?? null);
+  const normalizedHash =
+    norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
+
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 /** The `## 6. Approval Record` heading tier 2 reads by name (§4.4, §5.4). */
@@ -7025,7 +7627,18 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
   if (!hashes.every((h) => APPROVAL_HASH_VALUE_RE.test(h) && h === hashes[0])) {
     return noApprovalRecord(candidate);
   }
-  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+  // Tier 2's row grammar is harvest's six columns and carries no normalised
+  // anchor, so a LEARNINGS-sourced approval is raw-only by construction. Left
+  // that way DELIBERATELY: widening the harvested table is a change to the
+  // harvest artifact's shape, which this feature is not scoped to make.
+  return {
+    approving: true,
+    candidate,
+    hash: hashes[0],
+    normalizedHash: null,
+    unevaluable: [],
+    tier1Empty: false,
+  };
 }
 
 // ─── TSPEC §3.8 — dispatchAndVerify ──────────────────────────────────────────
@@ -7166,7 +7779,25 @@ async function dispatchAndVerify({
 
     let faulted = false;
     try {
-      response = await _agent(skill, prompt, model ? { model } : undefined);
+      // Only the "authoring" episode (creator/optimizer, one document owner
+      // per episode) is a same-prompt retry candidate on a thrown/rejected
+      // dispatch. A "review" episode's dispatch is never retried here: a
+      // faulted reviewer round already re-derives cleanly on the pipeline's
+      // next invocation, and double-dispatching a reviewer risks two
+      // cross-review files for one round.
+      response =
+        dispatchKind === "review"
+          ? await _agent(skill, prompt, model ? { model } : undefined)
+          : await withDispatchRetry(
+              () => _agent(skill, prompt, model ? { model } : undefined),
+              {
+                label: `${skill} dispatch, phase ${phaseId}`,
+                emit,
+                onFault: () => {
+                  faulted = true;
+                },
+              }
+            );
     } catch {
       faulted = true;
       response = null;
@@ -7353,6 +7984,44 @@ const ORACLE_QUALITY_CLAUSE = [
     "catalogues) need a set-equality check over the full enumeration, so a deleted case fails.",
 ].join("\n");
 
+/**
+ * DEC-FRZ-01's reviewer clause — on every reviewer prompt of a frozen round
+ * (`freezeInForce`), and on no other.
+ *
+ * `REVIEW_CONVERGENCE_CLAUSE` scopes the reviewer's ATTENTION and leaves the bar
+ * alone. This clause is the stronger statement the measured churn asked for: on
+ * a matured document it also scopes what may BLOCK. The escape hatch is the
+ * point — a reviewer who may not block on an improvement still has somewhere to
+ * put it, so the observation is recorded rather than smuggled into a High.
+ */
+const FREEZE_REVIEWER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Its content decisions are settled: this round " +
+    "exists to catch what the last revision broke, not to decide anything new.",
+  "A finding may block (VERDICT: Needs revision) ONLY if it is one of:",
+  "(i) a defect the revision under review introduced — something this delta broke that worked before; or",
+  "(ii) a factual contradiction with the repository at HEAD or with an upstream document, which makes " +
+    "a load-bearing claim in this document false.",
+  "Everything else — an improvement, a restructuring, extra coverage, wording, a decision you would " +
+    "have taken differently — is out of scope as a blocking finding in a frozen round. Do not open a " +
+    "new decision here. Record each such observation as its own line in your cross-review, in exactly " +
+    "this form:",
+  "DEFERRED: {one-line item}",
+  "and approve.",
+].join("\n");
+
+/**
+ * DEC-FRZ-01's author-side half, on the optimizer prompt of a frozen round.
+ *
+ * Without it the freeze is one-sided: a reviewer that defers an item correctly
+ * and an author that then acts on the deferred line anyway re-opens exactly the
+ * decision the freeze closed, and the next round has new text to review.
+ */
+const FREEZE_OPTIMIZER_CLAUSE = [
+  "DECISION FREEZE is in force for this document. Address the blocking findings and nothing else.",
+  "A line beginning DEFERRED: in a cross-review is recorded, not requested: do NOT act on it, do not " +
+    "restructure, do not re-open a settled decision, and do not improve text no finding names.",
+].join("\n");
+
 const REVIEW_CONVERGENCE_CLAUSE =
   "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
   "whether the revision broke anything — a narrower scope of attention, not a lower standard. " +
@@ -7396,7 +8065,11 @@ const ERRATUM_PROTOCOL_CLAUSE =
   "each item to that document's author for a targeted versioned edit and to its approvers for a " +
   "delta confirmation.";
 
-function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
+function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, frozen = false) {
+  // DEC-FRZ-01. Rendered here, decided by `freezeInForce` at the call site: the
+  // prompt builder never re-derives the trigger, so there is exactly one place
+  // the freeze can be turned on.
+  const freezePart = frozen ? `\n${FREEZE_REVIEWER_CLAUSE}` : "";
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
     branchPinClause(feature);
@@ -7410,16 +8083,27 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   // delta re-review as in the first pass.
   const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
-  if (iteration < 2) return `${base}${groundingPart}${oraclePart}`;
-
-  const prev = iteration - 1;
-  const role = reviewerRoleSlug(reviewer);
   // §6.3's general rule: NO un-substituted template reaches an operator-facing
   // string. `{DOC-TYPE}` and `{role}` were literal braces the reader had to
   // resolve by hand; both are known here.
   const type = docType || docTypeFromPath(doc) || "REVIEW";
+  // CR F-11: name the output path outright, on EVERY iteration. A reviewer left to
+  // infer the file type from the artifact under review can name a file outside the
+  // window `deriveRoundWindow` derives — which is exactly how Phase CR's round 1
+  // went missing on this feature. `crossReviewPath` is the same builder the loop
+  // reads back through, so the two cannot drift.
+  const targetFile = crossReviewPath(feature, reviewer, type, iteration);
+  const targetClause =
+    `Write your cross-review to exactly this path: ${targetFile}. ` +
+    `Do not derive a different file type from the artifact under review — this phase's round ` +
+    `history is keyed by that exact name, and a file outside it is not counted.`;
+
+  if (iteration < 2) return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}`;
+
+  const prev = iteration - 1;
+  const role = reviewerRoleSlug(reviewer);
   const priorFile = role
-    ? `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${prev}.md (your reviewer role is "${role}")`
+    ? `${crossReviewPath(feature, reviewer, type, prev)} (your reviewer role is "${role}")`
     : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
@@ -7432,12 +8116,15 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. ` +
     `Medium and Low findings do not block; file them and approve with minor changes.\n` +
-    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
+    // DEC-FRZ-01 sits directly beneath the delta protocol it qualifies: the
+    // protocol says where to look, the freeze says what may block.
+    `${freezePart ? `${freezePart.slice(1)}\n` : ""}` +
+    `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart
   );
 }
 
-function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType, frozen = false) {
   const base =
     `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. ` +
     `Iteration ${iteration} reviewers found issues. Update and commit.\n` +
@@ -7473,14 +8160,17 @@ function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType
   // the paths just named, and before Phase T's trailer requirement, which must
   // stay the last instruction in the prompt.
   const continuing = `\n${CONTINUING_AUTHOR_CLAUSE}`;
+  // DEC-FRZ-01's author-side half, right after the continuing-author clause it
+  // sharpens, and still before Phase T's trailer requirement.
+  const freeze = frozen ? `\n${FREEZE_OPTIMIZER_CLAUSE}` : "";
   // §3.1 step 4. Placed after the continuing-author clause and BEFORE Phase T's
   // trailer requirement, which stays the last instruction in the prompt.
   const erratum = `\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
   if (phase === "T") {
-    return `${base}${feedback}${groundingPart}${continuing}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
+    return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
   }
-  return `${base}${feedback}${groundingPart}${continuing}${erratum}`;
+  return `${base}${feedback}${groundingPart}${continuing}${freeze}${erratum}`;
 }
 
 /**
@@ -7545,9 +8235,18 @@ function creatorPrompt(phase, featureName, inputs) {
  * the upstream one. A targeted, versioned edit that addresses exactly the listed
  * items and changes nothing else is what made three FSPEC errata cost one round.
  */
-function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn }) {
+function erratumAuthorPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  raisedIn,
+  upstreamState = [],
+  movedSinceMinted = [],
+}) {
   return (
     `ERRATUM ROUND for ${docPath} (feature ${feature}).\n` +
+    upstreamHeadClause({ docType, upstreamState, movedSinceMinted }) +
     `Phase ${raisedIn} raised the following errata against this ${docType}:\n` +
     `${itemLines}\n` +
     `This is an erratum round, NOT a rewrite. Apply a targeted, versioned edit that addresses ` +
@@ -7559,6 +8258,45 @@ function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn })
 }
 
 /**
+ * DEC-ERR-03's first clause, rendered — the upstream state AT DISPATCH TIME, and
+ * the re-grounding instruction that reads it.
+ *
+ * The root cause it addresses (POSTMORTEM-T episode 2, RC-1/RC-2): an erratum
+ * wave has no synchronisation point. The routed list is minted when the wave
+ * opens and travels unchanged while the wave keeps editing documents above the
+ * target, so a list that was correct for the version it was cut against is stale
+ * for HEAD by the time the tail layer is dispatched — and an author that absorbs
+ * it fully and correctly still ships a hole.
+ *
+ * So the prompt states the upstream documents' digests as of THIS dispatch (an
+ * agent can compare them against what it reads), orders the re-grounding BEFORE
+ * the item list, and names the documents that actually moved since the list was
+ * minted when any did. Returns `""` when the target has nothing above it (REQ),
+ * so the REQ author's prompt is byte-identical to its pre-decision form.
+ */
+function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = [] }) {
+  if (!Array.isArray(upstreamState) || upstreamState.length === 0) return "";
+  const rows = upstreamState
+    .map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`)
+    .join("\n");
+  const moved =
+    Array.isArray(movedSinceMinted) && movedSinceMinted.length > 0
+      ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
+        `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
+        `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
+        `from the current text before you edit anything (DEC-ERR-03).\n`
+      : "";
+  return (
+    `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
+    `documents this ${docType} derives from, at their CURRENT version as of this dispatch:\n` +
+    `${rows}\n` +
+    `Read each of them at that version, then treat the item list below as a FLOOR, not a ceiling: ` +
+    `if HEAD says something the items do not, the list is stale and this ${docType} must match HEAD.\n` +
+    moved
+  );
+}
+
+/**
  * §3.1 step 4c — the delta-confirmation prompt for the upstream document's own
  * approvers.
  *
@@ -7566,7 +8304,15 @@ function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn })
  * are named on. That is what keeps their earlier approval from going stale —
  * the confirmation file is the round the fresh approval anchors are appended to.
  */
-function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, reviewFile }) {
+function erratumConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  itemLines,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
   return (
     `DELTA CONFIRMATION for ${docPath} (feature ${feature}).\n` +
     `You previously approved this ${docType}. It has just received a targeted erratum edit ` +
@@ -7575,9 +8321,41 @@ function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, rev
     `Do not re-review the whole document. Read the items above and \`git diff\` the erratum edit ` +
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+/**
+ * DEC-ERR-03's second clause — on BOTH confirming channels, always.
+ *
+ * The episode it exists to prevent: the two confirming reviewers split on
+ * identical bytes because they were answering different questions. `pm-review`
+ * ran the protocol's *absorbed ⊇ raised* check and passed the document;
+ * `se-review` re-measured it against upstream HEAD and found one High. The
+ * outcome of a confirmation must not depend on which reviewer happens to
+ * over-deliver, so the superset read is stated in the prompt both of them get.
+ *
+ * "The routed items landed" stays necessary — the paragraph above this clause
+ * asks exactly that — and this clause is what makes it not sufficient.
+ */
+function erratumSupersetClause({ docType, upstreamState = [] }) {
+  const rows =
+    Array.isArray(upstreamState) && upstreamState.length > 0
+      ? `The upstream documents, at their current version as of this dispatch:\n` +
+        upstreamState.map((entry) => `- ${entry.docType}: ${entry.path} (${entry.hash})`).join("\n") +
+        `\n`
+      : "";
+  return (
+    `Your scope is this ${docType} measured against its upstream AT HEAD — not the item list. ` +
+    `The items landing is NECESSARY, NOT SUFFICIENT. Re-read the upstream text this ${docType} now ` +
+    `leans on, at its current version, and ask whether this document is still a faithful ` +
+    `compression of it. Anything it cites that upstream no longer says, or no longer says the same ` +
+    `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
+    `(DEC-ERR-03).\n` +
+    rows
   );
 }
 
@@ -7644,7 +8422,15 @@ function propertiesTestPrompt(featureName) {
   );
 }
 
-function harvestPrompt(featureName) {
+/**
+ * FSPEC §8.4 step 1's hand-off. `harvest-learnings/SKILL.md` §5 instructs the agent to copy a
+ * `failure-mode-id` verbatim "if a candidate's failure mode was named in the HANDED
+ * open-promotion list" — a guard that fails closed (no id is written at all) unless the list
+ * actually arrives. The arithmetic is deliberately not delegated to the agent: an id an LLM
+ * composes is not byte-equal to a recorded slug, which would make `recurred` unreachable and
+ * drift every promotion to `insufficient-evidence` and then `unmeasurable`.
+ */
+function harvestPrompt(featureName, openPromotions = []) {
   return (
     `Harvest learnings for feature ${featureName}:\n` +
     `1. Read all CROSS-REVIEW-*.md and CODE_REVIEW-*.md files (every doc type, every -vN suffix) for docs/${featureName}/.\n` +
@@ -7653,6 +8439,13 @@ function harvestPrompt(featureName) {
     `4. Commit and push LEARNINGS before any delete operation.\n` +
     `5. Only after the LEARNINGS commit is confirmed on remote, delete the harvested CROSS-REVIEW-* and CODE_REVIEW-* files.\n` +
     `6. Commit and push the deletions.\n` +
+    `\nOpen-promotion list, computed from ${CONSOLIDATION_LOG_PATH} and handed to you (FSPEC §8.4 ` +
+    `step 1). For each §5 Open Item you write, ask one question per entry below: does this item ` +
+    `report the failure that entry's symptom describes, on that entry's artifact, in that ` +
+    `entry's phase? On a yes, copy that entry's id VERBATIM onto the item as ` +
+    `\`failure-mode-id: {id}\` — never re-slug, abbreviate, or mint a new id. On no matches, ` +
+    `write no line.\n` +
+    `${renderOpenPromotionList(openPromotions)}\n` +
     branchPinClause(featureName)
   );
 }
@@ -8026,7 +8819,292 @@ function dodReVerifyPrompt(featureName, version) {
   );
 }
 
-function dodRemediatePrompt(featureName, version) {
+// ─── DOD remediation routing: a finding goes to the skill that OWNS its target ─
+//
+// Phase DOD used to dispatch `se-implement` for EVERY CODE_REVIEW finding,
+// whatever the finding was about. That is a routing bug with a code-shaped
+// remedy attached to it: `se-implement` is a TDD implementation skill, so a
+// finding whose whole content is "FSPEC §3.3 describes a consumed pair that
+// stopped existing two commits ago" arrives at an agent whose instructions are
+// "write the failing test first, then the minimum production code". The only
+// ways out of that prompt are to improvise a document edit outside the skill's
+// remit, or to do nothing. Observed 2026-08-11 on pdlc-consolidation-agent:
+// CODE_REVIEW v6's sole finding (L1) was a documentation erratum whose Required
+// fix cell literally began `ERRATUM: FSPEC:`, and the loop dispatched
+// `se-implement` anyway.
+//
+// A document defect belongs to that document's AUTHOR. The routing below reads
+// the same two facts the rest of the module already agrees on — `ERRATUM_DOC_TYPES`
+// for the vocabulary, `PHASE_DISPATCH` (through `ERRATUM_PHASE_BY_DOC_TYPE`) for
+// who may write each document — so there is no second copy of "who owns FSPEC".
+//
+// The classification is FAIL-SAFE TOWARD TODAY'S BEHAVIOUR. Anything not proven
+// to target a spec document is a code finding, an unreadable or table-free
+// CODE_REVIEW yields no doc findings at all, and a review with no doc findings
+// produces the byte-identical `se-implement` dispatch it produced before this
+// existed.
+
+/**
+ * The findings-table header, exact-cell (same discipline as `parsePlanTasks`'s
+ * `PLAN_ID_HEADER_CELLS`: a header cell qualifies in full, never as a substring).
+ * The shipped grammar is dod-verify SKILL.md §1's
+ * `| # | Criterion | Severity | File:Line | Problem | Required fix | Scope |`;
+ * the alternates are the spellings the v1–v6 corpus and its neighbours actually
+ * use. Requiring BOTH a File:Line column and a Required-fix column is what keeps
+ * §2's traceability table (`# | Source | … | Gap? | …`) and the per-round
+ * disposition tables out of the parse.
+ */
+const DOD_FINDING_FILE_HEADER_CELLS = new Set([
+  "file:line",
+  "file line",
+  "file/line",
+  "file:lines",
+  "location",
+]);
+const DOD_FINDING_FIX_HEADER_CELLS = new Set([
+  "required fix",
+  "required-fix",
+  "required_fix",
+  "fix",
+  "remediation",
+]);
+const DOD_FINDING_ID_HEADER_CELLS = new Set(["#", "id", "no", "no.", "finding"]);
+
+/**
+ * The erratum marker as it appears INSIDE a Required-fix cell. Deliberately the
+ * same vocabulary as `parseErrata`'s line grammar (`ERRATUM_DOC_TYPES`) rather
+ * than a second list: a reviewer who writes `ERRATUM: FSPEC:` in a table cell
+ * and one who writes it on its own line mean the same thing.
+ *
+ * Not anchored to start-of-line, because a cell reads
+ * "`ERRATUM: FSPEC:` — re-anchor §3.3 to v2.8". Note what does NOT match:
+ * "raise it as an **ERRATUM** against REQ AC-6.1" (v5's K1) carries no
+ * `{DOCTYPE}:`, so it stays a code finding — which is correct, K1's remedy was
+ * a code change.
+ */
+const DOD_ERRATUM_CELL_RE = new RegExp(
+  `ERRATUM:\\s*(${ERRATUM_DOC_TYPES.join("|")})\\s*:`
+);
+
+/** Every file-path-shaped token in a table cell, backticks and emphasis stripped. */
+function dodFindingPathTokens(cell) {
+  const plain = String(cell ?? "").replace(/[`*_]/g, " ");
+  return plain.match(/[A-Za-z0-9_@][A-Za-z0-9_@./-]*\.[A-Za-z0-9]+/g) ?? [];
+}
+
+/**
+ * The doc type a File:Line token names, or `null` when it names anything else.
+ *
+ * A spec document is `docs/{feature}/{DOCTYPE}-{feature}.md` with `{DOCTYPE}` in
+ * the erratum vocabulary. When `feature` is supplied both segments must equal it,
+ * so a finding citing ANOTHER feature's FSPEC is not routed to this feature's
+ * author.
+ */
+function dodDocTypeForPath(token, feature) {
+  const m = /^docs\/([^/]+)\/([A-Za-z]+)-(.+)\.md$/.exec(String(token ?? ""));
+  if (!m) return null;
+  const [, dirSeg, docType, nameSeg] = m;
+  if (!ERRATUM_DOC_TYPES.includes(docType)) return null;
+  if (dirSeg !== nameSeg) return null;
+  if (feature && dirSeg !== feature) return null;
+  return docType;
+}
+
+/**
+ * The document one finding targets, or `null` for a code finding.
+ *
+ * Two signals, in priority order:
+ *
+ *  1. The Required-fix cell carries `ERRATUM: {DOCTYPE}:`. This is the reviewer
+ *     stating the routing explicitly, so it wins outright.
+ *  2. Otherwise the File:Line cell must name at least one path and EVERY path it
+ *     names must be the SAME spec document. A cell mixing a spec path with a code
+ *     path is a code finding: the code half needs `se-implement`, and a finding
+ *     dispatched to both skills would have two agents editing on one round.
+ */
+function dodFindingDocType(finding, feature) {
+  const marker = DOD_ERRATUM_CELL_RE.exec(finding.requiredFix ?? "");
+  if (marker) return marker[1];
+
+  const tokens = dodFindingPathTokens(finding.fileLine);
+  if (tokens.length === 0) return null;
+  let docType = null;
+  for (const token of tokens) {
+    const t = dodDocTypeForPath(token, feature);
+    if (t === null) return null;
+    if (docType !== null && t !== docType) return null;
+    docType = t;
+  }
+  return docType;
+}
+
+/**
+ * Classify a CODE_REVIEW's findings by the artifact they target.
+ *
+ * Pure, synchronous, total; takes no seam. Fenced regions are skipped
+ * (`scanLines`), so a CODE_REVIEW that QUOTES the findings-table template — as
+ * dod-verify's own SKILL.md does — cannot fabricate a finding.
+ *
+ * @param {string | null | undefined} codeReviewText
+ * @param {string} [feature] - scopes the `docs/{feature}/…` path rule
+ * @returns {{docFindings: Map<string, Array<object>>, codeFindings: Array<object>}}
+ *   `docFindings` is keyed by doc type and iterates in pipeline order
+ *   (`ERRATUM_DOC_TYPES`), not in table order.
+ */
+export function classifyDodFindings(codeReviewText, feature) {
+  const docFindings = new Map();
+  const codeFindings = [];
+  for (const finding of parseDodFindings(codeReviewText)) {
+    const docType = dodFindingDocType(finding, feature);
+    if (docType === null) {
+      codeFindings.push(finding);
+      continue;
+    }
+    if (!docFindings.has(docType)) docFindings.set(docType, []);
+    docFindings.get(docType).push({ ...finding, docType });
+  }
+  // Pipeline order, so a wave that touches REQ and FSPEC fixes REQ first.
+  const ordered = new Map();
+  for (const docType of ERRATUM_DOC_TYPES) {
+    if (docFindings.has(docType)) ordered.set(docType, docFindings.get(docType));
+  }
+  return { docFindings: ordered, codeFindings };
+}
+
+/**
+ * Every row of every findings table in a CODE_REVIEW, in document order.
+ *
+ * Block-segmented exactly like `parsePlanTasks`: contiguous runs of pipe rows
+ * are one table each, and a non-pipe line ends the run — so a non-qualifying
+ * table contributes nothing and cannot swallow the rows after it.
+ *
+ * @returns {Array<{id: string, criterion: string, severity: string, fileLine: string, problem: string, requiredFix: string, scope: string}>}
+ */
+function parseDodFindings(codeReviewText) {
+  const blocks = [];
+  let block = null;
+  scanLines(codeReviewText, (line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
+    }
+  });
+
+  const findings = [];
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const fileIdx = cols.findIndex((c) => DOD_FINDING_FILE_HEADER_CELLS.has(c));
+    const fixIdx = cols.findIndex((c) => DOD_FINDING_FIX_HEADER_CELLS.has(c));
+    if (fileIdx < 0 || fixIdx < 0) continue;
+
+    const findCol = (pred) => {
+      for (let i = 0; i < cols.length; i++) {
+        if (i === fileIdx || i === fixIdx) continue;
+        if (pred(cols[i])) return i;
+      }
+      return -1;
+    };
+    const idIdx = findCol((c) => DOD_FINDING_ID_HEADER_CELLS.has(c));
+    const criterionIdx = findCol((c) => c === "criterion" || c === "criteria");
+    const severityIdx = findCol((c) => c === "severity" || c === "sev");
+    const problemIdx = findCol((c) => c === "problem" || c === "finding");
+    const scopeIdx = findCol((c) => c === "scope");
+
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      // Skip the markdown separator row (|---|---|).
+      if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+      const at = (idx) => (idx >= 0 ? (cells[idx] || "").trim() : "");
+      const fileLine = at(fileIdx);
+      const requiredFix = at(fixIdx);
+      // A row with neither a target nor a remedy is a spacer, not a finding.
+      if (fileLine === "" && requiredFix === "") continue;
+      findings.push({
+        id: at(idIdx).replace(/\*/g, "").trim(),
+        criterion: at(criterionIdx),
+        severity: at(severityIdx),
+        fileLine,
+        problem: at(problemIdx),
+        requiredFix,
+        scope: at(scopeIdx),
+      });
+    }
+  }
+  return findings;
+}
+
+/**
+ * The skill that may WRITE one doc type — read out of `PHASE_DISPATCH` through
+ * `ERRATUM_PHASE_BY_DOC_TYPE`, exactly as the erratum protocol's step 4b does
+ * (`creator` where the phase has one, `optimizer` where it does not, because
+ * Phase R's REQ arrives already authored and `pm-author` is its only writer).
+ *
+ * REQ/FSPEC ⇒ `pm-author`; TSPEC/DECISIONS/PLAN ⇒ `se-author`;
+ * PROPERTIES ⇒ `te-author`. That table is not written down here on purpose:
+ * it is derived, so a change to `PHASE_DISPATCH` moves this with it.
+ */
+function dodDocAuthorSkill(docType) {
+  const phase = PHASE_DISPATCH[ERRATUM_PHASE_BY_DOC_TYPE[docType]];
+  if (!phase) return null;
+  return phase.creator ?? phase.optimizer ?? null;
+}
+
+/** One `- {id}: {problem} → {fix}` line per routed finding. */
+function dodFindingLines(items) {
+  return items
+    .map((f) => {
+      const head = f.id ? `${f.id}: ` : "";
+      const problem = f.problem ? `${f.problem}. ` : "";
+      const fix = f.requiredFix ? `Required fix: ${f.requiredFix}` : "";
+      const cite = f.fileLine ? ` (cited at ${f.fileLine})` : "";
+      return `- ${head}${problem}${fix}${cite}`.trim();
+    })
+    .join("\n");
+}
+
+/**
+ * The dispatch for the DOCUMENT half of a DoD round: a targeted, versioned edit
+ * to one spec document by that document's own author.
+ *
+ * Deliberately shaped like `erratumAuthorPrompt` rather than like
+ * `dodRemediatePrompt` — same "targeted edit, not a rewrite, do not re-litigate
+ * approved decisions" bar — because it is the same operation arriving through a
+ * different door. The document's approvers are NOT re-run here: Phase DOD's own
+ * gate is the next `dod-verify` round, which re-reads the document and either
+ * closes the finding or re-files it.
+ */
+function dodDocRemediatePrompt({ feature, version, docType, docPath, items }) {
+  return (
+    `DOCUMENT REMEDIATION for ${docPath} (feature ${feature}).\n` +
+    `The Definition of Done review docs/${feature}/CODE_REVIEW-${feature}-v${version}.md ` +
+    `filed the following finding${items.length === 1 ? "" : "s"} against this ${docType}:\n` +
+    `${dodFindingLines(items)}\n` +
+    `Read the CODE_REVIEW entries in full for context, then apply a targeted, versioned edit to ` +
+    `${docPath} that addresses exactly the items listed above and changes nothing else — do not ` +
+    `restructure, do not re-litigate approved decisions, do not expand scope. Verify each claim ` +
+    `against the code at HEAD rather than against the review's paraphrase of it. If the document ` +
+    `carries a version or changelog, bump it and record this edit there.\n` +
+    `Do NOT write production code and do NOT edit the CODE_REVIEW file. Commit and push the ` +
+    `document edit.\n` +
+    branchPinClause(feature)
+  );
+}
+
+/**
+ * @param {string} featureName
+ * @param {number} version
+ * @param {Array<object>} [routedDocFindings] - findings dispatched to a document
+ *   author on this same round. When empty (the code-only case, and every case
+ *   before this routing existed) the returned prompt is BYTE-IDENTICAL to the
+ *   original — the exclusion clause is additive, never a rewrite of the base.
+ */
+function dodRemediatePrompt(featureName, version, routedDocFindings = []) {
   return (
     `Address every finding in the Definition of Done code review for feature ${featureName}.\n` +
     `1. Read docs/${featureName}/CODE_REVIEW-${featureName}-v${version}.md — the latest DoD review.\n` +
@@ -8034,7 +9112,21 @@ function dodRemediatePrompt(featureName, version) {
     `Derive correct behavior from the TSPEC/FSPEC/PROPERTIES (REQ for intent).\n` +
     `3. Run the full test suite with branch coverage. All tests must pass.\n` +
     `4. Commit and push the fixes. Do NOT edit the CODE_REVIEW file.\n` +
-    branchPinClause(featureName)
+    branchPinClause(featureName) +
+    dodRoutedAwayClause(routedDocFindings)
+  );
+}
+
+/** The mixed-round exclusion: which findings someone ELSE is already fixing. */
+function dodRoutedAwayClause(routedDocFindings) {
+  if (!Array.isArray(routedDocFindings) || routedDocFindings.length === 0) return "";
+  const rows = routedDocFindings
+    .map((f) => `- ${f.id ? `${f.id} ` : ""}(${f.docType})`)
+    .join("\n");
+  return (
+    `\nEXCLUDED from your scope — these findings target specification DOCUMENTS and have already ` +
+    `been dispatched to each document's own author in parallel with you. Do not edit those ` +
+    `documents and do not attempt to fix these findings:\n${rows}`
   );
 }
 
@@ -8065,6 +9157,10 @@ export async function rebaseOntoDefault({ feature, _agent = agent, _log = log })
  * @param {number} [params.maxIterations]
  * @param {function} [params._agent]
  * @param {function} [params._log]
+ * @param {function} [params._readFile] - reads the round's CODE_REVIEW so the
+ *   remediation dispatch can route by target (`classifyDodFindings`). A read
+ *   that fails or returns nothing degrades to the pre-routing behaviour: one
+ *   `se-implement` dispatch with the original prompt.
  * @returns {Promise<{ passed: boolean, iterations: number, lastStatus?: object }>}
  */
 export async function dodVerifyLoop({
@@ -8072,6 +9168,7 @@ export async function dodVerifyLoop({
   maxIterations = DOD_MAX_ITERATIONS,
   _agent = agent,
   _log = log,
+  _readFile = defaultReadFile,
 }) {
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     _log(`DoD verification — iteration ${iteration}`);
@@ -8103,10 +9200,55 @@ export async function dodVerifyLoop({
       return { passed: false, iterations: iteration, lastStatus: status };
     }
 
-    // Dispatch remediation: se-implement addresses the findings recorded in this
-    // version's CODE_REVIEW file, then the next iteration re-verifies.
-    _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
-    await _agent("se-implement", dodRemediatePrompt(feature, iteration));
+    // Dispatch remediation, ROUTED BY TARGET: findings against a specification
+    // document go to that document's author, everything else to se-implement,
+    // and the next iteration re-verifies both halves. The read is best-effort —
+    // an unreadable CODE_REVIEW classifies as "no doc findings", which is the
+    // pre-routing dispatch exactly.
+    const codeReviewPath = `docs/${feature}/CODE_REVIEW-${feature}-v${iteration}.md`;
+    let codeReviewText = "";
+    try {
+      const text = await _readFile(codeReviewPath);
+      codeReviewText = typeof text === "string" ? text : "";
+    } catch {
+      codeReviewText = "";
+    }
+    const { docFindings, codeFindings } = classifyDodFindings(codeReviewText, feature);
+
+    const routedDocFindings = [];
+    for (const [docType, items] of docFindings) {
+      const skill = dodDocAuthorSkill(docType);
+      if (!skill) continue;
+      routedDocFindings.push(...items);
+      const docPath = `docs/${feature}/${docType}-${feature}.md`;
+      _log(
+        `Dispatching ${docType} document remediation to ${skill} for ` +
+          `CODE_REVIEW-${feature}-v${iteration} (${items.length} finding${
+            items.length === 1 ? "" : "s"
+          })`
+      );
+      await withDispatchRetry(
+        () =>
+          _agent(
+            skill,
+            dodDocRemediatePrompt({ feature, version: iteration, docType, docPath, items })
+          ),
+        { label: `DOD ${docType} remediation, iteration ${iteration}`, emit: _log }
+      );
+    }
+
+    // The code half. Skipped ONLY when every finding was routed to a document
+    // author — with nothing left for it to fix, an `se-implement` dispatch is an
+    // agent asked to write production code for a documentation erratum, which is
+    // the defect this routing exists to remove. In every other case, including a
+    // CODE_REVIEW this parse could not read, se-implement runs as it always has.
+    if (routedDocFindings.length === 0 || codeFindings.length > 0) {
+      _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
+      await withDispatchRetry(
+        () => _agent("se-implement", dodRemediatePrompt(feature, iteration, routedDocFindings)),
+        { label: `DOD remediation, iteration ${iteration}`, emit: _log }
+      );
+    }
   }
 
   // Should not reach here, but guard
@@ -8494,6 +9636,462 @@ export function computeWaves(tasks, ownership) {
   return waves;
 }
 
+// ─── The un-skip guard: a wave may not go green on tests that never ran ──────
+//
+// PLAN discipline (pdlc-consolidation-agent §2): a 🔴 task authors its cases
+// inside `describe.skip` blocks, one block per 🟢 owner and NAMED for that owner
+// (`describe.skip("T25 — corpus and predicate", …)`); the owner's first
+// obligation is to remove the `.skip` wrapper on its own block.
+//
+// Nothing enforced that. On the feature that discovered the hole, most green
+// owners implemented the code and never un-skipped, so the wave gate passed on a
+// suite whose relevant cases reported as *skipped* — a green that asserts
+// nothing. This guard closes it, and its whole difficulty is the one distinction
+// that must not be got wrong: a block owned by a task in a LATER wave is
+// legitimately still skipped, and must never trip the guard.
+//
+// The decision rule, stated once:
+//
+//   For every test file owned (per the PLAN's file-ownership manifest) by a task
+//   that is now COMPLETE — this wave's tasks plus every earlier wave's — read the
+//   file and find each skip token in STATEMENT position. Attribute the token to
+//   the task(s) it names in its title; if it names none, attribute it to the
+//   task(s) that own the containing file. The token is a violation iff it has at
+//   least one owner and EVERY owner is complete. An unattributable token, an
+//   unreadable file and an absent manifest each degrade to a notice — the guard
+//   reports what it could not check and never invents a failure.
+
+/** Owned paths the guard reads: a test/spec module in any of the usual suffixes. */
+export const UNSKIP_TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+
+/**
+ * Blank out everything in a JS source that is not code — line comments, block
+ * comments, string and template literals, and regex literals — replacing each
+ * masked character with a space and KEEPING every newline, so that offsets and
+ * line numbers in the result are the offsets and line numbers of the original.
+ *
+ * This is what makes the token scan honest: `// describe.skip(` in a comment,
+ * `"describe.skip("` in a fixture string and `/test\.skip\(/` in a matcher are
+ * all invisible to it, without the guard having to parse JavaScript.
+ *
+ * The masking direction is deliberately safe. Masking can only ERASE candidate
+ * tokens (a mis-masked region hides a real skip, which the next wave's scan or
+ * the final wave's scan still catches); it cannot manufacture one, because no
+ * mask ever writes a `describe`/`test`/`it` where the source had none.
+ *
+ * @param {string} source
+ * @returns {string} same length as `source`, newlines preserved
+ */
+export function maskNonCode(source) {
+  if (typeof source !== "string") return "";
+  const n = source.length;
+  const out = new Array(n);
+  const blank = (i) => {
+    out[i] = source[i] === "\n" ? "\n" : " ";
+  };
+  // The last non-whitespace CODE character emitted, used only to decide whether
+  // a `/` opens a regex literal or is a division operator.
+  let prev = "";
+  let i = 0;
+
+  while (i < n) {
+    const c = source[i];
+    const c2 = i + 1 < n ? source[i + 1] : "";
+
+    if (c === "/" && c2 === "/") {
+      while (i < n && source[i] !== "\n") blank(i++);
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      blank(i++);
+      blank(i++);
+      while (i < n) {
+        if (source[i] === "*" && source[i + 1] === "/") {
+          blank(i++);
+          blank(i++);
+          break;
+        }
+        blank(i++);
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      blank(i++);
+      while (i < n) {
+        const d = source[i];
+        if (d === "\\") {
+          blank(i++);
+          if (i < n) blank(i++);
+          continue;
+        }
+        blank(i++);
+        if (d === c) break;
+      }
+      // A string is a value, so a `/` after it is division, not a regex.
+      prev = '"';
+      continue;
+    }
+    if (c === "/" && regexOpensAfter(prev)) {
+      const end = regexLiteralEnd(source, i);
+      if (end > i) {
+        while (i < end) blank(i++);
+        prev = "/";
+        continue;
+      }
+    }
+
+    out[i] = c;
+    if (!/\s/.test(c)) prev = c;
+    i++;
+  }
+
+  return out.join("");
+}
+
+/**
+ * Can a `/` following this code character open a regex literal? True after an
+ * operator or an opening bracket, false after a value (identifier, digit,
+ * closing bracket, string), where `/` is division. The classic heuristic, and
+ * wrong only in directions `maskNonCode` documents as safe.
+ */
+function regexOpensAfter(prev) {
+  return prev === "" || "([{;,=:!&|?+-*%^~<>".includes(prev);
+}
+
+/**
+ * Index one past a regex literal opening at `start`, or `-1` if what starts
+ * there is not one. A literal never spans a line, and `/` inside a character
+ * class does not close it.
+ */
+function regexLiteralEnd(source, start) {
+  let i = start + 1;
+  let inClass = false;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\n") return -1;
+    if (c === "\\") {
+      i += 2;
+      continue;
+    }
+    if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) {
+      i++;
+      while (i < source.length && /[a-z]/.test(source[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+/**
+ * Every skip token in STATEMENT position in one JS source, with its 1-based
+ * line and the title string it was called with.
+ *
+ * "Statement position" is two conditions, and both are needed:
+ *   - nothing but whitespace precedes the token on its own line, and
+ *   - the previous non-whitespace code character opens a new statement
+ *     (start of file, `;`, `{`, `}` or `)`).
+ *
+ * That is exactly the shape a real skipped block has, and it excludes the
+ * environment-gated form the suite uses legitimately — `(canRun ? test :
+ * test.skip)(…)`, where the token sits after a `:` in the middle of a line.
+ *
+ * @param {string} source
+ * @returns {Array<{line: number, token: string, title: string}>}
+ */
+export function scanSkipTokens(source) {
+  if (typeof source !== "string" || source === "") return [];
+  const masked = maskNonCode(source);
+  const found = [];
+  const re = /\b(describe|test|it)\.skip\s*\(/g;
+  let m;
+  while ((m = re.exec(masked)) !== null) {
+    const start = m.index;
+
+    let j = start - 1;
+    while (j >= 0 && (masked[j] === " " || masked[j] === "\t")) j--;
+    if (j >= 0 && masked[j] !== "\n") continue;
+
+    while (j >= 0 && /\s/.test(masked[j])) j--;
+    const prev = j >= 0 ? masked[j] : "";
+    if (prev !== "" && !";{})".includes(prev)) continue;
+
+    found.push({
+      line: source.slice(0, start).split("\n").length,
+      token: `${m[1]}.skip`,
+      title: firstStringArgument(source, start + m[0].length),
+    });
+  }
+  return found;
+}
+
+/** The literal string argument opening at/after `idx`, unquoted; "" if none. */
+function firstStringArgument(source, idx) {
+  let i = idx;
+  while (i < source.length && /\s/.test(source[i])) i++;
+  const quote = source[i];
+  if (quote !== '"' && quote !== "'" && quote !== "`") return "";
+  let out = "";
+  i++;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\\") {
+      out += source[i + 1] || "";
+      i += 2;
+      continue;
+    }
+    if (c === quote) break;
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/** Does `title` name task `id` as a whole token (`T7` never matches `T70`)? */
+function titleNamesTask(title, id) {
+  if (!title || !id) return false;
+  const escaped = String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}([^A-Za-z0-9_-]|$)`).test(title);
+}
+
+/**
+ * The un-skip guard proper: run it after a wave's test gate has passed and
+ * before the wave is recorded green.
+ *
+ * Total and never-throwing. Everything it could not check comes back as a
+ * notice; only an attributable, fully-owed skip comes back as a violation.
+ *
+ * @param {{waves: Array<Array<{id: string, files: string[]|null}>>,
+ *          waveIndex: number, _readFile: Function}} args
+ * @returns {Promise<{violations: Array<{file: string, line: number, token: string,
+ *          title: string, owners: string[]}>, notices: string[], scanned: string[]}>}
+ */
+export async function checkWaveUnskips({ waves, waveIndex, _readFile } = {}) {
+  const violations = [];
+  const notices = [];
+  const scanned = [];
+  const done = { violations, notices, scanned };
+
+  if (!Array.isArray(waves) || waves.length === 0) {
+    notices.push("no wave plan to scan");
+    return done;
+  }
+  if (typeof _readFile !== "function") {
+    notices.push("no _readFile transport — owned test files were not scanned");
+    return done;
+  }
+
+  const allIds = [];
+  const complete = new Set();
+  const ownersByFile = new Map();
+  for (let wi = 0; wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      if (!task || !task.id) continue;
+      if (!allIds.includes(task.id)) allIds.push(task.id);
+      if (wi <= waveIndex) complete.add(task.id);
+      for (const file of Array.isArray(task.files) ? task.files : []) {
+        if (!ownersByFile.has(file)) ownersByFile.set(file, []);
+        const owners = ownersByFile.get(file);
+        if (!owners.includes(task.id)) owners.push(task.id);
+      }
+    }
+  }
+
+  const targets = [];
+  for (let wi = 0; wi <= waveIndex && wi < waves.length; wi++) {
+    for (const task of waves[wi] || []) {
+      for (const file of Array.isArray(task && task.files) ? task.files : []) {
+        if (UNSKIP_TEST_FILE_RE.test(file) && !targets.includes(file)) targets.push(file);
+      }
+    }
+  }
+  if (targets.length === 0) {
+    notices.push("no completed task owns a test file in the PLAN's manifest — nothing to scan");
+    return done;
+  }
+
+  for (const file of targets) {
+    let text = null;
+    try {
+      text = await _readFile(file);
+    } catch {
+      text = null;
+    }
+    if (typeof text !== "string" || text === "") {
+      notices.push(`${file} could not be read — not scanned`);
+      continue;
+    }
+    scanned.push(file);
+
+    for (const token of scanSkipTokens(text)) {
+      const named = allIds.filter((id) => titleNamesTask(token.title, id));
+      const owners = named.length > 0 ? named : ownersByFile.get(file) || [];
+      // Attributable to nobody: not this guard's business.
+      if (owners.length === 0) continue;
+      // Owed by a task that has not run yet — the legitimate case.
+      if (!owners.every((id) => complete.has(id))) continue;
+      violations.push({ ...token, file, owners });
+    }
+  }
+
+  return done;
+}
+
+/** The halt message: every violation named by file, line, token and owner. */
+export function formatUnskipViolations(waveNum, violations) {
+  const rows = violations.map(
+    (v) =>
+      `  ${v.file}:${v.line} ${v.token}(${v.title ? `"${v.title}"` : ""}) — ` +
+      `owned by ${v.owners.join(", ")}, complete as of wave ${waveNum}`
+  );
+  return (
+    `Error: Wave ${waveNum} un-skip guard failed — ${violations.length} skipped ` +
+    `test block(s) are owned by a task that is already complete, so the wave's ` +
+    `gate passed on tests that never ran:\n${rows.join("\n")}\n` +
+    `Each 🟢 owner's first obligation is to remove the \`.skip\` wrapper on its own ` +
+    `block. A block owned by a LATER wave's task is legitimate and does not appear here.`
+  );
+}
+
+// ─── INTERIM: the wave ledger, Phase I's script-owned resume pointer ──────────
+//
+// `implementation.startWave` is a MANUAL pointer: after a wave-gate halt an
+// operator has to edit the config before re-invoking, and an unattended queue
+// run therefore re-dispatches agents over work that is already committed. The
+// ledger closes that gap without an operator in the loop: after each wave whose
+// work the script itself committed, the script records the wave number; the next
+// invocation reads it and resumes at the wave that actually needs doing.
+//
+// INTERIM, and marked as such deliberately. The formalized mechanism is the
+// `pdlc-wave-resume` feature (docs/_queue/QUEUE.md row 20) — this block is
+// contained (one path constant, two pure functions, one read site and two write
+// sites, all inside Phase I's wave branch) precisely so that feature can replace
+// it cleanly rather than untangle it.
+//
+// Every failure mode here is FAIL-OPEN. A ledger that cannot be read, parsed,
+// matched or written never halts the pipeline: the worst case is the behaviour
+// that shipped before it existed — a full run from wave 1.
+export const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
+
+/**
+ * An integrity-lite fingerprint of a computed wave plan: FNV-1a (32-bit) over
+ * the wave order, the task ids and the owned paths.
+ *
+ * Not a cryptographic digest and not trying to be — `_hashFile`'s sha256 is for
+ * approval anchors, where the adversary is silent drift in a reviewed document.
+ * Here the question is only "is this the same plan the ledger was written
+ * against?", and a re-derived PLAN that reshuffles waves or re-owns files must
+ * answer no. FNV-1a is pure arithmetic, so it needs no crypto seam in a module
+ * that has none.
+ *
+ * @param {Array<Array<{id: string, files: string[]|null}>>} waves
+ * @returns {string} 8 lowercase hex digits
+ */
+export function computePlanHash(waves) {
+  const canonical = (Array.isArray(waves) ? waves : [])
+    .map((wave) =>
+      (Array.isArray(wave) ? wave : [])
+        .map((t) => {
+          const id = t && t.id != null ? String(t.id) : "";
+          const files = t && Array.isArray(t.files) ? t.files : [];
+          return `${id}:${files.join(",")}`;
+        })
+        .join("|")
+    )
+    .join(";");
+
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/**
+ * Parse the wave ledger. Pure and total: never throws, never reads anything.
+ *
+ * Three outcomes, and the caller says something different about each:
+ * - `{state: null, reason: null}` — no ledger to speak of (absent file, empty
+ *   file, or the cleared `{}`). SILENT: this is the shape of every fresh run.
+ * - `{state: null, reason: "<why>"}` — there is content, and it is not something
+ *   this workflow wrote. The caller emits a notice naming the reason and runs
+ *   every wave.
+ * - `{state: {...}, reason: null}` — a well-formed record. The caller still has
+ *   to match it against THIS run's feature and plan before honouring it.
+ *
+ * @param {string|null} text
+ * @returns {{state: {feature: string, planHash: string, lastGreenWave: number}|null,
+ *            reason: string|null}}
+ */
+export function parseWaveLedger(text) {
+  if (text == null) return { state: null, reason: null };
+
+  const trimmed = String(text).trim();
+  if (trimmed === "" || trimmed === "{}") return { state: null, reason: null };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return { state: null, reason: "it is not readable JSON" };
+  }
+
+  if (!isPlainObject(parsed)) return { state: null, reason: "it is not a JSON object" };
+
+  const feature = parsed.feature;
+  const planHash = parsed.planHash;
+  const lastGreenWave = parsed.lastGreenWave;
+  const wellFormed =
+    typeof feature === "string" &&
+    feature.trim() !== "" &&
+    typeof planHash === "string" &&
+    planHash.trim() !== "" &&
+    Number.isInteger(lastGreenWave) &&
+    lastGreenWave >= 1;
+
+  if (!wellFormed) {
+    return { state: null, reason: "its fields are not the shape this workflow writes" };
+  }
+
+  // `head` is the tree-side corroboration: the commit that carried the recorded
+  // wave's work. It is OPTIONAL on read — a ledger written before this field
+  // existed is still honoured on its feature/planHash match alone, because the
+  // file is untracked local state and a forced full re-run is the cost of
+  // rejecting it. Present but not a string, and it is simply not carried.
+  const head = typeof parsed.head === "string" && parsed.head.trim() !== "" ? parsed.head.trim() : null;
+
+  return { state: { feature, planHash, lastGreenWave, head }, reason: null };
+}
+
+/**
+ * Serialise a ledger record. Pretty-printed and newline-terminated because the
+ * one reader that matters most is a human debugging a resumed run.
+ *
+ * `head` is the commit that carried this wave's work. It is what lets a later
+ * invocation ask the TREE whether the recorded work is still there, rather than
+ * trusting a record about a file the tree never sees: `feature` and `planHash`
+ * are both functions of the PLAN document, so a `git reset --hard` or a re-cut
+ * branch leaves them matching a ledger whose commits are gone. Omitted (null)
+ * when no git transport was injected, in which case the record carries the same
+ * fields it always did.
+ *
+ * @param {string} feature
+ * @param {string} planHash
+ * @param {number} lastGreenWave
+ * @param {string|null} [head]
+ * @returns {string}
+ */
+export function formatWaveLedger(feature, planHash, lastGreenWave, head = null) {
+  const record =
+    typeof head === "string" && head.trim() !== ""
+      ? { version: 1, feature, planHash, lastGreenWave, head: head.trim() }
+      : { version: 1, feature, planHash, lastGreenWave };
+  return `${JSON.stringify(record, null, 2)}\n`;
+}
+
 // ─── Runtime API stubs (replaced by real runtime in production) ───────────────
 
 /* These are no-op stubs for the module-level functions that the real Claude Code
@@ -8591,6 +10189,34 @@ export function defaultReadFile(path) {
 function defaultHashFile(path) {
   try {
     return approvalHashOf(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Default `_hashNormalizedFile`: `defaultHashFile`'s twin over
+ * `normalizeForApproval`'s output (DEC-APPROVAL-03).
+ *
+ * A SEPARATE seam rather than a second return value from `_hashFile`, for the
+ * one reason that shaped this whole feature: the raw digest's economy is
+ * load-bearing (`hashFileSeam.test.js` pins that a converging round never puts
+ * the document's bytes on `_readFile`), and a normalised digest cannot be taken
+ * over a digest — it needs the text. Keeping them apart lets each side answer
+ * where its bytes already are, and lets a transport that cannot answer the
+ * normalised question decline it without disturbing the raw one.
+ *
+ * Declining is a first-class outcome. `null` here means exactly "no normalised
+ * anchor", which every consumer already treats as the pre-DEC-APPROVAL-03
+ * behaviour — including the workflow-runtime bundle, where `fs` does not exist
+ * and the adapter injects no override, so the `catch` returns `null` and the
+ * pipeline is byte-for-byte what it was. The runtime's live path is the probe
+ * (`probeDocument`'s `normalizedHash`), which computes this in the CLI process
+ * where the bytes already are, at no extra dispatch.
+ */
+function defaultHashNormalizedFile(path) {
+  try {
+    return approvalHashOfNormalized(fs.readFileSync(path, "utf8"));
   } catch {
     return null;
   }
@@ -8727,7 +10353,7 @@ export const GIT_LOCK_RETRY_DELAY_MS = 5000;
  * @param {{ _git: function, _sleep: function, emit: function, label: string }} seams
  * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>} the LAST attempt's result
  */
-async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
+export async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
   let result = null;
   for (let attempt = 0; attempt <= GIT_LOCK_RETRIES; attempt++) {
     result = await _git(argv);
@@ -8987,7 +10613,7 @@ export async function gatherA5Context({ _git }) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function, _sessionAgent?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _hashNormalizedFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function, _sessionAgent?: function }} params
  * @returns {Promise<FinalReport>}
  */
 export default async function main({
@@ -8999,6 +10625,7 @@ export default async function main({
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
   _hashFile: hashFileFn = defaultHashFile,
+  _hashNormalizedFile: hashNormalizedFileFn = defaultHashNormalizedFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -9144,6 +10771,12 @@ export default async function main({
     // Step 2 — the branch-derived round window.
     const window = await phaseWindow(docType);
 
+    // DEC-FRZ-01's first trigger, read off the approval search below — the round
+    // this document last carried a dual approval at. Stays `null` on a forced
+    // phase, where the search does not run: a freeze is never inferred from a
+    // read that was not taken.
+    let priorApprovedRound = null;
+
     if (!forced) {
       // Step 3 — the approval search. Tier 1's reads already happened above.
       let record = tier1ApprovalRecord({
@@ -9167,6 +10800,11 @@ export default async function main({
       }
 
       if (record.approving) {
+        // DEC-FRZ-01: an approval was recorded at `record.candidate`. Whether or
+        // not it survives step 4's staleness comparison below, the document HAS
+        // been approved once — and the branch where it does not survive is
+        // exactly the frozen case: bytes moved under an approved document.
+        priorApprovedRound = record.candidate;
         // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
         // TIME, never from a read cached earlier in the run.
         // The digest is computed at the far side of the seam (`_hashFile`), so
@@ -9187,10 +10825,33 @@ export default async function main({
         // a recorded hash of an empty document, where `isStale` says FRESH.
         const probe = await probeDocument(probeDocFn, docPath, docType);
         const docHash = probe ? probe.hash ?? null : await hashFileFn(docPath);
-        const freshness =
+        let freshness =
           docHash == null
             ? isStale(record.hash, null)
             : isStaleByHash(record.hash, docHash);
+        // ─── DEC-APPROVAL-03 — the semantic second look ──────────────────────
+        //
+        // Reached ONLY when the raw comparison already refused the skip and the
+        // approval carries a normalised anchor, so it is strictly a widening of
+        // FRESH and can never stale an approval the byte comparison held. It is
+        // also the only place in the gate that spends the document's bytes:
+        // `normalizeForApproval` needs text, and paying for it here costs one
+        // read on a path that was otherwise about to re-run a whole phase.
+        //
+        // UNEVALUABLE is deliberately NOT retried — an unreadable recorded hash
+        // is not a citation that moved, and §5.5's fail-to-more-work stands.
+        let heldByNormalization = false;
+        if (freshness === "STALE" && record.normalizedHash) {
+          const docNormalized = await normalizedAnchorFor({
+            probe,
+            path: docPath,
+            _hashNormalizedFile: hashNormalizedFileFn,
+          });
+          if (docNormalized && docNormalized === record.normalizedHash) {
+            freshness = "FRESH";
+            heldByNormalization = true;
+          }
+        }
         if (freshness === "FRESH") {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
@@ -9201,7 +10862,16 @@ export default async function main({
             _readFile: readFileFn,
             _probePostmortem: probePostmortemFn,
           });
-          let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
+          let detail = heldByNormalization
+            ? `Skipped — approved round ${record.candidate}, approval held: only line-number anchors moved since review`
+            : `Skipped — approved round ${record.candidate}, hash FRESH`;
+          if (heldByNormalization) {
+            notices.push(
+              `Phase ${phaseId}: ${docPath} differs from the approved bytes only in ` +
+                `line-number anchors (\`file:line\` citations) — the recorded approval holds ` +
+                `and the phase is skipped (DEC-APPROVAL-03).`
+            );
+          }
           if (pm.status === "unresolved") {
             detail += `; unresolved POSTMORTEM at ${pm.path}`;
             skipPostmortem = pm;
@@ -9235,7 +10905,44 @@ export default async function main({
       );
     }
 
-    return { skip: false, window, forced };
+    // ─── DEC-ROUNDS-02 — the lifetime round cap (the single choke point) ────
+    //
+    // Placed LAST, after step G, and that ordering is the design:
+    //
+    //   - after step 4, so a document with a fresh recorded approval still
+    //     reports the ordinary "approved round N, hash FRESH" skip rather than
+    //     being relabelled as capped;
+    //   - after step G, so an unresolved POSTMORTEM still REFUSES the phase.
+    //     The cap says "this document has had enough review"; it says nothing
+    //     about a recorded failure, and it must never clear one;
+    //   - before the return, so it covers every path that opens a review round
+    //     through this gate — a fresh review, a re-review re-opened by a staled
+    //     approval anchor, and a forced-but-unforced-phase re-entry alike. The
+    //     erratum protocol's delta-confirmation rounds open a window WITHOUT
+    //     passing through here, so `erratumRound` carries the same check against
+    //     the same predicate (there is no third round-opening path).
+    //
+    // `forced` overrides: an operator who named this phase asked for the round.
+    if (!forced && lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const detail =
+        `Accepted as-is — lifetime review cap of ${MAX_LIFETIME_ROUNDS} rounds reached ` +
+        `(${onDisk} rounds on disk); NOT approved`;
+      recordPhase(phaseId, label, "⏭", detail);
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — ${onDisk} review ` +
+        `round${onDisk === 1 ? "" : "s"} for ${docType} are on disk and the cap is ` +
+        `${MAX_LIFETIME_ROUNDS}. No author, reviewer or optimizer was dispatched for this ` +
+        `phase. The document is ACCEPTED AS-IS and the pipeline moves forward. This is NOT ` +
+        `an approval: no verdict was reached this run and no approval anchor was written. ` +
+        `It is also not a failure — no POSTMORTEM was written. To review it again anyway, ` +
+        `re-run with forcePhases including "${phaseId}".`;
+      notices.push(notice);
+      emit(notice);
+      return { skip: true };
+    }
+
+    return { skip: false, window, forced, priorApprovedRound };
   }
 
   /**
@@ -9251,6 +10958,7 @@ export default async function main({
     _agent: agentFn,
     _readFile: readFileFn,
     _hashFile: hashFileFn,
+    _hashNormalizedFile: hashNormalizedFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _probeDoc: probeDocFn,
@@ -9297,6 +11005,65 @@ export default async function main({
   // `afterConverged`. The placement is the contract: a phase routes errata only
   // once its OWN document has converged, so the upstream edit is never made on
   // behalf of a finding the phase itself was about to withdraw.
+
+  /** The path an erratum doc type names on this feature's branch. */
+  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+
+  /**
+   * The digest of one upstream document as it stands RIGHT NOW, through the same
+   * probe-then-hash pair every other observation in this module uses. `null` for
+   * a document that is not on the branch (an unwritten DECISIONS, say), which is
+   * how the callers below tell "absent" from "moved".
+   */
+  async function erratumDocHash(docType) {
+    const path = erratumDocPath(docType);
+    const probe = await probeDocument(probeDocFn, path, docType);
+    return (probe ? probe.hash : await hashFileFn(path)) ?? null;
+  }
+
+  /** The doc types ABOVE `target` in pipeline order — the layers it derives from. */
+  const erratumDocTypesAbove = (target) =>
+    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+  /**
+   * DEC-ERR-03 — the mint-time snapshot a routed list is dated against.
+   *
+   * Taken when a batch of errata is minted, once, for every document the wave
+   * could edit. It is the only thing that makes "has upstream moved since this
+   * list was cut?" a decidable question at dispatch time; without it the wave's
+   * layers have no shared clock at all, which is RC-1 stated as a data structure.
+   */
+  async function snapshotErratumDocs() {
+    const snapshot = new Map();
+    for (const docType of ERRATUM_DOC_TYPES) {
+      snapshot.set(docType, await erratumDocHash(docType));
+    }
+    return snapshot;
+  }
+
+  /**
+   * DEC-ERR-03, at dispatch time: the upstream layers of `target` as they stand
+   * NOW, plus which of them differ from the mint-time snapshot.
+   *
+   * A doc absent now is omitted entirely (there is nothing to re-ground on). A
+   * doc whose mint-time digest was not recorded is reported but never called
+   * moved — "not observed" is not "changed", the same asymmetry `refreshReviewState`
+   * keeps between unreadable and empty.
+   */
+  async function deriveUpstreamState(target, mintedHashes) {
+    const upstreamState = [];
+    const movedSinceMinted = [];
+    for (const docType of erratumDocTypesAbove(target)) {
+      const hash = await erratumDocHash(docType);
+      if (hash == null) continue;
+      upstreamState.push({ docType, path: erratumDocPath(docType), hash });
+      const minted = mintedHashes ? mintedHashes.get(docType) : undefined;
+      if (minted !== undefined && minted !== null && minted !== hash) {
+        movedSinceMinted.push(docType);
+      }
+    }
+    return { upstreamState, movedSinceMinted };
+  }
 
   /**
    * The erratum protocol's halt. It reuses the review loop's POSTMORTEM
@@ -9349,13 +11116,63 @@ export default async function main({
    * (step 4c). Returns the responses so the caller can read any FURTHER errata
    * out of them — which is how a second batch for the same document becomes
    * observable, and therefore how the §5 decision 2 bound gets to fire.
+   *
+   * Returns `null` — and dispatches nothing at all — when the upstream document
+   * has spent its DEC-ROUNDS-02 lifetime round budget.
    */
-  async function erratumRound({ phaseId, label, target, items }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
-    const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+    const upstreamPath = erratumDocPath(target);
     const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
     const itemText = items.map((e) => e.item).join("; ");
+
+    // Step 4c's window, derived BEFORE step 4b's author dispatch — DEC-ROUNDS-02.
+    //
+    // The derivation is unchanged and still content-addressed (§3.6): it reads
+    // `CROSS-REVIEW-*` basenames, and the erratum author writes the upstream
+    // DOCUMENT, never a cross-review, so no listing this reads can differ either
+    // side of that dispatch. Taking it first is what lets the cap dispatch
+    // NOTHING — a check placed after step 4b would already have paid for the
+    // author episode and, worse, would leave the document edited with no round
+    // able to confirm the edit.
+    //
+    // `forcePhases` deliberately does NOT reach here: it names a phase to re-run,
+    // and an erratum round is not a phase. The operator's escape from a capped
+    // upstream document is to force that document's OWN phase.
+    const window = await phaseWindow(target);
+    if (lifetimeCapReached(window.startIndex)) {
+      const onDisk = window.startIndex - 1;
+      const notice =
+        `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${upstreamPath} — erratum round ` +
+        `skipped, nothing dispatched. ${onDisk} review round${onDisk === 1 ? "" : "s"} for ` +
+        `${target} are on disk and the cap is ${MAX_LIFETIME_ROUNDS}. The document is ` +
+        `ACCEPTED AS-IS (not approved, and not failed — no POSTMORTEM was written) and the ` +
+        `pipeline moves forward. Unaddressed erratum item${items.length === 1 ? "" : "s"}: ` +
+        `${itemText}. To apply them anyway, re-run with forcePhases including ` +
+        `"${upstreamPhase}".`;
+      notices.push(notice);
+      emit(notice);
+      return null;
+    }
+
+    // ─── DEC-ERR-03 — re-derivation at DISPATCH time, not at wave open ───────
+    //
+    // Taken here, after the cap check and immediately before the author is
+    // dispatched, because that instant is the whole point: everything the wave
+    // edited between the list being minted and this dispatch has already landed
+    // on disk, and this observation is what makes it visible to the author. It
+    // must NOT be hoisted next to the mint-time snapshot — that would re-create
+    // exactly the stale list DEC-ERR-03 exists to defeat.
+    const { upstreamState, movedSinceMinted } = await deriveUpstreamState(target, mintedHashes);
+    if (movedSinceMinted.length > 0) {
+      const notice =
+        `Phase ${phaseId}: erratum round for ${target} — upstream moved since the routed list was ` +
+        `minted (${movedSinceMinted.join(", ")}). The author is re-grounded on upstream HEAD and ` +
+        `the routed items are a floor, not a ceiling (DEC-ERR-03).`;
+      notices.push(notice);
+      emit(notice);
+    }
 
     // Step 4b. The upstream document's author skill — `creator` where the phase
     // has one, and its `optimizer` where it does not (Phase R's REQ arrives
@@ -9369,6 +11186,8 @@ export default async function main({
         docPath: upstreamPath,
         itemLines,
         raisedIn: phaseId,
+        upstreamState,
+        movedSinceMinted,
       }),
       targetPath: upstreamPath,
       docType: target,
@@ -9381,7 +11200,7 @@ export default async function main({
 
     // Step 4c. The confirmation is the next round of the upstream document's own
     // append-only window — derived, never assumed (§3.6's pinned invariant).
-    const window = await phaseWindow(target);
+    // The derivation happened above, before step 4b, for the reason stated there.
     const round = window.startIndex;
     const reviewers = upstream.reviewers;
     const confirmPaths = reviewers.map(
@@ -9394,6 +11213,11 @@ export default async function main({
     // `reviewLoop` uses, so what is pinned is the bytes the approvers confirmed.
     const probe = await probeDocument(probeDocFn, upstreamPath, target);
     const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
+    const anchorNormalizedHash = await normalizedAnchorFor({
+      probe,
+      path: upstreamPath,
+      _hashNormalizedFile: hashNormalizedFileFn,
+    });
     const anchorCommit = await headCommitSha(gitFn);
 
     const responses = await parallelFn(
@@ -9407,6 +11231,10 @@ export default async function main({
             itemLines,
             round,
             reviewFile: confirmPaths[i],
+            // DEC-ERR-03: the confirmers are pointed at the SAME upstream state
+            // the author was re-grounded on, so the superset question they are
+            // asked is answerable against the version the edit was made against.
+            upstreamState,
           }),
           targetPath: confirmPaths[i],
           docType: target,
@@ -9417,7 +11245,78 @@ export default async function main({
       )
     );
 
-    const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+    // ─── DEC-ERR-02 (2026-08-09): read the file when the trailer is unreadable ──
+    //
+    // This read used to be `parseVerdict(responses[i], skill)` and nothing else,
+    // which made it the ONLY verdict read in the pipeline with no recovery at
+    // all — and also the one whose failure mode is an immediate POSTMORTEM halt
+    // rather than another round. `reviewLoop` at least re-asks on Haiku
+    // (`recoverVerdict`, :7494). Here a single dropped trailer line ended the
+    // run, on work that was already approved and anchored on disk.
+    //
+    // That is not hypothetical: on 2026-08-09 `te-review` confirmed the REQ
+    // erratum for pdlc-consolidation-agent, wrote
+    // `CROSS-REVIEW-test-engineer-REQ-v17.md` with `VERDICT: Approved with minor
+    // changes`, zero High and both approval anchors, and returned a response
+    // without a trailer. The orchestrator halted the phase naming that reviewer
+    // as non-approving, seconds after that reviewer had committed its approval
+    // to a file the orchestrator never opened.
+    //
+    // The two channels already have defined roles (CLAUDE.md, "Two parts of a
+    // cross-review file are read as data"): the response trailer feeds the loop
+    // inside the current invocation, and the FILE is what decides approval on a
+    // later one. The file is the durable channel. Consulting it here is not a
+    // new tolerance — it is the same authority `approvalSearch` reads at :6675,
+    // through the same lenient parser (DEC-BAR-01/-02).
+    //
+    // The fallback is deliberately narrow, and the narrowness is the design:
+    //
+    //   - It fires ONLY when the trailer is `malformed` — absent, truncated, or
+    //     outside the verdict catalogue. A trailer that legibly says "Needs
+    //     revision" is a reviewer's decision and still halts; the file must
+    //     never be able to overturn an explicit rejection.
+    //   - Unreadable in BOTH channels still halts. Fail-closed is preserved:
+    //     what is removed is the case where the orchestrator halts on a verdict
+    //     that was legible the whole time, in the place it did not look.
+    const verdicts = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      const skill = reviewers[i];
+      const trailer = parseVerdict(responses[i], skill);
+      if (trailer.malformed !== true) {
+        verdicts.push(trailer);
+        continue;
+      }
+
+      // `readFileFn` may reject on a missing path (the default throws); a
+      // fallback that cannot read is just the trailer's verdict, not an error.
+      let fileText = null;
+      try {
+        fileText = await readFileFn(confirmPaths[i]);
+      } catch {
+        fileText = null;
+      }
+      const fromFile = extractFileVerdict(fileText, reviewerRoleSlug(skill) || skill);
+
+      if (fromFile.ok && fromFile.malformed !== true) {
+        emit(
+          `Erratum confirmation (${target}, ${skill}): response trailer unreadable, ` +
+            `verdict read from ${confirmPaths[i]} instead — ${fromFile.verdict} ` +
+            `(high ${fromFile.high}).`
+        );
+        verdicts.push(fromFile);
+      } else {
+        // Reported even on failure, because "which channel decided" is the one
+        // question an operator forensicating this halt has to answer, and it
+        // cost an hour the first time it was not written down.
+        emit(
+          `Erratum confirmation (${target}, ${skill}): response trailer unreadable and ` +
+            `${confirmPaths[i]} carries no readable verdict ` +
+            `(${fromFile.ok ? "malformed" : fromFile.reason}) — failing closed.`
+        );
+        verdicts.push(trailer);
+      }
+    }
+
     const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
     if (nonApproving.length > 0) {
       await erratumPostmortemHalt({
@@ -9437,6 +11336,7 @@ export default async function main({
     await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
+      normalizedHash: anchorNormalizedHash,
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,
@@ -9497,6 +11397,11 @@ export default async function main({
     const spent = new Map();
     const routed = [];
 
+    // DEC-ERR-03: the list has just been minted, so date it. Re-taken for each
+    // follow-on batch below, because a follow-on list is a NEW mint and must be
+    // dated against the tree the wave has already reshaped, not the original one.
+    let mintedHashes = await snapshotErratumDocs();
+
     while (pending.length > 0) {
       const followOn = [];
       // Pipeline order, so a run that raises errata against two documents edits
@@ -9521,7 +11426,7 @@ export default async function main({
 
         // Step 4a. An erratum against a document that does not exist on this
         // branch is noise, not a halt: the phase says so and carries on.
-        const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+        const upstreamPath = erratumDocPath(target);
         const exists = await checkFileFn(upstreamPath);
         if (!exists || !exists.ok) {
           notices.push(
@@ -9531,7 +11436,11 @@ export default async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items });
+        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
+        // DEC-ROUNDS-02: the upstream document is capped. Nothing was dispatched
+        // and nothing was edited, so there is no round to report and no response
+        // to read follow-on errata out of. `erratumRound` said so in a notice.
+        if (responses === null) continue;
         routed.push(target);
         for (const reply of responses) {
           followOn.push(
@@ -9543,6 +11452,8 @@ export default async function main({
         }
       }
       pending = admit(followOn);
+      // A follow-on batch is a fresh mint (DEC-ERR-03), so it gets a fresh date.
+      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
@@ -9628,6 +11539,8 @@ export default async function main({
       iteration: window.startIndex,
       startIndex: window.startIndex,
       endIndex: window.endIndex,
+      // DEC-FRZ-01 — the gate's approval read, handed on rather than re-taken.
+      priorApprovedRound: gate.priorApprovedRound ?? null,
       _parallel: parallelFn,
       _checkFile: checkFileFn,
       ...wrapperSeams,
@@ -9884,8 +11797,7 @@ export default async function main({
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
       // The result is read below whether or not the phase ran: the
       // `DECISIONS_WARRANTED` read is downstream of the TSPEC's convergence and
-      // must survive a skipped Phase T, where the trailer was never re-emitted
-      // and the conservative answer is "no".
+      // must survive a skipped Phase T, where the trailer was never re-emitted.
       const tResult = await converge({
         phaseId: "T",
         docType: "TSPEC",
@@ -9898,9 +11810,49 @@ export default async function main({
       // prompts, so its answer arrives inside the convergence loop — no separate
       // post-PASS agent session. The last optimizer result carries it; if the loop
       // converged on iteration 1 (no optimizer run) the creator result does.
-      const decisionsWarranted = parseDecisionsWarranted(
-        (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
-      );
+      //
+      // DEC-DW-01 (2026-08-09): a SKIPPED Phase T is not a missing trailer.
+      // `converge` returns a bare `{skipped: true}` (:9502) — no `loop`, no
+      // `creatorResult` — so this read used to collapse to `null` and take
+      // `parseDecisionsWarranted`'s absent/malformed branch: a warning claiming
+      // the field was "absent or malformed" when no agent had been asked for it,
+      // and a default of `true` that contradicted this call site's own stated
+      // intent. Two different situations arriving as one value.
+      //
+      // Skipping means TSPEC was already approved, so the answer was settled on
+      // a previous run — and unlike the trailer, it left a durable trace. The
+      // DECISIONS document either exists or it does not. Reading that is exact
+      // where re-guessing was not: present ⇒ warranted (Phase D's own gate then
+      // decides whether it still needs work), absent ⇒ a previous run judged it
+      // unwarranted and there is nothing to author.
+      //
+      // This matters for idempotence, not cost. Defaulting `true` on a skip made
+      // a re-run of a fully-approved pipeline author a DECISIONS document for a
+      // feature that had correctly been judged not to need one — a new artifact
+      // on a run that should have been a no-op.
+      let decisionsWarranted;
+      if (tResult.skipped) {
+        // `checkFileFn` is the same existence probe the phase gates use, and it
+        // returns `{ok, reason}` — not a boolean. Read `.ok`: the object itself
+        // is always truthy, which would make every skip "warranted" and quietly
+        // reintroduce the defect this branch exists to remove.
+        const decisionsProbe = await checkFileFn(
+          `docs/${featureName}/DECISIONS-${featureName}.md`
+        );
+        decisionsWarranted = decisionsProbe.ok === true;
+        emit(
+          `DECISIONS_WARRANTED: ${decisionsWarranted} — Phase T skipped on recorded ` +
+            `approval, so no trailer was emitted; read from the DECISIONS document ` +
+            `on disk instead (${decisionsWarranted ? "present" : decisionsProbe.reason}).`
+        );
+      } else {
+        // The phase ran. A missing trailer here IS a real omission by an agent
+        // that was explicitly asked for one, and `true` is the right
+        // conservative default: author DECISIONS rather than silently lose them.
+        decisionsWarranted = parseDecisionsWarranted(
+          (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
+        );
+      }
 
       // ─── DECISIONS (conditional), inside Phase T ─────────────────────────
       // The `Phase D:` banners and the `D` report row are preserved verbatim:
@@ -10207,9 +12159,154 @@ export default async function main({
           `(same tree, file-ownership disjoint)`
       );
 
+      // Resume pointer (`implementation.startWave`). A pointer past the end of
+      // the plan is not a halt: the plan may have been re-derived since the
+      // halted run, and the safe reading of an out-of-range resume point is to
+      // run everything rather than to run nothing.
+      let startWave = implConfig.startWave;
+      // An explicit pointer is an operator's instruction and outranks the
+      // script's own ledger — including when it is out of range and clamps back
+      // to 1, which is still an operator asking for a full run.
+      const explicitPointer = startWave > 1;
+      if (startWave > waves.length) {
+        emit(
+          `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
+            `last wave of this plan (${waves.length}) — running every wave from 1.`
+        );
+        startWave = 1;
+      }
+      if (startWave > 1) {
+        // Safety property: skipping a wave skips only its DISPATCH. The first
+        // executed wave's script-owned gate runs the full suite over the whole
+        // tree, so the skipped waves' already-committed work is verified by that
+        // gate before this run commits anything new.
+        emit(
+          `Resuming at wave ${startWave} of ${waves.length} (implementation.startWave). ` +
+            `Waves 1–${startWave - 1} are skipped as previously completed; the first ` +
+            `executed wave's gate still verifies the whole tree. Clear ` +
+            `implementation.startWave before the next fresh run.`
+        );
+      }
+
+      // ── INTERIM wave ledger (see WAVE_STATE_PATH) — the automatic half of the
+      // resume pointer. Read through the same never-throwing reader the config
+      // uses; every rejection below is a notice and a full run, never a halt.
+      const planHash = computePlanHash(waves);
+      let ledgerResume = false;
+      let allWavesRecorded = false;
+      if (!explicitPointer) {
+        const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
+        const ledger = parseWaveLedger(ledgerRaw);
+        const ignore = (why) =>
+          emit(
+            `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${why}. ` +
+              `Running every wave from 1.`
+          );
+
+        // The tree-side corroboration. `feature` and `planHash` are both
+        // functions of the PLAN document, so neither can tell a finished tree
+        // from one that was `git reset --hard` or re-cut from the default branch
+        // since the record was written — and the ledger file is untracked, so it
+        // survives both. The recorded commit must still be reachable from HEAD;
+        // ancestry rather than equality, because every later phase (CR, DOD, PUB)
+        // legitimately moves HEAD forward and the resume case is exactly a
+        // re-invocation after those.
+        const headCorroborated = async (recordedHead) => {
+          if (!recordedHead) return true; // pre-`head` record: honoured as before
+          const transport = branchGuardTransport(gitFn);
+          if (!transport) return true; // no transport to ask — not evidence of absence
+          try {
+            const reply = await transport([
+              "merge-base",
+              "--is-ancestor",
+              recordedHead,
+              "HEAD",
+            ]);
+            return !!(reply && reply.ok === true);
+          } catch {
+            return true; // an unavailable probe is not a staleness claim
+          }
+        };
+
+        if (ledger.reason) {
+          ignore(ledger.reason);
+        } else if (ledger.state) {
+          const recorded = ledger.state;
+          if (recorded.feature !== featureName) {
+            ignore(
+              `it records feature "${recorded.feature}", not "${featureName}"`
+            );
+          } else if (recorded.planHash !== planHash) {
+            ignore("the PLAN's wave layout has changed since it was written");
+          } else if (!(await headCorroborated(recorded.head))) {
+            ignore(
+              `the commit it records (${String(recorded.head).slice(0, 12)}) is not an ` +
+                `ancestor of HEAD — the branch was reset or re-cut since it was written, ` +
+                `so the work it records is not in this tree`
+            );
+          } else if (recorded.lastGreenWave > waves.length) {
+            ignore(
+              `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
+                `only ${waves.length}`
+            );
+          } else if (recorded.lastGreenWave === waves.length) {
+            // A COMPLETE ledger: every wave of this exact plan was committed and
+            // recorded green by an earlier run. Honouring it is what makes a
+            // post-Phase-I re-invocation (a halt in CR, DOD or PUB) resume in
+            // minutes instead of re-dispatching every wave over a finished tree.
+            // The feature and planHash matches above are what make it safe: any
+            // PLAN change re-derives a different hash and runs every wave.
+            startWave = waves.length + 1;
+            ledgerResume = true;
+            allWavesRecorded = true;
+            emit(
+              `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
+                `${waves.length} waves of this plan were committed and recorded ` +
+                `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
+                `full run.`
+            );
+          } else {
+            startWave = recorded.lastGreenWave + 1;
+            ledgerResume = true;
+            emit(
+              `Resuming at wave ${startWave} of ${waves.length} (wave ledger ` +
+                `${WAVE_STATE_PATH}). Waves 1–${recorded.lastGreenWave} were committed ` +
+                `and recorded green by an earlier run of this same plan; the first ` +
+                `executed wave's gate still verifies the whole tree. Delete ` +
+                `${WAVE_STATE_PATH} to force a full run.`
+            );
+          }
+        }
+      }
+
+      // Best-effort ledger write: a ledger this run cannot write costs the NEXT
+      // run its resume, and nothing else, so a failure is a notice.
+      const writeWaveLedger = async (contents, what) => {
+        try {
+          await writeFileFn(WAVE_STATE_PATH, contents);
+        } catch (err) {
+          emit(
+            `Notice: could not ${what} the wave ledger ${WAVE_STATE_PATH} — ` +
+              `${(err && err.message) || String(err)}. The run continues; a later ` +
+              `invocation will simply start from wave 1.`
+          );
+        }
+      };
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
+        if (allWavesRecorded) break;
+        if (waveNum < startWave) {
+          emit(
+            `Wave ${waveNum}/${waves.length}: skipped (` +
+              (ledgerResume
+                ? `wave ledger: waves 1–${startWave - 1} already green`
+                : `implementation.startWave=${startWave}`) +
+              `)`
+          );
+          continue;
+        }
         phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
 
         // SAME TREE, in parallel: no `isolation: "worktree"`. Disjoint ownership
@@ -10258,6 +12355,28 @@ export default async function main({
           evaluateBatchGate(waveResults, waveIndex, wave);
         }
 
+        // A green gate is only worth something if the wave's tests actually ran.
+        // The un-skip guard runs AFTER the gate and BEFORE the commits, so a
+        // vacuous green halts the wave with its work uncommitted, exactly as a
+        // red gate does.
+        const unskip = await checkWaveUnskips({
+          waves,
+          waveIndex,
+          _readFile: readFileFn,
+        });
+        for (const notice of unskip.notices) {
+          emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
+        }
+        if (unskip.violations.length > 0) {
+          throw haltError(formatUnskipViolations(waveNum, unskip.violations));
+        }
+        if (unskip.scanned.length > 0) {
+          emit(
+            `Wave ${waveNum} un-skip guard: ${unskip.scanned.length} owned test ` +
+              `file(s) scanned, no skipped block owed by a completed task`
+          );
+        }
+
         // Only now — verified — does anything get committed (M-6).
         if (waveGit) {
           for (const task of wave) {
@@ -10288,16 +12407,57 @@ export default async function main({
               emit,
             });
           }
+
+          // The ledger records COMMITTED waves only, which is why it is written
+          // here and not next to the gate: without a git transport this run made
+          // no commits, and recording the wave green would strand that wave's
+          // uncommitted work — a later resume would skip a wave whose work no
+          // longer exists in the tree.
+          // The commit this wave's work landed on, stamped so a later invocation
+          // can corroborate the record against the tree (see `formatWaveLedger`).
+          // Best-effort: a transport that cannot answer costs the next run its
+          // corroboration, never this run its record.
+          let waveHead = null;
+          if (waveGit) {
+            try {
+              const rev = await waveGit(["rev-parse", "HEAD"]);
+              if (rev && rev.ok === true) waveHead = String(rev.stdout ?? "").trim() || null;
+            } catch {
+              waveHead = null;
+            }
+          }
+          await writeWaveLedger(
+            formatWaveLedger(featureName, planHash, waveNum, waveHead),
+            `record wave ${waveNum} in`
+          );
         }
       }
 
-      recordPhase(
-        "I",
-        "Implementation",
-        "✅",
-        `All ${waves.length} waves complete (wave mode, ` +
-          `${scriptGate ? "script-owned gate" : "self-report gate"})`
-      );
+      // Every implementation wave is green and committed. The record is KEPT —
+      // the last per-wave write already says `lastGreenWave === waves.length`,
+      // and the resume path above honours exactly that shape, so a later
+      // invocation of this same plan (a halt in CR, DOD or PUB) skips Phase I
+      // instead of re-dispatching every wave over a finished tree. Staleness is
+      // guarded where it always was: any PLAN change re-derives a different
+      // planHash and the ledger is ignored.
+
+      if (allWavesRecorded) {
+        recordPhase(
+          "I",
+          "Implementation",
+          "⏭",
+          `Skipped — all ${waves.length} waves previously committed and ` +
+            `recorded green (wave ledger)`
+        );
+      } else {
+        recordPhase(
+          "I",
+          "Implementation",
+          "✅",
+          `All ${waves.length} waves complete (wave mode, ` +
+            `${scriptGate ? "script-owned gate" : "self-report gate"})`
+        );
+      }
 
       // ─── PROPOSAL §3.2 row 2 — Phase PT becomes Phase I's final V-wave ────
       //
@@ -10324,10 +12484,14 @@ export default async function main({
       // is on the feature branch where the next run, or a human, can fix it.
       phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)");
       const vWaveNum = waves.length + 1;
-      const vResult = await agentFn(
-        "se-implement",
-        propertiesTestPrompt(featureName),
-        { model: MODEL_IMPLEMENTATION }
+      const vResult = await withDispatchRetry(
+        () =>
+          agentFn(
+            "se-implement",
+            propertiesTestPrompt(featureName),
+            { model: MODEL_IMPLEMENTATION }
+          ),
+        { label: `V-wave ${vWaveNum} PROPERTIES tests`, emit }
       );
 
       // Dispatch-level failures halt whatever the gate is, exactly as for every
@@ -10448,6 +12612,9 @@ export default async function main({
           feature: featureName,
           _agent: agentFn,
           _log: emit,
+          // The loop reads each round's CODE_REVIEW to route remediation by
+          // target; it uses the pipeline's read seam, not its own.
+          _readFile: readFileFn,
         });
         if (!dodResult.passed) {
           const detail =
@@ -10521,9 +12688,15 @@ export default async function main({
       } else {
         phaseFn("Phase H: Harvest");
         const learningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+        // FSPEC §8.4 step 1 — openness is computed HERE, from the log and nothing else, and
+        // handed to the prompt as a list. An absent or unreadable log is an empty list, which the
+        // renderer states explicitly: the SKILL's copy-verbatim convention is conditioned on
+        // having been handed one, so "no open promotions" must not read as "no list".
+        const consolidationLogText = await readFileFn(CONSOLIDATION_LOG_PATH);
+        const openPromotions = openPromotionsFromLog(consolidationLogText);
         const harvestResult = await wrappedDispatch({
           skill: "harvest-learnings",
-          basePrompt: harvestPrompt(featureName),
+          basePrompt: harvestPrompt(featureName, openPromotions),
           targetPath: learningsPath,
           docType: "LEARNINGS",
           dispatchKind: "harvest",

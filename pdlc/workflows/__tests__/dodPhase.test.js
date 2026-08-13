@@ -7,6 +7,8 @@ import main, {
   parseDodStatus,
   dodVerifyLoop,
   rebaseOntoDefault,
+  classifyDodFindings,
+  PHASE_DISPATCH,
 } from "../orchestrate-dev.js";
 import { QUEUE_ROW_DISPOSITIONS } from "../orchestrate-queue.js";
 import { readFileSync } from "fs";
@@ -268,6 +270,78 @@ describe("dodVerifyLoop", () => {
     });
     // iter1: verify(fail) → remediate; iter2: verify(fail) → (max reached, no remediate)
     expect(skillsCalled).toEqual(["dod-verify", "se-implement", "dod-verify"]);
+  });
+
+  it("a se-implement remediation dispatch that throws once is retried with the same prompt and recovers silently", async () => {
+    const remediateCalls = [];
+    const logs = [];
+    let remediateAttempt = 0;
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      remediateAttempt++;
+      remediateCalls.push(prompt);
+      if (remediateAttempt === 1) throw new Error("dispatch stall-killed");
+      return "Remediated.";
+    };
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: mockAgent,
+      _log: (msg) => logs.push(msg),
+    });
+    // Same prompt both times — a same-episode retry, not a fresh remediation round.
+    expect(remediateCalls).toHaveLength(2);
+    expect(remediateCalls[0]).toBe(remediateCalls[1]);
+    expect(logs.some((m) => /Dispatch fault \(DOD remediation/.test(m))).toBe(true);
+    expect(result.iterations).toBe(2);
+  });
+
+  it("a se-implement remediation dispatch that throws twice propagates the original error, halting exactly as before this retry existed", async () => {
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      throw new Error("dispatch stall-killed");
+    };
+    await expect(
+      dodVerifyLoop({
+        feature: "test-feat",
+        maxIterations: 2,
+        _agent: mockAgent,
+        _log: () => {},
+      })
+    ).rejects.toThrow("dispatch stall-killed");
+  });
+
+  it("a remediation dispatch that succeeds on the first attempt is dispatched exactly once, with no fault notice", async () => {
+    let remediateCount = 0;
+    const logs = [];
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      remediateCount++;
+      return "Remediated.";
+    };
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: mockAgent,
+      _log: (msg) => logs.push(msg),
+    });
+    expect(remediateCount).toBe(1);
+    expect(logs.some((m) => /Dispatch fault/.test(m))).toBe(false);
   });
 
   it("the remediator reads the matching CODE_REVIEW version", async () => {
@@ -706,5 +780,373 @@ describe("Phase DOD static guarantees", () => {
     // req_gaps/boundary_gaps must appear in the passed-return and failed-return of parseDodStatus
     expect(content).toMatch(/req_gaps.*0/); // passed returns 0
     expect(content).toMatch(/boundary_gaps.*0/); // passed returns 0
+  });
+});
+
+// ─── DOD remediation routing (2026-08-11) ─────────────────────────────────────
+//
+// Phase DOD used to dispatch `se-implement` for every CODE_REVIEW finding
+// regardless of target, so a documentation erratum reached a TDD implementation
+// skill. These pin the classifier's grammar and the loop's dispatch.
+
+/** A CODE_REVIEW carrying exactly the rows given, in the shipped §1 grammar. */
+const codeReviewWith = (rows) =>
+  "# CODE REVIEW — test-feat (v1)\n\n## §1 Code Quality Findings\n\n" +
+  "| # | Criterion | Severity | File:Line | Problem | Required fix | Scope |\n" +
+  "|---|---|---|---|---|---|---|\n" +
+  rows.join("\n") +
+  "\n\nDOD_STATUS: failed\n";
+
+describe("classifyDodFindings", () => {
+  it("routes a finding whose Required fix carries `ERRATUM: FSPEC:` to FSPEC, not to code", () => {
+    const text = codeReviewWith([
+      "| **L1** | 6(a) | medium | `docs/test-feat/FSPEC-test-feat.md:425` | §3.3 describes a pair that no longer exists | `ERRATUM: FSPEC:` — re-anchor §3.3 to v2.8 | Local |",
+    ]);
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect([...docFindings.keys()]).toEqual(["FSPEC"]);
+    expect(docFindings.get("FSPEC")).toHaveLength(1);
+    expect(docFindings.get("FSPEC")[0].id).toBe("L1");
+    expect(docFindings.get("FSPEC")[0].docType).toBe("FSPEC");
+    expect(codeFindings).toEqual([]);
+  });
+
+  it("the erratum marker wins even when File:Line cites production code", () => {
+    // The reviewer stating the routing explicitly outranks the citation: the
+    // defect is that the DOCUMENT disagrees with the code the cell points at.
+    const text = codeReviewWith([
+      "| E1 | 6(a) | medium | `pdlc/workflows/consolidate-learnings.js:672` | the REQ's AC-6.1 contradicts this line | `ERRATUM: REQ:` — restate AC-6.1 | Local |",
+    ]);
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect([...docFindings.keys()]).toEqual(["REQ"]);
+    expect(codeFindings).toEqual([]);
+  });
+
+  it("routes on File:Line alone when it targets docs/{feature}/TSPEC-{feature}.md", () => {
+    const text = codeReviewWith([
+      "| T1 | 6(a) | low | `docs/test-feat/TSPEC-test-feat.md:88` | §7.2 names a seam that was renamed | Update §7.2 to the shipped name | Local |",
+    ]);
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect([...docFindings.keys()]).toEqual(["TSPEC"]);
+    expect(codeFindings).toEqual([]);
+  });
+
+  it("a workflow-source finding stays a code finding", () => {
+    const text = codeReviewWith([
+      "| C1 | 1 (stub) | high | `pdlc/workflows/orchestrate-dev.js:120` | `throw new Error(\"TODO\")` | Implement per TSPEC §3.2 | Local |",
+    ]);
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect(docFindings.size).toBe(0);
+    expect(codeFindings.map((f) => f.id)).toEqual(["C1"]);
+  });
+
+  it("a SKILL.md finding stays a code finding — a skill prompt is shipped source, not a spec document", () => {
+    const text = codeReviewWith([
+      "| S1 | 6(a) | medium | `pdlc/skills/consolidate-learnings/SKILL.md:63` | SKILL promises a filename the module cannot produce | Correct the SKILL to `{passId}` | Local |",
+    ]);
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect(docFindings.size).toBe(0);
+    expect(codeFindings.map((f) => f.id)).toEqual(["S1"]);
+  });
+
+  it("a cell mixing a spec document with production code stays a code finding", () => {
+    const text = codeReviewWith([
+      "| M1 | 6(a) | medium | `docs/test-feat/FSPEC-test-feat.md:12`, `pdlc/workflows/orchestrate-dev.js:34` | both disagree | Fix both | Local |",
+    ]);
+    const { codeFindings, docFindings } = classifyDodFindings(text, "test-feat");
+    expect(docFindings.size).toBe(0);
+    expect(codeFindings.map((f) => f.id)).toEqual(["M1"]);
+  });
+
+  it("another feature's spec document is not routed to this feature's author", () => {
+    const text = codeReviewWith([
+      "| X1 | 6(a) | low | `docs/other-feat/FSPEC-other-feat.md:5` | stale | Re-anchor | Cross-Feature |",
+    ]);
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect(docFindings.size).toBe(0);
+    expect(codeFindings.map((f) => f.id)).toEqual(["X1"]);
+  });
+
+  it("§2's requirements-traceability table is not a findings table", () => {
+    const text =
+      "## §2 Requirements Traceability\n\n" +
+      "| # | Source | Criterion / AC | Implementation path | Test path | Gap? | Severity | Scope |\n" +
+      "|---|---|---|---|---|---|---|---|\n" +
+      "| 1 | REQ AC-03 | retry on 429 | docs/test-feat/FSPEC-test-feat.md:9 | Not found | YES | high | Local |\n";
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect(docFindings.size).toBe(0);
+    expect(codeFindings).toEqual([]);
+  });
+
+  it("a findings table quoted inside a code fence fabricates nothing", () => {
+    const text =
+      "Template:\n\n```markdown\n" +
+      "| # | Criterion | Severity | File:Line | Problem | Required fix | Scope |\n" +
+      "|---|---|---|---|---|---|---|\n" +
+      "| 1 | Stub | high | src/foo.ts:42 | TODO | `ERRATUM: FSPEC:` example | Local |\n" +
+      "```\n";
+    const { docFindings, codeFindings } = classifyDodFindings(text, "test-feat");
+    expect(docFindings.size).toBe(0);
+    expect(codeFindings).toEqual([]);
+  });
+
+  it("an unreadable, empty or table-free CODE_REVIEW classifies as nothing at all", () => {
+    for (const input of ["", null, undefined, "### F1 — prose finding\nNo table here.\n"]) {
+      const { docFindings, codeFindings } = classifyDodFindings(input, "test-feat");
+      expect(docFindings.size).toBe(0);
+      expect(codeFindings).toEqual([]);
+    }
+  });
+
+  it("doc findings iterate in pipeline order, not table order", () => {
+    const text = codeReviewWith([
+      "| P1 | 6(a) | low | `docs/test-feat/PROPERTIES-test-feat.md:3` | stale | fix | Local |",
+      "| R1 | 6(a) | low | `docs/test-feat/REQ-test-feat.md:3` | stale | fix | Local |",
+      "| F1 | 6(a) | low | `docs/test-feat/FSPEC-test-feat.md:3` | stale | fix | Local |",
+    ]);
+    const { docFindings } = classifyDodFindings(text, "test-feat");
+    expect([...docFindings.keys()]).toEqual(["REQ", "FSPEC", "PROPERTIES"]);
+  });
+
+  it("the shipped grammar reads the real v6 CODE_REVIEW: L1 is an FSPEC finding", () => {
+    // The corpus this routing was designed against. v6's sole finding is the
+    // documentation erratum that was dispatched to se-implement on 2026-08-11.
+    // The live doc was swept by the harvest phase in a9899867; this fixture is
+    // a byte-verbatim copy of the pre-harvest corpus, preserved for this test.
+    const corpus = resolve(
+      __dirname,
+      "fixtures/CODE_REVIEW-pdlc-consolidation-agent-v6.md"
+    );
+    const { docFindings, codeFindings } = classifyDodFindings(
+      readFileSync(corpus, "utf8"),
+      "pdlc-consolidation-agent"
+    );
+    expect([...docFindings.keys()]).toEqual(["FSPEC"]);
+    expect(docFindings.get("FSPEC").map((f) => f.id)).toEqual(["L1"]);
+    expect(codeFindings).toEqual([]);
+  });
+
+  it("the shipped grammar reads the real v5 CODE_REVIEW: both findings are code findings", () => {
+    // The live doc was swept by the harvest phase in a9899867; this fixture is
+    // a byte-verbatim copy of the pre-harvest corpus, preserved for this test.
+    const corpus = resolve(
+      __dirname,
+      "fixtures/CODE_REVIEW-pdlc-consolidation-agent-v5.md"
+    );
+    const { docFindings, codeFindings } = classifyDodFindings(
+      readFileSync(corpus, "utf8"),
+      "pdlc-consolidation-agent"
+    );
+    expect(docFindings.size).toBe(0);
+    // K1's Required fix mentions "raise it as an **ERRATUM** against REQ AC-6.1"
+    // but carries no `ERRATUM: REQ:` marker — a suggestion is not a routing.
+    expect(codeFindings.map((f) => f.id)).toEqual(["K1", "K2"]);
+  });
+});
+
+describe("dodVerifyLoop — remediation routes by target", () => {
+  /** dod-verify always fails; every other skill records its dispatch. */
+  const routingAgent = (dispatches) => async (skill, prompt) => {
+    dispatches.push({ skill, prompt });
+    if (skill === "dod-verify") {
+      return (
+        "DOD_STATUS: failed\n" +
+        '{"stubs": 0, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90, "req_gaps": 0, "boundary_gaps": 1}'
+      );
+    }
+    return "Done.";
+  };
+
+  it("a doc-only CODE_REVIEW dispatches the document's author and NOT se-implement", async () => {
+    const dispatches = [];
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: routingAgent(dispatches),
+      _log: () => {},
+      _readFile: async () =>
+        codeReviewWith([
+          "| L1 | 6(a) | medium | `docs/test-feat/FSPEC-test-feat.md:425` | §3.3 is false at HEAD | `ERRATUM: FSPEC:` — re-anchor §3.3 | Local |",
+        ]),
+    });
+    expect(dispatches.map((d) => d.skill)).toEqual(["dod-verify", "pm-author", "dod-verify"]);
+    const doc = dispatches[1];
+    expect(doc.prompt).toContain("docs/test-feat/FSPEC-test-feat.md");
+    expect(doc.prompt).toContain("L1");
+    expect(doc.prompt).toMatch(/Do NOT write production code/);
+    expect(doc.prompt).toMatch(/targeted, versioned edit/);
+  });
+
+  it("a TSPEC finding goes to se-author and a PROPERTIES finding to te-author", async () => {
+    for (const [docType, skill] of [
+      ["REQ", "pm-author"],
+      ["TSPEC", "se-author"],
+      ["DECISIONS", "se-author"],
+      ["PLAN", "se-author"],
+      ["PROPERTIES", "te-author"],
+    ]) {
+      const dispatches = [];
+      await dodVerifyLoop({
+        feature: "test-feat",
+        maxIterations: 2,
+        _agent: routingAgent(dispatches),
+        _log: () => {},
+        _readFile: async () =>
+          codeReviewWith([
+            `| D1 | 6(a) | medium | \`docs/test-feat/${docType}-test-feat.md:1\` | stale | fix it | Local |`,
+          ]),
+      });
+      expect(dispatches.map((d) => d.skill)).toEqual(["dod-verify", skill, "dod-verify"]);
+    }
+  });
+
+  it("the docType→skill table is DERIVED from PHASE_DISPATCH, not a second copy", () => {
+    // If PHASE_DISPATCH's owners move, the routing must move with them.
+    expect(PHASE_DISPATCH.R.creator ?? PHASE_DISPATCH.R.optimizer).toBe("pm-author");
+    expect(PHASE_DISPATCH.F.creator).toBe("pm-author");
+    expect(PHASE_DISPATCH.T.creator).toBe("se-author");
+    expect(PHASE_DISPATCH.D.creator).toBe("se-author");
+    expect(PHASE_DISPATCH.P.creator).toBe("se-author");
+    expect(PHASE_DISPATCH.PR.creator).toBe("te-author");
+    const content = readFileSync(
+      resolve(__dirname, "../orchestrate-dev.js"),
+      "utf8"
+    );
+    expect(content).toMatch(
+      /function dodDocAuthorSkill\(docType\) \{[\s\S]*PHASE_DISPATCH\[ERRATUM_PHASE_BY_DOC_TYPE\[docType\]\]/
+    );
+  });
+
+  it("a mixed CODE_REVIEW dispatches BOTH the document author and se-implement, doc first", async () => {
+    const dispatches = [];
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: routingAgent(dispatches),
+      _log: () => {},
+      _readFile: async () =>
+        codeReviewWith([
+          "| L1 | 6(a) | medium | `docs/test-feat/FSPEC-test-feat.md:425` | stale | `ERRATUM: FSPEC:` — re-anchor | Local |",
+          "| C1 | 1 (stub) | high | `pdlc/workflows/foo.js:9` | TODO in `parse()` | Implement per TSPEC §3.2 | Local |",
+        ]),
+    });
+    expect(dispatches.map((d) => d.skill)).toEqual([
+      "dod-verify",
+      "pm-author",
+      "se-implement",
+      "dod-verify",
+    ]);
+    // se-implement is told which findings are someone else's, so it neither
+    // improvises a document edit nor silently drops the row.
+    expect(dispatches[2].prompt).toContain("EXCLUDED from your scope");
+    expect(dispatches[2].prompt).toContain("L1 (FSPEC)");
+  });
+
+  it("a code-only CODE_REVIEW produces the byte-identical se-implement dispatch", async () => {
+    const withReview = [];
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: routingAgent(withReview),
+      _log: () => {},
+      _readFile: async () =>
+        codeReviewWith([
+          "| C1 | 1 (stub) | high | `pdlc/workflows/foo.js:9` | TODO in `parse()` | Implement per TSPEC §3.2 | Local |",
+        ]),
+    });
+
+    // The pre-routing baseline: no CODE_REVIEW readable at all.
+    const baseline = [];
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: routingAgent(baseline),
+      _log: () => {},
+      _readFile: async () => null,
+    });
+
+    expect(withReview.map((d) => d.skill)).toEqual(baseline.map((d) => d.skill));
+    expect(withReview.map((d) => d.skill)).toEqual([
+      "dod-verify",
+      "se-implement",
+      "dod-verify",
+    ]);
+    const remediation = withReview.find((d) => d.skill === "se-implement");
+    expect(remediation.prompt).toBe(baseline.find((d) => d.skill === "se-implement").prompt);
+    expect(remediation.prompt).not.toContain("EXCLUDED from your scope");
+  });
+
+  it("a _readFile that throws degrades to the pre-routing se-implement dispatch", async () => {
+    const dispatches = [];
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: routingAgent(dispatches),
+      _log: () => {},
+      _readFile: async () => {
+        throw new Error("ENOENT");
+      },
+    });
+    expect(dispatches.map((d) => d.skill)).toEqual([
+      "dod-verify",
+      "se-implement",
+      "dod-verify",
+    ]);
+  });
+
+  it("a document-remediation dispatch that throws once is retried with the same prompt", async () => {
+    const docPrompts = [];
+    const logs = [];
+    let attempt = 0;
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 0, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      docPrompts.push(prompt);
+      attempt++;
+      if (attempt === 1) throw new Error("dispatch stall-killed");
+      return "Edited.";
+    };
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: mockAgent,
+      _log: (m) => logs.push(m),
+      _readFile: async () =>
+        codeReviewWith([
+          "| L1 | 6(a) | medium | `docs/test-feat/FSPEC-test-feat.md:425` | stale | `ERRATUM: FSPEC:` — re-anchor | Local |",
+        ]),
+    });
+    expect(docPrompts).toHaveLength(2);
+    expect(docPrompts[0]).toBe(docPrompts[1]);
+    expect(logs.some((m) => /Dispatch fault \(DOD FSPEC remediation/.test(m))).toBe(true);
+  });
+
+  it("the routed dispatch is announced by doc type and owning skill", async () => {
+    const logs = [];
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: routingAgent([]),
+      _log: (m) => logs.push(m),
+      _readFile: async () =>
+        codeReviewWith([
+          "| L1 | 6(a) | medium | `docs/test-feat/FSPEC-test-feat.md:425` | stale | `ERRATUM: FSPEC:` — re-anchor | Local |",
+        ]),
+    });
+    expect(
+      logs.some((m) => /Dispatching FSPEC document remediation to pm-author/.test(m))
+    ).toBe(true);
+  });
+
+  it("main() hands Phase DOD the pipeline's read seam", () => {
+    const content = readFileSync(resolve(__dirname, "../orchestrate-dev.js"), "utf8");
+    const call = content.slice(
+      content.indexOf("await dodVerifyLoopFn({"),
+      content.indexOf("});", content.indexOf("await dodVerifyLoopFn({"))
+    );
+    expect(call).toContain("_readFile: readFileFn");
   });
 });

@@ -39,3 +39,45 @@ one `VERDICT:` line).
 **Evidence.** With carry-forward, this window converges at round 7 (TE's round-6 approval plus
 SE's round-7 approval), three rounds before the budget expired, with the same reviews and the
 same findings.
+
+---
+
+## DEC-DW-01: On a skipped Phase T, `DECISIONS_WARRANTED` is read from disk, not defaulted
+
+Recorded 2026-08-09 from a live `pdlc dev` run of `pdlc-consolidation-agent`, in which phases R,
+F, T and D all skipped on recorded approvals.
+
+**Context.** Phase T appends a `DECISIONS_WARRANTED:` trailer requirement to its creator and
+optimizer prompts, and reads the answer out of the convergence loop's last result. When the phase
+**skips** on a recorded approval, `converge` returns a bare `{skipped: true}` — no `loop`, no
+`creatorResult` — so that read collapsed to `null` and took `parseDecisionsWarranted`'s
+absent-or-malformed branch. Two consequences, both wrong in the same way: the run log warned that
+the field was "absent or malformed" when no agent had been asked for it, and the value defaulted
+`true`. A re-run of a fully-approved pipeline therefore authored a DECISIONS document for a
+feature a previous run had correctly judged not to need one. Two different situations — an agent
+that was asked and did not answer, and an agent that was never asked — were arriving as one value.
+
+**Decision.** Split the two situations at the call site.
+
+- **Phase T ran.** Unchanged: a missing trailer is a real omission by an agent that was explicitly
+  asked, and `true` remains the right conservative default — author DECISIONS rather than silently
+  lose them.
+- **Phase T skipped.** Probe `docs/{feature}/DECISIONS-{feature}.md` through the same `_checkFile`
+  seam the phase gates use, and read its `.ok`. Present ⇒ warranted; absent ⇒ unwarranted. The run
+  log states the provenance ("Phase T skipped on recorded approval, so no trailer was emitted;
+  read from the DECISIONS document on disk instead") rather than blaming an omission.
+
+**Why disk is exact where the default was a guess.** Skipping means the TSPEC was already
+approved, so the warranted question was settled on a previous run — and unlike the trailer, that
+answer left a durable trace. The document either exists or it does not. Presence does not assert
+the document is still adequate; Phase D's own convergence gate decides that, which is why this
+branch hands it the phase rather than deciding for it.
+
+**What this does not do.** It does not change Phase T's trailer contract, Phase D's gate, the `D`
+report row or the `D` `forcePhases` token, and it does not make a skipped Phase T skip Phase D —
+a skipped Phase T with a DECISIONS document on disk still enters Phase D normally.
+
+**Evidence.** `pdlc/workflows/__tests__/decisionsWarrantedOnSkip.test.js` drives the pipeline
+through `main()` over a branch whose TSPEC carries a dual round-2 approval, and turns one
+variable: the DECISIONS document's presence. Both cases red on the pre-decision read (present:
+no provenance notice; absent: Phase D entered, then halted on a gate for a document nobody wrote).

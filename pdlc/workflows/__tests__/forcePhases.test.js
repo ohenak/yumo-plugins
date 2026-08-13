@@ -449,7 +449,9 @@ describe("RLH-AT-01a — the forced path keeps its round derivation", () => {
     expect(rReviews.length).toBeGreaterThan(0);
     for (const dispatch of rReviews) {
       expect(dispatch.prompt).toContain("This is iteration 2.");
-      expect(dispatch.prompt).toContain("as v2");
+      // CR F-11: the round index reaches the reviewer as the literal output PATH it
+      // must write, not as the free-form "as v2" phrasing this used to match.
+      expect(dispatch.prompt).toContain("-REQ-v2.md");
       expect(dispatch.prompt).not.toContain("This is iteration 1.");
     }
 
@@ -485,7 +487,9 @@ describe("RLH-AT-28 — force overrides approval only", () => {
     expect(fReviews.length).toBeGreaterThan(0);
     for (const dispatch of fReviews) {
       expect(dispatch.prompt).toContain("This is iteration 3.");
-      expect(dispatch.prompt).toContain("as v3");
+      // CR F-11: the round index reaches the reviewer as the literal output PATH it
+      // must write, not as the free-form "as v3" phrasing this used to match.
+      expect(dispatch.prompt).toContain("-FSPEC-v3.md");
     }
 
     // (ii) It is reported as forced. The notice is one of §4.7's four report *lines*; its

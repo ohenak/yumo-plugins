@@ -71,6 +71,12 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 3. Write structured feedback to the cross-review file (see format below).
 4. Re-verify the branch per **Git Workflow** step 2, then commit and push.
 
+**Citation Convention (DEC-DOC-01).** A citation into another document written as a raw `file:line`
+anchor — not a heading, spec id (`AC-…`, `BR-…`, `§N.M`), symbol name, or verbatim quote — is a
+finding, not a style nit: file it as `Process` scope, Low severity, unless the anchor is
+runtime-measured evidence (position itself is the claim under test), per
+`docs/_decisions/DECISIONS-review-severity-bars.md`, `DEC-DOC-01`.
+
 ---
 
 ## Delta Re-Review Protocol (iteration ≥2)
@@ -229,7 +235,8 @@ Rules:
 
 - Write the heading as exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line, and never this SKILL section's longer title. The heading and its position are **convention, not a parse requirement**: the workflow accepts any non-fenced `VERDICT:` line anywhere in the file and reads the **last** one. Be strict in what you emit anyway — the convention is what keeps these files readable.
 - Write **exactly one** `VERDICT:` line. If more than one appears, the workflow reads the last one — so a stray earlier line is not fatal, but it is not what you intend either.
-- This section is the **last section** of the file: nothing follows it. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. Write it last, in one edit, after everything else.
+- This section is the **last section you write**: write it last, in one edit, after everything else. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. One thing is allowed to appear below it and is not yours to write: the workflow appends tier-1 approval anchors (`APPROVAL-HASH:` / `REVIEWED-COMMIT:`) beneath this section once the round is approved. Those are expected, they are not a second verdict, and they do not mean the file was edited after you finished. If you are asked to append them, do so verbatim.
+- **Never let the anchors stand in for your counts line.** They are appended immediately below the verdict, which is exactly where the counts JSON belongs — so if you omit the counts, an anchor ends up in its slot. Emit the counts line yourself, directly under `VERDICT:`, every time.
 
 ### Channel 2 — the response trailer
 

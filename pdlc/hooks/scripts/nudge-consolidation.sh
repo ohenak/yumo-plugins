@@ -23,11 +23,42 @@ done
 import os, glob, json, sys
 
 THRESHOLD = 5
+
+# Two regions of the consolidation log: a legacy prose region (bare substring membership)
+# and a block region (per-line equality against a trimmed line), per TSPEC §7.1.
+def region_split(logtext):
+    if not logtext:
+        return "", set()
+    idx = logtext.find("<!-- pdlc:consumed")
+    if idx == -1:
+        return logtext, set()
+    legacy = logtext[:idx]
+    rest = logtext[idx:]
+    closer = "<!-- /pdlc:consumed -->"
+    spans = []
+    pos = 0
+    while True:
+        start = rest.find("<!-- pdlc:consumed", pos)
+        if start == -1:
+            break
+        end = rest.find(closer, start)
+        if end == -1:
+            spans.append(rest[start:])
+            break
+        spans.append(rest[start:end])
+        pos = end + len(closer)
+    block_lines = set()
+    for span in spans:
+        for line in span.split("\n"):
+            t = line.strip()
+            if t:
+                block_lines.add(t)
+    return legacy, block_lines
+
 proj = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
-learnings = glob.glob(os.path.join(proj, "docs", "*", "LEARNINGS-*.md"))
-if not learnings:
-    sys.exit(0)
+CORPUS_GLOBS = ("docs/*/LEARNINGS-*.md", "docs/completed/*/LEARNINGS-*.md")
+learnings = [p for g in CORPUS_GLOBS for p in glob.glob(os.path.join(proj, *g.split("/")))]
 
 log = os.path.join(proj, "docs", "_decisions", ".consolidation-log.md")
 logtext = ""
@@ -38,7 +69,14 @@ if os.path.isfile(log):
     except Exception:
         logtext = ""
 
-pending = [p for p in learnings if os.path.basename(p) not in logtext]
+legacy, block_lines = region_split(logtext)
+pending = [p for p in learnings
+           if os.path.basename(p) not in legacy and os.path.basename(p) not in block_lines]
+
+if os.environ.get("PDLC_CONSOLIDATION_DEBUG") == "1":
+    names = sorted(set(os.path.basename(p) for p in pending))
+    sys.stderr.write("PDLC_PENDING:" + ",".join(names) + "\n")
+
 n = len(pending)
 if n >= THRESHOLD:
     msg = ("pdlc: %d feature LEARNINGS files have not been consolidated yet. "

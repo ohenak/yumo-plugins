@@ -252,7 +252,7 @@ const PARSEABLE_PLAN = [
 ].join("\n");
 
 /** A structurally complete cross-review: a trailing `## Verdict` with one verdict line. */
-function crossReviewText(verdict = "Approved") {
+function crossReviewText(verdict = "Approved", high = 0) {
   return [
     "# Cross-review",
     "",
@@ -263,7 +263,7 @@ function crossReviewText(verdict = "Approved") {
     "## Verdict",
     "",
     `VERDICT: ${verdict}`,
-    '{"high": 0, "medium": 0, "low": 0}',
+    `{"high": ${high}, "medium": 0, "low": 0}`,
     "",
   ].join("\n");
 }
@@ -284,6 +284,24 @@ async function runPipeline(opts = {}) {
     confirmationErratum = null,
     absentPaths = [],
     seedFspecRoundOne = true,
+    // DEC-ERR-02. The confirmation's two channels, separable. Both default to
+    // agreeing with `confirmationVerdict`, so every test written before this
+    // decision keeps the single-channel reviewer it was written against.
+    //
+    // `confirmationFileVerdict` / `confirmationFileHigh`: what the reviewer
+    // WRITES. A verdict outside the catalogue makes the FILE unreadable too.
+    // `confirmationTrailer`: what the reviewer RETURNS. `"omitted"` returns
+    // prose with no trailer — the live 2026-08-09 failure; `"garbled"` returns
+    // a verdict outside the catalogue, which `parseVerdict` also calls malformed.
+    confirmationFileVerdict = null,
+    confirmationFileHigh = 0,
+    confirmationTrailer = "verdict",
+    // DEC-ERR-03. `tspecReviewerErratum` takes an ARRAY as well as a string, so a
+    // wave can carry a second upstream arm — the shape of the live episode.
+    // `erratumRewrites` maps an upstream doc path to the bytes its erratum author
+    // leaves behind, which is how an upstream document MOVES mid-wave here
+    // exactly as it did on 2026-08-10.
+    erratumRewrites = {},
   } = opts;
 
   const seeded = {
@@ -307,8 +325,18 @@ async function runPipeline(opts = {}) {
     // The delta confirmation writes its cross-review file, as a reviewer does.
     if (text.includes("DELTA CONFIRMATION")) {
       const match = /(docs\/\S*CROSS-REVIEW-\S+\.md)/.exec(text);
-      if (match) fs.files[match[1]] = crossReviewText(confirmationVerdict);
+      const fileVerdict = confirmationFileVerdict ?? confirmationVerdict;
+      // The file is written BEFORE the response is returned, which is the real
+      // ordering: a reviewer commits its cross-review during its episode, so the
+      // file is on disk by the time the orchestrator reads any trailer.
+      if (match) fs.files[match[1]] = crossReviewText(fileVerdict, confirmationFileHigh);
       const extra = confirmationErratum ? `ERRATUM: ${confirmationErratum}\n` : "";
+      if (confirmationTrailer === "omitted") {
+        return `Delta confirmed. I wrote my review to ${match ? match[1] : "the review file"}.\n${extra}`;
+      }
+      if (confirmationTrailer === "garbled") {
+        return `Delta confirmed.\n${extra}VERDICT: Looks fine to me\n`;
+      }
       return (
         `Delta confirmed.\n${extra}VERDICT: ${confirmationVerdict}\n` +
         `{"high": ${confirmationVerdict === "Approved" ? 0 : 1}, "medium": 0, "low": 0}\n`
@@ -317,11 +345,23 @@ async function runPipeline(opts = {}) {
 
     if (skill === "se-review" || skill === "te-review" || skill === "pm-review") {
       if (skill === "te-review" && tspecReviewerErratum && text.includes("for phase T of feature")) {
-        return `${APPROVE}ERRATUM: ${tspecReviewerErratum}\n`;
+        const lines = (
+          Array.isArray(tspecReviewerErratum) ? tspecReviewerErratum : [tspecReviewerErratum]
+        )
+          .map((entry) => `ERRATUM: ${entry}`)
+          .join("\n");
+        return `${APPROVE}${lines}\n`;
       }
       return APPROVE;
     }
     if (skill === "pm-author" || skill === "se-author" || skill === "te-author") {
+      // An erratum author that actually EDITS its document — without this the
+      // wave's later layers can never observe an upstream that moved.
+      const erratumTarget = /ERRATUM ROUND for (docs\/\S+\.md)/.exec(text);
+      if (erratumTarget && erratumRewrites[erratumTarget[1]]) {
+        fs.files[erratumTarget[1]] = erratumRewrites[erratumTarget[1]];
+        return "Erratum applied and committed.\nREVISION-COMPLETE: yes";
+      }
       if (text.includes("DECISIONS_WARRANTED")) {
         return "Finalized.\nREVISION-COMPLETE: yes\nDECISIONS_WARRANTED: false";
       }
@@ -498,6 +538,125 @@ describe("converge(): erratum routing (§3.1 step 4)", () => {
     expect(report.phases.find((p) => p.phase === "T").status).toBe("❌");
   });
 
+  // ─── DEC-ERR-02: the file is consulted when the trailer is unreadable ────────
+  //
+  // Recorded 2026-08-09 from a live run. `te-review` confirmed a REQ erratum,
+  // wrote an approving, anchored cross-review, and returned a response with no
+  // trailer. The confirmation read only the response, so the phase halted naming
+  // that reviewer non-approving — seconds after it had committed its approval to
+  // a file the orchestrator never opened.
+  //
+  // The fallback's whole content is WHEN it fires, so the four cases below are
+  // the decision table, not four variations on one case.
+
+  test("PROP-ERR-24a: a confirmation whose response carries no trailer is read from the file it wrote, and passes", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationTrailer: "omitted",
+    });
+
+    // The defect was a halt. The positive half is that the run did not merely
+    // avoid halting — it recorded the erratum round and carried on.
+    expect(report.outcome).toBe("success");
+    expect(report.notices).toContain(
+      "Phase T: erratum round for FSPEC — 1 item, confirmed at round v2 by se-review, te-review."
+    );
+
+    // An approval read from the file is a real approval: it anchors, exactly as
+    // one read from a trailer does. Without this the upstream document's
+    // recorded approval would point at pre-erratum bytes and the staleness gate
+    // would re-open a phase its approvers had just re-confirmed.
+    expect(fs.appends.map((a) => a.path)).toEqual([
+      `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`,
+      `${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v2.md`,
+    ]);
+    expect(fs.appends.every((a) => a.text.includes("APPROVAL-HASH: sha256:"))).toBe(true);
+
+    // Which channel decided is reported. An operator forensicating one of these
+    // halts has to answer exactly this question, and the first time it happened
+    // the log did not say.
+    expect(
+      logMessages.some(
+        (m) =>
+          m.includes("Erratum confirmation (FSPEC, te-review)") &&
+          m.includes("response trailer unreadable") &&
+          m.includes(`${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v2.md`) &&
+          m.includes("Approved")
+      )
+    ).toBe(true);
+  });
+
+  test("PROP-ERR-24b: a file that does not approve still halts, so the fallback is not a way through", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationTrailer: "omitted",
+      // A High finding, not merely the words "Needs revision". Under DEC-BAR-01
+      // the bar is High-only, so a "Needs revision" carrying zero High is a PASS
+      // — and reading it from the file must not change that either.
+      confirmationFileVerdict: "Needs revision",
+      confirmationFileHigh: 1,
+    });
+
+    // The fallback reads the file; it does not assume the file says yes.
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.haltReason).toContain("non-approving: [se-review, te-review]");
+    expect(fs.appends).toEqual([]);
+  });
+
+  test("PROP-ERR-24c: a legible non-approving trailer is never overturned by an approving file", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationVerdict: "Needs revision",
+      confirmationFileVerdict: "Approved",
+    });
+
+    // This is the boundary the narrowness buys. The trailer is READABLE and says
+    // no; the file says yes. A fallback that fired on any non-pass — rather than
+    // only on `malformed` — would let the file overturn a reviewer's explicit
+    // rejection, which is a far worse failure than the one being fixed.
+    expect(report.outcome).toBe("halted");
+    expect(report.haltReason).toContain(
+      "Phase T halted: the delta confirmation of the FSPEC erratum round did not pass"
+    );
+    expect(fs.appends).toEqual([]);
+    // And the file was never consulted, so nothing was reported about it.
+    expect(logMessages.some((m) => m.includes("Erratum confirmation (FSPEC,"))).toBe(false);
+  });
+
+  test("PROP-ERR-24d: an unreadable FILE is stopped by the dispatch watchdog, before the verdict is ever read", async () => {
+    const { report, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationTrailer: "garbled",
+      // A verdict outside the catalogue, in BOTH channels.
+      confirmationFileVerdict: "Looks fine to me",
+    });
+
+    // This is where the fallback's fail-closed guarantee actually lives, and it
+    // is not in the fallback. `dispatchAndVerify` will not accept a cross-review
+    // whose verdict it cannot read: it re-dispatches, and after
+    // MAX_AUTHORING_ATTEMPTS it halts on no-progress. So the confirmation never
+    // returns an unreadable file to the verdict read at all — which is why
+    // widening that read to consult the file cannot widen what gets through.
+    //
+    // The `else` branch there (both channels unreadable ⇒ keep the trailer's
+    // Needs revision) is therefore defence in depth against a future caller, not
+    // a reachable state on this path. Asserted as the halt that really happens
+    // rather than the one the fallback would have produced, because a test that
+    // claimed the latter would be describing code that never runs.
+    expect(report.outcome).toBe("halted");
+    // The watchdog is not the erratum halt and does not claim to be: it records
+    // no `haltPhase`, which is itself how the two are told apart in a report.
+    expect(report.haltPhase).toBeNull();
+    expect(report.haltReason).toContain("Phase F: se-review");
+    expect(report.haltReason).toContain("made no progress across 3 consecutive attempts");
+    expect(report.haltReason).toContain(
+      `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`
+    );
+    // Nothing was approved on the way to that halt.
+    expect(fs.appends).toEqual([]);
+  });
+
   test("PROP-ERR-25: a second erratum batch for the same document in the same phase exhausts the bound and halts", async () => {
     const { report, dispatches } = await runPipeline({
       tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
@@ -608,5 +767,130 @@ describe("the standing erratum clause reaches every prompt that can raise one", 
     expect(creator.prompt).toContain(ERRATUM_GRAMMAR_ANCHOR);
     expect(creator.prompt).toContain(ERRATUM_NO_FOLD_ANCHOR);
     expect(creator.prompt).toContain(ERRATUM_CATALOGUE_ANCHOR);
+  });
+});
+
+// ─── 4. DEC-ERR-03 — dispatch-time re-derivation and the superset confirmation ─
+//
+// The episode both clauses were recorded from (POSTMORTEM-T, episode 2,
+// 2026-08-10): a multi-layer wave grew a second upstream arm AFTER its routing
+// list was minted; the tail layer absorbed the routed list fully and correctly
+// and still shipped a hole, and the two confirming channels split on identical
+// bytes because they were answering different questions.
+
+const REQ_PATH = `${DOCS}/REQ-${FEATURE}.md`;
+const REQ_TEXT = "# REQ\n\nThe requirement body.\n";
+/** What the REQ's own erratum author leaves behind — the wave's second arm. */
+const REQ_REWRITTEN = "# REQ\n\nThe requirement body, plus AC-9 added by the erratum round.\n";
+
+// Literal anchors, transcribed by hand.
+const REGROUND_ANCHOR = "Re-ground on upstream HEAD FIRST, before you read the items below.";
+const FLOOR_ANCHOR = "treat the item list below as a FLOOR, not a ceiling";
+const MOVED_ANCHOR = "UPSTREAM MOVED SINCE THIS LIST WAS MINTED:";
+const SUPERSET_ANCHOR = "The items landing is NECESSARY, NOT SUFFICIENT.";
+const SUPERSET_FAITHFUL_ANCHOR =
+  "ask whether this document is still a faithful compression of it";
+
+describe("DEC-ERR-03: routing lists are re-derived at dispatch", () => {
+  test("PROP-ERR-40: the erratum author is re-grounded on upstream HEAD, named with the upstream document's CURRENT digest", async () => {
+    const { dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+    });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    expect(authored.length).toBe(1);
+    const prompt = authored[0].prompt;
+
+    // The FSPEC derives from the REQ, so the REQ is named — at the digest it
+    // actually carries at this dispatch, which is what makes a stale list
+    // detectable by the agent reading the prompt.
+    expect(prompt).toContain(REGROUND_ANCHOR);
+    expect(prompt).toContain(`- REQ: ${REQ_PATH} (${approvalHashOf(REQ_TEXT)})`);
+    expect(prompt).toContain(FLOOR_ANCHOR);
+    // Re-grounding is ordered BEFORE the routed items, not after them.
+    expect(prompt.indexOf(REGROUND_ANCHOR)).toBeLessThan(prompt.indexOf(ERRATUM_ITEM));
+
+    // Negative, on the same prompt: nothing moved in this wave, so the
+    // stale-list warning is NOT raised — the clause fires on movement, not always.
+    expect(prompt).not.toContain(MOVED_ANCHOR);
+  });
+
+  test("PROP-ERR-41: an upstream document edited mid-wave makes the LATER layer's prompt say so, and carries the upstream's post-edit digest", async () => {
+    const { dispatches } = await runPipeline({
+      // Two arms in one wave, in pipeline order: REQ is edited first, the FSPEC
+      // is dispatched after — the exact shape of the live failure.
+      tspecReviewerErratum: [`REQ: AC-7 names a file that does not exist`, `FSPEC: ${ERRATUM_ITEM}`],
+      erratumRewrites: { [REQ_PATH]: REQ_REWRITTEN },
+    });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    const fspecAuthor = authored.find((d) => d.prompt.includes(`ERRATUM ROUND for ${FSPEC_PATH}`));
+    expect(fspecAuthor).toBeDefined();
+
+    expect(fspecAuthor.prompt).toContain(`${MOVED_ANCHOR} REQ`);
+    expect(fspecAuthor.prompt).toContain(
+      "may be incomplete or wrong for HEAD. Re-derive what this FSPEC owes its upstream"
+    );
+    // The digest shown is the REQ as the wave left it, not as the list was minted.
+    expect(fspecAuthor.prompt).toContain(`- REQ: ${REQ_PATH} (${approvalHashOf(REQ_REWRITTEN)})`);
+    expect(fspecAuthor.prompt).not.toContain(approvalHashOf(REQ_TEXT));
+  });
+
+  test("PROP-ERR-42: the REQ's own erratum author gets no upstream manifest — there is nothing above it — but still gets its items", async () => {
+    const REQ_ITEM = "AC-7 names a file that does not exist";
+    const { dispatches } = await runPipeline({ tspecReviewerErratum: `REQ: ${REQ_ITEM}` });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    expect(authored.length).toBe(1);
+    expect(authored[0].prompt).toContain(`ERRATUM ROUND for ${REQ_PATH}`);
+    // Negative …
+    expect(authored[0].prompt).not.toContain(REGROUND_ANCHOR);
+    expect(authored[0].prompt).not.toContain(MOVED_ANCHOR);
+    // … paired positive on the same prompt: the round itself is unchanged.
+    expect(authored[0].prompt).toContain(`- ${REQ_ITEM} (raised by te-review)`);
+    expect(authored[0].prompt).toContain("This is an erratum round, NOT a rewrite.");
+  });
+});
+
+describe("DEC-ERR-03: a delta confirmation is a superset check against upstream HEAD", () => {
+  test("PROP-ERR-43: BOTH confirming channels carry the superset clause — the outcome cannot depend on which reviewer over-delivers", async () => {
+    const { dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+    });
+
+    const confirmations = confirmationDispatches(dispatches);
+    // Set-equality over the confirming channels, not containment.
+    expect(confirmations.map((d) => d.skill).sort()).toEqual(["se-review", "te-review"]);
+    for (const d of confirmations) {
+      expect(d.prompt).toContain(SUPERSET_ANCHOR);
+      expect(d.prompt).toContain(SUPERSET_FAITHFUL_ANCHOR);
+      expect(d.prompt).toContain(
+        "Your scope is this FSPEC measured against its upstream AT HEAD — not the item list."
+      );
+      // The upstream it is asked to measure against is named, at the same
+      // version the author was re-grounded on.
+      expect(d.prompt).toContain(`- REQ: ${REQ_PATH} (${approvalHashOf(REQ_TEXT)})`);
+      // The routed-item read is still asked for — necessary, just not sufficient.
+      expect(d.prompt).toContain("Do not re-review the whole document.");
+      expect(d.prompt).toContain(ERRATUM_ITEM);
+    }
+  });
+
+  test("PROP-ERR-44: the superset clause reaches the confirmers of a document with nothing above it, without inventing an upstream manifest", async () => {
+    const { dispatches } = await runPipeline({
+      tspecReviewerErratum: `REQ: AC-7 names a file that does not exist`,
+    });
+
+    const confirmations = confirmationDispatches(dispatches);
+    expect(confirmations.length).toBe(2);
+    for (const d of confirmations) {
+      // Positive: the clause itself is unconditional …
+      expect(d.prompt).toContain(SUPERSET_ANCHOR);
+      expect(d.prompt).toContain(
+        "Your scope is this REQ measured against its upstream AT HEAD — not the item list."
+      );
+      // … negative: the manifest of upstream documents is not fabricated.
+      expect(d.prompt).not.toContain("The upstream documents, at their current version");
+    }
   });
 });

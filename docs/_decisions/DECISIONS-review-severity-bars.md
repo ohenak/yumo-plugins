@@ -131,3 +131,204 @@ keeping. Only the statement of what blocks is replaced.
 **Review.** Deliberately provisional — "we'll learn from the next few iterations if it's too
 relaxed." Revisit after a few full pipeline runs: if Medium-severity defects start reaching
 implementation, restore Medium as blocking (or gate it per phase) and record that here.
+
+---
+
+## DEC-BAR-02: Approval anchors are skipped when locating the counts line (2026-08-09)
+
+**Context.** DEC-BAR-01 relaxed two rejection paths in verdict parsing and left a third standing:
+"an unparseable verdict still fails closed." That clause turned out to fire on the very files it
+was never meant to touch, through an interaction neither mechanism could see on its own.
+
+`parseVerdict` requires the counts JSON — `{"high": N, "medium": N, "low": N}` — to be the next
+non-empty line after `VERDICT:`. A reviewer who omits it entirely is already tolerated: with
+nothing following the verdict, the truncated-output case (TSPEC-PARSE-03) returns the verdict with
+zero counts, which converges under the High-only bar. But once a round is approved, the workflow
+appends tier-1 approval anchors beneath the `## Verdict` section — the one write to a cross-review
+file this system sanctions after its verdict, which CLAUDE.md instructs agents to perform
+"verbatim without hesitation" and which harvest copies into the Approval Record. `APPROVAL-HASH:
+sha256:…` then occupies the slot the parser insists is JSON, `JSON.parse` throws, and the whole
+review reads `malformed: true` — an approval already granted, re-run as "Needs revision".
+
+Measured across all 102 cross-review files under `docs/` on 2026-08-09: 29 failed to parse. All 29
+failed on an anchor line sitting in the counts slot, and all 29 carried an **approved** verdict
+(27 "Approved with minor changes", 2 "Approved"). In every one the counts line was absent rather
+than pushed below the anchors, so nothing was being overwritten — the anchor was simply filling a
+slot the reviewer had left empty. No file failed for any other reason.
+
+This stayed invisible until the engine. The response trailer feeds the convergence loop *inside*
+an invocation; `extractFileVerdict` is what decides approval on a *later* one. Runs that converged
+in a single invocation never re-read the files. `pdlc dev` re-invoked on `pdlc-consolidation-agent`
+was the first thing to lean on the cross-invocation half, and found 16 rounds of accumulated
+approval unreadable.
+
+**Decision.** `parseVerdict` skips lines matching `/^(APPROVAL-HASH|REVIEWED-COMMIT):/` when
+scanning for the counts line. Keyed on the field name, not the value grammar: a malformed anchor
+is still an anchor, and is still emphatically not a counts line to be fed to `JSON.parse`. Anchor
+well-formedness remains `readApprovalRecord`'s job (§4.4).
+
+**This does not relax the bar**, and is not a further step in DEC-BAR-01's experiment. The verdict
+value still governs and a real counts line is still read and validated wherever it sits relative
+to the anchors: "Needs revision" stays Needs revision, and a non-zero High count still blocks. Of
+the 102 files, 57 still parse as "Needs revision" after the change. Non-anchor prose in the counts
+slot still fails closed, exactly as DEC-BAR-01 says it should. What changes is only that the
+parser now recognises the one line the system itself is entitled to put there.
+
+**Also.** The three review SKILLs (`pm-review`, `se-review`, `te-review`) said the `## Verdict`
+section was "the last section of the file: nothing follows it" — false since anchors were
+introduced, and a reviewer reconciling that sentence against a file with anchors below it has been
+given a contradiction to resolve on its own. They now describe the append explicitly and warn
+against letting an anchor stand in for the counts line.
+
+**Review.** The counts-line omission rate (29/102, concentrated entirely in approvals) is a SKILL
+compliance signal worth watching. The parser change makes it non-fatal; it does not make it
+correct. If the rate does not fall, treat the counts line itself as the thing to reconsider —
+either enforce it at write time or drop it in favour of counting the `## Findings` table.
+
+---
+
+## DEC-ERR-02: The erratum delta confirmation reads the file when the response trailer is unreadable
+
+Recorded 2026-08-09 from a live `pdlc dev` run of `pdlc-consolidation-agent`, and from
+`POSTMORTEM-PR-pdlc-consolidation-agent.md` (v2.0), which halted on this seam.
+
+**Context.** A cross-review's verdict travels on two channels with settled, different roles: the
+reviewer's **response trailer** feeds the convergence loop inside the current invocation, and the
+**file** is what decides approval on a later one. The erratum delta confirmation
+(`orchestrate-dev.js:9383`) read only the trailer:
+
+```js
+const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
+if (nonApproving.length > 0) { await erratumPostmortemHalt({ ... }); }
+```
+
+That made it the only verdict read in the pipeline with no recovery of any kind — `reviewLoop` at
+least re-asks on Haiku (`recoverVerdict`) — and simultaneously the one whose failure mode is an
+immediate POSTMORTEM halt rather than another round. The least tolerant read was attached to the
+most expensive consequence.
+
+**What happened.** `te-review` confirmed the REQ erratum, wrote
+`CROSS-REVIEW-test-engineer-REQ-v17.md` with `VERDICT: Approved with minor changes`, zero High and
+both approval anchors, and returned a response with no trailer. The orchestrator halted Phase PR
+naming that reviewer as non-approving, seconds after that reviewer had committed its approval to a
+file the orchestrator never opened. `se-review`'s v17 was left without anchors, because
+`appendApprovalAnchors` runs only on PASS — so the halt also left REQ's recorded approval pointing
+at pre-erratum bytes, which would have re-opened Phase R on the next invocation.
+
+**Decision.** When the trailer is unreadable, read the file the reviewer just wrote —
+`extractFileVerdict` over `confirmPaths[i]`, the same authority and the same lenient parser
+(DEC-BAR-01, DEC-BAR-02) that `approvalSearch` uses at `:6675`.
+
+The fallback is narrow, and the narrowness is the decision:
+
+- It fires **only** when `parseVerdict` reports `malformed` — absent, truncated, or a value outside
+  the catalogue. A trailer that legibly says "Needs revision" is a reviewer's decision and still
+  halts. **The file may never overturn an explicit rejection**; that would be a worse failure than
+  the one being fixed, and it is pinned by `PROP-ERR-24c`.
+- It does not assume the file approves. A file carrying a High finding halts exactly as before
+  (`PROP-ERR-24b`).
+- Which channel decided is reported either way. The first occurrence cost an hour of forensics
+  precisely because the log did not say.
+
+**On fail-closed.** Widening this read cannot widen what gets through, and the reason is worth
+recording because it is not obvious from the call site. `dispatchAndVerify` will not accept a
+cross-review whose verdict it cannot read: it re-dispatches, and after `MAX_AUTHORING_ATTEMPTS`
+halts on no-progress. So an unreadable *file* never reaches this read at all (`PROP-ERR-24d`). The
+"both channels unreadable" branch is defence in depth against a future caller, not a reachable
+state on this path.
+
+**Evidence.** `PROP-ERR-24a` in `__tests__/erratumProtocol.test.js` reproduces the live failure —
+a confirmation whose response carries no trailer and whose file approves — and is red on the
+pre-decision read. `24b`, `24c` and `24d` are green in both directions by design: they exist to
+show the fix let nothing new through.
+
+## DEC-ERR-03: a delta confirmation is a superset check against upstream HEAD, and routing lists are re-derived at dispatch
+
+(Recorded as DEC-ERR-02 in the POSTMORTEM-T episode-2 resolution commit before the id collision
+with the entry above was noticed; renumbered, content unchanged.)
+
+**Context.** Recorded per `POSTMORTEM-T-pdlc-consolidation-agent.md` Episode 2 (2026-08-10),
+Recommendation step 5. A multi-layer erratum wave (`REQ → FSPEC → TSPEC → PROPERTIES`, 27 minutes)
+grew a second upstream arm after its routing list was minted; the tail layer absorbed the routed list
+fully and correctly and still shipped a hole, and the two confirming channels split on identical
+bytes — `pm-review` ran the protocol's *absorbed ⊇ raised* check (passed), `se-review` re-measured
+the document against upstream HEAD (failed, 1 High).
+
+**Decision.** Two clauses:
+
+- *Routing lists are re-derived at dispatch, not at wave open.* When any layer above the target has
+  moved since the list was minted, the dispatcher re-derives the routed items from the upstream
+  document's version **at dispatch time**. A list correct for the version it was cut against and
+  stale for HEAD is this episode's root cause (RC-1/RC-2: a wave has no synchronisation point; the
+  list travels unchanged while the wave keeps deciding).
+- *A confirming reviewer's scope is the document against upstream HEAD*, for **both** channels — the
+  superset read, not the routed-list equality read. The check "did the routed items land" is
+  necessary, not sufficient; whether the document is still a faithful compression of the upstream it
+  now cites is the confirmation's actual question, and the outcome must not depend on which reviewer
+  happens to over-deliver.
+
+---
+
+## DEC-DOC-01: cite content, not line number
+
+**Context.** pdlc feature documents (REQ/FSPEC/TSPEC/PLAN/PROPERTIES) grew a convention of citing
+other documents by raw line numbers — `` `orchestrate-dev.js:1842` ``, `` `SKILL.md:70-78` ``, table
+cells like `` (`:70-79`) ``. Measured on the `pdlc-consolidation-agent` feature: 104 of 558 branch
+commits existed purely for anchor/citation bookkeeping; a single row moving in a SKILL file (`:70-78`
+→ `:70-79`) consumed three Definition-of-Done rounds of re-approval across four documents; one REQ
+review round's fix (renumbering one enumerated value) obligated a pin migration across 13 cited
+locations in four files. A line number is a property of the file's current layout, not of the claim
+being cited — every unrelated edit above the cited line invalidates the citation without touching the
+claim it names.
+
+**Decision.** New feature documents cite **stable content, not line numbers**: unique headings,
+exported symbol names, spec IDs (`AC-…`, `BR-…`, `§N.M`), or a short verbatim quote — something that
+survives an unrelated edit to the cited file. A raw `file:line` anchor is permitted only where the
+position itself *is* the claim, i.e. runtime-measured evidence such as
+`pdlc/workflows/__tests__/consolidationSkillAnchors.test.js` asserts a specific line still resolves to
+a specific role; in that narrow case a stale-but-role-resolving anchor is itself the
+finding-generating signal, not bookkeeping overhead.
+
+**Scope.** Applies to citations written into new feature documents (REQ, FSPEC, TSPEC, PLAN,
+PROPERTIES, DECISIONS) and into authoring/review SKILL prompts. Does not require retrofitting
+citations already committed in prior features' documents; it governs what gets written going forward.
+
+---
+
+## DEC-FRZ-01: a matured document's review round is frozen — only regressions and contradictions block
+
+**Context.** Recorded on 2026-08-10 from the measured churn of `pdlc-consolidation-agent`: 84
+lifetime review rounds on one feature, +25 of them after the code was complete. Phase F of that
+feature imposed a decision freeze by hand, mid-run, and the effect was measurable — the finding class
+it targeted disappeared entirely and the Medium rate fell roughly 75%. The mechanism the freeze
+answers is structural, not a reviewer failing: a review round dispatched over a document that has
+already been approved has no instruction telling it that the document's content decisions are
+settled, so a competent reviewer keeps deciding — filing improvements, restructurings and
+alternatives against text whose approval is already on disk. Each one costs an optimizer episode, a
+re-review, and a fresh chance to introduce something the next round can find.
+
+**Decision.** Decision freeze is a first-class mode of the review loop, decided by a pure exported
+predicate (`freezeInForce`) from the round record the phase gate already read. Two triggers, either
+sufficient:
+
+- *A prior approving round exists.* The document was approved at least once BEFORE the round about
+  to open, so what re-opened the round is bytes moving — a staled approval anchor, a confirmed
+  erratum — and not an undecided document.
+- *The round index is 10 or beyond*, regardless of approval history. Late-round damping: a document
+  on its tenth review round is not still deciding what it is, whatever its anchors say.
+
+In a frozen round, the reviewer prompt carries a FREEZE clause: a finding may block only if it is
+(i) a defect the revision under review introduced, or (ii) a factual contradiction with the
+repository at HEAD or with an upstream document that makes a load-bearing claim false. Everything
+else is recorded as a `DEFERRED: {item}` line and approved. The optimizer prompt of the same round
+carries the author-side half: address the blocking findings, act on no `DEFERRED:` line, re-open no
+settled decision. Without that half the freeze is one-sided — an author that acts on a deferred item
+re-opens exactly the decision the freeze closed, and the next round has new text to review.
+
+**Scope.** The freeze narrows what may BLOCK on a matured document; it does not narrow what may be
+observed, and the `DEFERRED:` channel is what keeps the observation on the record. It does not touch
+the High-only convergence bar (DEC-BAR-01), the lifetime round cap (DEC-ROUNDS-02) or the erratum
+protocol's delta confirmations, which are already delta-scoped by construction. The predicate fails
+OPEN: a round record it cannot read imposes no freeze, and a forced phase — where the approval search
+does not run — is frozen only by the round-index trigger.

@@ -34,24 +34,70 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
 | 1 | done | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
-| 2 | halted | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
+| 2 | done | pdlc-consolidation-agent | docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 3 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
 | 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
-| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
+| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 7 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
+| 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
+| 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
+
+**Row 21 (`pdlc-learnings-injection`) added 2026-08-10 from consumer-run feedback.** The
+`regime-ledger` consumer completed a full end-to-end run of `wheel-paper-portfolio` (~40 review
+rounds, 49 implementation tasks, 3 DoD rounds, PR #261 green) while executing a stale 0.21.0
+workflow copy against a 0.22.x plugin, and the operator relayed its pain points on 2026-08-10.
+Checked against `pdlc/workflows/orchestrate-dev.js` at HEAD, almost all of them are already
+answered by the 0.22.x modules — the verdict vocabulary, verdict-trailer recovery, per-phase
+model routing and wave-mode's script-owned pathspec-scoped commits behind a foreground test
+gate — so the staleness itself is the story, and it belongs to the headless-engine family (rows
+3–5, whose REQ now records the incident as corroborating evidence at v0.5). **One genuine gap
+survived that check:** no mechanism injects a sibling feature's harvested LEARNINGS into an
+authoring dispatch, so a lesson the pipeline paid a feature to learn does not reach the next
+feature's authors in-run. Row 21 is that gap and only that gap. `Order` values are allocated and
+never reused; 21 is the next free after 20. Its `Depends-On` is `—`: it composes with
+`pdlc-consolidation-agent` (row 2) but consumes nothing the consolidation pass produces — the
+distinction is stated in the REQ's §1.3 and §4.2 BL-03 — and it needs no other row to land
+first. `ready: false` until the operator reviews the draft, so the queue does not pick it up as
+drafted.
+
+**Row 19 — the sixth advisory seam — added 2026-08-09 (draft REQ, `ready: false`, operator review
+pending).** Motivated by a live Phase I failure on `pdlc-consolidation-agent` the same day: a wave-2
+task imported a symbol whose promotion the PLAN scheduled for a wave-4 task, the module graph failed
+to link, and the wave gate correctly refused to commit — but the pipeline had no way to attempt the
+one-keyword repair, so an unattended run became an operator turn. Seam **A6** gives a red wave gate
+one bounded, reversible, gate-verified remediation attempt inside the wave's own declared file
+ownership before the halt. **Operator direction 2026-08-09:** taken up *after* `pdlc-consolidation-agent`
+lands, which is why that feature is in the `Depends-On` column rather than only in the REQ's prose.
+`Order 19` because values are allocated and never reused and 18 is the highest ever issued; the row
+carries `ready: false` so the driver cannot pick it up as drafted. Its five deferrals (D-AWG-01…05)
+all bind to row 6, which is why row 6 gains a `Depends-On` edge on it below — the engineering loop is
+the integration row that would inherit them. **Update 2026-08-11:** a second live instance, from
+consumer repo `regime-ledger` (`iv-snapshot-store-postgres`, direct `pdlc dev` run), corroborates the
+seam: a wave-2 task delivered its owned NEW test file but never touched its owned MOD implementation
+file, and the gate died at pytest collection (ImportError, zero tests run) — the first live
+`wave-internal-defect` instance, repairable under E-5 alone. REQ revised to v1.1 with the incident,
+two new operator questions (Q-4 per-task ownership-delivery check, Q-5 collection-error evidence
+signal) and a sixth deferral D-AWG-06 (mode-aware Phase I halt reporting), which binds to row 6 like
+the other five.
 
 **Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
 bytes against a 0.22.0 plugin; the versions differ in review-gate semantics): the per-project
 workflow copy is replaced by a standalone CLI that executes `pdlc/workflows/*.js` unmodified
-in plain Node and dispatches agents via **headless Claude Code (`claude -p`)** under
-subscription auth (the Agent SDK was verified 2026-08-08 to require API-key billing by
-policy, so it is ruled out as transport; `ANTHROPIC_BASE_URL` passthrough keeps the headroom
-proxy in the path on either transport). All three REQs carry `ready: false` until the
-operator reviews them — the queue must not pick them up as drafted. Sequencing:
+in plain Node and dispatches agents under subscription auth. The Phase-0 spike
+(`SPIKE-agent-sdk-auth.md`, 2026-08-08) verified the **Claude Agent SDK** runs under
+subscription auth on the operator's machine (`apiKeySource: "none"`), so the SDK is the
+**primary dispatch transport with headless `claude -p` as the declared fallback** — both
+behind the unchanged `_agent` seam and a fail-closed `apiKeySource` check, with
+`ANTHROPIC_BASE_URL` passthrough keeping the headroom proxy in the path on either transport.
+All three REQs carried `ready: false` until the operator reviewed them — the queue must not
+pick up drafts. **Update 2026-08-10:** the operator reviewed all three and flipped them
+`ready: true`; the same review repointed stale queue-row references (19/20/21, left over from
+a pre-renumbering table draft) to feature names in the two downstream REQs. Sequencing:
 `pdlc-headless-engine` (engine) → `pdlc-engine-distribution` (packaging/publish) →
 `pdlc-plugin-retirement` (retire bundles + sync/drift machinery). **Operator direction
 2026-08-08:** the plugin remains the delivery vehicle for the skills — users keep `/pdlc:*`
@@ -63,24 +109,6 @@ mechanism; the family removes the copy) and D-DIST-07 closes by construction;
 `pdlc-release-ci`'s D-DIST-06 release-automation remainder is proposed absorbed or renarrowed
 by `pdlc-engine-distribution` (its §Obligations). Those two rows are left untouched until the
 decision is recorded here.
-
-**Row 3 (`pdlc-headless-engine`) — 2026-08-12 direct-run halt at Phase I Wave 3, repaired same
-day; row left `pending` for re-pickup.** A direct `orchestrate-dev` run under the new headless
-engine (v0.1.0) halted at Wave 3's test gate: 14 red tests, two causes, both introduced by Wave 3
-tasks. (1) The TSPEC §7.6 CI-arrangement task edited `.claude/pdlc.config.json`'s
-`implementation.testCommand` to chain `pdlc/engine`'s suite mid-implementation, breaking
-`advisoryPreflight.test.js`'s §2.4 pre-flight pin (whose regex captures everything after
-`--testPathIgnorePatterns` to end-of-line) — and, had a later gate picked the new command up, every
-subsequent wave gate would have gone red on the engine's deliberately-red TDD tests. The config was
-reverted to the workflows-only command; `ci-arrangement.test.js`'s config assertion stays honestly
-red inside the *ungated* engine suite until a late wave flips the command as its final act.
-(2) `dispatchableSkills.test.js` landed as a red test inside the **gated** `pdlc/workflows` suite
-with its green implementation scheduled for a later wave — red-before-green cannot span a wave
-boundary in the gated suite, so the `DISPATCHABLE_SKILLS` exports were implemented operator-side to
-green it. Two engine-v0.1.0 observations from the same run: the halting run wrote **no** `halted`
-row here (report `queueRow: "none"`, despite CLAUDE.md's direct-run-records-own-halt rule) and
-**no** POSTMORTEM; both were recorded after the fact — see
-`docs/pdlc-headless-engine/POSTMORTEM-I-pdlc-headless-engine.md` (`RESOLVED: yes`).
 
 **Rows 0, 10, 11, 12, 17 and 18 removed 2026-08-02 by operator direction.** The `pdlc-rcv` family
 (rows 10–12, 17, 18 — the five-way split of the superseded row 0, `pdlc-review-convergence`) is

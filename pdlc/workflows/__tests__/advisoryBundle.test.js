@@ -197,17 +197,24 @@ describe("PLAN A-32 — both shipped artifacts still satisfy the runtime's struc
 });
 
 // ---------------------------------------------------------------------------
-// The artifact count is still three (TSPEC §2.1: "no new build source, no new
-// inlining order"; PLAN A-32: "no new `wrapModule` call, no manifest row
-// added"). Read from the generated manifest rather than the bundles list
-// literal in build-runtime.mjs, so a `bundles` array edit that adds a fourth
-// entry is caught the same way a hand-authored fourth artifact would be.
+// The artifact set is pinned by id (originally three — TSPEC §2.1: "no new
+// build source, no new inlining order"; PLAN A-32: "no new `wrapModule` call,
+// no manifest row added"; widened to four when pdlc-consolidation-agent T32
+// added consolidate-learnings.bundle.js as a sanctioned artifact). Read from
+// the generated manifest rather than the bundles list literal in
+// build-runtime.mjs, so a `bundles` array edit that adds an unsanctioned
+// entry is caught the same way a hand-authored extra artifact would be.
 // ---------------------------------------------------------------------------
 
-describe("PLAN A-32 — the bundle-composition edit adds no new artifact", () => {
-  it("distribution-manifest.json still carries exactly three rows, the same three ids", () => {
+describe("PLAN A-32 — the bundle composition carries exactly the sanctioned artifacts", () => {
+  it("distribution-manifest.json carries exactly four rows, the same four ids", () => {
     const manifest = JSON.parse(readFileSync(join(DIST_DIR, "distribution-manifest.json"), "utf8"));
-    expect(manifest.rows).toHaveLength(3);
-    expect(manifest.rows.map((r) => r.id).sort()).toEqual(["orchestrate-dev", "orchestrate-queue", "pdlc-cli"]);
+    expect(manifest.rows).toHaveLength(4);
+    expect(manifest.rows.map((r) => r.id).sort()).toEqual([
+      "consolidate-learnings",
+      "orchestrate-dev",
+      "orchestrate-queue",
+      "pdlc-cli",
+    ]);
   });
 });

@@ -6,7 +6,12 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import main from "../orchestrate-dev.js";
+import main, {
+  openPromotionsFromLog,
+  renderOpenPromotionList,
+  openPromotionList,
+  parseLogRecords,
+} from "../orchestrate-dev.js";
 import { QUEUE_ROW_DISPOSITIONS } from "../orchestrate-queue.js";
 
 /**
@@ -235,5 +240,200 @@ describe("PROP-HARVEST-05: PHASE_H_ENABLED is a compile-time boolean constant", 
     const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
     const content = readFileSync(scriptPath, "utf8");
     expect(content).toMatch(/const PHASE_H_ENABLED = (true|false)/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FSPEC §8.4 step 1 — the open-promotion list is HANDED to the harvest prompt
+// (CODE_REVIEW v1 F2)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// `harvest-learnings/SKILL.md` §5 instructs the agent to copy an id verbatim "if a candidate's
+// failure mode was named in the handed open-promotion list". FSPEC §8.4 step 1 is explicit that
+// openness is computed BY THE PASS, from `docs/_decisions/.consolidation-log.md` and nothing
+// else, and handed over as a list — because an id an LLM composes is not byte-equal to a recorded
+// slug, so a derive-it-yourself convention makes `recurred` unreachable and drifts every
+// promotion to `insufficient-evidence` and then `unmeasurable`. A guard conditioned on a hand-off
+// that never happens fails closed and silently: the agent writes no `failure-mode-id` at all.
+// These rows assert the arithmetic AND the hand-off, the second on the real dispatch prompt.
+
+describe("the open-promotion list handed to the harvest prompt (FSPEC §8.4 step 1)", () => {
+  function record({ id, action = "promote", route = "constraints", phase = "T", symptom = "a symptom", artifact = "docs/foo/TSPEC-foo.md" }) {
+    return [
+      `failure-mode-id: ${id}`,
+      `phase: ${phase}`,
+      `symptom: ${symptom}`,
+      `artifact: ${artifact}`,
+      `target: docs/_constraints/DOMAIN-CONSTRAINTS.md`,
+      `passId: 2025-12-01-1`,
+      `action: ${action}`,
+      `route: ${route}`,
+    ].join("\n");
+  }
+
+  const LOG = [
+    record({ id: "t-open-one-md", symptom: "the reviewer missed the boundary case", artifact: "docs/one/TSPEC-one.md", phase: "T" }),
+    record({ id: "t-closed-md", symptom: "closed by a landed retirement", artifact: "docs/two/TSPEC-two.md" }),
+    record({ id: "t-closed-md", action: "retire", route: "constraints" }),
+    record({ id: "t-degraded-md", symptom: "a retirement that only reached a proposal file", artifact: "docs/three/TSPEC-three.md" }),
+    record({ id: "t-degraded-md", action: "retire", route: "degraded" }),
+  ].join("\n\n");
+
+  it("openPromotionsFromLog computes openness from the log alone — a landed retire closes an id, a degraded one does not", () => {
+    const entries = openPromotionsFromLog(LOG);
+
+    expect(entries.map((e) => e.failureModeId).sort()).toEqual(["t-degraded-md", "t-open-one-md"]);
+    // Each entry carries the three fields §8.4 step 2's question is asked on.
+    const open = entries.find((e) => e.failureModeId === "t-open-one-md");
+    expect(open.symptom).toBe("the reviewer missed the boundary case");
+    expect(open.artifact).toBe("docs/one/TSPEC-one.md");
+    expect(open.phase).toBe("T");
+  });
+
+  it("its id set is exactly openPromotionList's over the same log — one arithmetic, not two", () => {
+    const viaList = openPromotionList(parseLogRecords(LOG).records).sort();
+    expect(openPromotionsFromLog(LOG).map((e) => e.failureModeId).sort()).toEqual(viaList);
+  });
+
+  it("an absent, empty or unparseable log yields an empty list rather than throwing", () => {
+    for (const input of [null, undefined, "", "not a record at all\n", 42]) {
+      expect(openPromotionsFromLog(input)).toEqual([]);
+    }
+  });
+
+  it("renderOpenPromotionList names every entry's id verbatim, and says so explicitly when there are none", () => {
+    const rendered = renderOpenPromotionList(openPromotionsFromLog(LOG));
+    expect(rendered).toContain("t-open-one-md");
+    expect(rendered).toContain("t-degraded-md");
+    expect(rendered).not.toContain("t-closed-md");
+    expect(renderOpenPromotionList([])).toMatch(/none/i);
+  });
+
+  it("Phase H hands the list to the harvest dispatch — the prompt names each open id and no closed one", async () => {
+    const prompts = [];
+    const agent = async (skill, prompt) => {
+      if (skill === "harvest-learnings") prompts.push(String(prompt));
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return `Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized.\nDECISIONS_WARRANTED: false";
+        }
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+        }
+        return "Document created.";
+      }
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (String(prompt).includes("Raise a pull request")) {
+          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        }
+        return "Rebased.\nREBASE_STATUS: clean";
+      }
+      return "Success.";
+    };
+
+    const result = await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _readFile: (path) =>
+        String(path).includes(".consolidation-log.md") ? LOG : readParseablePlan(path),
+      _agent: agent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: () => ({ ok: true }),
+      _checkCi: async () => "passed",
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+    });
+
+    expect(result.outcome).toBe("success");
+    expect(prompts).toHaveLength(1);
+    // The hand-off itself: the ids the SKILL's §5 convention tells the agent to look up.
+    expect(prompts[0]).toContain("t-open-one-md");
+    expect(prompts[0]).toContain("t-degraded-md");
+    // A closed promotion is not asked about — the list is filtered, not the whole log.
+    expect(prompts[0]).not.toContain("t-closed-md");
+    // And the fields §8.4 step 2's question is asked on travel with it.
+    expect(prompts[0]).toContain("docs/one/TSPEC-one.md");
+  });
+
+  it("with no consolidation log at all, the harvest prompt still states the list is empty rather than omitting it", async () => {
+    const prompts = [];
+    const agent = async (skill, prompt) => {
+      if (skill === "harvest-learnings") {
+        prompts.push(String(prompt));
+        return "Harvest complete.";
+      }
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return `Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized.\nDECISIONS_WARRANTED: false";
+        }
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+        }
+        return "Document created.";
+      }
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (String(prompt).includes("Raise a pull request")) {
+          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        }
+        return "Rebased.\nREBASE_STATUS: clean";
+      }
+      return "Success.";
+    };
+
+    await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _readFile: readParseablePlan,
+      _agent: agent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: () => ({ ok: true }),
+      _checkCi: async () => "passed",
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+    });
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toMatch(/open-promotion list[^\n]*\n?[^\n]*none/i);
+  });
+});
+
+// ─── FSPEC §8.4: one implementation of the record readers, not two ───────────
+// The hand-off only holds if both sides compute openness with the SAME code. A second copy in
+// `consolidate-learnings.js` would let the list the pass reports and the list the harvest is
+// asked about drift apart silently — the exact failure §8.4 exists to prevent. The oracle is
+// structural because that is where the risk lives: behavioural equality of two copies is
+// unobservable until they disagree.
+describe("FSPEC §8.4: the consolidation-log record readers exist once", () => {
+  const consSource = readFileSync(resolve(__dirname, "../consolidate-learnings.js"), "utf8");
+
+  it.each(["parseLogRecords", "openPromotionList", "jsonCommentRecords"])(
+    "consolidate-learnings.js does not redefine %s",
+    (name) => {
+      expect(consSource).not.toMatch(new RegExp(`function\\s+${name}\\s*\\(`));
+    }
+  );
+
+  it("consolidate-learnings.js does not redefine the field map or the record-comment grammar", () => {
+    expect(consSource).not.toMatch(/const\s+LOG_RECORD_FIELD_MAP\s*=/);
+    expect(consSource).not.toMatch(/const\s+RECORD_COMMENT_RE\s*=/);
+  });
+
+  it("consolidate-learnings.js imports the readers from orchestrate-dev.js", () => {
+    const importLine = consSource
+      .split("\n")
+      .find((l) => /^import\s.*from\s+"\.\/orchestrate-dev\.js";\s*$/.test(l));
+    expect(importLine).toBeDefined();
+    for (const name of ["parseLogRecords", "openPromotionList", "jsonCommentRecords"]) {
+      expect(importLine).toContain(name);
+    }
   });
 });

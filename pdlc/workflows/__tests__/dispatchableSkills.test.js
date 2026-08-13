@@ -475,11 +475,11 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
 
   test("per-class direct-site census — class 4 (dispatch-call first arguments)", () => {
     const direct = (sites) => sites.filter((s) => s.outcome === "direct").length;
-    expect(direct(devSites.class4)).toBe(11);
+    expect(direct(devSites.class4)).toBe(10);
     expect(direct(queueSites.class4)).toBe(1);
   });
 
-  test("indirect-dispatch positions are counted, not skipped: 11 total, all in orchestrate-dev.js", () => {
+  test("indirect-dispatch positions are counted, not skipped: 14 total, all in orchestrate-dev.js", () => {
     const indirect = (sites) => sites.filter((s) => s.outcome === "indirect").length;
     const devIndirect =
       indirect(devSites.class1) +
@@ -491,11 +491,11 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
       indirect(queueSites.class2) +
       indirect(queueSites.class3) +
       indirect(queueSites.class4);
-    expect(devIndirect).toBe(11);
+    expect(devIndirect).toBe(14);
     expect(queueIndirect).toBe(0);
   });
 
-  test("the site census totals 48 direct sites plus 11 indirect positions across both modules", () => {
+  test("the site census totals 47 direct sites plus 14 indirect positions across both modules", () => {
     const direct = (sites) => sites.filter((s) => s.outcome === "direct").length;
     const indirect = (sites) => sites.filter((s) => s.outcome === "indirect").length;
     const totalDirect =
@@ -516,8 +516,8 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
       indirect(queueSites.class2) +
       indirect(queueSites.class3) +
       indirect(queueSites.class4);
-    expect(totalDirect).toBe(48);
-    expect(totalIndirect).toBe(11);
+    expect(totalDirect).toBe(47);
+    expect(totalIndirect).toBe(14);
   });
 
   // The decisive case DEC-ENG-05 names: the reviewer-role map's keys and
