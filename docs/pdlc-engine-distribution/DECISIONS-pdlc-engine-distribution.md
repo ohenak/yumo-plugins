@@ -302,10 +302,44 @@ when it is false and `PDLC_PLUGIN_ROOT` is set, discovery proceeds as if the var
 unset and the run emits `PDLC_PLUGIN_ROOT was set (<value>) and ignored — dev-mode was not
 declared; pass --dev to honour it`. The `--plugin-root` **flag** keeps its current precedence in
 all four rows: it is explicit and per-invocation, which is exactly what T-6 asks for. The notice
-is a catalogue entry (TSPEC §10.3), so `lib/catalogue.mjs`'s shipped registered-message
-set-equality covers it without a bespoke test. In the same change, the compat-refusal `REMEDY`
+is a catalogue entry (TSPEC §10.3). In the same change, the compat-refusal `REMEDY`
 text (`pdlc/engine/lib/handshake.mjs:131-134`) is updated to recommend
 `--dev PDLC_PLUGIN_ROOT=…` rather than the bare variable.
+
+**What the catalogue equality does and does not cover.** An earlier draft of this entry said
+the notice's catalogue membership meant `lib/catalogue.mjs`'s shipped registered-message
+set-equality "covers it without a bespoke test". That was checked against HEAD and it is
+wrong in two ways, so the corrected accounting is recorded here rather than left to the
+implementer to discover:
+
+- The set-equality inside `pdlc/engine/__tests__/catalogue.test.js:71-74` compares
+  `messageIds()` against `Object.keys(MESSAGES)` — a module against itself, true for **any**
+  catalogue content. That file's own header (`:4-6`) explicitly disclaims the emitted-ids
+  equality as "a separate, cross-process concern… out of scope here".
+- The equality that does bite is a different one in a different file:
+  `checkMessageCatalogue` (`pdlc/engine/__tests__/_assert-suite-wide.mjs:196-210`), driven by
+  `assert-suite-wide.test.js:165` (forward) and `:183` (reverse). Its reverse direction —
+  "a registered id never emitted fails the step" — means registering the notice **creates an
+  obligation to emit it somewhere in the suite**. It is emitter work, not covered work. And it
+  is **path-blind**: it proves `env.plugin-root-ignored` is emitted *somewhere*, not that it is
+  emitted on the `PDLC_PLUGIN_ROOT`-set-without-`--dev` path — which is this entry's entire
+  difference from the rejected "honour it silently" branch.
+
+**So the branch carries two assertions of its own**, and they are what make it falsifiable in
+both directions rather than only registered:
+
+1. `resolvePluginRoot({devDeclared: false, env: {PDLC_PLUGIN_ROOT: X}})` resolves to the
+   **discovered** root (not `X`) **and** returns a notice list containing the
+   `env.plugin-root-ignored` id — a positive assertion on the id, not "no override was
+   applied", which would also pass if the variable had never been set.
+2. The §6.5 row where `devDeclared` is `true` and the variable is set asserts it **is**
+   honoured, so a regression that ignores it unconditionally is caught too.
+
+Both assert the **rendered text** as well as the id, because the rendered string is the whole
+operator-visible deliverable of AC-5.6 and an id equality says nothing about it. This is TSPEC
+v0.2's own scheduled shape — "catalogue registration emitters paired with rendered-text
+assertions (§10.3, §12.4)" — applied to this entry. Raised as an erratum against TSPEC §6.5,
+whose "covers it for free" sentence this entry transcribed.
 
 **Alternatives considered.**
 
@@ -329,8 +363,12 @@ status quo.
 **Reversibility.** Easy — one branch in one function. Not a one-way door in either direction:
 flipping to refusal later costs the same single branch, plus the message.
 
-**Re-evaluation triggers.** Evidence that operators are hitting the notice repeatedly and not
-acting on it (the ignore is then failing to teach, and refusal becomes the better teacher);
+**Re-evaluation triggers.** **An operator report** that the notice is being hit repeatedly and
+not acted on — stated in that honest form, because the engine emits no telemetry and NG-3
+forbids it fetching anything, so there is no mechanical observation that could produce this
+evidence (TE Q-01). The trigger is a judgement call and says so, unlike DEC-EDIST-09's parser
+trigger, which names the oracle that goes red; if the ignore branch is still in place after
+enough field exposure to have generated such a report, its provisionality is nominal;
 `REMEDY` losing its `PDLC_PLUGIN_ROOT` recommendation entirely, which removes the reason this
 branch was chosen over refusal.
 
