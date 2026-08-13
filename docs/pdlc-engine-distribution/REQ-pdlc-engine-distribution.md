@@ -30,20 +30,13 @@ O-8 relabelled tool- vs decision-enforced, no ordering claimed; AC-2.3 split per
 one transcription source; AC-1.1 exempts `pdlc doctor`.*
 
 *0.7 (2026-08-13, review round 1): §1.1 re-measured at `89babe8e`, code-level facts moved to
-`docs/_constraints/pdlc-engine-baseline.md` as M-ENG-10…M-ENG-13 and cited by id. BL-03 resolved
-by **O-7** (two versions of record; the tag is an engine tag). O-8 extended to three publish
-blockers; T-7/AC-3.4 and AC-1.3 restated as set-equality; packaging↔anti-fork collision recorded
-as **R-5**; new **O-9** (provenance carrier), **O-10** (packaging choice), **AC-5.6**;
-absence-only oracles paired with positives. The false "prompt corpus is embedded in
-`orchestrate-dev.js`" clause deleted from NG-1 and O-1 (erratum raised against
-DECISIONS-plugin-distribution.md).*
-
-*0.6 (2026-08-13): O-1 decided — public npm, scoped package, **DEC-DIST-05**; O-3 decided — both
-queue-row dispositions written into `docs/_queue/QUEUE.md`. 0.5: O-2, O-4, O-5, O-6 answered
-against shipped code; NG-1 records the public repo; T-3 names `pdlcPluginCompat`. 0.4: queue rows
-referenced by feature name. 0.3 (operator decision): the engine package no longer snapshots
-`pdlc/skills/**` — CLI + modules + adapter only, skills read from the installed plugin at dispatch
-time, a declared compatible-version range replacing snapshot-integrity verification.*
+`docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13, cited by id); BL-03 resolved by
+**O-7**; new **R-5**, **O-9**, **O-10**, **AC-5.6**; absence-only oracles paired with positives;
+the false "prompt corpus is embedded in `orchestrate-dev.js`" clause deleted from NG-1 and O-1
+(erratum raised against DECISIONS-plugin-distribution.md). 0.6: O-1 decided (public npm, scoped —
+**DEC-DIST-05**); O-3's queue dispositions written to `QUEUE.md`. 0.5: O-2/O-4/O-5/O-6 answered
+against shipped code. 0.3 (operator decision): no skills snapshot — CLI + modules + adapter only,
+skills read from the installed plugin at dispatch time behind a declared compat range.*
 
 > **Scope in one line.** Package the headless engine — CLI entry, the unmodified workflow
 > modules, and the engine adapter, **no skills snapshot** — as **one versioned artifact**
@@ -65,10 +58,9 @@ says which one ran.
 
 ### 1.1 What is true at HEAD (re-measured 2026-08-13 at `89babe8e`)
 
-Every claim this REQ rests on was re-checked against the repo at review round 1. These are
-observations, not contracts — the contracts are the TSPEC's. Code-level facts live once, in
-`docs/_constraints/pdlc-engine-baseline.md`, and are cited here by id so a later drift is a
-one-file correction rather than a stale snapshot inside this REQ.
+Observations, not contracts — the contracts are the TSPEC's — re-checked against the repo at
+review round 1. Code-level facts live once, in `docs/_constraints/pdlc-engine-baseline.md`, cited
+here by id so a later drift is a one-file correction, not a stale snapshot inside this REQ.
 
 | # | Observation | Where |
 |---|---|---|
@@ -514,11 +506,9 @@ duplication (which disagreed with itself at O-1) is collapsed here.
 - **O-1 — Distribution channel choice.** Blocks FSPEC authoring (BL-02). *Owner:* operator.
   *Resolution form:* `docs/_decisions/DECISIONS-plugin-distribution.md`.
   **Decided 2026-08-13 — public npm, scoped package,** recorded as **DEC-DIST-05**, which carries
-  the full comparison. In short: the repo is public (NG-1), so every candidate is
-  privacy-equivalent, and among equivalents npm alone gives native immutability (C-7), a yank
-  primitive, and a one-command install/upgrade. Git-tag install was rejected on C-7 (a bare tag is
-  force-pushable); a private registry as cost without benefit. This unblocks BL-02; the publish
-  preconditions it creates are O-8.
+  the full comparison. In short: the repo is public (NG-1), so candidates are privacy-equivalent,
+  and among equivalents only npm gives native immutability (C-7), a yank primitive and a
+  one-command install/upgrade. This unblocks BL-02; the publish preconditions it creates are O-8.
 - **O-2 — Pin mechanism.** How a per-project pin (T-5) is expressed and read. Shapes
   AC-5.1–AC-5.5. *Owner:* operator, informed by TSPEC.
   **Answered 2026-08-13.** The pin lives under the `engine.*` namespace in the consumer-owned
@@ -534,14 +524,14 @@ duplication (which disagreed with itself at O-1) is collapsed here.
   **Decided 2026-08-13 and written into `QUEUE.md`**, per the dispositions tabled at §1.2:
   `pdlc-install-mechanism` closed as superseded, `pdlc-release-ci` kept, renarrowed to release
   automation for the package O-1 chose and made dependent on this feature. D-DIST-07 dissolves
-  rather than transfers — it is a property of the `.claude/workflows/` copy that
-  `pdlc-plugin-retirement` removes — and its re-open condition against `pdlc-engineering-loop` is
-  recorded in the queue note so the deferral cannot vanish silently.
+  rather than transfers — a property of the `.claude/workflows/` copy `pdlc-plugin-retirement`
+  removes — with its re-open condition against `pdlc-engineering-loop` recorded in the queue note,
+  so the deferral cannot vanish silently.
 - **O-4 — Fate of `pdlc/workflows/dist/pdlc-cli.mjs`.** *Owner:* operator.
   **Closed 2026-08-13.** It stays a project-local artifact of the plugin build (NG-7's default) —
-  a manifest row (`pdlc-cli`) emitted by `build-runtime.mjs` and synced by `sync-workflows.sh`,
-  unaffected by this feature. The headless-engine and `pdlc-plugin-retirement` REQs say the same
-  in their NG-2s; three REQs agree.
+  a `pdlc-cli` manifest row emitted by `build-runtime.mjs` and synced by `sync-workflows.sh`,
+  unaffected by this feature; the headless-engine and `pdlc-plugin-retirement` REQs agree in their
+  NG-2s.
 - **O-5 — Dev-mode design.** The selector's shape (T-6), how a dev-mode run is marked
   (AC-5.3), and what "the checkout's prompts" resolves to. *Owner:* this REQ's TSPEC.
   **Answered 2026-08-13, one tension routed.** The engine already ships the `PDLC_PLUGIN_ROOT`
