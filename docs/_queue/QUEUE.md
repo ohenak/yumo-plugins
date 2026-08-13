@@ -30,12 +30,21 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > dependency absent from the table is checked against the base branch, exactly as rows 6/7/15/16
 > already do for `pdlc-workflow-distribution`. Prose below that says "rows 13, 14 and 16" is
 > historical record and keeps its meaning: the feature name, not the row, is the identity.
+> **Rows 1 (`pdlc-advisory-tier`), 2 (`pdlc-consolidation-agent`) and 3
+> (`pdlc-headless-engine`) were removed from the table on 2026-08-12.** All three merged — row 1
+> as `bb99f890` (#38, 2026-08-05), row 2 as `87d9c6ad` (#50, 2026-08-10), row 3 as `39787a82`
+> (#56, 2026-08-12) — and the per-feature docs moved to `docs/completed/pdlc-advisory-tier/`,
+> `docs/completed/pdlc-consolidation-agent/` and `docs/completed/pdlc-headless-engine/`,
+> LEARNINGS included. `Order` values stay allocated and are never reused; 1, 2 and 3 are retired.
+> The rows that still name these features in `Depends-On` (4, 5, 6, 19, 20) resolve them through
+> Phase-0 readiness triage — a dependency absent from the table is checked against the base
+> branch, exactly as rows 6/7/15/16 already do for `pdlc-workflow-distribution`. Prose below that
+> says "row 1", "row 2" or "row 3" is historical record and keeps its meaning: the feature name,
+> not the row, is the identity.
+
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 1 | done | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
-| 2 | done | pdlc-consolidation-agent | docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
-| 3 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
 | 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
