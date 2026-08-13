@@ -322,20 +322,74 @@ version's `bin/pdlc.mjs` with the original argv and an env marker saying it is t
 child. The child sees the marker and runs in-process without re-resolving — so resolution
 happens **exactly once per invocation**, which is BR-1.5's structural precondition.
 
-`exec` (process replacement via `child_process.spawnSync` with `stdio: "inherit"`, exit
-code propagated) rather than dynamic `import` of the target version, because the two
-versions may declare different `@anthropic-ai/claude-agent-sdk` ranges and must not share
-one module registry. Exit code, stdout and stderr pass through unchanged, so every
-existing CLI oracle keeps working.
+The hop is a **child process** (`child_process.spawnSync` with `stdio: "inherit"`, the
+child's exit code re-raised as the launcher's own) rather than a dynamic `import` of the
+target version, because the two versions may declare different
+`@anthropic-ai/claude-agent-sdk` ranges and must not share one module registry. Node has no
+`execve`, so this is deliberately *not* process replacement, and the earlier draft's phrase
+"process replacement via `spawnSync`" is corrected here: the difference is observable in
+signal handling, exit-code propagation and stdio buffering, and calling it replacement would
+hide exactly the behaviours that need asserting.
+
+Because pass-through is a claim about a real process, it gets a real oracle rather than
+resting on S-3's descriptor double: **one test spawns through the launcher against a trivial
+fake target** and asserts a non-zero exit code is propagated verbatim, that stdout and stderr
+each arrive unchanged, and that they are not interleaved into one stream. S-3's descriptor
+recorder (path, argv, env) stays for the resolution assertions, where not spawning a second
+Node is the point; it cannot falsify pass-through, so it is not asked to. The claim that
+"every existing CLI oracle keeps working" is load-bearing precisely because the shipped
+`cli.test.js` exercises `bin/pdlc.mjs` directly rather than through the new hop.
+
+**Two commands resolve but never refuse: `--version` and `doctor`.** AC-1.4 is unconditional
+on an installed package ("when they ask the CLI for its version, then it reports the triple"),
+and AC-1.1 puts `pdlc doctor` outside the compat gate precisely so the diagnostic that
+explains a refusal still runs. Putting version resolution in the launcher ahead of everything
+would otherwise make the new gate *structurally earlier* than that exemption — R-B's
+`--ignore-scripts` scenario is the concrete case: the store is never populated, ladder branch
+7 refuses, and the operator cannot run the one command that would explain why. So:
+
+- `--version` and `doctor` run the **launcher's own** `bin/pdlc.mjs` in place. They do not
+  `exec` a resolved child and they never refuse on an unresolvable version.
+- What they report when the store has no usable entry is stated, not left open: the launcher's
+  own engine version (from its own `package.json`), the plugin version resolved by the normal
+  discovery path or `null` if none is found, and the declared `pdlcPluginCompat` range — the
+  same AC-1.4 triple, with `mode` reported as `unresolved` and the ladder's refusal text
+  carried as a **notice** rather than as an exit. `doctor` additionally prints the store root,
+  the enumerated versions (possibly none) and the install command, which is what makes it the
+  diagnostic AC-1.1 says it is.
+- Exit code stays 0 for both in this state. A diagnostic that exits non-zero because the thing
+  it is diagnosing is broken is not a diagnostic.
 
 ### 6.3 The resolution ladder (BR-4.1)
 
-`resolveVersion()` is **pure**: it takes a listing, a config object, argv-derived flags and
-an env snapshot, and returns a decision. No fs, no exec, no clock. Total and ordered:
+`resolveVersion()` is **pure**: it takes a listing, a **config read result**, argv-derived
+flags, an env snapshot and a **`location`** record, and returns a decision. No fs, no exec,
+no clock. Total and ordered.
+
+The `location` input exists because branch 1's conjuncts are facts about *where the running
+engine and the plugin are*, and the earlier draft named no input that carried them — leaving
+AC-5.4 and O-5's rider 1 untestable without touching disk (TE Q-02). It is a plain record
+computed by the caller and injected:
+
+```js
+/**
+ * @typedef {object} EngineLocation
+ * @property {string}  enginePath        Absolute dir of the running engine (its own `lib/`'s parent).
+ * @property {boolean} isCheckout        True when `enginePath` sits inside a git checkout of this repo.
+ * @property {string}  checkoutRoot      Absolute repo root when `isCheckout`, else "".
+ * @property {string|null} pluginRoot    The resolved plugin root, or null when discovery found none.
+ */
+```
+
+Branch 1's two conjuncts are then decidable in-memory: "the running engine is a checkout" is
+`location.isCheckout`, and "the resolved plugin root is that checkout's `pdlc/`" is
+`location.pluginRoot === join(location.checkoutRoot, "pdlc")`. Branch 2 can therefore name
+*which* conjunct failed, as it promises to, from data alone.
 
 | Order | Branch | Condition | Result |
 |---|---|---|---|
-| 1 | `dev` | `--dev` present **and** the running engine is a checkout **and** the resolved plugin root is that checkout's `pdlc/` (O-5 rider 1) | run the checkout in place; `mode: "dev"` |
+| 0 | `config-unreadable` | the config **file** exists but could not be read or parsed (reader returned `unreadable`) | **refuse**, naming the file path and the parse error. Evaluated *before* every pin branch, because a corrupt file is not a statement about pinning |
+| 1 | `dev` | `--dev` present **and** `location.isCheckout` **and** `location.pluginRoot === {checkoutRoot}/pdlc` (O-5 rider 1) | run the checkout in place; `mode: "dev"` |
 | 2 | `dev-incomplete` | `--dev` present but either conjunct fails | **refuse**, naming which conjunct failed. Never a silent downgrade to pin or latest |
 | 3 | `pin` | no `--dev`; consumer config has `engine.version` | that version from the store; `mode: "pin"` |
 | 4 | `pin-missing` | pinned version absent from the store | **refuse** (AC-5.5), naming the pinned version *and* the enumerated installed versions. Never falls back |
@@ -365,6 +419,27 @@ already reserved by DEC-HE-02, at the path the engine already knows
   object, or `engine.version` present but unparseable, refuses per ladder branch 5. This
   mirrors V-09's shipped absent-versus-unreadable discipline in the handshake rather than
   inventing a second convention for the same distinction.
+- **The reader must become three-way, because the shipped one degrades totally.**
+  `readEngineConfig` today returns `{config: {}, notices: [...]}` on unreadable JSON
+  (`pdlc/engine/lib/run.mjs:184-192`) and on a non-object section (`:197-203`) — it never
+  refuses. Verified at HEAD. Composed with a ladder that reads "no `engine.version`" as "no
+  pin", a **corrupt config file in a pinned repo silently runs latest**: exactly the AC-5.5
+  failure mode, one layer up, with no ladder row covering it. Worse, because `resolveVersion()`
+  is pure over its inputs, that case sits *outside* the function whose totality §6.3 tests —
+  the ladder tests could be complete and this case still unreachable. So the extended reader
+  returns a discriminated result, and the ladder is total over it:
+
+  | Result | Meaning | Ladder |
+  |---|---|---|
+  | `{state: "absent"}` | no file, or file present with no `engine` section | "no pin" → branches 3–7 |
+  | `{state: "no-pin", config}` | `engine` section present, no `version` key | "no pin" → branches 3–7 |
+  | `{state: "unreadable", path, error}` | file exists but is not parseable JSON, or `engine` is not an object | branch 0 → **refuse** |
+
+  The existing `notices` channel is **kept**, not replaced: the `dispatch` tunables keep their
+  current degrade-with-notice behaviour, which is correct for a tunable and wrong for a pin.
+  Only the `engine` section gains the refusing read. This is an extension of the shipped
+  function's contract, and §10.1's S-2 states the extended signature rather than the
+  invented one.
 - **Install and upgrade never touch it at all** — they run against the store, not against
   any consumer project (§6.1, §9.3).
 
