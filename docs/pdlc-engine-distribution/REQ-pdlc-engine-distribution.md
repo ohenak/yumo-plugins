@@ -432,8 +432,7 @@ the committed artifacts.
   named output artifacts; (2) that output carries no engine provenance block; (3) the write root
   it touched is the plugin's `.claude/workflows/`. A run that crashed before emitting anything
   fails (1); an engine run fails (2) and (3). The two installs' write roots are disjoint
-  enumerated paths — the plugin's `.claude/workflows/` versus the engine's own install location —
-  and (3) is the positive that conjunct 2 alone cannot carry.
+  enumerated paths: the plugin's `.claude/workflows/` versus the engine's own install location.
 
 ## 6. Risks
 
