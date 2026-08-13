@@ -483,8 +483,29 @@ already reserved by DEC-HE-02, at the path the engine already knows
   | `{state: "unreadable", path, error}` | file exists but is not parseable JSON, or `engine` is not an object | branch 0 → **refuse** |
 
   The existing `notices` channel is **kept**, not replaced: the `dispatch` tunables keep their
-  current degrade-with-notice behaviour, which is correct for a tunable and wrong for a pin.
-  Only the `engine` section gains the refusing read. This is an extension of the shipped
+  current degrade-with-notice behaviour **whenever the file parses**, which is correct for a
+  tunable and wrong for a pin. Only the `engine` section gains the refusing read.
+
+- **The behaviour change branch 0 introduces is stated, not implied: a corrupt config file is
+  fatal even in a repo that never pinned anything.** Branch 0 fires on a **file-level** parse
+  failure, which is not a statement about either section — and cannot be, because an
+  unparseable file cannot say whether a pin was ever declared. A repo with a corrupt
+  `.claude/pdlc.config.json` and no `engine` section runs today with a notice
+  (`pdlc/engine/lib/run.mjs:184-192`, verified at HEAD) and **refuses** after this change.
+  That is deliberate: the alternative — "unparseable, therefore assume no pin" — is the
+  AC-5.5 failure mode the branch exists to remove, and it is indistinguishable from the
+  benign case by construction. The trade is one loud refusal, naming the file and the parse
+  error and remediable by fixing or deleting the file, in exchange for never silently running
+  the wrong engine. Two consequences for the tests:
+
+  | Case | Ladder | Note |
+  |---|---|---|
+  | file unparseable, `engine.version` **was** declared | 0 → refuse | the case the branch was written for |
+  | file unparseable, **no pin ever declared** | 0 → refuse | the newly-refusing case; the totality tests carry it explicitly so the carve-out sentence above is not read as "this one degrades" |
+  | file parses, `dispatch` tunable malformed | not branch 0 | degrades with a notice, exactly as at HEAD |
+
+  Because the trigger is file-level, `readEngineConfig`'s `unreadable` state is what the
+  ladder reads (§6.4's table), and the `notices` path never sees the unparseable file at all. This is an extension of the shipped
   function's contract, and §10.1's S-2 states the extended signature rather than the
   invented one.
 - **Install and upgrade never touch it at all** — they run against the store, not against
@@ -1038,7 +1059,7 @@ operator is a defect (AC-2.4), and so is a partial run.
 |---|---|---|---|
 | Node below floor | E-06 | §9.3's dependency-free guard entry; message names floor and found version | non-zero |
 | Store empty / missing | new (ladder 7) | Names the store root and the documented install command | non-zero |
-| Config file present but unparseable | new (ladder 0) | Names the file path and the parse error. Never read as "no pin" (§6.4) | non-zero |
+| Config file present but unparseable | new (ladder 0) | Names the file path and the parse error. Never read as "no pin" — **and this holds whether or not a pin was ever declared**, because an unparseable file cannot say (§6.4). A run that degraded with a notice at HEAD refuses here; that is the branch's cost, stated | non-zero |
 | `--version` / `doctor` with no resolvable version | AC-1.4, AC-1.1 | **Not an error.** The launcher reports its own triple with `mode: unresolved`, carries the refusing branch's text as a notice, and `doctor` adds the store root, the enumerated versions and the install command (§6.2) | 0 |
 | `--version` / `doctor` **with** a resolvable version | AC-1.4 | **Not an error, and not the launcher's own triple.** Both resolve for reporting and report the **resolved** engine's triple with its `mode`/`pin`, which is what makes AC-1.4's "same triple the run report carries" hold under a pin (§6.2). Neither ever `exec`s a child | 0 |
 | Pinned version not installed | E-08 | Names the pin **and** the enumerated installed versions. Never falls back | non-zero |
