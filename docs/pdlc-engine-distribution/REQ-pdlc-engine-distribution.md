@@ -10,39 +10,38 @@ depends-on: [pdlc-headless-engine]
 |---|---|
 | Upstream | `pdlc-headless-engine`; proposes superseding the `pdlc-install-mechanism` deferrals D-DIST-01/02/03/05; proposes absorbing/renarrowing `pdlc-release-ci` (D-DIST-06 release remainder) |
 | Downstream | `pdlc-plugin-retirement` |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v1.md`, `…-v2.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase R) | Claude | 0.7 | 2026-08-13 |
+| pdlc | Draft — in review (Phase R) | Claude | 0.8 | 2026-08-13 |
 
-*0.7 (2026-08-13, review round 1): §1.1 re-measured at `89babe8e` and its code-level facts moved
-to `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-10…M-ENG-13, cited by id. BL-03 resolved
-by new **O-7** (two versions of record; the tag is an engine tag), so T-1a/T-1b, AC-1.4 and AC-3.6 name
-which value they read. O-8 extended to all three publish blockers (licence, `private`, unscoped
-name). T-7/AC-3.4 restated as set-equality over M-ENG-10's literal check names. Packaging↔anti-fork
-collision recorded as **R-5** and AC-1.3 restated as set-equality over the packed file list. New
-**O-9** owns the provenance carrier AC-4.2 needs. Absence-only oracles paired with positives
-(AC-2.3, AC-2.5, AC-3.3, AC-4.4, AC-6.1, AC-6.2); new **AC-5.6** for the `PDLC_PLUGIN_ROOT`
-tension. The false "prompt corpus is embedded in `orchestrate-dev.js`" clause deleted from NG-1
-and O-1 (raised as an erratum against DECISIONS-plugin-distribution.md).*
+*0.8 (2026-08-13, review round 2): M-ENG-10 now records **two** alphabets — the authored `name:`
+strings and the rendered names GitHub reports — because rows 1–2 differ and Phase PUB polls the
+rendered set; AC-3.4 and T-7 require equality in both. AC-1.3's oracle is the packed tarball, not
+a `files` declaration M-ENG-11 records as absent. AC-4.5's exception set is the run report's own
+authored-file enumeration (routed to O-9). AC-6.2's bundle channel became a three-conjunct
+observation. O-8 relabelled: `private` is tool-enforced, the unscoped name and `UNLICENSED` are
+decision-enforced, no failure ordering claimed. O-5's selector repointed from M-ENG-06 to
+`handshake.mjs:130-133`. AC-2.3 split per leg; AC-2.1 names one transcription source; AC-1.1
+exempts `pdlc doctor`.*
 
-*0.6 (2026-08-13): O-1 and O-3 decided (operator delegated adjudication). O-1 — public npm,
-scoped package, recorded as DEC-DIST-05 in `docs/_decisions/DECISIONS-plugin-distribution.md`;
-the licence field must stop saying `UNLICENSED` before first publish (new O-8). O-3 —
-`pdlc-install-mechanism` closed as superseded, `pdlc-release-ci` kept and renarrowed to release
-automation for that package; both dispositions written into `docs/_queue/QUEUE.md`.*
+*0.7 (2026-08-13, review round 1): §1.1 re-measured at `89babe8e`, code-level facts moved to
+`docs/_constraints/pdlc-engine-baseline.md` as M-ENG-10…M-ENG-13 and cited by id. BL-03 resolved
+by **O-7** (two versions of record; the tag is an engine tag). O-8 extended to three publish
+blockers; T-7/AC-3.4 and AC-1.3 restated as set-equality; packaging↔anti-fork collision recorded
+as **R-5**; new **O-9** (provenance carrier), **O-10** (packaging choice), **AC-5.6**;
+absence-only oracles paired with positives. The false "prompt corpus is embedded in
+`orchestrate-dev.js`" clause deleted from NG-1 and O-1 (erratum raised against
+DECISIONS-plugin-distribution.md).*
 
-*0.5 (2026-08-13): O-2, O-4, O-5, O-6 answered against shipped code and adjudicated fact; NG-1
-records that the repo is public; T-3 names the shipped `pdlcPluginCompat` field.*
-
-*0.4 (2026-08-10): queue-row references repointed to feature names; `ready` flipped by operator.*
-
-> **v0.3 change (2026-08-08, operator decision).** The engine package no longer snapshots
-> `pdlc/skills/**`; it ships CLI + modules + adapter only and reads skills from the installed
-> plugin at dispatch time. A declared engine↔plugin compatible-version range replaces
-> snapshot-integrity verification.
+*0.6 (2026-08-13): O-1 decided — public npm, scoped package, **DEC-DIST-05**; O-3 decided — both
+queue-row dispositions written into `docs/_queue/QUEUE.md`. 0.5: O-2, O-4, O-5, O-6 answered
+against shipped code; NG-1 records the public repo; T-3 names `pdlcPluginCompat`. 0.4: queue rows
+referenced by feature name. 0.3 (operator decision): the engine package no longer snapshots
+`pdlc/skills/**` — CLI + modules + adapter only, skills read from the installed plugin at dispatch
+time, a declared compatible-version range replacing snapshot-integrity verification.*
 
 > **Scope in one line.** Package the headless engine — CLI entry, the unmodified workflow
 > modules, and the engine adapter, **no skills snapshot** — as **one versioned artifact**
@@ -72,7 +71,7 @@ one-file correction rather than a stale snapshot inside this REQ.
 | # | Observation | Where |
 |---|---|---|
 | O-A | There is **no release automation of any kind**. `.github/workflows/` contains exactly one file, the PR-test gate. No tag trigger, no publish step, no marketplace step. | `.github/workflows/pr-tests.yml` |
-| O-B | The PR gate is **five** required checks — unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on **ubuntu-latest × Node 20 only**. The literal check names Phase PUB and T-7 match on are enumerated in **M-ENG-10**, which is the authoritative list; the words here are a gloss, not the names. | M-ENG-10 |
+| O-B | The PR gate is **five** required checks — unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on **ubuntu-latest × Node 20 only**. The check names Phase PUB and T-7 match on are enumerated in **M-ENG-10**, in both alphabets it distinguishes (authored `name:` vs rendered); that fact is the authoritative list, the words here are a gloss. | M-ENG-10 |
 | O-C | **Two** version numbers exist: the plugin manifest's, which the build stamps into the distribution manifest, and the engine package's own, independent of it. Neither reads the other. Which one is "the version of record" for which purpose is settled at O-7. | M-ENG-11; `pdlc/workflows/build-runtime.mjs` |
 | O-D | The distribution manifest already establishes the packaging discipline this REQ inherits: a schema version, the version the bytes were built at, and one row per artifact carrying a path pair and a content hash, plus a retired-predecessor list. | `pdlc/workflows/dist/distribution-manifest.json` |
 | O-E | The prompt corpus is **15 `SKILL.md` files plus two `se-implement` language supplements**. (The design brief and the upstream REQ both say "14"; that count is stale.) | `pdlc/skills/**` |
@@ -93,9 +92,7 @@ files, never from the run's own output. O-F is why.
 | `pdlc-install-mechanism`, cont. | D-DIST-07 (per-worktree consumer state) | **Dissolved, not transferred** — it is a property of the `.claude/workflows/` copy; re-opens against `pdlc-engineering-loop` if `pdlc-plugin-retirement` does not land (O-3). |
 | `pdlc-release-ci` | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Kept and renarrowed** to the tag → build → publish pipeline of §5, REQ-EDIST-03, and made dependent on this feature. |
 
-Both dispositions have since been recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13):
-`pdlc-install-mechanism` is closed as superseded and `pdlc-release-ci` is kept, renarrowed to
-release automation for this package and made dependent on this feature. Rows are named here by
+Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows are named here by
 **feature name, not queue Order** — Order numbers renumber, the feature name is the identity.
 
 ### 1.3 User stories
@@ -157,11 +154,9 @@ release automation for this package and made dependent on this feature. Rows are
   chooses otherwise in O-1. **Fact recorded 2026-08-13:** the repo is public today
   (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), so the whole prompt
   corpus — `pdlc/skills/**` — is already world-readable in the tree; this disqualifier
-  therefore excludes no candidate channel as of today. (An earlier draft added that the corpus
-  is also "embedded in `pdlc/workflows/orchestrate-dev.js`". That is false — the module
-  references skills by path and embeds no prompt text — and is deleted here; the public-repo
-  fact alone carries the conclusion.) Whether the repo stays public is an operator intent, not a fact this
-  REQ can settle; NG-1 itself is unchanged and not weakened by this note (see O-1).
+  therefore excludes no candidate channel as of today. Whether the repo stays public is an
+  operator intent, not a fact this REQ can settle; NG-1 itself is unchanged and not weakened by
+  this note (see O-1).
 - **NG-2 — Retiring the plugin, the bundles, or the sync/drift machinery.** That is
   `pdlc-plugin-retirement` (its own queue row), and only after the engine is proven in a real
   consumer repo. Bound deferral, not prose intent.
@@ -238,8 +233,8 @@ default and an owner; none is left to be invented downstream.
 
 ## 5. Acceptance Criteria
 
-Six requirements. Each traces to at least one user story; each acceptance criterion is
-stated so a test engineer can derive a failing test from it without asking a question.
+Six requirements. Each traces to at least one user story; each criterion is stated so a test
+engineer can derive a failing test from it without asking a question.
 
 ### REQ-EDIST-01 — One engine artifact, one version, a declared plugin-compatibility range *(P0, Phase 1; US-01, US-02; G-1, C-1)*
 
@@ -447,11 +442,9 @@ the committed artifacts.
   the operator does not control. A git-tag install channel fails differently: it needs a
   reachable git remote and a tool that can resolve a tag to a tarball, and it has no
   built-in yank/deprecate primitive, so a bad release is harder to un-publish (tension with
-  C-7). Neither mode is eliminated by this REQ; O-1 picks which one the operator accepts. A
-  failed install/upgrade defeats G-2 outright, and the two channels fail in ways an operator
-  diagnoses differently under time pressure — mitigation direction: O-1 records the choice
-  against NG-1's privacy constraint, and REQ-EDIST-02's failure-message ACs (AC-2.1, AC-2.4)
-  must be re-validated against whichever channel is actually picked.
+  C-7). Neither mode is eliminated by this REQ; O-1 picks which one the operator accepts, and a
+  failed install/upgrade defeats G-2 outright. Mitigation direction: REQ-EDIST-02's
+  failure-message ACs (AC-2.1, AC-2.4) are re-validated against the channel actually picked.
 - **R-2 — Two-artifact release coordination is a new, recurring operator burden.** Every
   release now means deciding an engine version *and* a compatible-plugin range *and*
   confirming the repo's `plugin.json` sits inside it (C-1, AC-3.7) — three judgment calls
@@ -470,20 +463,18 @@ the committed artifacts.
   bump and no new engine provenance event marking it. Two runs reporting the identical
   engine+plugin version pair (AC-4.3) can still have executed different skill prompt text if
   the plugin version itself was not bumped for the edit. This is the skew axis the operator's
-  design change explicitly *accepts and contains*, not eliminates — stated honestly rather
-  than implied away by the handshake's existence. Mitigation direction: bumping the plugin's
-  own version (T-1b) for any behaviour-affecting skill edit is the discipline this REQ assumes
-  but does not enforce; recorded here as a known residual risk, not closed by any AC in §5.
+  design change explicitly *accepts and contains*, not eliminates. Mitigation direction: bumping
+  the plugin's own version (T-1b) for any behaviour-affecting skill edit is the discipline this
+  REQ assumes but does not enforce; a known residual risk, closed by no AC in §5.
 - **R-4 — Two live distribution channels coexist through the whole transition window.**
   Until `pdlc-plugin-retirement` (NG-2) lands, the bundle/sync path
   (`pdlc/workflows/dist/` → `.claude/workflows/`) and the engine path both run in parallel,
   possibly on the same machine (C-9, AC-6.2). Two channels double the surface an operator
   must reason about when a run behaves unexpectedly — "which channel produced this?" is a
   question that did not exist before this feature, and a regression on one channel can be
-  misdiagnosed against the other if a run's output does not make its channel unambiguous.
-  Mitigation direction: C-9 and AC-6.2 already require every run's output to name its
-  channel and version; the risk itself is retired only when `pdlc-plugin-retirement`
-  removes the second channel, not by anything in this REQ.
+  misdiagnosed against the other. Mitigation direction: C-9 and AC-6.2 require every run's output
+  to name its channel and version; the risk retires only when `pdlc-plugin-retirement` removes the
+  second channel, not by anything in this REQ.
 - **R-5 — The package cannot contain the workflow modules as the repo is arranged, and the
   obvious fix breaks a shipped green test.** Per M-ENG-12 the modules sit above the engine
   package root and are reached by relative escape, so a package built from `pdlc/engine/`
@@ -509,14 +500,12 @@ duplication (which disagreed with itself at O-1) is collapsed here.
 
 - **O-1 — Distribution channel choice.** Blocks FSPEC authoring (BL-02). *Owner:* operator.
   *Resolution form:* `docs/_decisions/DECISIONS-plugin-distribution.md`.
-  **Decided 2026-08-13 — public npm, scoped package,** recorded as **DEC-DIST-05**. The repo is
-  public (NG-1), so the corpus is already world-readable and every candidate channel is
-  privacy-equivalent to the status quo; among equivalents npm wins on one-command
-  install/upgrade, native immutability (republishing an existing version is refused — what C-7
-  asks), a real yank primitive in `npm deprecate`, and a publish step that is one CI command.
-  Git-tag install was rejected on C-7 alone (a bare tag is force-pushable). A private registry
-  was rejected as cost without benefit against an already-public corpus. The scope name is a
-  publish-time detail for FSPEC. This unblocks BL-02. Publish preconditions it creates are O-8.
+  **Decided 2026-08-13 — public npm, scoped package,** recorded as **DEC-DIST-05**, which carries
+  the full comparison. In short: the repo is public (NG-1), so every candidate is
+  privacy-equivalent, and among equivalents npm alone gives native immutability (C-7), a yank
+  primitive, and a one-command install/upgrade. Git-tag install was rejected on C-7 (a bare tag is
+  force-pushable); a private registry as cost without benefit. This unblocks BL-02; the publish
+  preconditions it creates are O-8.
 - **O-2 — Pin mechanism.** How a per-project pin (T-5) is expressed and read. Shapes
   AC-5.1–AC-5.5. *Owner:* operator, informed by TSPEC.
   **Answered 2026-08-13.** The pin lives under the `engine.*` namespace in the consumer-owned
@@ -524,32 +513,29 @@ duplication (which disagreed with itself at O-1) is collapsed here.
   **DEC-HE-02** (`docs/completed/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md`),
   which already reserves `engine.*` as the engine's only config surface. Reading an
   operator-authored file is not writing (NG-6 forbids only the latter). An env var was rejected:
-  per-shell, not per-project, failing T-5 and AC-5.1's "never silent" bar. Coupling to O-1:
-  AC-5.1 requires the pinned version to *execute* while another is latest, so side-by-side
-  version resolution — not just a pointer — is the TSPEC's to specify.
+  per-shell, not per-project. AC-5.1 requires the pinned version to *execute* while another is
+  latest, so side-by-side version resolution — not just a pointer — is the TSPEC's to specify.
 - **O-3 — Disposition of the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows.**
   Required before this REQ is accepted (BL-04). *Owner:* operator. *Resolution form:*
   `docs/_queue/QUEUE.md`.
-  **Decided 2026-08-13 and written into `QUEUE.md`.** `pdlc-install-mechanism` is **closed as
-  superseded**: D-DIST-01/02/03/05 are improvements to the per-project copy this family deletes,
-  absorbed by the renarrowed REQ-EDIST-03 (§1.2); D-DIST-07 (per-worktree consumer state)
-  dissolves rather than transfers, being a property of the `.claude/workflows/` copy that
-  `pdlc-plugin-retirement` removes — if retirement does not land it re-opens against
-  `pdlc-engineering-loop`, and that conditional is recorded in the queue note so the deferral
-  cannot vanish silently. `pdlc-release-ci` is **kept and renarrowed** to release automation for
-  the package O-1 chose (its PR-test half landed out of band in `3ef6ac7`), and gains a
-  dependency on this feature. Rows are named by feature, never by Order number.
+  **Decided 2026-08-13 and written into `QUEUE.md`**, per the dispositions tabled at §1.2:
+  `pdlc-install-mechanism` closed as superseded, `pdlc-release-ci` kept, renarrowed to release
+  automation for the package O-1 chose and made dependent on this feature. D-DIST-07 dissolves
+  rather than transfers — it is a property of the `.claude/workflows/` copy that
+  `pdlc-plugin-retirement` removes — and its re-open condition against `pdlc-engineering-loop` is
+  recorded in the queue note so the deferral cannot vanish silently.
 - **O-4 — Fate of `pdlc/workflows/dist/pdlc-cli.mjs`.** *Owner:* operator.
-  **Closed 2026-08-13.** It stays a project-local artifact of the plugin build, per NG-7's
-  default; confirmed as the headless-engine REQ's NG-2 and named in
-  `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md`'s NG-2 — three REQs agree. It
-  remains a manifest row (`pdlc-cli`) emitted by `build-runtime.mjs` and synced by
-  `sync-workflows.sh`, project-local and unaffected by this feature.
+  **Closed 2026-08-13.** It stays a project-local artifact of the plugin build (NG-7's default) —
+  a manifest row (`pdlc-cli`) emitted by `build-runtime.mjs` and synced by `sync-workflows.sh`,
+  unaffected by this feature. The headless-engine and `pdlc-plugin-retirement` REQs say the same
+  in their NG-2s; three REQs agree.
 - **O-5 — Dev-mode design.** The selector's shape (T-6), how a dev-mode run is marked
   (AC-5.3), and what "the checkout's prompts" resolves to. *Owner:* this REQ's TSPEC.
   **Answered 2026-08-13, one tension routed.** The engine already ships the `PDLC_PLUGIN_ROOT`
-  env var / `--plugin-root` flag (M-ENG-06; named at `pdlc/engine/lib/handshake.mjs:134` as the
-  compat-refusal remedy); TSPEC should **adopt it rather than invent a second selector**, with
+  env var / `--plugin-root` flag — cited to the code, `pdlc/engine/lib/handshake.mjs:130-133`,
+  where the compat-refusal remedy string names the variable (**not** to M-ENG-06, which holds
+  neither string and is the upstream feature's per-AC table, whose `AC-*` ids collide with this
+  REQ's own); TSPEC should **adopt it rather than invent a second selector**, with
   three riders: (1) dev-mode is the conjunction of running the checkout's engine *and* pointing
   the selector at the checkout's `pdlc/`; (2) AC-5.3's artifact-marking is genuinely new work —
   nothing marks such a run today (M-ENG-13); (3) the tension with T-6 (the env var is honoured
@@ -561,10 +547,9 @@ duplication (which disagreed with itself at O-1) is collapsed here.
   exact — checked at runtime by the handshake and at CI time by AC-3.7.
   **Open, and deliberately single-writer.** The publish workflow already computes both numbers
   for the AC-3.7 gate, so it writes the triple `{engine version, compat range, plugin version at
-  tag}` **once**, into a manifest file inside the published package (mirroring O-D's discipline)
-  — that record satisfies AC-1.5 without network archaeology. Any release-notes rendering must
-  be *derived from* that record by the same job, never independently authored: two writers would
-  be two drift surfaces. Whether the rendering is produced at all is the TSPEC's call.
+  tag}` **once**, inside the published package (mirroring O-D) — satisfying AC-1.5 without network
+  archaeology. Any release-notes rendering is *derived from* that record by the same job, never
+  independently authored: two writers are two drift surfaces.
 - **O-7 — Version of record, resolving BL-03** (opened by review round 1). Two version numbers
   exist (O-C, M-ENG-11) and they are independent. **Decided:** they are **two records, not one
   contested record** — `pdlc/engine/package.json` is the engine version of record (T-1a) and
@@ -576,12 +561,15 @@ duplication (which disagreed with itself at O-1) is collapsed here.
   `docs/_decisions/DECISIONS-plugin-distribution.md` before FSPEC authoring — **the transcription
   is what discharges BL-03**, not this paragraph.
 - **O-8 — Publish preconditions of the engine package** (opened by O-1, extended by review
-  round 1). Three declared facts each independently prevent a first publish, and `npm publish`
-  fails on them in this order (M-ENG-11): (1) `"private": true` — refused outright, before
-  licence or credentials; (2) the package name `pdlc-engine` is **unscoped**, while O-1/DEC-DIST-05
-  decided a scoped package; (3) `"license": "UNLICENSED"`, self-contradictory for public npm, with
-  the `@anthropic-ai/claude-agent-sdk` dependency's own terms to be checked against whatever
-  replaces it. All three must be settled by the operator. *Owner:* operator. *Blocking for:*
+  round 1). Three declared facts (M-ENG-11) block a first publish, and they are **not blocked by
+  the same thing** — no failure ordering is claimed, because none is measured: (1) `"private":
+  true` is **tool-enforced** — `npm publish` refuses outright, and this is the only one npm itself
+  catches; (2) the package name `pdlc-engine` is **unscoped** while O-1/DEC-DIST-05 decided a
+  scoped package — **decision-enforced**: npm would publish it happily under the wrong name, so
+  nothing catches this but the operator; (3) `"license": "UNLICENSED"` is likewise
+  **decision-enforced** — self-contradictory for public npm but not refused by it, with the
+  `@anthropic-ai/claude-agent-sdk` dependency's own terms to be checked against whatever replaces
+  it. An operator planning the first publish must not expect npm to catch (2) or (3). *Owner:* operator. *Blocking for:*
   first publish (AC-3.1), not for FSPEC authoring.
 - **O-9 — Provenance carrier for the committed halt artifacts** (opened by review round 1).
   AC-4.2 requires the version pair in artifacts written by the layer that structurally cannot
