@@ -13,6 +13,26 @@
 
 ## 1. Scope and altitude
 
+This TSPEC specifies **how** the FSPEC's seven flows are built: package layout, the
+version store and launcher, the manifest fields, the provenance carrier across the
+engine↔module seam, the publish workflow's jobs, and the test doubles each oracle needs.
+
+It **takes** the four design decisions the FSPEC parked — O-10 (package composition),
+O-9 (provenance carriers), the pin mechanism's execution half (O-2), and Q-4's branch of
+AC-5.6 — and records the load-bearing ones in `DECISIONS-pdlc-engine-distribution.md`.
+
+**Not owned here.** Anything the REQ already fixed (T-1a…T-7), the FSPEC's three expected
+sets (§5.1 required checks, §5.2 packed contents, §5.3 dev-mode kinds — this document
+implements them, it does not restate them as a second authority), test *names* and
+per-property assertions (PROPERTIES), and task order (PLAN).
+
+**Language and idiom.** The engine is plain Node ESM with JSDoc typedefs, not TypeScript:
+`pdlc/engine/package.json:5` declares `"type": "module"` and every shipped module is
+`.mjs` with JSDoc `@param`/`@returns` blocks (`pdlc/engine/lib/report.mjs:26-27`,
+`pdlc/engine/lib/startup.mjs:302-318`). This TSPEC therefore expresses protocols as JSDoc
+typedefs and frozen catalogues, which is the shipped precedent, rather than introducing a
+TypeScript toolchain the repo does not have.
+
 ## 2. Verified baseline at HEAD
 
 ## 3. Architecture
