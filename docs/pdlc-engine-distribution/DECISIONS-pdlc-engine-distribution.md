@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft (Phase T) | Claude | 0.1 | 2026-08-13 |
+| pdlc | Draft (Phase T) | Claude | 0.3 | 2026-08-13 |
 
 **Changelog**
 
@@ -17,6 +17,7 @@
 |---|---|
 | 0.1 | Initial draft — DEC-EDIST-01…10 recorded from TSPEC v0.9 §4, §6.2, §6.4, §8.2, §9.3 |
 | 0.2 | §1 retitled to expose the context concept; §13 decision register added. No entry's substance changed — both edits are navigational. |
+| 0.3 | Round-1 cross-review revisions (PM F-01…F-06, TE F-01…F-08). DEC-EDIST-01's relocation cost re-enumerated against HEAD: the merge-guard constant and its pinned test are the fourth and fifth consumers, and the two `build-runtime.mjs` citations repointed from comment lines to path-addressing code (§2); AF-2's `prepack` precondition stated and Reversibility corrected — AF-2 is *deleted* with the vendor step, not kept (§2); the `vendor/`-is-git-ignored × `files`-allow-list interaction named as a second, independent reason PF-4 packs for real, with the inclusion mechanism decided rather than left to npm's default resolution (§2, §6). DEC-EDIST-04's "the catalogue equality covers it for free" claim replaced by the two assertions the branch actually needs (§5) — raised as an erratum against TSPEC §6.5. DEC-EDIST-06 decides the signalled-child case (`128 + signum`) instead of naming signal handling and paying for exit code and stdio only (§7) — raised as an erratum against TSPEC §6.2. DEC-EDIST-07 gains a third asserted state, the corrupt-config-under-`doctor` composition with DEC-EDIST-08, cross-referenced from §9's carve-out table (§8, §9). Citation corrections: AC-5.2 named alongside AC-5.1 and AC-5.5 (§4), `N-3` → `N-1` (§3), six static imports → nine (§10), O-8's blocker 1 recorded as closed (§12). §13's rows for DEC-EDIST-01 and DEC-EDIST-04 updated to match. |
 
 ## 1. Scope and Context
 
