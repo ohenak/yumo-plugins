@@ -170,6 +170,95 @@ taken is announced in the run's own output. Silence is never a permitted outcome
    fetches or applies a version (NG-3). The seam exists so the pin assertion is testable without a
    network and so NG-3's boundary is testable by stubbing.
 
+### F-5 — Tag-driven publish *(AC-3.1…AC-3.7, AC-1.5)*
+
+The publish pipeline is **additive**: its own workflow file with its own trigger. It may reuse the
+PR gate's jobs but may not weaken, rename, make conditional, or re-render any member of §5.1
+(C-5), because Phase PUB polls those names literally.
+
+1. **Trigger** (T-4): a pushed git tag naming an **engine** version. No other trigger publishes.
+2. **Gate check.** Every member of §5.1's expected set must be green on the tagged commit. If any
+   member fails, or is absent, or did not run: **nothing is published and the publish workflow run
+   is failed** (AC-3.2). A skipped run and a green-but-inert run are both defects, because neither
+   is distinguishable from success by a reader of the runs list.
+3. **Tag/engine-version agreement** (AC-3.6): the tag's version is compared against the **engine**
+   version of record (T-1a) at that commit, and never against the plugin's number. On disagreement
+   the workflow fails naming both values rather than publishing under either.
+4. **Range/plugin agreement** (AC-3.7, C-1): the engine's declared compatible-plugin range (T-3)
+   at that commit must include the plugin version of record (T-1b) at that commit. If not, the
+   workflow fails naming the declared range and the plugin version found, and publishes nothing —
+   a release is never cut already excluding the plugin it is paired with.
+5. **Build**, producing an artifact whose contents equal §5.2 member-for-member.
+6. **Pairing record** (AC-1.5, O-6): the job that already computed both numbers for step 4 writes
+   the triple `{engine version, compat range, plugin version at the tag}` **once**, inside the
+   published artifact. Any release-notes rendering is *derived from* that record by the same job,
+   never independently authored: two writers are two drift surfaces.
+7. **Publish** to the channel decided at DEC-DIST-05 (public npm, scoped).
+8. **Immutability and re-run** (C-7, AC-3.3): re-running the workflow for an already-published
+   version takes one of two permitted branches — an explicit no-op statement, or a loud failure
+   naming the collision. On **either** branch two positives are asserted: the published bytes for
+   that version are byte-identical before and after the re-run, and the run's own output names the
+   version. A branch that satisfies neither is a defect.
+9. **Secrets** (C-8, AC-3.5): the channel credential exists only as a repository secret consumed
+   by this workflow. It appears in neither the published contents nor any log the publish produced.
+   No distribution-channel credential is ever required to *run* the engine.
+
+### F-6 — Provenance emission into consumer artifacts *(AC-4.1…AC-4.5)*
+
+M-ENG-13 locates the gap precisely: the engine/plugin pair already exists in the CLI's returned
+report and is absent from every artifact a run **commits**. This flow is about the committed
+artifacts, and it is **[new]** work whose carrier is owned at **O-9**.
+
+1. One resolution per run (F-1 step 7) produces the pair; every emission below reads that one
+   resolution.
+2. **Run report** (AC-4.1): states both versions, on the success path and the halt path alike.
+3. **Halt artifacts** (AC-4.2): the pair is present in the committed bytes of at least the
+   POSTMORTEM the halt writes, so a reader with only the repo's history can name both versions.
+   The layer that writes those artifacts structurally cannot see a version today (M-ENG-13), so
+   this requires a deliberate layering decision — **O-9**, not an assumption.
+4. **Distinguishability** (AC-4.3): two runs of the same feature on different engine versions are
+   distinguishable from the artifacts alone. This is the regime-ledger scenario and passing it is
+   the point of the requirement.
+5. **Agreement, and the anti-echo half** (AC-4.4): reported values agree with the installed
+   engine's and installed plugin's own reported versions for every run. The anti-echo half is a
+   **change check**: with a different plugin version made current, the reported pair changes
+   correspondingly on the next run, and reverting restores the original pair — so a hardcoded
+   constant that happens to match once fails the second observation.
+6. **No back-fill, no collateral writes** (AC-4.5, NG-5): prior artifacts are neither back-filled
+   with provenance nor invalidated; provenance appears from that run forward. Every file under
+   `docs/{feature}/` that existed before the run hashes identically after it, **except** files the
+   run's own final report enumerates as authored by it — the report's enumeration *is* the
+   comparison set, so exception membership is decidable from the run's output rather than from
+   judgement. Files belonging to any other feature hash identically with no exception at all. The
+   report does not enumerate authored files today; supplying that enumeration is **O-9**'s, with
+   the same carrier question as step 3.
+
+### F-7 — Coexistence and non-regression of the bundle path *(AC-6.1, AC-6.2)*
+
+1. **The bundle path is untouched** (C-4, G-6). Nothing this feature ships modifies, shadows, or
+   depends on the plugin, the artifacts under `pdlc/workflows/dist/`, or the sync/drift scripts.
+2. **Bootstrap still works, transcribed literally** (AC-6.1): `node pdlc/workflows/build-runtime.mjs`
+   then the **bare-path** invocation of `pdlc/hooks/scripts/sync-workflows.sh`, in that order, both
+   exit 0; `pdlc/hooks/scripts/sync-workflows.sh --check` then exits 0 with every manifest row in
+   sync. The order is not interchangeable and the bare-path form is load-bearing: a `bash`/`sh`
+   prefix would mask a lost execute bit (exit 126).
+3. **Channel identification** (AC-6.2, C-9). An engine run identifies itself by emitting its
+   provenance block (F-6). The bundle channel executes inside the Claude Code workflow runtime and
+   cannot emit one, and C-4 forbids teaching that path to self-report, so its identification is a
+   **conjunction bound to one run**: (1) the run completed and emitted its own named output
+   artifacts, and (2) that output carries no engine provenance block. A run that crashed before
+   emitting anything fails (1); an engine run fails (2).
+4. **The honest residue.** The fact that actually separates the channels is the **load root** — the
+   tree the executing modules were loaded from: the plugin's `.claude/workflows/` versus the
+   engine's own install location, two disjoint enumerated paths. It is a *load* root, not a write
+   root: no run writes `.claude/workflows/`; `sync-workflows.sh` and the SessionStart drift hook
+   do, and the runtime's own contact with that tree is a read. **No run-bound observation of the
+   load root exists on the bundle side today**, and installing only one channel is the precondition
+   of an experiment, not an observation the run makes — so it cannot discharge this oracle.
+   Supplying one is **O-9**'s third carrier. Until it lands, (1)+(2) distinguish the channels only
+   on a machine whose installed channels are known independently, and §8's AT-7.2 is written to
+   assert exactly that much and no more (see §9 Q-2).
+
 ## 4. Business rules
 
 ## 5. Expected sets owned by this FSPEC
