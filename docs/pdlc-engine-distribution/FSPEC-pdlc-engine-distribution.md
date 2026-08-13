@@ -60,7 +60,7 @@ REQ without a row here is a defect in this table, not a gap for a reader to reso
 **Values read, never re-declared.** T-1a, T-1b, T-2…T-7 are the REQ's; this document cites them
 by id. Where a flow needs a value the REQ did not declare, it is raised in §9, not invented here.
 
-## 3. Behavioral flows
+## 3. Behavioral Flow
 
 Each flow is stated as steps with explicit decision points. A step that describes behaviour not
 present at HEAD is marked **[new]**; one that describes shipped behaviour is marked **[shipped]**
