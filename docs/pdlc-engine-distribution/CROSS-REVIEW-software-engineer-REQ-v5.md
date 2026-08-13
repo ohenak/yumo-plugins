@@ -53,6 +53,12 @@ New this round, scoped to the three edited sites. Both are Low; neither blocks.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | *(carried, unanswered — no text changed on this round)* O-7 settles the two version numbers and the tag, but not the cadence underneath: the plugin-only `SKILL.md` corpus moves independently of `pdlcPluginCompat` (`pdlc/engine/package.json:9`, still `^0.22.0` at HEAD against plugin `0.22.7`), so a prompt-only plugin minor can put the installed engine outside the declared range and trip AC-1.1's refusal until an engine republish lands. Is "the engine republishes on every plugin minor" the accepted operating cost, or is O-6's per-release range-widening the intended relief? |
+| Q-06 | *(carried)* AC-5.6 fixes what a run does when `PDLC_PLUGIN_ROOT` stops being honoured on presence alone, but not whether `REMEDY` (`pdlc/engine/lib/handshake.mjs:131-134`) changes with it — it *advertises* the variable as the remedy. Is "ignored" scoped to dev-mode marking only, leaving plugin-root resolution untouched? Different blast radii; TSPEC needs to say which. |
+| Q-08 | *(carried)* O-9 now owns three obligations of the same shape (AC-4.2's version pair, AC-4.5's authored-file enumeration, AC-6.2's load root). Is that one design decision or three? The first two are values the engine already pushes across the seam (M-ENG-13); the third is a fact only the module loader knows. If the TSPEC can settle 4.2/4.5 on one carrier but not 6.2, saying so at O-9 would keep Phase 1 scoped. |
+
 ## Positive Observations
 
 ## Recommendation
