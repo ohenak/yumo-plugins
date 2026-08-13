@@ -237,6 +237,14 @@ lifecycle) and does exactly three things:
 vendor directory is a **build artefact and never committed** — the same tier discipline
 DEC-DIST-02 already established for `pdlc/workflows/dist/` versus `.claude/workflows/`.
 
+That git-ignore rule is why this feature also creates **`pdlc/engine/.npmignore`**, listed in
+§5.1's inventory, carrying the single negation `!vendor/workflows/` and nothing else. The two
+files are authored in the same task: the rule that keeps the vendored bytes out of git is the
+rule that could keep them out of the tarball, and DEC-EDIST-01 decides the inclusion
+explicitly rather than depending on which precedence rule the installed npm implements. The
+file is a packaging control, not a packed member (npm never packs `.npmignore`), and the
+allow-list remains the thing that decides *what* ships (§5.4).
+
 **Two-root resolution.** `lib/run.mjs`'s `WORKFLOW_MODULE_URLS` (V-04) becomes a function
 over two candidate roots, tried in a fixed order with no fallback ambiguity:
 
