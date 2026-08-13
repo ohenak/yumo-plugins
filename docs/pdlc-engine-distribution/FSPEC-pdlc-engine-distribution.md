@@ -350,6 +350,99 @@ it without a further question.
 
 ## 5. Expected sets owned by this FSPEC
 
+These three sets are the change-control points the REQ parked here (T-7, AC-1.3, AC-5.3). Each is
+**seeded** from a measurement and is thereafter authoritative in its own right: changing the world
+without changing the set here is the failure these sets exist to catch, and changing the set here
+is a spec change that goes through review.
+
+### 5.1 Expected required-check set *(T-7, AC-3.4, C-5)*
+
+Seeded from M-ENG-10's measurement (2026-08-13 at `89babe8e`, re-measured review round 2). Two
+alphabets, and **they are not the same set**: rows 1–2 differ between the columns, rows 3–5 are
+identical in both. The rendered column is what Phase PUB polls and what a branch protection rule
+names.
+
+| # | Authored `name:` | Rendered check name |
+|---|---|---|
+| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `Unit tests (ubuntu-latest, node 20)` |
+| 2 | `Engine tests (${{ matrix.os }})` | `Engine tests (ubuntu-latest)` |
+| 3 | `Generated artifacts are in sync` | `Generated artifacts are in sync` |
+| 4 | `Fresh-clone bootstrap works` | `Fresh-clone bootstrap works` |
+| 5 | `Shell scripts parse` | `Shell scripts parse` |
+
+Rules governing this set:
+
+- **BR-5.1.1 — Two set-equalities, one per alphabet.** The authored `name:` strings of the repo's
+  workflow files equal the authored column, **and** the locally expanded names equal the rendered
+  column. A deletion, a rename, a matrix edit that changes only the rendered set, and **any
+  addition** all fail. "Any addition fails" is literal: a check this feature adds lands in this
+  table first.
+- **BR-5.1.2 — Decidable offline.** The carrier reads the workflow files and expands the declared
+  matrix axes locally: no PR, no network, no credentials. Observing what GitHub reported on a live
+  run is explicitly **not** the carrier — that check cannot run inside the gate it asserts on.
+- **BR-5.1.3 — Interpolation is bounded to matrix axes** (SE round-4 F-25). A job `name:` may
+  contain interpolations of **declared matrix axes only**. Any other expression in a `name:` —
+  context expressions such as `github.*` or `inputs.*`, or a name axis introduced by a matrix
+  `include` entry — makes the local expander a partial evaluator that can silently under-render,
+  passing this set-equality while Phase PUB's poll breaks. Such a `name:` is therefore itself a
+  failure of this gate, reported as "unexpandable name expression", not skipped.
+- **BR-5.1.4 — The expansion rule carries a dated provenance seed, not a second gate** (TE round-4
+  F-03). The rendered column is derived by re-implementing GitHub's expansion rule locally, so the
+  rule is otherwise only ever compared against itself. The expected rendered names above were
+  cross-checked once against names GitHub reported on a real PR run, and that cross-check is
+  recorded with its date here — a **one-time, non-gating** observation. Re-seeding it is warranted
+  when the matrix shape changes; it never gates a build.
+  *Seed record: rendered names per M-ENG-10's measurement of GitHub-reported check names,
+  2026-08-13. Re-confirm on the first PR run after any matrix edit.*
+- **BR-5.1.5 — Every member still runs on pull requests and still gates them.** The publish
+  workflow is a separate, additively-added trigger (C-5).
+
+### 5.2 Expected packed-content set *(AC-1.3)*
+
+The oracle is **the contents of the packed tarball** — what a consumer actually receives — not a
+declared intent: `pdlc/engine/package.json` has no `files` field today (M-ENG-11), so a
+"declared list" oracle would pass vacuously. The check is decidable offline, without publishing.
+
+| Class | Expected members | Note |
+|---|---|---|
+| Package manifest | the engine package manifest | carries the compat range (T-3) and the pairing record (F-5 step 6) |
+| CLI entry | the single executable entry the `bin` mapping names — `bin/pdlc.mjs` at HEAD | one entry, not a directory of scripts |
+| Engine modules | the engine's own library modules — at HEAD the twelve `lib/*.mjs` files, whose decomposition is the TSPEC's | seeded from HEAD; a module added or removed by implementation updates this row **before** it lands |
+| Workflow modules | the canonical workflow modules the engine executes, in whatever arrangement O-10 chooses | the arrangement is O-10's; their **presence** is not optional (F-2 step 5 depends on it) |
+| Engine adapter | the adapter that re-expresses the runtime's capabilities | — |
+
+**Excluded, by set-equality rather than by absence-checking:**
+
+- no `skills/` directory and no `SKILL*.md` file — the plugin is the sole delivery vehicle for
+  every prompt (G-1), and the engine reads them from the installed plugin at dispatch time (AC-1.2);
+- no test corpus — `pdlc/engine/__tests__/` sits inside the package root and `files` is absent
+  today (M-ENG-11), so **excluding it takes a deliberate packaging decision, not an omission**
+  (TE round-4 Q-02); which mechanism achieves it is the TSPEC's;
+- no `node_modules/`, no lockfile-adjacent build residue, no repo-level documentation.
+
+**BR-5.2.1** The equality is member-for-member in both directions: an **added** file fails and a
+removed module fails. A subset check is not acceptable — a vendored skills copy is exactly the
+failure this AC exists to catch, and a subset check would pass it.
+
+**BR-5.2.2** R-5/O-10's choice of how the workflow modules get inside the package may not leave
+the anti-fork property (M-ENG-12) unstated. Whatever the TSPEC chooses, the anti-fork oracle is
+either preserved or deliberately restated to distinguish "vendored in the repo" from "vendored in
+a build artefact" — never silently dropped.
+
+### 5.3 Expected dev-mode artifact-kind set *(AC-5.3)*
+
+A dev-mode run's mark appears in **exactly** these artifact kinds, checked by set-equality so an
+unmarked kind fails and a newly added kind forces this enumeration to be revisited:
+
+1. the run report;
+2. every POSTMORTEM the run writes;
+3. the `QUEUE.md` row the run rewrites;
+4. the commit message of every commit the run makes.
+
+**Deliberately out of the set:** cross-review and `CODE_REVIEW-*` files. They are authored by
+dispatched agents, not by the run harness. A dev-mode run is never mistakable for a released one
+in the consumer's history.
+
 ## 6. Input / output
 
 ## 7. Edge cases and error scenarios
