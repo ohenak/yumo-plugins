@@ -1583,7 +1583,8 @@ deliberate positive pairing:
 
 `[Fake first]` throughout: every seam in §10.1 gets its double before the production module
 that consumes it, and every implementation task depends on a red-test task naming the same
-test file. Four sequencing constraints the PLAN must honour:
+test file. Six sequencing constraints the PLAN must honour (the count grew with the rounds; it
+is stated so a dropped bullet is visible):
 
 - §5.3's oracle restatement (AF-1…AF-3) lands **in the same task** as the vendoring change.
   Vendoring first turns V-05 red for a real reason; restating first removes a guard while
@@ -1608,6 +1609,15 @@ test file. Four sequencing constraints the PLAN must honour:
   task**, since its three `run*()` call sites (§7.2) are the other half of the same wiring, and
   the production-path leg (§12.1) — which asserts both halves happened at all — lands with
   them.
+- **`bin/cli.mjs` is created by the E-4b split task and edited by the wiring task, in that
+  order, in different batches** (TE v6 F-37). Two work items touch the path — §9.3/PK-4b
+  *creates* it by moving the HEAD body, and the wiring task above *edits* its three call sites
+  — and the file-ownership manifest admits exactly one owner per file per batch. So: the split
+  task owns `bin/pdlc.mjs` and `bin/cli.mjs` and lands first (it also introduces the entry guard
+  and the `deps` seam, §9.3); the wiring task **depends on** it, owns `bin/cli.mjs` in a later
+  batch, and the process-entry leg of §12.1 lands with the wiring task — it can neither import
+  nor spawn `cli.mjs` before the split exists. A PLAN that lists the path under both tasks in
+  one batch is rejected by the manifest, which is the point of stating the edge here.
 - **Catalogue ids are registered with their emitters, never before them** (§10.3). The
   suite-wide equality's reverse direction fails on a registered-but-unemitted id, so a
   fake-first reading that registers all twelve up front turns the whole suite red. This is the
