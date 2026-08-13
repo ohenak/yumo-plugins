@@ -16,9 +16,14 @@
 //     the reverse direction, PROP-FAIL-3, is witnessed by named provocation
 //     fixtures and is `outcome.test.js`'s job, unit-scoped, not this script's).
 //
-// The v1 assertion step (T19) implements exactly these two rows plus the
-// emptiness guard and the spine self-assertion; the model-map and
-// dispatchable-skills rows are out of scope for both T19 and this file.
+// The remaining three rows — the pinned model map, the dispatchable-skill set,
+// and the pre-phase window (T52) — are `corpus-model-map.test.js`'s job, not
+// this file's. They are not out of scope for the STEP any more, though, so the
+// populations below must satisfy them before this file can isolate one of its
+// own two rows: `writeFullyValidPopulation` therefore also writes
+// `_corpus.mjs`'s `modelMapWitnessRecords()`, the synthetic stand-in for the
+// five corpus runs' descriptors. Without them the step fails on the model-map
+// row and every "exits 0" case below would be measuring the wrong thing.
 //
 // Record shape assumed (undetermined by TSPEC beyond "JSON lines... §7.0",
 // fixed here because this file is the acceptance test the future
@@ -45,9 +50,13 @@ import {
 
 import { messageIds } from "../lib/catalogue.mjs";
 import { OUTCOMES } from "../lib/outcome.mjs";
+import { modelMapWitnessRecords } from "./_corpus.mjs";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ASSERT_SCRIPT = path.join(engineRoot, "__tests__", "_assert-suite-wide.mjs");
+
+// Imported from the corpus helper, not from `corpus-model-map.test.js` —
+// importing one `*.test.js` from another re-registers its `test()` calls.
 
 // ─── scratch run-dir helpers ────────────────────────────────────────────────
 
@@ -73,10 +82,20 @@ function outcomeRecord(value) {
   return { kind: "outcome", value };
 }
 
+// The synthetic descriptor population that witnesses all seven M-ENG-07 rows —
+// what the step's model-map and pre-phase rows read. Every "exits 0" case here
+// needs it; every case that isolates a catalogue or outcome failure needs it
+// too, so the failure it measures is the one it wrote.
+function appendModelMapWitnesses(runDir) {
+  for (const record of modelMapWitnessRecords()) {
+    appendRecord(runDir, "pid-dispatch", record);
+  }
+}
+
 // A minimal fully-passing population: every catalogue id emitted once, every
-// OUTCOMES member observed once — satisfies both rows in scope so a test that
-// wants to isolate a single row's failure can build on top of this rather than
-// tripping the *other* row by omission.
+// OUTCOMES member observed once, and the model-map witnesses — satisfies every
+// row so a test that wants to isolate a single row's failure can build on top
+// of this rather than tripping another row by omission.
 function writeFullyValidPopulation(runDir) {
   for (const id of messageIds()) {
     appendRecord(runDir, "pid-messages", messageRecord(id));
@@ -84,6 +103,7 @@ function writeFullyValidPopulation(runDir) {
   for (const value of OUTCOMES) {
     appendRecord(runDir, "pid-outcomes", outcomeRecord(value));
   }
+  appendModelMapWitnesses(runDir);
 }
 
 function runAssertStep(runDir) {
@@ -172,6 +192,7 @@ test("catalogue row, reverse direction: a registered id never emitted fails the 
     for (const value of OUTCOMES) {
       appendRecord(runDir, "pid-outcomes", outcomeRecord(value));
     }
+    appendModelMapWitnesses(runDir);
     const r = runAssertStep(runDir);
     assert.notEqual(r.status, 0, r.out);
   } finally {
@@ -203,6 +224,7 @@ test("outcome row passes with only a strict subset of OUTCOMES observed (forward
       appendRecord(runDir, "pid-messages", messageRecord(id));
     }
     appendRecord(runDir, "pid-outcomes", outcomeRecord(OUTCOMES[0]));
+    appendModelMapWitnesses(runDir);
     const r = runAssertStep(runDir);
     assert.equal(r.status, 0, r.out);
   } finally {
@@ -229,6 +251,7 @@ test("the step reads the union across sibling `.jsonl` files, not a single one",
     for (const value of OUTCOMES) {
       appendRecord(runDir, "pid-c", outcomeRecord(value));
     }
+    appendModelMapWitnesses(runDir);
     const r = runAssertStep(runDir);
     assert.equal(r.status, 0, r.out);
   } finally {

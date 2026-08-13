@@ -16,7 +16,15 @@
 
 import path from "node:path";
 import os from "node:os";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  readdirSync,
+  appendFileSync,
+  rmSync,
+} from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -529,6 +537,38 @@ export function makeAdvisoryTransport({ triageReason = "ambiguous dependency sta
 // runnable, exactly as `crossReviewText` is already duplicated rather than
 // imported across the two files.
 
+// ─── publishing a corpus run's records into the suite-wide run dir ───────────
+//
+// The scratch dir below exists so that each corpus run reads back ONLY its own
+// settlement lines (run ii and run v(b) assert an exact record COUNT, which a
+// shared per-pid file would break). But TSPEC §7.4's model-map row and
+// pre-phase row are suite-wide assertions over records carrying
+// `corpusRun != null` — `_assert-suite-wide.mjs` (T52) reads the union under
+// the runner-minted `PDLC_TEST_RUN_DIR`, and would find no corpus record at
+// all if the scratch dir were simply deleted. So every scratch record is
+// appended into the real run dir under a distinct `.jsonl` name before the
+// scratch dir goes away: isolation for the per-run reads, union for the
+// suite-wide step. The name is per-pid and per-call, so no two corpus runs (or
+// two test-file processes) ever append to the same published file.
+let publishSeq = 0;
+
+function publishRecords(scratchDir, suiteRunDir) {
+  if (!suiteRunDir) return;
+  let names;
+  try {
+    names = readdirSync(scratchDir).filter((n) => n.endsWith(".jsonl"));
+  } catch (err) {
+    if (err.code === "ENOENT") return;
+    throw err;
+  }
+  if (names.length === 0) return;
+  const body = names.map((n) => readFileSync(path.join(scratchDir, n), "utf8")).join("");
+  if (!body.trim()) return;
+  mkdirSync(suiteRunDir, { recursive: true });
+  const out = path.join(suiteRunDir, `corpus-${process.pid}-${publishSeq++}.jsonl`);
+  appendFileSync(out, body.endsWith("\n") ? body : `${body}\n`);
+}
+
 /** Run `fn(runDir)` with `PDLC_TEST_RUN_DIR` pointed at a scratch dir, cleaning up either way. */
 export function withRunDir(fn) {
   const runDir = mkdtempSync(path.join(os.tmpdir(), "pdlc-corpus-rundir-"));
@@ -540,9 +580,73 @@ export function withRunDir(fn) {
     } finally {
       if (prior === undefined) delete process.env.PDLC_TEST_RUN_DIR;
       else process.env.PDLC_TEST_RUN_DIR = prior;
+      publishRecords(runDir, prior);
       rmSync(runDir, { recursive: true, force: true });
     }
   })();
+}
+
+// ─── a synthetic population that witnesses all seven M-ENG-07 rows ──────────
+//
+// The real witnesses are the five corpus runs above, whose records are
+// published into the suite-wide run dir. This builder is the same population in
+// synthetic form, for the two test files that drive `_assert-suite-wide.mjs`
+// over hand-built scratch run dirs (`assert-suite-wide.test.js`, which needs a
+// population that passes all five rows before it can isolate one row's failure,
+// and `corpus-model-map.test.js`, which mutates it row by row). It lives here
+// rather than in either test file because importing one `*.test.js` from
+// another would re-register its `test()` calls — the same reason the settlement
+// helpers above are duplicated rather than imported.
+//
+// Field values are transcribed from a real corpus run's records, not invented:
+// see `_assert-suite-wide.mjs`'s `M_ENG_07` witness table for what each one
+// witnesses.
+export function modelMapWitnessRecords() {
+  const d = (r) => ({
+    kind: "dispatch",
+    attempt: 0,
+    outcome: "ok",
+    errorText: null,
+    promptHash: "0000000000000000",
+    ...r,
+  });
+  return [
+    // run i — row 1 (opus outside the wave set) and row 2 (sonnet inside it,
+    // both members present, so wave mode is asserted rather than assumed).
+    d({ corpusRun: "run-i", seq: 0, skill: "se-review", phase: "Phase R", model: "opus" }),
+    d({ corpusRun: "run-i", seq: 1, skill: "se-author", phase: "Phase P", model: "opus" }),
+    d({ corpusRun: "run-i", seq: 2, skill: "se-implement", phase: "Phase I", model: "sonnet" }),
+    d({ corpusRun: "run-i", seq: 3, skill: "se-implement", phase: "Phase PT", model: "sonnet" }),
+    // run ii — row 5, queue Phase-0 readiness triage.
+    d({ corpusRun: "run-ii", seq: 0, skill: "se-author", phase: "Queue", model: "sonnet" }),
+    // run iii — row 3, the advisory rung resolving on fable.
+    d({ corpusRun: "run-iii", seq: 0, skill: "se-author", phase: "Queue", model: "sonnet" }),
+    d({ corpusRun: "run-iii", seq: 1, skill: "se-review", phase: "Queue", model: "fable" }),
+    // run iv — row 4's (F, B) pair: same skill, same composed prompt, B later.
+    d({ corpusRun: "run-iv", seq: 0, skill: "se-author", phase: "Queue", model: "sonnet" }),
+    d({
+      corpusRun: "run-iv",
+      seq: 1,
+      skill: "se-review",
+      phase: "Queue",
+      model: "fable",
+      outcome: "transport-contract-violation",
+      errorText: 'unrecognised model "fable"',
+      promptHash: "0ba9f715a260c529",
+    }),
+    d({
+      corpusRun: "run-iv",
+      seq: 2,
+      skill: "se-review",
+      phase: "Queue",
+      model: "opus",
+      promptHash: "0ba9f715a260c529",
+    }),
+    // run v(a) — row 6, the haiku verdict-recovery re-emit.
+    d({ corpusRun: "run-va", seq: 0, skill: "se-review", phase: "Phase R", model: "haiku" }),
+    // run v(b) — row 7, the haiku PLAN-DAG extraction fallback.
+    d({ corpusRun: "run-vb", seq: 0, skill: "se-author", phase: "Phase I", model: "haiku" }),
+  ];
 }
 
 /** Every `kind: "dispatch"` settlement line the current process has appended to `runDir`. */
