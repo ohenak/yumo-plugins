@@ -190,8 +190,6 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 
 ## 4. Task dependency notes
 
-## 4. Task dependency notes
-
 Every edge in §2's `Deps` column is one of five kinds. This section names the kind for the edges that are not self-evident, so a reviewer can check the graph rather than re-derive it.
 
 **Kind 1 — red-before-green.** A `[red]` test task always precedes the `[green]` task that satisfies it, as an explicit `Deps` edge (never merely a lower batch number). The eleven pairs:
@@ -247,8 +245,6 @@ Two shorter chains: `lib/run.mjs` is written by T28 (b3), T41 (b6) and T48 (b10)
 
 ## 5. Integration points
 
-## 5. Integration points
-
 Seven places where this feature's tasks meet machinery that already exists at HEAD. Each names the file and line an implementer will actually open.
 
 **1. The engine test suite collects new files automatically.** `pdlc/engine/__tests__/_run-suite.mjs` mints a run id, empties the run directory, and spawns `node --test … __tests__/`, so any new `*.test.js` under `pdlc/engine/__tests__/` is picked up with no registration step; leading-underscore modules (`_doubles.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs`) are not collected. `suite-spine.test.js` reads the directory listing dynamically, so the eighteen new test files in §2 do not require editing it. Consequence for §2: the plan never contains a "register the new test" task, because there is nothing to register.
@@ -264,8 +260,6 @@ Seven places where this feature's tasks meet machinery that already exists at HE
 **6. `pr-tests.yml`'s job names are a frozen contract.** FSPEC §5.1 asserts set-equality over the five rendered job names in `.github/workflows/pr-tests.yml`, and C-5 / BR-7.5 make that set closed. No task in §2 adds a job to that file. T49's `publish.yml` is tag-triggered (`push: tags: ['engine-v*']`) and duplicates the five gate job *bodies* rather than reusing them, precisely so the PR-gate file is untouched. T50's fixture-machine legs go into a new, additive workflow file for the same reason — and that is what the erratum raised against TSPEC §12.1 is about: those legs currently have no stated home that both runs on PRs and leaves the frozen set intact.
 
 **7. The queue table gains a column, additively.** `pdlc/workflows/orchestrate-queue.js` already carries `ensureEvidenceColumn` and two row-write paths inside `updateQueueStatus` — the `evidence == null` quick path and `writeEvidenceCarryingRow`. T36 mirrors that helper as `ensureEngineColumn` and writes the `Engine` cell on **both** paths; a table with neither column, with `Evidence` only, or with both is exercised by T04's fixtures. Existing `QUEUE.md` files without the column keep parsing, which is why this is an integration point and not a migration.
-
-## 6. Batch-safety rules honoured
 
 ## 6. Batch-safety rules honoured
 
