@@ -1634,11 +1634,12 @@ deliberate positive pairing:
    status: "done", evidence}` write needs, in the ladder's own order: a **`prUrl`** from Phase PUB
    (guard 2, `orchestrate-dev.js:1076`); an **O1** that is `ok` with `state: "OPEN"`,
    `mergeable: "MERGEABLE"` and a non-`DIRTY`/`BLOCKED` `mergeStateStatus` (guards 4, 12, 14, 15,
-   `:1090`, `:1183-1226`); an **O5** changed-file list that retrieves and matches no guard path
+   `:1092`, `:1184-1226`); an **O5** changed-file list that retrieves and matches no guard path
    (guards 7–8, `:1128-1150`); **O2** CI evidence satisfying `ciRule` under `mergeRequiresCi`
-   (guard 11, `:1168`); an **O3** that is `ok` with **`unresolved: 0`** (guards 17–18,
-   `:1152-1175` — the case PM v5 Q-02 asked about); and an **O4** that is `ok` and yields at
-   least one permitted merge method (guards 19–21, `:1257-1283`). Any one of these left at its
+   (guard 11, `:1169`); an **O3** that is `ok` with **`unresolved: 0`** (guards 17–18,
+   `:1232-1255` — the case PM v5 Q-02 asked about; `:1152-1175`, cited in v0.7, is the
+   CLOSED-PR/CI-rule span and was a transcription slip, PM v7 F-01 / TE v7 F-42); and an **O4**
+   that is `ok` and yields at least one permitted merge method (guards 19–21, `:1256-1284`). Any one of these left at its
    empty/`null` default resolves the ladder earlier and produces no kind 3, which is what the
    non-empty guard above catches — but catching it in CI is worse than writing it down here.
    **One leg reaches the module through the engine, not through a hand-built parameter object**
