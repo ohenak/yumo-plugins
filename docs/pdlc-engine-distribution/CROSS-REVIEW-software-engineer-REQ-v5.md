@@ -61,6 +61,30 @@ New this round, scoped to the three edited sites. Both are Low; neither blocks.
 
 ## Positive Observations
 
+- The NG-6 fix corrected the **non-goal itself**, not the gloss that misread it. The tempting
+  cheap fix was to reword O-2 and leave NG-6 alone; that would have left the defect in the
+  document downstream readers inherit from. Editing NG-6 first and then re-glossing it at O-2
+  means FSPEC's three sites (F-3 step 5, BR-2.2, BR-4.7) now restate one rule instead of
+  reconciling two — which is exactly what the item asked for and the harder half to do.
+- The scope reconciliation is stated in a form that stays true under later edits: "install and
+  upgrade touch no consumer file at all" is a property of two named operations, checkable by
+  running them (C-2, AC-2.3), whereas the old verb formulation was a claim about what a
+  sentence forbade — unfalsifiable and, as it turned out, wrong about its own sentence.
+- AC-3.5's positives cost nothing new to observe. (a) is the same event AC-3.1 already
+  requires — the first real release — so pairing the absence oracle did not invent a second
+  publish to watch; (b) is observable on a deliberately-unset-secret run. The te-review item
+  was answered without widening the verification surface, which is not the usual outcome when
+  an absence oracle gets paired.
+- The erratum landed inside the size budget again: v0.10 is 605 lines / ~51 KB against the
+  700-line, 60 KB REQ budget, with a five-line changelog entry added on top of three
+  substantive edits. The changelog entry is a compression ("restated on scope … no other
+  change") that I could check against `git diff` in one pass and found accurate — the diff
+  contains nothing the entry does not announce.
+- Downstream citation direction is honest. The changelog cites FSPEC F-3/BR-2.2/BR-4.7 as
+  *evidence the correction propagated*, not as authority the REQ derives from; NG-6's own text
+  cites only O-2 and AC-5.1, both internal. A REQ leaning on its FSPEC for a rule would be an
+  altitude inversion; this is a provenance note, and it is placed where provenance notes go.
+
 ## Recommendation
 
 ## Verdict
