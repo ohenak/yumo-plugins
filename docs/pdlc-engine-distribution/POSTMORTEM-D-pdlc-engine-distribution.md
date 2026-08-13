@@ -70,6 +70,29 @@ twice from different directions.
 
 ## What the Confirmation Found
 
+Three findings, one blocking.
+
+| ID | Reviewer | Severity | Finding |
+|---|---|---|---|
+| `F-45` | te-review | **High** | **AC-5.6's path-level oracle is not writable as §6.5 specifies it.** §6.5 (`TSPEC:650-655`) names "a unit test over `resolvePluginRoot`" asserting (a) the returned root is the discovered one and (b) "the run's notices contain the entry by catalogue id, with its rendered text". At HEAD `resolvePluginRoot` returns `{ok, root, source, reason, tried}` (`pdlc/engine/lib/skills.mjs:204-231`, JSDoc `:200-201`) — **there is no notices channel on it**. §3.1 places the ignored-env notice in the startup module (`TSPEC:101`) while the `skills.mjs` row (`:102`) says only that the function "gains a `devDeclared` input", and §10.1 carries no seam row for it. Half (a) is writable; half (b) is not, at the unit named |
+| `F-46` | te-review | Medium | **The honour-direction assertion decided in DECISIONS §5 has no counterpart in the new text.** DECISIONS' assertion 2 (`DECISIONS:335-336`) requires the `devDeclared: true` × variable-set row to assert the variable **is** honoured, so that an implementation ignoring it unconditionally is caught. §6.5's new paragraph pays only the absence half — the three other rows assert **no** notice, which a permanently-silent implementation satisfies |
+| `F-47` / PM `F-01` | both | Medium | **`AC-1.4's exit-code contract` cites an authority that does not exist upstream.** §6.2 (`TSPEC:461`) and the v0.10 changelog justify the signalled-child decision by that phrase; at HEAD AC-1.4 is the version-triple AC (`REQ:266-270`) and REQ carries no exit-code statement anywhere. The decision is sound — "crash 1, halt 2" is shipped behaviour, `exitCodeFor` (`pdlc/engine/lib/run.mjs:283-295`, PROP-EXIT-1) — it is pinned to the wrong record, in **two** documents (TSPEC §6.2 and DECISIONS §7, `:467`) |
+
+PM raised one further Medium, `F-02`: §5.1's blocker-1 closure (`TSPEC:216-221`) states that
+this feature closes O-8 blocker 1, while REQ (`:578-589`) and FSPEC (`:211-215`, `:795-802`)
+still say all three blockers are operator-owned, and the TSPEC's mitigation points *downstream*
+at records that cannot absorb it. That is a routing gap against a second upstream document,
+not a defect in the closure itself.
+
+**The two reviewers did not disagree.** Both confirmed the same five clean items with the same
+evidence; both independently verified the §6.5 withdrawal's three citations at HEAD and called
+it exemplary; both raised the AC-1.4 mis-citation. They parted on one question only — whether
+the *replacement* oracle in §6.5 is executable. PM checked the new oracle against **upstream**
+(AC-5.6 exists as cited, `REQ:422`; the positive/absence split matches its trigger) and found
+it sound. TE checked it against **shipped code** and found the observation channel absent.
+Both checks were correct; they were checks of different things, and only one of them can make
+a test file exist.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
