@@ -143,3 +143,78 @@ by diff. Not authoring stall — the seven-commit edit landed in section-sized c
 both endorsed by both reviewers; only their *expression* upstream is defective.
 
 ## Recommendation
+
+This halt clears by a **bounded, targeted TSPEC edit — four clauses in three sections — not by
+re-authoring anything**. DECISIONS v0.3 is approved and needs no change except one citation.
+The blocking finding is a design question with a one-sentence answer that the document's own
+§3.1 already implies.
+
+**Step 1 — Answer `F-45` by naming the observation level, not by widening the function.**
+TE's `Q-23` asks it directly. §3.1 already places the ignored-env notice in the **startup**
+module (`TSPEC:101`) and gives `skills.mjs` only the `devDeclared` input (`:102`), so the
+consistent answer is that `resolvePluginRoot` decides the root and the startup composition
+emits the notice — and the path-level oracle therefore drives **the startup unit that calls
+`resolvePluginRoot`**, asserting (a) on the resolver's return and (b) on the notices the
+startup unit produces. Whichever answer is taken, three places must move together or the next
+round finds the third: §6.5's oracle sentence (`:650-655`), §12.1's unit row (`:1767`), and
+§10.1's seam table. If instead the decision is to give `resolvePluginRoot` a `notices` member,
+that is a signature change and §3.1's `skills.mjs` row (`:102`) must say so.
+
+**Step 2 — Close `F-46` in the same edit.** Add the positive honour-direction assertion to
+§6.5 and to §12.1's unit row: row 1 (`devDeclared: true`, variable set) asserts the resolved
+root `===` the env value and `source` unchanged. This is DECISIONS §5's assertion 2
+(`:335-336`) transcribed; it makes the four-row oracle falsifiable in both directions, so an
+implementation that ignores the variable unconditionally goes red.
+
+**Step 3 — Close `F-47` / PM `F-01` in both documents.** Replace "AC-1.4's exit-code contract"
+with the shipped invariant it actually rests on — `exitCodeFor` (`pdlc/engine/lib/run.mjs:283-295`,
+PROP-EXIT-1) — at `TSPEC:461`, in the v0.10 changelog sentence, and at `DECISIONS:467` plus
+DEC-EDIST-06's "Constraints that forced the shape" row. Per PM `Q-02`, prefer stating the
+constraint **once** in DECISIONS §7 and having §6.2 defer to DEC-EDIST-06, so there is one
+place left to be wrong instead of two. Take this even if nothing else is taken: it is the
+finding that propagates, because PLAN and PROPERTIES will copy the phrase forward from two
+documents.
+
+**Step 4 — Decide PM `F-02`'s routing, and prefer the narrow option.** Option (b) — reword
+§5.1 to "blocker 1 is discharged by this feature's manifest edit; O-8's owner field is
+unchanged because clearing it still gates AC-3.1's real-channel leg" — costs one sentence and
+raises nothing upstream. Option (a) opens an FSPEC erratum, which is a fresh upstream document
+and therefore a fresh erratum budget, but it also opens a second confirmation surface while
+this one is unresolved. Take (b) now; if FSPEC F-5 step 7 and Q-8 still read wrongly at Phase
+P, raise it there where it is cheap.
+
+**Step 5 — Fix the changelog arithmetic (PM `F-03`).** `TSPEC:27` says "Four items" and then
+numbers five. Say five, and note that raised items 5 and 6 are one §6.5 defect.
+
+**Step 6 — Verify, version, flip the marker.** Land steps 1–5 as **TSPEC v0.11**, section-sized
+commits, one changelog row naming the three round-10 findings and their fix sites. Then set
+`RESOLVED: yes` in this file with the verification date and the commit range checked, and
+commit. Do not flip the marker on the strength of the plan above — flip it on the strength of
+the edit having landed and been read back at HEAD.
+
+**Step 7 — Re-invoke Phase D.**
+
+```
+/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md", "forcePhases": "D"}
+```
+
+The re-invocation gets a fresh erratum budget for TSPEC, so the v0.11 edit is confirmable as
+round 11 rather than being an unreviewed hand-edit carried into Phase P. Expect a delta
+confirmation, not a re-review: three findings, three fix sites, one design answer. TSPEC's
+lifetime usage would stand at 11 of 15 — the margin is real but no longer generous, which is
+the other reason to make this edit complete rather than incremental.
+
+**If round 11 does not converge, change the grounding discipline, not the budget.** The
+standing instruction for any future erratum round should be: *an erratum item that names a new
+test or a new observation is authoring work, not transcription — before writing it, read the
+function or module the assertion will run against and cite its signature at `file:line`; if the
+value the assertion needs is not on that object, say where it is before naming the unit.* And:
+*transcribe the whole decision, not the sentence that was quoted in the item* — `F-46` exists
+only because assertion 2 was never asked about.
+
+**Not recommended.** Forcing Phase P on TSPEC v0.10. `F-45` is not a documentation defect; it
+specifies a test that cannot be written as stated, and PLAN's author would faithfully create a
+task row for it whose honest implementation cannot go green — discovered in Phase I, where it
+is expensive, rather than in a confirmation round, where it costs one sentence. `F-47` is the
+same argument in the cheaper direction: a false citation copied into two more documents is four
+fix sites instead of two. Both are exactly the class of defect a confirmation round is for.
