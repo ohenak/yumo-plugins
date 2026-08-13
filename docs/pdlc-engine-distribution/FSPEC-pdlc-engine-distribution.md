@@ -577,22 +577,33 @@ TSPEC's; **that** each item below is present and machine-checkable is fixed here
 | E-16 | Declared range excludes the plugin version of record at that commit | fail naming range and plugin version; publish nothing | BR-3.4 |
 | E-17 | Publish re-run for an already-published version | explicit no-op **or** loud failure naming the collision; bytes byte-identical before/after; output names the version | BR-3.3 |
 | E-18 | Publish credential missing or expired | workflow run fails visibly; no partial publish; no credential value in any log | BR-3.2, BR-3.6 |
-| E-19 | A job `name:` interpolates something other than a declared matrix axis | §5.1's gate fails as "unexpandable name expression" — never skipped, never assumed literal | BR-5.1.3 |
-| E-20 | A required check is renamed, deleted, added, or re-rendered by a matrix edit | §5.1's set-equality fails on the affected alphabet | BR-5.1.1 |
-| E-21 | Packed tarball contains a `skills/` tree, a `SKILL*.md`, or the test corpus | AC-1.3's equality fails on the addition, not merely on a missing member | BR-5.2.1 |
-| E-22 | Workflow modules absent from the packed tarball | equality fails at build time, offline — never first observed at a consumer's first dispatch | BR-5.2.1 |
+| E-19 | A job `name:` interpolates something other than a declared matrix axis | §5.1's gate fails as "unexpandable name expression" — never skipped, never assumed literal | BR-7.3 |
+| E-20 | A required check is renamed, deleted, added, or re-rendered by a matrix edit | §5.1's set-equality fails on the affected alphabet | BR-7.1 |
+| E-21 | Packed tarball contains a `skills/` tree, a `SKILL*.md`, or the test corpus | AC-1.3's equality fails on the addition, not merely on a missing member | BR-8.1 |
+| E-22 | Workflow modules absent from the packed tarball | equality fails at build time, offline — never first observed at a consumer's first dispatch | BR-8.1 |
 | E-23 | Run halts before emitting a report | the halt artifacts still carry the pair (F-6 step 3); a run that emitted nothing at all fails F-7's conjunct (1) | BR-5.1, BR-6.2 |
 | E-24 | Consumer repo predates this feature | prior artifacts unchanged and un-back-filled; only files enumerated by the run report may differ | BR-5.2, BR-5.3 |
 | E-25 | Plugin version changes between two runs on one machine | the reported pair changes correspondingly; reverting restores it | BR-5.4 |
 | E-26 | Both channels installed, one run started through the bundle path | identified by F-7 step 3's conjunction, with the residue of step 4 stated in the run's own terms | BR-6.2 |
 | E-27 | A `SKILL.md` edit lands without a plugin version bump | out of scope for detection (R-3, a known residual risk); no AC claims to catch it, and no test may be written that pretends to | R-3 |
+| E-28 | Package manifest not publishable at the tagged commit — private, unscoped, or a name disagreeing with the pairing record (all three stand at HEAD, O-8) | publish fails **offline, before the channel is called**, naming the offending field; nothing published | BR-3.8, BR-3.2 |
+| E-29 | A step-level `name:`, or a publish-workflow job `name:`, is added or edited | §5.1's set-equality is **unaffected**: neither is a member | BR-7.1, BR-7.5 |
+| E-30 | A dev-mode run produces a kind §5.3 does not name | the enumeration fails and must be revisited; a kind the run did *not* produce is not asserted vacuously | BR-9.1, BR-9.2 |
 
 ## 8. Acceptance tests
 
 Who / Given / When / Then. Each names the criterion it discharges. Tests marked **[blocked]**
 cannot be written until an obligation lands, and say which.
 
-### AT-1 — Handshake and version query
+**Every test also names its execution environment** (TE round-1 F-05), because "automated" and
+"manual" are not the same discharge and the cheapest reading must not win by default:
+**[auto]** runs unattended in the PR gate; **[fixture]** runs unattended against a constructed
+machine or repo fixture (container, `npm pack` into a temp prefix, stub seam); **[manual]** is an
+operator observation with recorded evidence, dated in the test's own record. The label is carried
+on the family heading and overridden on individual tests that differ; an unlabelled family is a
+defect in this section.
+
+### AT-1 — Handshake and version query **[fixture]**
 
 - **AT-1.1** *(AC-1.1)* **Who:** operator. **Given:** engine installed, no plugin installed.
   **When:** any pipeline command runs. **Then:** it exits non-zero before dispatch, the message
@@ -614,14 +625,19 @@ cannot be written until an obligation lands, and say which.
   output carries all three of engine version, declared range, installed plugin version (or "none"),
   and equals the triple in the same run's banner and report (BR-1.5).
 
-### AT-2 — Install and upgrade
+### AT-2 — Install and upgrade **[fixture]** — each of AT-2.1, AT-2.3, AT-2.4, AT-2.5 and AT-2.6 runs against a constructed machine fixture (a clean container image, or `npm pack` installed into a temporary prefix with `PATH` scoped to it), never against the maintainer's own machine; AT-2.2 is **[auto]**
 
 - **AT-2.1** *(AC-2.1)* **Who:** operator on a clean machine, Node ≥ T-2. **Given:** the command
   transcribed from `pdlc/README.md`'s `## Install in another repo` section. **When:** run once.
-  **Then:** CLI resolves on `PATH` at the expected version from an existing install location, and
-  a pipeline command reaches the handshake and emits AT-1.1's refusal.
-- **AT-2.2** *(BR-2.3)* **Who:** verifier. **Given:** the repo. **When:** the tree is searched for
-  the install command. **Then:** exactly one occurrence exists, in that README section.
+  **Then:** all three of AC-2.1's conjuncts hold — the CLI resolves on `PATH` at the expected
+  version from an existing install location; **the version query reports the triple (AC-1.4)**;
+  and a pipeline command reaches the handshake and emits AT-1.1's refusal.
+- **AT-2.2** *(BR-2.3)* **[auto]** **Who:** verifier. **Given:** the repo. **When:** the tree is
+  searched for the **engine's own** install invocation and, separately, its upgrade invocation —
+  keyed on the engine program name, not on `claude plugin install`, whose three existing
+  occurrences (`README.md:115`, `pdlc/README.md:139,145`) are outside the set (TE round-1 Q-02).
+  **Then:** each engine command occurs exactly once, in that README section; a fallback variant of
+  either, if one is ever documented, lands in this table first or fails the check.
 - **AT-2.3** *(AC-2.2)* **Given:** version N installed, two consumer repos each having completed a
   run at N. **When:** the upgrade command runs once on the machine, then the pipeline runs in each
   repo. **Then:** both runs execute N+1 — visible in each run's output **and** in the artifacts —
@@ -637,36 +653,50 @@ cannot be written until an obligation lands, and say which.
   interactive plugin skill invocation both occur. **Then:** both succeed on that run, and each
   install location's files hash identically before and after the other's use.
 
-### AT-3 — Publish
+### AT-3 — Publish **[fixture]** — the channel is the stub of BR-3.9 throughout; the single real-channel leg is BR-3.9's one-time **[manual]** observation
 
-- **AT-3.1** *(AC-3.1)* **Given:** a default-branch commit with all §5.1 members green. **When:** a
-  version tag is pushed. **Then:** the artifact is built, the range/plugin check passes, and the
-  package is published — with no human step.
+- **AT-3.1** *(AC-3.1)* **Given:** a default-branch commit with all §5.1 members green and a
+  manifest satisfying BR-3.8, the channel seam stubbed. **When:** a version tag is pushed.
+  **Then:** the artifact is built, the manifest and range/plugin checks pass, and the stub records
+  a publish of exactly those bytes — with no human step. Against the **real** channel this is
+  blocked until O-8's three manifest blockers are cleared (F-5 step 7, §9 Q-8); the real-channel
+  leg is BR-3.9's one-time observation, not this test.
 - **AT-3.2** *(AC-3.2)* **Given:** a commit with one §5.1 member red. **When:** a tag is pushed.
   **Then:** nothing is published and the publish run's conclusion is **failure** — asserted on the
   conclusion, not on the absence of a package.
-- **AT-3.3** *(AC-3.3)* **Given:** version N published; its bytes hashed. **When:** the workflow is
-  re-run for N. **Then:** the run is either an explicit no-op or a loud failure naming the
-  collision; and on either branch the hash of N's published bytes is unchanged and the run's output
-  names N.
+- **AT-3.3** *(AC-3.3)* **Given:** the channel stub holding version N with its bytes hashed —
+  **not** the real registry, which refuses re-publish by design and would burn a version number
+  per rehearsal while leaving the no-op branch unobservable (TE round-1 F-03). **When:** the
+  workflow is re-run for N. **Then:** the run is either an explicit no-op or a loud failure naming
+  the collision; and on either branch the hash of N's stored bytes is unchanged and the run's
+  output names N. Both branches are exercised, one per stub configuration.
 - **AT-3.4** *(AC-3.4, §5.1)* **Who:** verifier, offline. **Given:** the repo's workflow files.
   **When:** authored `name:` strings are read and declared matrix axes expanded locally. **Then:**
   authored set equals §5.1's authored column and expanded set equals its rendered column;
-  mutations — rename, delete, add, matrix-axis edit — each fail; a `name:` interpolating a
-  non-matrix expression fails as "unexpandable" (E-19).
-- **AT-3.5** *(AC-3.5)* **Given:** a published package and the publish logs. **When:** both are
-  scanned for the credential value. **Then:** no occurrence in either.
+  mutations — rename, delete, add, matrix-axis edit — each fail **when applied to fixture copies
+  of the workflow file**, never to the live one (BR-7.6); a `name:` interpolating a non-matrix
+  expression fails as "unexpandable" (E-19); a step-level `name:` edit and a publish-workflow job
+  name change both leave the check green (E-29).
+- **AT-3.5** *(AC-3.5)* **Given:** the built artifact and the captured log of a stub-channel
+  publish run, with a known sentinel credential value. **When:** both are scanned for it.
+  **Then:** no occurrence in either.
 - **AT-3.6** *(AC-3.6)* **Given:** a tag disagreeing with T-1a at that commit. **When:** the
   workflow runs. **Then:** it fails naming both values; nothing published.
 - **AT-3.7** *(AC-3.7)* **Given:** a commit whose declared range excludes T-1b at that commit.
   **When:** the workflow runs. **Then:** it fails naming range and plugin version; nothing
   published.
-- **AT-3.8** *(AC-1.5, AC-1.3)* **Who:** verifier. **Given:** the built package, offline. **When:**
-  the packed tarball's contents are enumerated. **Then:** the list equals §5.2 member-for-member —
-  an added `SKILL.md`, an added test file, and a removed workflow module each fail — and the
-  pairing record of F-5 step 6 is present inside it.
+- **AT-3.8a** *(AC-1.5, AC-1.3)* **Who:** verifier. **Given:** the built package, offline.
+  **When:** the packed tarball's contents are enumerated. **Then:** the enumerated members equal
+  §5.2's *writable* classes member-for-member — the manifest, `bin/pdlc.mjs`, the twelve named
+  `lib/*.mjs` modules, and the three exclusions — so an added `SKILL.md`, an added test file and a
+  **removed named `lib` module** each fail; and the pairing record of F-5 step 6 is present inside
+  it. The expected list is the literal one in §5.2, never a listing of `pdlc/engine/lib/`.
+- **AT-3.8b** *(AC-1.3)* **[blocked on O-10]** **Given:** the same package. **When:** its workflow
+  modules are enumerated. **Then:** they equal §5.2's workflow-module class member-for-member, and
+  a removed module fails. Unwritable until O-10 names the members: at HEAD they live outside the
+  package root (`pdlc/engine/lib/run.mjs:53`), so there is nothing to remove (TE round-1 F-01).
 
-### AT-4 — Provenance **[blocked on O-9 for AT-4.2 and AT-4.4]**
+### AT-4 — Provenance **[fixture]**, **[blocked on O-9 for AT-4.2 and AT-4.5]** — AT-4.4 is *not* blocked: it needs two plugin versions and a revert, no new carrier (TE round-1 F-04)
 
 - **AT-4.1** *(AC-4.1)* **Given:** a completed run, success path and halt path. **When:** the final
   report is read. **Then:** it states both engine and plugin versions, equal to AT-1.6's triple.
@@ -674,7 +704,7 @@ cannot be written until an obligation lands, and say which.
   is read from history alone. **Then:** both versions are nameable from its bytes.
 - **AT-4.3** *(AC-4.3)* **Given:** two runs of one feature on different engine versions. **When:**
   their artifacts are compared. **Then:** the engine versions differ in the artifacts.
-- **AT-4.4** *(AC-4.4)* **Given:** a run's reported pair. **When:** a different plugin version is
+- **AT-4.4** *(AC-4.4)* **Writable today** — no carrier is missing. **Given:** a run's reported pair. **When:** a different plugin version is
   made current and a second run occurs, then the change is reverted and a third run occurs.
   **Then:** the pair changes and then reverts — a constant matching once fails the second
   observation.
@@ -683,7 +713,7 @@ cannot be written until an obligation lands, and say which.
   `docs/{feature}/` hashes identically except those the run report enumerates as authored, and
   every file of any other feature hashes identically with no exception.
 
-### AT-5 — Pinning and dev-mode
+### AT-5 — Pinning and dev-mode **[fixture]**
 
 - **AT-5.1** *(AC-5.1)* **Given:** project pinned to X, Y latest installed, probe seam stubbed
   unavailable. **When:** the pipeline runs. **Then:** X executes, the run announces the pin, and
@@ -691,10 +721,17 @@ cannot be written until an obligation lands, and say which.
   the stub).
 - **AT-5.2** *(AC-5.2)* **Given:** no pin. **When:** the pipeline runs. **Then:** latest installed
   executes and the run states "no pin".
-- **AT-5.3** *(AC-5.3, §5.3)* **Given:** an explicit dev-mode declaration and a checkout. **When:**
-  a run writes a report, a POSTMORTEM, a `QUEUE.md` row and commits. **Then:** the dev-mode mark
-  appears in exactly those four kinds — set-equality, so an unmarked kind fails and a mark on a
-  cross-review file also fails.
+- **AT-5.3** *(AC-5.3, §5.3)* **Given:** an explicit dev-mode declaration and a checkout, and —
+  named, because it is not the ordinary case — a **halted, queue-driven** run fixture, the only
+  shape that produces all four kinds at once (report, POSTMORTEM, `QUEUE.md` rewrite, commits).
+  **When:** it runs. **Then:** every kind it produced carries the mark and none is unmarked
+  (BR-9.2), the mark's carrier is the run's own authored-file enumeration (BR-9.1), and a mark on
+  a cross-review file fails (BR-9.3).
+- **AT-5.3b** *(AC-5.3, §5.3)* **Given:** a green single-feature dev-mode run, which writes no
+  POSTMORTEM and rewrites no `QUEUE.md` row. **When:** it runs. **Then:** the kinds it *did*
+  produce are marked and the check passes without asserting the two absent kinds vacuously; and
+  for each of the four kinds there exists a fixture producing it **unmarked**, which fails —
+  the positive pairing BR-9.2 requires.
 - **AT-5.4** *(AC-5.4)* **Given:** a checkout present, no declaration. **When:** the pipeline runs.
   **Then:** the installed released version executes.
 - **AT-5.5** *(AC-5.5)* **Given:** a pin naming an uninstalled version. **When:** the pipeline runs.
@@ -703,13 +740,18 @@ cannot be written until an obligation lands, and say which.
   pipeline runs. **Then:** it refuses naming the variable **or** runs released while stating the
   variable was ignored; a run that silently switches skill source fails.
 
-### AT-6 — Non-regression and coexistence
+### AT-6 — Non-regression and coexistence **[auto]** for AT-6.1 (it is the CI job at `.github/workflows/pr-tests.yml:138`); **[manual]** for AT-6.2 (TE round-1 Q-04: its install state is known out of band, so it is an operator observation with recorded evidence, not an automated channel test)
 
 - **AT-6.1** *(AC-6.1)* **Who:** verifier. **Given:** the repo after this feature lands. **When:**
   `node pdlc/workflows/build-runtime.mjs` then the bare-path `pdlc/hooks/scripts/sync-workflows.sh`
-  run in that order, then `--check`. **Then:** all three exit 0, every manifest row in sync; a
-  126 exit from the bare-path invocation is a failure, not a retry-with-`bash`.
-- **AT-6.2** *(AC-6.2)* **Given:** a machine with both channels installed and **independently known
+  run in that order, then `--check`, **on a tree with no consumer copy under `.claude/workflows/`
+  and a clean sync manifest** — the fresh-clone precondition the CI job already establishes
+  (`.github/workflows/pr-tests.yml:138,152`). **Then:** all three exit 0, every manifest row in
+  sync; a 126 exit from the bare-path invocation is a failure, not a retry-with-`bash`. Outside
+  that precondition plain sync deliberately skips `local-edit`/`unverified` rows and exits
+  non-zero (SE round-1 F-06); `--force` is out of this test's scope.
+- **AT-6.2** *(AC-6.2)* **[manual]**, with the install state recorded out of band as its evidence
+  (TE round-1 Q-04). **Given:** a machine with both channels installed and **independently known
   install state**. **When:** a run is started through each. **Then:** the engine run emits its
   provenance block; the bundle run completes, emits its named output artifacts, and carries no
   provenance block. The test asserts exactly this conjunction and **claims no more**: with no
