@@ -804,10 +804,24 @@ per run" read literally: a queue loop is one run, so all its passes carry identi
 and a PLAN task must **not** re-derive the value inside the loop.
 
 **One assertion, applied per pass — identity, not structural equality** (PM v6 Q-01). The
-assertion form is a single one, `captured[i].provenance === p` (plus `Object.isFrozen`),
-evaluated for **every** pass the fixture produces; there is no second, weaker structural
-assertion anywhere. "Same frozen value" and "identity" name one bar, not two, and a task
-author transcribing this writes one comparison inside a loop over the captured calls.
+assertion form is a single one — `=== p` plus `Object.isFrozen` — evaluated for **every** pass
+the fixture produces; there is no second, weaker structural assertion anywhere. "Same frozen
+value" and "identity" name one bar, not two, and a task author transcribing this writes one
+comparison inside a loop over the captured calls.
+
+**The two legs capture two different objects, so the key name differs per leg** (PM v8 F-01).
+The bar is one; the property path is not, and a task author copying one form onto the other leg
+gets `undefined === p`:
+
+| Leg | What the recorder captures | Assertion form |
+|---|---|---|
+| Process-entry (§12.1) | the **runner-argument object** `cli.mjs` builds — `runQueueLoop({queuePath, cwd, adapter, startup, maxPasses, provenance})` (`bin/pdlc.mjs:434`, forwarded as `...args` at `run.mjs:478`) | `captured[i].provenance === p` |
+| Injection-level (§12.1) | the **seam object** the engine spreads into the workflow module's `main()` — `devInjection`/`queueInjection`'s result (`run.mjs:80-91`, `:114-123`), whose key this feature names `_provenance` (the carrier table above, §3.1, S-6) | `captured[i]._provenance === p` |
+
+The plausible wrong repair — adding a second, `provenance`-named key to an injection so the
+copied assertion goes green — is itself red at `PROP-PARITY-12`'s no-more-no-less seam-set
+equality (`__tests__/seam-contract.test.js:47-63`, `:65-73`), so it costs two false starts on
+the one leg that carries AC-5.3's loop claim. Hence the table rather than a single form.
 
 **That per-pass assertion lives on the injection-level leg, not on the process-entry leg**
 (TE v7 F-39). The two legs of §12.1 observe different things, and only one of them can see
@@ -837,8 +851,26 @@ more than one pass:
   `refusalFor` yields `null` and no pass carries a refusal (`run.mjs:331-335`, `:495-498`),
   and an adapter stub carrying an `_agent` function, which `requireAdapter` demands before
   either import resolves (`run.mjs:319-323`). With those three, `maxPasses: 2` is reached as
-  `stopReason: "bound-reached"` and the "≥2 passes" premise cannot silently decay back into a
-  one-pass fixture.
+  `stopReason: "bound-reached"`.
+
+  **The premise is asserted, not merely arranged** (TE v8 F-44). Everything in the paragraph
+  above is fixture *recipe*; nothing in an identity comparison over `captured` observes that the
+  recipe still holds. A later edit to the recording module's return — `{outcome: "idle"}` for
+  `{outcome: "ran"}`, one word — stops the loop on pass 1 with `stopReason: "exhausted"`
+  (`run.mjs:505-508`), leaves `captured` holding one entry, and turns the per-pass comparison
+  trivially true again: exactly the vacuity TE v7 F-39 removed, re-entering through the fixture
+  instead of through the leg. So the leg carries **two first-class assertions before the identity
+  comparison**, and they are assertions, not comments:
+
+  1. `captured.length === 2` — the loop really ran twice, so "per pass" quantifies over more
+     than one pass.
+  2. the value `runQueueLoop` returns has `stopReason === "bound-reached"` — the bound, not a
+     stop condition, is what ended the loop. `stopReason` is drawn from a closed four-member set
+     (`LOOP_STOP_REASONS`, `run.mjs:317`), so this is a comparison against one named member, and
+     any decayed fixture lands on a different member rather than on a missing field.
+
+  With both, the "≥2 passes" premise cannot silently decay back into a one-pass fixture: it goes
+  red at the assertion that names it, on the leg that depends on it.
 
 Note also that no `argv`-driven fixture can set this bound by the same name: the CLI flag is
 `--max-iterations` (`bin/pdlc.mjs:39`, `:425`, `__tests__/cli.test.js:150`), which `cmdQueue`
