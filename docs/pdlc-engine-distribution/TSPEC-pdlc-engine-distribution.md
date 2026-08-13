@@ -1109,12 +1109,21 @@ stack trace before the guard's first statement — exactly what AC-2.4 forbids.
 So the guard is **its own dependency-free entry point**:
 
 - The `bin` entry **keeps the name `bin/pdlc.mjs`** and becomes that small module: its **only**
-  top-level statements are the version comparison and, on success, `await import("./cli.mjs")`
-  — the dynamic import is what defers the rest of the graph until after the check. Keeping the
-  name is what leaves the manifest's `bin` field, AC-2.1's `PATH` entry and `cli.test.js`'s
-  invocation target untouched (§5.4, TE Q-06).
+  top-level statements are the version comparison, the refusal, and — on success — a
+  **promise-chained** `import("./cli.mjs").then(…)`. The dynamic import is what defers the rest
+  of the graph until after the check. Keeping the name is what leaves the manifest's `bin`
+  field, AC-2.1's `PATH` entry and `cli.test.js`'s invocation target untouched (§5.4, TE Q-06).
+- **No top-level `await`.** The earlier draft specified `await import("./cli.mjs")`, which
+  defeats the whole point of the section: top-level `await` is a **Node 14.8+ parse-level**
+  feature, so on Node 12 the guard is a `SyntaxError` thrown before its first statement — a
+  stack trace with no named floor, which is precisely the AC-2.4 failure this redesign exists to
+  remove, merely relocated from `lib/` into the guard. The promise-chain form has no such
+  requirement.
 - That file is written in the syntax subset valid on the **oldest Node that could plausibly run
-  it**, not on the floor version. It parses on Node 12 so that it can refuse on Node 12.
+  it**, not on the floor version. The honest floor for the guard's own syntax is **Node
+  12.17+**, where dynamic `import()` first parses in ESM; it parses there so that it can refuse
+  there. Earlier 12.x patch releases are outside the claim, and stating the real number is
+  worth more than a rounder one the file cannot back.
 - Everything currently in `bin/pdlc.mjs` moves **unchanged** into the new `bin/cli.mjs`
   (E-4b), behind that dynamic import; the guard file imports nothing statically, so there is no
   graph to evaluate early. No behaviour moves with the code — the split exists only to satisfy
@@ -1128,13 +1137,23 @@ right message and the right exit code, while still emitting the stack trace AC-2
 the runtimes where it actually matters. The falsifier for the *structure* therefore runs in the
 unit suite, in-process, needing no old runtime: parse `bin/pdlc.mjs`'s source and assert
 
-1. it contains **zero** static `import` declarations, and
+1. it contains **zero** static `import` declarations,
 2. its only non-comment top-level statements are the floor comparison, the refusal, and the
-   single dynamic `import("./cli.mjs")`.
+   single dynamic `import("./cli.mjs")`, and
+3. its source contains **no top-level `await`** and no construct outside the declared
+   syntax subset — i.e. the file parses under a parser configured for the ES version Node
+   12.17 supports.
 
-That goes red on exactly the regression the container leg cannot see, and the two together
+Clause 3 exists because clauses 1 and 2 count statements and imports, not syntax level: a guard
+that satisfies both can still be unparseable on the runtime it promises to refuse on, and
+nothing else in the test set can see that. AT-2.5's runner is `node:18-alpine`, which parses
+top-level `await` happily, so the container leg is structurally blind to it. With clause 3 the
+Node-12.17 claim is falsifiable in the unit suite instead of being an assertion in a section
+whose whole subject is falsifiability.
+
+That goes red on exactly the regressions the container leg cannot see, and the legs together
 cover the claim: the container proves the *refusal* works below the floor, the structural
-oracle proves the *guard still runs first*.
+oracle proves the *guard still runs first* and *still parses low enough to run at all*.
 
 **AT-2.5 needs a named runner, and the PR gate is not one.** The gate is `node: ['20']` only
 (`.github/workflows/pr-tests.yml:41`), so a below-floor runtime does not exist in CI. §12.1's
