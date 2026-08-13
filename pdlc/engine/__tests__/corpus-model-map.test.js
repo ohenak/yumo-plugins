@@ -441,11 +441,13 @@ test("PROP-MODEL-3: every witness carries a settled outcome and an attempt index
 });
 
 test("forward direction: an UNPINNED corpus dispatch fails — M-ENG-07's column has no such member", () => {
-  // The `"unpinned"` descriptor spelling itself is PROP-MODEL-9's, owned by
-  // `adapter-descriptor.test.js` (T22 -> T36). What this row owes is only that
-  // a corpus dispatch with no pinned model is not silently accepted.
+  // The descriptor's unpinned-case value (`model: "unpinned"`, per
+  // `adapter.mjs`) is asserted by `adapter-descriptor.test.js`'s own
+  // PROP-MODEL-9 test (T22 -> T36). What this row owes is only that a corpus
+  // dispatch with no pinned model is not silently accepted — the sentinel is
+  // no member of M-ENG-07's column, so the forward direction rejects it.
   const records = witnesses((r) =>
-    r.corpusRun === "run-ii" ? [{ ...r, model: null }] : [r]
+    r.corpusRun === "run-ii" ? [{ ...r, model: "unpinned" }] : [r]
   );
   assert.match(checkModelMap(records).join("\n"), /appears in no M-ENG-07 row/);
 });

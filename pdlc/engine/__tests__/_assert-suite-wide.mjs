@@ -264,8 +264,10 @@ export function checkModelMap(records) {
 
   // Forward: recorded ⊆ declared. An unpinned dispatch (no `model` at all)
   // fails here too — M-ENG-07's column holds no such member. The descriptor
-  // spelling for the unpinned case is `adapter-descriptor.test.js`'s
-  // (PROP-MODEL-9, T22 -> T36), not this row's.
+  // value for the unpinned case (`model: "unpinned"`, per `adapter.mjs`) is
+  // asserted by `adapter-descriptor.test.js`'s own PROP-MODEL-9 test, not
+  // this row's — this row only owes that the corpus set-equality catches the
+  // case, not the descriptor's exact shape.
   const declaredModels = new Set(M_ENG_07.map((row) => row.model));
   for (const r of dispatches) {
     if (!declaredModels.has(r.model)) {

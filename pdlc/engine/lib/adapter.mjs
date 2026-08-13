@@ -383,7 +383,10 @@ export function createAdapter({
         seq,
         skill,
         phase,
-        model: dispatchOpts.model ?? null,
+        // A module pinning no model records the sentinel `"unpinned"`, never a
+        // fabricated model name — the descriptor's field is a string (TSPEC
+        // §4.1, PROP-MODEL-9). The transport's own default applies to the call.
+        model: dispatchOpts.model ?? "unpinned",
         attempt: attemptIndex,
         outcome,
         errorText,

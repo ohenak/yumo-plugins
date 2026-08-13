@@ -13,7 +13,21 @@ feature: pdlc-headless-engine
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.10 | 2026-08-11 |
+| pdlc | draft | Claude | 1.11 | 2026-08-12 |
+
+**v1.11 changelog** — erratum round 11, one contradiction resolved; no other design, decision or
+mechanism changed. **Upstream pins unchanged (REQ v0.10, FSPEC v1.7).**
+
+- **§4.1's `DispatchDescriptor.model` no longer says "never defaulted here".** As written, that
+  clause was unsatisfiable for EC-DISP-4's model-less dispatch: "verbatim from `opts.model`" yields
+  `undefined`, which the descriptor's own `string` type does not admit. PROPERTIES PROP-MODEL-9 (the
+  later document) fixes the recorded value as the literal `"unpinned"`, and production follows
+  PROPERTIES. The comment now reads "verbatim from the module's `opts.model` when the module pins
+  one; the literal string `"unpinned"` otherwise (PROP-MODEL-9); never a fabricated model name", and
+  one reconciling paragraph was added ahead of the `label` narrative stating the same rule and why it
+  is not a defaulting step (the engine still holds no model table — PROP-MODEL-1 — and `"unpinned"`
+  is no member of M-ENG-07's column, so an unpinned corpus dispatch fails §7.4's set-equality).
+  Nothing else in §4.1 changed; no upstream pin moved.
 
 **v1.10 changelog** — erratum round 10, citation re-grounding only; no design, decision or
 mechanism changed. **Upstream pins unchanged (REQ v0.10, FSPEC v1.7).**
@@ -902,7 +916,9 @@ transport's option keys, and field-presence over the descriptor.
   seq: number,            // 0-based, one value per dispatch, non-decreasing within the run;
                           // a dispatch's retry attempts share its seq and differ in `attempt`
   prompt: string,         // composed: role line + role definition + supplements + task
-  model: string,          // verbatim from the module's opts.model; never defaulted here
+  model: string,          // verbatim from the module's opts.model when the module pins one;
+                          // the literal string "unpinned" otherwise (PROP-MODEL-9);
+                          // never a fabricated model name
   cwd: string|undefined,  // per-dispatch, never process.chdir (§2.3)
   timeoutMs: number,      // dispatch.timeoutMinutes × 60 000, engine-stamped on every dispatch (§3.4, §4.6)
   attempt: number,        // 0-based; 0 is the first try, not a retry
@@ -911,6 +927,15 @@ transport's option keys, and field-presence over the descriptor.
   // maxTurns is a transport option with no descriptor field: the modules never set it,
   // so it is absent per dispatch and the transport omits it (transport.mjs:178).
 ```
+
+**`model` carries the module's value when a module pins one, and the sentinel `"unpinned"` when
+none does.** A model-less dispatch is reachable by construction — the general dispatcher passes
+`model ? { model } : undefined` (`orchestrate-dev.js:7124`), which is EC-DISP-4's case — and the
+descriptor's `string` type admits no `null`, so the adapter records the literal `"unpinned"` there
+and the transport's own default applies (PROP-MODEL-9). This is not a defaulting step: the engine
+still holds no model table and substitutes no model name (PROP-MODEL-1); `"unpinned"` names the
+absence rather than standing in for a model, and M-ENG-07's column holds no such member, so an
+unpinned corpus dispatch fails §7.4's set-equality rather than passing quietly.
 
 **`label` is `null` on every dispatch at HEAD, and nothing in this design may be keyed on it.**
 This is measured, not assumed: no `_agent` call site anywhere passes a `label`. The general

@@ -184,6 +184,21 @@ test("a successful dispatch appends exactly one settlement line, carrying outcom
     assert.equal(typeof r.seq, "number");
   }));
 
+// PROP-MODEL-9: a dispatch with no `model` option records the descriptor's
+// `model` field as the literal sentinel `"unpinned"` (`adapter.mjs`'s
+// `dispatchOpts.model ?? "unpinned"`) — never a fabricated model name. The
+// sentinel names the absence; the transport's own default applies to the call,
+// which is why the option itself stays `undefined` on the transport side.
+test('PROP-MODEL-9: an unpinned dispatch (no model option) records the settlement line\'s model as "unpinned"', () =>
+  withRunDir(async (runDir) => {
+    const { adapter, transport } = makeAdapter();
+    await adapter._agent("pm-author", "go");
+
+    assert.equal(transport.calls[0].opts.model, undefined);
+    const r = readSettlementLines(runDir)[0];
+    assert.equal(r.model, "unpinned");
+  }));
+
 test("composePrompt alone (dry-run) writes no settlement line — only a dispatched _agent call does", () =>
   withRunDir(async (runDir) => {
     const { adapter } = makeAdapter();
