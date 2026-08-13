@@ -86,7 +86,7 @@ row names its `[red]` row in `Deps`.
 | T16 | C | [red] Packaging oracles: PF-4's both-directions packed-set equality against §5.4's literal `PK-*` table, run over a **real `npm pack` into a temp dir**, with the failure message naming TSPEC §5.4 as the expected set's source; AF-2's `prepack`-into-temp precondition, `modules` set-equality, SHA-256 equality against the canonical sources, and the one-byte mutation falsifier (AT-3.8a, AT-3.8b) | `pdlc/engine/__tests__/packaging.test.js` | — | 2 | T01, T03 | ⬚ |
 | T17 | C | [red] CI arrangement extension: FSPEC §5.1's two set-equalities over `pr-tests.yml`'s job-level `name:` keys with **per-job** matrix expansion; non-matrix name expression ⇒ `unexpandable`; job-level `uses:` ⇒ `unexpandable`; `publish.yml`/`pr-tests.yml` gate-command set-equality; absorbs V-19's older overlapping matrix assertions; mutations run against fixture copies (AT-3.4) | `pdlc/engine/__tests__/ci-arrangement.test.js` | — | 2 | T03 | ⬚ |
 | T18 | C | [red] AT-2.2 uniqueness: each engine install/upgrade/pairing command, keyed on `@{scope}/pdlc-engine`, appears exactly once in the tree; the plugin's three `claude plugin install` occurrences are outside the set | `pdlc/engine/__tests__/docs-uniqueness.test.js` | — | 2 | T03 | ⬚ |
-| T19 | D | [red] Commit-site set-equality over both workflow modules' sources: the set of **enclosing named functions** containing a `git commit` invocation equals `{commitPaths, appendApprovalAnchors, commitQueueRow, commitAdvisoryRecord, buildA5SeamOps}`, stated unconditionally (AT-5.3) | `pdlc/engine/__tests__/commit-sites.test.js` | — | 2 | T01 | ⬚ |
+| T19 | D | [green] Standing guard, green at authoring time and verified so at HEAD (`orchestrate-dev.js:2839` inside `buildA5SeamOps`, `:6736` inside `appendApprovalAnchors`, `:10429` inside `commitPaths`; `orchestrate-queue.js:1603` `commitQueueRow`, `:1645` `commitAdvisoryRecord`). Commit-site set-equality over both workflow modules' sources: the set of **enclosing named functions** containing a `git commit` invocation equals `{commitPaths, appendApprovalAnchors, commitQueueRow, commitAdvisoryRecord, buildA5SeamOps}`, stated unconditionally (AT-5.3) | `pdlc/engine/__tests__/commit-sites.test.js` | — | 2 | T01 | ⬚ |
 | T20 | D | [red] `_provenance` inertness (P-1: absent seam ⇒ byte-identical artifacts) plus kinds 1 and 2 in `orchestrate-dev.js` — report field, and `block` appended by `_appendFile` **after** `_checkFile` confirms the POSTMORTEM, skipped entirely when `block` is empty (AT-4.1, AT-4.2, AT-5.3) | `pdlc/workflows/__tests__/provenanceSeam.test.js` | — | 2 | T04 | ⬚ |
 | T21 | D | [red] Kind 3: mark applied **inside `rewriteStatus`** so all five routes R-1…R-5 inherit it; `Engine` cell written on **both** `updateQueueStatus` row-write paths; `ensureEngineColumn` round trip asserting the **header literal**; the two-migration case (table lacking both `Evidence` and `Engine`) (AT-5.3, AT-5.3b) | `pdlc/workflows/__tests__/provenanceQueueRow.test.js` | — | 2 | T04 | ⬚ |
 | T22 | D | [red] Kind 4: each of C-a…C-e composes `provenance.line` **internally**; C-e still stages nothing of its own and keeps its `advisory(A5):` prefix; the queue module's own `main()` seam reaches C-d (AT-5.3) | `pdlc/workflows/__tests__/provenanceCommits.test.js` | — | 2 | T04 | ⬚ |
@@ -125,6 +125,68 @@ row names its `[red]` row in `Deps`.
 | T52 | E | [manual] BR-3.9's one-time real-channel publish, recorded and dated: tag pushed, gate and preflight green, pairing record readable via `npm view … pdlcPairing` (AT-3.1, AT-1.5) | — | `docs/pdlc-engine-distribution/EVIDENCE-BR-3.9.md` | 11 | T05, T49, T50 | ⬚ |
 
 ## 3. File-ownership manifest
+
+One row per task in §2, and no row without a task — the bijection `validatePlanContract` enforces. `Files` is the union of the task's `Test File` and `Source File` cells: every path a task writes, including test files it creates or edits. Paths are repo-root-relative and subpackage-qualified (`pdlc/engine/…` and `pdlc/workflows/…` are different suites; see §6). A task that writes nothing on disk does not exist — the two `[gate]` tasks own the decision document they append to, and the two `[manual]` tasks own the evidence document they record into.
+
+| Task | Files |
+|---|---|
+| T01 | `pdlc/engine/__tests__/preflight-baseline.test.js` |
+| T02 | `docs/_decisions/DECISIONS-plugin-distribution.md` |
+| T03 | `pdlc/engine/__tests__/_doubles.mjs` |
+| T04 | `pdlc/workflows/__tests__/helpers/provenanceDoubles.js` |
+| T05 | `docs/_decisions/DECISIONS-plugin-distribution.md` |
+| T06 | `pdlc/engine/__tests__/store.test.js` |
+| T07 | `pdlc/engine/__tests__/resolve-version.test.js` |
+| T08 | `pdlc/engine/__tests__/provenance.test.js` |
+| T09 | `pdlc/engine/__tests__/plugin-root-notice.test.js` |
+| T10 | `pdlc/engine/__tests__/engine-config.test.js` |
+| T11 | `pdlc/engine/__tests__/workflow-roots.test.js` |
+| T12 | `pdlc/engine/__tests__/update-probe.test.js` |
+| T13 | `pdlc/engine/__tests__/bin-guard-structure.test.js` |
+| T14 | `pdlc/engine/__tests__/launcher.test.js` |
+| T15 | `pdlc/engine/__tests__/version-doctor.test.js` |
+| T16 | `pdlc/engine/__tests__/packaging.test.js` |
+| T17 | `pdlc/engine/__tests__/ci-arrangement.test.js` |
+| T18 | `pdlc/engine/__tests__/docs-uniqueness.test.js` |
+| T19 | `pdlc/engine/__tests__/commit-sites.test.js` |
+| T20 | `pdlc/workflows/__tests__/provenanceSeam.test.js` |
+| T21 | `pdlc/workflows/__tests__/provenanceQueueRow.test.js` |
+| T22 | `pdlc/workflows/__tests__/provenanceCommits.test.js` |
+| T23 | `pdlc/workflows/__tests__/artifactPaths.test.js` |
+| T24 | `pdlc/workflows/__tests__/devModeKinds.test.js` |
+| T25 | `pdlc/engine/__tests__/packaging.test.js`, `pdlc/engine/package.json` |
+| T26 | `pdlc/engine/__tests__/store.test.js`, `pdlc/engine/lib/store.mjs` |
+| T27 | `pdlc/engine/__tests__/provenance.test.js`, `pdlc/engine/lib/provenance.mjs` |
+| T28 | `pdlc/engine/__tests__/engine-config.test.js`, `pdlc/engine/lib/run.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T29 | `pdlc/workflows/__tests__/provenanceSeam.test.js`, `pdlc/workflows/orchestrate-dev.js` |
+| T30 | `pdlc/workflows/__tests__/provenanceCommits.test.js`, `pdlc/workflows/orchestrate-queue.js` |
+| T31 | `pdlc/engine/__tests__/docs-uniqueness.test.js`, `pdlc/README.md`, `pdlc/engine/README.md` |
+| T32 | `pdlc/engine/__tests__/plugin-root-notice.test.js`, `pdlc/engine/lib/skills.mjs`, `pdlc/engine/lib/handshake.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T33 | `pdlc/engine/__tests__/packaging.test.js`, `pdlc/engine/__tests__/run.test.js`, `pdlc/engine/scripts/prepack.mjs`, `pdlc/engine/.gitignore`, `pdlc/engine/.npmignore` |
+| T34 | `pdlc/engine/__tests__/postinstall.test.js`, `pdlc/engine/scripts/postinstall.mjs` |
+| T35 | `pdlc/workflows/__tests__/provenanceCommits.test.js`, `pdlc/workflows/orchestrate-dev.js` |
+| T36 | `pdlc/workflows/__tests__/provenanceQueueRow.test.js`, `pdlc/workflows/orchestrate-queue.js` |
+| T37 | `pdlc/engine/__tests__/resolve-version.test.js`, `pdlc/engine/lib/resolve-version.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T38 | `pdlc/workflows/__tests__/artifactPaths.test.js`, `pdlc/workflows/orchestrate-dev.js` |
+| T39 | `pdlc/workflows/__tests__/provenanceQueueRow.test.js`, `pdlc/workflows/orchestrate-queue.js` |
+| T40 | `pdlc/engine/__tests__/startup-announce.test.js`, `pdlc/engine/lib/startup.mjs` |
+| T41 | `pdlc/engine/__tests__/workflow-roots.test.js`, `pdlc/engine/lib/run.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T42 | `pdlc/workflows/__tests__/devModeKinds.test.js`, `pdlc/workflows/orchestrate-dev.js` |
+| T43 | `pdlc/engine/__tests__/update-probe.test.js`, `pdlc/engine/lib/store.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T44 | `pdlc/workflows/__tests__/runtimeProvenanceWiring.test.js`, `pdlc/workflows/build-runtime.mjs`, `pdlc/workflows/dist/` |
+| T45 | `pdlc/engine/__tests__/bin-guard-structure.test.js`, `pdlc/engine/__tests__/provenance-path.test.js`, `pdlc/engine/bin/pdlc.mjs`, `pdlc/engine/bin/cli.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T46 | `pdlc/engine/__tests__/launcher.test.js`, `pdlc/engine/__tests__/version-doctor.test.js`, `pdlc/engine/bin/cli.mjs` |
+| T47 | `pdlc/engine/__tests__/provenance-path.test.js` |
+| T48 | `pdlc/engine/__tests__/provenance-path.test.js`, `pdlc/engine/__tests__/seam-contract.test.js`, `pdlc/engine/lib/run.mjs`, `pdlc/engine/bin/cli.mjs` |
+| T49 | `pdlc/engine/__tests__/ci-arrangement.test.js`, `pdlc/engine/__tests__/packaging.test.js`, `.github/workflows/publish.yml`, `pdlc/engine/scripts/publish-preflight.mjs` |
+| T50 | `pdlc/engine/__tests__/launcher.test.js`, `.github/workflows/fixture-machine.yml`, `pdlc/engine/scripts/fixture-machine.mjs` |
+| T51 | `docs/pdlc-engine-distribution/EVIDENCE-AT-6.2.md` |
+| T52 | `docs/pdlc-engine-distribution/EVIDENCE-BR-3.9.md` |
+| T53 | `pdlc/engine/__tests__/postinstall.test.js` |
+| T54 | `pdlc/engine/__tests__/startup-announce.test.js` |
+| T55 | `pdlc/workflows/__tests__/runtimeProvenanceWiring.test.js` |
+
+`pdlc/workflows/dist/` is a **directory** entry, owned whole by T44: a directory entry collides with everything beneath it, so no other task may write any generated artifact under it. That is the intent — the directory is regenerated as one unit by `node pdlc/workflows/build-runtime.mjs`, and the consumer copy under `.claude/workflows/` is untracked and therefore owned by no task at all.
 
 ## 4. Task dependency notes
 
