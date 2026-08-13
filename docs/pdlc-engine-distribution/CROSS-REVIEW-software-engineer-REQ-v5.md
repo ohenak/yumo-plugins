@@ -87,4 +87,29 @@ New this round, scoped to the three edited sites. Both are Low; neither blocks.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No open High findings, and the erratum is confirmed on all four raised items. The three edits
+are necessary *and*, on this document, sufficient: the defect was one statement made in two
+places (NG-6's text and O-2's gloss), both are now scope-framed, and the downstream text that
+inherits the rule states it the same way at HEAD rather than reconciling a contradiction of its
+own. AC-3.5 is no longer an absence-only oracle.
+
+The DEC-ERR-03 re-grounding turned up nothing: the REQ's upstreams — `docs/_constraints/`,
+`docs/_decisions/`, `docs/_queue/` — are byte-unchanged since the commit I approved v0.9 at, so
+no citation in this document points at text that has moved or changed meaning, and the two
+claims the edited sites newly lean on (DEC-HE-02's config-surface decision, M-ENG-11's compat
+range against the plugin version) were re-read at HEAD and hold as stated.
+
+Two Low findings for the FSPEC pass, neither a REQ edit: AC-3.5(b) needs an explicit
+secret-presence preflight in the publish flow or the channel tool's native failure will not name
+the secret (F-27), and FSPEC F-3 step 5 should drop its now-stale "NG-6's own wording is an
+erratum against the REQ, not fixed here" clause (F-28). Carried F-25 (Medium, AC-3.4's
+expression-form bound) and F-26 (Low, M-ENG-10's residual change-control sentence) remain open
+and remain non-gating — F-25 belongs in the FSPEC's expected-set section, F-26 in the
+constraints file.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
