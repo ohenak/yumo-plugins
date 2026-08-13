@@ -15,7 +15,15 @@ depends-on: [pdlc-headless-engine]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase R) | Claude | 0.9 | 2026-08-13 |
+| pdlc | Draft — in review (Phase R) | Claude | 0.10 | 2026-08-13 |
+
+*0.10 (2026-08-13, Phase F erratum round): **NG-6** restated — its scope is install and
+upgrade (which touch no consumer file at all), not the read/write verb; a *run* does read the
+consumer's `engine.*` pin, as FSPEC F-3 step 5 / BR-2.2 / BR-4.7 now state. **O-2**'s gloss
+restated on the same scope basis instead of "NG-6 forbids only the latter". **AC-3.5**'s
+absence-only oracle paired with two positives — credential present ⇒ publish authenticates and
+the release is cut; credential absent ⇒ named failure at the publish step, nothing published.
+No other change.*
 
 *0.9 (2026-08-13, review round 3): AC-6.2's distinguishing observation is the **load root**, not a
 write root — no run writes `.claude/workflows/` — and the fact that no run-bound observation of it
