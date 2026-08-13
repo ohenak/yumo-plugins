@@ -40,7 +40,50 @@ it a recovery path rather than leaving the operator in it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §8's row (c) says `doctor` over an unreadable config prints branch 0's parse-error text "plus the store root and the installed versions". In that state the config is unparseable, so no pin can be read — does row (c)'s output also state *which* version would run (i.e. `mode: "unresolved"`-style wording), or only that the file is broken? An operator in the newly-refusing state wants both halves: why everything refuses, and what would have run. Not a defect in the decision — the mechanism is TSPEC's — but if the answer is "both", one clause in row (c) makes AC-1.4's one-triple promise visibly survive the corrupt-config case. |
+
 ## Positive Observations
+
+- **Every repointed citation is exact, and the corrections are the honest kind.** I re-opened all
+  of them: `orchestrate-dev.js:48-53`/`:49`, `consolidationRoute.test.js:108-110`,
+  `build-runtime.mjs:94-97` and `:531-533`, `runtimeBundle.test.js:593-595`,
+  `catalogue.test.js:71-74` and `:4-6`, `_assert-suite-wide.mjs:196-210`,
+  `assert-suite-wide.test.js:165`/`:183`, `bin/pdlc.mjs:22-24`/`:26-31`/`:325`,
+  `package.json:4`, `REQ:397-403`/`:404-406`/`:419`, `TSPEC:256`/`:1126`/`:1782`. All check out.
+  More to the point, §2 and §5 name the *earlier draft's* error in the record instead of quietly
+  overwriting it ("`build-runtime.mjs:19` is the file's usage **comment**"; "An earlier draft of
+  this entry said… That was checked against HEAD and it is wrong in two ways"). A decisions record
+  whose corrections are visible is one a future reader can trust the rest of.
+- **F-04's fix converts a false coverage claim into two falsifiable assertions and says why the
+  cheap one does not bite.** The distinction drawn — catalogue equality covers *registration*, and
+  in reverse creates an obligation to emit, but is **path-blind** — is exactly the product-relevant
+  point: the difference between this branch and the rejected "honour it silently" branch is *which
+  path* emits, and a path-blind oracle cannot see it. Asserting rendered text rather than the id
+  alone is what makes AC-5.6 covered rather than merely registered.
+- **§7's signalled-child decision is a real product save, not a technicality.** `spawnSync` returns
+  `status: null` on a signalled child, so the obvious implementation exits **0** on a Ctrl-C'd
+  pipeline — under `stdio: "inherit"` the common interruption path — and a CI or `/loop` caller
+  reads that as success, colliding with AC-1.4's exit-code contract. The entry names the collision,
+  decides `128 + signum`, and pays for it with a positive assertion on the exact number rather than
+  `!== 0`, which it explains would not distinguish the decided mapping from an accidental crash.
+  That is the right test-shape argument made for the right product reason.
+- **§8's row (c) closes the feature's only unrecoverable state.** DEC-EDIST-08 makes a corrupt
+  config refuse even with no pin declared; once every command refuses, `doctor` is the only route
+  out, and "an unenumerated composition is how a product becomes unrecoverable in exactly the state
+  its diagnostic exists for" is the correct product framing. The cross-reference into §9's carve-out
+  table means a reader arriving from either entry finds the composition.
+- **§9's trigger is stated honestly rather than dressed up.** "An operator report… stated in that
+  honest form, because the engine emits no telemetry and NG-3 forbids it fetching anything, so there
+  is no mechanical observation that could produce this evidence" — and it contrasts itself with
+  DEC-EDIST-09's mechanical trigger. A re-evaluation trigger that admits it is a judgement call is
+  worth more than one that implies an oracle it does not have.
+- **§6's "two independent reasons, and a future reader must not retire one while satisfying the
+  other"** names a specific hazard (staging vendor rows without running `prepack` silently removing
+  the only cover for the packing-precedence risk) rather than asserting importance. That is a
+  durable shape, and it is the same one §2's AF-2 correction uses — the precondition *is* the
+  coverage.
 
 ## Recommendation
 
