@@ -445,6 +445,34 @@ in the consumer's history.
 
 ## 6. Input / output
 
+Stated as observable content obligations. Field names, output shape and message wording are the
+TSPEC's; **that** each item below is present and machine-checkable is fixed here.
+
+| # | Input | Read by | Written by the engine? |
+|---|---|---|---|
+| I-1 | Engine package version (T-1a) | F-1, F-5, F-6 | no — set by the release |
+| I-2 | Declared compat range (T-3) | F-1, F-5 | no |
+| I-3 | Installed plugin manifest version (T-1b) | F-1, F-5, F-6 | no |
+| I-4 | Consumer `.claude/pdlc.config.json`, `engine.*` namespace (pin, T-5) | F-4 | **never** (BR-2.2) |
+| I-5 | Per-invocation dev-mode declaration (T-6) | F-4 | no |
+| I-6 | `PDLC_PLUGIN_ROOT` in the environment | F-4 step 5 | no |
+| I-7 | Node version of the host | F-2, BR-2.4 | no |
+| I-8 | Git tag naming an engine version (T-4) | F-5 | no |
+| I-9 | Required-check results on the tagged commit (§5.1) | F-5 step 2 | no |
+
+| # | Output | Emitted by | Content obligation |
+|---|---|---|---|
+| Q-1 | Version triple | version query, startup banner, run report | engine version; declared range; installed plugin version **or** explicit "none installed" |
+| Q-2 | Refusal message | F-1 steps 4–5 | declared range + what was found; distinguishes absent / out-of-range / unreadable |
+| Q-3 | Resolution announcement | every run (F-4) | which branch was taken: dev-mode, pin (naming the version), or "no pin; latest installed" |
+| Q-4 | Update-probe notice | every run (AC-5.1) | newer version available, **or** "could not check"; never a failure, never a fetch |
+| Q-5 | Run report provenance block | every run, success and halt (AC-4.1) | the pair from I-1 and I-3, from one resolution (BR-1.5) |
+| Q-6 | Authored-file enumeration | run report (AC-4.5) | the files this run authored — the comparison set for BR-5.3 |
+| Q-7 | Halt-artifact provenance | POSTMORTEM, at minimum (AC-4.2) | the pair, in committed bytes |
+| Q-8 | Dev-mode mark | the four kinds of §5.3 | present in each; absent from every other kind |
+| Q-9 | Publish failure output | F-5 steps 2–4 | the failing precondition and both compared values; a **failed** run, never a skip |
+| Q-10 | Per-release pairing record | F-5 step 6 | `{engine version, compat range, plugin version at tag}`, single writer |
+
 ## 7. Edge cases and error scenarios
 
 ## 8. Acceptance tests
