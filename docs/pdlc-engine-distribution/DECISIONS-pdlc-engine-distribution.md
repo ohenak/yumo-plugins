@@ -466,6 +466,69 @@ buys); the pin moving out of the shared config file, which dissolves the couplin
 
 ## 10. DEC-EDIST-09: A dependency-free guard entry point; the CLI body moves to `bin/cli.mjs`
 
+*Mechanism: TSPEC §9.3, §12.1.*
+
+**Context.** AC-2.4 wants an operator on an unsupported Node to see a **named floor**, not a
+stack trace. A guard "at the top of `bin/pdlc.mjs`" does not achieve that: ESM static imports
+are resolved and evaluated **before** the importing module's body runs, and the shipped launcher
+carries six static imports (`pdlc/engine/bin/pdlc.mjs:22-30`). A modern-syntax construct
+anywhere in that graph throws a parse error before the guard's first statement.
+
+**Decision.** The `bin` entry **keeps the name `bin/pdlc.mjs`** and becomes a dependency-free
+guard whose only top-level statements are the version comparison, the refusal, and — on success
+— a **promise-chained** `import("./cli.mjs").then(…)`. Everything currently in the file moves to
+the new `bin/cli.mjs` behind that dynamic import. Keeping the name is what leaves the manifest's
+`bin` field (`pdlc/engine/package.json:6-8`), AC-2.1's `PATH` entry and `cli.test.js`'s
+invocation target untouched. The manifest additionally declares `engines.node: ">=20"` so npm
+carries the floor at install time.
+
+Two consequences are named rather than left to be discovered:
+
+- **No top-level `await`.** Top-level `await` is a Node **14.8+ parse-level** feature, so
+  `await import("./cli.mjs")` would make the guard a `SyntaxError` on Node 12 — the exact AC-2.4
+  failure this redesign removes, merely relocated. The promise-chain form has no such
+  requirement. The honest floor for the guard's own syntax is **Node 12.17+**, where dynamic
+  `import()` first parses in ESM: it parses there so that it can refuse there.
+- **The move is not byte-identical.** `cli.mjs` exports `main(argv = process.argv, deps = …)`
+  and self-invokes only behind an entry guard, replacing HEAD's bare `main().catch(…)`
+  (`pdlc/engine/bin/pdlc.mjs:505`) which makes *importing* the module run the CLI against the
+  importer's argv. `argv` keeps HEAD's convention — the body's `const [, , cmd, ...rest]`
+  (`:479`) is unchanged, so callers pass a process-argv-shaped array. `deps` defaults to the
+  module's own bindings, so production behaviour is unchanged.
+
+**Alternatives considered.**
+
+- **Guard at the top of the existing file** — rejected: evaluation order defeats it, as above.
+- **`await import("./cli.mjs")` in the guard** — rejected: parse-level failure below Node 14.8.
+- **A CommonJS `bin/pdlc.cjs` shim** — rejected. It would parse on much older Node, but it
+  changes the entry's extension and therefore the manifest `bin` target, AC-2.1's `PATH` entry
+  and the shipped `cli.test.js` invocation, i.e. it buys a few Node minor versions at the cost
+  of the untouched-surface property that made keeping the name worthwhile. The package is ESM
+  throughout (`pdlc/engine/package.json` declares `"type": "module"`).
+- **Rely on `engines.node` alone** — rejected: `npm` warns rather than refuses in common
+  configurations, and it says nothing at all when the CLI is invoked in an already-installed
+  tree on a downgraded Node.
+- **Add a parser (`acorn`) to assert the guard's syntax subset mechanically** — rejected for
+  now, and recorded as an accepted risk (TSPEC R-E): it would add a dependency to the one
+  manifest this feature's packed-set equality is auditing, to check a three-statement file.
+  **The reversal has a mechanical trigger, not a judgement call:** if `bin/pdlc.mjs` ever needs
+  a top-level statement beyond the three the structural oracle admits, the parser stops being
+  optional and this sub-decision is re-decided rather than re-accepted. The structural clause
+  goes red at exactly that moment, so the trigger fires in CI.
+
+**Constraints that forced the shape.** ESM evaluation order; AC-2.4 (named floor, no stack
+trace); AC-2.1 (`PATH` entry unchanged); C-3/T-2 (Node ≥ 20 floor); `node:test`'s `mock.module`
+being experimental and absent from the pinned runner, which is why the runner seam is a
+default-valued `deps` object rather than module mocking.
+
+**Reversibility.** Easy to reverse mechanically (concatenate the two files back), but the split
+is load-bearing for AC-2.4 and for §12.1's process-entry leg, so reversal means giving up both.
+
+**Re-evaluation triggers.** The guard growing past three top-level statements (see the parser
+trigger above); Node's minimum-supported floor rising past 14.8 everywhere the engine could
+plausibly be invoked, which makes top-level `await` safe and the promise chain unnecessary;
+`mock.module` stabilising, which would remove the need for the exported `deps` seam.
+
 ## 11. DEC-EDIST-10: `publish.yml` duplicates the gate jobs rather than extracting a reusable workflow
 
 ## 12. Decisions deliberately not taken here
