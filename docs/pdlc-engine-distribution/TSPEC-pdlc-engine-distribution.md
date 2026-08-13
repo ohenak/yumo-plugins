@@ -1220,10 +1220,40 @@ So the guard is **its own dependency-free entry point**:
   12.17+**, where dynamic `import()` first parses in ESM; it parses there so that it can refuse
   there. Earlier 12.x patch releases are outside the claim, and stating the real number is
   worth more than a rounder one the file cannot back.
-- Everything currently in `bin/pdlc.mjs` moves **unchanged** into the new `bin/cli.mjs`
-  (PK-4b), behind that dynamic import; the guard file imports nothing statically, so there is no
-  graph to evaluate early. No behaviour moves with the code — the split exists only to satisfy
-  the evaluation-order constraint above.
+- Everything currently in `bin/pdlc.mjs` moves into the new `bin/cli.mjs` (PK-4b), behind that
+  dynamic import; the guard file imports nothing statically, so there is no graph to evaluate
+  early. The **command logic** moves unchanged — the split exists to satisfy the
+  evaluation-order constraint above — but the move is **not byte-identical**, and the two
+  exceptions are named here rather than discovered at build time (PM v6 F-01, TE v6 F-36):
+
+  1. **Entry shape.** HEAD ends in a bare `main().catch(…)` (`bin/pdlc.mjs:505`), so *importing*
+     the module runs the CLI against the importer's `process.argv`, prints `USAGE` and sets
+     `process.exitCode = 1`. In `cli.mjs`, `main` is **exported** and self-invocation moves
+     behind an entry guard — `if (process.argv[1] && import.meta.url ===
+     pathToFileURL(process.argv[1]).href) main().catch(…)` — so `pdlc dev …` behaves exactly as
+     at HEAD while an import is inert.
+  2. **Runner seam.** `runDev`, `runQueue` and `runQueueLoop` arrive as static ESM bindings
+     (`bin/pdlc.mjs:30`) and cannot be substituted by an importer; `node:test`'s `mock.module`
+     is experimental and absent from the pinned runner (`engines.node: ">=20"`, local Node
+     v20.20.1). So `main(argv, deps)` and the command bodies take a **default-valued `deps`
+     object** — `{runDev, runQueue, runQueueLoop}` defaulting to those imports — the shape
+     `run.mjs` already uses for `importWorkflow` (`run.mjs:387`, `:427`). Production behaviour
+     is unchanged because the defaults *are* the static imports; §12.1's process-entry leg
+     passes recorders instead.
+
+  Both exceptions are behaviour-visible only to a test, and both are priced in K-3 (§14.1) and
+  owned by the wiring task (§12.4). The alternative shapes were weighed: exporting the bodies
+  *without* the runner seam leaves the argument object unobservable, and a
+  subprocess-plus-observable-artifact oracle (the pattern `cli.test.js:22` already uses) needs
+  no change to `cli.mjs` but proves the `:434` loop hand-off only through a full `pdlc queue
+  --loop` run in a throwaway repo — a fixture this feature does not otherwise need. The seam is
+  the cheaper falsifier for the defect that started this thread.
+
+- **`cli.mjs` gets no structural-oracle clause of its own; the import-based tests are the pin**
+  (TE v6 Q-17). The three clauses below are scoped to `bin/pdlc.mjs`, where the hazard is
+  *evaluation order on an old runtime*. `cli.mjs` has no such hazard, and a later edit that
+  restored a bare `main()` call would break every process-entry test at once and loudly — the
+  entry guard is pinned by the tests that depend on it, so no fourth clause is added.
 
 **The container leg cannot falsify the hazard on its own, so it is paired with a structural
 oracle.** AT-2.5's runner is Node 18 (below the `>=20` floor, see below), but Node 18 parses
