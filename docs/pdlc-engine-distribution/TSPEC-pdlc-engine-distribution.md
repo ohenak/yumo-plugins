@@ -183,15 +183,17 @@ source. The reversal cost is one branch in one function, so this is not a one-wa
 
 | Field | HEAD (V-01) | After | Why |
 |---|---|---|---|
-| `name` | `pdlc-engine` | `@kaneho/pdlc-engine` | DEC-DIST-05 chose scoped-public; O-8 blocker (2) is decision-enforced only |
+| `name` | `pdlc-engine` | `@{scope}/pdlc-engine`, `{scope}` set by the operator | DEC-DIST-05 chose scoped-public and named **no scope**; the scope is an npm account the operator must own, so it is an O-8-class publish precondition (N-6), not a string this TSPEC invents. PF-3 asserts the manifest name against the **recorded** decision, not against a literal here |
 | `private` | `true` | *removed* | O-8 blocker (1), the one npm itself refuses |
 | `license` | `UNLICENSED` | operator-set SPDX id | O-8 blocker (3). **Operator obligation, not this TSPEC's to invent** — the PLAN carries it as a gate task, not a code task |
 | `version` | `0.1.0` | unchanged by this feature | T-1a; bumped per release, not here |
 | `engines.node` | absent | `">=20"` | C-3 / T-2 declared, so `npm` warns and §11's runtime check has a declaration to name |
-| `files` | absent | `["bin/", "lib/", "vendor/workflows/", "README.md"]` | D-5; §5.4 |
+| `files` | absent | `["bin/", "lib/", "vendor/workflows/", "scripts/postinstall.mjs"]` | D-5; §5.4. `README.md` is **not** listed — npm packs it unconditionally (§5.4) |
 | `pdlcPluginCompat` | `^0.22.0` | unchanged shape | T-3, already shipped (V-07) |
 | `pdlcPairing` | absent | written **by the publish job**, §8.4 | O-6's single-writer record |
-| `scripts.prepack` | absent | `node scripts/prepack.mjs` | §5.2 |
+| `scripts.prepack` | absent | `node scripts/prepack.mjs` | §5.2. Build-time only, and therefore **not packed** (§5.4) |
+| `scripts.postinstall` | absent | `node scripts/postinstall.mjs` | §9.2's store population. The script is packed (`files` lists it explicitly), because a `postinstall` whose script file is absent from the tarball fails in the consumer's terminal at install time |
+| `README.md` | absent at HEAD (verified: `ls pdlc/engine/` → `__tests__ bin lib node_modules package-lock.json package.json`) | **new file, created by this feature** | npm packs `package.json`, `README*` and `LICENSE*` regardless of `files`, so the packed set contains a README whether or not one is authored. Authoring one makes the member intentional rather than accidental, and gives the npm listing a page |
 
 ### 5.2 Build-time vendoring
 
@@ -235,13 +237,21 @@ one they replace:
 | # | Assertion | Replaces / adds |
 |---|---|---|
 | AF-1 | No **git-tracked** file under `pdlc/engine/` is named `orchestrate-{dev,queue}.js`. Tracked-ness is read from `git ls-files`, not from a directory walk, so a build artefact cannot satisfy it and a committed fork cannot hide behind `.gitignore`. | Replaces V-05's walk. Strictly stronger against the failure that matters: a *committed* fork |
-| AF-2 | For every entry in `VENDOR-MANIFEST.json`, the vendored bytes hash equal to the canonical `pdlc/workflows/` source at the same commit. A vendored copy that has drifted by one byte fails. | **New.** This is the property the walk was a proxy for, now asserted directly |
+| AF-2 | **Run `prepack` into a temp directory first**, then: the manifest's `modules` array enumerates **exactly** `orchestrate-dev.js` and `orchestrate-queue.js` (set-equality, not `length > 0`); each entry's recorded SHA-256 equals the hash of the vendored bytes; and each equals the canonical `pdlc/workflows/` source at the same commit. Falsifier, asserted in the same test: mutating one byte of a vendored copy turns AF-2 red. | **New.** This is the property the walk was a proxy for, now asserted directly |
 | AF-3 | `PROP-FORK-1`'s exact-path equality is kept for the checkout root, and extended: in an installed package the resolved module path must equal the vendor root's path exactly, not merely start with it. | Extends `run.test.js:67-79` |
 
 The distinction BR-8.2 demands — "vendored in the repo" versus "vendored in a build
 artefact" — is carried by AF-1's tracked-ness test, and the property is not merely
 preserved but made checkable at the byte level by AF-2. **No assertion is deleted without a
 strictly stronger replacement named in this table.**
+
+**AF-2's precondition is load-bearing, not housekeeping.** §5.2 makes `vendor/` a git-ignored
+build artefact, so in an ordinary checkout there is no `VENDOR-MANIFEST.json` at all — and
+"for every entry in the manifest…" is then trivially true over the empty set. Without the
+`prepack`-into-temp step, the replacement for a walk that ran on **every** checkout would be
+an oracle that ran on **none** of them: satisfiable by absence, which is the failure mode
+§12.3 exists to hunt. The set-equality (rather than a non-empty check) is what makes a
+prepack that silently vendored nothing, or vendored a third file, fail rather than pass.
 
 ### 5.4 The `files` allow-list (D-5, Q-5)
 
@@ -252,17 +262,45 @@ would leak in. An allow-list that forgets an entry ships too little and fails AT
 loudly at build time. **We prefer the failure that is caught offline over the one that is
 caught by a consumer.**
 
-The list is `["bin/", "lib/", "vendor/workflows/", "README.md"]`, which yields exactly
-FSPEC §5.2's expected members: the manifest (npm always includes it), `bin/pdlc.mjs`, the
-twelve `lib/*.mjs` (V-03), and the vendored workflow modules — and excludes `__tests__/`,
-`package-lock.json`, `.gitignore` and `scripts/` without naming any of them. Q-5 is
-answered: the exclusion is a deliberate packaging mechanism, not an omission.
+The list is `["bin/", "lib/", "vendor/workflows/", "scripts/postinstall.mjs"]`. It excludes
+`__tests__/`, `package-lock.json`, `.gitignore` and `scripts/prepack.mjs` without naming any
+of them. Q-5 is answered: the exclusion is a deliberate packaging mechanism, not an omission.
+
+**`files` does not by itself determine the packed set, and the earlier draft's arithmetic was
+wrong.** npm packs `package.json`, `README*` and `LICENSE*` **regardless of `files`**, and
+ignores a `files` entry for a path that does not exist. The previous list carried `README.md`
+while no `pdlc/engine/README.md` existed at HEAD — an entry that was simultaneously dead (no
+such file) and redundant (npm would include it anyway). Since PF-4/AT-3.8a is a
+**member-for-member equality in both directions** (BR-8.1), that mismatch was a red row by
+construction, and the tempting repair — relaxing the check to a subset — is precisely the
+defect AC-1.3 exists to catch. The fix is on both sides: the allow-list drops `README.md`
+(§5.1 authors the file instead), and the expected set gains the manifest-adjacent members it
+was always going to contain.
+
+**The literal expected packed set** (the right-hand side of PF-4 and AT-3.8a):
+
+| # | Member | Why it is packed |
+|---|---|---|
+| E-1 | `package.json` | npm, unconditionally |
+| E-2 | `README.md` | npm, unconditionally; authored by this feature (§5.1) |
+| E-3 | `LICENSE` | npm, unconditionally — **present only once N-2's operator licence decision lands.** Until then the member is absent and the expected set omits it. The equality is therefore parameterised on one boolean the repo can read (does `pdlc/engine/LICENSE` exist), never hand-maintained |
+| E-4 | `bin/pdlc.mjs` | `files` entry `bin/` |
+| E-5…E-16 | the twelve `lib/*.mjs` (V-03) | `files` entry `lib/` |
+| E-17 | `vendor/workflows/orchestrate-dev.js` | `files` entry `vendor/workflows/` |
+| E-18 | `vendor/workflows/orchestrate-queue.js` | same |
+| E-19 | `vendor/workflows/VENDOR-MANIFEST.json` | same |
+| E-20 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
+
+**This disagrees with FSPEC §5.2 as written, and the disagreement is raised, not papered
+over.** FSPEC §5.2 enumerates the manifest, `bin/pdlc.mjs`, the twelve `lib/*.mjs` and the
+workflow modules, and explicitly excludes "repo-level documentation" — so E-2, E-3 and E-20
+are members this TSPEC's design requires and the FSPEC's expected set does not contain. An
+erratum is raised against FSPEC §5.2 rather than leaving the two documents disagreeing while
+a both-directions equality gates on them.
 
 **Note for the FSPEC's §5.2 workflow-module row.** That row is marked *"[blocked on O-10],
-not enumerable yet"*. This section unblocks it: the members are exactly
-`vendor/workflows/orchestrate-dev.js`, `vendor/workflows/orchestrate-queue.js` and
-`vendor/workflows/VENDOR-MANIFEST.json`. AT-3.8b is therefore writable, and the PLAN
-schedules it in Phase 1 rather than deferring it.
+not enumerable yet"*. This section unblocks it: the members are exactly E-17, E-18 and E-19.
+AT-3.8b is therefore writable, and the PLAN schedules it in Phase 1 rather than deferring it.
 
 ## 6. Version resolution: store, launcher, pin, dev-mode (F-4)
 
