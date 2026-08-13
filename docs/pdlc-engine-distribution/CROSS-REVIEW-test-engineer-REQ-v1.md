@@ -1,0 +1,89 @@
+# Cross-Review: test-engineer — REQ
+
+**Reviewer:** test-engineer
+**Document reviewed:** `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.6)
+**Date:** 2026-08-13
+**Iteration:** 1
+**Scope:** Testing lens only — testability of acceptance criteria, oracle falsifiability, edge-case completeness, and whether every existing-behaviour claim the ACs rest on holds at HEAD.
+
+## Grounding performed
+
+Every §1.1 observation and every existing-behaviour claim in §7 was re-checked against the working tree, not against the documents that assert them.
+
+| Claim | Verdict at HEAD | Evidence |
+|---|---|---|
+| O-A — no release automation, `.github/workflows/` holds exactly the PR gate | **Holds** | `.github/workflows/` contains only `pr-tests.yml`; triggers are `pull_request`, `push: [main]`, `workflow_dispatch` (`pr-tests.yml:7-11`) — no tag trigger |
+| O-B — the gate is **four** required checks | **Stale — it is five** | `pr-tests.yml:28` unit-tests, **`:78` `Engine tests`**, `:112` artifacts-in-sync, `:138` fresh-clone bootstrap, `:196` shell-scripts-parse |
+| O-B — matrix is ubuntu-latest × Node 20 only | Holds | `pr-tests.yml:39-40`, `:88-89` (`os: [ubuntu-latest]`; node `'20'`) |
+| O-C — the plugin manifest is the single version of record; nothing else declares a pdlc version | **Stale** | `pdlc/engine/package.json:3` declares `"version": "0.1.0"`; plugin is `0.22.0` |
+| O-D — distribution manifest discipline | Holds | `pdlc/workflows/dist/distribution-manifest.json` |
+| O-E — 15 `SKILL.md` + 2 `se-implement` supplements | **Holds exactly** | `find pdlc/skills -name 'SKILL*.md'` → 17 files, 15 of them `SKILL.md` |
+| O-F — no run report carries a version | Holds for the *workflow modules*; the engine wrapper already carries the pair | `pdlc/workflows/orchestrate-dev.js` has no `engineVersion`/`pluginVersion`; `pdlc/engine/lib/report.mjs:77-78` does |
+| O-G — the only npm project is the workflow test package | **Stale** | `pdlc/engine/package.json` is a second npm project with its own lockfile and `test` script |
+| NG-1 / O-1 — the prompt corpus is "already embedded, world-readable, in `pdlc/workflows/orchestrate-dev.js`" | **False** | `grep -c "Senior Test Engineer" pdlc/workflows/orchestrate-dev.js` → `0`; the module references SKILL files by path (`:5340`, `:8850`) and embeds none |
+| NG-1 — repo is public | Holds | `gh repo view --json visibility` → `PUBLIC` (`ohenak/yumo-plugins`) |
+| O-5 — `PDLC_PLUGIN_ROOT` / `--plugin-root` shipped, honoured on env presence alone | Holds | `pdlc/engine/lib/skills.mjs:54`, `:212-217`; `pdlc/engine/bin/pdlc.mjs:78,141` |
+| O-5 rider (2) — nothing marks a dev-mode run; `report.mjs` has no dev/channel field | Holds | `pdlc/engine/lib/report.mjs:77-96` — 19 fields, none of them a channel or dev marker |
+| O-5 — remedy named at `handshake.mjs:134` | Holds | `pdlc/engine/lib/handshake.mjs:132-135` (`REMEDY`) |
+| O-6 — `pdlcPluginCompat`, semver `^`/`~`/exact, checked at `handshake.mjs:93` | Holds | `pdlc/engine/package.json:9` (`"^0.22.0"`); `satisfiesRange` at `handshake.mjs:93` |
+| O-3 — dispositions written into `QUEUE.md` | Holds | `docs/_queue/QUEUE.md:45-47, 57, 70` |
+| O-1 — DEC-DIST-05 recorded | Holds | `docs/_decisions/DECISIONS-plugin-distribution.md:115` |
+| O-8 — `"license": "UNLICENSED"` | Holds | `pdlc/engine/package.json:11` |
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **O-B's count is stale, and T-7/AC-3.4 are defined by reference to it, so the derived test under-enumerates.** The gate is **five** jobs at HEAD, not four: `Engine tests` was added at `pr-tests.yml:78` and O-B never names it. T-7 says "the full set of required checks at O-B — currently four" and AC-3.4 says "every check named at O-B still exists under the same name". A test written from that enumeration checks four names, passes while `Engine tests` is deleted or renamed, and the publish gate at AC-3.1/AC-3.2 then ships a release whose engine suite never ran. Fix by (a) correcting O-B to five and naming `Engine tests`, and (b) restating T-7 so the enumeration is the *authoritative list*, not "currently four". | §1.1 O-B; §4.1 T-7; AC-3.4 |
+| F-02 | High | Local | **AC-3.4's oracle is containment, not set-equality, and compares paraphrases rather than literal check names.** "Every check named at O-B still exists under the same name" passes when a sixth check is silently added *and* — worse — the names in O-B are prose paraphrases ("shell-script parse/index-mode"), while what Phase PUB polls are the literal `name:` strings (`Unit tests (${{ matrix.os }}, node ${{ matrix.node }})`, `Engine tests (${{ matrix.os }})`, `Generated artifacts are in sync`, `Fresh-clone bootstrap works`, `Shell scripts parse`). No test engineer can write the assertion without asking which spelling is authoritative. Restate AC-3.4 as a **set-equality** check over the full literal list of required check names, so both a deletion and an unreviewed addition fail. | AC-3.4; §1.1 O-B |
+| F-03 | High | Cross-Feature | **A load-bearing premise of the O-1 decision is factually false at HEAD.** NG-1 and O-1 both assert the prompt corpus "is already embedded, world-readable, in `pdlc/workflows/orchestrate-dev.js`". It is not: that module contains zero SKILL body text (`grep -c "Senior Test Engineer"` → 0) and only references skills by path. The *conclusion* survives on the true premise alone (the repo is `PUBLIC`, so `pdlc/skills/**` is world-readable in the tree), but the false clause is stated twice here and has propagated verbatim into `DECISIONS-plugin-distribution.md:127` as the deciding reason for rejecting a private registry. A downstream reader re-deriving the privacy analysis from a false mechanism will re-derive it wrongly. Delete the "embedded in `orchestrate-dev.js`" clause in both places; keep the public-repo premise. Raised as an erratum against DECISIONS. | §3 NG-1; §7 O-1 |
+| F-04 | High | Local | **AC-3.6 as written cannot pass any real release, because two version numbers now exist and T-1 names the wrong one for this tag.** T-1's default version of record is `pdlc/.claude-plugin/plugin.json` (`0.22.0`), but the tag AC-3.1 describes releases the **engine package** (`pdlc/engine/package.json:3` → `0.1.0`). AC-3.6 then demands the workflow *fail* whenever "a tag whose version disagrees with the version of record" is pushed — which is every engine tag until the two numbers coincide by accident. Either T-1 must be split into *engine* version of record and *plugin* version of record, or AC-3.6 must name which one the tag is compared against. Today the AC has no writable test. | AC-3.6; §4.1 T-1; §1.1 O-C |
+| F-05 | High | Local | **AC-4.2 names no carrier, and the shipped provenance layering makes its stated carriers structurally unable to hold the value.** AC-4.2 requires the engine version be "recoverable from the repo's own history" via "the halt report and the queue row the halt writes and commits". But the `engine` provenance block is added by the engine-side wrapper (`pdlc/engine/lib/report.mjs:1-15`, which states it "never edits `pdlc/workflows/`"), while the queue-row rewrite and the POSTMORTEM file are written by the workflow modules (`orchestrate-dev.js:5889`, `:7303`, `:11078`) — the layer that, by that module's own docblock, "ha[s] no way to know" its own version. So the pair exists only in the CLI's returned/printed report, which is not in repo history. A test for AC-4.2 has nothing to `grep`. Name the committed artifact and the field, or state the layering change required. | AC-4.2; §2 G-4 |
+| F-06 | High | Local | **AC-2.3 is an absence-only oracle.** "The repo's working tree and index are unchanged — no file created, modified or deleted" passes trivially when the install silently did nothing at all — the exact failure AC-2.1 exists to catch, and the two ACs are separately testable, so nothing forces them onto the same run. Pair the negative with a positive assertion on the *same* path: after the same install/upgrade, the CLI resolves on `PATH` at the new version **and** the engine's own install location changed. Same defect, same fix, in AC-2.5 ("neither install path modifies the other's files"): add a positive that both paths still dispatch. | AC-2.3; AC-2.5; §4 C-2 |
+| F-07 | High | Local | **AC-1.3's completeness check is containment-shaped and its negative half is undecidable as phrased.** "It contains the CLI entry, the workflow modules, and the engine adapter, and no `skills/` directory or prompt file of any kind" gives a verifier no way to decide what counts as "a prompt file of any kind", and the positive half is satisfied by a package that also ships anything else. State it as **set-equality over the package's declared file manifest**: the packed file list equals an enumerated expected set, so an added file fails and a deleted module fails. This also makes the check offline-decidable, which the AC already asks for. | AC-1.3 |
+| F-08 | High | Local | **AC-3.1 is unsatisfiable at HEAD for two reasons O-8 does not record.** `pdlc/engine/package.json:4` sets `"private": true`, which makes `npm publish` refuse outright, and `:2` names the package `pdlc-engine` — unscoped, while DEC-DIST-05 and O-1 both decided a **scoped** package. O-8 records only the licence as the publish precondition. A test derived from AC-3.1 ("CI publishes with no further human action") fails on the private flag before the licence ever matters. Extend O-8 (or add O-9) to name all three preconditions: licence, `private`, package name/scope. | AC-3.1; §7 O-8 |
+| F-09 | Medium | Local | **AC-3.3's oracle is disjunctive, so a test asserting "either" passes on both branches and pins neither.** "The run either no-ops with an explicit statement or fails naming the collision" lets an implementation choose at runtime. Keep the disjunction if the operator genuinely wants it, but add the invariant that is *not* optional and is positively assertable on both branches: the published bytes for version N are byte-identical before and after the re-run, and the run's output names version N. | AC-3.3; §4 C-7 |
+| F-10 | Medium | Local | **AC-6.1's expected value is "as before", not a literal.** "Both succeed exactly as before" has no captured baseline, so the test either re-derives the expectation from the implementation under test (an implementation echo) or asserts only exit 0. State the literal transcriptions: the two bootstrap commands succeed in the documented order and `sync-workflows.sh --check` exits 0 with every row in sync. | AC-6.1 |
+| F-11 | Medium | Local | **AC-4.4's anti-echo clause has no falsifying test named.** "Never a constant restated in the report" is exactly the property an example-based test cannot see — a hardcoded constant that happens to match passes. Name the mutation-shaped check the AC intends: with a *different* plugin version installed (or a different `--plugin-root`), the reported pair changes correspondingly; reverting the change restores it. | AC-4.4 |
+| F-12 | Medium | Local | **AC-5.1's "a newer version exists" turns a local assertion into a network-dependent one.** Announcing that a newer version exists implies a registry query on the chosen channel (O-1). Without a stated seam this test is flaky offline and in CI, and NG-3's "may notice, never fetches" boundary is not testable either. State that the newer-version probe is behind an injectable seam and that its failure/unavailability degrades to a stated message rather than to a failed run. | AC-5.1; §3 NG-3 |
+| F-13 | Medium | Local | **AC-5.3's "every artifact that run writes is marked" is an unbounded universal.** No enumeration of artifact kinds is given (run report? cross-review files? POSTMORTEM? queue row? commit trailer?), so the test cannot be complete and will be written over whichever subset the implementer chose. O-5's rider (2) already establishes this is genuinely new work with no shipped carrier. Enumerate the artifact kinds that must carry the dev-mode mark, and check the enumeration by set-equality. | AC-5.3; §7 O-5 |
+| F-14 | Medium | Local | **The T-6 ↔ shipped-`PDLC_PLUGIN_ROOT` tension is recorded but not converted into an acceptance criterion, so nothing fails if the TSPEC papers over it.** O-5 states the tension honestly (env var honoured on presence alone at `skills.mjs:212-217`, while T-6 forbids inference from env presence), and AC-5.4 only covers "a checkout present but no selector passed". Add the AC that names the shipped mechanism: with `PDLC_PLUGIN_ROOT` exported and no per-invocation declaration, the run either refuses or executes the released version and says the env var was ignored — never silently switches skill source. | §7 O-5; AC-5.4; §4.1 T-6 |
+| F-15 | Low | Local | **T-3 names two field names, one illustrative and one shipped.** "e.g. `compatiblePluginRange`; the shipped field is named `pdlcPluginCompat`" invites a test asserting the illustrative key. Drop the illustrative name; `pdlcPluginCompat` is real at `pdlc/engine/package.json:9`. | §4.1 T-3 |
+| F-16 | Low | Local | **AC-2.1's "copied verbatim from the README" has no anchor.** No README path or section is named, so the test cannot locate the string it is meant to execute. Name the file and the heading the command is transcribed from. | AC-2.1 |
+| F-17 | Low | Local | **AC-6.2's "share no mutable state" is not observable as stated.** Give it an assertable form — e.g. the two installs' write roots are disjoint paths, enumerated — or drop the clause and keep the channel-identification half, which is testable. | AC-6.2 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Is the release tag an **engine** version tag or a repo-wide version tag? F-04 turns on this, and T-4 ("the repo's version-tag convention") does not say. If engine, T-1 needs two rows. |
+| Q-02 | AC-1.1 refuses "before dispatch" when no plugin is installed. Does that refusal also apply to `pdlc doctor`, which today deliberately dispatches nothing (`bin/pdlc.mjs:~205`) and is the operator's diagnostic when the handshake fails? A blanket refusal would remove the tool needed to diagnose the refusal. |
+| Q-03 | AC-4.5 says no prior artifact is "rewritten, back-filled, or invalidated". Is the intended oracle a content hash over the pre-existing `docs/{feature}/` tree taken before and after the run, or something narrower? A test needs the comparison set named. |
+| Q-04 | AC-5.1 requires the *pinned* version to execute while another is latest — i.e. two engine versions resolvable side by side on one machine. Is that in scope for Phase 2, or does the pin degrade to a refusal (AC-5.5's shape) when the pinned version is not the installed one? The two ACs currently imply different mechanisms. |
+
+## Positive Observations
+
+- §1.1 is the right instinct and mostly earns its keep: separating "observations, not contracts" from the ACs is exactly what lets a reviewer falsify the REQ's premises cheaply. Three of nine rows have gone stale since 2026-08-08, which is a re-verification problem, not a design problem — the structure is what made the staleness findable in ten minutes.
+- O-E's count is **exactly right** and explicitly corrects the upstream "14" — 15 `SKILL.md` plus two `se-implement` supplements, verified. A REQ that corrects its own upstream on a countable fact is doing the job.
+- AC-1.4's triple (engine version, declared range, plugin version found) is a genuinely good testable surface, and it is falsifiable today: `pdlc --version` prints only `pdlc-engine v{version}` (`bin/pdlc.mjs:160`), so the AC currently fails — which is what a well-formed AC should do before implementation.
+- AC-3.2's insistence that a skipped-or-green-but-inert publish run is a **defect** is precisely the absence-only trap this pipeline keeps falling into, named and closed at the requirement level rather than left to the test engineer.
+- R-3 is honest in a way most risk sections are not: it states plainly that two runs reporting an identical engine+plugin pair can still have executed different prompt text, and refuses to claim any AC closes it.
+- O-5's rider (2) — "AC-5.3's artifact-marking is genuinely new work, nothing marks a `--plugin-root` run today" — is verified correct against `lib/report.mjs`. Checking one's own obligation against shipped code before declaring it answered is the standard this REQ should be held to on the §1.1 rows too.
+
+## Recommendation
+
+**Needs revision**
+
+Eight High findings. The REQ's structure, altitude and risk analysis are sound, and most ACs are stated as observable black-box outcomes — but the acceptance layer is not yet derivable into tests without asking questions, on three distinct axes:
+
+1. **Stale premises that ACs are defined *by reference to*.** O-B's four-vs-five (F-01) is not a documentation nit: T-7 and AC-3.4 both resolve through it, so the publish gate inherits the undercount and a derived test would false-green with the engine suite deleted.
+2. **Oracles that pass on the wrong thing.** Containment where set-equality is meant (F-02, F-07), absence-only assertions with no positive counterpart on the same path (F-06), a disjunctive acceptance (F-09), a baseline stated as "as before" rather than as literals (F-10).
+3. **Two ACs with no writable test at all.** AC-3.6 contradicts the now-two-version reality (F-04); AC-4.2 asks for a value in a committed artifact that the writing layer structurally cannot see (F-05). Both need a decision, not a rewording.
+
+Also correct the false "embedded in `orchestrate-dev.js`" premise (F-03) in NG-1 and O-1 — the decision it supports stands on the public-repo fact alone — and record the `private: true` / unscoped-name publish preconditions alongside the licence (F-08).
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 8, "medium": 6, "low": 3}
+
