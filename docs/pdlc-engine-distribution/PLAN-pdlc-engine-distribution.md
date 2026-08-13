@@ -190,6 +190,61 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 
 ## 4. Task dependency notes
 
+## 4. Task dependency notes
+
+Every edge in §2's `Deps` column is one of five kinds. This section names the kind for the edges that are not self-evident, so a reviewer can check the graph rather than re-derive it.
+
+**Kind 1 — red-before-green.** A `[red]` test task always precedes the `[green]` task that satisfies it, as an explicit `Deps` edge (never merely a lower batch number). The eleven pairs:
+
+| Red | Green | What goes from failing to passing |
+|---|---|---|
+| T06 | T26 | `lib/store.mjs` exists and lists `$PDLC_HOME/versions/` |
+| T07 | T37 | the seven-branch resolution ladder |
+| T08 | T27 | `lib/provenance.mjs` and the frozen `Provenance`/`NO_PROVENANCE` values |
+| T09 | T32 | `resolvePluginRoot`'s `devDeclared` + `notices` extension |
+| T10 | T28 | `readEngineConfig`'s unreadable branch and its message id |
+| T11 | T41 | the two-root workflow-module resolver |
+| T12 | T43 | `UpdateProbe` and its inert default |
+| T13 | T45 | the `bin/pdlc.mjs` / `bin/cli.mjs` split and the Node floor |
+| T14 | T46 | the `spawnSync` launcher hop and its exit-code arithmetic |
+| T15 | T46 | `--version` / `doctor` resolving without ever refusing |
+| T16 | T25, T33 | `package.json`'s `files` allow-list (T25), then `prepack` + `.npmignore` (T33) |
+| T17 | T49 | `publish.yml`'s job arrangement |
+| T18 | T31 | the READMEs' single-source-of-truth split |
+| T53 | T34 | `scripts/postinstall.mjs` populating the version store |
+| T54 | T40 | `runStartupChecks` surfacing notices and the resolution announcement |
+| T20 | T29 | the workflow modules' `_provenance` seam, kinds 1–2 |
+| T21 | T36, T39 | the `Engine` queue column (T36 writes it, T39 threads it) |
+| T22 | T30, T35 | provenance reaching the commit helpers, queue side then dev side |
+| T23 | T38 | `artifactPaths` classes 7–11 |
+| T24 | T42 | `_recordQueueRow`'s `provenance` key |
+| T55 | T44 | `build-runtime.mjs`'s two generated closures widening to 8 arguments |
+
+T16 and T21–T24 each fan out to more than one green task because the red test states a conjunction that no single ownership-disjoint edit can satisfy; the edges make the ordering explicit rather than leaving it to batch arithmetic.
+
+**Kind 2 — shared prerequisite.** T01 (pre-flight gate) and T03 / T04 (the two doubles modules) are batch-1 tasks that many later tasks read but none re-write. Every engine-side test task depends on T03 and, where it asserts against a HEAD symbol, on T01; every module-side test task depends on T04. This is the "shared prerequisites owned by exactly one batch-1 task" rule: `_doubles.mjs` has one author (T03) and `provenanceDoubles.js` has one author (T04), for the whole plan.
+
+**Kind 3 — decision gate.** T02 (npm scope) and T05 (licence) write no code. T02 unblocks anything that must spell the package name: T25's `name` field, T31's README literals, and — transitively, through T25 — T49's preflight. T05 gates only the first *real* publish (T52), because PK-3's expected packed set contains the licence file; nothing in the fixture machine needs it, which is why T50 does not depend on T05.
+
+**Kind 4 — serialisation on a shared file.** Where several tasks edit one file, the edges force a total order rather than a partial one, because two tasks in the same batch may not both write it. Three chains carry most of this:
+
+- `pdlc/engine/lib/catalogue.mjs`: T28 → T32 → T37 → T41 → T43 → T45, one message-registering task per batch across batches 3–8. The file is touched by six tasks and never by two in the same batch.
+- `pdlc/workflows/orchestrate-dev.js`: T29 → T35 → T38 → T42, batches 3, 4, 5, 6.
+- `pdlc/workflows/orchestrate-queue.js`: T30 → T36 → T39, batches 3, 4, 5.
+
+Two shorter chains: `lib/run.mjs` is written by T28 (b3), T41 (b6) and T48 (b10); `bin/cli.mjs` by T45 (b8), T46 (b9) and T48 (b10). The `provenance-path.test.js` file is created by T45 (b8), extended by T47 (b9), and read-and-extended by T48 (b10) — three batches, three writers, never concurrent.
+
+**Kind 5 — real ordering, not file contention.** A few edges exist because the later task's *subject matter* does not exist yet, even though the files are disjoint:
+
+- T37 → T41 and T41 → T43: the resolver, the module roots and the update probe are independent files, but each later message id is registered against the catalogue shape the previous one left, and §10.3's suite-wide oracle fails on a registered-but-unemitted id (`pdlc/engine/__tests__/_assert-suite-wide.mjs:195-213`). Batching them apart is what keeps that oracle green at every batch boundary rather than only at the end.
+- T43 → T45: the below-floor id is the last one registered, and T45 is where `bin/cli.mjs` first exists to emit it.
+- T33 → T49 and T34 → T49: `publish.yml` re-asserts PF-4 and PF-5 against a tarball that only `prepack` (T33) can produce, and its `publish` job's shape mirrors what `postinstall` (T34) will do on the consumer side.
+- T46 → T50 and T49 → T50: the fixture machine spawns the real launcher and installs a real pack, so both must be finished code before it can observe anything.
+- T50 → T51 and T50 → T52: the two `[manual]` observations record evidence *from* the fixture machine's runs; they cannot precede it.
+- T47 → T48: T47's process-entry leg asserts the exported `deps` key set on `bin/cli.mjs` before T48 adds the `_provenance` keys to `devInjection`/`queueInjection`; running them in one batch would let the key-set assertion pass for the wrong reason.
+
+**No cycles.** The graph is a DAG: every edge points from a lower batch to a strictly higher one, which `computeTopologicalBatches` re-derives independently in Phase P. Any edge added later that violates `Batch = max(batch of deps) + 1` will be rejected there, not discovered in Phase I.
+
 ## 5. Integration points
 
 ## 6. Batch-safety rules honoured
