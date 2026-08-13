@@ -803,14 +803,46 @@ per run" read literally: a queue loop is one run, so all its passes carry identi
 and a PLAN task must **not** re-derive the value inside the loop.
 
 **One assertion, applied per pass — identity, not structural equality** (PM v6 Q-01). The
-loop leg of §12.1 writes a single assertion form, `captured[i].provenance === p` (plus
-`Object.isFrozen`), and evaluates it for **every** pass the fixture produces; there is no
-second, weaker structural assertion anywhere in the leg. "Same frozen value" and "identity"
-name one bar, not two, and a task author transcribing this writes one comparison inside a
-loop over the captured calls. For the comparison to have anything to compare, the fixture
-drives **≥2 passes** — `maxPasses: 2` (the bound `runQueueLoop` reads at `run.mjs:478`) — since
-a single-pass fixture satisfies "same object every pass" trivially and cannot falsify a
-per-pass rebuild (TE v6 Q-18).
+assertion form is a single one, `captured[i].provenance === p` (plus `Object.isFrozen`),
+evaluated for **every** pass the fixture produces; there is no second, weaker structural
+assertion anywhere. "Same frozen value" and "identity" name one bar, not two, and a task
+author transcribing this writes one comparison inside a loop over the captured calls.
+
+**That per-pass assertion lives on the injection-level leg, not on the process-entry leg**
+(TE v7 F-39). The two legs of §12.1 observe different things, and only one of them can see
+more than one pass:
+
+- The **process-entry** leg passes recorders for `{runDev, runQueue, runQueueLoop}` through
+  `cli.mjs`'s `deps` seam (§9.3), so the real `runQueueLoop` never runs and no loop is
+  entered. Its recorder is therefore called **exactly once**, and `captured` holds exactly one
+  entry. A per-pass identity assertion there is true of every implementation — including one
+  that rebuilds provenance on each pass — so it would be the precise vacuity TE v6 Q-18 asked
+  to avoid, and `maxPasses: 2` would be decorative fixture data. What that leg owns, and all
+  it owns, is the primary claim: the argument object `cli.mjs` hands `runQueueLoop` at
+  `bin/pdlc.mjs:434` carries `provenance` at all — the defect that started this thread.
+- The **injection-level** leg drives the **real** `runQueueLoop({maxPasses: 2, queuePath,
+  cwd, adapter, provenance, importWorkflow})` (`run.mjs:478`) with the same recording
+  workflow module that leg already substitutes through the shipped `importWorkflow` seam
+  (`run.mjs:387`, `:427`). Two passes really execute, `runQueue(args)` is entered twice
+  (`run.mjs:491`), and the recorder captures two seam objects. The identity comparison across
+  those two captured objects is where a per-pass rebuild is actually falsifiable, so the
+  `maxPasses: 2` bound is load-bearing there and nowhere else.
+
+  For two passes to happen, the fixture must not trip the loop's own stop conditions
+  (`run.mjs:486-509`), and the recorder's return shape is what decides that (TE v7 Q-19): the
+  recording queue module's `main()` returns **`{outcome: "ran"}`** — the one BR-LOOP-4 row
+  that falls through and continues (`run.mjs:509`) — while `blocked`, `idle` and `no-queue`
+  each stop the loop on pass 1 (`:501-508`). The fixture also passes `startup: null`, so
+  `refusalFor` yields `null` and no pass carries a refusal (`run.mjs:331-335`, `:495-498`),
+  and an adapter stub carrying an `_agent` function, which `requireAdapter` demands before
+  either import resolves (`run.mjs:319-323`). With those three, `maxPasses: 2` is reached as
+  `stopReason: "bound-reached"` and the "≥2 passes" premise cannot silently decay back into a
+  one-pass fixture.
+
+Note also that no `argv`-driven fixture can set this bound by the same name: the CLI flag is
+`--max-iterations` (`bin/pdlc.mjs:39`, `:425`, `__tests__/cli.test.js:150`), which `cmdQueue`
+converts into `maxPasses` (`bin/pdlc.mjs:426`, `:439`). The bound is an injection-level
+argument, which is a second reason the ≥2-pass leg belongs there.
 
 **The seam sets are pinned by a shipped no-more-no-less equality, so the wiring task edits it in
 the same task or turns a green test red.** `PROP-PARITY-12`
