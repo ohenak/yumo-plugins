@@ -1405,8 +1405,9 @@ one path that *reports* rather than refuses, which is what AC-1.1 asks for.
 | Level | Runs | Covers |
 |---|---|---|
 | Unit, in-process | `pdlc/engine/__tests__/`, the shipped `node --test` suite | Resolution ladder, store enumeration, provenance rendering, catalogue closure, config read discipline, handshake/env-var branch. All pure over injected seams — no temp dirs, no network, no spawn |
-| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3, §9.3's **guard-entry structural oracle** (three clauses: zero static imports, declared top-level statements only, **no top-level `await`** / syntax within the Node-12.17 subset) and §7.2's **commit-site set-equality** over both workflow modules' sources (expected: the five enclosing named functions, unconditionally) |
-| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements — **kinds 1, 2 and 4 against `orchestrate-dev.js`, kind 3 against `orchestrate-queue.js`**, same suite, two module targets. Kind 3 asserts the mark lands **inside `rewriteStatus`**, so a call through **each** of its five routes carries it (R-1…R-5, §7.2), and covers **both** `updateQueueStatus` row-write paths — the `evidence == null` quick path and `writeEvidenceCarryingRow` — plus the `ensureEngineColumn` round trip **asserting the header literal** (§7.2). Kind 4 asserts each of the five helpers composes `line`, including C-e, whose test also pins that A5 still stages nothing of its own and keeps its `advisory(A5):` message prefix |
+| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3, §9.3's **guard-entry structural oracle** (three clauses: zero static imports, declared top-level statements only, and **zero occurrences of the `await` token** — a parser-free source scan, §9.3), the **seam-set equality** `PROP-PARITY-12` extended with `_provenance` on both rows (`__tests__/seam-contract.test.js:47-63`, `:79-82`), and §7.2's **commit-site set-equality** over both workflow modules' sources (expected: the five enclosing named functions, unconditionally) |
+| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements — **kinds 1 and 2 against `orchestrate-dev.js`; kinds 3 and 4 across both modules**, same suite, two module targets. The split is stated that way because two of kind 4's five helpers are queue-module members (C-c `commitQueueRow`, `orchestrate-queue.js:1598`, and C-d `commitAdvisoryRecord`, `:1637`), and an "orchestrate-dev only" reading of kind 4 would let a task author skip C-d — whose route (the queue module's new `_provenance` seam) is the newest of the five (PM v4 F-03). Kind 3 asserts the mark lands **inside `rewriteStatus`**, so a call through **each** of its five routes carries it (R-1…R-5, §7.2), and covers **both** `updateQueueStatus` row-write paths — the `evidence == null` quick path and `writeEvidenceCarryingRow` — plus the `ensureEngineColumn` round trip **asserting the header literal** (§7.2). Kind 4 asserts each of the five helpers composes `line`, including C-e, whose test also pins that A5 still stages nothing of its own and keeps its `advisory(A5):` message prefix |
+| Production-path (composition root) | `pdlc/engine/__tests__/`, the `node --test` suite | The hop the module-side level cannot see: that a real `Provenance` **arrives** through the engine's own injections. No test spans the two suites — jest owns `pdlc/workflows/__tests__/`, `node --test` owns `pdlc/engine/__tests__/` — so this leg lives entirely on the engine side and needs no cross-runner import (TE Q-13). It uses the **shipped** `importWorkflow` seam (`run.mjs:387`, `:427`) to substitute a recording module whose `main()` captures its argument object, then drives `runDev` and `runQueue` with a populated `Provenance` and asserts the captured object carries it — plus the delegated leg, that `runQueue`'s `_runPipeline` wrapper (`:450-451`) hands the same value to the dev module. Red if either injection forgets the key; the seam-set equality above is red if a key is added without editing its constants |
 | Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it; the launcher pass-through spawn test (§6.2); **AT-2.5 on a below-floor image (`node:18-alpine`)**, since the PR gate is `node: ['20']` only — paired with the structural oracle above, which is what makes AT-2.5 non-vacuous (§9.3) |
 | One-time manual | recorded, dated | Real-channel publish (BR-3.9), AT-6.2's channel observation (Q-2) |
 
@@ -1440,6 +1441,24 @@ deliberate positive pairing:
    message. This is the case that made marking at the call sites wrong, so it is asserted
    rather than inferred; the green *direct* run's only rewrite is Phase MERGE's, which takes
    `updateQueueStatus`'s evidence-carrying path and is the second row-write path §12.1 names.
+   **That leg has a fixture precondition, and without it the leg asserts nothing** (TE v4 F-29,
+   PM v4 Q-02): Phase MERGE returns `skipped` before it ever reaches its
+   `{feature, status: "done", evidence}` row write (`orchestrate-dev.js:1753`) whenever
+   `mergeMode === "off"` (`decideMerge`'s guard 1, `:1064-1070`), which is the **shipped
+   default** (`MERGE_DEFAULTS.mergeMode: "off"`, `:61`). A green direct fixture on default
+   config therefore produces **no kind 3 at all**, and since equality is over the kinds a run
+   actually produced (BR-9.2), the leg would pass while asserting nothing — and
+   `writeEvidenceCarryingRow` (`orchestrate-queue.js:491`), the second row-write path §12.1
+   promises to cover, would never be entered. So the green-direct fixture **sets
+   `mergeMode: "on"` in its `.claude/pdlc.config.json`**, and the leg additionally asserts the
+   produced-kind set is **non-empty** and contains kind 3 — an emptiness guard, so the fixture
+   cannot go quiet if the default or the guard ladder changes under it.
+   **One leg reaches the module through the engine, not through a hand-built parameter object**
+   (TE v4 F-28): the production-path level of §12.1 drives `runDev`/`runQueue` with a populated
+   `Provenance` and asserts the seam object the module actually receives carries it. Every other
+   leg here injects into `main()` directly and is green whether or not `devInjection` /
+   `queueInjection` carry the key, so without this one the whole oracle is satisfiable by a
+   build that emits `NO_PROVENANCE` in production.
    Cross-review and `CODE_REVIEW-*` file **contents** are asserted
    **unmarked** (BR-9.3), while the harness commit that lands an anchor append (§7.2's C-b)
    carries the mark in its **message** — the two halves are asserted separately, because they
@@ -1469,6 +1488,15 @@ test file. Four sequencing constraints the PLAN must honour:
   and the constraint that replaces it is this.)
 - `_provenance`'s inertness test (P-1) lands **before** any placement, so byte-identity of
   the disabled path is proven before the enabled path exists.
+- **The injection change and `PROP-PARITY-12`'s constants are one task, never two.**
+  `devInjection`'s 8th key and `queueInjection`'s 6th (§7.2's production-carrier table) are
+  pinned by a no-more-no-less equality whose expected constants sit in a different file
+  (`pdlc/engine/__tests__/seam-contract.test.js:47-63`, plus the leak assertion at `:79-82`).
+  Wiring without the constant edit turns a shipped green test red; editing the constants first
+  turns it red the other way. Both files are therefore owned by a single PLAN task, and the
+  file-ownership manifest lists `lib/run.mjs` and `seam-contract.test.js` under it. The
+  production-path leg (§12.1) lands in the same task, since it is the assertion that the wiring
+  happened at all.
 - **Catalogue ids are registered with their emitters, never before them** (§10.3). The
   suite-wide equality's reverse direction fails on a registered-but-unemitted id, so a
   fake-first reading that registers all twelve up front turns the whole suite red. This is the
