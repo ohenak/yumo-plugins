@@ -322,49 +322,61 @@ This requirement is the D-DIST-06 release-automation remainder in its new form (
   the publish workflow run is **failed** — a skipped or green-but-inert run is a defect,
   because it is indistinguishable from success.
 - **AC-3.3** *Who:* the operator. *Given:* version N already published. *When:* the publish
-  workflow is re-run for the same version (re-pushed tag, manual re-run). *Then:* the
-  already-published bytes are not replaced; the run either no-ops with an explicit statement
-  or fails naming the collision (C-7).
-- **AC-3.4** *Who:* a verifier. *Given:* the repo after this feature lands. *When:* they
-  inspect the PR gate. *Then:* every check named at O-B still exists under the same name,
-  still runs on pull requests, and still gates them — the publish workflow is a separate,
+  workflow is re-run for the same version (re-pushed tag, manual re-run). *Then:* on either
+  permitted branch — an explicit no-op statement or a loud failure naming the collision (C-7)
+  — two things hold positively and are asserted on both: the published bytes for version N are
+  byte-identical before and after the re-run, and the run's own output names version N.
+- **AC-3.4** *Who:* a verifier. *Given:* the repo after this feature lands. *When:* they read
+  the required-check names off the PR gate. *Then:* that set **equals** M-ENG-10's enumerated
+  literal names — a deletion, a rename **and** an unreviewed addition all fail — and every
+  member still runs on pull requests and still gates them; the publish workflow is a separate,
   additively-added trigger (C-5).
 - **AC-3.5** *Who:* a verifier. *Given:* a published package. *When:* they inspect its
   contents and any log the publish produced. *Then:* no credential, token or secret value
   appears in either (C-8).
-- **AC-3.6** *Who:* the operator. *Given:* a tag whose version disagrees with the version of
-  record (T-1) at that commit. *When:* the publish workflow runs. *Then:* it fails naming
-  both values, rather than publishing under either.
+- **AC-3.6** *Who:* the operator. *Given:* a tag whose version disagrees with the **engine**
+  version of record (T-1a) at that commit — the tag is an engine tag (T-4, O-7), and it is
+  never compared against the plugin's number. *When:* the publish workflow runs. *Then:* it
+  fails naming both values, rather than publishing under either.
 - **AC-3.7** *Who:* the operator. *Given:* a tag at a commit whose engine package declares a
-  compatible-plugin range (T-3) that does not include the repo's `plugin.json` version at
+  compatible-plugin range (T-3) that does not include the plugin version of record (T-1b) at
   that commit. *When:* the publish workflow runs. *Then:* it fails naming the declared range
   and the plugin version found, and publishes nothing — a release is never cut with a range
   that already excludes the plugin it is paired with.
 
 ### REQ-EDIST-04 — Version provenance in the consumer's artifacts *(P0, Phase 1; US-04; G-4)*
 
-O-F is the gap: today a consumer repo's history records what the pipeline decided but not
-which pipeline decided it.
+O-F is the gap, and M-ENG-13 locates it precisely: the pair already exists in the CLI's own
+returned report, and is absent from every artifact the run *commits*. This requirement is about
+the committed artifacts.
 
 - **AC-4.1** *Who:* a reader of a consumer repo. *Given:* a completed run. *When:* they read
   its final run report. *Then:* the report states both the engine version and the plugin
   version it dispatched against (the same pair reported by AC-1.4), on both the success and
   the halt path.
-- **AC-4.2** *Who:* a reader. *Given:* a run that halted. *When:* they read the halt's
-  record — the halt report and the queue row the halt writes and commits. *Then:* the engine
-  version is recoverable from the repo's own history without consulting the machine that ran
-  it.
+- **AC-4.2** *Who:* a reader. *Given:* a run that halted. *When:* they read, from the repo's
+  history alone, the two artifacts the halt commits — the POSTMORTEM file and the rewritten
+  `QUEUE.md` row. *Then:* the engine/plugin pair is present in the committed bytes of at least
+  the POSTMORTEM, and a reader who never saw the machine can name both versions. **This does
+  not hold by construction today** (M-ENG-13: the layer that writes those artifacts cannot see
+  a version), so it requires a deliberate layering decision — owned by **O-9**, not assumed
+  here.
 - **AC-4.3** *Who:* a reader. *Given:* two runs of the same feature on different engine
   versions. *When:* they compare the artifacts. *Then:* the two versions are distinguishable
   from the artifacts alone — this is the regime-ledger scenario, and passing it is the point
   of the requirement.
 - **AC-4.4** *Who:* a verifier. *Given:* the provenance values. *When:* they compare them
   with the installed engine and the installed plugin's own reported versions (AC-1.4).
-  *Then:* both pairs agree for every run — each value is observed live from the running
-  engine and the plugin it dispatched against, never a constant restated in the report.
+  *Then:* both pairs agree for every run. The anti-echo half is stated as a change check, not
+  as an adjective: with a **different** plugin version made current (a different plugin root
+  selected, or the plugin manifest's version changed), the reported pair changes
+  correspondingly on the next run, and reverting restores the original pair — so a hardcoded
+  constant that happens to match once fails the second observation.
 - **AC-4.5** *Who:* a verifier. *Given:* an existing consumer repo whose artifacts predate
-  this feature. *When:* the engine runs there. *Then:* no prior artifact is rewritten,
-  back-filled, or invalidated; provenance appears from that run forward (NG-5).
+  this feature. *When:* the engine runs there. *Then:* every file under `docs/{feature}/` that
+  existed before the run hashes identically after it, except those the run itself authors as
+  part of its normal phase work — no prior artifact is back-filled with provenance or
+  invalidated; provenance appears from that run forward (NG-5).
 
 ### REQ-EDIST-05 — Explicit pinning and explicit dev-mode *(P1, Phase 2; US-05, US-06; G-5)*
 
