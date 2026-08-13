@@ -39,7 +39,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
-import { runDev, runQueueLoop, exitCodeFor, LOOP_STOP_REASONS } from "../lib/run.mjs";
+import { runDev, runQueueLoop, exitCodeFor, LOOP_STOP_REASONS, worstExitCode } from "../lib/run.mjs";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot)); // .../pdlc/engine -> repo root
@@ -327,7 +327,7 @@ test("the loop's exitCode is the worst iteration's, over every ordered pair (PRO
   });
   assert.equal(exitCodeFor(refused), 1);
 
-  const worst = Math.max(exitCodeFor(passes[0]), exitCodeFor(refused));
+  const worst = worstExitCode(exitCodeFor(passes[0]), exitCodeFor(refused));
   assert.equal(worst, 1);
 
   // The order is total over BOTH orientations, not one example.
@@ -340,7 +340,7 @@ test("the loop's exitCode is the worst iteration's, over every ordered pair (PRO
     [2, 1, 1],
   ];
   for (const [a, b, worstExpected] of pairs) {
-    assert.equal(Math.max(a, b), worstExpected, `${a} vs ${b}`);
+    assert.equal(worstExitCode(a, b), worstExpected, `${a} vs ${b}`);
   }
 });
 

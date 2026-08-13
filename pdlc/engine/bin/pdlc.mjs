@@ -368,6 +368,7 @@ async function cmdDev(argv) {
     for (const line of formatStartup(startup, { withChecks: true })) console.error(line);
     console.error("");
     console.error(startup.reason);
+    console.error("pdlc: startup did not pass — the engine refuses to dispatch (fail-closed, C-10).");
     const startedAt = new Date().toISOString();
     process.exitCode = emitReport(null, { adapter: null, startup, startedAt, finishedAt: startedAt });
     return;
@@ -400,6 +401,7 @@ async function cmdQueue(argv) {
     for (const line of formatStartup(startup, { withChecks: true })) console.error(line);
     console.error("");
     console.error(startup.reason);
+    console.error("pdlc: startup did not pass — the engine refuses to dispatch (fail-closed, C-10).");
     const startedAt = new Date().toISOString();
     process.exitCode = emitReport(null, { adapter: null, startup, startedAt, finishedAt: startedAt });
     return;

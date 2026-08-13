@@ -295,6 +295,22 @@ export function exitCodeFor({ report, refusal } = {}) {
 }
 
 /**
+ * PROP-EXIT-6: the total order over exit codes for a "worst of" fold is NOT
+ * numeric max — it is 1 (engine refusal) > 2 (halt/block) > 0 (clean), which
+ * disagrees with plain numeric order on exactly one pair: {1, 2}. This is a
+ * pure rank comparison (no global state, no built-in patching): each code is
+ * mapped to its rank in the total order, and the higher-ranked argument wins.
+ *
+ * @param {0|1|2} a
+ * @param {0|1|2} b
+ * @returns {0|1|2}
+ */
+const EXIT_CODE_RANK = { 1: 2, 2: 1, 0: 0 };
+export function worstExitCode(a, b) {
+  return EXIT_CODE_RANK[a] >= EXIT_CODE_RANK[b] ? a : b;
+}
+
+/**
  * PROP-QUEUE-7: the closed, four-member set of `queue --loop` stop reasons.
  * `halted` is BR-LOOP-4's continue row, not a stop, so it never appears here.
  */
@@ -493,7 +509,7 @@ export async function runQueueLoop({ maxPasses = null, ...args } = {}) {
     // "ran" and "halted" (BR-LOOP-4 rows 1/2): fall through and continue.
   }
 
-  const exitCode = passes.reduce((worst, pass) => Math.max(worst, exitCodeFor(pass)), 0);
+  const exitCode = passes.reduce((worst, pass) => worstExitCode(worst, exitCodeFor(pass)), 0);
   const loop = { iterations, maxIterations: maxPasses == null ? null : maxPasses };
   return { passes, outcome, stopReason, exitCode, loop };
 }
