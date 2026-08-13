@@ -9,7 +9,14 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase T) | Claude | 0.1 | 2026-08-13 |
+| pdlc | Draft — in review (Phase T) | Claude | 0.2 | 2026-08-13 |
+
+**Changelog**
+
+| Version | Change |
+|---|---|
+| 0.1 | Initial draft |
+| 0.2 | Round-1 cross-review revisions (PM + TE). Packed set reconciled with FSPEC §5.2 and `postinstall` given a packed home (§5.1, §5.4); AF-2 given a `prepack` precondition, set-equality and falsifier (§5.3); `--version`/`doctor` exempted from the launcher's resolution gate (§6.2, §11); config read made three-way with a new ladder branch 0 (§6.3, §6.4); provenance placements corrected from three to four with kind 4 composed in one marked commit helper (§7.2); §7.4's `artifactPaths` grounding corrected — the push is conditional and `converge()`-only, so four document classes are missing and a literal set-equality replaces the prose (§7.4, V-14); the reusable-workflow gate extraction **rejected** in favour of duplicated job bodies, with a `uses:`-is-unexpandable rule making the rejection mechanical (§8.2, §8.5); Node-floor guard moved to a dependency-free entry with a named below-floor runner (§9.3); inert update probe made to still emit "could not check" (§10.1); S-2 corrected to the shipped signature; catalogue registration scheduled with emitters and paired with rendered-text assertions (§10.3, §12.4); npm scope routed to the operator as N-6. Three errata raised upstream (FSPEC §5.2, FSPEC's AT-4.5 blocking, REQ AC-5.3 kind 4) |
 
 ## 1. Scope and altitude
 
@@ -499,7 +506,7 @@ Frozen, plain-data, no functions:
 `line` and `block` are **pre-rendered by the engine**, not by the module. That is the whole
 trick that makes the seam safe: the workflow module receives strings and places them; it
 never formats, never branches on `mode`, and therefore cannot drift from the banner or the
-report. One renderer, three placements — BR-5.1's "both halves travel together" becomes a
+report. One renderer, four placements — BR-5.1's "both halves travel together" becomes a
 property of a single function rather than of three call sites.
 
 ### 7.2 The seam (`_provenance`)
@@ -1035,7 +1042,7 @@ one path that *reports* rather than refuses, which is what AC-1.1 asks for.
 | Inert probe (default) + failing probe + succeeding probe | S-4 | AC-5.1 needs offline behaviour, and offline is the default, not a stub |
 | Stub channel holding versioned bytes | S-5 | AT-3.3's byte-identity across a re-run cannot be rehearsed against npm without burning a version irreversibly |
 | Fixture YAML copies | live `pr-tests.yml` | BR-7.6: mutations must not be applied to the file that gates the PR making them |
-| `NO_PROVENANCE` and a populated `Provenance` | S-6 | Proves P-1's byte-identical inert path and the three placements from the same test file |
+| `NO_PROVENANCE` and a populated `Provenance` | S-6 | Proves P-1's byte-identical inert path and all four placements from the same test file |
 
 ### 12.3 The four oracles that must not be satisfiable by absence
 
@@ -1125,9 +1132,9 @@ no row is a defect in this table.
 
 | # | Cost | Why it is the price of the requirement, not gold-plating |
 |---|---|---|
-| K-1 | **The gate extraction (§8.2)** is the single riskiest edit: it touches the file whose rendered check names a live consumer pipeline polls literally. It is priced with a mechanical gate and a named fallback (duplicate the job bodies) rather than left to care | C-6 requires publishing to be gated on the same evidence a PR is. Re-running the gate is the requirement; sharing the YAML is the cheap way |
+| K-1 | **Re-running the gate at the tagged commit (§8.2)** costs a duplicated copy of five job bodies in `publish.yml`, kept in step by a command set-equality. The reusable-workflow extraction that would have avoided the duplication is rejected: it renames the rendered checks a live consumer pipeline polls, and does so invisibly to the oracle offered against it | C-6 requires publishing to be gated on the same evidence a PR is. Re-running the gate is the requirement; duplication is the way that cannot rename a consumer's checks. The YAML-drift cost is paid by a test, not by care |
 | K-2 | **The version store (§6.1)** is real new infrastructure — enumeration, a store root, a launcher `exec` hop — where "one global install" would have been a day's work | AC-5.1 and AC-5.5 are jointly unsatisfiable without side-by-side residency (§4.2). The store is the criteria, not an ambition |
-| K-3 | **Touching the workflow modules at all** (§7.2) is a change to the file this repo is most careful about, and it must stay loadable in the Claude Code workflow runtime | AC-4.2 is unsatisfiable otherwise (V-16, V-17). Bounded to one default-inert parameter and three placements |
+| K-3 | **Touching the workflow modules at all** (§7.2) is a change to the file this repo is most careful about, and it must stay loadable in the Claude Code workflow runtime | AC-4.2 is unsatisfiable otherwise (V-16, V-17). Bounded to one default-inert parameter, four placements, and one marked commit helper |
 | K-4 | **Vendoring (§5.2)** adds a build step, an ignore rule, a manifest and a two-root resolver, and forces §5.3's oracle restatement | R-5 says the package cannot contain the modules as arranged. Some cost is mandatory; this is the smallest one that leaves the repo layout alone |
 
 ### 14.2 Risks this design carries
@@ -1141,8 +1148,14 @@ no row is a defect in this table.
 - **R-B — `postinstall` is a fragile install mechanism.** Some environments disable install
   scripts (`--ignore-scripts`), in which case the store is never populated and the launcher
   refuses with ladder branch 7 rather than misbehaving. The failure is loud, but it is a
-  failure, and it will surprise someone. Mitigation direction: the refusal message names the
-  store root and the remedy.
+  failure, and it will surprise someone. Two mitigations, both now structural rather than
+  directional: the refusal message names the store root and the remedy, and — because §6.2
+  exempts them from the resolution gate — `pdlc --version` and `pdlc doctor` still run in this
+  state, so the operator can reach the diagnostic that explains the refusal. `doctor` printing
+  "store root X, versions installed: none" is what turns this from a mystery into an
+  instruction. AC-2.1's "the CLI is on `PATH`" also survives: the global `bin` shim is placed
+  by npm's own linking, not by the `postinstall`, so the launcher exists even when the store
+  does not (PM Q-03).
 - **R-C — Two Node processes per run** (launcher plus resolved engine). Startup cost is
   paid twice. Measured concern only; the dispatch path dominates.
 - **R-D — R-2, R-3, R-4 from the REQ are unchanged by this design.** Nothing here narrows
