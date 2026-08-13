@@ -587,3 +587,27 @@ extraction cheap; the gate growing past five jobs, where the duplication cost st
 what the command set-equality comfortably covers.
 
 ## 12. Decisions deliberately not taken here
+
+These are open by choice, with an owner. They are listed so a reader does not mistake silence
+for a decision, and so the PLAN schedules them as gates rather than as code tasks.
+
+| # | Item | Why it is not decided here | Owner | Blocks |
+|---|---|---|---|---|
+| N-1 | AC-6.2's load-root half on the **bundle** side | C-4 forbids teaching `.claude/workflows/`'s runtime to self-report. DEC-EDIST-02 closes the engine half only; the interim limit is documented in AT-6.2's recorded evidence rather than dressed as a channel oracle | Re-opens against `pdlc-plugin-retirement`, which removes the second channel and dissolves the question | Nothing in Phase 1 |
+| N-2 | `license` (O-8 blocker 3) — replacing `"UNLICENSED"` (`pdlc/engine/package.json:11`) | An operator decision with a dependency's terms to check, not an engineering choice | Operator; recorded in `docs/_decisions/DECISIONS-plugin-distribution.md` | The **first real publish**. PF-3 asserts the manifest against the recorded value, and TSPEC §5.4's `PK-3` (`LICENSE`) enters the expected packed set **when the record lands**, never by probing the tree |
+| N-3 | BL-03's transcription into `DECISIONS-plugin-distribution.md` | Still undone at HEAD — that file carries DEC-DIST-01…05 and no version-of-record entry. This feature is designed on O-7's decided position; if the transcription lands saying something else, the affected entries above re-open | Operator | Nothing mechanically; a correctness dependency |
+| N-4 | Q-3, the range-widening cadence for `pdlcPluginCompat` | Shapes R-2's mitigation, decides nothing this feature builds | Operator | Nothing |
+| N-5 | Q-7, M-ENG-10's change-control tail | One sentence in `docs/_constraints/pdlc-engine-baseline.md`, owned by the same pass that lands §8.5's expected-check-set carrier. The deferral expires when that carrier lands | Same author as §8.5's carrier | Nothing |
+| N-6 | The npm **scope** in the published package name (O-8 blocker 2) | DEC-DIST-05 chose "scoped public npm" and named no scope; `pdlc/engine/package.json:2` is the unscoped `pdlc-engine` at HEAD. A scope the operator does not own on npm blocks the first publish exactly as N-2 does, and the package name is the most consumer-visible string this feature ships — so it is a product/operator decision recorded in `DECISIONS-plugin-distribution.md`, not a literal invented in a spec | Operator | The **first publish** and nothing before it. PF-3 asserts the manifest against the recorded value; the README ships the resolved literal |
+
+**Why N-2 and N-6 are asserted against a decision record rather than against the tree.** An
+expected set that reads the artifact under test is not an expectation. If `PK-3` meant "expected
+iff `pdlc/engine/LICENSE` exists", then losing the `LICENSE` file to a bad merge would shrink
+*both* sides of the equality together, PF-4 would stay green, and the package would publish
+unlicensed. Sourcing both from the recorded decision makes the flip a visible edit to one file —
+the same file PF-3 already reads.
+
+**Risks carried, not decided away.** TSPEC §14.2 owns the full list; the three that bear on
+entries above are R-A (DEC-EDIST-01's tracked-ness weakening, §2), R-B (`postinstall` fragility,
+mitigated structurally by DEC-EDIST-07) and R-E (the Node-12.17 syntax-subset claim is
+documented, not tested, with the mechanical reversal trigger in DEC-EDIST-09).
