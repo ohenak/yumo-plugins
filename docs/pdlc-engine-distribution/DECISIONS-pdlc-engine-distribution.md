@@ -161,6 +161,56 @@ asset and the raw fields become the contract); `artifactPaths` growing a second 
 
 ## 4. DEC-EDIST-03: A version store plus a resolving launcher
 
+*Closes FSPEC O-2's execution half — "how does the pin actually execute?". Mechanism: TSPEC
+§6.1, §6.2, §6.3.*
+
+**Context.** The REQ asks for two things at once: `pdlc` runs the **latest** installed engine
+by default (AC-5.1), and a repo pinning a version that is **not installed** is **refused**
+rather than silently upgraded or downgraded (AC-5.5). AC-5.5's wording — "refuse when the
+pinned version is not installed, run it when it is" — presumes a plural "what is installed".
+
+**Decision.** Installed engine versions live side by side under one store root
+(`$PDLC_HOME/versions/{version}/`, defaulting to `~/.pdlc/versions/`), populated by a
+`postinstall` script. The `PATH` entry is a thin launcher that parses just enough argv to know
+the consumer cwd and the resolution-affecting flags, runs a **pure, total** resolution ladder
+(TSPEC §6.3: `dev ≻ pin ≻ latest`, with named refusal branches for a corrupt config, an
+incomplete `--dev`, a missing pin, a malformed pin and an empty store), and hands off to the
+resolved version's own `bin/pdlc.mjs` with an env marker so the child never re-resolves.
+Resolution happens exactly once per invocation, which is BR-1.5's structural precondition.
+
+**Alternatives considered.**
+
+- **A single global install** (`npm i -g` one version, upgrade in place) — rejected. It cannot
+  answer "what is installed" in the plural, so AC-5.1 and AC-5.5 are jointly unsatisfiable: with
+  one resident version the engine can only run that one, and a pin naming any other must either
+  fetch or lie.
+- **A global install plus `npx @{scope}/pdlc-engine@{pin}` per pinned repo** — rejected on
+  NG-3. `npx` **fetches on a miss**, which is precisely the "never fetches, never
+  auto-upgrades" prohibition; the failure would also be a network error rather than AC-5.5's
+  named refusal.
+- **Per-repo local installs** (`node_modules/.bin/pdlc` in each consumer) — rejected. It
+  satisfies side-by-side residency, but every consumer repo pays install cost and gains a
+  dependency entry, which contradicts C-2/BR-2.1's "the engine is machine-level state outside
+  every consumer repo" and would put the engine into the diff of repos it is meant to observe.
+- **Resolve by dynamic `import` of the target version inside one process** — rejected, and
+  recorded separately as DEC-EDIST-06 because the reasoning is about process semantics rather
+  than about the store.
+
+**Constraints that forced the shape.** AC-5.1 + AC-5.5 jointly (side-by-side residency);
+NG-3 (no fetching); C-2/BR-2.1 (machine-level, not repo-level); AC-2.5/BR-2.6 (the engine
+install must not touch the plugin's tree under `~/.claude/`, which a store under `$PDLC_HOME`
+satisfies by construction rather than by discipline).
+
+**Reversibility.** Hard. The store root is on-disk state an operator's machine accumulates, and
+the launcher hop is observable in exit codes and stdio. Retreating to a single global install
+means re-opening AC-5.5. The store's *shape* is contained — only `lib/store.mjs` knows it — so
+the layout can change behind that module cheaply; the decision to have a store cannot.
+
+**Re-evaluation triggers.** `postinstall` being unavailable in enough environments to make
+population unreliable (TSPEC R-B — the mitigation today is that the refusal is loud and
+`doctor` still runs, per DEC-EDIST-07); the two-process startup cost (R-C) becoming measurable
+against the dispatch path; a package manager the store cannot be populated from.
+
 ## 5. DEC-EDIST-04: Ignore a bare `PDLC_PLUGIN_ROOT`, with a notice
 
 ## 6. DEC-EDIST-05: A `files` allow-list, not an `.npmignore` deny-list
