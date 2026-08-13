@@ -464,8 +464,11 @@ by a signal, so "re-raise the child's exit code" is **undefined** in that case, 
 implementation, `process.exit(result.status)`, exits **0** on a Ctrl-C'd pipeline. Under
 `stdio: "inherit"` the terminal delivers SIGINT to the whole foreground process group, so this
 is the *common* interruption path rather than an exotic one, and a CI or `/loop` caller reading
-exit 0 concludes the run succeeded — which collides directly with AC-1.4's exit-code contract
-(crash 1, halt 2) that this entry cites as a constraint. **Decision: `status === null` means the
+exit 0 concludes the run succeeded — which collides directly with the shipped exit-code
+invariant this entry cites as a constraint: `exitCodeFor` (`pdlc/engine/lib/run.mjs`, pinned by
+`PROP-EXIT-1`) maps an engine refusal or crash to 1 and a halt or block to 2. That invariant is
+the engine's own, **not** REQ's AC-1.4 — AC-1.4 is the version-triple criterion and states
+nothing about exit codes; REQ carries no exit-code statement at all. **Decision: `status === null` means the
 launcher exits `128 + signum`**, the conventional shell encoding, which is non-zero for every
 signal, does not collide with 1 or 2, and lets a caller recover the signal number. It is a
 launcher-side mapping only; nothing about the child's own exit codes changes.
@@ -488,9 +491,11 @@ spawns for real (`pdlc/engine/__tests__/cli.test.js:13,22`,
 as an erratum against TSPEC §6.2, which carries the same three-behaviour sentence and pays for
 two.
 
-**Constraints that forced the shape.** Independent SDK ranges per resident version; AC-1.4's
-exit-code contract (an engine crash is exit 1, a pipeline halt exit 2 — both must survive the
-hop); the absence of `execve` in Node.
+**Constraints that forced the shape.** Independent SDK ranges per resident version; the
+exit-code invariant `exitCodeFor` pins (`pdlc/engine/lib/run.mjs`, `PROP-EXIT-1`: an engine
+refusal or crash is exit 1, a halt or block is exit 2 — both must survive the hop), which is
+the engine's own invariant and not an REQ acceptance criterion; the absence of `execve` in
+Node.
 
 **Reversibility.** Easy in code, and the cost is TSPEC R-C: two Node process startups per run.
 Measured concern only — the dispatch path dominates.
