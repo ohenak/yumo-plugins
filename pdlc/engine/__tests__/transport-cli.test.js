@@ -219,3 +219,178 @@ test("the composed prompt for the same dispatch is byte-identical across the SDK
   assert.equal(cliSeenPrompt, composedPrompt);
   assert.equal(sdkSeenPrompt, cliSeenPrompt);
 });
+
+// ─── coverage remediation, DoD F-02 ───────────────────────────────────────
+//
+// Every case below still supplies its own fake `spawnFn` over an in-memory
+// message stream (never a real `claude` child, per TSPEC §7.1) and, where a
+// message shape is needed, clones it from an already-recorded `.jsonl`
+// fixture rather than hand-inventing a new one — same rule the file's own
+// header states for every other case here. Deliberately does not attempt to
+// exercise `defaultSpawnFn` or `parseStreamJsonLines`: both are reachable
+// only via a real `claude` child process, which the hermeticity guard
+// (`_bootstrap.mjs`) blocks by construction inside this suite (TSPEC §7.1) —
+// see this file's own DoD report for the residual coverage note.
+
+test("a stream message missing a `type` field is classified as TransportError (malformed message)", async () => {
+  const spawnFn = async () => streamOf([{ hello: "world" }]);
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof TransportError);
+      assert.match(err.message, /malformed message/);
+      return true;
+    }
+  );
+});
+
+test("dispatch forwards both `cwd` and `maxTurns` through to spawnFn's options", async () => {
+  const messages = loadFixtureMessages("success");
+  let seenOptions = null;
+  const spawnFn = async ({ options }) => {
+    seenOptions = options;
+    return streamOf(messages);
+  };
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await dispatch("hi", { model: "haiku", cwd: "/tmp/pdlc-cli-cwd", maxTurns: 4 });
+
+  assert.equal(seenOptions.cwd, "/tmp/pdlc-cli-cwd");
+  assert.equal(seenOptions.maxTurns, 4);
+});
+
+test("an init message with no apiKeySource field at all is reported as \"absent\" (`??` null fallback)", async () => {
+  const [initMessage] = loadFixtureMessages("auth-policy-violation");
+  const { apiKeySource: _drop, ...initWithoutApiKeySource } = initMessage;
+  const spawnFn = async () => streamOf([initWithoutApiKeySource]);
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof AuthPolicyError);
+      assert.equal(err.apiKeySource, null);
+      assert.match(err.message, /reported apiKeySource "absent"/);
+      return true;
+    }
+  );
+});
+
+test("a rate_limit_event message with no rate_limit_info field is recorded verbatim (`??` message fallback)", async () => {
+  const messages = loadFixtureMessages("success").map((message) => {
+    if (message.type !== "rate_limit_event") return message;
+    const { rate_limit_info: _drop, ...rest } = message;
+    return rest;
+  });
+  const spawnFn = async () => streamOf(messages);
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  const out = await dispatch("hi");
+
+  assert.equal(out.rateLimitEvents.length, 1);
+  assert.deepEqual(out.rateLimitEvents[0], { type: "rate_limit_event" });
+});
+
+test("a success terminal result with no permission_denials field falls back to an empty array", async () => {
+  const messages = loadFixtureMessages("success").map((message) => {
+    if (message.type !== "result") return message;
+    const { permission_denials: _drop, ...rest } = message;
+    return rest;
+  });
+  const spawnFn = async () => streamOf(messages);
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  const out = await dispatch("hi");
+
+  assert.deepEqual(out.permissionDenials, []);
+});
+
+test("an error-subtype terminal result with no errors field fails with an unsuffixed TransportError message", async () => {
+  const messages = loadFixtureMessages("rate-limited").map((message) => {
+    if (message.type !== "result") return message;
+    const { errors: _drop, ...rest } = message;
+    return rest;
+  });
+  const spawnFn = async () => streamOf(messages);
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof TransportError);
+      assert.equal(err.message, "CLI dispatch failed: error_during_execution");
+      return true;
+    }
+  );
+});
+
+test("a stream that finishes normally after the timer already fired is still classified as TimeoutError (post-loop check)", async () => {
+  const messages = loadFixtureMessages("success");
+  const spawnFn = async () =>
+    (async function* () {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      yield* messages;
+    })();
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi", { timeoutMs: 5 }),
+    (err) => {
+      assert.ok(err instanceof TimeoutError);
+      assert.equal(err.timeoutMs, 5);
+      return true;
+    }
+  );
+});
+
+test("a spawnFn throwing a bare string is classified as TransportError via String(err), not err.message", async () => {
+  const spawnFn = async () => {
+    throw "boom";
+  };
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof TransportError);
+      assert.equal(err.message, "boom");
+      return true;
+    }
+  );
+});
+
+test("a spawnFn throwing a plain object with neither name nor message is classified as TransportError", async () => {
+  const spawnFn = async () => {
+    throw {};
+  };
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof TransportError);
+      assert.equal(err.message, "[object Object]");
+      return true;
+    }
+  );
+});
+
+test("a rate-limit error (status 429) with no message falls back to the generic \"rate limited\" text", async () => {
+  const spawnFn = async () => {
+    const err = new Error();
+    err.status = 429;
+    throw err;
+  };
+  const { dispatch } = createCliTransport({ spawnFn, env: {} });
+
+  await assert.rejects(
+    () => dispatch("hi"),
+    (err) => {
+      assert.ok(err instanceof RateLimitedError);
+      assert.equal(err.message, "rate limited");
+      return true;
+    }
+  );
+});
