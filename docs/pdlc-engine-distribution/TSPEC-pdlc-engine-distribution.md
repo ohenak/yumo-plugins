@@ -353,6 +353,101 @@ a remedy the product now ignores — the exact defect D-4's rationale turns on.
 
 ## 7. Provenance carriers (F-6, O-9)
 
+This is O-9, and Q-1 asked the right question: *one decision or three?* The answer this
+TSPEC gives is **three separate answers, and only one of them is new work** — which is
+better than either option Q-1 offered.
+
+| Carrier | AC | Status after §2's measurement | Work |
+|---|---|---|---|
+| Version pair in committed halt artifacts | AC-4.2 | Missing. The pair exists engine-side (V-13); the module that writes the artifacts cannot see it (V-16, V-17) | **New: §7.2's seam** |
+| Authored-file enumeration in the run report | AC-4.5 | **Already shipped** as `artifactPaths` (V-14) | Verify completeness and document it as the oracle. **No carrier needed** |
+| Load root, run-bound | AC-6.2 | Engine side: closable now (§7.3). Bundle side: **not closable**, C-4 forbids it | Engine half only; bundle half stays open, §14 |
+
+### 7.1 The `Provenance` value
+
+Built once per run, in `lib/provenance.mjs`, from the single startup resolution (V-08).
+Frozen, plain-data, no functions:
+
+```js
+/**
+ * @typedef {object} Provenance
+ * @property {string}      engineVersion   T-1a, from the running package manifest.
+ * @property {string|null} pluginVersion   T-1b, or null when none was found.
+ * @property {string}      pluginCompat    T-3, the declared range.
+ * @property {"engine"}    channel         C-9. Literal: the bundle channel builds no value.
+ * @property {"latest"|"pin"|"dev"} mode    §6.3's resolved branch.
+ * @property {string|null} pin             The pinned version when mode === "pin".
+ * @property {string}      loadRoot        Absolute path the workflow modules loaded from.
+ * @property {string}      line            One-line rendering, for commit messages and rows.
+ * @property {string}      block           Multi-line markdown rendering, for documents.
+ */
+```
+
+`line` and `block` are **pre-rendered by the engine**, not by the module. That is the whole
+trick that makes the seam safe: the workflow module receives strings and places them; it
+never formats, never branches on `mode`, and therefore cannot drift from the banner or the
+report. One renderer, three placements — BR-5.1's "both halves travel together" becomes a
+property of a single function rather than of three call sites.
+
+### 7.2 The seam (`_provenance`)
+
+`main()` in both workflow modules gains one keyword parameter, following V-15's shipped
+idiom exactly:
+
+```js
+_provenance: provenance = NO_PROVENANCE,   // module-level frozen null-object
+```
+
+| Rule | Statement |
+|---|---|
+| P-1 | **Default-inert.** `NO_PROVENANCE` is a module-level constant with empty `line`/`block`. A runtime that supplies nothing produces byte-identical artifacts to today. This is the same guarantee the advisory tier ships with (`advisoryDisabled.test.js`, PROP-DIS-*), and it is what keeps NG-5 true |
+| P-2 | **Data, never capability.** The seam is a frozen object of strings. The module calls nothing on it, imports nothing for it, and works unchanged inside the Claude Code workflow runtime where `import` does not exist |
+| P-3 | **Three placements, all script-owned.** (a) the final report gains `provenance`; (b) the POSTMORTEM gets `block` appended by the script; (c) the halted-queue-row commit message gets `line` |
+| P-4 | **Never agent-mediated.** Placement (b) is an `_appendFile` call *after* `_checkFile` confirms the POSTMORTEM exists (V-16), not a sentence in the agent prompt. An agent may paraphrase or omit a prompt instruction; an append cannot. AC-4.2 says the pair must be *in the committed bytes*, and only a script-owned write can promise that |
+| P-5 | **Absent provenance never blocks.** If `block` is empty, the append is skipped entirely — no empty section, no marker, no diff. A halt still halts |
+
+Placement (c) rides on `_recordQueueRow` (V-17), whose commit message this feature extends;
+the pathspec-scoped, single-file commit discipline is unchanged.
+
+### 7.3 The load root, and the half that stays open (AC-6.2, Q-2)
+
+The engine can state its own load root truthfully: `lib/run.mjs` already computes the
+absolute path of each module it loads (`workflowModulePath`,
+`pdlc/engine/lib/run.mjs:58-62`), and §5.2 makes that path the discriminator between the
+vendored and checkout roots. So `Provenance.loadRoot` is real, run-bound evidence on the
+engine side, and it appears in the report and the banner.
+
+**The bundle side gets nothing, deliberately.** C-4 forbids teaching
+`.claude/workflows/`'s runtime to self-report, and the REQ's own AC-6.2 says so. This
+TSPEC therefore **does not close AC-6.2's load-root half**, and says so plainly rather than
+dressing the interim state as a solution:
+
+- The engine-side positive is asserted: an engine run states a load root inside one of the
+  two enumerated trees.
+- The bundle-side conjunction stays FSPEC F-7 step 3's (1)+(2) — run completed and emitted
+  named artifacts; output carries no engine provenance block.
+- Per Q-2, **the test documents its own limit in the test itself**: AT-6.2 asserts the
+  conjunction and carries an explicit comment that it discriminates only on a machine whose
+  installed channels are known independently. It is not dressed as a channel oracle.
+
+This is the "settle the first two on one carrier but not the third, and say so" branch Q-1
+explicitly permits — taken deliberately, to keep Phase 1 scoped, and re-opened by name in
+§14 rather than dropped.
+
+### 7.4 AC-4.5 needs no carrier (V-14)
+
+The FSPEC marks AT-4.5 **[blocked]** on O-9 and says AC-4.5's authored-file enumeration is
+"new work of the same kind as AC-4.2's". Measurement says otherwise:
+`orchestrate-dev.js:11659` seeds `artifactPaths` with `reqPath`, `:11507` pushes each
+authored document, and `:13088` returns it on every report. The comparison set AC-4.5 and
+BR-5.3 require **already exists and is already emitted**.
+
+What remains is not a carrier but a *completeness check*: the PLAN carries one task to
+verify by test that every document the pipeline authors reaches `artifactPaths` — the DoD
+`CODE_REVIEW-*` files and the LEARNINGS file being the paths most likely to be missing —
+and to fix any that do not. AT-4.5 is therefore **unblocked and scheduled in Phase 1**.
+This is raised as an erratum against the FSPEC rather than silently re-scoped here.
+
 ## 8. Publish pipeline (F-5)
 
 ## 9. Install and upgrade (F-2, F-3)
