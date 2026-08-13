@@ -251,19 +251,22 @@ copying bytes across the boundary.
   plugin installed, or a plugin installed at a version outside the engine's declared range
   (T-3). *When:* they run any pipeline command. *Then:* it refuses before dispatch with a
   message naming the declared range and what — if anything — is installed; it never
-  dispatches against a missing or out-of-range plugin.
+  dispatches against a missing or out-of-range plugin. `pdlc doctor` sits **outside** the gate:
+  the diagnostic that explains a refusal still runs and reports the same triple (AC-1.4).
 - **AC-1.2** *Who:* the operator. *Given:* an installed engine and a plugin installed at a
   version inside the declared range. *When:* they run any pipeline command. *Then:* it
   dispatches using the `SKILL.md` prompts read from that installed plugin's `skills/` tree
   at dispatch time — never a copy bundled in the engine package, because the engine package
   ships none.
-- **AC-1.3** *Who:* a verifier. *Given:* the built engine package. *When:* they enumerate the
-  file list the package declares it ships. *Then:* that list **equals**, member for member, an
-  expected set stated in the FSPEC — so an added file fails and a removed module fails, not
-  merely a missing one. The expected set contains the CLI entry, the workflow modules and the
-  engine adapter, and contains no `skills/` directory and no `SKILL*.md` file. Decidable from
-  the package's own declared contents, offline. (R-5 prices how the modules get inside the
-  package at all; this AC states the outcome, not the mechanism.)
+- **AC-1.3** *Who:* a verifier. *Given:* the built engine package. *When:* they enumerate **the
+  contents of the packed tarball** — what a consumer actually receives, not a declared intent
+  (`pdlc/engine/package.json` has no `files` field today, M-ENG-11, so a "declared list" oracle
+  would pass vacuously). *Then:* that list **equals**, member for member, an expected set stated
+  in the FSPEC — so an added file fails and a removed module fails, not merely a missing one. The
+  expected set contains the CLI entry, the workflow modules and the engine adapter, and contains
+  no `skills/` directory, no `SKILL*.md` file and no test corpus. Decidable offline, without
+  publishing. (R-5 prices how the modules get inside the package at all; this AC states the
+  outcome, not the mechanism.)
 - **AC-1.4** *Who:* the operator. *Given:* an installed package. *When:* they ask the CLI
   for its version. *Then:* it reports the engine version (T-1a), the declared
   compatible-plugin range (T-3), and the version of the plugin it currently finds installed
@@ -276,8 +279,10 @@ copying bytes across the boundary.
 ### REQ-EDIST-02 — One-command install and upgrade *(P0, Phase 1; US-01, US-02; G-2, C-2)*
 
 - **AC-2.1** *Who:* the operator on a clean machine with Node ≥ T-2 and nothing else pdlc
-  installed. *Given:* the documented install command, transcribed verbatim from
-  `README.md`'s install section. *When:* they run it once. *Then:* the CLI is on `PATH`, it
+  installed. *Given:* the documented install command, transcribed verbatim from **one named
+  place — `pdlc/README.md`'s `## Install in another repo` section, which documents the plugin
+  install today (`pdlc/README.md:132`) and gains the engine install command under it**; no other
+  file is a transcription source. *When:* they run it once. *Then:* the CLI is on `PATH`, it
   reports its version triple (AC-1.4), and a pipeline command reaches the compat handshake —
   where, with no plugin installed, it emits AC-1.1's refusal naming the declared range. That
   refusal **is** the pass condition on a plugin-free machine: install is proven by reaching
@@ -289,10 +294,12 @@ copying bytes across the boundary.
   (REQ-EDIST-04) — with **no command executed inside either repo** other than the pipeline
   invocation itself.
 - **AC-2.3** *Who:* a verifier. *Given:* a consumer repo with a clean working tree and index.
-  *When:* an install and an upgrade are performed. *Then:* on that same run, **both** hold:
-  the CLI resolves on `PATH` at the new engine version and its own install location changed
-  (the positive that proves the install was not a silent no-op), **and** the repo's working
-  tree and index are unchanged — no file created, modified or deleted anywhere under the
+  *When:* an install and an upgrade are performed. *Then:* on that same run, **both** hold. The
+  positive is stated per leg, because a clean-machine install has no before-value to differ from:
+  the **install** leg asserts the CLI now resolves on `PATH`, at the expected version, from an
+  install location that exists; the **upgrade** leg asserts the resolved version and install
+  location differ from the values recorded before it ran (the positive that proves the upgrade
+  was not a silent no-op). **And** the repo's working tree and index are unchanged — no file created, modified or deleted anywhere under the
   project (C-2), in particular nothing under `.claude/`.
 - **AC-2.4** *Who:* the operator on a machine whose Node is below T-2. *Given:* an install
   attempt or a pipeline invocation. *When:* it runs. *Then:* it fails with a message naming
