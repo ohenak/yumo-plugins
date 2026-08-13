@@ -514,8 +514,9 @@ duplication (which disagreed with itself at O-1) is collapsed here.
   **Answered 2026-08-13.** The pin lives under the `engine.*` namespace in the consumer-owned
   `.claude/pdlc.config.json`, read by the engine and never written by it — grounded in
   **DEC-HE-02** (`docs/completed/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md`),
-  which already reserves `engine.*` as the engine's only config surface. Reading an
-  operator-authored file is not writing (NG-6 forbids only the latter). An env var was rejected:
+  which already reserves `engine.*` as the engine's only config surface. This does not cross
+  NG-6: that non-goal scopes install and upgrade, which touch no consumer file at all, while a
+  run may read the operator-authored pin. An env var was rejected:
   per-shell, not per-project. AC-5.1 requires the pinned version to *execute* while another is
   latest, so side-by-side version resolution — not just a pointer — is the TSPEC's to specify.
 - **O-3 — Disposition of the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows.**
