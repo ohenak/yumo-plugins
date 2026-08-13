@@ -50,4 +50,32 @@ round rewrote.
 
 ## 5. Recommendation
 
+**Needs revision** — one High, and it is a one-clause edit.
+
+All three of v4's findings are closed, and two of them are closed more thoroughly than the
+finding asked: the packed set was renamed out of the colliding namespace rather than annotated,
+and §12.1's module-side split now carries the reason for the split in the row. Nothing settled
+in earlier rounds was re-opened. The round's own new work — the production-carrier table, the
+production-path test level and the oracle-2 leg — closes a real `builder-not-wired` hole that
+would have shipped AC-5.3 green in the test suite and broken for every operator; every line
+number in it checks out against `run.mjs` and `seam-contract.test.js` at HEAD.
+
+The blocker is internal to §9.3, and is this round's own: clause 3 now forbids **any**
+occurrence of the `await` token in `bin/pdlc.mjs`'s raw source, while the same section requires
+a header comment stating the Node-12.17 subset **and the reason** — a reason this section
+itself expresses as "top-level `await` is a Node 14.8+ parse-level feature". The faithful
+implementation is the red one. Clause 2 already has the word that fixes it.
+
+To resolve **F-01**: narrow clause 3 to the **non-comment** source (or to `await` in statement
+position), at `:1201-1202` and in the mechanism sentence at `:1219-1220`, and mirror it in
+§12.1's arrangement row at `:1409`. No design moves; the falsifier for
+`await import("./cli.mjs")` is unaffected.
+
+F-02 (the `PROP-PARITY-12` leak-case instruction, which is a no-op at best and a
+contradiction if read literally) and F-03 (§12.1's "no test spans the two suites", false at
+`seam-contract.test.js:299`) are worth the same pass but do not gate on their own.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
