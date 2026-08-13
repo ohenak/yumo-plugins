@@ -355,7 +355,14 @@ lacks.** The guard keeps the name `bin/pdlc.mjs` (PK-4) and the body moves to `b
 "bin/pdlc.mjs"`) is untouched, AC-2.1's `PATH` entry is untouched, and the shipped
 `cli.test.js` keeps invoking the same path — now exercising the guard plus the dynamic import,
 which is the end-to-end behaviour it was always proving (PM Q-01, TE Q-06). Unit coverage of
-the body may import `bin/cli.mjs` directly; the existing end-to-end oracles do not move. The
+the body may import `bin/cli.mjs` directly, **and §3.1's two shape changes are what make that
+sentence true rather than aspirational**: at HEAD the bodies carry no `export`
+(`async function cmdDev(argv)`, `bin/pdlc.mjs:352`; `cmdQueue`, `:396`) and the file self-invokes
+at `:505`, so an import would run the CLI against the test runner's own `argv`. With the entry
+guard and the exported `main(argv, deps)`, importing the module is inert and the three runners
+are substitutable (PM v6 F-01, TE v6 F-36). The existing end-to-end oracles do not move — every
+shipped CLI test keeps driving the bin as a subprocess (`__tests__/cli.test.js:22`,
+`spawnSync(process.execPath, [BIN, …])`). The
 `files` entry `bin/` packs both without change.
 
 **This disagrees with FSPEC §5.2 as written, and the disagreement is raised, not papered
