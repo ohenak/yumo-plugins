@@ -987,13 +987,33 @@ stack trace before the guard's first statement — exactly what AC-2.4 forbids.
 
 So the guard is **its own dependency-free entry point**:
 
-- The `bin` entry is a small module whose **only** top-level statements are the version
-  comparison and, on success, `await import("./cli.mjs")` — the dynamic import is what defers
-  the rest of the graph until after the check.
+- The `bin` entry **keeps the name `bin/pdlc.mjs`** and becomes that small module: its **only**
+  top-level statements are the version comparison and, on success, `await import("./cli.mjs")`
+  — the dynamic import is what defers the rest of the graph until after the check. Keeping the
+  name is what leaves the manifest's `bin` field, AC-2.1's `PATH` entry and `cli.test.js`'s
+  invocation target untouched (§5.4, TE Q-06).
 - That file is written in the syntax subset valid on the **oldest Node that could plausibly run
   it**, not on the floor version. It parses on Node 12 so that it can refuse on Node 12.
-- Everything currently in `bin/pdlc.mjs` moves behind that dynamic import unchanged; the guard
-  file imports nothing statically, so there is no graph to evaluate early.
+- Everything currently in `bin/pdlc.mjs` moves **unchanged** into the new `bin/cli.mjs`
+  (E-4b), behind that dynamic import; the guard file imports nothing statically, so there is no
+  graph to evaluate early. No behaviour moves with the code — the split exists only to satisfy
+  the evaluation-order constraint above.
+
+**The container leg cannot falsify the hazard on its own, so it is paired with a structural
+oracle.** AT-2.5's runner is Node 18 (below the `>=20` floor, see below), but Node 18 parses
+every modern construct in `lib/` happily. A regressed implementation — the guard restored to the
+top of a statically-importing `bin/pdlc.mjs` — would pass AT-2.5 on `node:18-alpine` with the
+right message and the right exit code, while still emitting the stack trace AC-2.4 forbids on
+the runtimes where it actually matters. The falsifier for the *structure* therefore runs in the
+unit suite, in-process, needing no old runtime: parse `bin/pdlc.mjs`'s source and assert
+
+1. it contains **zero** static `import` declarations, and
+2. its only non-comment top-level statements are the floor comparison, the refusal, and the
+   single dynamic `import("./cli.mjs")`.
+
+That goes red on exactly the regression the container leg cannot see, and the two together
+cover the claim: the container proves the *refusal* works below the floor, the structural
+oracle proves the *guard still runs first*.
 
 **AT-2.5 needs a named runner, and the PR gate is not one.** The gate is `node: ['20']` only
 (`.github/workflows/pr-tests.yml:41`), so a below-floor runtime does not exist in CI. §12.1's
@@ -1167,9 +1187,9 @@ one path that *reports* rather than refuses, which is what AC-1.1 asks for.
 | Level | Runs | Covers |
 |---|---|---|
 | Unit, in-process | `pdlc/engine/__tests__/`, the shipped `node --test` suite | Resolution ladder, store enumeration, provenance rendering, catalogue closure, config read discipline, handshake/env-var branch. All pure over injected seams — no temp dirs, no network, no spawn |
-| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3 |
-| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements |
-| Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it; the launcher pass-through spawn test (§6.2); **AT-2.5 on a below-floor image (`node:18-alpine`)**, since the PR gate is `node: ['20']` only |
+| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3, §9.3's **guard-entry structural oracle** (zero static imports, dynamic import only) and §7.2's **commit-site set-equality** over both workflow modules' sources |
+| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements — **kinds 1, 2 and 4 against `orchestrate-dev.js`, kind 3 against `orchestrate-queue.js`** (including the `rewriteStatus` 8th-parameter pass-through and the `ensureEngineColumn` round trip), same suite, two module targets |
+| Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it; the launcher pass-through spawn test (§6.2); **AT-2.5 on a below-floor image (`node:18-alpine`)**, since the PR gate is `node: ['20']` only — paired with the structural oracle above, which is what makes AT-2.5 non-vacuous (§9.3) |
 | One-time manual | recorded, dated | Real-channel publish (BR-3.9), AT-6.2's channel observation (Q-2) |
 
 ### 12.2 Test doubles
