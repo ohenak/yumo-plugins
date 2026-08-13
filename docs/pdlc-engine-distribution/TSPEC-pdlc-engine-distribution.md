@@ -750,10 +750,27 @@ the classes the run actually produced):
 | 8 | `CODE_REVIEW-{feature}-v{N}.md` | **no** — Phase DOD, must be added |
 | 9 | `POSTMORTEM-{phase}-{feature}.md` | **no** — must be added |
 | 10 | `ADVISORY-{feature}.md` | **no** — must be added when the advisory tier is enabled |
+| 11 | `CROSS-REVIEW-{role}-{doc}-v{N}.md` | **no** — and these are *modified in place by the script*: `appendApprovalAnchors` appends `APPROVAL-HASH:`/`REVIEWED-COMMIT:` to an **already existing** file (`orchestrate-dev.js:6716-6721`) and commits it (`:6736`). Must be added |
+
+**Why class 11 belongs here even though BR-9.3 excludes cross-reviews from AC-5.3's mark
+set.** The two sets are different sets and the exclusion does not carry across. AC-4.5 asks
+that every file under `docs/{feature}/` that existed before the run hash identically **except**
+those the report enumerates. An anchor-appended cross-review is a pre-existing file whose hash
+changes and which no `artifactPaths` push covers — so the set-equality this section builds
+fails against correct code unless the anchor path enumerates the file it touched. It does:
+`appendApprovalAnchors` pushes the cross-review path onto `artifactPaths` at the point the
+append succeeds (`appended = true`), which is script-owned and cannot be forgotten by an agent.
+BR-9.3's exclusion still holds for AC-5.3 — the file's *contents* carry no provenance mark
+(§7.2) — and the two facts coexist: enumerated as modified, unmarked in content.
+
+**`QUEUE.md` is deliberately absent from this table.** It sits at `docs/_queue/QUEUE.md`,
+outside `docs/{feature}/`, so it is outside AC-4.5's scope entirely — it is not an omission but
+a boundary, and it is covered instead as AC-5.3's kind 3 (§7.2). The same goes for
+`docs/_decisions/` and `docs/_constraints/`.
 
 Stating the set as an equality rather than a subset is what makes it hold over time: a newly
 authored document class forces this list to be revisited, because the test goes red until it
-is. The PLAN carries the work as **fixing the four missing classes plus the equality test**,
+is. The PLAN carries the work as **fixing the five missing classes (7–11) plus the equality test**,
 not as "verify the existing set" — which is a larger task than the earlier draft scheduled,
 and is the honest size. AT-4.5 is unblocked and scheduled in Phase 1. The FSPEC's "[blocked on
 O-9]" marking is still wrong (no O-9 carrier is needed), so the erratum against the FSPEC
@@ -1239,7 +1256,7 @@ no row is a defect in this table.
 | AC-4.2 | `_provenance` kind 2, script-owned append after `_checkFile` | §7.2 |
 | AC-4.3 | Distinct `engineVersion` in committed artifacts | §7.2 |
 | AC-4.4 | Single resolution (V-08) read by every emitter; change-check test | §7.1, §12.2 |
-| AC-4.5 | `artifactPaths` ships but is `converge()`-only (V-14 corrected); four missing classes added + literal set-equality | §7.4 |
+| AC-4.5 | `artifactPaths` ships but is `converge()`-only (V-14 corrected); five missing classes added, including the anchor-appended `CROSS-REVIEW-*`, + literal set-equality | §7.4 |
 | AC-5.1 | Ladder branch 3 + inert-by-default `UpdateProbe` | §6.3, §10.1 |
 | AC-5.2 | Ladder branch 6's announcement | §6.3 |
 | AC-5.3 | `Provenance.line`/`block` in exactly four kinds, kind 4 composed inside one marked commit helper; kind-4 scope raised as an erratum | §7.2, §12.3 |
