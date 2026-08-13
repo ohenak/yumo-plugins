@@ -307,6 +307,47 @@ always-packed regardless of the list.
 
 ## 7. DEC-EDIST-06: The launcher hop is a child process, not a dynamic import
 
+*Refines DEC-EDIST-03. Mechanism: TSPEC §6.2.*
+
+**Context.** Once the launcher has resolved a version, it must run that version's CLI. Two
+mechanisms were available: `import()` the resolved `bin/cli.mjs` in the launcher's own process,
+or spawn it.
+
+**Decision.** Spawn: `child_process.spawnSync` with `stdio: "inherit"`, re-raising the child's
+exit code as the launcher's own. Two engine versions may declare different
+`@anthropic-ai/claude-agent-sdk` ranges (`pdlc/engine/package.json` pins `^0.3.226` today) and
+must not share one module registry, which in-process loading would force.
+
+**Alternatives considered.**
+
+- **Dynamic `import()` of the resolved version in-process** — rejected. One process means one
+  ESM registry and one resolved dependency tree; version N's engine would run against whatever
+  SDK the launcher's own tree resolved, which defeats the point of having versions resident side
+  by side.
+- **Process replacement (`execve`)** — unavailable. Node has no `execve`, and an earlier draft's
+  phrase "process replacement via `spawnSync`" was corrected: `spawnSync` is a *child*, and the
+  difference is observable in signal handling, exit-code propagation and stdio buffering.
+  Calling it "replacement" would hide exactly the behaviours that need asserting.
+
+**How the choice is paid for in tests.** Because the hop is a real process, the pass-through
+claim gets a real oracle: one test spawns through the launcher at a trivial fake target and
+asserts a non-zero exit code propagates verbatim and that stdout and stderr each arrive
+unchanged rather than interleaved. S-3's descriptor recorder (path, argv, env) stays for the
+*resolution* assertions and is not asked to falsify pass-through — a double cannot. The shipped
+end-to-end CLI oracle already spawns for real (`pdlc/engine/__tests__/cli.test.js:13,22`,
+`spawnSync(process.execPath, [BIN, ...args])`), so this stays inside a shipped precedent.
+
+**Constraints that forced the shape.** Independent SDK ranges per resident version; AC-1.4's
+exit-code contract (an engine crash is exit 1, a pipeline halt exit 2 — both must survive the
+hop); the absence of `execve` in Node.
+
+**Reversibility.** Easy in code, and the cost is TSPEC R-C: two Node process startups per run.
+Measured concern only — the dispatch path dominates.
+
+**Re-evaluation triggers.** Startup cost becoming measurable against dispatch (R-C); the engine
+dropping to a single dependency-free tree, which would remove the registry-sharing objection;
+a platform where signal and stdio pass-through through `spawnSync` proves unreliable.
+
 ## 8. DEC-EDIST-07: `--version` and `doctor` resolve but never refuse
 
 ## 9. DEC-EDIST-08: An unreadable consumer config refuses, even when no pin was declared
