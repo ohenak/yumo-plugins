@@ -13,7 +13,7 @@ feature: pdlc-engine-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.1 | 2026-08-13 |
+| pdlc | Draft | Claude | 0.2 | 2026-08-13 |
 
 **FSPEC ID:** `FSPEC-EDIST-01`
 
@@ -22,8 +22,9 @@ feature: pdlc-engine-distribution
 This FSPEC specifies the **observable behaviour** of the four things REQ-EDIST-01…06 ask for:
 the compat handshake a run performs before it dispatches, the install/upgrade lifecycle on an
 operator machine, the tag-driven publish pipeline, and the provenance a run leaves behind in a
-consumer repo. It also carries the two **expected sets** the REQ deliberately parked here rather
-than in a measurement file (§5): the required-check set (T-7) and the packed-content set (AC-1.3).
+consumer repo. It also carries the three **expected sets** the REQ deliberately parked here rather
+than in a measurement file (§5): the required-check set (T-7), the packed-content set (AC-1.3) and
+the dev-mode artifact-kind set (AC-5.3).
 
 **Altitude.** Behaviour, decision points, business rules, expected sets, error text obligations.
 Not here, and owned by the TSPEC: package layout, manifest schema beyond the fields the REQ
@@ -64,10 +65,9 @@ by id. Where a flow needs a value the REQ did not declare, it is raised in §9, 
 
 Each flow is stated as steps with explicit decision points. A step that describes behaviour not
 present at HEAD is marked **[new]**; one that describes shipped behaviour is marked **[shipped]**
-with its symbol, so a reviewer can check the claim in one pass. **The discipline is applied to
-every flow** (SE round-1 F-10): where a whole flow is new work, it is marked once at the flow
-heading and only its **[shipped]** steps carry a mark — F-2, F-3, F-5 and F-6 are wholly new,
-F-1, F-4 and F-7 are mixed and marked step by step.
+with its symbol, so a reviewer can check the claim in one pass. **Every flow carries the marks**
+(SE round-1 F-10): F-2, F-3, F-5 and F-6 are wholly new and marked once at the heading, with only
+their **[shipped]** steps marked individually; F-1, F-4 and F-7 are mixed and marked step by step.
 
 ### F-1 — Compat handshake and version query *(AC-1.1, AC-1.2, AC-1.4)*
 
@@ -107,10 +107,9 @@ prompt is read, no agent is started, nothing is written until the handshake reso
    `## Install in another repo` section (`pdlc/README.md:132`), which today documents the *plugin*
    install (`:139`, with a local-marketplace variant at `:145`) and gains the **engine** install
    command under it. **[new]** — no engine install command exists at HEAD. The uniqueness rule is
-   scoped to the engine's own install/upgrade invocation, which is a different command from
-   `claude plugin install` and is distinguishable from it by its own program name; the plugin's
-   commands are outside this set and their existing occurrences (`README.md:115`,
-   `pdlc/README.md:139,145`) do not violate it. No other file is a transcription source (AC-2.1).
+   keyed on the **engine's own** install/upgrade invocation, distinguishable by its program name;
+   `claude plugin install`'s existing occurrences (`README.md:115`, `pdlc/README.md:139,145`) are
+   outside the set. No other file is a transcription source (AC-2.1).
 2. They run it once, on a machine with Node ≥ T-2 and nothing pdlc-related installed.
 3. **Decision point — Node floor.** If Node is below T-2 the attempt fails with a message naming
    the required floor and the version found: no stack trace, no partial install, nothing left
@@ -209,12 +208,10 @@ PR gate's jobs but may not weaken, rename, make conditional, or re-render any me
    published artifact. Any release-notes rendering is *derived from* that record by the same job,
    never independently authored: two writers are two drift surfaces.
 7. **Manifest publish-preconditions, checked offline before the channel is called** (BR-3.8).
-   At HEAD the manifest blocks publication on all three of O-8's counts — `"private": true`
-   (`pdlc/engine/package.json:4`, the one npm itself refuses), the unscoped name `pdlc-engine`
-   (`:2`) against DEC-DIST-05's scoped-public decision, and `"license": "UNLICENSED"` (`:11`).
-   Clearing them is the **operator's**, carried at §9 Q-8; until they are cleared AT-3.1 is not
-   merely unimplemented, it is refused by the tool. The workflow itself checks the first two
-   offline and fails naming the offending field rather than discovering them at the channel.
+   At HEAD all three of O-8's blockers stand — `"private": true` (`pdlc/engine/package.json:4`,
+   the one npm refuses), unscoped `pdlc-engine` (`:2`) against DEC-DIST-05, `"UNLICENSED"` (`:11`)
+   — so AC-3.1 is refused by the tool, not merely unimplemented. Clearing them is the operator's
+   (§9 Q-8); the workflow fails offline naming the offending field.
 8. **Publish** to the channel decided at DEC-DIST-05 (public npm, scoped), **through an injectable
    channel seam** (BR-3.9) — the same discipline F-4 step 6 already sets for the update probe.
 9. **Immutability and re-run** (C-7, AC-3.3): re-running the workflow for an already-published
@@ -269,13 +266,12 @@ artifacts, and it is **[new]** work whose carrier is owned at **O-9**.
    then the **bare-path** invocation of `pdlc/hooks/scripts/sync-workflows.sh`, in that order, both
    exit 0; `pdlc/hooks/scripts/sync-workflows.sh --check` then exits 0 with every manifest row in
    sync. The order is not interchangeable and the bare-path form is load-bearing: a `bash`/`sh`
-   prefix would mask a lost execute bit (exit 126). **[shipped]** both scripts exist and the CI
-   job already discharges this on a **fresh clone** (`.github/workflows/pr-tests.yml:138,152`).
-   That precondition is part of the claim, not incidental (SE round-1 F-06): plain sync
-   deliberately **skips** rows it measures as `local-edit` or `unverified` and exits non-zero
-   (`pdlc/hooks/scripts/sync-workflows.sh:703-722`), and every pre-existing consumer copy is
-   `unverified` the first time the mechanism runs. So the assertion holds where **no consumer
-   copy exists yet and the sync manifest is clean**; `--force` is explicitly out of its scope.
+   prefix would mask a lost execute bit (exit 126). **[shipped]** both scripts exist and CI
+   discharges this on a **fresh clone** (`.github/workflows/pr-tests.yml:138,152`) — a precondition
+   that is part of the claim (SE round-1 F-06): plain sync skips `local-edit`/`unverified` rows and
+   exits non-zero (`pdlc/hooks/scripts/sync-workflows.sh:703-722`), and every pre-existing consumer
+   copy is `unverified` on first run. The claim therefore holds where **no consumer copy exists and
+   the sync manifest is clean**; `--force` is out of scope.
 3. **Channel identification** (AC-6.2, C-9). An engine run identifies itself by emitting its
    provenance block (F-6). The bundle channel executes inside the Claude Code workflow runtime and
    cannot emit one, and C-4 forbids teaching that path to self-report, so its identification is a
@@ -354,13 +350,13 @@ it without a further question.
   a discovery at first tag push: the manifest must be publishable (not private), scoped per
   DEC-DIST-05, and its name must match the pairing record's. A failure names the offending field
   and fails the run (BR-3.2). The three blockers standing at HEAD are O-8's (F-5 step 7).
-- **BR-3.9** The publish action sits behind an **injectable channel seam**. Tag/version agreement,
-  range/plugin agreement, manifest preconditions, and the collision branches of BR-3.3 are all
-  decided offline over a stub, with no network and no version number consumed. The one leg a stub
-  cannot cover — that the real channel accepted the bytes — is discharged by a **named, dated,
-  one-time** real-channel observation recorded here on first publish, the same shape BR-7.4 uses
-  for the rendered check names. It is not a gate and is not re-run per release.
-  *Observation record: pending first publish; owner operator, recorded in this rule when taken.*
+- **BR-3.9** The publish action sits behind an **injectable channel seam**. Tag/version and
+  range/plugin agreement, manifest preconditions, the pairing record and BR-3.3's collision
+  branches are all decided offline over a stub — repo-local computations, no network, no version
+  number consumed (SE round-1 Q-01). The one leg a stub cannot cover — that the real channel
+  accepted the bytes — is a **named, dated, one-time** observation recorded in this rule at first
+  publish, the shape BR-7.4 uses for rendered check names; never a gate, never re-run per release.
+  *Observation record: pending first publish; owner operator.*
 
 **BR-4 — Version resolution**
 
@@ -426,13 +422,12 @@ sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE rou
 - **BR-7.1 — Two set-equalities, one per alphabet, over job-level names of the PR-gate file.**
   The oracle reads the **job-level `name:` keys** of the **PR-gate workflow file(s)** — at HEAD
   exactly `.github/workflows/pr-tests.yml` — and nothing else. **Step-level `name:` strings are
-  not members** (that file carries ~16 of them, e.g. `:46,53,66,70,92`; an oracle over "the
-  authored `name:` strings" of the file would be red before anyone edited anything), and **the
-  publish workflow F-5 adds is outside the set**, because its jobs are not PR checks (BR-7.5).
-  The job-level authored keys equal the authored column, **and** their local expansions equal the
-  rendered column. A deletion, a rename, a matrix edit that changes only the rendered set, and
-  **any addition** to the PR-gate file all fail: a PR check this feature adds lands in this table
-  first.
+  not members** (that file carries ~16, e.g. `:46,53,66,70,92`, so an oracle over "the authored
+  `name:` strings" would be red before anyone edited anything), and **F-5's publish workflow is
+  outside the set**: its jobs are not PR checks (BR-7.5). The job-level authored keys equal the
+  authored column and their local expansions equal the rendered column. A deletion, a rename, a
+  matrix edit changing only the rendered set, and **any addition** to the PR-gate file all fail:
+  a PR check this feature adds lands in this table first.
 - **BR-7.2 — Decidable offline.** The carrier reads the named workflow file(s) and expands the
   declared matrix axes locally: no PR, no network, no credentials. Observing what GitHub reported
   on a live run is explicitly **not** the carrier — that check cannot run inside the gate it
@@ -454,12 +449,11 @@ sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE rou
 - **BR-7.5 — Every member still runs on pull requests and still gates them.** The publish workflow
   is a separate, additively-added trigger (C-5) whose own jobs are **not** members of this set:
   they gate no pull request, and Phase PUB does not poll them.
-- **BR-7.6 — Mutation evidence runs over fixture copies, and this set owns the matrix.** The
-  mutations BR-7.1 requires to fail cannot be performed on the live `pr-tests.yml`, so they are
-  exercised against fixture copies of it. `pdlc/engine/__tests__/ci-arrangement.test.js:44-60`
-  already regex-asserts that file's matrix and job set; on landing, **§5.1's carrier owns the
-  matrix and job-name assertions** and the older test's overlapping assertions are removed, so a
-  matrix edit produces one failure with one remedy, not two (TE round-1 F-08).
+- **BR-7.6 — Mutation evidence runs over fixture copies, and this set owns the matrix.**
+  BR-7.1's mutations cannot be applied to the live `pr-tests.yml`, so they run against fixture
+  copies. `pdlc/engine/__tests__/ci-arrangement.test.js:44-60` already regex-asserts that file's
+  matrix and job set; on landing, **§5.1's carrier owns those assertions** and the older test's
+  overlapping ones are removed — one failure, one remedy (TE round-1 F-08).
 
 ### 5.2 Expected packed-content set *(AC-1.3)*
 
@@ -486,10 +480,10 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
   (TE round-4 Q-02); which mechanism achieves it is the TSPEC's;
 - no `node_modules/`, no lockfile-adjacent build residue, no repo-level documentation.
 
-There is **no separate "engine adapter" row**: the adapter is `lib/adapter.mjs`, already a member
-of the engine-modules row, and a second row would double-count it (TE round-1 Q-01).
-`pdlc/workflows/runtime-adapter.js` is *not* a member — `lib/adapter.mjs:8-13` records that its
-IO-agent machinery is deliberately not ported.
+There is **no separate "engine adapter" row**: the adapter is `lib/adapter.mjs`, already an
+engine-modules member, and a second row would double-count it (TE round-1 Q-01).
+`pdlc/workflows/runtime-adapter.js` is *not* a member (`lib/adapter.mjs:8-13`: deliberately not
+ported).
 
 **BR-8.1** The equality is member-for-member in both directions: an **added** file fails and a
 removed module fails. A subset check is not acceptable — a vendored skills copy is exactly the
@@ -512,15 +506,14 @@ A dev-mode run marks **exactly** these artifact kinds:
 4. the commit message of every commit the run makes.
 
 - **BR-9.1 — The carrier is the run's own authored-file enumeration** (Q-6/BR-5.3), partitioned
-  into the four kinds above, plus the run's commit list for kind 4. Kinds are not read off a disk
-  listing; they are read off what the run says it wrote — which also makes "a kind the run
-  produced that this table does not name" mechanically detectable.
+  into the four kinds, plus the run's commit list for kind 4. Kinds are read off what the run says
+  it wrote, never off a disk listing — which also makes "a kind produced but not named here"
+  mechanically detectable.
 - **BR-9.2 — Equality is over the kinds the run actually produced.** A green single-feature run
-  writes no POSTMORTEM and rewrites no `QUEUE.md` row, so equality against all four literally
-  would fail every such run. The check is: every kind the run produced is marked, no kind it
-  produced is unmarked, and it produced no kind outside this table. Because a satisfied-by-absence
-  reading is exactly the failure §5.2 rejects, **each kind is also paired with a positive**: for
-  every kind in the table there is a run that produces it, and a run producing it unmarked fails.
+  writes no POSTMORTEM and rewrites no `QUEUE.md` row, so literal equality against all four would
+  fail every such run: the check is that every kind produced is marked and no kind outside this
+  table is produced. Because satisfied-by-absence is the failure §5.2 rejects, **each kind is
+  paired with a positive** — a run that produces it, and a run producing it unmarked that fails.
 - **BR-9.3 — Deliberately out of the set:** cross-review and `CODE_REVIEW-*` files, authored by
   dispatched agents rather than by the run harness. A mark on one fails. A dev-mode run is never
   mistakable for a released one in the consumer's history.
@@ -595,13 +588,11 @@ TSPEC's; **that** each item below is present and machine-checkable is fixed here
 Who / Given / When / Then. Each names the criterion it discharges. Tests marked **[blocked]**
 cannot be written until an obligation lands, and say which.
 
-**Every test also names its execution environment** (TE round-1 F-05), because "automated" and
-"manual" are not the same discharge and the cheapest reading must not win by default:
-**[auto]** runs unattended in the PR gate; **[fixture]** runs unattended against a constructed
-machine or repo fixture (container, `npm pack` into a temp prefix, stub seam); **[manual]** is an
-operator observation with recorded evidence, dated in the test's own record. The label is carried
-on the family heading and overridden on individual tests that differ; an unlabelled family is a
-defect in this section.
+**Every test names its execution environment** (TE round-1 F-05), so the cheapest reading cannot
+win by default: **[auto]** unattended in the PR gate; **[fixture]** unattended against a
+constructed machine or repo fixture (container, `npm pack` into a temp prefix, stub seam);
+**[manual]** an operator observation with dated, recorded evidence. The label sits on the family
+heading and is overridden per test where it differs; an unlabelled family is a defect.
 
 ### AT-1 — Handshake and version query **[fixture]**
 
@@ -625,7 +616,7 @@ defect in this section.
   output carries all three of engine version, declared range, installed plugin version (or "none"),
   and equals the triple in the same run's banner and report (BR-1.5).
 
-### AT-2 — Install and upgrade **[fixture]** — each of AT-2.1, AT-2.3, AT-2.4, AT-2.5 and AT-2.6 runs against a constructed machine fixture (a clean container image, or `npm pack` installed into a temporary prefix with `PATH` scoped to it), never against the maintainer's own machine; AT-2.2 is **[auto]**
+### AT-2 — Install and upgrade **[fixture]** — AT-2.1, AT-2.3, AT-2.4, AT-2.5 and AT-2.6 each run against a constructed machine fixture (clean container image, or `npm pack` into a temp prefix with `PATH` scoped to it), never the maintainer's own machine; AT-2.2 is **[auto]**
 
 - **AT-2.1** *(AC-2.1)* **Who:** operator on a clean machine, Node ≥ T-2. **Given:** the command
   transcribed from `pdlc/README.md`'s `## Install in another repo` section. **When:** run once.
@@ -633,11 +624,11 @@ defect in this section.
   version from an existing install location; **the version query reports the triple (AC-1.4)**;
   and a pipeline command reaches the handshake and emits AT-1.1's refusal.
 - **AT-2.2** *(BR-2.3)* **[auto]** **Who:** verifier. **Given:** the repo. **When:** the tree is
-  searched for the **engine's own** install invocation and, separately, its upgrade invocation —
-  keyed on the engine program name, not on `claude plugin install`, whose three existing
-  occurrences (`README.md:115`, `pdlc/README.md:139,145`) are outside the set (TE round-1 Q-02).
-  **Then:** each engine command occurs exactly once, in that README section; a fallback variant of
-  either, if one is ever documented, lands in this table first or fails the check.
+  searched for the **engine's own** install invocation, and separately its upgrade invocation,
+  keyed on the engine program name — not on `claude plugin install`, whose three occurrences
+  (`README.md:115`, `pdlc/README.md:139,145`) are outside the set (TE round-1 Q-02). **Then:**
+  each occurs exactly once, in that README section; a documented fallback variant lands in this
+  table first or fails.
 - **AT-2.3** *(AC-2.2)* **Given:** version N installed, two consumer repos each having completed a
   run at N. **When:** the upgrade command runs once on the machine, then the pipeline runs in each
   repo. **Then:** both runs execute N+1 — visible in each run's output **and** in the artifacts —
@@ -727,11 +718,10 @@ defect in this section.
   **When:** it runs. **Then:** every kind it produced carries the mark and none is unmarked
   (BR-9.2), the mark's carrier is the run's own authored-file enumeration (BR-9.1), and a mark on
   a cross-review file fails (BR-9.3).
-- **AT-5.3b** *(AC-5.3, §5.3)* **Given:** a green single-feature dev-mode run, which writes no
-  POSTMORTEM and rewrites no `QUEUE.md` row. **When:** it runs. **Then:** the kinds it *did*
-  produce are marked and the check passes without asserting the two absent kinds vacuously; and
-  for each of the four kinds there exists a fixture producing it **unmarked**, which fails —
-  the positive pairing BR-9.2 requires.
+- **AT-5.3b** *(AC-5.3, §5.3)* **Given:** a green single-feature dev-mode run (no POSTMORTEM, no
+  `QUEUE.md` rewrite). **Then:** the kinds it produced are marked and the two absent kinds are not
+  asserted vacuously; and for each of the four kinds a fixture producing it **unmarked** fails —
+  BR-9.2's positive pairing.
 - **AT-5.4** *(AC-5.4)* **Given:** a checkout present, no declaration. **When:** the pipeline runs.
   **Then:** the installed released version executes.
 - **AT-5.5** *(AC-5.5)* **Given:** a pin naming an uninstalled version. **When:** the pipeline runs.
@@ -803,11 +793,10 @@ resolved by silence: each names an owner and what it blocks.
   (TE round-1 Q-03). Until then two sentences claim change-control over one set, and the FSPEC's
   is the gate.
 - **Q-8 — O-8's three publish blockers are live and unowned in this document until now.** (SE
-  round-1 F-01.) The manifest at HEAD is `"private": true` (`pdlc/engine/package.json:4`),
-  unscoped `pdlc-engine` (`:2`) against DEC-DIST-05's scoped-public decision, and `"license":
-  "UNLICENSED"` (`:11`). The first is tool-enforced — `npm publish` refuses outright — the other
-  two are decision-enforced and npm catches neither. Until an operator clears all three, AC-3.1
-  cannot be discharged against the real channel at all, which is why F-5 step 7 marks it and
-  BR-3.8 turns the first two into an offline gate rather than a first-tag-push surprise.
-  *Owner:* operator. *Blocks:* AC-3.1's real-channel leg and BR-3.9's one-time observation; blocks
-  nothing that runs over the stub.
+  round-1 F-01.) At HEAD the manifest is `"private": true` (`pdlc/engine/package.json:4`, the one
+  npm itself refuses), unscoped `pdlc-engine` (`:2`) against DEC-DIST-05's scoped-public decision,
+  and `"license": "UNLICENSED"` (`:11`) — the latter two decision-enforced, caught by nobody but
+  the operator. Until all three are cleared AC-3.1 cannot be discharged against the real channel,
+  which is why F-5 step 7 marks it and BR-3.8 makes the first two an offline gate rather than a
+  first-tag-push surprise. *Owner:* operator. *Blocks:* AC-3.1's real-channel leg and BR-3.9's
+  one-time observation; nothing that runs over the stub.
