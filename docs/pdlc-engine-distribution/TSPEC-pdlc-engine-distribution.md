@@ -843,9 +843,36 @@ set.** The two sets are different sets and the exclusion does not carry across. 
 that every file under `docs/{feature}/` that existed before the run hash identically **except**
 those the report enumerates. An anchor-appended cross-review is a pre-existing file whose hash
 changes and which no `artifactPaths` push covers — so the set-equality this section builds
-fails against correct code unless the anchor path enumerates the file it touched. It does:
-`appendApprovalAnchors` pushes the cross-review path onto `artifactPaths` at the point the
-append succeeds (`appended = true`), which is script-owned and cannot be forgotten by an agent.
+fails against correct code unless the anchor path enumerates the file it touched.
+
+**It does not do this at HEAD, and the route it will take is named here rather than assumed.**
+Verified: `appendApprovalAnchors` is a **module-scope** function (`orchestrate-dev.js:6660`)
+whose destructured parameter object is `{paths, hash, normalizedHash, commit, _readFile,
+_probeDoc, _appendFile, _git, emit}` — no collector. Its body sets `appended = true` (`:6721`)
+and pushes nothing. `artifactPaths` is a `const` **local to `main()`** (`:11659`) and the only
+push in the file is `:11507`, inside `main()`'s nested `runPhase`. So class 11's coverage is
+**work this feature must build**, not behaviour to assert against today's code — it is in the
+"must be added" column of the table above for exactly that reason, and the sentence that read
+"It does" was wrong.
+
+The route, stated to the same precision as §7.2's kind 3:
+
+1. `appendApprovalAnchors` **returns the paths it actually appended** (`{appended, paths}`),
+   which it can do with no new seam: it already tracks `appended` at `:6721`. Returning is
+   preferred to taking a collector parameter because the two call sites sit in different
+   scopes.
+2. Call site **A**, `reviewLoop`'s PASS branch (`:6516`): `reviewLoop` is **module-scope**
+   (`:6183`) and cannot see `artifactPaths`, so it surfaces the anchored paths in the record it
+   already returns at `:6529`. Both of `reviewLoop`'s callers are inside `main()` — `:11532`
+   (`runPhase`'s `const loop = await reviewLoop({…})`) and `:12532` (Phase CR's `crResult`) —
+   and each pushes them onto `artifactPaths`.
+3. Call site **B**, the erratum-confirmation body (`:11336`): this one is inside `erratumRound`
+   (`:11123`), which is **nested within `main()`**, so it closes over `artifactPaths` and
+   pushes directly. It passes differently-named seams (`_readFile: readFileFn`, `_git: gitFn`),
+   so the PLAN task names this site separately rather than describing "the caller" once.
+4. Both pushes are conditional on the append having succeeded, matching P-5's rule that a
+   failed anchor append yields no approval and changes nothing else.
+
 BR-9.3's exclusion still holds for AC-5.3 — the file's *contents* carry no provenance mark
 (§7.2) — and the two facts coexist: enumerated as modified, unmarked in content.
 
