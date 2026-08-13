@@ -753,4 +753,40 @@ test file. Three sequencing constraints the PLAN must honour:
 
 ## 13. Requirements traceability
 
+Every acceptance criterion in REQ §5 maps to at least one component here. A criterion with
+no row is a defect in this table.
+
+| AC | Component | Section |
+|---|---|---|
+| AC-1.1 | `handshake.checkCompat` (shipped, V-09) + launcher refusal path | §11 |
+| AC-1.2 | `skills.loadSkill` at dispatch time; `files` allow-list ships no skills | §5.4 |
+| AC-1.3 | `files` allow-list; PF-4's `npm pack --dry-run` equality | §5.4, §8.3 |
+| AC-1.4 | `runStartupChecks.versions` (shipped, V-08) surfaced by `pdlc --version`/`doctor` | §3.1, §7.1 |
+| AC-1.5 | `PairingRecord` in the packed manifest, single writer | §8.4 |
+| AC-2.1 | README section; launcher on `PATH`; handshake reached | §9.1, §9.2 |
+| AC-2.2 | Store + launcher: upgrade changes the resolved version machine-wide | §9.2 |
+| AC-2.3 | Store is outside every consumer repo; per-leg positives | §9.2, §12.3 |
+| AC-2.4 | `engines.node` + pre-parse guard | §9.3 |
+| AC-2.5 | Disjoint install locations | §9.4 |
+| AC-3.1 | `publish.yml` gate → preflight → publish | §8.1 |
+| AC-3.2 | No `continue-on-error`, no conditional jobs | §8.1 |
+| AC-3.3 | `PublishChannel.exists` → loud failure; byte-identity over the stub | §8.4 |
+| AC-3.4 | `ci-arrangement.test.js`'s two set-equalities | §8.5 |
+| AC-3.5 | Secret consumed only by the publish step; sentinel scan + two positives | §8.4 |
+| AC-3.6 | PF-1 | §8.3 |
+| AC-3.7 | PF-2, via the runtime's own `satisfiesRange` | §8.3 |
+| AC-4.1 | `Provenance` in the run report, success and halt paths | §7.1, §7.2 |
+| AC-4.2 | `_provenance` P-3(b), script-owned append after `_checkFile` | §7.2 |
+| AC-4.3 | Distinct `engineVersion` in committed artifacts | §7.2 |
+| AC-4.4 | Single resolution (V-08) read by every emitter; change-check test | §7.1, §12.2 |
+| AC-4.5 | **`artifactPaths`, already shipped** (V-14) + completeness task | §7.4 |
+| AC-5.1 | Ladder branch 3 + inert-by-default `UpdateProbe` | §6.3, §10.1 |
+| AC-5.2 | Ladder branch 6's announcement | §6.3 |
+| AC-5.3 | `Provenance.line`/`block` placed in exactly four kinds | §7.2, §12.3 |
+| AC-5.4 | `--dev` required; checkout presence is not an input to the ladder | §6.3 |
+| AC-5.5 | Ladder branch 4, enumerating installed versions | §6.3 |
+| AC-5.6 | D-4's ignore-with-notice branch | §6.5 |
+| AC-6.1 | Nothing here touches `build-runtime.mjs`, the bundles or the sync scripts | §3.1, §14 |
+| AC-6.2 | Engine half closed via `loadRoot`; bundle half **open**, limit documented in the test | §7.3, §14 |
+
 ## 14. Costs, risks, and what is deliberately not closed here
