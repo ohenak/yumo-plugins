@@ -19,6 +19,25 @@
 
 ## 1. Scope
 
+This document records the load-bearing decisions the TSPEC takes, with the alternatives that
+were rejected and why. It is the *record*, not a second authority: where a mechanism is
+specified, the TSPEC section named in each entry is normative and this file states only what
+was chosen, what was rejected, and what would make the choice worth revisiting.
+
+Ten entries. Five (DEC-EDIST-01…05) close the obligations the FSPEC parked — O-10, O-9, O-2's
+execution half, Q-4 and Q-5 — and are the five listed in TSPEC §4. Five more
+(DEC-EDIST-06…10) are decisions taken inside the TSPEC's body that a later reader would
+otherwise have to reconstruct from prose: they each rejected a plausible alternative, each
+have a reversal cost worth stating, and each are cited by more than one downstream artifact.
+
+Project-level decisions in `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-01…05)
+are **not** re-litigated here. Two of them are load-bearing inputs: DEC-DIST-02's three-tier
+source/artifact/consumer-copy discipline is what DEC-EDIST-01 reuses, and DEC-DIST-05's
+"scoped public npm package" is the channel every entry below assumes.
+
+Nothing here decides the operator-owned items — the npm scope (N-6), the licence (N-2) or
+BL-03's transcription (N-3). §12 lists them with their owners.
+
 ## 2. DEC-EDIST-01: Vendor the workflow modules at build time, into the tarball only
 
 ## 3. DEC-EDIST-02: One optional, default-inert `_provenance` seam
