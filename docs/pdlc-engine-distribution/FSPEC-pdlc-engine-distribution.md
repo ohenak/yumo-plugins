@@ -315,17 +315,19 @@ it without a further question.
   the artifacts.
 - **BR-1.6** If the engine cannot resolve its own version (T-1a), it refuses with a message naming
   the corrupt install; it never reports "unknown" and proceeds.
-- **BR-1.7** The diagnostic command is the **only** exemption from BR-1.1, and it reports the same
-  triple as the version query.
+- **BR-1.7** The diagnostic command — `pdlc doctor`, shipped at `pdlc/engine/bin/pdlc.mjs:489` — is
+  the **only** exemption from BR-1.1, and it reports the same triple as the version query.
 
 **BR-2 — Install and upgrade**
 
 - **BR-2.1** Install and upgrade write **nothing** into any consumer project (C-2, NG-6): no file
   created, modified or deleted under the project, in particular nothing under `.claude/`.
-- **BR-2.2** Consumer-owned config is read, never written. The engine reads only the `engine.*`
-  namespace of `.claude/pdlc.config.json`; the rest of that file is not its business.
-- **BR-2.3** The install command has exactly one documented source (F-2 step 1). A second copy in
-  another file is a defect the moment it exists, not when it drifts.
+- **BR-2.2** Install and upgrade touch consumer config not at all. Reading it is a *run*-time
+  behaviour (BR-4.7), stated there rather than here.
+- **BR-2.3** The engine's install command **and** its upgrade command each have exactly one
+  documented source, and it is the same section (F-2 step 1, F-3 step 2). The rule is scoped to
+  the engine's own invocations; the plugin's `claude plugin install` occurrences are outside it.
+  A second copy of an engine command in another file is a defect the moment it exists.
 - **BR-2.4** Below the Node floor (T-2), install and every pipeline invocation fail with a message
   naming the floor and the version found — never a stack trace, never a partial run.
 - **BR-2.5** Upgrade is a machine-level action with a project-level effect: after it, every
@@ -348,6 +350,17 @@ it without a further question.
   no distribution-channel credential is required to run the engine.
 - **BR-3.7** The per-release pairing record has exactly **one** writer (F-5 step 6); every other
   rendering is derived from it.
+- **BR-3.8** The package manifest's own publish-preconditions are a **gated, offline** check, not
+  a discovery at first tag push: the manifest must be publishable (not private), scoped per
+  DEC-DIST-05, and its name must match the pairing record's. A failure names the offending field
+  and fails the run (BR-3.2). The three blockers standing at HEAD are O-8's (F-5 step 7).
+- **BR-3.9** The publish action sits behind an **injectable channel seam**. Tag/version agreement,
+  range/plugin agreement, manifest preconditions, and the collision branches of BR-3.3 are all
+  decided offline over a stub, with no network and no version number consumed. The one leg a stub
+  cannot cover — that the real channel accepted the bytes — is discharged by a **named, dated,
+  one-time** real-channel observation recorded here on first publish, the same shape BR-7.4 uses
+  for the rendered check names. It is not a gate and is not re-run per release.
+  *Observation record: pending first publish; owner operator, recorded in this rule when taken.*
 
 **BR-4 — Version resolution**
 
@@ -362,6 +375,8 @@ it without a further question.
 - **BR-4.6** `PDLC_PLUGIN_ROOT` present without a dev-mode declaration resolves loudly — refuse
   naming the variable, or run released and state the variable was ignored (AC-5.6). Silence is not
   a permitted third branch.
+- **BR-4.7** A **run** reads consumer-owned config — only the `engine.*` namespace of
+  `.claude/pdlc.config.json` — and never writes it; the rest of that file is not its business.
 
 **BR-5 — Provenance**
 
