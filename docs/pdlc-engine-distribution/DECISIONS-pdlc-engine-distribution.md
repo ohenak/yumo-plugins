@@ -99,6 +99,66 @@ to the source, which is harmless by definition.
 
 ## 3. DEC-EDIST-02: One optional, default-inert `_provenance` seam
 
+*Closes FSPEC O-9 (Q-1's "one decision or three?"). Mechanism: TSPEC §7.1, §7.2, §7.4.*
+
+**Context.** Three acceptance criteria want provenance to travel: the version pair in committed
+halt artifacts (AC-4.2), the authored-file enumeration in the run report (AC-4.5), and the load
+root (AC-6.2). The version pair already exists engine-side — `buildEngineBlock` /`stampReport`
+(`pdlc/engine/lib/report.mjs:54`, `:110`), wired at `pdlc/engine/bin/pdlc.mjs:323-325` — but the
+module that writes the artifacts cannot see it. Q-1 offered "one carrier or three"; the
+measured answer is that the three criteria are in three different states.
+
+**Decision.** One carrier, and it serves only the criterion that needs one.
+
+- **AC-4.2 — new work.** `main()` in both workflow modules gains one keyword parameter,
+  `_provenance = NO_PROVENANCE`, following the shipped default-inert idiom exactly
+  (`NO_PROBE`/`NO_RUN_COMMAND`, `pdlc/workflows/orchestrate-dev.js:7342`, `:7354`, consumed at
+  `:6211-6212`, `:10655`). The value is a frozen plain-data `Provenance` (TSPEC §7.1) whose
+  `line` and `block` are **pre-rendered by the engine**: the module places strings and never
+  formats or branches on `mode`, so one renderer feeds four placements and the banner, report
+  and commit rows cannot drift apart. The engine side pays for it with a key on each of the two
+  injection objects (`devInjection` an 8th, `queueInjection` a 6th, `pdlc/engine/lib/run.mjs:80-91`,
+  `:114-123`) and the matching edit to `PROP-PARITY-12`'s pinned seam lists
+  (`pdlc/engine/__tests__/seam-contract.test.js:47-63`, seven and five members at HEAD).
+- **AC-4.5 — no carrier at all.** The report already returns `artifactPaths`
+  (`orchestrate-dev.js:13088`). What it needs is *more members*, not a new channel: the only
+  push site is `:11507`, reachable only from `converge()`, so LEARNINGS, `CODE_REVIEW-*`,
+  POSTMORTEMs, `ADVISORY-*` and anchor-appended cross-reviews are all absent today. That is
+  enumeration work in the module, and the FSPEC's `[blocked on O-9]` marking of AT-4.5 is
+  therefore wrong — raised as an erratum, not fixed here.
+- **AC-6.2 — engine half only.** `Provenance.loadRoot` is real, run-bound evidence
+  (`workflowModulePath`, `pdlc/engine/lib/run.mjs:57-62`). The bundle half stays open because
+  C-4 forbids teaching `.claude/workflows/`'s runtime to self-report; recorded as N-3 in §12.
+
+**Alternatives considered.**
+
+- **A required parameter, or a module-level import of an engine module** — rejected. It makes
+  the workflow modules depend on the engine, which breaks the plugin channel outright: the same
+  file must keep loading in the Claude Code workflow runtime, where `import` does not exist
+  (DEC-DIST-01).
+- **Three separate carriers, one per criterion** — rejected as Q-1's expensive branch, and
+  measurement showed two of the three need no carrier at all.
+- **Have the module render the provenance text from the raw values** — rejected. Three call
+  sites formatting independently is exactly how a banner and a commit row start disagreeing;
+  pre-rendering makes BR-5.1's "both halves travel together" a property of one function.
+- **A global or env-var channel** (`PDLC_PROVENANCE` read inside the module) — rejected: it is
+  invisible to the seam-contract test, cannot be frozen per run, and leaks into subprocesses the
+  pipeline spawns.
+
+**Constraints that forced the shape.** DEC-DIST-01 (the modules must stay loadable in a
+constrained runtime with no `import`, no `process`, no `fs`); NG-5 and C-4 (a run with no engine
+must produce byte-identical artifacts — the same guarantee the advisory tier ships with,
+`pdlc/workflows/__tests__/advisoryDisabled.test.js`); BR-1.5 (one frozen value per run).
+
+**Reversibility.** Easy per placement, moderate as a whole. The parameter is additive and inert
+by default, so removing the engine's injection reverts behaviour with one edit; removing the
+parameter itself also touches the pinned seam lists and the commit helpers that compose `line`.
+
+**Re-evaluation triggers.** The bundle channel retiring (the seam could become a plain import);
+a second consumer wanting a different rendering (`line`/`block` pre-rendering stops being an
+asset and the raw fields become the contract); `artifactPaths` growing a second writer outside
+`main()` (AC-4.5's enumeration route in TSPEC §7.4 would need re-deciding).
+
 ## 4. DEC-EDIST-03: A version store plus a resolving launcher
 
 ## 5. DEC-EDIST-04: Ignore a bare `PDLC_PLUGIN_ROOT`, with a notice
