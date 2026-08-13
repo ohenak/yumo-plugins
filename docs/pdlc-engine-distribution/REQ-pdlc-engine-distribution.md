@@ -15,7 +15,14 @@ depends-on: [pdlc-headless-engine]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.4 | 2026-08-10 |
+| pdlc | approved — ready | Claude | 0.5 | 2026-08-13 |
+
+*0.5 (2026-08-13): §7 obligations corrected against already-shipped/adjudicated fact — O-2, O-4,
+O-5 and O-6 answered and closed against citations in the headless-engine and plugin-retirement
+REQs and the shipped engine code; O-1 and O-3 left OPEN pending operator decision; NG-1 records
+that the repo is public today, so its disqualifier currently excludes no channel; T-3 gets a
+parenthetical naming the shipped `pdlcPluginCompat` field; O-5's TSPEC note flags a real tension
+between T-6 (dev-mode never inferred) and the already-shipped `PDLC_PLUGIN_ROOT` env override.*
 
 *0.4 (2026-08-10): queue-row references repointed to feature names (stale Order numbers from a
 pre-renumbering table draft); ready flipped by operator review 2026-08-10.*
@@ -131,7 +138,12 @@ the decision in `docs/_queue/QUEUE.md`. This REQ does not retire them; it argues
 - **NG-1 — Public distribution is not a goal, and privacy is a real constraint.** The
   audience is the operator's own machines and projects. The prompt corpus is the product;
   a channel that can only work by publishing it publicly is disqualified unless the operator
-  chooses otherwise in O-1.
+  chooses otherwise in O-1. **Fact recorded 2026-08-13:** the repo is public today
+  (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), and the whole prompt
+  corpus — `pdlc/skills/**` — is already embedded, world-readable, in
+  `pdlc/workflows/orchestrate-dev.js`; this disqualifier therefore excludes no candidate
+  channel as of today. Whether the repo stays public is an operator intent, not a fact this
+  REQ can settle; NG-1 itself is unchanged and not weakened by this note (see O-1).
 - **NG-2 — Retiring the plugin, the bundles, or the sync/drift machinery.** That is
   `pdlc-plugin-retirement` (its own queue row), and only after the engine is proven in a real
   consumer repo. Bound deferral, not prose intent.
@@ -198,7 +210,7 @@ default and an owner; none is left to be invented downstream.
 |---|---|---|---|
 | T-1 | Version of record — the file whose version number the release, the package and the provenance field all read | `pdlc/.claude-plugin/plugin.json` (O-C), unless BL-03 moves it | Operator (decision doc) |
 | T-2 | Minimum supported Node | 20 | Repo CI matrix (O-B); raising it is a CI change first |
-| T-3 | Compatible-plugin-range declaration — where the engine's semver constraint on plugin versions lives and what it constrains | a field in the engine package manifest (e.g. `compatiblePluginRange`), read by the CLI startup banner, every run report, and the publish workflow (T-7) | This REQ; field name and syntax fixed in TSPEC |
+| T-3 | Compatible-plugin-range declaration — where the engine's semver constraint on plugin versions lives and what it constrains | a field in the engine package manifest (e.g. `compatiblePluginRange`; the shipped field is named `pdlcPluginCompat` per M-ENG-06 — the name here is illustrative only), read by the CLI startup banner, every run report, and the publish workflow (T-7) | This REQ; field name and syntax fixed in TSPEC |
 | T-4 | Release trigger | a pushed git tag matching the repo's version-tag convention | Operator; fixed in FSPEC |
 | T-5 | Pin scope and precedence | per-consumer-project pin; an explicit pin beats the installed latest; no pin means latest installed | This REQ (AC-5.1); mechanism in O-2 |
 | T-6 | Dev-mode selector | explicit and opt-in; never inferred from cwd, env presence, or the existence of a checkout | This REQ (AC-5.3); flag shape in O-5 |
@@ -404,20 +416,61 @@ is their single point of resolution, plus O-6, new for the compat-range handshak
 - **O-1 — Distribution channel choice.** Private npm registry, public npm, or git-tag
   install — chosen against the privacy posture at NG-1. Blocks FSPEC authoring (BL-02).
   *Owner:* operator. *Resolution form:* `docs/_decisions/DECISIONS-plugin-distribution.md`.
+  **OPEN awaiting operator.** Load-bearing fact this REQ did not previously state: the repo
+  is already public (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), and
+  the whole prompt corpus — `pdlc/skills/**`, also embedded in
+  `pdlc/workflows/orchestrate-dev.js` — is already world-readable, so NG-1's disqualifier
+  excludes no candidate channel today: every option is privacy-equivalent to the status quo.
+  That reduces this to one question for the operator — does the repo stay public? If yes,
+  public npm (scoped) wins on the non-privacy axis: one-command install/upgrade, native
+  immutability via republish-refusal on an existing version (satisfying C-7), and `npm
+  deprecate` as a yank primitive that a git-tag install lacks (a GitHub release asset or a
+  bare tag is force-pushable/replaceable, in tension with C-7); publish is a plain `npm
+  publish` CI step. The package's `pdlc/engine/package.json` should carry `"license":
+  "UNLICENSED"` and declare `@anthropic-ai/claude-agent-sdk` as its dependency regardless of
+  which channel is chosen.
 - **O-2 — Pin mechanism.** How a per-project pin (T-5) is expressed and read — a file in the
   consumer repo (which NG-6 forbids the engine from *writing*, but reading an
   operator-authored one is not writing), an environment variable, or a CLI flag supplied at
   invocation. Shapes AC-5.1–AC-5.5. *Owner:* operator, informed by TSPEC. *Resolution form:*
   `docs/_decisions/DECISIONS-plugin-distribution.md` or the TSPEC directly.
+  **Answered 2026-08-13.** Pin key lives under the `engine.*` namespace (e.g. `engine.pin`)
+  in the consumer-owned `.claude/pdlc.config.json`, read by the engine at startup; the engine
+  never writes it. Grounded in **DEC-HE-02**
+  (`docs/completed/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md`), which
+  already reserves `engine.*` as the engine's only config surface and closes the "second pin
+  file vs. env var" ambiguity this REQ raised — reading an operator-authored file is not
+  writing (NG-6 forbids only the latter). An env var was considered and rejected: it is
+  per-shell, not per-project, failing T-5's scoped-pin requirement and AC-5.1's "never
+  silent" bar (a forgotten env var is silent by definition). Note the coupling to O-1: AC-5.1
+  requires the pinned version to *execute* while another is latest — side-by-side version
+  resolution, not just a pointer, is needed once a real registry channel is chosen; that
+  mechanism is the TSPEC's to specify.
 - **O-3 — Disposition of the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows.**
   Whether `pdlc-install-mechanism` (D-DIST-01/02/03/05/07) is closed as superseded and
   `pdlc-release-ci` (D-DIST-06 remainder) is absorbed or renarrowed into REQ-EDIST-03, per §1.2. Required before this REQ
   is accepted (BL-04), so it does not silently duplicate two bound deferrals. *Owner:*
   operator. *Resolution form:* prose recorded in `docs/_queue/QUEUE.md` per its conventions.
+  **OPEN** (operator disposition recorded in `docs/_queue/QUEUE.md`). Recommendation for
+  record: `pdlc-install-mechanism` (queue Order 7) closes **superseded** —
+  D-DIST-01/02/03/05 are all improvements to the per-project copy mechanism this family
+  deletes outright, and D-DIST-07 (per-worktree consumer state) closes **by construction**
+  since the engine reads no worktree-local `.claude/workflows/`. `pdlc-release-ci` (queue
+  Order 8) should be **renarrowed, not absorbed wholesale**: D-DIST-06's PR-test half is
+  already discharged out of band in `3ef6ac7`, so only its release-automation remainder maps
+  onto REQ-EDIST-03 here.
 - **O-4 — Fate of `pdlc/workflows/dist/pdlc-cli.mjs`.** Whether the existing state-probe CLI
   is absorbed into the engine package or stays a project-local artifact of the plugin build
   (NG-7's default). *Owner:* operator. *Resolution form:* decision doc, or silence — the
   default holds if nothing is recorded.
+  **Closed 2026-08-13.** `pdlc/workflows/dist/pdlc-cli.mjs` stays a project-local artifact of
+  the plugin build, per NG-7's default; this is not overridden. It is also confirmed as the
+  headless-engine REQ's own **NG-2** (non-goal) and named as **G-5**'s kept CLI machinery in
+  `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md`'s **NG-2** non-goal — three
+  independent REQs now agree the artifact stays. It remains a manifest row (id `pdlc-cli`) in
+  `pdlc/workflows/dist/distribution-manifest.json`, emitted by `build-runtime.mjs` and synced
+  by `sync-workflows.sh`; its document oracles resolve against `process.cwd()` by design,
+  project-local, and are unaffected by this feature.
 - **O-5 — Dev-mode design.** The explicit selector's shape (flag, env var, or both — T-6),
   how a dev-mode run is marked in its artifacts (AC-5.3), and what "the checkout's prompts"
   resolves to when run in dev-mode (presumably `pdlc/skills/**` at the checkout's working
@@ -425,6 +478,21 @@ is their single point of resolution, plus O-6, new for the compat-range handshak
   explicitly, since dev-mode is the one path where the engine *does* read skills from a
   location other than an installed plugin). *Owner:* this REQ's TSPEC. *Resolution form:*
   TSPEC section, surfaced in the FSPEC-level behaviour already fixed by AC-5.3/AC-5.4.
+  **Answered 2026-08-13, one tension left for the TSPEC to resolve.** The engine already
+  ships a dev-mode override: the `PDLC_PLUGIN_ROOT` env var / `--plugin-root` flag
+  (`pdlc/engine/lib/skills.mjs:40-54`, exported as `PLUGIN_ROOT_ENV` at `:54`; wired in
+  `pdlc/engine/bin/pdlc.mjs`), documented in-code as how the repo's own checkout is used, and
+  named at `pdlc/engine/lib/handshake.mjs:134` as the compat-refusal remedy. TSPEC should
+  **adopt this selector rather than invent a second one**, with three riders: (1) dev-mode is
+  the conjunction of running the checkout's engine *and* pointing `--plugin-root` at the
+  checkout's `pdlc/`; (2) AC-5.3's artifact-marking is genuinely new work — nothing marks a
+  `--plugin-root` run today, `lib/report.mjs` carries `engineVersion`/`pluginVersion` but no
+  dev/channel field; (3) there is a **real tension with T-6**: T-6 requires the selector never
+  be inferred from env presence, but the shipped `PDLC_PLUGIN_ROOT` env var *is* honored on
+  presence alone today, so an exported-and-forgotten env var would silently switch skill
+  source for every subsequent run. TSPEC must resolve this tension explicitly — e.g. by
+  restricting dev-mode to the per-invocation flag, with the env var honored only when a
+  companion flag or marker forces the run to declare and label itself — not paper over it.
 - **O-6 — Compatible-plugin-range declaration and per-release pairing record.** Where the
   engine's declared range lives (T-3's manifest field), what range syntax it uses (a semver
   range expression is assumed; TSPEC fixes the grammar), and where the pairing a release
@@ -433,3 +501,16 @@ is their single point of resolution, plus O-6, new for the compat-range handshak
   startup banner, every run report (REQ-EDIST-04), and the publish workflow's hard gate
   (AC-3.7). *Owner:* this REQ's TSPEC. *Resolution form:* TSPEC section; the publish
   workflow's YAML is where the gate becomes real (C-10 keeps that detail out of this REQ).
+  **Answered 2026-08-13** for the declaration half; per-release pairing record stays open,
+  genuinely a third question this text already anticipates, not closed by prior work.
+  Declaration syntax: `pdlc/engine/package.json`'s `pdlcPluginCompat` field (M-ENG-06,
+  `docs/_constraints/pdlc-engine-baseline.md`; headless-engine REQ's C-10, T-3; TSPEC at
+  `pdlc/engine/lib/handshake.mjs:93`), a semver range — `^x.y.z`, `~x.y.z`, or exact `x.y.z`
+  — checked at runtime by the handshake and at CI time by TSPEC's AC-3.7 skew gate.
+  Per-release pairing record resolves the existing manifest discipline (O-D): the publish
+  workflow already computes plugin version and tagged commit for the AC-3.7 gate, so it
+  should (a) write `{engineVersion, pdlcPluginCompat, pluginVersionAtTag}` into a manifest
+  file inside the published package, mirroring `distribution-manifest.json`'s per-artifact
+  discipline, satisfying AC-1.5's "decidable per-release" without network archaeology, and
+  (b) emit the same triple into the GitHub Release notes, making R-2's too-loose-range risk
+  reviewable at release time rather than only at incident time.
