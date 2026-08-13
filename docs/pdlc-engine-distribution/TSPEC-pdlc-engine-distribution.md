@@ -697,6 +697,60 @@ touched the consumer tree.
 
 ## 12. Test strategy
 
+### 12.1 Levels and what is tested where
+
+| Level | Runs | Covers |
+|---|---|---|
+| Unit, in-process | `pdlc/engine/__tests__/`, the shipped `node --test` suite | Resolution ladder, store enumeration, provenance rendering, catalogue closure, config read discipline, handshake/env-var branch. All pure over injected seams — no temp dirs, no network, no spawn |
+| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.2's packed-set equality over `npm pack --dry-run`, AF-1…AF-3 |
+| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the three placements |
+| Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it |
+| One-time manual | recorded, dated | Real-channel publish (BR-3.9), AT-6.2's channel observation (Q-2) |
+
+### 12.2 Test doubles
+
+| Double | Replaces | Why not the real thing |
+|---|---|---|
+| Literal store listing | S-1 | The ladder is pure; filesystem fixtures would test `fs`, not the decision |
+| Literal config object | S-2 | Same. E-11's "file absent" is `null`, one value, not a temp tree |
+| Launcher descriptor recorder | S-3 | Asserting the exec *descriptor* (path, argv, env) proves resolution without spawning a second Node |
+| Inert probe (default) + failing probe + succeeding probe | S-4 | AC-5.1 needs offline behaviour, and offline is the default, not a stub |
+| Stub channel holding versioned bytes | S-5 | AT-3.3's byte-identity across a re-run cannot be rehearsed against npm without burning a version irreversibly |
+| Fixture YAML copies | live `pr-tests.yml` | BR-7.6: mutations must not be applied to the file that gates the PR making them |
+| `NO_PROVENANCE` and a populated `Provenance` | S-6 | Proves P-1's byte-identical inert path and the three placements from the same test file |
+
+### 12.3 The three oracles that must not be satisfiable by absence
+
+The FSPEC is explicit that absence-only oracles pass vacuously, and three here need
+deliberate positive pairing:
+
+1. **Packed-set equality (AC-1.3).** Member-for-member in both directions, with the
+   expected side a **literal list** (§5.4), never derived from listing `pdlc/engine/lib/`.
+   A derived expectation passes when a module is deleted, which is the defect the AC exists
+   to catch. Falsifiers: an added `SKILL.md`, an added test file, a removed named module.
+2. **Dev-mode kind equality (AC-5.3, §5.3).** Equality is over the kinds a run **actually
+   produced** (BR-9.2), and each kind is paired with a positive: the halted, queue-driven
+   fixture produces all four; the green single-feature fixture produces two, and an unmarked
+   kind in either fails. Cross-review and `CODE_REVIEW-*` files are asserted **unmarked**.
+3. **Install non-interference (AC-2.3, AC-2.5).** Hashing "nothing changed" is vacuous if
+   nothing ran. Paired per leg with §9.2's positives — install: CLI resolves on `PATH` at
+   the expected version from an existing location; upgrade: resolved version **and**
+   location differ from pre-recorded values.
+
+### 12.4 TDD order
+
+`[Fake first]` throughout: every seam in §10.1 gets its double before the production module
+that consumes it, and every implementation task depends on a red-test task naming the same
+test file. Three sequencing constraints the PLAN must honour:
+
+- §5.3's oracle restatement (AF-1…AF-3) lands **in the same task** as the vendoring change.
+  Vendoring first turns V-05 red for a real reason; restating first removes a guard while
+  nothing replaces it. Neither ordering is acceptable, so they are one task.
+- §8.2's gate extraction lands **after** AT-3.4's set-equality is green, so the check that
+  catches a rendered-name break exists before the change that could break one.
+- `_provenance`'s inertness test (P-1) lands **before** any placement, so byte-identity of
+  the disabled path is proven before the enabled path exists.
+
 ## 13. Requirements traceability
 
 ## 14. Costs, risks, and what is deliberately not closed here
