@@ -34,6 +34,14 @@ satisfiable at HEAD rather than pre-failed.
 
 ## Prior findings still open
 
+Neither v4 finding was in the erratum's item list, and neither was touched by this diff. Both are
+carried forward unchanged rather than silently dropped; both remain non-gating.
+
+| v4 ID | Sev | Status | Note at HEAD |
+|---|---|---|---|
+| F-25 | Medium | **Open (carried)** | AC-3.4's local-expansion carrier still puts no bound on what may appear in a job `name:`. Still true at HEAD that only `${{ matrix.os }}` / `${{ matrix.node }}` interpolate (`.github/workflows/pr-tests.yml:28`, `:78`), so the oracle is implementable today; the exposure is future — a `${{ github.event_name }}` or `matrix.include` edit makes a matrix-axis expander under-render silently. FSPEC's expected-set section is the right place to bound the expression form, and this is an FSPEC pass, not a REQ edit. |
+| F-26 | Low | **Open (carried)** | `docs/_constraints/pdlc-engine-baseline.md:209` still ends M-ENG-10 with "Both columns are authoritative; a change to either is a change to this fact first" — a change-control sentence in a file whose own header calls itself a point-in-time measurement, after T-7/AC-3.4 moved change control to the FSPEC's expected set. Nothing in the REQ is wrong; the one-line fix is in the constraints file. Unchanged on this diff (that file is byte-identical to `2a1f910d`). |
+
 ## Findings
 
 ## Questions
