@@ -217,7 +217,7 @@ Measured 2026-08-13 at `89babe8e`, `pdlc/engine/package.json`:
 |---|---|---|
 | package name | `pdlc-engine` — **unscoped** | `:2` |
 | package version | `0.1.0` — independent of the plugin's | `:3` |
-| `private` | `true` — `npm publish` refuses outright, before licence or credentials | `:4` |
+| `private` | `true` — `npm publish` refuses outright; no ordering against the licence or credential blockers is claimed, none was measured | `:4` |
 | `pdlcPluginCompat` | `^0.22.0` | `:9` |
 | `license` | `UNLICENSED` | `:11` |
 | `files` | **absent** — `npm pack` ships the package directory's default set | — |
