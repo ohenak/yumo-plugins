@@ -177,6 +177,93 @@ source. The reversal cost is one branch in one function, so this is not a one-wa
 
 ## 5. Package composition and the anti-fork oracle (O-10)
 
+### 5.1 Manifest changes
+
+`pdlc/engine/package.json`, in full, for the fields this feature touches:
+
+| Field | HEAD (V-01) | After | Why |
+|---|---|---|---|
+| `name` | `pdlc-engine` | `@kaneho/pdlc-engine` | DEC-DIST-05 chose scoped-public; O-8 blocker (2) is decision-enforced only |
+| `private` | `true` | *removed* | O-8 blocker (1), the one npm itself refuses |
+| `license` | `UNLICENSED` | operator-set SPDX id | O-8 blocker (3). **Operator obligation, not this TSPEC's to invent** — the PLAN carries it as a gate task, not a code task |
+| `version` | `0.1.0` | unchanged by this feature | T-1a; bumped per release, not here |
+| `engines.node` | absent | `">=20"` | C-3 / T-2 declared, so `npm` warns and §11's runtime check has a declaration to name |
+| `files` | absent | `["bin/", "lib/", "vendor/workflows/", "README.md"]` | D-5; §5.4 |
+| `pdlcPluginCompat` | `^0.22.0` | unchanged shape | T-3, already shipped (V-07) |
+| `pdlcPairing` | absent | written **by the publish job**, §8.4 | O-6's single-writer record |
+| `scripts.prepack` | absent | `node scripts/prepack.mjs` | §5.2 |
+
+### 5.2 Build-time vendoring
+
+`pdlc/engine/scripts/prepack.mjs` runs on `npm pack` / `npm publish` (npm's `prepack`
+lifecycle) and does exactly three things:
+
+1. Delete and recreate `pdlc/engine/vendor/workflows/`.
+2. Copy `pdlc/workflows/orchestrate-dev.js` and `pdlc/workflows/orchestrate-queue.js`
+   into it, **byte-for-byte**, no transform of any kind.
+3. Write `pdlc/engine/vendor/workflows/VENDOR-MANIFEST.json`: for each copied file, its
+   source path and its SHA-256, plus the engine version the copy was made for. This is the
+   same discipline as the shipped distribution manifest (REQ O-D,
+   `pdlc/workflows/dist/distribution-manifest.json`) and is what makes §5.3's byte-identity
+   assertion decidable inside the tarball, offline.
+
+`pdlc/engine/.gitignore` gains `vendor/` (V-06 confirms there is no such rule today). The
+vendor directory is a **build artefact and never committed** — the same tier discipline
+DEC-DIST-02 already established for `pdlc/workflows/dist/` versus `.claude/workflows/`.
+
+**Two-root resolution.** `lib/run.mjs`'s `WORKFLOW_MODULE_URLS` (V-04) becomes a function
+over two candidate roots, tried in a fixed order with no fallback ambiguity:
+
+| Order | Root | When it exists |
+|---|---|---|
+| 1 | `../vendor/workflows/` relative to `lib/` | Installed package (the vendor dir is packed) |
+| 2 | `../../workflows/` relative to `lib/` | Repo checkout (today's V-04 arrangement) |
+
+If **neither** resolves, the engine refuses at startup naming both paths tried — it never
+proceeds to dispatch with no modules (§11, E-22's build-time analogue at runtime). If both
+exist — a checkout that has been packed locally — root 1 wins and the run **announces the
+load root** (§7.3), so the ambiguity is never silent (E-04's spirit).
+
+### 5.3 The anti-fork oracle, restated not weakened (BR-8.2)
+
+V-05's walk currently means "no file named like a workflow module exists anywhere under
+`pdlc/engine/`". Vendoring makes that literally false in a *build* tree while the property
+it protects — *the engine never executes a diverged copy* — is untouched. The oracle is
+therefore restated as **three** assertions, which together are strictly stronger than the
+one they replace:
+
+| # | Assertion | Replaces / adds |
+|---|---|---|
+| AF-1 | No **git-tracked** file under `pdlc/engine/` is named `orchestrate-{dev,queue}.js`. Tracked-ness is read from `git ls-files`, not from a directory walk, so a build artefact cannot satisfy it and a committed fork cannot hide behind `.gitignore`. | Replaces V-05's walk. Strictly stronger against the failure that matters: a *committed* fork |
+| AF-2 | For every entry in `VENDOR-MANIFEST.json`, the vendored bytes hash equal to the canonical `pdlc/workflows/` source at the same commit. A vendored copy that has drifted by one byte fails. | **New.** This is the property the walk was a proxy for, now asserted directly |
+| AF-3 | `PROP-FORK-1`'s exact-path equality is kept for the checkout root, and extended: in an installed package the resolved module path must equal the vendor root's path exactly, not merely start with it. | Extends `run.test.js:67-79` |
+
+The distinction BR-8.2 demands — "vendored in the repo" versus "vendored in a build
+artefact" — is carried by AF-1's tracked-ness test, and the property is not merely
+preserved but made checkable at the byte level by AF-2. **No assertion is deleted without a
+strictly stronger replacement named in this table.**
+
+### 5.4 The `files` allow-list (D-5, Q-5)
+
+An allow-list is chosen over `.npmignore` because the failure modes are asymmetric: a
+deny-list that forgets an entry ships something it should not — which is exactly AC-1.3's
+"an added file fails" scenario, and exactly how a skills copy or the `__tests__/` corpus
+would leak in. An allow-list that forgets an entry ships too little and fails AT-3.8a
+loudly at build time. **We prefer the failure that is caught offline over the one that is
+caught by a consumer.**
+
+The list is `["bin/", "lib/", "vendor/workflows/", "README.md"]`, which yields exactly
+FSPEC §5.2's expected members: the manifest (npm always includes it), `bin/pdlc.mjs`, the
+twelve `lib/*.mjs` (V-03), and the vendored workflow modules — and excludes `__tests__/`,
+`package-lock.json`, `.gitignore` and `scripts/` without naming any of them. Q-5 is
+answered: the exclusion is a deliberate packaging mechanism, not an omission.
+
+**Note for the FSPEC's §5.2 workflow-module row.** That row is marked *"[blocked on O-10],
+not enumerable yet"*. This section unblocks it: the members are exactly
+`vendor/workflows/orchestrate-dev.js`, `vendor/workflows/orchestrate-queue.js` and
+`vendor/workflows/VENDOR-MANIFEST.json`. AT-3.8b is therefore writable, and the PLAN
+schedules it in Phase 1 rather than deferring it.
+
 ## 6. Version resolution: store, launcher, pin, dev-mode (F-4)
 
 ## 7. Provenance carriers (F-6, O-9)
