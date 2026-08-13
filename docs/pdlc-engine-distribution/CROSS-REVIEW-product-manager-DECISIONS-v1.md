@@ -119,5 +119,3 @@ the ACs and it is declared as such.
 
 VERDICT: Needs revision
 {"high": 1, "medium": 3, "low": 2}
-
-## Verdict
