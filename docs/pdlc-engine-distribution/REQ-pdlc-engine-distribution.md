@@ -545,8 +545,9 @@ duplication (which disagreed with itself at O-1) is collapsed here.
 - **O-5 — Dev-mode design.** The selector's shape (T-6), how a dev-mode run is marked
   (AC-5.3), and what "the checkout's prompts" resolves to. *Owner:* this REQ's TSPEC.
   **Answered 2026-08-13, one tension routed.** The engine already ships the `PDLC_PLUGIN_ROOT`
-  env var / `--plugin-root` flag — cited to the code, `pdlc/engine/lib/handshake.mjs:130-133`,
-  where the compat-refusal remedy string names the variable (**not** to M-ENG-06, which holds
+  env var / `--plugin-root` flag — cited by symbol, the `REMEDY` const in
+  `pdlc/engine/lib/handshake.mjs`, whose compat-refusal text names the variable (by symbol rather
+  than a line window, which drifts on any edit above it; **not** M-ENG-06, which holds
   neither string and is the upstream feature's per-AC table, whose `AC-*` ids collide with this
   REQ's own); TSPEC should **adopt it rather than invent a second selector**, with
   three riders: (1) dev-mode is the conjunction of running the checkout's engine *and* pointing
@@ -584,12 +585,17 @@ duplication (which disagreed with itself at O-1) is collapsed here.
   `@anthropic-ai/claude-agent-sdk` dependency's own terms to be checked against whatever replaces
   it. An operator planning the first publish must not expect npm to catch (2) or (3). *Owner:* operator. *Blocking for:*
   first publish (AC-3.1), not for FSPEC authoring.
-- **O-9 — Provenance carrier for the committed halt artifacts** (opened by review round 1).
+- **O-9 — Provenance carrier for the committed halt artifacts, the run report's authored-file
+  enumeration, and the bundle channel's load root** (opened by review round 1, widened round 3).
   AC-4.2 requires the version pair in artifacts written by the layer that structurally cannot
-  see a version (M-ENG-13). The requirement stands as a user-observable outcome; **how the pair
+  see a version (M-ENG-13); AC-4.5 requires that layer's run report to enumerate the files it
+  authored; AC-6.2 requires a run-bound observation of which tree the executing modules loaded
+  from, on the channel C-4 forbids teaching to self-report. All three are the same shape — a fact
+  the running layer does not carry today — so they are owned together: **how (or whether) each
   crosses the engine↔module boundary is the TSPEC's to specify**, and it is a real design
-  decision, not a wording fix. Until it is taken, AC-4.2 has no implementation. *Owner:* this
-  REQ's TSPEC. *Blocking for:* Phase 1 delivery of REQ-EDIST-04.
+  decision, not a wording fix. Until it is taken, AC-4.2 has no implementation and AC-6.2's
+  channel test rests on independently known install state. *Owner:* this REQ's TSPEC.
+  *Blocking for:* Phase 1 delivery of REQ-EDIST-04 and the AC-6.2 half of REQ-EDIST-06.
 - **O-10 — Package composition against the anti-fork oracle** (opened by review round 1).
   R-5's three resolutions for getting the workflow modules inside the package, and the
   consequence each has for the shipped assertions at M-ENG-12. AC-1.3 constrains the outcome;
