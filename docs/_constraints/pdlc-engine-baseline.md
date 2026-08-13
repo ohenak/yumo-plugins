@@ -187,18 +187,26 @@ passed the run refuses at row 5 (`auth.api-key-refused`).
 
 ## M-ENG-10 — The PR gate is five required checks, and these are their literal names
 
-Measured 2026-08-13 at `89babe8e`. `.github/workflows/pr-tests.yml` declares **five** jobs. The
-literal `name:` strings — what Phase PUB and any required-check assertion actually match on — are:
+Measured 2026-08-13 at `89babe8e`, re-measured 2026-08-13 (review round 2).
+`.github/workflows/pr-tests.yml` declares **five** jobs. Two alphabets exist and they are not the
+same set: the YAML `name:` string as authored, and the **rendered** name GitHub reports for the
+resulting check — which is what Phase PUB polls and what a branch protection rule names. Rows 1
+and 2 differ between the two columns; rows 3–5 are identical in both.
 
-| # | Literal check name | Job at |
-|---|---|---|
-| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `pr-tests.yml:28` |
-| 2 | `Engine tests (${{ matrix.os }})` | `:78` |
-| 3 | `Generated artifacts are in sync` | `:112` |
-| 4 | `Fresh-clone bootstrap works` | `:138` |
-| 5 | `Shell scripts parse` | `:196` |
+| # | YAML `name:` as authored | Rendered check name (what GitHub reports) | Job at |
+|---|---|---|---|
+| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `Unit tests (ubuntu-latest, node 20)` | `pr-tests.yml:28` |
+| 2 | `Engine tests (${{ matrix.os }})` | `Engine tests (ubuntu-latest)` | `:78` |
+| 3 | `Generated artifacts are in sync` | `Generated artifacts are in sync` | `:112` |
+| 4 | `Fresh-clone bootstrap works` | `Fresh-clone bootstrap works` | `:138` |
+| 5 | `Shell scripts parse` | `Shell scripts parse` | `:196` |
 
-Matrix is `os: [ubuntu-latest]` × node `'20'` for both matrixed jobs (`:39-40`, `:88-89`).
+Matrix is `os: [ubuntu-latest]` × node `'20'` for the unit-tests job (`:40-41`) and `os:
+[ubuntu-latest]` with no node axis for the engine job (`:87`), which is what expands rows 1 and 2
+above. **A matrix edit — another OS, another Node version — changes the rendered set without
+changing the authored one**, so any assertion written over the authored column alone stays green
+while every rendered-name consumer (Phase PUB, branch protection) breaks. Both columns are
+authoritative; a change to either is a change to this fact first.
 `Engine tests` postdates the 2026-08-08 snapshot that earlier drafts enumerated as four checks.
 
 ## M-ENG-11 — Two version numbers exist, and the engine package is unpublishable as declared
