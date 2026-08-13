@@ -598,6 +598,75 @@ skill, on the same run.
 
 ## 10. Types and protocols
 
+Expressed as JSDoc typedefs and frozen catalogues, per §1's idiom note. Every seam below is
+injectable, and every default is a named module constant so a composition-root oracle can
+tell "needs no wiring" from "someone forgot to wire it" — the discipline already shipped for
+`NO_PROBE` (`pdlc/workflows/orchestrate-dev.js:10655-10657`).
+
+### 10.1 Service boundaries
+
+| # | Protocol | Module | Default | Injected by |
+|---|---|---|---|---|
+| S-1 | `StoreReader` — `listVersions()`, `rootFor(version)` | `lib/store.mjs` | real `fs` over `$PDLC_HOME` | tests pass a fake listing; no temp dirs needed for resolution tests |
+| S-2 | `ConfigReader` — `readEngineConfig(cwd)` → `{version?}` \| `null` | `lib/run.mjs` (extended) | real `fs` at `ENGINE_CONFIG_PATH` (V-20) | tests pass a literal object |
+| S-3 | `Launcher` — `exec(binPath, argv, env)` → exit code | `bin/pdlc.mjs` | `spawnSync`, stdio inherited | tests assert the *descriptor* (path, argv, env) without spawning |
+| S-4 | `UpdateProbe` — `latestPublished()` → `{version}` \| `{unavailable, reason}` | `lib/store.mjs` | **`NO_PROBE`-shaped inert default: never called unless injected** | AC-5.1's offline test needs no network and no stub-of-a-network |
+| S-5 | `PublishChannel` — `exists(name, version)`, `publish(tarball, opts)` | publish job | real `npm` | CI passes the stub for every test; the real one runs only in the tagged job |
+| S-6 | `_provenance` — frozen `Provenance` (§7.1) | workflow modules | `NO_PROVENANCE` | the engine's `run.mjs` |
+
+**S-4 is the one that deserves attention.** AC-5.1 requires the "a newer version exists"
+probe to be *absent-by-default*, not merely stubbable: an unconditional network call in the
+run path would make every offline run slower and would put NG-3's boundary one bug away
+from being crossed. Defaulting it to inert means the offline behaviour is the *shipped*
+behaviour, and the probe is opt-in — the same reasoning the probe seams in
+`orchestrate-dev.js` already embody ("a probe is an optimisation, never a correctness
+dependency").
+
+### 10.2 Key data types
+
+```js
+/** @typedef {{major:number, minor:number, patch:number, raw:string}} Version */
+
+/**
+ * @typedef {object} ResolutionDecision       // §6.3, total over seven branches
+ * @property {"dev"|"pin"|"latest"|"refuse"} kind
+ * @property {string|null} version            // resolved version, null on refuse
+ * @property {string|null} root               // install root to exec, null on refuse/dev-in-place
+ * @property {string} announcement            // Q-3; never empty, never omitted
+ * @property {string|null} refusal            // catalogue id + rendered text on refuse
+ */
+
+/**
+ * @typedef {object} PairingRecord            // O-6, written once by the publish job
+ * @property {string} engineVersion
+ * @property {string} pluginCompat
+ * @property {string} pluginVersionAtTag
+ * @property {string} tag
+ * @property {string} commit
+ */
+
+/**
+ * @typedef {object} VendorManifest           // §5.2, inside the tarball
+ * @property {string} builtForEngineVersion
+ * @property {Array<{source:string, packed:string, sha256:string}>} modules
+ */
+```
+
+### 10.3 Message catalogue
+
+Every operator-facing string this feature adds is registered in `lib/catalogue.mjs`, which
+already carries a suite-wide set-equality in both directions — an emitted message with no
+registered id fails, and a registered id no path emits fails
+(`pdlc/engine/lib/catalogue.mjs`, `__tests__/catalogue.test.js:15-77`,
+`__tests__/assert-suite-wide.test.js:145,163`). New ids:
+
+`store.empty`, `version.pin-missing`, `version.pin-malformed`, `version.dev-incomplete`,
+`version.announce-pin`, `version.announce-latest`, `version.announce-dev`,
+`env.plugin-root-ignored`, `node.below-floor`, `modules.not-found`.
+
+Registering them buys the coverage for free rather than writing ten bespoke text
+assertions — the reuse-over-reinvention call this repo's DC-08 asks for.
+
 ## 11. Error handling
 
 ## 12. Test strategy
