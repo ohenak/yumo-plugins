@@ -938,6 +938,14 @@ documents the plugin install today at `pdlc/README.md:132` — added beneath it:
 `{scope}` is the operator-owned npm scope of N-6/§5.1, resolved to a literal once that
 decision is recorded; the README ships the resolved literal, not the placeholder.
 
+**`pdlc/README.md` is the operator-facing page; `pdlc/engine/README.md` is not** (PM Q-02).
+The engine README exists to make E-2 an intentional member rather than an accidental one and to
+give the npm listing a page (§5.1); it states what the package is and **links** to
+`pdlc/README.md`'s install section. It must **not** repeat the three commands above — under
+AT-2.2's uniqueness rule a second copy of either engine command anywhere in the tree is a
+defect, and that rule is the reason this is a design constraint on the README's content rather
+than a stylistic preference.
+
 The uniqueness rule is keyed on the **engine's own** invocation — the distinguishable
 package name `@{scope}/pdlc-engine` — so the plugin's three existing `claude plugin install`
 occurrences (`README.md:115`, `pdlc/README.md:139,145`) are outside the set and AT-2.2 does
@@ -1216,7 +1224,10 @@ deliberate positive pairing:
 2. **Dev-mode kind equality (AC-5.3, §5.3).** Equality is over the kinds a run **actually
    produced** (BR-9.2), and each kind is paired with a positive: the halted, queue-driven
    fixture produces all four; the green single-feature fixture produces two, and an unmarked
-   kind in either fails. Cross-review and `CODE_REVIEW-*` files are asserted **unmarked**.
+   kind in either fails. Cross-review and `CODE_REVIEW-*` file **contents** are asserted
+   **unmarked** (BR-9.3), while the harness commit that lands an anchor append (§7.2's C-b)
+   carries the mark in its **message** — the two halves are asserted separately, because they
+   are the two sets BR-9.3 distinguishes and conflating them is how one of them goes untested.
 3. **Install non-interference (AC-2.3, AC-2.5).** Hashing "nothing changed" is vacuous if
    nothing ran. Paired per leg with §9.2's positives — install: CLI resolves on `PATH` at
    the expected version from an existing location; upgrade: resolved version **and**
@@ -1294,7 +1305,7 @@ no row is a defect in this table.
 |---|---|---|
 | K-1 | **Re-running the gate at the tagged commit (§8.2)** costs a duplicated copy of five job bodies in `publish.yml`, kept in step by a command set-equality. The reusable-workflow extraction that would have avoided the duplication is rejected: it renames the rendered checks a live consumer pipeline polls, and does so invisibly to the oracle offered against it | C-6 requires publishing to be gated on the same evidence a PR is. Re-running the gate is the requirement; duplication is the way that cannot rename a consumer's checks. The YAML-drift cost is paid by a test, not by care |
 | K-2 | **The version store (§6.1)** is real new infrastructure — enumeration, a store root, a launcher `exec` hop — where "one global install" would have been a day's work | AC-5.1 and AC-5.5 are jointly unsatisfiable without side-by-side residency (§4.2). The store is the criteria, not an ambition |
-| K-3 | **Touching the workflow modules at all** (§7.2) is a change to the file this repo is most careful about, and it must stay loadable in the Claude Code workflow runtime | AC-4.2 is unsatisfiable otherwise (V-16, V-17). Bounded to one default-inert parameter, four placements, and one marked commit helper |
+| K-3 | **Touching the workflow modules at all** (§7.2) is a change to the file this repo is most careful about, and it must stay loadable in the Claude Code workflow runtime | AC-4.2 is unsatisfiable otherwise (V-16, V-17). Bounded, but **not as small as the earlier draft priced it**: one default-inert `main()` parameter, four placements, `line` composed inside **four** commit helpers across **two** modules, an 8th `rewriteStatus` parameter, a widened closure in the **generated** `build-runtime.mjs` (`:273-274`) with the `dist/` rebuild and `sync-workflows.sh` run that implies, and one new `QUEUE.md` column (§7.2). Every part is additive and default-inert; the honest cost is the module count and the generated-artifact hop, not the parameter |
 | K-4 | **Vendoring (§5.2)** adds a build step, an ignore rule, a manifest and a two-root resolver, and forces §5.3's oracle restatement | R-5 says the package cannot contain the modules as arranged. Some cost is mandatory; this is the smallest one that leaves the repo layout alone |
 
 ### 14.2 Risks this design carries
