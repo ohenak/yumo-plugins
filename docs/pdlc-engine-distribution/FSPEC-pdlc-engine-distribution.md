@@ -42,6 +42,24 @@ exist yet, it says so in the flow that needs it and names the obligation that ow
 
 ## 2. Linked requirements
 
+| Flow | Requirement | Criteria covered | User stories |
+|---|---|---|---|
+| **F-1** Compat handshake and version query | REQ-EDIST-01 | AC-1.1, AC-1.2, AC-1.4 | US-01, US-02 |
+| **F-2** Install on a clean machine | REQ-EDIST-02 | AC-2.1, AC-2.3 (install leg), AC-2.4 | US-01 |
+| **F-3** Upgrade, and the zero-per-project promise | REQ-EDIST-02 | AC-2.2, AC-2.3 (upgrade leg), AC-2.5 | US-02 |
+| **F-4** Version resolution: pin, latest, dev-mode | REQ-EDIST-05 | AC-5.1…AC-5.6 | US-05, US-06 |
+| **F-5** Tag-driven publish | REQ-EDIST-03 | AC-3.1…AC-3.7, AC-1.5 | US-03 |
+| **F-6** Provenance emission into consumer artifacts | REQ-EDIST-04 | AC-4.1…AC-4.5 | US-04 |
+| **F-7** Coexistence and non-regression of the bundle path | REQ-EDIST-06 | AC-6.1, AC-6.2 | US-02 |
+| §5.1 Expected required-check set | REQ-EDIST-03 | AC-3.4, T-7, C-5 | US-03 |
+| §5.2 Expected packed-content set | REQ-EDIST-01 | AC-1.3 | US-01 |
+
+Every acceptance criterion of the REQ appears in exactly one row above; a criterion added to the
+REQ without a row here is a defect in this table, not a gap for a reader to resolve.
+
+**Values read, never re-declared.** T-1a, T-1b, T-2…T-7 are the REQ's; this document cites them
+by id. Where a flow needs a value the REQ did not declare, it is raised in §9, not invented here.
+
 ## 3. Behavioral flows
 
 ## 4. Business rules
