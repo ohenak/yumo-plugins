@@ -782,11 +782,15 @@ documents the plugin install today at `pdlc/README.md:132` — added beneath it:
 
 | Purpose | Command |
 |---|---|
-| Install | `npm i -g @kaneho/pdlc-engine` |
-| Upgrade | `npm i -g @kaneho/pdlc-engine@latest` |
+| Install | `npm i -g @{scope}/pdlc-engine` |
+| Upgrade | `npm i -g @{scope}/pdlc-engine@latest` |
+| Read the plugin pairing (AC-1.5) | `npm view @{scope}/pdlc-engine pdlcPairing` |
+
+`{scope}` is the operator-owned npm scope of N-6/§5.1, resolved to a literal once that
+decision is recorded; the README ships the resolved literal, not the placeholder.
 
 The uniqueness rule is keyed on the **engine's own** invocation — the distinguishable
-package name `@kaneho/pdlc-engine` — so the plugin's three existing `claude plugin install`
+package name `@{scope}/pdlc-engine` — so the plugin's three existing `claude plugin install`
 occurrences (`README.md:115`, `pdlc/README.md:139,145`) are outside the set and AT-2.2 does
 not trip on them. A second copy of either engine command anywhere else in the tree is a
 defect the moment it exists.
@@ -800,9 +804,16 @@ Consequences, each of which an AC depends on:
 - Installing a second version **adds** a store entry rather than replacing one, which is
   what makes AC-5.1 (execute X while Y is latest) and AC-5.5 (name what *is* installed)
   satisfiable without a network.
-- Upgrading changes both the resolved version and the launcher's resolved install location,
-  which is exactly AC-2.3's upgrade-leg positive — a *change* against pre-recorded values,
-  the observation that proves the upgrade was not a silent no-op.
+- Upgrading changes both the resolved version and the resolved install location, which is
+  AC-2.3's upgrade-leg positive — a *change* against pre-recorded values, the observation that
+  proves the upgrade was not a silent no-op. **The observed "install location" is named
+  explicitly, because the obvious reading is the wrong one:** it is the **resolved store entry**
+  `$PDLC_HOME/versions/<version>/`, *not* the launcher's own path on `PATH`. The launcher lives
+  at the npm global prefix and stays exactly where it is across an upgrade — a test author who
+  records that path as the pre-value will watch it not change and fail for the wrong reason. The
+  store entry is the value that moves, and it is the one that makes the criterion meaningful:
+  it is evidence that a different version tree is what now executes. Both legs record
+  `{resolvedVersion, resolvedStoreEntry}` and assert inequality on both.
 - Nothing in either path reads or writes a consumer project. C-2/BR-2.1 holds structurally,
   not by discipline: the code paths take a store root and a package tarball, and are given
   no consumer path at all.
@@ -814,11 +825,33 @@ invocation:
 
 1. `engines.node: ">=20"` in the manifest (§5.1), so `npm` refuses or warns at install time
    with the floor in its own message.
-2. A guard at the top of the launcher, before any other work, comparing `process.versions.node`
-   against the floor and exiting non-zero with `pdlc requires Node >= 20; found <v>`. It
-   runs before argv parsing and before any import that could itself fail on an old runtime
-   — a syntax error from a modern construct on Node 16 is the "stack trace" AC-2.4 forbids,
-   so the guard file uses only syntax valid on the oldest Node that could plausibly run it.
+2. A guard in the launcher comparing `process.versions.node` against the floor and exiting
+   non-zero with `pdlc requires Node >= 20; found <v>`.
+
+**"At the top of the file" does not achieve this, and the earlier draft's wording would not
+have worked.** ESM static imports are resolved and evaluated **before** the importing module's
+body runs, so a guard placed at the top of `bin/pdlc.mjs` still executes *after* everything it
+imports. The shipped launcher carries six static imports at `pdlc/engine/bin/pdlc.mjs:22-30`
+(`lib/skills.mjs`, `lib/startup.mjs`, `lib/adapter.mjs`, `lib/transport.mjs`, `lib/run.mjs`,
+`lib/report.mjs`); a modern-syntax construct anywhere in that graph throws a parse error with a
+stack trace before the guard's first statement — exactly what AC-2.4 forbids.
+
+So the guard is **its own dependency-free entry point**:
+
+- The `bin` entry is a small module whose **only** top-level statements are the version
+  comparison and, on success, `await import("./cli.mjs")` — the dynamic import is what defers
+  the rest of the graph until after the check.
+- That file is written in the syntax subset valid on the **oldest Node that could plausibly run
+  it**, not on the floor version. It parses on Node 12 so that it can refuse on Node 12.
+- Everything currently in `bin/pdlc.mjs` moves behind that dynamic import unchanged; the guard
+  file imports nothing statically, so there is no graph to evaluate early.
+
+**AT-2.5 needs a named runner, and the PR gate is not one.** The gate is `node: ['20']` only
+(`.github/workflows/pr-tests.yml:41`), so a below-floor runtime does not exist in CI. §12.1's
+fixture-machine row is extended to name it: AT-2.5 runs in a **container image pinned to an
+old Node major** (`node:18-alpine` — below the `>=20` floor, still trivially available),
+invoked as a dedicated step in the fixture-machine leg. Without a named below-floor runtime,
+AT-2.5 has nowhere to run and would be quietly skipped.
 
 ### 9.4 Non-interference and coexistence (AC-2.5, BR-2.6, C-4)
 
@@ -840,11 +873,22 @@ tell "needs no wiring" from "someone forgot to wire it" — the discipline alrea
 | # | Protocol | Module | Default | Injected by |
 |---|---|---|---|---|
 | S-1 | `StoreReader` — `listVersions()`, `rootFor(version)` | `lib/store.mjs` | real `fs` over `$PDLC_HOME` | tests pass a fake listing; no temp dirs needed for resolution tests |
-| S-2 | `ConfigReader` — `readEngineConfig(cwd)` → `{version?}` \| `null` | `lib/run.mjs` (extended) | real `fs` at `ENGINE_CONFIG_PATH` (V-20) | tests pass a literal object |
+| S-2 | `ConfigReader` — `readEngineConfig({cwd})` → `{config, notices, engine}` where `engine` is §6.4's three-way `{state: "absent" \| "no-pin" \| "unreadable", …}` | `lib/run.mjs` (extended) | real `fs` at `ENGINE_CONFIG_PATH` (V-20) | tests pass a literal result object |
 | S-3 | `Launcher` — `exec(binPath, argv, env)` → exit code | `bin/pdlc.mjs` | `spawnSync`, stdio inherited | tests assert the *descriptor* (path, argv, env) without spawning |
 | S-4 | `UpdateProbe` — `latestPublished()` → `{version}` \| `{unavailable, reason}` | `lib/store.mjs` | **`NO_PROBE`-shaped inert default: never called unless injected** | AC-5.1's offline test needs no network and no stub-of-a-network |
 | S-5 | `PublishChannel` — `exists(name, version)`, `publish(tarball, opts)` | publish job | real `npm` | CI passes the stub for every test; the real one runs only in the tagged job |
 | S-6 | `_provenance` — frozen `Provenance` (§7.1) | workflow modules | `NO_PROVENANCE` | the engine's `run.mjs` |
+
+**S-2's shape is the shipped function's, extended — not a new one.** The earlier draft declared
+`readEngineConfig(cwd) → {version?} | null`, but the shipped signature is
+`readEngineConfig({cwd}) → {config, notices}` (`pdlc/engine/lib/run.mjs:178`, verified at HEAD):
+a positional argument where the real one takes an options object, and a `null` return where the
+real one returns a record. A double built to the draft's shape would not drop into the
+production composition root, so the ladder tests could be green against a fake no production
+path could ever hand them. The signature above is the shipped one plus the `engine` discriminant
+§6.4 requires, and the `notices` channel is **kept** rather than replaced — `null` collapsed
+"absent" and "unreadable" into one value, which is precisely the distinction the corrupt-config
+branch turns on.
 
 **S-4 is the one that deserves attention.** AC-5.1 requires the "a newer version exists"
 probe to be *absent-by-default*, not merely stubbable: an unconditional network call in the
@@ -853,6 +897,22 @@ from being crossed. Defaulting it to inert means the offline behaviour is the *s
 behaviour, and the probe is opt-in — the same reasoning the probe seams in
 `orchestrate-dev.js` already embody ("a probe is an optimisation, never a correctness
 dependency").
+
+**Inert must not mean silent, and the earlier draft left that unsaid.** FSPEC Q-4 makes the
+update notice an output of **every** run: "a newer version is available, **or** could not
+check". If the shipped inert path emitted nothing, the visibility half of AC-5.1 would be
+present only in tests and absent from every real operator run — the exact inverse of the
+intent. So the inert default is **not** a no-op at the output boundary:
+
+- `NO_PROBE` returns `{unavailable: true, reason: "no update probe is configured"}`.
+- The run **states** it, via the `E-12` catalogue entry ("could not check for a newer
+  version — …"), on every run, in the same block as the version announcement of §6.3.
+- Nothing is fetched, nothing blocks, and the exit code is unaffected (§11's E-12 row).
+
+This satisfies Q-4's disjunction with its second arm rather than by silence, and it keeps the
+"absence as visible as presence" discipline that AC-5.2 asks of the pin announcement. The
+distinction worth holding onto: the probe is inert **by default**, but the *statement about the
+probe* is unconditional.
 
 ### 10.2 Key data types
 
@@ -894,10 +954,29 @@ registered id fails, and a registered id no path emits fails
 
 `store.empty`, `version.pin-missing`, `version.pin-malformed`, `version.dev-incomplete`,
 `version.announce-pin`, `version.announce-latest`, `version.announce-dev`,
-`env.plugin-root-ignored`, `node.below-floor`, `modules.not-found`.
+`env.plugin-root-ignored`, `node.below-floor`, `modules.not-found`, plus two the earlier
+draft's list was missing: `config.unreadable` (§6.4's branch-0 refusal) and
+`update.unavailable` (FSPEC Q-4 / E-12's "could not check for a newer version", now an
+unconditional output per §10.1's S-4 commentary).
 
-Registering them buys the coverage for free rather than writing ten bespoke text
-assertions — the reuse-over-reinvention call this repo's DC-08 asks for.
+Registering them buys the coverage for free rather than writing twelve bespoke text
+assertions — the reuse-over-reinvention call this repo's DC-08 asks for. Two constraints come
+with that reuse, and both are dispatcher-visible rather than stylistic:
+
+- **Registration is scheduled with its emitter, never ahead of it.** The suite-wide equality
+  runs in **both** directions over emitted ids versus `messageIds()`
+  (`pdlc/engine/__tests__/_assert-suite-wide.mjs:195-205`), and the reverse half is real: a
+  registered id that no path emits fails the step (`__tests__/assert-suite-wide.test.js:183`).
+  Registering all twelve ids up front — the natural reading of §12.4's `[Fake first]` ordering —
+  would therefore turn the **whole suite** red until the last emitter landed. The PLAN pairs
+  each id with the task that emits it, in the same batch. `[Fake first]` still governs the
+  *doubles*; it does not govern catalogue registration, and §12.4 says so.
+- **Registration proves emission, never rendered content.** The equality is over ids. It cannot
+  see whether the parameters were populated, so a message rendered from an empty template
+  passes it. Three criteria need more than that and get their own text assertions on the
+  **rendered** string: AC-5.5 (names the pinned version *and* what is installed), E-10 (names
+  the offending value), AC-2.4 (names the floor *and* the found version). Each asserts the
+  substituted values appear, so an unpopulated template goes red.
 
 ## 11. Error handling
 
