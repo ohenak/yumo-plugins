@@ -404,6 +404,66 @@ which point "never refuses" becomes unsafe.
 
 ## 9. DEC-EDIST-08: An unreadable consumer config refuses, even when no pin was declared
 
+*Mechanism: TSPEC §6.3 branch 0, §6.4.*
+
+**Context.** The pin lives in the consumer-owned `.claude/pdlc.config.json` under an `engine.*`
+namespace — the file the engine already reads (`ENGINE_CONFIG_PATH`,
+`pdlc/engine/lib/run.mjs:160`). But `readEngineConfig` **degrades totally** today: unparseable
+JSON returns `{config: {}, notices: [...]}` (`run.mjs:185-192`), and so does a non-object
+`dispatch` section (`:196-203`). Composed naively with a resolution ladder, "no
+`engine.version`" and "the file did not parse" collapse into the same answer — "no pin" — so a
+**corrupt config in a pinned repo would silently run latest**. That is AC-5.5's failure mode
+one layer up, with no ladder row covering it. Worse, `resolveVersion()` is pure over its
+inputs, so the defect sits *outside* the ladder's own tests: they could be complete and total
+and still never reach it.
+
+**Decision.** Two parts.
+
+1. `readEngineConfig`'s `engine`-section read returns a **discriminated result** —
+   `{state: "absent"}` / `{state: "no-pin", config}` / `{state: "unreadable", path, error}` —
+   so the ladder can tell "no pin" from "cannot tell". The existing `notices` channel is
+   **kept, not replaced**: `dispatch` tunables keep their degrade-with-notice behaviour whenever
+   the file parses, because a wrong tunable is not a wrong engine. Only the `engine` section
+   gains the new read.
+2. The ladder's **branch 0** refuses on `unreadable`, and the trigger is **file-level**:
+   a file that does not parse refuses **even when no pin was ever declared**. A repo with a
+   corrupt `.claude/pdlc.config.json` and no `engine` section runs today with a notice and
+   **refuses** after this change.
+
+**Alternatives considered.**
+
+- **"Unparseable, therefore assume no pin"** — rejected. It is the benign-looking reading, and
+  it is indistinguishable *by construction* from the case AC-5.5 exists to prevent: the file
+  that cannot be parsed is exactly the file that might carry a pin. We trade one loud refusal —
+  naming the file and the parse error, remediable by fixing or deleting the file — for never
+  silently running the wrong engine.
+- **Refuse only when the file parses but the `engine` section is malformed** — rejected as
+  undecidable: if the file does not parse there is no section to inspect, so this branch cannot
+  cover the case that matters.
+- **A second config file for the pin**, left readable when the main one is corrupt — rejected.
+  DEC-HE-02 and `ENGINE_CONFIG_PATH` already fix one consumer config file
+  (`pdlc/engine/lib/run.mjs:160`); a second file to work around the first being corrupt adds a
+  convention to dodge a failure mode rather than deciding it.
+
+**Constraints that forced the shape.** AC-5.5 (a pin never silently downgrades); BR-2.2/BR-4.7
+(the engine reads the consumer config, never writes it); the shipped absent-versus-unreadable
+discipline in `handshake.mjs` (`:45`, `:144`, `:164`), which this mirrors rather than inventing
+a second convention for the same distinction.
+
+**Reversibility.** Easy in code, **operator-visible in behaviour**. This is the one entry that
+makes a previously-running repo refuse, so the change carries a test that states the carve-out
+explicitly rather than letting a reader assume "this one degrades":
+
+| Case | Ladder | Note |
+|---|---|---|
+| file unparseable, `engine.version` **was** declared | 0 → refuse | the case the branch exists for |
+| file unparseable, **no pin ever declared** | 0 → refuse | newly-refusing; asserted explicitly |
+| file parses, `dispatch` tunable malformed | not branch 0 | degrades with a notice, exactly as at HEAD |
+
+**Re-evaluation triggers.** Field reports of the newly-refusing row firing on repos that never
+pinned anything (the refusal would then be costing more than the silent-wrong-engine risk it
+buys); the pin moving out of the shared config file, which dissolves the coupling entirely.
+
 ## 10. DEC-EDIST-09: A dependency-free guard entry point; the CLI body moves to `bin/cli.mjs`
 
 ## 11. DEC-EDIST-10: `publish.yml` duplicates the gate jobs rather than extracting a reusable workflow
