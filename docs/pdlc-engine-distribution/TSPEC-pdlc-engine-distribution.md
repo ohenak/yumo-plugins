@@ -790,3 +790,50 @@ no row is a defect in this table.
 | AC-6.2 | Engine half closed via `loadRoot`; bundle half **open**, limit documented in the test | §7.3, §14 |
 
 ## 14. Costs, risks, and what is deliberately not closed here
+
+### 14.1 The expensive parts, named
+
+| # | Cost | Why it is the price of the requirement, not gold-plating |
+|---|---|---|
+| K-1 | **The gate extraction (§8.2)** is the single riskiest edit: it touches the file whose rendered check names a live consumer pipeline polls literally. It is priced with a mechanical gate and a named fallback (duplicate the job bodies) rather than left to care | C-6 requires publishing to be gated on the same evidence a PR is. Re-running the gate is the requirement; sharing the YAML is the cheap way |
+| K-2 | **The version store (§6.1)** is real new infrastructure — enumeration, a store root, a launcher `exec` hop — where "one global install" would have been a day's work | AC-5.1 and AC-5.5 are jointly unsatisfiable without side-by-side residency (§4.2). The store is the criteria, not an ambition |
+| K-3 | **Touching the workflow modules at all** (§7.2) is a change to the file this repo is most careful about, and it must stay loadable in the Claude Code workflow runtime | AC-4.2 is unsatisfiable otherwise (V-16, V-17). Bounded to one default-inert parameter and three placements |
+| K-4 | **Vendoring (§5.2)** adds a build step, an ignore rule, a manifest and a two-root resolver, and forces §5.3's oracle restatement | R-5 says the package cannot contain the modules as arranged. Some cost is mandatory; this is the smallest one that leaves the repo layout alone |
+
+### 14.2 Risks this design carries
+
+- **R-A — The restated anti-fork oracle is weaker against one scenario the walk caught: an
+  *untracked* fork sitting under `pdlc/engine/` in a working tree.** AF-1 reads tracked-ness,
+  so an untracked stray copy no longer fails. This is deliberate — it is exactly what
+  vendoring produces — and AF-2 covers the case that matters (a vendored copy that has
+  drifted). The residual is a hand-placed untracked copy that is *also* byte-identical, which
+  is harmless by definition. Stated so a reviewer can disagree with it explicitly.
+- **R-B — `postinstall` is a fragile install mechanism.** Some environments disable install
+  scripts (`--ignore-scripts`), in which case the store is never populated and the launcher
+  refuses with ladder branch 7 rather than misbehaving. The failure is loud, but it is a
+  failure, and it will surprise someone. Mitigation direction: the refusal message names the
+  store root and the remedy.
+- **R-C — Two Node processes per run** (launcher plus resolved engine). Startup cost is
+  paid twice. Measured concern only; the dispatch path dominates.
+- **R-D — R-2, R-3, R-4 from the REQ are unchanged by this design.** Nothing here narrows
+  the range-widening pressure (R-2), the skills-skew window (R-3), or the two-channel
+  transition (R-4). They remain the REQ's residual risks.
+
+### 14.3 Deliberately not closed in Phase 1
+
+| # | Item | Why, and who owns it |
+|---|---|---|
+| N-1 | **AC-6.2's load-root half on the bundle side** | C-4 forbids teaching that path to self-report. §7.3 closes the engine half only and documents the interim limit inside the test itself (Q-2). Re-opens against `pdlc-plugin-retirement`, which removes the second channel and dissolves the question |
+| N-2 | **`license` (O-8 blocker 3)** | An operator decision with a dependency's terms to check, not an engineering choice. The PLAN carries it as a gate task blocking the first real publish, not as a code task |
+| N-3 | **BL-03's transcription into `DECISIONS-plugin-distribution.md`** | Still undone at HEAD (V-21, FSPEC Q-6). This TSPEC is written on O-7's decided position; if the transcription lands saying something else, this document re-opens. Operator-owned |
+| N-4 | **Q-3, range-widening cadence** | Operator-owned, shapes R-2's mitigation, blocks nothing here |
+| N-5 | **Q-7, M-ENG-10's change-control tail** | One sentence in the constraints file, owned by the same pass that lands §5.1's carrier (§8.5). The deferral expires when that carrier lands |
+
+### 14.4 Definition of done for this TSPEC
+
+- Every REQ acceptance criterion appears in §13 with a named component.
+- Every FSPEC-parked obligation (O-9, O-10, O-2's execution half, Q-4, Q-5) is decided in
+  §4 with its rejected alternatives, or explicitly listed in §14.3 with an owner.
+- Every claim about existing behaviour in §2 carries a `file:line` citation verified in the
+  working tree.
+- No oracle is deleted without a strictly stronger replacement named in the same table.
