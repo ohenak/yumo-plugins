@@ -71,6 +71,55 @@ FSPEC.
 
 ## 3. Architecture
 
+### 3.1 Component map
+
+Three trees, one new, two extended.
+
+| Component | Path | New / extended | Role |
+|---|---|---|---|
+| Launcher | `pdlc/engine/bin/pdlc.mjs` | extended | Argument parse, version-resolution entry, `exec` into the resolved engine (§6.3), or run in-process when it *is* the resolved engine |
+| Version resolver | `pdlc/engine/lib/resolve-version.mjs` | **new** | Total ordered decision `dev-mode ≻ pin ≻ latest installed` (BR-4.1); pure over an injected store listing + config object |
+| Version store reader | `pdlc/engine/lib/store.mjs` | **new** | Enumerates installed engine versions and maps a version to its install root; the only module that knows the store's on-disk shape |
+| Provenance | `pdlc/engine/lib/provenance.mjs` | **new** | Builds the frozen `Provenance` value and its rendered block; the single writer of provenance text (BR-1.5, BR-5.1) |
+| Report stamping | `pdlc/engine/lib/report.mjs` | extended | `buildEngineBlock` gains `channel`, `mode`, `pin`, `loadRoot`; `stampReport` unchanged (V-13) |
+| Handshake / startup | `pdlc/engine/lib/handshake.mjs`, `lib/startup.mjs` | extended | Unchanged decision logic (V-09); startup gains the resolution announcement (BR-4.1) and the ignored-env notice (§6.5) |
+| Plugin-root resolution | `pdlc/engine/lib/skills.mjs` | extended | `resolvePluginRoot` gains a `devDeclared` input so the env var stops being honoured on presence alone (V-11, §6.5) |
+| Workflow modules | `pdlc/workflows/orchestrate-dev.js`, `orchestrate-queue.js` | extended | One optional, default-inert `_provenance` seam (§7.2), following V-15's idiom. **No behaviour change when absent** |
+| Packaging | `pdlc/engine/scripts/prepack.mjs`, `pdlc/engine/package.json` | **new / extended** | Build-time vendoring of the workflow modules and the `files` allow-list (§5) |
+| Publish CI | `.github/workflows/publish.yml` | **new** | Tag-triggered, additive; reuses the PR gate's jobs, adds none to it (C-5, BR-7.5) |
+| Expected-set carrier | `pdlc/engine/__tests__/ci-arrangement.test.js` | extended | Owns FSPEC §5.1's two set-equalities; absorbs its own older overlapping matrix assertions (V-19, BR-7.6) |
+
+### 3.2 Dependency direction
+
+```
+bin/pdlc.mjs
+  ├─ lib/resolve-version.mjs ─ lib/store.mjs        (pure over injected fs + config)
+  ├─ lib/startup.mjs ─ lib/handshake.mjs
+  │                  └─ lib/skills.mjs
+  ├─ lib/provenance.mjs                              (pure; no fs, no env)
+  └─ lib/run.mjs ─→ workflow modules (vendored or repo-relative, §5.2)
+                      └─ receives `_provenance` (opaque to the engine's callees)
+```
+
+Two rules hold this shape:
+
+1. **`lib/provenance.mjs` is pure.** It takes a resolved startup result and returns a
+   frozen value plus rendered text. It reads no file, no env, no clock. This is what makes
+   BR-1.5 ("resolved once per run, every emitter reads that one resolution") mechanically
+   checkable rather than a convention — there is exactly one construction site.
+2. **The workflow modules never import anything of the engine's.** The provenance seam
+   crosses as a plain frozen object with pre-rendered strings, never a function to call and
+   never a module to load. This is what keeps the modules loadable inside the Claude Code
+   workflow runtime, where `import` does not exist (CLAUDE.md, runtime constraints).
+
+### 3.3 New dependencies
+
+**None.** No new runtime dependency is added to `pdlc/engine/package.json`. The single
+existing dependency (`@anthropic-ai/claude-agent-sdk`) is untouched. Semver range checking
+already ships hand-rolled in `handshake.mjs` (`parseVersion`, `compare`, `satisfiesRange`,
+`pdlc/engine/lib/handshake.mjs:20,33,93`) and is reused for the pin and the publish-time
+range check rather than pulling in `semver` — one range grammar in the product, not two.
+
 ## 4. Decisions this TSPEC takes
 
 ## 5. Package composition and the anti-fork oracle (O-10)
