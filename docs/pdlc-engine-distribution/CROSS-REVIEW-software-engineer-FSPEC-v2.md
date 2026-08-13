@@ -45,8 +45,46 @@ No High findings. All three below are in sections the revision changed.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-5.3 now names a **halted, queue-driven** run fixture as the only shape producing all four kinds at once, and AT-5.3b independently pairs each kind with an unmarked-fails positive. Once 5.3b exists, does 5.3's four-kind fixture still buy anything the per-kind pairs do not — or is it the most expensive fixture in the document standing in for a coverage claim 5.3b already discharges? Answering it is TSPEC/PROPERTIES work; asking now so the cost is chosen rather than inherited. |
+| Q-02 | BR-7.6 says §5.1's carrier, on landing, takes over `ci-arrangement.test.js:44-60`'s assertions and the overlapping older ones are removed. Read against HEAD the rendered column does subsume them (both job names encode `matrix.os`), so the hand-off looks safe — but that test also asserts the two matrices *agree with each other*, a relation rather than a literal. Confirming the hand-off preserves it is TSPEC-time work; flagged only so "remove the overlap" is not read as "remove the job". |
+
 ## Positive Observations
+
+- The channel seam (BR-3.9) is a better answer than either option round 1 offered. It does not
+  merely make AT-3.1/3.3/3.5 executable; it names the *one* leg a stub cannot cover, dates it,
+  assigns it an owner, and refuses to let it become a per-release gate. The reasoning is
+  grounded in the decision that chose the channel (`DECISIONS-plugin-distribution.md:125`) —
+  immutability is the reason the rehearsal is impossible, not an aside.
+- §9 Q-8 is the shape an inherited obligation should take: three blockers, each with its
+  file:line, each labelled tool-enforced or decision-enforced, one owner, and an explicit
+  statement of what still runs (everything over the stub) versus what does not.
+- The `[blocked on O-10]` marking on the workflow-modules row, and the AT-3.8a/3.8b split that
+  follows from it, is honest about a class the document genuinely cannot enumerate yet — rather
+  than writing a member list that would be a guess. F-01 above is a refinement of that honesty,
+  not a challenge to it.
+- BR-7.1's discovery that "the authored `name:` strings" would have been red on day one against
+  ~16 step-level keys is the kind of catch that only comes from opening the file. The oracle is
+  now keyed on something that exists.
+- BR-9.2 resolves round-1 F-09 without weakening it: equality over kinds *produced*, closure
+  against kinds outside the table, and a positive per kind. That is the correct shape for a set
+  whose full membership no single run can produce.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both round-1 High findings are resolved, and resolved at the level they were raised: O-8 has an
+owner and an offline gate, and the publish surface now has a verification carrier with its
+irreversible leg isolated and dated. Nine of the ten remaining round-1 findings are fully
+addressed; F-04's third site (AT-1.3) is the only incomplete one. The three findings above are
+Medium/Low and none blocks: F-01 asks AT-3.8a to say which side of its equality the blocked
+class sits on, F-02 is one word, F-03 is one clause. No open High finding anywhere in the
+document.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
+
