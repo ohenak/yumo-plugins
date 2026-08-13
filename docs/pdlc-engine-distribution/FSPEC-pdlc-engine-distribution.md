@@ -507,4 +507,131 @@ TSPEC's; **that** each item below is present and machine-checkable is fixed here
 
 ## 8. Acceptance tests
 
+Who / Given / When / Then. Each names the criterion it discharges. Tests marked **[blocked]**
+cannot be written until an obligation lands, and say which.
+
+### AT-1 — Handshake and version query
+
+- **AT-1.1** *(AC-1.1)* **Who:** operator. **Given:** engine installed, no plugin installed.
+  **When:** any pipeline command runs. **Then:** it exits non-zero before dispatch, the message
+  names the declared range and states none is installed, and no file in the consumer project
+  changed.
+- **AT-1.2** *(AC-1.1)* **Given:** plugin installed at a version outside the range. **When:** any
+  pipeline command runs. **Then:** refusal names both the range and the version found — text
+  distinguishable from AT-1.1's.
+- **AT-1.3** *(AC-1.1)* **Given:** either refusal state. **When:** the diagnostic command runs.
+  **Then:** it completes and reports the version triple.
+- **AT-1.4** *(BR-1.3)* **Given:** a plugin root whose manifest is unparseable. **When:** a
+  pipeline command runs. **Then:** refusal names the root and the parse failure; it is **not** the
+  "none installed" message.
+- **AT-1.5** *(AC-1.2)* **Given:** plugin at an in-range version whose `SKILL.md` for a dispatched
+  role carries a distinguishing marker. **When:** a run dispatches that role. **Then:** the
+  composed prompt carries the marker — proving the prompt came from the installed plugin at
+  dispatch time, not from engine-resident bytes.
+- **AT-1.6** *(AC-1.4)* **Given:** an installed package. **When:** the version query runs. **Then:**
+  output carries all three of engine version, declared range, installed plugin version (or "none"),
+  and equals the triple in the same run's banner and report (BR-1.5).
+
+### AT-2 — Install and upgrade
+
+- **AT-2.1** *(AC-2.1)* **Who:** operator on a clean machine, Node ≥ T-2. **Given:** the command
+  transcribed from `pdlc/README.md`'s `## Install in another repo` section. **When:** run once.
+  **Then:** CLI resolves on `PATH` at the expected version from an existing install location, and
+  a pipeline command reaches the handshake and emits AT-1.1's refusal.
+- **AT-2.2** *(BR-2.3)* **Who:** verifier. **Given:** the repo. **When:** the tree is searched for
+  the install command. **Then:** exactly one occurrence exists, in that README section.
+- **AT-2.3** *(AC-2.2)* **Given:** version N installed, two consumer repos each having completed a
+  run at N. **When:** the upgrade command runs once on the machine, then the pipeline runs in each
+  repo. **Then:** both runs execute N+1 — visible in each run's output **and** in the artifacts —
+  and no command other than the pipeline invocation ran inside either repo.
+- **AT-2.4** *(AC-2.3)* **Given:** a consumer repo with clean tree and index; the pre-values of
+  resolved version and install location recorded. **When:** install then upgrade run. **Then:**
+  install leg — CLI resolves at the expected version from an existing location; upgrade leg —
+  resolved version *and* install location differ from the recorded pre-values; **and** the repo's
+  tree and index are byte-identical, nothing created under `.claude/`.
+- **AT-2.5** *(AC-2.4)* **Given:** Node below T-2. **When:** install, then a pipeline invocation.
+  **Then:** each fails naming floor and found version; no stack trace; no partially installed tree.
+- **AT-2.6** *(AC-2.5)* **Given:** engine and plugin both installed. **When:** an engine run and an
+  interactive plugin skill invocation both occur. **Then:** both succeed on that run, and each
+  install location's files hash identically before and after the other's use.
+
+### AT-3 — Publish
+
+- **AT-3.1** *(AC-3.1)* **Given:** a default-branch commit with all §5.1 members green. **When:** a
+  version tag is pushed. **Then:** the artifact is built, the range/plugin check passes, and the
+  package is published — with no human step.
+- **AT-3.2** *(AC-3.2)* **Given:** a commit with one §5.1 member red. **When:** a tag is pushed.
+  **Then:** nothing is published and the publish run's conclusion is **failure** — asserted on the
+  conclusion, not on the absence of a package.
+- **AT-3.3** *(AC-3.3)* **Given:** version N published; its bytes hashed. **When:** the workflow is
+  re-run for N. **Then:** the run is either an explicit no-op or a loud failure naming the
+  collision; and on either branch the hash of N's published bytes is unchanged and the run's output
+  names N.
+- **AT-3.4** *(AC-3.4, §5.1)* **Who:** verifier, offline. **Given:** the repo's workflow files.
+  **When:** authored `name:` strings are read and declared matrix axes expanded locally. **Then:**
+  authored set equals §5.1's authored column and expanded set equals its rendered column;
+  mutations — rename, delete, add, matrix-axis edit — each fail; a `name:` interpolating a
+  non-matrix expression fails as "unexpandable" (E-19).
+- **AT-3.5** *(AC-3.5)* **Given:** a published package and the publish logs. **When:** both are
+  scanned for the credential value. **Then:** no occurrence in either.
+- **AT-3.6** *(AC-3.6)* **Given:** a tag disagreeing with T-1a at that commit. **When:** the
+  workflow runs. **Then:** it fails naming both values; nothing published.
+- **AT-3.7** *(AC-3.7)* **Given:** a commit whose declared range excludes T-1b at that commit.
+  **When:** the workflow runs. **Then:** it fails naming range and plugin version; nothing
+  published.
+- **AT-3.8** *(AC-1.5, AC-1.3)* **Who:** verifier. **Given:** the built package, offline. **When:**
+  the packed tarball's contents are enumerated. **Then:** the list equals §5.2 member-for-member —
+  an added `SKILL.md`, an added test file, and a removed workflow module each fail — and the
+  pairing record of F-5 step 6 is present inside it.
+
+### AT-4 — Provenance **[blocked on O-9 for AT-4.2 and AT-4.4]**
+
+- **AT-4.1** *(AC-4.1)* **Given:** a completed run, success path and halt path. **When:** the final
+  report is read. **Then:** it states both engine and plugin versions, equal to AT-1.6's triple.
+- **AT-4.2** *(AC-4.2)* **[blocked]** **Given:** a halted run. **When:** the committed POSTMORTEM
+  is read from history alone. **Then:** both versions are nameable from its bytes.
+- **AT-4.3** *(AC-4.3)* **Given:** two runs of one feature on different engine versions. **When:**
+  their artifacts are compared. **Then:** the engine versions differ in the artifacts.
+- **AT-4.4** *(AC-4.4)* **Given:** a run's reported pair. **When:** a different plugin version is
+  made current and a second run occurs, then the change is reverted and a third run occurs.
+  **Then:** the pair changes and then reverts — a constant matching once fails the second
+  observation.
+- **AT-4.5** *(AC-4.5)* **[blocked]** **Given:** a consumer repo whose `docs/` predates the feature;
+  all files hashed. **When:** a run completes. **Then:** every pre-existing file under
+  `docs/{feature}/` hashes identically except those the run report enumerates as authored, and
+  every file of any other feature hashes identically with no exception.
+
+### AT-5 — Pinning and dev-mode
+
+- **AT-5.1** *(AC-5.1)* **Given:** project pinned to X, Y latest installed, probe seam stubbed
+  unavailable. **When:** the pipeline runs. **Then:** X executes, the run announces the pin, and
+  states it could not check for a newer version — no failure, no network call (asserted through
+  the stub).
+- **AT-5.2** *(AC-5.2)* **Given:** no pin. **When:** the pipeline runs. **Then:** latest installed
+  executes and the run states "no pin".
+- **AT-5.3** *(AC-5.3, §5.3)* **Given:** an explicit dev-mode declaration and a checkout. **When:**
+  a run writes a report, a POSTMORTEM, a `QUEUE.md` row and commits. **Then:** the dev-mode mark
+  appears in exactly those four kinds — set-equality, so an unmarked kind fails and a mark on a
+  cross-review file also fails.
+- **AT-5.4** *(AC-5.4)* **Given:** a checkout present, no declaration. **When:** the pipeline runs.
+  **Then:** the installed released version executes.
+- **AT-5.5** *(AC-5.5)* **Given:** a pin naming an uninstalled version. **When:** the pipeline runs.
+  **Then:** it refuses naming the pin and what is installed.
+- **AT-5.6** *(AC-5.6)* **Given:** `PDLC_PLUGIN_ROOT` exported, no declaration. **When:** the
+  pipeline runs. **Then:** it refuses naming the variable **or** runs released while stating the
+  variable was ignored; a run that silently switches skill source fails.
+
+### AT-6 — Non-regression and coexistence
+
+- **AT-6.1** *(AC-6.1)* **Who:** verifier. **Given:** the repo after this feature lands. **When:**
+  `node pdlc/workflows/build-runtime.mjs` then the bare-path `pdlc/hooks/scripts/sync-workflows.sh`
+  run in that order, then `--check`. **Then:** all three exit 0, every manifest row in sync; a
+  126 exit from the bare-path invocation is a failure, not a retry-with-`bash`.
+- **AT-6.2** *(AC-6.2)* **Given:** a machine with both channels installed and **independently known
+  install state**. **When:** a run is started through each. **Then:** the engine run emits its
+  provenance block; the bundle run completes, emits its named output artifacts, and carries no
+  provenance block. The test asserts exactly this conjunction and **claims no more**: with no
+  run-bound load-root observation available on the bundle side (F-7 step 4), a fixture that
+  distinguishes nothing must not be written as though it did — see §9 Q-2.
+
 ## 9. Open questions
