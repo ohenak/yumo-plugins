@@ -64,7 +64,10 @@ by id. Where a flow needs a value the REQ did not declare, it is raised in §9, 
 
 Each flow is stated as steps with explicit decision points. A step that describes behaviour not
 present at HEAD is marked **[new]**; one that describes shipped behaviour is marked **[shipped]**
-with its symbol, so a reviewer can check the claim in one pass.
+with its symbol, so a reviewer can check the claim in one pass. **The discipline is applied to
+every flow** (SE round-1 F-10): where a whole flow is new work, it is marked once at the flow
+heading and only its **[shipped]** steps carry a mark — F-2, F-3, F-5 and F-6 are wholly new,
+F-1, F-4 and F-7 are mixed and marked step by step.
 
 ### F-1 — Compat handshake and version query *(AC-1.1, AC-1.2, AC-1.4)*
 
@@ -73,8 +76,10 @@ prompt is read, no agent is started, nothing is written until the handshake reso
 
 1. Resolve the **engine version** (T-1a) from the running package. Always succeeds; if it cannot,
    that is a corrupt install and the run refuses under BR-1.6.
-2. Resolve the **declared compatible-plugin range** (T-3, `pdlcPluginCompat`). **[shipped]**
-   `pdlc/engine/lib/handshake.mjs` — `satisfiesRange`.
+2. Resolve the **declared compatible-plugin range** (T-3, `pdlcPluginCompat`) from the running
+   package's own manifest. **[shipped]** `pdlc/engine/bin/pdlc.mjs:143` reads `pkg.pdlcPluginCompat`
+   and passes it as `engineCompat` into `startup.mjs:302`; `handshake.mjs` — `satisfiesRange` — is
+   the *comparison* performed at step 4, not the resolution (SE round-1 F-05).
 3. Resolve the **plugin root** in the precedence order of F-4, then read the installed plugin's
    version (T-1b). **[shipped]** `skills.mjs` — `resolvePluginRoot`; `handshake.mjs` —
    `readPluginVersion`, which distinguishes *absent* from *unreadable* (BR-1.3).
@@ -87,36 +92,43 @@ prompt is read, no agent is started, nothing is written until the handshake reso
      §5.2 makes that structurally true by containing no skills files to read.
 5. On either refusal the run exits non-zero, dispatches nothing, and writes nothing into the
    consumer project. **[shipped]** `handshake.mjs` — `checkCompat` and its `REMEDY` text.
-6. **The diagnostic command sits outside the gate** (AC-1.1). The command whose job is to explain
-   a refusal still runs when the handshake fails, and reports the same triple as step 7. Any other
-   pipeline command is gated. Which command is the diagnostic is fixed by the TSPEC; that exactly
-   one class of command is exempt, and that it is the diagnostic, is fixed here.
+6. **The diagnostic command `pdlc doctor` sits outside the gate** (AC-1.1). **[shipped]** — the
+   command ships (`pdlc/engine/bin/pdlc.mjs:489`) and dispatches nothing (`startup.mjs`; SE
+   round-1 F-04). It still runs when the handshake fails and reports the same triple as step 7.
+   Every other pipeline command is gated: exactly one command is exempt, and it is this one.
 7. **The version triple.** The version query reports, in one output: engine version (T-1a), the
    declared range (T-3), and the installed plugin's version *or* the explicit statement that none
    is installed. The same triple appears in the startup banner and in every run report (F-6), from
    one resolution per run — not three independent resolutions that can disagree (BR-1.5).
 
-### F-2 — Install on a clean machine *(AC-2.1, AC-2.3 install leg, AC-2.4)*
+### F-2 — Install on a clean machine *(AC-2.1, AC-2.3 install leg, AC-2.4)* **[new]**
 
 1. The operator reads the install command from **one place**: `pdlc/README.md`'s
-   `## Install in another repo` section, which today documents the plugin install and gains the
-   engine install command under it. No other file is a transcription source (AC-2.1). Any second
-   copy of the command anywhere in the repo is a defect, not a convenience.
+   `## Install in another repo` section (`pdlc/README.md:132`), which today documents the *plugin*
+   install (`:139`, with a local-marketplace variant at `:145`) and gains the **engine** install
+   command under it. **[new]** — no engine install command exists at HEAD. The uniqueness rule is
+   scoped to the engine's own install/upgrade invocation, which is a different command from
+   `claude plugin install` and is distinguishable from it by its own program name; the plugin's
+   commands are outside this set and their existing occurrences (`README.md:115`,
+   `pdlc/README.md:139,145`) do not violate it. No other file is a transcription source (AC-2.1).
 2. They run it once, on a machine with Node ≥ T-2 and nothing pdlc-related installed.
 3. **Decision point — Node floor.** If Node is below T-2 the attempt fails with a message naming
    the required floor and the version found: no stack trace, no partial install, nothing left
    half-written (AC-2.4).
-4. On success the CLI resolves on `PATH`, from an install location that exists, at the version the
-   command asked for.
+4. On success **all three** of AC-2.1's conjuncts hold, and all three are asserted: the CLI
+   resolves on `PATH`, from an install location that exists, at the version the command asked for;
+   **it reports the version triple (AC-1.4)**; and step 5's handshake is reached.
 5. The operator invokes a pipeline command. With no plugin installed, F-1 step 4 refuses naming
    the declared range. **That refusal is the pass condition** on a plugin-free machine: install is
    proven by *reaching the handshake*, not by dispatching (AC-2.1).
 6. No second command, manual step, repo clone, or per-project action is required at any point.
 
-### F-3 — Upgrade, and the zero-per-project promise *(AC-2.2, AC-2.3 upgrade leg, AC-2.5)*
+### F-3 — Upgrade, and the zero-per-project promise *(AC-2.2, AC-2.3 upgrade leg, AC-2.5)* **[new]**
 
 1. Record, before the upgrade: the resolved CLI version and the install location.
-2. Run the documented upgrade command once, **on the machine** — never inside a consumer project.
+2. Run the upgrade command once, **on the machine** — never inside a consumer project. Its
+   documented home is the same single section as the install command's (F-2 step 1): the
+   uniqueness rule of BR-2.3 governs **both** engine commands, not the install one alone.
 3. Invoke the pipeline in each of two consumer repos that had previously completed a run at the
    old version. Each run executes the new version, observable **both** in the run's own output and
    in the artifacts it writes (F-6).
@@ -124,8 +136,10 @@ prompt is read, no agent is started, nothing is written until the handshake reso
    sync, no copy, no drift check, no config edit.
 5. **Non-interference, checked on the same run** (C-2, AC-2.3): the consumer repo's working tree
    and index are unchanged by install and by upgrade — no file created, modified or deleted
-   anywhere under the project, in particular nothing under `.claude/`. Consumer-owned config is
-   *read* (F-4 step 2) and never written; reading is not writing (NG-6 forbids only the latter).
+   anywhere under the project, in particular nothing under `.claude/`. **Install and upgrade
+   neither read nor write consumer config**; the *run* reads the `engine.*` namespace (F-4 step 2)
+   and writes nothing. The reconciliation with NG-6 is by **scope**, not by verb (SE round-1
+   F-11); NG-6's own wording is an erratum against the REQ, not fixed here.
 6. **Positive halves differ by leg, deliberately.** A clean-machine install has no before-value to
    differ from, so its positive is "resolves on `PATH`, at the expected version, from an install
    location that exists". The upgrade's positive is a *change*: resolved version and install
