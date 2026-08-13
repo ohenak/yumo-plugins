@@ -460,8 +460,11 @@ hide exactly the behaviours that need asserting.
 is undefined when the child is terminated by a signal: `spawnSync` returns
 `{status: null, signal: "SIGINT"}` in that case, so a literal `process.exit(result.status)`
 exits **0** on a Ctrl-C'd pipeline — a run that was interrupted reporting success, which
-collides with AC-1.4's exit-code contract in the one case an operator is most likely to
-produce by hand. Per DEC-EDIST-06: when `status` is `null` and `signal` is set, **the
+collides with the shipped exit-code invariant DEC-EDIST-06 cites as its constraint —
+`exitCodeFor`'s refusal/crash-1, halt/block-2 mapping (`pdlc/engine/lib/run.mjs`, pinned by
+`PROP-EXIT-1`), **not** REQ's AC-1.4, which is the version-triple criterion and states nothing
+about exit codes — in the one case an operator is most likely to produce by hand. The
+reasoning lives in DEC-EDIST-06; it is not restated here. Per DEC-EDIST-06: when `status` is `null` and `signal` is set, **the
 launcher exits `128 + signum`** — the conventional shell encoding, non-zero for every
 signal, not colliding with 1 or 2, and recoverable back to the signal number by the caller.
 When `status` is a number it is re-raised verbatim, unchanged from the paragraph above.
