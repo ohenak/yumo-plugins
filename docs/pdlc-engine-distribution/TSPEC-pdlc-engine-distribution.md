@@ -266,6 +266,91 @@ schedules it in Phase 1 rather than deferring it.
 
 ## 6. Version resolution: store, launcher, pin, dev-mode (F-4)
 
+### 6.1 The store
+
+| Aspect | Specification |
+|---|---|
+| Root | `$PDLC_HOME/versions/`, default `~/.pdlc/versions/` |
+| Entry | one directory per installed engine version, named by the exact version string: `~/.pdlc/versions/0.3.1/` containing an ordinary installed package tree (`bin/`, `lib/`, `vendor/`, `package.json`, `node_modules/`) |
+| Enumeration | `store.listVersions(fs, root)` → sorted `Version[]`, using `handshake.mjs`'s `compare` (§3.3). A directory whose name does not parse as a version is **skipped and reported**, never guessed at |
+| Writer | the install/upgrade command only (§9). The engine never writes the store during a run |
+| Consumer projects | untouched. The store is machine-level state outside every consumer repo, which is what makes C-2/BR-2.1 true by construction rather than by discipline |
+
+### 6.2 The launcher
+
+The `PATH` entry is a thin launcher. Its whole job is: parse enough argv to know the
+consumer cwd and the flags that affect resolution, resolve a version, then `exec` that
+version's `bin/pdlc.mjs` with the original argv and an env marker saying it is the resolved
+child. The child sees the marker and runs in-process without re-resolving — so resolution
+happens **exactly once per invocation**, which is BR-1.5's structural precondition.
+
+`exec` (process replacement via `child_process.spawnSync` with `stdio: "inherit"`, exit
+code propagated) rather than dynamic `import` of the target version, because the two
+versions may declare different `@anthropic-ai/claude-agent-sdk` ranges and must not share
+one module registry. Exit code, stdout and stderr pass through unchanged, so every
+existing CLI oracle keeps working.
+
+### 6.3 The resolution ladder (BR-4.1)
+
+`resolveVersion()` is **pure**: it takes a listing, a config object, argv-derived flags and
+an env snapshot, and returns a decision. No fs, no exec, no clock. Total and ordered:
+
+| Order | Branch | Condition | Result |
+|---|---|---|---|
+| 1 | `dev` | `--dev` present **and** the running engine is a checkout **and** the resolved plugin root is that checkout's `pdlc/` (O-5 rider 1) | run the checkout in place; `mode: "dev"` |
+| 2 | `dev-incomplete` | `--dev` present but either conjunct fails | **refuse**, naming which conjunct failed. Never a silent downgrade to pin or latest |
+| 3 | `pin` | no `--dev`; consumer config has `engine.version` | that version from the store; `mode: "pin"` |
+| 4 | `pin-missing` | pinned version absent from the store | **refuse** (AC-5.5), naming the pinned version *and* the enumerated installed versions. Never falls back |
+| 5 | `pin-malformed` | `engine.version` present but unparseable | **refuse** (E-10), naming the offending value. Never read as "no pin" |
+| 6 | `latest` | no `--dev`, no `engine.version` | highest version in the store; `mode: "latest"` |
+| 7 | `empty-store` | no `--dev`, and the store is empty or missing | **refuse**, naming the store root and the install command |
+
+Every branch, including 1, 3 and 6, produces an **announcement line** carried into the
+startup banner and the run report (Q-3). Silence is not a permitted outcome (BR-4.4): "no
+pin; latest installed 0.3.1" is an emitted statement, which is what makes AC-5.2's *absence
+as visible as presence* mechanically testable.
+
+### 6.4 The pin's location and read discipline (O-2)
+
+Read from the consumer-owned `.claude/pdlc.config.json` under the `engine.*` namespace
+already reserved by DEC-HE-02, at the path the engine already knows
+(`ENGINE_CONFIG_PATH`, V-20):
+
+```json
+{ "engine": { "version": "0.3.1" } }
+```
+
+- **Read-only, always.** The engine never creates the file, never adds the section, never
+  rewrites the value (BR-2.2, BR-4.7). An absent file and an absent `engine` section are
+  both "no pin", announced as such, with nothing created (E-11).
+- **A malformed `engine` section is not a missing one.** `engine` present but not an
+  object, or `engine.version` present but unparseable, refuses per ladder branch 5. This
+  mirrors V-09's shipped absent-versus-unreadable discipline in the handshake rather than
+  inventing a second convention for the same distinction.
+- **Install and upgrade never touch it at all** — they run against the store, not against
+  any consumer project (§6.1, §9.3).
+
+### 6.5 `PDLC_PLUGIN_ROOT` (D-4, AC-5.6, E-13)
+
+`resolvePluginRoot` (V-11) gains one input, `devDeclared: boolean`, and one branch:
+
+| `devDeclared` | `PDLC_PLUGIN_ROOT` set | Behaviour |
+|---|---|---|
+| `true` | yes | honoured, exactly as today; source string unchanged |
+| `true` | no | `--plugin-root` or discovery, as today |
+| `false` | yes | **ignored**, discovery proceeds as if unset, and the run emits `notice: PDLC_PLUGIN_ROOT was set (<value>) and ignored — dev-mode was not declared; pass --dev to honour it` |
+| `false` | no | unchanged |
+
+The `--plugin-root` *flag* keeps its current precedence in all four rows: it is explicit and
+per-invocation, which is exactly what T-6 asks for; the env var is neither. The notice text
+is a catalogue entry (§10.3), not an inline string, so `lib/catalogue.mjs`'s shipped
+registered-message set-equality (`pdlc/engine/lib/catalogue.mjs`,
+`__tests__/catalogue.test.js`) covers it for free.
+
+`REMEDY` (V-10) is updated in the same change to say `--dev PDLC_PLUGIN_ROOT=…` rather than
+`PDLC_PLUGIN_ROOT=…` alone. Leaving it would make the product's own refusal text recommend
+a remedy the product now ignores — the exact defect D-4's rationale turns on.
+
 ## 7. Provenance carriers (F-6, O-9)
 
 ## 8. Publish pipeline (F-5)
