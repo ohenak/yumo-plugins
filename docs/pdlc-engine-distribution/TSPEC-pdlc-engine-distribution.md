@@ -623,7 +623,8 @@ already reserved by DEC-HE-02, at the path the engine already knows
 
 ### 6.5 `PDLC_PLUGIN_ROOT` (D-4, AC-5.6, E-13)
 
-`resolvePluginRoot` (V-11) gains one input, `devDeclared: boolean`, and one branch:
+`resolvePluginRoot` (V-11) gains one input, `devDeclared: boolean`, one branch, and one extra
+return key (`notices`, specified below the table):
 
 | `devDeclared` | `PDLC_PLUGIN_ROOT` set | Behaviour |
 |---|---|---|
@@ -652,14 +653,41 @@ message ids, and neither one covers this row:
   never emitted is a failure — which creates an *obligation* to emit the id from some test,
   not coverage of AC-5.6's trigger.
 
-So AC-5.6 gets its own **path-level oracle**, named here rather than left to the PLAN: a
-unit test over `resolvePluginRoot` drives the `devDeclared: false` × `PDLC_PLUGIN_ROOT` set
-row, and asserts (a) discovery proceeded as if the variable were unset — the returned root
-is the discovered one, not the env value — and (b) the run's notices contain the entry
-**by catalogue id**, with its **rendered text** carrying the ignored value and the
-`--dev` remedy. Both halves are asserted positively, on the branch itself; the three other
-rows assert **no** such notice, so the branch cannot be satisfied by a notice that is always
-emitted. The suite-wide equality then keeps its own job — no unregistered id, no unemitted
+So AC-5.6 gets its own **path-level oracle**, named here rather than left to the PLAN. Naming
+it means first saying *where the notice is observable*, which the shipped shape does not yet
+allow. At HEAD `resolvePluginRoot` returns `{ok, root, source, reason, tried}`
+(`pdlc/engine/lib/skills.mjs`, `resolvePluginRoot`'s JSDoc `@returns`, verified at HEAD):
+there is no notice channel on it at all. So the function's return is **extended, not
+replaced** — the same discipline §10.1 applies to S-2 — to
+`{ok, root, source, reason, tried, notices}`, where `notices` is an array of `{id, text}`
+records: the catalogue id (§10.3) plus the string `lib/catalogue.mjs`'s `message(id, params)`
+renderer produced for it. `notices` is empty on every row but the ignore branch.
+
+**The resolver decides and renders; startup surfaces.** The branch lives in
+`resolvePluginRoot`, so the notice is decided and rendered there, which is what makes it
+assertable in one unit. `lib/startup.mjs`'s `runStartupChecks` already calls the resolver
+through its `resolveFn` seam (default `resolvePluginRoot`); it passes the returned `notices`
+into the run's notices without re-deriving or re-rendering them, exactly as `bin/pdlc.mjs`
+already drains `readEngineConfig`'s `notices` to the operator (`pdlc/engine/lib/run.mjs`,
+`readEngineConfig`'s `@returns {{config: object, notices: string[]}}`). §3.1's two rows and
+§10.1's S-7 say this same split, so no implementer has to choose it.
+
+The oracle is one unit test over `resolvePluginRoot` driving **all four rows** of the table
+above, falsifiable in both directions rather than only in the absence one:
+
+- **Honour direction**, `devDeclared: true` × variable set — the resolved root `===` the env
+  value, `source` is the unchanged `explicit override (PDLC_PLUGIN_ROOT)` string, and
+  `notices` is empty. Without this row an implementation that ignores the variable
+  unconditionally satisfies every other assertion here (DEC-EDIST-04's assertion 2).
+- **Ignore direction**, `devDeclared: false` × variable set — discovery proceeded as if the
+  variable were unset (the returned root is the discovered one, not the env value) **and**
+  `notices` contains the entry **by catalogue id** (`env.plugin-root-ignored`) with its
+  **rendered text** carrying the ignored value and the `--dev` remedy (assertion 1). Both
+  halves asserted positively, on the branch itself.
+- **The two variable-unset rows** — `notices` empty, so the ignore branch cannot be satisfied
+  by a notice that is always emitted.
+
+The suite-wide equality then keeps its own job — no unregistered id, no unemitted
 registration — as a backstop rather than as this row's coverage.
 
 `REMEDY` (V-10) is updated in the same change to say `--dev PDLC_PLUGIN_ROOT=…` rather than
