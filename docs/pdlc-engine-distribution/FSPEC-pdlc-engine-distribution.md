@@ -184,11 +184,12 @@ taken is announced in the run's own output. Silence is never a permitted outcome
    fetches or applies a version (NG-3). The seam exists so the pin assertion is testable without a
    network and so NG-3's boundary is testable by stubbing.
 
-### F-5 — Tag-driven publish *(AC-3.1…AC-3.7, AC-1.5)*
+### F-5 — Tag-driven publish *(AC-3.1…AC-3.7, AC-1.5)* **[new]**
 
 The publish pipeline is **additive**: its own workflow file with its own trigger. It may reuse the
 PR gate's jobs but may not weaken, rename, make conditional, or re-render any member of §5.1
-(C-5), because Phase PUB polls those names literally.
+(C-5), because Phase PUB polls those names literally. Nothing of this kind exists at HEAD:
+`.github/workflows/` holds exactly one file (`pr-tests.yml`), so every step below is new work.
 
 1. **Trigger** (T-4): a pushed git tag naming an **engine** version. No other trigger publishes.
 2. **Gate check.** Every member of §5.1's expected set must be green on the tagged commit. If any
@@ -207,17 +208,30 @@ PR gate's jobs but may not weaken, rename, make conditional, or re-render any me
    the triple `{engine version, compat range, plugin version at the tag}` **once**, inside the
    published artifact. Any release-notes rendering is *derived from* that record by the same job,
    never independently authored: two writers are two drift surfaces.
-7. **Publish** to the channel decided at DEC-DIST-05 (public npm, scoped).
-8. **Immutability and re-run** (C-7, AC-3.3): re-running the workflow for an already-published
+7. **Manifest publish-preconditions, checked offline before the channel is called** (BR-3.8).
+   At HEAD the manifest blocks publication on all three of O-8's counts — `"private": true`
+   (`pdlc/engine/package.json:4`, the one npm itself refuses), the unscoped name `pdlc-engine`
+   (`:2`) against DEC-DIST-05's scoped-public decision, and `"license": "UNLICENSED"` (`:11`).
+   Clearing them is the **operator's**, carried at §9 Q-8; until they are cleared AT-3.1 is not
+   merely unimplemented, it is refused by the tool. The workflow itself checks the first two
+   offline and fails naming the offending field rather than discovering them at the channel.
+8. **Publish** to the channel decided at DEC-DIST-05 (public npm, scoped), **through an injectable
+   channel seam** (BR-3.9) — the same discipline F-4 step 6 already sets for the update probe.
+9. **Immutability and re-run** (C-7, AC-3.3): re-running the workflow for an already-published
    version takes one of two permitted branches — an explicit no-op statement, or a loud failure
    naming the collision. On **either** branch two positives are asserted: the published bytes for
    that version are byte-identical before and after the re-run, and the run's own output names the
-   version. A branch that satisfies neither is a defect.
-9. **Secrets** (C-8, AC-3.5): the channel credential exists only as a repository secret consumed
-   by this workflow. It appears in neither the published contents nor any log the publish produced.
-   No distribution-channel credential is ever required to *run* the engine.
+   version. A branch that satisfies neither is a defect. Both branches, and the byte-identity
+   assertion, are decided **over the seam's stub** (BR-3.9): the real channel refuses re-publish
+   by design (`docs/_decisions/DECISIONS-plugin-distribution.md:125`), so rehearsing this against
+   it would burn a version number irreversibly and the no-op branch could never be observed.
+10. **Secrets** (C-8, AC-3.5): the channel credential exists only as a repository secret consumed
+    by this workflow. It appears in neither the published contents nor any log the publish
+    produced, and no distribution-channel credential is ever required to *run* the engine. The
+    scan is performed over the built artifact and the captured log of a **stub-channel** run;
+    the real channel adds no observation this assertion needs.
 
-### F-6 — Provenance emission into consumer artifacts *(AC-4.1…AC-4.5)*
+### F-6 — Provenance emission into consumer artifacts *(AC-4.1…AC-4.5)* **[new]**
 
 M-ENG-13 locates the gap precisely: the engine/plugin pair already exists in the CLI's returned
 report and is absent from every artifact a run **commits**. This flow is about the committed
@@ -255,7 +269,13 @@ artifacts, and it is **[new]** work whose carrier is owned at **O-9**.
    then the **bare-path** invocation of `pdlc/hooks/scripts/sync-workflows.sh`, in that order, both
    exit 0; `pdlc/hooks/scripts/sync-workflows.sh --check` then exits 0 with every manifest row in
    sync. The order is not interchangeable and the bare-path form is load-bearing: a `bash`/`sh`
-   prefix would mask a lost execute bit (exit 126).
+   prefix would mask a lost execute bit (exit 126). **[shipped]** both scripts exist and the CI
+   job already discharges this on a **fresh clone** (`.github/workflows/pr-tests.yml:138,152`).
+   That precondition is part of the claim, not incidental (SE round-1 F-06): plain sync
+   deliberately **skips** rows it measures as `local-edit` or `unverified` and exits non-zero
+   (`pdlc/hooks/scripts/sync-workflows.sh:703-722`), and every pre-existing consumer copy is
+   `unverified` the first time the mechanism runs. So the assertion holds where **no consumer
+   copy exists yet and the sync manifest is clean**; `--force` is explicitly out of its scope.
 3. **Channel identification** (AC-6.2, C-9). An engine run identifies itself by emitting its
    provenance block (F-6). The bundle channel executes inside the Claude Code workflow runtime and
    cannot emit one, and C-4 forbids teaching that path to self-report, so its identification is a
