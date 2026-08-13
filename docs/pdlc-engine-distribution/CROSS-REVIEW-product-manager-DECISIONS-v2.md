@@ -87,4 +87,36 @@ it a recovery path rather than leaving the operator in it.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+My one v1 High (F-01) is resolved with evidence I re-verified line by line, and all five lesser
+findings are resolved too. The revision introduced no High finding and broke nothing I had
+previously approved: the entries it rewrote are more grounded than before, and the two corrections
+it makes to its own earlier drafts are stated in the record rather than silently applied.
+
+The two open items are non-gating and can be folded into the next edit of this document or carried
+forward:
+
+1. **F-01 (Medium)** — add the shipped-`.npmignore` clause to §13's DEC-EDIST-05 (or DEC-EDIST-01)
+   row so the register does not tell a reader the opposite of what §2 and §6 decide.
+2. **F-02 (Low)** — add "beyond the five enumerated above" to §2's re-evaluation trigger.
+
+Three defects belong to the **TSPEC**, not to this document, and are raised as errata rather than
+folded into this verdict — in each case the DECISIONS entry is correct and the upstream text it was
+transcribed from is not:
+
+- TSPEC §6.5 still carries the "covers it for free" sentence about `lib/catalogue.mjs`'s
+  set-equality, which is false at HEAD for the two reasons §5 of this record now documents.
+- TSPEC §6.2 still names signal handling among the behaviours that "need asserting" and then pays
+  for exit code and stdio only, leaving `spawnSync`'s `status: null` undecided.
+- TSPEC §5.1 authors no `.npmignore` and §5.4/D-5 state the allow-list was chosen "not an
+  `.npmignore` deny-list", while DEC-EDIST-01/05 now decide one is shipped to negate the
+  `vendor/` ignore. The mechanism needs to exist in the governing document.
+
+All ten decisions still trace to a criterion or constraint I can find in REQ or FSPEC, and no entry
+decides a product question the REQ has not already delegated.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
