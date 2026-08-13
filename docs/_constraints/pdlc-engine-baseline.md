@@ -184,3 +184,54 @@ passed the run refuses at row 5 (`auth.api-key-refused`).
 | date | platform | transport | sdkVersion | denyFired |
 |---|---|---|---|---|
 | 2026-08-12 | darwin | agent-sdk | 0.3.226 | yes |
+
+## M-ENG-10 — The PR gate is five required checks, and these are their literal names
+
+Measured 2026-08-13 at `89babe8e`. `.github/workflows/pr-tests.yml` declares **five** jobs. The
+literal `name:` strings — what Phase PUB and any required-check assertion actually match on — are:
+
+| # | Literal check name | Job at |
+|---|---|---|
+| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `pr-tests.yml:28` |
+| 2 | `Engine tests (${{ matrix.os }})` | `:78` |
+| 3 | `Generated artifacts are in sync` | `:112` |
+| 4 | `Fresh-clone bootstrap works` | `:138` |
+| 5 | `Shell scripts parse` | `:196` |
+
+Matrix is `os: [ubuntu-latest]` × node `'20'` for both matrixed jobs (`:39-40`, `:88-89`).
+`Engine tests` postdates the 2026-08-08 snapshot that earlier drafts enumerated as four checks.
+
+## M-ENG-11 — Two version numbers exist, and the engine package is unpublishable as declared
+
+Measured 2026-08-13 at `89babe8e`, `pdlc/engine/package.json`:
+
+| Fact | Value | Line |
+|---|---|---|
+| package name | `pdlc-engine` — **unscoped** | `:2` |
+| package version | `0.1.0` — independent of the plugin's | `:3` |
+| `private` | `true` — `npm publish` refuses outright, before licence or credentials | `:4` |
+| `pdlcPluginCompat` | `^0.22.0` | `:9` |
+| `license` | `UNLICENSED` | `:11` |
+| `files` | **absent** — `npm pack` ships the package directory's default set | — |
+
+The plugin manifest `pdlc/.claude-plugin/plugin.json:4` declares `0.22.7`. The two numbers are
+independent: nothing reads one from the other.
+
+## M-ENG-12 — The workflow modules live outside the engine package root, and a vendored copy is a shipped test failure
+
+`pdlc/engine/lib/run.mjs:52-54` resolves both modules by relative escape above the package root
+(`new URL("../../workflows/orchestrate-dev.js", import.meta.url)`), so an `npm pack` of
+`pdlc/engine/` contains no workflow module. Two shipped tests pin that arrangement:
+`pdlc/engine/__tests__/run.test.js:51` fails if any `orchestrate-{dev,queue}.js` exists anywhere
+under `pdlc/engine/`, and `:67` asserts each resolved specifier equals the exact repo-relative
+`pdlc/workflows/` path. Vendoring the modules at build time therefore turns both green tests red.
+
+## M-ENG-13 — Provenance exists engine-side only; the workflow layer cannot see a version
+
+`pdlc/engine/lib/report.mjs:77-78` already carries `engineVersion` and `pluginVersion` in the
+report the CLI returns, and the module docblock states the engine never edits `pdlc/workflows/`.
+The workflow modules carry no version field (`grep engineVersion pdlc/workflows/orchestrate-dev.js`
+→ no match) and cannot obtain one: they run in the constrained workflow runtime where `process`,
+`fs` and `import` do not exist (DEC-DIST-01). The artifacts a halt commits — the POSTMORTEM file
+and the `QUEUE.md` row — are written by that layer. No `dev`/channel marker exists in the report's
+field set (`report.mjs:77-96`).
