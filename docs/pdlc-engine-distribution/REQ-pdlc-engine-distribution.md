@@ -58,8 +58,7 @@ says which one ran.
 
 ### 1.1 What is true at HEAD (re-measured 2026-08-13 at `89babe8e`)
 
-Observations, not contracts — the contracts are the TSPEC's — re-checked against the repo at
-review round 1. Code-level facts live once, in `docs/_constraints/pdlc-engine-baseline.md`, cited
+Observations, not contracts — the contracts are the TSPEC's — re-checked at review round 1. Code-level facts live once, in `docs/_constraints/pdlc-engine-baseline.md`, cited
 here by id so a later drift is a one-file correction, not a stale snapshot inside this REQ.
 
 | # | Observation | Where |
@@ -148,7 +147,7 @@ Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows
   chooses otherwise in O-1. **Fact recorded 2026-08-13:** the repo is public today
   (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), so the whole prompt
   corpus — `pdlc/skills/**` — is already world-readable in the tree; this disqualifier
-  therefore excludes no candidate channel as of today. Whether it stays public is operator intent,
+  therefore excludes no candidate channel today. Whether it stays public is operator intent,
   not a fact this REQ settles; NG-1 itself is unchanged, not weakened, by this note (see O-1).
 - **NG-2 — Retiring the plugin, the bundles, or the sync/drift machinery.** That is
   `pdlc-plugin-retirement` (its own queue row), and only after the engine is proven in a real
