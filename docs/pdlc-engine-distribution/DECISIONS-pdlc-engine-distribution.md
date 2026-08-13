@@ -70,11 +70,26 @@ exact-path equality.
 - **Relocate the modules under the package root** — rejected *for now*, and it is the cleanest
   end state. Today it moves the files that `pdlc/workflows/build-runtime.mjs` and
   `pdlc/hooks/scripts/sync-workflows.sh` read, i.e. it breaks the plugin channel to fix the
-  engine channel. Verified cost: `build-runtime.mjs` and the sync script both address the tree
-  by path (`build-runtime.mjs:19,48-49`), and `pdlc/engine/__tests__/run.test.js:45-46` pins
-  the canonical `pdlc/workflows/orchestrate-{dev,queue}.js` path literally, so
-  the move is a three-consumer edit, not a `git mv`. It belongs to `pdlc-plugin-retirement`,
-  which removes the second channel and makes it a one-consumer edit.
+  engine channel. **Verified cost at HEAD — five consumers, not three, and one of them is
+  merge-safety rather than build plumbing:**
+
+  | # | Consumer | Site | What breaks |
+  |---|---|---|---|
+  | 1 | `build-runtime.mjs` reads the sources by path | `pdlc/workflows/build-runtime.mjs:94-97` (`readFileSync(resolve(HERE, "orchestrate-dev.js"))` and its three siblings) and the source-name arrays at `:531-533` | the build stops finding its inputs |
+  | 2 | `sync-workflows.sh` copies from the built tree | `pdlc/hooks/scripts/sync-workflows.sh` | the consumer copy stops being produced |
+  | 3 | `run.test.js` pins the canonical path literally | `pdlc/engine/__tests__/run.test.js:45-46` (`path.join(repoRoot,"pdlc","workflows","orchestrate-{dev,queue}.js")`) | red |
+  | 4 | **Phase MERGE's self-modification guard** | `MERGE_GUARD_DEFAULTS` carries the literal `"pdlc/workflows/"` (`pdlc/workflows/orchestrate-dev.js:48-53`, the literal at `:49`) | **a PR touching the workflow modules at their new path no longer trips the guard** — the pipeline may auto-merge a PR that edits its own semantics |
+  | 5 | the guard set is pinned by a test | `pdlc/workflows/__tests__/consolidationRoute.test.js:108-110` asserts the four-member set literally | widening or re-pointing the guard is a second edit, not a one-line change |
+
+  Consumer 4 is the reason this stays deferred rather than merely costed: the other four go red,
+  and a red build is a stop. A guard that silently stops covering a path is the failure this
+  record's own closing principle names — an oracle that cannot detect the failure it is
+  nominated against. Two earlier citations are corrected here: `build-runtime.mjs:19` is the
+  file's usage **comment** and `:48-49` is *generated banner* text (itself pinned by
+  `pdlc/workflows/__tests__/runtimeBundle.test.js:593-595`), so neither is code that addresses
+  the tree. The move is a five-consumer edit, not a `git mv`. It belongs to
+  `pdlc-plugin-retirement`, which removes the second channel and shrinks the build-plumbing
+  half — the merge-guard edit survives that feature and must be made deliberately.
 - **Fetch the modules at runtime** — rejected without much weighing: NG-3 forbids the engine
   fetching anything.
 
@@ -85,14 +100,43 @@ tracked source, built artifact, untracked consumer copy — is reused rather tha
 convention invented: `vendor/` is the same tier as `pdlc/workflows/dist/`'s relationship to
 `.claude/workflows/`.
 
-**Reversibility.** Easy in the direction that matters. Deleting the vendor step and the second
-root restores HEAD behaviour; the oracle restatement is the only part with an edit cost, and
-AF-1/AF-2 remain correct assertions about a repo that vendors nothing.
+**Making `vendor/` git-ignored interacts with DEC-EDIST-05's allow-list, and the interaction is
+decided here rather than left to npm.** `pdlc/engine/.gitignore` is one line at HEAD
+(`node_modules/`), this entry adds `vendor/`, and `pdlc/engine/` ships no `.npmignore` (§6's
+Context, verified at HEAD). npm's precedence between a `files` entry and an ignore-file fallback
+*for paths inside a listed directory* is the ambiguous corner of packing and has varied across
+npm majors. If the fallback wins, `prepack` runs, the manifest is written, and the tarball ships
+**without** the vendored modules — an installed engine that cannot load a workflow module at
+all, which is R-5 restored by the very change that closes it. **Decision: the inclusion is made
+explicit rather than inferred** — `pdlc/engine/.npmignore` is shipped for this one purpose,
+carrying a negation for `vendor/workflows/`, so packing never depends on which precedence rule
+the installed npm implements. This does not reopen §6's allow-list-over-deny-list choice: the
+`.npmignore` exists to *negate* an ignore, and the packed set is still governed by `files` and
+still asserted by PF-4's both-directions equality against TSPEC §5.4's literal table, which
+would catch the omission if the mechanism ever failed.
+
+**Reversibility.** Easy in the direction that matters, and the oracle cost is asymmetric.
+Deleting the vendor step and the second root restores HEAD behaviour. **AF-1 remains a correct
+assertion about a repo that vendors nothing; AF-2 is deleted along with the vendor step,
+because the vendoring *is* its precondition.** AF-2 as TSPEC §5.3 specifies it
+(`TSPEC:256`) runs `prepack` into a temp directory **first**, then asserts the manifest's
+`modules` array enumerates exactly the two modules by set-equality, each recorded SHA-256
+equalling both the vendored bytes and the canonical source, with a one-byte mutation as the
+falsifier. Without the prepack step there is no `VENDOR-MANIFEST.json` to read, so AF-2 does
+not "remain correct" — it errors or goes red. TSPEC §12.3 item 4 (`TSPEC:1782`) states the
+same thing from the other side: the equality is "true over the empty set in any ordinary
+checkout", which is why the precondition is load-bearing rather than housekeeping. The
+residual-risk paragraph below leans on AF-2 covering the case that matters, and that claim
+holds only while the prepack precondition is stated — so it is stated here and not only in the
+TSPEC.
 
 **Re-evaluation triggers.** `pdlc-plugin-retirement` landing (the relocation alternative
-becomes correct and cheap); a third consumer of `pdlc/workflows/` appearing (raises the
-relocation cost further); the vendored set growing past two files (the manifest's hand-written
-`modules` set-equality stops being the cheap check it is at two).
+becomes correct and cheap); **any new literal `pdlc/workflows/` path appearing outside the
+tree itself** — stated this way rather than as "a third consumer" because it is a condition an
+oracle could actually check, and because the five above show the count was already wrong once;
+the vendored set growing past two files, which fires **in CI rather than in someone's memory**:
+AF-2's set-equality is over exactly two members, so a third vendored file turns AF-2 red at the
+moment it lands (the same mechanical-trigger shape DEC-EDIST-09's parser clause uses).
 
 **Residual risk (TSPEC R-A).** AF-1's tracked-ness reading no longer catches an *untracked*
 fork under `pdlc/engine/` — which is precisely what vendoring produces, so the weakening is
