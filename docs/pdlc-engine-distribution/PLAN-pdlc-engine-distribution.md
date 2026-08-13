@@ -267,4 +267,22 @@ Seven places where this feature's tasks meet machinery that already exists at HE
 
 ## 6. Batch-safety rules honoured
 
+## 6. Batch-safety rules honoured
+
+Stated as claims a reviewer can check against §2 and §3 mechanically.
+
+**Rule 1 — `Batch = max(batch of deps) + 1`.** Holds for all 55 rows. The tasks that make it non-obvious, spelled out: T44 (deps T55 b2, T39 b5, T42 b6 → 7); T43 (T12 b2, T26 b3, T41 b6 → 7); T45 (T13 b2, T43 b7 → 8); T46 and T47 (T45 b8 → 9); T48 (T47 b9, T46 b9 → 10); T50 (T34 b4, T46 b9, T49 b5 → 10); T49 (T17 b2, T25 b3, T33 b4, T34 b4 → 5); T41 (T11 b2, T28 b3, T37 b5 → 6); T42 (T24 b2, T38 b5, T39 b5 → 6); T51 (T50 b10 → 11); T52 (T05 b2, T49 b5, T50 b10 → 11). Batch 1 holds only the four dependency-free tasks (T01–T04).
+
+**Rule 2 — single writer per file per batch.** No file in §3 appears in two rows sharing a batch. The files with the most writers are the ones to check: `lib/catalogue.mjs` (T28 b3, T32 b4, T37 b5, T41 b6, T43 b7, T45 b8 — six writers, six consecutive batches); `orchestrate-dev.js` (T29 b3, T35 b4, T38 b5, T42 b6); `orchestrate-queue.js` (T30 b3, T36 b4, T39 b5); `lib/run.mjs` (T28 b3, T41 b6, T48 b10); `bin/cli.mjs` (T45 b8, T46 b9, T48 b10); `packaging.test.js` (T16 b2, T25 b3, T33 b4, T49 b5); `provenance-path.test.js` (T45 b8, T47 b9, T48 b10); `store.test.js` (T06 b2, T26 b3); `launcher.test.js` (T14 b2, T46 b9, T50 b10). `docs/_decisions/DECISIONS-plugin-distribution.md` has two writers, T02 (b1) and T05 (b2).
+
+**Rule 3 — red-before-green is an explicit `Deps` edge.** Every `[red]` task in §2 is named in the `Deps` cell of the `[green]` task that satisfies it; §4's kind-1 table is the full list. No pair relies on batch ordering alone.
+
+**Rule 4 — shared prerequisites owned by exactly one batch-1 task.** `pdlc/engine/__tests__/_doubles.mjs` is written only by T03; `pdlc/workflows/__tests__/helpers/provenanceDoubles.js` only by T04. Both are batch 1. Later tasks read them and, where a new double is needed, the double is added by the task that needs it *inside its own test file* rather than by re-opening the shared module — which is why neither module reappears in §3 after batch 1.
+
+**Rule 5 — subpackage-qualified paths.** Every path in §2 and §3 is repo-root-relative. `pdlc/engine/` and `pdlc/workflows/` are separate test suites with separate runners (`pdlc/engine/__tests__/_run-suite.mjs` under `node --test`; `pdlc/workflows` under jest), so a bare `run.test.js` or `store.test.js` would be ambiguous between them. No bare basename appears in either table.
+
+**Rule 6 — directory entries own everything beneath them.** `pdlc/workflows/dist/` (T44) is the only directory entry in §3, and no other row names a path under it.
+
+**Rule 7 — the manifest and the task table are in bijection.** 55 tasks in §2, 55 rows in §3, same identifiers, no row without a task and no task without a row — the condition `validatePlanContract` checks after `parsePlanTasks` and `parsePlanOwnership` in Phase P.
+
 ## 7. Definition of Done
