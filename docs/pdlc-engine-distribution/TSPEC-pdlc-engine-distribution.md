@@ -628,9 +628,33 @@ already reserved by DEC-HE-02, at the path the engine already knows
 
 The `--plugin-root` *flag* keeps its current precedence in all four rows: it is explicit and
 per-invocation, which is exactly what T-6 asks for; the env var is neither. The notice text
-is a catalogue entry (§10.3), not an inline string, so `lib/catalogue.mjs`'s shipped
-registered-message set-equality (`pdlc/engine/lib/catalogue.mjs`,
-`__tests__/catalogue.test.js`) covers it for free.
+is a catalogue entry (§10.3), not an inline string.
+
+**Registering it is not the same as asserting it, and the earlier claim that the shipped
+catalogue equality "covers it for free" was false at HEAD.** Two shipped oracles touch
+message ids, and neither one covers this row:
+
+- `__tests__/catalogue.test.js:71-74` compares `messageIds()` against
+  `Object.keys(MESSAGES)` — the module against *itself*. Adding an entry moves both sides
+  together, so the test stays green whether or not anything ever emits it. The file says so
+  in its own header (`:4-6`): the emitted-ids equality is "a separate, cross-process concern"
+  and explicitly out of scope there.
+- The suite-wide step's row 1 (`__tests__/_assert-suite-wide.mjs:196-210`,
+  `checkMessageCatalogue`) *does* run both directions over emitted records, but it is
+  **path-blind**: it observes that some test somewhere emitted the id, never that the
+  ignore branch emitted it. Its useful direction here is the reverse one — a registered id
+  never emitted is a failure — which creates an *obligation* to emit the id from some test,
+  not coverage of AC-5.6's trigger.
+
+So AC-5.6 gets its own **path-level oracle**, named here rather than left to the PLAN: a
+unit test over `resolvePluginRoot` drives the `devDeclared: false` × `PDLC_PLUGIN_ROOT` set
+row, and asserts (a) discovery proceeded as if the variable were unset — the returned root
+is the discovered one, not the env value — and (b) the run's notices contain the entry
+**by catalogue id**, with its **rendered text** carrying the ignored value and the
+`--dev` remedy. Both halves are asserted positively, on the branch itself; the three other
+rows assert **no** such notice, so the branch cannot be satisfied by a notice that is always
+emitted. The suite-wide equality then keeps its own job — no unregistered id, no unemitted
+registration — as a backstop rather than as this row's coverage.
 
 `REMEDY` (V-10) is updated in the same change to say `--dev PDLC_PLUGIN_ROOT=…` rather than
 `PDLC_PLUGIN_ROOT=…` alone. Leaving it would make the product's own refusal text recommend
