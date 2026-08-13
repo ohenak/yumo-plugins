@@ -339,12 +339,11 @@ This requirement is the D-DIST-06 release-automation remainder in its new form (
   set first.
 - **AC-3.5** *Who:* a verifier. *Given:* a published package. *When:* they inspect its
   contents and any log the publish produced. *Then:* no credential, token or secret value
-  appears in either (C-8). Absence alone would hold vacuously if the credential were never
-  consumed, so it is paired with two positives: (a) *Given* the repository secret is present,
-  *when* the publish workflow runs, *then* the publish step authenticates to the channel and
-  the release is cut — the credential demonstrably reached the channel; (b) *Given* the secret
-  is absent or empty, *when* the workflow runs, *then* it fails at the publish step with a
-  message naming the missing secret, and nothing is published.
+  appears in either (C-8). Absence alone holds vacuously if the credential is never consumed, so
+  it is paired with two positives: (a) *Given* the repository secret is present, *then* the
+  publish step authenticates to the channel and the release is cut; (b) *Given* it is absent or
+  empty, *then* the workflow fails at the publish step naming the missing secret, publishing
+  nothing.
 - **AC-3.6** *Who:* the operator. *Given:* a tag whose version disagrees with the **engine**
   version of record (T-1a) at that commit — the tag is an engine tag (T-4, O-7), and it is
   never compared against the plugin's number. *When:* the publish workflow runs. *Then:* it
