@@ -1,0 +1,32 @@
+# Cross-Review: product-manager — DECISIONS
+
+**Reviewer:** product-manager
+**Document reviewed:** `docs/pdlc-engine-distribution/DECISIONS-pdlc-engine-distribution.md` (v0.3, Phase T)
+**Date:** 2026-08-13
+**Iteration:** 2
+**Scope:** Delta re-review. Product lens only — whether my v1 findings are resolved and whether
+the revision broke anything. Diffed `64670826..HEAD`; only changed sections were scanned for new
+issues, and every `file:line` the revision added or repointed was opened at HEAD.
+
+## Prior findings — disposition
+
+| v1 ID | Sev | Disposition | Evidence checked at HEAD |
+|---|---|---|---|
+| F-01 | High | **Resolved** | §2 now prices the relocation as a five-consumer edit in a table. Consumer 4 is `MERGE_GUARD_DEFAULTS` — `export const MERGE_GUARD_DEFAULTS = Object.freeze([` at `orchestrate-dev.js:48`, literal `"pdlc/workflows/"` at `:49` (cited `:48-53`, correct). Consumer 5 is `consolidationRoute.test.js:108-110` — `expect(new Set(MERGE_GUARD_DEFAULTS)).toEqual(new Set([…four members…]))` at `:108-109`, correct. The merge-safety consequence is stated in the row and not left as a count ("a PR touching the workflow modules at their new path no longer trips the guard"). The two `build-runtime.mjs` citations are repointed to `:94-97` (four `readFileSync(resolve(HERE, …))` calls, verified) and `:531-533` (`QUEUE_SOURCES`/`DEV_SOURCES`/`CONS_SOURCES`, verified), with `:19`/`:48-49` explicitly re-labelled as comment and generated-banner text and `runtimeBundle.test.js:593-595` named as the banner's pin (verified: the `^\/\/ {3}pdlc\/workflows\/(\S+)$` match and its `toEqual`). §13's DEC-EDIST-01 row is mirrored — "five-consumer", the merge-guard site, and the AF-2 consequence. |
+| F-02 | Medium | **Resolved** | §4's Context now names three criteria separately: AC-5.1 pinned (`REQ:397-403` — bullet runs 397→403, correct), AC-5.2 unpinned (`REQ:404-406`, correct), AC-5.5 absent-pin refusal (`REQ:419`, correct). The single-global-install rejection now reads "AC-5.1, AC-5.2 and AC-5.5 jointly unsatisfiable" and keeps AC-5.1's two-versions-resident wording as the residency forcer, which is exactly the correction asked for. §13's DEC-EDIST-03 row mirrors it. |
+| F-03 | Medium | **Resolved** | §12 gains a preamble: blocker 1 is `"private": true` (`pdlc/engine/package.json:4`, verified), closed by TSPEC §5.1 with PF-3 asserting `private` absent (`TSPEC:1126`, verified — PF-3 is that row); blockers 2 and 3 are N-6 (scope) and N-2 (licence), matching TSPEC §14's numbering (`TSPEC:1948` region). The "three blockers stand / two rows here" gap a reader would otherwise hit is now accounted for in the table's own preamble. |
+| F-04 | Medium | **Resolved, and better than asked** | §5's new subsection retracts the "covers it without a bespoke test" claim and grounds the retraction: `catalogue.test.js:71-74` compares `messageIds()` against `Object.keys(MESSAGES)` — verified, `assert.deepEqual(messageIds(), …)` at `:71-74`, a module against itself — and that file's header `:4-6` disclaims the emitted-ids equality as "a separate, cross-process concern… out of scope here" (verbatim at HEAD). `checkMessageCatalogue` is at `_assert-suite-wide.mjs:196` with both directions in `:196-210`, driven by `assert-suite-wide.test.js:165`/`:183` — verified. The entry then states the two assertions the branch actually needs, and both assert **rendered text**, which is AC-5.6's operator-visible deliverable. Assertion 1 is correctly framed as a positive assertion (resolves to the *discovered* root **and** the notice id is present) rather than an absence-only "no override applied". |
+| F-05 | Low | **Resolved** | Version cell reads `0.3`; the changelog's newest row is `0.3`. Header and changelog agree, so the erratum protocol's version diff works again. |
+| F-06 | Low | **Resolved** | §10 now reads "nine static imports (`pdlc/engine/bin/pdlc.mjs:22-31`) — three `node:` builtins at `:22-24` and six local modules at `:26-31`". Verified exactly: `:22` `node:fs`, `:23` `node:url`, `:24` `node:path`, `:26-31` the six local modules. |
+| Q-01 | — | **Answered in the record** | §4 decides the surface: the announcement rides the `Provenance` value built once per run, so banner, run report and commit rows share one renderer, and an unpinned run carries `mode: "latest"`. Consistent with TSPEC §7.1, which already declares `mode`/`pin` on `Provenance` and pre-renders `line`/`block` ("one renderer, four placements") — so this is a surface decision recorded against a mechanism that exists, not a new mechanism invented in a DECISIONS file. |
+| Q-02 | — | **Answered** | The "a newer version exists" probe is observed by the resolved child, with the reason given (the child prints the report; the launcher's ladder stays pure and total per §6.3). That is a decision about the launcher's surface, which is what Q-02 asked for. |
+
+## Findings
+
+## Questions
+
+## Positive Observations
+
+## Recommendation
+
+## Verdict
