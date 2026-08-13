@@ -644,8 +644,10 @@ buys); the pin moving out of the shared config file, which dissolves the couplin
 **Context.** AC-2.4 wants an operator on an unsupported Node to see a **named floor**, not a
 stack trace. A guard "at the top of `bin/pdlc.mjs`" does not achieve that: ESM static imports
 are resolved and evaluated **before** the importing module's body runs, and the shipped launcher
-carries six static imports (`pdlc/engine/bin/pdlc.mjs:22-30`). A modern-syntax construct
-anywhere in that graph throws a parse error before the guard's first statement.
+carries **nine** static imports (`pdlc/engine/bin/pdlc.mjs:22-31`) — three `node:` builtins at
+`:22-24` and six local modules at `:26-31`, the latter being the graph that actually reaches
+this feature's own code. A modern-syntax construct anywhere in that graph throws a parse error
+before the guard's first statement.
 
 **Decision.** The `bin` entry **keeps the name `bin/pdlc.mjs`** and becomes a dependency-free
 guard whose only top-level statements are the version comparison, the refusal, and — on success
@@ -764,6 +766,14 @@ what the command set-equality comfortably covers.
 These are open by choice, with an owner. They are listed so a reader does not mistake silence
 for a decision, and so the PLAN schedules them as gates rather than as code tasks.
 
+**Two of O-8's three publish blockers are here; the third is closed by design.** O-8's blocker
+1 is `"private": true` (`pdlc/engine/package.json:4`), the one npm itself refuses — TSPEC §5.1
+removes the field and PF-3 asserts `private` is absent (`TSPEC:1126`), so it is engineering
+work scheduled in this feature, not an operator item. Blockers 2 (the npm scope, N-6) and 3
+(the licence, N-2) are the operator-owned rows below. A reader consulting this table alone
+would otherwise see two rows against a "three blockers stand" statement elsewhere and be left
+with one unaccounted for.
+
 | # | Item | Why it is not decided here | Owner | Blocks |
 |---|---|---|---|---|
 | N-1 | AC-6.2's load-root half on the **bundle** side | C-4 forbids teaching `.claude/workflows/`'s runtime to self-report. DEC-EDIST-02 closes the engine half only; the interim limit is documented in AT-6.2's recorded evidence rather than dressed as a channel oracle | Re-opens against `pdlc-plugin-retirement`, which removes the second channel and dissolves the question | Nothing in Phase 1 |
@@ -794,13 +804,13 @@ the entry that bears on the change in front of them without reading all ten.
 
 | ID | § | Decision | Principal option rejected | Consequence carried | Reversal |
 |---|---|---|---|---|---|
-| DEC-EDIST-01 | §2 | `prepack` vendors the two workflow modules into `pdlc/engine/vendor/workflows/`, tarball-only, hash-manifested; two-root resolution | Relocating the modules under the package root — a three-consumer edit today (`build-runtime.mjs`, `sync-workflows.sh`, `run.test.js:45-46`), not a `git mv` | AF-1 weakens to tracked-ness, so an untracked byte-identical copy is uncovered (R-A) | Easy — delete the step and the second root |
+| DEC-EDIST-01 | §2 | `prepack` vendors the two workflow modules into `pdlc/engine/vendor/workflows/`, tarball-only, hash-manifested; two-root resolution | Relocating the modules under the package root — a **five**-consumer edit today (`build-runtime.mjs:94-97,531-533`, `sync-workflows.sh`, `run.test.js:45-46`, `MERGE_GUARD_DEFAULTS` at `orchestrate-dev.js:48-53`, `consolidationRoute.test.js:108-110`), not a `git mv`; four go red, the merge guard silently stops covering the path | AF-1 weakens to tracked-ness, so an untracked byte-identical copy is uncovered (R-A); AF-2 exists only behind a `prepack`-into-temp precondition | Easy — delete the step and the second root, and **delete AF-2 with them** |
 | DEC-EDIST-02 | §3 | One optional `_provenance = NO_PROVENANCE` parameter carrying engine-rendered `line`/`block`; AC-4.5 needs no carrier, AC-6.2 gets the engine half only | Three separate carriers, one per criterion — two of the three turned out to need none | Two injection objects and `PROP-PARITY-12`'s pinned seam lists grow a member each | Easy per placement; moderate whole |
 | DEC-EDIST-03 | §4 | Side-by-side version store under `$PDLC_HOME/versions/`, populated by `postinstall`, fronted by a resolving launcher (`dev ≻ pin ≻ latest`) | A single global install — cannot answer "what is installed" in the plural, so AC-5.1 and AC-5.5 are jointly unsatisfiable | On-disk machine state; a two-process hop (R-C); `postinstall` fragility (R-B) | **Hard** — retreat re-opens AC-5.5 |
-| DEC-EDIST-04 | §5 | A bare `PDLC_PLUGIN_ROOT` is ignored with a catalogue notice; the `--plugin-root` flag keeps precedence | Refusing on it — but the variable is the product's own shipped remedy text (`handshake.mjs:131-134`), so refusal punishes operators mid-refusal | One branch, one message, plus the `REMEDY` text update | Easy — same single branch either way |
+| DEC-EDIST-04 | §5 | A bare `PDLC_PLUGIN_ROOT` is ignored with a catalogue notice; the `--plugin-root` flag keeps precedence | Refusing on it — but the variable is the product's own shipped remedy text (`handshake.mjs:131-134`), so refusal punishes operators mid-refusal | One branch, one message, the `REMEDY` text update, **and two assertions of its own** — the catalogue equality covers *registration* (and in reverse obliges an emitter); the ignore-branch trigger and the notice's rendered text are not covered by it | Easy — same single branch either way |
 | DEC-EDIST-05 | §6 | An explicit `files` allow-list, checked by member-for-member equality against §5.4's literal table via a real `npm pack` | An `.npmignore` deny-list — a forgotten entry **ships** what should not, silently, to consumers | §5.4's table is hand-maintained; a glob would make PF-4 vacuous | Easy in code; the equality discipline is not |
-| DEC-EDIST-06 | §7 | The launcher hop is `spawnSync` with `stdio: "inherit"`, re-raising the child's exit code | In-process `import()` — one ESM registry would force resident versions to share one SDK tree | Two Node startups per run (R-C); pass-through needs a real spawning oracle, not a double | Easy |
-| DEC-EDIST-07 | §8 | `--version` and `doctor` **resolve but never refuse**; refusing branches degrade to notices, exit 0 in both states | Exempting them from resolution entirely — breaks AC-1.4's one-triple rule in exactly the pinned case | An exemption list of two, asserted in both states | Easy — a branch in the launcher |
+| DEC-EDIST-06 | §7 | The launcher hop is `spawnSync` with `stdio: "inherit"`, re-raising the child's exit code | In-process `import()` — one ESM registry would force resident versions to share one SDK tree | Two Node startups per run (R-C); pass-through needs a real spawning oracle, not a double; a signalled child maps to `128 + signum` rather than to `spawnSync`'s `status: null` | Easy |
+| DEC-EDIST-07 | §8 | `--version` and `doctor` **resolve but never refuse**; refusing branches degrade to notices, exit 0 in both states | Exempting them from resolution entirely — breaks AC-1.4's one-triple rule in exactly the pinned case | An exemption list of two, asserted in **three** states — including `doctor` over a corrupt config, the composition with DEC-EDIST-08 that is the only route out of branch 0 | Easy — a branch in the launcher |
 | DEC-EDIST-08 | §9 | `readEngineConfig`'s `engine` read returns `absent`/`no-pin`/`unreadable`; ladder branch 0 refuses on `unreadable` **even with no pin declared** | "Unparseable, therefore assume no pin" — indistinguishable by construction from the case AC-5.5 exists to prevent | The one **operator-visible** change: a previously-running corrupt-config repo now refuses | Easy in code, visible in behaviour |
 | DEC-EDIST-09 | §10 | `bin/pdlc.mjs` becomes a dependency-free guard (promise-chained `import("./cli.mjs")`); the CLI body moves to `bin/cli.mjs` | A guard atop the existing file — ESM static imports evaluate first, so six imports throw before its first statement | No top-level `await` (parse-level, Node 14.8+); the move is not byte-identical; syntax subset is documented, not parsed (R-E) | Mechanically easy; load-bearing for AC-2.4 |
 | DEC-EDIST-10 | §11 | `publish.yml` carries its **own copy** of the five gate job bodies; `pr-tests.yml` is not touched | A reusable `gate.yml` — renders as `{caller} / {called}`, renaming all five checks a consumer polls while the arrangement oracle stays green | Duplication, paid for by a run-command set-equality; job-level `uses:` is made to fail the gate | **Hard in practice** — reversal renames live consumer-polled checks |
