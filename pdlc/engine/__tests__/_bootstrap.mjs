@@ -45,6 +45,22 @@ export class HermeticityViolationError extends Error {
   }
 }
 
+// --- 0. run-id presence guard ------------------------------------------------
+//
+// Fails loudly, at import time, when PDLC_TEST_RUN_ID (or its derived
+// PDLC_TEST_RUN_DIR) is unset — rather than minting a private id/dir on
+// first use. This is the same rule `writeObservation` below enforces at
+// call time; asserting it here too means an unset id is caught the moment
+// this module is preloaded into a test-file child process, even for a test
+// file that never calls `writeObservation` itself (PROP-SUITE-3).
+if (!process.env.PDLC_TEST_RUN_ID || !process.env.PDLC_TEST_RUN_DIR) {
+  throw new Error(
+    "hermeticity bootstrap: PDLC_TEST_RUN_ID and PDLC_TEST_RUN_DIR must both be set " +
+      "by the suite runner before this bootstrap is imported — it never mints its own " +
+      "(TSPEC §7.0)",
+  );
+}
+
 // --- 1. Construction guard --------------------------------------------------
 
 function commandBasename(command) {
