@@ -19,7 +19,7 @@ depends-on: [pdlc-headless-engine]
 
 *0.7 (2026-08-13, review round 1): §1.1 re-measured at `89babe8e` and its code-level facts moved
 to `docs/_constraints/pdlc-engine-baseline.md` as M-ENG-10…M-ENG-13, cited by id. BL-03 resolved
-by new **O-7** (two versions of record; the tag is an engine tag), so T-1, AC-1.4 and AC-3.6 name
+by new **O-7** (two versions of record; the tag is an engine tag), so T-1a/T-1b, AC-1.4 and AC-3.6 name
 which value they read. O-8 extended to all three publish blockers (licence, `private`, unscoped
 name). T-7/AC-3.4 restated as set-equality over M-ENG-10's literal check names. Packaging↔anti-fork
 collision recorded as **R-5** and AC-1.3 restated as set-equality over the packed file list. New
@@ -34,21 +34,15 @@ the licence field must stop saying `UNLICENSED` before first publish (new O-8). 
 `pdlc-install-mechanism` closed as superseded, `pdlc-release-ci` kept and renarrowed to release
 automation for that package; both dispositions written into `docs/_queue/QUEUE.md`.*
 
-*0.5 (2026-08-13): §7 obligations corrected against already-shipped/adjudicated fact — O-2, O-4,
-O-5 and O-6 answered and closed against citations in the headless-engine and plugin-retirement
-REQs and the shipped engine code; O-1 and O-3 left open at v0.5 and decided at v0.6; NG-1 records
-that the repo is public today, so its disqualifier currently excludes no channel; T-3 gets a
-parenthetical naming the shipped `pdlcPluginCompat` field; O-5's TSPEC note flags a real tension
-between T-6 (dev-mode never inferred) and the already-shipped `PDLC_PLUGIN_ROOT` env override.*
+*0.5 (2026-08-13): O-2, O-4, O-5, O-6 answered against shipped code and adjudicated fact; NG-1
+records that the repo is public; T-3 names the shipped `pdlcPluginCompat` field.*
 
-*0.4 (2026-08-10): queue-row references repointed to feature names (stale Order numbers from a
-pre-renumbering table draft); ready flipped by operator review 2026-08-10.*
+*0.4 (2026-08-10): queue-row references repointed to feature names; `ready` flipped by operator.*
 
 > **v0.3 change (2026-08-08, operator decision).** The engine package no longer snapshots
 > `pdlc/skills/**`; it ships CLI + modules + adapter only and reads skills from the installed
 > plugin at dispatch time. A declared engine↔plugin compatible-version range replaces
-> snapshot-integrity verification. See §6 and §7 for the risks and obligations this narrows
-> or adds.
+> snapshot-integrity verification.
 
 > **Scope in one line.** Package the headless engine — CLI entry, the unmodified workflow
 > modules, and the engine adapter, **no skills snapshot** — as **one versioned artifact**
@@ -93,11 +87,11 @@ files, never from the run's own output. O-F is why.
 
 ### 1.2 The queue rows this REQ touches
 
-| Queue row (by feature) | Binds | This REQ proposes |
+| Queue row (by feature) | Binds | Landed disposition (O-3) |
 |---|---|---|
-| `pdlc-install-mechanism` (blocked, REQ never authored) | D-DIST-01 (full `pdlc install`), D-DIST-02 (load workflows from the plugin path with no copy), D-DIST-03 (auto-sync), D-DIST-05 (plugin-cache detection) | **Close as superseded.** All four improve the *copy*; `pdlc-headless-engine` removes the copy and this row replaces the install story wholesale. Operator decision — O-3. |
-| `pdlc-install-mechanism`, cont. | D-DIST-07 (per-worktree consumer state) | **Closes by construction** once `pdlc-headless-engine` ships: the engine reads no worktree-local `.claude/workflows/`. Recording that closure is part of O-3. |
-| `pdlc-release-ci` (blocked, REQ never authored) | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Absorb or renarrow.** The tag → build → publish pipeline this REQ needs (§5, REQ-EDIST-03) *is* that remainder. Operator decision — O-3. |
+| `pdlc-install-mechanism` | D-DIST-01 (full `pdlc install`), D-DIST-02 (load workflows from the plugin path with no copy), D-DIST-03 (auto-sync), D-DIST-05 (plugin-cache detection) | **Closed as superseded.** All four improve the *copy*; `pdlc-headless-engine` removes the copy and this feature replaces the install story wholesale. |
+| `pdlc-install-mechanism`, cont. | D-DIST-07 (per-worktree consumer state) | **Dissolved, not transferred** — it is a property of the `.claude/workflows/` copy; re-opens against `pdlc-engineering-loop` if `pdlc-plugin-retirement` does not land (O-3). |
+| `pdlc-release-ci` | D-DIST-06 remainder — release automation on `yumo-plugins` (the PR-test half landed out of band in `3ef6ac7`) | **Kept and renarrowed** to the tag → build → publish pipeline of §5, REQ-EDIST-03, and made dependent on this feature. |
 
 Both dispositions have since been recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13):
 `pdlc-install-mechanism` is closed as superseded and `pdlc-release-ci` is kept, renarrowed to
@@ -121,7 +115,7 @@ release automation for this package and made dependent on this feature. Rows are
 |---|---|---|---|
 | BL-01 | `pdlc-headless-engine` delivered: a CLI entry that executes the canonical modules and dispatches via headless Claude Code | PR merged to the default branch, queue row `done` | Must hold at HEAD before FSPEC authoring — there is no engine to package otherwise |
 | BL-02 | Distribution channel chosen (O-1), against the privacy posture in NG-1 | Decision recorded in `docs/_decisions/DECISIONS-plugin-distribution.md` | Must exist before FSPEC authoring; every install/upgrade criterion in §5 is stated over "the chosen channel" |
-| BL-03 | Version-of-record settled (T-1) — which manifest each of the two version numbers at O-C is the record for, and which one a release tag names | **Resolved at O-7**, to be transcribed into `docs/_decisions/DECISIONS-plugin-distribution.md` before FSPEC authoring | Must exist before FSPEC authoring; provenance (REQ-EDIST-04) and publish gating (REQ-EDIST-03) both read it |
+| BL-03 | Version-of-record settled (T-1a/T-1b) — which manifest each of the two version numbers at O-C is the record for, and which one a release tag names | **Resolved at O-7**, to be transcribed into `docs/_decisions/DECISIONS-plugin-distribution.md` before FSPEC authoring | Must exist before FSPEC authoring; provenance (REQ-EDIST-04) and publish gating (REQ-EDIST-03) both read it |
 | BL-04 | Operator decision on the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows (O-3) | Prose recorded in `docs/_queue/QUEUE.md` per its conventions | **Met 2026-08-13** — both dispositions are in `QUEUE.md`; without them this REQ silently duplicates two bound deferrals |
 
 ## 2. Goals
@@ -490,140 +484,95 @@ the committed artifacts.
 
 ## 7. Obligations / Open Questions
 
-Each of O-1 through O-5 is already cited from a BL row, NG row, or T row above; this section
-is their single point of resolution, plus O-6, new for the compat-range handshake.
+Each obligation is cited from a BL, NG or T row above; this section is their single point of
+resolution. Decisions are stated once — the earlier draft's "recommendation then decision"
+duplication (which disagreed with itself at O-1) is collapsed here.
 
-- **O-1 — Distribution channel choice.** Private npm registry, public npm, or git-tag
-  install — chosen against the privacy posture at NG-1. Blocks FSPEC authoring (BL-02).
-  *Owner:* operator. *Resolution form:* `docs/_decisions/DECISIONS-plugin-distribution.md`.
-  **Decided 2026-08-13 — public npm, scoped package.** Load-bearing fact this REQ did not previously state: the repo
-  is already public (`gh repo view ohenak/yumo-plugins` reports `visibility: PUBLIC`), and
-  the whole prompt corpus — `pdlc/skills/**`, also embedded in
-  `pdlc/workflows/orchestrate-dev.js` — is already world-readable, so NG-1's disqualifier
-  excludes no candidate channel today: every option is privacy-equivalent to the status quo.
-  That reduces this to one question for the operator — does the repo stay public? If yes,
-  public npm (scoped) wins on the non-privacy axis: one-command install/upgrade, native
-  immutability via republish-refusal on an existing version (satisfying C-7), and `npm
-  deprecate` as a yank primitive that a git-tag install lacks (a GitHub release asset or a
-  bare tag is force-pushable/replaceable, in tension with C-7); publish is a plain `npm
-  publish` CI step. The package's `pdlc/engine/package.json` should carry `"license":
-  "UNLICENSED"` and declare `@anthropic-ai/claude-agent-sdk` as its dependency regardless of
-  which channel is chosen.
-
-  **Decision: public npm, scoped package.** The repo stays public, so NG-1's privacy disqualifier
-  excludes nothing, and among privacy-equivalent options npm wins on the axes that matter here:
-  one-command install and upgrade, native immutability (a republish of an existing version is
-  refused, which is what C-7 asks for), a real yank primitive in `npm deprecate`, and a publish step
-  that is one `npm publish` in CI. Git-tag install was rejected on C-7 alone — a bare tag is
-  force-pushable, so the version pointer is not immutable. A private registry was rejected as cost
-  without benefit against an already-public corpus. The scope name is a publish-time detail for
-  FSPEC; the working assumption is a scope the operator owns. Recorded at project level as
-  **DEC-DIST-05** in `docs/_decisions/DECISIONS-plugin-distribution.md`. This unblocks BL-02 and
-  therefore FSPEC authoring.
-
-  One precondition it creates, tracked as **O-8**: `pdlc/engine/package.json` declares
-  `"license": "UNLICENSED"`. Publishing an UNLICENSED package to public npm is self-contradictory,
-  so the licence must be settled — by the operator, not by FSPEC — before the first publish, and the
-  `@anthropic-ai/claude-agent-sdk` dependency's own terms checked against whatever is chosen.
-  Blocking for publish, not for FSPEC.
-- **O-2 — Pin mechanism.** How a per-project pin (T-5) is expressed and read — a file in the
-  consumer repo (which NG-6 forbids the engine from *writing*, but reading an
-  operator-authored one is not writing), an environment variable, or a CLI flag supplied at
-  invocation. Shapes AC-5.1–AC-5.5. *Owner:* operator, informed by TSPEC. *Resolution form:*
-  `docs/_decisions/DECISIONS-plugin-distribution.md` or the TSPEC directly.
-  **Answered 2026-08-13.** Pin key lives under the `engine.*` namespace (e.g. `engine.pin`)
-  in the consumer-owned `.claude/pdlc.config.json`, read by the engine at startup; the engine
-  never writes it. Grounded in **DEC-HE-02**
-  (`docs/completed/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md`), which
-  already reserves `engine.*` as the engine's only config surface and closes the "second pin
-  file vs. env var" ambiguity this REQ raised — reading an operator-authored file is not
-  writing (NG-6 forbids only the latter). An env var was considered and rejected: it is
-  per-shell, not per-project, failing T-5's scoped-pin requirement and AC-5.1's "never
-  silent" bar (a forgotten env var is silent by definition). Note the coupling to O-1: AC-5.1
-  requires the pinned version to *execute* while another is latest — side-by-side version
-  resolution, not just a pointer, is needed once a real registry channel is chosen; that
-  mechanism is the TSPEC's to specify.
+- **O-1 — Distribution channel choice.** Blocks FSPEC authoring (BL-02). *Owner:* operator.
+  *Resolution form:* `docs/_decisions/DECISIONS-plugin-distribution.md`.
+  **Decided 2026-08-13 — public npm, scoped package,** recorded as **DEC-DIST-05**. The repo is
+  public (NG-1), so the corpus is already world-readable and every candidate channel is
+  privacy-equivalent to the status quo; among equivalents npm wins on one-command
+  install/upgrade, native immutability (republishing an existing version is refused — what C-7
+  asks), a real yank primitive in `npm deprecate`, and a publish step that is one CI command.
+  Git-tag install was rejected on C-7 alone (a bare tag is force-pushable). A private registry
+  was rejected as cost without benefit against an already-public corpus. The scope name is a
+  publish-time detail for FSPEC. This unblocks BL-02. Publish preconditions it creates are O-8.
+- **O-2 — Pin mechanism.** How a per-project pin (T-5) is expressed and read. Shapes
+  AC-5.1–AC-5.5. *Owner:* operator, informed by TSPEC.
+  **Answered 2026-08-13.** The pin lives under the `engine.*` namespace in the consumer-owned
+  `.claude/pdlc.config.json`, read by the engine and never written by it — grounded in
+  **DEC-HE-02** (`docs/completed/pdlc-headless-engine/DECISIONS-headless-engine-obligations.md`),
+  which already reserves `engine.*` as the engine's only config surface. Reading an
+  operator-authored file is not writing (NG-6 forbids only the latter). An env var was rejected:
+  per-shell, not per-project, failing T-5 and AC-5.1's "never silent" bar. Coupling to O-1:
+  AC-5.1 requires the pinned version to *execute* while another is latest, so side-by-side
+  version resolution — not just a pointer — is the TSPEC's to specify.
 - **O-3 — Disposition of the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows.**
-  Whether `pdlc-install-mechanism` (D-DIST-01/02/03/05/07) is closed as superseded and
-  `pdlc-release-ci` (D-DIST-06 remainder) is absorbed or renarrowed into REQ-EDIST-03, per §1.2. Required before this REQ
-  is accepted (BL-04), so it does not silently duplicate two bound deferrals. *Owner:*
-  operator. *Resolution form:* prose recorded in `docs/_queue/QUEUE.md` per its conventions.
-  **Decided 2026-08-13.** Recommendation for
-  record: `pdlc-install-mechanism` (queue Order 7) closes **superseded** —
-  D-DIST-01/02/03/05 are all improvements to the per-project copy mechanism this family
-  deletes outright, and D-DIST-07 (per-worktree consumer state) closes **by construction**
-  since the engine reads no worktree-local `.claude/workflows/`. `pdlc-release-ci` (queue
-  Order 8) should be **renarrowed, not absorbed wholesale**: D-DIST-06's PR-test half is
-  already discharged out of band in `3ef6ac7`, so only its release-automation remainder maps
-  onto REQ-EDIST-03 here.
-
-  **Decision, 2026-08-13, written into `docs/_queue/QUEUE.md`.** Queue row 7
-  `pdlc-install-mechanism` is **closed as superseded**: D-DIST-01/02/03/05 are absorbed by the
-  renarrowed REQ-EDIST-03 (§1.2), and D-DIST-07 (per-worktree consumer state) dissolves rather than
-  transfers — it is a property of the `.claude/workflows/` consumer copy, which
-  `pdlc-plugin-retirement` (row 5) removes. If retirement does not land, D-DIST-07 re-opens against
-  `pdlc-engineering-loop` (row 6); that conditional is recorded in the queue note so the deferral
-  cannot vanish silently. Queue row 8 `pdlc-release-ci` is **kept and renarrowed**: its PR-test half
-  already landed in `3ef6ac7`, and what remains is release automation for the package O-1 just chose
-  — tag, publish, and the rendered version lines. It gains a dependency on this feature. Neither row
-  is left silently deferred, which is what BL-04 required.
-- **O-4 — Fate of `pdlc/workflows/dist/pdlc-cli.mjs`.** Whether the existing state-probe CLI
-  is absorbed into the engine package or stays a project-local artifact of the plugin build
-  (NG-7's default). *Owner:* operator. *Resolution form:* decision doc, or silence — the
-  default holds if nothing is recorded.
-  **Closed 2026-08-13.** `pdlc/workflows/dist/pdlc-cli.mjs` stays a project-local artifact of
-  the plugin build, per NG-7's default; this is not overridden. It is also confirmed as the
-  headless-engine REQ's own **NG-2** (non-goal) and named as **G-5**'s kept CLI machinery in
-  `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md`'s **NG-2** non-goal — three
-  independent REQs now agree the artifact stays. It remains a manifest row (id `pdlc-cli`) in
-  `pdlc/workflows/dist/distribution-manifest.json`, emitted by `build-runtime.mjs` and synced
-  by `sync-workflows.sh`; its document oracles resolve against `process.cwd()` by design,
-  project-local, and are unaffected by this feature.
-- **O-5 — Dev-mode design.** The explicit selector's shape (flag, env var, or both — T-6),
-  how a dev-mode run is marked in its artifacts (AC-5.3), and what "the checkout's prompts"
-  resolves to when run in dev-mode (presumably `pdlc/skills/**` at the checkout's working
-  tree, standing in for "the installed plugin" for that one run — TSPEC to state this
-  explicitly, since dev-mode is the one path where the engine *does* read skills from a
-  location other than an installed plugin). *Owner:* this REQ's TSPEC. *Resolution form:*
-  TSPEC section, surfaced in the FSPEC-level behaviour already fixed by AC-5.3/AC-5.4.
-  **Answered 2026-08-13, one tension left for the TSPEC to resolve.** The engine already
-  ships a dev-mode override: the `PDLC_PLUGIN_ROOT` env var / `--plugin-root` flag
-  (`pdlc/engine/lib/skills.mjs:40-54`, exported as `PLUGIN_ROOT_ENV` at `:54`; wired in
-  `pdlc/engine/bin/pdlc.mjs`), documented in-code as how the repo's own checkout is used, and
-  named at `pdlc/engine/lib/handshake.mjs:134` as the compat-refusal remedy. TSPEC should
-  **adopt this selector rather than invent a second one**, with three riders: (1) dev-mode is
-  the conjunction of running the checkout's engine *and* pointing `--plugin-root` at the
-  checkout's `pdlc/`; (2) AC-5.3's artifact-marking is genuinely new work — nothing marks a
-  `--plugin-root` run today, `lib/report.mjs` carries `engineVersion`/`pluginVersion` but no
-  dev/channel field; (3) there is a **real tension with T-6**: T-6 requires the selector never
-  be inferred from env presence, but the shipped `PDLC_PLUGIN_ROOT` env var *is* honored on
-  presence alone today, so an exported-and-forgotten env var would silently switch skill
-  source for every subsequent run. TSPEC must resolve this tension explicitly — e.g. by
-  restricting dev-mode to the per-invocation flag, with the env var honored only when a
-  companion flag or marker forces the run to declare and label itself — not paper over it.
-- **O-6 — Compatible-plugin-range declaration and per-release pairing record.** Where the
-  engine's declared range lives (T-3's manifest field), what range syntax it uses (a semver
-  range expression is assumed; TSPEC fixes the grammar), and where the pairing a release
-  actually shipped with is documented — a release-notes convention, a field in the
-  distribution manifest discipline already established at O-D, or both. Read by the CLI
-  startup banner, every run report (REQ-EDIST-04), and the publish workflow's hard gate
-  (AC-3.7). *Owner:* this REQ's TSPEC. *Resolution form:* TSPEC section; the publish
-  workflow's YAML is where the gate becomes real (C-10 keeps that detail out of this REQ).
-  **Answered 2026-08-13** for the declaration half; per-release pairing record stays open,
-  genuinely a third question this text already anticipates, not closed by prior work.
-  Declaration syntax: `pdlc/engine/package.json`'s `pdlcPluginCompat` field (M-ENG-06,
-  `docs/_constraints/pdlc-engine-baseline.md`; headless-engine REQ's C-10, T-3; TSPEC at
-  `pdlc/engine/lib/handshake.mjs:93`), a semver range — `^x.y.z`, `~x.y.z`, or exact `x.y.z`
-  — checked at runtime by the handshake and at CI time by TSPEC's AC-3.7 skew gate.
-  Per-release pairing record resolves the existing manifest discipline (O-D): the publish
-  workflow already computes plugin version and tagged commit for the AC-3.7 gate, so it
-  should (a) write `{engineVersion, pdlcPluginCompat, pluginVersionAtTag}` into a manifest
-  file inside the published package, mirroring `distribution-manifest.json`'s per-artifact
-  discipline, satisfying AC-1.5's "decidable per-release" without network archaeology, and
-  (b) emit the same triple into the GitHub Release notes, making R-2's too-loose-range risk
-  reviewable at release time rather than only at incident time.
-- **O-8 — Licence and publishability of the engine package** (opened by O-1's decision,
-  2026-08-13). `pdlc/engine/package.json` declares `"license": "UNLICENSED"`, which contradicts
-  publishing to public npm. The operator must settle the licence, and check the
-  `@anthropic-ai/claude-agent-sdk` dependency's terms against the choice, before the first publish.
-  *Owner:* operator. *Blocking for:* first publish (AC-6.x release path), not for FSPEC authoring.
+  Required before this REQ is accepted (BL-04). *Owner:* operator. *Resolution form:*
+  `docs/_queue/QUEUE.md`.
+  **Decided 2026-08-13 and written into `QUEUE.md`.** `pdlc-install-mechanism` is **closed as
+  superseded**: D-DIST-01/02/03/05 are improvements to the per-project copy this family deletes,
+  absorbed by the renarrowed REQ-EDIST-03 (§1.2); D-DIST-07 (per-worktree consumer state)
+  dissolves rather than transfers, being a property of the `.claude/workflows/` copy that
+  `pdlc-plugin-retirement` removes — if retirement does not land it re-opens against
+  `pdlc-engineering-loop`, and that conditional is recorded in the queue note so the deferral
+  cannot vanish silently. `pdlc-release-ci` is **kept and renarrowed** to release automation for
+  the package O-1 chose (its PR-test half landed out of band in `3ef6ac7`), and gains a
+  dependency on this feature. Rows are named by feature, never by Order number.
+- **O-4 — Fate of `pdlc/workflows/dist/pdlc-cli.mjs`.** *Owner:* operator.
+  **Closed 2026-08-13.** It stays a project-local artifact of the plugin build, per NG-7's
+  default; confirmed as the headless-engine REQ's NG-2 and named in
+  `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md`'s NG-2 — three REQs agree. It
+  remains a manifest row (`pdlc-cli`) emitted by `build-runtime.mjs` and synced by
+  `sync-workflows.sh`, project-local and unaffected by this feature.
+- **O-5 — Dev-mode design.** The selector's shape (T-6), how a dev-mode run is marked
+  (AC-5.3), and what "the checkout's prompts" resolves to. *Owner:* this REQ's TSPEC.
+  **Answered 2026-08-13, one tension routed.** The engine already ships the `PDLC_PLUGIN_ROOT`
+  env var / `--plugin-root` flag (M-ENG-06; named at `pdlc/engine/lib/handshake.mjs:134` as the
+  compat-refusal remedy); TSPEC should **adopt it rather than invent a second selector**, with
+  three riders: (1) dev-mode is the conjunction of running the checkout's engine *and* pointing
+  the selector at the checkout's `pdlc/`; (2) AC-5.3's artifact-marking is genuinely new work —
+  nothing marks such a run today (M-ENG-13); (3) the tension with T-6 (the env var is honoured
+  on presence alone) is no longer left to the TSPEC to notice: **AC-5.6 now fixes the required
+  observable behaviour**, and the TSPEC picks which of its two permitted branches to implement.
+- **O-6 — Per-release pairing record.** Where the pairing a release actually shipped with is
+  documented, read by AC-1.5. *Owner:* this REQ's TSPEC. The declaration half is settled: the
+  range lives in `pdlcPluginCompat` (T-3, M-ENG-11) as a semver range — `^x.y.z`, `~x.y.z` or
+  exact — checked at runtime by the handshake and at CI time by AC-3.7.
+  **Open, and deliberately single-writer.** The publish workflow already computes both numbers
+  for the AC-3.7 gate, so it writes the triple `{engine version, compat range, plugin version at
+  tag}` **once**, into a manifest file inside the published package (mirroring O-D's discipline)
+  — that record satisfies AC-1.5 without network archaeology. Any release-notes rendering must
+  be *derived from* that record by the same job, never independently authored: two writers would
+  be two drift surfaces. Whether the rendering is produced at all is the TSPEC's call.
+- **O-7 — Version of record, resolving BL-03** (opened by review round 1). Two version numbers
+  exist (O-C, M-ENG-11) and they are independent. **Decided:** they are **two records, not one
+  contested record** — `pdlc/engine/package.json` is the engine version of record (T-1a) and
+  `pdlc/.claude-plugin/plugin.json` is the plugin version of record (T-1b). A release tag names
+  an engine version (T-4), and AC-3.6 compares the tag against T-1a only; the plugin's number is
+  never a tag subject and enters only through the compat range (AC-3.7). Rebasing the engine's
+  number onto the plugin's was rejected: it would re-couple the two release cadences this
+  feature exists to separate. *Owner:* operator. *Resolution form:* transcribe into
+  `docs/_decisions/DECISIONS-plugin-distribution.md` before FSPEC authoring — **the transcription
+  is what discharges BL-03**, not this paragraph.
+- **O-8 — Publish preconditions of the engine package** (opened by O-1, extended by review
+  round 1). Three declared facts each independently prevent a first publish, and `npm publish`
+  fails on them in this order (M-ENG-11): (1) `"private": true` — refused outright, before
+  licence or credentials; (2) the package name `pdlc-engine` is **unscoped**, while O-1/DEC-DIST-05
+  decided a scoped package; (3) `"license": "UNLICENSED"`, self-contradictory for public npm, with
+  the `@anthropic-ai/claude-agent-sdk` dependency's own terms to be checked against whatever
+  replaces it. All three must be settled by the operator. *Owner:* operator. *Blocking for:*
+  first publish (AC-3.1), not for FSPEC authoring.
+- **O-9 — Provenance carrier for the committed halt artifacts** (opened by review round 1).
+  AC-4.2 requires the version pair in artifacts written by the layer that structurally cannot
+  see a version (M-ENG-13). The requirement stands as a user-observable outcome; **how the pair
+  crosses the engine↔module boundary is the TSPEC's to specify**, and it is a real design
+  decision, not a wording fix. Until it is taken, AC-4.2 has no implementation. *Owner:* this
+  REQ's TSPEC. *Blocking for:* Phase 1 delivery of REQ-EDIST-04.
+- **O-10 — Package composition against the anti-fork oracle** (opened by review round 1).
+  R-5's three resolutions for getting the workflow modules inside the package, and the
+  consequence each has for the shipped assertions at M-ENG-12. AC-1.3 constrains the outcome;
+  the choice and any revision of the anti-fork oracle belong to the TSPEC, and a resolution that
+  silently drops the anti-fork property is not acceptable. *Owner:* this REQ's TSPEC.
+  *Blocking for:* Phase 1 delivery of REQ-EDIST-01.
