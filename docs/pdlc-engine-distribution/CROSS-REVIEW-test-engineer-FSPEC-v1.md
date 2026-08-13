@@ -36,8 +36,60 @@ tree, not against the REQ's or the FSPEC's account of it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §5.2's "Engine adapter" row: does it mean `pdlc/engine/lib/adapter.mjs` — in which case it is already inside the "twelve `lib/*.mjs` files" row and the two rows double-count one file — or `pdlc/workflows/runtime-adapter.js`, which `adapter.mjs:8-13` says is **deliberately not ported**? Member-for-member equality cannot be computed while one member may be counted twice or may name a file the engine explicitly does not carry. |
+| Q-02 | AT-2.2 asserts "exactly one occurrence" of the install command in the tree. `pdlc/README.md:138-139` documents the plugin install and `:145` gives a local-marketplace variant of the *same* command — so the plugin install already exists twice by design. If the engine install gains an equivalent fallback variant, does AT-2.2 fail, or is "one occurrence" scoped to the canonical form only? A grep-shaped oracle needs the answer before it is written. |
+| Q-03 | Q-7 defers M-ENG-10's closing sentence (`docs/_constraints/pdlc-engine-baseline.md:209`, still "a change means changing the fact first") to a later pass. That leaves two live sentences claiming change-control over one set for the duration of Phase 1 — the exact divergence round-4 F-01 raised. Is the deferral bounded by anything observable (e.g. "before the §5.1 carrier lands"), or does it rely on nobody editing the matrix in the interim? |
+| Q-04 | F-7 step 3's conjunct (1) is "the run completed and emitted its own named output artifacts" — which an engine run also satisfies (round-4 F-02, now Q-2). §8's AT-6.2 is honest that it claims no more. Is the intended interim discharge of AC-6.2 therefore a *manual* observation with the install state recorded out of band? If so, saying so in AT-6.2 costs one clause and stops a later reader from mistaking it for an automated test that passes. |
+
 ## Positive Observations
+
+- **§5.1 is a model expected set and it survives literal checking.** All five authored strings and
+  both rendered names match `pr-tests.yml:28,78,112,138,196` byte for byte, including the easily
+  paraphrased `Generated artifacts **are** in sync`. Transcribing rather than describing is what
+  makes AT-3.4 writable without reading the workflow first, and it is the discipline F-01 asks the
+  neighbouring §5.2 to adopt.
+- **BR-5.1.4 answers round-3/round-4 F-03 exactly at the right level.** A dated, one-time,
+  explicitly *non-gating* provenance seed is the correct resolution for a locally re-implemented
+  expansion rule that would otherwise only ever be compared against itself — and saying "it never
+  gates a build" in the rule itself forecloses the obvious mis-implementation.
+- **AT-4.4 / BR-5.4 is a properly falsifiable anti-echo oracle.** "Change it, observe; revert it,
+  observe again — a constant that matches once fails the second observation" is precisely the
+  structure that kills a hardcoded provenance string, and it needs no new carrier to write.
+- **The absence-only oracles are paired throughout.** F-3 step 6 spells out why the upgrade leg's
+  positive must be a *change* rather than a match; AC-3.2/AT-3.2 assert on the run's **conclusion**
+  rather than on the absence of a package; F-5 step 8 demands two positives on *either* branch of
+  the re-run disjunction. This is the failure mode this repo's DC-07/oracle-falsifiability rules
+  exist for, and the document handles it without being asked.
+- **AT-6.2 states its own limit instead of dressing it up.** "The test asserts exactly this
+  conjunction and claims no more" — with the reason and the owning question cited — is a better
+  outcome than a fixture that distinguishes nothing while looking rigorous.
+- **§5.2's exclusion note discharges round-4 Q-02 honestly**: it records that excluding
+  `pdlc/engine/__tests__/` takes a *deliberate packaging decision* given `files` is absent
+  (verified: `pdlc/engine/package.json` has no `files` key), rather than assuming the omission.
 
 ## Recommendation
 
+**Needs revision**
+
+Three High findings, all of the same family and all cheap to fix: two expected sets whose oracle
+sentence does not yet describe a test that can fail (F-01's unenumerated packed set, F-02's
+authored alphabet that includes step names and this feature's own publish workflow), and one AT
+family with no seam to run against (F-03). None of these is a content gap — the behaviour the FSPEC
+specifies is right, and §5.1 already demonstrates the exact discipline §5.2 needs. What is missing
+is the last mile between "stated as a set-equality" and "a set-equality an implementer can
+transcribe and watch go red".
+
+Concretely, to clear the Highs: enumerate §5.2's members literally and mark AT-3.8's
+workflow-module half `[blocked on O-10]`; scope BR-5.1.1 to job-level `name:` keys of the named
+PR-gate workflow file and exclude the publish workflow explicitly; and add to F-5 the injectable
+channel seam that F-4 step 6 already establishes as this document's own precedent. The Mediums
+(label mismatch, AT-2 execution environment, §5.3's carrier, the unpublishable manifest) are each
+one to three sentences.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 4, "low": 1}
+
