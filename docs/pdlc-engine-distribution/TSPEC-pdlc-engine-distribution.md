@@ -515,12 +515,43 @@ _provenance: provenance = NO_PROVENANCE,   // module-level frozen null-object
 |---|---|
 | P-1 | **Default-inert.** `NO_PROVENANCE` is a module-level constant with empty `line`/`block`. A runtime that supplies nothing produces byte-identical artifacts to today. This is the same guarantee the advisory tier ships with (`advisoryDisabled.test.js`, PROP-DIS-*), and it is what keeps NG-5 true |
 | P-2 | **Data, never capability.** The seam is a frozen object of strings. The module calls nothing on it, imports nothing for it, and works unchanged inside the Claude Code workflow runtime where `import` does not exist |
-| P-3 | **Three placements, all script-owned.** (a) the final report gains `provenance`; (b) the POSTMORTEM gets `block` appended by the script; (c) the halted-queue-row commit message gets `line` |
+| P-3 | **Four placements, one per AC-5.3 kind, all script-owned.** See the placement table below. The earlier draft named three and was short of kind 4; §13's "exactly four kinds" was right and §7.2 was wrong |
 | P-4 | **Never agent-mediated.** Placement (b) is an `_appendFile` call *after* `_checkFile` confirms the POSTMORTEM exists (V-16), not a sentence in the agent prompt. An agent may paraphrase or omit a prompt instruction; an append cannot. AC-4.2 says the pair must be *in the committed bytes*, and only a script-owned write can promise that |
 | P-5 | **Absent provenance never blocks.** If `block` is empty, the append is skipped entirely — no empty section, no marker, no diff. A halt still halts |
 
-Placement (c) rides on `_recordQueueRow` (V-17), whose commit message this feature extends;
-the pathspec-scoped, single-file commit discipline is unchanged.
+**The placement table (AC-5.3's four kinds, set-equal).** AC-5.3 fixes the marked kinds by
+set-equality and says an unmarked kind fails, so each kind gets a named carrier and a named
+call site verified at HEAD:
+
+| Kind (AC-5.3 / FSPEC §5.3) | Carrier | Site |
+|---|---|---|
+| 1 — the run report | `provenance` field on the final report object | `buildFinalReport`'s returned record (`orchestrate-dev.js:13088` is the sibling `artifactPaths` field) |
+| 2 — every POSTMORTEM | `block` appended by `_appendFile` after `_checkFile` confirms the file (P-4) | `orchestrate-dev.js:11077-11110` (V-16) |
+| 3 — the `QUEUE.md` row the run rewrites | **both** the row's own text **and** the commit message that lands it | `rewriteStatus` (`orchestrate-queue.js:1572`) writes the row; `commitQueueRow` (`:1598`) composes the message |
+| 4 — every commit the run makes | `line` composed into the message by **one marked helper**, not by each call site | `commitPaths` (`orchestrate-dev.js:10408`; `git commit -m message` at `:10432`) and `commitQueueRow` |
+
+Two things this pins down that the earlier draft left loose:
+
+- **Kind 3 has two artifacts, not one.** The `QUEUE.md` row *text* and the commit message
+  that lands it are separate bytes on disk; marking only the message leaves the row itself
+  unmarked, and AC-5.3 asks about the row. Both get the mark.
+- **Kind 4 goes through a single helper.** Every script-owned commit already funnels through
+  `commitPaths` — the Phase I wave commits (`:12390`, `:12401`, `:12801`) and the queue row's
+  own commit — so `line` is composed into the message *inside* the helper. Marking each call
+  site individually would make "none is unmarked" depend on nobody forgetting; composing it in
+  one place makes it structural, and a new commit site inherits the mark by construction.
+
+**Kind 4's literal scope needs an upstream decision, and it is raised rather than assumed.**
+AC-5.3 says "the commit message of **every** commit the run makes". A run also produces
+commits the script does not make: authoring agents commit their own spec sections, and in wave
+mode the V-wave agent commits its own work. The script cannot promise those messages carry a
+mark for exactly P-4's reason — an agent may paraphrase or omit a prompt instruction. So
+either kind 4 means *every commit the script makes* (satisfiable, and what the helper above
+delivers) or it means every commit including agent-made ones (not satisfiable by any
+script-owned mechanism this design has). An erratum is raised against REQ AC-5.3 to settle it;
+this TSPEC builds the satisfiable reading and says so, rather than shipping a design whose
+AT-5.3 ("every kind it produced carries the mark and none is unmarked") would go red against a
+correct implementation.
 
 ### 7.3 The load root, and the half that stays open (AC-6.2, Q-2)
 
@@ -547,19 +578,54 @@ This is the "settle the first two on one carrier but not the third, and say so" 
 explicitly permits — taken deliberately, to keep Phase 1 scoped, and re-opened by name in
 §14 rather than dropped.
 
-### 7.4 AC-4.5 needs no carrier (V-14)
+### 7.4 AC-4.5 needs no new carrier, but does need new enumeration (V-14, corrected)
 
 The FSPEC marks AT-4.5 **[blocked]** on O-9 and says AC-4.5's authored-file enumeration is
-"new work of the same kind as AC-4.2's". Measurement says otherwise:
-`orchestrate-dev.js:11659` seeds `artifactPaths` with `reqPath`, `:11507` pushes each
-authored document, and `:13088` returns it on every report. The comparison set AC-4.5 and
-BR-5.3 require **already exists and is already emitted**.
+"new work of the same kind as AC-4.2's". The carrier half of that is wrong — `artifactPaths`
+ships, is returned on every report (`orchestrate-dev.js:13088`), and no new plumbing is
+needed. But the earlier draft over-read the measurement, and the corrected reading changes the
+work:
 
-What remains is not a carrier but a *completeness check*: the PLAN carries one task to
-verify by test that every document the pipeline authors reaches `artifactPaths` — the DoD
-`CODE_REVIEW-*` files and the LEARNINGS file being the paths most likely to be missing —
-and to fix any that do not. AT-4.5 is therefore **unblocked and scheduled in Phase 1**.
-This is raised as an erratum against the FSPEC rather than silently re-scoped here.
+- `artifactPaths` is seeded with `reqPath` (`:11659`).
+- **The only push site in the file** is `:11507`, and it is **conditional**:
+  `if (pushArtifact) artifactPaths.push(docPath)`, with `pushArtifact = true` defaulted at
+  `:11498`.
+- That site is reachable **only from `converge()`** — i.e. FSPEC, TSPEC, DECISIONS, PLAN,
+  PROPERTIES.
+- LEARNINGS is authored **outside** it, through harvest's own `wrappedDispatch`
+  (`:12690-12704`), and is never pushed.
+- Phase DOD's `CODE_REVIEW-*` files and every POSTMORTEM are never enumerated at all.
+
+So "every document the pipeline authors reaches `artifactPaths`" is **false at HEAD**, not
+merely unverified: a correct run authors `LEARNINGS-{feature}.md`, which is absent from the
+set. The earlier claim that the comparison set "already exists and is already emitted" does
+not hold, and AT-4.5 would go red against correct code.
+
+**The comparison set is therefore stated literally here**, because "every document" is not a
+testable predicate and an oracle needs one. The document classes that must appear in a run's
+`artifactPaths`, asserted as a **set-equality against the run's own report** (restricted to
+the classes the run actually produced):
+
+| # | Class | Reaches `artifactPaths` at HEAD? |
+|---|---|---|
+| 1 | `REQ-{feature}.md` | yes — seed (`:11659`) |
+| 2 | `FSPEC-{feature}.md` | yes — `converge()` |
+| 3 | `TSPEC-{feature}.md` | yes — `converge()` |
+| 4 | `DECISIONS-{feature}.md` | yes — `converge()`, when authored |
+| 5 | `PLAN-{feature}.md` | yes — `converge()` |
+| 6 | `PROPERTIES-{feature}.md` | yes — `converge()` |
+| 7 | `LEARNINGS-{feature}.md` | **no** — authored at `:12690-12704`, must be added |
+| 8 | `CODE_REVIEW-{feature}-v{N}.md` | **no** — Phase DOD, must be added |
+| 9 | `POSTMORTEM-{phase}-{feature}.md` | **no** — must be added |
+| 10 | `ADVISORY-{feature}.md` | **no** — must be added when the advisory tier is enabled |
+
+Stating the set as an equality rather than a subset is what makes it hold over time: a newly
+authored document class forces this list to be revisited, because the test goes red until it
+is. The PLAN carries the work as **fixing the four missing classes plus the equality test**,
+not as "verify the existing set" — which is a larger task than the earlier draft scheduled,
+and is the honest size. AT-4.5 is unblocked and scheduled in Phase 1. The FSPEC's "[blocked on
+O-9]" marking is still wrong (no O-9 carrier is needed), so the erratum against the FSPEC
+stands, now with the corrected reason.
 
 ## 8. Publish pipeline (F-5)
 
