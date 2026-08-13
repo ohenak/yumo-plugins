@@ -475,6 +475,36 @@ TSPEC's; **that** each item below is present and machine-checkable is fixed here
 
 ## 7. Edge cases and error scenarios
 
+| # | Scenario | Required behaviour | Rule |
+|---|---|---|---|
+| E-01 | No plugin installed | refuse before dispatch, naming the declared range and stating none is installed; diagnostic still runs | BR-1.2, BR-1.7 |
+| E-02 | Plugin installed, version outside the range | refuse, naming the range **and** the version found | BR-1.2 |
+| E-03 | Plugin present, manifest missing / unparseable / version field absent | refuse naming the root inspected and what was wrong — never degraded to "absent" | BR-1.3 |
+| E-04 | Two plugin roots resolvable (installed plugin + checkout) | one is selected by F-4's ordered rule and the selection is announced; ambiguity is never silent | BR-4.1 |
+| E-05 | Engine's own version unresolvable | refuse naming the corrupt install; never "unknown" and proceed | BR-1.6 |
+| E-06 | Node below the floor (T-2) | fail naming floor and found version; no partial install, no stack trace | BR-2.4 |
+| E-07 | Install/upgrade run from inside a consumer repo | still writes nothing into that repo; working tree and index unchanged | BR-2.1 |
+| E-08 | Pin names an uninstalled version | refuse, naming the pin and what is installed; never fall back | BR-4.3 |
+| E-09 | Pin present **and** dev-mode declared | dev-mode wins (BR-4.1) and the run announces that the pin was overridden — never silently ignored | BR-4.1, BR-4.4 |
+| E-10 | Pin value malformed (not a version the resolver understands) | refuse naming the offending value; malformed is not "no pin" | BR-4.3 |
+| E-11 | `.claude/pdlc.config.json` absent or has no `engine.*` section | treated as "no pin", announced as such; the file is not created | BR-2.2, BR-4.4 |
+| E-12 | Update probe fails (offline, CI, registry down) | run states it could not check and proceeds; never fails, never blocks | BR-4.5 |
+| E-13 | `PDLC_PLUGIN_ROOT` exported, no dev-mode declaration | refuse naming the variable, **or** run released and state the variable was ignored | BR-4.6 |
+| E-14 | Tag pushed at a commit with a red or missing required check | nothing published; workflow run **failed**, not skipped | BR-3.1, BR-3.2 |
+| E-15 | Tag version ≠ engine version of record at that commit | fail naming both values; never publish under either | BR-3.4 |
+| E-16 | Declared range excludes the plugin version of record at that commit | fail naming range and plugin version; publish nothing | BR-3.4 |
+| E-17 | Publish re-run for an already-published version | explicit no-op **or** loud failure naming the collision; bytes byte-identical before/after; output names the version | BR-3.3 |
+| E-18 | Publish credential missing or expired | workflow run fails visibly; no partial publish; no credential value in any log | BR-3.2, BR-3.6 |
+| E-19 | A job `name:` interpolates something other than a declared matrix axis | §5.1's gate fails as "unexpandable name expression" — never skipped, never assumed literal | BR-5.1.3 |
+| E-20 | A required check is renamed, deleted, added, or re-rendered by a matrix edit | §5.1's set-equality fails on the affected alphabet | BR-5.1.1 |
+| E-21 | Packed tarball contains a `skills/` tree, a `SKILL*.md`, or the test corpus | AC-1.3's equality fails on the addition, not merely on a missing member | BR-5.2.1 |
+| E-22 | Workflow modules absent from the packed tarball | equality fails at build time, offline — never first observed at a consumer's first dispatch | BR-5.2.1 |
+| E-23 | Run halts before emitting a report | the halt artifacts still carry the pair (F-6 step 3); a run that emitted nothing at all fails F-7's conjunct (1) | BR-5.1, BR-6.2 |
+| E-24 | Consumer repo predates this feature | prior artifacts unchanged and un-back-filled; only files enumerated by the run report may differ | BR-5.2, BR-5.3 |
+| E-25 | Plugin version changes between two runs on one machine | the reported pair changes correspondingly; reverting restores it | BR-5.4 |
+| E-26 | Both channels installed, one run started through the bundle path | identified by F-7 step 3's conjunction, with the residue of step 4 stated in the run's own terms | BR-6.2 |
+| E-27 | A `SKILL.md` edit lands without a plugin version bump | out of scope for detection (R-3, a known residual risk); no AC claims to catch it, and no test may be written that pretends to | R-3 |
+
 ## 8. Acceptance tests
 
 ## 9. Open questions
