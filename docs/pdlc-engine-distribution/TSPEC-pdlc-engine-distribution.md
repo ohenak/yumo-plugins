@@ -1327,8 +1327,8 @@ one path that *reports* rather than refuses, which is what AC-1.1 asks for.
 | Level | Runs | Covers |
 |---|---|---|
 | Unit, in-process | `pdlc/engine/__tests__/`, the shipped `node --test` suite | Resolution ladder, store enumeration, provenance rendering, catalogue closure, config read discipline, handshake/env-var branch. All pure over injected seams — no temp dirs, no network, no spawn |
-| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3, §9.3's **guard-entry structural oracle** (zero static imports, dynamic import only) and §7.2's **commit-site set-equality** over both workflow modules' sources |
-| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements — **kinds 1, 2 and 4 against `orchestrate-dev.js`, kind 3 against `orchestrate-queue.js`** (including the `rewriteStatus` 8th-parameter pass-through and the `ensureEngineColumn` round trip), same suite, two module targets |
+| Arrangement / oracle | same suite | FSPEC §5.1's two set-equalities over fixture YAML, §5.4's packed-set equality over a **real `npm pack` into a temp dir** (PF-4), the `publish.yml`/`pr-tests.yml` command equality, AF-1…AF-3, §9.3's **guard-entry structural oracle** (three clauses: zero static imports, declared top-level statements only, **no top-level `await`** / syntax within the Node-12.17 subset) and §7.2's **commit-site set-equality** over both workflow modules' sources (expected: the five enclosing named functions, unconditionally) |
+| Module-side | `pdlc/workflows/__tests__/` | `_provenance` inertness and the four placements — **kinds 1, 2 and 4 against `orchestrate-dev.js`, kind 3 against `orchestrate-queue.js`**, same suite, two module targets. Kind 3 asserts the mark lands **inside `rewriteStatus`**, so a call through **each** of its five routes carries it (R-1…R-5, §7.2), and covers **both** `updateQueueStatus` row-write paths — the `evidence == null` quick path and `writeEvidenceCarryingRow` — plus the `ensureEngineColumn` round trip **asserting the header literal** (§7.2). Kind 4 asserts each of the five helpers composes `line`, including C-e, whose test also pins that A5 still stages nothing of its own and keeps its `advisory(A5):` message prefix |
 | Fixture-machine | CI job, container | Install/upgrade legs, `npm pack` into a temp prefix with `PATH` scoped to it; the launcher pass-through spawn test (§6.2); **AT-2.5 on a below-floor image (`node:18-alpine`)**, since the PR gate is `node: ['20']` only — paired with the structural oracle above, which is what makes AT-2.5 non-vacuous (§9.3) |
 | One-time manual | recorded, dated | Real-channel publish (BR-3.9), AT-6.2's channel observation (Q-2) |
 
@@ -1356,7 +1356,13 @@ deliberate positive pairing:
 2. **Dev-mode kind equality (AC-5.3, §5.3).** Equality is over the kinds a run **actually
    produced** (BR-9.2), and each kind is paired with a positive: the halted, queue-driven
    fixture produces all four; the green single-feature fixture produces two, and an unmarked
-   kind in either fails. Cross-review and `CODE_REVIEW-*` file **contents** are asserted
+   kind in either fails. **Kind 3 has a positive on a green path, not only on a halted one**
+   (PM Q-01): a green *queue-driven* run rewrites two rows — `in-progress` (R-3) and
+   `awaiting-merge` (R-5) — and both must carry the `Engine` cell and the marked commit
+   message. This is the case that made marking at the call sites wrong, so it is asserted
+   rather than inferred; the green *direct* run's only rewrite is Phase MERGE's, which takes
+   `updateQueueStatus`'s evidence-carrying path and is the second row-write path §12.1 names.
+   Cross-review and `CODE_REVIEW-*` file **contents** are asserted
    **unmarked** (BR-9.3), while the harness commit that lands an anchor append (§7.2's C-b)
    carries the mark in its **message** — the two halves are asserted separately, because they
    are the two sets BR-9.3 distinguishes and conflating them is how one of them goes untested.
