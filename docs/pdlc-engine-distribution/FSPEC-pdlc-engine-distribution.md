@@ -16,16 +16,14 @@ feature: pdlc-engine-distribution
 | pdlc | Draft | Claude | 0.5 | 2026-08-14 |
 
 *0.5 (2026-08-14, round-4 findings): §5.2's workflow-module row and AT-3.8b drop `[blocked on
-O-10]` and name TSPEC §5.4's `PK-20`…`PK-22`; O-10 is retained only where it still bites, BR-8.2's
-anti-fork obligation (SE `F-01`, TE `F-02`). §5.2 and §1 now own the **per-class** counts
-(1/1/2/15/3/1, licence 0→1 at N-2), and the change-control claim is stated at the strength the
-mechanism delivers — cardinality moves both sides, a pure rename does not (TE `F-01`). AT-3.8a is
-named the authoritative whole-set assertion and AT-3.8b a sub-assertion over one class (SE
-`F-02`), and AT-3.8a's count conjunct is pinned to the transcribed `PK-*` list rather than to the
-tarball's own length (TE `F-03`). Routed upstream rather than fixed here: REQ AC-1.3's
-"member for member … stated in the FSPEC" wording (TE `Q-01`), PLAN §'s now-discharged erratum
-against FSPEC AT-3.8a blocking T16 (TE `Q-02`), and TSPEC §5.4's missing reciprocal co-change
-sentence for the duplicated count (SE `F-03`).*
+O-10]` and name TSPEC §5.4's `PK-20`…`PK-22`; O-10 is kept only where it still bites, BR-8.2 (SE
+`F-01`, TE `F-02`). §5.2 and §1 own the **per-class** counts (1/1/2/15/3/1, licence 0→1 at N-2)
+and state the change-control claim at the strength delivered — cardinality moves both sides, a
+rename does not (TE `F-01`). AT-3.8a is the authoritative whole-set assertion, AT-3.8b a
+sub-assertion (SE `F-02`); AT-3.8a's count conjunct is pinned to the transcribed `PK-*` list, not
+to the tarball's length (TE `F-03`). Routed upstream: REQ AC-1.3's wording (TE `Q-01`), PLAN's
+discharged FSPEC erratum blocking T16 (TE `Q-02`), TSPEC §5.4's missing co-change sentence (SE
+`F-03`).*
 
 *0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
 split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
@@ -522,13 +520,11 @@ members they total, TSPEC §5.4's `PK-*` table says which files — so REQ AC-1.
 stated in the FSPEC* is stated here, and a decomposition change that moves any count updates
 both sides **in the same change**.
 
-The count is owned **per class**, not only as a total (TE round-4 F-01): manifest 1, package
-README 1, CLI entry 2, engine modules 15, workflow modules 3, install script 1, licence 0 before
-N-2 and 1 after. Per-class is the load-bearing form: a total alone is invariant under a swap that
-merges one `lib/*.mjs` while splitting a `bin/` entry, and such a change would move TSPEC §5.4
-with no FSPEC edit. What this still does **not** catch is a pure **rename** at constant
-cardinality — names are downstream by design, and AT-3.8a catches renames as spec-vs-package
-drift, not as spec-vs-spec drift.
+The count is owned **per class**, not only as a total (TE round-4 F-01): manifest 1, README 1, CLI
+entry 2, engine modules 15, workflow modules 3, install script 1, licence 0 before N-2 and 1
+after. A total alone is invariant under a swap that merges one `lib/*.mjs` while splitting a
+`bin/` entry — that would move TSPEC §5.4 with no FSPEC edit. A pure **rename** at constant
+cardinality is still downstream-only; AT-3.8a catches renames as spec-vs-package drift.
 
 **Excluded, by set-equality rather than by absence-checking:**
 
@@ -746,24 +742,22 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   **removed member** each fail; the member count equals §5.2's (**23 before N-2's licence
   decision is recorded, 24 after**, and §5.2's per-class counts); and the pairing record of F-5
   step 6 is present inside it. The count conjunct is asserted against the **transcribed expected
-  list** (TSPEC §5.4's `PK-*` table), never against the tarball's own length — counting the
+  list** (TSPEC §5.4's `PK-*` table), never against the tarball's own length: counting the
   enumerated members is a tautology once the first conjunct passes, and a self-derived expectation
-  of exactly the kind BR-8.1 forbids. Asserted against the transcription, it fails when the
-  transcription has drifted from §5.2 (TE round-4 F-03).
+  of the kind BR-8.1 forbids. Against the transcription it fails when the transcription has
+  drifted from §5.2 (TE round-4 F-03).
   The expected list is a literal one, never a listing of `pdlc/engine/lib/`; its **classes and
   count are §5.2's**, and its **member names are downstream, in TSPEC §5.4's `PK-*` table**,
   which is the single source the verifier transcribes. This document does not restate the member
   list (an FSPEC-local copy is what diverged); it does state the count, so a decomposition change
   cannot move the expected set without an FSPEC-side edit. **AT-3.8a is the authoritative
-  whole-set assertion**; AT-3.8b below is a named sub-assertion over one class, kept for
-  traceability and carried by its own task, not a second, competing expected side (SE round-4
-  F-02).
+  whole-set assertion**; AT-3.8b is a sub-assertion over one class, not a competing expected side
+  (SE round-4 F-02).
 - **AT-3.8b** *(AC-1.3)* **Given:** the same package. **When:** its workflow modules are
   enumerated. **Then:** they equal §5.2's workflow-module class member-for-member — TSPEC §5.4's
   `PK-20`…`PK-22` — and a removed module fails. Writable: TSPEC §5.4 names those three vendored
-  members "and nothing else", so O-10 no longer blocks this test; O-10 still bites on BR-8.2's
-  anti-fork obligation only (SE round-4 F-01, TE round-4 F-02). Subsumed by AT-3.8a's whole-set
-  equality; it exists so the vendored class has its own red-to-green carrier.
+  members "and nothing else", so O-10 blocks only BR-8.2's anti-fork obligation now (SE round-4
+  F-01, TE round-4 F-02). Subsumed by AT-3.8a; it exists so the vendored class has its own carrier.
 
 ### AT-4 — Provenance **[fixture]**, **[blocked on O-9 for AT-4.2 and AT-4.5]** — AT-4.4 is *not* blocked: it needs two plugin versions and a revert, no new carrier (TE round-1 F-04)
 
