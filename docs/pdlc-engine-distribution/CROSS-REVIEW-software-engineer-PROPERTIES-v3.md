@@ -107,7 +107,50 @@ untouched by the rename.
 
 ## 4. Findings
 
+**No new findings.** The delta resolves the raised item, breaks nothing previously approved, and
+the document remains a faithful compression of its upstream at HEAD.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|-------------|
+| — | — | — | None raised this round | — |
+
+Specifically checked for, and absent:
+
+- **No property added, removed or re-scoped.** The diff is four insertions and three deletions:
+  the Upstream cell, the version cell, one changelog row, and the PROP-LAUNCH-9 headline. The
+  property count (89), the column sum (95) and the Unit count (74) are untouched, and no
+  `Traces` or `Carried by` cell moved.
+- **No new existing-code claim.** The edit introduces no file:line citation; PROP-LAUNCH-9's
+  `handshake.test.js:110-118` anchor is unchanged from v0.3, where I verified it line by line.
+  Nothing to re-verify, and nothing left unverified.
+- **No contradiction introduced between a headline and its own conjuncts** — the specific
+  hazard of editing a property's headline while leaving its conjunct list alone. Checked in §1.
+- **No residue of the retired label.** The only surviving occurrence of the phrase in
+  PROPERTIES is PROP-LAUNCH-5's "the exact literal `not found` **when none is installed**"
+  (`:89`), which describes the *precondition state* — the same state FSPEC's own AT-1.1 Given
+  clause calls "no plugin installed" — and does not name a message. Correct as written; the
+  thing FSPEC retired was a message label, not the English description of the state.
+- **No standing constraint or promoted decision contradicted.** Nothing in the delta touches
+  `docs/_constraints/` or a promoted DECISIONS record.
+
+**No erratum raised upstream this round.** The one I raised in round 2 (FSPEC's `"none"` triple
+member) was fixed in FSPEC v0.7, as recorded in §2.
+
 ## 5. Carried-forward findings from round 2
+
+My round-2 review approved with minor changes and left two non-gating findings open. This was an
+alignment-only erratum round which correctly addressed no round-3 cross-review, so both remain
+open by design. Recording their disposition so they are not lost rather than re-raising them:
+
+| Round-2 finding | Severity | State at HEAD | Disposition |
+|---|---|---|---|
+| F-01 — PROP-LAUNCH-1 traces `AC-5.5` while asserting the `store.empty` branch, whereas AC-5.5's message id is the `version.pin-missing` branch already carried by PROP-VER-5; and §4's no-`AT-`-row sentence justifies it via AT-5.5 / AT-1.3 legs that PROP-LAUNCH-4 scoped to the two plugin-handshake states | Medium | **Still open.** `:85` still reads `AC-5.5, TSPEC §6.2` | Carried forward, not gating. A traceability-claim correction of roughly two cells; costs little now, reads as a coverage gap later |
+| F-02 — PROP-LAUNCH-9's byte-identical-tree conjunct is a §3-class negative with no §3 catalogue row, though §3 says *every* negative appears there | Low | **Still open.** No `LAUNCH-9` row in §3 | Carried forward, not gating. Catalogue completeness, not oracle weakness — the conjunct itself is correctly written |
+
+Neither blocks Phase I, and neither is a reason to withhold approval: both were non-gating when
+raised and nothing since has raised their severity. Phase I's actual blockers remain the two
+open TSPEC errata recorded in PLAN §7 (below-floor emission, fixture-machine home), which are
+correctly routed and are not this document's defect.
 
 ## 6. Questions
 
