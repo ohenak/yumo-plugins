@@ -182,3 +182,6 @@ count floors in §5) for whoever picks it up after Phase I. The three Lows are a
 by three lines, one over-strong word, and one nit carried unchanged from v8.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
