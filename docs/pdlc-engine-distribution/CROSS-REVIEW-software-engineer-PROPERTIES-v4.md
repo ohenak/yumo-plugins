@@ -68,9 +68,43 @@ Filed F-02 (Low). Not gating; the `AT-` table remains the authority and it is un
 
 ## 3. Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|-------------|
+| F-01 | Low | Local | Changelog rows are non-monotonic: 0.6 (`:22`) is filed above 0.5 (`:23`). The Version cell is correct, so nothing downstream misreads the document's version — but the erratum protocol's re-grounding step has readers diff `Version` cells against changelog rows to establish what was absorbed when, and an out-of-order table is the shape that makes that read go wrong. Move the 0.6 row below 0.5 | Changelog, `:22-23` |
+| F-02 | Low | Local | §4's new prose says PROP-LAUNCH-4 state (b) reports a triple that *"is AT-1.6's"* (`:322`). True of the triple's three members (`FSPEC:694-697`), but AT-1.6's carrier is PROP-LAUNCH-5 alone (`:285`), and this sentence sits inside the paragraph whose purpose is to stop a reader inferring carriers from prose. Suggest *"the same three members AT-1.6 pins"* | §4, `:322` |
+
+Both are Low and neither is gating. No High or Medium finding is open against this document:
+my round-2 F-01 (Medium) and F-02 (Low) are both resolved, and the v0.6 delta introduces no new
+one.
+
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| — | None this round. My round-2 Q-01 (the five-state exit-code split) and Q-02 (T32's ownership manifest) still stand as asked; the v0.6 delta touches neither, and both are answerable in Phase I without re-opening this document |
+
 ## 5. Positive Observations
+
+- **F-01 was fixed at both sites, not just the one the finding pointed at.** The Medium was
+  written against PROP-LAUNCH-1's `Traces` cell, but the same wrong claim had a second home in
+  §4's prose. Fixing only the cell would have satisfied the finding literally and left the
+  document contradicting itself — the exact failure mode the round-3 erratum had to clean up
+  after. Both moved, and the four commits keep them separable.
+- **The fix states the positive, not just the retraction.** The row does not merely drop
+  `AC-5.5`; it says what AC-5.5 actually is (quoted verbatim from `REQ:427`), which id it owns
+  (`version.pin-missing`), which property carries it (PROP-VER-5, with -6/-9/-11 reinforcing),
+  and how the empty store relates to it (the precondition state upstream of the pin case). A
+  reader who arrives with the old wrong belief is corrected rather than merely deprived.
+- **PROP-NEG-18 catalogues without re-authoring.** The easy version of this fix invents a fresh
+  negative and quietly drifts from the §2 clause it is supposed to mirror. This one transcribes
+  PROP-LAUNCH-9's clauses (c) and (d), keeps the *non-empty* pre-state qualifier that does the
+  falsification work, and re-verified its HEAD anchors this round rather than copying them
+  forward — `handshake.test.js:110-118` is still exactly the missing-plugin test, boundary to
+  boundary.
+- **The self-limiting claims in the changelog are all true.** It claims no property added,
+  removed or re-scoped in §2; no carrier, task or ownership-manifest change; §4's 35 `AT-` rows
+  and their set-equality untouched; §5's accounting and §7's counts unchanged. I checked each
+  against the diff rather than against the sentence, and each holds.
 
 ## 6. Recommendation
 
