@@ -211,7 +211,7 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 | T02 | `docs/_decisions/DECISIONS-plugin-distribution.md` |
 | T03 | `pdlc/engine/__tests__/_doubles.mjs` |
 | T04 | `pdlc/workflows/__tests__/helpers/provenanceDoubles.js` |
-| T05 | `docs/_decisions/DECISIONS-plugin-distribution.md` |
+| T05 | `docs/_decisions/DECISIONS-plugin-distribution.md`, `pdlc/engine/LICENSE`, `pdlc/engine/package.json` |
 | T06 | `pdlc/engine/__tests__/store.test.js` |
 | T07 | `pdlc/engine/__tests__/resolve-version.test.js` |
 | T08 | `pdlc/engine/__tests__/provenance.test.js` |
@@ -247,7 +247,7 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 | T38 | `pdlc/workflows/__tests__/artifactPaths.test.js`, `pdlc/workflows/orchestrate-dev.js` |
 | T39 | `pdlc/workflows/__tests__/provenanceQueueRow.test.js`, `pdlc/workflows/orchestrate-queue.js` |
 | T40 | `pdlc/engine/__tests__/startup-announce.test.js`, `pdlc/engine/lib/startup.mjs` |
-| T41 | `pdlc/engine/__tests__/workflow-roots.test.js`, `pdlc/engine/lib/run.mjs`, `pdlc/engine/lib/catalogue.mjs` |
+| T41 | `pdlc/engine/__tests__/workflow-roots.test.js`, `pdlc/engine/__tests__/run.test.js`, `pdlc/engine/lib/run.mjs`, `pdlc/engine/lib/catalogue.mjs` |
 | T42 | `pdlc/workflows/__tests__/devModeKinds.test.js`, `pdlc/workflows/orchestrate-dev.js` |
 | T43 | `pdlc/engine/__tests__/update-probe.test.js`, `pdlc/engine/lib/store.mjs`, `pdlc/engine/lib/catalogue.mjs` |
 | T44 | `pdlc/workflows/__tests__/runtimeProvenanceWiring.test.js`, `pdlc/workflows/build-runtime.mjs`, `pdlc/workflows/dist/` |
@@ -255,13 +255,17 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 | T46 | `pdlc/engine/__tests__/launcher.test.js`, `pdlc/engine/__tests__/version-doctor.test.js`, `pdlc/engine/bin/cli.mjs` |
 | T47 | `pdlc/engine/__tests__/provenance-path.test.js` |
 | T48 | `pdlc/engine/__tests__/provenance-path.test.js`, `pdlc/engine/__tests__/seam-contract.test.js`, `pdlc/engine/lib/run.mjs`, `pdlc/engine/bin/cli.mjs` |
-| T49 | `pdlc/engine/__tests__/ci-arrangement.test.js`, `pdlc/engine/__tests__/packaging.test.js`, `.github/workflows/publish.yml`, `pdlc/engine/scripts/publish-preflight.mjs` |
+| T49 | `pdlc/engine/__tests__/ci-arrangement.test.js`, `pdlc/engine/__tests__/packaging.test.js`, `pdlc/engine/__tests__/publish-channel.test.js`, `.github/workflows/publish.yml`, `pdlc/engine/scripts/publish-preflight.mjs` |
 | T50 | `pdlc/engine/__tests__/launcher.test.js`, `.github/workflows/fixture-machine.yml`, `pdlc/engine/scripts/fixture-machine.mjs` |
 | T51 | `docs/pdlc-engine-distribution/EVIDENCE-AT-6.2.md` |
 | T52 | `docs/pdlc-engine-distribution/EVIDENCE-BR-3.9.md` |
 | T53 | `pdlc/engine/__tests__/postinstall.test.js` |
 | T54 | `pdlc/engine/__tests__/startup-announce.test.js` |
 | T55 | `pdlc/workflows/__tests__/runtimeProvenanceWiring.test.js` |
+| T56 | `docs/pdlc-engine-distribution/EVIDENCE-AT-4.4.md` |
+| T57 | `pdlc/engine/__tests__/skills-composition.test.js` |
+| T58 | `pdlc/engine/__tests__/publish-channel.test.js` |
+| T59 | `pdlc/engine/__tests__/fixture-machine.test.js` |
 
 `pdlc/workflows/dist/` is a **directory** entry, owned whole by T44: a directory entry collides with everything beneath it, so no other task may write any generated artifact under it. That is the intent — the directory is regenerated as one unit by `node pdlc/workflows/build-runtime.mjs`, and the consumer copy under `.claude/workflows/` is untracked and therefore owned by no task at all.
 
