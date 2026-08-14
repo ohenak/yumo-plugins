@@ -200,3 +200,75 @@ erratum edit, ran in twenty-two minutes of section-sized commits. Not a wrong ro
 both reviewers independently said PROPERTIES was right and the FSPEC was the odd document out.
 
 ## Recommendation
+
+The halt should be cleared by **making the two edits both reviewers already specified**, then
+re-invoking. No document needs re-authoring and no design question is open.
+
+**Step 1 — Close `te-review` `F-01` in the FSPEC (the blocking finding).** Four edits, all
+bookkeeping, none touching a criterion, oracle or test level:
+
+| Site | Edit |
+|---|---|
+| `FSPEC:9` Upstream cell | pin REQ **v0.11** (`01c27ee4`), replacing "v0.10, re-grounded 2026-08-13 erratum round" |
+| `FSPEC:19-24` v0.6 changelog | add one absorption paragraph recording that REQ v0.11 was read at HEAD and what it decided: (a) AC-1.3's ownership split — classes and per-class counts in the FSPEC, member names downstream in TSPEC §5.4 — which `FSPEC:59-63` and `:509-517` already implement, absorbed in substance with no text change; (b) the F-4 step-2 run-side `engine.*` pin citation, which `FSPEC:180` already carries |
+| `FSPEC:30`, `:38`, `:42-43` | mark each **discharged** rather than open — REQ v0.11 decided all three |
+| `FSPEC:522-523` (optional) | restate §5.2's quotation of AC-1.3 in REQ v0.11's words |
+
+`se-review`'s `F-02` is the same finding and is closed by the same edit.
+
+**Step 2 — Propagate the wave one layer down, which is the only defect with a red test behind
+it.** `"none installed"` no longer exists in the FSPEC or in `lib/handshake.mjs`, but three
+approved documents still discriminate against it by name. Point each at AT-1.1's `not found`
+message, as `AT-1.4` (`FSPEC:664-666`) now does:
+
+| Site | Current text | Consequence if left |
+|---|---|---|
+| `PLAN:146` T15(e) | "the assertion pins that it is **not** the 'none installed' message" | an implementer writes an assertion against a string no shipped module emits — T15 red |
+| `PLAN:458` step 5 | "the unparseable-manifest refusal is not the 'none installed' message" | same, in the acceptance-mapping prose |
+| `PROPERTIES:85` `PROP-LAUNCH-3` | "must pin that the text is not the 'none installed' message" | the property's discriminator names a dead literal; its replacement should discriminate positively against AT-1.1's `not found` text (`notEqual` plus a positive substring pin on each), not by absence |
+
+This is a te-owned edit for `PROPERTIES` and an se-owned edit for `PLAN`. Both documents carry
+recorded approvals, so each edit is a targeted versioned revision with a changelog line, not a
+re-open.
+
+**Step 3 — Answer `te-review` `Q-01` while editing AT-1.1.** At HEAD the literal appears in two
+non-substring-equal shapes: `version found: not found` inside `checkCompat`'s reason
+(`handshake.mjs:164`) and `pdlc vnot found` in the banner triple (`:209`, pinned
+`handshake.test.js:167`). AT-1.1 is a refusal-message criterion and AT-1.6/`Q-1` is the triple, so
+the split is almost certainly intended — but a verifier who picks the wrong surface writes a red
+test against correct code. One clause in AT-1.1 naming the refusal-reason surface closes it.
+`te-review` `F-03` (Low) is adjacent and one line: cite `handshake.test.js:110-118` by range, or
+the test by name, rather than the drift-prone `:113`.
+
+**Step 4 — Flip the marker.** When Steps 1–3 are on the branch, verify each cited site by reading
+it, then set `RESOLVED: yes` at the top of this file with the date and the commit range, and
+commit. The marker is a judgement that the `## Recommendation` was addressed, not a mechanical
+step — do not flip it on the strength of the commit messages alone.
+
+**Step 5 — Re-invoke Phase PR.**
+
+```
+/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md", "forcePhases": "PR"}
+```
+
+This opens a fresh erratum budget for the phase. Expect the FSPEC confirmation to pass: both raised
+items were already confirmed by both reviewers, and Step 1 closes the only High on the record.
+
+**Step 6 — Route the rule gap, so the next erratum round does not halt the same way.** Two
+candidates for `docs/_decisions/DECISIONS-review-severity-bars.md`, both cheap:
+
+1. **State the severity of a stale-but-substantively-absorbed hand-off statement.** DEC-ERR-01
+   forbids demoting a routed-but-already-decided item. Say whether that applies to items routed by
+   an *earlier round's* changelog prose when the current round's own items are unrelated — i.e.
+   whether the remedy is High (halt) or Medium (note, fix next round). Either answer is workable;
+   the ambiguity is what cost this phase.
+2. **Make the re-grounding step's *record* an explicit deliverable of every erratum round**, not
+   an implicit consequence of having done it: the edit is not complete until the Upstream cell
+   names the upstream version read and the changelog records what was absorbed — including
+   "nothing, already held". Had that been stated, this round's author would have caught REQ v0.11
+   before writing the first line, and the round would have passed.
+
+**Not recommended.** Forcing Phase I on the strength of the approved PROPERTIES without Step 2.
+`PROP-LAUNCH-3` and `PLAN` T15(e) currently instruct an implementer to assert against a string that
+exists in no shipped module — precisely the defect class this erratum was raised to fix, and the
+one that is cheap now and expensive inside a wave.
