@@ -70,6 +70,32 @@ Supporting non-blocking findings, both worth folding into the same edit:
 
 ## The Two Highs Are One Defect
 
+The reviewers did not disagree. They measured the same edit from opposite ends and each named the
+half visible from their lens:
+
+- **SE looked downward** (does an implementer get a complete expected set?) and found the routing
+  incomplete: four of seven members rehomed, three left with no class anywhere.
+- **TE looked upward** (is the document still a faithful compression of REQ?) and found the routing
+  itself unauthorised: AC-1.3 assigns the expected set to the FSPEC, and no REQ-layer decision moved
+  it.
+
+Both descriptions are of one edit that **removed one side of a contradiction instead of reconciling
+the two sides**. Before the erratum, §5.2 and AT-3.8a carried a literal set that disagreed with
+TSPEC §5.4. After it, they carry no set at all. That trade is strictly better for the implementer
+(nobody now ships four members), and strictly worse for the oracle (nothing now falsifies a removed
+member at FSPEC altitude). Neither reviewer disputed the structural instinct — a single downstream
+source beats two copies that will diverge again — and SE explicitly endorsed it as "the correct
+structural fix". What neither would sign is the same fix performed at a layer that does not own the
+decision.
+
+**The PLAN is unaffected by either reading, which is why this halt costs nothing already built.**
+PLAN `T16` (`:136`) already transcribes PF-4's both-directions expected set from **TSPEC §5.4's
+`PK-*` table** (23 members, 24 after E-4b), not from the FSPEC — the implementation-level oracle was
+already grounded where the erratum tried to point. `T05` (`:125`) already owns `pdlc/engine/LICENSE`
+and the `license` field, closing the PK-3 flip that TE's round-1 PLAN `F-02` opened. The only PLAN
+surface that touches the deleted text is §2.1's AT-3.8a row (`:209`), which reads "packed equals
+§5.2's classes" — true again the moment §5.2 has classes for all seven members.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
