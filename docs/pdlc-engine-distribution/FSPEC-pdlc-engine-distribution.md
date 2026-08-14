@@ -6,7 +6,7 @@ feature: pdlc-engine-distribution
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.10, re-grounded 2026-08-13 erratum round); `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
+| Upstream | `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.11, `01c27ee4`, re-grounded 2026-08-14 erratum round); `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
 | Downstream | TSPEC, PLAN, PROPERTIES for this feature; `pdlc-plugin-retirement` |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
@@ -18,29 +18,42 @@ feature: pdlc-engine-distribution
 *0.6 (2026-08-14, erratum round): the missing-plugin literal now matches the shipped value
 everywhere it is quoted. AT-1.6 read `"none"` and AT-1.1 read "states none is installed", but the
 shipped renderer and `checkCompat` report the exact string `not found`
-(`pdlc/engine/lib/handshake.mjs`, pinned at `pdlc/engine/__tests__/handshake.test.js:113`), which is
+(`pdlc/engine/lib/handshake.mjs`, pinned by the missing-plugin case in
+`pdlc/engine/__tests__/handshake.test.js:110-118`), which is
 what PROP-LAUNCH-5 and PROP-LAUNCH-9 already transcribe. AT-1.1, AT-1.6 and Q-1's triple-member
 obligation now name `not found`; AT-1.4's discriminator, which cited the old "none installed"
 message by name, points at AT-1.1's `not found` message instead so the reference does not dangle
 (pm-review, se-review erratum). Literal alignment only: no criterion changed, no scope moved.*
 
+*Re-grounding record for this erratum round (DEC-ERR-01): upstream REQ moved v0.10 → **v0.11**
+(`01c27ee4`, 2026-08-14) after this FSPEC was last approved, and the Upstream cell above now names
+it. Two REQ v0.11 decisions are **absorbed**, both already implemented here, so no text moved:
+(a) **AC-1.3**'s ownership split — the FSPEC states the packed set's *classes and per-class counts*,
+TSPEC §5.4 states the *member names* — is what §5.2's per-class count paragraph and §1's ownership
+restatement already do; (b) the v0.10 changelog's run-side `engine.*` pin citation is corrected to
+**F-4 step 2**, which §3's F-4 flow already carries. Nothing else in REQ v0.11 touches this document.*
+
 *0.5 (2026-08-14, round-4): §5.2's workflow row and AT-3.8b drop `[blocked on O-10]` for
 `PK-20`…`PK-22`, O-10 kept only on BR-8.2 (SE `F-01`, TE `F-02`); §5.2/§1 own **per-class** counts
 (TE `F-01`); AT-3.8a authoritative, AT-3.8b a sub-assertion (SE `F-02`); count conjunct pinned to
-the transcribed `PK-*` list (TE `F-03`). Routed upstream: REQ AC-1.3 wording, PLAN's discharged
-erratum, TSPEC's co-change sentence.*
+the transcribed `PK-*` list (TE `F-03`). Routed upstream: REQ AC-1.3 wording — **discharged by REQ
+v0.11 (`01c27ee4`)**, see the v0.6 re-grounding record above; PLAN's discharged erratum, TSPEC's
+co-change sentence.*
 
 *0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
 split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
 the licence (PK-3, expected only once N-2's record lands) and the install script (PK-23), so every
 member of TSPEC §5.4's `PK-*` table has a class here (SE `F-01`); §5.2 and AT-3.8a now carry the
 **member count** — 23 before N-2, 24 after — as the FSPEC-side change-control point, which keeps
-REQ AC-1.3's *expected set stated in the FSPEC* true without a REQ erratum (TE `F-01`, `Q-02`);
+REQ AC-1.3's *expected set stated in the FSPEC* true without a REQ erratum (TE `F-01`, `Q-02`)
+— **superseded by REQ v0.11**, whose AC-1.3 now reads "classes and per-class counts in the FSPEC,
+member names in the TSPEC"; the FSPEC-side count remains the change-control point either way;
 the exclusion list no longer reads "no repo-level documentation" against the now-packed README;
 BR-8.1 names TSPEC §5.4's `PK-*` table as the literal expected side while keeping the
 anti-directory-listing rule (SE `F-02`); §1 restates the ownership split (TE `F-02`). Noted, not
-fixed, for the next round: REQ v0.10's changelog attributes the run-side pin read to "FSPEC F-3
-step 5" where the flow lives in F-4 (SE `F-03`, prose only, no behavioural consequence); §5.2's
+fixed, for the next round — **both discharged since**: REQ v0.10's changelog attributed the
+run-side pin read to "FSPEC F-3 step 5" where the flow lives in F-4 (SE `F-03`, prose only, no
+behavioural consequence; **fixed in REQ v0.11**, which cites F-4 step 2); §5.2's
 workflow-module row is still marked `[blocked on O-10]` though `TSPEC:421-429` unblocks
 PK-20…PK-22 (SE `Q-01`).*
 
@@ -655,7 +668,9 @@ heading and is overridden per test where it differs; an unlabelled family is a d
 - **AT-1.1** *(AC-1.1)* **Who:** operator. **Given:** engine installed, no plugin installed.
   **When:** any pipeline command runs. **Then:** it exits non-zero before dispatch, the message
   names the declared range and reports the plugin version as the literal `not found`, and no file
-  in the consumer project changed.
+  in the consumer project changed. The surface pinned here is the **refusal reason text**, which
+  *contains* that literal; AT-1.6 and Q-1 pin the separate **version-triple member**, which
+  *equals* it.
 - **AT-1.2** *(AC-1.1)* **Given:** plugin installed at a version outside the range. **When:** any
   pipeline command runs. **Then:** refusal names both the range and the version found — text
   distinguishable from AT-1.1's.
