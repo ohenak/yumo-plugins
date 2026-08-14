@@ -50,6 +50,19 @@ was re-measured at HEAD, not read off the document.
 
 ## Round-3 findings
 
+| ID | Severity | Status | Evidence |
+|----|----------|--------|----------|
+| F-01 | High | **Resolved** | The skip channel is now fail-closed end to end, in exactly the four parts the finding asked for, and one it did not. (a) T50 ships a `SKIP_INVENTORY`-shaped frozen table in `scripts/fixture-machine.mjs`, one `{name, capability, unverifiedInvariants}` entry per gated leg, naming the `AT-` ids that leg alone observes (container leg → AT-2.5, two-repo leg → AT-2.3). (b) A pure comparator over `(recorded skips, inventory)` runs at end of run and **fails** the workflow on an unregistered skip, an unknown capability key, a duplicate name or an empty invariant list — so an unregistered skip is a red check, never a green one. (c) DoD item 14 makes the observation **positive**: on `ubuntu-latest` the recorded skip set is **empty** and the DoD cites that run's URL, which is a falsifiable assertion about what ran, not the absence-shaped "no failure reported". (d) A non-empty set must be a subset of the inventory and item 15's new skip-coverage obligation demands a dated evidence document covering **every** `AT-` id in each entry's unverified list. The capability predicate the finding said was missing is now stated and **opt-out** — `docker` (`docker version` exits 0), `real-spawn`, `npm-pack`, with an unprobeable capability a failure rather than a skip — so an all-skipped run cannot be the default. Item 14 says in as many words that a green check now means "ran", not "passed **or** never ran". |
+| F-02 | Low | **Resolved** | §2.1's rule now holds unqualified. T31's AT-3.8a pointer moved out of the trailing citation list into body prose, and the rule gained the general form behind the fix: "a trailing list is a claim, body prose is a pointer." Re-derived the transpose independently — **zero** rows disagree, so the sanctioned-hit list the finding wanted removed is not merely documented away, it is unnecessary. |
+| Q-01 | — | Answered | T59 names both seams explicitly: the recorder takes its spawn function as a parameter and the comparator takes its records and inventory as arguments. DoD item 4 records the consequence — the comparator's five branches are all reachable from T59's hermetic legs, so adding it to `fixture-machine.mjs` raises the covered surface rather than adding uncoverable lines beneath the 85% floor. |
+| Q-02 | — | Answered | §1.2 names the durable home: `LEARNINGS-pdlc-engine-distribution.md` at Phase H, from which `consolidate-learnings` promotes a recurring item into `docs/_decisions/`. It also says plainly that no queue row exists today and this plan does not create one, which is the honest form of the answer. |
+
+Both round-3 findings are resolved and both were re-verified by re-running the mechanical
+check that produced them, not by reading the revision's prose. Nothing approved in rounds 1–3
+was broken by this round's edits: the graph is byte-for-byte the same shape, the transpose is
+still set-equal, and the three floors measured in round 2 are unchanged while two more were
+added and measured.
+
 ## Findings
 
 ## Questions
