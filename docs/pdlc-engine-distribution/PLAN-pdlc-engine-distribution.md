@@ -58,7 +58,7 @@ and the licence (N-2, T05).
 
 ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
 
-## 2. Task list
+## 2. Tasks and batches
 
 One table, machine-parsed. `#` ids are bare (never bold) and are spelled identically in the
 `Deps` column. `Batch` is derived mechanically as `max(batch of deps) + 1`, sources at batch 1.
@@ -188,7 +188,7 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 
 `pdlc/workflows/dist/` is a **directory** entry, owned whole by T44: a directory entry collides with everything beneath it, so no other task may write any generated artifact under it. That is the intent — the directory is regenerated as one unit by `node pdlc/workflows/build-runtime.mjs`, and the consumer copy under `.claude/workflows/` is untracked and therefore owned by no task at all.
 
-## 4. Task dependency notes
+## 4. Task dependencies — notes on the edges
 
 Every edge in §2's `Deps` column is one of five kinds. This section names the kind for the edges that are not self-evident, so a reviewer can check the graph rather than re-derive it.
 
@@ -279,7 +279,7 @@ Stated as claims a reviewer can check against §2 and §3 mechanically.
 
 **Rule 7 — the manifest and the task table are in bijection.** 55 tasks in §2, 55 rows in §3, same identifiers, no row without a task and no task without a row — the condition `validatePlanContract` checks after `parsePlanTasks` and `parsePlanOwnership` in Phase P.
 
-## 7. Definition of Done
+## 7. Definition of Done — verification
 
 The plan is done when all of the following hold on `feat-pdlc-engine-distribution`. Each is an observation someone else can repeat, not a judgement.
 
@@ -304,4 +304,4 @@ The plan is done when all of the following hold on `feat-pdlc-engine-distributio
 11. `docs/pdlc-engine-distribution/EVIDENCE-AT-6.2.md` and `EVIDENCE-BR-3.9.md` exist, dated, each naming what was observed and — for AT-6.2 — the stated limit of the conjunction as a discriminator.
 12. `docs/_decisions/DECISIONS-plugin-distribution.md` carries the npm scope (T02) and the licence (T05); no file in the tree still contains a placeholder for either.
 
-**Not in scope of this plan's done-ness.** N-1, N-3, N-4 and N-5 remain unbuilt by design (§1.2). N-6 and N-2 are discharged as decisions by T02 and T05, not as code. The three errata raised against TSPEC in this phase must be resolved upstream before Phase I begins: two of them (§10.3's below-floor emission, §12.1's fixture-machine home) change what T45 and T50 are allowed to write, and the third (§9.3's statement count) decides which of two disagreeing documents an implementer should believe.
+**Not in scope of this plan's done-ness.** N-1, N-3, N-4 and N-5 remain unbuilt by design (§1.2). N-6 and N-2 are discharged as decisions by T02 and T05, not as code. The three errata raised against TSPEC in this phase must be resolved upstream before Phase I begins. Two are against TSPEC and change what T45 and T50 are allowed to write: §10.3's below-floor emission (`node.below-floor` is registered in `lib/catalogue.mjs`, but §9.3's guard admits zero static imports and exactly three top-level statements, so nothing can emit it and `checkMessageCatalogue` fails on the registered-but-unemitted arm — `pdlc/engine/__tests__/_assert-suite-wide.mjs:195-213`), and §12.1's fixture-machine home (the legs are specified to run on PRs, but `pr-tests.yml`'s five rendered job names are closed by C-5 / BR-7.5 and §8's `publish.yml` is tag-triggered, so no stated file runs them). The third is against **FSPEC**, not TSPEC: AT-3.8a still states the packed set equals §5.2's writable classes "member-for-member — the manifest, `bin/pdlc.mjs`, the twelve named `lib/*.mjs` modules" (`FSPEC` §5.2's CLI-entry row calls that "one entry, not a directory of scripts"), which the E-4b split's `bin/cli.mjs` and §3.1's three new `lib` modules both falsify. TSPEC reconciles this in V-03 and §5.4's PK table, and T16 is written against that table — but the acceptance test an implementer reads still names the wrong expected set.
