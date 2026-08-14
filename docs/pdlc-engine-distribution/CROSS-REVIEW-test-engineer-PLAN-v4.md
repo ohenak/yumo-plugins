@@ -75,7 +75,43 @@ neither touches the graph, the traceability transpose or any floor.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T59 (`[red]`, batch 2) is the failing test for a comparator T50 (`[green]`, batch 10) ships — eight batches apart, the longest red-to-green interval in the plan. The convention is fine and the edge is real (`T50` deps name `T59`), but a red suite standing for eight batches is a red suite everyone learns to read past, and the plan's own §5.4 reasoning about T33/T41 was that "the interval between them is a suite that fails for a reason unrelated to the change". Is T59's comparator half expected to be written `test.todo`/skipped-with-a-named-reason until T50 lands, or genuinely red for eight batches? Either answer is workable — I only want the implementer to know which, since a skipped-and-forgotten red is the failure mode the fixture-machine gate itself exists to prevent. |
+
 ## Positive Observations
+
+- **The fix generalised past what the finding asked.** I asked for the `skipSink` precedent to
+  be adopted as it behaves. The revision adopted it *and* carried the same lens into DoD item
+  4 (the comparator's branches are reachable from T59's hermetic legs, so the coverage floor
+  survives the new lines) and into §1.2 (the round-2 skippability argument for keeping AT-4.4
+  out of T50 is now **withdrawn** as stale, rather than left standing next to a fact that
+  contradicts it). Withdrawing your own earlier justification because a later change falsified
+  it is rarer than fixing the thing that was flagged.
+- **The gate is now stated as a positive, and I could falsify it if it were false.** "On
+  `ubuntu-latest` the recorded skip set is empty and the DoD cites that run's URL" is checkable
+  by opening the URL. Compare round 2's "records the skip, prints it, concludes success",
+  which no observation could distinguish from a total non-run. The pair (empty set on CI,
+  subset-plus-evidence elsewhere) covers both branches with no gap between them.
+- **Every anchor the revision added is real.** I re-opened all four `skipSink` citations, and
+  they say what the plan says they say — including the detail that `validateSkipRecords` is
+  already unit-tested as a pure function at `driftHelpers.test.js:120-183` over precisely the
+  five violation shapes T59 enumerates. The plan is copying a mechanism that exists and is
+  tested, not describing one it hopes for.
+- **The two new floors are the runner's own numbers.** `ci-arrangement.test.js` `# tests 6`
+  and `seam-contract.test.js` `# tests 12`, measured here, match. With these five files the
+  "must survive the deletion it guards" rule is stated *and* instantiated for every extended
+  file — and §5.1 names why these two in particular needed it (T17 absorbs V-19's overlapping
+  assertions, T48 rewrites the key lists at `:47,57`; an absorbing rewrite that drops
+  assertions is exactly the case the floor exists to redden).
+- **§2.1's rule became true rather than annotated.** The round-3 fix could have been "document
+  the exception". Instead the exception was removed at its source and replaced by a general
+  rule — trailing list is a claim, body prose is a pointer — which makes future rows decidable
+  without a carve-out list. The transpose now returns zero rows for a mechanical checker.
+- **The graph is untouched for a third consecutive round.** 59 rows, zero batch mismatches,
+  same histogram, no cycle, no duplicate id, no same-batch same-file collision, and §6 Rule 1's
+  spelled-out hard cases all re-derive. Four rounds of substantial edits with no structural
+  regression is the property that makes this plan safe to dispatch.
 
 ## Recommendation
 
