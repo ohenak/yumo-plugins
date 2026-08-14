@@ -19,8 +19,8 @@ feature: pdlc-engine-distribution
 name `PK-20`…`PK-22`, O-10 kept only on BR-8.2 (SE `F-01`, TE `F-02`); §5.2 and §1 own the
 **per-class** counts and claim only what cardinality delivers (TE `F-01`); AT-3.8a is the
 authoritative whole-set assertion, AT-3.8b a sub-assertion (SE `F-02`); the count conjunct is
-pinned to the transcribed `PK-*` list (TE `F-03`). Routed upstream: REQ AC-1.3's wording (TE
-`Q-01`), PLAN's discharged FSPEC erratum (TE `Q-02`), TSPEC §5.4's co-change sentence (SE `F-03`).*
+pinned to the transcribed `PK-*` list (TE `F-03`). Routed upstream: REQ AC-1.3's wording, PLAN's
+discharged FSPEC erratum, TSPEC §5.4's co-change sentence.*
 
 *0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
 split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
@@ -56,9 +56,8 @@ the dev-mode artifact-kind set (AC-5.3).
 
 **Ownership of the packed-content set.** This document owns that set's *classes* and its *member
 counts, per class and in total* (§5.2); the member *names* live downstream in TSPEC §5.4's `PK-*`
-table, because decomposition is the TSPEC's decision. A change moving any class's cardinality
-moves both sides in the same change; a rename at constant cardinality is downstream-only by
-design (TE round-4 F-01).
+table, because decomposition is the TSPEC's decision. A change to any class's cardinality moves
+both sides together; a rename at constant cardinality is downstream-only (TE round-4 F-01).
 
 **Altitude.** Behaviour, decision points, business rules, expected sets, error text obligations.
 Not here, and owned by the TSPEC: package layout, manifest schema beyond the fields the REQ
@@ -506,7 +505,7 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 | CLI entry | named in TSPEC §5.4 | the executable(s) the `bin` mapping resolves to; how many files carry that entry is a decomposition question TSPEC §5.4 decides, not this document |
 | Engine modules | named in TSPEC §5.4 | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
 | Install script | named in TSPEC §5.4 (`PK-23`) | the postinstall script the packaged install runs (§9.2 of the TSPEC); unconditional, and a member like any other |
-| Workflow modules | named in TSPEC §5.4 (`PK-20`…`PK-22`) | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`); TSPEC §5.4 names the three vendored members "and nothing else", unblocking this row and AT-3.8b (SE round-4 F-01, TE round-4 F-02). O-10 owns *how* they get there (BR-8.2), not *which* they are |
+| Workflow modules | named in TSPEC §5.4 (`PK-20`…`PK-22`) | TSPEC §5.4 names the three vendored members under `vendor/workflows/` "and nothing else", unblocking this row and AT-3.8b (SE round-4 F-01, TE round-4 F-02); O-10 owns *how* they get there (BR-8.2), not *which* they are. At HEAD the engine reaches them outside the package root (`pdlc/engine/lib/run.mjs:53`) |
 
 **The member *count* is owned here, per class and in total** (SE F-01; TE `F-01`, `Q-02`):
 manifest 1, package README 1, CLI entry 2, engine modules 15, workflow modules 3, install script
@@ -514,10 +513,10 @@ manifest 1, package README 1, CLI entry 2, engine modules 15, workflow modules 3
 after** (`TSPEC:386-389` carries the same arithmetic). The split is deliberate: this document says
 which classes exist and how many members each holds, TSPEC §5.4's `PK-*` table says which files —
 so REQ AC-1.3's *expected set stated in the FSPEC* is stated here, and a decomposition change that
-moves any class's count updates both sides **in the same change**. Per-class is the load-bearing
-form: a total alone is invariant under a swap that merges one `lib/*.mjs` while splitting a `bin/`
-entry. A pure **rename** at constant cardinality remains downstream-only; AT-3.8a catches renames
-as spec-vs-package drift (TE round-4 F-01).
+moves any class's count updates both sides **in the same change**. Per-class is load-bearing: a
+total alone is invariant under a swap merging one `lib/*.mjs` while splitting a `bin/` entry. A
+**rename** at constant cardinality stays downstream-only; AT-3.8a catches renames as
+spec-vs-package drift (TE round-4 F-01).
 
 **Excluded, by set-equality rather than by absence-checking:**
 
@@ -735,9 +734,9 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   **removed member** each fail; the member count equals §5.2's (**23 before N-2's licence
   decision is recorded, 24 after**, and §5.2's per-class counts); and the pairing record of F-5
   step 6 is present inside it. The count conjunct is asserted against the **transcribed** `PK-*`
-  list, never against the tarball's own length — the latter is a tautology once the first conjunct
-  passes, and a self-derived expectation of the kind BR-8.1 forbids; against the transcription it
-  fails when the transcription has drifted from §5.2 (TE round-4 F-03).
+  list, never the tarball's own length — a tautology once the first conjunct passes, and a
+  self-derived expectation BR-8.1 forbids; against the transcription it fails when the
+  transcription has drifted from §5.2 (TE round-4 F-03).
   The expected list is a literal one, never a listing of `pdlc/engine/lib/`; its **classes and
   count are §5.2's**, and its **member names are downstream, in TSPEC §5.4's `PK-*` table**,
   which is the single source the verifier transcribes. This document does not restate the member
