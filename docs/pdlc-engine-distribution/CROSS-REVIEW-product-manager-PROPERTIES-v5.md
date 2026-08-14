@@ -118,7 +118,18 @@ The one thing the movement *did* stale is bookkeeping: the Upstream cell's PLAN 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-08 | Low | Local | *(carried from v4, unchanged document)* The changelog is non-monotonic: `PROPERTIES:22` is `0.6` and `:23` is `0.5`, so the table reads 0.1, 0.2, 0.3, 0.4, 0.6, 0.5. The Version cell is right, so nothing downstream misreads the document's version; the cost is that the erratum protocol has readers diff `Version` cells against changelog rows to establish what was absorbed when, and an out-of-order table is the shape that makes that read go wrong. Fix: move the 0.6 row below 0.5 — a one-row swap, no text change. | — (document hygiene; §1 reading rules, DEC-ERR-01 re-grounding step) |
+| F-09 | Low | Local | The Upstream cell (`PROPERTIES:5`) pins `PLAN-pdlc-engine-distribution.md` **(v0.8)**, but PLAN is at **v0.9** on this branch (`PLAN:12`). I walked all seven of PLAN's v0.9 edits against the rows they could touch (§3 above) and **none changes a property, a carrier cell or a count** — two of them (T59's discriminator legs, T50's runner wording) move PLAN toward what PROPERTIES already said. So this is provenance drift, not content drift, and it is not gating. Fix when the document is next opened: bump the cell to v0.9 and add a changelog row saying the re-grounding found no substantive delta — the same shape v0.5 used for the FSPEC v0.6→v0.7 / PLAN v0.7→v0.8 bump, so a later reader can tell "re-checked, nothing moved" from "never re-checked". | — (upstream anchor hygiene; DEC-ERR-01) |
+
+No High and no Medium findings. Both Lows are bookkeeping on a document whose substance I verified
+against REQ, FSPEC, PLAN v0.9 and shipped code this round.
+
 ## Questions
+
+None. The one question this round could have raised — whether PLAN's move to v0.9 requires a
+PROPERTIES revision — is answered mechanically in §3: it does not, beyond the pin in F-09.
 
 ## Positive Observations
 
