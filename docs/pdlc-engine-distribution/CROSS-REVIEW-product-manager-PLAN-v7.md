@@ -44,6 +44,44 @@ assertion text, exactly as the changelog claims.
 
 ## 2. Upstream re-grounding at HEAD (DEC-ERR-03)
 
+I re-read the four upstream documents at HEAD rather than trusting the lineage cell, and diffed
+FSPEC across the interval this PLAN was re-grounded over (`7076e771..a57e0547`, v0.5 → v0.7).
+
+**Lineage cell is correct.** REQ v0.11 (sha `abd47bee…`, matching the dispatch), FSPEC **v0.7**,
+TSPEC v0.12, DECISIONS v0.3 — all four match the Upstream cell as edited. The FSPEC bump from v0.6
+to v0.7 is named, with its commit (`a57e0547`), and the PLAN's own v0.7 → v0.8 sequencing is
+consistent with the file history.
+
+**The three absorbed FSPEC v0.7 decisions transcribe correctly, and each is genuinely inert:**
+
+- **(a) Class rename.** `FSPEC:537` now reads `Workflow members`; the count paragraph reads
+  "workflow members 3". T16's sub-assertion sentence adopts the new name and states why
+  (`PK-22` is a JSON manifest, not a module) and that membership is unchanged. `grep` confirms
+  T16 is the only place this PLAN names the class, so the rename is fully propagated.
+- **(b) PK anchors on the CLI-entry and engine-module rows.** `FSPEC:534-535` now anchor
+  `PK-4`/`PK-4b` and `PK-5`…`PK-19`, and the CLI-entry note drops the "downstream-only choice"
+  wording that contradicted its own per-class count of 2. T16 reads member names from TSPEC §5.4
+  and classes/counts from FSPEC §5.2, so the anchors change nothing it transcribes — the PLAN's
+  claim, and it holds.
+- **(c) AT-3.8a's count conjunct stated positively.** `FSPEC:769-773` now asserts that the
+  transcribed `PK-*` list's length equals §5.2's total, rather than only forbidding the tarball's
+  own length. T16 already carried the positive form ("asserted against the **transcribed** `PK-*`
+  list, never the tarball's own length"). Wording match, not an oracle change — confirmed.
+
+**The counts are unmoved.** FSPEC §5.2 still totals 23 before N-2 and 24 after; T16 still
+transcribes 23/24; TSPEC §5.4 still derives its total from its own `PK-*` rows. FSPEC v0.7's own
+changelog asserts "No criterion, oracle or count changed", and the diff bears that out.
+
+**The AT-1.x literal alignment reaches this document correctly.** FSPEC v0.6 renamed the missing
+plugin literal to `not found` in AT-1.1, AT-1.6 and Q-1. PLAN §2.1's AT-1.1 row title, T15(e) and
+§5 step 5 all now read `not found`; T15(g)'s three-way triple equality (AT-1.6) is unaffected,
+since equality is the right relation for the triple member. One nuance FSPEC v0.6 added did not
+reach the PLAN — see F-01, which is Low and not gating.
+
+**REQ v0.11's AC-1.3 ownership split still holds through the chain.** `FSPEC:545` quotes AC-1.3 as
+"classes and per-class member counts stated in the FSPEC" (REQ `:268`); TSPEC §5.4 owns member
+names; T16 reads both sides and names each owner. No layer claims the other's territory.
+
 ## 3. Nothing previously approved is broken
 
 ## Findings
