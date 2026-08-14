@@ -11,7 +11,34 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (se-author) | 1.0 | 2026-08-13 |
 
-RESOLVED: no
+RESOLVED: yes
+
+**Resolution (2026-08-14, operator-directed).** Direction (a) of the Recommendation was taken and
+landed in FSPEC `v0.4` (commit `2f4b04f7`, on top of the erratum round `8bb5fb40`/`768a0046` that
+had already corrected the dangling `AT-7.2` citation to `AT-6.2` — re-grepped at this commit,
+`AT-7` occurs nowhere in the FSPEC). Verified against the two blocking Highs:
+
+- SE `F-01` (three members with no class): §5.2 now carries class rows for the package README
+  (PK-2), the licence (PK-3, expected only once N-2's record lands) and the install script
+  (PK-23), so every `PK-*` member of `TSPEC:346-358` maps to a class. The exclusion list's "no
+  repo-level documentation" clause, which collided with the packed README, now says *repo-level*
+  and names PK-2 as a member. BR-8.1 names TSPEC §5.4's `PK-*` table as the literal expected side
+  and keeps the anti-directory-listing rule (SE `F-02` folded in).
+- TE `F-01` (unauthorised upward routing of AC-1.3): the FSPEC again *states* an expected set —
+  its classes and its **member count** — so REQ AC-1.3 stays true with no REQ erratum and no
+  three-layer wave. §1's ownership sentence and AT-3.8a were restated to agree (TE `F-02`).
+
+One deviation from Step 2, item 2, recorded deliberately: the count's conditional is **N-2's
+licence decision, not E-4b's `bin/cli.mjs` split**. `TSPEC:380-389` counts PK-4b in both states
+and flips only on `LICENSE`, so the shipped wording is "23 before N-2's licence decision is
+recorded, 24 after". Answering TE `Q-02` the other way would have contradicted the table the
+count is grounded in.
+
+SE `F-03` (REQ changelog's F-3/F-4 misattribution) and SE `Q-01` (§5.2's `[blocked on O-10]` row
+vs `TSPEC:421-429`) are recorded in the FSPEC `v0.4` changelog as noted-not-fixed, for the next
+FSPEC round to pick up — neither is blocking and the phase's erratum budget was spent.
+
+Re-invoke per Step 4: `forcePhases: "F,P"`.
 
 ## Phase Summary
 
