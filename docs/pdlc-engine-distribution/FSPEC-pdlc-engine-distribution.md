@@ -13,7 +13,19 @@ feature: pdlc-engine-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.4 | 2026-08-14 |
+| pdlc | Draft | Claude | 0.5 | 2026-08-14 |
+
+*0.5 (2026-08-14, round-4 findings): §5.2's workflow-module row and AT-3.8b drop `[blocked on
+O-10]` and name TSPEC §5.4's `PK-20`…`PK-22`; O-10 is retained only where it still bites, BR-8.2's
+anti-fork obligation (SE `F-01`, TE `F-02`). §5.2 and §1 now own the **per-class** counts
+(1/1/2/15/3/1, licence 0→1 at N-2), and the change-control claim is stated at the strength the
+mechanism delivers — cardinality moves both sides, a pure rename does not (TE `F-01`). AT-3.8a is
+named the authoritative whole-set assertion and AT-3.8b a sub-assertion over one class (SE
+`F-02`), and AT-3.8a's count conjunct is pinned to the transcribed `PK-*` list rather than to the
+tarball's own length (TE `F-03`). Routed upstream rather than fixed here: REQ AC-1.3's
+"member for member … stated in the FSPEC" wording (TE `Q-01`), PLAN §'s now-discharged erratum
+against FSPEC AT-3.8a blocking T16 (TE `Q-02`), and TSPEC §5.4's missing reciprocal co-change
+sentence for the duplicated count (SE `F-03`).*
 
 *0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
 split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
@@ -48,8 +60,10 @@ than in a measurement file (§5): the required-check set (T-7), the packed-conte
 the dev-mode artifact-kind set (AC-5.3).
 
 **Ownership of the packed-content set.** This document owns that set's *classes* and its *member
-count* (§5.2); the member *names* live downstream in TSPEC §5.4's `PK-*` table, because
-decomposition is the TSPEC's decision. Neither side moves without the other in the same change.
+counts, per class and in total* (§5.2); the member *names* live downstream in TSPEC §5.4's `PK-*`
+table, because decomposition is the TSPEC's decision. A decomposition change that moves any
+class's cardinality moves both sides in the same change; a pure rename at constant cardinality is
+downstream-only by design (TE round-4 F-01).
 
 **Altitude.** Behaviour, decision points, business rules, expected sets, error text obligations.
 Not here, and owned by the TSPEC: package layout, manifest schema beyond the fields the REQ
