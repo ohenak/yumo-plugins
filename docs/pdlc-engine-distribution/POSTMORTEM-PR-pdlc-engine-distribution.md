@@ -156,4 +156,47 @@ The only exhausted budget is the erratum channel's single round.
 
 ## Best-Guess Root Cause
 
+**The erratum round was scoped to its item list and skipped the re-grounding step that DEC-ERR-01
+attaches to every erratum round — so a one-literal edit inherited a High from four-hour-old
+upstream drift it had nothing to do with, and the channel's single round was spent before anyone
+could write the two-line fix.**
+
+Four contributing conditions, in order of leverage:
+
+1. **Re-grounding is a step of the erratum round, and this round treated it as optional because
+   the items did not need it.** DEC-ERR-01 is explicit: an erratum round re-reads its immediate
+   upstream at HEAD, diffs the `Version` cell and changelog against the version last approved
+   against, and **absorbs** what moved *before* touching the raised items. The author went
+   straight to the raised items — correctly, in substance: the literal alignment is independent of
+   AC-1.3's ownership split. But the round is the unit that carries the obligation, not the item.
+   The evidence that this was skipped rather than done-and-unrecorded is the `:30` / `:38` /
+   `:42-43` trio: an author who had read REQ v0.11 would have found their own routed items already
+   discharged there and could not have left them standing as open.
+
+2. **REQ moved 81 minutes before the edit, from a different phase.** `01c27ee4` landed at 22:07;
+   the FSPEC erratum committed at 23:28. Nothing in the PROPERTIES phase's own record announced
+   that move — Phase PR's inputs are FSPEC/TSPEC/PLAN, and its reviewers were reading PROPERTIES.
+   Cross-phase upstream drift is exactly what the re-grounding step exists to catch, and it is
+   invisible to anyone who does not perform it.
+
+3. **Severity of a stale hand-off statement is not pinned by any shipped rule, and the convergence
+   bar is High-only.** With no shared bar, one reviewer's Process/Medium and another's High are
+   both faithful readings, and the High-only gate turns that ambiguity directly into a halt. The
+   two reviewers agree on the fix, the fix's size, and the fact that it moves no criterion — they
+   disagree only on whether it may be deferred one round. That is a rule gap, not a review defect.
+
+4. **The erratum channel is bounded at one round per upstream document per phase, and this round
+   spent it on a defect the round did not introduce.** The bound is right — it stops erratum
+   ping-pong — but it prices every erratum round as one-shot. A round that fixes its items
+   perfectly and misses the process step gets no second attempt, even when the remedy is a header
+   cell and a changelog paragraph that both reviewers have already written out for the author.
+
+**What is not the cause.** Not PROPERTIES quality: approved by both reviewers in round 2, all nine
+round-1 findings closed, anchors recorded. Not the raised items: both confirmed resolved by both
+reviewers, aligned to the shipped literal, with the pinning test cited. Not a contested design:
+zero substantive disagreement in either confirmation. Not review-round exhaustion: 2 of 5 used, 13
+of `MAX_LIFETIME_ROUNDS` remaining. Not authoring stall: the whole phase, both revisions and the
+erratum edit, ran in twenty-two minutes of section-sized commits. Not a wrong routing decision:
+both reviewers independently said PROPERTIES was right and the FSPEC was the odd document out.
+
 ## Recommendation
