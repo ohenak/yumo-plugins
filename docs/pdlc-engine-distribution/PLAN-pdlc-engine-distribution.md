@@ -151,6 +151,56 @@ sample.
 | T52 | E | [manual] BR-3.9's one-time real-channel publish, recorded and dated: tag pushed, gate and preflight green, pairing record readable via `npm view … pdlcPairing` (AT-3.1, and REQ `AC-1.5` for the published pairing record) | — | `docs/pdlc-engine-distribution/EVIDENCE-BR-3.9.md` | 11 | T05, T49, T50 | ⬚ |
 | T56 | E | [manual] **AT-4.4 *(AC-4.4)*, the anti-echo criterion, which had no carrier** (PM round-1 F-02) — FSPEC marks it *not* blocked on O-9: it needs two plugin versions and a revert, no new carrier. Recorded, dated evidence of three runs on the fixture machine: run 1 at plugin version P records a reported pair; a **different** plugin version P′ is made current and run 2 records a pair that **differs**; the change is reverted to P and run 3 records a pair equal to run 1's. All three pairs are transcribed into the evidence document. This is what stops the whole provenance stream (T20, T27, T29, T35, T36, T38, T39, T42, T44) being satisfiable by a hardcoded constant that happens to match once — the second observation is the one a constant fails (AT-4.4) | — | `docs/pdlc-engine-distribution/EVIDENCE-AT-4.4.md` | 11 | T50 | ⬚ |
 
+## 2.1 Acceptance-test traceability
+
+Set-equality against FSPEC §8's enumeration, not a sample (PM round-1 Q-03): every `AT-` id
+FSPEC defines appears exactly once in the left column, and every row names at least one task.
+This table is a **table of prose**, not a task table — it carries no `#`/`ID` cell and no
+`Deps`/`Dependencies` cell, so `parsePlanTasks` cannot mistake it for §2 (§6 Rule 8).
+
+| Acceptance test | Carried by |
+|---|---|
+| AT-1.1 *(AC-1.1)* refusal, none installed | T15, T14, T46 |
+| AT-1.2 *(AC-1.1)* out-of-range refusal, distinguishable text | T15, T46 |
+| AT-1.3 *(AC-1.1)* diagnostic completes in either refusal state | T15, T46 |
+| AT-1.4 *(BR-1.3)* unparseable manifest ⇒ root + parse failure | T15, T46 |
+| AT-1.5 *(AC-1.2)* composed prompt carries the installed plugin's marker | T57 |
+| AT-1.6 *(AC-1.4)* triple equals banner's and report's | T15, T46 |
+| AT-2.1 *(AC-2.1)* clean-machine install, CLI on `PATH`, handshake reached | T11, T14, T41, T46, T53, T34, T50 |
+| AT-2.2 *(BR-2.3)* install/upgrade/pairing commands occur exactly once | T18, T31 |
+| AT-2.3 *(AC-2.2)* two consumer repos, one machine-level upgrade, zero in-repo commands | T50 (second leg) |
+| AT-2.4 *(AC-2.3)* clean-tree install then upgrade, both values differ, tree byte-identical | T53, T34, T59, T50 |
+| AT-2.5 *(AC-2.4)* below the Node floor: named failure, no stack trace, no partial tree | T13, T25, T34, T45, T50 |
+| AT-2.6 *(AC-2.5)* engine and plugin coexist, hashes unchanged | T50 |
+| AT-3.1 *(AC-3.1)* tag ⇒ built, checked, stub-recorded publish, no human step | T58, T49, T52 |
+| AT-3.2 *(AC-3.2)* red member ⇒ conclusion `failure` | T58, T49 |
+| AT-3.3 *(AC-3.3)* re-run for N: no-op or loud failure, bytes unchanged on both branches | T58, T49 |
+| AT-3.4 *(AC-3.4)* job-name set-equalities with mutations against fixture copies | T17, T49 |
+| AT-3.5 *(AC-3.5)* sentinel credential absent from artifact and log, plus both positives | T58, T49 |
+| AT-3.6 *(AC-3.6)* tag disagreeing with T-1a fails naming both values | T58, T49 |
+| AT-3.7 *(AC-3.7)* range excluding T-1b fails naming range and plugin version | T58, T49 |
+| AT-3.8a *(AC-1.5, AC-1.3)* packed set equals §5.2's writable classes; pairing record present | T16, T25, T49 |
+| AT-3.8b *(AC-1.3)* packed workflow modules equal §5.2's class | T16, T33, T11, T41, T49 |
+| AT-4.1 *(AC-4.1)* report states both versions | T08, T20, T27, T29 |
+| AT-4.2 *(AC-4.2)* committed POSTMORTEM nameable from history alone | T20, T24, T29, T47, T48 |
+| AT-4.3 *(AC-4.3)* two engine versions differ in the artifacts | T08, T27, T41 |
+| AT-4.4 *(AC-4.4)* pair changes and reverts — the anti-echo observation | T56 |
+| AT-4.5 *(AC-4.5)* no pre-existing file rewritten outside the enumeration | T23, T38 |
+| AT-5.1 *(AC-5.1)* pin executes, announces, states it could not check | T07, T10, T12, T28, T37, T43 |
+| AT-5.2 *(AC-5.2)* no pin ⇒ latest installed, "no pin" stated | T07, T37, T54, T40 |
+| AT-5.3 *(AC-5.3)* all four dev-mode kinds marked, none unmarked | T19, T20, T21, T22, T24, T29, T30, T35, T36, T38, T39, T42, T44, T47, T48, T55 |
+| AT-5.3b *(AC-5.3)* green run: produced kinds marked, absent kinds not vacuous | T21, T24, T36, T39 |
+| AT-5.4 *(AC-5.4)* checkout present, no declaration ⇒ released version | T07, T37 |
+| AT-5.5 *(AC-5.5)* pin naming an uninstalled version refuses, naming both | T06, T07, T10, T26, T28, T37 |
+| AT-5.6 *(AC-5.6)* `PDLC_PLUGIN_ROOT` refusal-or-ignored-with-notice | T09, T32, T54, T40 |
+| AT-6.1 *(AC-6.1)* build then bare-path sync then `--check`, all three exit 0 | T44 |
+| AT-6.2 *(AC-6.2)* both channels: engine run marked, bundle run unmarked — **[manual]**, limited | T51 |
+
+Two REQ criteria are cited in §2 as `AC-` rather than `AT-`, because FSPEC folds their
+verification into another named test rather than giving them one of their own: **AC-1.5** (the
+per-release pairing record) is verified inside AT-3.8a and documented by T31/T52, and **AC-3.5**'s
+two positives are legs of AT-3.5 (T58). No other `AC-` token appears in §2 or §7.
+
 ## 3. File-ownership manifest
 
 One row per task in §2, and no row without a task — the bijection `validatePlanContract` enforces. `Files` is the union of the task's `Test File` and `Source File` cells: every path a task writes, including test files it creates or edits. Paths are repo-root-relative and subpackage-qualified (`pdlc/engine/…` and `pdlc/workflows/…` are different suites; see §6). A task that writes nothing on disk does not exist — the two `[gate]` tasks own the decision document they append to, and the two `[manual]` tasks own the evidence document they record into.
