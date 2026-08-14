@@ -15,15 +15,13 @@ feature: pdlc-engine-distribution
 |---|---|---|---|---|
 | pdlc | Draft | Claude | 0.5 | 2026-08-14 |
 
-*0.5 (2026-08-14, round-4 findings): §5.2's workflow-module row and AT-3.8b drop `[blocked on
-O-10]` and name TSPEC §5.4's `PK-20`…`PK-22`; O-10 is kept only where it still bites, BR-8.2 (SE
-`F-01`, TE `F-02`). §5.2 and §1 own the **per-class** counts (1/1/2/15/3/1, licence 0→1 at N-2)
-and state the change-control claim at the strength delivered — cardinality moves both sides, a
-rename does not (TE `F-01`). AT-3.8a is the authoritative whole-set assertion, AT-3.8b a
-sub-assertion (SE `F-02`); AT-3.8a's count conjunct is pinned to the transcribed `PK-*` list, not
-to the tarball's length (TE `F-03`). Routed upstream: REQ AC-1.3's wording (TE `Q-01`), PLAN's
-discharged FSPEC erratum blocking T16 (TE `Q-02`), TSPEC §5.4's missing co-change sentence (SE
-`F-03`).*
+*0.5 (2026-08-14, round-4): §5.2's workflow-module row and AT-3.8b drop `[blocked on O-10]` and
+name `PK-20`…`PK-22`; O-10 is kept only on BR-8.2 (SE `F-01`, TE `F-02`). §5.2 and §1 own the
+**per-class** counts (1/1/2/15/3/1, licence 0→1 at N-2) and claim only what cardinality delivers
+(TE `F-01`). AT-3.8a is the authoritative whole-set assertion, AT-3.8b a sub-assertion (SE
+`F-02`); the count conjunct is pinned to the transcribed `PK-*` list (TE `F-03`). Routed upstream:
+REQ AC-1.3's wording (TE `Q-01`), PLAN's discharged FSPEC erratum (TE `Q-02`), TSPEC §5.4's
+missing co-change sentence (SE `F-03`).*
 
 *0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
 split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
@@ -509,22 +507,18 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 | CLI entry | named in TSPEC §5.4 | the executable(s) the `bin` mapping resolves to; how many files carry that entry is a decomposition question TSPEC §5.4 decides, not this document |
 | Engine modules | named in TSPEC §5.4 | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
 | Install script | named in TSPEC §5.4 (`PK-23`) | the postinstall script the packaged install runs (§9.2 of the TSPEC); unconditional, and a member like any other |
-| Workflow modules | named in TSPEC §5.4 (`PK-20`…`PK-22`) | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`); TSPEC §5.4 names the three vendored members under the `vendor/workflows/` entry "and nothing else", which unblocks this row and AT-3.8b (SE round-4 F-01, TE round-4 F-02). O-10 still owns *how* they get there — see BR-8.2 — not *which* they are |
+| Workflow modules | named in TSPEC §5.4 (`PK-20`…`PK-22`) | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`); TSPEC §5.4 names the three vendored members "and nothing else", unblocking this row and AT-3.8b (SE round-4 F-01, TE round-4 F-02). O-10 owns *how* they get there (BR-8.2), not *which* they are |
 
-**The member *count* is owned here** (SE F-01; TE `F-01`, `Q-02`). The expected set is **23
-members before N-2's licence decision is recorded and 24 after**: the manifest, the package
-README, the CLI-entry file(s), every `lib/*.mjs` engine module, the vendored workflow members,
-and the install script, plus `LICENSE` once N-2 lands (`TSPEC:386-389` carries the same
-arithmetic). The split is deliberate: this document says which classes exist and how many
-members they total, TSPEC §5.4's `PK-*` table says which files — so REQ AC-1.3's *expected set
-stated in the FSPEC* is stated here, and a decomposition change that moves any count updates
-both sides **in the same change**.
-
-The count is owned **per class**, not only as a total (TE round-4 F-01): manifest 1, README 1, CLI
-entry 2, engine modules 15, workflow modules 3, install script 1, licence 0 before N-2 and 1
-after. A total alone is invariant under a swap that merges one `lib/*.mjs` while splitting a
-`bin/` entry — that would move TSPEC §5.4 with no FSPEC edit. A pure **rename** at constant
-cardinality is still downstream-only; AT-3.8a catches renames as spec-vs-package drift.
+**The member *count* is owned here, per class and in total** (SE F-01; TE `F-01`, `Q-02`):
+manifest 1, package README 1, CLI entry 2, engine modules 15, workflow modules 3, install script
+1, licence 0 before N-2's decision is recorded and 1 after — **23 members before N-2 and 24
+after** (`TSPEC:386-389` carries the same arithmetic). The split is deliberate: this document says
+which classes exist and how many members each holds, TSPEC §5.4's `PK-*` table says which files —
+so REQ AC-1.3's *expected set stated in the FSPEC* is stated here, and a decomposition change that
+moves any class's count updates both sides **in the same change**. Per-class is the load-bearing
+form: a total alone is invariant under a swap that merges one `lib/*.mjs` while splitting a `bin/`
+entry. A pure **rename** at constant cardinality remains downstream-only; AT-3.8a catches renames
+as spec-vs-package drift (TE round-4 F-01).
 
 **Excluded, by set-equality rather than by absence-checking:**
 
