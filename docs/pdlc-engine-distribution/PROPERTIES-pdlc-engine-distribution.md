@@ -372,11 +372,15 @@ Each row of the falsifiability checklist, with the properties it applies to and 
 
 ## 7. Test-level distribution
 
-| Level | Count | Notes |
+**88 properties in §2**, distributed as follows. Six carry two levels (PROP-LAUNCH-6,
+PROP-INSTALL-3, PROP-INSTALL-6, PROP-PUB-9, PROP-GATE-1, PROP-REGR-3), so the column sums to 94
+rather than 88.
+
+| Level | Count | Which |
 |---|---|---|
-| Unit | 48 | The bulk. Everything reachable from `cd pdlc/engine && npm test` and `cd pdlc/workflows && npm test`, including all generated-input properties and every seam-level assertion. |
-| Integration | 11 | Cross-module wiring and workflow-level paths: PROP-LAUNCH-5, PROP-PROV-7, PROP-PROV-15, PROP-PROV-16, PROP-PUB-1…PROP-PUB-5, PROP-PUB-9, PROP-PUB-10, PROP-REGR-3. Each runs a full execution path and asserts a terminal state, per the coverage-mode-gate rule. |
-| Machine | 9 | Legs that only run on `.github/workflows/fixture-machine.yml` (PROP-INSTALL-3…7, PROP-LAUNCH-6's real-spawn half, PROP-GATE-4, PROP-GATE-5) plus the three `[manual]` records (PROP-PROV-19, PROP-REGR-4, and PROP-PUB-1's real-channel leg). |
+| Unit | 73 | Everything reachable from `cd pdlc/engine && npm test` and `cd pdlc/workflows && npm test` — all of PROP-PACK (12), PROP-VER (16), PROP-CAT (4), 18 of the 19 PROP-PROV, 7 of 8 PROP-LAUNCH, 5 of 8 PROP-INSTALL, 3 of 10 PROP-PUB, 3 of 5 PROP-GATE, 5 of 6 PROP-REGR. |
+| Integration | 9 | Full execution paths asserting a terminal state: PROP-LAUNCH-5, PROP-PUB-1…PROP-PUB-5, PROP-PUB-9, PROP-PUB-10, PROP-REGR-3. |
+| Machine | 12 | Legs that run only on `.github/workflows/fixture-machine.yml` — PROP-LAUNCH-6's real-spawn half, PROP-INSTALL-3…7, PROP-GATE-1's probe legs, PROP-GATE-4, PROP-GATE-5 — plus the three `[manual]` records: PROP-PROV-19 (AT-4.4), PROP-REGR-4 (AT-6.2) and PROP-PUB-9's real-channel half (BR-3.9). |
 
 **E2E budget.** Three end-to-end journeys, within the 3–5 ceiling: (1) clean-machine install →
 upgrade → two consumer repos execute N+1 (PROP-INSTALL-3, -4, -5); (2) tag push → gate → preflight →
