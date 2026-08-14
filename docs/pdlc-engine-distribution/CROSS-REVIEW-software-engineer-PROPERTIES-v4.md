@@ -21,6 +21,51 @@ are now closed. I checked the diff, not the changelog.
 
 ## 2. New-issue scan over the changed regions
 
+The diff touches five regions and nothing else: the version cell (0.5 → 0.6), a new changelog
+row, PROP-LAUNCH-1's row, §3's new PROP-NEG-18, and §4's no-`AT-`-row paragraph. Each was
+scanned against the three standing bars — no implementation echoes, no absence-only oracles,
+set-equality not containment — plus grounding of every code and upstream claim it introduces.
+
+**Every new anchor re-verified against HEAD, line by line.**
+
+| New claim | Where | Verified |
+|---|---|---|
+| AC-5.5's *Given* is *"a pin naming a version that is not installed"*, `REQ:427-429` | `:86` | Exact. `REQ:427` opens `- **AC-5.5** … *Given:* a pin naming a version that is not installed.`, `:428-429` are its *When* and *Then* |
+| `handshake.test.js:110-118` pins the range, `not found`, `Remedy:` and `PDLC_PLUGIN_ROOT` | `:269` | Exact and tight. `:110` is `test("a missing plugin refuses and names the range, 'not found', and the remedy"…`, `:113` asserts `pluginVersion === "not found"`, `:114-117` are the four `assert.match` calls named, `:118` closes the test. Four named substrings, four assertions, no slack |
+| `handshake.mjs:144` is `checkCompat`'s reason | `:269` | Exact. `:144` is `export function checkCompat(engineCompatRange, pluginVersion) {` |
+| PROP-LAUNCH-4's resolution state (b) is the observation site | `:320-322` | Grounded in PLAN, not just in this document. `PLAN:148` T15(b) reads *"empty store reports the launcher's own triple with `mode: "unresolved"` and the refusal text as a notice"* — the §4 prose, PROP-LAUNCH-4's row (`:89`) and the owning task now say the same thing in the same words |
+| Carrier cells still name planned artifacts | `:86` | `T15`, `T14`, `T46` all exist in PLAN §2.1 (`:148`, `:147`, `:186`) and the ownership manifest gives T15 `version-doctor.test.js` (`PLAN:284`), T14 `launcher.test.js` (`:283`), T46 both plus `bin/cli.mjs` (`:315`). Test file and level unchanged by this edit anyway |
+
+**No oracle weakened, and no new oracle is absence-only.** PROP-NEG-18 is a catalogue entry, not
+a new assertion: both conjuncts are the ones PROP-LAUNCH-9 already carried, and each negative is
+paired on the same path with the positive that falsifies it — *"dispatched nothing"* with a
+dispatch count asserted `=== 0`, *"left the tree unmodified"* with a byte-identical comparison
+against a recorded **non-empty** pre-state. Neither reads a value out of the code under test;
+the strings (`not found`, `Remedy:`, `PDLC_PLUGIN_ROOT`) are literal transcriptions of the spec's
+own vocabulary that happen to be green at HEAD, which is the right direction of derivation.
+
+**No set-equality claim disturbed.** §4's `AT-` table is untouched by the diff — the five `AT-1.*`
+rows at `:280-285` are byte-identical to the version I checked at `06e74162`, and PROP-LAUNCH-1
+was never in that table, so removing its AC trace cannot change the 35-row set. §7's counts (89
+properties, column sum 95, Unit 74) are untouched because PROP-LAUNCH-1's Category and Level cells
+did not move and PROP-NEG-18 lives in §3, which is a catalogue of §2's clauses and not a member of
+the property count. I looked for a stated §3 cardinality that adding an eighteenth row would
+falsify; there is none — §3's preamble quantifies over "every negative" rather than counting them.
+
+**One real defect found, and it is presentational.** The new changelog row is filed **out of
+order**: `:22` carries 0.6 and `:23` carries 0.5, so the table now reads 0.1, 0.2, 0.3, 0.4, 0.6,
+0.5. Nothing machine-read depends on changelog ordering, and the Version cell (`:12`) correctly
+reads 0.6, so this is a readability defect only — but the erratum protocol has a reader diff
+`Version` cells and changelog rows to work out what a document absorbed and when, and a
+non-monotonic table is exactly the shape that makes that read go wrong. Filed F-01 (Low).
+
+**One phrasing nit in the new §4 prose.** *"the triple it reports there is AT-1.6's"* (`:322`) is
+true of the triple's *shape* — engine version, declared range, plugin version, per `FSPEC:694-697`
+— but AT-1.6 is carried by PROP-LAUNCH-5 alone (`:285`), and the sentence sits three lines below
+a paragraph whose whole purpose is to stop a DoD reader inferring a second carrier from prose.
+Saying "the same three members AT-1.6 pins" would carry the meaning without the inference risk.
+Filed F-02 (Low). Not gating; the `AT-` table remains the authority and it is unambiguous.
+
 ## 3. Findings
 
 ## 4. Questions
