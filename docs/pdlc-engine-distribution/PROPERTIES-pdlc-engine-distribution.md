@@ -254,6 +254,61 @@ names and which four of this feature's oracles are structurally exposed to.
 
 ## 4. Coverage matrix — acceptance test → property → task → test file
 
+Set-equality against FSPEC §8's enumeration as PLAN §2.1 transposes it: **all 35 `AT-` ids appear
+exactly once** below, and every row names at least one property and at least one task that PLAN §2
+already carries. The `Carried by` column is copied from PLAN §2.1, which is itself the transpose of
+§2's trailing citation lists — this document adds no carrier PLAN does not name.
+
+| AT | Properties | Carried by (PLAN §2.1) | Test file(s) |
+|---|---|---|---|
+| AT-1.1 | PROP-LAUNCH-1, PROP-LAUNCH-6 | T15, T14, T46 | `version-doctor.test.js`, `launcher.test.js` |
+| AT-1.2 | PROP-LAUNCH-2 | T15, T46 | `version-doctor.test.js` |
+| AT-1.3 | PROP-LAUNCH-4 | T15, T46 | `version-doctor.test.js` |
+| AT-1.4 | PROP-LAUNCH-3 | T15, T46 | `version-doctor.test.js` |
+| AT-1.5 | PROP-PACK-9 | T57 | `skills-composition.test.js` |
+| AT-1.6 | PROP-LAUNCH-5 | T15, T46 | `version-doctor.test.js` |
+| AT-2.1 | PROP-LAUNCH-6, PROP-INSTALL-1, PROP-PACK-8 | T11, T14, T41, T46, T53, T34, T50 | `workflow-roots.test.js`, `launcher.test.js`, `postinstall.test.js`, `scripts/fixture-machine.mjs` |
+| AT-2.2 | PROP-INSTALL-8 | T18, T31 | `docs-uniqueness.test.js` |
+| AT-2.3 | PROP-INSTALL-5 | T50 (second leg) | `scripts/fixture-machine.mjs` |
+| AT-2.4 | PROP-INSTALL-2, PROP-INSTALL-3, PROP-INSTALL-4 | T53, T34, T59, T50 | `postinstall.test.js`, `fixture-machine.test.js` |
+| AT-2.5 | PROP-LAUNCH-7, PROP-LAUNCH-8, PROP-INSTALL-6 | T13, T25, T34, T45, T50 | `bin-guard-structure.test.js`, `postinstall.test.js`, `provenance-path.test.js` |
+| AT-2.6 | PROP-INSTALL-7 | T50 | `scripts/fixture-machine.mjs` |
+| AT-3.1 | PROP-PUB-1 | T58, T49, T52 | `publish-channel.test.js`, `EVIDENCE-BR-3.9.md` |
+| AT-3.2 | PROP-PUB-2 | T58, T49 | `publish-channel.test.js` |
+| AT-3.3 | PROP-PUB-3 | T58, T49 | `publish-channel.test.js` |
+| AT-3.4 | PROP-PUB-6, PROP-PUB-7, PROP-REGR-2 | T17, T49 | `ci-arrangement.test.js` |
+| AT-3.5 | PROP-PUB-4, PROP-PUB-8 | T58, T49 | `publish-channel.test.js` |
+| AT-3.6 | PROP-PUB-5 | T58, T49 | `publish-channel.test.js`, `scripts/publish-preflight.mjs` |
+| AT-3.7 | PROP-PUB-5 | T58, T49 | `publish-channel.test.js`, `scripts/publish-preflight.mjs` |
+| AT-3.8a | PROP-PACK-1, PROP-PACK-2, PROP-PACK-3, PROP-PACK-5, PROP-PACK-11, PROP-PUB-9, PROP-PUB-10 | T16, T25, T49 | `packaging.test.js` |
+| AT-3.8b | PROP-PACK-4, PROP-PACK-6, PROP-PACK-7, PROP-PACK-10, PROP-CAT-3 | T16, T33, T11, T41, T49 | `packaging.test.js`, `run.test.js`, `workflow-roots.test.js` |
+| AT-4.1 | PROP-PROV-1, PROP-PROV-2, PROP-PROV-3 | T08, T20, T27, T29 | `provenance.test.js`, `provenanceSeam.test.js` |
+| AT-4.2 | PROP-PROV-4, PROP-PROV-12, PROP-PROV-16, PROP-PROV-18 | T20, T24, T29, T47, T48 | `provenanceSeam.test.js`, `devModeKinds.test.js`, `provenance-path.test.js` |
+| AT-4.3 | PROP-PROV-1, PROP-PACK-6 | T08, T27, T41 | `provenance.test.js`, `run.test.js` |
+| AT-4.4 | PROP-PROV-19 | T56 | `EVIDENCE-AT-4.4.md` |
+| AT-4.5 | PROP-PROV-10, PROP-PROV-11 | T23, T38 | `artifactPaths.test.js` |
+| AT-5.1 | PROP-VER-2, PROP-VER-3, PROP-VER-9, PROP-VER-12, PROP-VER-16 | T07, T10, T12, T37, T43 | `resolve-version.test.js`, `engine-config.test.js`, `update-probe.test.js` |
+| AT-5.2 | PROP-VER-2, PROP-VER-4, PROP-VER-15 | T07, T37, T54, T40 | `resolve-version.test.js`, `startup-announce.test.js` |
+| AT-5.3 | PROP-PROV-5, PROP-PROV-7, PROP-PROV-8, PROP-PROV-9, PROP-PROV-12, PROP-PROV-14, PROP-PROV-15, PROP-PROV-16, PROP-PROV-17 | T19, T20, T21, T22, T24, T30, T35, T36, T39, T42, T44, T47, T48, T55 | `commit-sites.test.js`, `provenanceCommits.test.js`, `provenanceQueueRow.test.js`, `devModeKinds.test.js`, `runtimeProvenanceWiring.test.js`, `provenance-path.test.js` |
+| AT-5.3b | PROP-PROV-5, PROP-PROV-6, PROP-PROV-12, PROP-PROV-13 | T21, T24, T36 | `provenanceQueueRow.test.js`, `devModeKinds.test.js` |
+| AT-5.4 | PROP-VER-1, PROP-VER-7, PROP-VER-8 | T07, T37 | `resolve-version.test.js` |
+| AT-5.5 | PROP-VER-5, PROP-VER-6, PROP-VER-9, PROP-VER-10, PROP-VER-11 | T06, T07, T10, T26, T28, T37 | `store.test.js`, `resolve-version.test.js`, `engine-config.test.js` |
+| AT-5.6 | PROP-VER-13, PROP-VER-14, PROP-VER-15 | T09, T32, T54, T40 | `plugin-root-notice.test.js`, `startup-announce.test.js` |
+| AT-6.1 | PROP-REGR-3, PROP-PROV-15 | T44 | `runtimeProvenanceWiring.test.js` |
+| AT-6.2 | PROP-REGR-4 | T51 | `EVIDENCE-AT-6.2.md` |
+
+**Properties with no `AT-` row of their own**, and why each is still traceable: PROP-PACK-12
+(licence atomicity) traces to N-2 / O-8 blocker 3 and PLAN DoD item 16; PROP-CAT-1, PROP-CAT-2 and
+PROP-CAT-4 trace to TSPEC §10.3 and constrain the *shape* of the work rather than a criterion;
+PROP-GATE-1…PROP-GATE-5 trace to PLAN DoD items 14 and 15; PROP-REGR-1, PROP-REGR-5 and PROP-REGR-6
+trace to DoD items 2 and 4; PROP-PROV-17 traces to TSPEC §12.4's parity constants. None of these is
+an acceptance criterion, and none is asserted in place of one.
+
+**Two REQ criteria are cited as `AC-`, not `AT-`**, because FSPEC folds their verification into
+another named test: **AC-1.5** (the per-release pairing record) is verified inside AT-3.8a and
+documented by T31/T52 — PROP-PUB-9 carries it — and **AC-3.5**'s two positives are legs of AT-3.5,
+carried by PROP-PUB-4.
+
 ## 5. Requirement coverage and declared gaps
 
 ## 6. Falsifiability audit
