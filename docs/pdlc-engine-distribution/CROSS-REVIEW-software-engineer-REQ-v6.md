@@ -76,8 +76,48 @@ different ownerships, both now stated correctly.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | *(carried, unanswered — no text changed on this round)* O-7 settles the two version numbers and the tag, but not the cadence underneath: a prompt-only plugin minor can put the installed engine outside `pdlcPluginCompat` (still `^0.22.0` at HEAD against plugin `0.22.7`, M-ENG-11) and trip AC-1.1's refusal until an engine republish lands. Is "republish the engine on every plugin minor" the accepted operating cost, or is O-6's per-release range-widening the intended relief? |
+| Q-06 | *(carried)* AC-5.6 fixes what a run does when `PDLC_PLUGIN_ROOT` stops being honoured on presence alone, but not whether `REMEDY` (`pdlc/engine/lib/handshake.mjs`) changes with it — it *advertises* the variable as the remedy. Is "ignored" scoped to dev-mode marking only, leaving plugin-root resolution untouched? |
+| Q-08 | *(carried)* O-9 now owns three obligations of the same shape (AC-4.2's version pair, AC-4.5's authored-file enumeration, AC-6.2's load root). One design decision or three? Saying so at O-9 would keep Phase 1 scoped. |
+
 ## Positive Observations
+
+- **The edit moved the REQ's claim to match the downstream ownership, rather than moving the
+  downstream documents to match the REQ.** That was the correct direction and the cheaper one by a
+  wide margin: FSPEC §5.2's classes-and-counts / TSPEC-names split is load-bearing for a reason it
+  states in its own text — per-class counts are invariant under a decomposition swap that a total
+  count would miss, and the member list has to live where decomposition is decided. Forcing a
+  literal member list into the FSPEC to satisfy the old AC wording would have created a third copy
+  of the packed set and a third drift surface. One REQ sentence changed instead.
+- **The AC keeps its teeth.** The rewrite could easily have softened set-equality into "contains",
+  which is the failure mode the AC's own parenthesis warns about (a subset check passes a vendored
+  skills tree). It did not: "equals, member for member … so an added file fails and a removed
+  module fails" survives verbatim, and TSPEC PF-4 already asserts exactly that against a real
+  `npm pack` rather than `--dry-run`. The delegation changed where the expected side is *read
+  from*, not how strictly it is compared.
+- **The citation correction was applied to the flow that owns the behaviour, not to the nearest
+  sentence that mentions it.** F-3 step 5 does mention the pin read, so "F-3 step 5" could have
+  been defended; pointing at F-4 step 2 instead makes the citation survive a future trim of F-3's
+  cross-reference. Small choice, right one.
+- **Blast radius honestly zero.** Two edited sites, both traceable to the raised items, no AC
+  semantics changed beyond the one re-worded clause, and the changelog says "no other change" —
+  which the diff confirms rather than merely asserts. The document remains inside its size budget
+  (614 lines against the 700-line / 60 KB REQ budget) after five changelog rounds.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+All five erratum items are confirmed landed at HEAD, verified against the downstream text they
+delegate to rather than against the changelog's description of it. Upstream (`docs/_constraints/`,
+`docs/_decisions/`, `docs/_queue/`) is byte-unchanged, so no prior citation has gone stale and
+nothing is absorbed this round. One new Low finding (F-29, the conditional licence count) and four
+carried non-gating findings, none of which is a REQ edit: F-25/F-27/F-28 are FSPEC-side, F-26 is a
+constraints-file line. No High findings, open or new — the REQ stays approved.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 4}
