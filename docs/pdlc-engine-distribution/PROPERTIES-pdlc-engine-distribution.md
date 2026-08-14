@@ -311,8 +311,89 @@ carried by PROP-PUB-4.
 
 ## 5. Requirement coverage and declared gaps
 
+| Requirement | Properties | Coverage |
+|---|---|---|
+| REQ-EDIST-01 — one versioned engine artifact, resolved and launched | PROP-LAUNCH-1…8, PROP-PACK-9 | Complete. All six `AT-1.*` ids carried. |
+| REQ-EDIST-02 — one-command install / upgrade, zero per-project action | PROP-INSTALL-1…8 | Complete **at criterion level**, but AT-2.3 and AT-2.6 are observed **only** by machine legs (PROP-GATE-4 is what keeps that honest), and AT-2.1, AT-2.4 and AT-2.5 keep hermetic carriers while losing their machine-level conjunct if those legs skip. |
+| REQ-EDIST-03 — tag-driven gated publish | PROP-PUB-1…10, PROP-PACK-11, PROP-PACK-12 | Complete against the S-5 stub. The **real-channel** leg (BR-3.9) is a one-time `[manual]` record (T52) and is not re-run. |
+| REQ-EDIST-04 — version provenance in artifacts | PROP-PROV-1…19 | Complete for AC-4.1, AC-4.2, AC-4.3 and AC-4.5. **AC-4.4 is a declared gap — see below.** |
+| REQ-EDIST-05 — pinning, dev mode, resolution announcements | PROP-VER-1…16, PROP-CAT-1…3 | Complete. All seven `AT-5.*` ids carried at unit level. |
+| REQ-EDIST-06 — non-regression of the plugin and bundle channels | PROP-REGR-1…6 | AC-6.1 complete and mechanical. **AC-6.2 is a declared gap — see below.** |
+
+**Declared gap 1 — AC-4.4 is verified once, with no regression guard.** PROP-PROV-19 is a
+`[manual]`, dated, three-run observation on the fixture machine (T56). A dated document does not
+re-run: the hardcoded-constant defect a run-3 revert would catch today is caught **once and never
+again**, so any later change to the provenance stream (T20, T27, T29, T35, T36, T38, T39, T42, T44)
+that introduced a hardcoded pair would redden **no test in this plan**. The reason it is not
+automated on the fixture machine is narrow and expires: AT-4.4 needs a **revert** — a third
+sequential run restoring a *prior* plugin root — and no leg in the plan installs an older plugin
+version over a newer one. **The moment such a leg exists, this gap should close by moving
+PROP-PROV-19 onto T50.** A later reader finding a revert leg on the machine should read this as
+scheduling, not as a standing exclusion.
+
+**Declared gap 2 — AC-6.2 is a limited observation, not a discriminating test.** PROP-REGR-4's
+conjunction — the bundle run completed and emitted its named artifacts, and its output carries no
+engine provenance block — discriminates only on a machine whose installed channels are known
+independently. The bundle-side carrier (N-1) is unbuilt by design, so there is no run-bound
+load-root observation on that side. Read in product terms: **REQ-EDIST-06 is fully delivered for
+AC-6.1 and partially delivered for AC-6.2**, remainder carried by N-1.
+
+**Declared gap 3 — the real publish channel is observed once.** PROP-PUB-1's stub legs re-run on
+every PR; BR-3.9's real-channel publish (T52) is a dated record. This is inherent to a criterion
+whose observation mutates a public registry, and it is recorded here so a DoD reader does not infer
+continuous coverage from a green `publish-channel.test.js`.
+
+**Not gaps, but out of scope by declaration** (PLAN §1.2, TSPEC §14.3): N-1 (AC-6.2's bundle-side
+carrier), N-3 (BL-03), N-4 (range widening) and N-5 (M-ENG-10 change control) remain unbuilt. N-6
+(npm scope) and N-2 (licence) are **inside** this feature's done-ness — N-6 as a decision (T02), N-2
+as a decision **and** the two artefacts that decision makes expected (T05, PROP-PACK-12).
+
+**Requirements with no property at all: none.** Every REQ-EDIST requirement has at least one
+property, and every property in §2 traces to a REQ criterion, a FSPEC business rule, a TSPEC section
+or a PLAN DoD item.
+
 ## 6. Falsifiability audit
+
+Each row of the falsifiability checklist, with the properties it applies to and the specific defence.
+
+| Failure mode | Where it bites here | Defence |
+|---|---|---|
+| **Absence-only oracle** | The four oracles TSPEC §12.3 names as not satisfiable by absence: packed-set equality, dev-mode produced-kind equality, the green-direct-run merge ladder, and the commit-site set. | PROP-PACK-1/-2 assert both directions against a transcribed expected set; PROP-PROV-12 asserts a **non-empty** produced-kind set on the green fixture; PROP-PROV-13 names the reached rung **before** asserting kinds; PROP-PROV-9 ships a fixture with a **sixth** commit site that must redden the equality. |
+| **Preservation / byte-identity vacuity** | PROP-PROV-2 (inert seam), PROP-INSTALL-4 (tree and index byte-identical), PROP-PUB-3 (stored bytes unchanged), PROP-REGR-2 (`pr-tests.yml` unchanged). | Each carries a positive-presence conjunct: the pre-state fixture is asserted **non-empty and containing the content compared**, and PROP-REGR-2 is paired with PROP-PUB-6's positive set-equality over the same file. |
+| **Regex / alternation branches without controls** | PROP-PUB-6's `unexpandable` verdicts (non-matrix name expression; job-level `uses:`), PROP-PROV-6's queue-table shapes (ragged rows, trailing pipes, CRLF). | Each branch has its own **fixture that exercises it** and its own expected verdict; mutations run against fixture copies. Multi-word sentinels are whitespace-normalised before substring matching, since a sentinel straddling a hard newline silently matches zero. |
+| **Identical-envelope behaviour** | PROP-PROV-4 (append skipped when `block` is empty), PROP-VER-12 (default probe never called), PROP-LAUNCH-8 (importing `cli.mjs` runs nothing), PROP-INSTALL-5 (zero in-repo commands). | All four are **behavioural call-counts**, not shape assertions: `_appendFile` `=== 0`, probe `=== 0`, capture `=== 0`, and a per-repo command log required to hold **exactly** the pipeline invocation. |
+| **Exact-value oracle over a real graph** | PROP-PROV-16's three-level wiring and PROP-PROV-18's capture counts. | Counts are asserted from **recorded dispatches** (`captured.length === 2`, `stopReason === "bound-reached"`) before any identity comparison — never hand-counted from the source. |
+| **Derived / absence-shaped conjunct at an injectable unit** | PROP-PROV-15 (the built `dist/` carries the widened arity), PROP-PUB-10 (PF-4/PF-5 against the **packed tarball**), PROP-PACK-5 (`prepack` into a temp dir first). | Each is placed at the **whole-artifact seam** — built bundle, packed tarball, temp-dir vendor tree — rather than at the generator or the manifest, because that is the only place the derived value exists. |
+| **New blocking cause behind a precedence chain** | PROP-PROV-13: the shipped self-modification guard refuses any diff touching `pdlc/workflows/`, which this feature's diff does. | The fixture **defeats the guard explicitly** by configuring `merge.guardPaths` to a set its changed-file list does not intersect, and asserts the reached rung by name first, so an earlier branch preempting the one under test fails rather than passing silently. |
+| **Generator hygiene** | PROP-VER-16 and PROP-PROV-6. | Generators are **bounded**, take an **explicit seed printed on failure**, and every counter-example is pinned as a named regression case rather than left to reappear stochastically. |
+| **Zero-assertion loop** | PROP-PACK-7. | A **non-zero member count asserted before** the per-member equality, so a resolver that becomes a function or a lazily computed shape fails loudly. |
+| **Green-because-never-ran** | PROP-GATE-1…5. | Fail-closed capability predicate (unprobeable ⇒ failure, not skip), an inventory naming what each skip leaves unverified, a pure comparator that fails on any unregistered skip, and a **positive** assertion that the recorded skip set is empty on `ubuntu-latest`. |
+| **Self-derived expectation** | PROP-PACK-2. | The count is asserted against the **transcribed** `PK-*` list, never the tarball's own length — which would be a tautology once PROP-PACK-1 passes, and is what BR-8.1 forbids. |
 
 ## 7. Test-level distribution
 
+| Level | Count | Notes |
+|---|---|---|
+| Unit | 48 | The bulk. Everything reachable from `cd pdlc/engine && npm test` and `cd pdlc/workflows && npm test`, including all generated-input properties and every seam-level assertion. |
+| Integration | 11 | Cross-module wiring and workflow-level paths: PROP-LAUNCH-5, PROP-PROV-7, PROP-PROV-15, PROP-PROV-16, PROP-PUB-1…PROP-PUB-5, PROP-PUB-9, PROP-PUB-10, PROP-REGR-3. Each runs a full execution path and asserts a terminal state, per the coverage-mode-gate rule. |
+| Machine | 9 | Legs that only run on `.github/workflows/fixture-machine.yml` (PROP-INSTALL-3…7, PROP-LAUNCH-6's real-spawn half, PROP-GATE-4, PROP-GATE-5) plus the three `[manual]` records (PROP-PROV-19, PROP-REGR-4, and PROP-PUB-1's real-channel leg). |
+
+**E2E budget.** Three end-to-end journeys, within the 3–5 ceiling: (1) clean-machine install →
+upgrade → two consumer repos execute N+1 (PROP-INSTALL-3, -4, -5); (2) tag push → gate → preflight →
+stub publish → pairing record readable (PROP-PUB-1, -9); (3) build → bare-path sync → `--check`
+(PROP-REGR-3). Everything else is unit or integration by construction.
+
+**Routing branches each have a workflow-level property.** The two execution-routing gates this
+feature introduces are the **two-root module resolution** (PROP-PACK-8, exercised end-to-end by
+PROP-PACK-6's installed-package leg) and the **`--version`/`doctor` exemption** (PROP-LAUNCH-4,
+exercised through the real launcher by PROP-LAUNCH-5's three-way triple equality). Neither is left to
+guard-only unit tests.
+
 ## 8. Open questions
+
+| # | Question | Owner | Blocking |
+|---|---|---|---|
+| Q-1 | **`node.below-floor`: registered or not?** TSPEC §10.3 instructs T45 to register it, while §9.3's guard — zero static imports, exactly three top-level statements — provably cannot emit it, so `checkMessageCatalogue`'s registered-but-unemitted arm fails. At HEAD `lib/catalogue.mjs` carries no `below-floor` id and no `node.*` id at all (grepped). PROP-CAT-4 states both resolutions and is conditional on this. | TSPEC (se-author) | **Yes** — T45 must not start against an expected value known to be wrong. Already recorded as an open erratum in PLAN §7. |
+| Q-2 | **Where do the fixture-machine legs run?** TSPEC §12.1 specifies them to run on PRs, but `pr-tests.yml`'s five rendered job names are closed by C-5 / BR-7.5 and `publish.yml` is tag-triggered, so no stated file runs them. PLAN §2 T50 puts them in a new additive workflow; PROP-GATE-5 assumes that resolution. | TSPEC (se-author) | **Yes** — already recorded as an open erratum in PLAN §7. |
+| Q-3 | Should PROP-PROV-19 (AC-4.4 anti-echo) move onto T50 once a **revert** leg exists on the fixture machine? This document's position: yes, and §5's declared gap 1 says so explicitly so the answer outlives this round. | Operator | No — scheduling, not correctness. |
+| Q-4 | `KNOWN_CAPABILITY_KEYS` at HEAD is `["bash", "git", "hash", "uid-nonroot"]` (read in `skipSink.js`), while PROP-GATE-1 names `docker`, `real-spawn` and `npm-pack`. T50 ships its **own** inventory in `scripts/fixture-machine.mjs` rather than extending the workflows-suite key set, which keeps the two suites' capability vocabularies separate. Confirm that separation is intended rather than a missed reuse. | se-author / te-review | No — either arrangement satisfies PROP-GATE-1…3; only the location of the closed key set changes. |
