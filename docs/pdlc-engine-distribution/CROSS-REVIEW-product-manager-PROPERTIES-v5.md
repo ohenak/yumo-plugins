@@ -133,6 +133,42 @@ PROPERTIES revision — is answered mechanically in §3: it does not, beyond the
 
 ## Positive Observations
 
+- **The document was specified precisely enough that the code arrived matching it.** T03 and T04
+  landed this round, and §8's row for them needed no correction: the S-1…S-7 mapping, the three
+  bounded generators, the `_git`/`_appendFile`/`_readFile` recorders and the three `QUEUE.md` table
+  shapes are all there under those names. A properties document earns its keep exactly here — when
+  the implementer reads a fixture row and ships that fixture, rather than inventing a weaker one.
+- **PROP-GATE-1 was ahead of the plan.** PLAN's round-6 TE Medium asked T59 to gain both arms of the
+  capability discriminator; PROPERTIES had already written both arms, positively, with the
+  fail-closed arm named as a returned classification rather than an absence check. The properties
+  layer catching a gap in the plan layer is the traceability chain working in the direction it is
+  least often observed working.
+- **The generators ship with their hygiene rules honoured.** `seeded`/`resolveSeed` mean rule 1's
+  "explicit seed, printed on failure" is a code fact and not an aspiration — the failure mode where a
+  clock-seeded generator produces an irreproducible red was designed out before the first generated
+  test exists.
+- **Stability under a moving neighbour.** PLAN took seven edits this round; PROPERTIES needed none.
+  That is what a well-scoped document looks like at round 5 — the churn next door is absorbed by
+  checking, not by editing.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+The document is byte-unchanged since I approved it in v4, so there is no revision to break anything.
+I did not treat that as a free pass: I re-verified it against everything that *did* move — PLAN v0.9's
+seven edits, and the T01/T03/T04 code that landed — and the substance holds in both directions. No
+property lost a carrier, no count moved, §4's `AT-` set-equality and §5's requirement accounting are
+intact, and the two new doubles modules match §8 row for row.
+
+Two Lows are open, both bookkeeping: F-08 (changelog row order, carried from v4) and F-09 (Upstream
+cell still pinned to PLAN v0.8). Neither gates. If the document is opened again for any reason, both
+close in one edit — swap two rows, bump one cell, add a changelog line recording that the
+re-grounding found no substantive delta. If it is not opened again, neither costs a user anything.
+
+No High findings are open in this review.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
