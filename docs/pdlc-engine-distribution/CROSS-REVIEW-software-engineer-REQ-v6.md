@@ -48,7 +48,31 @@ not a check:
 
 ## Prior findings still open
 
+None of the three was in this erratum's item list, and none was touched by this diff. All are
+carried forward rather than silently dropped; all remain non-gating.
+
+| ID | Sev | Status | Note at HEAD |
+|---|---|---|---|
+| F-25 (v4) | Medium | **Open (carried)** | AC-3.4's local-expansion carrier still puts no bound on what may appear in a job `name:`. Still implementable today — only `${{ matrix.os }}` / `${{ matrix.node }}` interpolate (`FSPEC:435-441` transcribes exactly those two, and `pr-tests.yml:28`, `:78` still agree) — so the exposure remains future, not present. Owner unchanged: FSPEC's §5.1, which is the right place to bound the expression form. |
+| F-27 (v5) | Low | **Open (carried)** | AC-3.5(b)'s "naming the missing secret" still needs a deliberate preflight step; `npm publish` with an absent `NODE_AUTH_TOKEN` names the registry, not the repository secret. Fails loudly either way, so the AC's outcome holds; the cost note belongs in FSPEC's F-5 publish flow. |
+| F-28 (v5) | Low | **Open (carried, and now one round staler)** | `FSPEC:172-173` still reads "NG-6's own wording is an erratum against the REQ, not fixed here." NG-6 has been fixed since REQ v0.10 — two REQ versions ago now. A one-line deletion on the FSPEC's next pass. |
+| F-26 (v4) | Low | **Open (carried)** | `pdlc-engine-baseline.md:209`'s change-control sentence inside M-ENG-10 is unchanged (that file is byte-identical across both diff windows). Constraints-file fix, nothing wrong in the REQ. |
+
 ## Findings
+
+New this round, scoped to the two edited sites. One, and it is Low; it does not block.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-29 | Low | Local | **AC-1.3 now says the per-class counts are "stated in the FSPEC", but one of those counts is not a constant — the licence class is `0` or `1` depending on an operator decision recorded in a third document.** FSPEC §5.2 states it honestly (`FSPEC:503`, `:509-511`: licence `0`, or `1` "once N-2's operator licence decision is recorded" in `DECISIONS-plugin-distribution.md`, giving the **23 before / 24 after** pair). So the AC's phrasing is true, but a verifier reading only the AC will expect to open the FSPEC and find *a* number, and will find a conditional whose discriminator lives in a decisions file the AC does not name. The consequence is a real test-authoring question, not a wording nit: PF-4's expected set has two legal shapes at any moment, and which one is in force is decided by whether a decision has been *recorded* — not by whether `pdlc/engine/LICENSE` exists, which is the mistake FSPEC §5.2 explicitly warns against. No REQ edit is required, because §5.4/§5.2 already carry the discriminator and the REQ should not restate a downstream count; naming it here so the PROPERTIES/TSPEC pass does not discover it as a surprise when PF-4 goes to fixture. | AC-1.3, FSPEC §5.2, TSPEC §5.4, O-8(3)/N-2 |
+
+**Checked and explicitly not a finding, so it is not "fixed" by symmetry later:** AC-3.4's parallel
+construction — "two set-equalities hold against an expected set stated in the FSPEC" — is *not* the
+same defect and needs no matching edit. FSPEC §5.1 transcribes that set **literally**, both
+alphabets, five rows, authored and rendered columns side by side (`FSPEC:435-441`), so AC-3.4 asks
+a verifier to read something the FSPEC really carries. The AC-1.3 erratum was specific to the
+packed-content set, whose members are TSPEC-owned by a deliberate §5.2 decision. Two ACs, two
+different ownerships, both now stated correctly.
 
 ## Questions
 
