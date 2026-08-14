@@ -59,15 +59,22 @@ capability is present: T56 depends on T50, and §4 kind 5 records that the fixtu
 already make a different plugin version current, which is what AT-2.6's pairing leg establishes.
 The plan nevertheless schedules AT-4.4 as T56's `[manual]` three-observation record rather than as
 an automated leg of T50, for one reason: the change-then-revert sequence mutates machine-global
-state (which plugin version is current) across three sequential runs, and folding that into T50 —
-whose container and real-spawn legs are already capability-gated and skippable — would put a P0
-criterion behind a gate that can legitimately skip, where a skipped run reads as "not observed"
-rather than "failed". A dated document at least cannot silently skip. The cost is stated plainly:
-**the anti-echo property is verified once, at the moment T56 is recorded, and nothing re-checks it
-afterwards.** A hardcoded provenance pair introduced by a later change to the provenance stream
-(T20, T27, T29, T35, T36, T38, T39, T42, T44) would not redden any test in this plan. Automating
-it on the fixture machine is the natural follow-on once the container legs are unconditional; it
-is deliberately not scheduled here.
+state (which plugin version is current) across three sequential runs, which is not a shape a single
+workflow run holds. Round 2 gave a second reason — that folding it into T50 would put a P0 criterion
+behind a gate that can legitimately skip — and **that reason no longer applies and is withdrawn**
+(PM round-3 F-01, TE round-3 F-01): DoD item 14 and T50 now inventory every gated leg and fail the
+workflow on any unregistered skip, so T50's gate no longer skips silently. The machine-global
+mutation is the whole of the remaining argument, and it is enough on its own. The cost is stated
+plainly: **the anti-echo property is verified once, at the moment T56 is recorded, and nothing
+re-checks it afterwards.** A hardcoded provenance pair introduced by a later change to the
+provenance stream (T20, T27, T29, T35, T36, T38, T39, T42, T44) would not redden any test in this
+plan. Automating it on the fixture machine is the natural follow-on once the container legs are
+unconditional; it is deliberately not scheduled here. **Where that follow-on is recorded so it
+outlives this paragraph** (TE round-3 Q-02): there is no queue row for it today, and this plan does
+not create one. Its durable home is the feature's `LEARNINGS-pdlc-engine-distribution.md` at Phase
+H, which names it as an open follow-on with this paragraph's reasoning; `consolidate-learnings`
+promotes a recurring item from there into `docs/_decisions/`, which is the repo's standing mechanism
+for exactly this and does not depend on anyone re-reading §1.2.
 
 ### 1.3 Three properties this plan is arranged around
 
