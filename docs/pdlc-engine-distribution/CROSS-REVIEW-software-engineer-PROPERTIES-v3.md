@@ -154,8 +154,52 @@ correctly routed and are not this document's defect.
 
 ## 6. Questions
 
+None. My two round-2 questions (Q-01 on the five-state exit-code split, Q-02 on T32's ownership
+manifest) were about material this round did not touch, and neither was answered nor needed to
+be — an alignment-only round is the wrong place for them. They stand as asked.
+
 ## 7. Positive Observations
+
+- **The item was re-filed at its true address instead of applied literally.** The raised text
+  named PROP-LAUNCH-3 at `:85`, where the discriminator had already been fixed in v0.4. The
+  obedient response was a no-op edit and a confirmation round claiming resolution; the correct
+  response was to find where the stale label had actually migrated — PROP-LAUNCH-9's headline —
+  and say so in the changelog. That is the harder of the two moves and the one that leaves no
+  residue for a fourth round.
+- **The `contains` / `equals` distinction was preserved through a headline rewrite.** FSPEC v0.7
+  drew a line AT-1.1 did not carry at v0.6: the reason text *contains* the literal, the triple
+  member *equals* it. Rewriting PROP-LAUNCH-9's headline to say the message equals `not found`
+  would have been the natural paraphrase and would have contradicted its own conjunct (b) one
+  line below. The edit tracks the upstream's verb, not just its literal.
+- **Four absorbed decisions, four honest no-op arguments.** Each is argued from a stated
+  mechanism — reading rule 3 for the class rename, the `PK-*` transcription for the anchors, the
+  existing positive form for AT-3.8a, the untouched `Carried by` cell for PLAN's retitle —
+  rather than asserted. All four survived independent checking, including the one place the
+  argument could have failed quietly: the class holds three members while PROP-PACK-5 asserts a
+  two-member `modules` array, which is correct only because the manifest is not inside its own
+  array. The changelog names that distinction explicitly.
+- **§4's set-equality is intact under an upstream that moved.** 35 ids each side, empty diff,
+  including the irregular `AT-3.8a` / `AT-3.8b` / `AT-5.3b` members — and intact for the right
+  reason, since FSPEC v0.7 added and removed no criterion.
+- **The round is scoped as an erratum round should be.** No settled decision re-opened, no
+  round-3 cross-review pre-emptively addressed, no scope expanded, and the two open non-gating
+  findings from round 2 deliberately left alone rather than swept in.
 
 ## 8. Recommendation
 
+**Approved**
+
+The delta resolves the raised item without breaking anything previously approved. The document
+is still a faithful compression of REQ v0.11, FSPEC v0.7, TSPEC v0.12, DECISIONS v0.3 and PLAN
+v0.8 as they stand at HEAD: §4's set-equality against FSPEC §8 recomputes exactly, the packed-set
+arithmetic recomputes to 23/24 from §5.2's per-class counts, every carrier cell still matches
+PLAN §2.1, and no property was added, removed or re-scoped. No new findings, and the erratum I
+raised in round 2 has been discharged upstream in FSPEC v0.7.
+
+Two non-gating findings from round 2 remain open (§5) and are recorded rather than re-raised;
+neither blocks Phase I, whose real blockers are the two TSPEC errata tracked in PLAN §7.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
