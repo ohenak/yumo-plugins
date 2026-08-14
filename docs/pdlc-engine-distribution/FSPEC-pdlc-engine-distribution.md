@@ -16,12 +16,11 @@ feature: pdlc-engine-distribution
 | pdlc | Draft | Claude | 0.5 | 2026-08-14 |
 
 *0.5 (2026-08-14, round-4): §5.2's workflow-module row and AT-3.8b drop `[blocked on O-10]` and
-name `PK-20`…`PK-22`; O-10 is kept only on BR-8.2 (SE `F-01`, TE `F-02`). §5.2 and §1 own the
-**per-class** counts (1/1/2/15/3/1, licence 0→1 at N-2) and claim only what cardinality delivers
-(TE `F-01`). AT-3.8a is the authoritative whole-set assertion, AT-3.8b a sub-assertion (SE
-`F-02`); the count conjunct is pinned to the transcribed `PK-*` list (TE `F-03`). Routed upstream:
-REQ AC-1.3's wording (TE `Q-01`), PLAN's discharged FSPEC erratum (TE `Q-02`), TSPEC §5.4's
-missing co-change sentence (SE `F-03`).*
+name `PK-20`…`PK-22`, O-10 kept only on BR-8.2 (SE `F-01`, TE `F-02`); §5.2 and §1 own the
+**per-class** counts and claim only what cardinality delivers (TE `F-01`); AT-3.8a is the
+authoritative whole-set assertion, AT-3.8b a sub-assertion (SE `F-02`); the count conjunct is
+pinned to the transcribed `PK-*` list (TE `F-03`). Routed upstream: REQ AC-1.3's wording (TE
+`Q-01`), PLAN's discharged FSPEC erratum (TE `Q-02`), TSPEC §5.4's co-change sentence (SE `F-03`).*
 
 *0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
 split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
@@ -57,9 +56,9 @@ the dev-mode artifact-kind set (AC-5.3).
 
 **Ownership of the packed-content set.** This document owns that set's *classes* and its *member
 counts, per class and in total* (§5.2); the member *names* live downstream in TSPEC §5.4's `PK-*`
-table, because decomposition is the TSPEC's decision. A decomposition change that moves any
-class's cardinality moves both sides in the same change; a pure rename at constant cardinality is
-downstream-only by design (TE round-4 F-01).
+table, because decomposition is the TSPEC's decision. A change moving any class's cardinality
+moves both sides in the same change; a rename at constant cardinality is downstream-only by
+design (TE round-4 F-01).
 
 **Altitude.** Behaviour, decision points, business rules, expected sets, error text obligations.
 Not here, and owned by the TSPEC: package layout, manifest schema beyond the fields the REQ
@@ -735,11 +734,10 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   the expected set member-for-member — so an added `SKILL.md`, an added test file and a
   **removed member** each fail; the member count equals §5.2's (**23 before N-2's licence
   decision is recorded, 24 after**, and §5.2's per-class counts); and the pairing record of F-5
-  step 6 is present inside it. The count conjunct is asserted against the **transcribed expected
-  list** (TSPEC §5.4's `PK-*` table), never against the tarball's own length: counting the
-  enumerated members is a tautology once the first conjunct passes, and a self-derived expectation
-  of the kind BR-8.1 forbids. Against the transcription it fails when the transcription has
-  drifted from §5.2 (TE round-4 F-03).
+  step 6 is present inside it. The count conjunct is asserted against the **transcribed** `PK-*`
+  list, never against the tarball's own length — the latter is a tautology once the first conjunct
+  passes, and a self-derived expectation of the kind BR-8.1 forbids; against the transcription it
+  fails when the transcription has drifted from §5.2 (TE round-4 F-03).
   The expected list is a literal one, never a listing of `pdlc/engine/lib/`; its **classes and
   count are §5.2's**, and its **member names are downstream, in TSPEC §5.4's `PK-*` table**,
   which is the single source the verifier transcribes. This document does not restate the member
@@ -750,8 +748,7 @@ heading and is overridden per test where it differs; an unlabelled family is a d
 - **AT-3.8b** *(AC-1.3)* **Given:** the same package. **When:** its workflow modules are
   enumerated. **Then:** they equal §5.2's workflow-module class member-for-member — TSPEC §5.4's
   `PK-20`…`PK-22` — and a removed module fails. Writable: TSPEC §5.4 names those three vendored
-  members "and nothing else", so O-10 blocks only BR-8.2's anti-fork obligation now (SE round-4
-  F-01, TE round-4 F-02). Subsumed by AT-3.8a; it exists so the vendored class has its own carrier.
+  members "and nothing else", so O-10 blocks only BR-8.2 now (SE round-4 F-01, TE round-4 F-02).
 
 ### AT-4 — Provenance **[fixture]**, **[blocked on O-9 for AT-4.2 and AT-4.5]** — AT-4.4 is *not* blocked: it needs two plugin versions and a revert, no new carrier (TE round-1 F-04)
 
