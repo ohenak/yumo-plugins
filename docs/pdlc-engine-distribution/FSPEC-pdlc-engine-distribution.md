@@ -17,8 +17,8 @@ feature: pdlc-engine-distribution
 
 *0.3 (2026-08-13, erratum round): re-grounded on REQ v0.10 — NG-6/O-2's run-reads-`engine.*`-pin
 scope was already carried (§3 F-4, BR-2.2, BR-4.7, I-4, E-11), and AC-3.5's two positives are now
-absorbed into AT-3.5. Two errata fixed: the dangling `§8's AT-7.2` citation in §3 F-7 now reads
-**AT-6.2**, and the packed-member enumeration (§5.2 CLI-entry and engine-module rows, AT-3.8a)
+absorbed into AT-3.5. Two errata fixed: the dangling `AT-7.x` citation in §3 F-7 now reads
+**AT-6.2** (§8 enumerates no AT-7 group), and the packed-member enumeration (§5.2 CLI-entry and engine-module rows, AT-3.8a)
 no longer restates a member list of its own — the members are named downstream in TSPEC §5.4's
 `PK-*` table, which is the single source the verifier transcribes. No other change.*
 
