@@ -55,6 +55,42 @@ upward was correct; the routing is not what failed.
 
 ## Iterations
 
+Two PROPERTIES rounds, then one erratum round. Twenty-two minutes end to end.
+
+| Round | Document | Version | PM verdict | SE verdict | TE verdict | Prior findings resolved |
+|---|---|---|---|---|---|---|
+| 1 | PROPERTIES | v0.2 | Needs revision `{2, 3, 0}` (`7858f1e3`) | Approved with minor changes `{0, 2, 2}` (`00177ed3`) | — | — |
+| 2 | PROPERTIES | v0.3 | **Approved with minor changes** `{0, 0, 2}` (`55a19cec`) | **Approved with minor changes** `{0, 1, 1}` (`6f3c3581`) | — | **9 / 9** (PM `F-01`…`F-05`, SE `F-01`…`F-04`) |
+| E | FSPEC (erratum) | v0.6 (`73e664bb`) | — | Approved with minor changes `{0, 4, 2}` (`6a5d8b6b`) | **Needs revision** `{1, 1, 1}` (`f8c059f9`) | **2 / 2 raised items** |
+
+Timeline, from `git log`:
+
+| Time (2026-08-13) | Commit | Event |
+|---|---|---|
+| 22:07 | `01c27ee4` | **REQ moves v0.10 → v0.11** — a different phase's erratum lands AC-1.3's ownership split and the F-4 pin citation |
+| 23:10 / 23:12 | `7858f1e3`, `00177ed3` | PROPERTIES round-1 cross-reviews |
+| 23:15–23:17 | `455c8ba5`…`16b022b3` | PROPERTIES v0.3 — four section-sized commits closing all nine findings |
+| 23:21–23:23 | `3d46b30b`…`6f3c3581` | PROPERTIES round-2 cross-reviews; both approve; **both raise `ERRATUM: FSPEC`** |
+| 23:23 | `f99d649c` | Approval anchors recorded — PROPERTIES is done |
+| 23:28 | `73e664bb` | FSPEC erratum edit, v0.5 → v0.6 (17 insertions / 7 deletions) |
+| 23:31 | `f8c059f9` | `te-review` delta confirmation — **Needs revision**, `F-01` High |
+| 23:32 | `6a5d8b6b` | `se-review` delta confirmation — Approved with minor changes |
+| — | — | **halt** |
+
+The erratum edit itself is small and, on the item list, complete:
+
+| What `73e664bb` changed | Verified at HEAD |
+|---|---|
+| `AT-1.6` (`FSPEC:672-674`) — "the literal `not found` when none is installed" | `handshake.mjs:146` (null/empty → `"not found"`), `:164` (refusal reason), `:209` (banner triple); pinned `handshake.test.js:110-118`, `:113` `assert.equal(out.pluginVersion, "not found")` |
+| `AT-1.1` (`:655-658`) — "states none is installed" → "reports the plugin version as the literal `not found`" | true of the refusal text at `handshake.mjs:164`, not only the banner |
+| `Q-1` (`:596`) — the triple's content obligation carries the same literal | matches `PROP-LAUNCH-5` (`PROPERTIES:87`) and `PROP-LAUNCH-9` (`:91`) |
+| `AT-1.4` (`:664-666`) — discriminator repointed from the deleted `"none installed"` message to "**not** AT-1.1's `not found` message" | id-anchored, so only AT-1.1 owns the string |
+
+Both confirmation reviewers diffed the whole commit and agreed nothing else moved: no `AC-`, no
+`BR-`, no `E-`, no `§5.2` cell, no expected-set arithmetic. Alignment ran **towards** the shipped
+value, so the documents moved to the green oracle rather than asking the implementation to move to
+prose. On raised items alone this round was a clean pass.
+
 ## Reviewers
 
 ## Pattern of Disagreement
