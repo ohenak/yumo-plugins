@@ -115,4 +115,41 @@ neither touches the graph, the traceability transpose or any floor.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Round 3's High (F-01, the fixture-machine check that could be green with no gated leg run) is
+resolved, and resolved at the mechanism rather than in prose: a stated opt-out capability
+predicate, a `SKIP_INVENTORY`-shaped table naming each gated leg's capability and the `AT-` ids
+its skip would leave unverified, a pure comparator that **fails** the workflow on any
+unregistered skip, a DoD that observes the skip set **positively** as empty on `ubuntu-latest`
+with the run URL cited, and an evidence obligation covering every unverified id on any runner
+where it is not. I re-opened all four cited `skipSink` anchors and the plan's description of
+the precedent now matches the precedent's behaviour. Round 3's Low (F-02) is resolved by
+removing the exception rather than documenting it, and both round-3 questions are answered
+with content, not deferral.
+
+Nothing approved in earlier rounds was broken. The graph re-derives exactly — 59 rows, zero
+batch mismatches, unchanged histogram, no collisions — the §2 ↔ §2.1 transpose returns zero
+disagreements, and the two floors added this round (`# tests 6`, `# tests 12`) are the
+runner's own numbers, measured here.
+
+Two Low findings remain and neither gates:
+
+1. **F-01** — items 14/15 say AT-2.1, AT-2.4 and AT-2.5 have "no other observer" than T50;
+   §2.1 names hermetic carriers for all three. Only AT-2.3 and AT-2.6 are T50-only. The gate
+   is right, the justification is overstated, and the fix is one sentence that keeps the gate
+   intact.
+2. **F-02** — T50's capability predicate leaves "probe reports absent" and "probe cannot run"
+   indistinguishable, and only the second is declared a failure. Either routing is safe; the
+   implementer needs to be told which.
+
+**One erratum against FSPEC remains open and is re-reported to the orchestrator**, not folded
+into this verdict: FSPEC's F-7 prose (`FSPEC:289`) cites "§8's AT-7.2", but §8 enumerates no
+AT-7.2 — the criterion it means is AT-6.2, the load-root discriminator. Re-grepped at HEAD:
+`AT-7.2` occurs exactly once in the whole document, at `:289`. PLAN §2.1 and T51 carry AT-6.2
+correctly, so the PLAN is right and the dangling id is upstream.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
