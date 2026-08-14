@@ -114,6 +114,46 @@ correct; **against PLAN and PROPERTIES it is High**.
 
 ## Pattern of Disagreement
 
+**There is no disagreement about facts. There is one disagreement about a bar, and it is the whole
+halt.**
+
+Both confirmation reviewers measured the same three things and got the same three answers:
+
+| Measured | `se-review` | `te-review` |
+|---|---|---|
+| Are both raised items resolved? | yes | yes |
+| Did REQ move under this document? | yes, v0.10 → v0.11 at `01c27ee4` | yes, v0.10 → v0.11 at `01c27ee4` |
+| Does the FSPEC record that it read REQ v0.11? | no (`F-02`) | no (`F-01`) |
+| Does any acceptance criterion, oracle or test level need to move? | no | no |
+
+The split is on **what a stale hand-off statement is worth**:
+
+- `se-review` scored it by **consequence**: the content check passes, §2's re-grounding shows the
+  substance was already absorbed, nothing an implementer reads goes red. Therefore *Process*,
+  *Medium*, and the round passes with a bookkeeping note.
+- `te-review` scored it by **DEC-ERR-01's rule**: an item this document routes upstream as open,
+  which the upstream has already decided, is a **false statement in a hand-off section**, and
+  DEC-ERR-01 says such an item is never demoted to a lesser finding. There are three of them
+  (`:30`, `:38`, `:42-43`). Therefore High, and under the High-only convergence bar, Needs
+  revision.
+
+Both readings are defensible on the shipped rule text, which is what makes this a bar dispute
+rather than an error by either reviewer. DEC-ERR-01 forbids *demoting* a routed-but-decided item;
+it does not say in so many words whether an item routed by an **earlier round's changelog prose**,
+in a round scoped to a single literal, is one of those items or is instead ordinary staleness the
+next round sweeps up.
+
+A second, quieter pattern: **the erratum wave propagated up but not down.** DEC-ERR-01's ordering
+rule is child-confirmed-before-parent, and this wave ran REQ → FSPEC correctly. What no one owned
+was FSPEC → PLAN / PROPERTIES, where the *deleted* literal still lives. Both reviewers found it and
+both filed it Medium against the document in front of them, because against *that* document it is
+Medium — so the one finding that will actually redden T15 is the one the erratum protocol has no
+seat for. The halt fired on paperwork; the live defect rode along as a note.
+
+Round-budget context, for the record: PROPERTIES converged in 2 of 5 rounds with all nine round-1
+findings closed and zero re-litigation. Nothing about the phase's review economics is stressed.
+The only exhausted budget is the erratum channel's single round.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
