@@ -53,6 +53,21 @@ AT-3.8b remains correctly `[blocked on O-10]`.
 
 ## Delta-Confirmation Verdicts
 
+| Reviewer | Verdict | Counts | Blocking finding | Method |
+|---|---|---|---|---|
+| `se-review` (software-engineer) | **Needs revision** | `{1, 1, 1}` | `F-01` (High): the routing edit rehomed only **four of seven** divergent members. TSPEC §5.4 also names `README.md` (PK-2), `LICENSE` (PK-3, conditional on N-2) and `scripts/postinstall.mjs` (PK-23), and §5.2 has **no class row** for any of them while AT-3.8a still gates on member-for-member equality **in both directions** (`:691-696`). Worse, the exclusion list still says "no repo-level documentation" (`:478`), which now collides with the package README | Diffed the erratum range against upstream REQ `v0.10` (hash matched dispatch) and downstream `TSPEC:408-419`; checked the AT-6.2 target for semantic fit, not just id existence |
+| `te-review` (test-engineer) | **Needs revision** | `{1, 0, 1}` | `F-01` (High): upstream **REQ AC-1.3 still requires** the packed list to equal "an expected set **stated in the FSPEC**" (`REQ:257-262`), and REQ `v0.10`'s changelog re-decided only NG-6/O-2 and AC-3.5 — AC-1.3's ownership was never re-decided. So the FSPEC is no longer a faithful compression of its upstream, AT-3.8a's oracle is unresolvable inside the REQ+FSPEC pair, and a decomposition edit in TSPEC §5.4 silently redefines what an acceptance test asserts with no FSPEC-side change-control point | Re-measured the diff range; scored the falsifiers individually — "an added `SKILL.md` fails" and "an added test file fails" survive (those are §5.2's still-literal exclusions), but "**a removed member fails**" is now unfalsifiable at this altitude because no member is named |
+
+Supporting non-blocking findings, both worth folding into the same edit:
+
+| ID | Reviewer | Severity | Finding |
+|---|---|---|---|
+| `F-02` | SE | Medium | BR-8.1 still instructs the verifier to take the expected side from "the literal list above" (`:500`) — after the erratum there is no list above. The sentence contradicts AT-3.8a's corrected text and points an implementer back at the FSPEC-local copy the erratum deleted |
+| `F-02` | TE | Low | §1 still self-describes the FSPEC as owning packed-content (AC-1.3) (`:32-33`) while §5.2 forward-delegates it; the two statements cannot both be true |
+| `F-03` | SE | Low | REQ `v0.10`'s changelog attributes the run-side pin read to "FSPEC F-3 step 5" (`REQ:21`) where the flow lives in **F-4** (`:158`, `:170`). Prose-only, no behavioural consequence — recorded, not raised, because the phase's erratum budget was already spent |
+| `Q-01` | SE | Question | §5.2's workflow-module row is still `[blocked on O-10]` even though `TSPEC:421-429` unblocks it (PK-20…PK-22) — downstream is ahead of upstream |
+| `Q-01`/`Q-02` | TE | Question | Which repair direction is intended, and if §5.2 restates the set, is the count **23** (before N-2's `LICENSE` decision) or **24** (after E-4b's `bin/cli.mjs` split)? |
+
 ## The Two Highs Are One Defect
 
 ## Best-Guess Root Cause
