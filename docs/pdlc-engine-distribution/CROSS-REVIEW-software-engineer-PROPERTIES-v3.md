@@ -79,6 +79,32 @@ FSPEC stale is closed on the FSPEC side; nothing on this side needed to move for
 
 ## 3. Absorbed decisions, checked individually
 
+The changelog absorbs four upstream decisions and calls all four "no-ops here by construction".
+A no-op claim is the easy thing to assert and the easy thing to get wrong, so each was checked
+against the upstream text and against what this document actually asserts.
+
+| # | Absorbed decision | Claimed effect | Verified |
+|---|---|---|---|
+| (a) | FSPEC §5.2's vendored-module class renamed **Workflow members**, `PK-22` being a JSON manifest not a module | No-op: reading rule 3 gives class names to FSPEC, and PROP-PACK-5 asserts the *manifest's* `modules` array, not the class's cardinality | **Holds.** FSPEC §5.2's row now reads "Workflow members", `PK-20`…`PK-22`, "three vendored workflow members … two `.js` modules and a JSON manifest". PROP-PACK-5 (`:133`) asserts `modules` **equals** `{orchestrate-dev.js, orchestrate-queue.js}` — two members, correct, because the manifest is not listed inside its own `modules` array. The class's 3 and the array's 2 are different quantities over different objects; no contradiction |
+| (b) | §5.2's CLI-entry and engine-module rows now anchor `PK-4`/`PK-4b` and `PK-5`…`PK-19`; CLI-entry note no longer calls its cardinality downstream-only | No-op: PROP-PACK-1/-2 already source member names from TSPEC §5.4 and classes/counts from FSPEC §5.2 | **Holds.** Both anchors present at HEAD; the CLI-entry note now reads "the class holds the **2** members counted below, and moving that number is an FSPEC edit", replacing the v0.6 text that deferred the decomposition question to TSPEC and contradicted the per-class count. PROP-PACK-1 names TSPEC §5.4 as the expected set's source and PROP-PACK-2 names FSPEC §5.2 for classes and counts — the split the anchors formalise |
+| (c) | FSPEC v0.7 states AT-3.8a's count conjunct positively | No-op: PROP-PACK-2 already asserts against the transcribed `PK-*` list and forbids reading the tarball's length | **Holds, and the two texts now agree almost verbatim.** AT-3.8a: the conjunct "asserts the **transcribed** `PK-*` list's length … never asserted against the tarball's own length: a tautology once the first conjunct passes, and the self-derived expectation BR-8.1 forbids". PROP-PACK-2 (`:130`) says the same in the same order, including the tautology reasoning and the BR-8.1 citation |
+| (d) | PLAN v0.8 retitles §2.1's AT-1.1 trace row to "refusal, plugin reported `not found`" | No-op: no task, batch or ownership-manifest change, so every carrier cell stands | **Holds.** `PLAN:203` reads `| AT-1.1 *(AC-1.1)* refusal, plugin reported `not found` | T15, T14, T46 |`. The `Carried by` cell is unchanged and still matches PROPERTIES §4's AT-1.1 row (`T15, T14, T46`). PLAN's own changelog confirms the id and the cell were untouched |
+
+**The packing arithmetic was recomputed from §5.2's per-class counts**, since decision (b)
+touched the CLI-entry cardinality and decision (a) renamed a class — either could have moved the
+total that PROP-PACK-2 pins. Package manifest 1 + package README 1 + CLI entry 2 + engine
+modules 15 (`PK-5`…`PK-19`) + install script 1 + workflow members 3 = **23**, and 24 once N-2's
+licence record flips `PK-3` in. That is exactly what PROP-PACK-2 asserts and exactly what
+AT-3.8a states. The rename did not move the total: FSPEC's count sentence changed "workflow
+modules 3" to "workflow members 3", the noun only.
+
+**The rename genuinely reaches nothing in this document.** I checked the phrase directly rather
+than trusting the reading-rule argument. PROPERTIES uses "workflow modules" in three places
+(`:166`, `:171`, `:173`, in PROP-PROV-2/-7/-9), but every one refers to the two canonical
+`pdlc/workflows/` source modules — `orchestrate-dev.js` and `orchestrate-queue.js`, which really
+are modules — and not to FSPEC §5.2's packed-set class. Different referent, correct noun,
+untouched by the rename.
+
 ## 4. Findings
 
 ## 5. Carried-forward findings from round 2
