@@ -108,4 +108,18 @@ one.
 
 ## 6. Recommendation
 
+**Approved with minor changes**
+
+Both findings I left open in round 2 are resolved, at both sites in the case of the Medium, and
+the revision broke nothing previously approved: no property added, removed or re-scoped, no
+carrier or task cell moved, §4's 35-row set-equality against FSPEC §8 intact, §7's counts (89 /
+95 / 74) unchanged, and every new anchor — `REQ:427-429`, `handshake.test.js:110-118`,
+`handshake.mjs:144`, `PLAN:148` T15(b) — verified line by line at HEAD. Two Low findings remain
+(changelog row ordering, one prose phrasing in §4); neither gates and both can be swept into the
+next edit this document takes for any reason. No High is open, so the document is ready for
+Phase I.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
