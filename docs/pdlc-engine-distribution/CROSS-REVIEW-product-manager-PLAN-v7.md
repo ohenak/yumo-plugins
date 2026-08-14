@@ -118,8 +118,55 @@ since an erratum round is correctly not the place to land them. None gates Phase
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-04 and F-05 have now survived three rounds as "carried forward, unaddressed by design". Both are one-line prose edits in a document that is otherwise converged. Is the intent to fold them with F-02 before Phase I, or to let harvest record them? Either is fine — I would just rather the plan state which, than carry them a fourth time. |
+
 ## Positive Observations
+
+- **The stale item list was handled by evidence, not by compliance.** The easy move was to re-apply
+  an edit that was already in place and report both items closed. Instead v0.8 shows the commit
+  ordering (`8980ffe7` precedes `a57e0547`), states that the item list arrived stale, and pins the
+  claim to a `grep` a reader can re-run. That is the more useful record, and it is also the harder
+  one to write.
+- **The residue was found by reading, not by grepping the item list.** §2.1's row title was not in
+  the raised set and no test could have consumed it. Fixing it anyway — with an explicit note that
+  it is an index label and why it still mattered — is exactly the judgement DEC-ERR-03 is asking
+  for: the item list is necessary, not sufficient.
+- **Each absorbed FSPEC v0.7 decision is stated with its reason for being inert.** Not "absorbed,
+  no change", but *why* no change: T16 reads names from TSPEC §5.4 and counts from FSPEC §5.2, so
+  PK anchors move nothing; the count conjunct was already in the positive form v0.7 adopts. I could
+  check every one of those claims against HEAD in a few minutes, and they all held.
+- **The class rename was propagated completely and honestly.** T16 adopts `Workflow members`, states
+  the reason (`PK-22` is a manifest, not a module) and states that membership is unchanged. `grep`
+  confirms it is the only site. A rename is the easiest kind of change to half-apply; this one is
+  not half-applied.
+- **Eight rounds in, the changelog still states what did *not* change** — task table, batch
+  arithmetic, ownership manifest, §2.1's set-equality — and the diff bore it out again. That habit
+  is the reason this confirmation took minutes rather than a full re-read.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+Both raised items are discharged at HEAD, and the document is a faithful compression of upstream as
+upstream now reads: FSPEC v0.7's three decisions are absorbed and correctly described as inert, the
+`not found` literal alignment reaches every assertion site and the one index label that survived,
+REQ v0.11's AC-1.3 ownership split holds through FSPEC → TSPEC → T16, and the counts (23/24) are
+unmoved on all three sides.
+
+Nothing previously approved is broken. The task table, ownership manifest, batch arithmetic and
+§2.1's set-equality are byte-unchanged; the AT-1.1 trace row's id and `Carried by` cell are
+untouched, so the §2 ↔ §2.1 transposition still closes in both directions; §7's ledger still
+declares the two open TSPEC errata, neither of which has gone stale.
+
+F-01 is new and Low: FSPEC v0.6's containment-vs-equality distinction for AT-1.1's refusal text is
+not recorded in T15, and an implementer who reaches for `assert.equal` there would write a
+false-red. F-02 (Medium) is the one item I would still like folded before Phase I opens, since it
+is an instruction the wave gate will reject. F-03…F-05 are prose nits carried forward. None of the
+five gates Phase I.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 4}
