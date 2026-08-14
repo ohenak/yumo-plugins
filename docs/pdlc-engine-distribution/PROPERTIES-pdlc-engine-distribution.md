@@ -9,13 +9,14 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft in review (Phase PT) | Claude | 0.1 | 2026-08-14 |
+| pdlc | Draft in review (Phase PT) | Claude | 0.2 | 2026-08-14 |
 
 **Changelog**
 
 | Version | Change |
 |---|---|
 | 0.1 | Initial draft |
+| 0.2 | Oracle and fixture material given top-level homes, so the document's structure matches its content. §6 retitled to name the **oracles** it audits (its rows were already oracle-by-oracle). New **§8 Fixtures and generators** collects the fixture corpus the §2/§3 properties already depend on — the eight branch fixtures, the two marked plugin roots, the mutated `pr-tests.yml` copies, the sixth-commit-site falsifier source, the non-empty baseline artifacts, the class-9 run, the guard-defeating direct run, the whole-artifact fixtures and the fixture machine — plus T03's three bounded generators and the three generator-hygiene rules (explicit printed seed, pinned counter-examples, non-zero per-member assertion count). Open questions renumbered §8 → §9. No property added, removed or restated |
 
 ## 1. Scope, derivation and reading rules
 
@@ -352,9 +353,22 @@ as a decision **and** the two artefacts that decision makes expected (T05, PROP-
 property, and every property in §2 traces to a REQ criterion, a FSPEC business rule, a TSPEC section
 or a PLAN DoD item.
 
-## 6. Falsifiability audit
+**The task-side accounting, stated in the other direction too.** Every task cited in §2 and §4 is a
+task PLAN §2 already carries — this document invents no carrier. Going the other way, **two of
+PLAN's 59 tasks are named by no property, and both are infrastructure by construction**: **T01**, the
+P1-00 pre-flight gate, asserts only the *existence* of the BL-PREREQ symbols this feature extends
+(never their shape), so it guards the plan's own starting assumption rather than a system behaviour;
+and **T04**, the shared module-side doubles (`pdlc/workflows/__tests__/helpers/provenanceDoubles.js`),
+is fixture material that properties run *against* rather than a behaviour they assert — §8 attributes
+it. The remaining 57 tasks each appear in at least one property's carrier column. A future task
+appearing in PLAN §2 with no property and no place in this paragraph is a coverage gap, not an
+omission of style.
 
-Each row of the falsifiability checklist, with the properties it applies to and the specific defence.
+## 6. Falsifiability audit — the oracles and their defences
+
+Each row of the falsifiability checklist, with the properties it applies to and the specific defence
+the oracle carries. A property whose oracle appears here is one whose failure mode was named first
+and answered by construction, not by review discipline.
 
 | Failure mode | Where it bites here | Defence |
 |---|---|---|
@@ -393,7 +407,46 @@ PROP-PACK-6's installed-package leg) and the **`--version`/`doctor` exemption** 
 exercised through the real launcher by PROP-LAUNCH-5's three-way triple equality). Neither is left to
 guard-only unit tests.
 
-## 8. Open questions
+## 8. Fixtures and generators
+
+The properties in §2 and §3 are only as strong as the material they run against. This section names
+that material once, so a task in PLAN §2 inherits the fixture rather than inventing a weaker one.
+Reading rule 4 governs every literal in it: a fixture that carries a message id, a remedy string, a
+job name or a column header spells it exactly as the owning document does, never a paraphrase.
+
+**Fixture corpus.**
+
+| Fixture | Shape | Properties it carries |
+|---|---|---|
+| Eight named resolution fixtures | One input per ladder branch 0–7, each pinning the branch id it must reach | PROP-VER-1, PROP-VER-2, PROP-VER-6, PROP-VER-8 |
+| Two fixture plugin roots | Each root's role `SKILL.md` carries a distinguishing marker; the second root's marker must appear and the first's must not | PROP-PACK-9 |
+| Fixture copies of `pr-tests.yml` | Mutated copies only — the live file is never edited by a test | PROP-PUB-6, PROP-GATE-5 |
+| Fixture source with a sixth commit site | A `git commit` inside a sixth named function, which the scanner must report and the set-equality must redden on | PROP-PROV-9 (its own falsifier) |
+| Baseline artifact fixture | Pre-feature artifact content asserted **non-empty** before any byte-identity comparison, so preservation cannot pass over an empty run | PROP-PROV-2, PROP-NEG-7, PROP-INSTALL-4, PROP-PUB-3, PROP-REGR-2 |
+| Class-9 run fixture | A run producing `CODE_REVIEW-*` with the push removed; the equality must fail naming the **missing class**, not a bare count | PROP-PROV-10, PROP-NEG-9 |
+| Direct-run fixture | `mergeMode: "on"` plus `merge.guardPaths` configured not to intersect the changed-file list, so the guard cannot preempt the rung under test | PROP-PROV-12, PROP-PROV-13 |
+| Stubbed-global recorder | Records fs/env/clock calls under construction, with a deliberately impure variant as the positive control | PROP-PROV-1 |
+| Consumer-repo pre-state | Tree and index recorded before upgrade, asserted non-empty, compared after | PROP-INSTALL-4, PROP-INSTALL-5 |
+| Docs corpus | The tracked `docs/` set read via `git ls-files` over a stated pathspec — never a tree walk, so an untracked `.claude/worktrees/` copy cannot redden it | PROP-INSTALL-8, PROP-PACK-4 |
+| Whole-artifact fixtures | The built `dist/` bundle, the packed tarball, and the `prepack` temp-dir vendor tree — the only places the derived form exists | PROP-PROV-15, PROP-PUB-10, PROP-PACK-5 |
+| Fixture machine | `.github/workflows/fixture-machine.yml` plus `scripts/fixture-machine.mjs`, with hermetic injected-spawn legs in `fixture-machine.test.js` carrying the module's 85 % branch floor on their own | PROP-GATE-1…5, PROP-INSTALL-3…7, PROP-REGR-6 |
+
+**Generators (T03).** Three bounded generators feed PROP-VER-16: version strings (well-formed,
+prerelease, empty, non-semver, path-traversing), config shapes across TSPEC §6.4's space, and queue
+tables. Every generated input must land on exactly one of branches 0–7 and must never yield an empty
+announcement.
+
+**Generator hygiene** — the three rules that keep a generator from going vacuously green:
+
+1. **Explicit seed, printed on failure.** No implicit clock- or entropy-seeded run; a red run
+   reproduces from the printed seed.
+2. **Counter-examples are pinned.** Any failing input found by a generator is added as a named
+   regression case, so the generator's job is discovery and the pinned case's job is prevention.
+3. **Non-zero assertion count per member.** Every generated or enumerated member must assert at
+   least once — the same guard PROP-PACK-7 states for `Object.entries(WORKFLOW_MODULE_URLS)`, which
+   is what makes an empty iteration a failure rather than a pass.
+
+## 9. Open questions
 
 | # | Question | Owner | Blocking |
 |---|---|---|---|
