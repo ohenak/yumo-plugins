@@ -98,3 +98,7 @@ gate Phase I; fold them into the next revision of this document.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:a59bb90cbf90d3df2a0425a4e2f7e8f732e3305ed0301a70e18a9e3a7b0719aa
+APPROVAL-HASH-NORMALIZED: sha256:9659b0b277e1229a919e7660b5989a59b4e12b1201ffda6889fddf4c12730f61
+REVIEWED-COMMIT: 4097aec7db2db9f3554c8ff4e4f048d06fad2822
