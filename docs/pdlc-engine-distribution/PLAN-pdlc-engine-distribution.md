@@ -273,7 +273,7 @@ One row per task in §2, and no row without a task — the bijection `validatePl
 
 Every edge in §2's `Deps` column is one of five kinds. This section names the kind for the edges that are not self-evident, so a reviewer can check the graph rather than re-derive it.
 
-**Kind 1 — red-before-green.** A `[red]` test task always precedes the `[green]` task that satisfies it, as an explicit `Deps` edge (never merely a lower batch number). The eleven pairs:
+**Kind 1 — red-before-green.** A `[red]` test task always precedes the `[green]` task that satisfies it, as an explicit `Deps` edge (never merely a lower batch number). Two rows are outside this rule **by declaration, not by omission** (TE round-1 F-07): T19 and T57 are `[standing guard]` rows, green at authoring time because they assert what HEAD already does and this feature must not break. Neither can have a `[red]` predecessor without writing a defect first; both instead carry a falsifier of their own — T19 a fixture source with a sixth commit site that must redden the equality, T57 a second fixture root whose different marker must appear instead of the first. Every other `[green]` row names its `[red]` row below:
 
 | Red | Green | What goes from failing to passing |
 |---|---|---|
@@ -298,12 +298,17 @@ Every edge in §2's `Deps` column is one of five kinds. This section names the k
 | T23 | T38 | `artifactPaths` classes 7–11 |
 | T24 | T42 | `_recordQueueRow`'s `provenance` key |
 | T55 | T44 | `build-runtime.mjs`'s two generated closures widening to 8 arguments |
+| T16 | T05 | `pdlc/engine/LICENSE` and the manifest's `license` field, the PK-3 member T05's own record makes expected |
+| T58 | T49 | the five stub-channel publish legs `publish.yml` and `publish-preflight.mjs` satisfy |
+| T59 | T50 | the fixture machine's install/upgrade record and its inequality |
 
 T16 and T21–T24 each fan out to more than one green task because the red test states a conjunction that no single ownership-disjoint edit can satisfy; the edges make the ordering explicit rather than leaving it to batch arithmetic.
 
 **Kind 2 — shared prerequisite.** T01 (pre-flight gate) and T03 / T04 (the two doubles modules) are batch-1 tasks that many later tasks read but none re-write. Every engine-side test task depends on T03 and, where it asserts against a HEAD symbol, on T01; every module-side test task depends on T04. This is the "shared prerequisites owned by exactly one batch-1 task" rule: `_doubles.mjs` has one author (T03) and `provenanceDoubles.js` has one author (T04), for the whole plan.
 
-**Kind 3 — decision gate.** T02 (npm scope) and T05 (licence) write no code. T02 unblocks anything that must spell the package name: T25's `name` field, T31's README literals, and — transitively, through T25 — T49's preflight. T05 gates only the first *real* publish (T52), because PK-3's expected packed set contains the licence file; nothing in the fixture machine needs it, which is why T50 does not depend on T05.
+**Kind 3 — decision gate.** T02 (npm scope) writes no code. It unblocks anything that must spell the package name: T25's `name` field, T31's README literals, **T18's uniqueness key** (`@{scope}/pdlc-engine` — TE round-1 F-09; the edge is explicit now rather than surviving on batch arithmetic), and — transitively, through T25 — T49's preflight.
+
+**T05 is no longer a pure gate, and the earlier claim that it "gates only the first real publish" was wrong** (TE round-1 F-02). Recording N-2 is not inert: TSPEC §5.4's table (`TSPEC:380-382`) makes PK-3 expected the moment the record flips, and a missing `pdlc/engine/LICENSE` is then "**red**, which is the point". At HEAD no `LICENSE` exists anywhere in the repo (`git ls-files` lists none) and `package.json:11` is `"license": "UNLICENSED"`, so a gate-only T05 in batch 2 would have left PF-4 red from batch 2 through batch 11. T05 therefore records the decision **and** authors the file and the manifest field in one task, sitting at batch 4 behind T25 so `package.json` keeps one writer per batch. The flip and its member are atomic; PF-4 is never red across a batch boundary. Consequence for §7: O-8 blocker 3 is **in** this feature's Definition of Done (PM round-1 Q-02) — the branch is not mergeable with the licence unrecorded, and item 12 stands as written.
 
 **Kind 4 — serialisation on a shared file.** Where several tasks edit one file, the edges force a total order rather than a partial one, because two tasks in the same batch may not both write it. Three chains carry most of this:
 
@@ -313,13 +318,23 @@ T16 and T21–T24 each fan out to more than one green task because the red test 
 
 Two shorter chains: `lib/run.mjs` is written by T28 (b3), T41 (b6) and T48 (b10); `bin/cli.mjs` by T45 (b8), T46 (b9) and T48 (b10). The `provenance-path.test.js` file is created by T45 (b8), extended by T47 (b9), and read-and-extended by T48 (b10) — three batches, three writers, never concurrent.
 
+Three edges exist **only** to make a shared-file order explicit that batch arithmetic would otherwise supply by luck, which §6 Rule 3 forbids:
+
+- **T30 → T35** on `pdlc/workflows/__tests__/provenanceCommits.test.js` (TE round-1 F-08). T30 is b3 and T35 b4, so the order held today — but by arithmetic alone, and a later renumbering would silently make them concurrent writers of one file. The edge now forces it.
+- **T33 → T41** on `pdlc/engine/__tests__/run.test.js`. T33 restates V-05's walk as AF-1's tracked-ness test; T41 restates `:41-50` in two-root terms and hardens AF-3. Same file, two batches apart, now edged.
+- **T02 → T18** on the scoped package name, as above.
+
+Re-derived over all 59 rows: every file with more than one writer has a transitive `Deps` path between consecutive writers. There is no remaining pair ordered by batch number alone.
+
 **Kind 5 — real ordering, not file contention.** A few edges exist because the later task's *subject matter* does not exist yet, even though the files are disjoint:
 
 - T37 → T41 and T41 → T43: the resolver, the module roots and the update probe are independent files, but each later message id is registered against the catalogue shape the previous one left, and §10.3's suite-wide oracle fails on a registered-but-unemitted id (`pdlc/engine/__tests__/_assert-suite-wide.mjs:195-213`). Batching them apart is what keeps that oracle green at every batch boundary rather than only at the end.
 - T43 → T45: the below-floor id is the last one registered, and T45 is where `bin/cli.mjs` first exists to emit it.
 - T33 → T49 and T34 → T49: `publish.yml` re-asserts PF-4 and PF-5 against a tarball that only `prepack` (T33) can produce, and its `publish` job's shape mirrors what `postinstall` (T34) will do on the consumer side.
 - T46 → T50 and T49 → T50: the fixture machine spawns the real launcher and installs a real pack, so both must be finished code before it can observe anything.
-- T50 → T51 and T50 → T52: the two `[manual]` observations record evidence *from* the fixture machine's runs; they cannot precede it.
+- T50 → T51, T50 → T52 and T50 → T56: the three `[manual]` observations record evidence *from* the fixture machine's runs; they cannot precede it. T56's anti-echo observation additionally needs the machine to be able to make a *different* plugin version current, which is the same capability AT-2.6's pairing leg establishes.
+- T58 → T49: the stub-channel legs are the failing tests `publish.yml` and `publish-preflight.mjs` are written to satisfy, and S-5 — the publish-channel stub T03 creates — reaches its consumer here rather than sitting as a fixture nobody uses (PM round-1 F-05).
+- T59 → T50: the recorder's inequality logic is unit-tested hermetically before the workflow spawns anything, so T50's install/upgrade legs have a red predecessor at a level that can actually run in the local suite.
 - T47 → T48: T47's process-entry leg asserts the exported `deps` key set on `bin/cli.mjs` before T48 adds the `_provenance` keys to `devInjection`/`queueInjection`; running them in one batch would let the key-set assertion pass for the wrong reason.
 
 **No cycles.** The graph is a DAG: every edge points from a lower batch to a strictly higher one, which `computeTopologicalBatches` re-derives independently in Phase P. Any edge added later that violates `Batch = max(batch of deps) + 1` will be rejected there, not discovered in Phase I.
