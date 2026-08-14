@@ -38,6 +38,19 @@ itself wrote into the FSPEC.
 
 ## The Erratum Round
 
+Two items were routed upstream to the FSPEC across the PLAN rounds, plus a re-grounding obligation
+on REQ `v0.10` (which moved under the FSPEC during Phase F's own erratum round).
+
+| # | Raised item | Filed by | Landed in `v0.3`? | Evidence |
+|---|---|---|---|---|
+| 1 | §3 F-7 step 4 cites "§8's AT-7.2"; §8 enumerates no `AT-7` group — the criterion meant **AT-6.2** | `pm-review`, `te-review`, `se-author` (5 filings across rounds) | **Yes, cleanly** | `FSPEC:296` now reads "§8's AT-6.2"; `grep -n 'AT-7'` returns only the changelog's description of the fix (`:20-21`), no dangling id survives. Both confirmers checked the target on substance, not numbering: AT-6.2 (`:755`) is the manual load-root/coexistence observation whose two-conjunct channel test F-7 step 4 describes (`:773`, `:775` corroborate) |
+| 2 | AT-3.8a's expected packed set ("the manifest, `bin/pdlc.mjs`, twelve named `lib/*.mjs` modules") contradicts TSPEC §5.4's `PK-*` table (23 members before N-2, 24 after E-4b's `bin/cli.mjs` split) — an implementer transcribing the FSPEC ships four members | `se-author` (twice) | **Partly — contradiction removed, replacement is the blocking finding** | §5.2's CLI-entry and engine-module rows no longer enumerate members ("named in TSPEC §5.4", `:474-478`); AT-3.8a (`:691`) now says the members "are named downstream, in TSPEC §5.4's `PK-*` table" and that this document must not restate the list. The wrong literal is gone; no literal replaced it |
+| 3 | Re-ground on REQ `v0.10` — NG-6/O-2's run-reads-`engine.*`-pin scope, AC-3.5's paired positives | erratum protocol (DEC-ERR-01) | **Yes** | Header cites REQ `v0.10` (`:9`); NG-6/O-2 recorded as **absorbed** (already carried by §3 F-4, BR-2.2, BR-4.7, I-4, E-11); AT-3.5 (`:678-684`) now carries AC-3.5's two positives — credential present ⇒ authenticated publish and release cut, absent ⇒ named failure, nothing published |
+
+Both confirmers verified the edit stayed targeted: `git diff` over `aa4d4a50..HEAD` touches only the
+header/changelog, `FSPEC:296`, two §5.2 rows, AT-3.5 and AT-3.8a. No settled section moved, and
+AT-3.8b remains correctly `[blocked on O-10]`.
+
 ## Delta-Confirmation Verdicts
 
 ## The Two Highs Are One Defect
