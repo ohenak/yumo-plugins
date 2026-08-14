@@ -39,6 +39,44 @@ have contradicted conjunct (b) one sentence below it. It was not.
 
 ## 2. Upstream re-grounding at HEAD (DEC-ERR-01)
 
+The item list is necessary, not sufficient. I re-read the upstream this document leans on, at
+its current version, and re-measured the load-bearing claims rather than trusting the changelog.
+
+**Version cells first.** The Upstream cell's claim — FSPEC v0.6 → v0.7, PLAN v0.7 → v0.8, and
+REQ / TSPEC / DECISIONS unmoved — is exactly true at HEAD:
+
+| Upstream | Cell claims | At HEAD | |
+|---|---|---|---|
+| REQ | v0.11 | v0.11, `sha256:abd47bee…4a2eadd0` | **Matches the dispatch pin byte-for-byte** |
+| FSPEC | v0.7 | v0.7 (`a57e0547`, round-6) | Moved, correctly re-pinned |
+| TSPEC | v0.12 | v0.12 | Unmoved |
+| DECISIONS | v0.3 | v0.3 | Unmoved |
+| PLAN | v0.8 | v0.8 | Moved, correctly re-pinned |
+
+**§4's set-equality against FSPEC §8, recomputed not assumed.** This is the claim an erratum
+round most easily invalidates silently, since an upstream that gains or loses an `AT-` row
+breaks it without touching a single line of PROPERTIES. I extracted both id sets mechanically
+and diffed them:
+
+- FSPEC §8's `AT-` definitions: **35 ids**, `AT-1.1`…`AT-6.2`.
+- PROPERTIES §4's `AT-` rows: **35 ids**.
+- `diff` of the two sorted sets: **empty**. Set-equality holds in both directions, including
+  the irregular members `AT-3.8a`, `AT-3.8b` and `AT-5.3b`.
+
+**The whole FSPEC v0.6 → v0.7 diff was read, not just the parts the changelog names.** It is 22
+insertions / 13 deletions, confined to the version cell, a new changelog paragraph, §5.2's class
+table and per-class count sentence, AT-3.8a's count conjunct, AT-3.8b's class-name wording, and
+the AT-1.1 / AT-1.6 literal. FSPEC's own changelog states "No criterion, oracle or count
+changed", and the diff bears that out — no `AT-` row was added or removed, which is the
+independent reason §4's set-equality still holds rather than holding by luck.
+
+**A prior erratum of mine is now discharged upstream.** In round 2 I raised that FSPEC's AT-1.6
+wrote the missing-plugin triple member as the literal `"none"` while the shipped renderer used
+`not found` (`handshake.mjs:209`). FSPEC v0.7 fixes it: AT-1.1 and AT-1.6 both name `not found`,
+and AT-1.4's discriminator now points at AT-1.1's `not found` message instead of the deleted
+"none installed" name, so it no longer dangles. The divergence that made PROPERTIES right and
+FSPEC stale is closed on the FSPEC side; nothing on this side needed to move for it.
+
 ## 3. Absorbed decisions, checked individually
 
 ## 4. Findings
