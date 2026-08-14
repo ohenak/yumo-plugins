@@ -200,7 +200,7 @@ This table is a **table of prose**, not a task table — it carries no `#`/`ID` 
 Two REQ criteria are cited in §2 as `AC-` rather than `AT-`, because FSPEC folds their
 verification into another named test rather than giving them one of their own: **AC-1.5** (the
 per-release pairing record) is verified inside AT-3.8a and documented by T31/T52, and **AC-3.5**'s
-two positives are legs of AT-3.5 (T58). No other `AC-` token appears in §2 or §7.
+two positives are legs of AT-3.5 (T58). Those two are the only `AC-` tokens that appear in a row's **trailing citation list**. `AC-` also appears elsewhere in §2 as prose — as the `AT-x *(AC-y)*` annotation this table uses, or when a row names the criterion a mechanism serves (T09's AC-5.6 oracle, T16's AC-1.3 set-equality, T24's AC-5.3 kinds) — and that is deliberate: the trailing list is the machine-readable claim, the prose is the reason.
 
 ## 3. File-ownership manifest
 
