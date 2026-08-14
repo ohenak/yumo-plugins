@@ -55,6 +55,3 @@ routed upstream as an erratum, not held against the FSPEC.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
-
-
-## Verdict
