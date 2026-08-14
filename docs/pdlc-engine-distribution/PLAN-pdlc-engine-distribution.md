@@ -25,18 +25,30 @@ Five streams of work, each traceable to a TSPEC section, landing in one branch:
 
 | Stream | What lands | TSPEC |
 |---|---|---|
-| A — Version resolution | `lib/store.mjs`, `lib/resolve-version.mjs`, the three-way `readEngineConfig`, the two-root workflow-module resolver, the inert `UpdateProbe`, and the twelve catalogue ids they emit | §6, §10.1, §10.3 |
-| B — Launcher | The E-4b split (`bin/pdlc.mjs` becomes a dependency-free Node-floor guard; the body moves to `bin/cli.mjs` with an exported `main(argv, deps)` and an exported five-key `deps` seam), then the resolution entry, the `spawnSync` hop, and the `--version`/`doctor` resolve-but-never-refuse exemption | §6.2, §9.3 |
-| C — Packaging & publish | Manifest edits, `prepack` vendoring plus `.gitignore`/`.npmignore`, `postinstall` store population, the restated anti-fork oracle (AF-1…AF-3), the packed-set equality (PF-4), the two READMEs, and `.github/workflows/publish.yml` with PF-1…PF-5 | §5, §8, §9.1, §9.2 |
+| A — Version resolution | `lib/store.mjs`, `lib/resolve-version.mjs`, the three-way `readEngineConfig`, the two-root workflow-module resolver, the inert `UpdateProbe`, and the **eleven** catalogue ids they emit (T28 1, T32 1, T37 7, T41 1, T43 1; the twelfth, `node.below-floor`, is stream B's T45) | §6, §10.1, §10.3 |
+| B — Launcher | The E-4b split (`bin/pdlc.mjs` becomes a dependency-free Node-floor guard; the body moves to `bin/cli.mjs` with an exported `main(argv, deps)` and an exported five-key `deps` seam), then the resolution entry, the `spawnSync` hop, the `--version`/`doctor` resolve-but-never-refuse exemption, and the twelfth catalogue id (`node.below-floor`) | §6.2, §9.3 |
+| C — Packaging & publish | Manifest edits, the licence discharge, `prepack` vendoring plus `.gitignore`/`.npmignore`, `postinstall` store population, the restated anti-fork oracle (AF-1…AF-3), the packed-set equality (PF-4), the stub-channel publish legs (AT-3.2, AT-3.3, AT-3.5, AT-3.6, AT-3.7), the two READMEs, and `.github/workflows/publish.yml` with PF-1…PF-5 | §5, §8, §9.1, §9.2 |
 | D — Provenance carriers | `lib/provenance.mjs`, the `_provenance` seam on **both** workflow modules, AC-5.3's four kinds across five commit helpers and five `rewriteStatus` routes, §7.4's `artifactPaths` classes 7–11, the `devInjection`/`queueInjection` wiring, and the regenerated `dist/` bundles | §7, §12.1 |
-| E — Fixture machine & manual | The install/upgrade legs, the launcher pass-through and signalled-child legs, AT-2.5 on a below-floor image, and the two `[manual]` recorded observations | §12.1, §12.3 |
+| E — Fixture machine & manual | The install/upgrade legs (single-machine AT-2.4 **and** two-repo AT-2.3), the launcher pass-through and signalled-child legs, AT-2.5 on a below-floor image, and the three `[manual]` recorded observations (AT-6.2, AT-4.4, BR-3.9) | §12.1, §12.3 |
 
 ### 1.2 What is deliberately **not** built here
 
 Per TSPEC §14.3: AC-6.2's bundle-side load root (N-1), BL-03's transcription (N-3), the
 range-widening cadence (N-4) and M-ENG-10's change-control tail (N-5). Two operator
-obligations *are* scheduled, as gate tasks rather than code tasks: the npm scope (N-6, T02)
-and the licence (N-2, T05).
+obligations *are* scheduled: the npm scope (N-6) as a pure gate task (T02), and the licence
+(N-2) as T05, which is **not** a pure gate — it records the decision **and** authors
+`pdlc/engine/LICENSE` and `package.json`'s `license` field in the same task, because recording
+N-2 flips PK-3 into TSPEC §5.4's expected packed set and a flip without the member leaves PF-4
+red (see §4 kind 3).
+
+**REQ-EDIST-06 is delivered in two halves, and only one of them is complete here** (PM round-1
+Q-01). AC-6.1 lands fully and mechanically: T44 rebuilds `dist/`, refreshes the consumer copy
+and asserts both `--check` exits under AT-6.1's fresh-clone precondition. AC-6.2 lands as a
+**limited manual observation** (T51) and not as a discriminating test: with N-1 unbuilt there is
+no run-bound load-root observation on the bundle side, so the recorded evidence asserts only
+FSPEC AT-6.2's conjunction and states that limit in the evidence document itself. Read as a
+product statement: REQ-EDIST-06 is fully delivered for AC-6.1 and **partially** delivered for
+AC-6.2 in Phase 1, with the remainder carried by N-1.
 
 ### 1.3 Three properties this plan is arranged around
 
