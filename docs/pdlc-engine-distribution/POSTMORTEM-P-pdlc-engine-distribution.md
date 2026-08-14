@@ -98,4 +98,46 @@ surface that touches the deleted text is §2.1's AT-3.8a row (`:209`), which rea
 
 ## Best-Guess Root Cause
 
+**The erratum resolved a two-layer disagreement by editing one layer, at the layer that does not own
+the decision. Moving expected-set ownership from FSPEC to TSPEC is a REQ-layer change (AC-1.3 states
+where the set lives); performing it inside an FSPEC erratum round left the change unauthorised
+above and incomplete below, and the bounded confirmation round had no budget left to repair either
+half.**
+
+Contributing conditions, in order of leverage:
+
+1. **A downward-routing fix needs an upward erratum first.** DEC-ERR-01's protocol re-grounds an
+   edited document against its *immediate upstream* before touching raised items, which the round
+   did faithfully for NG-6/O-2 and AC-3.5. But it re-grounds to absorb what upstream **already
+   decided** — it has no step for noticing that the repair you are about to write **requires a new
+   upstream decision**. The multi-layer wave (`ERRATUM: REQ:` on AC-1.3, then FSPEC, then TSPEC)
+   was available and was not raised, because the FSPEC-level fix looked self-contained from inside
+   the FSPEC.
+
+2. **The item as filed named the contradiction, not the resolution.** The raised item said
+   AT-3.8a's set contradicts TSPEC §5.4 — true, and closeable in either direction. Nothing in the
+   filing said which document should win, so the author picked the direction that made the smallest
+   edit. TE's `Q-01` asks exactly this question after the fact; had it been decided in the filing,
+   the round would have carried either a complete §5.2 restatement or a REQ erratum, and would have
+   confirmed.
+
+3. **Set-equality oracles degrade silently when the set is delegated.** Three of AT-3.8a's four
+   falsifiers (added `SKILL.md`, added test file, extra manifest member) survive delegation because
+   they sit in §5.2's exclusion list, which stayed literal. Only "a removed member fails" dies. A
+   fix that keeps three quarters of an oracle green reads as complete to its author and fails
+   exactly the reviewer who scores falsifiers one at a time — TE did, and that is the whole delta
+   between "landed" and "Needs revision" on item 2.
+
+4. **Budget shape, not budget size.** One erratum round per upstream doc per phase is the right
+   damping constant for a channel that would otherwise let a phase re-open its upstream
+   indefinitely. It is also unforgiving of a round that lands two of three items and half of the
+   third: there is no second batch, so a 90%-correct erratum halts the phase exactly as a 0% one
+   would. That is the intended trade — the cost is paid here, in a halt that a five-line edit clears.
+
+**What was not the cause.** Not the PLAN (converged, both verdicts approving, anchors recorded). Not
+review-round exhaustion (4 of 5 spent in Phase P; 3 of 15 FSPEC lifetime rounds). Not authoring
+stall (the erratum edit landed in two commits). Not re-litigation — both confirmers explicitly
+scoped out settled sections and verified the diff touched nothing approved. Not reviewer
+disagreement: the two Highs are complementary, not contradictory.
+
 ## Recommendation
