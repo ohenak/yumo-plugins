@@ -200,7 +200,7 @@ This table is a **table of prose**, not a task table — it carries no `#`/`ID` 
 
 | Acceptance test | Carried by |
 |---|---|
-| AT-1.1 *(AC-1.1)* refusal, none installed | T15, T14, T46 |
+| AT-1.1 *(AC-1.1)* refusal, plugin reported `not found` | T15, T14, T46 |
 | AT-1.2 *(AC-1.1)* out-of-range refusal, distinguishable text | T15, T46 |
 | AT-1.3 *(AC-1.1)* diagnostic completes in either refusal state | T15, T46 |
 | AT-1.4 *(BR-1.3)* unparseable manifest ⇒ root + parse failure | T15, T46 |
