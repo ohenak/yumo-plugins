@@ -15,11 +15,18 @@ depends-on: [pdlc-headless-engine]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase R) | Claude | 0.10 | 2026-08-13 |
+| pdlc | Draft — in review (Phase R) | Claude | 0.11 | 2026-08-14 |
+
+*0.11 (2026-08-14, Phase F erratum round): **AC-1.3** re-worded to the ownership split the
+downstream documents actually hold — the FSPEC states the expected set's **classes and per-class
+counts**, the TSPEC states its **member names**; the AC no longer asks a verifier to read a literal
+member list out of the FSPEC (SE, TE). The v0.10 changelog's citation for the run-side `engine.*`
+pin read corrected from **FSPEC F-3 step 5** to **F-4 step 2** (SE, PM; prose only, no AC affected).
+No other change.*
 
 *0.10 (2026-08-13, Phase F erratum round): **NG-6** and **O-2** restated on scope — the
 non-goal covers install/upgrade, which touch no consumer file at all, not the read/write verb;
-a *run* reads the consumer's `engine.*` pin (FSPEC F-3 step 5, BR-2.2, BR-4.7). **AC-3.5**
+a *run* reads the consumer's `engine.*` pin (FSPEC F-4 step 2, BR-2.2, BR-4.7). **AC-3.5**
 paired with positives: credential present ⇒ publish authenticates and the release is cut;
 absent ⇒ named failure, nothing published. No other change.*
 
@@ -257,10 +264,11 @@ copying bytes across the boundary.
 - **AC-1.3** *Who:* a verifier. *Given:* the built engine package. *When:* they enumerate **the
   contents of the packed tarball** — what a consumer actually receives, not a declared intent
   (`pdlc/engine/package.json` has no `files` field today, M-ENG-11, so a "declared list" oracle
-  would pass vacuously). *Then:* that list **equals**, member for member, an expected set stated
-  in the FSPEC — so an added file fails and a removed module fails, not merely a missing one. The
-  expected set contains the CLI entry, the workflow modules and the engine adapter, and contains
-  no `skills/` directory, no `SKILL*.md` file and no test corpus. Decidable offline, without
+  would pass vacuously). *Then:* that list **equals**, member for member, an expected set whose
+  **classes and per-class member counts are stated in the FSPEC** and whose **member names are
+  stated downstream in the TSPEC** — so an added file fails and a removed module fails, not merely
+  a missing one. That expected set contains the CLI entry, the workflow modules and the engine
+  adapter, and contains no `skills/` directory, no `SKILL*.md` file and no test corpus. Decidable offline, without
   publishing. (R-5 prices how the modules get inside the package at all; this AC states the
   outcome, not the mechanism.)
 - **AC-1.4** *Who:* the operator. *Given:* an installed package. *When:* they ask the CLI
