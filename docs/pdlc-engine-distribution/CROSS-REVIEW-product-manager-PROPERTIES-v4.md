@@ -106,7 +106,18 @@ carrier line of reasoning. No P0/P1 requirement lost a carrier in this diff.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-08 | Low | Local | The new changelog row is filed **out of order**: `PROPERTIES:22` is `0.6` and `PROPERTIES:23` is `0.5`, so the table reads 0.1, 0.2, 0.3, 0.4, 0.6, 0.5. The history is append-only and correct in content, but a reader scanning for the latest entry lands on the 0.5 erratum row. Move the 0.6 row below 0.5 — a one-row swap, no text change. | — (document hygiene; §1 reading rules) |
+
+Both prior Lows (F-06, F-07) are closed and are not carried forward. F-08 is new but non-gating, and
+I am deliberately raising nothing else: the diff is five hunks, all of them findings-responses, and
+everything they touch verifies.
+
 ## Questions
+
+None. The two questions this round could have raised — whether dropping AC-5.5 loses coverage, and
+whether PROP-NEG-18 disturbs the counts — are answered mechanically in §2 and §3 above.
 
 ## Positive Observations
 
