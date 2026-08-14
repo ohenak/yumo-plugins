@@ -730,16 +730,26 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   **When:** the packed tarball's contents are enumerated. **Then:** the enumerated members equal
   the expected set member-for-member — so an added `SKILL.md`, an added test file and a
   **removed member** each fail; the member count equals §5.2's (**23 before N-2's licence
-  decision is recorded, 24 after**); and the pairing record of F-5 step 6 is present inside it.
+  decision is recorded, 24 after**, and §5.2's per-class counts); and the pairing record of F-5
+  step 6 is present inside it. The count conjunct is asserted against the **transcribed expected
+  list** (TSPEC §5.4's `PK-*` table), never against the tarball's own length — counting the
+  enumerated members is a tautology once the first conjunct passes, and a self-derived expectation
+  of exactly the kind BR-8.1 forbids. Asserted against the transcription, it fails when the
+  transcription has drifted from §5.2 (TE round-4 F-03).
   The expected list is a literal one, never a listing of `pdlc/engine/lib/`; its **classes and
   count are §5.2's**, and its **member names are downstream, in TSPEC §5.4's `PK-*` table**,
   which is the single source the verifier transcribes. This document does not restate the member
   list (an FSPEC-local copy is what diverged); it does state the count, so a decomposition change
-  cannot move the expected set without an FSPEC-side edit.
-- **AT-3.8b** *(AC-1.3)* **[blocked on O-10]** **Given:** the same package. **When:** its workflow
-  modules are enumerated. **Then:** they equal §5.2's workflow-module class member-for-member, and
-  a removed module fails. Unwritable until O-10 names the members: at HEAD they live outside the
-  package root (`pdlc/engine/lib/run.mjs:53`), so there is nothing to remove (TE round-1 F-01).
+  cannot move the expected set without an FSPEC-side edit. **AT-3.8a is the authoritative
+  whole-set assertion**; AT-3.8b below is a named sub-assertion over one class, kept for
+  traceability and carried by its own task, not a second, competing expected side (SE round-4
+  F-02).
+- **AT-3.8b** *(AC-1.3)* **Given:** the same package. **When:** its workflow modules are
+  enumerated. **Then:** they equal §5.2's workflow-module class member-for-member — TSPEC §5.4's
+  `PK-20`…`PK-22` — and a removed module fails. Writable: TSPEC §5.4 names those three vendored
+  members "and nothing else", so O-10 no longer blocks this test; O-10 still bites on BR-8.2's
+  anti-fork obligation only (SE round-4 F-01, TE round-4 F-02). Subsumed by AT-3.8a's whole-set
+  equality; it exists so the vendored class has its own red-to-green carrier.
 
 ### AT-4 — Provenance **[fixture]**, **[blocked on O-9 for AT-4.2 and AT-4.5]** — AT-4.4 is *not* blocked: it needs two plugin versions and a revert, no new carrier (TE round-1 F-04)
 
