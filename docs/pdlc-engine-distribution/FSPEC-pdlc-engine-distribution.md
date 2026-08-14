@@ -6,14 +6,21 @@ feature: pdlc-engine-distribution
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.9, approved round 4); `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
+| Upstream | `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.10, re-grounded 2026-08-13 erratum round); `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
 | Downstream | TSPEC, PLAN, PROPERTIES for this feature; `pdlc-plugin-retirement` |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.2 | 2026-08-13 |
+| pdlc | Draft | Claude | 0.3 | 2026-08-13 |
+
+*0.3 (2026-08-13, erratum round): re-grounded on REQ v0.10 — NG-6/O-2's run-reads-`engine.*`-pin
+scope was already carried (§3 F-4, BR-2.2, BR-4.7, I-4, E-11), and AC-3.5's two positives are now
+absorbed into AT-3.5. Two errata fixed: the dangling `§8's AT-7.2` citation in §3 F-7 now reads
+**AT-6.2**, and the packed-member enumeration (§5.2 CLI-entry and engine-module rows, AT-3.8a)
+no longer restates a member list of its own — the members are named downstream in TSPEC §5.4's
+`PK-*` table, which is the single source the verifier transcribes. No other change.*
 
 **FSPEC ID:** `FSPEC-EDIST-01`
 
@@ -286,7 +293,7 @@ artifacts, and it is **[new]** work whose carrier is owned at **O-9**.
    load root exists on the bundle side today**, and installing only one channel is the precondition
    of an experiment, not an observation the run makes — so it cannot discharge this oracle.
    Supplying one is **O-9**'s third carrier. Until it lands, (1)+(2) distinguish the channels only
-   on a machine whose installed channels are known independently, and §8's AT-7.2 is written to
+   on a machine whose installed channels are known independently, and §8's AT-6.2 is written to
    assert exactly that much and no more (see §9 Q-2).
 
 ## 4. Business rules
@@ -467,8 +474,8 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 | Class | Expected members | Note |
 |---|---|---|
 | Package manifest | `package.json` | carries the compat range (T-3) and the pairing record (F-5 step 6) |
-| CLI entry | `bin/pdlc.mjs` | the single executable the `bin` mapping names — one entry, not a directory of scripts |
-| Engine modules | `lib/adapter.mjs`, `lib/auth.mjs`, `lib/catalogue.mjs`, `lib/guard-measurement.mjs`, `lib/handshake.mjs`, `lib/outcome.mjs`, `lib/report.mjs`, `lib/run.mjs`, `lib/skills.mjs`, `lib/startup.mjs`, `lib/transport-cli.mjs`, `lib/transport.mjs` | the class is *every* `lib/*.mjs` module of the engine package; the twelve names are the seed measured at HEAD, and a decomposition change updates this row **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
+| CLI entry | named in TSPEC §5.4 | the executable(s) the `bin` mapping resolves to; how many files carry that entry is a decomposition question TSPEC §5.4 decides, not this document |
+| Engine modules | named in TSPEC §5.4 | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
 | Workflow modules **[blocked on O-10]** | not enumerable yet | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`), so *which* files this class contains is exactly what O-10 decides. Their **presence** is not optional (F-2 step 5 depends on it), but the member list — and therefore this class's half of AT-3.8 (AT-3.8b) — is blocked |
 
 **Excluded, by set-equality rather than by absence-checking:**
@@ -670,7 +677,11 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   name change both leave the check green (E-29).
 - **AT-3.5** *(AC-3.5)* **Given:** the built artifact and the captured log of a stub-channel
   publish run, with a known sentinel credential value. **When:** both are scanned for it.
-  **Then:** no occurrence in either.
+  **Then:** no occurrence in either. Absence alone would hold vacuously if the credential were
+  never consumed, so it is paired with two positives (REQ v0.10's AC-3.5): (a) **Given** the
+  repository secret is present, **then** the publish step authenticates to the channel and the
+  release is cut; (b) **Given** it is absent or empty, **then** the run fails with a message
+  naming the missing credential and nothing is published.
 - **AT-3.6** *(AC-3.6)* **Given:** a tag disagreeing with T-1a at that commit. **When:** the
   workflow runs. **Then:** it fails naming both values; nothing published.
 - **AT-3.7** *(AC-3.7)* **Given:** a commit whose declared range excludes T-1b at that commit.
@@ -678,10 +689,11 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   published.
 - **AT-3.8a** *(AC-1.5, AC-1.3)* **Who:** verifier. **Given:** the built package, offline.
   **When:** the packed tarball's contents are enumerated. **Then:** the enumerated members equal
-  §5.2's *writable* classes member-for-member — the manifest, `bin/pdlc.mjs`, the twelve named
-  `lib/*.mjs` modules, and the three exclusions — so an added `SKILL.md`, an added test file and a
-  **removed named `lib` module** each fail; and the pairing record of F-5 step 6 is present inside
-  it. The expected list is the literal one in §5.2, never a listing of `pdlc/engine/lib/`.
+  §5.2's *writable* classes member-for-member — so an added `SKILL.md`, an added test file and a
+  **removed member** each fail; and the pairing record of F-5 step 6 is present inside
+  it. The expected list is a literal one, never a listing of `pdlc/engine/lib/`; **its members are
+  named downstream, in TSPEC §5.4's `PK-*` table**, which is the single source the verifier
+  transcribes. This document does not restate that list (an FSPEC-local copy is what diverged).
 - **AT-3.8b** *(AC-1.3)* **[blocked on O-10]** **Given:** the same package. **When:** its workflow
   modules are enumerated. **Then:** they equal §5.2's workflow-module class member-for-member, and
   a removed module fails. Unwritable until O-10 names the members: at HEAD they live outside the
