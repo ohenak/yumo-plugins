@@ -141,3 +141,61 @@ scoped out settled sections and verified the diff touched nothing approved. Not 
 disagreement: the two Highs are complementary, not contradictory.
 
 ## Recommendation
+
+Clear this halt with **one bounded FSPEC edit, not a re-authoring and not a REQ erratum**. Both
+reviewers offered the same two directions; direction (a) is recommended.
+
+**Step 1 — Choose the direction (operator decision, answers TE `Q-01`).**
+
+| | Direction (a) — **recommended** | Direction (b) |
+|---|---|---|
+| What | §5.2 restates the expected set, transcribed from TSPEC §5.4's `PK-*` table, keeping the existing "decomposition change updates both in the same change" rule | `ERRATUM: REQ:` to move AC-1.3's expected-set ownership to the TSPEC, re-word AC-1.3, then cite the re-worded AC from §5.2 |
+| Closes SE `F-01` | Yes — all seven members get a class | Yes |
+| Closes TE `F-01` | Yes — REQ AC-1.3 becomes true again as written | Yes, by changing what AC-1.3 says |
+| Cost | Three class rows plus two wording fixes, inside one FSPEC round | A REQ erratum round, a REQ re-approval, then an FSPEC round, then a TSPEC confirmation — a three-layer wave, propagated child-first |
+| Risk | Two copies of the member list exist (the divergence the erratum was trying to end) — mitigated by the same-change update rule already in §5.2 and by PLAN `T16` transcribing from TSPEC, not FSPEC | Reopens an approved REQ at `v0.10` for a change with no behavioural consequence |
+
+**Step 2 — Land the edit as FSPEC `v0.4`.** Under direction (a), five concrete changes:
+
+| # | Change | Site |
+|---|---|---|
+| 1 | Add class rows for **package README** (PK-2), **licence** (PK-3, preserving its conditionality on N-2's decision record) and **postinstall script** (PK-23), each naming the member and citing TSPEC §5.4 | §5.2 (`:474-478`) |
+| 2 | Restore a literal expected-member statement owned by the FSPEC — **23 members before N-2, 24 after E-4b's `bin/cli.mjs` split** (answers TE `Q-02`; `TSPEC:382-389` carries both counts) — with the existing same-change update rule kept | §5.2, AT-3.8a (`:691-696`) |
+| 3 | Drop or narrow the "no repo-level documentation" exclusion so it stops colliding with the packed README | §5.2 exclusions (`:478`) |
+| 4 | Reword BR-8.1: the expected side is the literal list in §5.2, transcribed from TSPEC §5.4's `PK-*` table — **never** a listing of the shipped tree. The anti-directory-listing half of the rule is the part worth keeping | BR-8.1 (`:500`) |
+| 5 | Restate §1's packed-content ownership sentence so it agrees with §5.2 | §1 (`:32-33`) |
+
+Fold in SE `F-02`/TE `F-02` in the same edit; record SE `F-03` (REQ changelog's F-3/F-4
+misattribution) and SE `Q-01` (§5.2's `[blocked on O-10]` row vs `TSPEC:421-429`) in the changelog as
+noted-not-fixed, so the next FSPEC round has them in hand.
+
+**Step 3 — Flip the marker.** Once Step 2 is on the branch, set `RESOLVED: yes` in this file with
+the verification date and the commit range checked, and commit. Do not flip it on the strength of
+the plan alone — the finding is closed by the three class rows existing, not by intending them.
+
+**Step 4 — Re-invoke Phase F, then Phase P.**
+
+```
+/pdlc:orchestrate-dev {"reqPath": "docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md", "forcePhases": "F,P"}
+```
+
+`F` gives the corrected FSPEC a real confirmation round (rounds 4–5 of 5; lifetime 3 of 15, not near
+the cap) instead of carrying an unconfirmed erratum forward. `P` re-runs PLAN review against the
+settled FSPEC; expect a cheap delta round, since PLAN `v0.4` already transcribes the packed set from
+TSPEC §5.4 and no PLAN row changes under direction (a). Forcing overrides the recorded approvals
+only — this POSTMORTEM must carry `RESOLVED: yes` first or both phases refuse to run.
+
+**Step 5 — If direction (b) is chosen instead**, propagate child-first: raise `ERRATUM: REQ:` on
+AC-1.3, confirm the REQ edit, then the FSPEC, then the TSPEC, and only then re-run `P`. Do not edit
+the FSPEC ahead of the REQ decision — that ordering is what produced this halt.
+
+**Not recommended.** Proceeding to Phase I on the strength of PLAN `v0.4` while its upstream FSPEC
+sits at a non-approved `v0.3`. The PLAN survives either direction, so the temptation is real, but
+AT-3.8a is the acceptance criterion `T16` implements; shipping an implementation whose
+acceptance-set oracle has no owning document is exactly the change-control gap TE's High names, and
+it is far cheaper to close here than after `packaging.test.js` exists.
+
+**Also not recommended.** Widening the erratum budget to two rounds per upstream document. The
+round did not fail for lack of a second attempt; it failed because the repair direction was chosen
+without the decision that authorises it. A second batch would have produced a second unauthorised
+edit.
