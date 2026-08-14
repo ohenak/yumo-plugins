@@ -6633,8 +6633,22 @@ function waveImplementPrompt(task, featureName) {
     `Feature: ${featureName}\n` +
     `TSPEC: docs/${featureName}/TSPEC-${featureName}.md\n` +
     `PROPERTIES: docs/${featureName}/PROPERTIES-${featureName}.md\n` +
+    `PLAN: docs/${featureName}/PLAN-${featureName}.md\n` +
     `Dependencies completed: ${task.dependencies.join(", ") || "none"}\n` +
     `Follow TDD: write the failing test first, then the minimum implementation.\n` +
+    `SKIPS: the orchestrator requires the FULL suite green at the end of every wave. ` +
+    `If your task writes tests whose implementation another task owns in a later wave, commit those ` +
+    `blocks SKIPPED: \`test.skip\`/\`it.skip\`/\`describe.skip\` as the plain leading token of the ` +
+    `statement, titled with the owning task's id followed by ": " (e.g. \`test.skip("T26: …", …)\`). ` +
+    `Exactly one task id per title; use \`describe.skip\` only when every block inside is owned by that ` +
+    `same task.\n` +
+    `If any committed test file already contains \`.skip\` blocks titled with YOUR task id, your FIRST ` +
+    `action is to remove exactly those \`.skip\` wrappers, run them, observe them fail, then implement ` +
+    `until they pass. Never delete a skipped block, and never write a new test beside one, instead ` +
+    `of un-skipping it.\n` +
+    `If a test file needs a module that does not exist yet, defer loading it — use a dynamic ` +
+    `\`await import\` inside the test body rather than a top-level import — so the file still loads ` +
+    `and the skips take effect.\n` +
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
