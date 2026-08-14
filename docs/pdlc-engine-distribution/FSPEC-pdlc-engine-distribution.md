@@ -13,7 +13,21 @@ feature: pdlc-engine-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.3 | 2026-08-13 |
+| pdlc | Draft | Claude | 0.4 | 2026-08-14 |
+
+*0.4 (2026-08-14, POSTMORTEM-P follow-up, direction (a)): the packed-content set's ownership
+split is now consistent in both directions. §5.2 gains class rows for the package README (PK-2),
+the licence (PK-3, expected only once N-2's record lands) and the install script (PK-23), so every
+member of TSPEC §5.4's `PK-*` table has a class here (SE `F-01`); §5.2 and AT-3.8a now carry the
+**member count** — 23 before N-2, 24 after — as the FSPEC-side change-control point, which keeps
+REQ AC-1.3's *expected set stated in the FSPEC* true without a REQ erratum (TE `F-01`, `Q-02`);
+the exclusion list no longer reads "no repo-level documentation" against the now-packed README;
+BR-8.1 names TSPEC §5.4's `PK-*` table as the literal expected side while keeping the
+anti-directory-listing rule (SE `F-02`); §1 restates the ownership split (TE `F-02`). Noted, not
+fixed, for the next round: REQ v0.10's changelog attributes the run-side pin read to "FSPEC F-3
+step 5" where the flow lives in F-4 (SE `F-03`, prose only, no behavioural consequence); §5.2's
+workflow-module row is still marked `[blocked on O-10]` though `TSPEC:421-429` unblocks
+PK-20…PK-22 (SE `Q-01`).*
 
 *0.3 (2026-08-13, erratum round): re-grounded on REQ v0.10 — NG-6/O-2's run-reads-`engine.*`-pin
 scope was already carried (§3 F-4, BR-2.2, BR-4.7, I-4, E-11), and AC-3.5's two positives are now
@@ -32,6 +46,10 @@ operator machine, the tag-driven publish pipeline, and the provenance a run leav
 consumer repo. It also carries the three **expected sets** the REQ deliberately parked here rather
 than in a measurement file (§5): the required-check set (T-7), the packed-content set (AC-1.3) and
 the dev-mode artifact-kind set (AC-5.3).
+
+**Ownership of the packed-content set.** This document owns that set's *classes* and its *member
+count* (§5.2); the member *names* live downstream in TSPEC §5.4's `PK-*` table, because
+decomposition is the TSPEC's decision. Neither side moves without the other in the same change.
 
 **Altitude.** Behaviour, decision points, business rules, expected sets, error text obligations.
 Not here, and owned by the TSPEC: package layout, manifest schema beyond the fields the REQ
@@ -468,15 +486,27 @@ The oracle is **the contents of the packed tarball** — what a consumer actuall
 declared intent: `pdlc/engine/package.json` has no `files` field today (M-ENG-11), so a
 "declared list" oracle would pass vacuously. The check is decidable offline, without publishing.
 
-Members are **enumerated literally**, the way §5.1 transcribes check names, so the expectation
+Members are **enumerated literally** (downstream, in TSPEC §5.4's `PK-*` table; the classes and count are §5.2's), the way §5.1 transcribes check names, so the expectation
 never derives from a directory listing of the code under test (TE round-1 F-01).
 
 | Class | Expected members | Note |
 |---|---|---|
 | Package manifest | `package.json` | carries the compat range (T-3) and the pairing record (F-5 step 6) |
+| Package README | named in TSPEC §5.4 (`PK-2`) | the package-level `README.md` this feature authors; the *repo-level* readme is still excluded (below) |
+| Licence | named in TSPEC §5.4 (`PK-3`) | expected **only once N-2's operator licence decision is recorded** in `DECISIONS-plugin-distribution.md`; the expectation is sourced from that record, never from whether `pdlc/engine/LICENSE` happens to exist in the tree (TSPEC §5.4) |
 | CLI entry | named in TSPEC §5.4 | the executable(s) the `bin` mapping resolves to; how many files carry that entry is a decomposition question TSPEC §5.4 decides, not this document |
 | Engine modules | named in TSPEC §5.4 | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
+| Install script | named in TSPEC §5.4 (`PK-23`) | the postinstall script the packaged install runs (§9.2 of the TSPEC); unconditional, and a member like any other |
 | Workflow modules **[blocked on O-10]** | not enumerable yet | at HEAD the engine reaches them by relative URL **outside** the package root (`pdlc/engine/lib/run.mjs:53`), so *which* files this class contains is exactly what O-10 decides. Their **presence** is not optional (F-2 step 5 depends on it), but the member list — and therefore this class's half of AT-3.8 (AT-3.8b) — is blocked |
+
+**The member *count* is owned here** (SE F-01; TE `F-01`, `Q-02`). The expected set is **23
+members before N-2's licence decision is recorded and 24 after**: the manifest, the package
+README, the CLI-entry file(s), every `lib/*.mjs` engine module, the vendored workflow members,
+and the install script, plus `LICENSE` once N-2 lands (`TSPEC:386-389` carries the same
+arithmetic). The split is deliberate: this document says which classes exist and how many
+members they total, TSPEC §5.4's `PK-*` table says which files — so REQ AC-1.3's *expected set
+stated in the FSPEC* is stated here, and a decomposition change that moves the count updates
+both sides **in the same change**.
 
 **Excluded, by set-equality rather than by absence-checking:**
 
@@ -485,18 +515,19 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 - no test corpus — `pdlc/engine/__tests__/` sits inside the package root and `files` is absent
   today (M-ENG-11), so **excluding it takes a deliberate packaging decision, not an omission**
   (TE round-4 Q-02); which mechanism achieves it is the TSPEC's;
-- no `node_modules/`, no lockfile-adjacent build residue, no repo-level documentation.
+- no `node_modules/`, no lockfile-adjacent build residue, and no *repo-level* documentation — the package `README.md` (PK-2) is a member, the repository's own readme is not.
 
 There is **no separate "engine adapter" row**: the adapter is `lib/adapter.mjs`, already an
 engine-modules member, and a second row would double-count it (TE round-1 Q-01).
 `pdlc/workflows/runtime-adapter.js` is *not* a member (`lib/adapter.mjs:8-13`: deliberately not
 ported).
 
-**BR-8.1** The equality is member-for-member in both directions: an **added** file fails and a
-removed module fails. A subset check is not acceptable — a vendored skills copy is exactly the
-failure this AC exists to catch, and a subset check would pass it. The expected side is the
-literal list above, never a listing of the shipped tree: an oracle that reads
-`pdlc/engine/lib/` for its expectation passes a deleted module and is a defect.
+**BR-8.1** The equality is member-for-member in **both** directions: an **added** file fails and
+a **removed** module fails. A subset check is not acceptable — a vendored-skills copy is exactly
+the failure this AC exists to catch, and a subset check would pass it. The expected side is the
+literal member list of **TSPEC §5.4's `PK-*` table**, read together with the classes and count
+above — never a listing of the shipped tree: an oracle that reads `pdlc/engine/lib/` for its
+expectation passes a deleted module, which is the defect this rule exists to catch.
 
 **BR-8.2** R-5/O-10's choice of how the workflow modules get inside the package may not leave
 the anti-fork property (M-ENG-12) unstated. Whatever the TSPEC chooses, the anti-fork oracle is
@@ -689,11 +720,14 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   published.
 - **AT-3.8a** *(AC-1.5, AC-1.3)* **Who:** verifier. **Given:** the built package, offline.
   **When:** the packed tarball's contents are enumerated. **Then:** the enumerated members equal
-  §5.2's *writable* classes member-for-member — so an added `SKILL.md`, an added test file and a
-  **removed member** each fail; and the pairing record of F-5 step 6 is present inside
-  it. The expected list is a literal one, never a listing of `pdlc/engine/lib/`; **its members are
-  named downstream, in TSPEC §5.4's `PK-*` table**, which is the single source the verifier
-  transcribes. This document does not restate that list (an FSPEC-local copy is what diverged).
+  the expected set member-for-member — so an added `SKILL.md`, an added test file and a
+  **removed member** each fail; the member count equals §5.2's (**23 before N-2's licence
+  decision is recorded, 24 after**); and the pairing record of F-5 step 6 is present inside it.
+  The expected list is a literal one, never a listing of `pdlc/engine/lib/`; its **classes and
+  count are §5.2's**, and its **member names are downstream, in TSPEC §5.4's `PK-*` table**,
+  which is the single source the verifier transcribes. This document does not restate the member
+  list (an FSPEC-local copy is what diverged); it does state the count, so a decomposition change
+  cannot move the expected set without an FSPEC-side edit.
 - **AT-3.8b** *(AC-1.3)* **[blocked on O-10]** **Given:** the same package. **When:** its workflow
   modules are enumerated. **Then:** they equal §5.2's workflow-module class member-for-member, and
   a removed module fails. Unwritable until O-10 names the members: at HEAD they live outside the
