@@ -56,6 +56,66 @@ closed — the passages at `PROPERTIES:86` and `:316-323` are byte-identical to 
 
 ## 3. Did the surrounding movement break anything
 
+A document that does not change can still go stale under one that does. I checked each PLAN v0.9 edit
+against the PROPERTIES row it could touch, and each new file against the §8 row that names it.
+
+**PLAN (b), T59's discriminator legs — PROPERTIES already said it, and said it better.**
+`PROP-GATE-1` (`PROPERTIES:227`) already states the discriminator as the probe process's exit status,
+both arms positively: *"a probe that executes and exits non-zero ⇒ capability absent ⇒ registered
+skip; a probe that cannot execute at all — spawn error, `ENOENT`, timeout … ⇒ unprobeable ⇒ workflow
+failure"*, carried by `T50 → scripts/fixture-machine.mjs; T59 → fixture-machine.test.js`. PLAN v0.9
+moved *toward* this row, not away from it. No property is now uncarried, and no PLAN task named in
+§4/§5 lost its carrier.
+
+**PLAN (g), T50's runner wording — no PROPERTIES edit implied.** PROP-GATE-4 (`:230`) already reads
+"On the GitHub-hosted `ubuntu-latest` runner", which is exactly the phrasing PLAN v0.9 corrected
+itself to; PROP-NEG-15 (`:266`) uses the same frame. PROPERTIES never claimed an image pin, so the
+loose word PLAN retired was never inherited here.
+
+**PLAN (c), AT-2.1's hermetic residue — consistent, checked in both directions.** PLAN now says
+T14's real-spawn and signalled-child legs are themselves `real-spawn`-gated. PROP-LAUNCH-6 (`:91`)
+says the same thing in property form — descriptor assertions against the S-3 double, *"the
+pass-through and signal legs run against a **real spawn**"* — is levelled `Unit + Machine`, and §7's
+Machine row (`:428`) counts "PROP-LAUNCH-6's real-spawn half" among the twelve. §4's AT-2.1 row
+(`:286`) still lists T11, T14, T41, T46, T53, T34, T50. Nothing to reconcile.
+
+**PLAN (a), (d), (e), (f) are plan-internal.** (a) is a §4 prose licence, (d) a DoD gloss, (f) a
+provenance attribution; none is quoted by PROPERTIES. (e) restates AT-3.8a's label as two-sided —
+members from TSPEC §5.4, classes and counts from FSPEC §5.2 — which is the ownership PROPERTIES v0.5
+already recorded for PROP-PACK-1/-2 (`:22`'s v0.5 row). Convergent, not divergent.
+
+**§8's T03/T04 rows now have shipped code behind them, and it matches.** This is the first round where
+these are checkable rather than planned:
+
+- Engine-side S-1…S-7 doubles: `pdlc/engine/__tests__/_doubles.mjs:7` declares the S-1…S-7 mapping and
+  the file exports the seam fakes (`fakeStoreReader:48`, `configAbsent:89`, `fakeLauncher:121`,
+  `fakePublishChannel:164`, `fakeProvenance:211`, `fakeDeps:249`) — §8's "the engine-side doubles
+  S-1…S-7 are T03's" holds.
+- §8's three bounded generators for PROP-VER-16 exist and are the three named shapes:
+  `genVersionString:353` (version strings), `genConfigShape:394` (config shapes), `genQueueTable:448`
+  (queue tables), with hygiene rule 1's explicit seed as `seeded:289` / `resolveSeed:331` — not a
+  clock-seeded run.
+- Module-side half: `pdlc/workflows/__tests__/helpers/provenanceDoubles.js` ships
+  `makePopulatedProvenance:49`, `makeRecordingGit:80` (the `_git` argv recorder PROP-PROV-7 asserts
+  on), `makeRecordingFileSeams:116` (`_readFile`/`_appendFile`, with the `=== 0` append-count case
+  PROP-PROV-4 needs at `:110-111`), and `PROVENANCE_QUEUE_FIXTURES:167` carrying exactly §8's three
+  table shapes — `no-columns:169`, `Evidence`-only`:179`, both-columns`:187`. §8 names the file, not a
+  directory, so its landing under `pdlc/workflows/__tests__/helpers/` contradicts no stated path.
+
+**Oracle quality re-checked on the rows the new code touches.** The recorded-call doubles assert on
+what *was* recorded (`calls`, `.reads`, `.appends`), so PROP-PROV-4's zero-append conjunct sits beside
+positive call-order assertions rather than standing alone; PROP-INSTALL-4's byte-identity still pairs
+with §8's non-empty baseline fixture; no expectation in either new file derives an expected value
+from the code under test — the doubles are literal data. §4's 35 `AT-` rows and §5's requirement
+accounting are byte-unchanged and were set-equality-verified in v3/v4 against a FSPEC that has not
+moved since (`FSPEC:16` still v0.7).
+
+**Product criteria: nothing lost.** No P0/P1 requirement lost a carrier, because no carrier cell
+changed. Every REQ row in §5 still resolves, and the two shipped double modules strengthen rather
+than weaken the properties that depend on them.
+
+The one thing the movement *did* stale is bookkeeping: the Upstream cell's PLAN pin. That is F-09.
+
 ## Findings
 
 ## Questions
