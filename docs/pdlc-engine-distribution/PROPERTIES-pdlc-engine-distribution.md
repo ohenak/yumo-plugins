@@ -265,6 +265,7 @@ names and which four of this feature's oracles are structurally exposed to.
 | PROP-NEG-15 | A capability-gated leg must **not** be skipped silently. | The comparator fails on any unregistered skip, and on `ubuntu-latest` the recorded skip set is asserted **empty** with the run URL cited. | DoD item 14 |
 | PROP-NEG-16 | `pr-tests.yml` must **not** gain a job. | Its five rendered names satisfy FSPEC §5.1's set-equality in the same run, so an emptied or unparsed file fails. | C-5, BR-7.5 |
 | PROP-NEG-17 | No message id may be registered without an emitter, and none emitted without registration. | `checkMessageCatalogue`'s two-directional failure list, verified at HEAD. | TSPEC §10.3 |
+| PROP-NEG-18 | A missing-plugin refusal must **not** leave the consumer project modified, and must **not** "refuse" after having already dispatched. | The catalogue entry for PROP-LAUNCH-9's clauses (c) and (d): the dispatch count is asserted `=== 0` (a crash after dispatch fails), and the tree-and-index comparison is byte-identical against a **non-empty** recorded pre-state (an empty fixture cannot pass it). The decision half is green at HEAD — `pdlc/engine/__tests__/handshake.test.js:110-118` pins the range, `not found`, `Remedy:` and `PDLC_PLUGIN_ROOT` on `checkCompat`'s reason (`pdlc/engine/lib/handshake.mjs:144`). | AC-1.1, AT-1.1 |
 
 ## 4. Coverage matrix — acceptance test → property → task → test file
 
