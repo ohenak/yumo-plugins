@@ -70,7 +70,48 @@ round** (DoD item 14's skip semantics), not a restatement of anything above.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | DoD item 4 requires `scripts/fixture-machine.mjs` to clear 85% branch coverage from T59's hermetic legs alone. T59 unit-tests the recorder "over injected spawn results". Is the injection seam stated anywhere a T59 implementer will find it — does `fixture-machine.mjs` take its spawn function as a parameter, per §2's doubles convention, or is the seam left to the implementer to invent? If the module reaches for `spawnSync` directly, the hermetic legs cannot cover the branches that read its result, and the floor in item 4 becomes unmeetable for a reason no row predicts. |
+| Q-02 | §1.2's new paragraph is candid that AT-4.4's anti-echo property is "verified once … and nothing re-checks it afterwards", and names the nine provenance tasks a later hardcoded pair would slip past. That is the right disclosure and I am not asking to re-scope it. But is the follow-on recorded anywhere durable — a `docs/_decisions/` entry or a queue row — or does it live only in this paragraph, which stops being read the moment the feature ships? |
+
 ## Positive Observations
+
+- **Every round-2 finding was fixed by changing the thing, not the prose about it.** All
+  four were re-checked by re-running the same mechanical procedure that found them, and
+  all four pass: the runner's counts are transcribed exactly, the pathspec really yields
+  23 files with no fixture markdown, the kind-1 table really covers all 27 greens but the
+  two carve-outs, and the §2.1 transpose really is set-equal but for the one declared
+  pointer.
+- **The F-01 fix generalised past what the finding asked for.** I asked for the correct
+  number; §5.1 supplied the number *and* the reason a floor must survive the deletion it
+  guards, then applied the same lens to `run.test.js` — which I had not flagged — turning
+  "three tests are restated" into "`≥ 21`, i.e. all 21 HEAD tests present, of which three
+  are restated and the other eighteen untouched". That is the stronger statement, and the
+  eighteen are named by group so a reader can tell what the floor protects.
+- **The floors are stated as `≥`, which is what makes them falsifiable.** `≥ 9`, `≥ 21`,
+  `≥ 32`, `≥ 14` sites: a rewrite that deletes passing assertions and leaves the suite
+  green now reddens the DoD, which is precisely the defect class a coverage gate cannot
+  see. Measured all four at HEAD; the plan's numbers are the runner's.
+- **§2.1 became a mechanism rather than a table.** Naming §2 as source of truth, stating
+  the direction reconciliation runs, and listing which of the seven disagreements was
+  fixed at which end means the next reviewer re-derives in one script instead of reading
+  59 rows. The note that no `AT-` lost its last carrier in either direction is correct —
+  each of the four ids dropped from a `Carried by` cell retains carriers that claim it.
+- **The graph survived the round untouched.** Batch arithmetic exact over all 59 rows,
+  no cycle, no duplicate id, same histogram as round 2, no same-batch same-file
+  collision, every kind-1 pair a real `Deps` edge. The edits were surgical.
+- **§1.2's AC-4.4 paragraph is the disclosure a DoD reader needs and rarely gets.** It
+  says the criterion is verified once and never again, names the nine tasks a hardcoded
+  pair would slip past, gives the reason the automation was not folded into T50 (a P0
+  criterion behind a gate that can legitimately skip reads as "not observed", not
+  "failed"), and declines to schedule the follow-on rather than pretending it is out of
+  scope. Notably, that paragraph names the exact hazard F-01 says item 14 then walks
+  into for AT-2 — the reasoning is already in the document, applied to one criterion and
+  not the other.
+- **DoD item 4 answered Q-02 by making the diagnosis unambiguous.** "A below-floor
+  reading is a missing hermetic test, never a skipped capability-gated leg" is the
+  sentence that stops a future implementer from explaining away a real gap.
 
 ## Recommendation
 
