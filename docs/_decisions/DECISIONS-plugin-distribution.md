@@ -140,6 +140,32 @@ blocking the first publish and nothing earlier. Release automation for the packa
 
 ---
 
+## DEC-DIST-06: The npm scope is `@kaneho`
+
+**Decision:** the scoped package DEC-DIST-05 chose publishes under the npm scope `@kaneho`,
+giving the published name `@kaneho/pdlc-engine`. This is an npm account the operator owns —
+DEC-DIST-05 decided *that* the package is scoped-public but named no scope, and O-8 blocker 2
+(`N-6` in `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) is exactly this gap:
+nothing on the registry catches a wrong or unregistered scope the way `npm publish` itself
+catches `"private": true`, so the choice has to be recorded before anything downstream can cite
+it as fact.
+
+**Consequence:** `pdlc/engine/package.json`'s `name` field and `pdlc/engine/README.md`'s
+install/upgrade/pairing literals (TSPEC §5.1, §9.1) read this scope from this record — they do
+not invent it, and this record is what they read. Downstream engineering tasks (manifest edit,
+README authoring, the docs-uniqueness oracle's install-command key) cite `@kaneho/pdlc-engine`
+because it is what this entry says, not the other way around; a future rescoping is a new
+decision entry here, followed by the co-change everywhere the name is quoted.
+
+**Origin:** `pdlc-engine-distribution` N-6 / O-8 blocker 2, decided 2026-08-13 (operator
+delegated adjudication, same episode as DEC-DIST-05).
+
+**Testability:** `pdlc/engine/__tests__/packaging.test.js`'s `PF-3` asserts
+`pdlc/engine/package.json`'s `name` field against this record, never against a literal
+authored in the TSPEC or the test itself.
+
+---
+
 ---
 
 ## Open at project level
