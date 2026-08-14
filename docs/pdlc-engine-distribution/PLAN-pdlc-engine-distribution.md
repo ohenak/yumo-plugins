@@ -219,7 +219,7 @@ This table is a **table of prose**, not a task table — it carries no `#`/`ID` 
 | AT-3.5 *(AC-3.5)* sentinel credential absent from artifact and log, plus both positives | T58, T49 |
 | AT-3.6 *(AC-3.6)* tag disagreeing with T-1a fails naming both values | T58, T49 |
 | AT-3.7 *(AC-3.7)* range excluding T-1b fails naming range and plugin version | T58, T49 |
-| AT-3.8a *(AC-1.5, AC-1.3)* packed set equals §5.2's writable classes; pairing record present | T16, T25, T49 |
+| AT-3.8a *(AC-1.5, AC-1.3)* packed set equals the expected set member-for-member (members from TSPEC §5.4, classes and per-class counts from FSPEC §5.2), count conjunct against the transcribed list; pairing record present | T16, T25, T49 |
 | AT-3.8b *(AC-1.3)* packed workflow modules equal §5.2's class | T16, T33, T11, T41, T49 |
 | AT-4.1 *(AC-4.1)* report states both versions | T08, T20, T27, T29 |
 | AT-4.2 *(AC-4.2)* committed POSTMORTEM nameable from history alone | T20, T24, T29, T47, T48 |
