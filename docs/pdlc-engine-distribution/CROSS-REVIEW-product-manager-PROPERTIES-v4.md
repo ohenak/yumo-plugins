@@ -72,6 +72,38 @@ Corroborated in both directions:
 
 ## 3. Did the revision break anything
 
+The changelog claims counts and set-equality are unchanged. A revision that adds a row while
+claiming "no property added" is exactly the shape that silently corrupts coverage accounting, so I
+re-measured rather than accepted the claim.
+
+**PROP-NEG-18 is a catalogue row, not a 90th property.** §3 catalogues negatives already stated in
+§2 (`:246`: "Every negative below is stated with a positive conjunct"). PROP-NEG-18 catalogues
+PROP-LAUNCH-9's existing clauses (c) and (d); no §2 row changed. §7's "89 properties in §2"
+(`:420`) and the column sum 95 / Unit 74 therefore stand, and §3 carries no row count of its own to
+invalidate.
+
+**Its exclusion from §4 is the convention, not an omission.** `awk` over §4 returns **zero**
+`PROP-NEG-` occurrences — no `PROP-NEG-*` id has ever appeared there, including ones that trace an
+`AT-` (PROP-NEG-3 → AT-2.4, PROP-NEG-7 → AC-4.1). PROP-NEG-18's `AC-1.1, AT-1.1` cell follows the
+same pattern; AT-1.1's §4 row continues to carry PROP-LAUNCH-9.
+
+**§4 set-equality re-run, not assumed.** §4 yields **35** distinct `AT-` ids, the same 35 as at
+v0.5 — the `AT-` rows are byte-unchanged in this diff and FSPEC is unmoved since `06e74162`, so the
+set-equality I verified in both directions last round holds by construction.
+
+**PROP-NEG-18's oracle passes the three bars.** It is a negative paired with positive assertions on
+the same path: dispatch count asserted `=== 0` (not "no dispatch observed") and tree-and-index
+byte-identity against a **non-empty** recorded pre-state, which is what stops an empty fixture
+green-lighting it. Its HEAD anchors check out: `pdlc/engine/__tests__/handshake.test.js:110-118` is
+the missing-plugin test, pinning `pluginVersion === "not found"` and matching the range, `not
+found`, `Remedy:` and `PDLC_PLUGIN_ROOT` on `checkCompat`'s reason; `pdlc/engine/lib/handshake.mjs`
+composes that reason with `${REMEDY}` at the cited site. No expected value is derived from the code
+under test — the literals are transcribed from FSPEC's AT-1.1.
+
+**Product criteria are where they were.** AC-1.1's two halves still split PROP-LAUNCH-9 / -2
+(plugin-compat) from PROP-LAUNCH-1, -3, -4 (engine-store), per §5:348. AC-5.5 now has exactly one
+carrier line of reasoning. No P0/P1 requirement lost a carrier in this diff.
+
 ## Findings
 
 ## Questions
