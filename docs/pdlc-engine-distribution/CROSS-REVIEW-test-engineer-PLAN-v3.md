@@ -115,4 +115,39 @@ round** (DoD item 14's skip semantics), not a restatement of anything above.
 
 ## Recommendation
 
+**Needs revision**
+
+Round 2's four findings are all resolved, and three of them were re-verified by re-running
+the exact check that produced them. The graph is unchanged and still exact over 59 rows.
+Nothing that was approved in earlier rounds was broken by this revision.
+
+One new High blocks approval, and it is in text this round added:
+
+1. **F-01** — DoD item 14's skip semantics let the required fixture-machine check
+   conclude **success with every gated leg unrun**, while T50 forbids those legs from
+   running in the local suite and item 15's evidence set covers none of them. AT-2.1,
+   AT-2.3, AT-2.4, AT-2.5 and AT-2.6 are then satisfiable without ever being observed —
+   including the two criteria round 1 added *because they had no carrier*. The plan cites
+   the `skipSink` precedent for this behaviour, but that precedent fails closed
+   (`skipSinkTeardown.js:15-33` throws; `skipSink.js:120` admits only skips pre-registered
+   in `driftCapabilities.js:93`'s `SKIP_INVENTORY` with a named capability and a non-empty
+   `unverifiedInvariants` list). Adopting the precedent as it actually behaves — inventory
+   of gated legs, fail on unregistered skip, item 15 covering each skipped leg's `AT-` ids
+   — closes this, and stating the capability predicate closes it fully. Note the plan
+   already reasons this way in §1.2 about AC-4.4; F-01 asks only that the same reasoning
+   reach AT-2.
+
+One non-gating item is a one-line edit: fold §2.1's single declared exception into the
+"iff" rule so the rule is true as written (F-02).
+
+**One erratum against FSPEC remains open and is re-reported to the orchestrator**, not
+folded into this verdict: FSPEC's F-7 prose (`FSPEC:289`) cites "§8's AT-7.2", but §8
+enumerates no AT-7.2 — the criterion it means is AT-6.2 (`FSPEC:743`, `:761`, `:763`, all
+about the load-root discriminator and O-9). Re-grepped at HEAD: `AT-7.2` occurs once in
+the whole document, at `:289`. PLAN §2.1 and T51 carry AT-6.2 correctly, so the PLAN is
+right and the dangling id is upstream.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
