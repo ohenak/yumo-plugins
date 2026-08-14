@@ -13,7 +13,16 @@ feature: pdlc-engine-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.5 | 2026-08-14 |
+| pdlc | Draft | Claude | 0.6 | 2026-08-14 |
+
+*0.6 (2026-08-14, erratum round): the missing-plugin literal now matches the shipped value
+everywhere it is quoted. AT-1.6 read `"none"` and AT-1.1 read "states none is installed", but the
+shipped renderer and `checkCompat` report the exact string `not found`
+(`pdlc/engine/lib/handshake.mjs`, pinned at `pdlc/engine/__tests__/handshake.test.js:113`), which is
+what PROP-LAUNCH-5 and PROP-LAUNCH-9 already transcribe. AT-1.1, AT-1.6 and Q-1's triple-member
+obligation now name `not found`; AT-1.4's discriminator, which cited the old "none installed"
+message by name, points at AT-1.1's `not found` message instead so the reference does not dangle
+(pm-review, se-review erratum). Literal alignment only: no criterion changed, no scope moved.*
 
 *0.5 (2026-08-14, round-4): §5.2's workflow row and AT-3.8b drop `[blocked on O-10]` for
 `PK-20`…`PK-22`, O-10 kept only on BR-8.2 (SE `F-01`, TE `F-02`); §5.2/§1 own **per-class** counts
@@ -584,7 +593,7 @@ TSPEC's; **that** each item below is present and machine-checkable is fixed here
 
 | # | Output | Emitted by | Content obligation |
 |---|---|---|---|
-| Q-1 | Version triple | version query, startup banner, run report | engine version; declared range; installed plugin version **or** explicit "none installed" |
+| Q-1 | Version triple | version query, startup banner, run report | engine version; declared range; installed plugin version **or**, when none is installed, the literal `not found` |
 | Q-2 | Refusal message | F-1 steps 4–5 | declared range + what was found; distinguishes absent / out-of-range / unreadable |
 | Q-3 | Resolution announcement | every run (F-4) | which branch was taken: dev-mode, pin (naming the version), or "no pin; latest installed" |
 | Q-4 | Update-probe notice | every run (AC-5.1) | newer version available, **or** "could not check"; never a failure, never a fetch |
@@ -645,22 +654,23 @@ heading and is overridden per test where it differs; an unlabelled family is a d
 
 - **AT-1.1** *(AC-1.1)* **Who:** operator. **Given:** engine installed, no plugin installed.
   **When:** any pipeline command runs. **Then:** it exits non-zero before dispatch, the message
-  names the declared range and states none is installed, and no file in the consumer project
-  changed.
+  names the declared range and reports the plugin version as the literal `not found`, and no file
+  in the consumer project changed.
 - **AT-1.2** *(AC-1.1)* **Given:** plugin installed at a version outside the range. **When:** any
   pipeline command runs. **Then:** refusal names both the range and the version found — text
   distinguishable from AT-1.1's.
 - **AT-1.3** *(AC-1.1)* **Given:** either refusal state. **When:** the diagnostic command runs.
   **Then:** it completes and reports the version triple.
 - **AT-1.4** *(BR-1.3)* **Given:** a plugin root whose manifest is unparseable. **When:** a
-  pipeline command runs. **Then:** refusal names the root and the parse failure; it is **not** the
-  "none installed" message.
+  pipeline command runs. **Then:** refusal names the root and the parse failure; it is **not**
+  AT-1.1's `not found` message.
 - **AT-1.5** *(AC-1.2)* **Given:** plugin at an in-range version whose `SKILL.md` for a dispatched
   role carries a distinguishing marker. **When:** a run dispatches that role. **Then:** the
   composed prompt carries the marker — proving the prompt came from the installed plugin at
   dispatch time, not from engine-resident bytes.
 - **AT-1.6** *(AC-1.4)* **Given:** an installed package. **When:** the version query runs. **Then:**
-  output carries all three of engine version, declared range, installed plugin version (or "none"),
+  output carries all three of engine version, declared range, installed plugin version (the literal
+  `not found` when none is installed),
   and equals the triple in the same run's banner and report (BR-1.5).
 
 ### AT-2 — Install and upgrade **[fixture]** — AT-2.1, AT-2.3, AT-2.4, AT-2.5 and AT-2.6 each run against a constructed machine fixture (clean container image, or `npm pack` into a temp prefix with `PATH` scoped to it), never the maintainer's own machine; AT-2.2 is **[auto]**
