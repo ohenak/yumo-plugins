@@ -94,6 +94,26 @@ operator distinction, DoD gains item 17, and nothing is removed. Counts 23/24 un
 
 ## 3. Nothing previously approved is broken
 
+- **Batch arithmetic, ownership manifest, §2.1's set-equality:** byte-unchanged in the
+  diff — no row added, removed, re-batched or re-scoped, no `Deps` edge or `Files` cell
+  moved. §3's manifest has no hunk at all. The v0.11 row's claim to that effect is the
+  first changelog self-description in three rounds that the diff supports without
+  qualification.
+- **§4's kind-1 pairing table and the two `[standing guard]` carve-outs** (T19, T57) are
+  untouched, and §4's new paragraph says so explicitly — the convention writes no skipped
+  block for a row that is green at authoring time.
+- **§2.1's AT-3.8a row** (the one PM round-6 F-03 rewrote) is byte-unchanged; only AT-3.8b's
+  title moved, and only its prose half.
+- **The red-before-green rule survives in substance.** The red observation is relocated into
+  the `[green]` task ("un-skip, observe red, implement until green", `PLAN:141`), not
+  removed, and §6 rule 3's edge requirement is unchanged. This is a change in *where* the
+  red is observed, which the operator decided; it is not a weakening of the rule the earlier
+  rounds approved.
+- **Repo state agrees with the plan where the plan speaks about it.** Engine suite green at
+  HEAD; the two unowned modules §4 now discusses are gone; working tree carries only
+  untracked local state (`.claude/pdlc-wave-state.json`, `.claude/settings.json`,
+  `.serena/`), so no document oracle is falsified by anything in this delta.
+
 ## Findings
 
 ## Questions
