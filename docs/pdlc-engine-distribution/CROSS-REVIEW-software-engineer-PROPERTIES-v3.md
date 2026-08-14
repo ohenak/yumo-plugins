@@ -203,3 +203,7 @@ neither blocks Phase I, whose real blockers are the two TSPEC errata tracked in 
 
 VERDICT: Approved
 {"high": 0, "medium": 0, "low": 0}
+
+APPROVAL-HASH: sha256:d30577b08761916978cef2c73aa501ab4f427ff815dd762889194a939f1e7ddf
+APPROVAL-HASH-NORMALIZED: sha256:c01a2df7e7f3dea9da47b718a4e13510a7b6d5c1f9a1108ce723978d78f5d5be
+REVIEWED-COMMIT: 06e741625b25f8e74994f4e87db177e709491ec6
