@@ -25,6 +25,27 @@ statements of one defect and are confirmed together; items 3 and 5 are two state
 
 ## Upstream re-grounding (DEC-ERR-03)
 
+The REQ's immediate upstream is the project-level context it cites by id: `docs/_constraints/`,
+`docs/_decisions/` and `docs/_queue/`. All three are **byte-unchanged** between `2a1f910d` (the
+base of the v0.9 approval this REQ still rests on), `c38feb61` and HEAD — `git diff --stat` over
+the three paths is empty on both windows. So every `M-ENG-*`, `DEC-*` and queue-disposition
+citation in this REQ still says at HEAD exactly what it said when it was approved; there is
+nothing to absorb and no upstream decision this round routes back.
+
+Spot-checked the facts the edited sites lean on, since a re-grounding claim that names nothing is
+not a check:
+
+- **M-ENG-11** still records `pdlcPluginCompat: "^0.22.0"` (`pdlc-engine-baseline.md:221`) and
+  still records the absent `files` field that AC-1.3's "declared list would pass vacuously"
+  parenthesis depends on — so the tarball oracle is still the *only* non-vacuous one, which is the
+  whole reason AC-1.3 is phrased over packed contents.
+- **DEC-HE-02** still reserves `engine.*` as the engine's only consumer-config surface, which is
+  what F-4 step 2 — the newly cited flow — claims of it, in the direction it claims it.
+- The **downstream** documents this AC now delegates to have both moved since v0.9 (FSPEC v0.2 →
+  v0.5, TSPEC → v0.10), so their content was re-read rather than assumed: FSPEC §5.2's counts and
+  TSPEC §5.4's `PK-*` table are quoted above at HEAD line numbers, not from the versions I last
+  reviewed. The delegation AC-1.3 now performs lands on text that exists today.
+
 ## Prior findings still open
 
 ## Findings
