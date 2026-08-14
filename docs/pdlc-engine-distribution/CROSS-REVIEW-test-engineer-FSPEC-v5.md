@@ -54,3 +54,7 @@ routed upstream as an erratum, not held against this document.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 1}
+
+APPROVAL-HASH: sha256:1e49f9d5737164d81416aa00fdd830697c01095f2f9dd138e64a7742aa3acce4
+APPROVAL-HASH-NORMALIZED: sha256:4d8a6144f6efdba0e8568171e3ddaf1cb8d38b9c9812a04c48167430cf32545d
+REVIEWED-COMMIT: 7076e7713d4c194bd05ebeee1d828b82cebb1f6b
