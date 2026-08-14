@@ -33,6 +33,65 @@ something that worked, or if a load-bearing claim contradicts the repository at 
 
 ## 2. What the delta changed, verified against HEAD
 
+Two announced revisions: **v0.10**, the skipped-block convention for `[red]` tasks (an
+operator decision arising from the Phase I wave-2 gate halt, not a cross-review finding),
+and **v0.11**, round-7's two one-passage edits plus one changelog correction.
+
+**v0.10 — the convention, checked against the guard it rests on.** Every load-bearing
+mechanism claim in §2's new paragraph (`PLAN:127-142`), §4 kind 1 (`:365`), §6 rule 3
+(`:466`) and DoD item 17 (`:508`) is true of `checkWaveUnskips` at HEAD:
+
+- "reads only a `.skip` token that opens its own statement, never one mid-expression" —
+  `orchestrate-dev.js:9825-9841`: the scan requires nothing but whitespace before the token
+  on its line and a statement-opening character (`;{})` or start of file) before that, which
+  is why the `(canRun ? test : test.skip)(…)` form is deliberately invisible to it.
+- "treats a skipped block owned by a later wave's task as legitimate, and reddens only once
+  that owning task completes with the block still skipped" — `:9950-9956`: owners come from
+  the title (`titleNamesTask`, `:9874`) with the file's manifest owners as fallback, and a
+  token is a violation **iff** it has ≥1 owner and *every* owner is in `complete`, which is
+  built from waves `wi <= waveIndex` (`:9914`).
+- "an incidental mention of a second id silently widens ownership and is forbidden" —
+  correct in direction: a second named id adds an owner, and `owners.every(complete)` then
+  defers the violation until both are done, so the block goes unwatched for longer rather
+  than reddening early.
+- DoD item 17's own admission — a green task that **deleted** the blocks also reports zero
+  violations — matches the guard exactly (it scans tokens that exist, `:9949`), and the
+  claim that "§5.1's test-count floors … do not cover the blocks this convention adds" is
+  true: §5's item 1 states floors only for the five *extended* suites (`PLAN:439`), never
+  for the eighteen new files.
+
+**The convention is already visible in the tree, and matches the plan.**
+`pdlc/engine/__tests__/provenance.test.js` commits thirteen blocks as
+`test.skip("T27: …")` (`:37`, `:43`, `:51`, `:58`, `:114`, `:142`…`:202`) under the green
+task §2 assigns `lib/provenance.mjs` to (T27, `PLAN:192`), and §2's one carve-out is
+honoured to the line: `provenance.test.js:124`'s recorder positive control is left running,
+which is exactly the block whose skipping would make `:114`'s zero-call assertion vacuous.
+`cd pdlc/engine && npm test` at HEAD: **588 pass, 0 fail, 37 skipped**.
+
+**v0.10's §4 correction is the delta's most substantive claim, and it is true.** The
+paragraph now retracts "the gate would reject it" and records what Phase I wave 2 actually
+did (`PLAN:396`). Verified: T06 and T08 carry `—` in their Source File cells (`PLAN:165`,
+`:167`), `lib/store.mjs` and `lib/provenance.mjs` belong to T26 and T27 at batch 3
+(`:191`, `:192`, and §3 `:321`, `:322`), neither module exists in the tree or in
+`git ls-files pdlc/engine/lib/` at HEAD, and the wave gate is
+`_runCommand(implConfig.testCommand)` with no authorship diff (`orchestrate-dev.js:12367`)
+while the wave commit is pathspec-scoped to owned files. A document that corrects its own
+earlier overclaim against observed pipeline behaviour is the outcome this phase wants.
+
+**v0.11 — round-7 edits.** (a) T15 leg (h), verified in §1. (b) §2.1's AT-3.8b row now reads
+"packed workflow **members** equal §5.2's Workflow-members class" (`PLAN:249`), matching
+FSPEC AT-3.8b's "three members and **not** three modules" (`FSPEC:780-782`); the `AT-3.8b`
+id and `Carried by` cell are byte-identical in the diff, so §2.1's set-equality against §2
+does not move. (c) The v0.8 changelog correction is in place (`PLAN:25`).
+
+**Upstream unmoved.** `git log 06f7666..HEAD -- REQ-*/FSPEC-*/TSPEC-*/DECISIONS-*` for this
+feature is empty, so the Upstream cell's REQ v0.11 / FSPEC v0.7 / TSPEC v0.12 /
+DECISIONS v0.3 (`PLAN:5`) still holds. **No erratum is warranted this round.**
+
+**Product coverage.** No acceptance criterion gained, lost or changed carrier. §2.1's
+`Carried by` cells are byte-unchanged across the delta; T15 gains coverage of AC-1.1's
+operator distinction, DoD gains item 17, and nothing is removed. Counts 23/24 untouched.
+
 ## 3. Nothing previously approved is broken
 
 ## Findings
