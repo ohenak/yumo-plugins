@@ -313,9 +313,13 @@ already carries. The `Carried by` column is copied from PLAN §2.1, which is its
 | AT-6.2 | PROP-REGR-4 | T51 | `EVIDENCE-AT-6.2.md` |
 
 **Properties with no `AT-` row of their own**, and why each is still traceable: **PROP-LAUNCH-1**
-(the `store.empty` engine-store refusal) traces to AC-5.5 and TSPEC §6.2 — it is the launcher half
-that AT-1.1's criterion is *not* about, and it is observed inside AT-5.5's and AT-1.3's legs on the
-same fixtures; PROP-PACK-12
+(the `store.empty` engine-store refusal) traces to TSPEC §6.2's ladder branch for the empty store and
+has **no acceptance criterion of its own** — it is the launcher half that AT-1.1's criterion is *not*
+about, and AC-5.5's pin case is carried by PROP-VER-5 (`version.pin-missing`), not here. The state is
+nonetheless observed: it is PROP-LAUNCH-4's resolution state (b), where an empty store reports the
+launcher's own triple with `mode: "unresolved"` and carries this refusal text as a **notice**, and the
+triple it reports there is AT-1.6's. Neither AT-5.5's pin-missing fixture nor AT-1.3's two
+plugin-handshake refusal states is this property's observation site; PROP-PACK-12
 (licence atomicity) traces to N-2 / O-8 blocker 3 and PLAN DoD item 16; PROP-CAT-1, PROP-CAT-2 and
 PROP-CAT-4 trace to TSPEC §10.3 and constrain the *shape* of the work rather than a criterion;
 PROP-GATE-1…PROP-GATE-5 trace to PLAN DoD items 14 and 15; PROP-REGR-1, PROP-REGR-5 and PROP-REGR-6
