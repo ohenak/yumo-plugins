@@ -37,6 +37,23 @@ task-side accounting PROPERTIES §4/§5/§8 hangs on is structurally untouched.
 
 ## 2. Prior findings
 
+One Low was open from v4, and the author has not revised the document, so it stands unchanged rather
+than unresolved-on-the-merits. I re-state it rather than re-litigate it.
+
+**F-08 (Low, v4) — changelog rows out of order — still open.** `grep -n '^| 0\.'` returns `:18` 0.1,
+`:19` 0.2, `:20` 0.3, `:21` 0.4, `:22` **0.6**, `:23` **0.5**. Unchanged, still a one-row swap, still
+non-gating. It is carried forward below as F-08 rather than renumbered, so the harvest sees one
+finding with a two-round life, not two findings. The software-engineer reviewer raised the identical
+row in `CROSS-REVIEW-software-engineer-PROPERTIES-v4.md:73` and tagged it `Low / Local`; my tag
+matches, so the two reviews do not ship conflicting scope for one defect.
+
+Also still open and **not mine to re-raise**: SE F-02 (`:74`, §4's "is AT-1.6's" wording). It is a
+Low in the same non-revised document; I record it here only so a reader of this file does not
+conclude the SE round closed clean.
+
+The two Lows I closed in v4 (F-06, PROP-LAUNCH-1's AC-5.5 trace; F-07, §4's observation site) remain
+closed — the passages at `PROPERTIES:86` and `:316-323` are byte-identical to what I verified then.
+
 ## 3. Did the surrounding movement break anything
 
 ## Findings
