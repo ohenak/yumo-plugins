@@ -132,8 +132,53 @@ DEFERRED: v0.11 calls the class-rename sweep "completed", but DoD item 10 (`PLAN
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Who owns the un-skip *reading* obligation in DoD item 17 — the `[green]` task's own implementer, the wave gate's reviewer, or Phase DOD? The item states the obligation without naming a holder, and F-02's exposure turns on the answer. Not a blocker; a one-clause answer in the next substantive edit closes it. |
+
 ## Positive Observations
 
+- **The §4 correction is the kind of revision that makes a plan trustworthy.** The document
+  had a clean opportunity to leave "the gate would reject it" standing — no reviewer had
+  challenged it, and it read plausibly. Instead v0.10 records what wave 2 actually did, names
+  the two modules, says review caught them, and narrows the guarantee to what §3 plus §6
+  rule 2 really deliver. Every part of that account checks out against the tree and the
+  runtime. A plan that corrects itself against observed behaviour is worth more than one that
+  was never wrong on paper.
+- **T15 leg (h) is specified the way acceptance work should be.** It names both operators,
+  attributes each to its FSPEC surface, and cites a *shipped* precedent that already splits
+  them (`handshake.test.js:110-118`) rather than inventing a convention — so the implementer
+  copies a pattern that is green today instead of guessing which assertion FSPEC meant.
+- **The carve-out is the detail that shows the convention was thought through.** Skipping
+  `provenance.test.js:124`'s positive control along with everything else would have left
+  `:114`'s zero-call assertion vacuous — an absence-only oracle with its own falsifier
+  switched off. §2 anticipates exactly that and names both sites; the tree honours it.
+- **DoD item 17 claims only what the guard proves.** It states the necessary-but-not-
+  sufficient boundary in its own text and names the gap it does not cover. An honest gate is
+  more useful than a confident one, and it is why F-02 could be written as a scoping question
+  rather than as a discovery.
+- **The v0.8 changelog's "only place" overclaim was corrected in place, not footnoted.**
+  That is the right response to the class of defect this document kept committing: an
+  inaccurate "only place" is precisely what stops the next reviewer looking.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+The one finding carried into this round (v8 F-04, AT-1.1's operators) is discharged and
+verified against FSPEC and shipped test code rather than against the changelog. Nothing
+previously approved is broken: batch arithmetic, the ownership manifest and §2.1's
+set-equality are byte-unchanged, no acceptance criterion changed carrier, and the two
+`[standing guard]` carve-outs are untouched. Every mechanism claim the new convention rests
+on is true of `checkWaveUnskips` at HEAD, and the convention is already visible in the tree
+in the form the plan describes, with the engine suite green.
+
+The two Mediums are scoping, not defects in the delta. F-01 is a bookkeeping column that has
+fallen behind the branch — non-gating because the script owns the resume pointer, but it
+misleads a human reader about where the feature stands. F-02 records the residual coverage
+gap the skipped-block convention opens; the plan names it itself, the operator decided it,
+and under the freeze I record rather than re-open it — with a concrete instrument (per-file
+count floors in §5) for whoever picks it up after Phase I. The three Lows are an anchor off
+by three lines, one over-strong word, and one nit carried unchanged from v8.
 
 ## Verdict
