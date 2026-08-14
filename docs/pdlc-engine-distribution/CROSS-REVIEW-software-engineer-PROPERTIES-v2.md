@@ -45,6 +45,23 @@ The revision added a lot of line-cited code claims. Every one of them is exact.
 
 ## Findings
 
+Two, both in text the revision introduced. Neither is High; neither blocks Phase I.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **PROP-LAUNCH-1's new home is a state neither of its two cited legs is about.** Moving it off AC-1.1 was right (that was PM F-01), but the replacement trace does not hold in either half. (a) Its `Traces` now reads `AC-5.5, TSPEC §6.2`, and `AC-5.5` is *"Given: a pin naming a version that is not installed"* (`REQ:427-429`) — the `version.pin-missing` branch, already carried by PROP-VER-5 (`AC-5.5, AT-5.5`). PROP-LAUNCH-1's subject is a different branch: **no engine version installed at all**, reason id `store.empty`. Two properties now claim AC-5.5 while asserting two different message ids, and the one that actually matches AC-5.5's Given is the other one. (b) §4's new no-`AT-`-row sentence says PROP-LAUNCH-1 "is observed inside AT-5.5's and AT-1.3's legs on the same fixtures" — but this same revision redefined AT-1.3's subject as *"the two plugin-handshake refusal states"* (PROP-LAUNCH-4), which explicitly excludes the empty-store state, and AT-5.5's leg is the pin-missing fixture. So the sentence justifies traceability by pointing at the two legs the document has just finished saying are about something else. **Fix, one clause and one cell:** the empty-store state *is* genuinely observed — it is PROP-LAUNCH-4's resolution state (b), "empty store reports the launcher's own triple with `mode: "unresolved"` and carries the refusal text as a **notice**". Point the §4 sentence there (and at AT-1.6's triple, which that leg reports) instead of at AT-5.5 / AT-1.3, and trace the row to TSPEC §6.2's ladder branch rather than to AC-5.5, or state plainly that `store.empty` is a resolver-shape property with no criterion of its own — the honest reading, and the one PROP-CAT-1/-2/-4 already use. Why Medium and not High: PROP-LAUNCH-1 keeps its named carriers (T15, T14, T46 → `version-doctor.test.js`, `launcher.test.js`) and its three positive conjuncts, so an implementer builds and tests the right thing; what is wrong is the coverage *claim*, which a DoD reader could take as "AC-5.5 has two carriers" when it has one. | §2.1 PROP-LAUNCH-1, §4 (no-`AT-`-row paragraph) |
+| F-02 | Low | Local | **PROP-LAUNCH-9's clause (d) is the document's own §3 shape and did not get a §3 row.** Clause (d) — "no file in the consumer project changed, asserted as a byte-identical tree-and-index comparison against a **non-empty** recorded pre-state, never as a bare absence" — is character-for-character the pattern PROP-NEG-3 exists to catalogue for `postinstall` ("the repo's tree and index are byte-identical against a **non-empty** pre-state"). §3's preamble says "**Every** negative below is stated with the positive conjunct that makes it falsifiable"; the new property adds a negative of exactly that class to §2 without a matching §3 entry, so a reader auditing absence-only hazards from §3 alone now misses G-1's headline refusal. The conjunct itself is correctly written — this is a catalogue-completeness gap, not an oracle weakness. **Fix:** one §3 row (must-not: a refusal that leaves the consumer tree modified, or that "refuses" after dispatching; positive conjunct: dispatch count `=== 0` plus the byte-identical tree-and-index comparison against a non-empty pre-state; traces AC-1.1, AT-1.1). | §2.1 PROP-LAUNCH-9, §3 |
+
+No High findings. No finding contradicts a standing constraint in `docs/_constraints/` or a promoted
+decision, and I found no unverified existing-code claim anywhere in the added text — see the
+verification table above, which is 100% clean this round.
+
+**One erratum is raised against an upstream document** and is reported in the response trailer
+rather than folded into this verdict: FSPEC's AT-1.6 (`FSPEC:663`) writes the missing-plugin member
+of the version triple as the literal `"none"`, while the shipped renderer and this document both use
+`not found` (`handshake.mjs:209`, `handshake.test.js:113`, PROP-LAUNCH-5). PROPERTIES is right and
+FSPEC is stale; a verifier transcribing AT-1.6 rather than the property would pin the wrong string.
+
 ## Questions
 
 ## Positive Observations
