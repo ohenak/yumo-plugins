@@ -93,6 +93,25 @@ prose. On raised items alone this round was a clean pass.
 
 ## Reviewers
 
+| Role | Confirmation verdict | Blocking finding | Character of the review |
+|---|---|---|---|
+| `se-review` (software-engineer) | **Approved with minor changes** `{0, 4, 2}` | none | Did the DEC-ERR-01 re-grounding itself: read REQ at HEAD, found **v0.11** (`01c27ee4`, 22:07 — *before* the erratum commit at 23:28), and checked what it decided. AC-1.3's re-wording ("classes and per-class member counts stated in the FSPEC", "member names stated downstream in the TSPEC", `REQ:264-274`) turned out to be **exactly what this FSPEC already holds** (`FSPEC:59-63`, `:509-517`) — absorbed in substance, no edit needed. Also re-checked that REQ states no literal at all for the missing-plugin case (AC-1.1, AC-1.4, `REQ:253-278`), so pinning `not found` **narrows without contradicting**. Recorded the missing paper trail as `F-02` (Medium, Process) and carried forward three v5 items untouched by this round |
+| `te-review` (test-engineer) | **Needs revision** `{1, 1, 1}` | `F-01` (High): the erratum round did not re-ground on REQ HEAD, and the FSPEC now carries **three readable false statements about its upstream** — `FSPEC:9`'s Upstream cell still pins REQ **v0.10**; `:30` still routes "REQ AC-1.3 wording" upstream as open, though REQ v0.11 decided it; `:38` quotes AC-1.3 as "*expected set stated in the FSPEC*", a phrase REQ v0.11 no longer carries; `:42-43` still says the F-3/F-4 pin citation is "noted, not fixed, for the next round", though REQ v0.11 fixed it | Same measurement, opposite gate. Read DEC-ERR-01's rule as normative on *content*, not on bookkeeping: a routed-but-already-decided item is a false statement in a hand-off section, and DEC-ERR-01 says such an item is never demoted below the bar. Named the fix precisely and priced it — header cell plus one changelog paragraph, "no `§5.2`, `AT-3.8a` or `AT-3.8b` text needs to change" |
+
+Neither reviewer disputed a fact the other asserted. Both confirmed both raised items. Both found
+the same downstream residue and both are complimentary about the edit itself — `te-review` calls it
+"exactly the shape an erratum should be: one literal, aligned everywhere it is quoted, the shipped
+source and its pinning test cited".
+
+The one genuinely live defect they *share* is the one nobody's verdict turns on:
+
+| Finding | `se-review` | `te-review` | Content |
+|---|---|---|---|
+| the deleted literal survives downstream | `F-01`, **Medium** (Cross-Feature) | `F-02`, **Medium** | `"none installed"` is gone from the FSPEC but three approved documents still discriminate against it *by name*: `PLAN:146` T15(e), `PLAN:458` step 5, and `PROP-LAUNCH-3` (`PROPERTIES:85`). An implementer reading T15(e) writes an assertion against a string that appears nowhere in `lib/handshake.mjs` and nowhere in the FSPEC — the same defect this erratum just fixed, one layer down. It blocks T15 |
+
+`se-review` states the severity split in as many words: Medium *here* only because the FSPEC is now
+correct; **against PLAN and PROPERTIES it is High**.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
