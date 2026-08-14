@@ -121,6 +121,37 @@ whether PROP-NEG-18 disturbs the counts — are answered mechanically in §2 and
 
 ## Positive Observations
 
+- **The AC-5.5 fix removes a claim instead of adding a justification.** The tempting response to
+  "two properties claim one criterion" is to argue why two carriers are fine. This round did the
+  harder, more honest thing: PROP-LAUNCH-1 gives the criterion up, states that it *has* no criterion
+  of its own, and points at the real carrier by id. Coverage accounting that can be trusted is worth
+  more than a coverage number that looks fuller.
+- **It names the criterion verbatim rather than paraphrasing it.** The Given is quoted from
+  `REQ:427-429` character for character. Paraphrase is how the drift in rounds 2–3 started; quoting
+  the source is what stops round 5 re-raising it.
+- **The §4 prose and the `AT-` table now give one answer.** The old paragraph named observation sites
+  the table did not support. The new one names a leg that exists, quotes that leg's own words, and
+  explicitly negates the two sites it is *not* — with the positive statement alongside each negation,
+  so the correction does not itself become an absence-only claim.
+- **PROP-NEG-18 catalogues without inflating.** Adding a row to §3 while §2, §4, §5 and §7 stay
+  numerically fixed is precisely the right shape for "§3's every-negative claim holds again": the
+  oracle was already correct in §2.1, and the fix is bookkeeping, stated as bookkeeping.
+- **Scope discipline held for a fourth round.** Four commits, five hunks, every one traceable to a
+  named finding. No settled decision re-opened, no carrier moved, no count nudged, upstream untouched.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+The two findings that were open against this document are resolved on their merits, verified against
+REQ, FSPEC and the shipped code rather than against the changelog's account of itself. The revision
+broke nothing: counts, §4's 35-row set-equality, §5's accounting and every carrier cell are intact,
+and PROP-NEG-18 is a catalogue entry rather than a hidden 90th property. No High findings are open.
+
+The one new Low (F-08, changelog row order) is a one-row swap and does not gate. It can be folded
+into any later edit to this document, or left to the harvest.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
