@@ -84,7 +84,37 @@ names; T16 reads both sides and names each owner. No layer claims the other's te
 
 ## 3. Nothing previously approved is broken
 
+The whole delta over my last approved base (`df4d1c44..HEAD`) is **five hunks**: the Upstream cell,
+the version cell, two appended changelog rows, T15(e)'s clause, T16's sub-assertion clause,
+§2.1's AT-1.1 row *title*, and §5 step 5's clause. I checked each load-bearing structure the
+earlier rounds settled:
+
+- **Task table:** untouched. No row added, removed, re-batched or re-scoped. The only edits inside
+  §2 are prose clauses within T15 and T16's description cells; neither row's `#`, phase, files,
+  size, `Deps` or status cell moved.
+- **§2.1 set-equality:** intact. The AT-1.1 row's `Carried by` cell (`T15, T14, T46`) and its
+  `AT-1.1` id are byte-unchanged; only the human-readable label after the id changed. The
+  transposition against §2 therefore still returns zero rows in both directions.
+- **Ownership manifest and batch arithmetic:** byte-unchanged, as the changelog claims and the
+  diff confirms.
+- **§7's erratum ledger:** still declares exactly the two open TSPEC errata (T45's below-floor
+  emission, T50's fixture-machine home). TSPEC has not moved from v0.12, so neither is stale.
+- **My four v6 findings:** F-01 (Medium, §4's T59 → T50 instruction) and F-02…F-04 (Low) are
+  untouched by this erratum round, which is correct — an erratum round is not the place to land
+  round-5 cross-review findings, and the changelog says so explicitly. They carry forward below.
+
 ## Findings
+
+No new High. F-01 is new to this round; F-02…F-05 are my v6 findings carried forward unchanged,
+since an erratum round is correctly not the place to land them. None gates Phase I.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **FSPEC v0.6's contains-vs-equals distinction for the `not found` literal did not reach the PLAN.** `FSPEC:678-681` now separates two surfaces: AT-1.1 pins the **refusal reason text**, which *contains* the literal, while AT-1.6 and Q-1 pin the **version-triple member**, which *equals* it. T15(d) pins each refusal text as "naming the range" and `notEqual` between the two, and T15(g) asserts three-way equality for the triple — the triple half is right. But nothing in T15 or §2.1 records that AT-1.1's own assertion is a **containment** on the refusal text, so an implementer taking `assert.equal` on the refusal text would write a test that is red against correct code. Fix: add "reports the plugin version as the literal `not found` (containment, not equality — the triple member is the equality surface, T15(g))" to T15(b) or T15(d). No requirement is dropped or narrowed; FSPEC AT-1.1 is the authority the implementer also reads, which is why this is Low. | AT-1.1, AT-1.6 (AC-1.1, AC-1.4) |
+| F-02 | Medium | Local | **Carried forward from v6, unaddressed by design.** §4's red-interval paragraph (`PLAN:366`) tells the implementer they "may land the comparator's module ahead of T50 … and the plan does not forbid it", but §3 assigns `pdlc/engine/scripts/fixture-machine.mjs` to T50 alone, so the wave gate will reject exactly that. The manifest — which is what the gate reads — is correct; the prose is the defect. Fold before Phase I begins. | AC-2.2, AC-2.5 |
+| F-03 | Low | Local | **Carried forward from v6.** §4's T05 note and the v0.6 changelog both gloss DoD item 12 as "the coverage floor"; item 12 is the AT-2 fixture-machine item. The repair's *conclusion* (item 16 carries the licence record) is correct; only the gloss on the superseded pointer is wrong. | — |
+| F-04 | Low | Local | **Carried forward from rounds 5–6.** §2.1's AT-3.8a row still paraphrases the criterion as "packed set equals §5.2's **writable** classes" (`PLAN:222`, and the same wording quoted at `:480`). That wording predates the FSPEC ownership split and now also predates v0.7's class rename. No transcription consequence — §2 is the declared source and T16 states both halves — but the trace row reads as an older criterion than the one FSPEC holds. | AC-1.3, AC-1.5 |
+| F-05 | Low | Local | **Carried forward from rounds 5–6.** The AT-3.8a erratum discharge is attributed to FSPEC v0.4/v0.5 in three places (`PLAN:22`, `:149`, `:480`); FSPEC's changelog puts the literal's removal at **v0.3**. Discharge correct, provenance off by one version. | — |
 
 ## Questions
 
