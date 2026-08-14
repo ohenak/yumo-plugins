@@ -11,7 +11,20 @@
 |---|---|---|---|---|
 | pdlc | halted | Claude (te-author) | 1.0 | 2026-08-14 |
 
-RESOLVED: no
+RESOLVED: yes
+
+*Cleared 2026-08-14 by `8980ffe7`. Steps 1–3 of the Recommendation are on
+`feat-pdlc-engine-distribution`, each cited site read before the marker was flipped: FSPEC's
+Upstream cell names REQ v0.11 (`01c27ee4`), the v0.6 changelog carries the DEC-ERR-01 re-grounding
+record with both absorbed decisions, and the three routed-but-decided hand-off statements are
+marked discharged — `te-review`'s `F-01`, the only High on record, and `se-review`'s `F-02`.
+Step 2's downstream wave landed with it: PLAN T15(e) and §5 step 5 (v0.7) and PROP-LAUNCH-3 (v0.4)
+now pin "not AT-1.1's `not found` message"; `grep -rn "none installed" pdlc/engine/` returns
+nothing, and `pdlc/engine/__tests__/handshake.test.js:111-118` pins `pluginVersion === "not found"`
+with `reason` matching `/not found/`, which is the containment/equality split AT-1.1 now states
+(Step 3, `te-review` `Q-01`; the `:113` citation is a range, `F-03`). Step 6's rule-gap routing to
+`DECISIONS-review-severity-bars.md` is deliberately left open — it changes no artifact this phase
+consumes.*
 
 **Halt class: ERRATUM-PROTOCOL, not review non-convergence.** PROPERTIES itself converged and was
 approved by both reviewers in round 2, with approval anchors recorded (`f99d649c`). The phase
