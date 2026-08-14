@@ -71,8 +71,9 @@ const SELF_SIGNAL_TARGET = path.join(fixturesDir, "self-signal-target.mjs");
 
 // `bin/cli.mjs` does not exist until T46; per this file's header, that
 // makes the whole file fail to load until then — intended for a task with
-// no source column of its own.
-const { execLauncher } = await import("../bin/cli.mjs");
+// no source column of its own. The import is deferred to a dynamic
+// `await import(...)` inside each skipped test below so this file
+// instantiates cleanly under `node --test` ahead of T46 landing.
 
 // ─── capability probe: real-spawn (PLAN T50's opt-out discriminator) ──────
 
@@ -92,7 +93,8 @@ function skipIfNoRealSpawn(t) {
 
 // ─── leg 1: S-3 descriptor assertions, no spawning (AT-2.1's hermetic residue) ──
 
-test("execLauncher hands the injected spawn seam the exact binPath, argv and env it was given, and never spawns a real process of its own", () => {
+test.skip("T46: execLauncher hands the injected spawn seam the exact binPath, argv and env it was given, and never spawns a real process of its own", async () => {
+  const { execLauncher } = await import("../bin/cli.mjs");
   const calls = [];
   const fakeSpawnSyncFn = (cmd, args, opts) => {
     calls.push({ cmd, args, opts });
@@ -114,7 +116,8 @@ test("execLauncher hands the injected spawn seam the exact binPath, argv and env
   assert.equal(call.opts.stdio, "inherit", "stdio is inherited, per §6.2 — never captured or swallowed");
 });
 
-test("execLauncher passes argv and env references the injected seam cannot corrupt for a later call", () => {
+test.skip("T46: execLauncher passes argv and env references the injected seam cannot corrupt for a later call", async () => {
+  const { execLauncher } = await import("../bin/cli.mjs");
   const calls = [];
   const fakeSpawnSyncFn = (cmd, args, opts) => {
     calls.push({ args, env: opts.env });
@@ -135,7 +138,8 @@ test("execLauncher passes argv and env references the injected seam cannot corru
   assert.equal(calls[0].env.MARK, "first");
 });
 
-test("execLauncher never spawns a process of its own when a spawn seam is injected", () => {
+test.skip("T46: execLauncher never spawns a process of its own when a spawn seam is injected", async () => {
+  const { execLauncher } = await import("../bin/cli.mjs");
   let realSpawnSyncInvoked = false;
   const fakeSpawnSyncFn = () => {
     realSpawnSyncInvoked = false; // the only thing that could flip this true is a real spawnSync
@@ -147,12 +151,14 @@ test("execLauncher never spawns a process of its own when a spawn seam is inject
 
 // ─── S-3 arithmetic, still hermetic: a fake spawnSync-shaped result ────────
 
-test("execLauncher re-raises a numeric status verbatim, over an injected result", () => {
+test.skip("T46: execLauncher re-raises a numeric status verbatim, over an injected result", async () => {
+  const { execLauncher } = await import("../bin/cli.mjs");
   const exitCode = execLauncher("/fake/bin.mjs", [], {}, () => ({ status: 7, signal: null }));
   assert.equal(exitCode, 7);
 });
 
-test("execLauncher exits exactly 128 + signum for a signalled result, over an injected result (DEC-EDIST-06)", () => {
+test.skip("T46: execLauncher exits exactly 128 + signum for a signalled result, over an injected result (DEC-EDIST-06)", async () => {
+  const { execLauncher } = await import("../bin/cli.mjs");
   const sigtermNumber = os.constants.signals.SIGTERM;
   const exitCode = execLauncher("/fake/bin.mjs", [], {}, () => ({ status: null, signal: "SIGTERM" }));
   assert.equal(exitCode, 128 + sigtermNumber);
@@ -162,7 +168,8 @@ test("execLauncher exits exactly 128 + signum for a signalled result, over an in
   assert.equal(exitCode, 143);
 });
 
-test("execLauncher never collapses a signalled result to exit 0 (the defect DEC-EDIST-06 closes)", () => {
+test.skip("T46: execLauncher never collapses a signalled result to exit 0 (the defect DEC-EDIST-06 closes)", async () => {
+  const { execLauncher } = await import("../bin/cli.mjs");
   const exitCode = execLauncher("/fake/bin.mjs", [], {}, () => ({ status: null, signal: "SIGINT" }));
   assert.notEqual(exitCode, 0);
   assert.equal(exitCode, 130, "the conventional 128 + SIGINT(2) encoding");
@@ -170,7 +177,7 @@ test("execLauncher never collapses a signalled result to exit 0 (the defect DEC-
 
 // ─── leg 2: real-spawn pass-through (PROP-LAUNCH-6, AT-1.1, AT-2.1) ────────
 
-test("a real launcher hop re-raises a non-zero child status verbatim and keeps stdout/stderr unmixed", (t) => {
+test.skip("T46: a real launcher hop re-raises a non-zero child status verbatim and keeps stdout/stderr unmixed", (t) => {
   if (skipIfNoRealSpawn(t)) return;
 
   const result = spawnSync(process.execPath, [WRAPPER, EXIT_CODE_TARGET], { encoding: "utf8" });
@@ -184,7 +191,7 @@ test("a real launcher hop re-raises a non-zero child status verbatim and keeps s
 
 // ─── leg 3: real-spawn signalled child (PROP-LAUNCH-6, DEC-EDIST-06) ──────
 
-test("a real launcher hop exits exactly 128 + signum when the resolved child is killed by a signal", (t) => {
+test.skip("T46: a real launcher hop exits exactly 128 + signum when the resolved child is killed by a signal", (t) => {
   if (skipIfNoRealSpawn(t)) return;
 
   const result = spawnSync(process.execPath, [WRAPPER, SELF_SIGNAL_TARGET], { encoding: "utf8" });
