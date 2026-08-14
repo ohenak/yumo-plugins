@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft in review (Phase PT) | Claude | 0.2 | 2026-08-14 |
+| pdlc | Draft in review (Phase PT) | Claude | 0.3 | 2026-08-14 |
 
 **Changelog**
 
@@ -17,6 +17,7 @@
 |---|---|
 | 0.1 | Initial draft |
 | 0.2 | Oracle and fixture material given top-level homes, so the document's structure matches its content. §6 retitled to name the **oracles** it audits (its rows were already oracle-by-oracle). New **§8 Fixtures and generators** collects the fixture corpus the §2/§3 properties already depend on — the eight branch fixtures, the two marked plugin roots, the mutated `pr-tests.yml` copies, the sixth-commit-site falsifier source, the non-empty baseline artifacts, the class-9 run, the guard-defeating direct run, the whole-artifact fixtures and the fixture machine — plus T03's three bounded generators and the three generator-hygiene rules (explicit printed seed, pinned counter-examples, non-zero per-member assertion count). Open questions renumbered §8 → §9. No property added, removed or restated |
+| 0.3 | **Round-1 cross-review findings addressed (PM F-01, F-02 High; PM F-03, F-04, F-05; SE F-01, F-02; SE F-03, F-04 Low).** A targeted edit: no settled decision re-opened, no task graph or ownership manifest change, and §4's set-equality against FSPEC §8 preserved. **PM F-01 / F-02 (the blocking pair): AC-1.1's plugin-compat half now has carriers.** New **PROP-LAUNCH-9** carries AT-1.1 — the refusal names the declared range, states `not found`, dispatches nothing (count `=== 0`) and leaves the consumer tree byte-identical against a non-empty pre-state — and **PROP-LAUNCH-2 is restated on AT-1.2's actual subject**, the *installed plugin version* outside `pdlcPluginCompat` (`checkCompat(range, pluginVersion)`, `lib/handshake.mjs`), not the consumer's engine pin (T-5), which was unimplementable as written and duplicated PROP-VER-5. PROP-LAUNCH-1 keeps its `store.empty` content and is re-traced to AC-5.5 / TSPEC §6.2 as the engine-store half, listed in §4's no-`AT-`-row paragraph; PROP-LAUNCH-4 gains AT-1.3's two refusal states per PLAN T15(f). §4's AT-1.1 row and §5's REQ-EDIST-01 row follow. **PM F-03:** PROP-LAUNCH-5 pins AC-1.4's triple **per member** (engine version, declared range, plugin version or the literal `not found`), so three placeholders no longer satisfy the three-way equality. **PM F-04:** PROP-VER-14 gains the non-regression conjunct naming the only HEAD assertions on `REMEDY`'s content (`handshake.test.js:116-117`, `:125`) and states that the `--dev PDLC_PLUGIN_ROOT=…` form keeps both substrings, so no unowned file reddens. **PM F-05 / SE F-03:** PROP-REGR-1 gives `ci-arrangement.test.js` the dual floor its own rule requires (≥ 6 executed from ≥ 2 sites, measured `1..2` / `# tests 6` at HEAD) and states the site-counting method inline, since a naive `grep -c 'test('` on `skills-composition.test.js` returns 20; §1's floor list follows. **SE F-01:** PROP-CAT-2 inherits PROP-CAT-4's conditional marking — eleven or twelve ids under the open TSPEC §10.3 / §9.3 erratum — and §5's REQ-EDIST-05 row is footnoted. **SE F-02:** §7's Unit row is defined by scope of assertion (single module or function over injected seams) instead of by reachability, which did not discriminate. **SE F-04:** PROP-PACK-7's positional anchor gains the "at HEAD" qualifier PROP-PROV-15 carries. **PM Q-02** is answered in §4: AC-1.5's primary evidence is PROP-PUB-9/PROP-PUB-10, T52's `[manual]` record being confirmation on the real channel. Counts follow: 89 properties, column sum 95, Unit 74 |
 
 ## 1. Scope, derivation and reading rules
 
@@ -272,7 +273,7 @@ already carries. The `Carried by` column is copied from PLAN §2.1, which is its
 
 | AT | Properties | Carried by (PLAN §2.1) | Test file(s) |
 |---|---|---|---|
-| AT-1.1 | PROP-LAUNCH-1, PROP-LAUNCH-6 | T15, T14, T46 | `version-doctor.test.js`, `launcher.test.js` |
+| AT-1.1 | PROP-LAUNCH-9, PROP-LAUNCH-6 | T15, T14, T46 | `version-doctor.test.js`, `launcher.test.js` |
 | AT-1.2 | PROP-LAUNCH-2 | T15, T46 | `version-doctor.test.js` |
 | AT-1.3 | PROP-LAUNCH-4 | T15, T46 | `version-doctor.test.js` |
 | AT-1.4 | PROP-LAUNCH-3 | T15, T46 | `version-doctor.test.js` |
@@ -308,7 +309,10 @@ already carries. The `Carried by` column is copied from PLAN §2.1, which is its
 | AT-6.1 | PROP-REGR-3, PROP-PROV-15 | T44 | `runtimeProvenanceWiring.test.js` |
 | AT-6.2 | PROP-REGR-4 | T51 | `EVIDENCE-AT-6.2.md` |
 
-**Properties with no `AT-` row of their own**, and why each is still traceable: PROP-PACK-12
+**Properties with no `AT-` row of their own**, and why each is still traceable: **PROP-LAUNCH-1**
+(the `store.empty` engine-store refusal) traces to AC-5.5 and TSPEC §6.2 — it is the launcher half
+that AT-1.1's criterion is *not* about, and it is observed inside AT-5.5's and AT-1.3's legs on the
+same fixtures; PROP-PACK-12
 (licence atomicity) traces to N-2 / O-8 blocker 3 and PLAN DoD item 16; PROP-CAT-1, PROP-CAT-2 and
 PROP-CAT-4 trace to TSPEC §10.3 and constrain the *shape* of the work rather than a criterion;
 PROP-GATE-1…PROP-GATE-5 trace to PLAN DoD items 14 and 15; PROP-REGR-1, PROP-REGR-5 and PROP-REGR-6
@@ -320,15 +324,23 @@ another named test: **AC-1.5** (the per-release pairing record) is verified insi
 documented by T31/T52 — PROP-PUB-9 carries it — and **AC-3.5**'s two positives are legs of AT-3.5,
 carried by PROP-PUB-4.
 
+**AC-1.5 is not manual-only** (PM round-1 Q-02, answered here so it outlives the round). Its primary
+evidence is mechanical: PROP-PUB-9 asserts the pairing record is written **by the publish job
+itself** and is readable from the published manifest, carried by T49's `publish.yml` leg and
+re-asserted against the packed tarball by PROP-PUB-10. T52's `[manual]` record is a **confirmation of
+an already-asserted property on the real channel**, not the criterion's only carrier — the same
+relationship BR-3.9 has to PROP-PUB-1's stub legs. A P0 criterion is not left resting on a dated
+document.
+
 ## 5. Requirement coverage and declared gaps
 
 | Requirement | Properties | Coverage |
 |---|---|---|
-| REQ-EDIST-01 — one versioned engine artifact, resolved and launched | PROP-LAUNCH-1…8, PROP-PACK-9 | Complete. All six `AT-1.*` ids carried. |
+| REQ-EDIST-01 — one versioned engine artifact, resolved and launched | PROP-LAUNCH-1…9, PROP-PACK-9 | Complete. All six `AT-1.*` ids carried, **and AC-1.1's two halves are carried separately**: the plugin-compat refusal by PROP-LAUNCH-9 (AT-1.1) and PROP-LAUNCH-2 (AT-1.2), the engine-store/launcher half by PROP-LAUNCH-1, -3 and -4. AC-1.4's triple is carried per member by PROP-LAUNCH-5. |
 | REQ-EDIST-02 — one-command install / upgrade, zero per-project action | PROP-INSTALL-1…8 | Complete **at criterion level**, but AT-2.3 and AT-2.6 are observed **only** by machine legs (PROP-GATE-4 is what keeps that honest), and AT-2.1, AT-2.4 and AT-2.5 keep hermetic carriers while losing their machine-level conjunct if those legs skip. |
 | REQ-EDIST-03 — tag-driven gated publish | PROP-PUB-1…10, PROP-PACK-11, PROP-PACK-12 | Complete against the S-5 stub. The **real-channel** leg (BR-3.9) is a one-time `[manual]` record (T52) and is not re-run. |
 | REQ-EDIST-04 — version provenance in artifacts | PROP-PROV-1…19 | Complete for AC-4.1, AC-4.2, AC-4.3 and AC-4.5. **AC-4.4 is a declared gap — see below.** |
-| REQ-EDIST-05 — pinning, dev mode, resolution announcements | PROP-VER-1…16, PROP-CAT-1…3 | Complete. All seven `AT-5.*` ids carried at unit level. |
+| REQ-EDIST-05 — pinning, dev mode, resolution announcements | PROP-VER-1…16, PROP-CAT-1…3 | Complete. All seven `AT-5.*` ids carried at unit level. **PROP-CAT-2 is conditional**: its expected id set is eleven or twelve members depending on the open TSPEC §10.3 / §9.3 erratum (§9 Q-1, PLAN §7), which blocks T45. No `AT-5.*` id depends on that branch. |
 | REQ-EDIST-06 — non-regression of the plugin and bundle channels | PROP-REGR-1…6 | AC-6.1 complete and mechanical. **AC-6.2 is a declared gap — see below.** |
 
 **Declared gap 1 — AC-4.4 is verified once, with no regression guard.** PROP-PROV-19 is a
@@ -396,13 +408,13 @@ and answered by construction, not by review discipline.
 
 ## 7. Test-level distribution
 
-**88 properties in §2**, distributed as follows. Six carry two levels (PROP-LAUNCH-6,
-PROP-INSTALL-3, PROP-INSTALL-6, PROP-PUB-9, PROP-GATE-1, PROP-REGR-3), so the column sums to 94
-rather than 88.
+**89 properties in §2**, distributed as follows. Six carry two levels (PROP-LAUNCH-6,
+PROP-INSTALL-3, PROP-INSTALL-6, PROP-PUB-9, PROP-GATE-1, PROP-REGR-3), so the column sums to 95
+rather than 89.
 
 | Level | Count | Which |
 |---|---|---|
-| Unit | 73 | Everything reachable from `cd pdlc/engine && npm test` and `cd pdlc/workflows && npm test` — all of PROP-PACK (12), PROP-VER (16), PROP-CAT (4), 18 of the 19 PROP-PROV, 7 of 8 PROP-LAUNCH, 5 of 8 PROP-INSTALL, 3 of 10 PROP-PUB, 3 of 5 PROP-GATE, 5 of 6 PROP-REGR. |
+| Unit | 74 | **Properties whose assertion scope is a single module or function over injected seams** — no spawned process, no temp prefix, no built artifact, no full pipeline run. Reachability is not the discriminator: the nine Integration properties run from the same two commands (`cd pdlc/engine && npm test`, `cd pdlc/workflows && npm test`), and reading rule 5 keeps owning the Machine boundary. All of PROP-PACK (12), PROP-VER (16), PROP-CAT (4), 18 of the 19 PROP-PROV, 8 of 9 PROP-LAUNCH, 5 of 8 PROP-INSTALL, 3 of 10 PROP-PUB, 3 of 5 PROP-GATE, 5 of 6 PROP-REGR. |
 | Integration | 9 | Full execution paths asserting a terminal state: PROP-LAUNCH-5, PROP-PUB-1…PROP-PUB-5, PROP-PUB-9, PROP-PUB-10, PROP-REGR-3. |
 | Machine | 12 | Legs that run only on `.github/workflows/fixture-machine.yml` — PROP-LAUNCH-6's real-spawn half, PROP-INSTALL-3…7, PROP-GATE-1's probe legs, PROP-GATE-4, PROP-GATE-5 — plus the three `[manual]` records: PROP-PROV-19 (AT-4.4), PROP-REGR-4 (AT-6.2) and PROP-PUB-9's real-channel half (BR-3.9). |
 
