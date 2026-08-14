@@ -177,3 +177,99 @@ test("readEngineConfig: operator-owned rows in the file never reach the effectiv
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// ─── TSPEC §6.4: the three-way `engine` discriminant ────────────────────────
+//
+// `readEngineConfig` gains a third return key, `engine`, carrying the pin's
+// read discipline as a discriminated result: `{state: "absent"}` (no file, or
+// no `engine` section), `{state: "no-pin", config}` (`engine` section present,
+// no `version` key) or `{state: "unreadable", path, error}` (file exists but
+// is not parseable JSON, or `engine` is not an object). This is read-only
+// scaffolding for T28's ladder — this task only pins the reader's shape.
+
+test.skip("T28: readEngineConfig: no config file yields engine state absent", () => {
+  const root = consumerWith(null);
+  try {
+    const { engine } = readEngineConfig({ cwd: root });
+    assert.deepEqual(engine, { state: "absent" });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test.skip("T28: readEngineConfig: a config file with no engine section yields engine state absent", () => {
+  const root = consumerWith(JSON.stringify({ dispatch: { timeoutMinutes: 90 } }));
+  try {
+    const { engine } = readEngineConfig({ cwd: root });
+    assert.deepEqual(engine, { state: "absent" });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test.skip("T28: readEngineConfig: an engine section with no version key yields engine state no-pin", () => {
+  const root = consumerWith(JSON.stringify({ engine: { foo: "bar" } }));
+  try {
+    const { engine } = readEngineConfig({ cwd: root });
+    assert.equal(engine.state, "no-pin");
+    assert.deepEqual(engine.config, { foo: "bar" });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test.skip("T28: readEngineConfig: an empty engine section yields engine state no-pin", () => {
+  const root = consumerWith(JSON.stringify({ engine: {} }));
+  try {
+    const { engine } = readEngineConfig({ cwd: root });
+    assert.equal(engine.state, "no-pin");
+    assert.deepEqual(engine.config, {});
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test.skip("T28: readEngineConfig: unparseable JSON yields engine state unreadable naming the path and error", () => {
+  // Same malformed-JSON shape as the totality test above (:90-104), which must
+  // keep passing verbatim — this test only pins the new `engine` key on top.
+  const root = consumerWith('{ "dispatch": { "timeoutMinutes": 90 ');
+  const expectedPath = path.join(root, ENGINE_CONFIG_PATH);
+  try {
+    const { engine } = readEngineConfig({ cwd: root });
+    assert.equal(engine.state, "unreadable");
+    assert.equal(engine.path, expectedPath);
+    assert.equal(typeof engine.error, "string");
+    assert.ok(engine.error.length > 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test.skip("T28: readEngineConfig: a non-object engine section yields engine state unreadable, never no-pin", () => {
+  const root = consumerWith(JSON.stringify({ engine: "0.3.1" }));
+  const expectedPath = path.join(root, ENGINE_CONFIG_PATH);
+  try {
+    const { engine } = readEngineConfig({ cwd: root });
+    assert.equal(engine.state, "unreadable");
+    assert.equal(engine.path, expectedPath);
+    assert.equal(typeof engine.error, "string");
+    assert.ok(engine.error.length > 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test.skip("T28: readEngineConfig: dispatch notices are still produced when the file parses, alongside engine state absent", () => {
+  // §6.4: the `notices` channel is kept, not replaced — the `dispatch`
+  // tunables keep their current degrade-with-notice behaviour whenever the
+  // file parses. Only the `engine` section gains the refusing read.
+  const root = consumerWith(JSON.stringify({ dispatch: { timeoutMinutes: "ninety" } }));
+  try {
+    const { notices, engine } = readEngineConfig({ cwd: root });
+    assert.equal(notices.length, 1);
+    assert.match(notices[0], /dispatch\.timeoutMinutes/);
+    assert.deepEqual(engine, { state: "absent" });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
