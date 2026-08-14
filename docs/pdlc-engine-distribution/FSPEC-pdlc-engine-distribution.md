@@ -741,12 +741,12 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   which is the single source the verifier transcribes. This document does not restate the member
   list (an FSPEC-local copy is what diverged); it does state the count, so a decomposition change
   cannot move the expected set without an FSPEC-side edit. **AT-3.8a is the authoritative
-  whole-set assertion**; AT-3.8b is a sub-assertion over one class, not a competing expected side
+  whole-set assertion**; AT-3.8b a sub-assertion over one class, not a competing expected side
   (SE round-4 F-02).
 - **AT-3.8b** *(AC-1.3)* **Given:** the same package. **When:** its workflow modules are
   enumerated. **Then:** they equal §5.2's workflow-module class member-for-member — TSPEC §5.4's
-  `PK-20`…`PK-22` — and a removed module fails. Writable: TSPEC §5.4 names those three vendored
-  members "and nothing else", so O-10 blocks only BR-8.2 now (SE round-4 F-01, TE round-4 F-02).
+  `PK-20`…`PK-22` — and a removed module fails. Writable: §5.4 names those three "and nothing
+  else", so O-10 now blocks only BR-8.2 (SE/TE round-4).
 
 ### AT-4 — Provenance **[fixture]**, **[blocked on O-9 for AT-4.2 and AT-4.5]** — AT-4.4 is *not* blocked: it needs two plugin versions and a revert, no new carrier (TE round-1 F-04)
 
