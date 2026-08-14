@@ -228,6 +228,30 @@ any violation. All three facts read at HEAD in `pdlc/workflows/__tests__/helpers
 
 ## 3. Negative properties
 
+Every negative below is stated **with the positive conjunct that makes it falsifiable**. A bare
+"X does not happen" is satisfiable by a run that did nothing, which is the failure mode TSPEC §12.3
+names and which four of this feature's oracles are structurally exposed to.
+
+| Id | Must NOT happen | Positive conjunct that makes it falsifiable | Traces |
+|---|---|---|---|
+| PROP-NEG-1 | The engine must **not** ship a skills snapshot. | Stated only inside PROP-PACK-1's whole-set equality against TSPEC §5.4's `PK-*` table, and paired with PROP-PACK-9's positive: the composed prompt carries the **installed** plugin's marker, and a second root with a different marker changes it. | G-1, AC-1.2, AC-1.3 |
+| PROP-NEG-2 | No **git-tracked** copy of `orchestrate-dev.js` / `orchestrate-queue.js` may exist under `pdlc/engine/`. | AF-2's positive: after `prepack` into a temp dir, `VENDOR-MANIFEST.json`'s `modules` set **equals** the two module names and each SHA-256 matches the canonical source — plus the one-byte-mutation falsifier. Without AF-2, AF-1 is an absence over a git-ignored directory. | O-10, BR-8.2 |
+| PROP-NEG-3 | `postinstall` must **not** read or write any consumer path. | The recorded write set equals the store paths it did write (positive control that the recorder observes anything at all), and the repo's tree and index are byte-identical against a **non-empty** pre-state. | AC-2.3, AT-2.4 |
+| PROP-NEG-4 | A below-floor install must leave **no partially installed tree** and print **no stack trace**. | The store entry set equals the pre-state set (equality, not "the new entry is absent"), and the refusal text positively names both the floor and the version found. | AC-2.4, AT-2.5 |
+| PROP-NEG-5 | The sentinel credential must appear **nowhere** in the built artifact or the publish log. | AC-3.5's two positives: with the secret present the stub authenticates and the release is cut; with it absent or empty the run fails with a **named** failure and nothing is published. | AC-3.5, AT-3.5 |
+| PROP-NEG-6 | A red gate member must publish **nothing**. | The run's **conclusion is `failure`** — asserted on the conclusion, never on package absence — and PROP-PUB-1 proves the same stub configuration *can* publish. | AC-3.2, AT-3.2 |
+| PROP-NEG-7 | With no `_provenance` supplied, **no artifact byte changes**. | The baseline fixture is asserted to contain the artifact content being compared, so byte-identity cannot pass over an empty run. | DEC-EDIST-02, AC-4.1 |
+| PROP-NEG-8 | When `block` is empty, the POSTMORTEM must **not** be appended to. | An `_appendFile` call count of `=== 0`, a behavioural call-count — the file looks identical either way, so a shape assertion cannot see this. | AC-4.2, AT-4.2 |
+| PROP-NEG-9 | No pre-existing file may be rewritten outside §7.4's enumeration. | PROP-PROV-10's produced-class set-equality plus its falsifier: a fixture run producing class 9 with the push removed must redden, naming the **missing class**. | AC-4.5, AT-4.5 |
+| PROP-NEG-10 | Cross-review and `CODE_REVIEW-*` **contents** must not be marked. | The harness commit **message** is asserted marked in the same observation, so "nothing is marked anywhere" fails. | AC-5.3 |
+| PROP-NEG-11 | `buildA5SeamOps`'s `apply` must stage nothing of its own. | Its `advisory(A5):` prefix is asserted present on the recorded `_git` argv in the same test. | AC-5.3 |
+| PROP-NEG-12 | A bare `PDLC_PLUGIN_ROOT` must **not** be honoured. | The ignore row asserts a **discovered** root plus `notices` carrying both the id `env.plugin-root-ignored` and its rendered text; the honour row asserts `notices` empty. Two directions, both positive. | AC-5.6, DEC-EDIST-04 |
+| PROP-NEG-13 | `--version` and `doctor` must **never refuse**. | Exit `0` asserted as an exact value in all three states, each also asserting the reported triple and `mode` — so "exits 0 because it did nothing" fails. | DEC-EDIST-07, AT-1.3 |
+| PROP-NEG-14 | The anti-fork loop must **not** become a zero-assertion pass. | A non-zero member count is asserted **before** the per-member equality. | R-5, AT-3.8b |
+| PROP-NEG-15 | A capability-gated leg must **not** be skipped silently. | The comparator fails on any unregistered skip, and on `ubuntu-latest` the recorded skip set is asserted **empty** with the run URL cited. | DoD item 14 |
+| PROP-NEG-16 | `pr-tests.yml` must **not** gain a job. | Its five rendered names satisfy FSPEC §5.1's set-equality in the same run, so an emptied or unparsed file fails. | C-5, BR-7.5 |
+| PROP-NEG-17 | No message id may be registered without an emitter, and none emitted without registration. | `checkMessageCatalogue`'s two-directional failure list, verified at HEAD. | TSPEC §10.3 |
+
 ## 4. Coverage matrix — acceptance test → property → task → test file
 
 ## 5. Requirement coverage and declared gaps
