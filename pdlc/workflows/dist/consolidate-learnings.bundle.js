@@ -3798,6 +3798,96 @@ function validatePlanContract(tasks, ownership) {
   return problems.length === 0 ? { ok: true } : { ok: false, problems };
 }
 
+function lintPlanArtifact(markdown) {
+  const diagnostics = [];
+
+  const parsed = parsePlanTasks(markdown);
+  if (!parsed || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+    diagnostics.push({
+      kind: "unparseable-tasks",
+      message:
+        "the task table could not be parsed: the header row must carry an exact " +
+        "'Task ID' cell (or 'ID' / '#') and an exact 'Dependencies' cell (or " +
+        "'Deps' / 'Depends On'), one markdown table row per task.",
+    });
+    return { ok: false, diagnostics };
+  }
+
+  const unknownDeps = findUnknownPlanDepsIds(markdown);
+  for (const problem of unknownDeps) {
+    const m = /^row (\d+): Deps cell "([^"]*)" names unknown id "([^"]*)"$/.exec(problem);
+    diagnostics.push({
+      kind: "unknown-dep-id",
+      row: m ? Number(m[1]) : undefined,
+      cell: m ? m[2] : undefined,
+      message: problem,
+    });
+  }
+
+  if (unknownDeps.length === 0) {
+    try {
+      computeTopologicalBatches(parsed.tasks);
+    } catch (cycleErr) {
+      diagnostics.push({
+        kind: "cycle",
+        message: (cycleErr && cycleErr.message) || String(cycleErr),
+      });
+    }
+  }
+
+  const ownershipParsed = parsePlanOwnership(markdown);
+  const ownershipMissing = ownershipParsed == null || ownershipParsed.ownership == null;
+  if (ownershipMissing) {
+    const nearMisses = ownershipParsed ? ownershipParsed.nearMisses || [] : [];
+    if (nearMisses.length > 0) {
+      for (const nm of nearMisses) {
+        diagnostics.push({
+          kind: "ownership-near-miss",
+          cell: nm.headerRow,
+          expectedForms: nm.expectedForms,
+          message:
+            `"${nm.headerRow}" matched the ${nm.matchedSide} side but not the other ` +
+            `(accepted spellings for the missing side: ${nm.expectedForms.join(", ")})`,
+        });
+      }
+    } else {
+      diagnostics.push({
+        kind: "ownership-missing",
+        message:
+          "no file-ownership manifest found: add a markdown table whose header row " +
+          "carries an exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an " +
+          "exact 'Files' cell (or 'Owned Files' / 'Files Created or Appended'), one " +
+          "row per task, each row listing that task's owned paths in backticks.",
+      });
+    }
+  } else {
+    const contract = validatePlanContract(parsed.tasks, ownershipParsed.ownership);
+    if (!contract.ok) {
+      for (const problem of contract.problems) {
+        diagnostics.push({ kind: "contract-violation", message: problem });
+      }
+    }
+  }
+
+  return { ok: diagnostics.length === 0, diagnostics };
+}
+
+function planLintFeedForwardClause(diagnostics) {
+  const lines = diagnostics.map((d) => {
+    const loc = d.row != null ? `row ${d.row}` : d.cell ? `"${d.cell}"` : null;
+    const forms =
+      d.expectedForms && d.expectedForms.length > 0
+        ? ` (accepted: ${d.expectedForms.join(", ")})`
+        : "";
+    return loc ? `- [${d.kind}] ${loc}: ${d.message}${forms}` : `- [${d.kind}] ${d.message}${forms}`;
+  });
+  return (
+    "The PLAN's mechanical lint (the same check Phase P's post-convergence gate runs) " +
+    "found the following in what is on disk right now — fix these exactly:\n" +
+    lines.join("\n")
+  );
+}
+
 function pathsCollide(a, b) {
   if (a === b) return true;
   if (a.endsWith("/") && b.startsWith(a)) return true;
@@ -4633,6 +4723,68 @@ function isComplete(artifactClass, docType, fileText) {
   }
 
   return done(false, []);
+}
+
+function headingFeedForwardClause(docType) {
+  const rows = REQUIRED_HEADINGS[docType];
+  if (!Array.isArray(rows) || rows.length === 0) return "";
+  const lines = rows.map((r) =>
+    r.alts && r.alts.length > 0
+      ? `## ${r.title} (accepted: ${r.title}, ${r.alts.join(", ")})`
+      : `## ${r.title}`
+  );
+  return (
+    "The completeness gate accepts these top-level sections — canonical title, or " +
+    "any listed accepted alternative — cover every one:\n" + lines.join("\n")
+  );
+}
+
+function nearestHeadingMisses(fileText, docType) {
+  const rows = REQUIRED_HEADINGS[docType];
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const sections = topLevelSections(fileText);
+  const tokensOf = (s) => s.split(/[^a-z0-9]+/).filter(Boolean);
+  const tokenNear = (a, b) => {
+    if (a === b) return true;
+    const n = Math.min(a.length, b.length);
+    if (n < 4) return false;
+    let i = 0;
+    while (i < n && a[i] === b[i]) i++;
+    return i >= 4;
+  };
+
+  const results = [];
+  for (const row of rows) {
+    const forms = [row.title, ...(row.alts || [])];
+    const normForms = forms.map(normaliseHeadingTitle);
+    const satisfied = sections.some(
+      (s) => !isEmptyBody(s.body) && normForms.some((t) => headingContains(s.normalised, t))
+    );
+    if (satisfied) continue;
+
+    const rowTokens = normForms.flatMap(tokensOf);
+    for (const s of sections) {
+      const candTokens = tokensOf(s.normalised);
+      const near = candTokens.some((ct) => rowTokens.some((rt) => tokenNear(ct, rt)));
+      if (near) {
+        results.push({ missing: row.title, candidate: s.title, expectedForms: forms });
+        break; 
+      }
+    }
+  }
+  return results;
+}
+
+function nearestHeadingMissClause(misses) {
+  if (!misses || misses.length === 0) return "";
+  const lines = misses.map(
+    (m) =>
+      `found "## ${m.candidate}" — did you mean canonical "${m.missing}" (accepted: ${m.expectedForms.join(", ")})?`
+  );
+  return (
+    "Headings already on disk that may be a naming mismatch, not a content gap:\n" +
+    lines.join("\n")
+  );
 }
 
 function isPass(verdict) {
@@ -5607,21 +5759,26 @@ function branchPinClause(feature) {
   );
 }
 
-function skeletonClause() {
+function skeletonClause(docType) {
+  const feedForward = headingFeedForwardClause(docType);
   return (
     "This artifact is not on disk yet. Begin by laying out its top-level headings " +
-    "as a skeleton, then fill them one at a time under the pacing contract above."
+    "as a skeleton, then fill them one at a time under the pacing contract above." +
+    (feedForward ? `\n\n${feedForward}` : "")
   );
 }
 
-function resumeClause({ T, S, firstUnwritten, targetPath }) {
-  return [
+function resumeClause({ T, S, firstUnwritten, targetPath, docType, missing, fileText }) {
+  const base = [
     `RESUMED: ${targetPath} already carries partial content`,
     `(${S} of ${T} top-level sections carry a body).`,
     "Read the document on disk first and do NOT rewrite what is already written.",
     `The first unwritten section is ${firstUnwritten}.`,
     "Continue from there, one section per write, under the pacing contract above.",
   ].join(" ");
+  if (!docType || fileText == null || !Array.isArray(missing) || missing.length === 0) return base;
+  const nearMissClause = nearestHeadingMissClause(nearestHeadingMisses(fileText, docType));
+  return nearMissClause ? `${base}\n\n${nearMissClause}` : base;
 }
 
 function continuationClause(round, reviewBasenames, targetPath) {
@@ -5986,14 +6143,25 @@ async function dispatchAndVerify({
     if (selection.mode === "revision") {
       opener = continuationClause(selection.round, roundFiles, targetPath);
     } else if (invocations === 1 && before.empty) {
-      opener = skeletonClause();
+      opener = skeletonClause(docType);
     } else {
       opener = resumeClause({
         T: before.measured.T,
         S: before.measured.S,
         firstUnwritten: before.firstUnwritten,
         targetPath,
+        docType,
+        missing: before.measured.missing,
+
+        fileText: before.probed ? null : before.identity,
       });
+    }
+
+    if (docType === "PLAN" && artifactClass === "spec" && !before.probed && !before.empty) {
+      const planLint = lintPlanArtifact(before.identity);
+      if (!planLint.ok) {
+        opener = `${opener}\n\n${planLintFeedForwardClause(planLint.diagnostics)}`;
+      }
     }
     const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
 
@@ -9225,84 +9393,71 @@ async function main({
         afterConverged: async () => {
 
           const pPlanText = await readFileFn(planPath);
+          const pLint = lintPlanArtifact(pPlanText);
+          if (!pLint.ok) {
+            const byKind = (kind) => pLint.diagnostics.filter((d) => d.kind === kind);
+            const unparseable = byKind("unparseable-tasks");
+            const unknownDeps = byKind("unknown-dep-id");
+            const cycles = byKind("cycle");
+            const nearMisses = byKind("ownership-near-miss");
+            const missingOwnership = byKind("ownership-missing");
+            const contractProblems = byKind("contract-violation");
+
+            let detail;
+            if (unparseable.length > 0) {
+              detail =
+                `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
+                `mechanical parser, so the implementation phase would have no task graph. ` +
+                `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
+                `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
+                `'Depends On'), one markdown table row per task, and every dependency cell ` +
+                `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
+                `discovering it at Phase I.`;
+            } else if (unknownDeps.length > 0) {
+              detail =
+                `Error: Phase P — the task table in ${planPath} names dependency ids that ` +
+                `are not any task's id: ${unknownDeps.map((d) => d.message).join("; ")}. Fix ` +
+                `the PLAN's Dependencies column so every id it names is another task's id. ` +
+                `Rejecting at Phase P rather than discovering it at Phase I.`;
+            } else if (cycles.length > 0) {
+              detail =
+                `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
+                `${cycles[0].message} Fix the PLAN's Dependencies column (every id it names ` +
+                `must be another task's id, and the edges must form a DAG). Rejecting at ` +
+                `Phase P rather than discovering it at Phase I.`;
+            } else if (nearMisses.length > 0) {
+              detail =
+                `Error: Phase P — ${planPath}'s file-ownership manifest has a header row ` +
+                `that matches only one side of the required contract: ` +
+                nearMisses.map((d) => d.message).join("; ") +
+                `. Fix the header row so it carries an exact cell from both sets — ` +
+                `se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+                `discovering it at Phase I.`;
+            } else if (missingOwnership.length > 0) {
+              detail =
+                `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+                `implementation phase cannot derive same-tree waves and cannot know which ` +
+                `files each task may write. Add a markdown table whose header row carries an ` +
+                `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+                `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+                `each row listing that task's owned paths in backticks — se-author's ` +
+                `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+                `Phase I.`;
+            } else {
+              detail =
+                `Error: Phase P — the task table and the file-ownership manifest in ` +
+                `${planPath} disagree: ${contractProblems.map((d) => d.message).join("; ")}. ` +
+                `Every task in the task table needs exactly one manifest row, and every ` +
+                `manifest row needs a task — se-author's batch-safety rule 2. Rejecting at ` +
+                `Phase P rather than discovering it at Phase I.`;
+            }
+            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+            throw haltError(detail);
+          }
+
           const pParsed = parsePlanTasks(pPlanText);
-          if (!pParsed || !Array.isArray(pParsed.tasks) || pParsed.tasks.length === 0) {
-            const detail =
-              `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
-              `mechanical parser, so the implementation phase would have no task graph. ` +
-              `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
-              `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
-              `'Depends On'), one markdown table row per task, and every dependency cell ` +
-              `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
-              `discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-
-          const pUnknownDeps = findUnknownPlanDepsIds(pPlanText);
-          if (pUnknownDeps.length > 0) {
-            const detail =
-              `Error: Phase P — the task table in ${planPath} names dependency ids that ` +
-              `are not any task's id: ${pUnknownDeps.join("; ")}. Fix the PLAN's ` +
-              `Dependencies column so every id it names is another task's id. Rejecting ` +
-              `at Phase P rather than discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-          let pBatches;
-          try {
-            pBatches = computeTopologicalBatches(pParsed.tasks);
-          } catch (cycleErr) {
-            const detail =
-              `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
-              `${(cycleErr && cycleErr.message) || String(cycleErr)} ` +
-              `Fix the PLAN's Dependencies column (every id it names must be another ` +
-              `task's id, and the edges must form a DAG). Rejecting at Phase P rather ` +
-              `than discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-
+          const pBatches = computeTopologicalBatches(pParsed.tasks);
           const pOwnershipParsed = parsePlanOwnership(pPlanText);
-          const pNearMisses = pOwnershipParsed ? pOwnershipParsed.nearMisses || [] : [];
-          if (pOwnershipParsed == null || pOwnershipParsed.ownership == null) {
-
-            const detail =
-              pNearMisses.length > 0
-                ? `Error: Phase P — ${planPath}'s file-ownership manifest has a header row ` +
-                  `that matches only one side of the required contract: ` +
-                  pNearMisses
-                    .map(
-                      (nm) =>
-                        `"${nm.headerRow}" matched the ${nm.matchedSide} side but not the ` +
-                        `other (accepted spellings for the missing side: ${nm.expectedForms.join(", ")})`
-                    )
-                    .join("; ") +
-                  `. Fix the header row so it carries an exact cell from both sets — ` +
-                  `se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
-                  `discovering it at Phase I.`
-                : `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
-                  `implementation phase cannot derive same-tree waves and cannot know which ` +
-                  `files each task may write. Add a markdown table whose header row carries an ` +
-                  `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
-                  `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
-                  `each row listing that task's owned paths in backticks — se-author's ` +
-                  `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
-                  `Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-          const pContract = validatePlanContract(pParsed.tasks, pOwnershipParsed.ownership);
-          if (!pContract.ok) {
-            const detail =
-              `Error: Phase P — the task table and the file-ownership manifest in ` +
-              `${planPath} disagree: ${pContract.problems.join("; ")}. Every task in the ` +
-              `task table needs exactly one manifest row, and every manifest row needs a ` +
-              `task — se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
-              `discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
           const pWaves = computeWaves(pParsed.tasks, pOwnershipParsed.ownership);
 
           return (
