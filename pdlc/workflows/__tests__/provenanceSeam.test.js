@@ -41,6 +41,12 @@ const FEATURE = "pfeat";
 const DOCS = `docs/${FEATURE}`;
 const FSPEC_PATH = `${DOCS}/FSPEC-${FEATURE}.md`;
 const FSPEC_TEXT = "# FSPEC\n\nThe functional specification body.\n";
+// Seeded so `reviewLoop`'s TSPEC-LOOP-02 entry precondition — a REAL
+// `_checkFile` read, never the always-true stub — finds the document already
+// on disk before Phase T's own creator dispatch runs, exactly as `FSPEC_TEXT`
+// above lets Phase F's precondition pass.
+const TSPEC_PATH = `${DOCS}/TSPEC-${FEATURE}.md`;
+const TSPEC_TEXT = "# TSPEC\n\nThe technical specification body.\n";
 const ERRATUM_ITEM = "§4's error budget contradicts REQ AC-3";
 const POSTMORTEM_PATH = `${DOCS}/POSTMORTEM-T-${FEATURE}.md`;
 
@@ -87,6 +93,7 @@ async function runToErratumHalt({ provenance } = {}) {
   const seeded = {
     [`${DOCS}/REQ-${FEATURE}.md`]: "# REQ\n\nThe requirement body.\n",
     [FSPEC_PATH]: FSPEC_TEXT,
+    [TSPEC_PATH]: TSPEC_TEXT,
     [`${DOCS}/PLAN-${FEATURE}.md`]: PARSEABLE_PLAN,
     [`${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v1.md`]: crossReviewText(),
     [`${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v1.md`]: crossReviewText(),
@@ -159,7 +166,7 @@ async function runToErratumHalt({ provenance } = {}) {
   return { result, fs };
 }
 
-describe.skip("T29: _provenance seam — inertness and kinds 1–2 (orchestrate-dev.js)", () => {
+describe("T29: _provenance seam — inertness and kinds 1–2 (orchestrate-dev.js)", () => {
   // ─── P-1 — default-inert (PROP-PROV-2) ────────────────────────────────────
 
   describe("P-1: the seam is default-inert", () => {

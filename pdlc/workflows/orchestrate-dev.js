@@ -1829,6 +1829,24 @@ export async function phaseMerge({
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
 const MODEL_DEFAULT = "opus"; // all phases except Phase I
 
+// TSPEC §7.2 P-1 — the default-inert `Provenance` null-object. A runtime that
+// supplies no `_provenance` seam produces byte-identical artifacts to today:
+// empty `line`/`block` mean kind 1's report field carries a readable-but-empty
+// value and kind 2's append is skipped entirely (P-5). Frozen, plain-data,
+// mirroring `lib/provenance.mjs`'s own shape (§7.1) — this module never builds
+// a `Provenance` itself, only receives one.
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 // ── TSPEC §4.8 — review-loop / authoring budgets ───────────────────────────────
 // Module-level, not main() parameters: they are policy, not capability, and the
 // workflow runtime's bundle has no configuration channel to override them from.
@@ -11944,6 +11962,10 @@ export default async function main({
   // parameter to `NO_SESSION_AGENT`), and every consumer here reaches the
   // transport through that one function. main() is a pass-through for it.
   _sessionAgent,
+  // TSPEC §7.2 — kinds 1 and 2's carrier. Default-inert (P-1): a caller that
+  // supplies nothing gets `NO_PROVENANCE`, whose empty `line`/`block` make
+  // kind 1's report field readable-but-empty and skip kind 2's append (P-5).
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -12424,6 +12446,19 @@ export default async function main({
       if (result != null && String(result).trim() !== "") {
         const confirmation = await checkFileFn(postmortemPath);
         written = !!(confirmation && confirmation.ok);
+        // TSPEC §7.2 P-4 — kind 2. Never agent-mediated: the mark is a
+        // script-owned `_appendFile` call strictly AFTER `_checkFile`
+        // confirms the file, never a sentence in the agent prompt. P-5: an
+        // empty `block` skips the append entirely — no empty section, no
+        // marker, no diff.
+        if (written && provenance.block) {
+          try {
+            await appendFileFn(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+            // Best-effort, same discipline as the approval-anchor append: the
+            // POSTMORTEM itself is already confirmed written either way.
+          }
+        }
       }
     } catch {
       written = false;
@@ -13469,6 +13504,7 @@ export default async function main({
   if (!reqPath || reqPath.trim() === "") {
     haltReason = `Error: no REQ path provided. Usage: /pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -13484,6 +13520,7 @@ export default async function main({
   if (!match) {
     haltReason = `Error: REQ path does not match expected pattern docs/{feature}/REQ-{feature}.md — got: ${reqPath}`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -13507,6 +13544,7 @@ export default async function main({
       `Error: invalid forcePhases token${forceParse.badTokens.length === 1 ? "" : "s"}: ` +
       `${forceParse.badTokens.join(", ")}. Valid: ${[...FORCE_PHASE_TOKENS, "all"].join(", ")}.`;
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -13529,6 +13567,7 @@ export default async function main({
       haltReason = `Error: REQ file not found at ${reqPath}`;
     }
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -14835,6 +14874,7 @@ export default async function main({
     );
 
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -14859,6 +14899,7 @@ export default async function main({
   }
 
   return buildFinalReport({
+    provenance,
     feature: featureName,
     outcome: "success",
     notices,
@@ -14977,6 +15018,11 @@ function buildFinalReport({
   // `prUrl`/`ciStatus` above — a disabled run must never carry a defined `advisory` key at all
   // (T-10-3/T-10-4 assert `toBeUndefined()`, not merely falsy).
   advisory = undefined,
+  // TSPEC §7.2 kind 1 — the run report's provenance field. Defaulted so every
+  // existing caller and existing test is unchanged; unconditional on the
+  // returned record (never conditionally spread), since `NO_PROVENANCE`
+  // itself is the readable "no provenance supplied" value kind 1 reports.
+  provenance = NO_PROVENANCE,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -14990,6 +15036,9 @@ function buildFinalReport({
     harvestStatus,
     dodVerifiedCommit,
     dodHeadUnverified,
+    // TSPEC §7.2 kind 1 (AC-4.1). Present, unconditionally, on EVERY report —
+    // `NO_PROVENANCE` itself is the readable default (P-1), not an absent key.
+    provenance,
     // §4.7's non-skip report lines. Carried as their own field rather than
     // appended to a phase row's `detail`, which oracles pin verbatim.
     notices,
