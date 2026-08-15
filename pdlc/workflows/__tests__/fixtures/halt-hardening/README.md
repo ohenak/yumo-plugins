@@ -16,6 +16,11 @@ This directory contains sanitized, historical-incident-reproducing fixtures extr
 - **Incident:** POSTMORTEM-P inherited-staleness halt — confirmers non-approving, all Highs tagged `inherited`, findings describe pre-round staleness in unchanged sections
 - **Sanitization:** Simplified section references; retained FINDING: High | inherited | nonlocal tags to test R2 gate rule
 
+#### `confirmation-mixed-high.md`
+- **Consumed by:** RT-1f
+- **Incident:** Mixed-High round — one `High | delta | local` finding alongside one `High | inherited | nonlocal` finding in the same confirmation, the case R3 (follow-up) and R2 (re-open) both claim a share of
+- **Sanitization:** Composed from the RT-1a and RT-1b rounds; retains both FINDING: tag triples so the gate decides on tokens, and pins the architect-ratified fail-closed fallback (R4) rather than letting either High be dropped
+
 #### `confirmation-untagged.md`
 - **Consumed by:** RT-1c
 - **Incident:** Legacy reviewer output with prose findings but no FINDING: lines; tests fail-closed behavior (halts exactly as v0.22.7)

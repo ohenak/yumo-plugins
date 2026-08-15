@@ -22,6 +22,7 @@ import main, {
   reviewLoop,
   parseErrata,
   approvalHashOf,
+  parseConfirmationFindings,
   erratumGateDecision,
   formatConfirmationFindings,
   markApprovalReopened,
@@ -1192,6 +1193,89 @@ describe("the erratum gate on the historical halts (PLAN §5)", () => {
       `${FSPEC_PATH} was NOT re-anchored, and its recorded approval is RE-OPENED so phase F runs again`
     );
     expect(notice).toContain(`| inherited | nonlocal | ${INHERITED_HIGH_SECTION} |`);
+  });
+
+  test("RT-1f: a local delta High and a nonlocal inherited High in one confirmation fall through to R4 — neither is dropped", async () => {
+    // Architect ruling (2026-08-15), ratifying the High-scoped R3 locality
+    // amendment: when one confirmation carries work that R3's follow-up owns
+    // AND work that R2's re-open owns, the gate must run BOTH or fall through
+    // to R4. It may never silently drop the inherited High. The shipped gate
+    // runs exactly one rule per confirmation — `allLocal` is false here, so
+    // this input already resolves to R4 — and fail-closed is the sanctioned
+    // fallback, so the behaviour is pinned rather than reworked. The rules stay
+    // mutually exclusive and first-match-wins, which is the property the rest
+    // of the table is read against.
+    //
+    // Read at the decision function first, so the rule is pinned on the tokens
+    // rather than only on a pipeline that could reach the same halt some other
+    // way.
+    const parsed = parseConfirmationFindings(fixture("confirmation-mixed-high.md"));
+    expect(parsed.malformed).toEqual([]);
+    expect(parsed.findings.map((f) => `${f.severity}/${f.provenance}/${f.locality}`)).toEqual([
+      "High/delta/local",
+      "High/inherited/nonlocal",
+      "Low/inherited/nonlocal",
+    ]);
+    const decision = erratumGateDecision({
+      confirmations: [{ source: "te-review", approving: false, ...parsed }],
+      followUpAvailable: true,
+    });
+    expect(decision.rule).toBe("R4");
+    // Not a fail-closed read: the findings were parsed, and the halt is the
+    // rule's own answer.
+    expect(decision.failClosed).toEqual([]);
+    expect(decision.allLocal).toBe(false);
+    expect(decision.highDelta.length).toBe(1);
+
+    // … and the positive pair on the same path: an inherited High that IS local
+    // composes with the delta High, so it buys the follow-up and rides into it
+    // as an item rather than being dropped.
+    const localInherited = erratumGateDecision({
+      confirmations: [
+        {
+          source: "te-review",
+          approving: false,
+          findings: parsed.findings.map((f) =>
+            f.severity === "High" ? { ...f, locality: "local" } : f
+          ),
+          malformed: [],
+        },
+      ],
+      followUpAvailable: true,
+    });
+    expect(localInherited.rule).toBe("R3");
+    expect(
+      localInherited.findings.filter((f) => f.provenance === "inherited" && f.severity === "High")
+        .length
+    ).toBe(1);
+
+    // The pipeline agrees with the decision function.
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-mixed-high.md") },
+    });
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.postmortemStatus).toBe("written");
+    // No follow-up is bought — the budget is still unspent when the halt fires,
+    // and the halt does not claim otherwise.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(1);
+    expect(report.haltReason).not.toContain("The follow-up budget of 1 round was already spent.");
+    // BOTH Highs reach the post-mortem author, and so does the Low.
+    expect(report.haltReason).toContain(
+      "te-review: FINDING: High | delta | local | §3-02 | The owner cell in the expected rows table"
+    );
+    expect(report.haltReason).toContain(
+      "te-review: FINDING: High | inherited | nonlocal | §8.3 | The domain note in section 8.3"
+    );
+    expect(report.haltReason).toContain(
+      "te-review: FINDING: Low | inherited | nonlocal | §7.3 | Two version stamps"
+    );
+    // Nothing is re-anchored and nothing is re-opened on a halt: R4 hands the
+    // whole round to the operator rather than half-resolving it.
+    expect(fs.appends).toEqual([]);
+    expect(report.notices.filter((n) => n.includes("gate rule R2"))).toEqual([]);
+    expect(report.notices.filter((n) => n.includes("gate rule R3"))).toEqual([]);
   });
 
   test("RT-1c: an untagged non-approving confirmation still halts, exactly as v0.22.7 did", async () => {
