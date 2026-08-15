@@ -22,6 +22,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { buildPairingRecord } from "../scripts/publish-preflight.mjs";
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ENGINE_ROOT = path.resolve(HERE, "..");
 const REPO_ROOT = path.resolve(ENGINE_ROOT, "..", "..");
@@ -205,7 +207,7 @@ test(
   },
 );
 
-// ─── T49: AT-3.8a, full whole-set equality plus pairing record ────────────
+// ─── T49: AT-3.8a, full whole-set equality plus pairing-record builder ────
 //
 // The whole-set assertion (AT-3.8a): the packed tarball equals TSPEC
 // §5.4's literal `PK-*` table member-for-member, in both directions, with
@@ -215,9 +217,18 @@ test(
 // needs the `files` allow-list (T25), the vendored workflow members
 // (T33) and, once N-2 is recorded, the licence discharge (T05) — so T49
 // is the task that un-skips it.
+//
+// `pdlcPairing` itself is checked structurally, not by presence on the
+// checked-out `package.json`: TSPEC §5.2:212 states the field is ABSENT in
+// the checkout and written only by the publish job (O-6, single-writer),
+// and §8.4 fixes the sequence as (1) preflight over the unmutated tree,
+// (2) the publish job writes `pdlcPairing`, (3) prepack+pack, (4) PF-4/PF-5
+// re-asserted against the packed tarball. Asserting `manifest.pdlcPairing`
+// truthy here — before any publish job has run — could never pass and
+// contradicted the single-writer decision it was meant to verify.
 
-test.skip(
-  "T49: packed tarball equals TSPEC §5.4's expected set member-for-member, both directions, with pairing record present (AT-3.8a)",
+test(
+  "T49: packed tarball equals TSPEC §5.4's expected set member-for-member, both directions, pairing record built per F-5 step 6 (AT-3.8a)",
   () => {
     const packed = packRealTarball();
     const licence = licenceRecorded();
@@ -238,9 +249,27 @@ test.skip(
       "utf8",
     );
     const manifest = JSON.parse(packageJsonText);
-    assert.ok(
+    assert.equal(
       manifest.pdlcPairing,
-      "package.json must carry F-5 step 6's pairing record",
+      undefined,
+      "TSPEC §5.2:212 / O-6 single-writer: the preflight tree is unmutated by " +
+        "design — pdlcPairing is written by the publish job, never present on " +
+        "the checked-out package.json",
     );
+
+    const pluginVersion = JSON.parse(
+      readFileSync(
+        path.join(REPO_ROOT, "pdlc", ".claude-plugin", "plugin.json"),
+        "utf8",
+      ),
+    ).version;
+    const record = buildPairingRecord(manifest, pluginVersion, "engine-v0.1.0", "0".repeat(40));
+    assert.deepEqual(
+      Object.keys(record).sort(),
+      ["commit", "engineVersion", "pluginCompat", "pluginVersionAtTag", "tag"].sort(),
+      "F-5 step 6's pairing record must carry exactly these five keys",
+    );
+    assert.equal(record.engineVersion, manifest.version);
+    assert.equal(record.pluginCompat, manifest.pdlcPluginCompat);
   },
 );
