@@ -208,6 +208,25 @@ never even read — until `pdlc/hooks/scripts/sync-workflows.sh` runs and refres
 
 ---
 
+## 6. Release 0.23.0 — halt-hardening engine changes
+
+**0.23.0 ships behavior changes to the erratum channel, approval anchor cascade, and PLAN parser.** These are regression-tested; every change below has a corresponding fixture-driven test.
+
+| Behavior | Change | Regression test |
+|---|---|---|
+| Erratum gate severity/provenance/locality | Confirmers tag findings `FINDING: {High\|Medium\|Low} \| {delta\|inherited} \| {local\|nonlocal} \| {anchor} \| {text}`; R-rules route by tag: inherited-High → phase re-open (no halt); High-delta-local → one follow-up round; High-delta-nonlocal or follow-up spent → halt. Untagged High (legacy) fails closed as before. | RT-1a, RT-1b, RT-1c |
+| Literal-token land-proof | Items with `EXPECT-TOKEN:` or "should say X, not Y" shape: token absence triggers engine-side re-dispatch pre-confirmation, token present → confirmers see it. | RT-1e |
+| Item mint hygiene | Dedupe by normalized target+token; per-item mint tags; re-mint on upstream skew before confirmers dispatch; multi-home split (N targets → N tracked items); oracle-contract lint (AT-/INV- items checked for full contract). | RT-1d |
+| Approval anchor cascade | Anchors carry `UPSTREAM-STATE: {DOCTYPE} sha256:{hex}` per upstream doc; staleness is mechanical (upstream hash mismatch) not semantic. On erratum pass, downstream docs with stale approvals get delta re-confirmation in same pass; approving refreshes `UPSTREAM-STATE`; non-approving re-opens phase. Confirmation-window freeze: mid-flight confirmations are serialized against sibling erratum rounds. Grandfathered anchors (no `UPSTREAM-STATE`) use byte-staleness rule only. | RT-2, RT-2c |
+| PLAN pipe splitting | `splitPipeRow` is escape- and code-span-aware: `` `list[str] \| None` `` stays one cell, never shifts columns. | RT-3a, RT-3b |
+| Ownership header normalization | Headers matched after normalization (whitespace-collapsed, parentheticals stripped: `Owning task(s)` → `owning task`). Partial match yields loud near-miss diagnostic naming cell and accepted spellings, never silent invisibility. | RT-3c |
+| PLAN in-phase lint | `lintPlanArtifact` fed back to author after each dispatch: pipe-split correctness, deps validation, manifest headers, unknown task-ids. Canonical headings + alts for PROPERTIES (and all `REQUIRED_HEADINGS` doc types) fed to first authoring prompt; shortfall prompts name nearest-miss headings present. | RT-3d |
+
+- [ ] `cd pdlc/workflows && npm test` is green (except documented local untracked-file failures in documentOracles.test.js). `advertisedVersionViolation` test is GREEN, confirming version-bump/dist sync. All RT-* tests are GREEN.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0.
+
+---
+
 ## A note for anyone editing this file
 
 This document lives under `pdlc/`, which none of the document-drift scan's exemptions covers, so
