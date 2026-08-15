@@ -178,7 +178,7 @@ test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not j
 
 // ─── Rule 2: only the seams that MUST be overridden are passed ────────────────
 
-test("devInjection overrides exactly the seven runtime-only seams", () => {
+test("devInjection overrides exactly the eight runtime-only seams", () => {
   const keys = Object.keys(devInjection(fakeAdapter())).sort();
   assert.deepEqual(keys, [
     "_agent",
@@ -187,13 +187,14 @@ test("devInjection overrides exactly the seven runtime-only seams", () => {
     "_parallel",
     "_phase",
     "_pipeline",
+    "_provenance",
     "_runCommand",
   ]);
 });
 
-test("queueInjection overrides exactly the five seams the queue declares", () => {
+test("queueInjection overrides exactly the six seams the queue declares", () => {
   const keys = Object.keys(queueInjection(fakeAdapter(), async () => ({}))).sort();
-  assert.deepEqual(keys, ["_agent", "_git", "_log", "_phase", "_runPipeline"]);
+  assert.deepEqual(keys, ["_agent", "_git", "_log", "_phase", "_provenance", "_runPipeline"]);
 });
 
 // The branch guard tests seam IDENTITY, not behaviour: `branchGuardTransport`
