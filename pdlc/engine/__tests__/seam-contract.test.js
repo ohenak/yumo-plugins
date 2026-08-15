@@ -52,6 +52,7 @@ const TSPEC_3_1_DEV_SEAMS = Object.freeze([
   "_log",
   "_runCommand",
   "_git",
+  "_provenance",
 ]);
 
 const TSPEC_3_1_QUEUE_SEAMS = Object.freeze([
@@ -60,6 +61,7 @@ const TSPEC_3_1_QUEUE_SEAMS = Object.freeze([
   "_log",
   "_git",
   "_runPipeline",
+  "_provenance",
 ]);
 
 test("PROP-PARITY-12: devInjection supplies exactly TSPEC §3.1's dev row — no more, no less", () => {
