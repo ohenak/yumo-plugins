@@ -15,8 +15,23 @@
  * catalogue is checked by set-equality, not containment.
  */
 
-import main, { reviewLoop, parseErrata, approvalHashOf } from "../orchestrate-dev.js";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+import main, {
+  reviewLoop,
+  parseErrata,
+  approvalHashOf,
+  erratumGateDecision,
+  formatConfirmationFindings,
+  markApprovalReopened,
+  reopenedApproval,
+} from "../orchestrate-dev.js";
 import { fakeFs, fakeGit, fakeListFiles } from "./helpers/seams.js";
+
+/** T10's sanitized incident fixtures — the RT-1* rounds are read, not invented. */
+const HALT_FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "halt-hardening");
+const fixture = (name) => readFileSync(join(HALT_FIXTURES, name), "utf8");
 
 let logMessages = [];
 const originalLog = console.log;
@@ -302,6 +317,9 @@ async function runPipeline(opts = {}) {
     // leaves behind, which is how an upstream document MOVES mid-wave here
     // exactly as it did on 2026-08-10.
     erratumRewrites = {},
+    // PLAN §2.2 / §5 RT-1*. `{ [round]: { text, verdict, high } }` — the bytes a
+    // confirmer writes AND returns at that derived round index.
+    confirmationByRound = {},
   } = opts;
 
   const seeded = {
@@ -325,6 +343,21 @@ async function runPipeline(opts = {}) {
     // The delta confirmation writes its cross-review file, as a reviewer does.
     if (text.includes("DELTA CONFIRMATION")) {
       const match = /(docs\/\S*CROSS-REVIEW-\S+\.md)/.exec(text);
+      // PLAN §2.2 / §5. A confirmation scripted per ROUND, keyed off the round
+      // index in the confirmation's own review path — which the workflow
+      // derives from the directory listing, so a follow-up round answers on the
+      // index it actually got rather than one this harness assumed. `text` is
+      // the fixture body; the verdict trailer is added here because the two are
+      // separate channels (CLAUDE.md, "two parts of a cross-review file").
+      const roundMatch = match ? /-v(\d+)\.md$/.exec(match[1]) : null;
+      const scripted = roundMatch ? confirmationByRound[Number(roundMatch[1])] : null;
+      if (scripted) {
+        const body =
+          `${scripted.text}\n## Verdict\n\nVERDICT: ${scripted.verdict}\n` +
+          `{"high": ${scripted.high ?? 0}, "medium": 0, "low": 0}\n`;
+        if (match) fs.files[match[1]] = body;
+        return body;
+      }
       const fileVerdict = confirmationFileVerdict ?? confirmationVerdict;
       // The file is written BEFORE the response is returned, which is the real
       // ordering: a reviewer commits its cross-review during its episode, so the
@@ -892,5 +925,305 @@ describe("DEC-ERR-03: a delta confirmation is a superset check against upstream 
       // … negative: the manifest of upstream documents is not fabricated.
       expect(d.prompt).not.toContain("The upstream documents, at their current version");
     }
+  });
+});
+
+// ─── 4. PLAN §2.2 — the severity/provenance/locality gate (RT-1a/1b/1c) ──────
+//
+// Three historical halts from `regime-scaffold-pivot-alignment`, replayed
+// through the same seams the pipeline uses. The fixtures are T10's sanitized
+// confirmations; the round indices are DERIVED by the workflow, not scripted,
+// so the follow-up round asserts on the index it actually got.
+
+const DELTA_HIGH_FINDING =
+  'FINDING: High | delta | local | §3-02 | The owner cell in the expected rows table still ' +
+  'reads "owner **tuple**"';
+const INHERITED_HIGH_SECTION = "§8.3";
+
+/** A scripted confirmation round: fixture body plus the verdict channel. */
+const needsRevision = (name) => ({ text: fixture(name), verdict: "Needs revision", high: 1 });
+const approved = () => ({ text: "# Cross-review\n\nNo residual findings.\n\n", verdict: "Approved", high: 0 });
+
+describe("erratumGateDecision: the R1–R4 rule table", () => {
+  const conf = (source, approving, findings, malformed) => ({
+    source,
+    approving,
+    findings,
+    malformed: malformed ?? [],
+  });
+  const high = (provenance, locality) => ({
+    severity: "High",
+    provenance,
+    locality,
+    section: "§1",
+    text: "t",
+  });
+
+  test("PROP-GATE-01: every confirmer approving is R1, and R1 alone", () => {
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", true, []), conf("b", true, [])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R1");
+    // Negative on the same path: one non-approver, same inputs otherwise, is not R1.
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", true, []), conf("b", false, [high("inherited", "nonlocal")])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R2");
+  });
+
+  test("PROP-GATE-02: R2 is decided on High-and-delta, not on severity or provenance alone", () => {
+    // Inherited High: R2.
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", false, [high("inherited", "local")])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R2");
+    // A delta finding that is not High is still R2 — Mediums and Lows are
+    // recorded, not gating, exactly as the review loop's High-only bar.
+    expect(
+      erratumGateDecision({
+        confirmations: [
+          conf("a", false, [
+            { severity: "Medium", provenance: "delta", locality: "nonlocal", section: "§2", text: "t" },
+          ]),
+        ],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R2");
+    // … and the positive pair: High AND delta leaves R2.
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", false, [high("delta", "local")])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R3");
+  });
+
+  test("PROP-GATE-03: R3 needs an unspent budget AND every HIGH local; either failure is R4", () => {
+    const local = [conf("a", false, [high("delta", "local")])];
+    expect(erratumGateDecision({ confirmations: local, followUpAvailable: true }).rule).toBe("R3");
+    // Budget spent → R4 on identical findings.
+    expect(erratumGateDecision({ confirmations: local, followUpAvailable: false }).rule).toBe("R4");
+    // A nonlocal HIGH → R4 even with budget.
+    const nonlocalHigh = [conf("a", false, [high("delta", "local"), high("inherited", "nonlocal")])];
+    expect(erratumGateDecision({ confirmations: nonlocalHigh, followUpAvailable: true }).rule).toBe(
+      "R4"
+    );
+    // … but a nonlocal LOW does not gate: the High-only bar holds here as it
+    // does in the review loop, and the same findings stay R3.
+    const nonlocalLow = [
+      conf("a", false, [
+        high("delta", "local"),
+        { severity: "Low", provenance: "inherited", locality: "nonlocal", section: "§9", text: "t" },
+      ]),
+    ];
+    expect(erratumGateDecision({ confirmations: nonlocalLow, followUpAvailable: true }).rule).toBe(
+      "R3"
+    );
+  });
+
+  test("PROP-GATE-04: a non-approving confirmation with nothing parseable fails closed to R4", () => {
+    const decision = erratumGateDecision({
+      confirmations: [conf("a", false, [])],
+      followUpAvailable: true,
+    });
+    expect(decision.rule).toBe("R4");
+    expect(decision.failClosed).toEqual(["a"]);
+    expect(decision.findings).toEqual([
+      {
+        severity: "High",
+        provenance: "delta",
+        locality: "nonlocal",
+        section: "(untagged confirmation)",
+        text:
+          "non-approving confirmation carried no parseable FINDING: line — read as " +
+          "High/delta/nonlocal, fail-closed",
+        source: "a",
+        failClosed: true,
+      },
+    ]);
+    // A malformed line is unknowable severity, so it fails closed too — even
+    // alongside a parseable, harmless one.
+    const withMalformed = erratumGateDecision({
+      confirmations: [conf("a", false, [high("inherited", "local")], ["FINDING: garbled"])],
+      followUpAvailable: true,
+    });
+    expect(withMalformed.rule).toBe("R4");
+    expect(withMalformed.failClosed).toEqual(["a"]);
+    // … and the positive pair: an APPROVING confirmer is never failed closed.
+    const approvingSilent = erratumGateDecision({
+      confirmations: [conf("a", true, []), conf("b", false, [high("inherited", "local")])],
+      followUpAvailable: true,
+    });
+    expect(approvingSilent.failClosed).toEqual([]);
+    expect(approvingSilent.rule).toBe("R2");
+  });
+
+  test("PROP-GATE-05: total on absent, empty and malformed input", () => {
+    expect(erratumGateDecision().rule).toBe("R1");
+    expect(erratumGateDecision({}).rule).toBe("R1");
+    expect(erratumGateDecision({ confirmations: [null, undefined] }).rule).toBe("R1");
+    expect(erratumGateDecision({ confirmations: [{ approving: false }] }).rule).toBe("R4");
+  });
+
+  test("PROP-GATE-06: findings render back into the canonical grammar, attributed", () => {
+    expect(
+      formatConfirmationFindings([
+        { severity: "High", provenance: "delta", locality: "local", section: "§3", text: "one word", source: "te-review" },
+      ])
+    ).toBe("  te-review: FINDING: High | delta | local | §3 | one word");
+    expect(formatConfirmationFindings([])).toBe("  (no parseable FINDING: lines)");
+    expect(formatConfirmationFindings(null)).toBe("  (no parseable FINDING: lines)");
+  });
+
+  test("PROP-GATE-07: the re-open registry is a total, run-scoped read/write pair", () => {
+    const registry = new Map();
+    expect(reopenedApproval(registry, "FSPEC")).toBeNull();
+    const entry = markApprovalReopened(registry, {
+      docType: "FSPEC",
+      phase: "F",
+      reason: "inherited only.",
+    });
+    expect(entry).toEqual({ docType: "FSPEC", phase: "F", reason: "inherited only." });
+    expect(reopenedApproval(registry, "FSPEC")).toEqual(entry);
+    // Negative on the same path: a doc type nobody re-opened stays clean, and
+    // a missing registry is not an error.
+    expect(reopenedApproval(registry, "REQ")).toBeNull();
+    expect(markApprovalReopened(null, { docType: "FSPEC" })).toBeNull();
+    expect(reopenedApproval(null, "FSPEC")).toBeNull();
+  });
+});
+
+describe("the erratum gate on the historical halts (PLAN §5)", () => {
+  test("RT-1a: a High/delta/local confirmation buys ONE follow-up round, and a passing follow-up ends without a POSTMORTEM", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: {
+        2: needsRevision("confirmation-delta-high.md"),
+        3: approved(),
+      },
+    });
+
+    // The historical halt is gone: the run finishes.
+    expect(report.outcome).toBe("success");
+    expect(report.postmortemPath).toBeNull();
+
+    // Exactly TWO erratum author dispatches — the original round and one
+    // follow-up. The follow-up is the observable the budget bounds.
+    const authors = erratumAuthorDispatches(dispatches);
+    expect(authors.length).toBe(2);
+    // The follow-up carries the confirmers' finding verbatim, not the original
+    // routed item, and it is re-confirmed at the NEXT derived round.
+    expect(authors[1].prompt).toContain(
+      '- [High | delta | local] §3-02 — The owner cell in the expected rows table still reads ' +
+        '"owner **tuple**"'
+    );
+    expect(authors[1].prompt).not.toContain(ERRATUM_ITEM);
+    expect(confirmationDispatches(dispatches).length).toBe(4);
+    expect(report.notices).toContain(
+      `Phase T: erratum follow-up round 1 for FSPEC — 6 items, confirmed at round v3 by se-review, te-review.`
+    );
+    // The approval anchors are written once, on the round that actually passed.
+    expect(fs.appends.map((a) => a.path)).toEqual([
+      `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v3.md`,
+      `${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v3.md`,
+    ]);
+  });
+
+  test("RT-1a: a follow-up that fails again halts, and the payload is the FINDING lines with the routed list demoted", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: {
+        2: needsRevision("confirmation-delta-high.md"),
+        3: needsRevision("confirmation-delta-high.md"),
+      },
+    });
+
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.postmortemStatus).toBe("written");
+    // The budget is spent, and the halt says so.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(2);
+    expect(report.haltReason).toContain(
+      "The follow-up budget of 1 round was already spent."
+    );
+    // The payload leads with the confirmers' findings …
+    expect(report.haltReason).toContain(`  se-review: ${DELTA_HIGH_FINDING}`);
+    expect(report.haltReason).toContain(`  te-review: ${DELTA_HIGH_FINDING}`);
+    // … and the pre-edit routed list survives only as background, BELOW them.
+    // On a follow-up round that list is the previous round's findings, which is
+    // exactly the point: what the halt leads with is what the confirmers said
+    // LAST, never the item text the round was opened with two dispatches ago.
+    expect(report.haltReason).toContain(
+      `Background (the routed list this round was opened with, superseded by the findings ` +
+        `above) — Erratum items against ${FSPEC_PATH}: [High | delta | local] §3-02 —`
+    );
+    expect(report.haltReason.indexOf(DELTA_HIGH_FINDING)).toBeLessThan(
+      report.haltReason.indexOf("Background (the routed list")
+    );
+    // Nothing was approved on the way to the halt.
+    expect(fs.appends).toEqual([]);
+  });
+
+  test("RT-1b: inherited-only Highs do not halt — the upstream doc is not re-anchored and its phase is re-opened", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-inherited-high.md") },
+    });
+
+    // No halt, no POSTMORTEM, and the pipeline moves forward.
+    expect(report.outcome).toBe("success");
+    expect(report.postmortemPath).toBeNull();
+    expect(report.phases.find((p) => p.phase === "T").status).toBe("✅");
+    // No follow-up is bought: R2 is not a retry.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(1);
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    // The upstream document is NOT re-anchored — the approvers did not approve.
+    expect(fs.appends).toEqual([]);
+    // The re-open is recorded, names the owning phase, and carries the findings.
+    const notice = report.notices.find((n) => n.includes("gate rule R2"));
+    expect(notice).toBeDefined();
+    expect(notice).toContain(
+      `${FSPEC_PATH} was NOT re-anchored, and its recorded approval is RE-OPENED so phase F runs again`
+    );
+    expect(notice).toContain(`| inherited | nonlocal | ${INHERITED_HIGH_SECTION} |`);
+  });
+
+  test("RT-1c: an untagged non-approving confirmation still halts, exactly as v0.22.7 did", async () => {
+    const tagged = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-untagged.md") },
+    });
+
+    expect(tagged.report.outcome).toBe("halted");
+    expect(tagged.report.haltPhase).toBe("T");
+    expect(tagged.report.haltReason).toContain(
+      "Phase T halted: the delta confirmation of the FSPEC erratum round did not pass"
+    );
+    expect(tagged.report.haltReason).toContain("non-approving: [se-review, te-review]");
+    // Fail-closed, and it says so rather than pretending to have read findings.
+    expect(tagged.report.haltReason).toContain(
+      "  se-review: FINDING: High | delta | nonlocal | (untagged confirmation) | non-approving " +
+        "confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+    );
+    // No follow-up is bought by silence: the budget is never reached.
+    expect(erratumAuthorDispatches(tagged.dispatches).length).toBe(1);
+    expect(tagged.fs.appends).toEqual([]);
+
+    // The byte-comparable half: the pre-grammar harness path, same halt.
+    const legacy = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationVerdict: "Needs revision",
+    });
+    expect(legacy.report.outcome).toBe(tagged.report.outcome);
+    expect(legacy.report.haltPhase).toBe(tagged.report.haltPhase);
+    expect(legacy.report.phases.find((p) => p.phase === "T").status).toBe(
+      tagged.report.phases.find((p) => p.phase === "T").status
+    );
   });
 });

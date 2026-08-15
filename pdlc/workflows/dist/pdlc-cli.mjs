@@ -4776,6 +4776,172 @@ function parseConfirmationFindings(text) {
   return { findings, malformed };
 }
 
+// ─── PLAN §2.2 — the erratum gate's decision rules (R1–R4) ────────────────────
+
+/**
+ * The section anchor a fail-closed synthetic finding carries. It is a literal,
+ * not a parsed value, so a real `FINDING:` line can never be mistaken for one.
+ */
+const ERRATUM_FAIL_CLOSED_SECTION = "(untagged confirmation)";
+
+/**
+ * Decide what a delta confirmation means, from the confirmers' verdicts and
+ * their structured `FINDING:` lines (PLAN §2.2). Pure, total, and deliberately
+ * separate from the dispatching round so the rule table can be read — and
+ * tested — without a pipeline.
+ *
+ * The four rules are evaluated in order and the first match wins:
+ *
+ *   R1  every confirmer approves                    → pass, re-anchor upstream
+ *   R2  ≥1 non-approving, ZERO High findings tagged
+ *       `delta` (every High is `inherited`)         → no halt, no re-anchor;
+ *                                                     re-open the owning phase
+ *   R3  ≥1 High tagged `delta`, every HIGH finding
+ *       is `local`, follow-up budget unspent        → one follow-up round
+ *   R4  otherwise (High delta that is nonlocal, or
+ *       the follow-up budget is spent)              → POSTMORTEM halt
+ *
+ * **Fail-closed default.** A non-approving confirmation that carries no
+ * parseable `FINDING:` line at all — or that carries any malformed one, whose
+ * severity is by definition unknowable — is credited with a synthetic
+ * `{High, delta, nonlocal}` finding. That is exactly the v0.22.7 behaviour: an
+ * untagged non-approving confirmation halts. The grammar buys leniency only for
+ * confirmers that actually speak it; silence still means stop.
+ *
+ * Findings from APPROVING confirmers are counted too (they can only make the
+ * verdict stricter — R1 has already been ruled out — and a High tagged `delta`
+ * is a High tagged `delta` whoever wrote it), but no fail-closed finding is
+ * synthesised for them: an approval is not silence.
+ *
+ * @param {{confirmations?: Array<{source?: string, approving?: boolean,
+ *   findings?: Array<object>, malformed?: Array<string>}>,
+ *   followUpAvailable?: boolean}} arg
+ * @returns {{rule: string, nonApproving: string[], findings: Array<object>,
+ *   failClosed: string[], highDelta: Array<object>, allLocal: boolean}}
+ */
+function erratumGateDecision({ confirmations, followUpAvailable = false } = {}) {
+  const list = Array.isArray(confirmations) ? confirmations.filter(Boolean) : [];
+  const nonApproving = list.filter((c) => c.approving !== true);
+
+  const findings = [];
+  const failClosed = [];
+  for (const confirmation of list) {
+    const source = confirmation.source ?? "(unknown)";
+    const parsed = Array.isArray(confirmation.findings) ? confirmation.findings : [];
+    const malformed = Array.isArray(confirmation.malformed) ? confirmation.malformed : [];
+    for (const finding of parsed) findings.push({ ...finding, source });
+    if (confirmation.approving === true) continue;
+    if (parsed.length > 0 && malformed.length === 0) continue;
+    failClosed.push(source);
+    findings.push({
+      severity: "High",
+      provenance: "delta",
+      locality: "nonlocal",
+      section: ERRATUM_FAIL_CLOSED_SECTION,
+      text:
+        parsed.length === 0
+          ? "non-approving confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+          : `non-approving confirmation carried ${malformed.length} malformed FINDING: line${
+              malformed.length === 1 ? "" : "s"
+            } — read as High/delta/nonlocal, fail-closed`,
+      source,
+      failClosed: true,
+    });
+  }
+
+  const sources = nonApproving.map((c) => c.source ?? "(unknown)");
+  if (nonApproving.length === 0) {
+    return { rule: "R1", nonApproving: [], findings, failClosed, highDelta: [], allLocal: true };
+  }
+
+  const highDelta = findings.filter((f) => f.severity === "High" && f.provenance === "delta");
+  // The locality conjunct is measured over the HIGH findings, not over every
+  // finding. PLAN §2.2 row R3 reads "every finding (any severity) is `local`",
+  // and that literal reading cannot be what the rule means: row R2 states the
+  // engine's standing High-only bar ("Mediums/Lows recorded, not gating — same
+  // bar as the review loop") two rows above it, and the plan's own RT-1a
+  // fixture — the POSTMORTEM-PR round the plan says must resolve to R3 —
+  // carries a `Low | inherited | nonlocal` line alongside its High. Gating on
+  // it would make R3 unreachable on the very episode it was designed for, and
+  // would let a Low a reviewer noticed in passing halt a pipeline that no
+  // High blocks. What the conjunct is protecting is the follow-up round's
+  // scope ("scoped strictly to the section the prior erratum edited"), and the
+  // follow-up is scoped by what blocks: the Highs.
+  const allLocal = findings.every((f) => f.severity !== "High" || f.locality === "local");
+  if (highDelta.length === 0) {
+    return { rule: "R2", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  if (allLocal && followUpAvailable === true) {
+    return { rule: "R3", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  return { rule: "R4", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+}
+
+/**
+ * Render parsed findings back into the canonical `FINDING:` grammar, one per
+ * line, attributed to the confirmer that raised it. This is what the halt
+ * payload carries instead of the pre-edit routed item list (PLAN §2.4 item 5):
+ * the routed list is what the engine ASKED for, and by halt time the findings
+ * are what actually blocks.
+ *
+ * @param {Array<object>} findings
+ * @returns {string}
+ */
+function formatConfirmationFindings(findings) {
+  const list = Array.isArray(findings) ? findings.filter(Boolean) : [];
+  if (list.length === 0) return "  (no parseable FINDING: lines)";
+  return list
+    .map(
+      (f) =>
+        `  ${f.source ?? "(unknown)"}: FINDING: ${f.severity} | ${f.provenance} | ` +
+        `${f.locality} | ${f.section} | ${f.text}`
+    )
+    .join("\n");
+}
+
+/**
+ * R2's re-open seam (PLAN §2.2 row R2).
+ *
+ * An inherited High is a real defect in the upstream document, but it is not a
+ * defect the erratum channel introduced, and the erratum channel is not where
+ * it gets fixed: it belongs to the owning phase's ordinary revision loop, under
+ * that phase's existing `MAX_REVIEW_ROUNDS` / lifetime budgets. So instead of
+ * halting, the run records that the upstream document's approval no longer
+ * holds — the phase gate then refuses to skip that phase on the strength of it.
+ *
+ * The registry is a plain `Map` owned by the run, passed in rather than
+ * captured, so this stays a function two tests can call directly.
+ *
+ * Deliberately scoped: this invalidates the RECORDED APPROVAL and nothing else.
+ * Task T5's `UPSTREAM-STATE` cascade is the general staleness machinery, and
+ * when it lands it should subsume this by making the same phase re-open through
+ * the byte/state comparison rather than through an in-run flag. Nothing here
+ * writes to disk, so there is nothing for T5 to unwind.
+ *
+ * @param {Map<string, object>} registry
+ * @param {{docType: string, phase?: string, reason?: string}} entry
+ * @returns {object|null} the recorded entry, or `null` when there is no registry
+ */
+function markApprovalReopened(registry, { docType, phase, reason } = {}) {
+  if (!registry || typeof registry.set !== "function" || !docType) return null;
+  const entry = { docType, phase: phase ?? null, reason: reason ?? "" };
+  registry.set(docType, entry);
+  return entry;
+}
+
+/**
+ * The read side of {@link markApprovalReopened}. Total: a missing registry, or
+ * a doc type nobody re-opened, reads as `null`.
+ *
+ * @param {Map<string, object>} registry
+ * @param {string} docType
+ * @returns {object|null}
+ */
+function reopenedApproval(registry, docType) {
+  if (!registry || typeof registry.get !== "function" || !docType) return null;
+  return registry.get(docType) ?? null;
+}
+
 // ─── TSPEC-PARSE-05: parseDecisionsWarranted ──────────────────────────────────
 
 /**
@@ -6268,6 +6434,21 @@ const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
  * reach it through the halt it produces.
  */
 const MAX_ERRATUM_ROUNDS_PER_DOC = 1;
+
+/**
+ * PLAN §2.2 row R3: the follow-up budget, per upstream doc per phase
+ * invocation. A DEC-ROUNDS-02-style damping term, and a DISTINCT budget from
+ * `MAX_ERRATUM_ROUNDS_PER_DOC` above — that constant bounds how many item SETS
+ * a phase may route at one document, this one bounds how many times a single
+ * routed set may be re-dispatched after its own confirmers said the edit
+ * missed. Keeping them separate is what preserves the erratum channel's bound
+ * on unbounded chains while still letting the one-noun, one-cell miss that
+ * produced POSTMORTEM-PR be fixed instead of halting the pipeline.
+ *
+ * Shipped constant, not config, for the same reason as its neighbour: a knob
+ * here is a knob that gets turned mid-run.
+ */
+const MAX_ERRATUM_FOLLOWUP_ROUNDS = 1;
 
 /**
  * One erratum line. A leading list marker is tolerated (agents write bullets),
@@ -10987,6 +11168,15 @@ async function main({
   let gatePostmortem = null;
 
   /**
+   * PLAN §2.2 row R2 — doc types whose recorded approval this run has re-opened.
+   * Written by the erratum gate through `markApprovalReopened`, read by
+   * `phaseGate`. Run-scoped and in-memory: nothing on disk is rewritten, so the
+   * only thing a re-open can do is make a phase RUN that would otherwise have
+   * been skipped on a recorded approval.
+   */
+  const reopenedApprovals = new Map();
+
+  /**
    * Run §2.5 steps 1–4 and step G for one skip-eligible phase entry.
    *
    * Called BEFORE the phase's creator dispatch, because a skip elides the whole
@@ -11088,7 +11278,20 @@ async function main({
             heldByNormalization = true;
           }
         }
-        if (freshness === "FRESH") {
+        // PLAN §2.2 row R2 — a document this run RE-OPENED cannot be skipped on
+        // its recorded approval, however fresh the bytes are. The approval was
+        // real; what changed is that this run has since been told, by that
+        // document's own approvers, that it carries an unfixed inherited High.
+        // Read here rather than folded into `record.approving` so the freeze
+        // trigger below still sees that the document HAS been approved once.
+        const reopened = reopenedApproval(reopenedApprovals, docType);
+        if (freshness === "FRESH" && reopened) {
+          notices.push(
+            `Phase ${phaseId}: ${docPath} was RE-OPENED during this run — ${reopened.reason} ` +
+              `The approval recorded at round ${record.candidate} does not hold and the phase runs.`
+          );
+        }
+        if (freshness === "FRESH" && !reopened) {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
           // otherwise running, so a skip has nothing to refuse (§6.2 row 13a).
@@ -11349,14 +11552,23 @@ async function main({
   /**
    * One erratum round for one upstream document: the targeted versioned edit
    * (step 4b) and the delta confirmation by that document's own approvers
-   * (step 4c). Returns the responses so the caller can read any FURTHER errata
-   * out of them — which is how a second batch for the same document becomes
-   * observable, and therefore how the §5 decision 2 bound gets to fire.
+   * (step 4c).
+   *
+   * Returns `{rule, responses}` — the PLAN §2.2 rule this round resolved to,
+   * plus every response, so the caller can read any FURTHER errata out of them,
+   * which is how a second batch for the same document becomes observable and
+   * therefore how the §5 decision 2 bound gets to fire. R3 additionally returns
+   * `followUpItems`: the caller re-enters with them and `attempt + 1`. R4 does
+   * not return at all — it halts.
+   *
+   * `attempt` is the follow-up index (0 = the original round). It is the only
+   * input to R3's budget test, so the budget is per upstream doc per phase
+   * invocation by construction: the caller's loop owns the counter.
    *
    * Returns `null` — and dispatches nothing at all — when the upstream document
    * has spent its DEC-ROUNDS-02 lifetime round budget.
    */
-  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes, attempt = 0 }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
     const upstreamPath = erratumDocPath(target);
@@ -11553,15 +11765,123 @@ async function main({
       }
     }
 
-    const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
-    if (nonApproving.length > 0) {
+    // ─── PLAN §2.2 — the severity/provenance/locality gate ───────────────────
+    //
+    // Until v0.22.7 this site read exactly one bit — "did every confirmer say
+    // pass?" — and spent the whole pipeline on the answer. It now reads the
+    // confirmers' structured findings as well, because the three halts this
+    // replaces were three DIFFERENT situations wearing one verdict:
+    //
+    //   - a one-noun miss inside the section the erratum had just edited
+    //     (POSTMORTEM-PR) — fixable in one more pass, and now R3;
+    //   - staleness the erratum did not introduce and was never asked to fix
+    //     (POSTMORTEM-P) — the owning phase's work, and now R2;
+    //   - a real, out-of-scope, delta-introduced defect — still a halt, R4.
+    //
+    // Findings are read from the response trailer and fall back to the
+    // confirmation file, on exactly the DEC-ERR-02 reasoning above: two
+    // channels, the file the durable one. A confirmer that says nothing
+    // parseable in either channel is failed closed by `erratumGateDecision`.
+    const confirmations = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      let parsed = parseConfirmationFindings(responses[i]);
+      if (parsed.findings.length === 0 && parsed.malformed.length === 0) {
+        let fileText = null;
+        try {
+          fileText = await readFileFn(confirmPaths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = parseConfirmationFindings(fileText ?? "");
+        if (fromFile.findings.length > 0 || fromFile.malformed.length > 0) parsed = fromFile;
+      }
+      confirmations.push({
+        source: reviewers[i],
+        approving: isPassResult(verdicts[i]),
+        findings: parsed.findings,
+        malformed: parsed.malformed,
+      });
+    }
+
+    const followUpAvailable = attempt < MAX_ERRATUM_FOLLOWUP_ROUNDS;
+    const decision = erratumGateDecision({ confirmations, followUpAvailable });
+    const roundLabel = attempt === 0 ? "erratum round" : `erratum follow-up round ${attempt}`;
+
+    if (decision.rule === "R2") {
+      // Inherited-only. NOT re-anchored: the approvers did not approve these
+      // bytes, and an anchor here would record an approval nobody gave. The
+      // owning phase is re-opened instead, and the pipeline moves forward.
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: target,
+        phase: upstreamPhase,
+        reason:
+          `phase ${phaseId}'s ${roundLabel} for ${target} closed with inherited findings only ` +
+          `(gate rule R2).`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, but NO High ` +
+        `finding is tagged \`delta\` (gate rule R2). This is not an erratum failure: the findings ` +
+        `are inherited staleness the erratum neither introduced nor was asked to fix. No POSTMORTEM ` +
+        `was written, ${upstreamPath} was NOT re-anchored, and its recorded approval is RE-OPENED ` +
+        `so phase ${entry ? entry.phase : upstreamPhase} runs again under its ordinary review ` +
+        `budgets. Findings:\n${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R2",
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R3") {
+      // Local, delta-introduced, and the follow-up budget is unspent: one more
+      // targeted pass, whose item list is the confirmers' own findings. No
+      // anchors — nothing has been approved yet.
+      const followUpItems = decision.findings.map((f) => ({
+        docType: target,
+        item:
+          `[${f.severity} | ${f.provenance} | ${f.locality}] ${f.section} — ${f.text}`,
+        source: f.source ?? "(confirmation)",
+      }));
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, and every ` +
+        `finding is \`local\` to the sections the erratum just edited (gate rule R3). Dispatching ` +
+        `ONE follow-up erratum round (budget ${MAX_ERRATUM_FOLLOWUP_ROUNDS} per upstream doc per ` +
+        `phase invocation) carrying the findings verbatim:\n` +
+        `${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R3",
+        followUpItems,
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R4") {
+      // §2.4 item 5 — the payload is the FINDINGS, not the pre-edit routed
+      // list. The historical payload named items that had already landed, at
+      // line numbers that had already moved, which sent the post-mortem author
+      // looking for defects that were not there. The routed list survives as
+      // background, because "what was asked for" is still context.
+      const spentClause = followUpAvailable
+        ? ""
+        : ` The follow-up budget of ${MAX_ERRATUM_FOLLOWUP_ROUNDS} round was already spent.`;
       await erratumPostmortemHalt({
         phaseId,
         label,
         reason:
           `Phase ${phaseId} halted: the delta confirmation of the ${target} erratum round did not ` +
-          `pass — non-approving: [${nonApproving.join(", ")}]. Erratum items against ` +
-          `${upstreamPath}: ${itemText}.`,
+          `pass — non-approving: [${decision.nonApproving.join(", ")}].${spentClause} Confirmer ` +
+          `findings, verbatim:\n${formatConfirmationFindings(decision.findings)}\n` +
+          `Background (the routed list this round was opened with, superseded by the findings ` +
+          `above) — Erratum items against ${upstreamPath}: ${itemText}.`,
       });
     }
 
@@ -11582,14 +11902,17 @@ async function main({
     });
 
     notices.push(
-      `Phase ${phaseId}: erratum round for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+      `Phase ${phaseId}: ${roundLabel} for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
         `confirmed at round v${round} by ${reviewers.join(", ")}.`
     );
 
-    return [
-      { text: authorResponse, source: authorSkill },
-      ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
-    ];
+    return {
+      rule: "R1",
+      responses: [
+        { text: authorResponse, source: authorSkill },
+        ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+      ],
+    };
   }
 
   /**
@@ -11672,11 +11995,30 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
+        // PLAN §2.2 row R3 — the follow-up loop. Bounded by construction: the
+        // attempt counter is the budget, `erratumRound` only answers R3 while
+        // it is unspent, and a spent budget resolves the same confirmation to
+        // R4. The loop condition is therefore a restatement of the constant,
+        // not a second, independently-drifting one.
+        const responses = [];
+        let result = await erratumRound({ phaseId, label, target, items, mintedHashes });
         // DEC-ROUNDS-02: the upstream document is capped. Nothing was dispatched
         // and nothing was edited, so there is no round to report and no response
         // to read follow-on errata out of. `erratumRound` said so in a notice.
-        if (responses === null) continue;
+        if (result === null) continue;
+        responses.push(...result.responses);
+        for (let attempt = 1; result.rule === "R3" && attempt <= MAX_ERRATUM_FOLLOWUP_ROUNDS; attempt++) {
+          result = await erratumRound({
+            phaseId,
+            label,
+            target,
+            items: result.followUpItems,
+            mintedHashes,
+            attempt,
+          });
+          if (result === null) break;
+          responses.push(...result.responses);
+        }
         routed.push(target);
         for (const reply of responses) {
           followOn.push(

@@ -3943,6 +3943,79 @@ function parseConfirmationFindings(text) {
   return { findings, malformed };
 }
 
+const ERRATUM_FAIL_CLOSED_SECTION = "(untagged confirmation)";
+
+function erratumGateDecision({ confirmations, followUpAvailable = false } = {}) {
+  const list = Array.isArray(confirmations) ? confirmations.filter(Boolean) : [];
+  const nonApproving = list.filter((c) => c.approving !== true);
+
+  const findings = [];
+  const failClosed = [];
+  for (const confirmation of list) {
+    const source = confirmation.source ?? "(unknown)";
+    const parsed = Array.isArray(confirmation.findings) ? confirmation.findings : [];
+    const malformed = Array.isArray(confirmation.malformed) ? confirmation.malformed : [];
+    for (const finding of parsed) findings.push({ ...finding, source });
+    if (confirmation.approving === true) continue;
+    if (parsed.length > 0 && malformed.length === 0) continue;
+    failClosed.push(source);
+    findings.push({
+      severity: "High",
+      provenance: "delta",
+      locality: "nonlocal",
+      section: ERRATUM_FAIL_CLOSED_SECTION,
+      text:
+        parsed.length === 0
+          ? "non-approving confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+          : `non-approving confirmation carried ${malformed.length} malformed FINDING: line${
+              malformed.length === 1 ? "" : "s"
+            } — read as High/delta/nonlocal, fail-closed`,
+      source,
+      failClosed: true,
+    });
+  }
+
+  const sources = nonApproving.map((c) => c.source ?? "(unknown)");
+  if (nonApproving.length === 0) {
+    return { rule: "R1", nonApproving: [], findings, failClosed, highDelta: [], allLocal: true };
+  }
+
+  const highDelta = findings.filter((f) => f.severity === "High" && f.provenance === "delta");
+
+  const allLocal = findings.every((f) => f.severity !== "High" || f.locality === "local");
+  if (highDelta.length === 0) {
+    return { rule: "R2", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  if (allLocal && followUpAvailable === true) {
+    return { rule: "R3", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  return { rule: "R4", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+}
+
+function formatConfirmationFindings(findings) {
+  const list = Array.isArray(findings) ? findings.filter(Boolean) : [];
+  if (list.length === 0) return "  (no parseable FINDING: lines)";
+  return list
+    .map(
+      (f) =>
+        `  ${f.source ?? "(unknown)"}: FINDING: ${f.severity} | ${f.provenance} | ` +
+        `${f.locality} | ${f.section} | ${f.text}`
+    )
+    .join("\n");
+}
+
+function markApprovalReopened(registry, { docType, phase, reason } = {}) {
+  if (!registry || typeof registry.set !== "function" || !docType) return null;
+  const entry = { docType, phase: phase ?? null, reason: reason ?? "" };
+  registry.set(docType, entry);
+  return entry;
+}
+
+function reopenedApproval(registry, docType) {
+  if (!registry || typeof registry.get !== "function" || !docType) return null;
+  return registry.get(docType) ?? null;
+}
+
 function parseDecisionsWarranted(result) {
   if (result == null || (typeof result === "string" && result.trim() === "")) {
     log(
@@ -4669,6 +4742,8 @@ const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
 });
 
 const MAX_ERRATUM_ROUNDS_PER_DOC = 1;
+
+const MAX_ERRATUM_FOLLOWUP_ROUNDS = 1;
 
 const ERRATUM_LINE_RE = /^\s*(?:[-*]\s+)?ERRATUM:\s*([^:]+?)\s*:\s*(\S.*?)\s*$/;
 
@@ -7686,6 +7761,8 @@ async function main({
 
   let gatePostmortem = null;
 
+  const reopenedApprovals = new Map();
+
   async function phaseGate({ phaseId, docType, docPath }) {
     const label = PHASE_DISPATCH[phaseId].label;
 
@@ -7740,7 +7817,15 @@ async function main({
             heldByNormalization = true;
           }
         }
-        if (freshness === "FRESH") {
+
+        const reopened = reopenedApproval(reopenedApprovals, docType);
+        if (freshness === "FRESH" && reopened) {
+          notices.push(
+            `Phase ${phaseId}: ${docPath} was RE-OPENED during this run — ${reopened.reason} ` +
+              `The approval recorded at round ${record.candidate} does not hold and the phase runs.`
+          );
+        }
+        if (freshness === "FRESH" && !reopened) {
 
           const pm = await resolvePostmortem({
             phase: phaseId,
@@ -7919,7 +8004,7 @@ async function main({
     );
   }
 
-  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes, attempt = 0 }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
     const upstreamPath = erratumDocPath(target);
@@ -8046,15 +8131,98 @@ async function main({
       }
     }
 
-    const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
-    if (nonApproving.length > 0) {
+    const confirmations = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      let parsed = parseConfirmationFindings(responses[i]);
+      if (parsed.findings.length === 0 && parsed.malformed.length === 0) {
+        let fileText = null;
+        try {
+          fileText = await readFileFn(confirmPaths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = parseConfirmationFindings(fileText ?? "");
+        if (fromFile.findings.length > 0 || fromFile.malformed.length > 0) parsed = fromFile;
+      }
+      confirmations.push({
+        source: reviewers[i],
+        approving: isPassResult(verdicts[i]),
+        findings: parsed.findings,
+        malformed: parsed.malformed,
+      });
+    }
+
+    const followUpAvailable = attempt < MAX_ERRATUM_FOLLOWUP_ROUNDS;
+    const decision = erratumGateDecision({ confirmations, followUpAvailable });
+    const roundLabel = attempt === 0 ? "erratum round" : `erratum follow-up round ${attempt}`;
+
+    if (decision.rule === "R2") {
+
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: target,
+        phase: upstreamPhase,
+        reason:
+          `phase ${phaseId}'s ${roundLabel} for ${target} closed with inherited findings only ` +
+          `(gate rule R2).`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, but NO High ` +
+        `finding is tagged \`delta\` (gate rule R2). This is not an erratum failure: the findings ` +
+        `are inherited staleness the erratum neither introduced nor was asked to fix. No POSTMORTEM ` +
+        `was written, ${upstreamPath} was NOT re-anchored, and its recorded approval is RE-OPENED ` +
+        `so phase ${entry ? entry.phase : upstreamPhase} runs again under its ordinary review ` +
+        `budgets. Findings:\n${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R2",
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R3") {
+
+      const followUpItems = decision.findings.map((f) => ({
+        docType: target,
+        item:
+          `[${f.severity} | ${f.provenance} | ${f.locality}] ${f.section} — ${f.text}`,
+        source: f.source ?? "(confirmation)",
+      }));
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, and every ` +
+        `finding is \`local\` to the sections the erratum just edited (gate rule R3). Dispatching ` +
+        `ONE follow-up erratum round (budget ${MAX_ERRATUM_FOLLOWUP_ROUNDS} per upstream doc per ` +
+        `phase invocation) carrying the findings verbatim:\n` +
+        `${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R3",
+        followUpItems,
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R4") {
+
+      const spentClause = followUpAvailable
+        ? ""
+        : ` The follow-up budget of ${MAX_ERRATUM_FOLLOWUP_ROUNDS} round was already spent.`;
       await erratumPostmortemHalt({
         phaseId,
         label,
         reason:
           `Phase ${phaseId} halted: the delta confirmation of the ${target} erratum round did not ` +
-          `pass — non-approving: [${nonApproving.join(", ")}]. Erratum items against ` +
-          `${upstreamPath}: ${itemText}.`,
+          `pass — non-approving: [${decision.nonApproving.join(", ")}].${spentClause} Confirmer ` +
+          `findings, verbatim:\n${formatConfirmationFindings(decision.findings)}\n` +
+          `Background (the routed list this round was opened with, superseded by the findings ` +
+          `above) — Erratum items against ${upstreamPath}: ${itemText}.`,
       });
     }
 
@@ -8071,14 +8239,17 @@ async function main({
     });
 
     notices.push(
-      `Phase ${phaseId}: erratum round for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+      `Phase ${phaseId}: ${roundLabel} for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
         `confirmed at round v${round} by ${reviewers.join(", ")}.`
     );
 
-    return [
-      { text: authorResponse, source: authorSkill },
-      ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
-    ];
+    return {
+      rule: "R1",
+      responses: [
+        { text: authorResponse, source: authorSkill },
+        ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+      ],
+    };
   }
 
   async function routeErrata({ phaseId, docType, label, loop, creatorResult }) {
@@ -8145,9 +8316,23 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
+        const responses = [];
+        let result = await erratumRound({ phaseId, label, target, items, mintedHashes });
 
-        if (responses === null) continue;
+        if (result === null) continue;
+        responses.push(...result.responses);
+        for (let attempt = 1; result.rule === "R3" && attempt <= MAX_ERRATUM_FOLLOWUP_ROUNDS; attempt++) {
+          result = await erratumRound({
+            phaseId,
+            label,
+            target,
+            items: result.followUpItems,
+            mintedHashes,
+            attempt,
+          });
+          if (result === null) break;
+          responses.push(...result.responses);
+        }
         routed.push(target);
         for (const reply of responses) {
           followOn.push(
