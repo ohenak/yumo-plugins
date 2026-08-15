@@ -47,6 +47,7 @@
 import path from "node:path";
 import { existsSync, statSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { message } from "./catalogue.mjs";
 
 /** The canonical workflow modules, by relative path inside this repo checkout. */
 export const WORKFLOW_MODULE_URLS = Object.freeze({
@@ -169,15 +170,26 @@ export const ENGINE_CONFIG_PATH = ".claude/pdlc.config.json";
  * coerced (a string `timeoutMinutes` reaching `* 60 * 1000` would stamp a
  * NaN timeout on every dispatch).
  *
+ * §6.4's `engine` discriminant is a THIRD, separate return key, computed
+ * alongside — never instead of — the `config`/`notices` pair above: an
+ * unparseable file or a non-object `engine` section is `unreadable` (the
+ * ladder's branch-0 refusal, `config.unreadable`, registered and emitted via
+ * the catalogue seam); a present-but-empty-of-`version` section is
+ * `no-pin`; anything else (no file, or a file with no `engine` key) is
+ * `absent`. The `dispatch` tunables keep degrading with a notice whenever
+ * the file parses — only the `engine` read refuses.
+ *
  * @param {object} [args]
  * @param {string} [args.cwd] consumer repo root the path resolves against
- * @returns {{config: object, notices: string[]}} `config` is `{}` or
- *   `{dispatch: {...}}` with only valid keys — shaped for `resolveTunables`.
+ * @returns {{config: object, notices: string[], engine: object}} `config` is
+ *   `{}` or `{dispatch: {...}}` with only valid keys — shaped for
+ *   `resolveTunables`. `engine` is `{state: "absent"}`,
+ *   `{state: "no-pin", config}` or `{state: "unreadable", path, error}`.
  */
 export function readEngineConfig({ cwd = process.cwd() } = {}) {
   const file = path.join(cwd, ENGINE_CONFIG_PATH);
   const notices = [];
-  if (!existsSync(file)) return { config: {}, notices };
+  if (!existsSync(file)) return { config: {}, notices, engine: { state: "absent" } };
 
   let parsed;
   try {
@@ -187,17 +199,36 @@ export function readEngineConfig({ cwd = process.cwd() } = {}) {
       `Notice: ${ENGINE_CONFIG_PATH} is not readable JSON (${err.message}) — ` +
         `using defaults for every dispatch tunable.`
     );
-    return { config: {}, notices };
+    const errorText = message("config.unreadable", { path: file, error: err.message });
+    return { config: {}, notices, engine: { state: "unreadable", path: file, error: errorText } };
+  }
+
+  const engineSection = parsed && typeof parsed === "object" ? parsed.engine : undefined;
+  let engine;
+  if (engineSection === undefined) {
+    engine = { state: "absent" };
+  } else if (
+    engineSection === null ||
+    typeof engineSection !== "object" ||
+    Array.isArray(engineSection)
+  ) {
+    const errorText = message("config.unreadable", {
+      path: file,
+      error: `"engine" is not an object`,
+    });
+    engine = { state: "unreadable", path: file, error: errorText };
+  } else {
+    engine = { state: "no-pin", config: engineSection };
   }
 
   const dispatch = parsed && typeof parsed === "object" ? parsed.dispatch : undefined;
-  if (dispatch === undefined) return { config: {}, notices };
+  if (dispatch === undefined) return { config: {}, notices, engine };
   if (dispatch === null || typeof dispatch !== "object" || Array.isArray(dispatch)) {
     notices.push(
       `Notice: the "dispatch" section of ${ENGINE_CONFIG_PATH} is not an object — ` +
         `using defaults for every dispatch tunable.`
     );
-    return { config: {}, notices };
+    return { config: {}, notices, engine };
   }
 
   const invalid = (key) =>
@@ -231,7 +262,7 @@ export function readEngineConfig({ cwd = process.cwd() } = {}) {
     } else invalid("retryBackoff");
   }
 
-  return { config: Object.keys(valid).length > 0 ? { dispatch: valid } : {}, notices };
+  return { config: Object.keys(valid).length > 0 ? { dispatch: valid } : {}, notices, engine };
 }
 
 // ─── resolveTunables (TSPEC §4.6, REQ §4.1) ─────────────────────────────────
