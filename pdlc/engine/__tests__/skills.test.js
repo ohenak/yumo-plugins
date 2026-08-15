@@ -118,13 +118,18 @@ test("explicit CLI override wins over env and over every discovered install", ()
   assert.match(out.source, /--plugin-root/);
 });
 
-test("env PDLC_PLUGIN_ROOT wins over discovery", () => {
+test("env PDLC_PLUGIN_ROOT wins over discovery when dev-mode is declared", () => {
   const fs = fakeFs({
     ...pluginTree("/from-env"),
     ...pluginTree(CACHE_ROOT),
     ...registryFile(CACHE_ROOT),
   });
-  const out = resolvePluginRoot({ env: { [PLUGIN_ROOT_ENV]: "/from-env" }, home: HOME, fs });
+  const out = resolvePluginRoot({
+    devDeclared: true,
+    env: { [PLUGIN_ROOT_ENV]: "/from-env" },
+    home: HOME,
+    fs,
+  });
   assert.equal(out.ok, true);
   assert.equal(out.root, "/from-env");
   assert.match(out.source, new RegExp(PLUGIN_ROOT_ENV));
