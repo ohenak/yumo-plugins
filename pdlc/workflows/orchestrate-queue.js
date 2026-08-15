@@ -84,6 +84,25 @@ export const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 // every phase except its Phase I implementation batches. See orchestrate-dev.js.
 const MODEL_QUEUE = "sonnet";
 
+// TSPEC §7.2 P-1 — this module's own default-inert `Provenance` null-object,
+// byte-identical to `orchestrate-dev.js`'s `NO_PROVENANCE` (mirrors
+// `lib/provenance.mjs`'s shape, §7.1). Not imported from the sibling module:
+// each workflow module carries its own copy (see `provenanceDoubles.js`'s
+// `NO_PROVENANCE_DOUBLE` comment — "both workflow modules carry" one). A
+// runtime that supplies no `_provenance` seam here produces byte-identical
+// `ADVISORY-*` commits to today (empty `line`).
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 // Recognized queue statuses. Only `pending` entries are eligible for pickup.
 // `in-progress` is a crash/active marker; `awaiting-merge`/`done`/`blocked`/`halted`
 // are terminal-for-this-loop and skipped.
@@ -1058,6 +1077,7 @@ export default async function main({
   _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
   const emit = logFn;
 
@@ -1301,7 +1321,8 @@ export default async function main({
         `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
         entry.feature,
         gitFn,
-        emit
+        emit,
+        provenance
       );
 
       if (seam === "A1") {
@@ -1633,21 +1654,25 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
  * step runs after the seam has already been adjudicated and recorded on disk, and demoting queue
  * progress to a halt over a durability shortfall here would be a strictly worse outcome than
  * leaving the record momentarily uncommitted for a later pass (or an operator) to pick up.
+ *
+ * TSPEC §7.2 kind 4 (AC-5.3, C-d) — one of the closed set of five commit helpers that compose
+ * `provenance.line` into the message string at the call to `_git`, never at a call site.
+ * `provenance` defaults to `NO_PROVENANCE`, so a caller that passes nothing yields today's exact
+ * bytes (P-1); the composed line is a no-op suffix when `line` is empty.
  */
-async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit, provenance = NO_PROVENANCE) {
   const added = await gitFn(["add", "--", recordPath]);
   if (!added || added.ok !== true) {
     emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
     return;
   }
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(advisory): record ${feature} (queue)`,
-    "--",
-    recordPath,
-  ]);
+  const line = provenance && provenance.line ? provenance.line : "";
+  const message = line
+    ? `chore(advisory): record ${feature} (queue)\n\n${line}`
+    : `chore(advisory): record ${feature} (queue)`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", recordPath]);
   if (committed && committed.ok === true) return;
 
   if (
