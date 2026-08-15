@@ -105,7 +105,7 @@ function assertAnnounced(decision, label) {
 // One input per ladder branch 0-7, each pinning the branch id it must reach
 // (PROP-VER-1, PROP-VER-2, PROP-VER-6, PROP-VER-8).
 
-describe.skip("T37: resolveVersion: the eight named branch fixtures (§6.3, §8)", () => {
+describe("T37: resolveVersion: the eight named branch fixtures (§6.3, §8)", () => {
   test("branch 0 config-unreadable: an unparseable config file refuses before any pin check", async () => {
     const { resolveVersion } = await import("../lib/resolve-version.mjs");
     const decision = resolveVersion({
@@ -247,7 +247,7 @@ describe.skip("T37: resolveVersion: the eight named branch fixtures (§6.3, §8)
 
 // ───────────────── PROP-VER-2: every branch announces, none empty ──────────
 
-test.skip("T37: PROP-VER-2: the eight branches' announcements are all non-empty and pairwise distinct", async () => {
+test("T37: PROP-VER-2: the eight branches' announcements are all non-empty and pairwise distinct", async () => {
   const { resolveVersion } = await import("../lib/resolve-version.mjs");
   const inputs = {
     0: { listing: ["0.3.1"], configResult: configUnreadable(".claude/pdlc.config.json", "bad json"), dev: false, location: NOT_A_CHECKOUT },
@@ -274,7 +274,7 @@ test.skip("T37: PROP-VER-2: the eight branches' announcements are all non-empty 
 
 // ───────── PROP-VER-6/7/8: malformed-vs-missing, checkout opt-in, no silent fallback ─────────
 
-describe.skip("T37: PROP-VER-6, PROP-VER-7, PROP-VER-8", () => {
+describe("T37: PROP-VER-6, PROP-VER-7, PROP-VER-8", () => {
   test("PROP-VER-6: a malformed pin is distinguishable from a missing one", async () => {
     const { resolveVersion } = await import("../lib/resolve-version.mjs");
     const missing = resolveVersion({
@@ -358,7 +358,7 @@ function drawLocation(rng) {
   return makeLocation({ isCheckout, pluginRootMatches });
 }
 
-test.skip(`T37: PROP-VER-16: resolveVersion is total and never announces empty over ${DRAWS} generated inputs`, async () => {
+test(`T37: PROP-VER-16: resolveVersion is total and never announces empty over ${DRAWS} generated inputs`, async () => {
   const { resolveVersion } = await import("../lib/resolve-version.mjs");
   const seed = resolveSeed(RESOLVE_VERSION_SEED);
   const rng = seeded(seed);
