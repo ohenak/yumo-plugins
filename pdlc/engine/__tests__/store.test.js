@@ -73,7 +73,7 @@ const ROOT = "/store/versions";
 
 // ── enumeration: sorting ──────────────────────────────────────────────────
 
-test.skip("T26: listVersions sorts entries ascending via handshake's numeric compare, not lexicographically", async () => {
+test("T26: listVersions sorts entries ascending via handshake's numeric compare, not lexicographically", async () => {
   const { listVersions } = await import("../lib/store.mjs");
   const fs = fakeFs(ROOT, {
     "0.10.0": "dir",
@@ -88,7 +88,7 @@ test.skip("T26: listVersions sorts entries ascending via handshake's numeric com
   assert.deepEqual(skipped, []);
 });
 
-test.skip("T26: listVersions on an empty store root returns an empty versions list", async () => {
+test("T26: listVersions on an empty store root returns an empty versions list", async () => {
   const { listVersions } = await import("../lib/store.mjs");
   const fs = fakeFs(ROOT, {});
   const { versions, skipped } = listVersions(fs, ROOT);
@@ -96,7 +96,7 @@ test.skip("T26: listVersions on an empty store root returns an empty versions li
   assert.deepEqual(skipped, []);
 });
 
-test.skip("T26: listVersions on a missing store root reads as empty, never throws", async () => {
+test("T26: listVersions on a missing store root reads as empty, never throws", async () => {
   const { listVersions } = await import("../lib/store.mjs");
   const fs = missingFs(ROOT);
   const { versions, skipped } = listVersions(fs, ROOT);
@@ -106,7 +106,7 @@ test.skip("T26: listVersions on a missing store root reads as empty, never throw
 
 // ── enumeration: unparseable entries are skipped and reported ────────────
 
-test.skip("T26: an unparseable directory name is skipped and reported by name, not guessed at (PROP-VER-11)", async () => {
+test("T26: an unparseable directory name is skipped and reported by name, not guessed at (PROP-VER-11)", async () => {
   const { listVersions } = await import("../lib/store.mjs");
   const fs = fakeFs(ROOT, {
     "0.3.1": "dir",
@@ -128,7 +128,7 @@ test.skip("T26: an unparseable directory name is skipped and reported by name, n
   }
 });
 
-test.skip("T26: every unparseable entry is reported, not just the first", async () => {
+test("T26: every unparseable entry is reported, not just the first", async () => {
   const { listVersions } = await import("../lib/store.mjs");
   const fs = fakeFs(ROOT, {
     "bogus-a": "dir",
@@ -144,7 +144,7 @@ test.skip("T26: every unparseable entry is reported, not just the first", async 
 
 // ── enumeration: non-directory entries are excluded, not reported ────────
 
-test.skip("T26: a non-directory entry sitting in the store root is excluded and not reported as skipped", async () => {
+test("T26: a non-directory entry sitting in the store root is excluded and not reported as skipped", async () => {
   const { listVersions } = await import("../lib/store.mjs");
   const fs = fakeFs(ROOT, {
     "0.3.1": "dir",
@@ -159,20 +159,20 @@ test.skip("T26: a non-directory entry sitting in the store root is excluded and 
 
 // ── rootFor: pure mapping, no fs consulted ────────────────────────────────
 
-test.skip("T26: rootFor maps a version string to a path under the store root", async () => {
+test("T26: rootFor maps a version string to a path under the store root", async () => {
   const { rootFor } = await import("../lib/store.mjs");
   assert.equal(rootFor(ROOT, "0.3.1"), path.join(ROOT, "0.3.1"));
   assert.equal(rootFor(ROOT, "1.0.0"), path.join(ROOT, "1.0.0"));
 });
 
-test.skip("T26: rootFor is a pure string mapping: it does not require the version to be enumerated first", async () => {
+test("T26: rootFor is a pure string mapping: it does not require the version to be enumerated first", async () => {
   const { rootFor } = await import("../lib/store.mjs");
   // Presence validation is the resolution ladder's job (branch 4,
   // pin-missing), not the store's — rootFor never throws or consults the fs.
   assert.equal(rootFor(ROOT, "9.9.9"), path.join(ROOT, "9.9.9"));
 });
 
-test.skip("T26: rootFor gives distinct roots for distinct versions", async () => {
+test("T26: rootFor gives distinct roots for distinct versions", async () => {
   const { rootFor } = await import("../lib/store.mjs");
   assert.notEqual(rootFor(ROOT, "0.1.0"), rootFor(ROOT, "0.2.0"));
 });
