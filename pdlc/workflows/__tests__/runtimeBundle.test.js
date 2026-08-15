@@ -1599,11 +1599,18 @@ describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §
 
       expect(calls).toHaveLength(1);
       // rewriteStatus's signature is (queuePath, feature, status, readFileFn,
-      // writeFileFn, gitFn, evidence) — 7 positional arguments, evidence last.
-      expect(calls[0]).toHaveLength(7);
+      // writeFileFn, gitFn, evidence, provenance) — 8 positional arguments
+      // now that TSPEC §7.2 kind-3 (K-3, AT-5.3) widens the closure to
+      // forward provenance as the 8th; evidence stays at index 6.
+      expect(calls[0]).toHaveLength(8);
       expect(calls[0][1]).toBe("f");
       expect(calls[0][2]).toBe("done");
       expect(calls[0][6]).toBe("abc1234 #45");
+      // This fixture never supplies a `provenance` key, so the closure's
+      // destructured `provenance` is `undefined`; rewriteStatus applies its
+      // own NO_PROVENANCE default downstream of this call (see the
+      // build-runtime.mjs comments at the two closures this reads from).
+      expect(calls[0][7]).toBeUndefined();
     }
   );
 
@@ -1632,8 +1639,12 @@ describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §
       await closure({ feature: "f", status: "halted" });
 
       expect(calls).toHaveLength(1);
-      expect(calls[0]).toHaveLength(7);
+      expect(calls[0]).toHaveLength(8);
       expect(calls[0][6]).toBeUndefined();
+      // Same NO_PROVENANCE-default rationale as the evidence-forwarding
+      // test above: no `provenance` key in the fixture means `undefined`
+      // reaches rewriteStatus's 8th parameter.
+      expect(calls[0][7]).toBeUndefined();
     }
   );
 });
