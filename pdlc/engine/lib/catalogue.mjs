@@ -36,6 +36,16 @@ export const MESSAGES = Object.freeze({
     severity: "info",
     template: "Auth source: undetermined at startup; the first dispatch decides",
   },
+  // TSPEC §6.4 branch 0: a corrupt consumer config file refuses before every
+  // pin branch, because an unparseable file cannot say whether a pin was
+  // ever declared. Names the file path and the parse error, per the ladder
+  // table's Result cell (§6.3, order 0).
+  "config.unreadable": {
+    severity: "refusal",
+    template:
+      "the consumer config file at {path} could not be parsed as JSON ({error}) — " +
+      "refusing rather than guessing whether a pin was declared; fix or delete the file",
+  },
   "guard.measurement-missing": {
     severity: "refusal",
     template:
