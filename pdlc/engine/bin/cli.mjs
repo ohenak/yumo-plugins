@@ -30,6 +30,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 
 import { PLUGIN_ROOT_ENV } from "../lib/skills.mjs";
 import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
@@ -37,6 +39,9 @@ import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
 import { runDev, runQueue, runQueueLoop, workflowModulePath, resolveTunables, readEngineConfig } from "../lib/run.mjs";
 import { buildEngineBlock, stampReport } from "../lib/report.mjs";
+import { resolveVersion } from "../lib/resolve-version.mjs";
+import { readPluginVersion, checkCompat } from "../lib/handshake.mjs";
+import { buildProvenance } from "../lib/provenance.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
@@ -481,6 +486,122 @@ function checkFlags(argv, command) {
   console.error(err);
   process.exitCode = 1;
   return false;
+}
+
+/**
+ * The launcher hop (TSPEC §6.2, DEC-EDIST-06): `spawnSync(process.execPath,
+ * [binPath, ...argv], { stdio: "inherit", env })`, re-raising the resolved
+ * child's exit status verbatim when it is a number, or `128 + signum` when
+ * the child was terminated by a signal instead (never collapsing a
+ * signalled child to exit 0). `spawnSyncFn` defaults to the real
+ * `node:child_process.spawnSync` and is overridden only by tests, which
+ * inject a pure recorder so resolution assertions never spawn a second Node.
+ *
+ * @param {string} binPath absolute path to the resolved engine's `bin/pdlc.mjs`
+ * @param {string[]} argv the original argv to forward, verbatim
+ * @param {object} env the env to pass through, unmerged and undefaulted
+ * @param {Function} [spawnSyncFn]
+ * @returns {number} the launcher's own exit code
+ */
+export function execLauncher(binPath, argv, env, spawnSyncFn = spawnSync) {
+  const result = spawnSyncFn(process.execPath, [binPath, ...argv], { stdio: "inherit", env: { ...env } });
+  if (typeof result.status === "number") return result.status;
+  if (result.signal) return 128 + os.constants.signals[result.signal];
+  return 1;
+}
+
+/**
+ * `--version` / `doctor`'s resolve-but-never-refuse exemption (TSPEC §6.2,
+ * AT-1.1..AT-1.4, AT-1.6). Runs the resolution ladder for REPORTING ONLY —
+ * never `exec`s a resolved child — and reports the resolved engine's triple
+ * on success, or falls back to the launcher's own triple with
+ * `mode: "unresolved"` and the refusing branch's text carried as a notice,
+ * never an exit. Always `exitCode: 0`: a diagnostic that exits non-zero on
+ * the thing it is diagnosing is not a diagnostic.
+ */
+export function runVersionDoctor({
+  command,
+  listing,
+  configResult,
+  dev = false,
+  env = {},
+  location,
+  storeRoot,
+  installCommand,
+  engineVersion,
+  pluginRoot,
+  fs,
+  pluginCompat,
+}) {
+  const decision = resolveVersion({ listing, configResult, dev, env, location });
+
+  let mode;
+  let resolvedEngineVersion;
+  let pin;
+  let storeNotice;
+  if (decision.kind === "refuse") {
+    mode = "unresolved";
+    resolvedEngineVersion = engineVersion;
+    pin = null;
+    storeNotice = decision.announcement;
+  } else {
+    mode = decision.kind;
+    resolvedEngineVersion = decision.kind === "dev" ? engineVersion : decision.version;
+    pin = decision.kind === "pin" ? decision.version : null;
+    storeNotice = null;
+  }
+
+  // BR-1.3: present-but-unreadable is never collapsed into AT-1.1's "not
+  // found" — that literal is reserved for a resolved root with no manifest
+  // read attempted at all. A broken manifest short-circuits `checkCompat`
+  // and builds its own refusal, naming the root-inspection failure instead.
+  let pluginReadError = null;
+  let plugin;
+  if (!pluginRoot) {
+    plugin = checkCompat(pluginCompat, null);
+  } else {
+    const read = readPluginVersion(pluginRoot, { fs });
+    if (read.ok) {
+      plugin = checkCompat(pluginCompat, read.version);
+    } else {
+      pluginReadError = read.reason;
+      const range = String(pluginCompat == null ? "" : pluginCompat).trim();
+      plugin = { ok: false, reason: pluginReadError, pluginVersion: "unreadable", range };
+    }
+  }
+
+  const provenance = buildProvenance({
+    engineVersion: resolvedEngineVersion,
+    pluginVersion: plugin.pluginVersion === "not found" ? null : plugin.pluginVersion,
+    pluginCompat: plugin.range,
+    channel: "engine",
+    mode,
+    pin,
+    loadRoot: (location && location.enginePath) || "",
+  });
+
+  const lines = [`pdlc-engine v${resolvedEngineVersion}`, `mode:     ${mode}${pin ? ` (pin: ${pin})` : ""}`];
+  if (storeNotice) lines.push(storeNotice);
+  lines.push(`plugin:   pdlc v${plugin.pluginVersion} (engine requires ${plugin.range})`);
+  if (!plugin.ok) lines.push(plugin.reason);
+  if (pluginReadError) lines.push(pluginReadError);
+  if (command === "doctor") {
+    lines.push(`store root:       ${storeRoot}`);
+    lines.push(`installed:        ${listing.length > 0 ? listing.join(", ") : "none"}`);
+    lines.push(`install command:  ${installCommand}`);
+  }
+
+  return {
+    exitCode: 0,
+    mode,
+    resolvedEngineVersion,
+    pin,
+    storeNotice,
+    plugin,
+    pluginReadError,
+    provenance,
+    lines,
+  };
 }
 
 // TSPEC §9.3: the runner seam. `runDev`, `runQueue` and `runQueueLoop` arrive

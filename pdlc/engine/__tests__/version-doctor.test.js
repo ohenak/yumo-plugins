@@ -173,7 +173,7 @@ function baseInputs(overrides = {}) {
 // (c) `doctor` under a corrupt config prints branch 0's text and still
 // exits 0 — exercised across all three refusing branches, not just one.
 
-describe.skip("T46: (a)(b)(c) the store ladder resolves for reporting but never refuses", () => {
+describe("T46: (a)(b)(c) the store ladder resolves for reporting but never refuses", () => {
   test("(a) a pinned repo reports the RESOLVED triple with mode: 'pin'", async () => {
     const { runVersionDoctor } = await import("../bin/cli.mjs");
     const out = runVersionDoctor(
@@ -250,7 +250,7 @@ describe.skip("T46: (a)(b)(c) the store ladder resolves for reporting but never 
 // Not "both are non-empty": a positive pin on each, plus `notEqual` between
 // them, and AT-1.2's text additionally names the range AND the version found.
 
-describe.skip("T46: (d) AT-1.1 vs AT-1.2 — distinguishable refusal texts, not merely both non-empty", () => {
+describe("T46: (d) AT-1.1 vs AT-1.2 — distinguishable refusal texts, not merely both non-empty", () => {
   test("no plugin installed (AT-1.1) vs an out-of-range plugin (AT-1.2) refuse with different text", async () => {
     const { runVersionDoctor } = await import("../bin/cli.mjs");
 
@@ -282,7 +282,7 @@ describe.skip("T46: (d) AT-1.1 vs AT-1.2 — distinguishable refusal texts, not 
 // ───── (e) AT-1.4 / BR-1.3: an unparseable manifest names root + parse
 // failure, and is NOT AT-1.1's "not found" message ─────────────────────────
 
-describe.skip("T46: (e) AT-1.4 (BR-1.3): unparseable plugin manifest refuses on its own terms", () => {
+describe("T46: (e) AT-1.4 (BR-1.3): unparseable plugin manifest refuses on its own terms", () => {
   test("a present-but-unparseable manifest names the root and the parse failure, distinct from AT-1.1's 'not found'", async () => {
     const { runVersionDoctor } = await import("../bin/cli.mjs");
     const out = runVersionDoctor(
@@ -332,7 +332,7 @@ describe.skip("T46: (e) AT-1.4 (BR-1.3): unparseable plugin manifest refuses on 
 // ───── (f) AT-1.3: the diagnostic completes and reports the triple in
 // BOTH refusal states, not just one ─────────────────────────────────────────
 
-describe.skip("T46: (f) AT-1.3: doctor completes and reports the triple in both refusal states", () => {
+describe("T46: (f) AT-1.3: doctor completes and reports the triple in both refusal states", () => {
   test("absent (AT-1.1) and out-of-range (AT-1.2) both complete with exit 0 and a fully-populated triple", async () => {
     const { runVersionDoctor } = await import("../bin/cli.mjs");
 
@@ -372,7 +372,7 @@ describe.skip("T46: (f) AT-1.3: doctor completes and reports the triple in both 
 // not hold in general (a defect BR-1.5 names as unfalsifiable any other
 // way).
 
-describe.skip("T46: (g) AT-1.6/BR-1.5: query triple, banner triple and report triple are the SAME Provenance", () => {
+describe("T46: (g) AT-1.6/BR-1.5: query triple, banner triple and report triple are the SAME Provenance", () => {
   test("`--version` and `doctor` agree, over identical inputs, three ways: with each other AND with a direct buildProvenance() call", async () => {
     const { runVersionDoctor } = await import("../bin/cli.mjs");
     const { buildProvenance } = await import("../lib/provenance.mjs");
@@ -413,7 +413,7 @@ describe.skip("T46: (g) AT-1.6/BR-1.5: query triple, banner triple and report tr
 // that the refusal REASON TEXT is asserted by containment and the
 // version-triple MEMBER is asserted by equality — never the reverse.
 
-describe.skip("T46: (h) AT-1.1's two operators: containment on the reason text, equality on the triple member", () => {
+describe("T46: (h) AT-1.1's two operators: containment on the reason text, equality on the triple member", () => {
   test("`assert.match` on the reason text, `assert.equal` on the triple member — reversing them is the false-red T15 exists to prevent", async () => {
     const { runVersionDoctor } = await import("../bin/cli.mjs");
     const out = runVersionDoctor(baseInputs({ command: "doctor", pluginRoot: NO_ROOT }));
