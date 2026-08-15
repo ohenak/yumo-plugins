@@ -166,6 +166,38 @@ authored in the TSPEC or the test itself.
 
 ---
 
+## DEC-DIST-07: The engine publishes under the MIT licence
+
+**Decision:** `pdlc/engine` publishes under the MIT licence (SPDX id `MIT`). This discharges
+O-8 blocker 3 (`N-2` in `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) —
+DEC-DIST-05 committed the package to public npm distribution but left the licence itself as an
+operator obligation, since a licence choice is a legal/policy decision no spec can invent.
+
+**N-2 recorded:** yes
+
+**Why MIT, over the alternatives considered:**
+
+| Licence | Verdict | Deciding reason |
+|---|---|---|
+| MIT | **chosen** | Matches the repo's existing "world-readable public repo" posture (DEC-DIST-05's premise); permissive, one-file, no copyleft obligation for consumers embedding the CLI |
+| Apache-2.0 | rejected | Patent grant and NOTICE-file bookkeeping are unneeded ceremony for a CLI wrapper with no patent surface of its own |
+| UNLICENSED (status quo) | rejected | Incompatible with public npm publication (DEC-DIST-05); this is exactly the gap DEC-DIST-07 closes |
+
+**Consequence:** `pdlc/engine/LICENSE` carries the MIT licence text, and
+`pdlc/engine/package.json`'s `license` field reads `MIT`, replacing the prior
+`"UNLICENSED"` value. `pdlc/engine/__tests__/packaging.test.js`'s `PF-4` reads this record's
+`**N-2 recorded:**` line — never `pdlc/engine/LICENSE`'s presence in the tree — to decide
+whether `LICENSE` belongs in the expected packed set (TSPEC:349, TSPEC:374-386).
+
+**Origin:** `pdlc-engine-distribution` N-2 / O-8 blocker 3, decided 2026-08-15 (operator
+delegated adjudication).
+
+**Testability:** `pdlc/engine/__tests__/packaging.test.js`'s `licenceRecorded()` asserts
+`/^\*\*N-2 recorded:\*\*\s*yes/m` against this file; `PF-4`'s both-directions packed-set
+equality goes red if `pdlc/engine/LICENSE` and this record's flip do not land together.
+
+---
+
 ---
 
 ## Open at project level
