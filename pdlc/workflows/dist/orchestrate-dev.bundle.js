@@ -10758,7 +10758,13 @@ function hasResidualSeamToken(reason) {
   return typeof reason === "string" && /^\[SEAM:/i.test(reason.trim());
 }
 
-function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
+function updateQueueStatus(
+  markdown,
+  feature,
+  newStatus,
+  evidence = null,
+  provenanceLine = null,
+) {
   if (typeof markdown !== "string" || !feature) {
     return { markdown, matched: false };
   }
@@ -10787,6 +10793,12 @@ function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
     if ((cells[featureCol] || "").trim() !== feature) continue;
 
     if (evidence == null) {
+      if (provenanceLine) {
+        return writeProvenanceOnlyRow(markdown, feature, newStatus, provenanceLine, {
+          statusCol,
+          featureCol,
+        });
+      }
       const newCells = cells.slice();
       newCells[statusCol] = newStatus;
       lines[i] = `| ${newCells.join(" | ")} |`;
@@ -10798,7 +10810,7 @@ function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
       return { markdown, matched: true, written: false, foundStatus };
     }
 
-    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
+    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, provenanceLine, {
       statusCol,
       featureCol,
     });
@@ -10807,15 +10819,57 @@ function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
   return { markdown, matched: false }; 
 }
 
+function writeProvenanceOnlyRow(markdown, feature, newStatus, provenanceLine, hint) {
+  const { markdown: migrated } = ensureEngineColumn(markdown);
+  const lines = migrated.split("\n");
+
+  let statusCol = hint.statusCol;
+  let featureCol = hint.featureCol;
+  let engineCol = -1;
+  for (const line of lines) {
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      const s = cells.findIndex((c) => c.includes("status"));
+      const f = cells.findIndex((c) => c.includes("feature"));
+      const g = cells.findIndex((c) => c.includes("engine"));
+      if (s >= 0) statusCol = s;
+      if (f >= 0) featureCol = f;
+      if (g >= 0) engineCol = g;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim());
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+    if ((cells[featureCol] || "").trim() !== feature) continue;
+
+    const newCells = cells.slice();
+    newCells[statusCol] = newStatus;
+    if (engineCol >= 0) {
+      newCells[engineCol] = provenanceLine;
+    }
+    lines[i] = `| ${newCells.join(" | ")} |`;
+    return { markdown: lines.join("\n"), matched: true };
+  }
+
+  return { markdown, matched: false };
+}
+
 const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"];
 
-function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
-  const { markdown: migrated } = ensureEvidenceColumn(markdown);
+function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, provenanceLine, hint) {
+  const { markdown: evidenceMigrated } = ensureEvidenceColumn(markdown);
+  const migrated = provenanceLine ? ensureEngineColumn(evidenceMigrated).markdown : evidenceMigrated;
   const lines = migrated.split("\n");
 
   let statusCol = hint.statusCol;
   let featureCol = hint.featureCol;
   let evidenceCol = -1;
+  let engineCol = -1;
   for (const line of lines) {
     if (!line.trim().startsWith("|")) continue;
     const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
@@ -10823,9 +10877,11 @@ function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) 
       const s = cells.findIndex((c) => c.includes("status"));
       const f = cells.findIndex((c) => c.includes("feature"));
       const e = cells.findIndex((c) => c.includes("evidence"));
+      const g = cells.findIndex((c) => c.includes("engine"));
       if (s >= 0) statusCol = s;
       if (f >= 0) featureCol = f;
       if (e >= 0) evidenceCol = e;
+      if (g >= 0) engineCol = g;
       break;
     }
   }
@@ -10842,6 +10898,9 @@ function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) 
     if (evidenceCol >= 0) {
       const prevEvidence = (newCells[evidenceCol] || "").trim();
       newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
+    }
+    if (engineCol >= 0 && provenanceLine) {
+      newCells[engineCol] = provenanceLine;
     }
     lines[i] = `| ${newCells.join(" | ")} |`;
     return { markdown: lines.join("\n"), matched: true, written: true };
@@ -10875,6 +10934,51 @@ function ensureEvidenceColumn(markdown) {
   }
 
   lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Evidence");
+
+  const sepIdx = headerIdx + 1;
+  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
+    const sepLine = lines[sepIdx].trim();
+    if (isSeparatorRow(splitRow(sepLine))) {
+      lines[sepIdx] = appendCell(sepLine, "---");
+    }
+  }
+
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const trimmed = line.trim();
+    if (isSeparatorRow(splitRow(trimmed))) continue; 
+    lines[i] = appendCell(trimmed, "");
+  }
+
+  return { markdown: lines.join("\n"), migrated: true };
+}
+
+function ensureEngineColumn(markdown) {
+  if (typeof markdown !== "string") return { markdown, migrated: false };
+
+  const lines = markdown.split("\n");
+  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
+
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return { markdown, migrated: false }; 
+
+  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
+  if (headerCells.some((c) => c.includes("engine"))) {
+    return { markdown, migrated: false }; 
+  }
+
+  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Engine");
 
   const sepIdx = headerIdx + 1;
   if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
