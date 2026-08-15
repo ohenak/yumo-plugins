@@ -2036,6 +2036,18 @@ async function phaseMerge({
 
 const MODEL_DEFAULT = "opus"; 
 
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 const MAX_REVIEW_ROUNDS = 5;
 
 const MAX_LIFETIME_ROUNDS = 15;
@@ -8215,6 +8227,8 @@ async function main({
   _runCommand: runCommandFn = NO_RUN_COMMAND,
 
   _sessionAgent,
+
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
 
   const emit = logFn;
@@ -8504,6 +8518,14 @@ async function main({
       if (result != null && String(result).trim() !== "") {
         const confirmation = await checkFileFn(postmortemPath);
         written = !!(confirmation && confirmation.ok);
+
+        if (written && provenance.block) {
+          try {
+            await appendFileFn(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+
+          }
+        }
       }
     } catch {
       written = false;
@@ -9258,6 +9280,7 @@ async function main({
   if (!reqPath || reqPath.trim() === "") {
     haltReason = `Error: no REQ path provided. Usage: /pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -9273,6 +9296,7 @@ async function main({
   if (!match) {
     haltReason = `Error: REQ path does not match expected pattern docs/{feature}/REQ-{feature}.md — got: ${reqPath}`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -9291,6 +9315,7 @@ async function main({
       `Error: invalid forcePhases token${forceParse.badTokens.length === 1 ? "" : "s"}: ` +
       `${forceParse.badTokens.join(", ")}. Valid: ${[...FORCE_PHASE_TOKENS, "all"].join(", ")}.`;
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -9311,6 +9336,7 @@ async function main({
       haltReason = `Error: REQ file not found at ${reqPath}`;
     }
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -10286,6 +10312,7 @@ async function main({
     );
 
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -10308,6 +10335,7 @@ async function main({
   }
 
   return buildFinalReport({
+    provenance,
     feature: featureName,
     outcome: "success",
     notices,
@@ -10391,6 +10419,8 @@ function buildFinalReport({
   headSha = null,
 
   advisory = undefined,
+
+  provenance = NO_PROVENANCE,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -10404,6 +10434,8 @@ function buildFinalReport({
     harvestStatus,
     dodVerifiedCommit,
     dodHeadUnverified,
+
+    provenance,
 
     notices,
 
