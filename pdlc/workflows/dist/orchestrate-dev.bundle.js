@@ -5471,7 +5471,8 @@ async function reviewLoop({
     const gatePass = isPassResult(verdict1) && isPassResult(verdict2);
 
     if (gatePass) {
-      await appendApprovalAnchors({
+
+      const anchorResult = await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
@@ -5484,6 +5485,8 @@ async function reviewLoop({
         emit,
         provenance,
       });
+      const anchoredPaths =
+        anchorResult && Array.isArray(anchorResult.paths) ? anchorResult.paths : [];
 
       return {
         converged: true,
@@ -5491,6 +5494,7 @@ async function reviewLoop({
         lastOptimizerResult,
         trailerReason: lastTrailerReason,
         errata: errata.slice(),
+        anchoredPaths,
       };
     }
 
@@ -5579,9 +5583,10 @@ async function appendApprovalAnchors({
       "Approval anchor not recorded: the reviewed document could not be read at " +
         "capture time. The round yields no approval; the phase will re-run."
     );
-    return;
+    return { appended: false, paths: [] };
   }
 
+  const appendedPaths = [];
   let appended = false;
   for (const path of paths) {
 
@@ -5589,7 +5594,7 @@ async function appendApprovalAnchors({
     const existingText = probe ? null : await _readFile(path);
     if (probe ? probe.exists !== true : existingText == null) {
       emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     const existing = probe
       ? (Array.isArray(probe.anchors) ? probe.anchors : [])
@@ -5599,7 +5604,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
           "APPROVAL-HASH: lines, so its history is ambiguous. The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     if (existing.length === 1) {
       if (existing[0] === hash) continue; 
@@ -5607,7 +5612,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
           `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     try {
 
@@ -5620,16 +5625,17 @@ async function appendApprovalAnchors({
           upstreamStateLines(upstreamState)
       );
       appended = true;
+      appendedPaths.push(path);
     } catch (err) {
       emit(
         `Approval anchor not recorded: appending to ${path} failed (${err && err.message}). ` +
           "The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
   }
 
-  if (!appended || typeof _git !== "function") return;
+  if (!appended || typeof _git !== "function") return { appended, paths: appendedPaths };
   try {
     await _git(["add", ...paths]); 
     const line = provenance && provenance.line ? provenance.line : "";
@@ -5640,6 +5646,8 @@ async function appendApprovalAnchors({
   } catch {
 
   }
+
+  return { appended, paths: appendedPaths };
 }
 
 const MAP = {
@@ -9073,7 +9081,7 @@ async function main({
       });
     }
 
-    await appendApprovalAnchors({
+    const anchorResult = await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
@@ -9087,6 +9095,9 @@ async function main({
       emit,
       provenance,
     });
+    if (anchorResult && Array.isArray(anchorResult.paths)) {
+      artifactPaths.push(...anchorResult.paths);
+    }
 
     await cascadeDownstream({ phaseId, target, editedIn: roundLabel });
 
@@ -9285,6 +9296,8 @@ async function main({
       _checkFile: checkFileFn,
       ...wrapperSeams,
     });
+
+    if (Array.isArray(loop.anchoredPaths)) artifactPaths.push(...loop.anchoredPaths);
     checkConverged(
       loop,
       phaseId,
@@ -10031,6 +10044,8 @@ async function main({
         _checkFile: checkFileFn,
         ...wrapperSeams,
       });
+
+      if (Array.isArray(crResult.anchoredPaths)) artifactPaths.push(...crResult.anchoredPaths);
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
@@ -10107,6 +10122,8 @@ async function main({
           } catch {
             codeReviewText = "";
           }
+
+          if (codeReviewText) artifactPaths.push(codeReviewPath);
           const a3 = await runAdvisorySeamFn({
             seam: "A3",
             feature: featureName,
@@ -10143,6 +10160,8 @@ async function main({
           dodVerifiedCommit = null;
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
+
+        artifactPaths.push(`docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`);
       }
 
       if (!PHASE_H_ENABLED) {
@@ -10194,6 +10213,8 @@ async function main({
         }
 
         harvestStatus = "Harvested";
+
+        artifactPaths.push(learningsPath);
         recordPhase("H", "Harvest", "✅", "Learnings harvested");
       }
 
@@ -10233,6 +10254,8 @@ async function main({
           const check = await checkFileFn(advisoryPath);
           const recordExists = Boolean(check && check.ok);
           if (recordExists) {
+
+            artifactPaths.push(advisoryPath);
             await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
             const del = await gitFn(["rm", "--", advisoryPath]);
             if (guardRefused(del)) {
@@ -10327,6 +10350,10 @@ async function main({
         postmortemStatus = "written";
         postmortemPath = candidate;
       }
+    }
+
+    if (postmortemStatus === "written" && postmortemPath) {
+      artifactPaths.push(postmortemPath);
     }
 
     let queueRow = null;
@@ -11510,6 +11537,7 @@ async function main({
             phaseFn,
             emit,
             finish,
+            provenance,
           });
         }
 
@@ -11545,6 +11573,7 @@ async function main({
       phaseFn,
       emit,
       finish,
+      provenance,
     });
   }
 
@@ -11572,6 +11601,8 @@ async function runPicked({
   emit,
 
   finish,
+
+  provenance,
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -11586,7 +11617,9 @@ async function runPicked({
     "in-progress",
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   let report;
@@ -11599,7 +11632,9 @@ async function runPicked({
       "halted",
       readFileFn,
       writeFileFn,
-      gitFn
+      gitFn,
+      null,
+      provenance
     );
     return finish({
       outcome: "halted",
@@ -11619,7 +11654,9 @@ async function runPicked({
     newStatus,
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   emit(
@@ -11649,7 +11686,8 @@ async function rewriteStatus(
   readFileFn,
   writeFileFn,
   gitFn = defaultGit,
-  evidence = null
+  evidence = null,
+  provenance = NO_PROVENANCE
 ) {
   const current = await readFileFn(queuePath);
 
@@ -11657,11 +11695,13 @@ async function rewriteStatus(
     return { queueRow: "none" };
   }
 
+  const provenanceLine = provenance && provenance.line ? provenance.line : null;
   const { markdown, matched, written, foundStatus } = updateQueueStatus(
     current,
     feature,
     status,
-    evidence
+    evidence,
+    provenanceLine
   );
 
   if (!matched) {
@@ -11681,7 +11721,7 @@ async function rewriteStatus(
   }
 
   await writeFileFn(queuePath, markdown);
-  return await commitQueueRow(queuePath, feature, status, gitFn);
+  return await commitQueueRow(queuePath, feature, status, gitFn, provenanceLine);
 }
 
 const NOTHING_TO_COMMIT_RE = /nothing to commit/i;
@@ -11690,17 +11730,15 @@ function firstLine(text) {
   return String(text ?? "").split("\n")[0].trim();
 }
 
-async function commitQueueRow(queuePath, feature, status, gitFn) {
+async function commitQueueRow(queuePath, feature, status, gitFn, provenanceLine = null) {
   const added = await gitFn(["add", "--", queuePath]);
   if (!added.ok) return uncommitted(added, queuePath);
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(queue): ${feature} → ${status}`,
-    "--",
-    queuePath,
-  ]);
+  const message = provenanceLine
+    ? `chore(queue): ${feature} → ${status}\n\n${provenanceLine}`
+    : `chore(queue): ${feature} → ${status}`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", queuePath]);
   if (committed.ok) return { queueRow: "recorded" };
 
   if (
