@@ -292,7 +292,7 @@ repo's is `cd pdlc/workflows && npm test -- --testPathIgnorePatterns …` — so
 any red test **ends the run**, and a genuinely RED-terminal batch is unavailable here.
 
 The discipline is therefore the one this repo already shipped for the advisory tier
-(`docs/pdlc-advisory-tier/PLAN-pdlc-advisory-tier.md:207-216`): a 🔴 task **authors its cases inside
+(`docs/completed/pdlc-advisory-tier/PLAN-pdlc-advisory-tier.md:207-216`): a 🔴 task **authors its cases inside
 `describe.skip` blocks**, one block per green owner, named for that owner
 (`describe.skip("T25 — corpus and predicate", …)`). Skipped cases are *reported as skipped*, not as
 passed, so the wave gate stays green and truthful. The 🟢 owner's **first** obligation is to

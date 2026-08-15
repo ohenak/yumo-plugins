@@ -112,12 +112,40 @@ attached to it: the `trap 'exit 0' ERR EXIT` implementation was correct for the 
 green (codebase G-02). A detector is constructible with a one-fixture addition and is booked as
 follow-up work; until it lands, a P0-absolute guarantee rests on reasoning.
 
+## DEC-DIST-05: The engine ships as a scoped **public npm package**
+
+**Decision:** the pdlc engine (`pdlc/engine/`) is distributed through public npm as a scoped
+package. Consumers install and upgrade with one npm command and pin a version per project; the
+registry itself supplies immutability and the yank primitive.
+
+**Why this channel, over the two alternatives considered:**
+
+| Channel | Verdict | Deciding reason |
+|---|---|---|
+| Public npm (scoped) | **chosen** | Republishing an existing version is refused by the registry, so a version pointer is immutable without any discipline of ours; `npm deprecate` is a real yank primitive; publishing is one CI step |
+| Git-tag install | rejected | A bare tag is force-pushable, so the version pointer is mutable — the one property the distribution contract most needs |
+| Private registry | rejected | Cost without benefit: the prompt corpus it would protect (`pdlc/skills/**`, and the copies embedded in `pdlc/workflows/orchestrate-dev.js`) is already world-readable in a public repo |
+
+**Premise, stated so its failure is visible:** the repo is public. If it ever goes private, this
+decision must be re-opened — not because npm stops working, but because the reasoning that made
+privacy a non-discriminator disappears.
+
+**Consequence:** publishing requires a licence. `pdlc/engine/package.json` says
+`"license": "UNLICENSED"` today, which is incompatible with public publication; settling it is an
+operator obligation (O-8 in `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`),
+blocking the first publish and nothing earlier. Release automation for the package is queue row 8
+`pdlc-release-ci`, renarrowed for exactly this purpose.
+
+**Origin:** `pdlc-engine-distribution` O-1, decided 2026-08-13 (operator delegated adjudication).
+
+---
+
 ---
 
 ## Open at project level
 
 | Item | Where it is bound |
 |---|---|
-| Full `pdlc install`; loading workflows from the plugin path with **no copy at all**; auto-sync; detecting a plugin cache behind the marketplace; **per-worktree consumer state** (a self-created `git worktree add` tree is not a supported consumer — its `.claude/workflows/` is empty while the drift tooling resolves the main worktree and reports green) | D-DIST-01/02/03/05/07 → queue row 6 `pdlc-install-mechanism` |
-| Release automation on `yumo-plugins` (tag/publish workflow, marketplace step). **Partially discharged out of band:** the PR-test half landed in `3ef6ac7`; release automation has not | D-DIST-06 → queue row 7 `pdlc-release-ci` |
+| Full `pdlc install`; loading workflows from the plugin path with **no copy at all**; auto-sync; detecting a plugin cache behind the marketplace; **per-worktree consumer state** (a self-created `git worktree add` tree is not a supported consumer — its `.claude/workflows/` is empty while the drift tooling resolves the main worktree and reports green) | D-DIST-01/02/03/05/07 → queue row 6 `pdlc-install-mechanism` — **closed 2026-08-13** (`pdlc-engine-distribution` O-3): D-DIST-01/02/03/05 absorbed by REQ-EDIST-03, D-DIST-07 dissolves with the consumer copy that `pdlc-plugin-retirement` removes, re-opening against queue row 6 only if retirement does not land |
+| Release automation on `yumo-plugins` (tag/publish workflow, marketplace step). **Partially discharged out of band:** the PR-test half landed in `3ef6ac7`; release automation has not | D-DIST-06 → queue row 7 `pdlc-release-ci` — **still open 2026-08-13**, renarrowed to release automation for the npm package chosen in DEC-DIST-05; now queue row 8 |
 | Rendered version lines in the queue run report | R-12 → PLAN §7 follow-up REQ |

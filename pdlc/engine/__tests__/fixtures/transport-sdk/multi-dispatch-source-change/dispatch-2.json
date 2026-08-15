@@ -1,0 +1,11 @@
+[
+  { "type": "system", "subtype": "init", "apiKeySource": "none", "session_id": "fixture-sess-multi-0002" },
+  {
+    "type": "result",
+    "subtype": "success",
+    "session_id": "fixture-sess-multi-0002",
+    "total_cost_usd": 0.01,
+    "usage": { "input_tokens": 5, "output_tokens": 8 },
+    "result": "dispatch 2 of 5, apiKeySource none"
+  }
+]

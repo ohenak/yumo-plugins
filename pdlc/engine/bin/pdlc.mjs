@@ -27,7 +27,7 @@ import { PLUGIN_ROOT_ENV } from "../lib/skills.mjs";
 import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
-import { runDev, runQueue, runQueueLoop, workflowModulePath } from "../lib/run.mjs";
+import { runDev, runQueue, runQueueLoop, workflowModulePath, resolveTunables, readEngineConfig } from "../lib/run.mjs";
 import { buildEngineBlock, stampReport } from "../lib/report.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -82,6 +82,57 @@ const VALUE_FLAGS = [
   "dry-run-skill",
   "max-iterations",
 ];
+const VALUE_FLAGS_SET = new Set(VALUE_FLAGS);
+
+/**
+ * FSPEC §3.2's closed flag surface, one row per dispatching/inspecting
+ * command. `hello` and `spike:sdk` are BR-CMD-1's exempt diagnostics and
+ * carry no row here — `main()` never runs `validateFlags` against them.
+ */
+const FLAGS_BY_COMMAND = {
+  dev: ["force-phases", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill"],
+  queue: [
+    "queue-path",
+    "loop",
+    "dry-run",
+    "plugin-root",
+    "cwd",
+    "allow-api-key-billing",
+    "max-iterations",
+    "dry-run-skill",
+  ],
+  doctor: ["plugin-root", "cwd", "allow-api-key-billing"],
+};
+
+/**
+ * EC-CLI-5 / EC-CLI-7: total flag-shape validation for one command's argv,
+ * BEFORE any startup rung runs. Returns a usage-error message, or `null`
+ * when every flag is in §3.2's table for this command and every value flag
+ * (BR-CLI-1: `--flag value` or `--flag=value`) actually carries a value.
+ *
+ * @param {string[]} argv
+ * @param {string} command
+ * @returns {string|null}
+ */
+function validateFlags(argv, command) {
+  const allowed = new Set(FLAGS_BY_COMMAND[command] || []);
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith("--")) continue;
+    const bare = a.slice(2).split("=")[0];
+    if (!allowed.has(bare)) {
+      return `pdlc ${command}: unknown flag "--${bare}" (not in the closed flag set for this command)`;
+    }
+    if (VALUE_FLAGS_SET.has(bare) && !a.includes("=")) {
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith("--")) {
+        return `pdlc ${command}: --${bare} requires a value`;
+      }
+      i += 1; // the value token is consumed, not a flag of its own
+    }
+  }
+  return null;
+}
 
 // ─── shared startup ──────────────────────────────────────────────────────────
 
@@ -156,7 +207,13 @@ async function cmdSpikeSdk() {
  */
 async function cmdDoctor(argv) {
   const result = startupFor(argv);
-  for (const line of formatStartup(result, { withChecks: true })) console.log(line);
+  for (const line of result.banner) console.log(line);
+  console.log("");
+  for (const r of result.rungs) {
+    const label = r.state === "pass" ? "PASS" : r.state === "fail" ? "FAIL" : "SKIP";
+    console.log(`${label}  ${r.name}`);
+    if (r.detail) console.log(`      ${r.detail}`);
+  }
   console.log("");
   if (result.ok) {
     console.log("doctor: all checks passed. No dispatch was performed.");
@@ -193,16 +250,51 @@ function emitDryRun(argv, startup, { command, target }) {
   console.log("dry run complete: no dispatch was performed.");
 }
 
+/**
+ * REQ §4.1's five tunables, resolved for this invocation (TSPEC §4.6).
+ * O-3 is resolved: the three engine-config rows come from the `dispatch`
+ * section of the CONSUMER's `.claude/pdlc.config.json` (`readEngineConfig`);
+ * the two operator-owned rows stay flag-only. Config-read notices are
+ * printed here — once, before any dispatch — so a value silently falling
+ * back to a default is never invisible.
+ */
+function tunablesFor(argv, cwd) {
+  const { config, notices } = readEngineConfig({ cwd });
+  for (const line of notices) console.log(line);
+  return resolveTunables({
+    config,
+    flags: {
+      allowApiKeyBilling: hasFlag(argv, "allow-api-key-billing"),
+      maxIterations: maxIterationsFlagOf(argv),
+    },
+  });
+}
+
+function maxIterationsFlagOf(argv) {
+  const raw = readFlag(argv, "max-iterations");
+  return raw != null && raw !== "" ? Number(raw) : undefined;
+}
+
 /** Build the live adapter: real SDK transport, consumer cwd, parent env spread. */
 function liveAdapter(argv, startup) {
   const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
+  const tunables = tunablesFor(argv, cwd);
   const transport = createTransport({
     env: process.env,
-    apiKeySourcePolicy: hasFlag(argv, "allow-api-key-billing")
+    apiKeySourcePolicy: tunables.allowApiKeyBilling
       ? ["none", "user", "project", "org", "temporary"]
       : ["none"],
   });
-  return { adapter: createAdapter({ transport, pluginRoot: startup.pluginRoot, cwd }), cwd };
+  const adapter = createAdapter({
+    transport,
+    pluginRoot: startup.pluginRoot,
+    cwd,
+    maxRateLimitPauses: tunables.retryAttempts,
+    retryBackoffBaseMs: tunables.retryBackoff.baseMs,
+    retryBackoffCapMs: tunables.retryBackoff.capMs,
+    dispatchTimeoutMs: tunables.timeoutMs,
+  });
+  return { adapter, cwd, tunables };
 }
 
 /**
@@ -218,8 +310,17 @@ function liveAdapter(argv, startup) {
  * recorded pipeline halt/block, 0 otherwise; `!report` (the engine refused or
  * crashed before any module ran) is 1, handled by callers before this is
  * reached in practice, but guarded here too since it stamps and returns 1.
+ *
+ * @param {number} [args.exitCodeOverride] `queue --loop`'s own worst-of exit
+ *   code (BR-EXIT-3, `lib/run.mjs`'s `runQueueLoop`) — when given, this wins
+ *   over the single-report `report.outcome` mapping below, which only ever
+ *   reflects the LAST pass.
+ * @param {object|null} [args.loop] `{iterations, maxIterations, stopReason,
+ *   lastOutcome}` for a `--loop` run, forwarded onto `engine.loop` verbatim.
+ * @param {object|null} [args.tunables] effective REQ §4.1 tunables, trimmed
+ *   to the four rows TSPEC §4.5's `engine.tunables` names.
  */
-function emitReport(report, { adapter, startup, startedAt, finishedAt }) {
+function emitReport(report, { adapter, startup, startedAt, finishedAt, exitCodeOverride, loop = null, tunables = null }) {
   const engine = buildEngineBlock({
     engineVersion: pkg.version,
     pluginVersion: startup ? startup.pluginVersion : null,
@@ -227,12 +328,22 @@ function emitReport(report, { adapter, startup, startedAt, finishedAt }) {
     apiKeySource: adapter ? adapter.getApiKeySource() : null,
     baseUrl: process.env.ANTHROPIC_BASE_URL || null,
     pauses: adapter ? adapter.getPauseLog() : [],
+    tunables: tunables
+      ? {
+          retryAttempts: tunables.retryAttempts,
+          retryBackoff: tunables.retryBackoff,
+          timeoutMinutes: tunables.timeoutMinutes,
+          maxIterations: Number.isFinite(tunables.maxIterations) ? tunables.maxIterations : null,
+        }
+      : null,
+    loop,
     startedAt,
     finishedAt,
   });
   const stamped = stampReport(report, engine);
   console.log("");
   console.log(JSON.stringify(stamped));
+  if (exitCodeOverride != null) return exitCodeOverride;
   if (!report) return 1;
   if (report.outcome === "halted" || report.outcome === "blocked") return 2;
   return 0;
@@ -250,10 +361,16 @@ async function cmdDev(argv) {
 
   const startup = startupFor(argv);
   if (!startup.ok) {
+    // BR-REP-0a / PROP-EXIT-10: a rung refusal (unlike a pure CLI usage
+    // error) DOES emit a report line — `report: null`, stamped with the
+    // `engine` block — so an unattended caller can always take the last
+    // stdout line and parse it, even on a refusal.
     for (const line of formatStartup(startup, { withChecks: true })) console.error(line);
     console.error("");
     console.error(startup.reason);
-    process.exitCode = 1;
+    console.error("pdlc: startup did not pass — the engine refuses to dispatch (fail-closed, C-10).");
+    const startedAt = new Date().toISOString();
+    process.exitCode = emitReport(null, { adapter: null, startup, startedAt, finishedAt: startedAt });
     return;
   }
 
@@ -263,7 +380,7 @@ async function cmdDev(argv) {
   }
 
   for (const line of formatStartup(startup)) console.log(line);
-  const { adapter, cwd } = liveAdapter(argv, startup);
+  const { adapter, cwd, tunables } = liveAdapter(argv, startup);
   const startedAt = new Date().toISOString();
   const { report } = await runDev({
     reqPath,
@@ -273,16 +390,20 @@ async function cmdDev(argv) {
     startup,
   });
   const finishedAt = new Date().toISOString();
-  process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt });
+  process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt, tunables });
 }
 
 async function cmdQueue(argv) {
   const startup = startupFor(argv);
   if (!startup.ok) {
+    // See cmdDev's identical branch: a rung refusal emits a report line
+    // (BR-REP-0a / PROP-EXIT-10), unlike a pure CLI usage error.
     for (const line of formatStartup(startup, { withChecks: true })) console.error(line);
     console.error("");
     console.error(startup.reason);
-    process.exitCode = 1;
+    console.error("pdlc: startup did not pass — the engine refuses to dispatch (fail-closed, C-10).");
+    const startedAt = new Date().toISOString();
+    process.exitCode = emitReport(null, { adapter: null, startup, startedAt, finishedAt: startedAt });
     return;
   }
 
@@ -293,56 +414,86 @@ async function cmdQueue(argv) {
   }
 
   for (const line of formatStartup(startup)) console.log(line);
-  const { adapter, cwd } = liveAdapter(argv, startup);
+  const { adapter, cwd, tunables } = liveAdapter(argv, startup);
 
   if (hasFlag(argv, "loop")) {
     // AC-1.3 / `queue.loopIdleExit`: one feature per pass until no ready row
     // remains, then exit 0. `--max-iterations` bounds the number of passes for
-    // unattended endurance (G-7); omitted, the loop is unbounded and relies on
-    // the queue itself running dry (`idle` / `no-queue`) or halting/blocking.
+    // unattended endurance (G-7); omitted, the loop is unbounded (`null`,
+    // never `Infinity` — PROP-QUEUE-15) and relies on the queue itself
+    // running dry (`idle` / `no-queue`) or halting/blocking.
     const maxIterationsFlag = readFlag(argv, "max-iterations");
-    const maxPasses =
-      maxIterationsFlag != null && maxIterationsFlag !== "" ? Number(maxIterationsFlag) : Infinity;
-    if (maxIterationsFlag != null && maxIterationsFlag !== "" && !(maxPasses > 0)) {
+    const maxPasses = maxIterationsFlag != null && maxIterationsFlag !== "" ? Number(maxIterationsFlag) : null;
+    if (maxPasses != null && !(maxPasses > 0)) {
       console.error(`pdlc queue --loop: --max-iterations must be a positive number, got "${maxIterationsFlag}"`);
       process.exitCode = 1;
       return;
     }
 
     const startedAt = new Date().toISOString();
-    const { passes, outcome } = await runQueueLoop({ queuePath, cwd, adapter, startup, maxPasses });
+    const { passes, outcome, stopReason, exitCode, loop } = await runQueueLoop({
+      queuePath,
+      cwd,
+      adapter,
+      startup,
+      maxPasses,
+    });
     const finishedAt = new Date().toISOString();
     const last = passes[passes.length - 1];
-    console.log(`\nqueue --loop: ${passes.length} pass(es), final outcome "${outcome}".`);
-    process.exitCode = emitReport(last && last.report, { adapter, startup, startedAt, finishedAt });
+    console.log(`\nqueue --loop: ${passes.length} pass(es), stop reason "${stopReason}".`);
+    process.exitCode = emitReport(last && last.report, {
+      adapter,
+      startup,
+      startedAt,
+      finishedAt,
+      tunables,
+      exitCodeOverride: exitCode,
+      loop: { iterations: loop.iterations, maxIterations: loop.maxIterations, stopReason, lastOutcome: outcome },
+    });
     return;
   }
 
   const startedAt = new Date().toISOString();
   const { report } = await runQueue({ queuePath, cwd, adapter, startup });
   const finishedAt = new Date().toISOString();
-  process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt });
+  process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt, tunables });
 }
 
 // ─── entry ───────────────────────────────────────────────────────────────────
+
+/**
+ * EC-CLI-5 / EC-CLI-7 gate, run before ANY rung and before any positional
+ * parsing: a bad flag shape is a usage error (BR-REP-0a: exit 1, no report
+ * line), never a value silently dropped or treated as empty.
+ */
+function checkFlags(argv, command) {
+  const err = validateFlags(argv, command);
+  if (!err) return true;
+  console.error(USAGE);
+  console.error(err);
+  process.exitCode = 1;
+  return false;
+}
 
 async function main() {
   const [, , cmd, ...rest] = process.argv;
   switch (cmd) {
     case "hello":
+      // BR-CMD-1: exempt diagnostic, no flag-shape gate.
       await cmdHello();
       break;
     case "spike:sdk":
+      // BR-CMD-1: exempt diagnostic, no flag-shape gate.
       await cmdSpikeSdk();
       break;
     case "doctor":
-      await cmdDoctor(rest);
+      if (checkFlags(rest, "doctor")) await cmdDoctor(rest);
       break;
     case "dev":
-      await cmdDev(rest);
+      if (checkFlags(rest, "dev")) await cmdDev(rest);
       break;
     case "queue":
-      await cmdQueue(rest);
+      if (checkFlags(rest, "queue")) await cmdQueue(rest);
       break;
     default:
       console.error(USAGE);

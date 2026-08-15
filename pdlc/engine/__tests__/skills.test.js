@@ -249,6 +249,52 @@ test("loadSkill throws on a missing or empty skill file", () => {
   assert.throws(() => loadSkill("/p", "blank", { fs }), /empty file/);
 });
 
+// ── DEC-ENG-06: bare identifiers inline the whole prompt-file set ─────────────
+
+test("loadSkill on a bare identifier inlines every sibling supplement beside SKILL.md", () => {
+  const fs = fakeFs({
+    "/p/skills/se-implement/SKILL.md": "# se-implement\n\nGeneral rules.",
+    "/p/skills/se-implement/SKILL-typescript.md": "# TS supplement",
+    "/p/skills/se-implement/SKILL-python.md": "# Python supplement",
+  });
+  const loaded = loadSkill("/p", "se-implement", { fs });
+  assert.ok(loaded.text.includes("# se-implement\n\nGeneral rules."));
+  assert.ok(loaded.text.includes("# TS supplement"));
+  assert.ok(loaded.text.includes("# Python supplement"));
+  assert.match(loaded.text, /--- BEGIN SUPPLEMENT: SKILL-python\.md ---/);
+  assert.match(loaded.text, /--- END SUPPLEMENT: SKILL-python\.md ---/);
+  assert.match(loaded.text, /--- BEGIN SUPPLEMENT: SKILL-typescript\.md ---/);
+  // Sorted, so a deterministic order across runs.
+  assert.ok(
+    loaded.text.indexOf("SKILL-python.md") < loaded.text.indexOf("SKILL-typescript.md"),
+    "supplements must appear in a stable, sorted order"
+  );
+});
+
+test("loadSkill on a bare identifier with no supplements returns SKILL.md's text unchanged", () => {
+  const body = "# pm-author\n\nDo thing.\n";
+  const fs = fakeFs({ "/p/skills/pm-author/SKILL.md": body });
+  assert.equal(loadSkill("/p", "pm-author", { fs }).text, body);
+});
+
+test("loadSkill on an explicit supplement identifier still returns that one file only", () => {
+  const fs = fakeFs({
+    "/p/skills/se-implement/SKILL.md": "# se-implement\n\nGeneral rules.",
+    "/p/skills/se-implement/SKILL-typescript.md": "# TS supplement",
+  });
+  const loaded = loadSkill("/p", "se-implement:SKILL-typescript.md", { fs });
+  assert.equal(loaded.text, "# TS supplement");
+});
+
+test("loadSkill on a bare identifier degrades to SKILL.md-only when the fs has no readdirSync", () => {
+  const fs = {
+    existsSync: () => true,
+    readFileSync: () => "# pm-author\n\nDo thing.\n",
+  };
+  const loaded = loadSkill("/p", "pm-author", { fs });
+  assert.equal(loaded.text, "# pm-author\n\nDo thing.\n");
+});
+
 // ── prompt composition ────────────────────────────────────────────────────────
 
 test("composeDispatchPrompt inlines the skill text verbatim and carries the task", () => {

@@ -1,0 +1,20 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "apiKeySource": "none",
+    "model": "claude-haiku-4-5-20251001",
+    "session_id": "fixture-sess-no-terminal-0001"
+  },
+  {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+      "status": "allowed",
+      "resetsAt": 1786248000,
+      "rateLimitType": "five_hour",
+      "overageStatus": "rejected",
+      "overageDisabledReason": "org_level_disabled",
+      "isUsingOverage": false
+    }
+  }
+]

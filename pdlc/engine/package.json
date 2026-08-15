@@ -10,7 +10,7 @@
   "pdlcPluginCompat": "^0.22.0",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "node --test __tests__/"
+    "test": "node __tests__/_run-suite.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.226"

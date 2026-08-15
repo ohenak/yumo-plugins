@@ -9,6 +9,34 @@
 // "none" at dispatch and refuse otherwise, fail-closed, absent an explicit
 // opt-in policy override.
 
+import { spawnSync, execFileSync } from "node:child_process";
+import path from "node:path";
+
+/**
+ * Shared child-env helper (TSPEC §3.4, BR-PARITY-5): both transports extend
+ * the parent/provided env through this single function, never construct a
+ * child env from scratch, so the proxy-passthrough rule
+ * (ANTHROPIC_BASE_URL / ANTHROPIC_CUSTOM_HEADERS) has exactly one
+ * definition. `transport-cli.mjs` (T37) imports and reuses this same export.
+ */
+export function buildDispatchEnv(env) {
+  return { ...env };
+}
+
+/**
+ * Refuses a `cwd` that is not a git repository, naming the path (PROP-DISP-7
+ * / EC-DISP-5). Exported so both the CLI's rung-0 stage and `doctor` call the
+ * same function rather than two drifting copies of a `git rev-parse` shell
+ * out (BR-START-3, "the same ladder").
+ */
+export function assertCwdIsGitRepository(cwd) {
+  try {
+    execFileSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd, stdio: "pipe" });
+  } catch (err) {
+    throw new Error(`cwd is not a git repository: ${cwd}`, { cause: err });
+  }
+}
+
 /**
  * Lazily imports the real SDK's `query` function. Kept as a separate,
  * dynamically-imported default so `__tests__/transport.test.js` never needs
@@ -138,6 +166,7 @@ export function createTransport({
   apiKeySourcePolicy = DEFAULT_API_KEY_SOURCE_POLICY,
   defaultTimeoutMs = DEFAULT_TIMEOUT_MS,
   permissionMode = DEFAULT_PERMISSION_MODE,
+  hooksOption,
 } = {}) {
   /**
    * @param {string} prompt
@@ -154,9 +183,10 @@ export function createTransport({
     // Proxy-passthrough contract (REQ C-2 / G-4): the child env is always the
     // parent/provided env *spread* into a new object, never replaced — this is
     // what lets ANTHROPIC_BASE_URL / ANTHROPIC_CUSTOM_HEADERS (the local
-    // headroom proxy) reach every spawned call transparently. Never construct
-    // a child env from scratch here.
-    const dispatchEnv = { ...env };
+    // headroom proxy) reach every spawned call transparently. Built through
+    // the shared `buildDispatchEnv` helper so both transports extend the
+    // parent env through exactly one definition (BR-PARITY-5).
+    const dispatchEnv = buildDispatchEnv(env);
 
     const abortController = new AbortController();
     let timedOut = false;
@@ -165,7 +195,12 @@ export function createTransport({
       abortController.abort();
     }, timeoutMs);
 
-    const options = { abortController, env: dispatchEnv };
+    // `cwd` and `timeoutMs` are present on the options object on EVERY
+    // dispatch (PROP-DISP-1), even when dispatchOpts omits them — a caller
+    // reading `options` must never distinguish "omitted" from "absent-and-
+    // undefined". `model` and `maxTurns` stay conditional: no fabricated
+    // value may be invented for either (EC-DISP-4).
+    const options = { abortController, env: dispatchEnv, cwd, timeoutMs };
     // Set explicitly, never left to the SDK default — see DEFAULT_PERMISSION_MODE.
     if (permissionMode !== undefined && permissionMode !== null) {
       options.permissionMode = permissionMode;
@@ -174,8 +209,11 @@ export function createTransport({
       if (permissionMode === "bypassPermissions") options.allowDangerouslySkipPermissions = true;
     }
     if (model !== undefined) options.model = model;
-    if (cwd !== undefined) options.cwd = cwd;
     if (maxTurns !== undefined) options.maxTurns = maxTurns;
+    // The engine-built guard configuration (§6.2) is a constructor-level
+    // option, never a per-dispatch one — it is not part of the four-key
+    // dispatchOpts boundary and cannot be smuggled or overridden per call.
+    if (hooksOption !== undefined) options.hooks = hooksOption;
 
     let apiKeySource = null;
     const rateLimitEvents = [];
@@ -200,9 +238,13 @@ export function createTransport({
           apiKeySource = message.apiKeySource ?? null;
           if (!apiKeySourcePolicy.includes(apiKeySource)) {
             // Thrown BEFORE any model output is returned — the auth gate is
-            // enforced at the first opportunity the stream offers it.
+            // enforced at the first opportunity the stream offers it. An
+            // absent source (raw null/undefined) is named literally as
+            // "absent" (BR-AUTH-4) rather than coerced into the string
+            // "null", which would read as a recognised-but-disallowed value.
+            const reported = apiKeySource === null ? "absent" : apiKeySource;
             throw new AuthPolicyError(
-              `SDK reported apiKeySource "${apiKeySource}", policy only allows: ${apiKeySourcePolicy.join(", ")}`,
+              `SDK reported apiKeySource "${reported}", policy only allows: ${apiKeySourcePolicy.join(", ")}`,
               { apiKeySource, allowedSources: apiKeySourcePolicy }
             );
           }
@@ -259,4 +301,73 @@ export function createTransport({
   }
 
   return { dispatch };
+}
+
+const DEFAULT_GUARD_SCRIPT_RELATIVE_PATH = "hooks/scripts/guard-harvest-before-delete.sh";
+
+/**
+ * Builds the engine's own `PreToolUse` hook-carrier configuration for the
+ * shipped `guard-harvest-before-delete.sh` script (TSPEC §6.2). This is the
+ * primary transport's carrier; `transport-cli.mjs` (T37) carries the same
+ * script through its own `--settings` file, never a second copy of the
+ * script's logic (NG-1) — the shipped script is invoked as a subprocess and
+ * its exit code/stderr are consumed verbatim, never reimplemented.
+ *
+ * The returned configuration is freshly built on every call (PROP-GUARD-10a):
+ * no shared/process-global object, so two dispatches never alias one
+ * another's hooks array.
+ *
+ * @param {object} opts
+ * @param {string} opts.pluginRoot Root of the `pdlc` plugin (`{pluginRoot}/hooks/scripts/...`).
+ * @param {string} [opts.scriptPath] Override for the resolved script path (test seam).
+ * @param {Function} [opts.execFileFn] Injectable in place of `spawnSync` (test seam,
+ *   PROP-GUARD-9): called as `execFileFn(file, args, options)`, must return the same
+ *   shape as `child_process.spawnSync` (`{ status, stderr, error }`).
+ */
+export function buildGuardHooksOption({ pluginRoot, scriptPath, execFileFn = spawnSync } = {}) {
+  const resolvedScriptPath = scriptPath || path.join(pluginRoot, DEFAULT_GUARD_SCRIPT_RELATIVE_PATH);
+
+  async function guardCallback(input) {
+    const toolCwd = (input && input.cwd) || process.cwd();
+    let result;
+    try {
+      result = execFileFn(resolvedScriptPath, [], {
+        input: JSON.stringify(input),
+        cwd: toolCwd,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: toolCwd },
+        encoding: "utf8",
+      });
+    } catch {
+      // A host that cannot even spawn the script (e.g. the path does not
+      // exist) must never be mistaken for a deny — PROP-GUARD-6b.
+      return {};
+    }
+
+    // `spawnSync` reports a missing/unspawnable executable via `.error`
+    // rather than throwing; treat it identically — no deny.
+    if (!result || result.error) return {};
+
+    if (result.status === 2) {
+      return {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          // Byte-exact: the script's stderr IS the deny reason, never
+          // paraphrased or reconstructed (PROP-GUARD-5).
+          permissionDecisionReason: result.stderr || "",
+        },
+      };
+    }
+
+    return {};
+  }
+
+  return {
+    PreToolUse: [
+      {
+        matcher: "Bash",
+        hooks: [guardCallback],
+      },
+    ],
+  };
 }
