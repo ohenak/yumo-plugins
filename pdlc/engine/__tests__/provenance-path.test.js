@@ -167,7 +167,7 @@ test("T47: process-entry — the recorder deps object covers exactly the real fi
   );
 });
 
-test.skip("T48: process-entry — runQueueLoop is reached exactly once by `queue --loop` and carries provenance; runDev/runQueue are not reached", async () => {
+test("T48: process-entry — runQueueLoop is reached exactly once by `queue --loop` and carries provenance; runDev/runQueue are not reached", async () => {
   const { main } = await import(CLI_URL);
   const { calls, deps } = makeRecordingCliDeps({
     startupResult: { ok: true, pluginRoot: "/fake-plugin-root", pluginVersion: "1.0.0", banner: [], rungs: [] },
@@ -240,7 +240,7 @@ function makeRecordingImportWorkflow(captured) {
   };
 }
 
-test.skip("T48: injection-level — real runQueueLoop threads the SAME frozen Provenance into every pass's seam object (identity)", async () => {
+test("T48: injection-level — real runQueueLoop threads the SAME frozen Provenance into every pass's seam object (identity)", async () => {
   const { runQueueLoop } = await import("../lib/run.mjs");
   const { buildProvenance } = await import("../lib/provenance.mjs");
 

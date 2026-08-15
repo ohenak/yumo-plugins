@@ -37,7 +37,15 @@ import { PLUGIN_ROOT_ENV } from "../lib/skills.mjs";
 import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
-import { runDev, runQueue, runQueueLoop, workflowModulePath, resolveTunables, readEngineConfig } from "../lib/run.mjs";
+import {
+  runDev,
+  runQueue,
+  runQueueLoop,
+  workflowModulePath,
+  resolveTunables,
+  readEngineConfig,
+  resolveWorkflowRoot,
+} from "../lib/run.mjs";
 import { buildEngineBlock, stampReport } from "../lib/report.mjs";
 import { resolveVersion } from "../lib/resolve-version.mjs";
 import { readPluginVersion, checkCompat } from "../lib/handshake.mjs";
@@ -311,6 +319,29 @@ function liveAdapter(argv, startup) {
 }
 
 /**
+ * The single per-run `Provenance` build for `pdlc dev` / `pdlc queue` (§7.2's
+ * "Build" hop, `lib/provenance.mjs`). Built once, after the startup resolution
+ * (`startup`, V-08) `startupFor` already ran, and handed unchanged into every
+ * `run*()` call site below — never re-derived per loop pass (BR-1.5, TE v5
+ * Q-15).
+ *
+ * @param {object} startup a passing `runStartupChecks()` result
+ * @returns {object} frozen `Provenance` (`lib/provenance.mjs`)
+ */
+function provenanceFor(startup) {
+  const { rootPath } = resolveWorkflowRoot();
+  return buildProvenance({
+    engineVersion: startup.engineVersion,
+    pluginVersion: startup.pluginVersion,
+    pluginCompat: startup.pluginCompat,
+    channel: "engine",
+    mode: "dev",
+    pin: null,
+    loadRoot: rootPath,
+  });
+}
+
+/**
  * Report-provenance stamping (Phase 4): wrap the module's own final report
  * with the engine's `engine` block and print it as ONE JSON line — the
  * convention this CLI commits to is "human-readable progress lines on stdout
@@ -401,6 +432,7 @@ async function cmdDev(argv, deps) {
     cwd,
     adapter,
     startup,
+    provenance: provenanceFor(startup),
   });
   const finishedAt = new Date().toISOString();
   process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt, tunables });
@@ -450,6 +482,7 @@ async function cmdQueue(argv, deps) {
       adapter,
       startup,
       maxPasses,
+      provenance: provenanceFor(startup),
     });
     const finishedAt = new Date().toISOString();
     const last = passes[passes.length - 1];
@@ -467,7 +500,13 @@ async function cmdQueue(argv, deps) {
   }
 
   const startedAt = new Date().toISOString();
-  const { report } = await deps.runQueue({ queuePath, cwd, adapter, startup });
+  const { report } = await deps.runQueue({
+    queuePath,
+    cwd,
+    adapter,
+    startup,
+    provenance: provenanceFor(startup),
+  });
   const finishedAt = new Date().toISOString();
   process.exitCode = emitReport(report, { adapter, startup, startedAt, finishedAt, tunables });
 }

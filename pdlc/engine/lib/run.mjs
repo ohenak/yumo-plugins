@@ -48,6 +48,7 @@ import path from "node:path";
 import { existsSync, statSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { message } from "./catalogue.mjs";
+import { NO_PROVENANCE } from "./provenance.mjs";
 
 // ─── Two-root workflow module resolution (TSPEC §5.2, PROP-PACK-6/7/8) ────
 //
@@ -140,10 +141,17 @@ async function defaultImportWorkflow(name) {
  * ignore unknown keys, but passing only the declared seams keeps the injection
  * object readable against the modules' own parameter list.
  *
+ * `_provenance` (§7.2, TSPEC production-carrier table): the engine's 8th key on this
+ * row, an optional frozen `Provenance` value defaulting to `NO_PROVENANCE` (the
+ * module-level null-object both workflow modules already default to, per V-15's
+ * shipped idiom) so a caller that supplies nothing produces byte-identical
+ * artifacts to today.
+ *
  * @param {object} adapter
- * @returns {{_agent, _parallel, _pipeline, _phase, _log, _runCommand}}
+ * @param {object} [provenance] frozen `Provenance` (`lib/provenance.mjs`)
+ * @returns {{_agent, _parallel, _pipeline, _phase, _log, _runCommand, _git, _provenance}}
  */
-export function devInjection(adapter) {
+export function devInjection(adapter, provenance = NO_PROVENANCE) {
   requireAdapter(adapter);
   return {
     _agent: adapter._agent,
@@ -153,6 +161,7 @@ export function devInjection(adapter) {
     _log: adapter._log,
     _runCommand: adapter._runCommand,
     _git: adapter._git,
+    _provenance: provenance,
   };
 }
 
@@ -174,10 +183,17 @@ export function devInjection(adapter) {
  *   plain Node there is no such global, so the engine must supply the delegated
  *   pipeline's seams itself by wrapping `_runPipeline`.
  *
+ * `_provenance` (§7.2): the engine's 6th key on this row, for `orchestrate-queue.js`'s
+ * OWN `main()` — the module that owns C-c, C-d and kind 3's R-3…R-5 rows. Taken as an
+ * injected seam of its own, not routed through `_runPipeline`'s wrapper, because
+ * `commitAdvisoryRecord` (C-d) and `rewriteStatus` are reached by the queue's own
+ * `main()`, which `_runPipeline` never enters.
+ *
  * @param {object} adapter
  * @param {(args: object) => Promise<object>} runPipeline the wrapped dev entry
+ * @param {object} [provenance] frozen `Provenance` (`lib/provenance.mjs`)
  */
-export function queueInjection(adapter, runPipeline) {
+export function queueInjection(adapter, runPipeline, provenance = NO_PROVENANCE) {
   requireAdapter(adapter);
   return {
     _agent: adapter._agent,
@@ -185,6 +201,7 @@ export function queueInjection(adapter, runPipeline) {
     _phase: adapter._phase,
     _git: adapter._git,
     _runPipeline: runPipeline,
+    _provenance: provenance,
   };
 }
 
@@ -471,6 +488,7 @@ async function withCwd(dir, fn) {
  * @param {string} [args.cwd] consumer repo root (AC-2.5)
  * @param {object} args.adapter seams from `createAdapter()`
  * @param {object} [args.startup] `runStartupChecks()` result; a failing one refuses
+ * @param {object} [args.provenance] frozen `Provenance` (§7.2), threaded into `devInjection`
  * @param {Function} [args.importWorkflow] test seam for the dynamic import
  * @returns {Promise<{ok: boolean, report: object|null, refusal: string|null}>}
  */
@@ -480,12 +498,13 @@ export async function runDev({
   cwd,
   adapter,
   startup = null,
+  provenance = NO_PROVENANCE,
   importWorkflow = defaultImportWorkflow,
 } = {}) {
   const refusal = refusalFor(startup);
   if (refusal) return { ok: false, report: null, refusal };
 
-  const injection = devInjection(adapter);
+  const injection = devInjection(adapter, provenance);
   const root = resolveCwd(cwd);
 
   const mod = await importWorkflow("dev");
@@ -512,6 +531,8 @@ export async function runDev({
  * @param {string} [args.cwd]
  * @param {object} args.adapter
  * @param {object} [args.startup]
+ * @param {object} [args.provenance] frozen `Provenance` (§7.2), threaded into
+ *   `queueInjection` AND into the delegated dev pipeline's `devInjection` (same value)
  * @param {Function} [args.importWorkflow]
  * @returns {Promise<{ok: boolean, report: object|null, refusal: string|null}>}
  */
@@ -520,6 +541,7 @@ export async function runQueue({
   cwd,
   adapter,
   startup = null,
+  provenance = NO_PROVENANCE,
   importWorkflow = defaultImportWorkflow,
 } = {}) {
   const refusal = refusalFor(startup);
@@ -542,11 +564,14 @@ export async function runQueue({
   }
 
   // See queueInjection's doc comment: the queue hands the delegated pipeline
-  // `{ reqPath }` and nothing else, so the seams are re-attached here.
-  const devSeams = devInjection(adapter);
+  // `{ reqPath }` and nothing else, so the seams are re-attached here. `devSeams`
+  // is built with the SAME `provenance` value (not re-derived), so the dev
+  // pipeline a queue run delegates to inherits `_provenance` from this one key
+  // (§7.2's "Carry (delegated dev)" row — no separate change needed there).
+  const devSeams = devInjection(adapter, provenance);
   const runPipeline = (args) => devMain({ ...args, ...devSeams });
 
-  const injection = queueInjection(adapter, runPipeline);
+  const injection = queueInjection(adapter, runPipeline, provenance);
   const report = await withCwd(root, () =>
     queueMain({ ...(queuePath ? { queuePath } : {}), ...injection })
   );
@@ -565,6 +590,11 @@ export async function runQueue({
  * `maxPasses`, when given, is a hard iteration bound whose exhaustion stops
  * the loop as `"bound-reached"` — distinct from `"exhausted"`, which means
  * the queue itself ran dry.
+ *
+ * One `Provenance` per run, not one per pass (§7.2, TE v5 Q-15): `args.provenance`
+ * (when the caller supplies one) is forwarded unchanged into every `runQueue(args)`
+ * call below — the same frozen object every pass — never rebuilt or re-resolved
+ * inside the loop.
  *
  * @param {object} [args]
  * @param {number|null} [args.maxPasses] iteration bound; `null`/omitted is unbounded
