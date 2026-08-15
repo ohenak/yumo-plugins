@@ -18,8 +18,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 
 import { loadSkill, composeDispatchPrompt } from "../lib/skills.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
@@ -428,5 +429,73 @@ test("EC-SKILL-4: a plugin upgraded mid-run does not change what an in-flight ru
   for (const call of transport.calls) {
     assert.ok(call.prompt.includes("pm-author v1"), "every dispatch this run must carry v1 text");
     assert.equal(call.prompt.includes("UPGRADED"), false, "no dispatch this run may see the upgraded text");
+  }
+});
+
+// ── PROP-PACK-9 / AT-1.5 — skills-source oracle: no carrier (T57) ─────────────
+//
+// "The composed prompt must carry the installed plugin's SKILL.md bytes." A
+// fixture plugin root whose dispatched role's SKILL.md carries a
+// distinguishing marker, dispatched through `composePrompt`, must yield a
+// composed prompt CONTAINING that marker — and the negative pair, a second
+// fixture root whose marker differs, must yield a prompt carrying the SECOND
+// marker and not the first. Containment alone (positive case only) would also
+// pass a `composePrompt` that ignored `pluginRoot` and always returned some
+// engine-resident constant string that happened to include the word "marker";
+// the negative pair is what makes that impossible (G-1's "no skills
+// snapshot" promise — AC-1.3 proves the engine ships none, this proves it
+// then reads the installed ones).
+
+/** Build a scratch plugin root on disk with one skill directory + SKILL.md. */
+function makeFixturePluginRoot(marker) {
+  const root = mkdtempSync(path.join(os.tmpdir(), "pdlc-fixture-root-"));
+  const skillDir = path.join(root, "skills", "pm-author");
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(
+    skillDir + "/SKILL.md",
+    `# pm-author\n\nAuthor the REQ. MARKER: ${marker}\n`,
+    "utf8"
+  );
+  return root;
+}
+
+test("AT-1.5 / PROP-PACK-9: composed prompt carries the installed plugin's SKILL.md marker, not engine-resident bytes", () => {
+  const marker1 = "FIXTURE-ONE-7f3c";
+  const marker2 = "FIXTURE-TWO-9a1e";
+  const root1 = makeFixturePluginRoot(marker1);
+  const root2 = makeFixturePluginRoot(marker2);
+  try {
+    const inertTransport1 = { dispatch: () => { throw new Error("must not dispatch"); } };
+    const adapter1 = createAdapter({ transport: inertTransport1, pluginRoot: root1, log: () => {} });
+    const composed1 = adapter1.composePrompt("pm-author", "[dry run] no task dispatched.");
+    assert.ok(
+      composed1.includes(marker1),
+      "composed prompt for the first fixture root must carry that root's SKILL.md marker"
+    );
+    assert.equal(
+      composed1.includes(marker2),
+      false,
+      "composed prompt for the first fixture root must not carry the second root's marker"
+    );
+
+    // The negative pair: a second, distinct fixture root with a different
+    // marker must change the composed prompt accordingly — proving
+    // `composePrompt` actually reads from `pluginRoot` at dispatch time
+    // rather than returning a fixed, engine-resident string.
+    const inertTransport2 = { dispatch: () => { throw new Error("must not dispatch"); } };
+    const adapter2 = createAdapter({ transport: inertTransport2, pluginRoot: root2, log: () => {} });
+    const composed2 = adapter2.composePrompt("pm-author", "[dry run] no task dispatched.");
+    assert.ok(
+      composed2.includes(marker2),
+      "composed prompt for the second fixture root must carry that root's SKILL.md marker"
+    );
+    assert.equal(
+      composed2.includes(marker1),
+      false,
+      "composed prompt for the second fixture root must not carry the first root's marker"
+    );
+  } finally {
+    rmSync(root1, { recursive: true, force: true });
+    rmSync(root2, { recursive: true, force: true });
   }
 });
