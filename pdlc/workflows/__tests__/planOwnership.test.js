@@ -44,6 +44,9 @@ const { parsePlanOwnership, validatePlanContract, computeWaves, computeTopologic
 const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "planParse");
 const fixture = (name) => readFileSync(join(FIXTURE_DIR, name), "utf8");
 
+const HALT_FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "halt-hardening");
+const haltFixture = (name) => readFileSync(join(HALT_FIXTURE_DIR, name), "utf8");
+
 /** Build a task the way `parsePlanTasks` returns them. */
 const task = (id, dependencies = [], planBatch = undefined) => ({
   id,
@@ -254,7 +257,7 @@ describe("PLAN-OWN-02: manifest grammar", () => {
     ]);
   });
 
-  test("PLAN-OWN-02g: a document with no qualifying table returns null, while a minimal manifest in the same document parses", () => {
+  test("PLAN-OWN-02g: a document with no fully-qualifying table returns near misses and null ownership, while a minimal manifest in the same document parses", () => {
     const NON_QUALIFYING = [
       "| ID | Risk | Owning task | Mitigation |",
       "|---|---|---|---|",
@@ -265,11 +268,19 @@ describe("PLAN-OWN-02: manifest grammar", () => {
       "| `orchestrate-dev.js` | R1, A1 | the A-chain |",
     ].join("\n");
 
-    expect(parsePlanOwnership(NON_QUALIFYING)).toBeNull();
+    // Both tables here happen to carry one accepted-spelling cell each ("Owning
+    // task", "File") without the matching other side — so this document is now
+    // a TWO-near-miss document under the loud near-miss contract, not a silent
+    // null. `ownership` still stays null: nothing fully qualified.
+    const result = parsePlanOwnership(NON_QUALIFYING);
+    expect(result).not.toBeNull();
+    expect(result.ownership).toBeNull();
+    expect(result.nearMisses).toHaveLength(2);
+    expect(result.nearMisses.map((nm) => nm.matchedSide).sort()).toEqual(["files", "owner"]);
 
     // Paired positive: adding one qualifying table to the SAME document makes it
-    // parse — so the null above is about the header grammar, not about the
-    // document being unreadable.
+    // parse — so the absent ownership above is about the header grammar, not
+    // about the document being unreadable.
     const WITH_MANIFEST = [
       NON_QUALIFYING,
       "",
@@ -282,7 +293,7 @@ describe("PLAN-OWN-02: manifest grammar", () => {
     ]);
   });
 
-  test("PLAN-OWN-02h: a files column without a task column does not qualify, and vice versa", () => {
+  test("PLAN-OWN-02h: a files column without a task column does not qualify (but is a near miss), and vice versa", () => {
     const filesOnly = [
       "| Batch | Files created or appended |",
       "|---|---|",
@@ -290,14 +301,24 @@ describe("PLAN-OWN-02: manifest grammar", () => {
     ].join("\n");
     const taskOnly = ["| Batch | Task |", "|---|---|", "| 1 | T1 |"].join("\n");
 
-    expect(parsePlanOwnership(filesOnly)).toBeNull();
-    expect(parsePlanOwnership(taskOnly)).toBeNull();
-    // Paired positive: both columns together qualify.
-    expect(
-      parsePlanOwnership(
-        ["| Task | Files created or appended |", "|---|---|", "| T1 | `a.js` |"].join("\n")
-      ).ownership
-    ).toEqual([{ taskId: "T1", files: ["a.js"] }]);
+    const filesOnlyResult = parsePlanOwnership(filesOnly);
+    expect(filesOnlyResult.ownership).toBeNull();
+    expect(filesOnlyResult.nearMisses).toEqual([
+      expect.objectContaining({ matchedSide: "files" }),
+    ]);
+
+    const taskOnlyResult = parsePlanOwnership(taskOnly);
+    expect(taskOnlyResult.ownership).toBeNull();
+    expect(taskOnlyResult.nearMisses).toEqual([
+      expect.objectContaining({ matchedSide: "owner" }),
+    ]);
+
+    // Paired positive: both columns together qualify, with no near miss.
+    const bothResult = parsePlanOwnership(
+      ["| Task | Files created or appended |", "|---|---|", "| T1 | `a.js` |"].join("\n")
+    );
+    expect(bothResult.ownership).toEqual([{ taskId: "T1", files: ["a.js"] }]);
+    expect(bothResult.nearMisses).toEqual([]);
   });
 
   test("PLAN-OWN-02i: non-string input returns null, and an equivalent string parses", () => {
@@ -308,6 +329,105 @@ describe("PLAN-OWN-02: manifest grammar", () => {
       parsePlanOwnership(["| Task | Files |", "|---|---|", "| T1 | `a.js` |"].join("\n"))
         .ownership
     ).toEqual([{ taskId: "T1", files: ["a.js"] }]);
+  });
+});
+
+// ─── RT-3c. Header normalization and the loud near-miss diagnostic ────────────
+//
+// PLAN §4.2 / §10 Q-4: normalize a header cell (lowercase, trim, collapse
+// whitespace, strip one trailing parenthetical) before set membership, and
+// extend the owner spellings — then a block matching only ONE of the two
+// column sets must surface as a structured near-miss diagnostic rather than
+// silently fail to qualify. Fixtures are sanitized excerpts of the
+// regime-scaffold-pivot-alignment incident (see fixtures/halt-hardening/README.md).
+
+describe("RT-3c: ownership header normalization and loud near-miss diagnostic", () => {
+  test("RT-3c-1: 'Owning task(s)' normalizes to the canonical owner spelling and the manifest parses in full", () => {
+    const doc = haltFixture("plan-owning-tasks-manifest.md");
+    const parsed = parsePlanOwnership(doc);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed.nearMisses).toEqual([]);
+    expect(parsed.ownership).toEqual([
+      { taskId: "T-01", files: ["config/regime_model.json"] },
+      {
+        taskId: "T-02",
+        files: ["products/regime/config/model.py", "products/regime/config/__init__.py"],
+      },
+      {
+        taskId: "T-03",
+        files: [
+          "tests/regime/test_model_config.py",
+          "tests/regime/fixtures/model_config/*.json",
+        ],
+      },
+    ]);
+  });
+
+  test("RT-3c-2: a 'Writers | Files' header is a loud near miss naming the header row, the matched side, and the accepted owner spellings", () => {
+    const doc = haltFixture("plan-near-miss-manifest.md");
+    const parsed = parsePlanOwnership(doc);
+
+    // Positive conjunct: the document is not silently unreadable — the
+    // near-miss block is reported, and ownership is null only because nothing
+    // fully qualified (there is no other qualifying table in this fixture).
+    expect(parsed).not.toBeNull();
+    expect(parsed.ownership).toBeNull();
+    expect(parsed.nearMisses).toEqual([
+      {
+        headerRow: "| Writers | Files |",
+        matchedSide: "files",
+        // Literal, transcribed from the sanctioned owner spellings (PLAN §4.2):
+        // exactly this set, no more, no fewer.
+        expectedForms: [
+          "task",
+          "task id",
+          "task-id",
+          "task_id",
+          "owning task",
+          "owning tasks",
+          "owner",
+          "id",
+        ],
+      },
+    ]);
+  });
+
+  test("RT-3c-3: back-compat — every previously accepted header still parses identically", () => {
+    const canonical = [
+      "| Task | Files |",
+      "|---|---|",
+      "| T1 | `a.js` |",
+    ].join("\n");
+    const parsed = parsePlanOwnership(canonical);
+    expect(parsed.ownership).toEqual([{ taskId: "T1", files: ["a.js"] }]);
+    expect(parsed.nearMisses).toEqual([]);
+  });
+
+  test("RT-3c-4: a plain prose table matching neither column set produces no near-miss diagnostic", () => {
+    const prose = [
+      "| Component | Owner | Notes |",
+      "|---|---|---|",
+      "| CLI | @kane | none |",
+    ].join("\n");
+    // "Owner" alone would match PLAN_OWNER_HEADER_CELLS, so use a document that
+    // truly matches neither set to pin the "matches nothing → silent skip" half
+    // of the contract.
+    const trulyNeither = [
+      "| Component | Maintainer | Notes |",
+      "|---|---|---|",
+      "| CLI | @kane | none |",
+    ].join("\n");
+
+    expect(parsePlanOwnership(trulyNeither)).toBeNull();
+    // The "Owner" column is one of the newly-added owner spellings, so this
+    // document IS a near miss (files side unmatched) — pinning that the
+    // extended owner set participates in near-miss detection too.
+    const ownerOnly = parsePlanOwnership(prose);
+    expect(ownerOnly.ownership).toBeNull();
+    expect(ownerOnly.nearMisses).toEqual([
+      expect.objectContaining({ matchedSide: "owner" }),
+    ]);
   });
 });
 

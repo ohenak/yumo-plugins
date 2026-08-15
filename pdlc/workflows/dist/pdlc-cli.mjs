@@ -4268,11 +4268,15 @@ function parsePlanDepsCell(cell) {
 
 /**
  * The closed set of header cells that name a manifest's OWNING TASK column, and
- * the closed set that names its FILES column. Matched on the LOWERCASED, TRIMMED
- * cell, in full — never as a substring, for exactly the reason `parsePlanTasks`
- * documents: a substring test lets a risk register or a "Writers" table qualify,
- * and a qualifying non-manifest table poisons the contract check downstream.
- * Extending either set is the one sanctioned way to admit a new spelling.
+ * the closed set that names its FILES column. Matched on the cell AFTER
+ * `normalizeHeaderCell` (lowercase, trim, collapse internal whitespace, strip one
+ * trailing parenthetical — so `Owning task(s)` and `File(s)` normalize to
+ * `owning task` and `file`), in full — never as a substring, for exactly the
+ * reason `parsePlanTasks` documents: a substring test lets a risk register or a
+ * "Writers" table qualify, and a qualifying non-manifest table poisons the
+ * contract check downstream. Normalization runs first; extending either set
+ * remains the one sanctioned way to admit a spelling normalization does not
+ * already fold into an existing member.
  */
 const PLAN_OWNER_HEADER_CELLS = new Set([
   "task",
@@ -4280,16 +4284,35 @@ const PLAN_OWNER_HEADER_CELLS = new Set([
   "task-id",
   "task_id",
   "owning task",
+  "owning tasks",
+  "owner",
   "id",
 ]);
 const PLAN_FILES_HEADER_CELLS = new Set([
   "files created or appended",
   "files",
+  "file",
   "owned files",
   "files owned",
   "file ownership",
   "files created/appended",
 ]);
+
+/**
+ * Normalize a header cell before set membership: lowercase, trim, collapse
+ * internal whitespace to single spaces, then strip ONE trailing parenthetical
+ * (`Owning task(s)` → `owning task`, `File(s)` → `file`). Membership after
+ * normalization is still exact-cell, never substring — see the comment above
+ * the two sets.
+ */
+function normalizeHeaderCell(cell) {
+  return String(cell == null ? "" : cell)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\([^()]*\)\s*$/, "")
+    .trim();
+}
 
 /** Strip surrounding markdown emphasis / code ticks from a table cell value. */
 function stripCellEmphasis(cell) {
@@ -4335,11 +4358,18 @@ function isPlausiblePath(value) {
  *   table each); a non-pipe line terminates the block.
  * - A block qualifies only if its header row carries one cell that is EXACTLY a
  *   member of `PLAN_OWNER_HEADER_CELLS` and another that is EXACTLY a member of
- *   `PLAN_FILES_HEADER_CELLS`. A batch/wave/phase column may be present and is
- *   ignored — waves are DERIVED from ownership and dependencies, never read off
- *   the PLAN's own batch labels.
+ *   `PLAN_FILES_HEADER_CELLS` (both after `normalizeHeaderCell`). A batch/wave/
+ *   phase column may be present and is ignored — waves are DERIVED from
+ *   ownership and dependencies, never read off the PLAN's own batch labels.
  * - Every qualifying block contributes its rows, so a PLAN that writes one
  *   manifest per batch parses as well as one that writes a single table.
+ * - A block whose header matches ONE side (owner or files) but not the other is
+ *   a NEAR MISS, not a silent skip: it is reported back so the caller can reject
+ *   loudly rather than treat the manifest as absent. A block matching NEITHER
+ *   side is ordinary prose and stays silently skipped, exactly as before. The
+ *   one exception: an owner-only match paired with a genuine Deps column is an
+ *   ordinary task table (its id column and the owner set share spellings), not
+ *   an attempted manifest, and stays silently skipped too.
  *
  * Cell reading: the task cell is stripped of markdown emphasis (`**A1**` → `A1`);
  * the files cell yields every backtick-quoted span, verbatim (a trailing `/`
@@ -4349,7 +4379,15 @@ function isPlausiblePath(value) {
  * Paths are de-duplicated per task; the same task id in several rows unions.
  *
  * @param {string | null | undefined} markdown - Raw PLAN.md contents
- * @returns {{ ownership: Array<{ taskId: string, files: string[] }> } | null}
+ * @returns {{
+ *   ownership: Array<{ taskId: string, files: string[] }> | null,
+ *   nearMisses: Array<{ headerRow: string, matchedSide: "owner" | "files", expectedForms: string[] }>
+ * } | null}
+ *   `null` only when the document has no qualifying block AND no near-miss
+ *   block (i.e. nothing in it looks like an ownership manifest at all) — this
+ *   preserves the pre-existing null contract for that case. Once there is a
+ *   qualifying block, a near-miss block, or both, the object form is returned;
+ *   `ownership` is `null` when no block fully qualified.
  */
 function parsePlanOwnership(markdown) {
   if (markdown == null || typeof markdown !== "string") return null;
@@ -4373,14 +4411,39 @@ function parsePlanOwnership(markdown) {
   let sawQualifyingTable = false;
   const order = [];
   const byTask = new Map();
+  const nearMisses = [];
 
   for (const rows of blocks) {
-    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const headerRow = rows[0];
+    const cols = splitPipeRow(headerRow).map((c) => normalizeHeaderCell(c));
     const taskIdx = cols.findIndex((c) => PLAN_OWNER_HEADER_CELLS.has(c));
     const filesIdx = cols.findIndex(
       (c, i) => i !== taskIdx && PLAN_FILES_HEADER_CELLS.has(c)
     );
-    if (taskIdx < 0 || filesIdx < 0) continue;
+    if (taskIdx < 0 || filesIdx < 0) {
+      // One side matched and the other did not: a loud near miss. Matching
+      // NEITHER side is ordinary prose and stays silently skipped.
+      //
+      // Exception: the owner set's `task`/`task id`/`id` spellings are also
+      // exactly `parsePlanTasks`'s task-id spellings (`PLAN_ID_HEADER_CELLS`),
+      // so an ordinary task table (Task ID | Description | Deps) matches the
+      // owner side on its id column alone. That is not an attempted manifest,
+      // so it must not become near-miss noise on every PLAN — a header row
+      // that owner-side-matched but also carries a genuine Deps column is a
+      // task table, not a manifest near miss.
+      const looksLikeTaskTable =
+        taskIdx >= 0 && filesIdx < 0 && cols.some((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+      if ((taskIdx >= 0 || filesIdx >= 0) && !looksLikeTaskTable) {
+        nearMisses.push({
+          headerRow,
+          matchedSide: taskIdx >= 0 ? "owner" : "files",
+          expectedForms: [
+            ...(taskIdx >= 0 ? PLAN_FILES_HEADER_CELLS : PLAN_OWNER_HEADER_CELLS),
+          ],
+        });
+      }
+      continue;
+    }
     sawQualifyingTable = true;
 
     for (let i = 1; i < rows.length; i++) {
@@ -4415,8 +4478,13 @@ function parsePlanOwnership(markdown) {
     }
   }
 
-  if (!sawQualifyingTable) return null;
-  return { ownership: order.map((taskId) => ({ taskId, files: byTask.get(taskId) })) };
+  if (!sawQualifyingTable && nearMisses.length === 0) return null;
+  return {
+    ownership: sawQualifyingTable
+      ? order.map((taskId) => ({ taskId, files: byTask.get(taskId) }))
+      : null,
+    nearMisses,
+  };
 }
 
 /**
@@ -10956,7 +11024,9 @@ async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
   try {
     const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
     const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
-    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    if (ownership && Array.isArray(ownership.ownership)) {
+      planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    }
   } catch {
     planFiles = [];
   }
@@ -12530,16 +12600,34 @@ async function main({
           // session and the reviewers are still on the phase — rather than discovered
           // at Phase I, which would have no recourse but to fall back to worktrees.
           const pOwnershipParsed = parsePlanOwnership(pPlanText);
-          if (pOwnershipParsed == null) {
+          const pNearMisses = pOwnershipParsed ? pOwnershipParsed.nearMisses || [] : [];
+          if (pOwnershipParsed == null || pOwnershipParsed.ownership == null) {
+            // A near miss (header matches ONE of the two required column sets)
+            // is rejected loudly and specifically — never folded into the
+            // generic "no manifest at all" message below. A manifest may be
+            // rejected loudly; it may never be invisible.
             const detail =
-              `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
-              `implementation phase cannot derive same-tree waves and cannot know which ` +
-              `files each task may write. Add a markdown table whose header row carries an ` +
-              `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
-              `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
-              `each row listing that task's owned paths in backticks — se-author's ` +
-              `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
-              `Phase I.`;
+              pNearMisses.length > 0
+                ? `Error: Phase P — ${planPath}'s file-ownership manifest has a header row ` +
+                  `that matches only one side of the required contract: ` +
+                  pNearMisses
+                    .map(
+                      (nm) =>
+                        `"${nm.headerRow}" matched the ${nm.matchedSide} side but not the ` +
+                        `other (accepted spellings for the missing side: ${nm.expectedForms.join(", ")})`
+                    )
+                    .join("; ") +
+                  `. Fix the header row so it carries an exact cell from both sets — ` +
+                  `se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+                  `discovering it at Phase I.`
+                : `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+                  `implementation phase cannot derive same-tree waves and cannot know which ` +
+                  `files each task may write. Add a markdown table whose header row carries an ` +
+                  `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+                  `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+                  `each row listing that task's owned paths in backticks — se-author's ` +
+                  `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+                  `Phase I.`;
             recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
             throw haltError(detail);
           }

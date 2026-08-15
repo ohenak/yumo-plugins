@@ -3628,16 +3628,28 @@ const PLAN_OWNER_HEADER_CELLS = new Set([
   "task-id",
   "task_id",
   "owning task",
+  "owning tasks",
+  "owner",
   "id",
 ]);
 const PLAN_FILES_HEADER_CELLS = new Set([
   "files created or appended",
   "files",
+  "file",
   "owned files",
   "files owned",
   "file ownership",
   "files created/appended",
 ]);
+
+function normalizeHeaderCell(cell) {
+  return String(cell == null ? "" : cell)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\([^()]*\)\s*$/, "")
+    .trim();
+}
 
 function stripCellEmphasis(cell) {
   return String(cell == null ? "" : cell)
@@ -3686,14 +3698,30 @@ function parsePlanOwnership(markdown) {
   let sawQualifyingTable = false;
   const order = [];
   const byTask = new Map();
+  const nearMisses = [];
 
   for (const rows of blocks) {
-    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const headerRow = rows[0];
+    const cols = splitPipeRow(headerRow).map((c) => normalizeHeaderCell(c));
     const taskIdx = cols.findIndex((c) => PLAN_OWNER_HEADER_CELLS.has(c));
     const filesIdx = cols.findIndex(
       (c, i) => i !== taskIdx && PLAN_FILES_HEADER_CELLS.has(c)
     );
-    if (taskIdx < 0 || filesIdx < 0) continue;
+    if (taskIdx < 0 || filesIdx < 0) {
+
+      const looksLikeTaskTable =
+        taskIdx >= 0 && filesIdx < 0 && cols.some((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+      if ((taskIdx >= 0 || filesIdx >= 0) && !looksLikeTaskTable) {
+        nearMisses.push({
+          headerRow,
+          matchedSide: taskIdx >= 0 ? "owner" : "files",
+          expectedForms: [
+            ...(taskIdx >= 0 ? PLAN_FILES_HEADER_CELLS : PLAN_OWNER_HEADER_CELLS),
+          ],
+        });
+      }
+      continue;
+    }
     sawQualifyingTable = true;
 
     for (let i = 1; i < rows.length; i++) {
@@ -3728,8 +3756,13 @@ function parsePlanOwnership(markdown) {
     }
   }
 
-  if (!sawQualifyingTable) return null;
-  return { ownership: order.map((taskId) => ({ taskId, files: byTask.get(taskId) })) };
+  if (!sawQualifyingTable && nearMisses.length === 0) return null;
+  return {
+    ownership: sawQualifyingTable
+      ? order.map((taskId) => ({ taskId, files: byTask.get(taskId) }))
+      : null,
+    nearMisses,
+  };
 }
 
 function validatePlanContract(tasks, ownership) {
@@ -7622,7 +7655,9 @@ async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
   try {
     const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
     const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
-    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    if (ownership && Array.isArray(ownership.ownership)) {
+      planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    }
   } catch {
     planFiles = [];
   }
@@ -8668,16 +8703,31 @@ async function main({
           }
 
           const pOwnershipParsed = parsePlanOwnership(pPlanText);
-          if (pOwnershipParsed == null) {
+          const pNearMisses = pOwnershipParsed ? pOwnershipParsed.nearMisses || [] : [];
+          if (pOwnershipParsed == null || pOwnershipParsed.ownership == null) {
+
             const detail =
-              `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
-              `implementation phase cannot derive same-tree waves and cannot know which ` +
-              `files each task may write. Add a markdown table whose header row carries an ` +
-              `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
-              `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
-              `each row listing that task's owned paths in backticks — se-author's ` +
-              `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
-              `Phase I.`;
+              pNearMisses.length > 0
+                ? `Error: Phase P — ${planPath}'s file-ownership manifest has a header row ` +
+                  `that matches only one side of the required contract: ` +
+                  pNearMisses
+                    .map(
+                      (nm) =>
+                        `"${nm.headerRow}" matched the ${nm.matchedSide} side but not the ` +
+                        `other (accepted spellings for the missing side: ${nm.expectedForms.join(", ")})`
+                    )
+                    .join("; ") +
+                  `. Fix the header row so it carries an exact cell from both sets — ` +
+                  `se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+                  `discovering it at Phase I.`
+                : `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+                  `implementation phase cannot derive same-tree waves and cannot know which ` +
+                  `files each task may write. Add a markdown table whose header row carries an ` +
+                  `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+                  `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+                  `each row listing that task's owned paths in backticks — se-author's ` +
+                  `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+                  `Phase I.`;
             recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
             throw haltError(detail);
           }
