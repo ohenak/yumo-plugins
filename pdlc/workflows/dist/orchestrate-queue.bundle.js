@@ -10485,6 +10485,18 @@ const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
 const MODEL_QUEUE = "sonnet";
 
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 const QUEUE_STATUSES = [
   "pending",
   "in-progress",
@@ -11139,6 +11151,7 @@ async function main({
   _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
   const emit = logFn;
 
@@ -11316,7 +11329,8 @@ async function main({
         `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
         entry.feature,
         gitFn,
-        emit
+        emit,
+        provenance
       );
 
       if (seam === "A1") {
@@ -11549,20 +11563,19 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
   return uncommitted(committed, queuePath);
 }
 
-async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit, provenance = NO_PROVENANCE) {
   const added = await gitFn(["add", "--", recordPath]);
   if (!added || added.ok !== true) {
     emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
     return;
   }
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(advisory): record ${feature} (queue)`,
-    "--",
-    recordPath,
-  ]);
+  const line = provenance && provenance.line ? provenance.line : "";
+  const message = line
+    ? `chore(advisory): record ${feature} (queue)\n\n${line}`
+    : `chore(advisory): record ${feature} (queue)`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", recordPath]);
   if (committed && committed.ok === true) return;
 
   if (

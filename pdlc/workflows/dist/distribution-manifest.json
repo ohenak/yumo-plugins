@@ -15,7 +15,7 @@
       "pluginPath": "workflows/dist/orchestrate-dev.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-dev.bundle.js",
       "artifactVersion": "0.23.0",
-      "pluginSha1": "1700d0ce1c2609c63e509c672b81722c2a029b97",
+      "pluginSha1": "00112257de221d86a302a4f822c551e014a3fa75",
       "retires": [
         ".claude/workflows/orchestrate-dev.js"
       ]
@@ -25,7 +25,7 @@
       "pluginPath": "workflows/dist/orchestrate-queue.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-queue.bundle.js",
       "artifactVersion": "0.23.0",
-      "pluginSha1": "e7964b6cd0310cd08748a7938401cdfc3ff4dcb9",
+      "pluginSha1": "483937c89f88d054cbaddc18e5d312178cbe0ddf",
       "retires": [
         ".claude/workflows/orchestrate-queue.js"
       ]
