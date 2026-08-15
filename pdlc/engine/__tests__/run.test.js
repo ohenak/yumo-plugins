@@ -4,7 +4,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { existsSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -48,20 +50,78 @@ test("workflow modules resolve to the repo's canonical pdlc/workflows sources", 
   assert.ok(existsSync(queue), "orchestrate-queue.js must exist at the canonical path");
 });
 
-test("the engine vendors no copy of the workflow modules (C-4)", () => {
-  // A fork is a test failure, not a discovery: nothing named like a workflow
-  // module may exist anywhere under pdlc/engine (node_modules excluded).
-  const offenders = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === "node_modules" || entry.name === ".git") continue;
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (/^orchestrate-(dev|queue)\.js$/.test(entry.name)) offenders.push(full);
-    }
-  };
-  walk(engineRoot);
+// TSPEC §5.3, AF-1 — replaces V-05's directory walk. Vendoring (T33) makes a
+// build tree legitimately contain `orchestrate-{dev,queue}.js` under
+// `vendor/workflows/`, so the walk is false by construction the moment
+// `prepack` runs locally. Tracked-ness, read from `git ls-files` and never
+// from a directory listing, is strictly stronger against the failure that
+// matters: a *committed* fork cannot hide behind `.gitignore` the way a
+// build artefact legitimately does.
+test("no git-tracked file under pdlc/engine/ is named orchestrate-{dev,queue}.js (C-4, AF-1)", () => {
+  const result = spawnSync("git", ["ls-files", "--", "pdlc/engine"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, `git ls-files failed: ${result.stderr}`);
+
+  const tracked = result.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const offenders = tracked.filter((file) => /(^|\/)orchestrate-(dev|queue)\.js$/.test(file));
+
   assert.deepEqual(offenders, []);
+});
+
+// TSPEC §5.3, AF-2 — the property the walk above was only a proxy for, now
+// asserted directly and at the byte level. Runs the real `prepack.mjs`
+// (rather than a `--dry-run`-shaped stub) so the manifest under test is the
+// one a real `npm pack` / `npm publish` would produce; the vendor directory
+// is git-ignored build output (§5.2), so it is removed again once the
+// assertions have read it.
+test("prepack vendors the workflow modules byte-for-byte with a verifiable manifest (AF-2)", () => {
+  const vendorDir = path.join(engineRoot, "vendor", "workflows");
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [path.join(engineRoot, "scripts", "prepack.mjs")],
+      { cwd: engineRoot, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, `prepack.mjs failed: ${result.stderr}`);
+
+    const manifest = JSON.parse(
+      readFileSync(path.join(vendorDir, "VENDOR-MANIFEST.json"), "utf8"),
+    );
+
+    // Set-equality, not `length > 0` (§5.3): a prepack that silently
+    // vendored nothing, or vendored a third file, must fail this assertion.
+    const names = manifest.modules.map((m) => m.name).sort();
+    assert.deepEqual(names, ["orchestrate-dev.js", "orchestrate-queue.js"]);
+
+    for (const entry of manifest.modules) {
+      const vendoredBytes = readFileSync(path.join(vendorDir, entry.name));
+      const canonicalBytes = readFileSync(path.join(repoRoot, "pdlc", "workflows", entry.name));
+      const vendoredHash = createHash("sha256").update(vendoredBytes).digest("hex");
+      const canonicalHash = createHash("sha256").update(canonicalBytes).digest("hex");
+
+      assert.equal(
+        entry.sha256,
+        vendoredHash,
+        `${entry.name}: manifest hash must equal the hash of the vendored bytes`,
+      );
+      assert.equal(
+        entry.sha256,
+        canonicalHash,
+        `${entry.name}: manifest hash must equal the canonical pdlc/workflows/ source's hash`,
+      );
+      assert.ok(
+        vendoredBytes.equals(canonicalBytes),
+        `${entry.name}: vendored copy must be byte-for-byte identical to the canonical source`,
+      );
+    }
+  } finally {
+    rmSync(vendorDir, { recursive: true, force: true });
+  }
 });
 
 test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not just a file: URL (PROP-FORK-1)", () => {
