@@ -4275,7 +4275,8 @@ function approvalHashOfNormalized(text) {
 
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
 
-const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
+const APPROVAL_ANCHOR_LINE =
+  /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT|UPSTREAM-STATE):/;
 
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
 
@@ -4287,6 +4288,9 @@ function parseApprovalHash(fileText) {
   const hashes = [];
   const normalized = [];
   const commits = [];
+
+  const upstreamState = [];
+  const upstreamSeen = new Set();
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
@@ -4294,6 +4298,17 @@ function parseApprovalHash(fileText) {
     if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
+
+    const u = /^\s*UPSTREAM-STATE:\s*([A-Z]+)\s+(\S*)\s*$/.exec(line);
+    if (
+      u &&
+      ERRATUM_DOC_TYPES.includes(u[1]) &&
+      APPROVAL_HASH_VALUE_RE.test(u[2]) &&
+      !upstreamSeen.has(u[1])
+    ) {
+      upstreamSeen.add(u[1]);
+      upstreamState.push({ docType: u[1], hash: u[2] });
+    }
   });
 
   if (hashes.length === 0) return { ok: false, reason: "absent" };
@@ -4308,7 +4323,7 @@ function parseApprovalHash(fileText) {
   const normalizedHash =
     normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
 
-  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit, upstreamState };
 }
 
 function extractFileVerdict(fileText, roleSlug) {
@@ -4397,6 +4412,32 @@ function isStaleByHash(recordedHash, documentHash) {
   if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
     return "UNEVALUABLE";
   return documentHash === recordedHash ? "FRESH" : "STALE";
+}
+
+function upstreamStateLines(rows) {
+  if (!Array.isArray(rows)) return "";
+  return rows
+    .filter(
+      (r) =>
+        r &&
+        ERRATUM_DOC_TYPES.includes(r.docType) &&
+        typeof r.hash === "string" &&
+        APPROVAL_HASH_VALUE_RE.test(r.hash)
+    )
+    .map((r) => `UPSTREAM-STATE: ${r.docType} ${r.hash}\n`)
+    .join("");
+}
+
+function upstreamStateDrift(recorded, current) {
+  if (!Array.isArray(recorded) || !current || typeof current.get !== "function") return [];
+  const moved = [];
+  for (const row of recorded) {
+    if (!row || !ERRATUM_DOC_TYPES.includes(row.docType)) continue;
+    const now = current.get(row.docType);
+    if (now == null) continue;
+    if (now !== row.hash) moved.push(row.docType);
+  }
+  return moved;
 }
 
 const REQUIRED_HEADINGS = Object.freeze({
@@ -4782,6 +4823,35 @@ const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
   PROPERTIES: "PR",
 });
 
+const featureDocPath = (feature, docType) => `docs/${feature}/${docType}-${feature}.md`;
+
+const erratumDocTypesAbove = (target) =>
+  ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+const erratumDocTypesBelow = (target) =>
+  ERRATUM_DOC_TYPES.indexOf(target) < 0
+    ? []
+    : ERRATUM_DOC_TYPES.slice(ERRATUM_DOC_TYPES.indexOf(target) + 1);
+
+async function deriveApprovalUpstreamState({ feature, docType, _probeDoc, _hashFile }) {
+  const rows = [];
+  for (const upstream of erratumDocTypesAbove(docType)) {
+    const path = featureDocPath(feature, upstream);
+    const probe = await probeDocument(_probeDoc, path, upstream);
+    let hash = probe ? probe.hash ?? null : null;
+    if (!probe && typeof _hashFile === "function") {
+      try {
+        hash = (await _hashFile(path)) ?? null;
+      } catch {
+        hash = null;
+      }
+    }
+    if (hash == null) continue;
+    rows.push({ docType: upstream, hash });
+  }
+  return rows;
+}
+
 const MAX_ERRATUM_ROUNDS_PER_DOC = 1;
 
 const MAX_ERRATUM_FOLLOWUP_ROUNDS = 1;
@@ -5113,6 +5183,7 @@ async function reviewLoop({
 
     let anchorHash = null;
     let anchorNormalizedHash = null;
+    let anchorUpstreamState = [];
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
 
@@ -5123,6 +5194,13 @@ async function reviewLoop({
         probe,
         path: doc,
         _hashNormalizedFile,
+      });
+
+      anchorUpstreamState = await deriveApprovalUpstreamState({
+        feature,
+        docType: roundDocType,
+        _probeDoc,
+        _hashFile,
       });
       anchorCommit = await headCommitSha(_git); 
     }
@@ -5186,6 +5264,7 @@ async function reviewLoop({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
+        upstreamState: anchorUpstreamState,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -5274,6 +5353,7 @@ async function appendApprovalAnchors({
   paths,
   hash,
   normalizedHash = null,
+  upstreamState = [],
   commit,
   _readFile,
   _probeDoc,
@@ -5322,7 +5402,9 @@ async function appendApprovalAnchors({
         path,
         `\nAPPROVAL-HASH: ${hash}\n` +
           (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
-          `REVIEWED-COMMIT: ${commit}\n`
+          `REVIEWED-COMMIT: ${commit}\n` +
+
+          upstreamStateLines(upstreamState)
       );
       appended = true;
     } catch (err) {
@@ -5597,6 +5679,8 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
       anchorHash: anchor.ok ? anchor.hash : null,
 
       anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
+
+      anchorUpstreamState: anchor.ok ? anchor.upstreamState : [],
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -5720,6 +5804,7 @@ function noApprovalRecord(candidate, unevaluable = []) {
     candidate,
     hash: null,
     normalizedHash: null,
+    upstreamState: [],
     unevaluable,
     tier1Empty: false,
   };
@@ -5752,11 +5837,18 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
   const normalizedHash =
     norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
 
+  const upstreamSerialised = records.map((r) => upstreamStateLines(r.anchorUpstreamState ?? []));
+  const upstreamState =
+    upstreamSerialised.every((s) => s === upstreamSerialised[0]) && upstreamSerialised[0] !== ""
+      ? (records[0].anchorUpstreamState ?? [])
+      : [];
+
   return {
     approving: true,
     candidate,
     hash: hashes[0],
     normalizedHash,
+    upstreamState,
     unevaluable: [],
     tier1Empty: false,
   };
@@ -5802,6 +5894,7 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
     candidate,
     hash: hashes[0],
     normalizedHash: null,
+    upstreamState: [],
     unevaluable: [],
     tier1Empty: false,
   };
@@ -6302,6 +6395,34 @@ function erratumSupersetClause({ docType, upstreamState = [] }) {
     `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
     `(DEC-ERR-03).\n` +
     rows
+  );
+}
+
+function cascadeConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  upstreamDocType,
+  upstreamPath,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
+  return (
+    `UPSTREAM-CASCADE CONFIRMATION for ${docPath} (feature ${feature}).\n` +
+    `You previously approved ${docType}. Its own bytes have NOT changed. What changed is ` +
+    `${upstreamDocType}, at ${upstreamPath}: an erratum round edited it after your approval was ` +
+    `recorded, so your approval was taken against a version of ${upstreamDocType} that no longer ` +
+    `exists.\n` +
+    `Do not re-review the whole document, and do not re-litigate settled decisions. Re-read your ` +
+    `own prior cross-review of ${docType}, read \`git diff\` for the edit to ${upstreamPath}, and ` +
+    `answer ONE question: does ${docType} still hold as approved against ${upstreamDocType} as it ` +
+    `now stands?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
+    `Write your confirmation as the next cross-review round for this document type — ` +
+    `${reviewFile} (round v${round}) — and end with the standard VERDICT trailer.\n` +
+    branchPinClause(feature)
   );
 }
 
@@ -7976,6 +8097,25 @@ async function main({
           }
         }
 
+        if (freshness === "FRESH" && record.upstreamState && record.upstreamState.length > 0) {
+          const current = new Map();
+          for (const row of record.upstreamState) {
+            current.set(row.docType, await erratumDocHash(row.docType));
+          }
+          const drifted = upstreamStateDrift(record.upstreamState, current);
+          if (drifted.length > 0) {
+            freshness = "STALE";
+            heldByNormalization = false;
+            const notice =
+              `Phase ${phaseId}: ${docPath} is byte-unchanged but its recorded approval was ` +
+              `taken against a DIFFERENT upstream — ${drifted.join(", ")} moved since round ` +
+              `${record.candidate} was approved (PLAN §3.1). The approval is treated as STALE ` +
+              `and the phase runs again.`;
+            notices.push(notice);
+            emit(notice);
+          }
+        }
+
         const reopened = reopenedApproval(reopenedApprovals, docType);
         if (freshness === "FRESH" && reopened) {
           notices.push(
@@ -8092,16 +8232,13 @@ async function main({
     return episode.response;
   }
 
-  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+  const erratumDocPath = (docType) => featureDocPath(featureName, docType);
 
   async function erratumDocHash(docType) {
     const path = erratumDocPath(docType);
     const probe = await probeDocument(probeDocFn, path, docType);
     return (probe ? probe.hash : await hashFileFn(path)) ?? null;
   }
-
-  const erratumDocTypesAbove = (target) =>
-    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
 
   async function snapshotErratumDocs() {
     const snapshot = new Map();
@@ -8160,6 +8297,151 @@ async function main({
         postmortemStatus: written ? "written" : "write_failed",
       }
     );
+  }
+
+  async function cascadeDownstream({ phaseId, target, editedIn }) {
+    const targetHash = await erratumDocHash(target);
+    if (targetHash == null) return;
+
+    for (const downstream of erratumDocTypesBelow(target)) {
+      const ownerPhase = ERRATUM_PHASE_BY_DOC_TYPE[downstream];
+      const dispatch = PHASE_DISPATCH[ownerPhase];
+      if (!dispatch || !Array.isArray(dispatch.reviewers) || dispatch.reviewers.length === 0)
+        continue;
+
+      const docPath = erratumDocPath(downstream);
+      const docHash = await erratumDocHash(downstream);
+      if (docHash == null) continue; 
+
+      const window = await phaseWindow(downstream);
+
+      const record = tier1ApprovalRecord({
+        reviewers: dispatch.reviewers,
+        startIndex: window.startIndex,
+        reviewFiles: window.reviewFiles,
+      });
+      if (!record.approving) continue;
+      const row = (record.upstreamState ?? []).find((e) => e.docType === target);
+      if (!row || row.hash === targetHash) continue;
+
+      if (lifetimeCapReached(window.startIndex)) {
+        const onDisk = window.startIndex - 1;
+        const notice =
+          `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — the upstream cascade ` +
+          `re-confirmation is skipped, nothing dispatched. ${onDisk} review round` +
+          `${onDisk === 1 ? "" : "s"} for ${downstream} are on disk and the cap is ` +
+          `${MAX_LIFETIME_ROUNDS}. Its approval was anchored against an EARLIER ${target}, which ` +
+          `${editedIn} has since edited; the document is ACCEPTED AS-IS (not approved, not ` +
+          `failed — no POSTMORTEM written) and the pipeline moves forward. To re-confirm it ` +
+          `anyway, re-run with forcePhases including "${ownerPhase}".`;
+        notices.push(notice);
+        emit(notice);
+        continue;
+      }
+
+      const round = window.startIndex;
+      const reviewers = dispatch.reviewers;
+      const paths = reviewers.map(
+        (skill) =>
+          `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${downstream}-v${round}.md`
+      );
+      const { upstreamState } = await deriveUpstreamState(downstream, null);
+
+      const opening =
+        `Phase ${phaseId}: ${target} moved under ${docPath} — its recorded approval (round ` +
+        `${record.candidate}) was anchored against ${target} \`${row.hash}\`, now ` +
+        `\`${targetHash}\`. Dispatching ONE delta re-confirmation round v${round} to ` +
+        `${reviewers.join(", ")} (PLAN §3.2).`;
+      notices.push(opening);
+      emit(opening);
+
+      const responses = await parallelFn(
+        reviewers.map((skill, i) =>
+          wrappedDispatch({
+            skill,
+            basePrompt: cascadeConfirmPrompt({
+              feature: featureName,
+              docType: downstream,
+              docPath,
+              upstreamDocType: target,
+              upstreamPath: erratumDocPath(target),
+              round,
+              reviewFile: paths[i],
+              upstreamState,
+            }),
+            targetPath: paths[i],
+            docType: downstream,
+            dispatchKind: "review",
+            phaseId: ownerPhase,
+            sessionKey: reviewerSessionKey(featureName, downstream, ownerPhase, skill),
+          })
+        )
+      );
+
+      const verdicts = [];
+      for (let i = 0; i < reviewers.length; i++) {
+        const trailer = parseVerdict(responses[i], reviewers[i]);
+        if (trailer.malformed !== true) {
+          verdicts.push(trailer);
+          continue;
+        }
+        let fileText = null;
+        try {
+          fileText = await readFileFn(paths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = extractFileVerdict(
+          fileText,
+          reviewerRoleSlug(reviewers[i]) || reviewers[i]
+        );
+        verdicts.push(fromFile.ok && fromFile.malformed !== true ? fromFile : trailer);
+      }
+
+      if (verdicts.every((v) => isPassResult(v))) {
+
+        const probe = await probeDocument(probeDocFn, docPath, downstream);
+        const normalizedHash = await normalizedAnchorFor({
+          probe,
+          path: docPath,
+          _hashNormalizedFile: hashNormalizedFileFn,
+        });
+        await appendApprovalAnchors({
+          paths,
+          hash: docHash,
+          normalizedHash,
+          upstreamState: upstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
+          commit: await headCommitSha(gitFn),
+          _readFile: readFileFn,
+          _probeDoc: probeDocFn,
+          _appendFile: appendFileFn,
+          _git: gitFn,
+          emit,
+        });
+        const notice =
+          `Phase ${phaseId}: ${docPath} RE-CONFIRMED at round v${round} against the edited ` +
+          `${target}. Its bytes are unchanged; its approval now records the CURRENT upstream ` +
+          `state and the phase stays skippable.`;
+        notices.push(notice);
+        emit(notice);
+        continue;
+      }
+
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: downstream,
+        phase: ownerPhase,
+        reason:
+          `phase ${phaseId}'s erratum edit to ${target} moved the upstream ${downstream} was ` +
+          `approved against, and the delta re-confirmation at round v${round} did not approve.`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${docPath} was NOT re-confirmed against the edited ${target} at round ` +
+        `v${round}. No anchors were written — nobody approved these bytes against this upstream — ` +
+        `and the recorded approval is RE-OPENED, so phase ${entry ? entry.phase : ownerPhase} ` +
+        `runs again under its ordinary review budgets (PLAN §3.2, ruling Q-1).`;
+      notices.push(notice);
+      emit(notice);
+    }
   }
 
   async function erratumRound({ phaseId, label, target, items, mintedHashes, attempt = 0 }) {
@@ -8300,12 +8582,14 @@ async function main({
       }
     }
 
-    const round = window.startIndex;
     const reviewers = upstream.reviewers;
-    const confirmPaths = reviewers.map(
-      (skill) =>
-        `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${round}.md`
-    );
+    const confirmRoundPaths = (n) =>
+      reviewers.map(
+        (skill) =>
+          `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${n}.md`
+      );
+    let round = window.startIndex;
+    let confirmPaths = confirmRoundPaths(round);
 
     const probe = await probeDocument(probeDocFn, upstreamPath, target);
     const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
@@ -8316,28 +8600,52 @@ async function main({
     });
     const anchorCommit = await headCommitSha(gitFn);
 
-    const responses = await parallelFn(
-      reviewers.map((skill, i) =>
-        wrappedDispatch({
-          skill,
-          basePrompt: erratumConfirmPrompt({
-            feature: featureName,
-            docType: target,
-            docPath: upstreamPath,
-            itemLines: confirmItemLines,
-            round,
-            reviewFile: confirmPaths[i],
+    const dispatchConfirmers = (atRound, paths, state) =>
+      parallelFn(
+        reviewers.map((skill, i) =>
+          wrappedDispatch({
+            skill,
+            basePrompt: erratumConfirmPrompt({
+              feature: featureName,
+              docType: target,
+              docPath: upstreamPath,
+              itemLines: confirmItemLines,
+              round: atRound,
+              reviewFile: paths[i],
 
-            upstreamState,
-          }),
-          targetPath: confirmPaths[i],
-          docType: target,
-          dispatchKind: "review",
-          phaseId: upstreamPhase,
-          sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
-        })
-      )
-    );
+              upstreamState: state,
+            }),
+            targetPath: paths[i],
+            docType: target,
+            dispatchKind: "review",
+            phaseId: upstreamPhase,
+            sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
+          })
+        )
+      );
+
+    let confirmUpstreamState = upstreamState;
+    let responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
+
+    const reDerived = await deriveUpstreamState(target, null);
+    if (upstreamStateLines(reDerived.upstreamState) !== upstreamStateLines(confirmUpstreamState)) {
+      const before = new Map(confirmUpstreamState.map((e) => [e.docType, e.hash]));
+      const movedInWindow = reDerived.upstreamState
+        .filter((e) => before.has(e.docType) && before.get(e.docType) !== e.hash)
+        .map((e) => e.docType);
+      round = round + 1;
+      confirmPaths = confirmRoundPaths(round);
+      confirmUpstreamState = reDerived.upstreamState;
+      const notice =
+        `Phase ${phaseId}: erratum confirmation for ${target} — upstream MOVED INSIDE the ` +
+        `confirmation window (${movedInWindow.join(", ") || "chain membership changed"}). The ` +
+        `first confirmation round was evaluated against a premise that no longer holds; it is ` +
+        `kept on disk as history and the confirmers are re-dispatched ONCE, both on the same ` +
+        `re-derived upstream state, at round v${round} (PLAN §3.3).`;
+      notices.push(notice);
+      emit(notice);
+      responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
+    }
 
     const verdicts = [];
     for (let i = 0; i < reviewers.length; i++) {
@@ -8487,6 +8795,8 @@ async function main({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
+
+      upstreamState: confirmUpstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,
@@ -8494,6 +8804,8 @@ async function main({
       _git: gitFn,
       emit,
     });
+
+    await cascadeDownstream({ phaseId, target, editedIn: roundLabel });
 
     notices.push(
       `Phase ${phaseId}: ${roundLabel} for ${target} — ${confirmItemCount} item${confirmItemCount === 1 ? "" : "s"}, ` +

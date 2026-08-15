@@ -352,6 +352,63 @@ describe("RLH-AT-15, RLH-AT-16, RLH-AT-18 — staleness and the phase gate (gree
   });
 });
 
+describe("T5 (PLAN §3.1) — the `UPSTREAM-STATE:` anchor line, writer and reader", () => {
+  const upstreamStateLines = subject("upstreamStateLines");
+  const parseApprovalHash = subject("parseApprovalHash");
+  const approvalHashOf = subject("approvalHashOf");
+
+  const RAW = approvalHashOf("# TSPEC\n\nbody\n");
+  const REQ_HASH = approvalHashOf("# REQ\n\nbody\n");
+  const FSPEC_HASH = approvalHashOf("# FSPEC\n\nbody\n");
+  const ROWS = [
+    { docType: "REQ", hash: REQ_HASH },
+    { docType: "FSPEC", hash: FSPEC_HASH },
+  ];
+
+  test("the line format is `UPSTREAM-STATE: {DOCTYPE} sha256:{64 hex}`, one per upstream doc", () => {
+    expect(upstreamStateLines(ROWS)).toBe(
+      `UPSTREAM-STATE: REQ ${REQ_HASH}\nUPSTREAM-STATE: FSPEC ${FSPEC_HASH}\n`
+    );
+    // The RAW digest, not the normalised one: the cascade comparison is a byte
+    // comparison of the upstream, and `APPROVAL-HASH-NORMALIZED:` stays the
+    // only line in the block carrying a normalised digest.
+    for (const line of upstreamStateLines(ROWS).trim().split("\n")) {
+      expect(line).toMatch(/^UPSTREAM-STATE: [A-Z]+ sha256:[0-9a-f]{64}$/);
+    }
+  });
+
+  test("writer and reader round-trip through a real anchor block", () => {
+    const block =
+      `VERDICT: Approved\n\nAPPROVAL-HASH: ${RAW}\n` +
+      `REVIEWED-COMMIT: ${"c".repeat(40)}\n` +
+      upstreamStateLines(ROWS);
+    expect(parseApprovalHash(block)).toEqual({
+      ok: true,
+      hash: RAW,
+      normalizedHash: null,
+      reviewedCommit: "c".repeat(40),
+      upstreamState: ROWS,
+    });
+  });
+
+  test("`[]` writes nothing at all — the legacy block, byte for byte", () => {
+    expect(upstreamStateLines([])).toBe("");
+    expect(upstreamStateLines(null)).toBe("");
+    // Paired positive: the same block WITH rows is not empty, so the assertion
+    // above is about grandfathering rather than a writer that never writes.
+    expect(upstreamStateLines(ROWS)).not.toBe("");
+  });
+
+  test("the anchor-line scanner skips it, so a verdict is still the last thing parsed", () => {
+    const parseVerdict = subject("parseVerdict");
+    const text =
+      `VERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n\n` +
+      `APPROVAL-HASH: ${RAW}\nREVIEWED-COMMIT: ${"c".repeat(40)}\n` +
+      upstreamStateLines(ROWS);
+    expect(parseVerdict(text)).toEqual({ verdict: "Approved", high: 0, medium: 0, low: 0 });
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // The two digest properties — PROP-DIGEST-01 and PROP-DIGEST-02
 // (PROPERTIES §4.1; TSPEC §8.2's seven-row table, rows 1 and 3).

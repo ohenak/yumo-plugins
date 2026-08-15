@@ -550,9 +550,12 @@ describe("converge(): erratum routing (§3.1 step 4)", () => {
     const { fs } = await runPipeline({ tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}` });
 
     const expectedHash = approvalHashOf(FSPEC_TEXT);
+    // T5 (PLAN §3.1): the block now also records the upstream chain the
+    // confirmers answered against — here the one REQ above FSPEC.
     const expectedText =
       `\nAPPROVAL-HASH: ${expectedHash}\n` +
-      `REVIEWED-COMMIT: 0123456789abcdef0123456789abcdef01234567\n`;
+      `REVIEWED-COMMIT: 0123456789abcdef0123456789abcdef01234567\n` +
+      `UPSTREAM-STATE: REQ ${approvalHashOf("# REQ\n\nThe requirement body.\n")}\n`;
     expect(fs.appends).toEqual([
       { path: `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`, text: expectedText },
       { path: `${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v2.md`, text: expectedText },
