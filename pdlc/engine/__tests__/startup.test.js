@@ -15,6 +15,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { runStartupChecks, formatStartup, EXPECTED_SKILLS, RUNG_ORDER } from "../lib/startup.mjs";
@@ -22,6 +23,11 @@ import { runStartupChecks, formatStartup, EXPECTED_SKILLS, RUNG_ORDER } from "..
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot));
 const PLUGIN_ROOT = path.join(repoRoot, "pdlc");
+// The live range, as bin/pdlc.mjs resolves it — these tests run against this
+// repo's own plugin, so a hardcoded range would go stale on every bump.
+const ENGINE_COMPAT = JSON.parse(
+  readFileSync(path.join(engineRoot, "package.json"), "utf8")
+).pdlcPluginCompat;
 
 // `dispatchableSkills`/`listInstalledSkillsFn` are left at their defaults
 // throughout this file (rung 4 then passes without asserting, per
@@ -43,7 +49,7 @@ test("this repo's own plugin passes every rung, in doctor mode (no reqPath)", ()
     pluginRoot: PLUGIN_ROOT,
     env: {},
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     cwd: repoRoot,
   });
 
@@ -75,7 +81,7 @@ test("an unresolvable plugin root skips the downstream chain rather than throwin
     pluginRoot: path.join(repoRoot, "no-such-plugin-root"),
     env: {},
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     cwd: repoRoot,
   });
 
@@ -94,7 +100,7 @@ test("an unreadable skill prompt is reported per-identifier, not as a throw", ()
     pluginRoot: PLUGIN_ROOT,
     env: {},
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     cwd: repoRoot,
     dispatchableSkills: ["te-review", "se-implement"],
     loadSkillFn: (root, skill) => {
@@ -114,7 +120,7 @@ test("the banner reports the effective ANTHROPIC_BASE_URL (AC-2.1), and it equal
     pluginRoot: PLUGIN_ROOT,
     env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:8787" },
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     cwd: repoRoot,
   });
   assert.equal(result.baseUrl, "http://127.0.0.1:8787");
@@ -141,7 +147,7 @@ test("formatStartup appends a PASS/FAIL/SKIP table only when asked", () => {
     pluginRoot: PLUGIN_ROOT,
     env: {},
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     cwd: repoRoot,
   });
   assert.equal(formatStartup(result).join("\n").includes("PASS "), false);
@@ -153,7 +159,7 @@ test("dev mode (reqPath supplied): a missing REQ path fails rung 0 and skips the
     pluginRoot: PLUGIN_ROOT,
     env: {},
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     cwd: repoRoot,
     reqPath: "docs/no-such-feature/REQ-no-such-feature.md",
   });
