@@ -46,6 +46,7 @@ import nodeOs from "node:os";
 import path from "node:path";
 
 import { parseVersion } from "./handshake.mjs";
+import { message } from "./catalogue.mjs";
 
 /** The marketplace-independent plugin name this engine drives. */
 export const PLUGIN_NAME = "pdlc";
@@ -192,31 +193,61 @@ function marketplaceCandidates(claudeDir, fs) {
  * Order (decided design, do not reorder): explicit override → install registry →
  * extracted cache tree → marketplace checkout.
  *
+ * TSPEC §6.5 (D-4, AC-5.6, E-13): `PDLC_PLUGIN_ROOT` is honoured only when
+ * `devDeclared` is true for this invocation (the CLI's `--dev` flag). When
+ * the variable is set but dev-mode was not declared, it is ignored —
+ * discovery proceeds exactly as if the variable were unset — and one
+ * `env.plugin-root-ignored` entry is appended to `notices`. The
+ * `--plugin-root` override always wins regardless of `devDeclared`: it is
+ * explicit and per-invocation in a way the env var is not.
+ *
  * @param {object} [opts]
+ * @param {boolean} [opts.devDeclared] Whether dev-mode was declared for this
+ *   invocation (CLI `--dev`). Only gates `PDLC_PLUGIN_ROOT`, never `override`.
  * @param {object} [opts.env] Environment to read `PDLC_PLUGIN_ROOT` from.
- * @param {string} [opts.override] Explicit root (CLI `--plugin-root`); beats env.
+ * @param {string} [opts.override] Explicit root (CLI `--plugin-root`); beats
+ *   env and `devDeclared` both.
  * @param {string} [opts.home] Home directory; defaults to os.homedir().
  * @param {object} [opts.fs] Injected filesystem surface.
  * @returns {{ok: boolean, root: string|null, source: string|null,
- *            reason: string|null, tried: Array<{root: string, source: string}>}}
+ *            reason: string|null, tried: Array<{root: string, source: string}>,
+ *            notices: Array<{id: string, text: string}>}}
  *   `tried` lists every candidate considered, in order, for a legible refusal.
+ *   `notices` is empty on every row but the ignore branch (§6.5).
  */
 export function resolvePluginRoot({
+  devDeclared = false,
   env = process.env,
   override = null,
   home = null,
   fs = defaultFs,
 } = {}) {
   const tried = [];
+  const notices = [];
 
-  const explicit = override || (env && env[PLUGIN_ROOT_ENV]) || null;
+  const envValue = (env && env[PLUGIN_ROOT_ENV]) || null;
+  // The env var is only ever a candidate when dev-mode was declared; an
+  // explicit `--plugin-root` override is never gated by `devDeclared`.
+  const explicit = override || (devDeclared ? envValue : null) || null;
+
+  // devDeclared: false and the variable is set — ignore it, note it, and let
+  // discovery run below as if it were unset. Never fires on an unset
+  // variable (there is nothing to ignore), and never fires when an explicit
+  // `--plugin-root` override is present (that path returns early above).
+  if (!override && !devDeclared && envValue) {
+    notices.push({
+      id: "env.plugin-root-ignored",
+      text: message("env.plugin-root-ignored", { value: envValue }),
+    });
+  }
+
   if (explicit) {
     const root = path.resolve(explicit);
     const source = override
       ? "explicit override (--plugin-root)"
       : `explicit override (${PLUGIN_ROOT_ENV})`;
     tried.push({ root, source });
-    if (isPluginRoot(root, fs)) return { ok: true, root, source, reason: null, tried };
+    if (isPluginRoot(root, fs)) return { ok: true, root, source, reason: null, tried, notices };
     // An explicit override that is wrong is an operator error, not a reason to
     // silently fall through to a different plugin than the one they named.
     return {
@@ -227,6 +258,7 @@ export function resolvePluginRoot({
         `${source} points at ${root}, which is not a pdlc plugin root ` +
         `(expected .claude-plugin/plugin.json and skills/ inside it)`,
       tried,
+      notices,
     };
   }
 
@@ -243,7 +275,14 @@ export function resolvePluginRoot({
     seen.add(candidate.root);
     tried.push(candidate);
     if (isPluginRoot(candidate.root, fs)) {
-      return { ok: true, root: candidate.root, source: candidate.source, reason: null, tried };
+      return {
+        ok: true,
+        root: candidate.root,
+        source: candidate.source,
+        reason: null,
+        tried,
+        notices,
+      };
     }
   }
 
@@ -253,6 +292,7 @@ export function resolvePluginRoot({
     source: null,
     reason: `no installed pdlc plugin found under ${claudeDir}/plugins (registry, cache, and marketplace checkouts all searched)`,
     tried,
+    notices,
   };
 }
 

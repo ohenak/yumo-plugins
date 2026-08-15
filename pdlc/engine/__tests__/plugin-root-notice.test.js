@@ -87,7 +87,7 @@ function registryFile(installPath, lastUpdated = "2026-08-08T18:13:51.792Z") {
 
 // ── row 1: devDeclared: true, PDLC_PLUGIN_ROOT set — honour direction ────────
 
-test.skip("T32: devDeclared true honours a set PDLC_PLUGIN_ROOT exactly as today, with no notice", () => {
+test("T32: devDeclared true honours a set PDLC_PLUGIN_ROOT exactly as today, with no notice", () => {
   const envValue = "/from-env";
   const fs = fakeFs({
     ...pluginTree(envValue),
@@ -108,7 +108,7 @@ test.skip("T32: devDeclared true honours a set PDLC_PLUGIN_ROOT exactly as today
 
 // ── row 2: devDeclared: true, PDLC_PLUGIN_ROOT unset — discovery, as today ───
 
-test.skip("T32: devDeclared true with no PDLC_PLUGIN_ROOT set falls through to discovery with no notice", () => {
+test("T32: devDeclared true with no PDLC_PLUGIN_ROOT set falls through to discovery with no notice", () => {
   const fs = fakeFs({ ...pluginTree(DISCOVERED_ROOT), ...registryFile(DISCOVERED_ROOT) });
   const out = resolvePluginRoot({ devDeclared: true, env: {}, home: HOME, fs });
   assert.equal(out.ok, true);
@@ -118,7 +118,7 @@ test.skip("T32: devDeclared true with no PDLC_PLUGIN_ROOT set falls through to d
 
 // ── row 3: devDeclared: false, PDLC_PLUGIN_ROOT set — ignore direction ───────
 
-test.skip("T32: devDeclared false ignores a set PDLC_PLUGIN_ROOT, runs discovery, and emits the ignored-env notice", () => {
+test("T32: devDeclared false ignores a set PDLC_PLUGIN_ROOT, runs discovery, and emits the ignored-env notice", () => {
   const envValue = "/from-env";
   const fs = fakeFs({
     ...pluginTree(envValue),
@@ -158,7 +158,7 @@ test.skip("T32: devDeclared false ignores a set PDLC_PLUGIN_ROOT, runs discovery
 
 // ── row 4: devDeclared: false, PDLC_PLUGIN_ROOT unset — unchanged ────────────
 
-test.skip("T32: devDeclared false with no PDLC_PLUGIN_ROOT set is unchanged: discovery, no notice", () => {
+test("T32: devDeclared false with no PDLC_PLUGIN_ROOT set is unchanged: discovery, no notice", () => {
   const fs = fakeFs({ ...pluginTree(DISCOVERED_ROOT), ...registryFile(DISCOVERED_ROOT) });
   const out = resolvePluginRoot({ devDeclared: false, env: {}, home: HOME, fs });
   assert.equal(out.ok, true);
