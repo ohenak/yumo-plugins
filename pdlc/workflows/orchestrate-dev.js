@@ -7452,6 +7452,19 @@ export async function reviewLoop({
       if (!postmortemFailed) {
         const confirmation = await _checkFile(postmortemPath);
         postmortemWritten = !!(confirmation && confirmation.ok);
+        // TSPEC §7.2 P-4 — kind 2. Never agent-mediated: the mark is a
+        // script-owned `_appendFile` call strictly AFTER `_checkFile`
+        // confirms the file, never a sentence in the agent prompt. P-5: an
+        // empty `block` skips the append entirely — no empty section, no
+        // marker, no diff.
+        if (postmortemWritten && provenance.block) {
+          try {
+            await _appendFile(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+            // Best-effort, same discipline as the erratum POSTMORTEM append:
+            // the POSTMORTEM itself is already confirmed written either way.
+          }
+        }
       }
 
       if (postmortemFailed) {
@@ -12373,6 +12386,7 @@ export default async function main({
     _sessionAgent,
     _log: emit,
     _git: gitFn,
+    provenance,
   };
 
   /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
@@ -14932,7 +14946,11 @@ export default async function main({
     // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
     let queueRow = null;
     try {
-      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({
+        feature: featureName,
+        status: "halted",
+        provenance,
+      });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
       // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
       // operator a REMAINING ACTION, and that action reaches them as its own

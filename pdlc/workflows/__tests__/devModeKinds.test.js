@@ -47,9 +47,18 @@ import { makePopulatedProvenance, makeRecordingGit } from "./helpers/provenanceD
 
 const PROVENANCE = makePopulatedProvenance();
 
-/** True iff `text` carries the populated provenance's `line` — the mark. */
+/**
+ * True iff `text` carries the populated provenance's mark. Most placements
+ * (commit messages, `QUEUE.md`'s `Engine` cell) compose `line`; the
+ * POSTMORTEM append (kind 2, TSPEC §7.2 P-4) composes `block` instead
+ * (`orchestrate-dev.js:11077-11110`) — so both are accepted here rather
+ * than assuming every kind shares one carrier string.
+ */
 function marked(text) {
-  return typeof text === "string" && text.includes(PROVENANCE.line);
+  return (
+    typeof text === "string" &&
+    (text.includes(PROVENANCE.line) || text.includes(PROVENANCE.block))
+  );
 }
 
 /**
@@ -199,7 +208,7 @@ async function runHaltedAtR({ extraArgs = {} } = {}) {
     if (["se-review", "pm-review", "te-review"].includes(skill)) {
       return nonConvergingAtR(skill, prompt);
     }
-    const opt = /Address reviewer feedback on (\S+) phase \S+ \S+\. Iteration (\d+)/.exec(
+    const opt = /Address reviewer feedback on (\S+) for phase \S+ of feature \S+\. Iteration (\d+)/.exec(
       prompt
     );
     if (opt) {
@@ -244,7 +253,7 @@ const QUEUE_WITH_FEATURE = `# PDLC Queue
 `;
 
 describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
-  it.skip("T42: halted queue-driven fixture produces all four kinds", async () => {
+  it("T42: halted queue-driven fixture produces all four kinds", async () => {
     // "Queue-driven" per `haltAndQueue.test.js`'s `RLH-AT-21` precedent
     // (TSPEC §3.5): `_recordQueueRow` is a closure over the real, exported
     // `rewriteStatus` and an in-memory queue tree/`_git`, exactly the way
@@ -287,6 +296,35 @@ describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
     expect(kinds).toEqual(ALL_FOUR_KINDS);
   });
 
+  // ─── Leg 1b — T42: main()'s own `_recordQueueRow` call object shape ──────
+  //
+  // PLAN T42/AT-5.3: `main()`'s own `_recordQueueRow` call (the halted-path
+  // seam at `orchestrate-dev.js`, distinct from `phaseMerge`'s own call)
+  // gains a `provenance` key beside `{feature, status}`. Asserted directly
+  // against the recorded call args here — never inferred from Leg 1's kind
+  // set, since Leg 1's own `_recordQueueRow` double ignores unrecognised
+  // keys and would pass whether or not `main()` actually threads them.
+  it("T42: main()'s _recordQueueRow call object carries provenance", async () => {
+    const calls = [];
+    const recordingRecordQueueRow = async (args) => {
+      calls.push(args);
+      return { queueRow: null };
+    };
+
+    const { result } = await runHaltedAtR({
+      extraArgs: {
+        _recordQueueRow: recordingRecordQueueRow,
+        _provenance: PROVENANCE,
+      },
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls[0].feature).toBe(FEATURE);
+    expect(calls[0].status).toBe("halted");
+    expect(calls[0].provenance).toBe(PROVENANCE);
+  });
+
   // ─── Leg 2 — green queue-driven fixture: R-3 and R-5 both marked ─────────
   //
   // TSPEC §12.3 oracle 2 / PM Q-01: "kind 3 has a positive on a green path,
@@ -299,7 +337,7 @@ describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
   // `_runPipeline` fakes) because this leg's whole question is what
   // `orchestrate-queue.js`'s OWN R-3/R-5 writes carry, never what
   // `orchestrate-dev.js` itself does with a real run.
-  it.skip("T42: green queue-driven fixture marks R-3's in-progress and R-5's awaiting-merge rows", async () => {
+  it("T42: green queue-driven fixture marks R-3's in-progress and R-5's awaiting-merge rows", async () => {
     const QUEUE = `# PDLC Queue
 
 | Order | Status | Feature | REQ Path | Depends-On |
@@ -393,7 +431,7 @@ describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
   // changed-file list). The reached rung (`decideMerge`'s row) is asserted
   // BEFORE the kinds, so a wrong earlier-resolving branch (e.g. the guard
   // firing) is a loud row-mismatch, never a silent empty-set pass.
-  it.skip("T42: green direct fixture (mergeMode: on) produces a non-empty kind set including kind 3", async () => {
+  it("T42: green direct fixture (mergeMode: on) produces a non-empty kind set including kind 3", async () => {
     expect(MERGE_GUARD_DEFAULTS).toContain("pdlc/workflows/");
 
     const PR_URL = "https://github.com/acme/widgets/pull/42";
@@ -483,7 +521,7 @@ describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
   // commit helpers, and TSPEC §7.2's own carrier table names it as gaining
   // a `provenance = NO_PROVENANCE` parameter that composes the mark into
   // the committed message, never into any file's bytes.
-  it.skip("T42: AT-5.3b: cross-review file contents stay unmarked while the commit message is marked", async () => {
+  it("T42: AT-5.3b: cross-review file contents stay unmarked while the commit message is marked", async () => {
     const crossReviewPath = `${DOCS}/CROSS-REVIEW-software-engineer-REQ-v1.md`;
     const crossReviewContents = [
       "# Cross-review",
