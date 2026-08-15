@@ -2768,6 +2768,7 @@ export async function buildA5SeamOps({
   _git,
   _ghRun,
   _checkCi,
+  provenance = NO_PROVENANCE,
 } = {}) {
   const bl05 = await probeDefaultBranchChecks(defaultBranch, { _ghRun });
   const bl06 = await probeWorkflowRerun(undefined, { _ghRun });
@@ -2853,10 +2854,12 @@ export async function buildA5SeamOps({
     apply: async (verdict) => {
       lastAction = verdict ? verdict.proposedAction : null;
       if (lastAction === "E-1") return { ok: true }; // nothing to write — the act is the re-run
+      const line = provenance && provenance.line ? provenance.line : "";
+      const message = `advisory(A5): ${feature} — branch-introduced CI fix`;
       const commit = await _git([
         "commit",
         "-m",
-        `advisory(A5): ${feature} — branch-introduced CI fix`,
+        line ? `${message}\n\n${line}` : message,
       ]);
       return { ok: Boolean(commit && commit.ok === true) };
     },
@@ -7291,6 +7294,7 @@ export async function reviewLoop({
   _sessionAgent = NO_SESSION_AGENT,
   _log,
   _git,
+  provenance = NO_PROVENANCE,
 }) {
   // The doc type the round record is keyed by. Derived from `doc` when the caller
   // does not name it, so Phase CR's directory target degrades to "no doc type"
@@ -7611,6 +7615,7 @@ export async function reviewLoop({
         _appendFile,
         _git,
         emit,
+        provenance,
       });
       // §3.9: `trailerReason` rides on EVERY return, `null` on the clean path —
       // so `null` must be observable as a value, which a conditional spread is not.
@@ -7745,6 +7750,10 @@ async function normalizedAnchorFor({ probe, path, _hashNormalizedFile }) {
   }
 }
 
+// TSPEC §7.2 kind 4 (AC-5.3, C-b) — one of the closed set of five commit helpers that compose
+// `provenance.line` into the message string at the call to `_git`, never at a call site.
+// `provenance` defaults to `NO_PROVENANCE`, so a caller that passes nothing yields today's exact
+// bytes (P-1); the composed line is a no-op suffix when `line` is empty.
 async function appendApprovalAnchors({
   paths,
   hash,
@@ -7756,6 +7765,7 @@ async function appendApprovalAnchors({
   _appendFile,
   _git,
   emit,
+  provenance = NO_PROVENANCE,
 }) {
   if (!hash) {
     emit(
@@ -7829,7 +7839,11 @@ async function appendApprovalAnchors({
   if (!appended || typeof _git !== "function") return;
   try {
     await _git(["add", ...paths]); // t6
-    await _git(["commit", "-m", `chore(pdlc): record approval anchors ${hash}`]);
+    const line = provenance && provenance.line ? provenance.line : "";
+    const message = line
+      ? `chore(pdlc): record approval anchors ${hash}\n\n${line}`
+      : `chore(pdlc): record approval anchors ${hash}`;
+    await _git(["commit", "-m", message]);
   } catch {
     // t6 is best-effort: the anchors are on disk either way, and §5.5's comparison
     // reads the working tree, never the commit.
@@ -11698,10 +11712,23 @@ function uncommittedWorkRemedy(paths) {
  * staged set is READ BACK — an add that staged nothing means the task made no
  * change, which is a notice, not a commit and not a halt.
  *
+ * TSPEC §7.2 kind 4 (AC-5.3, C-a) — one of the closed set of five commit helpers that compose
+ * `provenance.line` into the message string at the call to `_git`, never at a call site.
+ * `provenance` defaults to `NO_PROVENANCE`, so a caller that passes nothing yields today's exact
+ * bytes (P-1); the composed line is a no-op suffix when `line` is empty.
+ *
  * @returns {Promise<"committed"|"nothing-staged">}
  * @throws {Error} halt error on any non-transient git failure
  */
-export async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
+export async function commitPaths({
+  paths,
+  message,
+  what,
+  _git,
+  _sleep,
+  emit,
+  provenance = NO_PROVENANCE,
+}) {
   const add = await gitWithLockRetry(["add", "--", ...paths], {
     _git,
     _sleep,
@@ -11722,7 +11749,9 @@ export async function commitPaths({ paths, message, what, _git, _sleep, emit }) 
     return "nothing-staged";
   }
 
-  const commit = await gitWithLockRetry(["commit", "-m", message], {
+  const line = provenance && provenance.line ? provenance.line : "";
+  const commitMessage = line ? `${message}\n\n${line}` : message;
+  const commit = await gitWithLockRetry(["commit", "-m", commitMessage], {
     _git,
     _sleep,
     emit,
@@ -13192,6 +13221,7 @@ export default async function main({
       _appendFile: appendFileFn,
       _git: gitFn,
       emit,
+      provenance,
     });
 
     // PLAN §3.2 — the edit that was just confirmed moved `target`, so every
@@ -13649,6 +13679,7 @@ export default async function main({
       _git: gitFn,
       _ghRun: ghRunFn,
       _checkCi: checkCiFn,
+      provenance,
     });
     return runAdvisorySeamFn({
       seam,
