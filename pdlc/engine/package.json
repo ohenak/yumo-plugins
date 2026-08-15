@@ -1,16 +1,25 @@
 {
-  "name": "pdlc-engine",
+  "name": "@kaneho/pdlc-engine",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "pdlc": "bin/pdlc.mjs"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "vendor/workflows/",
+    "scripts/postinstall.mjs"
+  ],
   "description": "Headless engine for pdlc (Phase 3: pdlc dev/queue wiring to the canonical workflow modules).",
   "pdlcPluginCompat": "^0.23.0",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "node __tests__/_run-suite.mjs"
+    "test": "node __tests__/_run-suite.mjs",
+    "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.226"

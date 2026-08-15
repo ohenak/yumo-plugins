@@ -159,7 +159,7 @@ function assertPackedSetEquals(actual, expected) {
 // rows (T33) or the licence discharge (T05) — it only needs the allow-list
 // itself, so it is the first leg T25 unskips.
 
-test.skip(
+test(
   "T25: files allow-list admits only manifest-adjacent, bin/ and lib/ members — no test corpus",
   () => {
     const packed = packRealTarball();
