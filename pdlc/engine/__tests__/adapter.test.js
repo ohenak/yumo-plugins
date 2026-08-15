@@ -367,12 +367,16 @@ test("_agent never pauses for a non-RateLimitedError failure", async () => {
   assert.deepEqual(adapter.getPauseLog(), []);
 });
 
-test("getDispatchCounts tallies one entry per _agent call, per skill", async () => {
+test("getDispatchCounts tallies one entry per _agent call, per skill and per phase", async () => {
   const { adapter } = makeAdapter();
   await adapter._agent("pm-author", "a");
   await adapter._agent("pm-author", "b");
+  adapter._phase("Phase I: Wave 1/3");
   await adapter._agent("se-implement", "c");
-  assert.deepEqual(adapter.getDispatchCounts(), { "pm-author": 2, "se-implement": 1 });
+  assert.deepEqual(adapter.getDispatchCounts(), {
+    bySkill: { "pm-author": 2, "se-implement": 1 },
+    byPhase: { "(no phase)": 2, "Phase I": 1 },
+  });
 });
 
 test("getApiKeySource reflects the most recently observed SDK apiKeySource", async () => {
@@ -457,7 +461,7 @@ test("a dispatch with permission denials warns and is recorded, without failing"
   assert.match(warning, /Bash/);
 
   assert.deepEqual(adapter.getDenialLog(), [
-    { skill: "pm-author", label: "pm-author", tools: ["Write", "Write", "Bash"], count: 3 },
+    { skill: "pm-author", label: "pm-author", phase: null, tools: ["Write", "Write", "Bash"], count: 3 },
   ]);
 });
 

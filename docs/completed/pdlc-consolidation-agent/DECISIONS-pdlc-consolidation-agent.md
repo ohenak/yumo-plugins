@@ -445,7 +445,7 @@ stated relative to the *post-edit* hook, never to HEAD.** At HEAD the hook enume
 in this repository at HEAD that glob returns **2** paths while
 `git ls-files --cached --others --exclude-standard ':(glob)docs/*/LEARNINGS-*.md'
 ':(glob)docs/completed/*/LEARNINGS-*.md'` returns **5** — the three `docs/completed/*` entries plus
-`docs/orchestrate-dev-workflow` and `docs/pdlc-advisory-tier`. That gap is larger than classes (i)
+`docs/orchestrate-dev-workflow` and `docs/completed/pdlc-advisory-tier`. That gap is larger than classes (i)
 and (ii) combined, and it is **not** a residual of this decision: it is closed by the decision, by
 replacing `:28`'s single glob with the two-member `CORPUS_GLOBS` tuple and a comprehension over it
 (`TSPEC §7.1:806`, the code form at `:841-842`, scoped by `TSPEC:807`). Stating the two-class

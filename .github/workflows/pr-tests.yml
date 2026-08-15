@@ -74,6 +74,40 @@ jobs:
         # npm's exit code — which it is, since bash `set -e` semantics apply per step.
         run: npm test
 
+  engine-tests:
+    name: Engine tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      # Same matrix as unit-tests (pr-tests.yml:40): the engine job tracks whatever
+      # unit-tests runs rather than declaring a second, independently-drifting platform
+      # list (TSPEC §7.6).
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pdlc/engine/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pdlc/engine
+        run: npm ci
+
+      - name: Engine tests
+        working-directory: pdlc/engine
+        # Deliberately the package.json `test` script, not the raw test-runner invocation
+        # it wraps — the --import bootstrap flag and the suite-wide assertion step live
+        # inside that script (§7.0), and a job that spelled the runner call out directly
+        # would run without both.
+        run: npm test
+
   artifact-freshness:
     name: Generated artifacts are in sync
     runs-on: ubuntu-latest

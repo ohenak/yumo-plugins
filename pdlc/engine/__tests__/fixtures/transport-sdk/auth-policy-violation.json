@@ -1,0 +1,9 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "apiKeySource": "user",
+    "model": "claude-haiku-4-5-20251001",
+    "session_id": "fixture-sess-auth-violation-0001"
+  }
+]

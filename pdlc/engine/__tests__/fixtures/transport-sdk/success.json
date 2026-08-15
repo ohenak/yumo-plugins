@@ -1,0 +1,39 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "apiKeySource": "none",
+    "model": "claude-haiku-4-5-20251001",
+    "session_id": "fixture-sess-success-0001"
+  },
+  {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+      "status": "allowed",
+      "resetsAt": 1786248000,
+      "rateLimitType": "five_hour",
+      "overageStatus": "rejected",
+      "overageDisabledReason": "org_level_disabled",
+      "isUsingOverage": false
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "duration_api_ms": 2167,
+    "num_turns": 1,
+    "stop_reason": "end_turn",
+    "session_id": "fixture-sess-success-0001",
+    "total_cost_usd": 0.037099,
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 18272,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 109,
+      "service_tier": "standard"
+    },
+    "permission_denials": [],
+    "result": "HELLO-PDLC-FIXTURE"
+  }
+]

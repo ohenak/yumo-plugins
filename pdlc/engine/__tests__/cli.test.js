@@ -165,3 +165,62 @@ test("an unknown command prints the usage block naming dev and queue", () => {
   assert.match(r.out, /pdlc dev <docs\/\{feature\}\/REQ-\{feature\}\.md>/);
   assert.match(r.out, /pdlc queue/);
 });
+
+// ─── EC-CLI-7: a flag outside §3.2's closed set is a usage error ─────────────
+
+test("EC-CLI-7: an unknown flag (a typo) is a usage error, exit 1, nothing resolved", () => {
+  const r = run(["dev", "docs/x/REQ-x.md", "--dry-runn", "--plugin-root", PLUGIN_ROOT]);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /unknown flag "--dry-runn"/);
+  assert.equal(/BEGIN ROLE DEFINITION/.test(r.out), false, "nothing may be resolved on a usage error");
+});
+
+test("EC-CLI-7: a flag valid for one command but not another is still a usage error", () => {
+  const r = run(["doctor", "--force-phases", "R", "--plugin-root", PLUGIN_ROOT]);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /unknown flag "--force-phases"/);
+});
+
+// ─── EC-CLI-5: a value flag with no value is a usage error, never silently empty ──
+
+test("EC-CLI-5: `--cwd` as the last argument (no value) is a usage error, exit 1", () => {
+  const r = run(["dev", "docs/x/REQ-x.md", "--plugin-root", PLUGIN_ROOT, "--cwd"]);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /--cwd requires a value/);
+});
+
+test("EC-CLI-5: a value flag immediately followed by another flag is a usage error", () => {
+  const r = run(["dev", "docs/x/REQ-x.md", "--cwd", "--dry-run", "--plugin-root", PLUGIN_ROOT]);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /--cwd requires a value/);
+});
+
+test("EC-CLI-5: `--flag=value` form never trips the missing-value check", () => {
+  const r = run(["dev", "docs/x/REQ-x.md", "--dry-run", `--plugin-root=${PLUGIN_ROOT}`]);
+  assert.equal(r.status, 0, r.out);
+});
+
+// ─── BR-CLI-1: `--flag value` and `--flag=value` are equivalent ──────────────
+
+test("BR-CLI-1 / AT-ENG-02: `--dry-run-skill name` and `--dry-run-skill=name` compose identically", () => {
+  const spaceForm = run([
+    "dev",
+    "docs/x/REQ-x.md",
+    "--dry-run",
+    "--dry-run-skill",
+    "se-author",
+    "--plugin-root",
+    PLUGIN_ROOT,
+  ]);
+  const equalsForm = run([
+    "dev",
+    "docs/x/REQ-x.md",
+    "--dry-run",
+    `--dry-run-skill=se-author`,
+    "--plugin-root",
+    PLUGIN_ROOT,
+  ]);
+  assert.equal(spaceForm.status, 0, spaceForm.out);
+  assert.equal(equalsForm.status, 0, equalsForm.out);
+  assert.equal(spaceForm.stdout, equalsForm.stdout);
+});

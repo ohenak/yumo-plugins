@@ -30,17 +30,44 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > dependency absent from the table is checked against the base branch, exactly as rows 6/7/15/16
 > already do for `pdlc-workflow-distribution`. Prose below that says "rows 13, 14 and 16" is
 > historical record and keeps its meaning: the feature name, not the row, is the identity.
+> **Rows 1 (`pdlc-advisory-tier`), 2 (`pdlc-consolidation-agent`) and 3
+> (`pdlc-headless-engine`) were removed from the table on 2026-08-12.** All three merged — row 1
+> as `bb99f890` (#38, 2026-08-05), row 2 as `87d9c6ad` (#50, 2026-08-10), row 3 as `39787a82`
+> (#56, 2026-08-12) — and the per-feature docs moved to `docs/completed/pdlc-advisory-tier/`,
+> `docs/completed/pdlc-consolidation-agent/` and `docs/completed/pdlc-headless-engine/`,
+> LEARNINGS included. `Order` values stay allocated and are never reused; 1, 2 and 3 are retired.
+> The rows that still name these features in `Depends-On` (4, 5, 6, 19, 20) resolve them through
+> Phase-0 readiness triage — a dependency absent from the table is checked against the base
+> branch, exactly as rows 6/7/15/16 already do for `pdlc-workflow-distribution`. Prose below that
+> says "row 1", "row 2" or "row 3" is historical record and keeps its meaning: the feature name,
+> not the row, is the identity.
+
+> **Row 7 (`pdlc-install-mechanism`) removed from the table on 2026-08-13 — closed as superseded,
+> not delivered.** Its deferrals D-DIST-01/02/03/05 are absorbed by `pdlc-engine-distribution`'s
+> renarrowed REQ-EDIST-03: once the engine is installed as a package, the per-project copy
+> mechanism they wanted to improve no longer exists to improve. D-DIST-07 (per-worktree consumer
+> state) dissolves for the same reason — it is a property of the `.claude/workflows/` consumer copy,
+> which row 5 `pdlc-plugin-retirement` removes. **Conditional, recorded so it cannot vanish
+> silently:** if plugin retirement does not land, D-DIST-07 re-opens against row 6
+> `pdlc-engineering-loop`. No REQ was ever authored at the row's `REQ Path` — the row was a
+> placeholder holding the deferrals, so closing it deletes no document and nothing moves to
+> `docs/completed/`. `Order` value 7 is retired and is not reused. Decision:
+> `pdlc-engine-distribution` REQ v0.6, O-3.
+>
+> **Row 8 (`pdlc-release-ci`) kept, renarrowed on 2026-08-13.** Its PR-test half was discharged out
+> of band in `3ef6ac7`; what remains is release automation for the public npm package chosen in
+> DEC-DIST-05 — tag, publish, and the rendered version lines. It therefore now depends on
+> `pdlc-engine-distribution` as well, and stays `blocked` until that feature's FSPEC settles the
+> package name and pin mechanism. Its `REQ Path` is likewise still a placeholder: no REQ exists at
+> that path yet, and one must be authored before the row can be picked up. Decision: same, O-3.
+
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 1 | done | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
-| 2 | done | pdlc-consolidation-agent | docs/completed/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
-| 3 | pending | pdlc-headless-engine | docs/pdlc-headless-engine/REQ-pdlc-headless-engine.md | — |
 | 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
-| 7 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
-| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
+| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
 | 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
@@ -75,7 +102,14 @@ lands, which is why that feature is in the `Depends-On` column rather than only 
 `Order 19` because values are allocated and never reused and 18 is the highest ever issued; the row
 carries `ready: false` so the driver cannot pick it up as drafted. Its five deferrals (D-AWG-01…05)
 all bind to row 6, which is why row 6 gains a `Depends-On` edge on it below — the engineering loop is
-the integration row that would inherit them.
+the integration row that would inherit them. **Update 2026-08-11:** a second live instance, from
+consumer repo `regime-ledger` (`iv-snapshot-store-postgres`, direct `pdlc dev` run), corroborates the
+seam: a wave-2 task delivered its owned NEW test file but never touched its owned MOD implementation
+file, and the gate died at pytest collection (ImportError, zero tests run) — the first live
+`wave-internal-defect` instance, repairable under E-5 alone. REQ revised to v1.1 with the incident,
+two new operator questions (Q-4 per-task ownership-delivery check, Q-5 collection-error evidence
+signal) and a sixth deferral D-AWG-06 (mode-aware Phase I halt reporting), which binds to row 6 like
+the other five.
 
 **Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine

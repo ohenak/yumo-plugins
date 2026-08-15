@@ -182,7 +182,7 @@ script and a JS parser — easy to break by an innocent-looking rewording of eit
       release tree (bash present, so the guard-integration cases actually ran — 0 skipped).
 
 **4c. BL-01 — the `"fable"` rung dispatch is still unverified until recorded.** PLAN A-34's
-manual verification (`docs/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md`)
+manual verification (`docs/completed/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md`)
 shipped in its admissible form (ii): `RESULT: unverified — no runtime available`. The
 obligation carries forward here so it is re-asked at every release rather than forgotten:
 in a fresh session with a synced `.claude/workflows/` copy and `advisory.enabled: true`,
