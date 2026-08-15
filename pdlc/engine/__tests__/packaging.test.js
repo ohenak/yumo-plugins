@@ -17,7 +17,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, mkdirSync, cpSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,24 @@ const WORKFLOW_MEMBERS = [
   "vendor/workflows/VENDOR-MANIFEST.json",
 ];
 
+// wave-12 fix: `packRealTarball()` builds a scratch copy of the engine
+// package and its sibling `pdlc/workflows/` directory rather than packing
+// `ENGINE_ROOT` in place (see the comment on `packRealTarball` below).
+// These two lists say what gets copied into that scratch tree.
+const ENGINE_INPUT_ENTRIES = [
+  "package.json",
+  "README.md",
+  "LICENSE", // conditional (N-2); copied only when present in ENGINE_ROOT
+  ".npmignore",
+  ".gitignore",
+  "bin",
+  "lib",
+  "scripts",
+];
+const WORKFLOW_MODULE_NAMES = WORKFLOW_MEMBERS.filter(
+  (member) => member !== "vendor/workflows/VENDOR-MANIFEST.json",
+).map((member) => path.basename(member));
+
 // Builds the full expected packed set (AT-3.8a's whole-set assertion),
 // member-for-member, from TSPEC §5.4's literal table. `licenceRecorded`
 // is the only conditional member (PK-3): its presence is read from N-2's
@@ -107,13 +125,46 @@ function licenceRecorded() {
 // into a fresh temp directory and returns the packed member list, each
 // entry relative to the package root (the leading `package/` tar prefix
 // stripped).
+// `npm pack`'s `prepack` lifecycle hook shells out to `scripts/prepack.mjs`,
+// which deletes and recreates `vendor/workflows/` in place (§5.2). Packing
+// `ENGINE_ROOT` itself would therefore mutate the real, git-ignored
+// `pdlc/engine/vendor/` for the duration of this test and race other
+// in-process test files under `_run-suite.mjs`'s file-level parallelism
+// (wave-12 defect: this nondeterministically reddened `cli.test.js`'s
+// two-root workflow-module resolution assertions, TSPEC §5.3 AF-3). So
+// this builds a scratch copy of the engine package inputs plus a sibling
+// `pdlc/workflows/` directory under a temp root, and packs *that* — the
+// real checkout is never touched. The scratch tree mirrors the real
+// repo's `pdlc/engine` + `pdlc/workflows` sibling layout so the copied,
+// unmodified `scripts/prepack.mjs`'s own relative-path resolution
+// (`ENGINE_ROOT/../../pdlc/workflows`) still lands on the copied workflow
+// modules with no override needed.
 function packRealTarball() {
+  const buildRoot = mkdtempSync(path.join(tmpdir(), "pdlc-engine-build-"));
   const destDir = mkdtempSync(path.join(tmpdir(), "pdlc-engine-pack-"));
   try {
+    const buildEngineDir = path.join(buildRoot, "pdlc", "engine");
+    const buildWorkflowsDir = path.join(buildRoot, "pdlc", "workflows");
+    mkdirSync(buildEngineDir, { recursive: true });
+    mkdirSync(buildWorkflowsDir, { recursive: true });
+
+    for (const entry of ENGINE_INPUT_ENTRIES) {
+      const source = path.join(ENGINE_ROOT, entry);
+      if (!existsSync(source)) continue; // LICENSE is conditional (N-2)
+      cpSync(source, path.join(buildEngineDir, entry), { recursive: true });
+    }
+
+    for (const name of WORKFLOW_MODULE_NAMES) {
+      cpSync(
+        path.join(REPO_ROOT, "pdlc", "workflows", name),
+        path.join(buildWorkflowsDir, name),
+      );
+    }
+
     const packResult = spawnSync(
       "npm",
       ["pack", "--json", "--pack-destination", destDir],
-      { cwd: ENGINE_ROOT, encoding: "utf8" },
+      { cwd: buildEngineDir, encoding: "utf8" },
     );
     assert.equal(
       packResult.status,
@@ -132,6 +183,7 @@ function packRealTarball() {
       .filter((line) => line.length > 0 && !line.endsWith("/"))
       .map((line) => line.replace(/^package\//, ""));
   } finally {
+    rmSync(buildRoot, { recursive: true, force: true });
     rmSync(destDir, { recursive: true, force: true });
   }
 }
