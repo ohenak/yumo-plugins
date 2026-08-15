@@ -6599,6 +6599,44 @@ function erratumTokenOf(text) {
 }
 
 /**
+ * PLAN §2.3 (T4) — the mechanical land-proof's classifier: does this erratum
+ * item name an exact expected token the edit must land, rather than a general
+ * instruction the author has latitude over? Conservative by construction, same
+ * doctrine as the dedupe-key helpers above — a false positive here dispatches
+ * an author's edit against a token that was never actually promised, so this
+ * only ever fires on one of two unambiguous shapes:
+ *
+ *   - an explicit `EXPECT-TOKEN: {token}` clause, the grammar T1's confirm
+ *     prompt/SKILL updates emit once a finding IS this shape; or
+ *   - the conservative "should say X, not Y" shape — both `say` and `not`
+ *     present, with at least two backtick-/bold-quoted spans to disambiguate
+ *     it from a general "should say X" note naming no wrong value.
+ *
+ * The second shape's expected token is read through `erratumTokenOf` above —
+ * reused, not re-derived, per that function's own doctrine of "the corrected
+ * value stated last" — so this never becomes a second, divergently-tuned
+ * extractor of the same thing `erratumDedupeKey` already reads.
+ *
+ * Returns the normalized expected token, or `null` when the item fits
+ * neither shape — the overwhelmingly common case.
+ */
+const ERRATUM_EXPECT_TOKEN_RE = /EXPECT-TOKEN:\s*[`*]?([^`*\n]+?)[`*]?\s*$/im;
+function erratumLiteralTokenOf(text) {
+  const s = String(text ?? "");
+  const explicit = ERRATUM_EXPECT_TOKEN_RE.exec(s);
+  if (explicit) {
+    const token = explicit[1].toLowerCase().replace(/\s+/g, " ").trim();
+    if (token) return token;
+  }
+  if (!/\bsay\b/i.test(s) || !/\bnot\b/i.test(s)) return null;
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let quotedSpans = 0;
+  while (ERRATUM_TOKEN_RE.exec(s)) quotedSpans++;
+  if (quotedSpans < 2) return null;
+  return erratumTokenOf(s);
+}
+
+/**
  * PLAN §2.4 item 1's dedupe key: `docType` + cited anchor/section + expected
  * token — never the exact item string. Conservative by construction: an item
  * with NO cited anchor keys on its own normalized text instead, so it only
@@ -11913,10 +11951,12 @@ export default async function main({
     // never asked about again.
     let confirmItemLines = itemLines;
     let confirmItemCount = items.length;
+    let confirmItemTexts = items.map((e) => e.item);
     if (movedSinceMinted.length > 0) {
       const remint = parseErratumRemint(authorResponse);
       if (remint) {
         confirmItemCount = remint.stillRaised.length;
+        confirmItemTexts = remint.stillRaised;
         confirmItemLines =
           confirmItemCount > 0
             ? remint.stillRaised.map((text) => `- ${text}`).join("\n")
@@ -11928,6 +11968,80 @@ export default async function main({
           `against upstream HEAD, not the stale mint (PLAN §2.4 item 2).`;
         notices.push(notice);
         emit(notice);
+      }
+    }
+
+    // ─── PLAN §2.3 (T4) — mechanical land-proof for literal-token items ─────
+    //
+    // Runs BEFORE confirmers are dispatched, on the item texts actually about
+    // to be confirmed (post-remint, when a remint happened — an item the
+    // re-grounding already reported ABSORBED is not re-checked here). A
+    // confirmer's PASS is a legibility judgment ("does this edit resolve the
+    // finding"); it is not by itself a mechanical proof the edit's BYTES ever
+    // landed the exact token the finding named. POSTMORTEM-PR's own words for
+    // the gap this closes: "the halt was one grep away from never having
+    // happened, but the grep ran on the wrong party, one step too late" — the
+    // grep now runs here, on the engine, before that party is ever asked.
+    const literalTokenItems = confirmItemTexts
+      .map((text) => ({ text, token: erratumLiteralTokenOf(text) }))
+      .filter((entry) => entry.token !== null);
+
+    if (literalTokenItems.length > 0) {
+      const missingAgainst = async () => {
+        let docText = null;
+        try {
+          docText = await readFileFn(upstreamPath);
+        } catch {
+          docText = null;
+        }
+        const hay = String(docText ?? "").toLowerCase();
+        return literalTokenItems.filter((entry) => !headingContains(hay, entry.token));
+      };
+
+      let stillMissing = await missingAgainst();
+      if (stillMissing.length > 0) {
+        const missingClause = stillMissing
+          .map((entry) => `- expected token \`${entry.token}\` (from: ${entry.text})`)
+          .join("\n");
+        const s = stillMissing.length === 1 ? "" : "s";
+        notices.push(
+          `Phase ${phaseId}: erratum round for ${target} — land-proof: ${stillMissing.length} ` +
+            `literal-token item${s} did not land after the edit. Dispatching one bounded ` +
+            `re-dispatch naming the missing token${s}, before confirmers are asked:\n${missingClause}`
+        );
+        emit(notices[notices.length - 1]);
+
+        await wrappedDispatch({
+          skill: authorSkill,
+          basePrompt:
+            `ERRATUM ROUND for ${upstreamPath} (feature ${featureName}) — LAND-PROOF RETRY.\n` +
+            `Your previous edit to this ${target} did not land the following expected token${s}, ` +
+            `checked mechanically against the document text after your edit:\n${missingClause}\n` +
+            `Edit the document again so the exact token${s} above appear${stillMissing.length === 1 ? "s" : ""} ` +
+            `verbatim, in the section${s} the finding${s} name${stillMissing.length === 1 ? "s" : ""}. ` +
+            `This is a second pass on the SAME erratum edit, not a new one — change nothing else. Commit.\n` +
+            branchPinClause(featureName),
+          targetPath: upstreamPath,
+          docType: target,
+          dispatchKind: "authoring",
+          phaseId: upstreamPhase,
+          sessionKey: authorSessionKey(featureName, target, upstreamPhase),
+        });
+
+        stillMissing = await missingAgainst();
+        if (stillMissing.length > 0) {
+          const finalMissingClause = stillMissing
+            .map((entry) => `- expected token \`${entry.token}\` (from: ${entry.text})`)
+            .join("\n");
+          const s2 = stillMissing.length === 1 ? "" : "s";
+          notices.push(
+            `Phase ${phaseId}: erratum round for ${target} — land-proof: ${stillMissing.length} ` +
+              `literal-token item${s2} STILL did not land after one bounded re-dispatch (budget spent). ` +
+              `Not halted here — confirmers are dispatched next and may still catch it — but the ` +
+              `engine-side land-proof for this round is exhausted:\n${finalMissingClause}`
+          );
+          emit(notices[notices.length - 1]);
+        }
       }
     }
 

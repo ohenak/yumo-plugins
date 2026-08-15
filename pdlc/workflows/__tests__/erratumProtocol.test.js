@@ -327,6 +327,11 @@ async function runPipeline(opts = {}) {
     // path, appended after the rewrite it always reports. Absent by default,
     // which is the fail-open path this task must not disturb.
     erratumRemint = {},
+    // PLAN §2.3 (T4). `{ [upstreamPath]: "bytes" }` — what the erratum author
+    // leaves behind on the ONE bounded land-proof re-dispatch, separate from
+    // `erratumRewrites` (the FIRST edit) so a fixture can leave a token out of
+    // the first edit and land it on the retry, or leave it out of both.
+    erratumLandProofRewrites = {},
     // PLAN §2.2 / §5 RT-1*. `{ [round]: { text, verdict, high } }` — the bytes a
     // confirmer writes AND returns at that derived round index.
     confirmationByRound = {},
@@ -401,6 +406,15 @@ async function runPipeline(opts = {}) {
       // An erratum author that actually EDITS its document — without this the
       // wave's later layers can never observe an upstream that moved.
       const erratumTarget = /ERRATUM ROUND for (docs\/\S+\.md)/.exec(text);
+      // PLAN §2.3 (T4). The land-proof's bounded re-dispatch carries the SAME
+      // "ERRATUM ROUND for {path}" opener (plus a "LAND-PROOF RETRY" suffix),
+      // so it is matched by the regex above too — this branch must be checked
+      // FIRST, or a scripted `erratumLandProofRewrites` entry is shadowed by
+      // the original `erratumRewrites` entry on the retry dispatch.
+      if (erratumTarget && text.includes("LAND-PROOF RETRY") && erratumLandProofRewrites[erratumTarget[1]]) {
+        fs.files[erratumTarget[1]] = erratumLandProofRewrites[erratumTarget[1]];
+        return "Land-proof retry applied and committed.\nREVISION-COMPLETE: yes";
+      }
       if (erratumTarget && erratumRewrites[erratumTarget[1]]) {
         fs.files[erratumTarget[1]] = erratumRewrites[erratumTarget[1]];
         const remint = erratumRemint[erratumTarget[1]];
@@ -1534,5 +1548,109 @@ describe("RT-1d: mint-time item hygiene (PLAN §2.4, T3)", () => {
     // … the drop is reported, not silent.
     expect(report.notices.join("\n")).toContain("malformed erratum, not routed");
     expect(report.notices.join("\n")).toContain("AT-09");
+  });
+});
+
+// ─── RT-1e: mechanical land-proof for literal-token items (PLAN §2.3, T4) ────
+//
+// POSTMORTEM-PR's own words for the gap this closes: "the halt was one grep
+// away from never having happened, but the grep ran on the wrong party, one
+// step too late." A literal-token item names an exact expected string the
+// edit must land; these tests exercise the engine-side, pre-confirmation check
+// that greps for it BEFORE the confirmers — who are asked a legibility
+// question, not run a mechanical proof — are ever dispatched.
+describe("RT-1e: mechanical land-proof for literal-token items", () => {
+  // Both quoted spans present, `say` and `not` present — the conservative
+  // shape §2.3 classifies as literal-token. `erratumTokenOf` (T3, reused here
+  // per PLAN §2.3) reads the LAST quoted span as the expected value.
+  const LITERAL_ITEM =
+    "The type hint should not say `list[str]`; it must say `frozenset[str]`.";
+  const EXPECTED_TOKEN = "frozenset[str]";
+  // A non-literal item — no quoted spans, no `say`/`not` shape — same one
+  // every other test in this file already uses.
+  const NON_LITERAL_ITEM = ERRATUM_ITEM;
+
+  test("RT-1e-a/b: token absent after the edit buys ONE bounded re-dispatch naming it; landing on the retry ends the round without a second one", async () => {
+    const { report, dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${LITERAL_ITEM}`,
+      // The erratum author's first edit does not land the expected token …
+      erratumRewrites: { [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body, revised.\n" },
+      // … but the land-proof retry does.
+      erratumLandProofRewrites: {
+        [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body uses `frozenset[str]` now.\n",
+      },
+    });
+
+    // Exactly one land-proof retry dispatch — the FIRST erratum edit, plus
+    // the ONE bounded re-dispatch, and no more.
+    const authored = erratumAuthorDispatches(dispatches);
+    expect(authored.length).toBe(2);
+    expect(authored[1].prompt).toContain("LAND-PROOF RETRY");
+    expect(authored[1].prompt).toContain(`expected token \`${EXPECTED_TOKEN}\``);
+
+    // Loud notice on the first miss …
+    expect(report.notices.join("\n")).toContain("land-proof: 1 literal-token item did not land");
+    // … but NOT the second-failure notice: the retry landed it.
+    expect(report.notices.join("\n")).not.toContain("STILL did not land");
+
+    // Confirmers still dispatched once, normally — the land-proof is a
+    // pre-confirmation gate, not a replacement for confirmation.
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    expect(report.outcome).toBe("success");
+  });
+
+  test("RT-1e-c: token still absent after the one bounded retry — confirmers still dispatched, loud notice, no engine-side halt", async () => {
+    const { report, dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${LITERAL_ITEM}`,
+      // Neither the first edit nor the retry lands the token.
+      erratumRewrites: { [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body, revised.\n" },
+      erratumLandProofRewrites: {
+        [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body, revised again, still no luck.\n",
+      },
+    });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    // First edit, ONE retry, and no third dispatch — the budget is exactly
+    // one bounded re-dispatch, never a loop.
+    expect(authored.length).toBe(2);
+
+    expect(report.notices.join("\n")).toContain("land-proof: 1 literal-token item did not land");
+    expect(report.notices.join("\n")).toContain(
+      "STILL did not land after one bounded re-dispatch"
+    );
+
+    // Not masked, not swallowed: confirmers are still dispatched (the land-proof
+    // never blocks the round), and the run does not halt on this alone.
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    expect(report.outcome).toBe("success");
+  });
+
+  test("RT-1e-d: a non-literal-token item triggers no extra reads and no extra dispatches — the land-proof is a no-op on this path", async () => {
+    const nonLiteral = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${NON_LITERAL_ITEM}`,
+    });
+
+    // Exactly the pre-T4 dispatch shape (PROP-ERR-20/21): one author dispatch,
+    // two confirmations, no land-proof retry.
+    const authored = erratumAuthorDispatches(nonLiteral.dispatches);
+    expect(authored.length).toBe(1);
+    expect(confirmationDispatches(nonLiteral.dispatches).length).toBe(2);
+    expect(nonLiteral.report.notices.join("\n")).not.toContain("land-proof");
+
+    // Comparative, not an absolute count (the rest of the pipeline already
+    // reads the FSPEC through this same seam for unrelated reasons): a run
+    // whose FIRST edit already lands the token reads the FSPEC exactly ONE
+    // more time than the non-literal run — the land-proof's own check, gated
+    // on `literalTokenItems.length > 0` and skipped entirely on this path.
+    const literal = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${LITERAL_ITEM}`,
+      erratumRewrites: {
+        [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body uses `frozenset[str]` now.\n",
+      },
+    });
+    expect(erratumAuthorDispatches(literal.dispatches).length).toBe(1);
+    const nonLiteralReads = nonLiteral.fs.reads.filter((r) => r.path === FSPEC_PATH).length;
+    const literalReads = literal.fs.reads.filter((r) => r.path === FSPEC_PATH).length;
+    expect(literalReads).toBe(nonLiteralReads + 1);
   });
 });
