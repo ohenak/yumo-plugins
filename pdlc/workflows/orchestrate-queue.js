@@ -1522,6 +1522,7 @@ export default async function main({
             phaseFn,
             emit,
             finish,
+            provenance,
           });
         }
 
@@ -1562,6 +1563,7 @@ export default async function main({
       phaseFn,
       emit,
       finish,
+      provenance,
     });
   }
 
@@ -1598,6 +1600,12 @@ async function runPicked({
   // report this pass returns (see the `finish` comment in `main`). Injected
   // rather than recomputed so there is exactly one place that decides it.
   finish,
+  // TSPEC §7.2 / AT-5.3 — the queue run's own `Provenance` value (defaulted to
+  // `NO_PROVENANCE` by `main`), forwarded unchanged into every `rewriteStatus`
+  // call this function makes (R-3...R-5). `rewriteStatus` is the single writer
+  // that composes `provenance.line` into the row and the commit message; this
+  // function only threads the value through.
+  provenance,
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -1616,7 +1624,9 @@ async function runPicked({
     "in-progress",
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   let report;
@@ -1629,7 +1639,9 @@ async function runPicked({
       "halted",
       readFileFn,
       writeFileFn,
-      gitFn
+      gitFn,
+      null,
+      provenance
     );
     return finish({
       outcome: "halted",
@@ -1654,7 +1666,9 @@ async function runPicked({
     newStatus,
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   emit(
@@ -1700,6 +1714,14 @@ async function runPicked({
  * @param {function} readFileFn  - async (path) => string|null
  * @param {function} writeFileFn - async (path, contents) => void
  * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
+ * @param {string|null} [evidence]
+ * @param {object} [provenance]  - TSPEC §7.1 `Provenance` value (AT-5.3, PROP-PROV-5).
+ *   Defaults to `NO_PROVENANCE`, so a caller that passes nothing writes today's
+ *   exact bytes — no `Engine` cell, no mark in the commit message. This is the
+ *   single writer all five call routes (R-1...R-5) inherit the mark through:
+ *   `provenance.line` is handed to `updateQueueStatus` (the row's `Engine`
+ *   cell) and to `commitQueueRow` (the commit message), never composed at a
+ *   call site.
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  *   `queueRow` is drawn from `QUEUE_ROW_DISPOSITIONS`, TSPEC §4.7's / §8.2's
  *   closed catalogue: `"recorded" | "recorded (uncommitted)" | "none" |
@@ -1713,7 +1735,8 @@ export async function rewriteStatus(
   readFileFn,
   writeFileFn,
   gitFn = defaultGit,
-  evidence = null
+  evidence = null,
+  provenance = NO_PROVENANCE
 ) {
   const current = await readFileFn(queuePath);
 
@@ -1724,11 +1747,13 @@ export async function rewriteStatus(
     return { queueRow: "none" };
   }
 
+  const provenanceLine = provenance && provenance.line ? provenance.line : null;
   const { markdown, matched, written, foundStatus } = updateQueueStatus(
     current,
     feature,
     status,
-    evidence
+    evidence,
+    provenanceLine
   );
 
   // FSPEC §13.5 — document present, row expected, row absent. Distinct from
@@ -1756,7 +1781,7 @@ export async function rewriteStatus(
   }
 
   await writeFileFn(queuePath, markdown);
-  return await commitQueueRow(queuePath, feature, status, gitFn);
+  return await commitQueueRow(queuePath, feature, status, gitFn, provenanceLine);
 }
 
 /** `git`'s idempotence signal. Emitted on stdout by some versions, stderr by others. */
@@ -1780,19 +1805,23 @@ function firstLine(text) {
  * cleaned nor treated as an error. No `push`: the halt must survive the
  * *process*, which a local commit achieves.
  *
+ * TSPEC §7.2 kind 4 (AC-5.3, C-d) — `provenanceLine`, when truthy, is
+ * composed into the message as a trailing line (mirrors
+ * `commitAdvisoryRecord`'s exact composition). Falsy `provenanceLine` yields
+ * today's exact message bytes (P-1) — the composed line is a no-op suffix.
+ *
+ * @param {string|null} [provenanceLine]
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  */
-async function commitQueueRow(queuePath, feature, status, gitFn) {
+async function commitQueueRow(queuePath, feature, status, gitFn, provenanceLine = null) {
   const added = await gitFn(["add", "--", queuePath]);
   if (!added.ok) return uncommitted(added, queuePath);
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(queue): ${feature} → ${status}`,
-    "--",
-    queuePath,
-  ]);
+  const message = provenanceLine
+    ? `chore(queue): ${feature} → ${status}\n\n${provenanceLine}`
+    : `chore(queue): ${feature} → ${status}`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", queuePath]);
   if (committed.ok) return { queueRow: "recorded" };
 
   // E-39 — the row already read the target status and was already committed

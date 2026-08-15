@@ -248,7 +248,7 @@ describe("T36 — PROP-PROV-6: ensureEngineColumn is idempotent and cell-preserv
   }
 });
 
-describe.skip("T39: rewriteStatus's 8th parameter — the single writer all five routes inherit (PROP-PROV-5, AT-5.3)", () => {
+describe("T39: rewriteStatus's 8th parameter — the single writer all five routes inherit (PROP-PROV-5, AT-5.3)", () => {
   test("provenance omitted (NO_PROVENANCE default) ⇒ byte-identical to today: no Engine cell, no mark in the commit message", async () => {
     const fs = fakeFs({ [QUEUE_PATH]: QUEUE_SHAPES.canonical5col });
     const git = fakeGit();
