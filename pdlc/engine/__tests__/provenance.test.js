@@ -34,13 +34,13 @@ function makeInput(overrides = {}) {
 
 // ── frozen, plain-data (§7.1, PROP-PROV-1) ─────────────────────────────────
 
-test.skip("T27: buildProvenance() returns a frozen value", async () => {
+test("T27: buildProvenance() returns a frozen value", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput());
   assert.equal(Object.isFrozen(p), true);
 });
 
-test.skip("T27: buildProvenance() returns plain data — no function-typed properties", async () => {
+test("T27: buildProvenance() returns plain data — no function-typed properties", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput());
   for (const [key, value] of Object.entries(p)) {
@@ -48,14 +48,14 @@ test.skip("T27: buildProvenance() returns plain data — no function-typed prope
   }
 });
 
-test.skip("T27: buildProvenance() returns a value that JSON round-trips byte-for-byte", async () => {
+test("T27: buildProvenance() returns a value that JSON round-trips byte-for-byte", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput());
   const roundTripped = JSON.parse(JSON.stringify(p));
   assert.deepEqual(roundTripped, { ...p });
 });
 
-test.skip("T27: NO_PROVENANCE is frozen and carries empty line/block (P-1, default-inert)", async () => {
+test("T27: NO_PROVENANCE is frozen and carries empty line/block (P-1, default-inert)", async () => {
   const { NO_PROVENANCE } = await import("../lib/provenance.mjs");
   assert.equal(Object.isFrozen(NO_PROVENANCE), true);
   assert.equal(NO_PROVENANCE.line, "");
@@ -111,7 +111,7 @@ function withRecordedGlobals(fn) {
   return calls;
 }
 
-test.skip("T27: PROP-PROV-1: buildProvenance() makes zero fs/env/clock calls", async () => {
+test("T27: PROP-PROV-1: buildProvenance() makes zero fs/env/clock calls", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const calls = withRecordedGlobals(() => {
     buildProvenance(makeInput());
@@ -139,7 +139,7 @@ test("PROP-PROV-1 positive control: the recorder observes calls a deliberately i
 
 // ── line/block are pure renderers, rendered by the single writer (§7.1) ────
 
-test.skip("T27: buildProvenance() renders line and block as non-empty strings for a populated input", async () => {
+test("T27: buildProvenance() renders line and block as non-empty strings for a populated input", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput());
   assert.equal(typeof p.line, "string");
@@ -148,7 +148,7 @@ test.skip("T27: buildProvenance() renders line and block as non-empty strings fo
   assert.ok(p.block.length > 0);
 });
 
-test.skip("T27: buildProvenance() is a pure renderer — same input twice yields byte-identical line/block", async () => {
+test("T27: buildProvenance() is a pure renderer — same input twice yields byte-identical line/block", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const first = buildProvenance(makeInput());
   const second = buildProvenance(makeInput());
@@ -158,7 +158,7 @@ test.skip("T27: buildProvenance() is a pure renderer — same input twice yields
 
 // ── AT-4.1: the report-facing pair (engine + plugin version) is stated ─────
 
-test.skip("T27: AT-4.1: buildProvenance() states both engineVersion and pluginVersion as distinct fields", async () => {
+test("T27: AT-4.1: buildProvenance() states both engineVersion and pluginVersion as distinct fields", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput({ engineVersion: "0.3.1", pluginVersion: "1.4.0" }));
   assert.equal(p.engineVersion, "0.3.1");
@@ -166,7 +166,7 @@ test.skip("T27: AT-4.1: buildProvenance() states both engineVersion and pluginVe
   assert.notEqual(p.engineVersion, p.pluginVersion);
 });
 
-test.skip("T27: AT-4.1: line/block render both the engine and plugin version so the pair is nameable from rendered text", async () => {
+test("T27: AT-4.1: line/block render both the engine and plugin version so the pair is nameable from rendered text", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput({ engineVersion: "0.3.1", pluginVersion: "1.4.0" }));
   assert.ok(p.line.includes("0.3.1"), "line must name the engine version");
@@ -175,7 +175,7 @@ test.skip("T27: AT-4.1: line/block render both the engine and plugin version so 
   assert.ok(p.block.includes("1.4.0"), "block must name the plugin version");
 });
 
-test.skip("T27: AT-4.1: pluginVersion may be null (no plugin found) without throwing", async () => {
+test("T27: AT-4.1: pluginVersion may be null (no plugin found) without throwing", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const p = buildProvenance(makeInput({ pluginVersion: null }));
   assert.equal(p.pluginVersion, null);
@@ -185,21 +185,21 @@ test.skip("T27: AT-4.1: pluginVersion may be null (no plugin found) without thro
 
 // ── AT-4.3: two engine versions differ in the rendered artifacts ───────────
 
-test.skip("T27: AT-4.3: two runs on different engine versions render different line text", async () => {
+test("T27: AT-4.3: two runs on different engine versions render different line text", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const a = buildProvenance(makeInput({ engineVersion: "0.3.1" }));
   const b = buildProvenance(makeInput({ engineVersion: "0.4.0" }));
   assert.notEqual(a.line, b.line);
 });
 
-test.skip("T27: AT-4.3: two runs on different engine versions render different block text", async () => {
+test("T27: AT-4.3: two runs on different engine versions render different block text", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const a = buildProvenance(makeInput({ engineVersion: "0.3.1" }));
   const b = buildProvenance(makeInput({ engineVersion: "0.4.0" }));
   assert.notEqual(a.block, b.block);
 });
 
-test.skip("T27: AT-4.3: two runs on the same engine version render identical line/block", async () => {
+test("T27: AT-4.3: two runs on the same engine version render identical line/block", async () => {
   const { buildProvenance } = await import("../lib/provenance.mjs");
   const a = buildProvenance(makeInput({ engineVersion: "0.3.1" }));
   const b = buildProvenance(makeInput({ engineVersion: "0.3.1" }));
