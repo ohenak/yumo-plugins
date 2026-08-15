@@ -138,7 +138,7 @@ function seedConsumerDecoy() {
 
 // ── PROP-INSTALL-1: additive placement (AT-2.1) ────────────────────────────
 
-test.skip(
+test(
   "T34: install places the package tree under storeRoot/version, additively over an existing entry",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
@@ -171,7 +171,7 @@ test.skip(
   },
 );
 
-test.skip(
+test(
   "T34: install never reads or writes any path under an existing store entry for a different version",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
@@ -189,7 +189,7 @@ test.skip(
   },
 );
 
-test.skip(
+test(
   "T34: installing the same version twice still leaves every earlier version's entry present (additive, not a swap)",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
@@ -214,7 +214,7 @@ test.skip(
 
 // ── PROP-INSTALL-2: reads and writes no consumer path (AT-2.4) ─────────────
 
-test.skip(
+test(
   "T34: install's recorded write set is entirely under storeRoot, with a positive control that writes were observed at all",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
@@ -234,7 +234,7 @@ test.skip(
   },
 );
 
-test.skip(
+test(
   "T34: install's recorded read set contains no path under the consumer project root",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
@@ -247,7 +247,7 @@ test.skip(
   },
 );
 
-test.skip(
+test(
   "T34: nothing is created under .claude/ — the decoy consumer .claude path is never among the recorded writes",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
@@ -265,7 +265,7 @@ test.skip(
   },
 );
 
-test.skip(
+test(
   "T34: install never even references the consumer root when none is supplied — omitting packageRoot/storeRoot inputs leaves no path to derive one from",
   async () => {
     const { install } = await import("../scripts/postinstall.mjs");
