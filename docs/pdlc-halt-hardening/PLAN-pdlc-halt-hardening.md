@@ -184,6 +184,13 @@ engine, still inside the same run:
 3. Bounded by construction: ≤ |chain| docs, one re-confirmation round each,
    `MAX_LIFETIME_ROUNDS` unchanged as the damping term.
 
+**Known limitation (as-implemented, architect-accepted 2026-08-15):** a non-approving
+cascade re-confirmation for a phase that has *already run* in the current invocation
+records the re-open (registry + run report); that phase re-runs on the **next**
+invocation, not mid-run. All staleness is still discovered and recorded in one pass —
+worst case is one extra invocation to complete the re-opens, never one discovery per
+pass.
+
 This lands POSTMORTEM-D rec 4.1 ("invalidate downstream anchors in the same pass and
 carry re-confirmation forward within that run") — cited unlanded in three later
 postmortems — and, via §3.1, the closure-edit case (POSTMORTEM-T occ.2 §2 tail): the
