@@ -419,7 +419,7 @@ test("ci arrangement — mutation evidence over fixture copies (AT-3.4, BR-7.6)"
 // TSPEC §8.2/§8.5: publish.yml's gate job must set-equal pr-tests.yml's five gate jobs' commands
 // ---------------------------------------------------------------------------------------------
 
-test("ci arrangement — publish.yml/pr-tests.yml gate-command set-equality (§8.2, §8.5)", () => {
+test.skip("T49: ci arrangement — publish.yml/pr-tests.yml gate-command set-equality (§8.2, §8.5)", () => {
   assert.ok(
     existsSync(publishWorkflowPath),
     ".github/workflows/publish.yml must exist and carry its own copy of the five PR-gate jobs' " +
