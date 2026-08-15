@@ -195,7 +195,7 @@ describe("T38: classes 1-6 (REQ, FSPEC, TSPEC, PLAN, PROPERTIES) reach artifactP
     };
   }
 
-  test.skip("T38: a successful run's artifactPaths contains REQ, FSPEC, TSPEC, PLAN and PROPERTIES (DECISIONS not warranted)", async () => {
+  test("T38: a successful run's artifactPaths contains REQ, FSPEC, TSPEC, PLAN and PROPERTIES (DECISIONS not warranted)", async () => {
     const result = await main(baseArgs());
     expect(result.outcome).toBe("success");
 
@@ -271,14 +271,14 @@ describe("T38: LEARNINGS-{feature}.md (class 7) reaches artifactPaths after Phas
     };
   }
 
-  test.skip("T38: a successful run enumerates LEARNINGS-{feature}.md — authored at Phase H outside converge(), never pushed at HEAD", async () => {
+  test("T38: a successful run enumerates LEARNINGS-{feature}.md — authored at Phase H outside converge(), never pushed at HEAD", async () => {
     const result = await main(baseArgs());
     expect(result.outcome).toBe("success");
     expect(result.harvestStatus).not.toMatch(/skipped/i);
     expect(result.artifactPaths).toContain(`docs/${FEATURE}/LEARNINGS-${FEATURE}.md`);
   });
 
-  test.skip("T38: CODE_REVIEW-{feature}-v{N}.md (class 8) reaches artifactPaths after Phase DOD passes", async () => {
+  test("T38: CODE_REVIEW-{feature}-v{N}.md (class 8) reaches artifactPaths after Phase DOD passes", async () => {
     const result = await main(baseArgs());
     expect(result.outcome).toBe("success");
     const dod = result.phases.find((p) => p.phase === "DOD");
@@ -327,7 +327,7 @@ describe("T38: POSTMORTEM-{phase}-{feature}.md (class 9) reaches artifactPaths w
   const NEEDS_REVISION = 'Review with issues.\nVERDICT: Needs revision\n{"high": 1, "medium": 0, "low": 0}\n';
   const POSTMORTEM_PROMPT_RE = /^Write (\S*POSTMORTEM-[^\s.]+\.md)\./;
 
-  test.skip("T38: a fresh POSTMORTEM written when Phase R exhausts its round budget is enumerated in artifactPaths", async () => {
+  test("T38: a fresh POSTMORTEM written when Phase R exhausts its round budget is enumerated in artifactPaths", async () => {
     const fs = fakeFs(baseTree());
     const listFiles = fakeListFiles((dirPath) =>
       Object.keys(fs.files)
@@ -349,6 +349,15 @@ describe("T38: POSTMORTEM-{phase}-{feature}.md (class 9) reaches artifactPaths w
         if (text.includes("DECISIONS_WARRANTED")) return "Finalized.\nDECISIONS_WARRANTED: false";
         if (text.includes("Return a JSON object")) {
           return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+        }
+        // The optimizer revision of REQ_PATH: reviewLoop's pre-existing no-op
+        // guard (a no-write optimizer episode cannot converge) halts on the
+        // FIRST iteration unless the optimizer actually mutates the doc, so
+        // each revision appends a distinct byte to keep every round "wrote
+        // bytes" — the reviewer still never approves, so the round budget
+        // still exhausts and the POSTMORTEM path is still exercised.
+        if (skill === "pm-author" && text.includes(REQ_PATH)) {
+          fs.writeFile(REQ_PATH, `${fs.files[REQ_PATH]}\n`);
         }
         return "Document created.\nREVISION-COMPLETE: yes";
       }
@@ -384,15 +393,27 @@ describe("T38: reviewLoop's PASS branch surfaces the anchor-appended CROSS-REVIE
   const DOC = `docs/${FEATURE}/TSPEC-${FEATURE}.md`;
   const APPROVE = 'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
 
-  test.skip("T38: appendApprovalAnchors returns {appended, paths}, and reviewLoop's returned record carries the two anchored CROSS-REVIEW paths on a PASS round", async () => {
+  test("T38: appendApprovalAnchors returns {appended, paths}, and reviewLoop's returned record carries the two anchored CROSS-REVIEW paths on a PASS round", async () => {
     const crPm = crossReviewPath(FEATURE, "pm-review", "TSPEC", 1);
     const crTe = crossReviewPath(FEATURE, "te-review", "TSPEC", 1);
+    // `crossReviewComplete` (§5.9) requires a trailing `## Verdict` section with
+    // a catalogue `VERDICT:` line — pre-seeded so the reviewer episode's own
+    // completeness probe finds the round already terminal, matching how a real
+    // reviewer would have left the file the round before this one re-enters it.
+    const VERDICT_BLOCK = "## Verdict\n\nVERDICT: Approved\n";
     const fs = fakeFs({
       [DOC]: "# TSPEC\n\nBody.\n",
-      [crPm]: "## Review\n\nLooks good.\n",
-      [crTe]: "## Review\n\nLooks good.\n",
+      [crPm]: `## Review\n\nLooks good.\n\n${VERDICT_BLOCK}`,
+      [crTe]: `## Review\n\nLooks good.\n\n${VERDICT_BLOCK}`,
     });
-    const git = fakeGit();
+    // `reviewLoop`'s branch guard re-checks HEAD every round; answer its
+    // `rev-parse --abbrev-ref HEAD` with the feature branch so the guard is
+    // satisfied rather than halting the round before it dispatches anything.
+    const git = fakeGit((argv) =>
+      argv[0] === "rev-parse" && argv.includes("--abbrev-ref")
+        ? { ok: true, stdout: `feat-${FEATURE}\n` }
+        : { ok: true, stdout: "" }
+    );
 
     const agentFn = async (skill) => {
       if (skill === "pm-review" || skill === "te-review") return APPROVE;
@@ -440,7 +461,7 @@ describe("T38: main() pushes reviewLoop's anchored CROSS-REVIEW paths onto artif
   // "write its cross-review file" the way a real reviewer episode does.
   const CROSS_REVIEW_TARGET_RE = /Write your cross-review to exactly this path: (\S+)\./;
 
-  test.skip("T38: a successful run's artifactPaths contains at least one round-1 CROSS-REVIEW file, anchor-appended via appendApprovalAnchors", async () => {
+  test("T38: a successful run's artifactPaths contains at least one round-1 CROSS-REVIEW file, anchor-appended via appendApprovalAnchors", async () => {
     const seeded = {
       [`${DOCS}/REQ-${FEATURE}.md`]: "# REQ\n\nBody.\n",
       [`${DOCS}/FSPEC-${FEATURE}.md`]: "# FSPEC\n\nBody.\n",
@@ -454,7 +475,12 @@ describe("T38: main() pushes reviewLoop's anchored CROSS-REVIEW paths onto artif
         .filter((p) => p.startsWith(`${dirPath}/`) && !p.slice(dirPath.length + 1).includes("/"))
         .map((p) => p.slice(dirPath.length + 1))
     );
-    const git = fakeGit();
+    // Same branch-guard satisfaction as call site A's test above.
+    const git = fakeGit((argv) =>
+      argv[0] === "rev-parse" && argv.includes("--abbrev-ref")
+        ? { ok: true, stdout: `feat-${FEATURE}\n` }
+        : { ok: true, stdout: "" }
+    );
 
     const agentFn = async (skill, prompt) => {
       const text = typeof prompt === "string" ? prompt : "";
@@ -463,7 +489,9 @@ describe("T38: main() pushes reviewLoop's anchored CROSS-REVIEW paths onto artif
         // exactly as a real dispatched episode commits it during the round —
         // appendApprovalAnchors requires the file to already exist to append to.
         const m = CROSS_REVIEW_TARGET_RE.exec(text);
-        if (m) fs.writeFile(m[1], "## Review\n\nApproved.\n");
+        // As above: `crossReviewComplete` needs a trailing `## Verdict` section
+        // with a catalogue `VERDICT:` line for the round to reach terminal.
+        if (m) fs.writeFile(m[1], "## Review\n\nApproved.\n\n## Verdict\n\nVERDICT: Approved\n");
         return 'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
       }
       if (["pm-author", "se-author", "te-author"].includes(skill)) {
