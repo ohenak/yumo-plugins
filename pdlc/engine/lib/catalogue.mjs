@@ -58,6 +58,16 @@ export const MESSAGES = Object.freeze({
       "M-ENG-09 for platform \"{platform}\" records denyFired: no while the §6.2 PreToolUse hook " +
       "carrier still ships; per DEC-ENG-04 this is a red measurement, not a silent posture note",
   },
+  // TSPEC §6.5 (D-4, AC-5.6, E-13): PDLC_PLUGIN_ROOT was set but dev-mode was
+  // not declared for this invocation, so `resolvePluginRoot` ignored it and
+  // ran discovery as if it were unset. This is not a refusal — the released
+  // version still ran — so it is an info-severity notice, not a refusal.
+  "env.plugin-root-ignored": {
+    severity: "info",
+    template:
+      "PDLC_PLUGIN_ROOT was set ({value}) and ignored — dev-mode was not declared; " +
+      "pass --dev to honour it",
+  },
 });
 
 function formatTemplate(id, entry, params) {

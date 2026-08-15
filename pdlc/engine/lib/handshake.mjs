@@ -131,7 +131,7 @@ export function satisfiesRange(version, range) {
 const REMEDY =
   "Remedy: install or re-pin the pdlc plugin to a version in that range " +
   "(`/plugin install pdlc@yumo-plugins`, or `/plugin update pdlc`), or point the " +
-  "engine at a compatible checkout with PDLC_PLUGIN_ROOT=/path/to/pdlc.";
+  "engine at a compatible checkout with --dev PDLC_PLUGIN_ROOT=/path/to/pdlc.";
 
 /**
  * The handshake decision. `pluginVersion` may be null — "not found" is a first
