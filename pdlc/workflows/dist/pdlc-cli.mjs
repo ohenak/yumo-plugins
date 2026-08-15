@@ -4081,6 +4081,84 @@ function parsePlanTasks(markdown) {
 }
 
 /**
+ * Row/cell-level pre-check for Phase P's post-convergence self-parse gate:
+ * every id a task's Deps cell names must be some task's id, across every
+ * qualifying task table in the PLAN (a dependency in one batch's table may
+ * name a task defined in another). Run this BEFORE cycle detection so an
+ * unknown-id typo is diagnosed as "unknown id", never mistaken for a cycle.
+ *
+ * Mirrors `parsePlanTasks`' own table-block segmentation and column
+ * resolution — so its row numbering agrees with the task table's own
+ * indexing — but keeps the RAW Deps cell text and reports unresolved tokens
+ * per row instead of collapsing straight to a dependency array (which is
+ * why this isn't just folded into `parsePlanTasks`: that function's return
+ * shape is pinned by existing callers/tests and carries no raw-cell field).
+ *
+ * @param {string | null | undefined} markdown - Raw PLAN.md contents
+ * @returns {string[]} one diagnostic per offending row, e.g.
+ *   `row 3: Deps cell "A1, Z9" names unknown id "Z9"` — empty when every
+ *   dependency token resolves.
+ */
+function findUnknownPlanDepsIds(markdown) {
+  if (markdown == null || typeof markdown !== "string") return [];
+
+  const blocks = [];
+  let block = null;
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
+    }
+  }
+  if (blocks.length === 0) return [];
+
+  const isSeparatorRow = (cells) =>
+    cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+
+  // Pass 1: collect every task id across every qualifying table before
+  // checking any Deps cell, since a dependency may be defined in a later table.
+  const knownIds = new Set();
+  const qualifyingBlocks = [];
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const idIdx = cols.findIndex((c) => PLAN_ID_HEADER_CELLS.has(c));
+    const depsIdx = cols.findIndex((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+    if (idIdx < 0 || depsIdx < 0) continue; // not a task table
+    qualifyingBlocks.push({ rows, idIdx, depsIdx });
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      if (isSeparatorRow(cells)) continue;
+      const id = (cells[idIdx] || "").trim();
+      if (id) knownIds.add(id);
+    }
+  }
+
+  // Pass 2: every Deps token must resolve against the ids collected above.
+  const problems = [];
+  for (const { rows, idIdx, depsIdx } of qualifyingBlocks) {
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      if (isSeparatorRow(cells)) continue;
+      const id = (cells[idIdx] || "").trim();
+      if (!id) continue;
+      const raw = (cells[depsIdx] || "").trim();
+      for (const tok of parsePlanDepsCell(raw)) {
+        if (!knownIds.has(tok)) {
+          problems.push(`row ${i}: Deps cell "${raw}" names unknown id "${tok}"`);
+        }
+      }
+    }
+  }
+  return problems;
+}
+
+/**
  * The closed set of header cells that name a PLAN task table's id column, and
  * the closed set that names its dependencies column. Matched on the LOWERCASED,
  * TRIMMED cell, in full — never as a substring. Extending either set is the one
@@ -4098,13 +4176,66 @@ const PLAN_DEPS_HEADER_CELLS = new Set([
   "prereqs",
 ]);
 
-/** Split a markdown table row on pipes, trimming leading/trailing pipe + cells. */
+/**
+ * Split a markdown table row on pipes, trimming leading/trailing pipe + cells.
+ *
+ * Escape- and code-span-aware: a `|` is a cell delimiter only when it is (a)
+ * not immediately preceded by an unescaped backslash and (b) not inside an
+ * open backtick code span. Code spans follow the CommonMark rule — a run of
+ * N backticks opens a span, and only an EQUAL-length run of backticks closes
+ * it, so `` `a|b`` `` (two closing ticks against a one-tick open) stays open
+ * and its `|` is literal content, not a delimiter. An escaped `\|` inside a
+ * cell is un-escaped to a literal `|` in the cell's value; escapes are not
+ * processed while inside a code span (CommonMark: backslashes are literal
+ * there). Strict widening: a row with no in-cell pipes (no backslashes, no
+ * backticks) splits byte-identically to the prior plain `.split("|")`.
+ */
 function splitPipeRow(row) {
-  return row
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((c) => c.trim());
+  let s = row;
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+
+  const cells = [];
+  let cur = "";
+  let backtickRun = 0; // length of the currently open code-span fence, 0 = none open
+  let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+
+    // `\|` outside a code span: consume both chars, emit a literal `|`.
+    if (ch === "\\" && backtickRun === 0 && s[i + 1] === "|") {
+      cur += "|";
+      i += 2;
+      continue;
+    }
+
+    if (ch === "`") {
+      let j = i;
+      while (j < s.length && s[j] === "`") j++;
+      const run = j - i;
+      if (backtickRun === 0) {
+        backtickRun = run; // opens a span
+      } else if (run === backtickRun) {
+        backtickRun = 0; // exact-length run closes it (CommonMark rule)
+      }
+      // else: a run of a different length while a span is open is literal.
+      cur += s.slice(i, j);
+      i = j;
+      continue;
+    }
+
+    if (ch === "|" && backtickRun === 0) {
+      cells.push(cur.trim());
+      cur = "";
+      i += 1;
+      continue;
+    }
+
+    cur += ch;
+    i += 1;
+  }
+  cells.push(cur.trim());
+  return cells;
 }
 
 /** Parse a dependencies cell: comma/space list of ids; "-"/"—"/"none"/"" ⇒ []. */
@@ -9486,6 +9617,45 @@ function computeTopologicalBatches(tasks) {
  * @param {Array<{id: string, dependencies: string[], planBatch: number}>} tasks
  * @returns {Array<Array<object>>} one array per topological layer
  */
+/**
+ * Find one concrete cycle among tasks that are stuck (never became ready) so
+ * the halt message can name it instead of just asserting "a cycle exists".
+ * DFS over the stuck set's dependency edges only — edges into completed tasks
+ * are satisfied and irrelevant to why these are stuck. Returns the task ids
+ * in traversal order, e.g. ["A1", "B1", "C1", "A1"] for A1->B1->C1->A1. If no
+ * cycle is found among the stuck edges (e.g. a dependency names an id that
+ * exists nowhere in the PLAN at all, so no edge — and thus no cycle — can be
+ * walked), falls back to listing every stuck task id so the message still
+ * names something concrete.
+ */
+function findCyclePath(stuckTasks) {
+  const byId = new Map(stuckTasks.map((t) => [t.id, t]));
+  const onStack = new Set();
+  const visited = new Set();
+  const path = [];
+
+  const dfs = (id) => {
+    if (onStack.has(id)) return [...path.slice(path.indexOf(id)), id];
+    if (visited.has(id) || !byId.has(id)) return null;
+    onStack.add(id);
+    path.push(id);
+    for (const dep of byId.get(id).dependencies) {
+      const found = dfs(dep);
+      if (found) return found;
+    }
+    onStack.delete(id);
+    path.pop();
+    visited.add(id);
+    return null;
+  };
+
+  for (const t of stuckTasks) {
+    const found = dfs(t.id);
+    if (found) return found;
+  }
+  return stuckTasks.map((t) => t.id);
+}
+
 function topologicalReadySets(tasks) {
   const completed = new Set();
   const layers = [];
@@ -9498,8 +9668,11 @@ function topologicalReadySets(tasks) {
     );
 
     if (ready.length === 0 && completed.size < tasks.length) {
+      const stuck = tasks.filter((t) => !completed.has(t.id));
+      const cyclePath = findCyclePath(stuck);
       throw haltError(
-        "Error: PLAN dependency graph contains a cycle — cannot compute topological batches"
+        "Error: PLAN dependency graph contains a cycle — cannot compute topological batches " +
+          `(cycle: ${cyclePath.join(" -> ")})`
       );
     }
 
@@ -11843,6 +12016,21 @@ async function main({
               `'Depends On'), one markdown table row per task, and every dependency cell ` +
               `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
               `discovering it at Phase I.`;
+            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+            throw haltError(detail);
+          }
+          // Row/cell-level unknown-id check, BEFORE cycle detection: an id typo'd
+          // into a Deps cell would otherwise surface as an opaque "graph contains
+          // a cycle" (an unresolved dependency can never become ready, which
+          // topologicalReadySets can't distinguish from a true cycle). Catching
+          // it here names the offending row and cell instead.
+          const pUnknownDeps = findUnknownPlanDepsIds(pPlanText);
+          if (pUnknownDeps.length > 0) {
+            const detail =
+              `Error: Phase P — the task table in ${planPath} names dependency ids that ` +
+              `are not any task's id: ${pUnknownDeps.join("; ")}. Fix the PLAN's ` +
+              `Dependencies column so every id it names is another task's id. Rejecting ` +
+              `at Phase P rather than discovering it at Phase I.`;
             recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
             throw haltError(detail);
           }
