@@ -54,13 +54,13 @@ test("exitCodeFor: a genuinely different refusal on the probe path is the pipeli
 
 // ── NO_PROBE: inert by default, never invoked unless injected (PROP-VER-12) ─
 
-test.skip("T43: NO_PROBE.latestPublished() called directly still conforms to the S-4 protocol", async () => {
+test("T43: NO_PROBE.latestPublished() called directly still conforms to the S-4 protocol", async () => {
   const { NO_PROBE } = await import("../lib/store.mjs");
   const result = await NO_PROBE.latestPublished();
   assert.deepEqual(result, { unavailable: true, reason: "no update probe is configured" });
 });
 
-test.skip("T43: checkForUpdate() with nothing injected never invokes the default probe (call count === 0, PROP-VER-12)", async () => {
+test("T43: checkForUpdate() with nothing injected never invokes the default probe (call count === 0, PROP-VER-12)", async () => {
   const store = await import("../lib/store.mjs");
   let calls = 0;
   const original = store.NO_PROBE.latestPublished;
@@ -77,7 +77,7 @@ test.skip("T43: checkForUpdate() with nothing injected never invokes the default
   }
 });
 
-test.skip("T43: checkForUpdate() makes no network call and needs no stub-of-a-network to stay offline (S-4 commentary)", async () => {
+test("T43: checkForUpdate() makes no network call and needs no stub-of-a-network to stay offline (S-4 commentary)", async () => {
   const { checkForUpdate } = await import("../lib/store.mjs");
   // No fetch/http seam is injected at all -- if the default path reached for
   // one, this call would throw (nothing global is stubbed) rather than
@@ -87,7 +87,7 @@ test.skip("T43: checkForUpdate() makes no network call and needs no stub-of-a-ne
 
 // ── an injected probe IS called, and both arms of its union pass through ────
 
-test.skip("T43: checkForUpdate({ probe }) calls the injected probe exactly once and passes a version result through unchanged", async () => {
+test("T43: checkForUpdate({ probe }) calls the injected probe exactly once and passes a version result through unchanged", async () => {
   const { checkForUpdate } = await import("../lib/store.mjs");
   let calls = 0;
   const fakeProbe = {
@@ -101,7 +101,7 @@ test.skip("T43: checkForUpdate({ probe }) calls the injected probe exactly once 
   assert.deepEqual(result, { version: "9.9.9" });
 });
 
-test.skip("T43: checkForUpdate({ probe }) passes an injected {unavailable, reason} result through unchanged", async () => {
+test("T43: checkForUpdate({ probe }) passes an injected {unavailable, reason} result through unchanged", async () => {
   const { checkForUpdate } = await import("../lib/store.mjs");
   const fakeProbe = {
     latestPublished: async () => ({ unavailable: true, reason: "registry unreachable" }),
@@ -113,7 +113,7 @@ test.skip("T43: checkForUpdate({ probe }) passes an injected {unavailable, reaso
 // ── update.unavailable: stated on every run, never silent (§10.1 S-4
 //    commentary, §10.3, PROP-VER-3, PROP-CAT-2) ─────────────────────────────
 
-test.skip("T43: update.unavailable is registered in the catalogue and renders the probe's reason", async () => {
+test("T43: update.unavailable is registered in the catalogue and renders the probe's reason", async () => {
   // Forces the store.mjs half to exist too, since the id is meaningless
   // without an emitter in the same batch (§10.3's "registration is
   // scheduled with its emitter, never ahead of it").
@@ -123,7 +123,7 @@ test.skip("T43: update.unavailable is registered in the catalogue and renders th
   assert.match(text, /no update probe is configured/);
 });
 
-test.skip("T43: update.unavailable is stated on the success path (exit 0) AND on an unrelated refusal path (exit 1) -- never blocks, never omitted (PROP-VER-3, AT-5.1)", async () => {
+test("T43: update.unavailable is stated on the success path (exit 0) AND on an unrelated refusal path (exit 1) -- never blocks, never omitted (PROP-VER-3, AT-5.1)", async () => {
   const { checkForUpdate } = await import("../lib/store.mjs");
 
   // Success path: the probe is inert, the run still proceeds, and the run's

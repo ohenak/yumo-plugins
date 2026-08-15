@@ -138,6 +138,14 @@ export const MESSAGES = Object.freeze({
     severity: "info",
     template: "engine version: dev checkout running in place at {root}",
   },
+  // TSPEC §10.1 S-4 commentary / §10.3, FSPEC Q-4 / E-12, PROP-VER-3,
+  // PROP-CAT-2: the update-probe notice. Stated on every run regardless of
+  // outcome -- the probe is inert by default, but the statement about the
+  // probe is unconditional, never silent.
+  "update.unavailable": {
+    severity: "info",
+    template: "could not check for a newer version — {reason}",
+  },
 });
 
 function formatTemplate(id, entry, params) {

@@ -54,3 +54,29 @@ export function listVersions(fs, root) {
 export function rootFor(root, version) {
   return path.join(root, version);
 }
+
+/**
+ * S-4 `UpdateProbe` seam (TSPEC §10.1 S-4, PROP-VER-12). The shipped inert
+ * default: conforms to the `latestPublished()` protocol on its own, but
+ * `checkForUpdate` never invokes it unless a probe is explicitly injected —
+ * offline is the *default* behaviour, not a stub of it.
+ */
+export const NO_PROBE = {
+  async latestPublished() {
+    return { unavailable: true, reason: "no update probe is configured" };
+  },
+};
+
+/**
+ * Composes the S-4 probe. With nothing injected, returns `NO_PROBE`'s
+ * inert result without ever calling `NO_PROBE.latestPublished()` (PROP-VER-12)
+ * — no network seam is reached for, so this stays offline with no
+ * stub-of-a-network needed (AC-5.1). With a probe injected, calls it exactly
+ * once and passes its result (either arm of the union) through unchanged.
+ */
+export async function checkForUpdate({ probe } = {}) {
+  if (!probe) {
+    return { unavailable: true, reason: "no update probe is configured" };
+  }
+  return probe.latestPublished();
+}
