@@ -46,25 +46,90 @@
 
 import path from "node:path";
 import { existsSync, statSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { message } from "./catalogue.mjs";
 
-/** The canonical workflow modules, by relative path inside this repo checkout. */
-export const WORKFLOW_MODULE_URLS = Object.freeze({
-  dev: new URL("../../workflows/orchestrate-dev.js", import.meta.url).href,
-  queue: new URL("../../workflows/orchestrate-queue.js", import.meta.url).href,
+// ─── Two-root workflow module resolution (TSPEC §5.2, PROP-PACK-6/7/8) ────
+//
+// The canonical workflow modules are resolved from one of two fixed-order
+// candidate roots: the vendor root (an installed/packed tree, present only
+// once `prepack` has vendored `pdlc/workflows/` into it) first, then the
+// checkout root (this repo's own `pdlc/workflows/`, the arrangement rule 1
+// above describes). A root only "exists" when it holds BOTH module files —
+// vendoring copies them atomically, so a root with a single member is not a
+// resolvable candidate.
+
+const RUN_MJS_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+/** Root 1: the vendored tree an installed/packed engine ships (§5.2 step 3). */
+const VENDOR_ROOT = path.join(RUN_MJS_DIR, "..", "vendor", "workflows");
+/** Root 2: this repo's own checkout — the pre-packaging arrangement (rule 1). */
+const CHECKOUT_ROOT = path.join(RUN_MJS_DIR, "..", "..", "workflows");
+
+const MODULE_FILE_NAMES = Object.freeze({
+  dev: "orchestrate-dev.js",
+  queue: "orchestrate-queue.js",
 });
 
+const defaultFs = { existsSync };
+
+function rootResolves(root, fs) {
+  return Object.values(MODULE_FILE_NAMES).every((name) => fs.existsSync(path.join(root, name)));
+}
+
+/**
+ * Resolves the workflow-module root, trying the vendor root before the
+ * checkout root (fixed order, no fallback ambiguity — TSPEC §5.2). Throws,
+ * naming both absolute paths tried, when neither resolves — the engine must
+ * refuse rather than dispatch with no modules loaded (§11, PROP-CAT-3).
+ *
+ * @param {{fs?: {existsSync: Function}}} [args]
+ * @returns {{source: "vendor"|"checkout", rootPath: string, tried: Array<{source: string, root: string, exists: boolean}>}}
+ */
+export function resolveWorkflowRoot({ fs = defaultFs } = {}) {
+  const candidates = [
+    { source: "vendor", root: VENDOR_ROOT },
+    { source: "checkout", root: CHECKOUT_ROOT },
+  ];
+  const tried = candidates.map((c) => ({ ...c, exists: rootResolves(c.root, fs) }));
+  const resolved = tried.find((c) => c.exists);
+  if (!resolved) {
+    throw new Error(
+      message("modules.not-found", { vendorRoot: VENDOR_ROOT, checkoutRoot: CHECKOUT_ROOT }),
+    );
+  }
+  return { source: resolved.source, rootPath: resolved.root, tried };
+}
+
+/**
+ * The canonical workflow modules, as `file://` URLs, resolved from whichever
+ * root `resolveWorkflowRoot` picks (TSPEC §5.2). A function — not a static
+ * frozen object — because the root is decided per call, not fixed at import
+ * time (V-04's prior arrangement).
+ *
+ * @param {{fs?: {existsSync: Function}}} [args]
+ * @returns {{dev: string, queue: string}}
+ */
+export function WORKFLOW_MODULE_URLS({ fs = defaultFs } = {}) {
+  const { rootPath } = resolveWorkflowRoot({ fs });
+  return Object.freeze({
+    dev: pathToFileURL(path.join(rootPath, MODULE_FILE_NAMES.dev)).href,
+    queue: pathToFileURL(path.join(rootPath, MODULE_FILE_NAMES.queue)).href,
+  });
+}
+
 /** Absolute filesystem path of a canonical workflow module (AC-1.5 evidence). */
-export function workflowModulePath(name) {
-  const url = WORKFLOW_MODULE_URLS[name];
-  if (!url) throw new Error(`unknown workflow module: ${name}`);
-  return fileURLToPath(url);
+export function workflowModulePath(name, { fs = defaultFs } = {}) {
+  const fileName = MODULE_FILE_NAMES[name];
+  if (!fileName) throw new Error(`unknown workflow module: ${name}`);
+  const { rootPath } = resolveWorkflowRoot({ fs });
+  return path.join(rootPath, fileName);
 }
 
 /** Default module loader. Injectable so tests can prove import never happened. */
 async function defaultImportWorkflow(name) {
-  return import(WORKFLOW_MODULE_URLS[name]);
+  const urls = WORKFLOW_MODULE_URLS();
+  return import(urls[name]);
 }
 
 /**

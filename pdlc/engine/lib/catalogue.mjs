@@ -75,6 +75,17 @@ export const MESSAGES = Object.freeze({
   // and cannot import this module, so it carries the identical wording as
   // its own literal string instead. The test above is what keeps the two
   // in sync and is this id's only real emission (§7.4's reverse direction).
+  // TSPEC §5.2/§11, PROP-CAT-3: neither the vendor root nor the checkout root
+  // resolved a workflow-module pair. The engine refuses at startup and
+  // dispatches nothing — a refusal that still dispatched would look
+  // identical in the transcript, so the caller (`resolveWorkflowRoot`)
+  // throws before any module import is attempted.
+  "modules.not-found": {
+    severity: "refusal",
+    template:
+      "no workflow modules were found; tried the vendor root {vendorRoot} and the " +
+      "checkout root {checkoutRoot} — refusing rather than dispatching with no modules loaded",
+  },
   "node.below-floor": {
     severity: "refusal",
     template: "pdlc requires Node >= {floor}; found {found}",

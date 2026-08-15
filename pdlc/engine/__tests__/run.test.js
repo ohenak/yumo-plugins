@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -19,6 +20,7 @@ import {
   runQueueLoop,
   loadDispatchableSkills,
 } from "../lib/run.mjs";
+import { runPrepack } from "../scripts/prepack.mjs";
 import { DISPATCHABLE_SKILLS as DEV_SKILLS } from "../../workflows/orchestrate-dev.js";
 import { DISPATCHABLE_SKILLS as QUEUE_SKILLS } from "../../workflows/orchestrate-queue.js";
 
@@ -40,9 +42,18 @@ function fakeAdapter() {
 
 // ─── AC-1.5: the modules loaded are THIS repo's tested sources ────────────────
 
-test("workflow modules resolve to the repo's canonical pdlc/workflows sources", () => {
-  const dev = workflowModulePath("dev");
-  const queue = workflowModulePath("queue");
+// T41 (TSPEC §5.2): restated in two-root terms. This was true unconditionally
+// at HEAD because only one root existed; it is false the moment a vendor root
+// resolves, so the vendor-absent case is asserted explicitly (positively —
+// the checkout path is asserted, not merely "not the vendor path") rather
+// than left to depend on whether `pdlc/engine/vendor/workflows/` happens to
+// be absent from the real disk when this test runs.
+test("workflow modules resolve to the repo's canonical pdlc/workflows sources when the vendor root does not resolve (TSPEC §5.2)", () => {
+  const checkoutRoot = path.join(repoRoot, "pdlc", "workflows");
+  const fs = { existsSync: (p) => p.startsWith(checkoutRoot) };
+
+  const dev = workflowModulePath("dev", { fs });
+  const queue = workflowModulePath("queue", { fs });
 
   assert.equal(dev, path.join(repoRoot, "pdlc", "workflows", "orchestrate-dev.js"));
   assert.equal(queue, path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js"));
@@ -80,34 +91,33 @@ test("no git-tracked file under pdlc/engine/ is named orchestrate-{dev,queue}.js
 // is git-ignored build output (§5.2), so it is removed again once the
 // assertions have read it.
 test("prepack vendors the workflow modules byte-for-byte with a verifiable manifest (AF-2)", () => {
-  const vendorDir = path.join(engineRoot, "vendor", "workflows");
+  const tmpRoot = mkdtempSync(path.join(tmpdir(), "pdlc-run-prepack-"));
+  const vendorDir = path.join(tmpRoot, "vendor", "workflows");
+  const sourceDir = path.join(repoRoot, "pdlc", "workflows");
   try {
-    const result = spawnSync(
-      process.execPath,
-      [path.join(engineRoot, "scripts", "prepack.mjs")],
-      { cwd: engineRoot, encoding: "utf8" },
-    );
-    assert.equal(result.status, 0, `prepack.mjs failed: ${result.stderr}`);
+    const manifest = runPrepack({ sourceDir, vendorDir, engineVersion: "0.0.0-test" });
 
-    const manifest = JSON.parse(
+    const onDiskManifest = JSON.parse(
       readFileSync(path.join(vendorDir, "VENDOR-MANIFEST.json"), "utf8"),
     );
+    assert.deepEqual(onDiskManifest, manifest, "written manifest must match runPrepack's return value");
 
     // Set-equality, not `length > 0` (§5.3): a prepack that silently
-    // vendored nothing, or vendored a third file, must fail this assertion.
+    // vendored nothing, or vendored a third file, must still fail this
+    // assertion.
     const names = manifest.modules.map((m) => m.name).sort();
     assert.deepEqual(names, ["orchestrate-dev.js", "orchestrate-queue.js"]);
 
     for (const entry of manifest.modules) {
       const vendoredBytes = readFileSync(path.join(vendorDir, entry.name));
-      const canonicalBytes = readFileSync(path.join(repoRoot, "pdlc", "workflows", entry.name));
+      const canonicalBytes = readFileSync(path.join(sourceDir, entry.name));
       const vendoredHash = createHash("sha256").update(vendoredBytes).digest("hex");
       const canonicalHash = createHash("sha256").update(canonicalBytes).digest("hex");
 
       assert.equal(
         entry.sha256,
         vendoredHash,
-        `${entry.name}: manifest hash must equal the hash of the vendored bytes`,
+        `${entry.name}: manifest hash must equal hash of the vendored bytes`,
       );
       assert.equal(
         entry.sha256,
@@ -118,21 +128,49 @@ test("prepack vendors the workflow modules byte-for-byte with a verifiable manif
         vendoredBytes.equals(canonicalBytes),
         `${entry.name}: vendored copy must be byte-for-byte identical to the canonical source`,
       );
+
+      // One-byte-mutation falsifier: prove the byte-for-byte comparison
+      // above is actually sensitive to corruption, not vacuously true
+      // (e.g. two empty buffers, or a bug that always reports equal).
+      const mutatedBytes = Buffer.from(vendoredBytes);
+      mutatedBytes[0] ^= 0xff;
+      assert.ok(
+        !vendoredBytes.equals(mutatedBytes),
+        `${entry.name}: a one-byte mutation must be detected as unequal`,
+      );
+      assert.notEqual(
+        createHash("sha256").update(mutatedBytes).digest("hex"),
+        entry.sha256,
+        `${entry.name}: a one-byte mutation must change the sha256`,
+      );
     }
   } finally {
-    rmSync(vendorDir, { recursive: true, force: true });
+    rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
 
+// T41 (TSPEC §5.2, PROP-PACK-7): `WORKFLOW_MODULE_URLS` became a function —
+// a resolved root, not a fixed frozen object — so `Object.entries(...)` on
+// the export ITSELF would now silently iterate zero entries (a function's
+// own enumerable properties), turning this into a zero-assertion pass at
+// exactly the moment vendoring makes it load-bearing. The non-zero member
+// count is asserted before the per-member equality for that reason.
 test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not just a file: URL (PROP-FORK-1)", () => {
   // Stronger than "starts with file://": each resolved specifier must equal
   // the repo-relative orchestrate-{dev,queue}.js path exactly, so a fork
   // sitting anywhere else under pdlc/workflows/ (or elsewhere) fails closed.
+  const checkoutRoot = path.join(repoRoot, "pdlc", "workflows");
+  const fs = { existsSync: (p) => p.startsWith(checkoutRoot) };
   const expected = {
     dev: path.join(repoRoot, "pdlc", "workflows", "orchestrate-dev.js"),
     queue: path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js"),
   };
-  for (const [name, url] of Object.entries(WORKFLOW_MODULE_URLS)) {
+  const urls = WORKFLOW_MODULE_URLS({ fs });
+  const entries = Object.entries(urls);
+  // PROP-PACK-7: a lazily-computed shape must not turn this oracle into a
+  // zero-assertion pass.
+  assert.equal(entries.length, 2, "WORKFLOW_MODULE_URLS() must resolve both module URLs");
+  for (const [name, url] of entries) {
     assert.ok(url.startsWith("file://"), url);
     assert.equal(fileURLToPath(url), expected[name]);
   }

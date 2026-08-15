@@ -30,13 +30,9 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// `resolveWorkflowRoot` does not exist yet (T41, green owner); its import is
-// deferred to a dynamic `await import(...)` inside each skipped test below so
-// this file instantiates cleanly under `node --test` ahead of T41 landing.
-// `workflowModulePath` already exists (statically imported below) — the few
-// tests that exercise only its current, single-root behaviour are a
-// red-wave-satisfiable carve-out and stay un-skipped.
-import { workflowModulePath } from "../lib/run.mjs";
+// T41 landed: `resolveWorkflowRoot` now exists, statically imported below
+// alongside `workflowModulePath`.
+import { resolveWorkflowRoot, workflowModulePath } from "../lib/run.mjs";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot)); // .../pdlc/engine -> repo root
@@ -61,24 +57,21 @@ function rootFiles(root) {
 
 // ─── PROP-PACK-8: fixed order, vendor root wins ────────────────────────────
 
-test.skip("T41: resolveWorkflowRoot prefers the vendor root when only the vendor root resolves", async () => {
-  const { resolveWorkflowRoot } = await import("../lib/run.mjs");
+test("T41: resolveWorkflowRoot prefers the vendor root when only the vendor root resolves", async () => {
   const fs = fakeFs(rootFiles(VENDOR_ROOT));
   const result = resolveWorkflowRoot({ fs });
   assert.equal(result.source, "vendor");
   assert.equal(result.rootPath, VENDOR_ROOT);
 });
 
-test.skip("T41: resolveWorkflowRoot falls back to the checkout root when only the checkout root resolves", async () => {
-  const { resolveWorkflowRoot } = await import("../lib/run.mjs");
+test("T41: resolveWorkflowRoot falls back to the checkout root when only the checkout root resolves", async () => {
   const fs = fakeFs(rootFiles(CHECKOUT_ROOT));
   const result = resolveWorkflowRoot({ fs });
   assert.equal(result.source, "checkout");
   assert.equal(result.rootPath, CHECKOUT_ROOT);
 });
 
-test.skip("T41: resolveWorkflowRoot picks the vendor root over the checkout root when both resolve, and announces which root loaded (TSPEC §7.3)", async () => {
-  const { resolveWorkflowRoot } = await import("../lib/run.mjs");
+test("T41: resolveWorkflowRoot picks the vendor root over the checkout root when both resolve, and announces which root loaded (TSPEC §7.3)", async () => {
   const fs = fakeFs([...rootFiles(VENDOR_ROOT), ...rootFiles(CHECKOUT_ROOT)]);
   const result = resolveWorkflowRoot({ fs });
   // Root 1 wins (positive: it is the vendor root, not merely "not checkout").
@@ -96,8 +89,7 @@ test.skip("T41: resolveWorkflowRoot picks the vendor root over the checkout root
   assert.equal(result.tried[1].exists, true);
 });
 
-test.skip("T41: resolveWorkflowRoot tries the vendor root before the checkout root even when only the checkout root resolves", async () => {
-  const { resolveWorkflowRoot } = await import("../lib/run.mjs");
+test("T41: resolveWorkflowRoot tries the vendor root before the checkout root even when only the checkout root resolves", async () => {
   const fs = fakeFs(rootFiles(CHECKOUT_ROOT));
   const result = resolveWorkflowRoot({ fs });
   assert.deepEqual(
@@ -110,8 +102,7 @@ test.skip("T41: resolveWorkflowRoot tries the vendor root before the checkout ro
 
 // ─── PROP-PACK-8: refusal when neither root resolves ───────────────────────
 
-test.skip("T41: resolveWorkflowRoot refuses when neither root resolves, naming both paths tried", async () => {
-  const { resolveWorkflowRoot } = await import("../lib/run.mjs");
+test("T41: resolveWorkflowRoot refuses when neither root resolves, naming both paths tried", async () => {
   const fs = fakeFs([]);
   assert.throws(
     () => resolveWorkflowRoot({ fs }),
@@ -124,8 +115,7 @@ test.skip("T41: resolveWorkflowRoot refuses when neither root resolves, naming b
   );
 });
 
-test.skip("T41: resolveWorkflowRoot refuses on a partially-vendored root (one member missing is not a resolvable root)", async () => {
-  const { resolveWorkflowRoot } = await import("../lib/run.mjs");
+test("T41: resolveWorkflowRoot refuses on a partially-vendored root (one member missing is not a resolvable root)", async () => {
   // Only orchestrate-dev.js landed under the vendor root; the copy step is
   // atomic per TSPEC §5.2 step 3, so a lone member must not be treated as a
   // resolved vendor root.
@@ -133,7 +123,7 @@ test.skip("T41: resolveWorkflowRoot refuses on a partially-vendored root (one me
   assert.throws(() => resolveWorkflowRoot({ fs }));
 });
 
-test.skip("T41: workflowModulePath refuses (does not dispatch a partial path) when neither root resolves", () => {
+test("T41: workflowModulePath refuses (does not dispatch a partial path) when neither root resolves", () => {
   const fs = fakeFs([]);
   assert.throws(() => workflowModulePath("dev", { fs }));
   assert.throws(() => workflowModulePath("queue", { fs }));
@@ -150,13 +140,13 @@ test("workflowModulePath equals the checkout path exactly when the vendor root i
   assert.equal(workflowModulePath("queue", { fs }), path.join(CHECKOUT_ROOT, MODULE_FILES.queue));
 });
 
-test.skip("T41: workflowModulePath equals the vendor root's path exactly when the vendor root resolves (PROP-PACK-6)", () => {
+test("T41: workflowModulePath equals the vendor root's path exactly when the vendor root resolves (PROP-PACK-6)", () => {
   const fs = fakeFs(rootFiles(VENDOR_ROOT));
   assert.equal(workflowModulePath("dev", { fs }), path.join(VENDOR_ROOT, MODULE_FILES.dev));
   assert.equal(workflowModulePath("queue", { fs }), path.join(VENDOR_ROOT, MODULE_FILES.queue));
 });
 
-test.skip("T41: workflowModulePath equals the vendor root's path exactly, not merely 'starts with it', when both roots resolve (AF-3)", () => {
+test("T41: workflowModulePath equals the vendor root's path exactly, not merely 'starts with it', when both roots resolve (AF-3)", () => {
   const fs = fakeFs([...rootFiles(VENDOR_ROOT), ...rootFiles(CHECKOUT_ROOT)]);
   const dev = workflowModulePath("dev", { fs });
   assert.equal(dev, path.join(VENDOR_ROOT, MODULE_FILES.dev));
