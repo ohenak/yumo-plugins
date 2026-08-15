@@ -61,6 +61,7 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { appendSkipRecord, runGatedLeg } from "../scripts/fixture-machine.mjs";
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url));
 const engineRoot = path.dirname(testsDir);
@@ -77,18 +78,43 @@ const SELF_SIGNAL_TARGET = path.join(fixturesDir, "self-signal-target.mjs");
 
 // ─── capability probe: real-spawn (PLAN T50's opt-out discriminator) ──────
 
-function probeRealSpawn() {
-  const probe = spawnSync(process.execPath, ["--version"], { encoding: "utf8" });
-  return typeof probe.status === "number";
-}
-const REAL_SPAWN = probeRealSpawn();
-
-function skipIfNoRealSpawn(t) {
-  if (!REAL_SPAWN) {
-    t.skip("capability-gated: the real-spawn probe (`node --version`) produced no readable exit status on this runner");
-    return true;
+// Probed once and reused by both legs 2 and 3 below (`fixture-machine.mjs`'s
+// SKIP_INVENTORY carries one `real-spawn` entry for both). The probe result
+// itself — not a boolean derived from it — is what `runGatedLeg` classifies
+// (`classifyProbeResult`'s three-arm partition, PLAN T50's opt-out
+// discriminator): a readable non-zero exit status is `absent` (registered
+// skip), no readable exit status at all is `unprobeable` (fail-closed —
+// throws, never a skip), and a readable zero exit status is `present` (the
+// leg runs). This module never calls `t.skip` itself; `runGatedLeg` decides.
+function probeRealSpawnResult() {
+  try {
+    return spawnSync(process.execPath, ["--version"], { encoding: "utf8" });
+  } catch (error) {
+    return { status: null, error };
   }
-  return false;
+}
+const REAL_SPAWN_PROBE = probeRealSpawnResult();
+
+/**
+ * Runs `body` (a leg's assertions) through `runGatedLeg`, following the
+ * gated-leg apparatus's fail-closed contract (TE round-3 F-01;
+ * `skipSinkTeardown.js`'s precedent): `absent` records a skip both to the
+ * SKIP_INVENTORY-checked sink (`PDLC_FIXTURE_SKIP_SINK`, a no-op locally)
+ * and to `node:test` via `t.skip`, `unprobeable` throws (never a silent
+ * skip), and `present` runs `body`.
+ */
+function runRealSpawnLeg(t, name, body) {
+  const gated = runGatedLeg({
+    name: "launcher-real-spawn",
+    capability: "real-spawn",
+    unverifiedInvariants: ["AT-1.1", "AT-2.1"],
+    probeResult: REAL_SPAWN_PROBE,
+    leg: body,
+  });
+  if (gated.skip) {
+    appendSkipRecord(gated.skip);
+    t.skip(`capability-gated: real-spawn absent for leg "${name}" — no readable exit status from \`node --version\``);
+  }
 }
 
 // ─── leg 1: S-3 descriptor assertions, no spawning (AT-2.1's hermetic residue) ──
@@ -178,31 +204,31 @@ test("T46: execLauncher never collapses a signalled result to exit 0 (the defect
 // ─── leg 2: real-spawn pass-through (PROP-LAUNCH-6, AT-1.1, AT-2.1) ────────
 
 test("T46: a real launcher hop re-raises a non-zero child status verbatim and keeps stdout/stderr unmixed", (t) => {
-  if (skipIfNoRealSpawn(t)) return;
+  runRealSpawnLeg(t, "pass-through", () => {
+    const result = spawnSync(process.execPath, [WRAPPER, EXIT_CODE_TARGET], { encoding: "utf8" });
 
-  const result = spawnSync(process.execPath, [WRAPPER, EXIT_CODE_TARGET], { encoding: "utf8" });
-
-  assert.equal(result.status, 7, `expected the target's exact exit code re-raised verbatim; got ${JSON.stringify(result)}`);
-  assert.equal(result.stdout, "EXIT-CODE-TARGET-STDOUT\n");
-  assert.equal(result.stderr, "EXIT-CODE-TARGET-STDERR\n");
-  assert.equal(result.stdout.includes("STDERR"), false, "stdout must never carry stderr's bytes");
-  assert.equal(result.stderr.includes("STDOUT"), false, "stderr must never carry stdout's bytes");
+    assert.equal(result.status, 7, `expected the target's exact exit code re-raised verbatim; got ${JSON.stringify(result)}`);
+    assert.equal(result.stdout, "EXIT-CODE-TARGET-STDOUT\n");
+    assert.equal(result.stderr, "EXIT-CODE-TARGET-STDERR\n");
+    assert.equal(result.stdout.includes("STDERR"), false, "stdout must never carry stderr's bytes");
+    assert.equal(result.stderr.includes("STDOUT"), false, "stderr must never carry stdout's bytes");
+  });
 });
 
 // ─── leg 3: real-spawn signalled child (PROP-LAUNCH-6, DEC-EDIST-06) ──────
 
 test("T46: a real launcher hop exits exactly 128 + signum when the resolved child is killed by a signal", (t) => {
-  if (skipIfNoRealSpawn(t)) return;
+  runRealSpawnLeg(t, "signalled-child", () => {
+    const result = spawnSync(process.execPath, [WRAPPER, SELF_SIGNAL_TARGET], { encoding: "utf8" });
+    const sigtermNumber = os.constants.signals.SIGTERM;
 
-  const result = spawnSync(process.execPath, [WRAPPER, SELF_SIGNAL_TARGET], { encoding: "utf8" });
-  const sigtermNumber = os.constants.signals.SIGTERM;
-
-  assert.equal(
-    result.status,
-    128 + sigtermNumber,
-    `expected exactly 128 + SIGTERM(${sigtermNumber}) = ${128 + sigtermNumber}; got ${JSON.stringify(result)}`,
-  );
-  assert.equal(result.status, 143);
-  assert.notEqual(result.status, 0, "a signal-terminated run must never be reported as success");
-  assert.ok(result.stdout.includes("SELF-SIGNAL-TARGET-STDOUT"));
+    assert.equal(
+      result.status,
+      128 + sigtermNumber,
+      `expected exactly 128 + SIGTERM(${sigtermNumber}) = ${128 + sigtermNumber}; got ${JSON.stringify(result)}`,
+    );
+    assert.equal(result.status, 143);
+    assert.notEqual(result.status, 0, "a signal-terminated run must never be reported as success");
+    assert.ok(result.stdout.includes("SELF-SIGNAL-TARGET-STDOUT"));
+  });
 });

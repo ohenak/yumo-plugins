@@ -1,0 +1,107 @@
+name: Fixture machine
+
+# PLAN T50 (TSPEC §12.1's "Fixture-machine" row, §9.2, §9.3 AT-2.5, §9.4
+# AT-2.6). A NEW, additive workflow file — not `pr-tests.yml`, whose five
+# rendered check names are BR-7.5's contract (subject to the erratum raised
+# against TSPEC §12.1): this file adds no job to `pr-tests.yml` and edits no
+# `name:` key in it, so Phase PUB's literal polling of `pr-tests.yml`'s
+# checks keeps working untouched.
+#
+# Capability gating (TE round-1 Q-01): the container, real-spawn and
+# `npm pack` legs run ONLY here, never under local `cd pdlc/engine && npm
+# test`. Every gated leg's skip is validated at the end of this run against
+# `pdlc/engine/scripts/fixture-machine.mjs`'s SKIP_INVENTORY — an
+# unregistered skip, a skip naming an unknown capability, a duplicate
+# inventory name or an empty invariant list fails the job (`validateSkipRecords`,
+# following the workflows suite's `skipSink` precedent as it actually
+# behaves: fail-closed, not loud-but-green).
+on:
+  pull_request:
+    paths:
+      - 'pdlc/engine/**'
+      - '.github/workflows/fixture-machine.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'pdlc/engine/**'
+      - '.github/workflows/fixture-machine.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: fixture-machine-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  fixture-machine:
+    name: Fixture machine (install/upgrade, launcher, container, two-repo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pdlc/engine/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pdlc/engine
+        run: npm ci
+
+      # The one shared, run-wide sink every gated leg — launcher.test.js's
+      # real-spawn legs AND fixture-machine.mjs's own legs — appends its
+      # skip records to. `validateSkipRecords` reads it back at the end.
+      - name: Configure the skip sink
+        run: |
+          sink="${RUNNER_TEMP}/pdlc-fixture-skip-sink.jsonl"
+          : > "$sink"
+          echo "PDLC_FIXTURE_SKIP_SINK=$sink" >> "$GITHUB_ENV"
+
+      # Docker is available on the standard ubuntu-latest runner (used below
+      # for the node:18-alpine container leg), so this step is diagnostic
+      # only — it does not gate anything itself; the capability predicate in
+      # fixture-machine.mjs does that per leg.
+      - name: Record the environment under test
+        run: |
+          echo "node:    $(node -v)"
+          echo "npm:     $(npm -v)"
+          echo "docker:  $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo '(absent)')"
+
+      # Legs 2 and 3 of launcher.test.js (real-spawn pass-through and
+      # signalled-child) live in the same file as the hermetic leg 1, run
+      # here under `node --test` directly — deliberately not via `npm test`,
+      # which is the local/pr-tests.yml path this file exists to extend
+      # beyond, not duplicate.
+      - name: Launcher real-spawn legs
+        working-directory: pdlc/engine
+        run: node --test __tests__/launcher.test.js
+
+      # Everything else: the temp-prefix install/upgrade leg (AT-2.4), the
+      # two-repo leg (AT-2.3/AC-2.2), the plugin-tree hash pairing (AT-2.6)
+      # and the node:18-alpine container leg (AT-2.5) — each gated on its
+      # own named capability probe, with a loud, registered skip on
+      # `absent` and a hard failure on `unprobeable` (never a silent skip).
+      # Ends by validating every recorded skip against SKIP_INVENTORY and
+      # exits non-zero on any leg failure or inventory violation.
+      - name: Fixture-machine legs
+        working-directory: pdlc/engine
+        run: node scripts/fixture-machine.mjs
+
+      - name: Registered skips (if any)
+        if: always()
+        run: |
+          if [ -s "${PDLC_FIXTURE_SKIP_SINK}" ]; then
+            echo "::warning::fixture-machine recorded skip(s):"
+            cat "${PDLC_FIXTURE_SKIP_SINK}"
+          else
+            echo "no skips recorded — every gated leg's capability was present"
+          fi
