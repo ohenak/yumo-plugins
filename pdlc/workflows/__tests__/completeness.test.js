@@ -447,6 +447,51 @@ describe("RLH-AT-63 — concern-organized specs match by containment (TSPEC §5.
   });
 });
 
+describe("T9 — PROPERTIES heading alts for observed synonyms", () => {
+  test("T9: PROPERTIES with `## Test Oracles` and `## Test Fixtures` pass isComplete", () => {
+    const doc = readFixture("properties-renamed-headings.md");
+
+    // Non-vacuity: the canonical headings are NOT present verbatim.
+    expect(doc).not.toContain("## Oracles\n");
+    expect(doc).not.toContain("## Fixtures\n");
+
+    // …yet the renamed sections (using the alt titles) really are there.
+    expect(doc).toContain("## Test Oracles\n");
+    expect(doc).toContain("## Test Data\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "PROPERTIES", doc);
+    expect(result.complete).toBe(true);
+    expect(missingSet(result)).toEqual(new Set());
+  });
+
+  test("T9: PROPERTIES with `## Test Fixtures` in place of `## Fixtures` passes", () => {
+    const doc = [
+      "# PROPERTIES — test-feature",
+      "",
+      "## Overview",
+      "",
+      "Test properties for the feature.",
+      "",
+      "## Properties",
+      "",
+      "Property coverage.",
+      "",
+      "## Test Oracles",
+      "",
+      "Oracle definitions.",
+      "",
+      "## Test Fixtures",
+      "",
+      "Test fixture definitions.",
+      "",
+    ].join("\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "PROPERTIES", doc);
+    expect(result.complete).toBe(true);
+    expect(missingSet(result)).toEqual(new Set());
+  });
+});
+
 // ══════════ D4 — heading sets (PROPERTIES §3.2 / §5.2), file-local and unexported ══════════
 //
 // Built over `driftGenerators.js`'s primitives only (`int` / `pick` / `shuffle`). PLAN §7.2:

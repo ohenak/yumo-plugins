@@ -4321,8 +4321,8 @@ const REQUIRED_HEADINGS = Object.freeze({
   PROPERTIES: Object.freeze([
     { title: "Overview", alts: ["Scope", "Summary"] },
     { title: "Properties", alts: ["Invariants"] },
-    { title: "Oracles", alts: ["Checks"] },
-    { title: "Fixtures", alts: ["Generators", "Test data"] },
+    { title: "Oracles", alts: ["Checks", "Test Oracles"] },
+    { title: "Fixtures", alts: ["Generators", "Test data", "Test Fixtures"] },
   ]),
   DECISIONS: Object.freeze([
     { title: "Context", alts: ["Background"] },
