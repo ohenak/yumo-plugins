@@ -5334,6 +5334,14 @@ async function reviewLoop({
       if (!postmortemFailed) {
         const confirmation = await _checkFile(postmortemPath);
         postmortemWritten = !!(confirmation && confirmation.ok);
+
+        if (postmortemWritten && provenance.block) {
+          try {
+            await _appendFile(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+
+          }
+        }
       }
 
       if (postmortemFailed) {
@@ -8466,6 +8474,7 @@ async function main({
     _sessionAgent,
     _log: emit,
     _git: gitFn,
+    provenance,
   };
 
   async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId, sessionKey }) {
@@ -10334,7 +10343,11 @@ async function main({
 
     let queueRow = null;
     try {
-      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({
+        feature: featureName,
+        status: "halted",
+        provenance,
+      });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
 
       if (recorded && recorded.detail) {
