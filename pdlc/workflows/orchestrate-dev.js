@@ -7604,7 +7604,11 @@ export async function reviewLoop({
     // round and never halts the run (§6.2 row 8, `AT-17`): the phase simply has no
     // recorded approval to skip on next time.
     if (gatePass) {
-      await appendApprovalAnchors({
+      // Call site A (TSPEC §7.4 route step 2): `reviewLoop` is module-scope and
+      // cannot see `main()`'s `artifactPaths`, so it surfaces the anchored
+      // paths on the record it already returns; both of its callers inside
+      // `main()` push them.
+      const anchorResult = await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
@@ -7617,6 +7621,8 @@ export async function reviewLoop({
         emit,
         provenance,
       });
+      const anchoredPaths =
+        anchorResult && Array.isArray(anchorResult.paths) ? anchorResult.paths : [];
       // §3.9: `trailerReason` rides on EVERY return, `null` on the clean path —
       // so `null` must be observable as a value, which a conditional spread is not.
       return {
@@ -7625,6 +7631,7 @@ export async function reviewLoop({
         lastOptimizerResult,
         trailerReason: lastTrailerReason,
         errata: errata.slice(),
+        anchoredPaths,
       };
     }
 
@@ -7772,9 +7779,15 @@ async function appendApprovalAnchors({
       "Approval anchor not recorded: the reviewed document could not be read at " +
         "capture time. The round yields no approval; the phase will re-run."
     );
-    return;
+    return { appended: false, paths: [] };
   }
 
+  // §7.4 route step 1: the paths this call ACTUALLY appended to, not `paths`
+  // verbatim — the idempotent no-op (`continue` below) touches nothing on
+  // disk this call, and a failed/ambiguous path returns before this array
+  // gains a member, so `appendedPaths` is exactly `artifactPaths`'s two
+  // callers need without them re-deriving it.
+  const appendedPaths = [];
   let appended = false;
   for (const path of paths) {
     // The pre-count is a JUDGMENT about the file, not its prose, so `_probeDoc`
@@ -7787,7 +7800,7 @@ async function appendApprovalAnchors({
     const existingText = probe ? null : await _readFile(path);
     if (probe ? probe.exists !== true : existingText == null) {
       emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     const existing = probe
       ? (Array.isArray(probe.anchors) ? probe.anchors : [])
@@ -7797,7 +7810,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
           "APPROVAL-HASH: lines, so its history is ambiguous. The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     if (existing.length === 1) {
       if (existing[0] === hash) continue; // E-14 — idempotent no-op.
@@ -7805,7 +7818,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
           `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     try {
       // The RAW anchor stays first and stays the shape every existing reader
@@ -7827,16 +7840,17 @@ async function appendApprovalAnchors({
           upstreamStateLines(upstreamState)
       );
       appended = true;
+      appendedPaths.push(path);
     } catch (err) {
       emit(
         `Approval anchor not recorded: appending to ${path} failed (${err && err.message}). ` +
           "The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
   }
 
-  if (!appended || typeof _git !== "function") return;
+  if (!appended || typeof _git !== "function") return { appended, paths: appendedPaths };
   try {
     await _git(["add", ...paths]); // t6
     const line = provenance && provenance.line ? provenance.line : "";
@@ -7848,6 +7862,11 @@ async function appendApprovalAnchors({
     // t6 is best-effort: the anchors are on disk either way, and §5.5's comparison
     // reads the working tree, never the commit.
   }
+  // §7.4 route step 1: `{appended, paths}` — `paths` is the SUBSET of the
+  // input `paths` this call actually wrote APPROVAL-HASH:/REVIEWED-COMMIT:
+  // to, never the input verbatim (an idempotent no-op or a failed/ambiguous
+  // path contributes nothing to it).
+  return { appended, paths: appendedPaths };
 }
 
 // ─── Prompt helpers ───────────────────────────────────────────────────────────
@@ -13207,7 +13226,11 @@ export default async function main({
     // that were just confirmed. This is M-4's "no approval silently invalidated":
     // the upstream document's recorded approval now points at the edited file, so
     // the staleness gate does not re-open a phase the approvers just re-confirmed.
-    await appendApprovalAnchors({
+    // Call site B (TSPEC §7.4 route step 3): `erratumRound` is nested within
+    // `main()`, so it closes over `artifactPaths` directly and pushes the
+    // anchored paths itself rather than surfacing them through a return —
+    // there is no caller-side hop the way there is for `reviewLoop`.
+    const anchorResult = await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
@@ -13223,6 +13246,9 @@ export default async function main({
       emit,
       provenance,
     });
+    if (anchorResult && Array.isArray(anchorResult.paths)) {
+      artifactPaths.push(...anchorResult.paths);
+    }
 
     // PLAN §3.2 — the edit that was just confirmed moved `target`, so every
     // approval BELOW it that was anchored against the old `target` is now
@@ -13495,6 +13521,10 @@ export default async function main({
       _checkFile: checkFileFn,
       ...wrapperSeams,
     });
+    // §7.4 route step 2, `converge()`'s call site: `reviewLoop` cannot see
+    // `artifactPaths`, so it surfaces the anchored CROSS-REVIEW-* paths on its
+    // returned record and this caller pushes them.
+    if (Array.isArray(loop.anchoredPaths)) artifactPaths.push(...loop.anchoredPaths);
     checkConverged(
       loop,
       phaseId,
@@ -14513,6 +14543,8 @@ export default async function main({
         _checkFile: checkFileFn,
         ...wrapperSeams,
       });
+      // §7.4 route step 2, Phase CR's call site: same surfacing as `converge()`'s.
+      if (Array.isArray(crResult.anchoredPaths)) artifactPaths.push(...crResult.anchoredPaths);
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
@@ -14604,6 +14636,9 @@ export default async function main({
           } catch {
             codeReviewText = "";
           }
+          // §7.4 class 8: dod-verify wrote this round's CODE_REVIEW even though
+          // the phase went on to halt.
+          if (codeReviewText) artifactPaths.push(codeReviewPath);
           const a3 = await runAdvisorySeamFn({
             seam: "A3",
             feature: featureName,
@@ -14645,6 +14680,9 @@ export default async function main({
           dodVerifiedCommit = null;
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
+        // §7.4 class 8: the CODE_REVIEW-*.md dod-verify wrote for the passing
+        // iteration — dod-verify's own loop budget guarantees at least one round.
+        artifactPaths.push(`docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`);
       }
 
       // ─── Phase H: Harvest ────────────────────────────────────────────────
@@ -14706,6 +14744,9 @@ export default async function main({
         }
 
         harvestStatus = "Harvested";
+        // §7.4 class 7: LEARNINGS is authored outside converge()'s push site
+        // (harvest's own wrappedDispatch), so it is pushed here instead.
+        artifactPaths.push(learningsPath);
         recordPhase("H", "Harvest", "✅", "Learnings harvested");
       }
 
@@ -14759,6 +14800,10 @@ export default async function main({
           const check = await checkFileFn(advisoryPath);
           const recordExists = Boolean(check && check.ok);
           if (recordExists) {
+            // §7.4 class 10: the advisory record exists only when this run's
+            // A1-A5 seams authored it (appendAdvisoryEntry) — enumerate it
+            // before the distil step below removes it from the tree.
+            artifactPaths.push(advisoryPath);
             await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
             const del = await gitFn(["rm", "--", advisoryPath]);
             if (guardRefused(del)) {
@@ -14875,6 +14920,13 @@ export default async function main({
         postmortemStatus = "written";
         postmortemPath = candidate;
       }
+    }
+
+    // §7.4 class 9: a POSTMORTEM this run actually wrote reaches artifactPaths —
+    // `postmortemStatus === "unresolved"` is a PRE-EXISTING file a step-G
+    // refusal named, not this run's own output, so it is deliberately excluded.
+    if (postmortemStatus === "written" && postmortemPath) {
+      artifactPaths.push(postmortemPath);
     }
 
     // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
