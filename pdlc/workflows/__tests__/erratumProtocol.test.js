@@ -27,6 +27,10 @@ import main, {
   formatConfirmationFindings,
   markApprovalReopened,
   reopenedApproval,
+  dedupeErrataEntries,
+  splitErratumMultiHome,
+  oracleContractShortfall,
+  parseErratumRemint,
 } from "../orchestrate-dev.js";
 import { fakeFs, fakeGit, fakeListFiles } from "./helpers/seams.js";
 
@@ -318,6 +322,11 @@ async function runPipeline(opts = {}) {
     // leaves behind, which is how an upstream document MOVES mid-wave here
     // exactly as it did on 2026-08-10.
     erratumRewrites = {},
+    // PLAN §2.4 item 2 (T3). `{ [upstreamPath]: "RE-MINT: ...\n..." }` — the
+    // RE-MINT lines an erratum author's response carries on the upstream-skew
+    // path, appended after the rewrite it always reports. Absent by default,
+    // which is the fail-open path this task must not disturb.
+    erratumRemint = {},
     // PLAN §2.2 / §5 RT-1*. `{ [round]: { text, verdict, high } }` — the bytes a
     // confirmer writes AND returns at that derived round index.
     confirmationByRound = {},
@@ -394,7 +403,10 @@ async function runPipeline(opts = {}) {
       const erratumTarget = /ERRATUM ROUND for (docs\/\S+\.md)/.exec(text);
       if (erratumTarget && erratumRewrites[erratumTarget[1]]) {
         fs.files[erratumTarget[1]] = erratumRewrites[erratumTarget[1]];
-        return "Erratum applied and committed.\nREVISION-COMPLETE: yes";
+        const remint = erratumRemint[erratumTarget[1]];
+        return remint
+          ? `Erratum applied and committed.\n${remint}\nREVISION-COMPLETE: yes`
+          : "Erratum applied and committed.\nREVISION-COMPLETE: yes";
       }
       if (text.includes("DECISIONS_WARRANTED")) {
         return "Finalized.\nREVISION-COMPLETE: yes\nDECISIONS_WARRANTED: false";
@@ -1127,7 +1139,7 @@ describe("the erratum gate on the historical halts (PLAN §5)", () => {
     expect(authors[1].prompt).not.toContain(ERRATUM_ITEM);
     expect(confirmationDispatches(dispatches).length).toBe(4);
     expect(report.notices).toContain(
-      `Phase T: erratum follow-up round 1 for FSPEC — 6 items, confirmed at round v3 by se-review, te-review.`
+      `Phase T: erratum follow-up round 1 for FSPEC — 3 items, confirmed at round v3 by se-review, te-review.`
     );
     // The approval anchors are written once, on the round that actually passed.
     expect(fs.appends.map((a) => a.path)).toEqual([
@@ -1309,5 +1321,218 @@ describe("the erratum gate on the historical halts (PLAN §5)", () => {
     expect(legacy.report.phases.find((p) => p.phase === "T").status).toBe(
       tagged.report.phases.find((p) => p.phase === "T").status
     );
+  });
+});
+
+// ─── RT-1d: mint-time item hygiene (PLAN §2.4, T3) ────────────────────────────
+//
+// Four pure-function tests cover items 1, 3, and 4 directly against the
+// exported helpers; two pipeline tests cover item 2's wiring into
+// `erratumRound` — the structural re-mint path and its fail-open twin.
+
+describe("RT-1d: mint-time item hygiene (PLAN §2.4, T3)", () => {
+  test("RT-1d-a: normalized dedupe collapses restatements sharing an anchor+token into one obligation, merging sources", () => {
+    // POSTMORTEM-D shape: five raw entries, three distinct obligations —
+    // two pairs of restatements (same anchor, same expected token, different
+    // wording and source) plus one singleton left untouched.
+    const entries = [
+      { docType: "TSPEC", item: "§4.2 the retry budget must read **3**, not 5.", source: "se-review" },
+      {
+        docType: "TSPEC",
+        item: "§4.2 the retry budget should be **3** per the SLA table.",
+        source: "te-review",
+      },
+      {
+        docType: "TSPEC",
+        item: "§7 the owner column type must be `frozenset[str]`, not tuple.",
+        source: "se-review",
+      },
+      {
+        docType: "TSPEC",
+        item: "§7 owner column should read `frozenset[str]` per TSPEC §10.4.",
+        source: "pm-review",
+      },
+      { docType: "TSPEC", item: "§9 the changelog is missing the 2026-08-01 entry.", source: "se-review" },
+    ];
+
+    const deduped = dedupeErrataEntries(entries);
+
+    expect(deduped.map((e) => e.item)).toEqual([
+      "§4.2 the retry budget must read **3**, not 5.",
+      "§7 the owner column type must be `frozenset[str]`, not tuple.",
+      "§9 the changelog is missing the 2026-08-01 entry.",
+    ]);
+    expect(deduped[0].source).toBe("se-review, te-review");
+    expect(deduped[1].source).toBe("se-review, pm-review");
+    // Negative, on the same batch: the §9 singleton is untouched by dedupe —
+    // one entry in, one entry out, same source, no merge attempted.
+    expect(deduped[2].source).toBe("se-review");
+
+    // Negative, on a distinct batch: two items sharing an anchor but NO
+    // shared expected token are never collapsed — dedupe is conservative.
+    const noSharedToken = dedupeErrataEntries([
+      { docType: "TSPEC", item: "§4.2 the retry budget must read **3**.", source: "se-review" },
+      { docType: "TSPEC", item: "§4.2 the changelog omits this section entirely.", source: "te-review" },
+    ]);
+    expect(noSharedToken.length).toBe(2);
+  });
+
+  test("RT-1d-d: an item naming two doc types in its own text mints one item per named type, sharing an obligation id", () => {
+    const entry = {
+      docType: "FSPEC",
+      item: "REQ and FSPEC both promise the placeholder expires after 24h — align one location.",
+      source: "te-review",
+    };
+
+    const split = splitErratumMultiHome(entry);
+
+    expect(split.length).toBe(2);
+    expect(split.map((e) => e.docType).sort()).toEqual(["FSPEC", "REQ"]);
+    // Both carry the item text verbatim, and the same closure id.
+    for (const e of split) {
+      expect(e.item).toBe(entry.item);
+      expect(e.multiHomeGroup).toBe(split[0].multiHomeGroup);
+    }
+
+    // Negative, on the same path: an item naming zero or one doc type in its
+    // own text is single-home and returned unchanged — one incidental
+    // mention of another doc type's name is not a "targets both" shape.
+    const singleHome = splitErratumMultiHome({
+      docType: "FSPEC",
+      item: "§4's error budget contradicts REQ AC-3.",
+      source: "te-review",
+    });
+    expect(singleHome).toEqual([
+      { docType: "FSPEC", item: "§4's error budget contradicts REQ AC-3.", source: "te-review" },
+    ]);
+  });
+
+  test("RT-1d-e: an oracle-touching item missing contract fields is flagged, not routed; one carrying all three is not", () => {
+    // Negative: names an oracle id but supplies none of the three contract
+    // fields (property statement, non-subsumption rationale, red witness).
+    expect(oracleContractShortfall("AT-07 the oracle asserts non-empty output.")).toEqual([
+      "a property statement",
+      "a non-subsumption rationale",
+      "a per-conjunct red witness",
+    ]);
+
+    // Positive, on the same path: an item that touches no oracle at all is
+    // not linted — the empty result means "nothing to report," not "passed."
+    expect(oracleContractShortfall("§9 the changelog is missing an entry.")).toEqual([]);
+
+    // Positive: an item carrying all three contract fields is conforming.
+    expect(
+      oracleContractShortfall(
+        "AT-07 asserts the property that output is non-empty; this is not subsumed by " +
+          "AT-03, since AT-03's witness only covers the empty-input case."
+      )
+    ).toEqual([]);
+  });
+
+  test("RT-1d-b: an item routed against a moved upstream is re-minted structurally — confirmers see only the author's STILL-RAISED subset", async () => {
+    const item1 = "§2 the placeholder must expire after 24h";
+    const item2 = "§5 the coverage notation must use ranges";
+    const { dispatches, report } = await runPipeline({
+      tspecReviewerErratum: [
+        `REQ: AC-7 names a file that does not exist`,
+        `FSPEC: ${item1}`,
+        `FSPEC: ${item2}`,
+      ],
+      erratumRewrites: { [REQ_PATH]: REQ_REWRITTEN, [FSPEC_PATH]: FSPEC_TEXT },
+      erratumRemint: {
+        [FSPEC_PATH]: `RE-MINT: ABSORBED: ${item1}\nRE-MINT: STILL-RAISED: ${item2}`,
+      },
+    });
+
+    expect(report.postmortemPath).toBeNull();
+
+    const fspecConfirm = confirmationDispatches(dispatches).find((d) =>
+      d.prompt.includes(`DELTA CONFIRMATION for ${FSPEC_PATH}`)
+    );
+    expect(fspecConfirm).toBeTruthy();
+    expect(fspecConfirm.prompt).toContain(`- ${item2}`);
+    // Negative, on the same prompt: the ABSORBED item never reaches the
+    // confirmer — it was resolved by the author's own re-derivation.
+    expect(fspecConfirm.prompt).not.toContain(item1);
+
+    expect(report.notices.join("\n")).toContain(
+      "re-minted structurally: 1 item absorbed, 1 still raised."
+    );
+  });
+
+  test("RT-1d-c: with no RE-MINT lines in the author's response, the original routed list reaches confirmers unchanged (fail-open)", async () => {
+    const item1 = "§2 the placeholder must expire after 24h";
+    const item2 = "§5 the coverage notation must use ranges";
+    const { dispatches, report } = await runPipeline({
+      tspecReviewerErratum: [
+        `REQ: AC-7 names a file that does not exist`,
+        `FSPEC: ${item1}`,
+        `FSPEC: ${item2}`,
+      ],
+      erratumRewrites: { [REQ_PATH]: REQ_REWRITTEN, [FSPEC_PATH]: FSPEC_TEXT },
+      // No `erratumRemint` entry for FSPEC_PATH: the author's response
+      // carries no RE-MINT lines at all.
+    });
+
+    expect(report.postmortemPath).toBeNull();
+
+    const fspecAuthor = erratumAuthorDispatches(dispatches).find((d) =>
+      d.prompt.includes(`ERRATUM ROUND for ${FSPEC_PATH}`)
+    );
+    // The upstream-moved clause still fires on the author dispatch (DEC-ERR-03) …
+    expect(fspecAuthor.prompt).toContain(MOVED_ANCHOR);
+
+    const fspecConfirm = confirmationDispatches(dispatches).find((d) =>
+      d.prompt.includes(`DELTA CONFIRMATION for ${FSPEC_PATH}`)
+    );
+    expect(fspecConfirm).toBeTruthy();
+    // Positive, on the same prompt: both original items still reach the
+    // confirmer, in the original `- {item} (raised by {source})` form.
+    expect(fspecConfirm.prompt).toContain(`- ${item1} (raised by te-review)`);
+    expect(fspecConfirm.prompt).toContain(`- ${item2} (raised by te-review)`);
+    // … but the structural re-mint notice never does — absence of RE-MINT
+    // lines falls back to the pre-existing notice-only behaviour, never a
+    // hard failure.
+    expect(report.notices.join("\n")).not.toContain("re-minted structurally");
+  });
+
+  test("RT-1d: routeErrata's admit() applies multi-home split, oracle-contract lint, and dedupe together, before routing", async () => {
+    const dupA = "§3 the retry budget must read **5**, not 3.";
+    const dupB = "§3 retry budget should be **5** per the SLA table.";
+    const multiHome = "REQ and FSPEC both promise the placeholder expires after 24h — align one location.";
+    const malformedOracle = "AT-09 the oracle asserts the output is well-formed.";
+    const { dispatches, report } = await runPipeline({
+      tspecReviewerErratum: [
+        `FSPEC: ${dupA}`,
+        `FSPEC: ${dupB}`,
+        `FSPEC: ${multiHome}`,
+        `FSPEC: ${malformedOracle}`,
+      ],
+    });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    const reqAuthor = authored.find((d) => d.prompt.includes(`ERRATUM ROUND for ${REQ_PATH}`));
+    const fspecAuthor = authored.find((d) => d.prompt.includes(`ERRATUM ROUND for ${FSPEC_PATH}`));
+
+    // Multi-home: the shared obligation reaches BOTH homes.
+    expect(reqAuthor).toBeTruthy();
+    expect(reqAuthor.prompt).toContain(`- ${multiHome}`);
+    expect(fspecAuthor).toBeTruthy();
+    expect(fspecAuthor.prompt).toContain(`- ${multiHome}`);
+
+    // Dedupe: the canonical (first-occurrence) wording survives, the
+    // restatement does not.
+    expect(fspecAuthor.prompt).toContain(`- ${dupA}`);
+    expect(fspecAuthor.prompt).not.toContain(dupB);
+
+    // Oracle lint: the malformed item is never routed to any author …
+    expect(reqAuthor.prompt).not.toContain(malformedOracle);
+    expect(fspecAuthor.prompt).not.toContain(malformedOracle);
+    // … and only two homes were dispatched to, not a third for the dropped
+    // item's own (nonexistent) home.
+    expect(authored.length).toBe(2);
+    // … the drop is reported, not silent.
+    expect(report.notices.join("\n")).toContain("malformed erratum, not routed");
+    expect(report.notices.join("\n")).toContain("AT-09");
   });
 });

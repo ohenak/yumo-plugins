@@ -6566,6 +6566,189 @@ function parseErrata(text, onIgnored) {
   return found;
 }
 
+// ─── PLAN §2.4 — mint-time item hygiene (T3) ────────────────────────────────
+//
+// Every function in this block is pure, synchronous and total, same doctrine
+// as `parseErrata` above: normalization only ever narrows what a mint-time
+// decision does with an item's TEXT, and none of it ever touches a verdict
+// or a round budget.
+
+/**
+ * The first cited anchor in an erratum item's text — a `§`-section reference
+ * (`§3-02`, `§4.2`) or a `:line` reference — normalized by case/whitespace
+ * folding only. `null` when the item cites neither, which is the signal
+ * `erratumDedupeKey` below reads as "never collapse this with anything but a
+ * byte-identical duplicate."
+ */
+const ERRATUM_ANCHOR_RE = /§[\w.-]+|:\d{2,}\b/;
+function erratumAnchorOf(text) {
+  const m = ERRATUM_ANCHOR_RE.exec(String(text ?? ""));
+  return m ? m[0].toLowerCase().trim() : null;
+}
+
+/**
+ * The item's "expected token" — the shape §2.3 already classifies as a
+ * literal-token finding ("should say X, not Y"), read here as the LAST
+ * backtick- or `**bold**`-quoted span in the text. Reviewer SKILLs state the
+ * corrected value last ("... this should read **frozenset[str]**"), so the
+ * last span is the one two restatements of the SAME finding will always
+ * agree on, even when they disagree on which value they quote first (the
+ * "wrong" one). `null` when the item quotes nothing this way — not an error,
+ * just a finding this rule cannot help disambiguate from a different one at
+ * the same anchor (`erratumDedupeKey` then keys on the anchor alone).
+ */
+const ERRATUM_TOKEN_RE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+function erratumTokenOf(text) {
+  const s = String(text ?? "");
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let last = null;
+  let m;
+  while ((m = ERRATUM_TOKEN_RE.exec(s))) last = m[1] ?? m[2];
+  return last ? last.toLowerCase().replace(/\s+/g, " ").trim() : null;
+}
+
+/**
+ * PLAN §2.4 item 1's dedupe key: `docType` + cited anchor/section + expected
+ * token — never the exact item string. Conservative by construction: an item
+ * with NO cited anchor keys on its own normalized text instead, so it only
+ * ever collapses with a byte-for-byte (after folding) duplicate, never with a
+ * different finding that merely lacks a citation too.
+ */
+function erratumDedupeKey(docType, text) {
+  const anchor = erratumAnchorOf(text);
+  if (!anchor) {
+    return `${docType}\0${String(text ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+  }
+  return `${docType}\0${anchor}\0${erratumTokenOf(text) ?? ""}`;
+}
+
+/**
+ * Collapse a batch of `{docType, item, source}` candidates by
+ * `erratumDedupeKey`. The surviving entry is the first occurrence, its
+ * `source` widened to the UNION of every collapsed duplicate's source,
+ * comma-joined in first-seen order — this is what turns POSTMORTEM-D's five
+ * entries for three obligations, and POSTMORTEM-PR's thirteen strings for
+ * five defects, into one tracked item per obligation/defect instead of one
+ * per restatement.
+ *
+ * Pure and order-preserving; takes no seam.
+ */
+function dedupeErrataEntries(entries) {
+  const kept = [];
+  const byKey = new Map();
+  for (const raw of Array.isArray(entries) ? entries : []) {
+    if (!raw) continue;
+    const key = erratumDedupeKey(raw.docType, raw.item);
+    const existing = byKey.get(key);
+    if (existing) {
+      const sources = String(existing.source ?? "")
+        .split(", ")
+        .filter(Boolean);
+      const next = String(raw.source ?? "");
+      if (next && !sources.includes(next)) sources.push(next);
+      existing.source = sources.join(", ");
+      continue;
+    }
+    const merged = { ...raw, source: String(raw.source ?? "") };
+    byKey.set(key, merged);
+    kept.push(merged);
+  }
+  return kept;
+}
+
+/**
+ * PLAN §2.4 item 3 — multi-home split. Word-boundary containment against the
+ * closed `ERRATUM_DOC_TYPES` set, never substring (same doctrine as the
+ * ownership/header matchers elsewhere in this module): when an item's own
+ * text names TWO OR MORE distinct doc types, it is fanned out into one
+ * tracked item per named type, each carrying the full item text and a shared
+ * `multiHomeGroup` id so a caller tracking a sourcing row's closure can find
+ * every sibling. An item naming zero or one doc type in its own text is
+ * single-home and is returned unchanged — one incidental mention is not the
+ * "REQ §7 FSPEC §2.2 both understate X" shape this rule targets.
+ */
+function splitErratumMultiHome(entry) {
+  if (!entry) return [];
+  const text = String(entry.item ?? "");
+  const named = [];
+  for (const docType of ERRATUM_DOC_TYPES) {
+    if (new RegExp(`\\b${docType}\\b`).test(text)) named.push(docType);
+  }
+  if (named.length < 2) return [entry];
+  const multiHomeGroup = `${entry.docType}\0${text}`;
+  return named.map((docType) => ({ ...entry, docType, multiHomeGroup }));
+}
+
+/**
+ * PLAN §2.4 item 4 — the oracle-contract lint's word vocabulary. An item
+ * "touches a test oracle" when it names an oracle id (`AT-`, `INV-`, `META-`
+ * — the catalogue this module's own oracle rules use, §3.5) or the bare word
+ * "oracle(s)".
+ */
+const ERRATUM_ORACLE_ID_RE = /\b(?:AT|INV|META)-[A-Za-z0-9]+\b/;
+const ERRATUM_ORACLE_WORD_RE = /\boracles?\b/i;
+function touchesErratumOracle(text) {
+  const s = String(text ?? "");
+  return ERRATUM_ORACLE_ID_RE.test(s) || ERRATUM_ORACLE_WORD_RE.test(s);
+}
+
+/**
+ * The three contract fields an oracle-touching item must carry, checked at
+ * KEYWORD level only (§2.4 item 4: "accept concepts, keyword-level, not
+ * prose quality") — this is a mint-time lint, not a content review.
+ */
+const ERRATUM_ORACLE_CONTRACT_TERMS = Object.freeze([
+  { label: "a property statement", re: /\bproperty\b/i },
+  { label: "a non-subsumption rationale", re: /\bsubsum/i },
+  { label: "a per-conjunct red witness", re: /\bwitness\b/i },
+]);
+
+/**
+ * PLAN §2.4 item 4. Returns the missing contract field labels — empty for an
+ * item that does not touch an oracle at all (nothing to lint) or that
+ * carries every field. A non-empty result is what tells `routeErrata` to
+ * report the item as a malformed erratum instead of routing it; nothing about
+ * this function halts anything on its own.
+ */
+function oracleContractShortfall(text) {
+  if (!touchesErratumOracle(text)) return [];
+  return ERRATUM_ORACLE_CONTRACT_TERMS.filter((t) => !t.re.test(String(text ?? ""))).map(
+    (t) => t.label
+  );
+}
+
+/**
+ * PLAN §2.4 item 2 — the RE-MINT line grammar, read out of an erratum
+ * author's response only on the upstream-skew path (`movedSinceMinted`).
+ * DEC-ERR-01 vocabulary: one line per routed item, saying whether the
+ * author's re-grounding against upstream HEAD found it already resolved
+ * (ABSORBED) or still open (STILL-RAISED):
+ *
+ *     RE-MINT: ABSORBED: {item text}
+ *     RE-MINT: STILL-RAISED: {item text}
+ *
+ * Fail-open: a response with no RE-MINT line at all returns `null`, which
+ * `erratumRound` reads as "the author did not structurally re-derive the
+ * list" and falls back to the notice-only path that predates this task. A
+ * response with at least one RE-MINT line is read as the full re-derivation —
+ * only its STILL-RAISED items reach the confirmers.
+ *
+ * Pure, synchronous, total; takes no seam.
+ */
+const ERRATUM_REMINT_LINE_RE = /^\s*(?:[-*]\s+)?RE-MINT:\s*(ABSORBED|STILL-RAISED):\s*(\S.*?)\s*$/;
+function parseErratumRemint(text) {
+  const stillRaised = [];
+  const absorbed = [];
+  let any = false;
+  scanLines(String(text ?? ""), (line) => {
+    const m = ERRATUM_REMINT_LINE_RE.exec(line);
+    if (!m) return;
+    any = true;
+    (m[1] === "ABSORBED" ? absorbed : stillRaised).push(m[2]);
+  });
+  return any ? { stillRaised, absorbed } : null;
+}
+
 /**
  * Retry a single dispatch exactly once when the dispatch itself THROWS or
  * REJECTS — an engine-side transport fault (dropped connection, the engine's
@@ -8728,7 +8911,15 @@ function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = []
       ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
         `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
         `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
-        `from the current text before you edit anything (DEC-ERR-03).\n`
+        `from the current text before you edit anything (DEC-ERR-03).\n` +
+        // PLAN §2.4 item 2 — the structural re-mint. Every item below must get
+        // exactly one RE-MINT line, so the confirmers read your re-derivation
+        // against HEAD instead of the stale mint.
+        `For EACH item below, end your final message with one line: ` +
+        `\`RE-MINT: STILL-RAISED: {item text}\` if it is still open against HEAD, or ` +
+        `\`RE-MINT: ABSORBED: {item text}\` if your re-grounding shows it is already resolved and ` +
+        `your edit does not need to touch it. Omitting these lines leaves the routed list below as ` +
+        `the floor stated above.\n`
       : "";
   return (
     `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
@@ -11716,6 +11907,39 @@ async function main({
       sessionKey: authorSessionKey(featureName, target, upstreamPhase),
     });
 
+    // ─── PLAN §2.4 item 2 — structural re-mint ───────────────────────────
+    //
+    // Consulted ONLY on the upstream-skew path above: when nothing moved,
+    // `itemLines` is already exactly what the confirmers should read, and
+    // this block is a no-op by construction (`remint` stays unset).
+    //
+    // Fail-open, same doctrine as `parseErrata`: an author response with no
+    // RE-MINT line leaves `confirmItemLines`/`confirmItemCount` at their
+    // original values — the notice already emitted above is the whole of the
+    // signal, exactly as it was before this task. Only a response that DOES
+    // carry RE-MINT lines makes this structural: the confirmers then read the
+    // author's own re-derivation, and an item the author reports ABSORBED is
+    // never asked about again.
+    let confirmItemLines = itemLines;
+    let confirmItemCount = items.length;
+    if (movedSinceMinted.length > 0) {
+      const remint = parseErratumRemint(authorResponse);
+      if (remint) {
+        confirmItemCount = remint.stillRaised.length;
+        confirmItemLines =
+          confirmItemCount > 0
+            ? remint.stillRaised.map((text) => `- ${text}`).join("\n")
+            : "(every routed item was reported ABSORBED against upstream HEAD; nothing remains to confirm.)";
+        const notice =
+          `Phase ${phaseId}: erratum round for ${target} — re-minted structurally: ` +
+          `${remint.absorbed.length} item${remint.absorbed.length === 1 ? "" : "s"} absorbed, ` +
+          `${confirmItemCount} still raised. Confirmers are reading the author's re-derived list ` +
+          `against upstream HEAD, not the stale mint (PLAN §2.4 item 2).`;
+        notices.push(notice);
+        emit(notice);
+      }
+    }
+
     // Step 4c. The confirmation is the next round of the upstream document's own
     // append-only window — derived, never assumed (§3.6's pinned invariant).
     // The derivation happened above, before step 4b, for the reason stated there.
@@ -11746,7 +11970,7 @@ async function main({
             feature: featureName,
             docType: target,
             docPath: upstreamPath,
-            itemLines,
+            itemLines: confirmItemLines,
             round,
             reviewFile: confirmPaths[i],
             // DEC-ERR-03: the confirmers are pointed at the SAME upstream state
@@ -11910,12 +12134,33 @@ async function main({
       // Local, delta-introduced, and the follow-up budget is unspent: one more
       // targeted pass, whose item list is the confirmers' own findings. No
       // anchors — nothing has been approved yet.
-      const followUpItems = decision.findings.map((f) => ({
+      //
+      // PLAN §2.4 items 1 and 4 — these findings bypass `admit()` entirely
+      // (they never went through `routeErrata`'s minting), so the same
+      // hygiene is applied here directly: normalized dedupe (two confirmers
+      // restating the SAME finding at the same anchor collapse to one item,
+      // union of sources), then the oracle-contract lint (a non-conforming
+      // oracle item is reported, not routed).
+      const rawFollowUpItems = decision.findings.map((f) => ({
         docType: target,
         item:
           `[${f.severity} | ${f.provenance} | ${f.locality}] ${f.section} — ${f.text}`,
         source: f.source ?? "(confirmation)",
       }));
+      const followUpItems = [];
+      for (const candidate of dedupeErrataEntries(rawFollowUpItems)) {
+        const shortfall = oracleContractShortfall(candidate.item);
+        if (shortfall.length > 0) {
+          const oracleNotice =
+            `Phase ${phaseId}: erratum follow-up finding for ${target} touches a test oracle but is ` +
+            `missing ${shortfall.join(", ")} — reported as a malformed erratum, not routed: ` +
+            `${candidate.item}`;
+          notices.push(oracleNotice);
+          emit(oracleNotice);
+          continue;
+        }
+        followUpItems.push({ ...candidate, mintedHash: mintedHashes.get(target) ?? null });
+      }
       const notice =
         `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, and every ` +
         `finding is \`local\` to the sections the erratum just edited (gate rule R3). Dispatching ` +
@@ -11972,7 +12217,7 @@ async function main({
     });
 
     notices.push(
-      `Phase ${phaseId}: ${roundLabel} for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+      `Phase ${phaseId}: ${roundLabel} for ${target} — ${confirmItemCount} item${confirmItemCount === 1 ? "" : "s"}, ` +
         `confirmed at round v${round} by ${reviewers.join(", ")}.`
     );
 
@@ -11993,21 +12238,59 @@ async function main({
    *   leave every existing report string byte-identical.
    */
   async function routeErrata({ phaseId, docType, label, loop, creatorResult }) {
+    /** Cross-batch dedupe key set (PLAN §2.4 item 1) — persists across while-loop
+     *  iterations so a re-raised duplicate of an already-routed item is dropped,
+     *  not re-routed a second time. */
     const seen = new Set();
+    // `admit()` splits/lints/dedupes only — it does NOT stamp `mintedHash`.
+    // Deliberately: `snapshotErratumDocs()` costs a read per upstream doc, and
+    // `converge` calls `routeErrata` after every dispatch whether or not any
+    // errata were raised. Snapshotting here, unconditionally, would pay that
+    // cost on every ordinary (errata-free) dispatch too. The mint-time tag is
+    // stamped afterward, once, only on the batch that survived to be routed.
     const admit = (entries) => {
+      const split = [];
+      for (const raw of entries) {
+        if (!raw) continue;
+        // PLAN §2.4 item 3: an item naming ≥2 doc types (word-boundary, never
+        // substring) is one obligation with multiple homes — mint one item per
+        // named type instead of guessing which home is authoritative.
+        for (const entry of splitErratumMultiHome(raw)) {
+          // An erratum naming the phase's OWN document is not an erratum at all —
+          // it is an ordinary finding, and the loop that just converged is where
+          // it belonged. Dropped silently, not routed.
+          if (entry.docType === docType) continue;
+          // PLAN §2.4 item 4: an item that touches an oracle (AT-/INV-/META- id
+          // or the bare word "oracle(s)") but is missing the property statement,
+          // non-subsumption rationale, or per-conjunct witness is malformed —
+          // noted, not routed, never treated as a hard failure (fail-open).
+          const shortfall = oracleContractShortfall(entry.item);
+          if (shortfall.length > 0) {
+            notices.push(
+              `Phase ${phaseId}: erratum item against ${entry.docType} touches an oracle but is ` +
+                `missing ${shortfall.join(", ")} — malformed erratum, not routed: \`${entry.item}\`.`
+            );
+            continue;
+          }
+          split.push(entry);
+        }
+      }
       const kept = [];
-      for (const entry of entries) {
-        // An erratum naming the phase's OWN document is not an erratum at all —
-        // it is an ordinary finding, and the loop that just converged is where
-        // it belonged. Dropped silently, not routed.
-        if (!entry || entry.docType === docType) continue;
-        const key = `${entry.docType} ${entry.item}`;
+      // PLAN §2.4 item 1: normalized dedupe — items sharing docType + cited
+      // anchor + expected token collapse to one, carrying union source
+      // attributions, before the persistent cross-batch `seen` check below.
+      for (const candidate of dedupeErrataEntries(split)) {
+        const key = erratumDedupeKey(candidate.docType, candidate.item);
         if (seen.has(key)) continue;
         seen.add(key);
-        kept.push(entry);
+        kept.push(candidate);
       }
       return kept;
     };
+    /** Stamps each entry with the hash of ITS OWN doc type at `mintedHashes`'s
+     *  snapshot moment (PLAN §2.4 item 2's per-item half). */
+    const tagMinted = (entries, hashes) =>
+      entries.map((e) => ({ ...e, mintedHash: hashes.get(e.docType) ?? null }));
 
     const creatorSkill = PHASE_DISPATCH[phaseId].creator ?? PHASE_DISPATCH[phaseId].optimizer;
     let pending = admit([
@@ -12022,14 +12305,15 @@ async function main({
     ]);
     if (pending.length === 0) return "";
 
-    /** Erratum rounds spent, per upstream doc, for THIS phase and invocation. */
-    const spent = new Map();
-    const routed = [];
-
     // DEC-ERR-03: the list has just been minted, so date it. Re-taken for each
     // follow-on batch below, because a follow-on list is a NEW mint and must be
     // dated against the tree the wave has already reshaped, not the original one.
     let mintedHashes = await snapshotErratumDocs();
+    pending = tagMinted(pending, mintedHashes);
+
+    /** Erratum rounds spent, per upstream doc, for THIS phase and invocation. */
+    const spent = new Map();
+    const routed = [];
 
     while (pending.length > 0) {
       const followOn = [];
@@ -12099,9 +12383,14 @@ async function main({
           );
         }
       }
-      pending = admit(followOn);
       // A follow-on batch is a fresh mint (DEC-ERR-03), so it gets a fresh date.
-      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
+      // Same laziness as the initial batch: only pay for a snapshot, and only
+      // stamp `mintedHash`, when there is something left to route.
+      pending = admit(followOn);
+      if (pending.length > 0) {
+        mintedHashes = await snapshotErratumDocs();
+        pending = tagMinted(pending, mintedHashes);
+      }
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";

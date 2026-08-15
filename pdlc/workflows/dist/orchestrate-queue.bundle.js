@@ -4800,6 +4800,99 @@ function parseErrata(text, onIgnored) {
   return found;
 }
 
+const ERRATUM_ANCHOR_RE = /§[\w.-]+|:\d{2,}\b/;
+function erratumAnchorOf(text) {
+  const m = ERRATUM_ANCHOR_RE.exec(String(text ?? ""));
+  return m ? m[0].toLowerCase().trim() : null;
+}
+
+const ERRATUM_TOKEN_RE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+function erratumTokenOf(text) {
+  const s = String(text ?? "");
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let last = null;
+  let m;
+  while ((m = ERRATUM_TOKEN_RE.exec(s))) last = m[1] ?? m[2];
+  return last ? last.toLowerCase().replace(/\s+/g, " ").trim() : null;
+}
+
+function erratumDedupeKey(docType, text) {
+  const anchor = erratumAnchorOf(text);
+  if (!anchor) {
+    return `${docType}\0${String(text ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+  }
+  return `${docType}\0${anchor}\0${erratumTokenOf(text) ?? ""}`;
+}
+
+function dedupeErrataEntries(entries) {
+  const kept = [];
+  const byKey = new Map();
+  for (const raw of Array.isArray(entries) ? entries : []) {
+    if (!raw) continue;
+    const key = erratumDedupeKey(raw.docType, raw.item);
+    const existing = byKey.get(key);
+    if (existing) {
+      const sources = String(existing.source ?? "")
+        .split(", ")
+        .filter(Boolean);
+      const next = String(raw.source ?? "");
+      if (next && !sources.includes(next)) sources.push(next);
+      existing.source = sources.join(", ");
+      continue;
+    }
+    const merged = { ...raw, source: String(raw.source ?? "") };
+    byKey.set(key, merged);
+    kept.push(merged);
+  }
+  return kept;
+}
+
+function splitErratumMultiHome(entry) {
+  if (!entry) return [];
+  const text = String(entry.item ?? "");
+  const named = [];
+  for (const docType of ERRATUM_DOC_TYPES) {
+    if (new RegExp(`\\b${docType}\\b`).test(text)) named.push(docType);
+  }
+  if (named.length < 2) return [entry];
+  const multiHomeGroup = `${entry.docType}\0${text}`;
+  return named.map((docType) => ({ ...entry, docType, multiHomeGroup }));
+}
+
+const ERRATUM_ORACLE_ID_RE = /\b(?:AT|INV|META)-[A-Za-z0-9]+\b/;
+const ERRATUM_ORACLE_WORD_RE = /\boracles?\b/i;
+function touchesErratumOracle(text) {
+  const s = String(text ?? "");
+  return ERRATUM_ORACLE_ID_RE.test(s) || ERRATUM_ORACLE_WORD_RE.test(s);
+}
+
+const ERRATUM_ORACLE_CONTRACT_TERMS = Object.freeze([
+  { label: "a property statement", re: /\bproperty\b/i },
+  { label: "a non-subsumption rationale", re: /\bsubsum/i },
+  { label: "a per-conjunct red witness", re: /\bwitness\b/i },
+]);
+
+function oracleContractShortfall(text) {
+  if (!touchesErratumOracle(text)) return [];
+  return ERRATUM_ORACLE_CONTRACT_TERMS.filter((t) => !t.re.test(String(text ?? ""))).map(
+    (t) => t.label
+  );
+}
+
+const ERRATUM_REMINT_LINE_RE = /^\s*(?:[-*]\s+)?RE-MINT:\s*(ABSORBED|STILL-RAISED):\s*(\S.*?)\s*$/;
+function parseErratumRemint(text) {
+  const stillRaised = [];
+  const absorbed = [];
+  let any = false;
+  scanLines(String(text ?? ""), (line) => {
+    const m = ERRATUM_REMINT_LINE_RE.exec(line);
+    if (!m) return;
+    any = true;
+    (m[1] === "ABSORBED" ? absorbed : stillRaised).push(m[2]);
+  });
+  return any ? { stillRaised, absorbed } : null;
+}
+
 async function withDispatchRetry(dispatchFn, { label, emit = () => {}, onFault = () => {} } = {}) {
   try {
     return await dispatchFn();
@@ -6113,7 +6206,13 @@ function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = []
       ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
         `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
         `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
-        `from the current text before you edit anything (DEC-ERR-03).\n`
+        `from the current text before you edit anything (DEC-ERR-03).\n` +
+
+        `For EACH item below, end your final message with one line: ` +
+        `\`RE-MINT: STILL-RAISED: {item text}\` if it is still open against HEAD, or ` +
+        `\`RE-MINT: ABSORBED: {item text}\` if your re-grounding shows it is already resolved and ` +
+        `your edit does not need to touch it. Omitting these lines leaves the routed list below as ` +
+        `the floor stated above.\n`
       : "";
   return (
     `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
@@ -8092,6 +8191,26 @@ async function main({
       sessionKey: authorSessionKey(featureName, target, upstreamPhase),
     });
 
+    let confirmItemLines = itemLines;
+    let confirmItemCount = items.length;
+    if (movedSinceMinted.length > 0) {
+      const remint = parseErratumRemint(authorResponse);
+      if (remint) {
+        confirmItemCount = remint.stillRaised.length;
+        confirmItemLines =
+          confirmItemCount > 0
+            ? remint.stillRaised.map((text) => `- ${text}`).join("\n")
+            : "(every routed item was reported ABSORBED against upstream HEAD; nothing remains to confirm.)";
+        const notice =
+          `Phase ${phaseId}: erratum round for ${target} — re-minted structurally: ` +
+          `${remint.absorbed.length} item${remint.absorbed.length === 1 ? "" : "s"} absorbed, ` +
+          `${confirmItemCount} still raised. Confirmers are reading the author's re-derived list ` +
+          `against upstream HEAD, not the stale mint (PLAN §2.4 item 2).`;
+        notices.push(notice);
+        emit(notice);
+      }
+    }
+
     const round = window.startIndex;
     const reviewers = upstream.reviewers;
     const confirmPaths = reviewers.map(
@@ -8116,7 +8235,7 @@ async function main({
             feature: featureName,
             docType: target,
             docPath: upstreamPath,
-            itemLines,
+            itemLines: confirmItemLines,
             round,
             reviewFile: confirmPaths[i],
 
@@ -8220,12 +8339,26 @@ async function main({
 
     if (decision.rule === "R3") {
 
-      const followUpItems = decision.findings.map((f) => ({
+      const rawFollowUpItems = decision.findings.map((f) => ({
         docType: target,
         item:
           `[${f.severity} | ${f.provenance} | ${f.locality}] ${f.section} — ${f.text}`,
         source: f.source ?? "(confirmation)",
       }));
+      const followUpItems = [];
+      for (const candidate of dedupeErrataEntries(rawFollowUpItems)) {
+        const shortfall = oracleContractShortfall(candidate.item);
+        if (shortfall.length > 0) {
+          const oracleNotice =
+            `Phase ${phaseId}: erratum follow-up finding for ${target} touches a test oracle but is ` +
+            `missing ${shortfall.join(", ")} — reported as a malformed erratum, not routed: ` +
+            `${candidate.item}`;
+          notices.push(oracleNotice);
+          emit(oracleNotice);
+          continue;
+        }
+        followUpItems.push({ ...candidate, mintedHash: mintedHashes.get(target) ?? null });
+      }
       const notice =
         `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, and every ` +
         `finding is \`local\` to the sections the erratum just edited (gate rule R3). Dispatching ` +
@@ -8274,7 +8407,7 @@ async function main({
     });
 
     notices.push(
-      `Phase ${phaseId}: ${roundLabel} for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+      `Phase ${phaseId}: ${roundLabel} for ${target} — ${confirmItemCount} item${confirmItemCount === 1 ? "" : "s"}, ` +
         `confirmed at round v${round} by ${reviewers.join(", ")}.`
     );
 
@@ -8288,19 +8421,42 @@ async function main({
   }
 
   async function routeErrata({ phaseId, docType, label, loop, creatorResult }) {
-    const seen = new Set();
-    const admit = (entries) => {
-      const kept = [];
-      for (const entry of entries) {
 
-        if (!entry || entry.docType === docType) continue;
-        const key = `${entry.docType} ${entry.item}`;
+    const seen = new Set();
+
+    const admit = (entries) => {
+      const split = [];
+      for (const raw of entries) {
+        if (!raw) continue;
+
+        for (const entry of splitErratumMultiHome(raw)) {
+
+          if (entry.docType === docType) continue;
+
+          const shortfall = oracleContractShortfall(entry.item);
+          if (shortfall.length > 0) {
+            notices.push(
+              `Phase ${phaseId}: erratum item against ${entry.docType} touches an oracle but is ` +
+                `missing ${shortfall.join(", ")} — malformed erratum, not routed: \`${entry.item}\`.`
+            );
+            continue;
+          }
+          split.push(entry);
+        }
+      }
+      const kept = [];
+
+      for (const candidate of dedupeErrataEntries(split)) {
+        const key = erratumDedupeKey(candidate.docType, candidate.item);
         if (seen.has(key)) continue;
         seen.add(key);
-        kept.push(entry);
+        kept.push(candidate);
       }
       return kept;
     };
+
+    const tagMinted = (entries, hashes) =>
+      entries.map((e) => ({ ...e, mintedHash: hashes.get(e.docType) ?? null }));
 
     const creatorSkill = PHASE_DISPATCH[phaseId].creator ?? PHASE_DISPATCH[phaseId].optimizer;
     let pending = admit([
@@ -8315,10 +8471,11 @@ async function main({
     ]);
     if (pending.length === 0) return "";
 
+    let mintedHashes = await snapshotErratumDocs();
+    pending = tagMinted(pending, mintedHashes);
+
     const spent = new Map();
     const routed = [];
-
-    let mintedHashes = await snapshotErratumDocs();
 
     while (pending.length > 0) {
       const followOn = [];
@@ -8378,9 +8535,12 @@ async function main({
           );
         }
       }
-      pending = admit(followOn);
 
-      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
+      pending = admit(followOn);
+      if (pending.length > 0) {
+        mintedHashes = await snapshotErratumDocs();
+        pending = tagMinted(pending, mintedHashes);
+      }
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
