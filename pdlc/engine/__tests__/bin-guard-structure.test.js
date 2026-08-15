@@ -275,13 +275,13 @@ test("analyzeGuardSource: three simple statements count as exactly three", () =>
 
 // ── PROP-LAUNCH-7's positive triple, over the real bin/pdlc.mjs source ────
 
-test.skip("T45: bin/pdlc.mjs declares zero static import declarations (dynamic import(...) is exempt)", () => {
+test("T45: bin/pdlc.mjs declares zero static import declarations (dynamic import(...) is exempt)", () => {
   const source = readFileSync(GUARD_PATH, "utf8");
   const { staticImportCount } = analyzeGuardSource(source);
   assert.equal(staticImportCount, 0);
 });
 
-test.skip("T45: bin/pdlc.mjs has exactly three non-comment top-level statements", () => {
+test("T45: bin/pdlc.mjs has exactly three non-comment top-level statements", () => {
   const source = readFileSync(GUARD_PATH, "utf8");
   const { topLevelStatements } = analyzeGuardSource(source);
   assert.equal(topLevelStatements, 3);
