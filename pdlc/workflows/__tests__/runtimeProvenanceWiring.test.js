@@ -121,7 +121,7 @@ describe("T55: build-runtime.mjs's two entry closures widen to a provenance 8th 
     if (tmpRootParent) rmSync(tmpRootParent, { recursive: true, force: true });
   });
 
-  it.skip("T44: freshly built orchestrate-queue.bundle.js's QUEUE_ENTRY closure passes provenance 8th", () => {
+  it("T44: freshly built orchestrate-queue.bundle.js's QUEUE_ENTRY closure passes provenance 8th", () => {
     const source = readFileSync(resolve(freshDist, "orchestrate-queue.bundle.js"), "utf8");
     const args = rewriteStatusArgs(source);
     expect(args).toHaveLength(8);
@@ -129,7 +129,7 @@ describe("T55: build-runtime.mjs's two entry closures widen to a provenance 8th 
     expect(args[7]).toBe("provenance");
   });
 
-  it.skip("T44: freshly built orchestrate-dev.bundle.js's DEV_ENTRY closure passes provenance 8th", () => {
+  it("T44: freshly built orchestrate-dev.bundle.js's DEV_ENTRY closure passes provenance 8th", () => {
     const source = readFileSync(resolve(freshDist, "orchestrate-dev.bundle.js"), "utf8");
     const args = rewriteStatusArgs(source);
     expect(args).toHaveLength(8);
@@ -137,14 +137,14 @@ describe("T55: build-runtime.mjs's two entry closures widen to a provenance 8th 
     expect(args[7]).toBe("provenance");
   });
 
-  it.skip("T44: the checked-in dist/orchestrate-queue.bundle.js carries the 8th argument (AT-5.3)", () => {
+  it("T44: the checked-in dist/orchestrate-queue.bundle.js carries the 8th argument (AT-5.3)", () => {
     const source = readFileSync(resolve(DIST, "orchestrate-queue.bundle.js"), "utf8");
     const args = rewriteStatusArgs(source);
     expect(args).toHaveLength(8);
     expect(args[7]).toBe("provenance");
   });
 
-  it.skip("T44: the checked-in dist/orchestrate-dev.bundle.js carries the 8th argument (AT-5.3)", () => {
+  it("T44: the checked-in dist/orchestrate-dev.bundle.js carries the 8th argument (AT-5.3)", () => {
     const source = readFileSync(resolve(DIST, "orchestrate-dev.bundle.js"), "utf8");
     const args = rewriteStatusArgs(source);
     expect(args).toHaveLength(8);

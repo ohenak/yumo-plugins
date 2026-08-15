@@ -12106,7 +12106,7 @@ return await __dev.main({
   forcePhases: __forcePhases,
   ...rtDevInjections(__dev),
 
-  _recordQueueRow: async ({ feature, status, evidence }) =>
+  _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,
@@ -12114,6 +12114,7 @@ return await __dev.main({
       rtReadFile,
       rtWriteFile,
       rtGit,
-      evidence
+      evidence,
+      provenance
     ),
 });
