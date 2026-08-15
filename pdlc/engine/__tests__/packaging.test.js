@@ -190,7 +190,7 @@ test(
 // packs them. This sub-assertion is a class check over one row of AT-3.8a,
 // not a competing expected side (FSPEC:778-782).
 
-test.skip(
+test(
   "T33: packed workflow members equal FSPEC §5.2's Workflow-members class member-for-member (AT-3.8b)",
   () => {
     const packed = packRealTarball();
