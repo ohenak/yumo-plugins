@@ -455,3 +455,107 @@ describe("PLAN-PARSE-03: Phase P refuses a PLAN whose task table the parser cann
     expect(phaseRow(result, "PR")).toBeUndefined();
   });
 });
+
+// ─── 4. RT-3a/RT-3b: escape- and code-span-aware splitPipeRow (PLAN §4.1/§5) ───
+
+describe("PLAN-PARSE-04: splitPipeRow is escape- and code-span-aware", () => {
+  const { splitPipeRow } = devModule;
+
+  /** The naive split `splitPipeRow` replaced: no escape or code-span awareness. */
+  const oldSplitPipeRow = (row) =>
+    row
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((c) => c.trim());
+
+  // A task table whose Description cell carries a code span containing a
+  // literal `|` — `` `list[str] | None` `` — the exact shape PLAN §4.1 calls
+  // out. The OLD naive split treats that `|` as a fifth column delimiter and
+  // shifts every following column out from under its header; the NEW,
+  // code-span-aware scanner keeps the whole span as one cell.
+  const CODE_SPAN_TASK_TABLE = [
+    "| Task ID | Description | Batch | Dependencies |",
+    "|---|---|---|---|",
+    "| G-1 | accepts `list[str] | None` as input | 1 | - |",
+    "| G-2 | build on it | 2 | G-1 |",
+    "| G-3 | and again | 3 | G-2 |",
+    "",
+    "| Task | Files |",
+    "|---|---|",
+    "| G-1 | `src/one.js` |",
+    "| G-2 | `src/two.js` |",
+    "| G-3 | `src/three.js` |",
+  ].join("\n");
+
+  test("RT-3a: control assertion — the OLD naive split mis-parses this fixture's row", () => {
+    const row = "| G-1 | accepts `list[str] | None` as input | 1 | - |";
+
+    // The old split yields FIVE cells (the in-span `|` was read as a fourth
+    // delimiter), not the table's four columns — a genuine, demonstrable
+    // mis-parse, not a strawman.
+    expect(oldSplitPipeRow(row)).toEqual([
+      "G-1",
+      "accepts `list[str]",
+      "None` as input",
+      "1",
+      "-",
+    ]);
+  });
+
+  test("RT-3a: the NEW scanner keeps the code span intact, so the row parses unshifted", () => {
+    const row = "| G-1 | accepts `list[str] | None` as input | 1 | - |";
+
+    expect(splitPipeRow(row)).toEqual([
+      "G-1",
+      "accepts `list[str] | None` as input",
+      "1",
+      "-",
+    ]);
+  });
+
+  test("RT-3a: fabricated-cycle halt — the fixture parses to no cycle and Phase P passes", async () => {
+    const { result, calls } = await runToPhaseP(CODE_SPAN_TASK_TABLE);
+
+    const p = phaseRow(result, "P");
+    expect(p).toBeDefined();
+    expect(p.status).toBe("✅");
+    expect(p.detail).toBe(
+      "Approved (1 iterations); PLAN parses to 3 tasks in 3 batches, 3 waves"
+    );
+
+    // Positive conjunct: the run reached past Phase P (Phase PR's creator ran),
+    // and nothing about the PLAN — in particular no fabricated cycle — halted it.
+    expect(calls.some((c) => c.skill === "te-author")).toBe(true);
+    expect(result.haltReason).not.toContain(PLAN_PATH);
+    expect(result.haltReason).not.toContain("cycle");
+  });
+
+  test("RT-3b: back-compat corpus property — every pipe-free row across the existing fixtures parses byte-identically to the old split", () => {
+    const fixtureFiles = [
+      "plan-merge-phase-manifest.excerpt.md",
+      "plan-merge-phase.excerpt.md",
+      "plan-orchestrate-dev-workflow.excerpt.md",
+      "plan-review-loop-hardening.excerpt.md",
+      "plan-workflow-distribution.excerpt.md",
+    ];
+
+    let rowsChecked = 0;
+    for (const name of fixtureFiles) {
+      const text = fixture(name);
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("|")) continue;
+        // "Pipe-free" per PLAN §5 RT-3b means no IN-CELL pipe/escape/code-span
+        // machinery to exercise — i.e. no backslash and no backtick — so the
+        // widening has nothing to widen and both implementations must agree.
+        if (trimmed.includes("\\") || trimmed.includes("`")) continue;
+        rowsChecked += 1;
+        expect(splitPipeRow(trimmed)).toEqual(oldSplitPipeRow(trimmed));
+      }
+    }
+    // Guard the guard: this property is vacuous if no row in the corpus was a
+    // real pipe-table row.
+    expect(rowsChecked).toBeGreaterThan(50);
+  });
+});

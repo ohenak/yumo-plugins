@@ -1,6 +1,10 @@
 # Local tool state — machine-specific, not shared
 .tokensave/
 .claude/settings.local.json
+# Live pdlc consumer config is per-machine state; the tracked arrangement lives
+# in .claude/pdlc.config.example.json (read by pdlc/engine's ci-arrangement test).
+# Anchored so the covered-violations fixture's nested .claude/ tree is untouched.
+/.claude/pdlc.config.json
 .claude/.headroom_wrap_marker.json
 
 # Node

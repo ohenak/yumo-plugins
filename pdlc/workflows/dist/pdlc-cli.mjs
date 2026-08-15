@@ -4126,6 +4126,84 @@ function parsePlanTasks(markdown) {
 }
 
 /**
+ * Row/cell-level pre-check for Phase P's post-convergence self-parse gate:
+ * every id a task's Deps cell names must be some task's id, across every
+ * qualifying task table in the PLAN (a dependency in one batch's table may
+ * name a task defined in another). Run this BEFORE cycle detection so an
+ * unknown-id typo is diagnosed as "unknown id", never mistaken for a cycle.
+ *
+ * Mirrors `parsePlanTasks`' own table-block segmentation and column
+ * resolution — so its row numbering agrees with the task table's own
+ * indexing — but keeps the RAW Deps cell text and reports unresolved tokens
+ * per row instead of collapsing straight to a dependency array (which is
+ * why this isn't just folded into `parsePlanTasks`: that function's return
+ * shape is pinned by existing callers/tests and carries no raw-cell field).
+ *
+ * @param {string | null | undefined} markdown - Raw PLAN.md contents
+ * @returns {string[]} one diagnostic per offending row, e.g.
+ *   `row 3: Deps cell "A1, Z9" names unknown id "Z9"` — empty when every
+ *   dependency token resolves.
+ */
+function findUnknownPlanDepsIds(markdown) {
+  if (markdown == null || typeof markdown !== "string") return [];
+
+  const blocks = [];
+  let block = null;
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
+    }
+  }
+  if (blocks.length === 0) return [];
+
+  const isSeparatorRow = (cells) =>
+    cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+
+  // Pass 1: collect every task id across every qualifying table before
+  // checking any Deps cell, since a dependency may be defined in a later table.
+  const knownIds = new Set();
+  const qualifyingBlocks = [];
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const idIdx = cols.findIndex((c) => PLAN_ID_HEADER_CELLS.has(c));
+    const depsIdx = cols.findIndex((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+    if (idIdx < 0 || depsIdx < 0) continue; // not a task table
+    qualifyingBlocks.push({ rows, idIdx, depsIdx });
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      if (isSeparatorRow(cells)) continue;
+      const id = (cells[idIdx] || "").trim();
+      if (id) knownIds.add(id);
+    }
+  }
+
+  // Pass 2: every Deps token must resolve against the ids collected above.
+  const problems = [];
+  for (const { rows, idIdx, depsIdx } of qualifyingBlocks) {
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      if (isSeparatorRow(cells)) continue;
+      const id = (cells[idIdx] || "").trim();
+      if (!id) continue;
+      const raw = (cells[depsIdx] || "").trim();
+      for (const tok of parsePlanDepsCell(raw)) {
+        if (!knownIds.has(tok)) {
+          problems.push(`row ${i}: Deps cell "${raw}" names unknown id "${tok}"`);
+        }
+      }
+    }
+  }
+  return problems;
+}
+
+/**
  * The closed set of header cells that name a PLAN task table's id column, and
  * the closed set that names its dependencies column. Matched on the LOWERCASED,
  * TRIMMED cell, in full — never as a substring. Extending either set is the one
@@ -4143,13 +4221,66 @@ const PLAN_DEPS_HEADER_CELLS = new Set([
   "prereqs",
 ]);
 
-/** Split a markdown table row on pipes, trimming leading/trailing pipe + cells. */
+/**
+ * Split a markdown table row on pipes, trimming leading/trailing pipe + cells.
+ *
+ * Escape- and code-span-aware: a `|` is a cell delimiter only when it is (a)
+ * not immediately preceded by an unescaped backslash and (b) not inside an
+ * open backtick code span. Code spans follow the CommonMark rule — a run of
+ * N backticks opens a span, and only an EQUAL-length run of backticks closes
+ * it, so `` `a|b`` `` (two closing ticks against a one-tick open) stays open
+ * and its `|` is literal content, not a delimiter. An escaped `\|` inside a
+ * cell is un-escaped to a literal `|` in the cell's value; escapes are not
+ * processed while inside a code span (CommonMark: backslashes are literal
+ * there). Strict widening: a row with no in-cell pipes (no backslashes, no
+ * backticks) splits byte-identically to the prior plain `.split("|")`.
+ */
 function splitPipeRow(row) {
-  return row
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((c) => c.trim());
+  let s = row;
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+
+  const cells = [];
+  let cur = "";
+  let backtickRun = 0; // length of the currently open code-span fence, 0 = none open
+  let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+
+    // `\|` outside a code span: consume both chars, emit a literal `|`.
+    if (ch === "\\" && backtickRun === 0 && s[i + 1] === "|") {
+      cur += "|";
+      i += 2;
+      continue;
+    }
+
+    if (ch === "`") {
+      let j = i;
+      while (j < s.length && s[j] === "`") j++;
+      const run = j - i;
+      if (backtickRun === 0) {
+        backtickRun = run; // opens a span
+      } else if (run === backtickRun) {
+        backtickRun = 0; // exact-length run closes it (CommonMark rule)
+      }
+      // else: a run of a different length while a span is open is literal.
+      cur += s.slice(i, j);
+      i = j;
+      continue;
+    }
+
+    if (ch === "|" && backtickRun === 0) {
+      cells.push(cur.trim());
+      cur = "";
+      i += 1;
+      continue;
+    }
+
+    cur += ch;
+    i += 1;
+  }
+  cells.push(cur.trim());
+  return cells;
 }
 
 /** Parse a dependencies cell: comma/space list of ids; "-"/"—"/"none"/"" ⇒ []. */
@@ -4182,11 +4313,15 @@ function parsePlanDepsCell(cell) {
 
 /**
  * The closed set of header cells that name a manifest's OWNING TASK column, and
- * the closed set that names its FILES column. Matched on the LOWERCASED, TRIMMED
- * cell, in full — never as a substring, for exactly the reason `parsePlanTasks`
- * documents: a substring test lets a risk register or a "Writers" table qualify,
- * and a qualifying non-manifest table poisons the contract check downstream.
- * Extending either set is the one sanctioned way to admit a new spelling.
+ * the closed set that names its FILES column. Matched on the cell AFTER
+ * `normalizeHeaderCell` (lowercase, trim, collapse internal whitespace, strip one
+ * trailing parenthetical — so `Owning task(s)` and `File(s)` normalize to
+ * `owning task` and `file`), in full — never as a substring, for exactly the
+ * reason `parsePlanTasks` documents: a substring test lets a risk register or a
+ * "Writers" table qualify, and a qualifying non-manifest table poisons the
+ * contract check downstream. Normalization runs first; extending either set
+ * remains the one sanctioned way to admit a spelling normalization does not
+ * already fold into an existing member.
  */
 const PLAN_OWNER_HEADER_CELLS = new Set([
   "task",
@@ -4194,16 +4329,35 @@ const PLAN_OWNER_HEADER_CELLS = new Set([
   "task-id",
   "task_id",
   "owning task",
+  "owning tasks",
+  "owner",
   "id",
 ]);
 const PLAN_FILES_HEADER_CELLS = new Set([
   "files created or appended",
   "files",
+  "file",
   "owned files",
   "files owned",
   "file ownership",
   "files created/appended",
 ]);
+
+/**
+ * Normalize a header cell before set membership: lowercase, trim, collapse
+ * internal whitespace to single spaces, then strip ONE trailing parenthetical
+ * (`Owning task(s)` → `owning task`, `File(s)` → `file`). Membership after
+ * normalization is still exact-cell, never substring — see the comment above
+ * the two sets.
+ */
+function normalizeHeaderCell(cell) {
+  return String(cell == null ? "" : cell)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\([^()]*\)\s*$/, "")
+    .trim();
+}
 
 /** Strip surrounding markdown emphasis / code ticks from a table cell value. */
 function stripCellEmphasis(cell) {
@@ -4249,11 +4403,18 @@ function isPlausiblePath(value) {
  *   table each); a non-pipe line terminates the block.
  * - A block qualifies only if its header row carries one cell that is EXACTLY a
  *   member of `PLAN_OWNER_HEADER_CELLS` and another that is EXACTLY a member of
- *   `PLAN_FILES_HEADER_CELLS`. A batch/wave/phase column may be present and is
- *   ignored — waves are DERIVED from ownership and dependencies, never read off
- *   the PLAN's own batch labels.
+ *   `PLAN_FILES_HEADER_CELLS` (both after `normalizeHeaderCell`). A batch/wave/
+ *   phase column may be present and is ignored — waves are DERIVED from
+ *   ownership and dependencies, never read off the PLAN's own batch labels.
  * - Every qualifying block contributes its rows, so a PLAN that writes one
  *   manifest per batch parses as well as one that writes a single table.
+ * - A block whose header matches ONE side (owner or files) but not the other is
+ *   a NEAR MISS, not a silent skip: it is reported back so the caller can reject
+ *   loudly rather than treat the manifest as absent. A block matching NEITHER
+ *   side is ordinary prose and stays silently skipped, exactly as before. The
+ *   one exception: an owner-only match paired with a genuine Deps column is an
+ *   ordinary task table (its id column and the owner set share spellings), not
+ *   an attempted manifest, and stays silently skipped too.
  *
  * Cell reading: the task cell is stripped of markdown emphasis (`**A1**` → `A1`);
  * the files cell yields every backtick-quoted span, verbatim (a trailing `/`
@@ -4263,7 +4424,15 @@ function isPlausiblePath(value) {
  * Paths are de-duplicated per task; the same task id in several rows unions.
  *
  * @param {string | null | undefined} markdown - Raw PLAN.md contents
- * @returns {{ ownership: Array<{ taskId: string, files: string[] }> } | null}
+ * @returns {{
+ *   ownership: Array<{ taskId: string, files: string[] }> | null,
+ *   nearMisses: Array<{ headerRow: string, matchedSide: "owner" | "files", expectedForms: string[] }>
+ * } | null}
+ *   `null` only when the document has no qualifying block AND no near-miss
+ *   block (i.e. nothing in it looks like an ownership manifest at all) — this
+ *   preserves the pre-existing null contract for that case. Once there is a
+ *   qualifying block, a near-miss block, or both, the object form is returned;
+ *   `ownership` is `null` when no block fully qualified.
  */
 function parsePlanOwnership(markdown) {
   if (markdown == null || typeof markdown !== "string") return null;
@@ -4287,14 +4456,39 @@ function parsePlanOwnership(markdown) {
   let sawQualifyingTable = false;
   const order = [];
   const byTask = new Map();
+  const nearMisses = [];
 
   for (const rows of blocks) {
-    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const headerRow = rows[0];
+    const cols = splitPipeRow(headerRow).map((c) => normalizeHeaderCell(c));
     const taskIdx = cols.findIndex((c) => PLAN_OWNER_HEADER_CELLS.has(c));
     const filesIdx = cols.findIndex(
       (c, i) => i !== taskIdx && PLAN_FILES_HEADER_CELLS.has(c)
     );
-    if (taskIdx < 0 || filesIdx < 0) continue;
+    if (taskIdx < 0 || filesIdx < 0) {
+      // One side matched and the other did not: a loud near miss. Matching
+      // NEITHER side is ordinary prose and stays silently skipped.
+      //
+      // Exception: the owner set's `task`/`task id`/`id` spellings are also
+      // exactly `parsePlanTasks`'s task-id spellings (`PLAN_ID_HEADER_CELLS`),
+      // so an ordinary task table (Task ID | Description | Deps) matches the
+      // owner side on its id column alone. That is not an attempted manifest,
+      // so it must not become near-miss noise on every PLAN — a header row
+      // that owner-side-matched but also carries a genuine Deps column is a
+      // task table, not a manifest near miss.
+      const looksLikeTaskTable =
+        taskIdx >= 0 && filesIdx < 0 && cols.some((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+      if ((taskIdx >= 0 || filesIdx >= 0) && !looksLikeTaskTable) {
+        nearMisses.push({
+          headerRow,
+          matchedSide: taskIdx >= 0 ? "owner" : "files",
+          expectedForms: [
+            ...(taskIdx >= 0 ? PLAN_FILES_HEADER_CELLS : PLAN_OWNER_HEADER_CELLS),
+          ],
+        });
+      }
+      continue;
+    }
     sawQualifyingTable = true;
 
     for (let i = 1; i < rows.length; i++) {
@@ -4329,8 +4523,13 @@ function parsePlanOwnership(markdown) {
     }
   }
 
-  if (!sawQualifyingTable) return null;
-  return { ownership: order.map((taskId) => ({ taskId, files: byTask.get(taskId) })) };
+  if (!sawQualifyingTable && nearMisses.length === 0) return null;
+  return {
+    ownership: sawQualifyingTable
+      ? order.map((taskId) => ({ taskId, files: byTask.get(taskId) }))
+      : null,
+    nearMisses,
+  };
 }
 
 /**
@@ -4375,6 +4574,133 @@ function validatePlanContract(tasks, ownership) {
   }
 
   return problems.length === 0 ? { ok: true } : { ok: false, problems };
+}
+
+/**
+ * §4.4's in-phase artifact lint. Composes the SAME mechanical checks Phase P's
+ * post-convergence gate has always run — `parsePlanTasks`, T6's
+ * `findUnknownPlanDepsIds` pre-check, `computeTopologicalBatches`'s cycle
+ * detection, `parsePlanOwnership` (near-misses included), `validatePlanContract`
+ * — into one pure function with STRUCTURED diagnostics, instead of five
+ * hand-copied halt strings. Nothing here is a new check: Phase P's gate is
+ * refactored to be this function's BACKSTOP (§10 condition 3), and the
+ * authoring loop (`dispatchAndVerify`) calls it after every author dispatch so
+ * a malformed table is fed back to the very next prompt instead of costing a
+ * full `MAX_AUTHORING_ATTEMPTS` budget before anyone says why.
+ *
+ * Priority mirrors the gate's historical sequential ifs (never a ranking of
+ * severity, just cheapest-diagnosis-first, T6's own reasoning): an unknown dep
+ * id is diagnosed before cycle detection runs, so a typo is never misreported
+ * as a graph cycle. Every other category is independent and all of it is
+ * collected — a caller may report every diagnostic or, like the Phase P
+ * backstop, act only on the first category present.
+ *
+ * The near-miss and "no manifest at all" diagnostics are mutually exclusive,
+ * exactly as the gate has always treated them: a manifest attempt that matches
+ * only one side of the contract is reported as THAT attempt's near miss, never
+ * folded into the generic "no manifest" message — and neither fires once a
+ * fully-qualifying manifest exists elsewhere in the document.
+ *
+ * @param {string} markdown
+ * @returns {{ok: boolean, diagnostics: Array<{kind: string, row?: number, cell?: string, message: string, expectedForms?: string[]}>}}
+ */
+function lintPlanArtifact(markdown) {
+  const diagnostics = [];
+
+  const parsed = parsePlanTasks(markdown);
+  if (!parsed || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+    diagnostics.push({
+      kind: "unparseable-tasks",
+      message:
+        "the task table could not be parsed: the header row must carry an exact " +
+        "'Task ID' cell (or 'ID' / '#') and an exact 'Dependencies' cell (or " +
+        "'Deps' / 'Depends On'), one markdown table row per task.",
+    });
+    return { ok: false, diagnostics };
+  }
+
+  const unknownDeps = findUnknownPlanDepsIds(markdown);
+  for (const problem of unknownDeps) {
+    const m = /^row (\d+): Deps cell "([^"]*)" names unknown id "([^"]*)"$/.exec(problem);
+    diagnostics.push({
+      kind: "unknown-dep-id",
+      row: m ? Number(m[1]) : undefined,
+      cell: m ? m[2] : undefined,
+      message: problem,
+    });
+  }
+
+  // Cycle detection is skipped once an unknown id is already diagnosed — see
+  // `findUnknownPlanDepsIds`'s own doc comment: an unresolved dependency can
+  // never become ready, which the topological walk can't distinguish from a
+  // true cycle.
+  if (unknownDeps.length === 0) {
+    try {
+      computeTopologicalBatches(parsed.tasks);
+    } catch (cycleErr) {
+      diagnostics.push({
+        kind: "cycle",
+        message: (cycleErr && cycleErr.message) || String(cycleErr),
+      });
+    }
+  }
+
+  const ownershipParsed = parsePlanOwnership(markdown);
+  const ownershipMissing = ownershipParsed == null || ownershipParsed.ownership == null;
+  if (ownershipMissing) {
+    const nearMisses = ownershipParsed ? ownershipParsed.nearMisses || [] : [];
+    if (nearMisses.length > 0) {
+      for (const nm of nearMisses) {
+        diagnostics.push({
+          kind: "ownership-near-miss",
+          cell: nm.headerRow,
+          expectedForms: nm.expectedForms,
+          message:
+            `"${nm.headerRow}" matched the ${nm.matchedSide} side but not the other ` +
+            `(accepted spellings for the missing side: ${nm.expectedForms.join(", ")})`,
+        });
+      }
+    } else {
+      diagnostics.push({
+        kind: "ownership-missing",
+        message:
+          "no file-ownership manifest found: add a markdown table whose header row " +
+          "carries an exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an " +
+          "exact 'Files' cell (or 'Owned Files' / 'Files Created or Appended'), one " +
+          "row per task, each row listing that task's owned paths in backticks.",
+      });
+    }
+  } else {
+    const contract = validatePlanContract(parsed.tasks, ownershipParsed.ownership);
+    if (!contract.ok) {
+      for (const problem of contract.problems) {
+        diagnostics.push({ kind: "contract-violation", message: problem });
+      }
+    }
+  }
+
+  return { ok: diagnostics.length === 0, diagnostics };
+}
+
+/**
+ * §4.4's plain-text rendering of `lintPlanArtifact`'s diagnostics, folded into
+ * the authoring loop's NEXT prompt — never a new dispatch, just more informed
+ * text on the one the budget already allows.
+ */
+function planLintFeedForwardClause(diagnostics) {
+  const lines = diagnostics.map((d) => {
+    const loc = d.row != null ? `row ${d.row}` : d.cell ? `"${d.cell}"` : null;
+    const forms =
+      d.expectedForms && d.expectedForms.length > 0
+        ? ` (accepted: ${d.expectedForms.join(", ")})`
+        : "";
+    return loc ? `- [${d.kind}] ${loc}: ${d.message}${forms}` : `- [${d.kind}] ${d.message}${forms}`;
+  });
+  return (
+    "The PLAN's mechanical lint (the same check Phase P's post-convergence gate runs) " +
+    "found the following in what is on disk right now — fix these exactly:\n" +
+    lines.join("\n")
+  );
 }
 
 /**
@@ -4588,6 +4914,272 @@ function parseVerdict(result, skillName) {
     medium: parsed.medium,
     low: parsed.low,
   };
+}
+
+// ─── TSPEC-PARSE-06: parseConfirmationFindings ────────────────────────────────
+
+/**
+ * The severity / provenance / locality triple a delta-confirmation reviewer
+ * tags each finding with (PLAN §2.1). Closed sets, matched case-insensitively
+ * and returned in canonical casing, so the gate downstream compares tokens and
+ * never strings the reviewer happened to type.
+ */
+const FINDING_SEVERITIES = Object.freeze({ high: "High", medium: "Medium", low: "Low" });
+const FINDING_PROVENANCES = Object.freeze({ delta: "delta", inherited: "inherited" });
+const FINDING_LOCALITIES = Object.freeze({ local: "local", nonlocal: "nonlocal" });
+
+/**
+ * Parse the structured `FINDING:` lines out of a delta-confirmation — the new
+ * input surface the erratum gate reads (PLAN §2.1). One finding per line:
+ *
+ *   FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section} | {text}
+ *
+ * Four properties are load-bearing:
+ *
+ *   1. **Fence-aware, via `scanLines`.** A `FINDING:` line quoted inside a
+ *      fenced block — the grammar template in a SKILL, an excerpt of a prior
+ *      review — is never a finding. Same scanner `extractFileVerdict` and
+ *      `isComplete` use, so all three agree on what counts as a line of the
+ *      document (TSPEC §5.0).
+ *   2. **Channel-agnostic.** The argument is text: an agent's response string
+ *      and the cross-review file's contents parse identically. The gate reads
+ *      whichever channel it holds without a second grammar.
+ *   3. **First four delimiters only.** The section anchor is free-form and the
+ *      finding text routinely carries pipes (table cells, `list[str] | None`).
+ *      Splitting on every `|` would shift the record the same way `splitPipeRow`
+ *      historically shifted a PLAN's Deps column, so the remainder after the
+ *      fourth delimiter is the text, verbatim, pipes and all.
+ *   4. **Unparseable is reported, never dropped.** A `FINDING:` line whose
+ *      triple is not a valid severity/provenance/locality — or that carries
+ *      fewer than four delimiters — goes to `malformed` as its raw line. The
+ *      caller decides what a malformed tag means; this function does not
+ *      silently discard a line a reviewer meant as a finding.
+ *
+ * A text with zero `FINDING:` lines returns zero findings and zero malformed
+ * entries. That is the legacy/untagged case, and it is NOT this function's job
+ * to interpret it: callers (the gate, T2) must fail closed on the document
+ * contract — a non-approving confirmation carrying no parseable tags is treated
+ * as `{delta, nonlocal}`, i.e. exactly the pre-grammar halt (PLAN §2.1).
+ *
+ * Total: input is coerced, nothing throws, both arrays are always present.
+ *
+ * @param {string} text - a confirmation response or cross-review file's bytes.
+ * @returns {{findings: Array<{severity: string, provenance: string, locality: string, section: string, text: string}>, malformed: string[]}}
+ */
+function parseConfirmationFindings(text) {
+  const findings = [];
+  const malformed = [];
+
+  scanLines(text, (line) => {
+    // \r survives `scanLines`' split on "\n"; trim absorbs it, so a CRLF file
+    // parses identically to an LF one.
+    const trimmed = line.trim();
+    const tag = /^FINDING\s*:/i.exec(trimmed);
+    if (!tag) return;
+
+    const body = trimmed.slice(tag[0].length);
+
+    // Split on the FIRST FOUR delimiters only — the fifth field is free text.
+    const parts = [];
+    let rest = body;
+    for (let i = 0; i < 4; i++) {
+      const at = rest.indexOf("|");
+      if (at === -1) {
+        rest = null;
+        break;
+      }
+      parts.push(rest.slice(0, at));
+      rest = rest.slice(at + 1);
+    }
+    if (rest === null) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    const severity = FINDING_SEVERITIES[parts[0].trim().toLowerCase()];
+    const provenance = FINDING_PROVENANCES[parts[1].trim().toLowerCase()];
+    const locality = FINDING_LOCALITIES[parts[2].trim().toLowerCase()];
+    if (!severity || !provenance || !locality) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    findings.push({
+      severity,
+      provenance,
+      locality,
+      section: parts[3].trim(),
+      text: rest.trim(),
+    });
+  });
+
+  return { findings, malformed };
+}
+
+// ─── PLAN §2.2 — the erratum gate's decision rules (R1–R4) ────────────────────
+
+/**
+ * The section anchor a fail-closed synthetic finding carries. It is a literal,
+ * not a parsed value, so a real `FINDING:` line can never be mistaken for one.
+ */
+const ERRATUM_FAIL_CLOSED_SECTION = "(untagged confirmation)";
+
+/**
+ * Decide what a delta confirmation means, from the confirmers' verdicts and
+ * their structured `FINDING:` lines (PLAN §2.2). Pure, total, and deliberately
+ * separate from the dispatching round so the rule table can be read — and
+ * tested — without a pipeline.
+ *
+ * The four rules are evaluated in order and the first match wins:
+ *
+ *   R1  every confirmer approves                    → pass, re-anchor upstream
+ *   R2  ≥1 non-approving, ZERO High findings tagged
+ *       `delta` (every High is `inherited`)         → no halt, no re-anchor;
+ *                                                     re-open the owning phase
+ *   R3  ≥1 High tagged `delta`, every HIGH finding
+ *       is `local`, follow-up budget unspent        → one follow-up round
+ *   R4  otherwise (High delta that is nonlocal, or
+ *       the follow-up budget is spent)              → POSTMORTEM halt
+ *
+ * **Fail-closed default.** A non-approving confirmation that carries no
+ * parseable `FINDING:` line at all — or that carries any malformed one, whose
+ * severity is by definition unknowable — is credited with a synthetic
+ * `{High, delta, nonlocal}` finding. That is exactly the v0.22.7 behaviour: an
+ * untagged non-approving confirmation halts. The grammar buys leniency only for
+ * confirmers that actually speak it; silence still means stop.
+ *
+ * Findings from APPROVING confirmers are counted too (they can only make the
+ * verdict stricter — R1 has already been ruled out — and a High tagged `delta`
+ * is a High tagged `delta` whoever wrote it), but no fail-closed finding is
+ * synthesised for them: an approval is not silence.
+ *
+ * @param {{confirmations?: Array<{source?: string, approving?: boolean,
+ *   findings?: Array<object>, malformed?: Array<string>}>,
+ *   followUpAvailable?: boolean}} arg
+ * @returns {{rule: string, nonApproving: string[], findings: Array<object>,
+ *   failClosed: string[], highDelta: Array<object>, allLocal: boolean}}
+ */
+function erratumGateDecision({ confirmations, followUpAvailable = false } = {}) {
+  const list = Array.isArray(confirmations) ? confirmations.filter(Boolean) : [];
+  const nonApproving = list.filter((c) => c.approving !== true);
+
+  const findings = [];
+  const failClosed = [];
+  for (const confirmation of list) {
+    const source = confirmation.source ?? "(unknown)";
+    const parsed = Array.isArray(confirmation.findings) ? confirmation.findings : [];
+    const malformed = Array.isArray(confirmation.malformed) ? confirmation.malformed : [];
+    for (const finding of parsed) findings.push({ ...finding, source });
+    if (confirmation.approving === true) continue;
+    if (parsed.length > 0 && malformed.length === 0) continue;
+    failClosed.push(source);
+    findings.push({
+      severity: "High",
+      provenance: "delta",
+      locality: "nonlocal",
+      section: ERRATUM_FAIL_CLOSED_SECTION,
+      text:
+        parsed.length === 0
+          ? "non-approving confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+          : `non-approving confirmation carried ${malformed.length} malformed FINDING: line${
+              malformed.length === 1 ? "" : "s"
+            } — read as High/delta/nonlocal, fail-closed`,
+      source,
+      failClosed: true,
+    });
+  }
+
+  const sources = nonApproving.map((c) => c.source ?? "(unknown)");
+  if (nonApproving.length === 0) {
+    return { rule: "R1", nonApproving: [], findings, failClosed, highDelta: [], allLocal: true };
+  }
+
+  const highDelta = findings.filter((f) => f.severity === "High" && f.provenance === "delta");
+  // The locality conjunct is measured over the HIGH findings, not over every
+  // finding. PLAN §2.2 row R3 reads "every finding (any severity) is `local`",
+  // and that literal reading cannot be what the rule means: row R2 states the
+  // engine's standing High-only bar ("Mediums/Lows recorded, not gating — same
+  // bar as the review loop") two rows above it, and the plan's own RT-1a
+  // fixture — the POSTMORTEM-PR round the plan says must resolve to R3 —
+  // carries a `Low | inherited | nonlocal` line alongside its High. Gating on
+  // it would make R3 unreachable on the very episode it was designed for, and
+  // would let a Low a reviewer noticed in passing halt a pipeline that no
+  // High blocks. What the conjunct is protecting is the follow-up round's
+  // scope ("scoped strictly to the section the prior erratum edited"), and the
+  // follow-up is scoped by what blocks: the Highs.
+  const allLocal = findings.every((f) => f.severity !== "High" || f.locality === "local");
+  if (highDelta.length === 0) {
+    return { rule: "R2", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  if (allLocal && followUpAvailable === true) {
+    return { rule: "R3", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  return { rule: "R4", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+}
+
+/**
+ * Render parsed findings back into the canonical `FINDING:` grammar, one per
+ * line, attributed to the confirmer that raised it. This is what the halt
+ * payload carries instead of the pre-edit routed item list (PLAN §2.4 item 5):
+ * the routed list is what the engine ASKED for, and by halt time the findings
+ * are what actually blocks.
+ *
+ * @param {Array<object>} findings
+ * @returns {string}
+ */
+function formatConfirmationFindings(findings) {
+  const list = Array.isArray(findings) ? findings.filter(Boolean) : [];
+  if (list.length === 0) return "  (no parseable FINDING: lines)";
+  return list
+    .map(
+      (f) =>
+        `  ${f.source ?? "(unknown)"}: FINDING: ${f.severity} | ${f.provenance} | ` +
+        `${f.locality} | ${f.section} | ${f.text}`
+    )
+    .join("\n");
+}
+
+/**
+ * R2's re-open seam (PLAN §2.2 row R2).
+ *
+ * An inherited High is a real defect in the upstream document, but it is not a
+ * defect the erratum channel introduced, and the erratum channel is not where
+ * it gets fixed: it belongs to the owning phase's ordinary revision loop, under
+ * that phase's existing `MAX_REVIEW_ROUNDS` / lifetime budgets. So instead of
+ * halting, the run records that the upstream document's approval no longer
+ * holds — the phase gate then refuses to skip that phase on the strength of it.
+ *
+ * The registry is a plain `Map` owned by the run, passed in rather than
+ * captured, so this stays a function two tests can call directly.
+ *
+ * Deliberately scoped: this invalidates the RECORDED APPROVAL and nothing else.
+ * Task T5's `UPSTREAM-STATE` cascade is the general staleness machinery, and
+ * when it lands it should subsume this by making the same phase re-open through
+ * the byte/state comparison rather than through an in-run flag. Nothing here
+ * writes to disk, so there is nothing for T5 to unwind.
+ *
+ * @param {Map<string, object>} registry
+ * @param {{docType: string, phase?: string, reason?: string}} entry
+ * @returns {object|null} the recorded entry, or `null` when there is no registry
+ */
+function markApprovalReopened(registry, { docType, phase, reason } = {}) {
+  if (!registry || typeof registry.set !== "function" || !docType) return null;
+  const entry = { docType, phase: phase ?? null, reason: reason ?? "" };
+  registry.set(docType, entry);
+  return entry;
+}
+
+/**
+ * The read side of {@link markApprovalReopened}. Total: a missing registry, or
+ * a doc type nobody re-opened, reads as `null`.
+ *
+ * @param {Map<string, object>} registry
+ * @param {string} docType
+ * @returns {object|null}
+ */
+function reopenedApproval(registry, docType) {
+  if (!registry || typeof registry.get !== "function" || !docType) return null;
+  return registry.get(docType) ?? null;
 }
 
 // ─── TSPEC-PARSE-05: parseDecisionsWarranted ──────────────────────────────────
@@ -4980,7 +5572,8 @@ const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
  * counts line, and must not be fed to `JSON.parse` as if it were. Anchor
  * well-formedness is `readApprovalRecord`'s job (§4.4), and it keeps it.
  */
-const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
+const APPROVAL_ANCHOR_LINE =
+  /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT|UPSTREAM-STATE):/;
 
 /** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
@@ -5016,6 +5609,9 @@ function parseApprovalHash(fileText) {
   const hashes = [];
   const normalized = [];
   const commits = [];
+  /** PLAN §3.1 — one `{docType, hash}` per readable `UPSTREAM-STATE:` line. */
+  const upstreamState = [];
+  const upstreamSeen = new Set();
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
@@ -5023,6 +5619,23 @@ function parseApprovalHash(fileText) {
     if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
+    // PLAN §3.1 — the cascade anchor. Read on exactly the terms the raw
+    // anchor is read on: a malformed value is NOT a failure of the record,
+    // it is simply not an observation (grandfathering, PLAN §7.1/Q-2 —
+    // an approval with no readable UPSTREAM-STATE line is byte-ruled only).
+    // A doc type repeated across lines keeps its FIRST value: the same
+    // "duplicated history is not adopted" asymmetry the raw anchor uses,
+    // narrowed to the one row rather than the whole record.
+    const u = /^\s*UPSTREAM-STATE:\s*([A-Z]+)\s+(\S*)\s*$/.exec(line);
+    if (
+      u &&
+      ERRATUM_DOC_TYPES.includes(u[1]) &&
+      APPROVAL_HASH_VALUE_RE.test(u[2]) &&
+      !upstreamSeen.has(u[1])
+    ) {
+      upstreamSeen.add(u[1]);
+      upstreamState.push({ docType: u[1], hash: u[2] });
+    }
   });
 
   if (hashes.length === 0) return { ok: false, reason: "absent" };
@@ -5037,7 +5650,7 @@ function parseApprovalHash(fileText) {
   const normalizedHash =
     normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
 
-  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit, upstreamState };
 }
 
 // ─── TSPEC §5.1 — verdict extraction from a FILE ──────────────────────────────
@@ -5277,6 +5890,65 @@ function isStaleByHash(recordedHash, documentHash) {
   return documentHash === recordedHash ? "FRESH" : "STALE";
 }
 
+/**
+ * PLAN §3.1 — serialise an upstream-state list into anchor lines.
+ *
+ * Pure, total, synchronous. `[]` (and anything that is not a list of
+ * well-formed rows) serialises to `""`, i.e. to the pre-T5 anchor block.
+ *
+ * @param {{docType: string, hash: string}[]} rows
+ * @returns {string}
+ */
+function upstreamStateLines(rows) {
+  if (!Array.isArray(rows)) return "";
+  return rows
+    .filter(
+      (r) =>
+        r &&
+        ERRATUM_DOC_TYPES.includes(r.docType) &&
+        typeof r.hash === "string" &&
+        APPROVAL_HASH_VALUE_RE.test(r.hash)
+    )
+    .map((r) => `UPSTREAM-STATE: ${r.docType} ${r.hash}\n`)
+    .join("");
+}
+
+/**
+ * PLAN §3.1 — §5.5's second staleness rule: is the approval still describing
+ * the UPSTREAM the reviewers approved against?
+ *
+ * The byte rule (`isStale`) answers "have the approved document's own bytes
+ * moved". This answers "have the bytes it derives from moved", which is the
+ * question POSTMORTEM-P and POSTMORTEM-D §4.1 both name: an approval can be
+ * byte-FRESH and still describe a world that no longer exists, because a
+ * later erratum edited the layer above it.
+ *
+ * Grandfathering (PLAN §7.1, architect ruling Q-2): a record carrying NO
+ * `UPSTREAM-STATE` rows yields `[]` — not "stale", not "unevaluable". Every
+ * anchor written before this feature is such a record, and every one of them
+ * keeps behaving byte-rule-only, exactly as it does today.
+ *
+ * Pure, total, synchronous: the caller supplies both observations.
+ *
+ * @param {{docType: string, hash: string}[]} recorded - the record's rows.
+ * @param {Map<string, string|null>} current - doc type → digest right now.
+ *   A doc type absent from the map, or mapped to `null`, is NOT observed and
+ *   therefore never moved: the same "unreadable is not changed" asymmetry
+ *   `deriveUpstreamState` keeps.
+ * @returns {string[]} the doc types whose bytes moved since the approval.
+ */
+function upstreamStateDrift(recorded, current) {
+  if (!Array.isArray(recorded) || !current || typeof current.get !== "function") return [];
+  const moved = [];
+  for (const row of recorded) {
+    if (!row || !ERRATUM_DOC_TYPES.includes(row.docType)) continue;
+    const now = current.get(row.docType);
+    if (now == null) continue;
+    if (now !== row.hash) moved.push(row.docType);
+  }
+  return moved;
+}
+
 // ─── TSPEC §5.9 / FSPEC §16 — structural completeness ─────────────────────────
 //
 // Four wrapped artifact classes. The criterion is deliberately **shallow** and
@@ -5334,8 +6006,8 @@ const REQUIRED_HEADINGS = Object.freeze({
   PROPERTIES: Object.freeze([
     { title: "Overview", alts: ["Scope", "Summary"] },
     { title: "Properties", alts: ["Invariants"] },
-    { title: "Oracles", alts: ["Checks"] },
-    { title: "Fixtures", alts: ["Generators", "Test data"] },
+    { title: "Oracles", alts: ["Checks", "Test Oracles"] },
+    { title: "Fixtures", alts: ["Generators", "Test data", "Test Fixtures"] },
   ]),
   DECISIONS: Object.freeze([
     { title: "Context", alts: ["Background"] },
@@ -5636,6 +6308,110 @@ function isComplete(artifactClass, docType, fileText) {
   }
 
   return done(false, []);
+}
+
+/**
+ * §4.4 architect condition 3 — generic heading feed-forward. Driven entirely by
+ * `REQUIRED_HEADINGS[docType]`, so a new entry in that table is picked up here
+ * with no second edit: this is the fix that generalises the PROPERTIES-only
+ * incident (RT-3d) to every spec-class doc type the completeness gate scores.
+ *
+ * Rendered compactly — one line per required section, canonical title first,
+ * accepted alternatives in parens — and folded into the creator's FIRST
+ * authoring prompt (see `skeletonClause`'s call site), the same injection
+ * pattern `PACING_CONTRACT_CLAUSE` already uses: a fixed clause appended to the
+ * prompt, not a second dispatch.
+ *
+ * @param {string} docType
+ * @returns {string} empty when `docType` has no `REQUIRED_HEADINGS` entry
+ */
+function headingFeedForwardClause(docType) {
+  const rows = REQUIRED_HEADINGS[docType];
+  if (!Array.isArray(rows) || rows.length === 0) return "";
+  const lines = rows.map((r) =>
+    r.alts && r.alts.length > 0
+      ? `## ${r.title} (accepted: ${r.title}, ${r.alts.join(", ")})`
+      : `## ${r.title}`
+  );
+  return (
+    "The completeness gate accepts these top-level sections — canonical title, or " +
+    "any listed accepted alternative — cover every one:\n" + lines.join("\n")
+  );
+}
+
+/**
+ * §4.4's other half of architect condition 3: when the completeness gate still
+ * reports a shortfall, name the heading(s) actually on disk that come CLOSEST
+ * to a still-missing canonical row — the te-author 3× stall (RT-3d) was a
+ * document that substantively covered a required concept under a heading the
+ * gate's word-bounded match did not recognise, and three attempts is a lot to
+ * spend discovering that from a bare "missing: Oracles".
+ *
+ * A PROMPT HINT, never a gate: `isComplete`'s `shortfall` is untouched by this
+ * function and remains the sole authority on completeness. A present section is
+ * offered as a near miss for a missing row when its normalised title shares a
+ * TOKEN with the row's canonical title or one of its alts (exact token match,
+ * or a shared 4+ character prefix between two tokens — loose enough to catch a
+ * misspelling like "Orackles"/"Oracles" or a rewording like "Test Data" sharing
+ * "test" with "Test Oracles", tight enough that unrelated headings are never
+ * suggested). Rows already satisfied by `isComplete`'s own criterion are
+ * skipped — a near miss is only ever offered for a row that is genuinely still
+ * missing.
+ *
+ * @param {string} fileText
+ * @param {string} docType
+ * @returns {Array<{missing: string, candidate: string, expectedForms: string[]}>}
+ */
+function nearestHeadingMisses(fileText, docType) {
+  const rows = REQUIRED_HEADINGS[docType];
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const sections = topLevelSections(fileText);
+  const tokensOf = (s) => s.split(/[^a-z0-9]+/).filter(Boolean);
+  const tokenNear = (a, b) => {
+    if (a === b) return true;
+    const n = Math.min(a.length, b.length);
+    if (n < 4) return false;
+    let i = 0;
+    while (i < n && a[i] === b[i]) i++;
+    return i >= 4;
+  };
+
+  const results = [];
+  for (const row of rows) {
+    const forms = [row.title, ...(row.alts || [])];
+    const normForms = forms.map(normaliseHeadingTitle);
+    const satisfied = sections.some(
+      (s) => !isEmptyBody(s.body) && normForms.some((t) => headingContains(s.normalised, t))
+    );
+    if (satisfied) continue;
+
+    const rowTokens = normForms.flatMap(tokensOf);
+    for (const s of sections) {
+      const candTokens = tokensOf(s.normalised);
+      const near = candTokens.some((ct) => rowTokens.some((rt) => tokenNear(ct, rt)));
+      if (near) {
+        results.push({ missing: row.title, candidate: s.title, expectedForms: forms });
+        break; // one candidate per missing row is enough for a prompt hint
+      }
+    }
+  }
+  return results;
+}
+
+/**
+ * `nearestHeadingMisses`' plain-text rendering, folded into the resume/
+ * continuation opener when the gate still reports a shortfall.
+ */
+function nearestHeadingMissClause(misses) {
+  if (!misses || misses.length === 0) return "";
+  const lines = misses.map(
+    (m) =>
+      `found "## ${m.candidate}" — did you mean canonical "${m.missing}" (accepted: ${m.expectedForms.join(", ")})?`
+  );
+  return (
+    "Headings already on disk that may be a naming mismatch, not a content gap:\n" +
+    lines.join("\n")
+  );
 }
 
 // ─── isPass helper ────────────────────────────────────────────────────────────
@@ -6074,6 +6850,52 @@ const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
   PROPERTIES: "PR",
 });
 
+/** The feature-branch path of a pipeline document, by doc type. */
+const featureDocPath = (feature, docType) => `docs/${feature}/${docType}-${feature}.md`;
+
+/** Doc types ABOVE `target` in pipeline order — the layers it derives from. */
+const erratumDocTypesAbove = (target) =>
+  ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+/** Doc types BELOW `target` in pipeline order — the layers derived FROM it. */
+const erratumDocTypesBelow = (target) =>
+  ERRATUM_DOC_TYPES.indexOf(target) < 0
+    ? []
+    : ERRATUM_DOC_TYPES.slice(ERRATUM_DOC_TYPES.indexOf(target) + 1);
+
+/**
+ * PLAN §3.1 — the `UPSTREAM-STATE:` payload for an approval about to be
+ * anchored on `docType`: one `{docType, hash}` per upstream document that
+ * EXISTS on the branch right now, in `ERRATUM_DOC_TYPES` order.
+ *
+ * Observation, not judgment: an upstream document that is absent (an
+ * unwritten DECISIONS, say) contributes no row rather than a `null` one, so
+ * "no row" reads the same way everywhere — nothing to compare, nothing to
+ * stale. Digests come through the same probe-then-hash pair every other
+ * observation in this module uses, so a probing runtime pays no second read.
+ *
+ * Total: a doc type outside the chain (`CR`, `null`) yields `[]`, which the
+ * anchor writer treats exactly as today's legacy block.
+ */
+async function deriveApprovalUpstreamState({ feature, docType, _probeDoc, _hashFile }) {
+  const rows = [];
+  for (const upstream of erratumDocTypesAbove(docType)) {
+    const path = featureDocPath(feature, upstream);
+    const probe = await probeDocument(_probeDoc, path, upstream);
+    let hash = probe ? probe.hash ?? null : null;
+    if (!probe && typeof _hashFile === "function") {
+      try {
+        hash = (await _hashFile(path)) ?? null;
+      } catch {
+        hash = null;
+      }
+    }
+    if (hash == null) continue;
+    rows.push({ docType: upstream, hash });
+  }
+  return rows;
+}
+
 /**
  * §5 decision 2, verbatim: "One erratum round per upstream doc per phase;
  * exceeding it halts to POSTMORTEM. **Not config** — a knob here is a knob that
@@ -6082,6 +6904,21 @@ const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
  * reach it through the halt it produces.
  */
 const MAX_ERRATUM_ROUNDS_PER_DOC = 1;
+
+/**
+ * PLAN §2.2 row R3: the follow-up budget, per upstream doc per phase
+ * invocation. A DEC-ROUNDS-02-style damping term, and a DISTINCT budget from
+ * `MAX_ERRATUM_ROUNDS_PER_DOC` above — that constant bounds how many item SETS
+ * a phase may route at one document, this one bounds how many times a single
+ * routed set may be re-dispatched after its own confirmers said the edit
+ * missed. Keeping them separate is what preserves the erratum channel's bound
+ * on unbounded chains while still letting the one-noun, one-cell miss that
+ * produced POSTMORTEM-PR be fixed instead of halting the pipeline.
+ *
+ * Shipped constant, not config, for the same reason as its neighbour: a knob
+ * here is a knob that gets turned mid-run.
+ */
+const MAX_ERRATUM_FOLLOWUP_ROUNDS = 1;
 
 /**
  * One erratum line. A leading list marker is tolerated (agents write bullets),
@@ -6129,6 +6966,227 @@ function parseErrata(text, onIgnored) {
     found.push({ docType, item });
   });
   return found;
+}
+
+// ─── PLAN §2.4 — mint-time item hygiene (T3) ────────────────────────────────
+//
+// Every function in this block is pure, synchronous and total, same doctrine
+// as `parseErrata` above: normalization only ever narrows what a mint-time
+// decision does with an item's TEXT, and none of it ever touches a verdict
+// or a round budget.
+
+/**
+ * The first cited anchor in an erratum item's text — a `§`-section reference
+ * (`§3-02`, `§4.2`) or a `:line` reference — normalized by case/whitespace
+ * folding only. `null` when the item cites neither, which is the signal
+ * `erratumDedupeKey` below reads as "never collapse this with anything but a
+ * byte-identical duplicate."
+ */
+const ERRATUM_ANCHOR_RE = /§[\w.-]+|:\d{2,}\b/;
+function erratumAnchorOf(text) {
+  const m = ERRATUM_ANCHOR_RE.exec(String(text ?? ""));
+  return m ? m[0].toLowerCase().trim() : null;
+}
+
+/**
+ * The item's "expected token" — the shape §2.3 already classifies as a
+ * literal-token finding ("should say X, not Y"), read here as the LAST
+ * backtick- or `**bold**`-quoted span in the text. Reviewer SKILLs state the
+ * corrected value last ("... this should read **frozenset[str]**"), so the
+ * last span is the one two restatements of the SAME finding will always
+ * agree on, even when they disagree on which value they quote first (the
+ * "wrong" one). `null` when the item quotes nothing this way — not an error,
+ * just a finding this rule cannot help disambiguate from a different one at
+ * the same anchor (`erratumDedupeKey` then keys on the anchor alone).
+ */
+const ERRATUM_TOKEN_RE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+function erratumTokenOf(text) {
+  const s = String(text ?? "");
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let last = null;
+  let m;
+  while ((m = ERRATUM_TOKEN_RE.exec(s))) last = m[1] ?? m[2];
+  return last ? last.toLowerCase().replace(/\s+/g, " ").trim() : null;
+}
+
+/**
+ * PLAN §2.3 (T4) — the mechanical land-proof's classifier: does this erratum
+ * item name an exact expected token the edit must land, rather than a general
+ * instruction the author has latitude over? Conservative by construction, same
+ * doctrine as the dedupe-key helpers above — a false positive here dispatches
+ * an author's edit against a token that was never actually promised, so this
+ * only ever fires on one of two unambiguous shapes:
+ *
+ *   - an explicit `EXPECT-TOKEN: {token}` clause, the grammar T1's confirm
+ *     prompt/SKILL updates emit once a finding IS this shape; or
+ *   - the conservative "should say X, not Y" shape — both `say` and `not`
+ *     present, with at least two backtick-/bold-quoted spans to disambiguate
+ *     it from a general "should say X" note naming no wrong value.
+ *
+ * The second shape's expected token is read through `erratumTokenOf` above —
+ * reused, not re-derived, per that function's own doctrine of "the corrected
+ * value stated last" — so this never becomes a second, divergently-tuned
+ * extractor of the same thing `erratumDedupeKey` already reads.
+ *
+ * Returns the normalized expected token, or `null` when the item fits
+ * neither shape — the overwhelmingly common case.
+ */
+const ERRATUM_EXPECT_TOKEN_RE = /EXPECT-TOKEN:\s*[`*]?([^`*\n]+?)[`*]?\s*$/im;
+function erratumLiteralTokenOf(text) {
+  const s = String(text ?? "");
+  const explicit = ERRATUM_EXPECT_TOKEN_RE.exec(s);
+  if (explicit) {
+    const token = explicit[1].toLowerCase().replace(/\s+/g, " ").trim();
+    if (token) return token;
+  }
+  if (!/\bsay\b/i.test(s) || !/\bnot\b/i.test(s)) return null;
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let quotedSpans = 0;
+  while (ERRATUM_TOKEN_RE.exec(s)) quotedSpans++;
+  if (quotedSpans < 2) return null;
+  return erratumTokenOf(s);
+}
+
+/**
+ * PLAN §2.4 item 1's dedupe key: `docType` + cited anchor/section + expected
+ * token — never the exact item string. Conservative by construction: an item
+ * with NO cited anchor keys on its own normalized text instead, so it only
+ * ever collapses with a byte-for-byte (after folding) duplicate, never with a
+ * different finding that merely lacks a citation too.
+ */
+function erratumDedupeKey(docType, text) {
+  const anchor = erratumAnchorOf(text);
+  if (!anchor) {
+    return `${docType}\0${String(text ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+  }
+  return `${docType}\0${anchor}\0${erratumTokenOf(text) ?? ""}`;
+}
+
+/**
+ * Collapse a batch of `{docType, item, source}` candidates by
+ * `erratumDedupeKey`. The surviving entry is the first occurrence, its
+ * `source` widened to the UNION of every collapsed duplicate's source,
+ * comma-joined in first-seen order — this is what turns POSTMORTEM-D's five
+ * entries for three obligations, and POSTMORTEM-PR's thirteen strings for
+ * five defects, into one tracked item per obligation/defect instead of one
+ * per restatement.
+ *
+ * Pure and order-preserving; takes no seam.
+ */
+function dedupeErrataEntries(entries) {
+  const kept = [];
+  const byKey = new Map();
+  for (const raw of Array.isArray(entries) ? entries : []) {
+    if (!raw) continue;
+    const key = erratumDedupeKey(raw.docType, raw.item);
+    const existing = byKey.get(key);
+    if (existing) {
+      const sources = String(existing.source ?? "")
+        .split(", ")
+        .filter(Boolean);
+      const next = String(raw.source ?? "");
+      if (next && !sources.includes(next)) sources.push(next);
+      existing.source = sources.join(", ");
+      continue;
+    }
+    const merged = { ...raw, source: String(raw.source ?? "") };
+    byKey.set(key, merged);
+    kept.push(merged);
+  }
+  return kept;
+}
+
+/**
+ * PLAN §2.4 item 3 — multi-home split. Word-boundary containment against the
+ * closed `ERRATUM_DOC_TYPES` set, never substring (same doctrine as the
+ * ownership/header matchers elsewhere in this module): when an item's own
+ * text names TWO OR MORE distinct doc types, it is fanned out into one
+ * tracked item per named type, each carrying the full item text and a shared
+ * `multiHomeGroup` id so a caller tracking a sourcing row's closure can find
+ * every sibling. An item naming zero or one doc type in its own text is
+ * single-home and is returned unchanged — one incidental mention is not the
+ * "REQ §7 FSPEC §2.2 both understate X" shape this rule targets.
+ */
+function splitErratumMultiHome(entry) {
+  if (!entry) return [];
+  const text = String(entry.item ?? "");
+  const named = [];
+  for (const docType of ERRATUM_DOC_TYPES) {
+    if (new RegExp(`\\b${docType}\\b`).test(text)) named.push(docType);
+  }
+  if (named.length < 2) return [entry];
+  const multiHomeGroup = `${entry.docType}\0${text}`;
+  return named.map((docType) => ({ ...entry, docType, multiHomeGroup }));
+}
+
+/**
+ * PLAN §2.4 item 4 — the oracle-contract lint's word vocabulary. An item
+ * "touches a test oracle" when it names an oracle id (`AT-`, `INV-`, `META-`
+ * — the catalogue this module's own oracle rules use, §3.5) or the bare word
+ * "oracle(s)".
+ */
+const ERRATUM_ORACLE_ID_RE = /\b(?:AT|INV|META)-[A-Za-z0-9]+\b/;
+const ERRATUM_ORACLE_WORD_RE = /\boracles?\b/i;
+function touchesErratumOracle(text) {
+  const s = String(text ?? "");
+  return ERRATUM_ORACLE_ID_RE.test(s) || ERRATUM_ORACLE_WORD_RE.test(s);
+}
+
+/**
+ * The three contract fields an oracle-touching item must carry, checked at
+ * KEYWORD level only (§2.4 item 4: "accept concepts, keyword-level, not
+ * prose quality") — this is a mint-time lint, not a content review.
+ */
+const ERRATUM_ORACLE_CONTRACT_TERMS = Object.freeze([
+  { label: "a property statement", re: /\bproperty\b/i },
+  { label: "a non-subsumption rationale", re: /\bsubsum/i },
+  { label: "a per-conjunct red witness", re: /\bwitness\b/i },
+]);
+
+/**
+ * PLAN §2.4 item 4. Returns the missing contract field labels — empty for an
+ * item that does not touch an oracle at all (nothing to lint) or that
+ * carries every field. A non-empty result is what tells `routeErrata` to
+ * report the item as a malformed erratum instead of routing it; nothing about
+ * this function halts anything on its own.
+ */
+function oracleContractShortfall(text) {
+  if (!touchesErratumOracle(text)) return [];
+  return ERRATUM_ORACLE_CONTRACT_TERMS.filter((t) => !t.re.test(String(text ?? ""))).map(
+    (t) => t.label
+  );
+}
+
+/**
+ * PLAN §2.4 item 2 — the RE-MINT line grammar, read out of an erratum
+ * author's response only on the upstream-skew path (`movedSinceMinted`).
+ * DEC-ERR-01 vocabulary: one line per routed item, saying whether the
+ * author's re-grounding against upstream HEAD found it already resolved
+ * (ABSORBED) or still open (STILL-RAISED):
+ *
+ *     RE-MINT: ABSORBED: {item text}
+ *     RE-MINT: STILL-RAISED: {item text}
+ *
+ * Fail-open: a response with no RE-MINT line at all returns `null`, which
+ * `erratumRound` reads as "the author did not structurally re-derive the
+ * list" and falls back to the notice-only path that predates this task. A
+ * response with at least one RE-MINT line is read as the full re-derivation —
+ * only its STILL-RAISED items reach the confirmers.
+ *
+ * Pure, synchronous, total; takes no seam.
+ */
+const ERRATUM_REMINT_LINE_RE = /^\s*(?:[-*]\s+)?RE-MINT:\s*(ABSORBED|STILL-RAISED):\s*(\S.*?)\s*$/;
+function parseErratumRemint(text) {
+  const stillRaised = [];
+  const absorbed = [];
+  let any = false;
+  scanLines(String(text ?? ""), (line) => {
+    const m = ERRATUM_REMINT_LINE_RE.exec(line);
+    if (!m) return;
+    any = true;
+    (m[1] === "ABSORBED" ? absorbed : stillRaised).push(m[2]);
+  });
+  return any ? { stillRaised, absorbed } : null;
 }
 
 /**
@@ -6423,6 +7481,7 @@ async function reviewLoop({
     // target is a directory and carries no anchor.
     let anchorHash = null;
     let anchorNormalizedHash = null;
+    let anchorUpstreamState = [];
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
       // t0/t1 collapse into ONE seam call: the anchor never needed the bytes,
@@ -6442,6 +7501,16 @@ async function reviewLoop({
         probe,
         path: doc,
         _hashNormalizedFile,
+      });
+      // PLAN §3.1's cascade anchor, taken at the SAME t0 instant and through
+      // the same probe-then-hash pair: the upstream chain as it stood when
+      // the reviewers were handed this round's document. Reading it later
+      // would record a premise nobody reviewed.
+      anchorUpstreamState = await deriveApprovalUpstreamState({
+        feature,
+        docType: roundDocType,
+        _probeDoc,
+        _hashFile,
       });
       anchorCommit = await headCommitSha(_git); // t2
     }
@@ -6526,6 +7595,7 @@ async function reviewLoop({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
+        upstreamState: anchorUpstreamState,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -6670,6 +7740,7 @@ async function appendApprovalAnchors({
   paths,
   hash,
   normalizedHash = null,
+  upstreamState = [],
   commit,
   _readFile,
   _probeDoc,
@@ -6727,7 +7798,14 @@ async function appendApprovalAnchors({
         path,
         `\nAPPROVAL-HASH: ${hash}\n` +
           (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
-          `REVIEWED-COMMIT: ${commit}\n`
+          `REVIEWED-COMMIT: ${commit}\n` +
+          // PLAN §3.1 — the cascade anchor, one line per upstream document
+          // that existed at capture time, written LAST so every existing
+          // reader of the block (harvest's table, `approvalAnchorPreCount`,
+          // the fixtures) sees the shape it already pins, unchanged. An
+          // empty list writes nothing at all: that is exactly the legacy
+          // block, and exactly what §5.5 grandfathers (PLAN §7.1).
+          upstreamStateLines(upstreamState)
       );
       appended = true;
     } catch (err) {
@@ -7147,11 +8225,20 @@ function branchPinClause(feature) {
   );
 }
 
-/** The greenfield opener for a target that is not on disk yet. */
-function skeletonClause() {
+/**
+ * The greenfield opener for a target that is not on disk yet.
+ *
+ * §4.4 architect condition 3: this is also the creator's FIRST authoring
+ * prompt for every spec-class doc type, so it is the one seam that reaches all
+ * six `REQUIRED_HEADINGS` doc types uniformly — `headingFeedForwardClause`
+ * folds in here rather than at a per-phase call site.
+ */
+function skeletonClause(docType) {
+  const feedForward = headingFeedForwardClause(docType);
   return (
     "This artifact is not on disk yet. Begin by laying out its top-level headings " +
-    "as a skeleton, then fill them one at a time under the pacing contract above."
+    "as a skeleton, then fill them one at a time under the pacing contract above." +
+    (feedForward ? `\n\n${feedForward}` : "")
   );
 }
 
@@ -7162,15 +8249,23 @@ function skeletonClause() {
  * script's own walk over the bytes (`isComplete` / `firstUnwrittenSection`), or
  * `_probeDoc`'s answer over the same criterion. The agent is never asked where it
  * got to, under either.
+ *
+ * §4.4 architect condition 3's other half: `fileText` is the raw bytes this
+ * episode measured `missing` from (the read arm only — see the call site), so a
+ * shortfall reported here can also carry `nearestHeadingMisses`' report of
+ * which heading on disk might just be a naming mismatch.
  */
-function resumeClause({ T, S, firstUnwritten, targetPath }) {
-  return [
+function resumeClause({ T, S, firstUnwritten, targetPath, docType, missing, fileText }) {
+  const base = [
     `RESUMED: ${targetPath} already carries partial content`,
     `(${S} of ${T} top-level sections carry a body).`,
     "Read the document on disk first and do NOT rewrite what is already written.",
     `The first unwritten section is ${firstUnwritten}.`,
     "Continue from there, one section per write, under the pacing contract above.",
   ].join(" ");
+  if (!docType || fileText == null || !Array.isArray(missing) || missing.length === 0) return base;
+  const nearMissClause = nearestHeadingMissClause(nearestHeadingMisses(fileText, docType));
+  return nearMissClause ? `${base}\n\n${nearMissClause}` : base;
 }
 
 /**
@@ -7273,6 +8368,9 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
       // DEC-APPROVAL-03. `null` on every legacy record, which is what makes the
       // normalised comparison opt-in per approval rather than retroactive.
       anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
+      // PLAN §3.1. `[]` on every legacy record — the grandfathered case, which
+      // is what makes the cascade opt-in per approval rather than retroactive.
+      anchorUpstreamState: anchor.ok ? anchor.upstreamState : [],
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -7510,6 +8608,7 @@ function noApprovalRecord(candidate, unevaluable = []) {
     candidate,
     hash: null,
     normalizedHash: null,
+    upstreamState: [],
     unevaluable,
     tier1Empty: false,
   };
@@ -7574,11 +8673,23 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
   const normalizedHash =
     norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
 
+  // PLAN §3.1: the cascade anchor is adopted on the SAME unanimity rule as the
+  // raw one — every role must carry a byte-identical serialisation, or the
+  // record adopts NONE of it and degrades to `[]`, i.e. to grandfathered
+  // byte-rule-only behaviour. Never UNEVALUABLE: an approval that is legible
+  // is not weakened by an advisory field the roles disagreed about.
+  const upstreamSerialised = records.map((r) => upstreamStateLines(r.anchorUpstreamState ?? []));
+  const upstreamState =
+    upstreamSerialised.every((s) => s === upstreamSerialised[0]) && upstreamSerialised[0] !== ""
+      ? (records[0].anchorUpstreamState ?? [])
+      : [];
+
   return {
     approving: true,
     candidate,
     hash: hashes[0],
     normalizedHash,
+    upstreamState,
     unevaluable: [],
     tier1Empty: false,
   };
@@ -7640,11 +8751,14 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
   // anchor, so a LEARNINGS-sourced approval is raw-only by construction. Left
   // that way DELIBERATELY: widening the harvested table is a change to the
   // harvest artifact's shape, which this feature is not scoped to make.
+  // For the same reason the tier-2 record carries no cascade anchor either:
+  // a LEARNINGS-sourced approval is grandfathered, byte-rule-only (PLAN §7.1).
   return {
     approving: true,
     candidate,
     hash: hashes[0],
     normalizedHash: null,
+    upstreamState: [],
     unevaluable: [],
     tier1Empty: false,
   };
@@ -7775,14 +8889,32 @@ async function dispatchAndVerify({
     if (selection.mode === "revision") {
       opener = continuationClause(selection.round, roundFiles, targetPath);
     } else if (invocations === 1 && before.empty) {
-      opener = skeletonClause();
+      opener = skeletonClause(docType);
     } else {
       opener = resumeClause({
         T: before.measured.T,
         S: before.measured.S,
         firstUnwritten: before.firstUnwritten,
         targetPath,
+        docType,
+        missing: before.measured.missing,
+        // The nearest-miss report needs the raw bytes; only the read arm
+        // (`!before.probed`) carries them here — see `targetState`'s two
+        // arms. The probe arm skips the hint rather than spending a second
+        // read the single-read-per-dispatch invariant above forbids.
+        fileText: before.probed ? null : before.identity,
       });
+    }
+    // §4.4 T8: the same in-phase lint the Phase P backstop runs, fed to the
+    // VERY NEXT prompt when the target is a PLAN and diagnostics are non-empty
+    // — never a new dispatch, just a more informed one on the budget the loop
+    // already allows. Same read-arm-only restriction as the near-miss hint
+    // above, for the same reason.
+    if (docType === "PLAN" && artifactClass === "spec" && !before.probed && !before.empty) {
+      const planLint = lintPlanArtifact(before.identity);
+      if (!planLint.ok) {
+        opener = `${opener}\n\n${planLintFeedForwardClause(planLint.diagnostics)}`;
+      }
     }
     const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
 
@@ -8293,7 +9425,15 @@ function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = []
       ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
         `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
         `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
-        `from the current text before you edit anything (DEC-ERR-03).\n`
+        `from the current text before you edit anything (DEC-ERR-03).\n` +
+        // PLAN §2.4 item 2 — the structural re-mint. Every item below must get
+        // exactly one RE-MINT line, so the confirmers read your re-derivation
+        // against HEAD instead of the stale mint.
+        `For EACH item below, end your final message with one line: ` +
+        `\`RE-MINT: STILL-RAISED: {item text}\` if it is still open against HEAD, or ` +
+        `\`RE-MINT: ABSORBED: {item text}\` if your re-grounding shows it is already resolved and ` +
+        `your edit does not need to touch it. Omitting these lines leaves the routed list below as ` +
+        `the floor stated above.\n`
       : "";
   return (
     `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
@@ -8331,9 +9471,40 @@ function erratumConfirmPrompt({
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
     erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+/**
+ * The `FINDING:` grammar, stated to the confirmer (PLAN §2.1) — the input the
+ * gate reads via `parseConfirmationFindings`.
+ *
+ * The gate needs three things a prose finding does not carry: how bad it is,
+ * whether THIS round's edit introduced it or it was already in the pre-round
+ * bytes, and whether it sits inside the sections the edit touched. Those three
+ * decide whether the round earns one bounded follow-up, routes back to the
+ * owning phase's ordinary loop, or halts — a distinction no amount of re-reading
+ * the prose recovers.
+ *
+ * Untagged findings are not an error the confirmer is punished for: they are
+ * read as the worst case ({delta, nonlocal}), i.e. the pre-grammar halt. The
+ * grammar only ever buys a softer outcome, so the clause states that plainly
+ * rather than demanding compliance.
+ */
+function findingGrammarClause() {
+  return (
+    `Tag every finding you raise. One finding per line, outside any fenced block, ` +
+    `above your VERDICT trailer:\n` +
+    `FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}\n` +
+    `- delta = this round's edit introduced it, or left it unlanded; inherited = it was ` +
+    `already in the pre-round bytes and this edit did not touch it.\n` +
+    `- local = it sits inside the sections this edit changed; nonlocal = anywhere else.\n` +
+    `- The section anchor and the text are free-form; pipes inside the text are fine.\n` +
+    `An untagged finding is read as {delta, nonlocal} — the strictest reading — so tagging ` +
+    `can only ever widen the outcome, never narrow it.\n`
   );
 }
 
@@ -8365,6 +9536,44 @@ function erratumSupersetClause({ docType, upstreamState = [] }) {
     `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
     `(DEC-ERR-03).\n` +
     rows
+  );
+}
+
+/**
+ * PLAN §3.2 — the same-pass CASCADE confirmation prompt.
+ *
+ * Not the erratum confirmation: nothing was edited in THIS document. What
+ * moved is the layer above it, so the question is narrower and stated as
+ * such — is this document still a faithful compression of an upstream that
+ * changed under it? The discipline is `erratumConfirmPrompt`'s: read your own
+ * prior cross-review, read the diff of the document that moved, answer on the
+ * `FINDING:` grammar, end with the standard VERDICT trailer.
+ */
+function cascadeConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  upstreamDocType,
+  upstreamPath,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
+  return (
+    `UPSTREAM-CASCADE CONFIRMATION for ${docPath} (feature ${feature}).\n` +
+    `You previously approved ${docType}. Its own bytes have NOT changed. What changed is ` +
+    `${upstreamDocType}, at ${upstreamPath}: an erratum round edited it after your approval was ` +
+    `recorded, so your approval was taken against a version of ${upstreamDocType} that no longer ` +
+    `exists.\n` +
+    `Do not re-review the whole document, and do not re-litigate settled decisions. Re-read your ` +
+    `own prior cross-review of ${docType}, read \`git diff\` for the edit to ${upstreamPath}, and ` +
+    `answer ONE question: does ${docType} still hold as approved against ${upstreamDocType} as it ` +
+    `now stands?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
+    `Write your confirmation as the next cross-review round for this document type — ` +
+    `${reviewFile} (round v${round}) — and end with the standard VERDICT trailer.\n` +
+    branchPinClause(feature)
   );
 }
 
@@ -9531,6 +10740,45 @@ function computeTopologicalBatches(tasks) {
  * @param {Array<{id: string, dependencies: string[], planBatch: number}>} tasks
  * @returns {Array<Array<object>>} one array per topological layer
  */
+/**
+ * Find one concrete cycle among tasks that are stuck (never became ready) so
+ * the halt message can name it instead of just asserting "a cycle exists".
+ * DFS over the stuck set's dependency edges only — edges into completed tasks
+ * are satisfied and irrelevant to why these are stuck. Returns the task ids
+ * in traversal order, e.g. ["A1", "B1", "C1", "A1"] for A1->B1->C1->A1. If no
+ * cycle is found among the stuck edges (e.g. a dependency names an id that
+ * exists nowhere in the PLAN at all, so no edge — and thus no cycle — can be
+ * walked), falls back to listing every stuck task id so the message still
+ * names something concrete.
+ */
+function findCyclePath(stuckTasks) {
+  const byId = new Map(stuckTasks.map((t) => [t.id, t]));
+  const onStack = new Set();
+  const visited = new Set();
+  const path = [];
+
+  const dfs = (id) => {
+    if (onStack.has(id)) return [...path.slice(path.indexOf(id)), id];
+    if (visited.has(id) || !byId.has(id)) return null;
+    onStack.add(id);
+    path.push(id);
+    for (const dep of byId.get(id).dependencies) {
+      const found = dfs(dep);
+      if (found) return found;
+    }
+    onStack.delete(id);
+    path.pop();
+    visited.add(id);
+    return null;
+  };
+
+  for (const t of stuckTasks) {
+    const found = dfs(t.id);
+    if (found) return found;
+  }
+  return stuckTasks.map((t) => t.id);
+}
+
 function topologicalReadySets(tasks) {
   const completed = new Set();
   const layers = [];
@@ -9543,8 +10791,11 @@ function topologicalReadySets(tasks) {
     );
 
     if (ready.length === 0 && completed.size < tasks.length) {
+      const stuck = tasks.filter((t) => !completed.has(t.id));
+      const cyclePath = findCyclePath(stuck);
       throw haltError(
-        "Error: PLAN dependency graph contains a cycle — cannot compute topological batches"
+        "Error: PLAN dependency graph contains a cycle — cannot compute topological batches " +
+          `(cycle: ${cyclePath.join(" -> ")})`
       );
     }
 
@@ -10548,7 +11799,9 @@ async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
   try {
     const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
     const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
-    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    if (ownership && Array.isArray(ownership.ownership)) {
+      planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    }
   } catch {
     planFiles = [];
   }
@@ -10760,6 +12013,15 @@ async function main({
   let gatePostmortem = null;
 
   /**
+   * PLAN §2.2 row R2 — doc types whose recorded approval this run has re-opened.
+   * Written by the erratum gate through `markApprovalReopened`, read by
+   * `phaseGate`. Run-scoped and in-memory: nothing on disk is rewritten, so the
+   * only thing a re-open can do is make a phase RUN that would otherwise have
+   * been skipped on a recorded approval.
+   */
+  const reopenedApprovals = new Map();
+
+  /**
    * Run §2.5 steps 1–4 and step G for one skip-eligible phase entry.
    *
    * Called BEFORE the phase's creator dispatch, because a skip elides the whole
@@ -10861,7 +12123,55 @@ async function main({
             heldByNormalization = true;
           }
         }
-        if (freshness === "FRESH") {
+
+        // ─── PLAN §3.1 — the cascade rule ────────────────────────────────
+        //
+        // The byte rules above ask only whether THIS document moved. An
+        // approval can pass all of them and still be describing a world that
+        // no longer exists, because a later erratum edited the layer above
+        // it (POSTMORTEM-P §3, POSTMORTEM-D §4.1). So a still-FRESH approval
+        // is asked the second question: does its recorded `UPSTREAM-STATE`
+        // still match the upstream chain on disk?
+        //
+        // Reached ONLY on FRESH, and only ever narrows: it can turn FRESH
+        // into STALE (more work — §5.5's uniform direction), never STALE or
+        // UNEVALUABLE into FRESH.
+        //
+        // Grandfathering (architect ruling Q-2): `record.upstreamState` is
+        // `[]` for every approval anchored before this feature, and `[]`
+        // drifts against nothing, so those approvals stay byte-ruled only.
+        if (freshness === "FRESH" && record.upstreamState && record.upstreamState.length > 0) {
+          const current = new Map();
+          for (const row of record.upstreamState) {
+            current.set(row.docType, await erratumDocHash(row.docType));
+          }
+          const drifted = upstreamStateDrift(record.upstreamState, current);
+          if (drifted.length > 0) {
+            freshness = "STALE";
+            heldByNormalization = false;
+            const notice =
+              `Phase ${phaseId}: ${docPath} is byte-unchanged but its recorded approval was ` +
+              `taken against a DIFFERENT upstream — ${drifted.join(", ")} moved since round ` +
+              `${record.candidate} was approved (PLAN §3.1). The approval is treated as STALE ` +
+              `and the phase runs again.`;
+            notices.push(notice);
+            emit(notice);
+          }
+        }
+        // PLAN §2.2 row R2 — a document this run RE-OPENED cannot be skipped on
+        // its recorded approval, however fresh the bytes are. The approval was
+        // real; what changed is that this run has since been told, by that
+        // document's own approvers, that it carries an unfixed inherited High.
+        // Read here rather than folded into `record.approving` so the freeze
+        // trigger below still sees that the document HAS been approved once.
+        const reopened = reopenedApproval(reopenedApprovals, docType);
+        if (freshness === "FRESH" && reopened) {
+          notices.push(
+            `Phase ${phaseId}: ${docPath} was RE-OPENED during this run — ${reopened.reason} ` +
+              `The approval recorded at round ${record.candidate} does not hold and the phase runs.`
+          );
+        }
+        if (freshness === "FRESH" && !reopened) {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
           // otherwise running, so a skip has nothing to refuse (§6.2 row 13a).
@@ -11016,7 +12326,7 @@ async function main({
   // behalf of a finding the phase itself was about to withdraw.
 
   /** The path an erratum doc type names on this feature's branch. */
-  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+  const erratumDocPath = (docType) => featureDocPath(featureName, docType);
 
   /**
    * The digest of one upstream document as it stands RIGHT NOW, through the same
@@ -11029,10 +12339,6 @@ async function main({
     const probe = await probeDocument(probeDocFn, path, docType);
     return (probe ? probe.hash : await hashFileFn(path)) ?? null;
   }
-
-  /** The doc types ABOVE `target` in pipeline order — the layers it derives from. */
-  const erratumDocTypesAbove = (target) =>
-    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
 
   /**
    * DEC-ERR-03 — the mint-time snapshot a routed list is dated against.
@@ -11120,16 +12426,208 @@ async function main({
   }
 
   /**
+   * PLAN §3.2 — the same-pass anchor cascade.
+   *
+   * Called after an erratum round for `target` has been CONFIRMED, i.e. after
+   * `target`'s bytes moved with the approvers' blessing. Every document below
+   * `target` whose recorded approval was anchored against the OLD `target`
+   * (its `UPSTREAM-STATE` row says so) is now approved against a version that
+   * no longer exists — POSTMORTEM-D's recommendation 4.1, unlanded through
+   * three later post-mortems, is exactly "invalidate those in the same pass
+   * and carry the re-confirmation forward in this run".
+   *
+   * For each such document, in pipeline order:
+   *
+   *   - approving re-confirmation  ⇒ the document's bytes are unchanged, so
+   *     its anchors are re-stamped over the SAME hash with an UPDATED
+   *     `UPSTREAM-STATE`. Append-only: the confirmation consumes the next
+   *     derived round index and writes new cross-review files.
+   *   - non-approving              ⇒ nothing is anchored (nobody approved
+   *     these bytes against this upstream) and the owning phase is marked
+   *     RE-OPENED through T2's registry, so it runs again in THIS run under
+   *     its ordinary review budgets (architect ruling Q-1).
+   *
+   * Bounded by construction: one re-confirmation round per downstream
+   * document per cascade trigger, and NO recursion — a cascade never
+   * cascades. `lifetimeCapReached` continues to dominate: a capped document
+   * dispatches nothing and is reported ACCEPTED AS-IS, exactly as an erratum
+   * round on a capped document is.
+   *
+   * Grandfathering (architect ruling Q-2): a downstream approval carrying no
+   * `UPSTREAM-STATE` rows is byte-ruled only and is left alone — silently,
+   * because in a pre-upgrade repo that is EVERY approval and a notice per
+   * document per erratum would be pure noise.
+   */
+  async function cascadeDownstream({ phaseId, target, editedIn }) {
+    const targetHash = await erratumDocHash(target);
+    if (targetHash == null) return;
+
+    for (const downstream of erratumDocTypesBelow(target)) {
+      const ownerPhase = ERRATUM_PHASE_BY_DOC_TYPE[downstream];
+      const dispatch = PHASE_DISPATCH[ownerPhase];
+      if (!dispatch || !Array.isArray(dispatch.reviewers) || dispatch.reviewers.length === 0)
+        continue;
+
+      const docPath = erratumDocPath(downstream);
+      const docHash = await erratumDocHash(downstream);
+      if (docHash == null) continue; // not on the branch — nothing approved.
+
+      const window = await phaseWindow(downstream);
+      // Tier 1 only. Tier 2 (`## 6. Approval Record` in LEARNINGS) carries no
+      // cascade anchor by construction, so it could never do anything here.
+      const record = tier1ApprovalRecord({
+        reviewers: dispatch.reviewers,
+        startIndex: window.startIndex,
+        reviewFiles: window.reviewFiles,
+      });
+      if (!record.approving) continue;
+      const row = (record.upstreamState ?? []).find((e) => e.docType === target);
+      if (!row || row.hash === targetHash) continue;
+
+      if (lifetimeCapReached(window.startIndex)) {
+        const onDisk = window.startIndex - 1;
+        const notice =
+          `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — the upstream cascade ` +
+          `re-confirmation is skipped, nothing dispatched. ${onDisk} review round` +
+          `${onDisk === 1 ? "" : "s"} for ${downstream} are on disk and the cap is ` +
+          `${MAX_LIFETIME_ROUNDS}. Its approval was anchored against an EARLIER ${target}, which ` +
+          `${editedIn} has since edited; the document is ACCEPTED AS-IS (not approved, not ` +
+          `failed — no POSTMORTEM written) and the pipeline moves forward. To re-confirm it ` +
+          `anyway, re-run with forcePhases including "${ownerPhase}".`;
+        notices.push(notice);
+        emit(notice);
+        continue;
+      }
+
+      const round = window.startIndex;
+      const reviewers = dispatch.reviewers;
+      const paths = reviewers.map(
+        (skill) =>
+          `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${downstream}-v${round}.md`
+      );
+      const { upstreamState } = await deriveUpstreamState(downstream, null);
+
+      const opening =
+        `Phase ${phaseId}: ${target} moved under ${docPath} — its recorded approval (round ` +
+        `${record.candidate}) was anchored against ${target} \`${row.hash}\`, now ` +
+        `\`${targetHash}\`. Dispatching ONE delta re-confirmation round v${round} to ` +
+        `${reviewers.join(", ")} (PLAN §3.2).`;
+      notices.push(opening);
+      emit(opening);
+
+      const responses = await parallelFn(
+        reviewers.map((skill, i) =>
+          wrappedDispatch({
+            skill,
+            basePrompt: cascadeConfirmPrompt({
+              feature: featureName,
+              docType: downstream,
+              docPath,
+              upstreamDocType: target,
+              upstreamPath: erratumDocPath(target),
+              round,
+              reviewFile: paths[i],
+              upstreamState,
+            }),
+            targetPath: paths[i],
+            docType: downstream,
+            dispatchKind: "review",
+            phaseId: ownerPhase,
+            sessionKey: reviewerSessionKey(featureName, downstream, ownerPhase, skill),
+          })
+        )
+      );
+
+      // Verdicts on exactly DEC-ERR-02's terms: the trailer first, the file
+      // when the trailer is unreadable, fail-closed when neither is.
+      const verdicts = [];
+      for (let i = 0; i < reviewers.length; i++) {
+        const trailer = parseVerdict(responses[i], reviewers[i]);
+        if (trailer.malformed !== true) {
+          verdicts.push(trailer);
+          continue;
+        }
+        let fileText = null;
+        try {
+          fileText = await readFileFn(paths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = extractFileVerdict(
+          fileText,
+          reviewerRoleSlug(reviewers[i]) || reviewers[i]
+        );
+        verdicts.push(fromFile.ok && fromFile.malformed !== true ? fromFile : trailer);
+      }
+
+      if (verdicts.every((v) => isPassResult(v))) {
+        // The bytes are the ones already approved; only the premise moved. So
+        // the anchor is re-stamped over the SAME digest with the CURRENT
+        // upstream state — that is the whole point of the cascade.
+        const probe = await probeDocument(probeDocFn, docPath, downstream);
+        const normalizedHash = await normalizedAnchorFor({
+          probe,
+          path: docPath,
+          _hashNormalizedFile: hashNormalizedFileFn,
+        });
+        await appendApprovalAnchors({
+          paths,
+          hash: docHash,
+          normalizedHash,
+          upstreamState: upstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
+          commit: await headCommitSha(gitFn),
+          _readFile: readFileFn,
+          _probeDoc: probeDocFn,
+          _appendFile: appendFileFn,
+          _git: gitFn,
+          emit,
+        });
+        const notice =
+          `Phase ${phaseId}: ${docPath} RE-CONFIRMED at round v${round} against the edited ` +
+          `${target}. Its bytes are unchanged; its approval now records the CURRENT upstream ` +
+          `state and the phase stays skippable.`;
+        notices.push(notice);
+        emit(notice);
+        continue;
+      }
+
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: downstream,
+        phase: ownerPhase,
+        reason:
+          `phase ${phaseId}'s erratum edit to ${target} moved the upstream ${downstream} was ` +
+          `approved against, and the delta re-confirmation at round v${round} did not approve.`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${docPath} was NOT re-confirmed against the edited ${target} at round ` +
+        `v${round}. No anchors were written — nobody approved these bytes against this upstream — ` +
+        `and the recorded approval is RE-OPENED, so phase ${entry ? entry.phase : ownerPhase} ` +
+        `runs again under its ordinary review budgets (PLAN §3.2, ruling Q-1).`;
+      notices.push(notice);
+      emit(notice);
+    }
+  }
+
+  /**
    * One erratum round for one upstream document: the targeted versioned edit
    * (step 4b) and the delta confirmation by that document's own approvers
-   * (step 4c). Returns the responses so the caller can read any FURTHER errata
-   * out of them — which is how a second batch for the same document becomes
-   * observable, and therefore how the §5 decision 2 bound gets to fire.
+   * (step 4c).
+   *
+   * Returns `{rule, responses}` — the PLAN §2.2 rule this round resolved to,
+   * plus every response, so the caller can read any FURTHER errata out of them,
+   * which is how a second batch for the same document becomes observable and
+   * therefore how the §5 decision 2 bound gets to fire. R3 additionally returns
+   * `followUpItems`: the caller re-enters with them and `attempt + 1`. R4 does
+   * not return at all — it halts.
+   *
+   * `attempt` is the follow-up index (0 = the original round). It is the only
+   * input to R3's budget test, so the budget is per upstream doc per phase
+   * invocation by construction: the caller's loop owns the counter.
    *
    * Returns `null` — and dispatches nothing at all — when the upstream document
    * has spent its DEC-ROUNDS-02 lifetime round budget.
    */
-  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
+  async function erratumRound({ phaseId, label, target, items, mintedHashes, attempt = 0 }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
     const upstreamPath = erratumDocPath(target);
@@ -11207,15 +12705,126 @@ async function main({
       sessionKey: authorSessionKey(featureName, target, upstreamPhase),
     });
 
+    // ─── PLAN §2.4 item 2 — structural re-mint ───────────────────────────
+    //
+    // Consulted ONLY on the upstream-skew path above: when nothing moved,
+    // `itemLines` is already exactly what the confirmers should read, and
+    // this block is a no-op by construction (`remint` stays unset).
+    //
+    // Fail-open, same doctrine as `parseErrata`: an author response with no
+    // RE-MINT line leaves `confirmItemLines`/`confirmItemCount` at their
+    // original values — the notice already emitted above is the whole of the
+    // signal, exactly as it was before this task. Only a response that DOES
+    // carry RE-MINT lines makes this structural: the confirmers then read the
+    // author's own re-derivation, and an item the author reports ABSORBED is
+    // never asked about again.
+    let confirmItemLines = itemLines;
+    let confirmItemCount = items.length;
+    let confirmItemTexts = items.map((e) => e.item);
+    if (movedSinceMinted.length > 0) {
+      const remint = parseErratumRemint(authorResponse);
+      if (remint) {
+        confirmItemCount = remint.stillRaised.length;
+        confirmItemTexts = remint.stillRaised;
+        confirmItemLines =
+          confirmItemCount > 0
+            ? remint.stillRaised.map((text) => `- ${text}`).join("\n")
+            : "(every routed item was reported ABSORBED against upstream HEAD; nothing remains to confirm.)";
+        const notice =
+          `Phase ${phaseId}: erratum round for ${target} — re-minted structurally: ` +
+          `${remint.absorbed.length} item${remint.absorbed.length === 1 ? "" : "s"} absorbed, ` +
+          `${confirmItemCount} still raised. Confirmers are reading the author's re-derived list ` +
+          `against upstream HEAD, not the stale mint (PLAN §2.4 item 2).`;
+        notices.push(notice);
+        emit(notice);
+      }
+    }
+
+    // ─── PLAN §2.3 (T4) — mechanical land-proof for literal-token items ─────
+    //
+    // Runs BEFORE confirmers are dispatched, on the item texts actually about
+    // to be confirmed (post-remint, when a remint happened — an item the
+    // re-grounding already reported ABSORBED is not re-checked here). A
+    // confirmer's PASS is a legibility judgment ("does this edit resolve the
+    // finding"); it is not by itself a mechanical proof the edit's BYTES ever
+    // landed the exact token the finding named. POSTMORTEM-PR's own words for
+    // the gap this closes: "the halt was one grep away from never having
+    // happened, but the grep ran on the wrong party, one step too late" — the
+    // grep now runs here, on the engine, before that party is ever asked.
+    const literalTokenItems = confirmItemTexts
+      .map((text) => ({ text, token: erratumLiteralTokenOf(text) }))
+      .filter((entry) => entry.token !== null);
+
+    if (literalTokenItems.length > 0) {
+      const missingAgainst = async () => {
+        let docText = null;
+        try {
+          docText = await readFileFn(upstreamPath);
+        } catch {
+          docText = null;
+        }
+        const hay = String(docText ?? "").toLowerCase();
+        return literalTokenItems.filter((entry) => !headingContains(hay, entry.token));
+      };
+
+      let stillMissing = await missingAgainst();
+      if (stillMissing.length > 0) {
+        const missingClause = stillMissing
+          .map((entry) => `- expected token \`${entry.token}\` (from: ${entry.text})`)
+          .join("\n");
+        const s = stillMissing.length === 1 ? "" : "s";
+        notices.push(
+          `Phase ${phaseId}: erratum round for ${target} — land-proof: ${stillMissing.length} ` +
+            `literal-token item${s} did not land after the edit. Dispatching one bounded ` +
+            `re-dispatch naming the missing token${s}, before confirmers are asked:\n${missingClause}`
+        );
+        emit(notices[notices.length - 1]);
+
+        await wrappedDispatch({
+          skill: authorSkill,
+          basePrompt:
+            `ERRATUM ROUND for ${upstreamPath} (feature ${featureName}) — LAND-PROOF RETRY.\n` +
+            `Your previous edit to this ${target} did not land the following expected token${s}, ` +
+            `checked mechanically against the document text after your edit:\n${missingClause}\n` +
+            `Edit the document again so the exact token${s} above appear${stillMissing.length === 1 ? "s" : ""} ` +
+            `verbatim, in the section${s} the finding${s} name${stillMissing.length === 1 ? "s" : ""}. ` +
+            `This is a second pass on the SAME erratum edit, not a new one — change nothing else. Commit.\n` +
+            branchPinClause(featureName),
+          targetPath: upstreamPath,
+          docType: target,
+          dispatchKind: "authoring",
+          phaseId: upstreamPhase,
+          sessionKey: authorSessionKey(featureName, target, upstreamPhase),
+        });
+
+        stillMissing = await missingAgainst();
+        if (stillMissing.length > 0) {
+          const finalMissingClause = stillMissing
+            .map((entry) => `- expected token \`${entry.token}\` (from: ${entry.text})`)
+            .join("\n");
+          const s2 = stillMissing.length === 1 ? "" : "s";
+          notices.push(
+            `Phase ${phaseId}: erratum round for ${target} — land-proof: ${stillMissing.length} ` +
+              `literal-token item${s2} STILL did not land after one bounded re-dispatch (budget spent). ` +
+              `Not halted here — confirmers are dispatched next and may still catch it — but the ` +
+              `engine-side land-proof for this round is exhausted:\n${finalMissingClause}`
+          );
+          emit(notices[notices.length - 1]);
+        }
+      }
+    }
+
     // Step 4c. The confirmation is the next round of the upstream document's own
     // append-only window — derived, never assumed (§3.6's pinned invariant).
     // The derivation happened above, before step 4b, for the reason stated there.
-    const round = window.startIndex;
     const reviewers = upstream.reviewers;
-    const confirmPaths = reviewers.map(
-      (skill) =>
-        `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${round}.md`
-    );
+    const confirmRoundPaths = (n) =>
+      reviewers.map(
+        (skill) =>
+          `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${n}.md`
+      );
+    let round = window.startIndex;
+    let confirmPaths = confirmRoundPaths(round);
 
     // The anchor pair is captured over the document as it stands AFTER the
     // erratum edit and BEFORE the confirmations are read — the same t0–t2 order
@@ -11229,30 +12838,75 @@ async function main({
     });
     const anchorCommit = await headCommitSha(gitFn);
 
-    const responses = await parallelFn(
-      reviewers.map((skill, i) =>
-        wrappedDispatch({
-          skill,
-          basePrompt: erratumConfirmPrompt({
-            feature: featureName,
+    const dispatchConfirmers = (atRound, paths, state) =>
+      parallelFn(
+        reviewers.map((skill, i) =>
+          wrappedDispatch({
+            skill,
+            basePrompt: erratumConfirmPrompt({
+              feature: featureName,
+              docType: target,
+              docPath: upstreamPath,
+              itemLines: confirmItemLines,
+              round: atRound,
+              reviewFile: paths[i],
+              // DEC-ERR-03: the confirmers are pointed at the SAME upstream state
+              // the author was re-grounded on, so the superset question they are
+              // asked is answerable against the version the edit was made against.
+              upstreamState: state,
+            }),
+            targetPath: paths[i],
             docType: target,
-            docPath: upstreamPath,
-            itemLines,
-            round,
-            reviewFile: confirmPaths[i],
-            // DEC-ERR-03: the confirmers are pointed at the SAME upstream state
-            // the author was re-grounded on, so the superset question they are
-            // asked is answerable against the version the edit was made against.
-            upstreamState,
-          }),
-          targetPath: confirmPaths[i],
-          docType: target,
-          dispatchKind: "review",
-          phaseId: upstreamPhase,
-          sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
-        })
-      )
-    );
+            dispatchKind: "review",
+            phaseId: upstreamPhase,
+            sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
+          })
+        )
+      );
+
+    // The upstream premise BOTH confirmers are answering against. Held in one
+    // variable, handed to both dispatches, so the two confirmers can never be
+    // reading different versions of the world — POSTMORTEM-P's "three beliefs
+    // inside four minutes" is exactly that divergence.
+    let confirmUpstreamState = upstreamState;
+    let responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
+
+    // ─── PLAN §3.3 — freeze the confirmation window ────────────────────────
+    //
+    // A confirmation round is a QUESTION about a premise: "given upstream as
+    // it stands, does this edit resolve these items without breaking what was
+    // approved?" A sibling erratum round landing in this document's upstream
+    // chain while the confirmers are in flight silently changes the premise —
+    // and the confirmers' answers, and the anchor about to be stamped, then
+    // describe a version nobody evaluated (POSTMORTEM-P: REQ v1.9 landed
+    // INSIDE the TSPEC confirmation window).
+    //
+    // So the state is re-derived after the confirmers return and compared with
+    // the one they were dispatched against. On drift the round is not patched
+    // up and not paper-stamped: the confirmers are re-dispatched ONCE, both on
+    // the SAME re-derived state, into the NEXT derived round index (the window
+    // is append-only — the first round's files stay on disk as history), and
+    // only those responses are evaluated below. Bounded by construction: one
+    // re-dispatch per confirmation, no loop.
+    const reDerived = await deriveUpstreamState(target, null);
+    if (upstreamStateLines(reDerived.upstreamState) !== upstreamStateLines(confirmUpstreamState)) {
+      const before = new Map(confirmUpstreamState.map((e) => [e.docType, e.hash]));
+      const movedInWindow = reDerived.upstreamState
+        .filter((e) => before.has(e.docType) && before.get(e.docType) !== e.hash)
+        .map((e) => e.docType);
+      round = round + 1;
+      confirmPaths = confirmRoundPaths(round);
+      confirmUpstreamState = reDerived.upstreamState;
+      const notice =
+        `Phase ${phaseId}: erratum confirmation for ${target} — upstream MOVED INSIDE the ` +
+        `confirmation window (${movedInWindow.join(", ") || "chain membership changed"}). The ` +
+        `first confirmation round was evaluated against a premise that no longer holds; it is ` +
+        `kept on disk as history and the confirmers are re-dispatched ONCE, both on the same ` +
+        `re-derived upstream state, at round v${round} (PLAN §3.3).`;
+      notices.push(notice);
+      emit(notice);
+      responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
+    }
 
     // ─── DEC-ERR-02 (2026-08-09): read the file when the trailer is unreadable ──
     //
@@ -11326,15 +12980,144 @@ async function main({
       }
     }
 
-    const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
-    if (nonApproving.length > 0) {
+    // ─── PLAN §2.2 — the severity/provenance/locality gate ───────────────────
+    //
+    // Until v0.22.7 this site read exactly one bit — "did every confirmer say
+    // pass?" — and spent the whole pipeline on the answer. It now reads the
+    // confirmers' structured findings as well, because the three halts this
+    // replaces were three DIFFERENT situations wearing one verdict:
+    //
+    //   - a one-noun miss inside the section the erratum had just edited
+    //     (POSTMORTEM-PR) — fixable in one more pass, and now R3;
+    //   - staleness the erratum did not introduce and was never asked to fix
+    //     (POSTMORTEM-P) — the owning phase's work, and now R2;
+    //   - a real, out-of-scope, delta-introduced defect — still a halt, R4.
+    //
+    // Findings are read from the response trailer and fall back to the
+    // confirmation file, on exactly the DEC-ERR-02 reasoning above: two
+    // channels, the file the durable one. A confirmer that says nothing
+    // parseable in either channel is failed closed by `erratumGateDecision`.
+    const confirmations = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      let parsed = parseConfirmationFindings(responses[i]);
+      if (parsed.findings.length === 0 && parsed.malformed.length === 0) {
+        let fileText = null;
+        try {
+          fileText = await readFileFn(confirmPaths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = parseConfirmationFindings(fileText ?? "");
+        if (fromFile.findings.length > 0 || fromFile.malformed.length > 0) parsed = fromFile;
+      }
+      confirmations.push({
+        source: reviewers[i],
+        approving: isPassResult(verdicts[i]),
+        findings: parsed.findings,
+        malformed: parsed.malformed,
+      });
+    }
+
+    const followUpAvailable = attempt < MAX_ERRATUM_FOLLOWUP_ROUNDS;
+    const decision = erratumGateDecision({ confirmations, followUpAvailable });
+    const roundLabel = attempt === 0 ? "erratum round" : `erratum follow-up round ${attempt}`;
+
+    if (decision.rule === "R2") {
+      // Inherited-only. NOT re-anchored: the approvers did not approve these
+      // bytes, and an anchor here would record an approval nobody gave. The
+      // owning phase is re-opened instead, and the pipeline moves forward.
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: target,
+        phase: upstreamPhase,
+        reason:
+          `phase ${phaseId}'s ${roundLabel} for ${target} closed with inherited findings only ` +
+          `(gate rule R2).`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, but NO High ` +
+        `finding is tagged \`delta\` (gate rule R2). This is not an erratum failure: the findings ` +
+        `are inherited staleness the erratum neither introduced nor was asked to fix. No POSTMORTEM ` +
+        `was written, ${upstreamPath} was NOT re-anchored, and its recorded approval is RE-OPENED ` +
+        `so phase ${entry ? entry.phase : upstreamPhase} runs again under its ordinary review ` +
+        `budgets. Findings:\n${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R2",
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R3") {
+      // Local, delta-introduced, and the follow-up budget is unspent: one more
+      // targeted pass, whose item list is the confirmers' own findings. No
+      // anchors — nothing has been approved yet.
+      //
+      // PLAN §2.4 items 1 and 4 — these findings bypass `admit()` entirely
+      // (they never went through `routeErrata`'s minting), so the same
+      // hygiene is applied here directly: normalized dedupe (two confirmers
+      // restating the SAME finding at the same anchor collapse to one item,
+      // union of sources), then the oracle-contract lint (a non-conforming
+      // oracle item is reported, not routed).
+      const rawFollowUpItems = decision.findings.map((f) => ({
+        docType: target,
+        item:
+          `[${f.severity} | ${f.provenance} | ${f.locality}] ${f.section} — ${f.text}`,
+        source: f.source ?? "(confirmation)",
+      }));
+      const followUpItems = [];
+      for (const candidate of dedupeErrataEntries(rawFollowUpItems)) {
+        const shortfall = oracleContractShortfall(candidate.item);
+        if (shortfall.length > 0) {
+          const oracleNotice =
+            `Phase ${phaseId}: erratum follow-up finding for ${target} touches a test oracle but is ` +
+            `missing ${shortfall.join(", ")} — reported as a malformed erratum, not routed: ` +
+            `${candidate.item}`;
+          notices.push(oracleNotice);
+          emit(oracleNotice);
+          continue;
+        }
+        followUpItems.push({ ...candidate, mintedHash: mintedHashes.get(target) ?? null });
+      }
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, and every ` +
+        `finding is \`local\` to the sections the erratum just edited (gate rule R3). Dispatching ` +
+        `ONE follow-up erratum round (budget ${MAX_ERRATUM_FOLLOWUP_ROUNDS} per upstream doc per ` +
+        `phase invocation) carrying the findings verbatim:\n` +
+        `${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R3",
+        followUpItems,
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R4") {
+      // §2.4 item 5 — the payload is the FINDINGS, not the pre-edit routed
+      // list. The historical payload named items that had already landed, at
+      // line numbers that had already moved, which sent the post-mortem author
+      // looking for defects that were not there. The routed list survives as
+      // background, because "what was asked for" is still context.
+      const spentClause = followUpAvailable
+        ? ""
+        : ` The follow-up budget of ${MAX_ERRATUM_FOLLOWUP_ROUNDS} round was already spent.`;
       await erratumPostmortemHalt({
         phaseId,
         label,
         reason:
           `Phase ${phaseId} halted: the delta confirmation of the ${target} erratum round did not ` +
-          `pass — non-approving: [${nonApproving.join(", ")}]. Erratum items against ` +
-          `${upstreamPath}: ${itemText}.`,
+          `pass — non-approving: [${decision.nonApproving.join(", ")}].${spentClause} Confirmer ` +
+          `findings, verbatim:\n${formatConfirmationFindings(decision.findings)}\n` +
+          `Background (the routed list this round was opened with, superseded by the findings ` +
+          `above) — Erratum items against ${upstreamPath}: ${itemText}.`,
       });
     }
 
@@ -11346,6 +13129,10 @@ async function main({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
+      // PLAN §3.1/§3.3: the premise the confirmers actually answered against —
+      // the re-derived one whenever the window froze, never the trailing sha
+      // of a version they never saw.
+      upstreamState: confirmUpstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,
@@ -11354,15 +13141,23 @@ async function main({
       emit,
     });
 
+    // PLAN §3.2 — the edit that was just confirmed moved `target`, so every
+    // approval BELOW it that was anchored against the old `target` is now
+    // describing a version that no longer exists. Same pass, same run.
+    await cascadeDownstream({ phaseId, target, editedIn: roundLabel });
+
     notices.push(
-      `Phase ${phaseId}: erratum round for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+      `Phase ${phaseId}: ${roundLabel} for ${target} — ${confirmItemCount} item${confirmItemCount === 1 ? "" : "s"}, ` +
         `confirmed at round v${round} by ${reviewers.join(", ")}.`
     );
 
-    return [
-      { text: authorResponse, source: authorSkill },
-      ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
-    ];
+    return {
+      rule: "R1",
+      responses: [
+        { text: authorResponse, source: authorSkill },
+        ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+      ],
+    };
   }
 
   /**
@@ -11373,21 +13168,59 @@ async function main({
    *   leave every existing report string byte-identical.
    */
   async function routeErrata({ phaseId, docType, label, loop, creatorResult }) {
+    /** Cross-batch dedupe key set (PLAN §2.4 item 1) — persists across while-loop
+     *  iterations so a re-raised duplicate of an already-routed item is dropped,
+     *  not re-routed a second time. */
     const seen = new Set();
+    // `admit()` splits/lints/dedupes only — it does NOT stamp `mintedHash`.
+    // Deliberately: `snapshotErratumDocs()` costs a read per upstream doc, and
+    // `converge` calls `routeErrata` after every dispatch whether or not any
+    // errata were raised. Snapshotting here, unconditionally, would pay that
+    // cost on every ordinary (errata-free) dispatch too. The mint-time tag is
+    // stamped afterward, once, only on the batch that survived to be routed.
     const admit = (entries) => {
+      const split = [];
+      for (const raw of entries) {
+        if (!raw) continue;
+        // PLAN §2.4 item 3: an item naming ≥2 doc types (word-boundary, never
+        // substring) is one obligation with multiple homes — mint one item per
+        // named type instead of guessing which home is authoritative.
+        for (const entry of splitErratumMultiHome(raw)) {
+          // An erratum naming the phase's OWN document is not an erratum at all —
+          // it is an ordinary finding, and the loop that just converged is where
+          // it belonged. Dropped silently, not routed.
+          if (entry.docType === docType) continue;
+          // PLAN §2.4 item 4: an item that touches an oracle (AT-/INV-/META- id
+          // or the bare word "oracle(s)") but is missing the property statement,
+          // non-subsumption rationale, or per-conjunct witness is malformed —
+          // noted, not routed, never treated as a hard failure (fail-open).
+          const shortfall = oracleContractShortfall(entry.item);
+          if (shortfall.length > 0) {
+            notices.push(
+              `Phase ${phaseId}: erratum item against ${entry.docType} touches an oracle but is ` +
+                `missing ${shortfall.join(", ")} — malformed erratum, not routed: \`${entry.item}\`.`
+            );
+            continue;
+          }
+          split.push(entry);
+        }
+      }
       const kept = [];
-      for (const entry of entries) {
-        // An erratum naming the phase's OWN document is not an erratum at all —
-        // it is an ordinary finding, and the loop that just converged is where
-        // it belonged. Dropped silently, not routed.
-        if (!entry || entry.docType === docType) continue;
-        const key = `${entry.docType} ${entry.item}`;
+      // PLAN §2.4 item 1: normalized dedupe — items sharing docType + cited
+      // anchor + expected token collapse to one, carrying union source
+      // attributions, before the persistent cross-batch `seen` check below.
+      for (const candidate of dedupeErrataEntries(split)) {
+        const key = erratumDedupeKey(candidate.docType, candidate.item);
         if (seen.has(key)) continue;
         seen.add(key);
-        kept.push(entry);
+        kept.push(candidate);
       }
       return kept;
     };
+    /** Stamps each entry with the hash of ITS OWN doc type at `mintedHashes`'s
+     *  snapshot moment (PLAN §2.4 item 2's per-item half). */
+    const tagMinted = (entries, hashes) =>
+      entries.map((e) => ({ ...e, mintedHash: hashes.get(e.docType) ?? null }));
 
     const creatorSkill = PHASE_DISPATCH[phaseId].creator ?? PHASE_DISPATCH[phaseId].optimizer;
     let pending = admit([
@@ -11402,14 +13235,15 @@ async function main({
     ]);
     if (pending.length === 0) return "";
 
-    /** Erratum rounds spent, per upstream doc, for THIS phase and invocation. */
-    const spent = new Map();
-    const routed = [];
-
     // DEC-ERR-03: the list has just been minted, so date it. Re-taken for each
     // follow-on batch below, because a follow-on list is a NEW mint and must be
     // dated against the tree the wave has already reshaped, not the original one.
     let mintedHashes = await snapshotErratumDocs();
+    pending = tagMinted(pending, mintedHashes);
+
+    /** Erratum rounds spent, per upstream doc, for THIS phase and invocation. */
+    const spent = new Map();
+    const routed = [];
 
     while (pending.length > 0) {
       const followOn = [];
@@ -11445,11 +13279,30 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
+        // PLAN §2.2 row R3 — the follow-up loop. Bounded by construction: the
+        // attempt counter is the budget, `erratumRound` only answers R3 while
+        // it is unspent, and a spent budget resolves the same confirmation to
+        // R4. The loop condition is therefore a restatement of the constant,
+        // not a second, independently-drifting one.
+        const responses = [];
+        let result = await erratumRound({ phaseId, label, target, items, mintedHashes });
         // DEC-ROUNDS-02: the upstream document is capped. Nothing was dispatched
         // and nothing was edited, so there is no round to report and no response
         // to read follow-on errata out of. `erratumRound` said so in a notice.
-        if (responses === null) continue;
+        if (result === null) continue;
+        responses.push(...result.responses);
+        for (let attempt = 1; result.rule === "R3" && attempt <= MAX_ERRATUM_FOLLOWUP_ROUNDS; attempt++) {
+          result = await erratumRound({
+            phaseId,
+            label,
+            target,
+            items: result.followUpItems,
+            mintedHashes,
+            attempt,
+          });
+          if (result === null) break;
+          responses.push(...result.responses);
+        }
         routed.push(target);
         for (const reply of responses) {
           followOn.push(
@@ -11460,9 +13313,14 @@ async function main({
           );
         }
       }
-      pending = admit(followOn);
       // A follow-on batch is a fresh mint (DEC-ERR-03), so it gets a fresh date.
-      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
+      // Same laziness as the initial batch: only pay for a snapshot, and only
+      // stamp `mintedHash`, when there is something left to route.
+      pending = admit(followOn);
+      if (pending.length > 0) {
+        mintedHashes = await snapshotErratumDocs();
+        pending = tagMinted(pending, mintedHashes);
+      }
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
@@ -11899,7 +13757,7 @@ async function main({
         docPath: planPath,
         inputs: pInputs,
         afterConverged: async () => {
-          // ─── PROPOSAL §3.3 — the PLAN self-parse gate ─────────────────────────
+          // ─── PROPOSAL §3.3 / §4.4 T8 — the PLAN self-parse gate ───────────────
           //
           // The mechanical parser, not Phase I, is the authority on whether this PLAN
           // can be executed. A PLAN whose task table `parsePlanTasks` cannot read is
@@ -11909,71 +13767,86 @@ async function main({
           // already approved. The gate runs only when the phase actually ran: a
           // SKIPPED Phase P is a recorded approval over unchanged bytes, and Phase I
           // remains the single gate on that path, exactly as before.
+          //
+          // T8: the checks themselves now live in `lintPlanArtifact` — this is that
+          // function's BACKSTOP, run once after convergence. The authoring loop
+          // (`dispatchAndVerify`) already ran the same lint after every author
+          // dispatch and fed any diagnostics back into the next prompt, so by the
+          // time an episode reaches here its diagnostics have usually already been
+          // fixed; this halt only fires when they were not. The halt strings below
+          // are the pre-T8 wrapper text, unchanged, now built from the diagnostics
+          // instead of five separate hand-copied checks.
           const pPlanText = await readFileFn(planPath);
-          const pParsed = parsePlanTasks(pPlanText);
-          if (!pParsed || !Array.isArray(pParsed.tasks) || pParsed.tasks.length === 0) {
-            const detail =
-              `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
-              `mechanical parser, so the implementation phase would have no task graph. ` +
-              `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
-              `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
-              `'Depends On'), one markdown table row per task, and every dependency cell ` +
-              `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
-              `discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-          let pBatches;
-          try {
-            pBatches = computeTopologicalBatches(pParsed.tasks);
-          } catch (cycleErr) {
-            const detail =
-              `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
-              `${(cycleErr && cycleErr.message) || String(cycleErr)} ` +
-              `Fix the PLAN's Dependencies column (every id it names must be another ` +
-              `task's id, and the edges must form a DAG). Rejecting at Phase P rather ` +
-              `than discovering it at Phase I.`;
+          const pLint = lintPlanArtifact(pPlanText);
+          if (!pLint.ok) {
+            const byKind = (kind) => pLint.diagnostics.filter((d) => d.kind === kind);
+            const unparseable = byKind("unparseable-tasks");
+            const unknownDeps = byKind("unknown-dep-id");
+            const cycles = byKind("cycle");
+            const nearMisses = byKind("ownership-near-miss");
+            const missingOwnership = byKind("ownership-missing");
+            const contractProblems = byKind("contract-violation");
+
+            let detail;
+            if (unparseable.length > 0) {
+              detail =
+                `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
+                `mechanical parser, so the implementation phase would have no task graph. ` +
+                `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
+                `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
+                `'Depends On'), one markdown table row per task, and every dependency cell ` +
+                `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
+                `discovering it at Phase I.`;
+            } else if (unknownDeps.length > 0) {
+              detail =
+                `Error: Phase P — the task table in ${planPath} names dependency ids that ` +
+                `are not any task's id: ${unknownDeps.map((d) => d.message).join("; ")}. Fix ` +
+                `the PLAN's Dependencies column so every id it names is another task's id. ` +
+                `Rejecting at Phase P rather than discovering it at Phase I.`;
+            } else if (cycles.length > 0) {
+              detail =
+                `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
+                `${cycles[0].message} Fix the PLAN's Dependencies column (every id it names ` +
+                `must be another task's id, and the edges must form a DAG). Rejecting at ` +
+                `Phase P rather than discovering it at Phase I.`;
+            } else if (nearMisses.length > 0) {
+              detail =
+                `Error: Phase P — ${planPath}'s file-ownership manifest has a header row ` +
+                `that matches only one side of the required contract: ` +
+                nearMisses.map((d) => d.message).join("; ") +
+                `. Fix the header row so it carries an exact cell from both sets — ` +
+                `se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+                `discovering it at Phase I.`;
+            } else if (missingOwnership.length > 0) {
+              detail =
+                `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+                `implementation phase cannot derive same-tree waves and cannot know which ` +
+                `files each task may write. Add a markdown table whose header row carries an ` +
+                `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+                `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+                `each row listing that task's owned paths in backticks — se-author's ` +
+                `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+                `Phase I.`;
+            } else {
+              detail =
+                `Error: Phase P — the task table and the file-ownership manifest in ` +
+                `${planPath} disagree: ${contractProblems.map((d) => d.message).join("; ")}. ` +
+                `Every task in the task table needs exactly one manifest row, and every ` +
+                `manifest row needs a task — se-author's batch-safety rule 2. Rejecting at ` +
+                `Phase P rather than discovering it at Phase I.`;
+            }
             recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
             throw haltError(detail);
           }
 
-          // ─── PROPOSAL §3.3 — the file-ownership manifest half of the same gate ─
-          //
-          // M-5: the manual run executed twelve same-tree waves with zero merge
-          // conflicts because no two tasks in a wave touched the same file. That is a
-          // property of the PLAN, and a PLAN that does not state file ownership cannot
-          // be checked for it. So the manifest is required HERE — where the author's
-          // session and the reviewers are still on the phase — rather than discovered
-          // at Phase I, which would have no recourse but to fall back to worktrees.
+          // The gate passed — recompute the same derivations the ✅ row's detail
+          // has always carried, over the SAME inputs `lintPlanArtifact` just
+          // validated (never a second, differently-provenanced parse).
+          const pParsed = parsePlanTasks(pPlanText);
+          const pBatches = computeTopologicalBatches(pParsed.tasks);
           const pOwnershipParsed = parsePlanOwnership(pPlanText);
-          if (pOwnershipParsed == null) {
-            const detail =
-              `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
-              `implementation phase cannot derive same-tree waves and cannot know which ` +
-              `files each task may write. Add a markdown table whose header row carries an ` +
-              `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
-              `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
-              `each row listing that task's owned paths in backticks — se-author's ` +
-              `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
-              `Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-          const pContract = validatePlanContract(pParsed.tasks, pOwnershipParsed.ownership);
-          if (!pContract.ok) {
-            const detail =
-              `Error: Phase P — the task table and the file-ownership manifest in ` +
-              `${planPath} disagree: ${pContract.problems.join("; ")}. Every task in the ` +
-              `task table needs exactly one manifest row, and every manifest row needs a ` +
-              `task — se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
-              `discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
           const pWaves = computeWaves(pParsed.tasks, pOwnershipParsed.ownership);
 
-          // The gate's own contribution to the ✅ row: what the mechanical parser
-          // read out of the approved PLAN. `converge` appends it to the detail.
           return (
             `; PLAN parses to ${pParsed.tasks.length} tasks in ` +
             `${pBatches.length} batches, ${pWaves.length} waves`

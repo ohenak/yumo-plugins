@@ -2,9 +2,12 @@
 // fifth job (`engine-tests`), on the SAME matrix `unit-tests` uses, with a job body of
 // `npm ci` + `npm test` and nothing else — no `node --test __tests__/` shortcut, so the
 // `--import` bootstrap flag and the suite-wide assertion step (both inside the `test`
-// script, §7.0) are inherited rather than bypassed. Separately, `.claude/pdlc.config.json`'s
-// `implementation.testCommand` (which Phase I's wave gate runs) must additionally run
-// `pdlc/engine`'s suite, not only `pdlc/workflows`'s.
+// script, §7.0) are inherited rather than bypassed. Separately, the repo's canonical
+// consumer arrangement — `.claude/pdlc.config.example.json`, the tracked template the
+// live, gitignored `.claude/pdlc.config.json` is seeded from — must carry an
+// `implementation.testCommand` (which Phase I's wave gate runs) that additionally runs
+// `pdlc/engine`'s suite, not only `pdlc/workflows`'s. The live config is per-machine
+// consumer state and may legitimately diverge; the tracked example is the arrangement.
 //
 // This file asserts the static arrangement of those two files. It does not execute either
 // suite; that is `unit-tests`'/`engine-tests`' own job, and `assert-suite-wide.test.js`'s.
@@ -19,7 +22,7 @@ const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot));
 
 const workflowPath = path.join(repoRoot, ".github", "workflows", "pr-tests.yml");
-const configPath = path.join(repoRoot, ".claude", "pdlc.config.json");
+const configPath = path.join(repoRoot, ".claude", "pdlc.config.example.json");
 
 const readText = (p) => readFileSync(p, "utf8");
 
@@ -88,7 +91,7 @@ test("ci arrangement — pr-tests.yml", async (t) => {
   });
 });
 
-test("ci arrangement — .claude/pdlc.config.json's implementation.testCommand", () => {
+test("ci arrangement — .claude/pdlc.config.example.json's implementation.testCommand", () => {
   const config = JSON.parse(readText(configPath));
   const testCommand = config?.implementation?.testCommand;
   assert.equal(typeof testCommand, "string", "implementation.testCommand must be a string");

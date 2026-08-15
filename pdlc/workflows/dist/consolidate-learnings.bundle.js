@@ -3517,6 +3517,62 @@ function parsePlanTasks(markdown) {
   return { tasks };
 }
 
+function findUnknownPlanDepsIds(markdown) {
+  if (markdown == null || typeof markdown !== "string") return [];
+
+  const blocks = [];
+  let block = null;
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
+    }
+  }
+  if (blocks.length === 0) return [];
+
+  const isSeparatorRow = (cells) =>
+    cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+
+  const knownIds = new Set();
+  const qualifyingBlocks = [];
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const idIdx = cols.findIndex((c) => PLAN_ID_HEADER_CELLS.has(c));
+    const depsIdx = cols.findIndex((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+    if (idIdx < 0 || depsIdx < 0) continue; 
+    qualifyingBlocks.push({ rows, idIdx, depsIdx });
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      if (isSeparatorRow(cells)) continue;
+      const id = (cells[idIdx] || "").trim();
+      if (id) knownIds.add(id);
+    }
+  }
+
+  const problems = [];
+  for (const { rows, idIdx, depsIdx } of qualifyingBlocks) {
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      if (isSeparatorRow(cells)) continue;
+      const id = (cells[idIdx] || "").trim();
+      if (!id) continue;
+      const raw = (cells[depsIdx] || "").trim();
+      for (const tok of parsePlanDepsCell(raw)) {
+        if (!knownIds.has(tok)) {
+          problems.push(`row ${i}: Deps cell "${raw}" names unknown id "${tok}"`);
+        }
+      }
+    }
+  }
+  return problems;
+}
+
 const PLAN_ID_HEADER_CELLS = new Set(["task id", "task-id", "task_id", "id", "#"]);
 const PLAN_DEPS_HEADER_CELLS = new Set([
   "dependencies",
@@ -3530,11 +3586,50 @@ const PLAN_DEPS_HEADER_CELLS = new Set([
 ]);
 
 function splitPipeRow(row) {
-  return row
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((c) => c.trim());
+  let s = row;
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+
+  const cells = [];
+  let cur = "";
+  let backtickRun = 0; 
+  let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+
+    if (ch === "\\" && backtickRun === 0 && s[i + 1] === "|") {
+      cur += "|";
+      i += 2;
+      continue;
+    }
+
+    if (ch === "`") {
+      let j = i;
+      while (j < s.length && s[j] === "`") j++;
+      const run = j - i;
+      if (backtickRun === 0) {
+        backtickRun = run; 
+      } else if (run === backtickRun) {
+        backtickRun = 0; 
+      }
+
+      cur += s.slice(i, j);
+      i = j;
+      continue;
+    }
+
+    if (ch === "|" && backtickRun === 0) {
+      cells.push(cur.trim());
+      cur = "";
+      i += 1;
+      continue;
+    }
+
+    cur += ch;
+    i += 1;
+  }
+  cells.push(cur.trim());
+  return cells;
 }
 
 function parsePlanDepsCell(cell) {
@@ -3568,16 +3663,28 @@ const PLAN_OWNER_HEADER_CELLS = new Set([
   "task-id",
   "task_id",
   "owning task",
+  "owning tasks",
+  "owner",
   "id",
 ]);
 const PLAN_FILES_HEADER_CELLS = new Set([
   "files created or appended",
   "files",
+  "file",
   "owned files",
   "files owned",
   "file ownership",
   "files created/appended",
 ]);
+
+function normalizeHeaderCell(cell) {
+  return String(cell == null ? "" : cell)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\([^()]*\)\s*$/, "")
+    .trim();
+}
 
 function stripCellEmphasis(cell) {
   return String(cell == null ? "" : cell)
@@ -3626,14 +3733,30 @@ function parsePlanOwnership(markdown) {
   let sawQualifyingTable = false;
   const order = [];
   const byTask = new Map();
+  const nearMisses = [];
 
   for (const rows of blocks) {
-    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const headerRow = rows[0];
+    const cols = splitPipeRow(headerRow).map((c) => normalizeHeaderCell(c));
     const taskIdx = cols.findIndex((c) => PLAN_OWNER_HEADER_CELLS.has(c));
     const filesIdx = cols.findIndex(
       (c, i) => i !== taskIdx && PLAN_FILES_HEADER_CELLS.has(c)
     );
-    if (taskIdx < 0 || filesIdx < 0) continue;
+    if (taskIdx < 0 || filesIdx < 0) {
+
+      const looksLikeTaskTable =
+        taskIdx >= 0 && filesIdx < 0 && cols.some((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+      if ((taskIdx >= 0 || filesIdx >= 0) && !looksLikeTaskTable) {
+        nearMisses.push({
+          headerRow,
+          matchedSide: taskIdx >= 0 ? "owner" : "files",
+          expectedForms: [
+            ...(taskIdx >= 0 ? PLAN_FILES_HEADER_CELLS : PLAN_OWNER_HEADER_CELLS),
+          ],
+        });
+      }
+      continue;
+    }
     sawQualifyingTable = true;
 
     for (let i = 1; i < rows.length; i++) {
@@ -3668,8 +3791,13 @@ function parsePlanOwnership(markdown) {
     }
   }
 
-  if (!sawQualifyingTable) return null;
-  return { ownership: order.map((taskId) => ({ taskId, files: byTask.get(taskId) })) };
+  if (!sawQualifyingTable && nearMisses.length === 0) return null;
+  return {
+    ownership: sawQualifyingTable
+      ? order.map((taskId) => ({ taskId, files: byTask.get(taskId) }))
+      : null,
+    nearMisses,
+  };
 }
 
 function validatePlanContract(tasks, ownership) {
@@ -3695,6 +3823,96 @@ function validatePlanContract(tasks, ownership) {
   }
 
   return problems.length === 0 ? { ok: true } : { ok: false, problems };
+}
+
+function lintPlanArtifact(markdown) {
+  const diagnostics = [];
+
+  const parsed = parsePlanTasks(markdown);
+  if (!parsed || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+    diagnostics.push({
+      kind: "unparseable-tasks",
+      message:
+        "the task table could not be parsed: the header row must carry an exact " +
+        "'Task ID' cell (or 'ID' / '#') and an exact 'Dependencies' cell (or " +
+        "'Deps' / 'Depends On'), one markdown table row per task.",
+    });
+    return { ok: false, diagnostics };
+  }
+
+  const unknownDeps = findUnknownPlanDepsIds(markdown);
+  for (const problem of unknownDeps) {
+    const m = /^row (\d+): Deps cell "([^"]*)" names unknown id "([^"]*)"$/.exec(problem);
+    diagnostics.push({
+      kind: "unknown-dep-id",
+      row: m ? Number(m[1]) : undefined,
+      cell: m ? m[2] : undefined,
+      message: problem,
+    });
+  }
+
+  if (unknownDeps.length === 0) {
+    try {
+      computeTopologicalBatches(parsed.tasks);
+    } catch (cycleErr) {
+      diagnostics.push({
+        kind: "cycle",
+        message: (cycleErr && cycleErr.message) || String(cycleErr),
+      });
+    }
+  }
+
+  const ownershipParsed = parsePlanOwnership(markdown);
+  const ownershipMissing = ownershipParsed == null || ownershipParsed.ownership == null;
+  if (ownershipMissing) {
+    const nearMisses = ownershipParsed ? ownershipParsed.nearMisses || [] : [];
+    if (nearMisses.length > 0) {
+      for (const nm of nearMisses) {
+        diagnostics.push({
+          kind: "ownership-near-miss",
+          cell: nm.headerRow,
+          expectedForms: nm.expectedForms,
+          message:
+            `"${nm.headerRow}" matched the ${nm.matchedSide} side but not the other ` +
+            `(accepted spellings for the missing side: ${nm.expectedForms.join(", ")})`,
+        });
+      }
+    } else {
+      diagnostics.push({
+        kind: "ownership-missing",
+        message:
+          "no file-ownership manifest found: add a markdown table whose header row " +
+          "carries an exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an " +
+          "exact 'Files' cell (or 'Owned Files' / 'Files Created or Appended'), one " +
+          "row per task, each row listing that task's owned paths in backticks.",
+      });
+    }
+  } else {
+    const contract = validatePlanContract(parsed.tasks, ownershipParsed.ownership);
+    if (!contract.ok) {
+      for (const problem of contract.problems) {
+        diagnostics.push({ kind: "contract-violation", message: problem });
+      }
+    }
+  }
+
+  return { ok: diagnostics.length === 0, diagnostics };
+}
+
+function planLintFeedForwardClause(diagnostics) {
+  const lines = diagnostics.map((d) => {
+    const loc = d.row != null ? `row ${d.row}` : d.cell ? `"${d.cell}"` : null;
+    const forms =
+      d.expectedForms && d.expectedForms.length > 0
+        ? ` (accepted: ${d.expectedForms.join(", ")})`
+        : "";
+    return loc ? `- [${d.kind}] ${loc}: ${d.message}${forms}` : `- [${d.kind}] ${d.message}${forms}`;
+  });
+  return (
+    "The PLAN's mechanical lint (the same check Phase P's post-convergence gate runs) " +
+    "found the following in what is on disk right now — fix these exactly:\n" +
+    lines.join("\n")
+  );
 }
 
 function pathsCollide(a, b) {
@@ -3829,6 +4047,131 @@ function parseVerdict(result, skillName) {
     medium: parsed.medium,
     low: parsed.low,
   };
+}
+
+const FINDING_SEVERITIES = Object.freeze({ high: "High", medium: "Medium", low: "Low" });
+const FINDING_PROVENANCES = Object.freeze({ delta: "delta", inherited: "inherited" });
+const FINDING_LOCALITIES = Object.freeze({ local: "local", nonlocal: "nonlocal" });
+
+function parseConfirmationFindings(text) {
+  const findings = [];
+  const malformed = [];
+
+  scanLines(text, (line) => {
+
+    const trimmed = line.trim();
+    const tag = /^FINDING\s*:/i.exec(trimmed);
+    if (!tag) return;
+
+    const body = trimmed.slice(tag[0].length);
+
+    const parts = [];
+    let rest = body;
+    for (let i = 0; i < 4; i++) {
+      const at = rest.indexOf("|");
+      if (at === -1) {
+        rest = null;
+        break;
+      }
+      parts.push(rest.slice(0, at));
+      rest = rest.slice(at + 1);
+    }
+    if (rest === null) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    const severity = FINDING_SEVERITIES[parts[0].trim().toLowerCase()];
+    const provenance = FINDING_PROVENANCES[parts[1].trim().toLowerCase()];
+    const locality = FINDING_LOCALITIES[parts[2].trim().toLowerCase()];
+    if (!severity || !provenance || !locality) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    findings.push({
+      severity,
+      provenance,
+      locality,
+      section: parts[3].trim(),
+      text: rest.trim(),
+    });
+  });
+
+  return { findings, malformed };
+}
+
+const ERRATUM_FAIL_CLOSED_SECTION = "(untagged confirmation)";
+
+function erratumGateDecision({ confirmations, followUpAvailable = false } = {}) {
+  const list = Array.isArray(confirmations) ? confirmations.filter(Boolean) : [];
+  const nonApproving = list.filter((c) => c.approving !== true);
+
+  const findings = [];
+  const failClosed = [];
+  for (const confirmation of list) {
+    const source = confirmation.source ?? "(unknown)";
+    const parsed = Array.isArray(confirmation.findings) ? confirmation.findings : [];
+    const malformed = Array.isArray(confirmation.malformed) ? confirmation.malformed : [];
+    for (const finding of parsed) findings.push({ ...finding, source });
+    if (confirmation.approving === true) continue;
+    if (parsed.length > 0 && malformed.length === 0) continue;
+    failClosed.push(source);
+    findings.push({
+      severity: "High",
+      provenance: "delta",
+      locality: "nonlocal",
+      section: ERRATUM_FAIL_CLOSED_SECTION,
+      text:
+        parsed.length === 0
+          ? "non-approving confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+          : `non-approving confirmation carried ${malformed.length} malformed FINDING: line${
+              malformed.length === 1 ? "" : "s"
+            } — read as High/delta/nonlocal, fail-closed`,
+      source,
+      failClosed: true,
+    });
+  }
+
+  const sources = nonApproving.map((c) => c.source ?? "(unknown)");
+  if (nonApproving.length === 0) {
+    return { rule: "R1", nonApproving: [], findings, failClosed, highDelta: [], allLocal: true };
+  }
+
+  const highDelta = findings.filter((f) => f.severity === "High" && f.provenance === "delta");
+
+  const allLocal = findings.every((f) => f.severity !== "High" || f.locality === "local");
+  if (highDelta.length === 0) {
+    return { rule: "R2", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  if (allLocal && followUpAvailable === true) {
+    return { rule: "R3", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+  }
+  return { rule: "R4", nonApproving: sources, findings, failClosed, highDelta, allLocal };
+}
+
+function formatConfirmationFindings(findings) {
+  const list = Array.isArray(findings) ? findings.filter(Boolean) : [];
+  if (list.length === 0) return "  (no parseable FINDING: lines)";
+  return list
+    .map(
+      (f) =>
+        `  ${f.source ?? "(unknown)"}: FINDING: ${f.severity} | ${f.provenance} | ` +
+        `${f.locality} | ${f.section} | ${f.text}`
+    )
+    .join("\n");
+}
+
+function markApprovalReopened(registry, { docType, phase, reason } = {}) {
+  if (!registry || typeof registry.set !== "function" || !docType) return null;
+  const entry = { docType, phase: phase ?? null, reason: reason ?? "" };
+  registry.set(docType, entry);
+  return entry;
+}
+
+function reopenedApproval(registry, docType) {
+  if (!registry || typeof registry.get !== "function" || !docType) return null;
+  return registry.get(docType) ?? null;
 }
 
 function parseDecisionsWarranted(result) {
@@ -4049,7 +4392,8 @@ function approvalHashOfNormalized(text) {
 
 const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
 
-const APPROVAL_ANCHOR_LINE = /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT):/;
+const APPROVAL_ANCHOR_LINE =
+  /^(APPROVAL-HASH(-NORMALIZED)?|REVIEWED-COMMIT|UPSTREAM-STATE):/;
 
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
 
@@ -4061,6 +4405,9 @@ function parseApprovalHash(fileText) {
   const hashes = [];
   const normalized = [];
   const commits = [];
+
+  const upstreamState = [];
+  const upstreamSeen = new Set();
   scanLines(fileText, (line) => {
     const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
     if (h) hashes.push(h[1]);
@@ -4068,6 +4415,17 @@ function parseApprovalHash(fileText) {
     if (n) normalized.push(n[1]);
     const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
     if (c) commits.push(c[1]);
+
+    const u = /^\s*UPSTREAM-STATE:\s*([A-Z]+)\s+(\S*)\s*$/.exec(line);
+    if (
+      u &&
+      ERRATUM_DOC_TYPES.includes(u[1]) &&
+      APPROVAL_HASH_VALUE_RE.test(u[2]) &&
+      !upstreamSeen.has(u[1])
+    ) {
+      upstreamSeen.add(u[1]);
+      upstreamState.push({ docType: u[1], hash: u[2] });
+    }
   });
 
   if (hashes.length === 0) return { ok: false, reason: "absent" };
@@ -4082,7 +4440,7 @@ function parseApprovalHash(fileText) {
   const normalizedHash =
     normalized.length === 1 && APPROVAL_HASH_VALUE_RE.test(normalized[0]) ? normalized[0] : null;
 
-  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit };
+  return { ok: true, hash: hashes[0], normalizedHash, reviewedCommit, upstreamState };
 }
 
 function extractFileVerdict(fileText, roleSlug) {
@@ -4173,6 +4531,32 @@ function isStaleByHash(recordedHash, documentHash) {
   return documentHash === recordedHash ? "FRESH" : "STALE";
 }
 
+function upstreamStateLines(rows) {
+  if (!Array.isArray(rows)) return "";
+  return rows
+    .filter(
+      (r) =>
+        r &&
+        ERRATUM_DOC_TYPES.includes(r.docType) &&
+        typeof r.hash === "string" &&
+        APPROVAL_HASH_VALUE_RE.test(r.hash)
+    )
+    .map((r) => `UPSTREAM-STATE: ${r.docType} ${r.hash}\n`)
+    .join("");
+}
+
+function upstreamStateDrift(recorded, current) {
+  if (!Array.isArray(recorded) || !current || typeof current.get !== "function") return [];
+  const moved = [];
+  for (const row of recorded) {
+    if (!row || !ERRATUM_DOC_TYPES.includes(row.docType)) continue;
+    const now = current.get(row.docType);
+    if (now == null) continue;
+    if (now !== row.hash) moved.push(row.docType);
+  }
+  return moved;
+}
+
 const REQUIRED_HEADINGS = Object.freeze({
   REQ: Object.freeze([
     { title: "Problem / Context", alts: ["Context", "Problem", "Background"] },
@@ -4209,8 +4593,8 @@ const REQUIRED_HEADINGS = Object.freeze({
   PROPERTIES: Object.freeze([
     { title: "Overview", alts: ["Scope", "Summary"] },
     { title: "Properties", alts: ["Invariants"] },
-    { title: "Oracles", alts: ["Checks"] },
-    { title: "Fixtures", alts: ["Generators", "Test data"] },
+    { title: "Oracles", alts: ["Checks", "Test Oracles"] },
+    { title: "Fixtures", alts: ["Generators", "Test data", "Test Fixtures"] },
   ]),
   DECISIONS: Object.freeze([
     { title: "Context", alts: ["Background"] },
@@ -4366,6 +4750,68 @@ function isComplete(artifactClass, docType, fileText) {
   }
 
   return done(false, []);
+}
+
+function headingFeedForwardClause(docType) {
+  const rows = REQUIRED_HEADINGS[docType];
+  if (!Array.isArray(rows) || rows.length === 0) return "";
+  const lines = rows.map((r) =>
+    r.alts && r.alts.length > 0
+      ? `## ${r.title} (accepted: ${r.title}, ${r.alts.join(", ")})`
+      : `## ${r.title}`
+  );
+  return (
+    "The completeness gate accepts these top-level sections — canonical title, or " +
+    "any listed accepted alternative — cover every one:\n" + lines.join("\n")
+  );
+}
+
+function nearestHeadingMisses(fileText, docType) {
+  const rows = REQUIRED_HEADINGS[docType];
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const sections = topLevelSections(fileText);
+  const tokensOf = (s) => s.split(/[^a-z0-9]+/).filter(Boolean);
+  const tokenNear = (a, b) => {
+    if (a === b) return true;
+    const n = Math.min(a.length, b.length);
+    if (n < 4) return false;
+    let i = 0;
+    while (i < n && a[i] === b[i]) i++;
+    return i >= 4;
+  };
+
+  const results = [];
+  for (const row of rows) {
+    const forms = [row.title, ...(row.alts || [])];
+    const normForms = forms.map(normaliseHeadingTitle);
+    const satisfied = sections.some(
+      (s) => !isEmptyBody(s.body) && normForms.some((t) => headingContains(s.normalised, t))
+    );
+    if (satisfied) continue;
+
+    const rowTokens = normForms.flatMap(tokensOf);
+    for (const s of sections) {
+      const candTokens = tokensOf(s.normalised);
+      const near = candTokens.some((ct) => rowTokens.some((rt) => tokenNear(ct, rt)));
+      if (near) {
+        results.push({ missing: row.title, candidate: s.title, expectedForms: forms });
+        break; 
+      }
+    }
+  }
+  return results;
+}
+
+function nearestHeadingMissClause(misses) {
+  if (!misses || misses.length === 0) return "";
+  const lines = misses.map(
+    (m) =>
+      `found "## ${m.candidate}" — did you mean canonical "${m.missing}" (accepted: ${m.expectedForms.join(", ")})?`
+  );
+  return (
+    "Headings already on disk that may be a naming mismatch, not a content gap:\n" +
+    lines.join("\n")
+  );
 }
 
 function isPass(verdict) {
@@ -4556,7 +5002,38 @@ const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
   PROPERTIES: "PR",
 });
 
+const featureDocPath = (feature, docType) => `docs/${feature}/${docType}-${feature}.md`;
+
+const erratumDocTypesAbove = (target) =>
+  ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
+
+const erratumDocTypesBelow = (target) =>
+  ERRATUM_DOC_TYPES.indexOf(target) < 0
+    ? []
+    : ERRATUM_DOC_TYPES.slice(ERRATUM_DOC_TYPES.indexOf(target) + 1);
+
+async function deriveApprovalUpstreamState({ feature, docType, _probeDoc, _hashFile }) {
+  const rows = [];
+  for (const upstream of erratumDocTypesAbove(docType)) {
+    const path = featureDocPath(feature, upstream);
+    const probe = await probeDocument(_probeDoc, path, upstream);
+    let hash = probe ? probe.hash ?? null : null;
+    if (!probe && typeof _hashFile === "function") {
+      try {
+        hash = (await _hashFile(path)) ?? null;
+      } catch {
+        hash = null;
+      }
+    }
+    if (hash == null) continue;
+    rows.push({ docType: upstream, hash });
+  }
+  return rows;
+}
+
 const MAX_ERRATUM_ROUNDS_PER_DOC = 1;
+
+const MAX_ERRATUM_FOLLOWUP_ROUNDS = 1;
 
 const ERRATUM_LINE_RE = /^\s*(?:[-*]\s+)?ERRATUM:\s*([^:]+?)\s*:\s*(\S.*?)\s*$/;
 
@@ -4578,6 +5055,115 @@ function parseErrata(text, onIgnored) {
     found.push({ docType, item });
   });
   return found;
+}
+
+const ERRATUM_ANCHOR_RE = /§[\w.-]+|:\d{2,}\b/;
+function erratumAnchorOf(text) {
+  const m = ERRATUM_ANCHOR_RE.exec(String(text ?? ""));
+  return m ? m[0].toLowerCase().trim() : null;
+}
+
+const ERRATUM_TOKEN_RE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+function erratumTokenOf(text) {
+  const s = String(text ?? "");
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let last = null;
+  let m;
+  while ((m = ERRATUM_TOKEN_RE.exec(s))) last = m[1] ?? m[2];
+  return last ? last.toLowerCase().replace(/\s+/g, " ").trim() : null;
+}
+
+const ERRATUM_EXPECT_TOKEN_RE = /EXPECT-TOKEN:\s*[`*]?([^`*\n]+?)[`*]?\s*$/im;
+function erratumLiteralTokenOf(text) {
+  const s = String(text ?? "");
+  const explicit = ERRATUM_EXPECT_TOKEN_RE.exec(s);
+  if (explicit) {
+    const token = explicit[1].toLowerCase().replace(/\s+/g, " ").trim();
+    if (token) return token;
+  }
+  if (!/\bsay\b/i.test(s) || !/\bnot\b/i.test(s)) return null;
+  ERRATUM_TOKEN_RE.lastIndex = 0;
+  let quotedSpans = 0;
+  while (ERRATUM_TOKEN_RE.exec(s)) quotedSpans++;
+  if (quotedSpans < 2) return null;
+  return erratumTokenOf(s);
+}
+
+function erratumDedupeKey(docType, text) {
+  const anchor = erratumAnchorOf(text);
+  if (!anchor) {
+    return `${docType}\0${String(text ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+  }
+  return `${docType}\0${anchor}\0${erratumTokenOf(text) ?? ""}`;
+}
+
+function dedupeErrataEntries(entries) {
+  const kept = [];
+  const byKey = new Map();
+  for (const raw of Array.isArray(entries) ? entries : []) {
+    if (!raw) continue;
+    const key = erratumDedupeKey(raw.docType, raw.item);
+    const existing = byKey.get(key);
+    if (existing) {
+      const sources = String(existing.source ?? "")
+        .split(", ")
+        .filter(Boolean);
+      const next = String(raw.source ?? "");
+      if (next && !sources.includes(next)) sources.push(next);
+      existing.source = sources.join(", ");
+      continue;
+    }
+    const merged = { ...raw, source: String(raw.source ?? "") };
+    byKey.set(key, merged);
+    kept.push(merged);
+  }
+  return kept;
+}
+
+function splitErratumMultiHome(entry) {
+  if (!entry) return [];
+  const text = String(entry.item ?? "");
+  const named = [];
+  for (const docType of ERRATUM_DOC_TYPES) {
+    if (new RegExp(`\\b${docType}\\b`).test(text)) named.push(docType);
+  }
+  if (named.length < 2) return [entry];
+  const multiHomeGroup = `${entry.docType}\0${text}`;
+  return named.map((docType) => ({ ...entry, docType, multiHomeGroup }));
+}
+
+const ERRATUM_ORACLE_ID_RE = /\b(?:AT|INV|META)-[A-Za-z0-9]+\b/;
+const ERRATUM_ORACLE_WORD_RE = /\boracles?\b/i;
+function touchesErratumOracle(text) {
+  const s = String(text ?? "");
+  return ERRATUM_ORACLE_ID_RE.test(s) || ERRATUM_ORACLE_WORD_RE.test(s);
+}
+
+const ERRATUM_ORACLE_CONTRACT_TERMS = Object.freeze([
+  { label: "a property statement", re: /\bproperty\b/i },
+  { label: "a non-subsumption rationale", re: /\bsubsum/i },
+  { label: "a per-conjunct red witness", re: /\bwitness\b/i },
+]);
+
+function oracleContractShortfall(text) {
+  if (!touchesErratumOracle(text)) return [];
+  return ERRATUM_ORACLE_CONTRACT_TERMS.filter((t) => !t.re.test(String(text ?? ""))).map(
+    (t) => t.label
+  );
+}
+
+const ERRATUM_REMINT_LINE_RE = /^\s*(?:[-*]\s+)?RE-MINT:\s*(ABSORBED|STILL-RAISED):\s*(\S.*?)\s*$/;
+function parseErratumRemint(text) {
+  const stillRaised = [];
+  const absorbed = [];
+  let any = false;
+  scanLines(String(text ?? ""), (line) => {
+    const m = ERRATUM_REMINT_LINE_RE.exec(line);
+    if (!m) return;
+    any = true;
+    (m[1] === "ABSORBED" ? absorbed : stillRaised).push(m[2]);
+  });
+  return any ? { stillRaised, absorbed } : null;
 }
 
 async function withDispatchRetry(dispatchFn, { label, emit = () => {}, onFault = () => {} } = {}) {
@@ -4776,6 +5362,7 @@ async function reviewLoop({
 
     let anchorHash = null;
     let anchorNormalizedHash = null;
+    let anchorUpstreamState = [];
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
 
@@ -4786,6 +5373,13 @@ async function reviewLoop({
         probe,
         path: doc,
         _hashNormalizedFile,
+      });
+
+      anchorUpstreamState = await deriveApprovalUpstreamState({
+        feature,
+        docType: roundDocType,
+        _probeDoc,
+        _hashFile,
       });
       anchorCommit = await headCommitSha(_git); 
     }
@@ -4849,6 +5443,7 @@ async function reviewLoop({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
+        upstreamState: anchorUpstreamState,
         commit: anchorCommit,
         _readFile,
         _probeDoc,
@@ -4937,6 +5532,7 @@ async function appendApprovalAnchors({
   paths,
   hash,
   normalizedHash = null,
+  upstreamState = [],
   commit,
   _readFile,
   _probeDoc,
@@ -4985,7 +5581,9 @@ async function appendApprovalAnchors({
         path,
         `\nAPPROVAL-HASH: ${hash}\n` +
           (normalizedHash ? `APPROVAL-HASH-NORMALIZED: ${normalizedHash}\n` : "") +
-          `REVIEWED-COMMIT: ${commit}\n`
+          `REVIEWED-COMMIT: ${commit}\n` +
+
+          upstreamStateLines(upstreamState)
       );
       appended = true;
     } catch (err) {
@@ -5188,21 +5786,26 @@ function branchPinClause(feature) {
   );
 }
 
-function skeletonClause() {
+function skeletonClause(docType) {
+  const feedForward = headingFeedForwardClause(docType);
   return (
     "This artifact is not on disk yet. Begin by laying out its top-level headings " +
-    "as a skeleton, then fill them one at a time under the pacing contract above."
+    "as a skeleton, then fill them one at a time under the pacing contract above." +
+    (feedForward ? `\n\n${feedForward}` : "")
   );
 }
 
-function resumeClause({ T, S, firstUnwritten, targetPath }) {
-  return [
+function resumeClause({ T, S, firstUnwritten, targetPath, docType, missing, fileText }) {
+  const base = [
     `RESUMED: ${targetPath} already carries partial content`,
     `(${S} of ${T} top-level sections carry a body).`,
     "Read the document on disk first and do NOT rewrite what is already written.",
     `The first unwritten section is ${firstUnwritten}.`,
     "Continue from there, one section per write, under the pacing contract above.",
   ].join(" ");
+  if (!docType || fileText == null || !Array.isArray(missing) || missing.length === 0) return base;
+  const nearMissClause = nearestHeadingMissClause(nearestHeadingMisses(fileText, docType));
+  return nearMissClause ? `${base}\n\n${nearMissClause}` : base;
 }
 
 function continuationClause(round, reviewBasenames, targetPath) {
@@ -5260,6 +5863,8 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
       anchorHash: anchor.ok ? anchor.hash : null,
 
       anchorNormalizedHash: anchor.ok ? anchor.normalizedHash : null,
+
+      anchorUpstreamState: anchor.ok ? anchor.upstreamState : [],
       anchorReason: anchor.ok ? null : anchor.reason,
       path: `${dirPath}/${basename}`,
     });
@@ -5383,6 +5988,7 @@ function noApprovalRecord(candidate, unevaluable = []) {
     candidate,
     hash: null,
     normalizedHash: null,
+    upstreamState: [],
     unevaluable,
     tier1Empty: false,
   };
@@ -5415,11 +6021,18 @@ function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
   const normalizedHash =
     norms.every((h) => typeof h === "string" && h === norms[0]) ? norms[0] : null;
 
+  const upstreamSerialised = records.map((r) => upstreamStateLines(r.anchorUpstreamState ?? []));
+  const upstreamState =
+    upstreamSerialised.every((s) => s === upstreamSerialised[0]) && upstreamSerialised[0] !== ""
+      ? (records[0].anchorUpstreamState ?? [])
+      : [];
+
   return {
     approving: true,
     candidate,
     hash: hashes[0],
     normalizedHash,
+    upstreamState,
     unevaluable: [],
     tier1Empty: false,
   };
@@ -5465,6 +6078,7 @@ async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _re
     candidate,
     hash: hashes[0],
     normalizedHash: null,
+    upstreamState: [],
     unevaluable: [],
     tier1Empty: false,
   };
@@ -5556,14 +6170,25 @@ async function dispatchAndVerify({
     if (selection.mode === "revision") {
       opener = continuationClause(selection.round, roundFiles, targetPath);
     } else if (invocations === 1 && before.empty) {
-      opener = skeletonClause();
+      opener = skeletonClause(docType);
     } else {
       opener = resumeClause({
         T: before.measured.T,
         S: before.measured.S,
         firstUnwritten: before.firstUnwritten,
         targetPath,
+        docType,
+        missing: before.measured.missing,
+
+        fileText: before.probed ? null : before.identity,
       });
+    }
+
+    if (docType === "PLAN" && artifactClass === "spec" && !before.probed && !before.empty) {
+      const planLint = lintPlanArtifact(before.identity);
+      if (!planLint.ok) {
+        opener = `${opener}\n\n${planLintFeedForwardClause(planLint.diagnostics)}`;
+      }
     }
     const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
 
@@ -5893,7 +6518,13 @@ function upstreamHeadClause({ docType, upstreamState = [], movedSinceMinted = []
       ? `UPSTREAM MOVED SINCE THIS LIST WAS MINTED: ${movedSinceMinted.join(", ")}. The items below ` +
         `were derived from an EARLIER version of ${movedSinceMinted.length === 1 ? "that document" : "those documents"} ` +
         `and may be incomplete or wrong for HEAD. Re-derive what this ${docType} owes its upstream ` +
-        `from the current text before you edit anything (DEC-ERR-03).\n`
+        `from the current text before you edit anything (DEC-ERR-03).\n` +
+
+        `For EACH item below, end your final message with one line: ` +
+        `\`RE-MINT: STILL-RAISED: {item text}\` if it is still open against HEAD, or ` +
+        `\`RE-MINT: ABSORBED: {item text}\` if your re-grounding shows it is already resolved and ` +
+        `your edit does not need to touch it. Omitting these lines leaves the routed list below as ` +
+        `the floor stated above.\n`
       : "";
   return (
     `Re-ground on upstream HEAD FIRST, before you read the items below. These are the upstream ` +
@@ -5923,9 +6554,24 @@ function erratumConfirmPrompt({
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
     erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+function findingGrammarClause() {
+  return (
+    `Tag every finding you raise. One finding per line, outside any fenced block, ` +
+    `above your VERDICT trailer:\n` +
+    `FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}\n` +
+    `- delta = this round's edit introduced it, or left it unlanded; inherited = it was ` +
+    `already in the pre-round bytes and this edit did not touch it.\n` +
+    `- local = it sits inside the sections this edit changed; nonlocal = anywhere else.\n` +
+    `- The section anchor and the text are free-form; pipes inside the text are fine.\n` +
+    `An untagged finding is read as {delta, nonlocal} — the strictest reading — so tagging ` +
+    `can only ever widen the outcome, never narrow it.\n`
   );
 }
 
@@ -5944,6 +6590,34 @@ function erratumSupersetClause({ docType, upstreamState = [] }) {
     `way, is a finding of THIS confirmation whether or not it appears in the list above ` +
     `(DEC-ERR-03).\n` +
     rows
+  );
+}
+
+function cascadeConfirmPrompt({
+  feature,
+  docType,
+  docPath,
+  upstreamDocType,
+  upstreamPath,
+  round,
+  reviewFile,
+  upstreamState = [],
+}) {
+  return (
+    `UPSTREAM-CASCADE CONFIRMATION for ${docPath} (feature ${feature}).\n` +
+    `You previously approved ${docType}. Its own bytes have NOT changed. What changed is ` +
+    `${upstreamDocType}, at ${upstreamPath}: an erratum round edited it after your approval was ` +
+    `recorded, so your approval was taken against a version of ${upstreamDocType} that no longer ` +
+    `exists.\n` +
+    `Do not re-review the whole document, and do not re-litigate settled decisions. Re-read your ` +
+    `own prior cross-review of ${docType}, read \`git diff\` for the edit to ${upstreamPath}, and ` +
+    `answer ONE question: does ${docType} still hold as approved against ${upstreamDocType} as it ` +
+    `now stands?\n` +
+    erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
+    `Write your confirmation as the next cross-review round for this document type — ` +
+    `${reviewFile} (round v${round}) — and end with the standard VERDICT trailer.\n` +
+    branchPinClause(feature)
   );
 }
 
@@ -6771,6 +7445,34 @@ function computeTopologicalBatches(tasks) {
   return batches;
 }
 
+function findCyclePath(stuckTasks) {
+  const byId = new Map(stuckTasks.map((t) => [t.id, t]));
+  const onStack = new Set();
+  const visited = new Set();
+  const path = [];
+
+  const dfs = (id) => {
+    if (onStack.has(id)) return [...path.slice(path.indexOf(id)), id];
+    if (visited.has(id) || !byId.has(id)) return null;
+    onStack.add(id);
+    path.push(id);
+    for (const dep of byId.get(id).dependencies) {
+      const found = dfs(dep);
+      if (found) return found;
+    }
+    onStack.delete(id);
+    path.pop();
+    visited.add(id);
+    return null;
+  };
+
+  for (const t of stuckTasks) {
+    const found = dfs(t.id);
+    if (found) return found;
+  }
+  return stuckTasks.map((t) => t.id);
+}
+
 function topologicalReadySets(tasks) {
   const completed = new Set();
   const layers = [];
@@ -6783,8 +7485,11 @@ function topologicalReadySets(tasks) {
     );
 
     if (ready.length === 0 && completed.size < tasks.length) {
+      const stuck = tasks.filter((t) => !completed.has(t.id));
+      const cyclePath = findCyclePath(stuck);
       throw haltError(
-        "Error: PLAN dependency graph contains a cycle — cannot compute topological batches"
+        "Error: PLAN dependency graph contains a cycle — cannot compute topological batches " +
+          `(cycle: ${cyclePath.join(" -> ")})`
       );
     }
 
@@ -7398,7 +8103,9 @@ async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
   try {
     const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
     const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
-    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    if (ownership && Array.isArray(ownership.ownership)) {
+      planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+    }
   } catch {
     planFiles = [];
   }
@@ -7537,6 +8244,8 @@ async function main({
 
   let gatePostmortem = null;
 
+  const reopenedApprovals = new Map();
+
   async function phaseGate({ phaseId, docType, docPath }) {
     const label = PHASE_DISPATCH[phaseId].label;
 
@@ -7591,7 +8300,34 @@ async function main({
             heldByNormalization = true;
           }
         }
-        if (freshness === "FRESH") {
+
+        if (freshness === "FRESH" && record.upstreamState && record.upstreamState.length > 0) {
+          const current = new Map();
+          for (const row of record.upstreamState) {
+            current.set(row.docType, await erratumDocHash(row.docType));
+          }
+          const drifted = upstreamStateDrift(record.upstreamState, current);
+          if (drifted.length > 0) {
+            freshness = "STALE";
+            heldByNormalization = false;
+            const notice =
+              `Phase ${phaseId}: ${docPath} is byte-unchanged but its recorded approval was ` +
+              `taken against a DIFFERENT upstream — ${drifted.join(", ")} moved since round ` +
+              `${record.candidate} was approved (PLAN §3.1). The approval is treated as STALE ` +
+              `and the phase runs again.`;
+            notices.push(notice);
+            emit(notice);
+          }
+        }
+
+        const reopened = reopenedApproval(reopenedApprovals, docType);
+        if (freshness === "FRESH" && reopened) {
+          notices.push(
+            `Phase ${phaseId}: ${docPath} was RE-OPENED during this run — ${reopened.reason} ` +
+              `The approval recorded at round ${record.candidate} does not hold and the phase runs.`
+          );
+        }
+        if (freshness === "FRESH" && !reopened) {
 
           const pm = await resolvePostmortem({
             phase: phaseId,
@@ -7700,16 +8436,13 @@ async function main({
     return episode.response;
   }
 
-  const erratumDocPath = (docType) => `docs/${featureName}/${docType}-${featureName}.md`;
+  const erratumDocPath = (docType) => featureDocPath(featureName, docType);
 
   async function erratumDocHash(docType) {
     const path = erratumDocPath(docType);
     const probe = await probeDocument(probeDocFn, path, docType);
     return (probe ? probe.hash : await hashFileFn(path)) ?? null;
   }
-
-  const erratumDocTypesAbove = (target) =>
-    ERRATUM_DOC_TYPES.slice(0, Math.max(0, ERRATUM_DOC_TYPES.indexOf(target)));
 
   async function snapshotErratumDocs() {
     const snapshot = new Map();
@@ -7770,7 +8503,152 @@ async function main({
     );
   }
 
-  async function erratumRound({ phaseId, label, target, items, mintedHashes }) {
+  async function cascadeDownstream({ phaseId, target, editedIn }) {
+    const targetHash = await erratumDocHash(target);
+    if (targetHash == null) return;
+
+    for (const downstream of erratumDocTypesBelow(target)) {
+      const ownerPhase = ERRATUM_PHASE_BY_DOC_TYPE[downstream];
+      const dispatch = PHASE_DISPATCH[ownerPhase];
+      if (!dispatch || !Array.isArray(dispatch.reviewers) || dispatch.reviewers.length === 0)
+        continue;
+
+      const docPath = erratumDocPath(downstream);
+      const docHash = await erratumDocHash(downstream);
+      if (docHash == null) continue; 
+
+      const window = await phaseWindow(downstream);
+
+      const record = tier1ApprovalRecord({
+        reviewers: dispatch.reviewers,
+        startIndex: window.startIndex,
+        reviewFiles: window.reviewFiles,
+      });
+      if (!record.approving) continue;
+      const row = (record.upstreamState ?? []).find((e) => e.docType === target);
+      if (!row || row.hash === targetHash) continue;
+
+      if (lifetimeCapReached(window.startIndex)) {
+        const onDisk = window.startIndex - 1;
+        const notice =
+          `Phase ${phaseId}: LIFETIME REVIEW CAP REACHED for ${docPath} — the upstream cascade ` +
+          `re-confirmation is skipped, nothing dispatched. ${onDisk} review round` +
+          `${onDisk === 1 ? "" : "s"} for ${downstream} are on disk and the cap is ` +
+          `${MAX_LIFETIME_ROUNDS}. Its approval was anchored against an EARLIER ${target}, which ` +
+          `${editedIn} has since edited; the document is ACCEPTED AS-IS (not approved, not ` +
+          `failed — no POSTMORTEM written) and the pipeline moves forward. To re-confirm it ` +
+          `anyway, re-run with forcePhases including "${ownerPhase}".`;
+        notices.push(notice);
+        emit(notice);
+        continue;
+      }
+
+      const round = window.startIndex;
+      const reviewers = dispatch.reviewers;
+      const paths = reviewers.map(
+        (skill) =>
+          `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${downstream}-v${round}.md`
+      );
+      const { upstreamState } = await deriveUpstreamState(downstream, null);
+
+      const opening =
+        `Phase ${phaseId}: ${target} moved under ${docPath} — its recorded approval (round ` +
+        `${record.candidate}) was anchored against ${target} \`${row.hash}\`, now ` +
+        `\`${targetHash}\`. Dispatching ONE delta re-confirmation round v${round} to ` +
+        `${reviewers.join(", ")} (PLAN §3.2).`;
+      notices.push(opening);
+      emit(opening);
+
+      const responses = await parallelFn(
+        reviewers.map((skill, i) =>
+          wrappedDispatch({
+            skill,
+            basePrompt: cascadeConfirmPrompt({
+              feature: featureName,
+              docType: downstream,
+              docPath,
+              upstreamDocType: target,
+              upstreamPath: erratumDocPath(target),
+              round,
+              reviewFile: paths[i],
+              upstreamState,
+            }),
+            targetPath: paths[i],
+            docType: downstream,
+            dispatchKind: "review",
+            phaseId: ownerPhase,
+            sessionKey: reviewerSessionKey(featureName, downstream, ownerPhase, skill),
+          })
+        )
+      );
+
+      const verdicts = [];
+      for (let i = 0; i < reviewers.length; i++) {
+        const trailer = parseVerdict(responses[i], reviewers[i]);
+        if (trailer.malformed !== true) {
+          verdicts.push(trailer);
+          continue;
+        }
+        let fileText = null;
+        try {
+          fileText = await readFileFn(paths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = extractFileVerdict(
+          fileText,
+          reviewerRoleSlug(reviewers[i]) || reviewers[i]
+        );
+        verdicts.push(fromFile.ok && fromFile.malformed !== true ? fromFile : trailer);
+      }
+
+      if (verdicts.every((v) => isPassResult(v))) {
+
+        const probe = await probeDocument(probeDocFn, docPath, downstream);
+        const normalizedHash = await normalizedAnchorFor({
+          probe,
+          path: docPath,
+          _hashNormalizedFile: hashNormalizedFileFn,
+        });
+        await appendApprovalAnchors({
+          paths,
+          hash: docHash,
+          normalizedHash,
+          upstreamState: upstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
+          commit: await headCommitSha(gitFn),
+          _readFile: readFileFn,
+          _probeDoc: probeDocFn,
+          _appendFile: appendFileFn,
+          _git: gitFn,
+          emit,
+        });
+        const notice =
+          `Phase ${phaseId}: ${docPath} RE-CONFIRMED at round v${round} against the edited ` +
+          `${target}. Its bytes are unchanged; its approval now records the CURRENT upstream ` +
+          `state and the phase stays skippable.`;
+        notices.push(notice);
+        emit(notice);
+        continue;
+      }
+
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: downstream,
+        phase: ownerPhase,
+        reason:
+          `phase ${phaseId}'s erratum edit to ${target} moved the upstream ${downstream} was ` +
+          `approved against, and the delta re-confirmation at round v${round} did not approve.`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${docPath} was NOT re-confirmed against the edited ${target} at round ` +
+        `v${round}. No anchors were written — nobody approved these bytes against this upstream — ` +
+        `and the recorded approval is RE-OPENED, so phase ${entry ? entry.phase : ownerPhase} ` +
+        `runs again under its ordinary review budgets (PLAN §3.2, ruling Q-1).`;
+      notices.push(notice);
+      emit(notice);
+    }
+  }
+
+  async function erratumRound({ phaseId, label, target, items, mintedHashes, attempt = 0 }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
     const upstreamPath = erratumDocPath(target);
@@ -7823,12 +8701,99 @@ async function main({
       sessionKey: authorSessionKey(featureName, target, upstreamPhase),
     });
 
-    const round = window.startIndex;
+    let confirmItemLines = itemLines;
+    let confirmItemCount = items.length;
+    let confirmItemTexts = items.map((e) => e.item);
+    if (movedSinceMinted.length > 0) {
+      const remint = parseErratumRemint(authorResponse);
+      if (remint) {
+        confirmItemCount = remint.stillRaised.length;
+        confirmItemTexts = remint.stillRaised;
+        confirmItemLines =
+          confirmItemCount > 0
+            ? remint.stillRaised.map((text) => `- ${text}`).join("\n")
+            : "(every routed item was reported ABSORBED against upstream HEAD; nothing remains to confirm.)";
+        const notice =
+          `Phase ${phaseId}: erratum round for ${target} — re-minted structurally: ` +
+          `${remint.absorbed.length} item${remint.absorbed.length === 1 ? "" : "s"} absorbed, ` +
+          `${confirmItemCount} still raised. Confirmers are reading the author's re-derived list ` +
+          `against upstream HEAD, not the stale mint (PLAN §2.4 item 2).`;
+        notices.push(notice);
+        emit(notice);
+      }
+    }
+
+    const literalTokenItems = confirmItemTexts
+      .map((text) => ({ text, token: erratumLiteralTokenOf(text) }))
+      .filter((entry) => entry.token !== null);
+
+    if (literalTokenItems.length > 0) {
+      const missingAgainst = async () => {
+        let docText = null;
+        try {
+          docText = await readFileFn(upstreamPath);
+        } catch {
+          docText = null;
+        }
+        const hay = String(docText ?? "").toLowerCase();
+        return literalTokenItems.filter((entry) => !headingContains(hay, entry.token));
+      };
+
+      let stillMissing = await missingAgainst();
+      if (stillMissing.length > 0) {
+        const missingClause = stillMissing
+          .map((entry) => `- expected token \`${entry.token}\` (from: ${entry.text})`)
+          .join("\n");
+        const s = stillMissing.length === 1 ? "" : "s";
+        notices.push(
+          `Phase ${phaseId}: erratum round for ${target} — land-proof: ${stillMissing.length} ` +
+            `literal-token item${s} did not land after the edit. Dispatching one bounded ` +
+            `re-dispatch naming the missing token${s}, before confirmers are asked:\n${missingClause}`
+        );
+        emit(notices[notices.length - 1]);
+
+        await wrappedDispatch({
+          skill: authorSkill,
+          basePrompt:
+            `ERRATUM ROUND for ${upstreamPath} (feature ${featureName}) — LAND-PROOF RETRY.\n` +
+            `Your previous edit to this ${target} did not land the following expected token${s}, ` +
+            `checked mechanically against the document text after your edit:\n${missingClause}\n` +
+            `Edit the document again so the exact token${s} above appear${stillMissing.length === 1 ? "s" : ""} ` +
+            `verbatim, in the section${s} the finding${s} name${stillMissing.length === 1 ? "s" : ""}. ` +
+            `This is a second pass on the SAME erratum edit, not a new one — change nothing else. Commit.\n` +
+            branchPinClause(featureName),
+          targetPath: upstreamPath,
+          docType: target,
+          dispatchKind: "authoring",
+          phaseId: upstreamPhase,
+          sessionKey: authorSessionKey(featureName, target, upstreamPhase),
+        });
+
+        stillMissing = await missingAgainst();
+        if (stillMissing.length > 0) {
+          const finalMissingClause = stillMissing
+            .map((entry) => `- expected token \`${entry.token}\` (from: ${entry.text})`)
+            .join("\n");
+          const s2 = stillMissing.length === 1 ? "" : "s";
+          notices.push(
+            `Phase ${phaseId}: erratum round for ${target} — land-proof: ${stillMissing.length} ` +
+              `literal-token item${s2} STILL did not land after one bounded re-dispatch (budget spent). ` +
+              `Not halted here — confirmers are dispatched next and may still catch it — but the ` +
+              `engine-side land-proof for this round is exhausted:\n${finalMissingClause}`
+          );
+          emit(notices[notices.length - 1]);
+        }
+      }
+    }
+
     const reviewers = upstream.reviewers;
-    const confirmPaths = reviewers.map(
-      (skill) =>
-        `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${round}.md`
-    );
+    const confirmRoundPaths = (n) =>
+      reviewers.map(
+        (skill) =>
+          `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${n}.md`
+      );
+    let round = window.startIndex;
+    let confirmPaths = confirmRoundPaths(round);
 
     const probe = await probeDocument(probeDocFn, upstreamPath, target);
     const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
@@ -7839,28 +8804,52 @@ async function main({
     });
     const anchorCommit = await headCommitSha(gitFn);
 
-    const responses = await parallelFn(
-      reviewers.map((skill, i) =>
-        wrappedDispatch({
-          skill,
-          basePrompt: erratumConfirmPrompt({
-            feature: featureName,
-            docType: target,
-            docPath: upstreamPath,
-            itemLines,
-            round,
-            reviewFile: confirmPaths[i],
+    const dispatchConfirmers = (atRound, paths, state) =>
+      parallelFn(
+        reviewers.map((skill, i) =>
+          wrappedDispatch({
+            skill,
+            basePrompt: erratumConfirmPrompt({
+              feature: featureName,
+              docType: target,
+              docPath: upstreamPath,
+              itemLines: confirmItemLines,
+              round: atRound,
+              reviewFile: paths[i],
 
-            upstreamState,
-          }),
-          targetPath: confirmPaths[i],
-          docType: target,
-          dispatchKind: "review",
-          phaseId: upstreamPhase,
-          sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
-        })
-      )
-    );
+              upstreamState: state,
+            }),
+            targetPath: paths[i],
+            docType: target,
+            dispatchKind: "review",
+            phaseId: upstreamPhase,
+            sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
+          })
+        )
+      );
+
+    let confirmUpstreamState = upstreamState;
+    let responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
+
+    const reDerived = await deriveUpstreamState(target, null);
+    if (upstreamStateLines(reDerived.upstreamState) !== upstreamStateLines(confirmUpstreamState)) {
+      const before = new Map(confirmUpstreamState.map((e) => [e.docType, e.hash]));
+      const movedInWindow = reDerived.upstreamState
+        .filter((e) => before.has(e.docType) && before.get(e.docType) !== e.hash)
+        .map((e) => e.docType);
+      round = round + 1;
+      confirmPaths = confirmRoundPaths(round);
+      confirmUpstreamState = reDerived.upstreamState;
+      const notice =
+        `Phase ${phaseId}: erratum confirmation for ${target} — upstream MOVED INSIDE the ` +
+        `confirmation window (${movedInWindow.join(", ") || "chain membership changed"}). The ` +
+        `first confirmation round was evaluated against a premise that no longer holds; it is ` +
+        `kept on disk as history and the confirmers are re-dispatched ONCE, both on the same ` +
+        `re-derived upstream state, at round v${round} (PLAN §3.3).`;
+      notices.push(notice);
+      emit(notice);
+      responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
+    }
 
     const verdicts = [];
     for (let i = 0; i < reviewers.length; i++) {
@@ -7897,15 +8886,112 @@ async function main({
       }
     }
 
-    const nonApproving = reviewers.filter((_, i) => !isPassResult(verdicts[i]));
-    if (nonApproving.length > 0) {
+    const confirmations = [];
+    for (let i = 0; i < reviewers.length; i++) {
+      let parsed = parseConfirmationFindings(responses[i]);
+      if (parsed.findings.length === 0 && parsed.malformed.length === 0) {
+        let fileText = null;
+        try {
+          fileText = await readFileFn(confirmPaths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = parseConfirmationFindings(fileText ?? "");
+        if (fromFile.findings.length > 0 || fromFile.malformed.length > 0) parsed = fromFile;
+      }
+      confirmations.push({
+        source: reviewers[i],
+        approving: isPassResult(verdicts[i]),
+        findings: parsed.findings,
+        malformed: parsed.malformed,
+      });
+    }
+
+    const followUpAvailable = attempt < MAX_ERRATUM_FOLLOWUP_ROUNDS;
+    const decision = erratumGateDecision({ confirmations, followUpAvailable });
+    const roundLabel = attempt === 0 ? "erratum round" : `erratum follow-up round ${attempt}`;
+
+    if (decision.rule === "R2") {
+
+      const entry = markApprovalReopened(reopenedApprovals, {
+        docType: target,
+        phase: upstreamPhase,
+        reason:
+          `phase ${phaseId}'s ${roundLabel} for ${target} closed with inherited findings only ` +
+          `(gate rule R2).`,
+      });
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, but NO High ` +
+        `finding is tagged \`delta\` (gate rule R2). This is not an erratum failure: the findings ` +
+        `are inherited staleness the erratum neither introduced nor was asked to fix. No POSTMORTEM ` +
+        `was written, ${upstreamPath} was NOT re-anchored, and its recorded approval is RE-OPENED ` +
+        `so phase ${entry ? entry.phase : upstreamPhase} runs again under its ordinary review ` +
+        `budgets. Findings:\n${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R2",
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R3") {
+
+      const rawFollowUpItems = decision.findings.map((f) => ({
+        docType: target,
+        item:
+          `[${f.severity} | ${f.provenance} | ${f.locality}] ${f.section} — ${f.text}`,
+        source: f.source ?? "(confirmation)",
+      }));
+      const followUpItems = [];
+      for (const candidate of dedupeErrataEntries(rawFollowUpItems)) {
+        const shortfall = oracleContractShortfall(candidate.item);
+        if (shortfall.length > 0) {
+          const oracleNotice =
+            `Phase ${phaseId}: erratum follow-up finding for ${target} touches a test oracle but is ` +
+            `missing ${shortfall.join(", ")} — reported as a malformed erratum, not routed: ` +
+            `${candidate.item}`;
+          notices.push(oracleNotice);
+          emit(oracleNotice);
+          continue;
+        }
+        followUpItems.push({ ...candidate, mintedHash: mintedHashes.get(target) ?? null });
+      }
+      const notice =
+        `Phase ${phaseId}: ${roundLabel} for ${target} — confirmers did not approve, and every ` +
+        `finding is \`local\` to the sections the erratum just edited (gate rule R3). Dispatching ` +
+        `ONE follow-up erratum round (budget ${MAX_ERRATUM_FOLLOWUP_ROUNDS} per upstream doc per ` +
+        `phase invocation) carrying the findings verbatim:\n` +
+        `${formatConfirmationFindings(decision.findings)}`;
+      notices.push(notice);
+      emit(notice);
+      return {
+        rule: "R3",
+        followUpItems,
+        responses: [
+          { text: authorResponse, source: authorSkill },
+          ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+        ],
+      };
+    }
+
+    if (decision.rule === "R4") {
+
+      const spentClause = followUpAvailable
+        ? ""
+        : ` The follow-up budget of ${MAX_ERRATUM_FOLLOWUP_ROUNDS} round was already spent.`;
       await erratumPostmortemHalt({
         phaseId,
         label,
         reason:
           `Phase ${phaseId} halted: the delta confirmation of the ${target} erratum round did not ` +
-          `pass — non-approving: [${nonApproving.join(", ")}]. Erratum items against ` +
-          `${upstreamPath}: ${itemText}.`,
+          `pass — non-approving: [${decision.nonApproving.join(", ")}].${spentClause} Confirmer ` +
+          `findings, verbatim:\n${formatConfirmationFindings(decision.findings)}\n` +
+          `Background (the routed list this round was opened with, superseded by the findings ` +
+          `above) — Erratum items against ${upstreamPath}: ${itemText}.`,
       });
     }
 
@@ -7913,6 +8999,8 @@ async function main({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
+
+      upstreamState: confirmUpstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
       commit: anchorCommit,
       _readFile: readFileFn,
       _probeDoc: probeDocFn,
@@ -7921,31 +9009,59 @@ async function main({
       emit,
     });
 
+    await cascadeDownstream({ phaseId, target, editedIn: roundLabel });
+
     notices.push(
-      `Phase ${phaseId}: erratum round for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+      `Phase ${phaseId}: ${roundLabel} for ${target} — ${confirmItemCount} item${confirmItemCount === 1 ? "" : "s"}, ` +
         `confirmed at round v${round} by ${reviewers.join(", ")}.`
     );
 
-    return [
-      { text: authorResponse, source: authorSkill },
-      ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
-    ];
+    return {
+      rule: "R1",
+      responses: [
+        { text: authorResponse, source: authorSkill },
+        ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+      ],
+    };
   }
 
   async function routeErrata({ phaseId, docType, label, loop, creatorResult }) {
-    const seen = new Set();
-    const admit = (entries) => {
-      const kept = [];
-      for (const entry of entries) {
 
-        if (!entry || entry.docType === docType) continue;
-        const key = `${entry.docType} ${entry.item}`;
+    const seen = new Set();
+
+    const admit = (entries) => {
+      const split = [];
+      for (const raw of entries) {
+        if (!raw) continue;
+
+        for (const entry of splitErratumMultiHome(raw)) {
+
+          if (entry.docType === docType) continue;
+
+          const shortfall = oracleContractShortfall(entry.item);
+          if (shortfall.length > 0) {
+            notices.push(
+              `Phase ${phaseId}: erratum item against ${entry.docType} touches an oracle but is ` +
+                `missing ${shortfall.join(", ")} — malformed erratum, not routed: \`${entry.item}\`.`
+            );
+            continue;
+          }
+          split.push(entry);
+        }
+      }
+      const kept = [];
+
+      for (const candidate of dedupeErrataEntries(split)) {
+        const key = erratumDedupeKey(candidate.docType, candidate.item);
         if (seen.has(key)) continue;
         seen.add(key);
-        kept.push(entry);
+        kept.push(candidate);
       }
       return kept;
     };
+
+    const tagMinted = (entries, hashes) =>
+      entries.map((e) => ({ ...e, mintedHash: hashes.get(e.docType) ?? null }));
 
     const creatorSkill = PHASE_DISPATCH[phaseId].creator ?? PHASE_DISPATCH[phaseId].optimizer;
     let pending = admit([
@@ -7960,10 +9076,11 @@ async function main({
     ]);
     if (pending.length === 0) return "";
 
+    let mintedHashes = await snapshotErratumDocs();
+    pending = tagMinted(pending, mintedHashes);
+
     const spent = new Map();
     const routed = [];
-
-    let mintedHashes = await snapshotErratumDocs();
 
     while (pending.length > 0) {
       const followOn = [];
@@ -7996,9 +9113,23 @@ async function main({
           continue;
         }
 
-        const responses = await erratumRound({ phaseId, label, target, items, mintedHashes });
+        const responses = [];
+        let result = await erratumRound({ phaseId, label, target, items, mintedHashes });
 
-        if (responses === null) continue;
+        if (result === null) continue;
+        responses.push(...result.responses);
+        for (let attempt = 1; result.rule === "R3" && attempt <= MAX_ERRATUM_FOLLOWUP_ROUNDS; attempt++) {
+          result = await erratumRound({
+            phaseId,
+            label,
+            target,
+            items: result.followUpItems,
+            mintedHashes,
+            attempt,
+          });
+          if (result === null) break;
+          responses.push(...result.responses);
+        }
         routed.push(target);
         for (const reply of responses) {
           followOn.push(
@@ -8009,9 +9140,12 @@ async function main({
           );
         }
       }
-      pending = admit(followOn);
 
-      if (pending.length > 0) mintedHashes = await snapshotErratumDocs();
+      pending = admit(followOn);
+      if (pending.length > 0) {
+        mintedHashes = await snapshotErratumDocs();
+        pending = tagMinted(pending, mintedHashes);
+      }
     }
 
     return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
@@ -8295,58 +9429,71 @@ async function main({
         afterConverged: async () => {
 
           const pPlanText = await readFileFn(planPath);
-          const pParsed = parsePlanTasks(pPlanText);
-          if (!pParsed || !Array.isArray(pParsed.tasks) || pParsed.tasks.length === 0) {
-            const detail =
-              `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
-              `mechanical parser, so the implementation phase would have no task graph. ` +
-              `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
-              `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
-              `'Depends On'), one markdown table row per task, and every dependency cell ` +
-              `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
-              `discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-          let pBatches;
-          try {
-            pBatches = computeTopologicalBatches(pParsed.tasks);
-          } catch (cycleErr) {
-            const detail =
-              `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
-              `${(cycleErr && cycleErr.message) || String(cycleErr)} ` +
-              `Fix the PLAN's Dependencies column (every id it names must be another ` +
-              `task's id, and the edges must form a DAG). Rejecting at Phase P rather ` +
-              `than discovering it at Phase I.`;
+          const pLint = lintPlanArtifact(pPlanText);
+          if (!pLint.ok) {
+            const byKind = (kind) => pLint.diagnostics.filter((d) => d.kind === kind);
+            const unparseable = byKind("unparseable-tasks");
+            const unknownDeps = byKind("unknown-dep-id");
+            const cycles = byKind("cycle");
+            const nearMisses = byKind("ownership-near-miss");
+            const missingOwnership = byKind("ownership-missing");
+            const contractProblems = byKind("contract-violation");
+
+            let detail;
+            if (unparseable.length > 0) {
+              detail =
+                `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
+                `mechanical parser, so the implementation phase would have no task graph. ` +
+                `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
+                `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
+                `'Depends On'), one markdown table row per task, and every dependency cell ` +
+                `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
+                `discovering it at Phase I.`;
+            } else if (unknownDeps.length > 0) {
+              detail =
+                `Error: Phase P — the task table in ${planPath} names dependency ids that ` +
+                `are not any task's id: ${unknownDeps.map((d) => d.message).join("; ")}. Fix ` +
+                `the PLAN's Dependencies column so every id it names is another task's id. ` +
+                `Rejecting at Phase P rather than discovering it at Phase I.`;
+            } else if (cycles.length > 0) {
+              detail =
+                `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
+                `${cycles[0].message} Fix the PLAN's Dependencies column (every id it names ` +
+                `must be another task's id, and the edges must form a DAG). Rejecting at ` +
+                `Phase P rather than discovering it at Phase I.`;
+            } else if (nearMisses.length > 0) {
+              detail =
+                `Error: Phase P — ${planPath}'s file-ownership manifest has a header row ` +
+                `that matches only one side of the required contract: ` +
+                nearMisses.map((d) => d.message).join("; ") +
+                `. Fix the header row so it carries an exact cell from both sets — ` +
+                `se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+                `discovering it at Phase I.`;
+            } else if (missingOwnership.length > 0) {
+              detail =
+                `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+                `implementation phase cannot derive same-tree waves and cannot know which ` +
+                `files each task may write. Add a markdown table whose header row carries an ` +
+                `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+                `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+                `each row listing that task's owned paths in backticks — se-author's ` +
+                `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+                `Phase I.`;
+            } else {
+              detail =
+                `Error: Phase P — the task table and the file-ownership manifest in ` +
+                `${planPath} disagree: ${contractProblems.map((d) => d.message).join("; ")}. ` +
+                `Every task in the task table needs exactly one manifest row, and every ` +
+                `manifest row needs a task — se-author's batch-safety rule 2. Rejecting at ` +
+                `Phase P rather than discovering it at Phase I.`;
+            }
             recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
             throw haltError(detail);
           }
 
+          const pParsed = parsePlanTasks(pPlanText);
+          const pBatches = computeTopologicalBatches(pParsed.tasks);
           const pOwnershipParsed = parsePlanOwnership(pPlanText);
-          if (pOwnershipParsed == null) {
-            const detail =
-              `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
-              `implementation phase cannot derive same-tree waves and cannot know which ` +
-              `files each task may write. Add a markdown table whose header row carries an ` +
-              `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
-              `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
-              `each row listing that task's owned paths in backticks — se-author's ` +
-              `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
-              `Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
-          const pContract = validatePlanContract(pParsed.tasks, pOwnershipParsed.ownership);
-          if (!pContract.ok) {
-            const detail =
-              `Error: Phase P — the task table and the file-ownership manifest in ` +
-              `${planPath} disagree: ${pContract.problems.join("; ")}. Every task in the ` +
-              `task table needs exactly one manifest row, and every manifest row needs a ` +
-              `task — se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
-              `discovering it at Phase I.`;
-            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-            throw haltError(detail);
-          }
           const pWaves = computeWaves(pParsed.tasks, pOwnershipParsed.ownership);
 
           return (

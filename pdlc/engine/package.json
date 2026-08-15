@@ -7,7 +7,7 @@
     "pdlc": "bin/pdlc.mjs"
   },
   "description": "Headless engine for pdlc (Phase 3: pdlc dev/queue wiring to the canonical workflow modules).",
-  "pdlcPluginCompat": "^0.22.0",
+  "pdlcPluginCompat": "^0.23.0",
   "license": "UNLICENSED",
   "scripts": {
     "test": "node __tests__/_run-suite.mjs"

@@ -90,6 +90,22 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 
 ---
 
+## Delta-Confirmation Findings (erratum rounds)
+
+When the orchestrator dispatches a **delta confirmation** — you previously approved this document, a targeted erratum edit has landed, and you are asked whether that delta resolves the routed items without breaking what you approved — tag every finding you raise. One finding per line, outside any fenced block, above the `## Verdict` section:
+
+```
+FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}
+```
+
+- **delta** — this round's edit introduced it, or left a routed item unlanded. **inherited** — it was already in the pre-round bytes and this edit did not touch it.
+- **local** — it sits inside the sections this edit changed. **nonlocal** — anywhere else.
+- The section anchor and the finding text are free-form; pipes inside the text are fine, since only the first four `|` delimit fields.
+
+The workflow reads these tags to decide whether the erratum earns one bounded follow-up round, routes the finding back to this document's ordinary revision loop, or halts the phase — a distinction it cannot recover from prose. An untagged finding is read as `{delta, nonlocal}`, the strictest reading, so tagging can only ever widen the outcome, never narrow it. This is additional to the `VERDICT:` contract below, not a replacement for it.
+
+---
+
 ## Review Scope by Document
 
 ### Reviewing TSPEC

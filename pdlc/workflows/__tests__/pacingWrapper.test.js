@@ -753,7 +753,14 @@ describe("Fix A — a single `_readFile` per authoring dispatch, not two (orches
     expect(reqReads).toHaveLength(N + 1);
 
     const reqHashes = run.fs.hashes.filter((h) => h.path === REQ_PATH);
-    expect(reqHashes).toHaveLength(2);
+    // T5 (PLAN §3.1) adds a second class of REQ digest that this count now
+    // includes: every capture of an approval anchor also digests the UPSTREAM
+    // CHAIN of the document being approved, and REQ heads every chain. Two of
+    // the ten below are Phase R's own per-iteration captures; the other eight
+    // are chain digests taken once per later per-iteration capture. What Fix A
+    // pins is unchanged and is the reason the number is asserted at all:
+    // NEITHER class scales with the N authoring dispatches inside an episode.
+    expect(reqHashes).toHaveLength(10);
 
     // Behaviour is unchanged: progress is still detected every dispatch (each
     // carries distinct content), so the episode never trips the no-progress halt,

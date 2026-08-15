@@ -33,13 +33,19 @@ import { runStartupChecks, probeGuardInterpreter, GUARD_INTERPRETERS } from "../
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot));
 const PLUGIN_ROOT = path.join(repoRoot, "pdlc");
+// The live range, exactly as bin/pdlc.mjs resolves it — these tests run the
+// ladder against this repo's own plugin, so a hardcoded range would go stale
+// on every plugin version bump.
+const ENGINE_COMPAT = JSON.parse(
+  readFileSync(path.join(engineRoot, "package.json"), "utf8")
+).pdlcPluginCompat;
 
 function baseOpts(overrides = {}) {
   return {
     pluginRoot: PLUGIN_ROOT,
     env: {},
     engineVersion: "0.1.0",
-    engineCompat: "^0.22.0",
+    engineCompat: ENGINE_COMPAT,
     ...overrides,
   };
 }

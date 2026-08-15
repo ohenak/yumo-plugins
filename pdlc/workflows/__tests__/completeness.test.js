@@ -447,6 +447,163 @@ describe("RLH-AT-63 — concern-organized specs match by containment (TSPEC §5.
   });
 });
 
+describe("T9 — PROPERTIES heading alts for observed synonyms", () => {
+  test("T9: PROPERTIES with `## Test Oracles` and `## Test Fixtures` pass isComplete", () => {
+    const doc = readFixture("properties-renamed-headings.md");
+
+    // Non-vacuity: the canonical headings are NOT present verbatim.
+    expect(doc).not.toContain("## Oracles\n");
+    expect(doc).not.toContain("## Fixtures\n");
+
+    // …yet the renamed sections (using the alt titles) really are there.
+    expect(doc).toContain("## Test Oracles\n");
+    expect(doc).toContain("## Test Data\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "PROPERTIES", doc);
+    expect(result.complete).toBe(true);
+    expect(missingSet(result)).toEqual(new Set());
+  });
+
+  test("T9: PROPERTIES with `## Test Fixtures` in place of `## Fixtures` passes", () => {
+    const doc = [
+      "# PROPERTIES — test-feature",
+      "",
+      "## Overview",
+      "",
+      "Test properties for the feature.",
+      "",
+      "## Properties",
+      "",
+      "Property coverage.",
+      "",
+      "## Test Oracles",
+      "",
+      "Oracle definitions.",
+      "",
+      "## Test Fixtures",
+      "",
+      "Test fixture definitions.",
+      "",
+    ].join("\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "PROPERTIES", doc);
+    expect(result.complete).toBe(true);
+    expect(missingSet(result)).toEqual(new Set());
+  });
+});
+
+describe("RT-3d: heading feed-forward and nearest-miss hint (te-author 3× stall)", () => {
+  test("RT-3d: headingFeedForwardClause(PROPERTIES) names the canonical titles and every accepted alt", () => {
+    const clause = devModule.headingFeedForwardClause("PROPERTIES");
+
+    // Canonical titles, verbatim as `##` headings.
+    expect(clause).toContain("## Overview");
+    expect(clause).toContain("## Properties");
+    expect(clause).toContain("## Oracles");
+    expect(clause).toContain("## Fixtures");
+
+    // Accepted alternates for the two rows the historical incident renamed.
+    expect(clause).toContain("Checks");
+    expect(clause).toContain("Generators");
+    expect(clause).toContain("Test data");
+  });
+
+  test("RT-3d: headingFeedForwardClause(REQ) is empty for unknown doc types and non-empty otherwise", () => {
+    expect(devModule.headingFeedForwardClause("NOT-A-DOC-TYPE")).toBe("");
+    expect(devModule.headingFeedForwardClause("REQ")).not.toBe("");
+    expect(devModule.headingFeedForwardClause("REQ")).toContain("## Problem / Context");
+  });
+
+  test("RT-3d: the te-author 3× stall fixture's renamed headings are recognised (not just tolerated)", () => {
+    // `properties-renamed-headings.md` renames `## Oracles` / `## Fixtures` to the
+    // *now-accepted* alt spellings `## Test Oracles` / `## Test Data` (T9). Because
+    // these are accepted alts, `nearestHeadingMisses` must find NOTHING to flag —
+    // the near-miss hint is reserved for headings the gate still cannot recognise.
+    const doc = readFixture("properties-renamed-headings.md");
+    const result = devModule.isComplete(CLASS_SPEC, "PROPERTIES", doc);
+    expect(result.complete).toBe(true);
+
+    const misses = devModule.nearestHeadingMisses(doc, "PROPERTIES");
+    expect(misses).toEqual([]);
+    expect(devModule.nearestHeadingMissClause(misses)).toBe("");
+  });
+
+  test("RT-3d: an unrecognised near-miss heading (`## Test Orackles`) is named against its canonical row", () => {
+    // A heading close enough to share a 4+ character token prefix with a required
+    // row's canonical title or alts, but NOT itself a listed alt — the shape the
+    // stall's own retry attempts kept producing before the fix.
+    const doc = [
+      "# PROPERTIES — test-feature",
+      "",
+      "## Overview",
+      "",
+      "Test properties for the feature.",
+      "",
+      "## Properties",
+      "",
+      "Property coverage.",
+      "",
+      "## Test Orackles",
+      "",
+      "Oracle definitions, misspelled heading.",
+      "",
+      "## Fixtures",
+      "",
+      "Fixture text, so this row is satisfied and only Oracles remains a near miss.",
+      "",
+    ].join("\n");
+
+    // Non-vacuity: `isComplete` really does still call this missing — the near-miss
+    // hint is a PROMPT aid, never a silent second acceptance path.
+    const result = devModule.isComplete(CLASS_SPEC, "PROPERTIES", doc);
+    expect(result.complete).toBe(false);
+    expect(missingSet(result)).toContain("Oracles");
+
+    const misses = devModule.nearestHeadingMisses(doc, "PROPERTIES");
+    expect(misses).toEqual([
+      {
+        missing: "Oracles",
+        candidate: "Test Orackles",
+        expectedForms: ["Oracles", "Checks", "Test Oracles"],
+      },
+    ]);
+
+    const clause = devModule.nearestHeadingMissClause(misses);
+    expect(clause).toContain('found "## Test Orackles"');
+    expect(clause).toContain('did you mean canonical "Oracles"');
+    expect(clause).toContain("(accepted: Oracles, Checks, Test Oracles)");
+  });
+
+  test("RT-3d: nearestHeadingMisses never flags a row `isComplete` already scores satisfied", () => {
+    // `## Test Oracles` is itself a listed alt for `Oracles` — the row is satisfied,
+    // so it must never also appear as a "near miss" (which would be a second,
+    // contradictory report about the same row in the same prompt).
+    const doc = [
+      "# PROPERTIES — test-feature",
+      "",
+      "## Overview",
+      "",
+      "Overview text.",
+      "",
+      "## Properties",
+      "",
+      "Property text.",
+      "",
+      "## Test Oracles",
+      "",
+      "Oracle text.",
+      "",
+      "## Fixtures",
+      "",
+      "Fixture text.",
+      "",
+    ].join("\n");
+
+    const misses = devModule.nearestHeadingMisses(doc, "PROPERTIES");
+    expect(misses.every((m) => m.missing !== "Oracles")).toBe(true);
+  });
+});
+
 // ══════════ D4 — heading sets (PROPERTIES §3.2 / §5.2), file-local and unexported ══════════
 //
 // Built over `driftGenerators.js`'s primitives only (`int` / `pick` / `shuffle`). PLAN §7.2:

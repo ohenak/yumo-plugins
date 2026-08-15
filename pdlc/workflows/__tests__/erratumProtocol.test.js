@@ -15,8 +15,28 @@
  * catalogue is checked by set-equality, not containment.
  */
 
-import main, { reviewLoop, parseErrata, approvalHashOf } from "../orchestrate-dev.js";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+import main, {
+  reviewLoop,
+  parseErrata,
+  approvalHashOf,
+  parseConfirmationFindings,
+  erratumGateDecision,
+  formatConfirmationFindings,
+  markApprovalReopened,
+  reopenedApproval,
+  dedupeErrataEntries,
+  splitErratumMultiHome,
+  oracleContractShortfall,
+  parseErratumRemint,
+} from "../orchestrate-dev.js";
 import { fakeFs, fakeGit, fakeListFiles } from "./helpers/seams.js";
+
+/** T10's sanitized incident fixtures — the RT-1* rounds are read, not invented. */
+const HALT_FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "halt-hardening");
+const fixture = (name) => readFileSync(join(HALT_FIXTURES, name), "utf8");
 
 let logMessages = [];
 const originalLog = console.log;
@@ -302,6 +322,19 @@ async function runPipeline(opts = {}) {
     // leaves behind, which is how an upstream document MOVES mid-wave here
     // exactly as it did on 2026-08-10.
     erratumRewrites = {},
+    // PLAN §2.4 item 2 (T3). `{ [upstreamPath]: "RE-MINT: ...\n..." }` — the
+    // RE-MINT lines an erratum author's response carries on the upstream-skew
+    // path, appended after the rewrite it always reports. Absent by default,
+    // which is the fail-open path this task must not disturb.
+    erratumRemint = {},
+    // PLAN §2.3 (T4). `{ [upstreamPath]: "bytes" }` — what the erratum author
+    // leaves behind on the ONE bounded land-proof re-dispatch, separate from
+    // `erratumRewrites` (the FIRST edit) so a fixture can leave a token out of
+    // the first edit and land it on the retry, or leave it out of both.
+    erratumLandProofRewrites = {},
+    // PLAN §2.2 / §5 RT-1*. `{ [round]: { text, verdict, high } }` — the bytes a
+    // confirmer writes AND returns at that derived round index.
+    confirmationByRound = {},
   } = opts;
 
   const seeded = {
@@ -325,6 +358,21 @@ async function runPipeline(opts = {}) {
     // The delta confirmation writes its cross-review file, as a reviewer does.
     if (text.includes("DELTA CONFIRMATION")) {
       const match = /(docs\/\S*CROSS-REVIEW-\S+\.md)/.exec(text);
+      // PLAN §2.2 / §5. A confirmation scripted per ROUND, keyed off the round
+      // index in the confirmation's own review path — which the workflow
+      // derives from the directory listing, so a follow-up round answers on the
+      // index it actually got rather than one this harness assumed. `text` is
+      // the fixture body; the verdict trailer is added here because the two are
+      // separate channels (CLAUDE.md, "two parts of a cross-review file").
+      const roundMatch = match ? /-v(\d+)\.md$/.exec(match[1]) : null;
+      const scripted = roundMatch ? confirmationByRound[Number(roundMatch[1])] : null;
+      if (scripted) {
+        const body =
+          `${scripted.text}\n## Verdict\n\nVERDICT: ${scripted.verdict}\n` +
+          `{"high": ${scripted.high ?? 0}, "medium": 0, "low": 0}\n`;
+        if (match) fs.files[match[1]] = body;
+        return body;
+      }
       const fileVerdict = confirmationFileVerdict ?? confirmationVerdict;
       // The file is written BEFORE the response is returned, which is the real
       // ordering: a reviewer commits its cross-review during its episode, so the
@@ -358,9 +406,21 @@ async function runPipeline(opts = {}) {
       // An erratum author that actually EDITS its document — without this the
       // wave's later layers can never observe an upstream that moved.
       const erratumTarget = /ERRATUM ROUND for (docs\/\S+\.md)/.exec(text);
+      // PLAN §2.3 (T4). The land-proof's bounded re-dispatch carries the SAME
+      // "ERRATUM ROUND for {path}" opener (plus a "LAND-PROOF RETRY" suffix),
+      // so it is matched by the regex above too — this branch must be checked
+      // FIRST, or a scripted `erratumLandProofRewrites` entry is shadowed by
+      // the original `erratumRewrites` entry on the retry dispatch.
+      if (erratumTarget && text.includes("LAND-PROOF RETRY") && erratumLandProofRewrites[erratumTarget[1]]) {
+        fs.files[erratumTarget[1]] = erratumLandProofRewrites[erratumTarget[1]];
+        return "Land-proof retry applied and committed.\nREVISION-COMPLETE: yes";
+      }
       if (erratumTarget && erratumRewrites[erratumTarget[1]]) {
         fs.files[erratumTarget[1]] = erratumRewrites[erratumTarget[1]];
-        return "Erratum applied and committed.\nREVISION-COMPLETE: yes";
+        const remint = erratumRemint[erratumTarget[1]];
+        return remint
+          ? `Erratum applied and committed.\n${remint}\nREVISION-COMPLETE: yes`
+          : "Erratum applied and committed.\nREVISION-COMPLETE: yes";
       }
       if (text.includes("DECISIONS_WARRANTED")) {
         return "Finalized.\nREVISION-COMPLETE: yes\nDECISIONS_WARRANTED: false";
@@ -490,9 +550,12 @@ describe("converge(): erratum routing (§3.1 step 4)", () => {
     const { fs } = await runPipeline({ tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}` });
 
     const expectedHash = approvalHashOf(FSPEC_TEXT);
+    // T5 (PLAN §3.1): the block now also records the upstream chain the
+    // confirmers answered against — here the one REQ above FSPEC.
     const expectedText =
       `\nAPPROVAL-HASH: ${expectedHash}\n` +
-      `REVIEWED-COMMIT: 0123456789abcdef0123456789abcdef01234567\n`;
+      `REVIEWED-COMMIT: 0123456789abcdef0123456789abcdef01234567\n` +
+      `UPSTREAM-STATE: REQ ${approvalHashOf("# REQ\n\nThe requirement body.\n")}\n`;
     expect(fs.appends).toEqual([
       { path: `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`, text: expectedText },
       { path: `${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v2.md`, text: expectedText },
@@ -892,5 +955,705 @@ describe("DEC-ERR-03: a delta confirmation is a superset check against upstream 
       // … negative: the manifest of upstream documents is not fabricated.
       expect(d.prompt).not.toContain("The upstream documents, at their current version");
     }
+  });
+});
+
+// ─── 4. PLAN §2.2 — the severity/provenance/locality gate (RT-1a/1b/1c) ──────
+//
+// Three historical halts from `regime-scaffold-pivot-alignment`, replayed
+// through the same seams the pipeline uses. The fixtures are T10's sanitized
+// confirmations; the round indices are DERIVED by the workflow, not scripted,
+// so the follow-up round asserts on the index it actually got.
+
+const DELTA_HIGH_FINDING =
+  'FINDING: High | delta | local | §3-02 | The owner cell in the expected rows table still ' +
+  'reads "owner **tuple**"';
+const INHERITED_HIGH_SECTION = "§8.3";
+
+/** A scripted confirmation round: fixture body plus the verdict channel. */
+const needsRevision = (name) => ({ text: fixture(name), verdict: "Needs revision", high: 1 });
+const approved = () => ({ text: "# Cross-review\n\nNo residual findings.\n\n", verdict: "Approved", high: 0 });
+
+describe("erratumGateDecision: the R1–R4 rule table", () => {
+  const conf = (source, approving, findings, malformed) => ({
+    source,
+    approving,
+    findings,
+    malformed: malformed ?? [],
+  });
+  const high = (provenance, locality) => ({
+    severity: "High",
+    provenance,
+    locality,
+    section: "§1",
+    text: "t",
+  });
+
+  test("PROP-GATE-01: every confirmer approving is R1, and R1 alone", () => {
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", true, []), conf("b", true, [])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R1");
+    // Negative on the same path: one non-approver, same inputs otherwise, is not R1.
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", true, []), conf("b", false, [high("inherited", "nonlocal")])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R2");
+  });
+
+  test("PROP-GATE-02: R2 is decided on High-and-delta, not on severity or provenance alone", () => {
+    // Inherited High: R2.
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", false, [high("inherited", "local")])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R2");
+    // A delta finding that is not High is still R2 — Mediums and Lows are
+    // recorded, not gating, exactly as the review loop's High-only bar.
+    expect(
+      erratumGateDecision({
+        confirmations: [
+          conf("a", false, [
+            { severity: "Medium", provenance: "delta", locality: "nonlocal", section: "§2", text: "t" },
+          ]),
+        ],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R2");
+    // … and the positive pair: High AND delta leaves R2.
+    expect(
+      erratumGateDecision({
+        confirmations: [conf("a", false, [high("delta", "local")])],
+        followUpAvailable: true,
+      }).rule
+    ).toBe("R3");
+  });
+
+  test("PROP-GATE-03: R3 needs an unspent budget AND every HIGH local; either failure is R4", () => {
+    const local = [conf("a", false, [high("delta", "local")])];
+    expect(erratumGateDecision({ confirmations: local, followUpAvailable: true }).rule).toBe("R3");
+    // Budget spent → R4 on identical findings.
+    expect(erratumGateDecision({ confirmations: local, followUpAvailable: false }).rule).toBe("R4");
+    // A nonlocal HIGH → R4 even with budget.
+    const nonlocalHigh = [conf("a", false, [high("delta", "local"), high("inherited", "nonlocal")])];
+    expect(erratumGateDecision({ confirmations: nonlocalHigh, followUpAvailable: true }).rule).toBe(
+      "R4"
+    );
+    // … but a nonlocal LOW does not gate: the High-only bar holds here as it
+    // does in the review loop, and the same findings stay R3.
+    const nonlocalLow = [
+      conf("a", false, [
+        high("delta", "local"),
+        { severity: "Low", provenance: "inherited", locality: "nonlocal", section: "§9", text: "t" },
+      ]),
+    ];
+    expect(erratumGateDecision({ confirmations: nonlocalLow, followUpAvailable: true }).rule).toBe(
+      "R3"
+    );
+  });
+
+  test("PROP-GATE-04: a non-approving confirmation with nothing parseable fails closed to R4", () => {
+    const decision = erratumGateDecision({
+      confirmations: [conf("a", false, [])],
+      followUpAvailable: true,
+    });
+    expect(decision.rule).toBe("R4");
+    expect(decision.failClosed).toEqual(["a"]);
+    expect(decision.findings).toEqual([
+      {
+        severity: "High",
+        provenance: "delta",
+        locality: "nonlocal",
+        section: "(untagged confirmation)",
+        text:
+          "non-approving confirmation carried no parseable FINDING: line — read as " +
+          "High/delta/nonlocal, fail-closed",
+        source: "a",
+        failClosed: true,
+      },
+    ]);
+    // A malformed line is unknowable severity, so it fails closed too — even
+    // alongside a parseable, harmless one.
+    const withMalformed = erratumGateDecision({
+      confirmations: [conf("a", false, [high("inherited", "local")], ["FINDING: garbled"])],
+      followUpAvailable: true,
+    });
+    expect(withMalformed.rule).toBe("R4");
+    expect(withMalformed.failClosed).toEqual(["a"]);
+    // … and the positive pair: an APPROVING confirmer is never failed closed.
+    const approvingSilent = erratumGateDecision({
+      confirmations: [conf("a", true, []), conf("b", false, [high("inherited", "local")])],
+      followUpAvailable: true,
+    });
+    expect(approvingSilent.failClosed).toEqual([]);
+    expect(approvingSilent.rule).toBe("R2");
+  });
+
+  test("PROP-GATE-05: total on absent, empty and malformed input", () => {
+    expect(erratumGateDecision().rule).toBe("R1");
+    expect(erratumGateDecision({}).rule).toBe("R1");
+    expect(erratumGateDecision({ confirmations: [null, undefined] }).rule).toBe("R1");
+    expect(erratumGateDecision({ confirmations: [{ approving: false }] }).rule).toBe("R4");
+  });
+
+  test("PROP-GATE-06: findings render back into the canonical grammar, attributed", () => {
+    expect(
+      formatConfirmationFindings([
+        { severity: "High", provenance: "delta", locality: "local", section: "§3", text: "one word", source: "te-review" },
+      ])
+    ).toBe("  te-review: FINDING: High | delta | local | §3 | one word");
+    expect(formatConfirmationFindings([])).toBe("  (no parseable FINDING: lines)");
+    expect(formatConfirmationFindings(null)).toBe("  (no parseable FINDING: lines)");
+  });
+
+  test("PROP-GATE-07: the re-open registry is a total, run-scoped read/write pair", () => {
+    const registry = new Map();
+    expect(reopenedApproval(registry, "FSPEC")).toBeNull();
+    const entry = markApprovalReopened(registry, {
+      docType: "FSPEC",
+      phase: "F",
+      reason: "inherited only.",
+    });
+    expect(entry).toEqual({ docType: "FSPEC", phase: "F", reason: "inherited only." });
+    expect(reopenedApproval(registry, "FSPEC")).toEqual(entry);
+    // Negative on the same path: a doc type nobody re-opened stays clean, and
+    // a missing registry is not an error.
+    expect(reopenedApproval(registry, "REQ")).toBeNull();
+    expect(markApprovalReopened(null, { docType: "FSPEC" })).toBeNull();
+    expect(reopenedApproval(null, "FSPEC")).toBeNull();
+  });
+});
+
+describe("the erratum gate on the historical halts (PLAN §5)", () => {
+  test("RT-1a: a High/delta/local confirmation buys ONE follow-up round, and a passing follow-up ends without a POSTMORTEM", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: {
+        2: needsRevision("confirmation-delta-high.md"),
+        3: approved(),
+      },
+    });
+
+    // The historical halt is gone: the run finishes.
+    expect(report.outcome).toBe("success");
+    expect(report.postmortemPath).toBeNull();
+
+    // Exactly TWO erratum author dispatches — the original round and one
+    // follow-up. The follow-up is the observable the budget bounds.
+    const authors = erratumAuthorDispatches(dispatches);
+    expect(authors.length).toBe(2);
+    // The follow-up carries the confirmers' finding verbatim, not the original
+    // routed item, and it is re-confirmed at the NEXT derived round.
+    expect(authors[1].prompt).toContain(
+      '- [High | delta | local] §3-02 — The owner cell in the expected rows table still reads ' +
+        '"owner **tuple**"'
+    );
+    expect(authors[1].prompt).not.toContain(ERRATUM_ITEM);
+    expect(confirmationDispatches(dispatches).length).toBe(4);
+    expect(report.notices).toContain(
+      `Phase T: erratum follow-up round 1 for FSPEC — 3 items, confirmed at round v3 by se-review, te-review.`
+    );
+    // The approval anchors are written once, on the round that actually passed.
+    expect(fs.appends.map((a) => a.path)).toEqual([
+      `${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v3.md`,
+      `${DOCS}/CROSS-REVIEW-test-engineer-FSPEC-v3.md`,
+    ]);
+  });
+
+  test("RT-1a: a follow-up that fails again halts, and the payload is the FINDING lines with the routed list demoted", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: {
+        2: needsRevision("confirmation-delta-high.md"),
+        3: needsRevision("confirmation-delta-high.md"),
+      },
+    });
+
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.postmortemStatus).toBe("written");
+    // The budget is spent, and the halt says so.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(2);
+    expect(report.haltReason).toContain(
+      "The follow-up budget of 1 round was already spent."
+    );
+    // The payload leads with the confirmers' findings …
+    expect(report.haltReason).toContain(`  se-review: ${DELTA_HIGH_FINDING}`);
+    expect(report.haltReason).toContain(`  te-review: ${DELTA_HIGH_FINDING}`);
+    // … and the pre-edit routed list survives only as background, BELOW them.
+    // On a follow-up round that list is the previous round's findings, which is
+    // exactly the point: what the halt leads with is what the confirmers said
+    // LAST, never the item text the round was opened with two dispatches ago.
+    expect(report.haltReason).toContain(
+      `Background (the routed list this round was opened with, superseded by the findings ` +
+        `above) — Erratum items against ${FSPEC_PATH}: [High | delta | local] §3-02 —`
+    );
+    expect(report.haltReason.indexOf(DELTA_HIGH_FINDING)).toBeLessThan(
+      report.haltReason.indexOf("Background (the routed list")
+    );
+    // Nothing was approved on the way to the halt.
+    expect(fs.appends).toEqual([]);
+  });
+
+  test("RT-1b: inherited-only Highs do not halt — the upstream doc is not re-anchored and its phase is re-opened", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-inherited-high.md") },
+    });
+
+    // No halt, no POSTMORTEM, and the pipeline moves forward.
+    expect(report.outcome).toBe("success");
+    expect(report.postmortemPath).toBeNull();
+    expect(report.phases.find((p) => p.phase === "T").status).toBe("✅");
+    // No follow-up is bought: R2 is not a retry.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(1);
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    // The upstream document is NOT re-anchored — the approvers did not approve.
+    expect(fs.appends).toEqual([]);
+    // The re-open is recorded, names the owning phase, and carries the findings.
+    const notice = report.notices.find((n) => n.includes("gate rule R2"));
+    expect(notice).toBeDefined();
+    expect(notice).toContain(
+      `${FSPEC_PATH} was NOT re-anchored, and its recorded approval is RE-OPENED so phase F runs again`
+    );
+    expect(notice).toContain(`| inherited | nonlocal | ${INHERITED_HIGH_SECTION} |`);
+  });
+
+  test("RT-1f: a local delta High and a nonlocal inherited High in one confirmation fall through to R4 — neither is dropped", async () => {
+    // Architect ruling (2026-08-15), ratifying the High-scoped R3 locality
+    // amendment: when one confirmation carries work that R3's follow-up owns
+    // AND work that R2's re-open owns, the gate must run BOTH or fall through
+    // to R4. It may never silently drop the inherited High. The shipped gate
+    // runs exactly one rule per confirmation — `allLocal` is false here, so
+    // this input already resolves to R4 — and fail-closed is the sanctioned
+    // fallback, so the behaviour is pinned rather than reworked. The rules stay
+    // mutually exclusive and first-match-wins, which is the property the rest
+    // of the table is read against.
+    //
+    // Read at the decision function first, so the rule is pinned on the tokens
+    // rather than only on a pipeline that could reach the same halt some other
+    // way.
+    const parsed = parseConfirmationFindings(fixture("confirmation-mixed-high.md"));
+    expect(parsed.malformed).toEqual([]);
+    expect(parsed.findings.map((f) => `${f.severity}/${f.provenance}/${f.locality}`)).toEqual([
+      "High/delta/local",
+      "High/inherited/nonlocal",
+      "Low/inherited/nonlocal",
+    ]);
+    const decision = erratumGateDecision({
+      confirmations: [{ source: "te-review", approving: false, ...parsed }],
+      followUpAvailable: true,
+    });
+    expect(decision.rule).toBe("R4");
+    // Not a fail-closed read: the findings were parsed, and the halt is the
+    // rule's own answer.
+    expect(decision.failClosed).toEqual([]);
+    expect(decision.allLocal).toBe(false);
+    expect(decision.highDelta.length).toBe(1);
+
+    // … and the positive pair on the same path: an inherited High that IS local
+    // composes with the delta High, so it buys the follow-up and rides into it
+    // as an item rather than being dropped.
+    const localInherited = erratumGateDecision({
+      confirmations: [
+        {
+          source: "te-review",
+          approving: false,
+          findings: parsed.findings.map((f) =>
+            f.severity === "High" ? { ...f, locality: "local" } : f
+          ),
+          malformed: [],
+        },
+      ],
+      followUpAvailable: true,
+    });
+    expect(localInherited.rule).toBe("R3");
+    expect(
+      localInherited.findings.filter((f) => f.provenance === "inherited" && f.severity === "High")
+        .length
+    ).toBe(1);
+
+    // The pipeline agrees with the decision function.
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-mixed-high.md") },
+    });
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.postmortemStatus).toBe("written");
+    // No follow-up is bought — the budget is still unspent when the halt fires,
+    // and the halt does not claim otherwise.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(1);
+    expect(report.haltReason).not.toContain("The follow-up budget of 1 round was already spent.");
+    // BOTH Highs reach the post-mortem author, and so does the Low.
+    expect(report.haltReason).toContain(
+      "te-review: FINDING: High | delta | local | §3-02 | The owner cell in the expected rows table"
+    );
+    expect(report.haltReason).toContain(
+      "te-review: FINDING: High | inherited | nonlocal | §8.3 | The domain note in section 8.3"
+    );
+    expect(report.haltReason).toContain(
+      "te-review: FINDING: Low | inherited | nonlocal | §7.3 | Two version stamps"
+    );
+    // Nothing is re-anchored and nothing is re-opened on a halt: R4 hands the
+    // whole round to the operator rather than half-resolving it.
+    expect(fs.appends).toEqual([]);
+    expect(report.notices.filter((n) => n.includes("gate rule R2"))).toEqual([]);
+    expect(report.notices.filter((n) => n.includes("gate rule R3"))).toEqual([]);
+  });
+
+  test("RT-1c: an untagged non-approving confirmation still halts, exactly as v0.22.7 did", async () => {
+    const tagged = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-untagged.md") },
+    });
+
+    expect(tagged.report.outcome).toBe("halted");
+    expect(tagged.report.haltPhase).toBe("T");
+    expect(tagged.report.haltReason).toContain(
+      "Phase T halted: the delta confirmation of the FSPEC erratum round did not pass"
+    );
+    expect(tagged.report.haltReason).toContain("non-approving: [se-review, te-review]");
+    // Fail-closed, and it says so rather than pretending to have read findings.
+    expect(tagged.report.haltReason).toContain(
+      "  se-review: FINDING: High | delta | nonlocal | (untagged confirmation) | non-approving " +
+        "confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+    );
+    // No follow-up is bought by silence: the budget is never reached.
+    expect(erratumAuthorDispatches(tagged.dispatches).length).toBe(1);
+    expect(tagged.fs.appends).toEqual([]);
+
+    // The byte-comparable half: the pre-grammar harness path, same halt.
+    const legacy = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationVerdict: "Needs revision",
+    });
+    expect(legacy.report.outcome).toBe(tagged.report.outcome);
+    expect(legacy.report.haltPhase).toBe(tagged.report.haltPhase);
+    expect(legacy.report.phases.find((p) => p.phase === "T").status).toBe(
+      tagged.report.phases.find((p) => p.phase === "T").status
+    );
+  });
+});
+
+// ─── RT-1d: mint-time item hygiene (PLAN §2.4, T3) ────────────────────────────
+//
+// Four pure-function tests cover items 1, 3, and 4 directly against the
+// exported helpers; two pipeline tests cover item 2's wiring into
+// `erratumRound` — the structural re-mint path and its fail-open twin.
+
+describe("RT-1d: mint-time item hygiene (PLAN §2.4, T3)", () => {
+  test("RT-1d-a: normalized dedupe collapses restatements sharing an anchor+token into one obligation, merging sources", () => {
+    // POSTMORTEM-D shape: five raw entries, three distinct obligations —
+    // two pairs of restatements (same anchor, same expected token, different
+    // wording and source) plus one singleton left untouched.
+    const entries = [
+      { docType: "TSPEC", item: "§4.2 the retry budget must read **3**, not 5.", source: "se-review" },
+      {
+        docType: "TSPEC",
+        item: "§4.2 the retry budget should be **3** per the SLA table.",
+        source: "te-review",
+      },
+      {
+        docType: "TSPEC",
+        item: "§7 the owner column type must be `frozenset[str]`, not tuple.",
+        source: "se-review",
+      },
+      {
+        docType: "TSPEC",
+        item: "§7 owner column should read `frozenset[str]` per TSPEC §10.4.",
+        source: "pm-review",
+      },
+      { docType: "TSPEC", item: "§9 the changelog is missing the 2026-08-01 entry.", source: "se-review" },
+    ];
+
+    const deduped = dedupeErrataEntries(entries);
+
+    expect(deduped.map((e) => e.item)).toEqual([
+      "§4.2 the retry budget must read **3**, not 5.",
+      "§7 the owner column type must be `frozenset[str]`, not tuple.",
+      "§9 the changelog is missing the 2026-08-01 entry.",
+    ]);
+    expect(deduped[0].source).toBe("se-review, te-review");
+    expect(deduped[1].source).toBe("se-review, pm-review");
+    // Negative, on the same batch: the §9 singleton is untouched by dedupe —
+    // one entry in, one entry out, same source, no merge attempted.
+    expect(deduped[2].source).toBe("se-review");
+
+    // Negative, on a distinct batch: two items sharing an anchor but NO
+    // shared expected token are never collapsed — dedupe is conservative.
+    const noSharedToken = dedupeErrataEntries([
+      { docType: "TSPEC", item: "§4.2 the retry budget must read **3**.", source: "se-review" },
+      { docType: "TSPEC", item: "§4.2 the changelog omits this section entirely.", source: "te-review" },
+    ]);
+    expect(noSharedToken.length).toBe(2);
+  });
+
+  test("RT-1d-d: an item naming two doc types in its own text mints one item per named type, sharing an obligation id", () => {
+    const entry = {
+      docType: "FSPEC",
+      item: "REQ and FSPEC both promise the placeholder expires after 24h — align one location.",
+      source: "te-review",
+    };
+
+    const split = splitErratumMultiHome(entry);
+
+    expect(split.length).toBe(2);
+    expect(split.map((e) => e.docType).sort()).toEqual(["FSPEC", "REQ"]);
+    // Both carry the item text verbatim, and the same closure id.
+    for (const e of split) {
+      expect(e.item).toBe(entry.item);
+      expect(e.multiHomeGroup).toBe(split[0].multiHomeGroup);
+    }
+
+    // Negative, on the same path: an item naming zero or one doc type in its
+    // own text is single-home and returned unchanged — one incidental
+    // mention of another doc type's name is not a "targets both" shape.
+    const singleHome = splitErratumMultiHome({
+      docType: "FSPEC",
+      item: "§4's error budget contradicts REQ AC-3.",
+      source: "te-review",
+    });
+    expect(singleHome).toEqual([
+      { docType: "FSPEC", item: "§4's error budget contradicts REQ AC-3.", source: "te-review" },
+    ]);
+  });
+
+  test("RT-1d-e: an oracle-touching item missing contract fields is flagged, not routed; one carrying all three is not", () => {
+    // Negative: names an oracle id but supplies none of the three contract
+    // fields (property statement, non-subsumption rationale, red witness).
+    expect(oracleContractShortfall("AT-07 the oracle asserts non-empty output.")).toEqual([
+      "a property statement",
+      "a non-subsumption rationale",
+      "a per-conjunct red witness",
+    ]);
+
+    // Positive, on the same path: an item that touches no oracle at all is
+    // not linted — the empty result means "nothing to report," not "passed."
+    expect(oracleContractShortfall("§9 the changelog is missing an entry.")).toEqual([]);
+
+    // Positive: an item carrying all three contract fields is conforming.
+    expect(
+      oracleContractShortfall(
+        "AT-07 asserts the property that output is non-empty; this is not subsumed by " +
+          "AT-03, since AT-03's witness only covers the empty-input case."
+      )
+    ).toEqual([]);
+  });
+
+  test("RT-1d-b: an item routed against a moved upstream is re-minted structurally — confirmers see only the author's STILL-RAISED subset", async () => {
+    const item1 = "§2 the placeholder must expire after 24h";
+    const item2 = "§5 the coverage notation must use ranges";
+    const { dispatches, report } = await runPipeline({
+      tspecReviewerErratum: [
+        `REQ: AC-7 names a file that does not exist`,
+        `FSPEC: ${item1}`,
+        `FSPEC: ${item2}`,
+      ],
+      erratumRewrites: { [REQ_PATH]: REQ_REWRITTEN, [FSPEC_PATH]: FSPEC_TEXT },
+      erratumRemint: {
+        [FSPEC_PATH]: `RE-MINT: ABSORBED: ${item1}\nRE-MINT: STILL-RAISED: ${item2}`,
+      },
+    });
+
+    expect(report.postmortemPath).toBeNull();
+
+    const fspecConfirm = confirmationDispatches(dispatches).find((d) =>
+      d.prompt.includes(`DELTA CONFIRMATION for ${FSPEC_PATH}`)
+    );
+    expect(fspecConfirm).toBeTruthy();
+    expect(fspecConfirm.prompt).toContain(`- ${item2}`);
+    // Negative, on the same prompt: the ABSORBED item never reaches the
+    // confirmer — it was resolved by the author's own re-derivation.
+    expect(fspecConfirm.prompt).not.toContain(item1);
+
+    expect(report.notices.join("\n")).toContain(
+      "re-minted structurally: 1 item absorbed, 1 still raised."
+    );
+  });
+
+  test("RT-1d-c: with no RE-MINT lines in the author's response, the original routed list reaches confirmers unchanged (fail-open)", async () => {
+    const item1 = "§2 the placeholder must expire after 24h";
+    const item2 = "§5 the coverage notation must use ranges";
+    const { dispatches, report } = await runPipeline({
+      tspecReviewerErratum: [
+        `REQ: AC-7 names a file that does not exist`,
+        `FSPEC: ${item1}`,
+        `FSPEC: ${item2}`,
+      ],
+      erratumRewrites: { [REQ_PATH]: REQ_REWRITTEN, [FSPEC_PATH]: FSPEC_TEXT },
+      // No `erratumRemint` entry for FSPEC_PATH: the author's response
+      // carries no RE-MINT lines at all.
+    });
+
+    expect(report.postmortemPath).toBeNull();
+
+    const fspecAuthor = erratumAuthorDispatches(dispatches).find((d) =>
+      d.prompt.includes(`ERRATUM ROUND for ${FSPEC_PATH}`)
+    );
+    // The upstream-moved clause still fires on the author dispatch (DEC-ERR-03) …
+    expect(fspecAuthor.prompt).toContain(MOVED_ANCHOR);
+
+    const fspecConfirm = confirmationDispatches(dispatches).find((d) =>
+      d.prompt.includes(`DELTA CONFIRMATION for ${FSPEC_PATH}`)
+    );
+    expect(fspecConfirm).toBeTruthy();
+    // Positive, on the same prompt: both original items still reach the
+    // confirmer, in the original `- {item} (raised by {source})` form.
+    expect(fspecConfirm.prompt).toContain(`- ${item1} (raised by te-review)`);
+    expect(fspecConfirm.prompt).toContain(`- ${item2} (raised by te-review)`);
+    // … but the structural re-mint notice never does — absence of RE-MINT
+    // lines falls back to the pre-existing notice-only behaviour, never a
+    // hard failure.
+    expect(report.notices.join("\n")).not.toContain("re-minted structurally");
+  });
+
+  test("RT-1d: routeErrata's admit() applies multi-home split, oracle-contract lint, and dedupe together, before routing", async () => {
+    const dupA = "§3 the retry budget must read **5**, not 3.";
+    const dupB = "§3 retry budget should be **5** per the SLA table.";
+    const multiHome = "REQ and FSPEC both promise the placeholder expires after 24h — align one location.";
+    const malformedOracle = "AT-09 the oracle asserts the output is well-formed.";
+    const { dispatches, report } = await runPipeline({
+      tspecReviewerErratum: [
+        `FSPEC: ${dupA}`,
+        `FSPEC: ${dupB}`,
+        `FSPEC: ${multiHome}`,
+        `FSPEC: ${malformedOracle}`,
+      ],
+    });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    const reqAuthor = authored.find((d) => d.prompt.includes(`ERRATUM ROUND for ${REQ_PATH}`));
+    const fspecAuthor = authored.find((d) => d.prompt.includes(`ERRATUM ROUND for ${FSPEC_PATH}`));
+
+    // Multi-home: the shared obligation reaches BOTH homes.
+    expect(reqAuthor).toBeTruthy();
+    expect(reqAuthor.prompt).toContain(`- ${multiHome}`);
+    expect(fspecAuthor).toBeTruthy();
+    expect(fspecAuthor.prompt).toContain(`- ${multiHome}`);
+
+    // Dedupe: the canonical (first-occurrence) wording survives, the
+    // restatement does not.
+    expect(fspecAuthor.prompt).toContain(`- ${dupA}`);
+    expect(fspecAuthor.prompt).not.toContain(dupB);
+
+    // Oracle lint: the malformed item is never routed to any author …
+    expect(reqAuthor.prompt).not.toContain(malformedOracle);
+    expect(fspecAuthor.prompt).not.toContain(malformedOracle);
+    // … and only two homes were dispatched to, not a third for the dropped
+    // item's own (nonexistent) home.
+    expect(authored.length).toBe(2);
+    // … the drop is reported, not silent.
+    expect(report.notices.join("\n")).toContain("malformed erratum, not routed");
+    expect(report.notices.join("\n")).toContain("AT-09");
+  });
+});
+
+// ─── RT-1e: mechanical land-proof for literal-token items (PLAN §2.3, T4) ────
+//
+// POSTMORTEM-PR's own words for the gap this closes: "the halt was one grep
+// away from never having happened, but the grep ran on the wrong party, one
+// step too late." A literal-token item names an exact expected string the
+// edit must land; these tests exercise the engine-side, pre-confirmation check
+// that greps for it BEFORE the confirmers — who are asked a legibility
+// question, not run a mechanical proof — are ever dispatched.
+describe("RT-1e: mechanical land-proof for literal-token items", () => {
+  // Both quoted spans present, `say` and `not` present — the conservative
+  // shape §2.3 classifies as literal-token. `erratumTokenOf` (T3, reused here
+  // per PLAN §2.3) reads the LAST quoted span as the expected value.
+  const LITERAL_ITEM =
+    "The type hint should not say `list[str]`; it must say `frozenset[str]`.";
+  const EXPECTED_TOKEN = "frozenset[str]";
+  // A non-literal item — no quoted spans, no `say`/`not` shape — same one
+  // every other test in this file already uses.
+  const NON_LITERAL_ITEM = ERRATUM_ITEM;
+
+  test("RT-1e-a/b: token absent after the edit buys ONE bounded re-dispatch naming it; landing on the retry ends the round without a second one", async () => {
+    const { report, dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${LITERAL_ITEM}`,
+      // The erratum author's first edit does not land the expected token …
+      erratumRewrites: { [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body, revised.\n" },
+      // … but the land-proof retry does.
+      erratumLandProofRewrites: {
+        [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body uses `frozenset[str]` now.\n",
+      },
+    });
+
+    // Exactly one land-proof retry dispatch — the FIRST erratum edit, plus
+    // the ONE bounded re-dispatch, and no more.
+    const authored = erratumAuthorDispatches(dispatches);
+    expect(authored.length).toBe(2);
+    expect(authored[1].prompt).toContain("LAND-PROOF RETRY");
+    expect(authored[1].prompt).toContain(`expected token \`${EXPECTED_TOKEN}\``);
+
+    // Loud notice on the first miss …
+    expect(report.notices.join("\n")).toContain("land-proof: 1 literal-token item did not land");
+    // … but NOT the second-failure notice: the retry landed it.
+    expect(report.notices.join("\n")).not.toContain("STILL did not land");
+
+    // Confirmers still dispatched once, normally — the land-proof is a
+    // pre-confirmation gate, not a replacement for confirmation.
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    expect(report.outcome).toBe("success");
+  });
+
+  test("RT-1e-c: token still absent after the one bounded retry — confirmers still dispatched, loud notice, no engine-side halt", async () => {
+    const { report, dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${LITERAL_ITEM}`,
+      // Neither the first edit nor the retry lands the token.
+      erratumRewrites: { [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body, revised.\n" },
+      erratumLandProofRewrites: {
+        [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body, revised again, still no luck.\n",
+      },
+    });
+
+    const authored = erratumAuthorDispatches(dispatches);
+    // First edit, ONE retry, and no third dispatch — the budget is exactly
+    // one bounded re-dispatch, never a loop.
+    expect(authored.length).toBe(2);
+
+    expect(report.notices.join("\n")).toContain("land-proof: 1 literal-token item did not land");
+    expect(report.notices.join("\n")).toContain(
+      "STILL did not land after one bounded re-dispatch"
+    );
+
+    // Not masked, not swallowed: confirmers are still dispatched (the land-proof
+    // never blocks the round), and the run does not halt on this alone.
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    expect(report.outcome).toBe("success");
+  });
+
+  test("RT-1e-d: a non-literal-token item triggers no extra reads and no extra dispatches — the land-proof is a no-op on this path", async () => {
+    const nonLiteral = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${NON_LITERAL_ITEM}`,
+    });
+
+    // Exactly the pre-T4 dispatch shape (PROP-ERR-20/21): one author dispatch,
+    // two confirmations, no land-proof retry.
+    const authored = erratumAuthorDispatches(nonLiteral.dispatches);
+    expect(authored.length).toBe(1);
+    expect(confirmationDispatches(nonLiteral.dispatches).length).toBe(2);
+    expect(nonLiteral.report.notices.join("\n")).not.toContain("land-proof");
+
+    // Comparative, not an absolute count (the rest of the pipeline already
+    // reads the FSPEC through this same seam for unrelated reasons): a run
+    // whose FIRST edit already lands the token reads the FSPEC exactly ONE
+    // more time than the non-literal run — the land-proof's own check, gated
+    // on `literalTokenItems.length > 0` and skipped entirely on this path.
+    const literal = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${LITERAL_ITEM}`,
+      erratumRewrites: {
+        [FSPEC_PATH]: "# FSPEC\n\nThe functional specification body uses `frozenset[str]` now.\n",
+      },
+    });
+    expect(erratumAuthorDispatches(literal.dispatches).length).toBe(1);
+    const nonLiteralReads = nonLiteral.fs.reads.filter((r) => r.path === FSPEC_PATH).length;
+    const literalReads = literal.fs.reads.filter((r) => r.path === FSPEC_PATH).length;
+    expect(literalReads).toBe(nonLiteralReads + 1);
   });
 });

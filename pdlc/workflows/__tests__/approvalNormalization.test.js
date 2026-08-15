@@ -425,6 +425,9 @@ describe("DEC-APPROVAL-03(e): the third anchor line disturbs no existing reader"
       hash: RAW,
       normalizedHash: NORM,
       reviewedCommit: "c".repeat(40),
+      // T5's cascade anchor: `[]` on a block that carries no `UPSTREAM-STATE:`
+      // line, which is every pre-T5 approval (the grandfathered case).
+      upstreamState: [],
     });
 
     // Every way the normalised line can be wrong degrades to `null` — never to a
