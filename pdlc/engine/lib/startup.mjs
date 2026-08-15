@@ -312,6 +312,11 @@ function evalRung4({ pluginRoot, dispatchableSkills, loadSkillFn, listInstalledS
  * @param {object} [opts.fs] Forwarded to `readLoginEvidence`.
  * @param {boolean} [opts.allowApiKeyBilling] Forwarded to `resolveAuthPosture`.
  * @param {Function} [opts.runProbe] Rung 4a's injectable probe (TSPEC §7.8).
+ * @param {object|null} [opts.versionDecision] §6.3's `resolveVersion()` return
+ *   (`{kind, version, root, announcement, refusal}`), precomputed by the
+ *   caller. When present and `kind !== "refuse"`, `announcement` is carried
+ *   into `result.banner` verbatim (AT-5.2). Default `null` (doctor/back-compat
+ *   callers that never resolve a version).
  * @returns {{ok: boolean, rungs: object[], banner: string[], pluginRoot: string|null,
  *   pluginVersion: string|null, versions: {engine: string, plugin: string|null},
  *   baseUrl: string|null, auth: {row: number, catalogueId: string}, reason: string|null}}
@@ -340,9 +345,11 @@ export function runStartupChecks({
   runProbe = defaultRunProbe,
   guardProbeFn = defaultGuardProbe,
   checkGuardCarrierFn = checkGuardCarrier,
+  versionDecision = null,
 } = {}) {
   const rungs = [];
   const push = (id, name, state, detail) => rungs.push({ rung: id, name, state, detail });
+  let notices = [];
 
   // ── rung 0: args & cwd (gates every other rung) ──────────────────────────
   const r0 = evalRung0({ cwd, reqPath, isGitRepoFn, checkReqPathFn });
@@ -359,6 +366,7 @@ export function runStartupChecks({
 
   if (chainAlive) {
     const resolution = resolveFn({ override: pluginRoot, env });
+    notices = resolution.notices || [];
     push(
       "1",
       "plugin resolved (AC-3.2)",
@@ -464,6 +472,14 @@ export function runStartupChecks({
     permissionMode,
   });
 
+  // §6.3's resolution announcement (AT-5.2): carried into the banner
+  // verbatim — the exact string `resolveVersion()` produced, never
+  // re-rendered here. A "refuse" decision has no announcement to show
+  // (its refusal is reported elsewhere), so it is deliberately skipped.
+  if (versionDecision && versionDecision.kind !== "refuse" && versionDecision.announcement) {
+    banner.push(versionDecision.announcement);
+  }
+
   const failed = rungs.filter((r) => r.state === "fail");
   const dryRunExcused = dryRun && failed.length > 0 && failed.every((r) => r.rung === "5");
   const ok = failed.length === 0 || dryRunExcused;
@@ -477,6 +493,7 @@ export function runStartupChecks({
     versions,
     baseUrl,
     auth,
+    notices,
     reason: ok ? null : failed.map((r) => `rung ${r.rung} (${r.name}): ${r.detail}`).join("\n"),
   };
 }

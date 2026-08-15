@@ -78,7 +78,7 @@ function baseOpts(overrides = {}) {
 
 // ─── PROP-VER-15, first conjunct: notices surfaced by identity ────────────
 
-test.skip("T40: AT-5.6: result.notices is the exact array `resolveFn` returned, not a copy", () => {
+test("T40: AT-5.6: result.notices is the exact array `resolveFn` returned, not a copy", () => {
   const record = Object.freeze({
     id: "env.plugin-root-ignored",
     text: "PDLC_PLUGIN_ROOT was set (/env/value) and ignored — dev-mode was not declared; pass --dev to honour it",
@@ -96,12 +96,12 @@ test.skip("T40: AT-5.6: result.notices is the exact array `resolveFn` returned, 
   assert.strictEqual(result.notices[0], record, "each record must be the same object reference");
 });
 
-test.skip("T40: AT-5.6: result.notices is empty when the resolver reports no notices", () => {
+test("T40: AT-5.6: result.notices is empty when the resolver reports no notices", () => {
   const result = runStartupChecks(baseOpts());
   assert.deepEqual(result.notices, []);
 });
 
-test.skip("T40: AT-5.6: a fail resolution's notices are still surfaced (not swallowed by the chain gate)", () => {
+test("T40: AT-5.6: a fail resolution's notices are still surfaced (not swallowed by the chain gate)", () => {
   const record = Object.freeze({ id: "env.plugin-root-ignored", text: "ignored anyway" });
   const notices = Object.freeze([record]);
   const result = runStartupChecks(
@@ -119,7 +119,7 @@ test.skip("T40: AT-5.6: a fail resolution's notices are still surfaced (not swal
 // implementation would coincidentally reproduce, so a substring/regex check
 // could not stand in for the exact-equality assertion PROP-VER-15 demands.
 
-test.skip("T40: AT-5.2: branch 1 (dev) — resolver's announcement carried into the banner verbatim", () => {
+test("T40: AT-5.2: branch 1 (dev) — resolver's announcement carried into the banner verbatim", () => {
   const decision = {
     kind: "dev",
     version: null,
@@ -134,7 +134,7 @@ test.skip("T40: AT-5.2: branch 1 (dev) — resolver's announcement carried into 
   );
 });
 
-test.skip("T40: AT-5.2: branch 3 (pin) — resolver's announcement carried into the banner verbatim", () => {
+test("T40: AT-5.2: branch 3 (pin) — resolver's announcement carried into the banner verbatim", () => {
   const decision = {
     kind: "pin",
     version: "0.3.1",
@@ -149,7 +149,7 @@ test.skip("T40: AT-5.2: branch 3 (pin) — resolver's announcement carried into 
   );
 });
 
-test.skip("T40: AT-5.2: branch 6 (latest) — resolver's announcement carried into the banner verbatim", () => {
+test("T40: AT-5.2: branch 6 (latest) — resolver's announcement carried into the banner verbatim", () => {
   const decision = {
     kind: "latest",
     version: "0.9.0",
@@ -164,7 +164,7 @@ test.skip("T40: AT-5.2: branch 6 (latest) — resolver's announcement carried in
   );
 });
 
-test.skip("T40: branches 1/3/6 each produce a DISTINCT banner line — no shared placeholder passes all three", () => {
+test("T40: branches 1/3/6 each produce a DISTINCT banner line — no shared placeholder passes all three", () => {
   const announcements = new Set();
   for (const decision of [
     { kind: "dev", version: null, root: "/repo/pdlc", announcement: "dev-mode: token-D1-9f2a", refusal: null },
