@@ -429,6 +429,29 @@ describe("RT-3c: ownership header normalization and loud near-miss diagnostic", 
       expect.objectContaining({ matchedSide: "owner" }),
     ]);
   });
+
+  test("RT-3c-5: an ordinary task table (Task ID | Description | Deps) is NOT a near miss — the id-column/owner-set overlap exception, in isolation", () => {
+    // No manifest table anywhere in this document — just the task table that
+    // every PLAN carries. Its "Task ID" cell matches the owner set on its own
+    // (PLAN_ID_HEADER_CELLS and PLAN_OWNER_HEADER_CELLS share spellings), so
+    // without the task-table exception this would wrongly report a near miss
+    // on every ordinary PLAN. Pinned in isolation, with no accompanying
+    // manifest table, so the exception can't hide behind RT-3c-1's paired
+    // qualifying table.
+    const taskTableOnly = [
+      "| Task ID | Description | Deps |",
+      "|---|---|---|",
+      "| T-01 | Initialize config directory | — |",
+      "| T-02 | Create model loader | T-01 |",
+    ].join("\n");
+
+    const parsed = parsePlanOwnership(taskTableOnly);
+
+    // Positive conjunct: the document is not silently unreadable in some
+    // other way — it is null for the ordinary, pre-existing reason (no
+    // manifest table at all), not treated specially by this test.
+    expect(parsed).toBeNull();
+  });
 });
 
 // ─── 3. The task-table ⟷ manifest contract ────────────────────────────────────
