@@ -12084,7 +12084,16 @@ return await __queue.main({
       reqPath,
       ...__devInjections,
 
-      _recordQueueRow: async ({ feature, status, evidence }) =>
-        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit, evidence),
+      _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
+        __queue.rewriteStatus(
+          __queuePath,
+          feature,
+          status,
+          rtReadFile,
+          rtWriteFile,
+          rtGit,
+          evidence,
+          provenance
+        ),
     }),
 });

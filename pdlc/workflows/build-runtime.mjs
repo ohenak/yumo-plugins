@@ -270,8 +270,21 @@ return await __queue.main({
       // TSPEC §11.2 — the 7th (evidence) argument threads a merged run's
       // Evidence cell through to the queue row (§8.3/§8.4); absent, it is
       // undefined, and rewriteStatus treats that exactly as it does today.
-      _recordQueueRow: async ({ feature, status, evidence }) =>
-        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit, evidence),
+      // TSPEC §7.2 kind-3 carrier (K-3) — the 8th (provenance) argument threads
+      // a merged run's Provenance value through to the queue row's Engine
+      // column; absent, it is undefined, and rewriteStatus's own default
+      // (NO_PROVENANCE) applies exactly as it does today.
+      _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
+        __queue.rewriteStatus(
+          __queuePath,
+          feature,
+          status,
+          rtReadFile,
+          rtWriteFile,
+          rtGit,
+          evidence,
+          provenance
+        ),
     }),
 });
 `;
@@ -303,7 +316,10 @@ return await __dev.main({
   // TSPEC §11.2 — same evidence thread as QUEUE_ENTRY's closure (§7.2 edits
   // 3 + 4): a direct run's own queue-row write also carries the merged
   // Evidence cell when Phase MERGE produced one.
-  _recordQueueRow: async ({ feature, status, evidence }) =>
+  // TSPEC §7.2 kind-3 carrier (K-3) — same 8th (provenance) argument as
+  // QUEUE_ENTRY's closure above; absent, it is undefined and rewriteStatus's
+  // own default (NO_PROVENANCE) applies exactly as it does today.
+  _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,
@@ -311,7 +327,8 @@ return await __dev.main({
       rtReadFile,
       rtWriteFile,
       rtGit,
-      evidence
+      evidence,
+      provenance
     ),
 });
 `;
