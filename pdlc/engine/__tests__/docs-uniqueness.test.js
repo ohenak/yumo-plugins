@@ -71,7 +71,7 @@ test("AT-2.2: docs uniqueness set is git ls-files over the stated pathspec, not 
   }
 });
 
-test.skip("T31: AT-2.2: each engine install/upgrade/pairing command occurs exactly once", () => {
+test("T31: AT-2.2: each engine install/upgrade/pairing command occurs exactly once", () => {
   const files = trackedDocFiles();
   const pkgName = engineCommandLiteral();
   const commands = [
