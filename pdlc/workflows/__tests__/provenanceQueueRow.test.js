@@ -41,10 +41,16 @@ import {
   PROVENANCE_QUEUE_FIXTURES,
   PROVENANCE_QUEUE_FEATURE,
 } from "./helpers/provenanceDoubles.js";
+// T03's S-7 generators (PROP-PROV-6, PLAN T36 row): `genQueueTable` draws the
+// ragged-row / trailing-pipe / CRLF / Evidence-and-Engine-column-present
+// shapes this property needs, over the same `seeded`/`resolveSeed` pair
+// every other seeded property in this repo uses (PDLC_PROP_SEED override).
+import { genQueueTable, seeded, resolveSeed } from "../../engine/__tests__/_doubles.mjs";
 
 const QUEUE_PATH = "docs/_queue/QUEUE.md";
+const PROVENANCE_QUEUE_PROP_SEED = 0x9a7a;
 
-describe.skip("T36: ensureEngineColumn — mirrors ensureEvidenceColumn (PROP-PROV-5, PROP-PROV-6)", () => {
+describe("T36: ensureEngineColumn — mirrors ensureEvidenceColumn (PROP-PROV-5, PROP-PROV-6)", () => {
   test("a five-column canonical queue: header gains a literal 'Engine' cell, separator gains one cell, every data row gains one empty cell", () => {
     const before = QUEUE_SHAPES.canonical5col;
     const beforeDataLines = before
@@ -119,7 +125,7 @@ describe.skip("T36: ensureEngineColumn — mirrors ensureEvidenceColumn (PROP-PR
   });
 });
 
-describe.skip("T36: updateQueueStatus writes the Engine cell on BOTH row-write paths (PROP-PROV-5, AT-5.3b)", () => {
+describe("T36: updateQueueStatus writes the Engine cell on BOTH row-write paths (PROP-PROV-5, AT-5.3b)", () => {
   test("the evidence == null quick path also writes the Engine cell when a provenance line is supplied", () => {
     const p = makePopulatedProvenance();
     const result = updateQueueStatus(QUEUE_SHAPES.canonical5col, FEATURE, "in-progress", null, p.line);
@@ -183,6 +189,63 @@ describe.skip("T36: updateQueueStatus writes the Engine cell on BOTH row-write p
     const otherRow = result.markdown.split("\n").find((l) => l.includes("other-feature-a"));
     expect(otherRow.trim().endsWith("|  |  |")).toBe(true);
   });
+});
+
+// ─── T36 — PROP-PROV-6: ensureEngineColumn over generated tables ──────────
+//
+// Bounded, seeded generators (T03's `genQueueTable`, PDLC_PROP_SEED-
+// overridable via `resolveSeed`) over the ragged-row / trailing-pipe / CRLF /
+// Evidence-absent-and-present shape space: `parseQueue ∘ ensureEngineColumn`
+// preserves every pre-existing row's cells, and applying `ensureEngineColumn`
+// twice equals applying it once, byte-for-byte. On failure the seed and the
+// generator's own opts are printed alongside the underlying assertion
+// failure, so a red is reproducible rather than folkloric (TE round-1 F-12).
+describe("T36 — PROP-PROV-6: ensureEngineColumn is idempotent and cell-preserving over generated QUEUE.md tables", () => {
+  const seed = resolveSeed(PROVENANCE_QUEUE_PROP_SEED);
+  const rng = seeded(seed);
+
+  for (let rowCount = 1; rowCount <= 6; rowCount++) {
+    for (let draw = 0; draw < 4; draw++) {
+      test(`rowCount=${rowCount} draw=${draw}: cell-preserving and idempotent`, () => {
+        const gen = genQueueTable(rng, { rowCount });
+        const opts = {
+          withEvidence: gen.withEvidence,
+          withEngine: gen.withEngine,
+          crlf: gen.crlf,
+          ragged: gen.ragged,
+          trailingPipe: gen.trailingPipe,
+          rowCount: gen.rowCount,
+        };
+
+        try {
+          const beforeEntries = queueModule.parseQueue(gen.markdown);
+
+          const first = queueModule.ensureEngineColumn(gen.markdown);
+          const afterEntries = queueModule.parseQueue(first.markdown);
+
+          expect(afterEntries).toHaveLength(beforeEntries.length);
+          beforeEntries.forEach((entry, i) => {
+            const afterEntry = afterEntries[i];
+            expect(afterEntry.feature).toBe(entry.feature);
+            expect(afterEntry.status).toBe(entry.status);
+            expect(afterEntry.reqPath).toBe(entry.reqPath);
+            expect(afterEntry.dependsOn).toEqual(entry.dependsOn);
+          });
+
+          // Idempotent: applying twice equals applying once, byte-for-byte.
+          const second = queueModule.ensureEngineColumn(first.markdown);
+          expect(second.markdown).toBe(first.markdown);
+          expect(second.migrated).toBe(false);
+        } catch (err) {
+          throw new Error(
+            `seed=${seed} rowCount=${rowCount} draw=${draw} opts=${JSON.stringify(opts)} — ${
+              err && err.message ? err.message : String(err)
+            }`,
+          );
+        }
+      });
+    }
+  }
 });
 
 describe.skip("T39: rewriteStatus's 8th parameter — the single writer all five routes inherit (PROP-PROV-5, AT-5.3)", () => {
