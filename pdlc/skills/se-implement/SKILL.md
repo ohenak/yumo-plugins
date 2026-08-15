@@ -70,7 +70,7 @@ Read all provided documents before writing any code.
    - Error cases (invalid input, dependency failures, timeouts)
    - Accessibility (keyboard navigation, ARIA labels, focus management) — for frontend tasks
 4. For frontend: use user-centric queries — not implementation-detail selectors
-5. Run the test suite — confirm the new test **fails for the right reason**. If the PLAN assigns the implementation to a **later** task (your row is `[red]`), then after observing the failure leave the block skipped — `.skip` as the plain leading token of its statement, titled with the owning task's id (`"T26: …"`, one id per title) — so the wave's gate stays green until that task un-skips it
+5. Run the test suite — confirm the new test **fails for the right reason**. If the PLAN assigns the implementation to a **later** task (your row is `[red]`), then after observing the failure leave the block skipped — `.skip` as the plain leading token of its statement, titled with the owning task's id (`"T26: …"`, one id per title) — so the wave's gate stays green until that task un-skips it. **Then re-run the file to confirm it exits 0** with the skipped block no longer executing. Leaving a failing block un-skipped is a task failure, not "expected red": the wave gate runs the full suite and halts the pipeline on it. If you cannot name the owning later task, stop and report instead of leaving it red
 6. If the PLAN assigns this task's tests to an earlier task, they are already committed `.skip`ped and titled with your task id: remove exactly those `.skip` wrappers first, then run them and confirm they **fail for the right reason** before writing any implementation. Never delete a skipped block or write a new test beside it instead of un-skipping it
 7. Update task status in the PLAN to 🔴
 
@@ -230,6 +230,7 @@ Before marking the phase complete:
 ### Code
 - [ ] Every task in the phase has tests written before the implementation
 - [ ] All tests pass — zero failures; the only skipped blocks are `.skip` in statement position titled with the id of a task not yet completed, and none of those titles names YOUR task
+- [ ] Every test file you touched was run directly and exits 0 — one un-skipped failing test halts the wave gate for the whole pipeline
 - [ ] Types are correct — no unjustified untyped values
 - [ ] No hardcoded secrets, API keys, or credentials
 - [ ] Dependencies injected via protocols

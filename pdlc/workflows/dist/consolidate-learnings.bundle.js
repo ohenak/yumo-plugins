@@ -6657,6 +6657,12 @@ function waveImplementPrompt(task, featureName) {
     `If a test file needs a module that does not exist yet, defer loading it — use a dynamic ` +
     `\`await import\` inside the test body rather than a top-level import — so the file still loads ` +
     `and the skips take effect.\n` +
+    `EXIT CRITERION (hard, self-verify before reporting done): run each test file you touched ` +
+    `directly and confirm it exits 0. A failing test must NEVER be left un-skipped in the tree: ` +
+    `either your task makes it pass now, or the implementation belongs to a later task and the ` +
+    `block goes \`.skip\`ped, titled with that task's id. "My row is [red], so red is expected" is ` +
+    `WRONG — the wave gate runs the FULL suite and one un-skipped red test halts the entire pipeline. ` +
+    `If you cannot name the owning later task from the PLAN, stop and report instead.\n` +
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
