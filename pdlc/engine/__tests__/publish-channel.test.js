@@ -90,7 +90,7 @@ async function loadPreflight() {
 
 // ─── AT-3.1: whole-gate-green ⇒ exactly one publish, no human step ─────────────────────────
 
-test.skip(
+test(
   "T49: publish channel — whole-gate-green path publishes exactly once, no human step (AT-3.1)",
   async () => {
     const { runPublish } = await loadPreflight();
@@ -122,7 +122,7 @@ test.skip(
 
 // ─── AT-3.2: one red member ⇒ nothing published, conclusion `failure` ──────────────────────
 
-test.skip(
+test(
   "T49: publish channel — one red gate member ⇒ nothing published, conclusion asserted as failure (AT-3.2)",
   async () => {
     const { runPublish } = await loadPreflight();
@@ -152,7 +152,7 @@ test.skip(
 
 // ─── AT-3.3: idempotency — both branches, byte-identity on each ────────────────────────────
 
-test.skip(
+test(
   "T49: publish channel — re-run for an already-held version takes the no-op branch, bytes unchanged, output names the version (AT-3.3)",
   async () => {
     const { runPublish } = await loadPreflight();
@@ -186,7 +186,7 @@ test.skip(
   },
 );
 
-test.skip(
+test(
   "T49: publish channel — re-run for an already-held version takes the loud-failure branch naming the collision, bytes unchanged (AT-3.3)",
   async () => {
     const { runPublish } = await loadPreflight();
@@ -222,7 +222,7 @@ test.skip(
 
 // ─── AT-3.5: sentinel absent from artifact + log, plus AC-3.5's two positives ──────────────
 
-test.skip(
+test(
   "T49: publish channel — secret present ⇒ stub authenticates and the release is cut, sentinel absent from artifact and log (AT-3.5)",
   async () => {
     const { runPublish } = await loadPreflight();
@@ -261,7 +261,7 @@ test.skip(
 );
 
 for (const missingSecret of [undefined, ""]) {
-  test.skip(
+  test(
     `T49: publish channel — secret ${JSON.stringify(missingSecret)} ⇒ named failure, nothing published (AT-3.5)`,
     async () => {
       const { runPublish } = await loadPreflight();
@@ -294,7 +294,7 @@ for (const missingSecret of [undefined, ""]) {
   );
 }
 
-test.skip(
+test(
   "T49: publish.yml — NODE_AUTH_TOKEN is consumed only by the publish step (PROP-PUB-8)",
   () => {
     assert.ok(
@@ -322,7 +322,7 @@ test.skip(
 
 // ─── AT-3.6: tag disagreeing with T-1a fails naming both values ────────────────────────────
 
-test.skip(
+test(
   "T49: publish-preflight — checkTagVersion fails naming both the tag's and the manifest's version on disagreement (AT-3.6, PF-1)",
   async () => {
     const { checkTagVersion } = await loadPreflight();
@@ -339,7 +339,7 @@ test.skip(
 
 // ─── AT-3.7: pluginCompat range excluding T-1b fails naming range and plugin version ───────
 
-test.skip(
+test(
   "T49: publish-preflight — checkPluginCompatRange fails naming the range and the plugin version on exclusion (AT-3.7, PF-2)",
   async () => {
     const { checkPluginCompatRange } = await loadPreflight();

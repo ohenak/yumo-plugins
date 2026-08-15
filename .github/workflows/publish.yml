@@ -1,0 +1,215 @@
+name: Publish
+
+# Tag-triggered publish pipeline for pdlc/engine (TSPEC §8). A NEW, additive
+# workflow file: it adds no job to pr-tests.yml and edits no `name:` key in
+# it (C-5, BR-7.5), so V-18's five rendered check names stay untouched and
+# Phase PUB's literal polling keeps working.
+#
+# `engine-v*` is a new convention this feature establishes (TSPEC §8.1): the
+# plugin and the engine version independently (T-1a/T-1b), and a bare `v*`
+# prefix would make a future plugin tag trigger an engine publish.
+on:
+  push:
+    tags:
+      - 'engine-v*'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Re-runs the five PR-gate jobs' commands at the tagged commit (§8.2, C-5).
+  # Carries its own copy of the job bodies rather than a `uses:` reusable-
+  # workflow call: a reusable-workflow call renders as "{caller job name} /
+  # {called job name}", which would silently rename the checks Phase PUB
+  # polls literally while staying invisible to §8.5's arrangement oracle
+  # (TSPEC §8.2). `pr-tests.yml` is not touched by this file at all; the two
+  # files are kept in step by `ci-arrangement.test.js`'s command
+  # set-equality, not by memory.
+  gate:
+    name: Gate (PR checks re-run at the tag)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pdlc/workflows/package-lock.json
+
+      - name: Record the environment under test
+        run: |
+          echo "bash:    $(bash --version | head -1)"
+          echo "git:     $(git --version)"
+          echo "node:    $(node -v)"
+          echo "uid:     $(id -u)  (non-zero => the uid-nonroot capability is available)"
+          for tool in python3 shasum sha1sum; do
+            printf '%-8s %s\n' "$tool:" "$(command -v "$tool" || echo '(absent)')"
+          done
+
+      - name: Install workflows dependencies
+        working-directory: pdlc/workflows
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: pdlc/workflows
+        run: npm test
+
+      - name: Install engine dependencies
+        working-directory: pdlc/engine
+        run: npm ci
+
+      - name: Engine tests
+        working-directory: pdlc/engine
+        run: npm test
+
+      - name: dist/ is not stale
+        run: node pdlc/workflows/build-runtime.mjs --check
+
+      - name: Rebuilding produces no diff
+        run: |
+          node pdlc/workflows/build-runtime.mjs
+          git diff --exit-code -- pdlc/workflows/dist/
+
+      - name: No consumer copy exists yet
+        run: |
+          if [ -e .claude/workflows ]; then
+            echo "::error::.claude/workflows exists in a fresh checkout; it must be untracked"
+            exit 1
+          fi
+          echo "confirmed: no .claude/workflows in a fresh checkout"
+
+      - name: Step 1 — build the runtime artifacts
+        run: node pdlc/workflows/build-runtime.mjs
+
+      - name: Step 2 — sync them into the consumer copy
+        run: |
+          set +e
+          pdlc/hooks/scripts/sync-workflows.sh
+          rc=$?
+          set -e
+          if [ "$rc" -eq 126 ]; then
+            echo "::error::sync-workflows.sh exited 126 — the execute bit was lost (expected mode 100755)"
+            exit 1
+          fi
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::sync-workflows.sh exited $rc on a fresh clone; the documented bootstrap should succeed"
+            exit 1
+          fi
+
+      - name: Bootstrapped tree reports in sync
+        run: pdlc/hooks/scripts/sync-workflows.sh --check
+
+      - name: Consumer copy stayed untracked
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::bootstrap dirtied the working tree:"
+            git status --porcelain
+            exit 1
+          fi
+          echo "confirmed: bootstrap left the index clean"
+
+      - name: bash -n every shipped script
+        run: |
+          status=0
+          while IFS= read -r script; do
+            if bash -n "$script"; then
+              echo "ok    $script"
+            else
+              echo "::error file=$script::bash -n reported a syntax error"
+              status=1
+            fi
+          done < <(git ls-files '*.sh')
+          exit "$status"
+
+      - name: Executable bits are as shipped
+        run: |
+          status=0
+          check_mode() {
+            local want="$1" path="$2" got
+            got=$(git ls-files --stage -- "$path" | awk '{print $1}')
+            if [ -z "$got" ]; then
+              echo "::error::$path is not tracked"
+              status=1
+            elif [ "$got" != "$want" ]; then
+              echo "::error file=$path::index mode is $got, expected $want"
+              status=1
+            else
+              echo "ok    $path ($got)"
+            fi
+          }
+          check_mode 100755 pdlc/hooks/scripts/sync-workflows.sh
+          check_mode 100755 pdlc/hooks/scripts/check-workflow-drift.sh
+          check_mode 100644 pdlc/hooks/scripts/lib/pdlc-drift.sh
+          exit "$status"
+
+  # Offline manifest and version checks (§8.3). Runs in parallel with `gate`:
+  # it needs no network and no gate result. Neither job is `continue-on-error`
+  # or conditional on anything but its own dependencies (BR-3.2) — `publish`
+  # below is the only job gated on both.
+  preflight:
+    name: Preflight (offline manifest and version checks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: PF-1 / PF-2 — tag version and plugin-compat range
+        run: node pdlc/engine/scripts/publish-preflight.mjs preflight "${{ github.ref_name }}"
+
+      - name: PF-3 — manifest is publishable
+        run: node pdlc/engine/scripts/publish-preflight.mjs manifest
+
+  # Writes the pairing record, packs, publishes through the channel seam
+  # (§8.4). Depends on BOTH `gate` and `preflight` — reaching this job's
+  # steps already proves both succeeded (BR-3.2: neither is
+  # `continue-on-error`, and this is the only conditional dependency in the
+  # file). Ordering inside the job is fixed (§8.4 PM Q-01): (1) write
+  # `pdlcPairing` into the unmutated tree; (2) `prepack`/`npm pack` vendors
+  # and packs it, via `npm ci`'s prepack lifecycle hook; (3) PF-4 and PF-5
+  # are re-asserted against the packed tarball, so the mutation in step 1 is
+  # asserted as a member of its own expected set rather than merely argued;
+  # (4) the channel is called, behind the auth token, consumed only here.
+  publish:
+    name: Publish
+    needs: [gate, preflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Write the pairing record (O-6, AC-1.5, single writer)
+        run: node pdlc/engine/scripts/publish-preflight.mjs write-pairing "${{ github.ref_name }}"
+
+      - name: Install engine dependencies
+        working-directory: pdlc/engine
+        run: npm ci
+
+      - name: Pack the engine tarball
+        working-directory: pdlc/engine
+        run: |
+          mkdir -p /tmp/pdlc-engine-pack
+          npm pack --json --pack-destination /tmp/pdlc-engine-pack > /tmp/pdlc-engine-pack/pack.json
+
+      - name: PF-4 / PF-5 — re-assert packed set and vendor hashes against the tarball
+        run: node pdlc/engine/scripts/publish-preflight.mjs verify-packed /tmp/pdlc-engine-pack/pack.json
+
+      - name: Publish through the channel (BR-3.9, C-7, C-8, AC-3.3, AC-3.5)
+        working-directory: pdlc/engine
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node scripts/publish-preflight.mjs publish /tmp/pdlc-engine-pack/pack.json
