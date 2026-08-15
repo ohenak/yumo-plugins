@@ -3891,6 +3891,58 @@ function parseVerdict(result, skillName) {
   };
 }
 
+const FINDING_SEVERITIES = Object.freeze({ high: "High", medium: "Medium", low: "Low" });
+const FINDING_PROVENANCES = Object.freeze({ delta: "delta", inherited: "inherited" });
+const FINDING_LOCALITIES = Object.freeze({ local: "local", nonlocal: "nonlocal" });
+
+function parseConfirmationFindings(text) {
+  const findings = [];
+  const malformed = [];
+
+  scanLines(text, (line) => {
+
+    const trimmed = line.trim();
+    const tag = /^FINDING\s*:/i.exec(trimmed);
+    if (!tag) return;
+
+    const body = trimmed.slice(tag[0].length);
+
+    const parts = [];
+    let rest = body;
+    for (let i = 0; i < 4; i++) {
+      const at = rest.indexOf("|");
+      if (at === -1) {
+        rest = null;
+        break;
+      }
+      parts.push(rest.slice(0, at));
+      rest = rest.slice(at + 1);
+    }
+    if (rest === null) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    const severity = FINDING_SEVERITIES[parts[0].trim().toLowerCase()];
+    const provenance = FINDING_PROVENANCES[parts[1].trim().toLowerCase()];
+    const locality = FINDING_LOCALITIES[parts[2].trim().toLowerCase()];
+    if (!severity || !provenance || !locality) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    findings.push({
+      severity,
+      provenance,
+      locality,
+      section: parts[3].trim(),
+      text: rest.trim(),
+    });
+  });
+
+  return { findings, malformed };
+}
+
 function parseDecisionsWarranted(result) {
   if (result == null || (typeof result === "string" && result.trim() === "")) {
     log(
@@ -5983,9 +6035,24 @@ function erratumConfirmPrompt({
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
     erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+function findingGrammarClause() {
+  return (
+    `Tag every finding you raise. One finding per line, outside any fenced block, ` +
+    `above your VERDICT trailer:\n` +
+    `FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}\n` +
+    `- delta = this round's edit introduced it, or left it unlanded; inherited = it was ` +
+    `already in the pre-round bytes and this edit did not touch it.\n` +
+    `- local = it sits inside the sections this edit changed; nonlocal = anywhere else.\n` +
+    `- The section anchor and the text are free-form; pipes inside the text are fine.\n` +
+    `An untagged finding is read as {delta, nonlocal} — the strictest reading — so tagging ` +
+    `can only ever widen the outcome, never narrow it.\n`
   );
 }
 

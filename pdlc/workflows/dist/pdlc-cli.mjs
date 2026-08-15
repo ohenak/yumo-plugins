@@ -4676,6 +4676,106 @@ function parseVerdict(result, skillName) {
   };
 }
 
+// ─── TSPEC-PARSE-06: parseConfirmationFindings ────────────────────────────────
+
+/**
+ * The severity / provenance / locality triple a delta-confirmation reviewer
+ * tags each finding with (PLAN §2.1). Closed sets, matched case-insensitively
+ * and returned in canonical casing, so the gate downstream compares tokens and
+ * never strings the reviewer happened to type.
+ */
+const FINDING_SEVERITIES = Object.freeze({ high: "High", medium: "Medium", low: "Low" });
+const FINDING_PROVENANCES = Object.freeze({ delta: "delta", inherited: "inherited" });
+const FINDING_LOCALITIES = Object.freeze({ local: "local", nonlocal: "nonlocal" });
+
+/**
+ * Parse the structured `FINDING:` lines out of a delta-confirmation — the new
+ * input surface the erratum gate reads (PLAN §2.1). One finding per line:
+ *
+ *   FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section} | {text}
+ *
+ * Four properties are load-bearing:
+ *
+ *   1. **Fence-aware, via `scanLines`.** A `FINDING:` line quoted inside a
+ *      fenced block — the grammar template in a SKILL, an excerpt of a prior
+ *      review — is never a finding. Same scanner `extractFileVerdict` and
+ *      `isComplete` use, so all three agree on what counts as a line of the
+ *      document (TSPEC §5.0).
+ *   2. **Channel-agnostic.** The argument is text: an agent's response string
+ *      and the cross-review file's contents parse identically. The gate reads
+ *      whichever channel it holds without a second grammar.
+ *   3. **First four delimiters only.** The section anchor is free-form and the
+ *      finding text routinely carries pipes (table cells, `list[str] | None`).
+ *      Splitting on every `|` would shift the record the same way `splitPipeRow`
+ *      historically shifted a PLAN's Deps column, so the remainder after the
+ *      fourth delimiter is the text, verbatim, pipes and all.
+ *   4. **Unparseable is reported, never dropped.** A `FINDING:` line whose
+ *      triple is not a valid severity/provenance/locality — or that carries
+ *      fewer than four delimiters — goes to `malformed` as its raw line. The
+ *      caller decides what a malformed tag means; this function does not
+ *      silently discard a line a reviewer meant as a finding.
+ *
+ * A text with zero `FINDING:` lines returns zero findings and zero malformed
+ * entries. That is the legacy/untagged case, and it is NOT this function's job
+ * to interpret it: callers (the gate, T2) must fail closed on the document
+ * contract — a non-approving confirmation carrying no parseable tags is treated
+ * as `{delta, nonlocal}`, i.e. exactly the pre-grammar halt (PLAN §2.1).
+ *
+ * Total: input is coerced, nothing throws, both arrays are always present.
+ *
+ * @param {string} text - a confirmation response or cross-review file's bytes.
+ * @returns {{findings: Array<{severity: string, provenance: string, locality: string, section: string, text: string}>, malformed: string[]}}
+ */
+function parseConfirmationFindings(text) {
+  const findings = [];
+  const malformed = [];
+
+  scanLines(text, (line) => {
+    // \r survives `scanLines`' split on "\n"; trim absorbs it, so a CRLF file
+    // parses identically to an LF one.
+    const trimmed = line.trim();
+    const tag = /^FINDING\s*:/i.exec(trimmed);
+    if (!tag) return;
+
+    const body = trimmed.slice(tag[0].length);
+
+    // Split on the FIRST FOUR delimiters only — the fifth field is free text.
+    const parts = [];
+    let rest = body;
+    for (let i = 0; i < 4; i++) {
+      const at = rest.indexOf("|");
+      if (at === -1) {
+        rest = null;
+        break;
+      }
+      parts.push(rest.slice(0, at));
+      rest = rest.slice(at + 1);
+    }
+    if (rest === null) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    const severity = FINDING_SEVERITIES[parts[0].trim().toLowerCase()];
+    const provenance = FINDING_PROVENANCES[parts[1].trim().toLowerCase()];
+    const locality = FINDING_LOCALITIES[parts[2].trim().toLowerCase()];
+    if (!severity || !provenance || !locality) {
+      malformed.push(trimmed);
+      return;
+    }
+
+    findings.push({
+      severity,
+      provenance,
+      locality,
+      section: parts[3].trim(),
+      text: rest.trim(),
+    });
+  });
+
+  return { findings, malformed };
+}
+
 // ─── TSPEC-PARSE-05: parseDecisionsWarranted ──────────────────────────────────
 
 /**
@@ -8417,9 +8517,40 @@ function erratumConfirmPrompt({
     `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
     `anything you previously approved?\n` +
     erratumSupersetClause({ docType, upstreamState }) +
+    findingGrammarClause() +
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+/**
+ * The `FINDING:` grammar, stated to the confirmer (PLAN §2.1) — the input the
+ * gate reads via `parseConfirmationFindings`.
+ *
+ * The gate needs three things a prose finding does not carry: how bad it is,
+ * whether THIS round's edit introduced it or it was already in the pre-round
+ * bytes, and whether it sits inside the sections the edit touched. Those three
+ * decide whether the round earns one bounded follow-up, routes back to the
+ * owning phase's ordinary loop, or halts — a distinction no amount of re-reading
+ * the prose recovers.
+ *
+ * Untagged findings are not an error the confirmer is punished for: they are
+ * read as the worst case ({delta, nonlocal}), i.e. the pre-grammar halt. The
+ * grammar only ever buys a softer outcome, so the clause states that plainly
+ * rather than demanding compliance.
+ */
+function findingGrammarClause() {
+  return (
+    `Tag every finding you raise. One finding per line, outside any fenced block, ` +
+    `above your VERDICT trailer:\n` +
+    `FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}\n` +
+    `- delta = this round's edit introduced it, or left it unlanded; inherited = it was ` +
+    `already in the pre-round bytes and this edit did not touch it.\n` +
+    `- local = it sits inside the sections this edit changed; nonlocal = anywhere else.\n` +
+    `- The section anchor and the text are free-form; pipes inside the text are fine.\n` +
+    `An untagged finding is read as {delta, nonlocal} — the strictest reading — so tagging ` +
+    `can only ever widen the outcome, never narrow it.\n`
   );
 }
 
