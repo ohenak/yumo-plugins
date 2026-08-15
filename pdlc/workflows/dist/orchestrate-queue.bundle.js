@@ -10507,7 +10507,7 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, parseLogRecords, jsonCommentRecords, openPromotionList };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, ADVISORY_RUNG_SKILL, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, ADVISORY_SEAMS, parseLogRecords, jsonCommentRecords, openPromotionList };
 })();
 
 const __queue = (function () {
@@ -10521,6 +10521,7 @@ const resolveAdvisoryRung = __dev.resolveAdvisoryRung;
 const advisorySummaryRows = __dev.advisorySummaryRows;
 const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;
 const commitPaths = __dev.commitPaths;
+const ADVISORY_RUNG_SKILL = __dev.ADVISORY_RUNG_SKILL;
 
 const meta = {
   name: "orchestrate-queue",

@@ -10515,7 +10515,7 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, parseLogRecords, jsonCommentRecords, openPromotionList };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, ADVISORY_RUNG_SKILL, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, ADVISORY_SEAMS, parseLogRecords, jsonCommentRecords, openPromotionList };
 })();
 
 const __cons = (function () {
@@ -10526,6 +10526,7 @@ const gitWithLockRetry = __dev.gitWithLockRetry;
 const parseLogRecords = __dev.parseLogRecords;
 const jsonCommentRecords = __dev.jsonCommentRecords;
 const openPromotionList = __dev.openPromotionList;
+const ADVISORY_SEAMS = __dev.ADVISORY_SEAMS;
 
 const meta = {
   name: "consolidate-learnings",

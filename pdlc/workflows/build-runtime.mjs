@@ -114,11 +114,23 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "advisorySummaryRows",
   "ADVISORY_DEFAULTS",
   "commitPaths",
+  // orchestrate-queue.js's top-level DISPATCHABLE_SKILLS references this at
+  // module-load time, so it must be republished here (wave-16 defect: this
+  // name was missing from both this list and queueModule's prelude below,
+  // which produced a `ReferenceError: ADVISORY_RUNG_SKILL is not defined`
+  // the instant the queue bundle was evaluated, not just when a function
+  // ran). `assertDevImportsAreWired` below now catches this class at build
+  // time instead of at bundle-load time.
+  "ADVISORY_RUNG_SKILL",
   // TSPEC §8.2 — reused by consModule's prelude below; resolveAdvisoryRung is
-  // already published above, so only these three are new to the list.
+  // already published above, so only three are new to the list.
   "MERGE_GUARD_DEFAULTS",
   "mergeCommandFor",
   "gitWithLockRetry",
+  // consolidate-learnings.js imports this for its escalation-seam gate — same
+  // drift class as ADVISORY_RUNG_SKILL above (missing from consModule's
+  // prelude too until this fix).
+  "ADVISORY_SEAMS",
   // FSPEC §8.4 — the consolidation-log record readers live here so both sides of the hand-off
   // share one implementation; consSource imports them, so the bundle must republish them.
   "parseLogRecords",
@@ -126,23 +138,148 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "openPromotionList",
 ]);
 
+// ---------------------------------------------------------------------------
+// Build-time guard for the "hand-maintained republish/rebind lists drift from
+// a dependent module's real imports" defect class (wave-16 halt: the queue
+// bundle threw `ReferenceError: ADVISORY_RUNG_SKILL is not defined` the
+// instant it was loaded, because that name was covered by neither the
+// devModule export list above nor queueModule's prelude below — no existing
+// test loaded a built bundle, so the gate stayed green with the defect
+// shipped in dist/).
+//
+// This reads THIS FILE's own source from disk — never `devSource` /
+// `queueSource`, which do not carry these lists — and, for `label`'s
+// `import { ... } from "./orchestrate-dev.js";` statement, asserts every
+// named import both (a) appears as a quoted string inside the devModule
+// wrapModule() call above, and (b) is re-bound by a `const NAME =
+// __dev.NAME;` line inside `dependentCallAnchor`'s wrapModule() call. Reuses
+// advisoryBundle.test.js's own paren-balance extraction technique (masked
+// comments/strings, depth-counted walk) so a comment or a string literal
+// inside either call can never mislead the boundary. Throws loudly at build
+// time instead of failing silently at bundle-load time.
+function maskStringsAndCommentsForAudit(src) {
+  const out = src.split("");
+  const blank = (a, b) => {
+    for (let k = a; k < b && k < out.length; k++) {
+      if (out[k] !== "\n") out[k] = " ";
+    }
+  };
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === "/" && src[i + 1] === "/") {
+      let j = i;
+      while (j < src.length && src[j] !== "\n") j++;
+      blank(i, j);
+      i = j;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "*") {
+      const end = src.indexOf("*/", i + 2);
+      const j = end === -1 ? src.length : end + 2;
+      blank(i, j);
+      i = j;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      let j = i + 1;
+      while (j < src.length) {
+        if (src[j] === "\\") {
+          j += 2;
+          continue;
+        }
+        if (src[j] === quote) {
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      blank(i, j);
+      i = j;
+      continue;
+    }
+    i += 1;
+  }
+  return out.join("");
+}
+
+function sliceBalancedCallForAudit(source, anchor) {
+  const anchorIdx = source.indexOf(anchor);
+  if (anchorIdx === -1) return null;
+  const openIdx = anchorIdx + anchor.length - 1;
+  if (source[openIdx] !== "(") return null;
+  const masked = maskStringsAndCommentsForAudit(source);
+  let depth = 0;
+  for (let i = openIdx; i < masked.length; i++) {
+    if (masked[i] === "(") depth += 1;
+    else if (masked[i] === ")") {
+      depth -= 1;
+      if (depth === 0) return source.slice(anchorIdx, i + 1);
+    }
+  }
+  return null;
+}
+
+function importedNamesFromOrchestrateDev(depSource, label) {
+  const importLine = depSource
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => /^import\s.+from\s+"\.\/orchestrate-dev\.js";$/.test(line));
+  if (!importLine) {
+    throw new Error(`${label}: expected an import from "./orchestrate-dev.js" but found none.`);
+  }
+  const namedClause = importLine.match(/\{([^}]*)\}/);
+  if (!namedClause) return [];
+  return namedClause[1]
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => entry.split(/\s+as\s+/).pop());
+}
+
+function assertDevImportsAreWired(label, depSource, dependentCallAnchor) {
+  const buildSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  const devCall = sliceBalancedCallForAudit(buildSource, "const devModule = wrapModule(");
+  const dependentCall = sliceBalancedCallForAudit(buildSource, dependentCallAnchor);
+  if (!devCall || !dependentCall) {
+    throw new Error(`${label}: could not locate the wrapModule() calls to audit — did they move or get renamed?`);
+  }
+  for (const name of importedNamesFromOrchestrateDev(depSource, label)) {
+    if (!new RegExp(`"${name}"`).test(devCall)) {
+      throw new Error(
+        `${label}: "${name}" is imported from orchestrate-dev.js but not published in devModule's export list.`
+      );
+    }
+    if (!new RegExp(`const\\s+${name}\\s*=\\s*__dev\\.${name}\\s*;`).test(dependentCall)) {
+      throw new Error(
+        `${label}: "${name}" is imported from orchestrate-dev.js but not re-bound in its bundle prelude.`
+      );
+    }
+  }
+}
+
+// §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
+// `_recordQueueRow` closure calls; without them on `__queue` it has nothing to call.
 const queueModule = wrapModule(
   "__queue",
   stripModuleSyntax(queueSource),
-  // §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
-  // `_recordQueueRow` closure calls; without them on `__queue` it has nothing to call.
   ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
-  ["const realMain = __dev.main;",
-   "const runAdvisorySeam = __dev.runAdvisorySeam;",
-   "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;",
-   "const parseAdvisoryConfig = __dev.parseAdvisoryConfig;",
-   "const defaultAppendFile = __dev.defaultAppendFile;",
-   "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;",
-   "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
-   "const advisorySummaryRows = __dev.advisorySummaryRows;",
-   "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;",
-   "const commitPaths = __dev.commitPaths;"].join("\n")
+  [
+    "const realMain = __dev.main;",
+    "const runAdvisorySeam = __dev.runAdvisorySeam;",
+    "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;",
+    "const parseAdvisoryConfig = __dev.parseAdvisoryConfig;",
+    "const defaultAppendFile = __dev.defaultAppendFile;",
+    "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;",
+    "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
+    "const advisorySummaryRows = __dev.advisorySummaryRows;",
+    "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;",
+    "const commitPaths = __dev.commitPaths;",
+    "const ADVISORY_RUNG_SKILL = __dev.ADVISORY_RUNG_SKILL;",
+  ].join("\n")
 );
+assertDevImportsAreWired("orchestrate-queue.js", queueSource, "const queueModule = wrapModule(");
 
 // TSPEC §8.2 — the consolidation bundle's IIFE. The prelude re-binds the same
 // four reused symbols queueModule's does above, minus the ones queueModule
@@ -152,14 +289,19 @@ const consModule = wrapModule(
   "__cons",
   stripModuleSyntax(consSource),
   ["main", "meta"],
-  ["const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
-   "const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;",
-   "const mergeCommandFor = __dev.mergeCommandFor;",
-   "const gitWithLockRetry = __dev.gitWithLockRetry;",
-   "const parseLogRecords = __dev.parseLogRecords;",
-   "const jsonCommentRecords = __dev.jsonCommentRecords;",
-   "const openPromotionList = __dev.openPromotionList;"].join("\n")
+  [
+    "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
+    "const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;",
+    "const mergeCommandFor = __dev.mergeCommandFor;",
+    "const gitWithLockRetry = __dev.gitWithLockRetry;",
+    "const parseLogRecords = __dev.parseLogRecords;",
+    "const jsonCommentRecords = __dev.jsonCommentRecords;",
+    "const openPromotionList = __dev.openPromotionList;",
+    "const ADVISORY_SEAMS = __dev.ADVISORY_SEAMS;",
+  ].join("\n")
 );
+assertDevImportsAreWired("consolidate-learnings.js", consSource, "const consModule = wrapModule(");
+
 
 // `meta` must be a pure literal and the first statement, so each bundle carries
 // its own hand-written copy rather than re-exporting the module's.
