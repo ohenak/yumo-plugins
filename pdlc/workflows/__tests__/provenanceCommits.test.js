@@ -58,11 +58,31 @@ function queueRow(order, status, feature, reqPath) {
 
 const READY_REQ = "---\nready: true\n---\n# REQ body\n";
 
+// A structurally-complete cross-review body (`isComplete`'s cross-review branch requires a
+// readable `VERDICT:` trailer) — matches the shape `sessionAgent.test.js`'s own `crossReviewDoc`
+// helper produces, so the C-b episode's completeness gate reads this seeded file as terminal on
+// invocation 1 with no re-dispatch needed.
+function crossReviewDoc(verdict, high) {
+  return [
+    "# Cross-review",
+    "",
+    "## Findings",
+    "",
+    "Some findings.",
+    "",
+    "## Verdict",
+    "",
+    `VERDICT: ${verdict}`,
+    `{"high": ${high}, "medium": 0, "low": 0}`,
+    "",
+  ].join("\n");
+}
+
 // ---------------------------------------------------------------------------------------------
 // T35 — dev-side kind 4: C-a, C-b, C-e (§12.1, PROP-PROV-7).
 // ---------------------------------------------------------------------------------------------
 
-describe.skip("T35: dev-side commit helpers compose provenance.line into git commit -m (C-a, C-b, C-e)", () => {
+describe("T35: dev-side commit helpers compose provenance.line into git commit -m (C-a, C-b, C-e)", () => {
   // ─── C-a — commitPaths, called directly ────────────────────────────────────────────────────
   test("C-a: commitPaths' recorded `git commit -m` argv contains provenance.line", async () => {
     const provenance = makePopulatedProvenance();
@@ -96,11 +116,16 @@ describe.skip("T35: dev-side commit helpers compose provenance.line into git com
 
     const fs = fakeFs({
       [doc]: "# TSPEC\n\nBody.\n",
-      [path1]: "# Cross-review\n\n## Findings\n",
-      [path2]: "# Cross-review\n\n## Findings\n",
+      [path1]: crossReviewDoc("Approved", 0),
+      [path2]: crossReviewDoc("Approved", 0),
     });
+    // `makeRecordingGit` keys its script by `argv[0]` only, so a single "rev-parse"
+    // entry answers BOTH `verifyFeatureBranch`'s `rev-parse --abbrev-ref HEAD` (which
+    // must read back this test's own feature branch or the guard halts before
+    // reviewLoop ever reaches the commit this test asserts on) and `headCommitSha`'s
+    // `rev-parse HEAD` (whose exact value this test never asserts).
     const { calls: gitCalls, _git } = makeRecordingGit({
-      "rev-parse": { ok: true, stdout: "abc1234abc1234abc1234abc1234abc1234abcd\n" },
+      "rev-parse": { ok: true, stdout: `feat-${feature}\n` },
     });
 
     const APPROVE = 'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
