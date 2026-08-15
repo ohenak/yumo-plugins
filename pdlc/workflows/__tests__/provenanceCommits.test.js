@@ -165,7 +165,7 @@ describe.skip("T35: dev-side commit helpers compose provenance.line into git com
 // T30 — queue-side kind 4: C-d (§12.1, PROP-PROV-7).
 // ---------------------------------------------------------------------------------------------
 
-describe.skip("T30: commitAdvisoryRecord's recorded git commit -m argv contains provenance.line (C-d)", () => {
+describe("T30: commitAdvisoryRecord's recorded git commit -m argv contains provenance.line (C-d)", () => {
   test("C-d: main()'s advisory-record commit, reached through the queue's own needs-human path, carries provenance.line", async () => {
     const provenance = makePopulatedProvenance();
     const feature = "feat-prov";
