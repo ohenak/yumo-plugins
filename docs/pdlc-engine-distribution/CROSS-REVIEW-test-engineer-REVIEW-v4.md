@@ -105,4 +105,38 @@ myself.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both round-3 Highs are closed, and I did not take either on the document's word.
+F-01's flake is gone by the same measurement that found it — five clean runs,
+five greens, where round 3 measured one red in five — and the fix carries its
+own invariant assertion, so the hazard reddens deterministically in the file
+that owns it rather than intermittently in somebody else's. F-02's floor now has
+a real carrier: four mutations, four named reds, including the fail-closed case
+where the guard is deleted outright. The suite's green means something again,
+which matters beyond this feature, because Phase PUB reads that colour.
+
+Nothing in the delta broke anything approved. The three code changes are
+additive test legs plus one production export widened for pinning
+(`REFUSING_REFUSAL_IDS`), and the two PLAN edits touch only changelog and DoD
+prose — no row added, removed, re-batched or re-scoped, which I checked rather
+than took from the changelog's claim.
+
+Four findings, none blocking. F-01 (Medium) is round 3's F-03 carried unchanged:
+correctly routed as an erratum against PROPERTIES, simply not landed yet, and
+it is a record question rather than a coverage question — F-02's new carrier
+pins AC-2.4 without executing the guard, so the honest answer may well be
+"exempt, and here is why". Q-01 and Q-02 offer both shapes of that answer. F-02
+(Low) is one line: the proceed-arm partition checks one direction of a
+set-equality this suite normally checks in both. F-03 (Low/Process) asks for a
+sentence naming the new shared transcription module in PLAN §4 alongside
+`_doubles.mjs`, so its owner is recorded somewhere other than its own header.
+F-04 (Low) is a measurement carried for the record, with no action requested.
+
+All four are cheap enough to fold into whatever pass addresses the PROPERTIES
+erratum, and none of them should delay it.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
