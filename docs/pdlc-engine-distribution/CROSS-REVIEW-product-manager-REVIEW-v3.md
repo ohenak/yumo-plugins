@@ -120,4 +120,38 @@ the fifteen `pdlc/engine/lib/*.mjs` present at HEAD.
 
 ## Recommendation
 
+**Approved with minor changes** (0 High, 0 Medium, 2 Low).
+
+All four round-2 findings are resolved, and I verified each on the shipped path
+rather than in the diff: the empty-store arm now announces the run it is
+performing (run as an operator, both audiences), it has the oracle it lacked,
+the two suites agree on what the dev mark means, and the PLAN ledger reads as
+the feature that actually landed — 59 ✅, every manifest path present, both
+`[gate]` rows checked against their own records.
+
+Nothing in this delta narrowed a guarantee. The two changes most likely to have
+done so on the way past — the scoped parsers and the re-pinned PF-4 expectation
+— both make the contract *stricter*, and I checked the PK-* transcription
+against TSPEC §5.4 member for member rather than taking the commit message's
+word for it.
+
+Neither remaining finding is gating, and neither is about behaviour an operator
+will meet:
+
+1. Restate PLAN changelog v0.13's engine evidence as `1..747 / 806 pass`, or
+   drop the absolute counts (F-01). The conclusion is right; the number is from
+   a mid-stream tree.
+2. If convenient, pin the proceed-arm refusal-id set to `{store.empty}` in the
+   test, so a sixth refusal id cannot silently re-acquire refusal wording on an
+   arm that proceeds (F-02).
+
+One erratum is emitted separately against TSPEC. It concerns the record, not the
+code: the new `store.empty-in-place` id is unregistered in §10.3's enumeration
+and §6.2's branch 7 still describes a single message. Per protocol I have not
+folded it into this verdict, and it does not change my recommendation — the
+implementation is the part I am approving, and the shipped behaviour is right.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
