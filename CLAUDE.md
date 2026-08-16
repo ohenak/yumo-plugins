@@ -103,14 +103,18 @@ With a valid ownership manifest, Phase I runs **same-tree waves instead of workt
 
 ### Continuous integration
 
-`.github/workflows/pr-tests.yml` is the gate Phase PUB polls. Four checks must pass:
+The gate Phase PUB polls spans **two** PR-triggered workflow files — `.github/workflows/pr-tests.yml` and `.github/workflows/fixture-machine.yml`. Membership is decided by the file's `on:` trigger, not its name: `publish.yml` is excluded because it is tag-triggered and gates no pull request. **Six checks** must pass:
 
 | Check | What it asserts |
 |---|---|
-| `Unit tests (ubuntu-latest, node 20)` | `npm test` on Linux CI. There is deliberately no macOS job (operator decision, 2026-08-10): bash-3.2 portability of the shipped scripts is the maintainer's local concern, and a second platform job doubled CI wall time without ever failing independently |
+| `Unit tests (ubuntu-latest, node 20)` | `npm run test:coverage` (the workflows suite under c8, with the declared floor enforced in aggregate and branch ≥85% enforced per module) on Linux CI. There is deliberately no macOS job (operator decision, 2026-08-10): bash-3.2 portability of the shipped scripts is the maintainer's local concern, and a second platform job doubled CI wall time without ever failing independently |
+| `Engine tests (ubuntu-latest)` | `npm ci` + `npm test` in `pdlc/engine` — the engine channel's own suite, run through the package script so the `--import` bootstrap and suite-wide assertion step are inherited |
 | `Generated artifacts are in sync` | `build-runtime.mjs --check`, then a rebuild that must produce no diff — an independent observer, since `--check` and the builder share code |
 | `Fresh-clone bootstrap works` | executes the two documented bootstrap commands as written, by bare path, and fails loudly on exit 126 (lost execute bit) |
 | `Shell scripts parse` | `bash -n` over every tracked `*.sh`, plus index-mode assertions (`100755` for the two entrypoints, `100644` for the sourced library) |
+| `Fixture machine (install/upgrade, launcher, container, two-repo)` | `fixture-machine.yml` — real install/upgrade, launcher, container and two-repo legs over `pdlc/engine/**` (path-filtered, so it is skipped-as-success on PRs that touch neither the engine nor that workflow file) |
+
+This table is the human-facing citation of FSPEC §5.1's required-check set, and it is oracle-covered: `pdlc/engine/__tests__/ci-arrangement.test.js` derives the rows and the count word from §5.1 itself, so a check added to the gate without being added here goes red.
 
 Keep every job deterministic: Phase PUB halts the pipeline on any failure, so a job that can fail for reasons unrelated to the diff blocks delivery.
 

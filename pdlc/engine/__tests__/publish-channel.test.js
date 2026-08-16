@@ -49,7 +49,7 @@
 //                         version: string | null, message: string }
 //     Orchestrates PF-1..PF-5 and the §8.4 channel call over an injected S-5 `channel`.
 //     `opts`:
-//       gateConclusion        "success" | "failure" — the five §5.1 gate jobs' combined result
+//       gateConclusion        "success" | "failure" — the §5.1 gate jobs' combined result
 //       tag                   e.g. "engine-v1.2.3"
 //       packageVersion        T-1a
 //       pluginCompatRange     `pdlcPluginCompat`

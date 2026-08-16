@@ -1,5 +1,5 @@
 // CI arrangement (FSPEC §5.1 BR-7.1..BR-7.6, TSPEC §8.2/§8.5): `pr-tests.yml` must declare
-// exactly the five PR-gate jobs FSPEC §5.1 names, with a job-level `name:` alphabet that
+// exactly the §5.1 rows that belong to this file, with a job-level `name:` alphabet that
 // set-equals the authored column and a **per-job matrix expansion** (§8.5 — the axes are read
 // per job, not once for the whole file) that set-equals the rendered column. A `name:` carrying
 // any non-matrix expression, or an axis introduced by a matrix `include:` entry, is a failure
@@ -9,9 +9,9 @@
 // GitHub's real rendering could silently diverge from what this file computes while staying
 // green here — the arrangement is declared out of bounds instead.
 //
-// It also asserts the `publish.yml`/`pr-tests.yml` gate-command set-equality (§8.2, §8.5): the
-// commands `publish.yml`'s `gate` job runs must set-equal the run commands of `pr-tests.yml`'s
-// five gate jobs, which is what pays for §8.2's duplicated-job-bodies decision (the reusable-
+// It also asserts the `publish.yml`/PR-gate gate-command set-equality (§8.2, §8.5, BR-7.7): the
+// commands `publish.yml`'s `gate` job runs must set-equal the run commands of every PR-gate
+// file's gate jobs — `pr-tests.yml`'s and `fixture-machine.yml`'s — which is what pays for §8.2's duplicated-job-bodies decision (the reusable-
 // workflow extraction was rejected precisely because it silently renames rendered check names).
 //
 // This file **is** the oracle for all of the above — there is no separate production module
@@ -247,7 +247,8 @@ test("ci arrangement — pr-tests.yml", async (t) => {
     assertSetEqual(
       ids,
       GATE_JOB_IDS,
-      "pr-tests.yml's job set must equal FSPEC §5.1's five gate jobs; an added, renamed, or " +
+      "pr-tests.yml's job set must equal the FSPEC §5.1 gate jobs that belong to this file; " +
+        "an added, renamed, or " +
         "removed job fails here first (BR-7.1) — a PR check this feature adds must land in " +
         "the FSPEC table before it lands in the workflow"
     );
@@ -578,6 +579,80 @@ test("ci arrangement — the rendered alphabet across all PR-gate files equals �
     "the rendered alphabet, taken across every PR-gate file, must set-equal §5.1's rendered " +
       "column — six members, not five"
   );
+});
+
+// ---------------------------------------------------------------------------------------------
+// CODE_REVIEW v2 §3-2: the repo's human-facing description of the same gate
+//
+// §5.1's doctrine is that a PR-gating check this feature adds must land in the expected set
+// before it lands in the workflow. The oracles above enforce that for the spec and the YAML;
+// `CLAUDE.md`'s "Continuous integration" section is the third citation of the same set, and it
+// went unswept when row 6 was added — it still named four checks over one file. Derived, not
+// transcribed: this reads §5.1's rendered column and §5.1's file scope, so the next widening
+// fails here too rather than silently ageing the prose.
+// ---------------------------------------------------------------------------------------------
+
+const claudeMdPath = path.join(repoRoot, "CLAUDE.md");
+
+/** The body of `### Continuous integration`, up to the next same-or-higher-level heading. */
+function continuousIntegrationSection(text) {
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => /^###\s+Continuous integration\s*$/.test(l));
+  assert.notEqual(start, -1, "CLAUDE.md must carry a `### Continuous integration` section");
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^#{1,3}\s/.test(lines[i])) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n");
+}
+
+const COUNT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+
+test("ci arrangement — CLAUDE.md's CI section describes the whole §5.1 gate (CODE_REVIEW v2 §3-2)", async (t) => {
+  const section = continuousIntegrationSection(readText(claudeMdPath));
+  const expectedChecks = Object.values(EXPECTED_RENDERED_BY_JOB);
+
+  await t.test("its check table set-equals §5.1's rendered column", () => {
+    // First cell of each table row, un-backticked. The header and separator rows carry no
+    // backticks and drop out.
+    const rows = section
+      .split("\n")
+      .filter((l) => l.trim().startsWith("|"))
+      .map((l) => l.split("|")[1]?.trim() ?? "")
+      .filter((c) => c.startsWith("`") && c.endsWith("`"))
+      .map((c) => c.slice(1, -1));
+    assertSetEqual(
+      rows,
+      expectedChecks,
+      "CLAUDE.md's CI table must name every §5.1 rendered check and no others — a check this " +
+        "repo gates PRs on that the repo's own description omits is the omission CODE_REVIEW " +
+        "v2 §3-2 found"
+    );
+  });
+
+  await t.test("its count word equals the number of §5.1 rows", () => {
+    const m = /\*\*([A-Za-z]+) checks?\*\* must pass/.exec(section);
+    assert.ok(m, "the CI section must state how many checks must pass, in the form `**N checks** must pass`");
+    assert.equal(
+      m[1].toLowerCase(),
+      COUNT_WORDS[expectedChecks.length],
+      `the stated count must equal §5.1's row count (${expectedChecks.length})`
+    );
+  });
+
+  await t.test("it names every PR-gate file, not just pr-tests.yml", () => {
+    for (const file of Object.keys(PR_GATE_FILES)) {
+      assert.ok(
+        section.includes(file),
+        `the CI section must name ${file}: it triggers on pull_request, so "the gate" spans it ` +
+          `(BR-7.5). Describing pr-tests.yml alone as "the gate" is false once a second PR-gate ` +
+          `file exists`
+      );
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------------------------
