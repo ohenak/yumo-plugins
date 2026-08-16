@@ -1208,8 +1208,9 @@ stands, now with the corrected reason.
 ### 8.1 Shape
 
 A **new** file, `.github/workflows/publish.yml`, triggered on `push: tags: ['engine-v*']`.
-It adds no job to `pr-tests.yml` and edits no `name:` in it (C-5, BR-7.5), so V-18's five
-rendered check names are untouched and Phase PUB's literal polling keeps working.
+It adds no job to `pr-tests.yml` and edits no `name:` in it (C-5, BR-7.5), and it adds none to
+`fixture-machine.yml` either, so V-18's six rendered check names are untouched and Phase PUB's
+literal polling keeps working.
 
 **`engine-v*` is a new convention this TSPEC establishes, not an existing one it matches.**
 T-4 refers to "the repo's version-tag convention"; the repository has **zero tags at HEAD**
@@ -1221,7 +1222,7 @@ convention that does not exist.
 
 | Job | Depends on | Does |
 |---|---|---|
-| `gate` | — | Re-runs the five PR-gate jobs' commands at the tagged commit (§8.2) |
+| `gate` | — | Re-runs **every** PR-gate job's commands at the tagged commit — §5.1's trigger-derived set, at HEAD `pr-tests.yml`'s five plus `fixture-machine.yml`'s one (§8.2, §8.5) |
 | `preflight` | — | Offline manifest and version checks (§8.3). Runs in parallel with `gate`: it needs no network and no gate result |
 | `publish` | `gate`, `preflight` | Writes the pairing record, packs, publishes through the channel seam (§8.4) |
 
@@ -1231,8 +1232,10 @@ dependencies' success.
 
 ### 8.2 How the gate is re-run (C-5, BR-3.1)
 
-**`publish.yml` carries its own copy of the five gate jobs' bodies. `pr-tests.yml` is not
-touched at all.** The reusable-workflow extraction the earlier draft made primary is
+**`publish.yml` carries its own copy of every PR-gate job's body** — §5.1's trigger-derived
+set, at HEAD `pr-tests.yml`'s five jobs **and `fixture-machine.yml`'s** launcher/fixture-machine
+legs, which carry AT-2.3…AT-2.6 (CODE_REVIEW v1 §3-2). **Neither source file is touched at
+all.** The reusable-workflow extraction the earlier draft made primary is
 **rejected**, and the reason is mechanical rather than a matter of taste.
 
 GitHub renders a job that `uses:` a reusable workflow as `{caller job name} / {called job
@@ -1253,12 +1256,13 @@ Two further reasons the extraction was the wrong primary:
   reading.
 - The duplication's only cost is YAML that must be kept in step, and that cost is **paid by an
   oracle rather than by discipline**: §8.5's set-equality already compares `publish.yml`'s gate
-  job commands against `pr-tests.yml`'s, so a command that drifts in one file and not the other
-  fails the gate. Duplication with an equality check is safer than extraction with a blind one.
+  job commands against **every PR-gate job's**, derived from `PR_GATE_FILES` rather than from a
+  fixed list, so a command that drifts in one file and not the other — or a new PR-gating
+  workflow whose commands never reach the tag gate — fails the gate. Duplication with an equality check is safer than extraction with a blind one.
 
 So the risk C-5 priced is not mitigated, it is **removed**: `pr-tests.yml` keeps its five job
-bodies and its five `name:` keys, V-18's rendered names cannot change because nothing edits
-them, and `publish.yml` re-runs the same commands at the tagged commit. §8.5 additionally makes
+bodies and its five `name:` keys and `fixture-machine.yml` keeps its one, V-18's six rendered
+names cannot change because nothing edits them, and `publish.yml` re-runs the same commands at the tagged commit. §8.5 additionally makes
 the rejected path *mechanically* unavailable rather than merely discouraged: a job carrying
 `uses:` fails the arrangement gate as unexpandable, so a future attempt at extraction goes red
 in CI instead of silently renaming a consumer's checks.
