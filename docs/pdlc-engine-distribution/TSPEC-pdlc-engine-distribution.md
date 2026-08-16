@@ -205,7 +205,7 @@ source. The reversal cost is one branch in one function, so this is not a one-wa
 | `name` | `pdlc-engine` | `@{scope}/pdlc-engine`, `{scope}` set by the operator | DEC-DIST-05 chose scoped-public and named **no scope**; the scope is an npm account the operator must own, so it is an O-8-class publish precondition (N-6), not a string this TSPEC invents. PF-3 asserts the manifest name against the **recorded** decision, not against a literal here |
 | `private` | `true` | *removed* | O-8 blocker (1), the one npm itself refuses |
 | `license` | `UNLICENSED` | operator-set SPDX id | O-8 blocker (3). **Operator obligation, not this TSPEC's to invent** — the PLAN carries it as a gate task, not a code task |
-| `version` | `0.1.0` | unchanged by this feature | T-1a; bumped per release, not here |
+| `version` | `0.1.0` | `0.2.0` (bumped at DoD, CODE_REVIEW v4 §3-1) | T-1a; normally bumped per release, not here — but `0.1.0` was *consumed* by this feature's own BR-3.9 publish (`engine-v0.1.0`, `EVIDENCE-BR-3.9.md`) and the packed members moved afterwards, so leaving it would have HEAD claiming a number that already names older, immutable bytes. Guarded by `__tests__/version-skew.test.js` |
 | `engines.node` | absent | `">=20"` | C-3 / T-2 declared, so `npm` warns and §11's runtime check has a declaration to name |
 | `files` | absent | `["bin/", "lib/", "vendor/workflows/", "scripts/postinstall.mjs"]` | D-5; §5.4. `README.md` is **not** listed — npm packs it unconditionally (§5.4) |
 | `pdlcPluginCompat` | `^0.22.0` | unchanged shape | T-3, already shipped (V-07) |

@@ -191,6 +191,17 @@ Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows
     named different bytes — that skew is R-3's axis. The pairing already published in
     `engine-v0.1.0` records `pluginVersionAtTag: 0.23.0` and is immutable; it remains an accurate
     record of what the tag was cut against, and the next engine tag records 0.23.1.
+  - **The engine's own number moved for the same reason (2026-08-16, CODE_REVIEW v4 §3-1):**
+    `pdlc/engine/package.json` 0.1.0 → 0.2.0. The packed members (`bin/`, `lib/`,
+    `scripts/postinstall.mjs`, the manifest) changed after `engine-v0.1.0` was published —
+    T41, T43, T45, T46, T48, T50 and the fixes that followed — so HEAD was claiming a version
+    number that already named different, older bytes on an immutable registry, exactly the
+    skew the plugin-side note above closes. `EVIDENCE-BR-3.9.md` is a dated record of what was
+    published and is not edited; the stale surface was the manifest version. This is a version
+    number, not pipeline semantics, so it is not itself an NG-5 exception — it is recorded here
+    because it is the second half of the same reasoning. The skew is now mechanically guarded:
+    `pdlc/engine/__tests__/version-skew.test.js` reds whenever the manifest version equals, or
+    fails to exceed, a version recorded as published in this feature's tracked publish evidence.
 - **NG-6 — Consumer-side generated state.** The scope of this non-goal is **install and
   upgrade**, not every engine activity: install and upgrade neither create, sync, write,
   read nor version-check any file inside a consumer project, and consumer-owned config
