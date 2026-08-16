@@ -121,3 +121,8 @@ PR gate **is five** required checks, which §5.1 now contradicts by design.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 4, "low": 3}
+
+APPROVAL-HASH: sha256:6c1414c1a97f1306b6bb7afecf9942b6bc0d1566f483a1f6de618e4472022dd4
+APPROVAL-HASH-NORMALIZED: sha256:e2e799b4df6c22afee2d7521fc59e0ab47731b0665dc715ce93d8ed97397e326
+REVIEWED-COMMIT: 5910f0c2a6da3dc95e403644c9e9c3edf3bd45f9
+UPSTREAM-STATE: REQ sha256:6fc7a382654a530e553721e9995a94f4406248b813768cc18da1c4a3cabcf51a
