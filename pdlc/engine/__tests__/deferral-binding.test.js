@@ -45,3 +45,32 @@ test("§3-3: every tracked docs/ideas backlog file is bound by a QUEUE.md row or
     );
   }
 });
+
+// §3-1: the README's "successor tag not yet cut" caveat is itself a deferral — the same
+// unbound-deferral shape as the docs/ideas backlog above, just carried in prose instead of a
+// tracked file. If that caveat is still present, the queue row and release-checklist section
+// that bind it (CODE_REVIEW v5 §3-1) must be present too; removing the binder while the caveat
+// stays would silently re-open the finding this test was added to close.
+test("§3-1: the engine README's successor-tag caveat stays bound to a QUEUE.md row and a RELEASE-CHECKLIST section", () => {
+  const readmePath = "pdlc/README.md";
+  const readmeText = readFileSync(path.join(REPO_ROOT, readmePath), "utf8");
+  const caveatPresent = readmeText.includes("successor tag is cut");
+  if (!caveatPresent) return; // caveat resolved (tag cut, prose updated) — nothing left to bind
+
+  const queueText = readFileSync(path.join(REPO_ROOT, QUEUE_PATH), "utf8");
+  assert.ok(
+    queueText.includes("pdlc-engine-v0.2.0-release"),
+    `${readmePath} still discloses the unbound successor-tag caveat, but ${QUEUE_PATH} no longer ` +
+      `carries the "pdlc-engine-v0.2.0-release" row that binds it (CODE_REVIEW v5 §3-1). Re-add the ` +
+      `row, or update the README caveat once the tag is actually cut.`,
+  );
+
+  const checklistPath = "pdlc/RELEASE-CHECKLIST.md";
+  const checklistText = readFileSync(path.join(REPO_ROOT, checklistPath), "utf8");
+  assert.ok(
+    checklistText.includes("engine-v0.2.0"),
+    `${readmePath} still discloses the unbound successor-tag caveat, but ${checklistPath} no longer ` +
+      `carries the engine-channel section naming the "engine-v0.2.0" tag cut (CODE_REVIEW v5 §3-1). ` +
+      `Re-add the section, or update the README caveat once the tag is actually cut.`,
+  );
+});

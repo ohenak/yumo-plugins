@@ -227,6 +227,27 @@ never even read — until `pdlc/hooks/scripts/sync-workflows.sh` runs and refres
 
 ---
 
+## 7. Engine channel — cutting the `engine-v0.2.0` successor tag
+
+Everything above covers the **plugin** channel release (0.23.0). The **engine** channel
+(`pdlc/engine`, published as `@kaneho/pdlc-engine`) is a separate distribution with its own
+release act, tracked by `docs/_queue/QUEUE.md` row 23 (`pdlc-engine-v0.2.0-release`,
+CODE_REVIEW v5 §3-1). `pdlc/engine/package.json` was bumped to `0.2.0` on this branch, but the
+registry's `@latest` tag still resolves the pre-feature `0.1.0` bytes published from `engine-v0.1.0`
+until a successor tag is cut — `pdlc/README.md`'s "Install in another repo" caveat and
+REQ/TSPEC both disclose this gap; this section is what discharges it.
+
+- [ ] Post-merge, on the merge commit, cut the `engine-v0.2.0` tag (`git tag engine-v0.2.0 <merge-sha> && git push origin engine-v0.2.0`).
+- [ ] Verify `.github/workflows/publish.yml` runs green for the tag push (re-runs the PR checks before publishing per `pdlc/engine/scripts/publish-preflight.mjs`).
+- [ ] Verify `npm view @kaneho/pdlc-engine version` resolves to `0.2.0` (and the published `pdlcPairing` field, per `pdlc/README.md`'s install section, reports the matching plugin pairing).
+- [ ] Owner: maintainer.
+
+Discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stay narrowed-YES on this
+branch precisely because that residue — documented, not hidden — is what this checklist item
+closes post-merge, not pre-merge.
+
+---
+
 ## A note for anyone editing this file
 
 This document lives under `pdlc/`, which none of the document-drift scan's exemptions covers, so

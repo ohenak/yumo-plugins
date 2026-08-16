@@ -73,6 +73,23 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |
+| 23 | blocked | pdlc-engine-v0.2.0-release | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
+
+**Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
+(CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,
+and `TSPEC-pdlc-engine-distribution.md` all disclose that until a successor tag is cut, `npm i -g
+@kaneho/pdlc-engine@latest` keeps resolving the pre-feature `0.1.0` bytes published from `engine-v0.1.0`
+— but named that successor tag nowhere binding (no queue row, no successor REQ; a `grep` for
+`engine-v0.2.0` across `docs/`, `pdlc/`, and `.github/` returned zero hits before this row). Evidence
+that discharges this row: post-merge, cut the `engine-v0.2.0` tag on the merge commit and verify
+`pdlc/.github/workflows/publish.yml` runs green and `npm view @kaneho/pdlc-engine version` resolves to
+`0.2.0` — this is the act that discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stay
+narrowed-YES until the tag is cut. Status `blocked`, `Depends-On pdlc-engine-distribution`: the tag
+cannot be cut before that feature's branch merges. `REQ Path` reuses the feature's own REQ (the
+successor-tag cut is a release act on an already-approved REQ, not a new feature requiring its own
+REQ). Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds if this row
+or the `pdlc/RELEASE-CHECKLIST.md` §7 engine-channel section is removed while the README/REQ/TSPEC
+successor-tag caveat is still present.
 
 **Row 22 (`pdlc-halt-hardening-followups`) added 2026-08-16 to bind an unbound deferral
 (CODE_REVIEW v4 §3-3, `pdlc-engine-distribution`).** `docs/ideas/halt-hardening-followups.md`
