@@ -377,11 +377,40 @@ function listTarballMembers(tarballPath) {
     .map((line) => line.replace(/^package\//, ""));
 }
 
-function tarballPathFromPackResult(packResultPath) {
+/**
+ * `npm pack --json`'s `filename` field is version-dependent for scoped
+ * packages: some npm versions report the scoped form (`@scope/name-x.y.z.tgz`,
+ * matching the tarball's internal package name) while the file actually
+ * written to disk is always the scope-normalized form
+ * (`scope-name-x.y.z.tgz` — the leading `@` stripped, the first `/` turned
+ * into `-`). Trusting the JSON verbatim breaks exactly when npm reports the
+ * scoped form: the join produces a path that never existed
+ * (`.../@kaneho/pdlc-engine-0.1.0.tgz`), and downstream `npm publish` on that
+ * nonexistent path silently falls back to interpreting its argument as a
+ * registry spec instead (an E404 `GET` on the package name, not a
+ * file-not-found error — this is what shipped in publish.yml). Tried in
+ * order: the verbatim `filename` from the JSON, then the scope-normalized
+ * form; the first one that exists on disk wins. Neither existing is a build
+ * defect, not a user error, so it fails loudly rather than silently packing
+ * the wrong path forward.
+ */
+export function tarballPathFromPackResult(packResultPath) {
   const packInfo = readJson(packResultPath);
   const entry = Array.isArray(packInfo) ? packInfo[0] : packInfo;
   const destDir = path.dirname(path.resolve(packResultPath));
-  return path.join(destDir, entry.filename);
+  const verbatimPath = path.join(destDir, entry.filename);
+  if (existsSync(verbatimPath)) return verbatimPath;
+
+  const normalizedFilename = entry.filename.replace(/^@/, "").replace("/", "-");
+  const normalizedPath = path.join(destDir, normalizedFilename);
+  if (existsSync(normalizedPath)) return normalizedPath;
+
+  throw new Error(
+    `tarballPathFromPackResult: could not find the packed tarball on disk. Tried:\n` +
+      `  - ${verbatimPath} (verbatim "filename" from npm pack --json)\n` +
+      `  - ${normalizedPath} (scope-normalized form)\n` +
+      `Neither exists.`,
+  );
 }
 
 function runVerifyPackedCommand(packResultPath) {
