@@ -684,13 +684,82 @@ test("PF-3: checkManifestPublishable accepts a publishable manifest and refuses 
   assert.match(wrongName.message, /someone-else/, "the message must name the offending value too");
 });
 
+// TSPEC §5.4's `PK-*` table, transcribed (TE CR v2 F-03). Round 2 recovered
+// PF-4's expectation by parsing `checkPackedSet`'s own refusal message, which
+// inverted the anti-echo rule: the expectation moved with the implementation,
+// and deleting `"scripts/postinstall.mjs"` from `expectedPackedSet` left the
+// suite green because the test's expectation lost the member too. The list
+// below is read from the SPEC, exactly as `packaging.test.js:43-66` already
+// reads it, so a member silently leaving the release gate is red here.
+//
+// Adding or removing a row is a spec change first: update TSPEC §5.4's `PK-*`
+// table and FSPEC §5.2's per-class counts in the same change (TSPEC §5.4's
+// co-change obligation), then this list.
+const PK_LIB_MODULES_AT_HEAD = [
+  "adapter",
+  "auth",
+  "catalogue",
+  "guard-measurement",
+  "handshake",
+  "outcome",
+  "report",
+  "run",
+  "skills",
+  "startup",
+  "transport-cli",
+  "transport",
+]; // V-03, PK-5…PK-16
+const PK_LIB_MODULES_FROM_THIS_FEATURE = ["resolve-version", "store", "provenance"]; // PK-17…PK-19
+
+/** §5.4's expected set for a given N-2 licence state. PK-3 is the only conditional row. */
+function tspecPackedSet({ licence }) {
+  return [
+    "package.json", // PK-1
+    "README.md", // PK-2
+    ...(licence ? ["LICENSE"] : []), // PK-3, conditional on N-2's recorded decision
+    "bin/pdlc.mjs", // PK-4
+    "bin/cli.mjs", // PK-4b
+    ...PK_LIB_MODULES_AT_HEAD.map((m) => `lib/${m}.mjs`), // PK-5…PK-16
+    ...PK_LIB_MODULES_FROM_THIS_FEATURE.map((m) => `lib/${m}.mjs`), // PK-17…PK-19
+    "vendor/workflows/orchestrate-dev.js", // PK-20
+    "vendor/workflows/orchestrate-queue.js", // PK-21
+    "vendor/workflows/VENDOR-MANIFEST.json", // PK-22
+    "scripts/postinstall.mjs", // PK-23
+  ];
+}
+
+test("PF-4: checkPackedSet's expectation IS TSPEC §5.4's PK-* set, member for member (TE CR v2 F-03)", async () => {
+  const { checkPackedSet } = await loadPreflight();
+
+  // The independent check: the production expectation is compared against the
+  // transcribed spec list, in both directions and in both N-2 states. A member
+  // deleted from `expectedPackedSet` is red here even though every other guard
+  // in this file — and the recovered-from-message trick below — still holds.
+  for (const licence of [true, false]) {
+    const decisionsText = `**N-2 recorded:** ${licence ? "yes" : "no"}\n`;
+    const spec = tspecPackedSet({ licence });
+    const refusal = checkPackedSet([], decisionsText);
+    assert.equal(refusal.ok, false);
+    const production = JSON.parse(/Missing: (\[.*\])\./.exec(refusal.message)[1]);
+    assert.deepEqual(
+      [...production].sort(),
+      [...spec].sort(),
+      `the release gate's member list disagrees with TSPEC §5.4 (N-2 recorded: ${licence})`,
+    );
+    // And the production check accepts exactly that set: a gate that refused
+    // its own expectation would satisfy the equality above and ship nothing.
+    assert.deepEqual(checkPackedSet(spec, decisionsText), { ok: true, message: null });
+  }
+});
+
 test("PF-4: checkPackedSet is both-directions set-equality, and LICENSE is conditional on N-2", async () => {
   const { checkPackedSet } = await loadPreflight();
   const recorded = "**N-2 recorded:** yes\n";
 
-  // The expected set is recovered from the check's own refusal rather than restated here:
-  // duplicating TSPEC §5.4's member list in the test would make the oracle agree with itself
-  // by construction and stop noticing drift in the production list.
+  // The set-difference legs below recover the expectation from the check's own
+  // refusal, which is sound HERE — they assert relationships between two
+  // recovered sets, not membership. The absolute expectation is pinned against
+  // TSPEC §5.4 by the leg above (TE CR v2 F-03).
   const emptyResult = checkPackedSet([], recorded);
   assert.equal(emptyResult.ok, false);
   const expected = JSON.parse(/Missing: (\[.*\])\./.exec(emptyResult.message)[1]);
