@@ -58,7 +58,44 @@ harder to trust than it should be.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-04, unchanged from round 2's Q-02 and worth an answer before DoD rather than after: is the intended end state (a) hermetic legs reaching `fixture-machine.mjs`'s remaining functions, or (b) an explicit record that roughly 60 % of the module is verified only by the post-merge workflow? Both are defensible and the branch floor is met either way; what is not defensible is arriving at (b) by default. If (b), does the record belong in `PROP-REGR-6`'s note or in DoD item 14's evidence? |
+| Q-02 | On F-01: is there a reason the process-entry prepack leg vendors into `ENGINE_ROOT` rather than into a scratch copy, given that `packaging.test.js` already builds one? If the leg is deliberately testing that `prepack` writes to *its own package root* — a real property — then the scratch copy is the fix (it has a package root of its own); if not, `--test-concurrency=1` is the smaller change. Either way, is any other test writing into the shared engine root, or is `vendor/` the only one? |
+| Q-03 | On F-02: was the byte-identity check described in `provenance-path.test.js:65-79` written and later lost in a refactor, or was the comment written ahead of the leg? It matters only for the harvest — if it was lost, the lesson is about oracles disappearing under edits to their neighbours, which is a different lesson from an oracle never landing. |
+
 ## Positive Observations
+
+- **Every fix this round arrived with the leg that falsifies it, and each one dies
+  under the exact mutation it was written for.** Five reverts, five named reds, each
+  reproduced twice. `reportFailure`'s remediation goes further than asked: exporting the
+  printer and injecting its env made the production call site reachable *and* left the
+  default (`env = process.env`) itself pinned, so the seam did not quietly become the
+  thing under test instead of the thing it proves.
+- **The F-01 leg picked the one command where the two callees differ observably.**
+  `launch()` and `main()` are both exported, so almost any other invocation would pass
+  under either — a pinned-but-uninstalled repo is the narrow case where only `launch()`
+  can produce the refusal, and the leg asserts the ladder's text, the launcher's own
+  fail-closed line, and the absence of the handshake refusal the mutant reaches instead.
+  A negative correctly paired with two positives on the same run.
+- **PF-4's expectation now moves with the spec and the recovered-from-message trick was
+  kept exactly where it is sound.** The absolute membership check reads TSPEC §5.4; the
+  set-difference legs still recover both sides from the refusal, which is a relationship
+  between two recovered sets rather than an expectation agreeing with itself. The
+  distinction is drawn in the comment at `publish-channel.test.js:691-696`, so the next
+  reader inherits the reasoning rather than the pattern.
+- **The empty-store fix corrected the product, not the test.** Branch 7's proceed arm was
+  announcing itself with the refusal's words; the round added a catalogue id for the
+  arm that proceeds instead of teaching a test to tolerate the wrong sentence — and then
+  covered it by arm count, by marker `mode`, and by the refusal wording's absence.
+- **The workflows-side agreement leg is the right shape.** `devModeKinds.test.js:583-620`
+  drives two provenance values differing only in resolved mode through the same
+  placement and asserts each message carries its own rendering and never the other's,
+  after first asserting the two renderings differ. Neither a literal nor a stale carried
+  value can satisfy it — presence lifted to agreement, which is what the finding asked.
+- **T49's narrowing kept its teeth.** Scoping a parser is usually where an oracle quietly
+  stops discriminating; here the round-1 rename still reddens after the scan was bounded
+  to `main()`'s switch body and to non-comment YAML.
 
 ## Recommendation
 
