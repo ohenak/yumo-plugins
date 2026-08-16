@@ -87,4 +87,32 @@ than asserted. The revision did not weaken any oracle I had credited in v1.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding, and it is narrower than round 1's three. All three round-1 Highs are
+resolved, two of them mutation-proven; the remediation quality was high enough that most of
+this round's reading time went to the new code rather than to re-checking the old.
+
+F-01 is the one blocker, and it is a single edge: `bin/pdlc.mjs:42` calls `mod.launch()`, and
+nothing fails if it calls `mod.main()` instead. The irony is instructive rather than damning —
+this round added `launch-wiring.test.js` specifically because four builders were green while no
+production edge reached them, and the fix reproduced the same shape one level up, at the last
+hop between the binary on `PATH` and the ladder. That hop is where AC-5.5 lives.
+
+To resolve, exactly one thing is needed:
+
+1. **F-01** — one leg that fails under `main()` and passes under `launch()`. Per Q-01, the
+   cheapest is a `cli.test.js` subprocess run against the existing `pinned-to-9.9.9` fixture
+   asserting exit 1 and the refusal text; it never spawns a child, so it stays hermetic. Any
+   leg with that discriminating property closes the finding.
+
+F-02 and F-03 are Medium and do not block: F-02 leaves a correct control unproven at its call
+site, and F-03 leaves PF-4 agreeing with itself while `packaging.test.js` still holds the real
+line. Both are worth folding into the same revision, since each is a few lines next to tests
+that already exist. F-04 remains a decision to record (Q-02), F-05 a scoping nit, F-06 a note
+for the DoD reader.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
