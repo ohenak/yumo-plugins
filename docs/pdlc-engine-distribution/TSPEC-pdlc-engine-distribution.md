@@ -2,14 +2,14 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` — `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.11), `docs/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` (v0.2, `FSPEC-EDIST-01`), `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05), `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
+| Upstream | `REQ → FSPEC → **TSPEC**` — `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.12), `docs/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` (v0.8, `FSPEC-EDIST-01`), `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05), `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase T) | Claude | 0.12 | 2026-08-14 |
+| pdlc | Draft — in review (Phase T) | Claude | 0.13 | 2026-08-16 |
 
 **Changelog**
 
@@ -1318,19 +1318,22 @@ The carrier is `pdlc/engine/__tests__/ci-arrangement.test.js`, extended, and it 
 that file's existing overlapping matrix assertions (V-19) so one arrangement change has one
 failure and one remedy.
 
-- Reads **job-level `name:` keys only**, from `.github/workflows/pr-tests.yml` only.
-  Step-level names — the file carries roughly sixteen, e.g. `:46,53,66,70,92` — are not
-  members, and neither are `publish.yml`'s jobs (BR-7.5).
+- Reads **job-level `name:` keys only**, from **every pull-request-triggered workflow file** —
+  at HEAD `pr-tests.yml` and `fixture-machine.yml`, six jobs between them. Membership is
+  **derived from each file's `on:` trigger, never from its filename or from a fixed count**
+  (FSPEC v0.8 BR-7.5, REQ v0.12's O-B): a new PR-gating workflow joins the expected set by
+  existing, and `publish.yml`'s jobs are excluded because it is tag-triggered — a reason true
+  of it and false of `fixture-machine.yml`. Step-level names are not members.
 - Separately from the rendered-name set, it asserts that **`publish.yml`'s gate jobs run the
   same commands as `pr-tests.yml`'s five**, as a set-equality over the run commands. This is
   what pays for §8.2's duplication: the two files are kept in step by a test, not by memory.
-  It is not part of the rendered-check-set membership, which stays `pr-tests.yml`-only.
+  It is not part of the rendered-check-set membership, which is trigger-derived as above.
 - Renders by expanding **declared matrix axes only**, and the axes are read **per job**, not
   once for the file. V-18's "same matrix" compression is corrected in §2: `unit-tests`
-  declares `os` **and** `node` (`.github/workflows/pr-tests.yml:40-41`), `engine-tests`
-  declares `os` only (`:86-87`), and `artifact-freshness`, `fresh-clone-bootstrap` and
-  `script-syntax` declare none. A single file-wide axis set would render the wrong expected
-  column for four of the five jobs.
+  declares `os` **and** `node`, `engine-tests` declares `os` only, and `artifact-freshness`,
+  `fresh-clone-bootstrap`, `script-syntax` and `fixture-machine` declare none. A single
+  file-wide axis set would render the wrong expected column for four of the six jobs — and a
+  single *repo*-wide one would be wrong across files as well.
 - A `name:` containing any non-matrix expression (`github.*`, `inputs.*`) or an axis
   introduced by a matrix `include` entry is a **failure of the gate** reported as
   `unexpandable name expression` — never silently under-rendered and never skipped (BR-7.3,
