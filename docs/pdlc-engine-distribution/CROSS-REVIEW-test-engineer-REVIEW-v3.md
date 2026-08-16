@@ -99,4 +99,46 @@ harder to trust than it should be.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings — neither of them a regression, and neither of them about the work
+this round did. Every round-2 finding is closed, and closed the expensive way: the fix
+and its falsifier landed together, and I could revert each fix and watch a named test
+die. On the delta itself I have nothing blocking to say.
+
+What blocks is what the delta made visible. F-01 is the more important of the two, and
+it is not really a test-quality finding — it is a finding about whether this suite's
+green means anything. A test file vendoring build output into the shared engine root
+while `node --test` runs files in parallel makes any concurrent subprocess leg
+intermittently red (measured: 1 red in 5 unmodified runs), which is bad on its own;
+worse, it makes red ambiguous, and this round's evidence is entirely made of reds. Two
+of my own probes reported kills that were this flake. Whatever else ships, the gate
+that Phase PUB will read has to be one whose colour is a fact.
+
+F-02 is smaller and cheaper: AC-2.4's floor is a number and a sentence in
+`bin/pdlc.mjs`, both currently free to drift, in a file whose neighbouring comment says
+they are held in sync. It is High because the criterion has no other carrier, not
+because the fix is hard — one leg reading three sources and asserting them equal.
+
+To resolve, exactly two changes:
+
+- **F-01** — give the process-entry prepack leg a scratch package root (as
+  `packRealTarball()` already does) so no test mutates `pdlc/engine/vendor/`, or serialise
+  the run with `--test-concurrency=1`. Then re-run the five-clean-runs experiment and
+  record the result; the fix is only proven by repetition.
+- **F-02** — one leg over `bin/pdlc.mjs`'s source pinning the floor numeral to
+  `package.json`'s `engines.node` and the refusal literal to `message("node.below-floor", …)`,
+  and correct `provenance-path.test.js:65-79`'s comment to describe what its leg
+  actually asserts.
+
+F-03 through F-07 do not block. F-03 and F-04 are the same decision seen from two ends —
+which modules the coverage floor is for — and both want a recorded answer before DoD
+rather than a scramble during it. F-05 is a co-change hazard worth closing while both
+transcriptions are fresh, F-06 is a line of evidence for the DoD reader, F-07 is a
+number in a changelog. All five are cheap enough to fold into the same revision as the
+two Highs, and none of them should delay it.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 3}
