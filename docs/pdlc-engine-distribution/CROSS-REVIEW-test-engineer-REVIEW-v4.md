@@ -61,7 +61,47 @@ myself.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: since the erratum against PROPERTIES is already routed, the only open question is which answer it should carry. Is `bin/pdlc.mjs` exempt from `PROP-REGR-6` *because* its two uncovered arms (the floor refusal and the `import()` rejection) are unreachable in-process — the guard cannot fire on a runtime above the floor, and the rejection path needs a broken `cli.mjs` — with AC-2.4 pinned instead by F-02's new source-text carrier and AC-5.5's subprocess leg? If so, that is a stronger record than an enumeration entry would be, and it belongs in `PROP-REGR-6`'s own note rather than in a review file. |
+| Q-02 | On F-01, the alternative: the subprocess machinery to cover both arms already exists in this suite (`cli.test.js:250` runs the real `bin/pdlc.mjs`). A leg spawning it under a doctored `process.versions.node` is not obviously cheap, but it is not obviously expensive either. Was it considered and rejected on cost, or not considered? Either answer is fine; only the first is a decision. |
+
 ## Positive Observations
+
+- **Both High fixes were built so that the failure they prevent reddens where a
+  reader will look for it.** F-01's could have been closed with
+  `--test-concurrency=1` — a smaller diff that would have hidden the hazard
+  rather than removed it, and slowed the suite for everyone. Instead the leg
+  moved to a scratch package root and then *asserted the invariant it now
+  relies on*: `existsSync(engineRoot/vendor)` equals its pre-run value. That
+  turns a class of intermittent, diff-unexplainable reds in other files into
+  one deterministic red in this one. The `realpathSync` note earns its place
+  too — it names a failure mode (`isMainEntry` comparing two spellings of the
+  same path, leg exits 0 asserting nothing) that would have been invisible.
+- **F-02's carrier has three conjuncts and needs all three.** Two extractions
+  agreeing with each other is exactly the self-agreeing expectation this
+  review has been pushing back on for three rounds; the third conjunct
+  (`guardFloor === "20"`, and the prefix names the floor) is what grounds the
+  pair in the spec instead of in itself. Both extractions fail closed with
+  named messages, which is why probe (d) — deleting the guard entirely —
+  reddens on an `assert.ok` rather than quietly matching nothing.
+- **The stale comment was treated as the finding it was.** Round 3's F-02 was
+  half about a missing oracle and half about a comment that told the next
+  reader to stop looking. The revision fixes both, and the replacement comment
+  states the old claim and why it was false — so the next reader inherits the
+  lesson rather than just the corrected text.
+- **F-05's fix moved the transcription without weakening it.** The obvious way
+  to de-duplicate a spec table in tests is to derive it from the code; this
+  one kept the spec as the source, kept `tspecPackedCount` derived from class
+  sizes rather than from the list it checks, and put the co-change obligation
+  in the shared file's header. One edit to that module now reddens both
+  suites — verified, not assumed.
+- **PM F-02's fix pinned a partition, not a branch.** The `: decision.announcement`
+  fallback has no reachable input today, so it cannot be covered directly; the
+  leg says so and asserts the reason instead, reading the resolver's own
+  enumeration from source rather than from a list maintained beside it. The
+  failure message tells the future author what to do ("Choose wording, then add
+  it here") rather than just reporting inequality.
 
 ## Recommendation
 
