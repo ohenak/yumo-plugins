@@ -19,12 +19,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 
 import { message } from "../lib/catalogue.mjs";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CLI_URL = path.join(engineRoot, "bin", "cli.mjs");
+const GUARD_PATH = path.join(engineRoot, "bin", "pdlc.mjs");
 
 // ── exception 1: importing bin/cli.mjs is inert ────────────────────────────
 //
@@ -159,6 +161,80 @@ test("AC-2.4: the Node floor and its refusal text agree across package.json, the
   assert.ok(
     guardRefusalPrefix.includes(guardFloor),
     `the refusal must name the floor it enforces; got ${JSON.stringify(guardRefusalPrefix)}`,
+  );
+});
+
+// ── AC-2.4: the refusal is EXECUTED locally, not only read (CODE_REVIEW v1 §1-1) ──
+//
+// The leg above reads the guard's source text; the only leg that ever ran it
+// was the `node:18-alpine` container leg in `fixture-machine.yml`, which is
+// docker-gated and therefore absent from `npm test`. That left `bin/pdlc.mjs`
+// at 66.66% branch coverage and left AC-2.4's one operator-visible behaviour —
+// a named refusal, exit 1, no stack trace — with no locally-runnable proof.
+//
+// This leg runs the real guard on this machine with `process.versions` shadowed
+// before the import, which is the one input the guard reads. It is not a
+// substitute for the container leg (that one proves an OLD Node can PARSE the
+// file); it is the behavioural half, and it runs everywhere `npm test` does.
+
+/** Run the real `bin/pdlc.mjs` with `process.versions.node` shadowed to `version`. */
+function runGuardWithNodeVersion(version) {
+  const script =
+    `Object.defineProperty(process, "versions", { value: { ...process.versions, ` +
+    `node: ${JSON.stringify(version)} } });\n` +
+    `await import(${JSON.stringify(pathToFileURL(GUARD_PATH).href)});\n`;
+  return spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+    cwd: engineRoot,
+    encoding: "utf8",
+  });
+}
+
+test("AC-2.4: a below-floor Node is refused by name, exit 1, with no stack trace", () => {
+  const r = runGuardWithNodeVersion("18.20.4");
+
+  assert.equal(r.status, 1, "a below-floor runtime must exit non-zero — 1, not a crash code");
+  assert.match(
+    r.stderr,
+    /pdlc requires Node >= 20/,
+    "the refusal must name the floor it enforces (AC-2.4)",
+  );
+  assert.match(r.stderr, /18\.20\.4/, "the refusal must name the version actually found (AC-2.4)");
+  assert.doesNotMatch(
+    r.stderr,
+    /\n\s+at\s/,
+    "AC-2.4's whole point is that the operator sees a sentence, not a stack trace: a line " +
+      "matching /^\\s+at / is a stack frame and fails this",
+  );
+  assert.doesNotMatch(
+    r.stderr,
+    /SyntaxError|ERR_MODULE_NOT_FOUND/,
+    "the guard must refuse before anything the modern-syntax body could throw from",
+  );
+  assert.equal(r.stdout, "", "a refused run writes nothing to stdout — it dispatches nothing");
+});
+
+test("AC-2.4: an unparseable Node version is refused too, never treated as above-floor", () => {
+  const r = runGuardWithNodeVersion("not-a-version");
+
+  assert.equal(
+    r.status,
+    1,
+    "`Number.isNaN(major)` is the guard's fail-closed half: a version it cannot parse must " +
+      "refuse, never fall through to the modern-syntax body on the strength of a NaN comparison",
+  );
+  assert.match(r.stderr, /pdlc requires Node >= 20; found not-a-version/);
+});
+
+test("AC-2.4: an at-floor Node passes the guard and reaches the body", () => {
+  // The positive control for the two refusals above: the same shadowing, one
+  // major higher, must NOT refuse. Without it both tests above would still pass
+  // against a guard that refused unconditionally.
+  const r = runGuardWithNodeVersion("20.0.0");
+
+  assert.doesNotMatch(
+    r.stderr,
+    /pdlc requires Node/,
+    "an at-floor runtime must pass the guard — the floor is `< 20`, so 20.0.0 is inside it",
   );
 });
 
