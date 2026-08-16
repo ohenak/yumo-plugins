@@ -2,7 +2,7 @@ name: Publish
 
 # Tag-triggered publish pipeline for pdlc/engine (TSPEC §8). A NEW, additive
 # workflow file: it adds no job to pr-tests.yml and edits no `name:` key in
-# it (C-5, BR-7.5), so V-18's five rendered check names stay untouched and
+# it (C-5, BR-7.5), so V-18's six rendered check names stay untouched and
 # Phase PUB's literal polling keeps working.
 #
 # `engine-v*` is a new convention this feature establishes (TSPEC §8.1): the
@@ -21,7 +21,12 @@ defaults:
     shell: bash
 
 jobs:
-  # Re-runs the five PR-gate jobs' commands at the tagged commit (§8.2, C-5).
+  # Re-runs every PR-gate job's commands at the tagged commit (§8.2, C-5) — the
+  # union over every file that triggers on `pull_request`, today `pr-tests.yml`
+  # and `fixture-machine.yml` (BR-7.7, §5.1). The number is derived, not
+  # transcribed: `ci-arrangement.test.js`'s T49 builds the expected command set
+  # from those files, so a new PR-gate file widens this job's obligation without
+  # anyone editing this comment.
   # Carries its own copy of the job bodies rather than a `uses:` reusable-
   # workflow call: a reusable-workflow call renders as "{caller job name} /
   # {called job name}", which would silently rename the checks Phase PUB

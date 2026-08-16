@@ -656,6 +656,63 @@ test("ci arrangement — CLAUDE.md's CI section describes the whole §5.1 gate (
 });
 
 // ---------------------------------------------------------------------------------------------
+// publish.yml's own comments must transcribe §5.1 truthfully (CODE_REVIEW v6 §3-1)
+//
+// The same class as CLAUDE.md's count word above, one file closer to the claim: a maintainer
+// reading publish.yml's header or its gate job's comment is told what the gate covers by the
+// file the claim is about. Row 6's widening (fixture-machine.yml joined §5.1) made the
+// transcribed "five" false in both places, invisibly — the set-equality oracle below passes
+// either way, because it reads jobs, not prose.
+// ---------------------------------------------------------------------------------------------
+
+test("ci arrangement — publish.yml's comments transcribe §5.1's scope (CODE_REVIEW v6 §3-1)", async (t) => {
+  const publishText = readText(publishWorkflowPath);
+  const expectedChecks = Object.values(EXPECTED_RENDERED_BY_JOB);
+  const commentText = publishText
+    .split("\n")
+    .filter((l) => /^\s*#/.test(l))
+    .join("\n");
+
+  await t.test("every count word it applies to the gate equals §5.1's row count", () => {
+    // A count word directly qualifying the checks/jobs this workflow re-runs. Prose that counts
+    // something else (job bodies, tunables) does not match, and a comment that states no count
+    // at all is the preferred fix — T49 derives the real number.
+    const claim =
+      /\b(zero|one|two|three|four|five|six|seven|eight|nine|ten)\b[\s-]+(?:rendered\s+check\s+names?|PR-gate\s+jobs?'?s?|PR\s+checks?)/gi;
+    for (const m of commentText.matchAll(claim)) {
+      assert.equal(
+        m[1].toLowerCase(),
+        COUNT_WORDS[expectedChecks.length],
+        `publish.yml's comment claims "${m[0]}", but §5.1 has ${expectedChecks.length} rows — ` +
+          `the gate spans every PR-gate file, not pr-tests.yml alone (BR-7.7, TSPEC §8.5). ` +
+          `Correct the comment or drop the count, which T49 derives`
+      );
+    }
+  });
+
+  await t.test("its gate job's comment names every PR-gate file the job re-runs", () => {
+    const gateIdx = publishText.indexOf("\n  gate:");
+    assert.notEqual(gateIdx, -1, "publish.yml must declare a `gate` job");
+    // The contiguous `  #` comment block immediately above the job key, read bottom-up.
+    const preamble = publishText.slice(0, gateIdx).split("\n");
+    const block = [];
+    for (let i = preamble.length - 1; i >= 0 && /^ {2}#/.test(preamble[i]); i--) {
+      block.unshift(preamble[i]);
+    }
+    const gateComment = block.join("\n");
+    assert.ok(gateComment, "publish.yml's gate job must carry a comment describing what it re-runs");
+    for (const file of Object.keys(PR_GATE_FILES)) {
+      assert.ok(
+        gateComment.includes(file),
+        `publish.yml's gate-job comment must name ${file}: the job re-runs the union over every ` +
+          `PR-gate file (T49's set-equality), so a comment naming only some of them tells the ` +
+          `next editor the wrong invariant (CODE_REVIEW v6 §3-1)`
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
 // TSPEC §8.2/§8.5: publish.yml's gate job must set-equal EVERY PR-gate job's commands
 //
 // C-6 ("publishing is gated on the same evidence a PR is") is false if the tag gate re-runs only
