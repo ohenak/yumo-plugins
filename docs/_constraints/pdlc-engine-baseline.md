@@ -184,6 +184,7 @@ passed the run refuses at row 5 (`auth.api-key-refused`).
 | date | platform | transport | sdkVersion | denyFired |
 |---|---|---|---|---|
 | 2026-08-12 | darwin | agent-sdk | 0.3.226 | yes |
+| 2026-08-16 | linux | agent-sdk | 0.3.226 | yes |
 
 ## M-ENG-10 — The PR gate is five required checks, and these are their literal names
 
