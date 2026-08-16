@@ -95,6 +95,7 @@ export async function runPublish({
   pluginVersion,
   channel,
   name,
+  tarballPath,
   tarballBytes,
   secretToken,
   sentinel,
@@ -151,7 +152,7 @@ export async function runPublish({
   }
 
   record(`publishing ${name}@${version}`);
-  await channel.publish(`${name}-${version}.tgz`, { name, version });
+  await channel.publish(tarballPath ?? `${name}-${version}.tgz`, { name, version });
   const message = `published ${name}@${version}`;
   record(message);
   return { conclusion: "success", published: true, version, message };
@@ -468,6 +469,7 @@ async function runPublishCommand(packResultPath) {
     pluginVersion,
     channel: realPublishChannel(),
     name: manifest.name,
+    tarballPath,
     tarballBytes,
     secretToken: process.env.NODE_AUTH_TOKEN,
     sentinel: process.env.NODE_AUTH_TOKEN,
