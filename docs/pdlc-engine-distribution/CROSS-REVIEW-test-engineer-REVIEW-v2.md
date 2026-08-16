@@ -51,7 +51,39 @@ than asserted. The revision did not weaken any oracle I had credited in v1.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01's cheapest falsifier looks like a `cli.test.js` subprocess leg using the fixture this round already added — `__tests__/fixtures/launch-wiring/pinned-to-9.9.9/.claude/pdlc.config.json` — asserting exit 1 and the text `refusing to run an unresolved engine version` from the real `bin/pdlc.mjs`. That path never spawns a child (it refuses before `exec`), so it stays hermetic. Is there a reason to prefer a source-level assertion on `bin/pdlc.mjs`'s callee instead? A source assertion would be cheaper but would pin a token rather than a behaviour, and the round-1 lesson from F-02 was that token-pinning is the weaker of the two when a behavioural leg is available. |
+| Q-02 | On F-04: the intended end state for `scripts/fixture-machine.mjs` is either (a) hermetic legs reaching the remaining functions, or (b) an explicit record that roughly 60 % of the module is verified only by a post-merge workflow. Both are defensible and the branch floor is met either way. Which one is the plan, and does it belong in `PROP-REGR-6`'s note or in DoD item 14's evidence? Round 1 left the same question open under its Q-03 and the tree has since moved toward (b) by default rather than by decision. |
+
 ## Positive Observations
+
+- **The two round-1 High findings were closed with matched pairs, not with assertions.**
+  `publish-channel.test.js:311-373` is the model: poisoned bytes refuse, the same inputs with
+  clean bytes publish, and the second leg's comment says exactly why it exists ("without this
+  control the leg above would also pass against an implementation that refuses everything").
+  Both halves are mutation-proven. This is the strongest kind of remediation — the fix arrived
+  with its own falsifying test, which is what round-1's F-01 said was missing in the first place.
+- **The new set-equality legs lead with non-degeneracy controls.** `:307-308` asserts both
+  parsed sets are non-empty *before* `deepEqual`, and PF-4's `:697` asserts the recovered set is
+  not degenerate before comparing. A set-equality oracle whose parsers silently matched nothing
+  is the classic vacuous green, and both new oracles close it explicitly rather than by luck.
+- **PF-5's vacuity is recorded as a decision, not left as an accident.** `publish-channel.test.js:769-772`
+  asserts that an absent `modules` list is green and says in the same breath that this is by
+  design. Naming a vacuous arm in the test that exercises it is better practice than a comment
+  in the module, and it means a future reader who disagrees can find the decision.
+- **PF-3 reads the npm scope from `DECISIONS-plugin-distribution.md` rather than inventing a
+  literal** (`:691-696`), so the test and the production caller move together on a scope change
+  instead of drifting into a passing disagreement — and it asserts the decision file actually
+  records a scope before relying on it.
+- **The `prepack` entry guard was made testable instead of being left as dead measurement.**
+  `isMainEntry` (`scripts/prepack.mjs:60-68`) extracts a module-scope expression that was
+  evaluated once per load and unreachable from any test, taking the module to 100 % branch;
+  the comment records why. That is the right way to answer a coverage finding — restructure for
+  reachability, not add a test that asserts nothing.
+- **Redaction covers both leak paths, not just the reported one.** Round-1 Q-02 named the
+  `realPublishChannel` throw; the fix also covered `reportFailure`, which is the more likely
+  printer. The behaviour itself is right even though F-02 above says the wiring is unproven.
 
 ## Recommendation
 
