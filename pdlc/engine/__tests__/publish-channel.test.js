@@ -772,3 +772,32 @@ test("PF-5: checkVendorManifest verifies vendored bytes against the canonical so
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+// ─── Credential redaction on the failure path (TE CR round-1 Q-02) ─────────
+//
+// AC-3.5's guard refuses to PUBLISH a tarball carrying the credential. These
+// legs cover the other direction: the path that PRINTS npm's own output when
+// a publish fails, where in production the sentinel is the live token.
+
+test("T58: redactSecret removes every occurrence of npm's echoed token, leaving the rest verbatim (Q-02)", async () => {
+  const { redactSecret } = await import("../scripts/publish-preflight.mjs");
+  const token = "npm_LIVEtoken000000000000000000000000";
+  const redacted = redactSecret(
+    `npm publish failed: 401 Unauthorized - PUT https://registry.npmjs.org/x (auth ${token}) [${token}]`,
+    token,
+  );
+  assert.ok(!redacted.includes(token), "the credential survived redaction");
+  // Every occurrence, not just the first — a leak on the second copy is
+  // exactly as fatal as one on the first.
+  assert.equal(redacted.match(/\*\*\*REDACTED\*\*\*/g).length, 2);
+  assert.match(redacted, /401 Unauthorized - PUT https:\/\/registry\.npmjs\.org\/x/);
+});
+
+test("T58: redactSecret is a no-op for an absent or empty secret, never a match on the empty string", async () => {
+  const { redactSecret } = await import("../scripts/publish-preflight.mjs");
+  const text = "npm publish failed: ENOTFOUND registry.npmjs.org";
+  assert.equal(redactSecret(text, undefined), text);
+  assert.equal(redactSecret(text, ""), text);
+  assert.equal(redactSecret(text, null), text);
+  assert.equal(redactSecret(undefined, "tok"), "");
+});

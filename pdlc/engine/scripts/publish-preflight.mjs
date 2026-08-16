@@ -310,8 +310,29 @@ function readDecisionsText() {
   return existsSync(DECISIONS_PATH) ? readFileSync(DECISIONS_PATH, "utf8") : "";
 }
 
+/**
+ * TE CR round-1 Q-02: in production the sentinel *is* the live credential
+ * (`runPublishCommand` passes `process.env.NODE_AUTH_TOKEN` as both
+ * `secretToken` and `sentinel`), and AC-3.5's guard covers the artifact —
+ * but not the failure path that prints npm's own stderr. If npm ever echoes
+ * the token, the run that refuses to publish a token-bearing tarball would
+ * print one instead. Pure, so it is driven with no spawn and no real secret.
+ *
+ * Empty/absent secrets are a no-op rather than a match on `""`, which would
+ * otherwise redact between every character of the message.
+ *
+ * @param {string} text
+ * @param {string|undefined|null} secret
+ * @returns {string} `text` with every occurrence of `secret` replaced
+ */
+export function redactSecret(text, secret) {
+  const value = String(text ?? "");
+  if (!secret || typeof secret !== "string") return value;
+  return value.split(secret).join("***REDACTED***");
+}
+
 function reportFailure(message) {
-  console.error(`::error::${message}`);
+  console.error(`::error::${redactSecret(message, process.env.NODE_AUTH_TOKEN)}`);
   process.exitCode = 1;
 }
 
@@ -444,7 +465,11 @@ function realPublishChannel() {
         env: process.env,
       });
       if (result.status !== 0) {
-        throw new Error(`npm publish failed: ${result.stderr || result.stdout}`);
+        // Scan-and-redact before the text leaves this function: it is npm's
+        // own output, and the credential is in this process's env (Q-02).
+        throw new Error(
+          redactSecret(`npm publish failed: ${result.stderr || result.stdout}`, process.env.NODE_AUTH_TOKEN),
+        );
       }
       return { ok: true };
     },
