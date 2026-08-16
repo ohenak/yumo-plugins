@@ -82,7 +82,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |
-| 23 | blocked | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
+| 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
 
 **Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
 (CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,
@@ -99,6 +99,15 @@ successor-tag cut is a release act on an already-approved REQ, not a new feature
 REQ). Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds if this row
 or the `pdlc/RELEASE-CHECKLIST.md` §7 engine-channel section is removed while the README/REQ/TSPEC
 successor-tag caveat is still present.
+
+**Row 23 set to `done` on 2026-08-16.** The `engine-v0.2.0` tag was cut at the merge commit
+`a9885dc86bc52b3ac5e55e1aa5d32da3046e2c3e` (PR #63) and published: `.github/workflows/publish.yml`
+ran green, `npm view @kaneho/pdlc-engine version` resolves to `0.2.0`, and `pdlcPairing` reports
+the matching `engine-v0.2.0` / `a9885dc8` pairing. Evidence:
+`docs/completed/pdlc-engine-distribution/EVIDENCE-ENGINE-V0.2.0.md`. This discharges REQ
+AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2) and the README's successor-tag caveat, which was
+removed from `pdlc/README.md` in the same change — `deferral-binding.test.js`'s row-23 binding
+assertion is conditioned on that caveat text and now no-ops once it is gone.
 
 **Row 22 (`pdlc-halt-hardening-followups`) added 2026-08-16 to bind an unbound deferral
 (CODE_REVIEW v4 §3-3, `pdlc-engine-distribution`).** `docs/ideas/halt-hardening-followups.md`

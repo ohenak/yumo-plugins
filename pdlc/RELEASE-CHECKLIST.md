@@ -237,16 +237,16 @@ registry's `@latest` tag still resolves the pre-feature `0.1.0` bytes published 
 until a successor tag is cut — `pdlc/README.md`'s "Install in another repo" caveat and
 REQ/TSPEC both disclose this gap; this section is what discharges it.
 
-- [ ] Post-merge, on the merge commit, cut the `engine-v0.2.0` tag (`git tag engine-v0.2.0 <merge-sha> && git push origin engine-v0.2.0`).
-- [ ] Verify `.github/workflows/publish.yml` runs green for the tag push (re-runs the PR checks before publishing per `pdlc/engine/scripts/publish-preflight.mjs`).
-- [ ] Verify `npm view @kaneho/pdlc-engine version` resolves to `0.2.0` (and the published `pdlcPairing` field, per `pdlc/README.md`'s install section, reports the matching plugin pairing).
-- [ ] Record the publish as dated evidence in a tracked `EVIDENCE-*.md` under `docs/completed/pdlc-engine-distribution/`, the way `EVIDENCE-BR-3.9.md` recorded `engine-v0.1.0` (BR-3.9/T52).
-- [ ] **In the same change**, bump `pdlc/engine/package.json` to `0.3.0`. `version-skew.test.js` harvests published versions out of tracked `EVIDENCE-*.md` files and requires HEAD's manifest version to be strictly ahead of every one, so recording `0.2.0`'s publish without the bump turns the engine suite red on the default branch. The two steps are one commit, not two.
-- [ ] Owner: maintainer.
+- [x] Post-merge, on the merge commit, cut the `engine-v0.2.0` tag (`git tag engine-v0.2.0 <merge-sha> && git push origin engine-v0.2.0`). **Done 2026-08-16**, at merge commit `a9885dc86bc52b3ac5e55e1aa5d32da3046e2c3e` (PR #63).
+- [x] Verify `.github/workflows/publish.yml` runs green for the tag push (re-runs the PR checks before publishing per `pdlc/engine/scripts/publish-preflight.mjs`). **Done 2026-08-16** — workflow run green.
+- [x] Verify `npm view @kaneho/pdlc-engine version` resolves to `0.2.0` (and the published `pdlcPairing` field, per `pdlc/README.md`'s install section, reports the matching plugin pairing). **Done 2026-08-16** — `version` → `0.2.0`; `pdlcPairing` → `{ engineVersion: '0.2.0', pluginCompat: '^0.23.0', pluginVersionAtTag: '0.23.1', tag: 'engine-v0.2.0', commit: 'a9885dc86bc52b3ac5e55e1aa5d32da3046e2c3e' }`.
+- [x] Record the publish as dated evidence in a tracked `EVIDENCE-*.md` under `docs/completed/pdlc-engine-distribution/`, the way `EVIDENCE-BR-3.9.md` recorded `engine-v0.1.0` (BR-3.9/T52). **Done 2026-08-16** — see `docs/completed/pdlc-engine-distribution/EVIDENCE-ENGINE-V0.2.0.md`.
+- [x] **In the same change**, bump `pdlc/engine/package.json` past `0.2.0`. `version-skew.test.js` harvests published versions out of tracked `EVIDENCE-*.md` files and requires HEAD's manifest version to be strictly ahead of every one, so recording `0.2.0`'s publish without the bump turns the engine suite red on the default branch. The two steps are one commit, not two. **Done 2026-08-16** — bumped to `0.2.1` (a patch bump past the published `0.2.0` is sufficient to satisfy the strictly-ahead requirement; the README's successor-tag caveat that previously bound this section to a `0.3.0` target was resolved and removed in the same change, so no `0.3.0` commitment was outstanding).
+- [x] Owner: maintainer.
 
-Discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stay narrowed-YES on this
-branch precisely because that residue — documented, not hidden — is what this checklist item
-closes post-merge, not pre-merge.
+**Discharged 2026-08-16.** Discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stayed
+narrowed-YES prior to this section closing that residue — documented, not hidden — post-merge.
+See `docs/completed/pdlc-engine-distribution/EVIDENCE-ENGINE-V0.2.0.md` for the full record.
 
 ---
 

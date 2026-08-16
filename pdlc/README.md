@@ -155,11 +155,10 @@ npm i -g @kaneho/pdlc-engine@latest      # install fresh, or upgrade in place �
 npm view @kaneho/pdlc-engine pdlcPairing # read the {engine, compat range, plugin} pairing this build was published against
 ```
 
-> The registry only ever holds versions cut from a tag. Until this work merges and its
-> successor tag is cut, `@latest` resolves to `0.1.0` — the bytes published from
-> `engine-v0.1.0`, which predate this branch's pin ladder, doctor routing and launcher hop.
-> To exercise HEAD instead, install from the local checkout:
-> `npm i -g ./pdlc/engine`.
+> The registry only ever holds versions cut from a tag. `@latest` now resolves to `0.2.0` —
+> the bytes published from `engine-v0.2.0` (2026-08-16), which include this feature's pin
+> ladder, doctor routing and launcher hop. To exercise HEAD instead, install from the local
+> checkout: `npm i -g ./pdlc/engine`.
 
 ## Ptah engine integration
 
