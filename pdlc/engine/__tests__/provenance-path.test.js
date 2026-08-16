@@ -18,6 +18,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { message } from "../lib/catalogue.mjs";
@@ -71,16 +72,94 @@ test("bin/cli.mjs exports a callable main and a five-key default deps object", a
 // `bin/pdlc.mjs` cannot import `lib/catalogue.mjs` — doing so would add a
 // static import and falsify PROP-LAUNCH-7 — so the guard's refusal is a
 // literal string duplicated in that file rather than routed through
-// `message()`. This test is what keeps the two in sync: it renders the
-// catalogue's registered template and asserts it is byte-identical to the
-// guard's own literal (`bin/pdlc.mjs`), and — since `message()` records an
-// observation on every call, catalogue or otherwise — it is also this
-// registration's only emission, satisfying §7.4's reverse-direction
-// set-equality (a registered id that no path ever emits fails the step).
+// `message()`, and AC-2.4's floor number is likewise written out three
+// times: `package.json`'s `engines.node`, the guard's `major < N`
+// comparison, and the catalogue template's rendered text.
+//
+// The leg below renders the catalogue's registered template against a
+// literal. It is also this registration's only emission, so — since
+// `message()` records an observation on every call — it satisfies §7.4's
+// reverse-direction set-equality (a registered id that no path ever emits
+// fails the step). That is what it does, and all it does.
+//
+// CR round-3 TE F-02: the comment here used to claim this leg read
+// `bin/pdlc.mjs` and compared byte-for-byte against the guard's own
+// literal. It never opened that file. Measured at HEAD: rewriting the
+// guard's `major < 20` to `major < 8`, and rewriting its refusal prefix,
+// each left the suite green three runs running — AC-2.4's criterion had no
+// carrier at all, behind a comment telling the next reader it was held. A
+// comment claiming an oracle that does not exist is worse than no comment,
+// because it stops the search. The second leg is the missing carrier; this
+// comment now describes only what is asserted.
 
 test("catalogue: node.below-floor renders and names both the floor and the found version", () => {
   const rendered = message("node.below-floor", { floor: "20", found: "12.0.0" });
   assert.equal(rendered, "pdlc requires Node >= 20; found 12.0.0");
+});
+
+// CR round-3 TE F-02 (AC-2.4, PROP-LAUNCH-7, DEC-EDIST-09). The floor lives
+// in three places that no oracle related. This leg reads all three from
+// their own files — never from each other — and asserts they agree, so any
+// one of them drifting alone reddens here by name.
+//
+// Deliberately source-text parsing, not import: `bin/pdlc.mjs` must stay
+// free of static imports (PROP-LAUNCH-7) and executing it would take the
+// guard against *this* runtime, which is above the floor by construction.
+// Both extractions fail closed with a named message if the shape they
+// expect is not found, so a rewrite that removes the guard fails loudly
+// rather than silently matching nothing.
+test("AC-2.4: the Node floor and its refusal text agree across package.json, the guard, and the catalogue", () => {
+  const guardSource = readFileSync(path.join(engineRoot, "bin", "pdlc.mjs"), "utf8");
+
+  const comparison = guardSource.match(/major\s*<\s*(\d+)/);
+  assert.ok(
+    comparison,
+    "bin/pdlc.mjs must carry a `major < N` floor comparison — AC-2.4's refusal depends on it",
+  );
+  const guardFloor = comparison[1];
+
+  const refusal = guardSource.match(
+    /console\.error\(\s*"((?:[^"\\]|\\.)*)"\s*\+\s*process\.versions\.node\s*\)/,
+  );
+  assert.ok(
+    refusal,
+    "bin/pdlc.mjs must refuse with a literal prefix concatenated to process.versions.node",
+  );
+  const guardRefusalPrefix = refusal[1];
+
+  const enginesNode = JSON.parse(
+    readFileSync(path.join(engineRoot, "package.json"), "utf8"),
+  ).engines.node;
+  const declared = enginesNode.match(/^>=\s*(\d+)/);
+  assert.ok(declared, `package.json engines.node must be a ">=N" floor; found ${enginesNode}`);
+
+  // 1. npm's installability floor and the guard's runtime floor are the
+  //    same number. If they diverge, npm either installs a package that
+  //    immediately refuses, or refuses to install one that would have run.
+  assert.equal(
+    guardFloor,
+    declared[1],
+    `bin/pdlc.mjs's floor (${guardFloor}) must equal package.json engines.node (${enginesNode})`,
+  );
+
+  // 2. The guard's hand-written refusal is byte-identical to what the
+  //    catalogue's registered template renders for the same floor — the
+  //    claim the comment above used to make without asserting it.
+  const found = "12.0.0";
+  assert.equal(
+    `${guardRefusalPrefix}${found}`,
+    message("node.below-floor", { floor: guardFloor, found }),
+    "the guard's literal refusal must render identically to the node.below-floor template",
+  );
+
+  // 3. The extraction is not vacuous: the floor is the real one, and the
+  //    prefix actually names the floor. Without this, a regex that matched
+  //    some other `major < N` would satisfy (1) and (2) against itself.
+  assert.equal(guardFloor, "20", "AC-2.4's floor is Node 20");
+  assert.ok(
+    guardRefusalPrefix.includes(guardFloor),
+    `the refusal must name the floor it enforces; got ${JSON.stringify(guardRefusalPrefix)}`,
+  );
 });
 
 // ── T47: the two §12.1 provenance-path legs (AT-5.3, AT-4.2) ──────────────

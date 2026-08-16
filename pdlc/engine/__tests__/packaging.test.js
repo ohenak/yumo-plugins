@@ -23,6 +23,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { buildPairingRecord } from "../scripts/publish-preflight.mjs";
+import {
+  TSPEC_SOURCE_NOTE,
+  WORKFLOW_MEMBERS,
+  tspecPackedCount,
+  tspecPackedSet,
+} from "./_tspec-packed-set.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ENGINE_ROOT = path.resolve(HERE, "..");
@@ -32,43 +38,27 @@ const DECISIONS_PATH = path.join(
   "docs/_decisions/DECISIONS-plugin-distribution.md",
 );
 
-const TSPEC_SOURCE_NOTE =
-  "expected set's source: TSPEC §5.4's literal `PK-*` table " +
-  "(docs/pdlc-engine-distribution/TSPEC-pdlc-engine-distribution.md §5.4) " +
-  "— never a listing of pdlc/engine/lib/ or the tarball itself";
+// ─── TSPEC §5.4's literal expected set ────────────────────────────────────
+//
+// Transcribed once, in `_tspec-packed-set.mjs`, and imported here and by
+// `publish-channel.test.js` (CR round-3 TE F-05). It is never derived from a
+// directory listing of the code under test (TE round-1 F-01), nor from
+// `checkPackedSet`'s own refusal message (TE CR v2 F-03). The co-change
+// obligation — TSPEC §5.4 and FSPEC §5.2 move first — is recorded there.
 
-// ─── TSPEC §5.4's literal expected set (never derived from a directory
-// listing of the code under test — TE round-1 F-01) ────────────────────────
+const WORKFLOW_MODULE_NAMES = WORKFLOW_MEMBERS.filter(
+  (member) => member !== "vendor/workflows/VENDOR-MANIFEST.json",
+).map((member) => path.basename(member));
 
-const LIB_MODULES_AT_HEAD = [
-  "adapter",
-  "auth",
-  "catalogue",
-  "guard-measurement",
-  "handshake",
-  "outcome",
-  "report",
-  "run",
-  "skills",
-  "startup",
-  "transport-cli",
-  "transport",
-]; // V-03, PK-5…PK-16
-
-const LIB_MODULES_FROM_THIS_FEATURE = ["resolve-version", "store", "provenance"]; // §3.1, PK-17…PK-19
-
-// AT-3.8b's Workflow-members class (FSPEC §5.2, "three members and nothing
-// else" — TSPEC:390, TSPEC:436-438). PK-20…PK-22.
-const WORKFLOW_MEMBERS = [
-  "vendor/workflows/orchestrate-dev.js",
-  "vendor/workflows/orchestrate-queue.js",
-  "vendor/workflows/VENDOR-MANIFEST.json",
-];
+// Local aliases keeping this file's existing call sites (`licenceRecorded`)
+// unchanged while the transcription itself lives in one place.
+const expectedPackedSet = ({ licenceRecorded }) => tspecPackedSet({ licence: licenceRecorded });
+const expectedMemberCount = ({ licenceRecorded }) => tspecPackedCount({ licence: licenceRecorded });
 
 // wave-12 fix: `packRealTarball()` builds a scratch copy of the engine
 // package and its sibling `pdlc/workflows/` directory rather than packing
 // `ENGINE_ROOT` in place (see the comment on `packRealTarball` below).
-// These two lists say what gets copied into that scratch tree.
+// This list says what gets copied into that scratch tree.
 const ENGINE_INPUT_ENTRIES = [
   "package.json",
   "README.md",
@@ -79,34 +69,6 @@ const ENGINE_INPUT_ENTRIES = [
   "lib",
   "scripts",
 ];
-const WORKFLOW_MODULE_NAMES = WORKFLOW_MEMBERS.filter(
-  (member) => member !== "vendor/workflows/VENDOR-MANIFEST.json",
-).map((member) => path.basename(member));
-
-// Builds the full expected packed set (AT-3.8a's whole-set assertion),
-// member-for-member, from TSPEC §5.4's literal table. `licenceRecorded`
-// is the only conditional member (PK-3): its presence is read from N-2's
-// recorded decision, never from whether `pdlc/engine/LICENSE` exists in
-// the tree (TSPEC:374-386's deletion-tolerance argument).
-function expectedPackedSet({ licenceRecorded }) {
-  return [
-    "package.json", // PK-1
-    "README.md", // PK-2
-    ...(licenceRecorded ? ["LICENSE"] : []), // PK-3
-    "bin/pdlc.mjs", // PK-4
-    "bin/cli.mjs", // PK-4b
-    ...LIB_MODULES_AT_HEAD.map((m) => `lib/${m}.mjs`), // PK-5…PK-16
-    ...LIB_MODULES_FROM_THIS_FEATURE.map((m) => `lib/${m}.mjs`), // PK-17…PK-19
-    ...WORKFLOW_MEMBERS, // PK-20…PK-22
-    "scripts/postinstall.mjs", // PK-23
-  ];
-}
-
-// Count conjunct (TSPEC:387-393, FSPEC:539-541): 4 manifest-adjacent/`bin/`
-// + 15 `lib/*.mjs` + 3 vendored + 1 install script + 0/1 licence.
-function expectedMemberCount({ licenceRecorded }) {
-  return 4 + 15 + 3 + 1 + (licenceRecorded ? 1 : 0);
-}
 
 // N-2: has a licence decision been recorded in
 // `DECISIONS-plugin-distribution.md`? Read from the decision record,

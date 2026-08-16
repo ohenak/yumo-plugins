@@ -6,7 +6,15 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, mkdtempSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  mkdtempSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -187,14 +195,60 @@ test("prepack defaults engineVersion to the engine's own package.json version, n
 // zero-argument call. A guard that never fired (or one that fired on import)
 // would leave `npm pack` shipping no vendor directory at all while every
 // unit leg above stayed green. The vendor directory is git-ignored build
-// output (§5.2), so it is removed again afterwards.
+// output (§5.2).
+//
+// CR round-3 TE F-01: this leg used to spawn `scripts/prepack.mjs` **in
+// place**, so it created and then deleted `pdlc/engine/vendor/workflows/`
+// in the shared checkout while `node --test` was running the other suite
+// files concurrently. `resolveWorkflowRoot` (`lib/run.mjs:88-99`) prefers
+// the vendor root over the checkout root whenever the vendor filenames
+// exist, so any *other* file's subprocess leg that resolved workflow
+// modules inside that window loaded modules from a directory this test was
+// about to `rmSync`, and died with `ERR_MODULE_NOT_FOUND` for a reason no
+// diff explains (measured: 1 red in 5 runs of an unmodified tree). A red
+// that means nothing is worse than a red that means something — it made
+// this round's own mutation probes ambiguous, and `pr-tests.yml` gates
+// Phase PUB on this suite's colour.
+//
+// The fix is the one `packaging.test.js`'s `packRealTarball()` already
+// uses: run the production entry against a **scratch package root** with
+// the same `pdlc/engine` + `pdlc/workflows` shape, so the process-entry
+// guard and the zero-argument `runPrepack()` call are still what execute,
+// but nothing writes inside the checkout. The closing assertion pins that
+// invariant directly, so re-introducing an in-place run reddens *here*
+// rather than intermittently somewhere else.
 test("prepack run as a process (npm's prepack lifecycle) vendors both modules (AF-2)", () => {
-  const vendorRoot = path.join(engineRoot, "vendor");
+  // `realpathSync`, deliberately: on macOS `mkdtempSync` hands back a
+  // `/var/...` path while `import.meta.url` inside the spawned child
+  // resolves through the `/private/var` symlink, so an un-realpath'd
+  // `argv[1]` makes `isMainEntry` compare two spellings of the same file
+  // and decline to fire. That would leave this leg asserting nothing while
+  // exiting 0 — the precise failure mode the guard exists to catch.
+  const buildRoot = realpathSync(mkdtempSync(path.join(tmpdir(), "pdlc-prepack-entry-")));
+  const scratchEngine = path.join(buildRoot, "pdlc", "engine");
+  const scratchWorkflows = path.join(buildRoot, "pdlc", "workflows");
+  const checkoutVendorRootExisted = existsSync(path.join(engineRoot, "vendor"));
   try {
-    rmSync(vendorRoot, { recursive: true, force: true });
-    const result = spawnSync(process.execPath, [path.join(engineRoot, "scripts", "prepack.mjs")], {
-      encoding: "utf8",
-    });
+    mkdirSync(path.join(scratchEngine, "scripts"), { recursive: true });
+    mkdirSync(scratchWorkflows, { recursive: true });
+
+    // The two inputs `prepack.mjs` reads: the engine `package.json` (for
+    // `engineVersion`) and the canonical workflow sources it vendors.
+    cpSync(path.join(engineRoot, "package.json"), path.join(scratchEngine, "package.json"));
+    cpSync(
+      path.join(engineRoot, "scripts", "prepack.mjs"),
+      path.join(scratchEngine, "scripts", "prepack.mjs"),
+    );
+    for (const name of ["orchestrate-dev.js", "orchestrate-queue.js"]) {
+      cpSync(path.join(repoRoot, "pdlc", "workflows", name), path.join(scratchWorkflows, name));
+    }
+
+    const vendorRoot = path.join(scratchEngine, "vendor");
+    const result = spawnSync(
+      process.execPath,
+      [path.join(scratchEngine, "scripts", "prepack.mjs")],
+      { encoding: "utf8" },
+    );
     assert.equal(result.status, 0, result.stderr);
 
     const manifestPath = path.join(vendorRoot, "workflows", "VENDOR-MANIFEST.json");
@@ -210,8 +264,19 @@ test("prepack run as a process (npm's prepack lifecycle) vendors both modules (A
         `${entry.name} must exist beside the manifest`,
       );
     }
+
+    // CR round-3 TE F-01's invariant, asserted rather than assumed: the
+    // production entry ran, and the shared checkout's vendor root is in
+    // exactly the state it was in before. A leg that re-acquires an
+    // in-place run fails this assertion deterministically, in this file.
+    assert.equal(
+      existsSync(path.join(engineRoot, "vendor")),
+      checkoutVendorRootExisted,
+      "the process-entry prepack leg must not create or remove pdlc/engine/vendor/ " +
+        "in the shared checkout — concurrent suite files resolve workflow modules there",
+    );
   } finally {
-    rmSync(vendorRoot, { recursive: true, force: true });
+    rmSync(buildRoot, { recursive: true, force: true });
   }
 });
 

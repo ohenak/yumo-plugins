@@ -27,9 +27,8 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const CLI_URL = pathToFileURL(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "cli.mjs")
-).href;
+const ENGINE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const CLI_URL = pathToFileURL(path.join(ENGINE_ROOT, "bin", "cli.mjs")).href;
 
 /** Capture stdout/stderr and `process.exitCode` around one entry call. */
 async function captureRun(fn) {
@@ -335,6 +334,48 @@ describe("PM F-02: the resolution hop is on the path `pdlc dev` takes", () => {
       /before running pdlc/.test(stdout),
       false,
       `a proceed notice must not carry the refusal's "do this first" wording. Got:\n${stdout}`
+    );
+  });
+
+  // ── CR v3 PM F-02: the proceed arm's id set, pinned ───────────────────
+  //
+  // The two legs above pin the behaviour for `store.empty`. They do not pin
+  // the *partition*: `launchMoveFor` selects the proceed-arm notice with
+  // `id === "store.empty" ? … : decision.announcement`, so any future
+  // refusal id added outside `REFUSING_REFUSAL_IDS` silently falls through
+  // to the `: decision.announcement` fallback and inherits its refusal
+  // wording on an arm that proceeds — exactly the operator-facing defect
+  // PM CR v2 F-02 found, returning with no test able to redden.
+  //
+  // The fallback branch has no input that can reach it today, so it cannot
+  // be covered directly. What can be asserted is why: the resolver's
+  // complete refusal-id enumeration, read from its own source rather than
+  // from a list kept here, minus the refusing ids, is exactly
+  // `{store.empty}`. Adding a sixth id makes this leg fail by name and
+  // forces the author to choose wording for it.
+  test("every refusal id that reaches the proceed arm has chosen wording — the set is exactly {store.empty}", async () => {
+    const { REFUSING_REFUSAL_IDS } = await import(CLI_URL);
+    const resolverSource = readFileSync(
+      path.join(ENGINE_ROOT, "lib", "resolve-version.mjs"),
+      "utf8",
+    );
+    const declared = [...resolverSource.matchAll(/\brefuse\(\s*"([^"]+)"/g)].map((m) => m[1]);
+
+    // Fail closed: a resolver rewritten to build refusals some other way
+    // must redden here rather than yield an empty set that satisfies the
+    // subtraction vacuously.
+    assert.ok(
+      declared.length >= 5,
+      `expected the resolver to declare its refusal ids via refuse("id", …); found ${declared.length}`,
+    );
+
+    const proceeding = [...new Set(declared)].filter((id) => !REFUSING_REFUSAL_IDS.has(id)).sort();
+    assert.deepEqual(
+      proceeding,
+      ["store.empty"],
+      "a refusal id outside REFUSING_REFUSAL_IDS reaches the arm that PROCEEDS. " +
+        "It will inherit its refusal wording there unless launchMoveFor gives it a " +
+        "proceed variant (as store.empty-in-place does). Choose wording, then add it here.",
     );
   });
 

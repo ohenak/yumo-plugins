@@ -300,7 +300,7 @@ export function resolveForLaunch(opts = {}) {
  * Raised as an erratum against TSPEC §6.2 and DEC-EDIST-03 rather than
  * decided here alone.
  */
-const REFUSING_REFUSAL_IDS = new Set([
+export const REFUSING_REFUSAL_IDS = new Set([
   "config.unreadable",
   "version.dev-incomplete",
   "version.pin-malformed",
