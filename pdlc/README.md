@@ -145,6 +145,22 @@ claude plugin install pdlc@ptah             # install the plugin from the ptah m
 > `claude plugin marketplace add /path/to/yumo && claude plugin install pdlc@ptah`.
 > When `pdlc` is later extracted to its own repo, only the marketplace `source` changes.
 
+### Headless engine (npm)
+
+The pipeline also ships as a standalone CLI, independent of the Claude Code plugin above —
+see `pdlc/engine/README.md` for what the package is.
+
+```bash
+npm i -g @kaneho/pdlc-engine@latest      # install fresh, or upgrade in place — same command
+npm view @kaneho/pdlc-engine pdlcPairing # read the {engine, compat range, plugin} pairing this build was published against
+```
+
+> The registry only ever holds versions cut from a tag. Until this work merges and its
+> successor tag is cut, `@latest` resolves to `0.1.0` — the bytes published from
+> `engine-v0.1.0`, which predate this branch's pin ladder, doctor routing and launcher hop.
+> To exercise HEAD instead, install from the local checkout:
+> `npm i -g ./pdlc/engine`.
+
 ## Ptah engine integration
 
 The engine reads skill prompts by filesystem path (`ptah.config.json` → `agents[].skill_path`).

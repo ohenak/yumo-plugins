@@ -46,24 +46,91 @@
 
 import path from "node:path";
 import { existsSync, statSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { message } from "./catalogue.mjs";
+import { NO_PROVENANCE } from "./provenance.mjs";
 
-/** The canonical workflow modules, by relative path inside this repo checkout. */
-export const WORKFLOW_MODULE_URLS = Object.freeze({
-  dev: new URL("../../workflows/orchestrate-dev.js", import.meta.url).href,
-  queue: new URL("../../workflows/orchestrate-queue.js", import.meta.url).href,
+// ─── Two-root workflow module resolution (TSPEC §5.2, PROP-PACK-6/7/8) ────
+//
+// The canonical workflow modules are resolved from one of two fixed-order
+// candidate roots: the vendor root (an installed/packed tree, present only
+// once `prepack` has vendored `pdlc/workflows/` into it) first, then the
+// checkout root (this repo's own `pdlc/workflows/`, the arrangement rule 1
+// above describes). A root only "exists" when it holds BOTH module files —
+// vendoring copies them atomically, so a root with a single member is not a
+// resolvable candidate.
+
+const RUN_MJS_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+/** Root 1: the vendored tree an installed/packed engine ships (§5.2 step 3). */
+const VENDOR_ROOT = path.join(RUN_MJS_DIR, "..", "vendor", "workflows");
+/** Root 2: this repo's own checkout — the pre-packaging arrangement (rule 1). */
+const CHECKOUT_ROOT = path.join(RUN_MJS_DIR, "..", "..", "workflows");
+
+const MODULE_FILE_NAMES = Object.freeze({
+  dev: "orchestrate-dev.js",
+  queue: "orchestrate-queue.js",
 });
 
+const defaultFs = { existsSync };
+
+function rootResolves(root, fs) {
+  return Object.values(MODULE_FILE_NAMES).every((name) => fs.existsSync(path.join(root, name)));
+}
+
+/**
+ * Resolves the workflow-module root, trying the vendor root before the
+ * checkout root (fixed order, no fallback ambiguity — TSPEC §5.2). Throws,
+ * naming both absolute paths tried, when neither resolves — the engine must
+ * refuse rather than dispatch with no modules loaded (§11, PROP-CAT-3).
+ *
+ * @param {{fs?: {existsSync: Function}}} [args]
+ * @returns {{source: "vendor"|"checkout", rootPath: string, tried: Array<{source: string, root: string, exists: boolean}>}}
+ */
+export function resolveWorkflowRoot({ fs = defaultFs } = {}) {
+  const candidates = [
+    { source: "vendor", root: VENDOR_ROOT },
+    { source: "checkout", root: CHECKOUT_ROOT },
+  ];
+  const tried = candidates.map((c) => ({ ...c, exists: rootResolves(c.root, fs) }));
+  const resolved = tried.find((c) => c.exists);
+  if (!resolved) {
+    throw new Error(
+      message("modules.not-found", { vendorRoot: VENDOR_ROOT, checkoutRoot: CHECKOUT_ROOT }),
+    );
+  }
+  return { source: resolved.source, rootPath: resolved.root, tried };
+}
+
+/**
+ * The canonical workflow modules, as `file://` URLs, resolved from whichever
+ * root `resolveWorkflowRoot` picks (TSPEC §5.2). A function — not a static
+ * frozen object — because the root is decided per call, not fixed at import
+ * time (V-04's prior arrangement).
+ *
+ * @param {{fs?: {existsSync: Function}}} [args]
+ * @returns {{dev: string, queue: string}}
+ */
+export function WORKFLOW_MODULE_URLS({ fs = defaultFs } = {}) {
+  const { rootPath } = resolveWorkflowRoot({ fs });
+  return Object.freeze({
+    dev: pathToFileURL(path.join(rootPath, MODULE_FILE_NAMES.dev)).href,
+    queue: pathToFileURL(path.join(rootPath, MODULE_FILE_NAMES.queue)).href,
+  });
+}
+
 /** Absolute filesystem path of a canonical workflow module (AC-1.5 evidence). */
-export function workflowModulePath(name) {
-  const url = WORKFLOW_MODULE_URLS[name];
-  if (!url) throw new Error(`unknown workflow module: ${name}`);
-  return fileURLToPath(url);
+export function workflowModulePath(name, { fs = defaultFs } = {}) {
+  const fileName = MODULE_FILE_NAMES[name];
+  if (!fileName) throw new Error(`unknown workflow module: ${name}`);
+  const { rootPath } = resolveWorkflowRoot({ fs });
+  return path.join(rootPath, fileName);
 }
 
 /** Default module loader. Injectable so tests can prove import never happened. */
 async function defaultImportWorkflow(name) {
-  return import(WORKFLOW_MODULE_URLS[name]);
+  const urls = WORKFLOW_MODULE_URLS();
+  return import(urls[name]);
 }
 
 /**
@@ -74,10 +141,17 @@ async function defaultImportWorkflow(name) {
  * ignore unknown keys, but passing only the declared seams keeps the injection
  * object readable against the modules' own parameter list.
  *
+ * `_provenance` (§7.2, TSPEC production-carrier table): the engine's 8th key on this
+ * row, an optional frozen `Provenance` value defaulting to `NO_PROVENANCE` (the
+ * module-level null-object both workflow modules already default to, per V-15's
+ * shipped idiom) so a caller that supplies nothing produces byte-identical
+ * artifacts to today.
+ *
  * @param {object} adapter
- * @returns {{_agent, _parallel, _pipeline, _phase, _log, _runCommand}}
+ * @param {object} [provenance] frozen `Provenance` (`lib/provenance.mjs`)
+ * @returns {{_agent, _parallel, _pipeline, _phase, _log, _runCommand, _git, _provenance}}
  */
-export function devInjection(adapter) {
+export function devInjection(adapter, provenance = NO_PROVENANCE) {
   requireAdapter(adapter);
   return {
     _agent: adapter._agent,
@@ -87,6 +161,7 @@ export function devInjection(adapter) {
     _log: adapter._log,
     _runCommand: adapter._runCommand,
     _git: adapter._git,
+    _provenance: provenance,
   };
 }
 
@@ -108,10 +183,17 @@ export function devInjection(adapter) {
  *   plain Node there is no such global, so the engine must supply the delegated
  *   pipeline's seams itself by wrapping `_runPipeline`.
  *
+ * `_provenance` (§7.2): the engine's 6th key on this row, for `orchestrate-queue.js`'s
+ * OWN `main()` — the module that owns C-c, C-d and kind 3's R-3…R-5 rows. Taken as an
+ * injected seam of its own, not routed through `_runPipeline`'s wrapper, because
+ * `commitAdvisoryRecord` (C-d) and `rewriteStatus` are reached by the queue's own
+ * `main()`, which `_runPipeline` never enters.
+ *
  * @param {object} adapter
  * @param {(args: object) => Promise<object>} runPipeline the wrapped dev entry
+ * @param {object} [provenance] frozen `Provenance` (`lib/provenance.mjs`)
  */
-export function queueInjection(adapter, runPipeline) {
+export function queueInjection(adapter, runPipeline, provenance = NO_PROVENANCE) {
   requireAdapter(adapter);
   return {
     _agent: adapter._agent,
@@ -119,6 +201,7 @@ export function queueInjection(adapter, runPipeline) {
     _phase: adapter._phase,
     _git: adapter._git,
     _runPipeline: runPipeline,
+    _provenance: provenance,
   };
 }
 
@@ -169,15 +252,26 @@ export const ENGINE_CONFIG_PATH = ".claude/pdlc.config.json";
  * coerced (a string `timeoutMinutes` reaching `* 60 * 1000` would stamp a
  * NaN timeout on every dispatch).
  *
+ * §6.4's `engine` discriminant is a THIRD, separate return key, computed
+ * alongside — never instead of — the `config`/`notices` pair above: an
+ * unparseable file or a non-object `engine` section is `unreadable` (the
+ * ladder's branch-0 refusal, `config.unreadable`, registered and emitted via
+ * the catalogue seam); a present-but-empty-of-`version` section is
+ * `no-pin`; anything else (no file, or a file with no `engine` key) is
+ * `absent`. The `dispatch` tunables keep degrading with a notice whenever
+ * the file parses — only the `engine` read refuses.
+ *
  * @param {object} [args]
  * @param {string} [args.cwd] consumer repo root the path resolves against
- * @returns {{config: object, notices: string[]}} `config` is `{}` or
- *   `{dispatch: {...}}` with only valid keys — shaped for `resolveTunables`.
+ * @returns {{config: object, notices: string[], engine: object}} `config` is
+ *   `{}` or `{dispatch: {...}}` with only valid keys — shaped for
+ *   `resolveTunables`. `engine` is `{state: "absent"}`,
+ *   `{state: "no-pin", config}` or `{state: "unreadable", path, error}`.
  */
 export function readEngineConfig({ cwd = process.cwd() } = {}) {
   const file = path.join(cwd, ENGINE_CONFIG_PATH);
   const notices = [];
-  if (!existsSync(file)) return { config: {}, notices };
+  if (!existsSync(file)) return { config: {}, notices, engine: { state: "absent" } };
 
   let parsed;
   try {
@@ -187,17 +281,36 @@ export function readEngineConfig({ cwd = process.cwd() } = {}) {
       `Notice: ${ENGINE_CONFIG_PATH} is not readable JSON (${err.message}) — ` +
         `using defaults for every dispatch tunable.`
     );
-    return { config: {}, notices };
+    const errorText = message("config.unreadable", { path: file, error: err.message });
+    return { config: {}, notices, engine: { state: "unreadable", path: file, error: errorText } };
+  }
+
+  const engineSection = parsed && typeof parsed === "object" ? parsed.engine : undefined;
+  let engine;
+  if (engineSection === undefined) {
+    engine = { state: "absent" };
+  } else if (
+    engineSection === null ||
+    typeof engineSection !== "object" ||
+    Array.isArray(engineSection)
+  ) {
+    const errorText = message("config.unreadable", {
+      path: file,
+      error: `"engine" is not an object`,
+    });
+    engine = { state: "unreadable", path: file, error: errorText };
+  } else {
+    engine = { state: "no-pin", config: engineSection };
   }
 
   const dispatch = parsed && typeof parsed === "object" ? parsed.dispatch : undefined;
-  if (dispatch === undefined) return { config: {}, notices };
+  if (dispatch === undefined) return { config: {}, notices, engine };
   if (dispatch === null || typeof dispatch !== "object" || Array.isArray(dispatch)) {
     notices.push(
       `Notice: the "dispatch" section of ${ENGINE_CONFIG_PATH} is not an object — ` +
         `using defaults for every dispatch tunable.`
     );
-    return { config: {}, notices };
+    return { config: {}, notices, engine };
   }
 
   const invalid = (key) =>
@@ -231,7 +344,7 @@ export function readEngineConfig({ cwd = process.cwd() } = {}) {
     } else invalid("retryBackoff");
   }
 
-  return { config: Object.keys(valid).length > 0 ? { dispatch: valid } : {}, notices };
+  return { config: Object.keys(valid).length > 0 ? { dispatch: valid } : {}, notices, engine };
 }
 
 // ─── resolveTunables (TSPEC §4.6, REQ §4.1) ─────────────────────────────────
@@ -375,6 +488,7 @@ async function withCwd(dir, fn) {
  * @param {string} [args.cwd] consumer repo root (AC-2.5)
  * @param {object} args.adapter seams from `createAdapter()`
  * @param {object} [args.startup] `runStartupChecks()` result; a failing one refuses
+ * @param {object} [args.provenance] frozen `Provenance` (§7.2), threaded into `devInjection`
  * @param {Function} [args.importWorkflow] test seam for the dynamic import
  * @returns {Promise<{ok: boolean, report: object|null, refusal: string|null}>}
  */
@@ -384,12 +498,13 @@ export async function runDev({
   cwd,
   adapter,
   startup = null,
+  provenance = NO_PROVENANCE,
   importWorkflow = defaultImportWorkflow,
 } = {}) {
   const refusal = refusalFor(startup);
   if (refusal) return { ok: false, report: null, refusal };
 
-  const injection = devInjection(adapter);
+  const injection = devInjection(adapter, provenance);
   const root = resolveCwd(cwd);
 
   const mod = await importWorkflow("dev");
@@ -416,6 +531,8 @@ export async function runDev({
  * @param {string} [args.cwd]
  * @param {object} args.adapter
  * @param {object} [args.startup]
+ * @param {object} [args.provenance] frozen `Provenance` (§7.2), threaded into
+ *   `queueInjection` AND into the delegated dev pipeline's `devInjection` (same value)
  * @param {Function} [args.importWorkflow]
  * @returns {Promise<{ok: boolean, report: object|null, refusal: string|null}>}
  */
@@ -424,6 +541,7 @@ export async function runQueue({
   cwd,
   adapter,
   startup = null,
+  provenance = NO_PROVENANCE,
   importWorkflow = defaultImportWorkflow,
 } = {}) {
   const refusal = refusalFor(startup);
@@ -446,11 +564,14 @@ export async function runQueue({
   }
 
   // See queueInjection's doc comment: the queue hands the delegated pipeline
-  // `{ reqPath }` and nothing else, so the seams are re-attached here.
-  const devSeams = devInjection(adapter);
+  // `{ reqPath }` and nothing else, so the seams are re-attached here. `devSeams`
+  // is built with the SAME `provenance` value (not re-derived), so the dev
+  // pipeline a queue run delegates to inherits `_provenance` from this one key
+  // (§7.2's "Carry (delegated dev)" row — no separate change needed there).
+  const devSeams = devInjection(adapter, provenance);
   const runPipeline = (args) => devMain({ ...args, ...devSeams });
 
-  const injection = queueInjection(adapter, runPipeline);
+  const injection = queueInjection(adapter, runPipeline, provenance);
   const report = await withCwd(root, () =>
     queueMain({ ...(queuePath ? { queuePath } : {}), ...injection })
   );
@@ -469,6 +590,11 @@ export async function runQueue({
  * `maxPasses`, when given, is a hard iteration bound whose exhaustion stops
  * the loop as `"bound-reached"` — distinct from `"exhausted"`, which means
  * the queue itself ran dry.
+ *
+ * One `Provenance` per run, not one per pass (§7.2, TE v5 Q-15): `args.provenance`
+ * (when the caller supplies one) is forwarded unchanged into every `runQueue(args)`
+ * call below — the same frozen object every pass — never rebuilt or re-resolved
+ * inside the loop.
  *
  * @param {object} [args]
  * @param {number|null} [args.maxPasses] iteration bound; `null`/omitted is unbounded

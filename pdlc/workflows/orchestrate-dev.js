@@ -1829,6 +1829,24 @@ export async function phaseMerge({
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
 const MODEL_DEFAULT = "opus"; // all phases except Phase I
 
+// TSPEC §7.2 P-1 — the default-inert `Provenance` null-object. A runtime that
+// supplies no `_provenance` seam produces byte-identical artifacts to today:
+// empty `line`/`block` mean kind 1's report field carries a readable-but-empty
+// value and kind 2's append is skipped entirely (P-5). Frozen, plain-data,
+// mirroring `lib/provenance.mjs`'s own shape (§7.1) — this module never builds
+// a `Provenance` itself, only receives one.
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 // ── TSPEC §4.8 — review-loop / authoring budgets ───────────────────────────────
 // Module-level, not main() parameters: they are policy, not capability, and the
 // workflow runtime's bundle has no configuration channel to override them from.
@@ -2750,6 +2768,7 @@ export async function buildA5SeamOps({
   _git,
   _ghRun,
   _checkCi,
+  provenance = NO_PROVENANCE,
 } = {}) {
   const bl05 = await probeDefaultBranchChecks(defaultBranch, { _ghRun });
   const bl06 = await probeWorkflowRerun(undefined, { _ghRun });
@@ -2835,10 +2854,12 @@ export async function buildA5SeamOps({
     apply: async (verdict) => {
       lastAction = verdict ? verdict.proposedAction : null;
       if (lastAction === "E-1") return { ok: true }; // nothing to write — the act is the re-run
+      const line = provenance && provenance.line ? provenance.line : "";
+      const message = `advisory(A5): ${feature} — branch-introduced CI fix`;
       const commit = await _git([
         "commit",
         "-m",
-        `advisory(A5): ${feature} — branch-introduced CI fix`,
+        line ? `${message}\n\n${line}` : message,
       ]);
       return { ok: Boolean(commit && commit.ok === true) };
     },
@@ -7273,6 +7294,7 @@ export async function reviewLoop({
   _sessionAgent = NO_SESSION_AGENT,
   _log,
   _git,
+  provenance = NO_PROVENANCE,
 }) {
   // The doc type the round record is keyed by. Derived from `doc` when the caller
   // does not name it, so Phase CR's directory target degrades to "no doc type"
@@ -7430,6 +7452,19 @@ export async function reviewLoop({
       if (!postmortemFailed) {
         const confirmation = await _checkFile(postmortemPath);
         postmortemWritten = !!(confirmation && confirmation.ok);
+        // TSPEC §7.2 P-4 — kind 2. Never agent-mediated: the mark is a
+        // script-owned `_appendFile` call strictly AFTER `_checkFile`
+        // confirms the file, never a sentence in the agent prompt. P-5: an
+        // empty `block` skips the append entirely — no empty section, no
+        // marker, no diff.
+        if (postmortemWritten && provenance.block) {
+          try {
+            await _appendFile(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+            // Best-effort, same discipline as the erratum POSTMORTEM append:
+            // the POSTMORTEM itself is already confirmed written either way.
+          }
+        }
       }
 
       if (postmortemFailed) {
@@ -7582,7 +7617,11 @@ export async function reviewLoop({
     // round and never halts the run (§6.2 row 8, `AT-17`): the phase simply has no
     // recorded approval to skip on next time.
     if (gatePass) {
-      await appendApprovalAnchors({
+      // Call site A (TSPEC §7.4 route step 2): `reviewLoop` is module-scope and
+      // cannot see `main()`'s `artifactPaths`, so it surfaces the anchored
+      // paths on the record it already returns; both of its callers inside
+      // `main()` push them.
+      const anchorResult = await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
@@ -7593,7 +7632,10 @@ export async function reviewLoop({
         _appendFile,
         _git,
         emit,
+        provenance,
       });
+      const anchoredPaths =
+        anchorResult && Array.isArray(anchorResult.paths) ? anchorResult.paths : [];
       // §3.9: `trailerReason` rides on EVERY return, `null` on the clean path —
       // so `null` must be observable as a value, which a conditional spread is not.
       return {
@@ -7602,6 +7644,7 @@ export async function reviewLoop({
         lastOptimizerResult,
         trailerReason: lastTrailerReason,
         errata: errata.slice(),
+        anchoredPaths,
       };
     }
 
@@ -7727,6 +7770,10 @@ async function normalizedAnchorFor({ probe, path, _hashNormalizedFile }) {
   }
 }
 
+// TSPEC §7.2 kind 4 (AC-5.3, C-b) — one of the closed set of five commit helpers that compose
+// `provenance.line` into the message string at the call to `_git`, never at a call site.
+// `provenance` defaults to `NO_PROVENANCE`, so a caller that passes nothing yields today's exact
+// bytes (P-1); the composed line is a no-op suffix when `line` is empty.
 async function appendApprovalAnchors({
   paths,
   hash,
@@ -7738,15 +7785,22 @@ async function appendApprovalAnchors({
   _appendFile,
   _git,
   emit,
+  provenance = NO_PROVENANCE,
 }) {
   if (!hash) {
     emit(
       "Approval anchor not recorded: the reviewed document could not be read at " +
         "capture time. The round yields no approval; the phase will re-run."
     );
-    return;
+    return { appended: false, paths: [] };
   }
 
+  // §7.4 route step 1: the paths this call ACTUALLY appended to, not `paths`
+  // verbatim — the idempotent no-op (`continue` below) touches nothing on
+  // disk this call, and a failed/ambiguous path returns before this array
+  // gains a member, so `appendedPaths` is exactly `artifactPaths`'s two
+  // callers need without them re-deriving it.
+  const appendedPaths = [];
   let appended = false;
   for (const path of paths) {
     // The pre-count is a JUDGMENT about the file, not its prose, so `_probeDoc`
@@ -7759,7 +7813,7 @@ async function appendApprovalAnchors({
     const existingText = probe ? null : await _readFile(path);
     if (probe ? probe.exists !== true : existingText == null) {
       emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     const existing = probe
       ? (Array.isArray(probe.anchors) ? probe.anchors : [])
@@ -7769,7 +7823,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
           "APPROVAL-HASH: lines, so its history is ambiguous. The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     if (existing.length === 1) {
       if (existing[0] === hash) continue; // E-14 — idempotent no-op.
@@ -7777,7 +7831,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
           `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     try {
       // The RAW anchor stays first and stays the shape every existing reader
@@ -7799,23 +7853,33 @@ async function appendApprovalAnchors({
           upstreamStateLines(upstreamState)
       );
       appended = true;
+      appendedPaths.push(path);
     } catch (err) {
       emit(
         `Approval anchor not recorded: appending to ${path} failed (${err && err.message}). ` +
           "The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
   }
 
-  if (!appended || typeof _git !== "function") return;
+  if (!appended || typeof _git !== "function") return { appended, paths: appendedPaths };
   try {
     await _git(["add", ...paths]); // t6
-    await _git(["commit", "-m", `chore(pdlc): record approval anchors ${hash}`]);
+    const line = provenance && provenance.line ? provenance.line : "";
+    const message = line
+      ? `chore(pdlc): record approval anchors ${hash}\n\n${line}`
+      : `chore(pdlc): record approval anchors ${hash}`;
+    await _git(["commit", "-m", message]);
   } catch {
     // t6 is best-effort: the anchors are on disk either way, and §5.5's comparison
     // reads the working tree, never the commit.
   }
+  // §7.4 route step 1: `{appended, paths}` — `paths` is the SUBSET of the
+  // input `paths` this call actually wrote APPROVAL-HASH:/REVIEWED-COMMIT:
+  // to, never the input verbatim (an idempotent no-op or a failed/ambiguous
+  // path contributes nothing to it).
+  return { appended, paths: appendedPaths };
 }
 
 // ─── Prompt helpers ───────────────────────────────────────────────────────────
@@ -9594,6 +9658,13 @@ function implementPrompt(task, featureName) {
  *   3. **No commits.** The orchestrator verifies, then commits. This is what made
  *      two agent deaths cost nothing on the manual run: the work was already in
  *      the tree, verified, and committable by whichever agent survived.
+ *   4. **The skip convention.** The wave gate is unconditional: the full suite must
+ *      exit 0 before a wave commits. That would forbid a red/green PLAN pair whose
+ *      test task and implementing task land in different waves, so the red task
+ *      commits its blocks `.skip`ped and titled with the owning task's id, and the
+ *      green task un-skips them first. `checkWaveUnskips` enforces the second half
+ *      — a task does not complete while blocks titled with its id are still skipped
+ *      — so the prompt must state the first half or the agent never writes them.
  */
 function waveImplementPrompt(task, featureName) {
   const owned = Array.isArray(task.files) ? task.files : [];
@@ -9603,8 +9674,28 @@ function waveImplementPrompt(task, featureName) {
     `Feature: ${featureName}\n` +
     `TSPEC: docs/${featureName}/TSPEC-${featureName}.md\n` +
     `PROPERTIES: docs/${featureName}/PROPERTIES-${featureName}.md\n` +
+    `PLAN: docs/${featureName}/PLAN-${featureName}.md\n` +
     `Dependencies completed: ${task.dependencies.join(", ") || "none"}\n` +
     `Follow TDD: write the failing test first, then the minimum implementation.\n` +
+    `SKIPS: the orchestrator requires the FULL suite green at the end of every wave. ` +
+    `If your task writes tests whose implementation another task owns in a later wave, commit those ` +
+    `blocks SKIPPED: \`test.skip\`/\`it.skip\`/\`describe.skip\` as the plain leading token of the ` +
+    `statement, titled with the owning task's id followed by ": " (e.g. \`test.skip("T26: …", …)\`). ` +
+    `Exactly one task id per title; use \`describe.skip\` only when every block inside is owned by that ` +
+    `same task.\n` +
+    `If any committed test file already contains \`.skip\` blocks titled with YOUR task id, your FIRST ` +
+    `action is to remove exactly those \`.skip\` wrappers, run them, observe them fail, then implement ` +
+    `until they pass. Never delete a skipped block, and never write a new test beside one, instead ` +
+    `of un-skipping it.\n` +
+    `If a test file needs a module that does not exist yet, defer loading it — use a dynamic ` +
+    `\`await import\` inside the test body rather than a top-level import — so the file still loads ` +
+    `and the skips take effect.\n` +
+    `EXIT CRITERION (hard, self-verify before reporting done): run each test file you touched ` +
+    `directly and confirm it exits 0. A failing test must NEVER be left un-skipped in the tree: ` +
+    `either your task makes it pass now, or the implementation belongs to a later task and the ` +
+    `block goes \`.skip\`ped, titled with that task's id. "My row is [red], so red is expected" is ` +
+    `WRONG — the wave gate runs the FULL suite and one un-skipped red test halts the entire pipeline. ` +
+    `If you cannot name the owning later task from the PLAN, stop and report instead.\n` +
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
@@ -11653,10 +11744,23 @@ function uncommittedWorkRemedy(paths) {
  * staged set is READ BACK — an add that staged nothing means the task made no
  * change, which is a notice, not a commit and not a halt.
  *
+ * TSPEC §7.2 kind 4 (AC-5.3, C-a) — one of the closed set of five commit helpers that compose
+ * `provenance.line` into the message string at the call to `_git`, never at a call site.
+ * `provenance` defaults to `NO_PROVENANCE`, so a caller that passes nothing yields today's exact
+ * bytes (P-1); the composed line is a no-op suffix when `line` is empty.
+ *
  * @returns {Promise<"committed"|"nothing-staged">}
  * @throws {Error} halt error on any non-transient git failure
  */
-export async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
+export async function commitPaths({
+  paths,
+  message,
+  what,
+  _git,
+  _sleep,
+  emit,
+  provenance = NO_PROVENANCE,
+}) {
   const add = await gitWithLockRetry(["add", "--", ...paths], {
     _git,
     _sleep,
@@ -11677,7 +11781,9 @@ export async function commitPaths({ paths, message, what, _git, _sleep, emit }) 
     return "nothing-staged";
   }
 
-  const commit = await gitWithLockRetry(["commit", "-m", message], {
+  const line = provenance && provenance.line ? provenance.line : "";
+  const commitMessage = line ? `${message}\n\n${line}` : message;
+  const commit = await gitWithLockRetry(["commit", "-m", commitMessage], {
     _git,
     _sleep,
     emit,
@@ -11917,6 +12023,10 @@ export default async function main({
   // parameter to `NO_SESSION_AGENT`), and every consumer here reaches the
   // transport through that one function. main() is a pass-through for it.
   _sessionAgent,
+  // TSPEC §7.2 — kinds 1 and 2's carrier. Default-inert (P-1): a caller that
+  // supplies nothing gets `NO_PROVENANCE`, whose empty `line`/`block` make
+  // kind 1's report field readable-but-empty and skip kind 2's append (P-5).
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -12276,6 +12386,7 @@ export default async function main({
     _sessionAgent,
     _log: emit,
     _git: gitFn,
+    provenance,
   };
 
   /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
@@ -12397,6 +12508,19 @@ export default async function main({
       if (result != null && String(result).trim() !== "") {
         const confirmation = await checkFileFn(postmortemPath);
         written = !!(confirmation && confirmation.ok);
+        // TSPEC §7.2 P-4 — kind 2. Never agent-mediated: the mark is a
+        // script-owned `_appendFile` call strictly AFTER `_checkFile`
+        // confirms the file, never a sentence in the agent prompt. P-5: an
+        // empty `block` skips the append entirely — no empty section, no
+        // marker, no diff.
+        if (written && provenance.block) {
+          try {
+            await appendFileFn(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+            // Best-effort, same discipline as the approval-anchor append: the
+            // POSTMORTEM itself is already confirmed written either way.
+          }
+        }
       }
     } catch {
       written = false;
@@ -12572,6 +12696,7 @@ export default async function main({
           _appendFile: appendFileFn,
           _git: gitFn,
           emit,
+          provenance,
         });
         const notice =
           `Phase ${phaseId}: ${docPath} RE-CONFIRMED at round v${round} against the edited ` +
@@ -13116,7 +13241,11 @@ export default async function main({
     // that were just confirmed. This is M-4's "no approval silently invalidated":
     // the upstream document's recorded approval now points at the edited file, so
     // the staleness gate does not re-open a phase the approvers just re-confirmed.
-    await appendApprovalAnchors({
+    // Call site B (TSPEC §7.4 route step 3): `erratumRound` is nested within
+    // `main()`, so it closes over `artifactPaths` directly and pushes the
+    // anchored paths itself rather than surfacing them through a return —
+    // there is no caller-side hop the way there is for `reviewLoop`.
+    const anchorResult = await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
@@ -13130,7 +13259,11 @@ export default async function main({
       _appendFile: appendFileFn,
       _git: gitFn,
       emit,
+      provenance,
     });
+    if (anchorResult && Array.isArray(anchorResult.paths)) {
+      artifactPaths.push(...anchorResult.paths);
+    }
 
     // PLAN §3.2 — the edit that was just confirmed moved `target`, so every
     // approval BELOW it that was anchored against the old `target` is now
@@ -13403,6 +13536,10 @@ export default async function main({
       _checkFile: checkFileFn,
       ...wrapperSeams,
     });
+    // §7.4 route step 2, `converge()`'s call site: `reviewLoop` cannot see
+    // `artifactPaths`, so it surfaces the anchored CROSS-REVIEW-* paths on its
+    // returned record and this caller pushes them.
+    if (Array.isArray(loop.anchoredPaths)) artifactPaths.push(...loop.anchoredPaths);
     checkConverged(
       loop,
       phaseId,
@@ -13442,6 +13579,7 @@ export default async function main({
   if (!reqPath || reqPath.trim() === "") {
     haltReason = `Error: no REQ path provided. Usage: /pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -13457,6 +13595,7 @@ export default async function main({
   if (!match) {
     haltReason = `Error: REQ path does not match expected pattern docs/{feature}/REQ-{feature}.md — got: ${reqPath}`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -13480,6 +13619,7 @@ export default async function main({
       `Error: invalid forcePhases token${forceParse.badTokens.length === 1 ? "" : "s"}: ` +
       `${forceParse.badTokens.join(", ")}. Valid: ${[...FORCE_PHASE_TOKENS, "all"].join(", ")}.`;
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -13502,6 +13642,7 @@ export default async function main({
       haltReason = `Error: REQ file not found at ${reqPath}`;
     }
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -13583,6 +13724,7 @@ export default async function main({
       _git: gitFn,
       _ghRun: ghRunFn,
       _checkCi: checkCiFn,
+      provenance,
     });
     return runAdvisorySeamFn({
       seam,
@@ -14267,6 +14409,7 @@ export default async function main({
               _git: waveGit,
               _sleep: waveSleep,
               emit,
+              provenance,
             });
           }
 
@@ -14278,6 +14421,7 @@ export default async function main({
               _git: waveGit,
               _sleep: waveSleep,
               emit,
+              provenance,
             });
           }
 
@@ -14416,6 +14560,8 @@ export default async function main({
         _checkFile: checkFileFn,
         ...wrapperSeams,
       });
+      // §7.4 route step 2, Phase CR's call site: same surfacing as `converge()`'s.
+      if (Array.isArray(crResult.anchoredPaths)) artifactPaths.push(...crResult.anchoredPaths);
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
@@ -14507,6 +14653,9 @@ export default async function main({
           } catch {
             codeReviewText = "";
           }
+          // §7.4 class 8: dod-verify wrote this round's CODE_REVIEW even though
+          // the phase went on to halt.
+          if (codeReviewText) artifactPaths.push(codeReviewPath);
           const a3 = await runAdvisorySeamFn({
             seam: "A3",
             feature: featureName,
@@ -14548,6 +14697,9 @@ export default async function main({
           dodVerifiedCommit = null;
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
+        // §7.4 class 8: the CODE_REVIEW-*.md dod-verify wrote for the passing
+        // iteration — dod-verify's own loop budget guarantees at least one round.
+        artifactPaths.push(`docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`);
       }
 
       // ─── Phase H: Harvest ────────────────────────────────────────────────
@@ -14609,6 +14761,9 @@ export default async function main({
         }
 
         harvestStatus = "Harvested";
+        // §7.4 class 7: LEARNINGS is authored outside converge()'s push site
+        // (harvest's own wrappedDispatch), so it is pushed here instead.
+        artifactPaths.push(learningsPath);
         recordPhase("H", "Harvest", "✅", "Learnings harvested");
       }
 
@@ -14662,6 +14817,10 @@ export default async function main({
           const check = await checkFileFn(advisoryPath);
           const recordExists = Boolean(check && check.ok);
           if (recordExists) {
+            // §7.4 class 10: the advisory record exists only when this run's
+            // A1-A5 seams authored it (appendAdvisoryEntry) — enumerate it
+            // before the distil step below removes it from the tree.
+            artifactPaths.push(advisoryPath);
             await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
             const del = await gitFn(["rm", "--", advisoryPath]);
             if (guardRefused(del)) {
@@ -14678,6 +14837,7 @@ export default async function main({
                 _git: gitFn,
                 _sleep: h2Sleep,
                 emit,
+                provenance,
               });
               await gitFn(["push", "origin", "HEAD"]);
             }
@@ -14780,10 +14940,21 @@ export default async function main({
       }
     }
 
+    // §7.4 class 9: a POSTMORTEM this run actually wrote reaches artifactPaths —
+    // `postmortemStatus === "unresolved"` is a PRE-EXISTING file a step-G
+    // refusal named, not this run's own output, so it is deliberately excluded.
+    if (postmortemStatus === "written" && postmortemPath) {
+      artifactPaths.push(postmortemPath);
+    }
+
     // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
     let queueRow = null;
     try {
-      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({
+        feature: featureName,
+        status: "halted",
+        provenance,
+      });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
       // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
       // operator a REMAINING ACTION, and that action reaches them as its own
@@ -14808,6 +14979,7 @@ export default async function main({
     );
 
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -14832,6 +15004,7 @@ export default async function main({
   }
 
   return buildFinalReport({
+    provenance,
     feature: featureName,
     outcome: "success",
     notices,
@@ -14950,6 +15123,11 @@ function buildFinalReport({
   // `prUrl`/`ciStatus` above — a disabled run must never carry a defined `advisory` key at all
   // (T-10-3/T-10-4 assert `toBeUndefined()`, not merely falsy).
   advisory = undefined,
+  // TSPEC §7.2 kind 1 — the run report's provenance field. Defaulted so every
+  // existing caller and existing test is unchanged; unconditional on the
+  // returned record (never conditionally spread), since `NO_PROVENANCE`
+  // itself is the readable "no provenance supplied" value kind 1 reports.
+  provenance = NO_PROVENANCE,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -14963,6 +15141,9 @@ function buildFinalReport({
     harvestStatus,
     dodVerifiedCommit,
     dodHeadUnverified,
+    // TSPEC §7.2 kind 1 (AC-4.1). Present, unconditionally, on EVERY report —
+    // `NO_PROVENANCE` itself is the readable default (P-1), not an absent key.
+    provenance,
     // §4.7's non-skip report lines. Carried as their own field rather than
     // appended to a phase row's `detail`, which oracles pin verbatim.
     notices,

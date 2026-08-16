@@ -134,3 +134,17 @@ not yet authored — the REQ carries `ready: false` pending operator review.
 | US-02 | REQ-WVR-02, REQ-WVR-04 | (pending) |
 | US-03 | REQ-WVR-03, REQ-WVR-06 | (pending) |
 | US-04 | REQ-WVR-07 | (pending) |
+
+## pdlc-engine-distribution
+
+Upstream: `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.9). Downstream:
+`docs/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` (`FSPEC-EDIST-01`, v0.1).
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-EDIST-01, REQ-EDIST-02 | §3 F-1, F-2; §5.2 |
+| US-02 | REQ-EDIST-01, REQ-EDIST-02, REQ-EDIST-06 | §3 F-1, F-3, F-7 |
+| US-03 | REQ-EDIST-03 | §3 F-5; §5.1 |
+| US-04 | REQ-EDIST-04 | §3 F-6 |
+| US-05 | REQ-EDIST-05 | §3 F-4 (pin branch) |
+| US-06 | REQ-EDIST-05 | §3 F-4 (dev-mode branch); §5.3 |

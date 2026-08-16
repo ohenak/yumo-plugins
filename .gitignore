@@ -34,3 +34,6 @@ node_modules/
 
 # pdlc consolidation in-progress marker — working tree only (AC-1.3)
 docs/_decisions/.consolidation-lock
+
+# Coverage output (c8 / lcov) — measured, never committed
+coverage/

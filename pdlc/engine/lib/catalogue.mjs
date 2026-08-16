@@ -36,6 +36,16 @@ export const MESSAGES = Object.freeze({
     severity: "info",
     template: "Auth source: undetermined at startup; the first dispatch decides",
   },
+  // TSPEC §6.4 branch 0: a corrupt consumer config file refuses before every
+  // pin branch, because an unparseable file cannot say whether a pin was
+  // ever declared. Names the file path and the parse error, per the ladder
+  // table's Result cell (§6.3, order 0).
+  "config.unreadable": {
+    severity: "refusal",
+    template:
+      "the consumer config file at {path} could not be parsed as JSON ({error}) — " +
+      "refusing rather than guessing whether a pin was declared; fix or delete the file",
+  },
   "guard.measurement-missing": {
     severity: "refusal",
     template:
@@ -47,6 +57,108 @@ export const MESSAGES = Object.freeze({
     template:
       "M-ENG-09 for platform \"{platform}\" records denyFired: no while the §6.2 PreToolUse hook " +
       "carrier still ships; per DEC-ENG-04 this is a red measurement, not a silent posture note",
+  },
+  // TSPEC §6.5 (D-4, AC-5.6, E-13): PDLC_PLUGIN_ROOT was set but dev-mode was
+  // not declared for this invocation, so `resolvePluginRoot` ignored it and
+  // ran discovery as if it were unset. This is not a refusal — the released
+  // version still ran — so it is an info-severity notice, not a refusal.
+  "env.plugin-root-ignored": {
+    severity: "info",
+    template:
+      "PDLC_PLUGIN_ROOT was set ({value}) and ignored — dev-mode was not declared; " +
+      "pass --dev to honour it",
+  },
+  // TSPEC §9.3 / §11, AC-2.4: the Node-floor refusal. Registered here for
+  // catalogue closure and rendered-text coverage (`__tests__/provenance-path.test.js`),
+  // but never emitted through `message()` in production — the guard that
+  // owns this refusal, `bin/pdlc.mjs`, is dependency-free by PROP-LAUNCH-7
+  // and cannot import this module, so it carries the identical wording as
+  // its own literal string instead. The test above is what keeps the two
+  // in sync and is this id's only real emission (§7.4's reverse direction).
+  // TSPEC §5.2/§11, PROP-CAT-3: neither the vendor root nor the checkout root
+  // resolved a workflow-module pair. The engine refuses at startup and
+  // dispatches nothing — a refusal that still dispatched would look
+  // identical in the transcript, so the caller (`resolveWorkflowRoot`)
+  // throws before any module import is attempted.
+  "modules.not-found": {
+    severity: "refusal",
+    template:
+      "no workflow modules were found; tried the vendor root {vendorRoot} and the " +
+      "checkout root {checkoutRoot} — refusing rather than dispatching with no modules loaded",
+  },
+  "node.below-floor": {
+    severity: "refusal",
+    template: "pdlc requires Node >= {floor}; found {found}",
+  },
+  // TSPEC §6.3 ladder branch 7: no --dev, no pin, and the store is empty or
+  // missing. §11 asks the message to name the store root and the install
+  // command; `resolveVersion` is pure over a listing rather than a store
+  // root path, so the wording stays generic here and the store-root-naming
+  // half is the caller's (§6.2 doctor/launcher) job, not this id's.
+  "store.empty": {
+    severity: "refusal",
+    template:
+      "no engine version is installed; run the documented install command to populate " +
+      "the version store before running pdlc",
+  },
+  // Branch 7's PROCEED variant (PM CR v2 F-02). Branch 7 has two audiences
+  // and they need opposite words. On `--version`/`doctor` nothing runs, so
+  // `store.empty`'s refusal wording ("before running pdlc") is exactly right.
+  // On `dev`/`queue` the shipped launcher is fat, not thin: it runs in place,
+  // stamped `mode: "unresolved"` (see `REFUSING_REFUSAL_IDS` in bin/cli.mjs),
+  // and announcing that run with the refusal's words told the operator the run
+  // was not happening while it happened. AC-5.2 asks for never-silent; it is
+  // this id that makes the announcement name the outcome it accompanies.
+  "store.empty-in-place": {
+    severity: "info",
+    template:
+      "no engine version is installed; running in place as {version} — " +
+      "run `{command}` to populate the version store if you want to pin a version",
+  },
+  // TSPEC §6.3 ladder branch 4 / §11 / PROP-VER-5: names both the pinned
+  // version and what is actually installed, never falls back.
+  "version.pin-missing": {
+    severity: "refusal",
+    template:
+      "engine.version is pinned to \"{version}\" but that version is not installed; " +
+      "installed versions: {installed}",
+  },
+  // TSPEC §6.3 ladder branch 5 / §11 / PROP-VER-6: a malformed pin is never
+  // read as "no pin".
+  "version.pin-malformed": {
+    severity: "refusal",
+    template:
+      "engine.version \"{value}\" is not a parseable semver version; refusing rather " +
+      "than treating it as no pin",
+  },
+  // TSPEC §6.3 ladder branch 2 / §11 / PROP-VER-8: an incomplete --dev
+  // declaration never downgrades to pin or latest.
+  "version.dev-incomplete": {
+    severity: "refusal",
+    template: "--dev was declared but {reason}; never falling back to a pinned or latest version",
+  },
+  // TSPEC §6.3 ladder branch 3's announcement (Q-3, PROP-VER-2/3).
+  "version.announce-pin": {
+    severity: "info",
+    template: "engine version: {version} (pinned via .claude/pdlc.config.json)",
+  },
+  // TSPEC §6.3 ladder branch 6's announcement (AC-5.2, PROP-VER-2/4).
+  "version.announce-latest": {
+    severity: "info",
+    template: "engine version: {version} (no pin declared; latest installed)",
+  },
+  // TSPEC §6.3 ladder branch 1's announcement (AC-5.4, PROP-VER-2/7).
+  "version.announce-dev": {
+    severity: "info",
+    template: "engine version: dev checkout running in place at {root}",
+  },
+  // TSPEC §10.1 S-4 commentary / §10.3, FSPEC Q-4 / E-12, PROP-VER-3,
+  // PROP-CAT-2: the update-probe notice. Stated on every run regardless of
+  // outcome -- the probe is inert by default, but the statement about the
+  // probe is unconditional, never silent.
+  "update.unavailable": {
+    severity: "info",
+    template: "could not check for a newer version — {reason}",
   },
 });
 

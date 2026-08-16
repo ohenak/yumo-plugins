@@ -2052,6 +2052,18 @@ async function phaseMerge({
 
 const MODEL_DEFAULT = "opus"; 
 
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 const MAX_REVIEW_ROUNDS = 5;
 
 const MAX_LIFETIME_ROUNDS = 15;
@@ -2609,6 +2621,7 @@ async function buildA5SeamOps({
   _git,
   _ghRun,
   _checkCi,
+  provenance = NO_PROVENANCE,
 } = {}) {
   const bl05 = await probeDefaultBranchChecks(defaultBranch, { _ghRun });
   const bl06 = await probeWorkflowRerun(undefined, { _ghRun });
@@ -2684,10 +2697,12 @@ async function buildA5SeamOps({
     apply: async (verdict) => {
       lastAction = verdict ? verdict.proposedAction : null;
       if (lastAction === "E-1") return { ok: true }; 
+      const line = provenance && provenance.line ? provenance.line : "";
+      const message = `advisory(A5): ${feature} — branch-introduced CI fix`;
       const commit = await _git([
         "commit",
         "-m",
-        `advisory(A5): ${feature} — branch-introduced CI fix`,
+        line ? `${message}\n\n${line}` : message,
       ]);
       return { ok: Boolean(commit && commit.ok === true) };
     },
@@ -5220,6 +5235,7 @@ async function reviewLoop({
   _sessionAgent = NO_SESSION_AGENT,
   _log,
   _git,
+  provenance = NO_PROVENANCE,
 }) {
 
   const roundDocType = docType === undefined ? docTypeFromPath(doc) : docType;
@@ -5342,6 +5358,14 @@ async function reviewLoop({
       if (!postmortemFailed) {
         const confirmation = await _checkFile(postmortemPath);
         postmortemWritten = !!(confirmation && confirmation.ok);
+
+        if (postmortemWritten && provenance.block) {
+          try {
+            await _appendFile(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+
+          }
+        }
       }
 
       if (postmortemFailed) {
@@ -5455,7 +5479,8 @@ async function reviewLoop({
     const gatePass = isPassResult(verdict1) && isPassResult(verdict2);
 
     if (gatePass) {
-      await appendApprovalAnchors({
+
+      const anchorResult = await appendApprovalAnchors({
         paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
         hash: anchorHash,
         normalizedHash: anchorNormalizedHash,
@@ -5466,7 +5491,10 @@ async function reviewLoop({
         _appendFile,
         _git,
         emit,
+        provenance,
       });
+      const anchoredPaths =
+        anchorResult && Array.isArray(anchorResult.paths) ? anchorResult.paths : [];
 
       return {
         converged: true,
@@ -5474,6 +5502,7 @@ async function reviewLoop({
         lastOptimizerResult,
         trailerReason: lastTrailerReason,
         errata: errata.slice(),
+        anchoredPaths,
       };
     }
 
@@ -5555,15 +5584,17 @@ async function appendApprovalAnchors({
   _appendFile,
   _git,
   emit,
+  provenance = NO_PROVENANCE,
 }) {
   if (!hash) {
     emit(
       "Approval anchor not recorded: the reviewed document could not be read at " +
         "capture time. The round yields no approval; the phase will re-run."
     );
-    return;
+    return { appended: false, paths: [] };
   }
 
+  const appendedPaths = [];
   let appended = false;
   for (const path of paths) {
 
@@ -5571,7 +5602,7 @@ async function appendApprovalAnchors({
     const existingText = probe ? null : await _readFile(path);
     if (probe ? probe.exists !== true : existingText == null) {
       emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     const existing = probe
       ? (Array.isArray(probe.anchors) ? probe.anchors : [])
@@ -5581,7 +5612,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
           "APPROVAL-HASH: lines, so its history is ambiguous. The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     if (existing.length === 1) {
       if (existing[0] === hash) continue; 
@@ -5589,7 +5620,7 @@ async function appendApprovalAnchors({
         `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
           `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     try {
 
@@ -5602,22 +5633,29 @@ async function appendApprovalAnchors({
           upstreamStateLines(upstreamState)
       );
       appended = true;
+      appendedPaths.push(path);
     } catch (err) {
       emit(
         `Approval anchor not recorded: appending to ${path} failed (${err && err.message}). ` +
           "The round yields no approval."
       );
-      return;
+      return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
   }
 
-  if (!appended || typeof _git !== "function") return;
+  if (!appended || typeof _git !== "function") return { appended, paths: appendedPaths };
   try {
     await _git(["add", ...paths]); 
-    await _git(["commit", "-m", `chore(pdlc): record approval anchors ${hash}`]);
+    const line = provenance && provenance.line ? provenance.line : "";
+    const message = line
+      ? `chore(pdlc): record approval anchors ${hash}\n\n${line}`
+      : `chore(pdlc): record approval anchors ${hash}`;
+    await _git(["commit", "-m", message]);
   } catch {
 
   }
+
+  return { appended, paths: appendedPaths };
 }
 
 const MAP = {
@@ -6657,8 +6695,28 @@ function waveImplementPrompt(task, featureName) {
     `Feature: ${featureName}\n` +
     `TSPEC: docs/${featureName}/TSPEC-${featureName}.md\n` +
     `PROPERTIES: docs/${featureName}/PROPERTIES-${featureName}.md\n` +
+    `PLAN: docs/${featureName}/PLAN-${featureName}.md\n` +
     `Dependencies completed: ${task.dependencies.join(", ") || "none"}\n` +
     `Follow TDD: write the failing test first, then the minimum implementation.\n` +
+    `SKIPS: the orchestrator requires the FULL suite green at the end of every wave. ` +
+    `If your task writes tests whose implementation another task owns in a later wave, commit those ` +
+    `blocks SKIPPED: \`test.skip\`/\`it.skip\`/\`describe.skip\` as the plain leading token of the ` +
+    `statement, titled with the owning task's id followed by ": " (e.g. \`test.skip("T26: …", …)\`). ` +
+    `Exactly one task id per title; use \`describe.skip\` only when every block inside is owned by that ` +
+    `same task.\n` +
+    `If any committed test file already contains \`.skip\` blocks titled with YOUR task id, your FIRST ` +
+    `action is to remove exactly those \`.skip\` wrappers, run them, observe them fail, then implement ` +
+    `until they pass. Never delete a skipped block, and never write a new test beside one, instead ` +
+    `of un-skipping it.\n` +
+    `If a test file needs a module that does not exist yet, defer loading it — use a dynamic ` +
+    `\`await import\` inside the test body rather than a top-level import — so the file still loads ` +
+    `and the skips take effect.\n` +
+    `EXIT CRITERION (hard, self-verify before reporting done): run each test file you touched ` +
+    `directly and confirm it exits 0. A failing test must NEVER be left un-skipped in the tree: ` +
+    `either your task makes it pass now, or the implementation belongs to a later task and the ` +
+    `block goes \`.skip\`ped, titled with that task's id. "My row is [red], so red is expected" is ` +
+    `WRONG — the wave gate runs the FULL suite and one un-skipped red test halts the entire pipeline. ` +
+    `If you cannot name the owning later task from the PLAN, stop and report instead.\n` +
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
@@ -8026,7 +8084,15 @@ function uncommittedWorkRemedy(paths) {
   );
 }
 
-async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
+async function commitPaths({
+  paths,
+  message,
+  what,
+  _git,
+  _sleep,
+  emit,
+  provenance = NO_PROVENANCE,
+}) {
   const add = await gitWithLockRetry(["add", "--", ...paths], {
     _git,
     _sleep,
@@ -8047,7 +8113,9 @@ async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
     return "nothing-staged";
   }
 
-  const commit = await gitWithLockRetry(["commit", "-m", message], {
+  const line = provenance && provenance.line ? provenance.line : "";
+  const commitMessage = line ? `${message}\n\n${line}` : message;
+  const commit = await gitWithLockRetry(["commit", "-m", commitMessage], {
     _git,
     _sleep,
     emit,
@@ -8211,6 +8279,8 @@ async function main({
   _runCommand: runCommandFn = NO_RUN_COMMAND,
 
   _sessionAgent,
+
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
 
   const emit = logFn;
@@ -8428,6 +8498,7 @@ async function main({
     _sessionAgent,
     _log: emit,
     _git: gitFn,
+    provenance,
   };
 
   async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId, sessionKey }) {
@@ -8500,6 +8571,14 @@ async function main({
       if (result != null && String(result).trim() !== "") {
         const confirmation = await checkFileFn(postmortemPath);
         written = !!(confirmation && confirmation.ok);
+
+        if (written && provenance.block) {
+          try {
+            await appendFileFn(postmortemPath, `\n${provenance.block}\n`);
+          } catch {
+
+          }
+        }
       }
     } catch {
       written = false;
@@ -8637,6 +8716,7 @@ async function main({
           _appendFile: appendFileFn,
           _git: gitFn,
           emit,
+          provenance,
         });
         const notice =
           `Phase ${phaseId}: ${docPath} RE-CONFIRMED at round v${round} against the edited ` +
@@ -9011,7 +9091,7 @@ async function main({
       });
     }
 
-    await appendApprovalAnchors({
+    const anchorResult = await appendApprovalAnchors({
       paths: confirmPaths,
       hash: anchorHash,
       normalizedHash: anchorNormalizedHash,
@@ -9023,7 +9103,11 @@ async function main({
       _appendFile: appendFileFn,
       _git: gitFn,
       emit,
+      provenance,
     });
+    if (anchorResult && Array.isArray(anchorResult.paths)) {
+      artifactPaths.push(...anchorResult.paths);
+    }
 
     await cascadeDownstream({ phaseId, target, editedIn: roundLabel });
 
@@ -9222,6 +9306,8 @@ async function main({
       _checkFile: checkFileFn,
       ...wrapperSeams,
     });
+
+    if (Array.isArray(loop.anchoredPaths)) artifactPaths.push(...loop.anchoredPaths);
     checkConverged(
       loop,
       phaseId,
@@ -9254,6 +9340,7 @@ async function main({
   if (!reqPath || reqPath.trim() === "") {
     haltReason = `Error: no REQ path provided. Usage: /pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -9269,6 +9356,7 @@ async function main({
   if (!match) {
     haltReason = `Error: REQ path does not match expected pattern docs/{feature}/REQ-{feature}.md — got: ${reqPath}`;
     return buildFinalReport({
+      provenance,
       feature: "",
       outcome: "halted",
       phases,
@@ -9287,6 +9375,7 @@ async function main({
       `Error: invalid forcePhases token${forceParse.badTokens.length === 1 ? "" : "s"}: ` +
       `${forceParse.badTokens.join(", ")}. Valid: ${[...FORCE_PHASE_TOKENS, "all"].join(", ")}.`;
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -9307,6 +9396,7 @@ async function main({
       haltReason = `Error: REQ file not found at ${reqPath}`;
     }
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -9353,6 +9443,7 @@ async function main({
       _git: gitFn,
       _ghRun: ghRunFn,
       _checkCi: checkCiFn,
+      provenance,
     });
     return runAdvisorySeamFn({
       seam,
@@ -9862,6 +9953,7 @@ async function main({
               _git: waveGit,
               _sleep: waveSleep,
               emit,
+              provenance,
             });
           }
 
@@ -9873,6 +9965,7 @@ async function main({
               _git: waveGit,
               _sleep: waveSleep,
               emit,
+              provenance,
             });
           }
 
@@ -9963,6 +10056,8 @@ async function main({
         _checkFile: checkFileFn,
         ...wrapperSeams,
       });
+
+      if (Array.isArray(crResult.anchoredPaths)) artifactPaths.push(...crResult.anchoredPaths);
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
@@ -10039,6 +10134,8 @@ async function main({
           } catch {
             codeReviewText = "";
           }
+
+          if (codeReviewText) artifactPaths.push(codeReviewPath);
           const a3 = await runAdvisorySeamFn({
             seam: "A3",
             feature: featureName,
@@ -10075,6 +10172,8 @@ async function main({
           dodVerifiedCommit = null;
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
+
+        artifactPaths.push(`docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`);
       }
 
       if (!PHASE_H_ENABLED) {
@@ -10126,6 +10225,8 @@ async function main({
         }
 
         harvestStatus = "Harvested";
+
+        artifactPaths.push(learningsPath);
         recordPhase("H", "Harvest", "✅", "Learnings harvested");
       }
 
@@ -10165,6 +10266,8 @@ async function main({
           const check = await checkFileFn(advisoryPath);
           const recordExists = Boolean(check && check.ok);
           if (recordExists) {
+
+            artifactPaths.push(advisoryPath);
             await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));
             const del = await gitFn(["rm", "--", advisoryPath]);
             if (guardRefused(del)) {
@@ -10181,6 +10284,7 @@ async function main({
                 _git: gitFn,
                 _sleep: h2Sleep,
                 emit,
+                provenance,
               });
               await gitFn(["push", "origin", "HEAD"]);
             }
@@ -10261,9 +10365,17 @@ async function main({
       }
     }
 
+    if (postmortemStatus === "written" && postmortemPath) {
+      artifactPaths.push(postmortemPath);
+    }
+
     let queueRow = null;
     try {
-      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({
+        feature: featureName,
+        status: "halted",
+        provenance,
+      });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
 
       if (recorded && recorded.detail) {
@@ -10282,6 +10394,7 @@ async function main({
     );
 
     return buildFinalReport({
+      provenance,
       feature: featureName,
       outcome: "halted",
       phases,
@@ -10304,6 +10417,7 @@ async function main({
   }
 
   return buildFinalReport({
+    provenance,
     feature: featureName,
     outcome: "success",
     notices,
@@ -10387,6 +10501,8 @@ function buildFinalReport({
   headSha = null,
 
   advisory = undefined,
+
+  provenance = NO_PROVENANCE,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -10400,6 +10516,8 @@ function buildFinalReport({
     harvestStatus,
     dodVerifiedCommit,
     dodHeadUnverified,
+
+    provenance,
 
     notices,
 
@@ -10417,7 +10535,7 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, parseLogRecords, jsonCommentRecords, openPromotionList };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, resolveAdvisoryRung, advisorySummaryRows, ADVISORY_DEFAULTS, commitPaths, ADVISORY_RUNG_SKILL, MERGE_GUARD_DEFAULTS, mergeCommandFor, gitWithLockRetry, ADVISORY_SEAMS, parseLogRecords, jsonCommentRecords, openPromotionList };
 })();
 
 const __queue = (function () {
@@ -10431,6 +10549,7 @@ const resolveAdvisoryRung = __dev.resolveAdvisoryRung;
 const advisorySummaryRows = __dev.advisorySummaryRows;
 const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;
 const commitPaths = __dev.commitPaths;
+const ADVISORY_RUNG_SKILL = __dev.ADVISORY_RUNG_SKILL;
 
 const meta = {
   name: "orchestrate-queue",
@@ -10456,6 +10575,18 @@ const DISPATCHABLE_SKILLS = Object.freeze([SKILL_TRIAGE, ADVISORY_RUNG_SKILL].so
 const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
 const MODEL_QUEUE = "sonnet";
+
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
 
 const QUEUE_STATUSES = [
   "pending",
@@ -10672,7 +10803,13 @@ function hasResidualSeamToken(reason) {
   return typeof reason === "string" && /^\[SEAM:/i.test(reason.trim());
 }
 
-function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
+function updateQueueStatus(
+  markdown,
+  feature,
+  newStatus,
+  evidence = null,
+  provenanceLine = null,
+) {
   if (typeof markdown !== "string" || !feature) {
     return { markdown, matched: false };
   }
@@ -10701,6 +10838,12 @@ function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
     if ((cells[featureCol] || "").trim() !== feature) continue;
 
     if (evidence == null) {
+      if (provenanceLine) {
+        return writeProvenanceOnlyRow(markdown, feature, newStatus, provenanceLine, {
+          statusCol,
+          featureCol,
+        });
+      }
       const newCells = cells.slice();
       newCells[statusCol] = newStatus;
       lines[i] = `| ${newCells.join(" | ")} |`;
@@ -10712,7 +10855,7 @@ function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
       return { markdown, matched: true, written: false, foundStatus };
     }
 
-    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
+    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, provenanceLine, {
       statusCol,
       featureCol,
     });
@@ -10721,15 +10864,57 @@ function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
   return { markdown, matched: false }; 
 }
 
+function writeProvenanceOnlyRow(markdown, feature, newStatus, provenanceLine, hint) {
+  const { markdown: migrated } = ensureEngineColumn(markdown);
+  const lines = migrated.split("\n");
+
+  let statusCol = hint.statusCol;
+  let featureCol = hint.featureCol;
+  let engineCol = -1;
+  for (const line of lines) {
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      const s = cells.findIndex((c) => c.includes("status"));
+      const f = cells.findIndex((c) => c.includes("feature"));
+      const g = cells.findIndex((c) => c.includes("engine"));
+      if (s >= 0) statusCol = s;
+      if (f >= 0) featureCol = f;
+      if (g >= 0) engineCol = g;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim());
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+    if ((cells[featureCol] || "").trim() !== feature) continue;
+
+    const newCells = cells.slice();
+    newCells[statusCol] = newStatus;
+    if (engineCol >= 0) {
+      newCells[engineCol] = provenanceLine;
+    }
+    lines[i] = `| ${newCells.join(" | ")} |`;
+    return { markdown: lines.join("\n"), matched: true };
+  }
+
+  return { markdown, matched: false };
+}
+
 const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"];
 
-function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
-  const { markdown: migrated } = ensureEvidenceColumn(markdown);
+function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, provenanceLine, hint) {
+  const { markdown: evidenceMigrated } = ensureEvidenceColumn(markdown);
+  const migrated = provenanceLine ? ensureEngineColumn(evidenceMigrated).markdown : evidenceMigrated;
   const lines = migrated.split("\n");
 
   let statusCol = hint.statusCol;
   let featureCol = hint.featureCol;
   let evidenceCol = -1;
+  let engineCol = -1;
   for (const line of lines) {
     if (!line.trim().startsWith("|")) continue;
     const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
@@ -10737,9 +10922,11 @@ function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) 
       const s = cells.findIndex((c) => c.includes("status"));
       const f = cells.findIndex((c) => c.includes("feature"));
       const e = cells.findIndex((c) => c.includes("evidence"));
+      const g = cells.findIndex((c) => c.includes("engine"));
       if (s >= 0) statusCol = s;
       if (f >= 0) featureCol = f;
       if (e >= 0) evidenceCol = e;
+      if (g >= 0) engineCol = g;
       break;
     }
   }
@@ -10756,6 +10943,9 @@ function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) 
     if (evidenceCol >= 0) {
       const prevEvidence = (newCells[evidenceCol] || "").trim();
       newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
+    }
+    if (engineCol >= 0 && provenanceLine) {
+      newCells[engineCol] = provenanceLine;
     }
     lines[i] = `| ${newCells.join(" | ")} |`;
     return { markdown: lines.join("\n"), matched: true, written: true };
@@ -10789,6 +10979,51 @@ function ensureEvidenceColumn(markdown) {
   }
 
   lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Evidence");
+
+  const sepIdx = headerIdx + 1;
+  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
+    const sepLine = lines[sepIdx].trim();
+    if (isSeparatorRow(splitRow(sepLine))) {
+      lines[sepIdx] = appendCell(sepLine, "---");
+    }
+  }
+
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const trimmed = line.trim();
+    if (isSeparatorRow(splitRow(trimmed))) continue; 
+    lines[i] = appendCell(trimmed, "");
+  }
+
+  return { markdown: lines.join("\n"), migrated: true };
+}
+
+function ensureEngineColumn(markdown) {
+  if (typeof markdown !== "string") return { markdown, migrated: false };
+
+  const lines = markdown.split("\n");
+  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
+
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return { markdown, migrated: false }; 
+
+  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
+  if (headerCells.some((c) => c.includes("engine"))) {
+    return { markdown, migrated: false }; 
+  }
+
+  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Engine");
 
   const sepIdx = headerIdx + 1;
   if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
@@ -11111,6 +11346,7 @@ async function main({
   _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
   const emit = logFn;
 
@@ -11288,7 +11524,8 @@ async function main({
         `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
         entry.feature,
         gitFn,
-        emit
+        emit,
+        provenance
       );
 
       if (seam === "A1") {
@@ -11318,6 +11555,7 @@ async function main({
             phaseFn,
             emit,
             finish,
+            provenance,
           });
         }
 
@@ -11353,6 +11591,7 @@ async function main({
       phaseFn,
       emit,
       finish,
+      provenance,
     });
   }
 
@@ -11380,6 +11619,8 @@ async function runPicked({
   emit,
 
   finish,
+
+  provenance,
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -11394,7 +11635,9 @@ async function runPicked({
     "in-progress",
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   let report;
@@ -11407,7 +11650,9 @@ async function runPicked({
       "halted",
       readFileFn,
       writeFileFn,
-      gitFn
+      gitFn,
+      null,
+      provenance
     );
     return finish({
       outcome: "halted",
@@ -11427,7 +11672,9 @@ async function runPicked({
     newStatus,
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   emit(
@@ -11457,7 +11704,8 @@ async function rewriteStatus(
   readFileFn,
   writeFileFn,
   gitFn = defaultGit,
-  evidence = null
+  evidence = null,
+  provenance = NO_PROVENANCE
 ) {
   const current = await readFileFn(queuePath);
 
@@ -11465,11 +11713,13 @@ async function rewriteStatus(
     return { queueRow: "none" };
   }
 
+  const provenanceLine = provenance && provenance.line ? provenance.line : null;
   const { markdown, matched, written, foundStatus } = updateQueueStatus(
     current,
     feature,
     status,
-    evidence
+    evidence,
+    provenanceLine
   );
 
   if (!matched) {
@@ -11489,7 +11739,7 @@ async function rewriteStatus(
   }
 
   await writeFileFn(queuePath, markdown);
-  return await commitQueueRow(queuePath, feature, status, gitFn);
+  return await commitQueueRow(queuePath, feature, status, gitFn, provenanceLine);
 }
 
 const NOTHING_TO_COMMIT_RE = /nothing to commit/i;
@@ -11498,17 +11748,15 @@ function firstLine(text) {
   return String(text ?? "").split("\n")[0].trim();
 }
 
-async function commitQueueRow(queuePath, feature, status, gitFn) {
+async function commitQueueRow(queuePath, feature, status, gitFn, provenanceLine = null) {
   const added = await gitFn(["add", "--", queuePath]);
   if (!added.ok) return uncommitted(added, queuePath);
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(queue): ${feature} → ${status}`,
-    "--",
-    queuePath,
-  ]);
+  const message = provenanceLine
+    ? `chore(queue): ${feature} → ${status}\n\n${provenanceLine}`
+    : `chore(queue): ${feature} → ${status}`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", queuePath]);
   if (committed.ok) return { queueRow: "recorded" };
 
   if (
@@ -11521,20 +11769,19 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
   return uncommitted(committed, queuePath);
 }
 
-async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit, provenance = NO_PROVENANCE) {
   const added = await gitFn(["add", "--", recordPath]);
   if (!added || added.ok !== true) {
     emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
     return;
   }
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(advisory): record ${feature} (queue)`,
-    "--",
-    recordPath,
-  ]);
+  const line = provenance && provenance.line ? provenance.line : "";
+  const message = line
+    ? `chore(advisory): record ${feature} (queue)\n\n${line}`
+    : `chore(advisory): record ${feature} (queue)`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", recordPath]);
   if (committed && committed.ok === true) return;
 
   if (
@@ -11864,7 +12111,7 @@ return await __dev.main({
   forcePhases: __forcePhases,
   ...rtDevInjections(__dev),
 
-  _recordQueueRow: async ({ feature, status, evidence }) =>
+  _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,
@@ -11872,6 +12119,7 @@ return await __dev.main({
       rtReadFile,
       rtWriteFile,
       rtGit,
-      evidence
+      evidence,
+      provenance
     ),
 });

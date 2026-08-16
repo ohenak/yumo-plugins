@@ -64,7 +64,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 4 | pending | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
+| 4 | in-progress | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |
@@ -72,6 +72,37 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
+| 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |
+| 23 | blocked | pdlc-engine-v0.2.0-release | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
+
+**Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
+(CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,
+and `TSPEC-pdlc-engine-distribution.md` all disclose that until a successor tag is cut, `npm i -g
+@kaneho/pdlc-engine@latest` keeps resolving the pre-feature `0.1.0` bytes published from `engine-v0.1.0`
+— but named that successor tag nowhere binding (no queue row, no successor REQ; a `grep` for
+`engine-v0.2.0` across `docs/`, `pdlc/`, and `.github/` returned zero hits before this row). Evidence
+that discharges this row: post-merge, cut the `engine-v0.2.0` tag on the merge commit and verify
+`.github/workflows/publish.yml` runs green and `npm view @kaneho/pdlc-engine version` resolves to
+`0.2.0` — this is the act that discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stay
+narrowed-YES until the tag is cut. Status `blocked`, `Depends-On pdlc-engine-distribution`: the tag
+cannot be cut before that feature's branch merges. `REQ Path` reuses the feature's own REQ (the
+successor-tag cut is a release act on an already-approved REQ, not a new feature requiring its own
+REQ). Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds if this row
+or the `pdlc/RELEASE-CHECKLIST.md` §7 engine-channel section is removed while the README/REQ/TSPEC
+successor-tag caveat is still present.
+
+**Row 22 (`pdlc-halt-hardening-followups`) added 2026-08-16 to bind an unbound deferral
+(CODE_REVIEW v4 §3-3, `pdlc-engine-distribution`).** `docs/ideas/halt-hardening-followups.md`
+landed on `feat-pdlc-engine-distribution` (commit `75782278`) as self-declared "ideas only — not
+built" field findings from live 0.23.0 consumer runs: (1) an inverted/mislabeled qualifying
+ownership table poisoning `parsePlanOwnership`'s manifest union, and (2) the second item that
+file records. A prose backlog file is not a successor, so those two items were deferred work with
+no owner. This row is that owner, and the file is its input. `Order 22` because values are
+allocated and never reused and 21 is the highest ever issued. Status `blocked`, `Depends-On —`:
+nothing gates it but the REQ itself, whose `REQ Path` above is still a placeholder — no REQ exists
+at that path yet, and one must be authored before the row can be picked up (row 8's precedent).
+Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds on any
+tracked `docs/ideas/*.md` file that no queue row and no REQ names.
 
 **Row 21 (`pdlc-learnings-injection`) added 2026-08-10 from consumer-run feedback.** The
 `regime-ledger` consumer completed a full end-to-end run of `wheel-paper-portfolio` (~40 review

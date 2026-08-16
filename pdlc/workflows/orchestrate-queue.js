@@ -84,6 +84,25 @@ export const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 // every phase except its Phase I implementation batches. See orchestrate-dev.js.
 const MODEL_QUEUE = "sonnet";
 
+// TSPEC §7.2 P-1 — this module's own default-inert `Provenance` null-object,
+// byte-identical to `orchestrate-dev.js`'s `NO_PROVENANCE` (mirrors
+// `lib/provenance.mjs`'s shape, §7.1). Not imported from the sibling module:
+// each workflow module carries its own copy (see `provenanceDoubles.js`'s
+// `NO_PROVENANCE_DOUBLE` comment — "both workflow modules carry" one). A
+// runtime that supplies no `_provenance` seam here produces byte-identical
+// `ADVISORY-*` commits to today (empty `line`).
+const NO_PROVENANCE = Object.freeze({
+  engineVersion: "",
+  pluginVersion: null,
+  pluginCompat: "",
+  channel: "engine",
+  mode: "latest",
+  pin: null,
+  loadRoot: "",
+  line: "",
+  block: "",
+});
+
 // Recognized queue statuses. Only `pending` entries are eligible for pickup.
 // `in-progress` is a crash/active marker; `awaiting-merge`/`done`/`blocked`/`halted`
 // are terminal-for-this-loop and skipped.
@@ -406,13 +425,29 @@ export function hasResidualSeamToken(reason) {
  * (once — never twice) before setting the status cell and merging the
  * evidence cell through `mergeEvidenceCell`'s no-downgrade rule.
  *
+ * `provenanceLine` (5th, defaulted, parameter — PROP-PROV-5) mirrors the
+ * `Evidence` plumbing for a sixth/seventh `Engine` column: when falsy,
+ * behaviour on both write paths is byte-identical to today's — no `Engine`
+ * column is ever added. When supplied, the `Engine` column is migrated
+ * (once, via `ensureEngineColumn`) and the row's `Engine` cell is set to
+ * `provenanceLine`, on BOTH the `evidence == null` quick path and the
+ * evidence-carrying path — independently of whether `evidence` itself is
+ * supplied.
+ *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
  * @param {string|null} [evidence]
+ * @param {string|null} [provenanceLine]
  * @returns {{ markdown: string, matched: boolean, written?: boolean, foundStatus?: string }}
  */
-export function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
+export function updateQueueStatus(
+  markdown,
+  feature,
+  newStatus,
+  evidence = null,
+  provenanceLine = null,
+) {
   if (typeof markdown !== "string" || !feature) {
     return { markdown, matched: false };
   }
@@ -441,8 +476,16 @@ export function updateQueueStatus(markdown, feature, newStatus, evidence = null)
     if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
     if ((cells[featureCol] || "").trim() !== feature) continue;
 
-    // evidence == null: exactly today's code path, byte for byte (§8.4.1).
+    // evidence == null: exactly today's code path, byte for byte (§8.4.1) —
+    // unless a provenanceLine is supplied, in which case only the `Engine`
+    // column is migrated and set (never `Evidence`, on this path).
     if (evidence == null) {
+      if (provenanceLine) {
+        return writeProvenanceOnlyRow(markdown, feature, newStatus, provenanceLine, {
+          statusCol,
+          featureCol,
+        });
+      }
       const newCells = cells.slice();
       newCells[statusCol] = newStatus;
       lines[i] = `| ${newCells.join(" | ")} |`;
@@ -459,13 +502,69 @@ export function updateQueueStatus(markdown, feature, newStatus, evidence = null)
 
     // Overwritable: migrate the Evidence column (once), re-locate the row in
     // the migrated table, set the status and evidence cells, and re-emit.
-    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
+    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, provenanceLine, {
       statusCol,
       featureCol,
     });
   }
 
   return { markdown, matched: false }; // feature row not found
+}
+
+/**
+ * The `evidence == null` quick path's provenance-only write (PROP-PROV-5):
+ * migrate the `Engine` column alone (never `Evidence`), then set the row's
+ * Status and Engine cells. Split out for the same reason
+ * `writeEvidenceCarryingRow` is: so the plain quick path (no provenance
+ * supplied) never touches `ensureEngineColumn` at all.
+ *
+ * @param {string} markdown
+ * @param {string} feature
+ * @param {string} newStatus
+ * @param {string} provenanceLine
+ * @param {{statusCol: number, featureCol: number}} hint
+ * @returns {{ markdown: string, matched: boolean }}
+ */
+function writeProvenanceOnlyRow(markdown, feature, newStatus, provenanceLine, hint) {
+  const { markdown: migrated } = ensureEngineColumn(markdown);
+  const lines = migrated.split("\n");
+
+  let statusCol = hint.statusCol;
+  let featureCol = hint.featureCol;
+  let engineCol = -1;
+  for (const line of lines) {
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      const s = cells.findIndex((c) => c.includes("status"));
+      const f = cells.findIndex((c) => c.includes("feature"));
+      const g = cells.findIndex((c) => c.includes("engine"));
+      if (s >= 0) statusCol = s;
+      if (f >= 0) featureCol = f;
+      if (g >= 0) engineCol = g;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim());
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+    if ((cells[featureCol] || "").trim() !== feature) continue;
+
+    const newCells = cells.slice();
+    newCells[statusCol] = newStatus;
+    if (engineCol >= 0) {
+      newCells[engineCol] = provenanceLine;
+    }
+    lines[i] = `| ${newCells.join(" | ")} |`;
+    return { markdown: lines.join("\n"), matched: true };
+  }
+
+  // Unreachable in practice — the caller already located this exact row
+  // before migrating — but stay defensive rather than throw.
+  return { markdown, matched: false };
 }
 
 // TSPEC §8.4c / FSPEC §2.5 — the only statuses the evidence-carrying write is
@@ -479,22 +578,31 @@ const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"]
  * `ensureEvidenceColumn` — the file it returns on that path is the pristine
  * input, not a discarded migration.
  *
+ * `provenanceLine`, when truthy, additionally migrates the `Engine` column
+ * (via `ensureEngineColumn`, applied AFTER `ensureEvidenceColumn` so
+ * `Evidence` always lands before `Engine` in the header — PROP-PROV-5) and
+ * sets the row's `Engine` cell. Falsy `provenanceLine` leaves `Engine`
+ * untouched entirely, exactly as before this parameter existed.
+ *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
  * @param {string} evidence
+ * @param {string|null} provenanceLine
  * @param {{statusCol: number, featureCol: number}} hint - column indices
  *   resolved from the pre-migration header (unaffected by the appended
- *   Evidence column, which lands after them).
+ *   Evidence/Engine columns, which land after them).
  * @returns {{ markdown: string, matched: boolean, written?: boolean }}
  */
-function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
-  const { markdown: migrated } = ensureEvidenceColumn(markdown);
+function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, provenanceLine, hint) {
+  const { markdown: evidenceMigrated } = ensureEvidenceColumn(markdown);
+  const migrated = provenanceLine ? ensureEngineColumn(evidenceMigrated).markdown : evidenceMigrated;
   const lines = migrated.split("\n");
 
   let statusCol = hint.statusCol;
   let featureCol = hint.featureCol;
   let evidenceCol = -1;
+  let engineCol = -1;
   for (const line of lines) {
     if (!line.trim().startsWith("|")) continue;
     const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
@@ -502,9 +610,11 @@ function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) 
       const s = cells.findIndex((c) => c.includes("status"));
       const f = cells.findIndex((c) => c.includes("feature"));
       const e = cells.findIndex((c) => c.includes("evidence"));
+      const g = cells.findIndex((c) => c.includes("engine"));
       if (s >= 0) statusCol = s;
       if (f >= 0) featureCol = f;
       if (e >= 0) evidenceCol = e;
+      if (g >= 0) engineCol = g;
       break;
     }
   }
@@ -521,6 +631,9 @@ function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) 
     if (evidenceCol >= 0) {
       const prevEvidence = (newCells[evidenceCol] || "").trim();
       newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
+    }
+    if (engineCol >= 0 && provenanceLine) {
+      newCells[engineCol] = provenanceLine;
     }
     lines[i] = `| ${newCells.join(" | ")} |`;
     return { markdown: lines.join("\n"), matched: true, written: true };
@@ -586,6 +699,78 @@ export function ensureEvidenceColumn(markdown) {
   // The separator row is the very next `|`-starting line, if it is
   // separator-shaped; appending an empty-shaped dash cell keeps the
   // rendered table well-formed over a six-column header.
+  const sepIdx = headerIdx + 1;
+  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
+    const sepLine = lines[sepIdx].trim();
+    if (isSeparatorRow(splitRow(sepLine))) {
+      lines[sepIdx] = appendCell(sepLine, "---");
+    }
+  }
+
+  // Every other `|`-starting row is a data row: append one empty cell.
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const trimmed = line.trim();
+    if (isSeparatorRow(splitRow(trimmed))) continue; // a stray separator-shaped row
+    lines[i] = appendCell(trimmed, "");
+  }
+
+  return { markdown: lines.join("\n"), migrated: true };
+}
+
+// ─── QUEUE-WRITE-03: ensureEngineColumn ──────────────────────────────────────
+// PROP-PROV-5 / PROP-PROV-6. Mirrors `ensureEvidenceColumn` exactly (same
+// header/separator/data-row detection, same "append once, never twice" and
+// "no table ⇒ unchanged" rules) for a seventh (or sixth, when `Evidence` is
+// absent) `Engine` column, which `updateQueueStatus` writes the provenance
+// line into on both row-write paths.
+
+/**
+ * Migrate a QUEUE.md table to carry an `Engine` column, once.
+ *
+ * Structurally identical to `ensureEvidenceColumn`: `Engine` appended to the
+ * header row, one `---` cell appended to the separator row immediately
+ * below it, one empty cell appended to every other data row. A queue
+ * already carrying an `Engine` column is returned unchanged
+ * (`migrated: false`) — never migrated twice. A queue with no recognisable
+ * header is also returned unchanged. Applying this to a queue that already
+ * carries `Evidence` (but not `Engine`) migrates cleanly, appending `Engine`
+ * after `Evidence`.
+ *
+ * @param {string} markdown
+ * @returns {{ markdown: string, migrated: boolean }}
+ */
+export function ensureEngineColumn(markdown) {
+  if (typeof markdown !== "string") return { markdown, migrated: false };
+
+  const lines = markdown.split("\n");
+  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
+
+  // Locate the header row exactly as parseQueue/updateQueueStatus do.
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return { markdown, migrated: false }; // no table found
+
+  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
+  if (headerCells.some((c) => c.includes("engine"))) {
+    return { markdown, migrated: false }; // already migrated — never twice
+  }
+
+  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Engine");
+
+  // The separator row is the very next `|`-starting line, if it is
+  // separator-shaped; appending an empty-shaped dash cell keeps the
+  // rendered table well-formed over the widened header.
   const sepIdx = headerIdx + 1;
   if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
     const sepLine = lines[sepIdx].trim();
@@ -1058,6 +1243,7 @@ export default async function main({
   _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
+  _provenance: provenance = NO_PROVENANCE,
 } = {}) {
   const emit = logFn;
 
@@ -1301,7 +1487,8 @@ export default async function main({
         `docs/${entry.feature}/ADVISORY-${entry.feature}.md`,
         entry.feature,
         gitFn,
-        emit
+        emit,
+        provenance
       );
 
       if (seam === "A1") {
@@ -1335,6 +1522,7 @@ export default async function main({
             phaseFn,
             emit,
             finish,
+            provenance,
           });
         }
 
@@ -1375,6 +1563,7 @@ export default async function main({
       phaseFn,
       emit,
       finish,
+      provenance,
     });
   }
 
@@ -1411,6 +1600,12 @@ async function runPicked({
   // report this pass returns (see the `finish` comment in `main`). Injected
   // rather than recomputed so there is exactly one place that decides it.
   finish,
+  // TSPEC §7.2 / AT-5.3 — the queue run's own `Provenance` value (defaulted to
+  // `NO_PROVENANCE` by `main`), forwarded unchanged into every `rewriteStatus`
+  // call this function makes (R-3...R-5). `rewriteStatus` is the single writer
+  // that composes `provenance.line` into the row and the commit message; this
+  // function only threads the value through.
+  provenance,
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -1429,7 +1624,9 @@ async function runPicked({
     "in-progress",
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   let report;
@@ -1442,7 +1639,9 @@ async function runPicked({
       "halted",
       readFileFn,
       writeFileFn,
-      gitFn
+      gitFn,
+      null,
+      provenance
     );
     return finish({
       outcome: "halted",
@@ -1467,7 +1666,9 @@ async function runPicked({
     newStatus,
     readFileFn,
     writeFileFn,
-    gitFn
+    gitFn,
+    null,
+    provenance
   );
 
   emit(
@@ -1513,6 +1714,14 @@ async function runPicked({
  * @param {function} readFileFn  - async (path) => string|null
  * @param {function} writeFileFn - async (path, contents) => void
  * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
+ * @param {string|null} [evidence]
+ * @param {object} [provenance]  - TSPEC §7.1 `Provenance` value (AT-5.3, PROP-PROV-5).
+ *   Defaults to `NO_PROVENANCE`, so a caller that passes nothing writes today's
+ *   exact bytes — no `Engine` cell, no mark in the commit message. This is the
+ *   single writer all five call routes (R-1...R-5) inherit the mark through:
+ *   `provenance.line` is handed to `updateQueueStatus` (the row's `Engine`
+ *   cell) and to `commitQueueRow` (the commit message), never composed at a
+ *   call site.
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  *   `queueRow` is drawn from `QUEUE_ROW_DISPOSITIONS`, TSPEC §4.7's / §8.2's
  *   closed catalogue: `"recorded" | "recorded (uncommitted)" | "none" |
@@ -1526,7 +1735,8 @@ export async function rewriteStatus(
   readFileFn,
   writeFileFn,
   gitFn = defaultGit,
-  evidence = null
+  evidence = null,
+  provenance = NO_PROVENANCE
 ) {
   const current = await readFileFn(queuePath);
 
@@ -1537,11 +1747,13 @@ export async function rewriteStatus(
     return { queueRow: "none" };
   }
 
+  const provenanceLine = provenance && provenance.line ? provenance.line : null;
   const { markdown, matched, written, foundStatus } = updateQueueStatus(
     current,
     feature,
     status,
-    evidence
+    evidence,
+    provenanceLine
   );
 
   // FSPEC §13.5 — document present, row expected, row absent. Distinct from
@@ -1569,7 +1781,7 @@ export async function rewriteStatus(
   }
 
   await writeFileFn(queuePath, markdown);
-  return await commitQueueRow(queuePath, feature, status, gitFn);
+  return await commitQueueRow(queuePath, feature, status, gitFn, provenanceLine);
 }
 
 /** `git`'s idempotence signal. Emitted on stdout by some versions, stderr by others. */
@@ -1593,19 +1805,23 @@ function firstLine(text) {
  * cleaned nor treated as an error. No `push`: the halt must survive the
  * *process*, which a local commit achieves.
  *
+ * TSPEC §7.2 kind 4 (AC-5.3, C-d) — `provenanceLine`, when truthy, is
+ * composed into the message as a trailing line (mirrors
+ * `commitAdvisoryRecord`'s exact composition). Falsy `provenanceLine` yields
+ * today's exact message bytes (P-1) — the composed line is a no-op suffix.
+ *
+ * @param {string|null} [provenanceLine]
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  */
-async function commitQueueRow(queuePath, feature, status, gitFn) {
+async function commitQueueRow(queuePath, feature, status, gitFn, provenanceLine = null) {
   const added = await gitFn(["add", "--", queuePath]);
   if (!added.ok) return uncommitted(added, queuePath);
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(queue): ${feature} → ${status}`,
-    "--",
-    queuePath,
-  ]);
+  const message = provenanceLine
+    ? `chore(queue): ${feature} → ${status}\n\n${provenanceLine}`
+    : `chore(queue): ${feature} → ${status}`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", queuePath]);
   if (committed.ok) return { queueRow: "recorded" };
 
   // E-39 — the row already read the target status and was already committed
@@ -1633,21 +1849,25 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
  * step runs after the seam has already been adjudicated and recorded on disk, and demoting queue
  * progress to a halt over a durability shortfall here would be a strictly worse outcome than
  * leaving the record momentarily uncommitted for a later pass (or an operator) to pick up.
+ *
+ * TSPEC §7.2 kind 4 (AC-5.3, C-d) — one of the closed set of five commit helpers that compose
+ * `provenance.line` into the message string at the call to `_git`, never at a call site.
+ * `provenance` defaults to `NO_PROVENANCE`, so a caller that passes nothing yields today's exact
+ * bytes (P-1); the composed line is a no-op suffix when `line` is empty.
  */
-async function commitAdvisoryRecord(recordPath, feature, gitFn, emit) {
+async function commitAdvisoryRecord(recordPath, feature, gitFn, emit, provenance = NO_PROVENANCE) {
   const added = await gitFn(["add", "--", recordPath]);
   if (!added || added.ok !== true) {
     emit(`Advisory record for "${feature}" left uncommitted: git add failed.`);
     return;
   }
 
-  const committed = await gitFn([
-    "commit",
-    "-m",
-    `chore(advisory): record ${feature} (queue)`,
-    "--",
-    recordPath,
-  ]);
+  const line = provenance && provenance.line ? provenance.line : "";
+  const message = line
+    ? `chore(advisory): record ${feature} (queue)\n\n${line}`
+    : `chore(advisory): record ${feature} (queue)`;
+
+  const committed = await gitFn(["commit", "-m", message, "--", recordPath]);
   if (committed && committed.ok === true) return;
 
   if (

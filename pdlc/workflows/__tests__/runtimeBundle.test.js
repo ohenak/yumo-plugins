@@ -1599,11 +1599,18 @@ describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §
 
       expect(calls).toHaveLength(1);
       // rewriteStatus's signature is (queuePath, feature, status, readFileFn,
-      // writeFileFn, gitFn, evidence) — 7 positional arguments, evidence last.
-      expect(calls[0]).toHaveLength(7);
+      // writeFileFn, gitFn, evidence, provenance) — 8 positional arguments
+      // now that TSPEC §7.2 kind-3 (K-3, AT-5.3) widens the closure to
+      // forward provenance as the 8th; evidence stays at index 6.
+      expect(calls[0]).toHaveLength(8);
       expect(calls[0][1]).toBe("f");
       expect(calls[0][2]).toBe("done");
       expect(calls[0][6]).toBe("abc1234 #45");
+      // This fixture never supplies a `provenance` key, so the closure's
+      // destructured `provenance` is `undefined`; rewriteStatus applies its
+      // own NO_PROVENANCE default downstream of this call (see the
+      // build-runtime.mjs comments at the two closures this reads from).
+      expect(calls[0][7]).toBeUndefined();
     }
   );
 
@@ -1632,10 +1639,69 @@ describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §
       await closure({ feature: "f", status: "halted" });
 
       expect(calls).toHaveLength(1);
-      expect(calls[0]).toHaveLength(7);
+      expect(calls[0]).toHaveLength(8);
       expect(calls[0][6]).toBeUndefined();
+      // Same NO_PROVENANCE-default rationale as the evidence-forwarding
+      // test above: no `provenance` key in the fixture means `undefined`
+      // reaches rewriteStatus's 8th parameter.
+      expect(calls[0][7]).toBeUndefined();
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// Bundle-load smoke test (wave-16 halt).
+//
+// build-runtime.mjs republishes orchestrate-dev.js's exports on `__dev` and
+// re-binds the subset each dependent module needs as free identifiers in that
+// module's IIFE prelude (see the `devExportedNames` / `queuePrelude` /
+// `consPrelude` arrays and `assertDevImportsAreWired` above it in
+// build-runtime.mjs). Those lists were — and, absent a build-time assertion,
+// could again become — hand-maintained and out of sync with the dependent
+// module's actual `import { ... } from "./orchestrate-dev.js"` statement.
+// orchestrate-queue.js references `ADVISORY_RUNG_SKILL` at its own top level
+// (`DISPATCHABLE_SKILLS = Object.freeze([SKILL_TRIAGE, ADVISORY_RUNG_SKILL]...)`),
+// so a missing rebind does not wait for any feature to run: the built bundle
+// throws `ReferenceError: ADVISORY_RUNG_SKILL is not defined` the instant it
+// is loaded. That defect shipped in dist/ (commit f5ce04dc) with every other
+// test green, because no existing test loaded the built bundle at all.
+//
+// This test does. It evaluates each shipped bundle exactly as the Workflow
+// launcher does — `export const meta` unwrapped to a bare `const`, the body
+// run inside an async function — supplying stand-in implementations for the
+// nine names the real sandbox injects (see this file's header comment) so
+// evaluation can proceed as far as the bundle's own dispatch logic. A healthy
+// bundle's top-level statements resolve every identifier they reference and
+// the run instead fails downstream, on one of this test's deliberately-inert
+// stub seams (asserted below by message, so the test cannot pass by
+// accident); a bundle with the wave-16 drift class throws a ReferenceError
+// before any seam is even called.
+describe.each(BUNDLES)("%s bundle-load smoke test", (file) => {
+  it("resolves every top-level identifier before any seam is dispatched", async () => {
+    const src = read(file).replace("export const meta", "const meta");
+    const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
+    const seamNames = ["agent", "parallel", "pipeline", "phase", "log", "workflow"];
+    const stubSeam = (name) => () => {
+      throw new Error(`stub:${name} — bundle-load smoke test isolation seam, not a real failure`);
+    };
+    // eslint-disable-next-line no-new-func
+    const run = new AsyncFunction(...seamNames, "args", "budget", src);
+    let caught = null;
+    try {
+      await run(...seamNames.map(stubSeam), "", {});
+    } catch (e) {
+      caught = e;
+    }
+    // A healthy bundle either resolves (no seam call ever failed) or rejects
+    // for a business reason — a stub-seam refusal, a real IO probe failing
+    // against this sandbox's fake environment, and so on. What it must never
+    // do is fail to resolve `ADVISORY_RUNG_SKILL`/`ADVISORY_SEAMS`-shaped free
+    // identifiers left dangling by a drifted republish/rebind list: that is a
+    // ReferenceError, and it is the one outcome this test refuses to accept.
+    if (caught !== null) {
+      expect(caught).not.toBeInstanceOf(ReferenceError);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

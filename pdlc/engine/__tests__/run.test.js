@@ -4,8 +4,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { existsSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  mkdtempSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   WORKFLOW_MODULE_URLS,
@@ -17,6 +28,7 @@ import {
   runQueueLoop,
   loadDispatchableSkills,
 } from "../lib/run.mjs";
+import { runPrepack, isMainEntry } from "../scripts/prepack.mjs";
 import { DISPATCHABLE_SKILLS as DEV_SKILLS } from "../../workflows/orchestrate-dev.js";
 import { DISPATCHABLE_SKILLS as QUEUE_SKILLS } from "../../workflows/orchestrate-queue.js";
 
@@ -38,9 +50,18 @@ function fakeAdapter() {
 
 // ─── AC-1.5: the modules loaded are THIS repo's tested sources ────────────────
 
-test("workflow modules resolve to the repo's canonical pdlc/workflows sources", () => {
-  const dev = workflowModulePath("dev");
-  const queue = workflowModulePath("queue");
+// T41 (TSPEC §5.2): restated in two-root terms. This was true unconditionally
+// at HEAD because only one root existed; it is false the moment a vendor root
+// resolves, so the vendor-absent case is asserted explicitly (positively —
+// the checkout path is asserted, not merely "not the vendor path") rather
+// than left to depend on whether `pdlc/engine/vendor/workflows/` happens to
+// be absent from the real disk when this test runs.
+test("workflow modules resolve to the repo's canonical pdlc/workflows sources when the vendor root does not resolve (TSPEC §5.2)", () => {
+  const checkoutRoot = path.join(repoRoot, "pdlc", "workflows");
+  const fs = { existsSync: (p) => p.startsWith(checkoutRoot) };
+
+  const dev = workflowModulePath("dev", { fs });
+  const queue = workflowModulePath("queue", { fs });
 
   assert.equal(dev, path.join(repoRoot, "pdlc", "workflows", "orchestrate-dev.js"));
   assert.equal(queue, path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js"));
@@ -48,31 +69,264 @@ test("workflow modules resolve to the repo's canonical pdlc/workflows sources", 
   assert.ok(existsSync(queue), "orchestrate-queue.js must exist at the canonical path");
 });
 
-test("the engine vendors no copy of the workflow modules (C-4)", () => {
-  // A fork is a test failure, not a discovery: nothing named like a workflow
-  // module may exist anywhere under pdlc/engine (node_modules excluded).
-  const offenders = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === "node_modules" || entry.name === ".git") continue;
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (/^orchestrate-(dev|queue)\.js$/.test(entry.name)) offenders.push(full);
-    }
-  };
-  walk(engineRoot);
+// TSPEC §5.3, AF-1 — replaces V-05's directory walk. Vendoring (T33) makes a
+// build tree legitimately contain `orchestrate-{dev,queue}.js` under
+// `vendor/workflows/`, so the walk is false by construction the moment
+// `prepack` runs locally. Tracked-ness, read from `git ls-files` and never
+// from a directory listing, is strictly stronger against the failure that
+// matters: a *committed* fork cannot hide behind `.gitignore` the way a
+// build artefact legitimately does.
+test("no git-tracked file under pdlc/engine/ is named orchestrate-{dev,queue}.js (C-4, AF-1)", () => {
+  const result = spawnSync("git", ["ls-files", "--", "pdlc/engine"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, `git ls-files failed: ${result.stderr}`);
+
+  const tracked = result.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const offenders = tracked.filter((file) => /(^|\/)orchestrate-(dev|queue)\.js$/.test(file));
+
   assert.deepEqual(offenders, []);
 });
 
+// TSPEC §5.3, AF-2 — the property the walk above was only a proxy for, now
+// asserted directly and at the byte level. Runs the real `prepack.mjs`
+// (rather than a `--dry-run`-shaped stub) so the manifest under test is the
+// one a real `npm pack` / `npm publish` would produce; the vendor directory
+// is git-ignored build output (§5.2), so it is removed again once the
+// assertions have read it.
+test("prepack vendors the workflow modules byte-for-byte with a verifiable manifest (AF-2)", () => {
+  const tmpRoot = mkdtempSync(path.join(tmpdir(), "pdlc-run-prepack-"));
+  const vendorDir = path.join(tmpRoot, "vendor", "workflows");
+  const sourceDir = path.join(repoRoot, "pdlc", "workflows");
+  try {
+    const manifest = runPrepack({ sourceDir, vendorDir, engineVersion: "0.0.0-test" });
+
+    const onDiskManifest = JSON.parse(
+      readFileSync(path.join(vendorDir, "VENDOR-MANIFEST.json"), "utf8"),
+    );
+    assert.deepEqual(onDiskManifest, manifest, "written manifest must match runPrepack's return value");
+
+    // Set-equality, not `length > 0` (§5.3): a prepack that silently
+    // vendored nothing, or vendored a third file, must still fail this
+    // assertion.
+    const names = manifest.modules.map((m) => m.name).sort();
+    assert.deepEqual(names, ["orchestrate-dev.js", "orchestrate-queue.js"]);
+
+    for (const entry of manifest.modules) {
+      const vendoredBytes = readFileSync(path.join(vendorDir, entry.name));
+      const canonicalBytes = readFileSync(path.join(sourceDir, entry.name));
+      const vendoredHash = createHash("sha256").update(vendoredBytes).digest("hex");
+      const canonicalHash = createHash("sha256").update(canonicalBytes).digest("hex");
+
+      assert.equal(
+        entry.sha256,
+        vendoredHash,
+        `${entry.name}: manifest hash must equal hash of the vendored bytes`,
+      );
+      assert.equal(
+        entry.sha256,
+        canonicalHash,
+        `${entry.name}: manifest hash must equal the canonical pdlc/workflows/ source's hash`,
+      );
+      assert.ok(
+        vendoredBytes.equals(canonicalBytes),
+        `${entry.name}: vendored copy must be byte-for-byte identical to the canonical source`,
+      );
+
+      // One-byte-mutation falsifier: prove the byte-for-byte comparison
+      // above is actually sensitive to corruption, not vacuously true
+      // (e.g. two empty buffers, or a bug that always reports equal).
+      const mutatedBytes = Buffer.from(vendoredBytes);
+      mutatedBytes[0] ^= 0xff;
+      assert.ok(
+        !vendoredBytes.equals(mutatedBytes),
+        `${entry.name}: a one-byte mutation must be detected as unequal`,
+      );
+      assert.notEqual(
+        createHash("sha256").update(mutatedBytes).digest("hex"),
+        entry.sha256,
+        `${entry.name}: a one-byte mutation must change the sha256`,
+      );
+    }
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+// CR round-1 TE F-03 (PROP-REGR-6). Every existing prepack leg passes
+// `engineVersion` explicitly, so `readEngineVersion()` — the default a real
+// `npm pack` actually takes, since npm passes no arguments — had no caller
+// under test. That is the same shape as the `provenanceFor` defect found in
+// this round: a stamped field read from a source that never runs in test,
+// free to stamp `undefined` in production. Asserted against the engine's own
+// package.json rather than a literal, so a version bump does not redden it,
+// and `undefined`/empty is rejected explicitly.
+test("prepack defaults engineVersion to the engine's own package.json version, never undefined (AF-2)", () => {
+  const tmpRoot = mkdtempSync(path.join(tmpdir(), "pdlc-run-prepack-default-"));
+  try {
+    const declared = JSON.parse(
+      readFileSync(path.join(engineRoot, "package.json"), "utf8"),
+    ).version;
+    assert.ok(declared, "engine package.json must declare a version for this oracle to mean anything");
+
+    const manifest = runPrepack({
+      sourceDir: path.join(repoRoot, "pdlc", "workflows"),
+      vendorDir: path.join(tmpRoot, "vendor", "workflows"),
+    });
+
+    assert.equal(manifest.engineVersion, declared);
+    assert.notEqual(manifest.engineVersion, undefined);
+    assert.ok(
+      !String(manifest.engineVersion).includes("undefined"),
+      `manifest stamped a non-version: ${manifest.engineVersion}`,
+    );
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+// CR round-1 TE F-03 (PROP-REGR-6, AF-2). `runPrepack` was exercised only as
+// an imported function; the production caller is npm's `prepack` lifecycle,
+// which runs the file as a **process**, taking the `isMain` guard and the
+// zero-argument call. A guard that never fired (or one that fired on import)
+// would leave `npm pack` shipping no vendor directory at all while every
+// unit leg above stayed green. The vendor directory is git-ignored build
+// output (§5.2).
+//
+// CR round-3 TE F-01: this leg used to spawn `scripts/prepack.mjs` **in
+// place**, so it created and then deleted `pdlc/engine/vendor/workflows/`
+// in the shared checkout while `node --test` was running the other suite
+// files concurrently. `resolveWorkflowRoot` (`lib/run.mjs:88-99`) prefers
+// the vendor root over the checkout root whenever the vendor filenames
+// exist, so any *other* file's subprocess leg that resolved workflow
+// modules inside that window loaded modules from a directory this test was
+// about to `rmSync`, and died with `ERR_MODULE_NOT_FOUND` for a reason no
+// diff explains (measured: 1 red in 5 runs of an unmodified tree). A red
+// that means nothing is worse than a red that means something — it made
+// this round's own mutation probes ambiguous, and `pr-tests.yml` gates
+// Phase PUB on this suite's colour.
+//
+// The fix is the one `packaging.test.js`'s `packRealTarball()` already
+// uses: run the production entry against a **scratch package root** with
+// the same `pdlc/engine` + `pdlc/workflows` shape, so the process-entry
+// guard and the zero-argument `runPrepack()` call are still what execute,
+// but nothing writes inside the checkout. The closing assertion pins that
+// invariant directly, so re-introducing an in-place run reddens *here*
+// rather than intermittently somewhere else.
+test("prepack run as a process (npm's prepack lifecycle) vendors both modules (AF-2)", () => {
+  // `realpathSync`, deliberately: on macOS `mkdtempSync` hands back a
+  // `/var/...` path while `import.meta.url` inside the spawned child
+  // resolves through the `/private/var` symlink, so an un-realpath'd
+  // `argv[1]` makes `isMainEntry` compare two spellings of the same file
+  // and decline to fire. That would leave this leg asserting nothing while
+  // exiting 0 — the precise failure mode the guard exists to catch.
+  const buildRoot = realpathSync(mkdtempSync(path.join(tmpdir(), "pdlc-prepack-entry-")));
+  const scratchEngine = path.join(buildRoot, "pdlc", "engine");
+  const scratchWorkflows = path.join(buildRoot, "pdlc", "workflows");
+  const checkoutVendorRootExisted = existsSync(path.join(engineRoot, "vendor"));
+  try {
+    mkdirSync(path.join(scratchEngine, "scripts"), { recursive: true });
+    mkdirSync(scratchWorkflows, { recursive: true });
+
+    // The two inputs `prepack.mjs` reads: the engine `package.json` (for
+    // `engineVersion`) and the canonical workflow sources it vendors.
+    cpSync(path.join(engineRoot, "package.json"), path.join(scratchEngine, "package.json"));
+    cpSync(
+      path.join(engineRoot, "scripts", "prepack.mjs"),
+      path.join(scratchEngine, "scripts", "prepack.mjs"),
+    );
+    for (const name of ["orchestrate-dev.js", "orchestrate-queue.js"]) {
+      cpSync(path.join(repoRoot, "pdlc", "workflows", name), path.join(scratchWorkflows, name));
+    }
+
+    const vendorRoot = path.join(scratchEngine, "vendor");
+    const result = spawnSync(
+      process.execPath,
+      [path.join(scratchEngine, "scripts", "prepack.mjs")],
+      { encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stderr);
+
+    const manifestPath = path.join(vendorRoot, "workflows", "VENDOR-MANIFEST.json");
+    assert.ok(existsSync(manifestPath), "process-entry prepack must write VENDOR-MANIFEST.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    assert.deepEqual(
+      manifest.modules.map((m) => m.name).sort(),
+      ["orchestrate-dev.js", "orchestrate-queue.js"],
+    );
+    for (const entry of manifest.modules) {
+      assert.ok(
+        existsSync(path.join(vendorRoot, "workflows", entry.name)),
+        `${entry.name} must exist beside the manifest`,
+      );
+    }
+
+    // CR round-3 TE F-01's invariant, asserted rather than assumed: the
+    // production entry ran, and the shared checkout's vendor root is in
+    // exactly the state it was in before. A leg that re-acquires an
+    // in-place run fails this assertion deterministically, in this file.
+    assert.equal(
+      existsSync(path.join(engineRoot, "vendor")),
+      checkoutVendorRootExisted,
+      "the process-entry prepack leg must not create or remove pdlc/engine/vendor/ " +
+        "in the shared checkout — concurrent suite files resolve workflow modules there",
+    );
+  } finally {
+    rmSync(buildRoot, { recursive: true, force: true });
+  }
+});
+
+// CR round-1 TE F-03 (PROP-REGR-6). The guard's own decision table, including
+// the arm that made it necessary: `argv[1]` absent (embedder / `node -e` /
+// REPL import), where an unguarded `existsSync(undefined)` throws. Both
+// polarities are asserted, so a guard stuck on either constant fails.
+test("prepack's process-entry guard fires only for its own file, and survives an absent argv[1]", () => {
+  const selfPath = path.join(engineRoot, "scripts", "prepack.mjs");
+  const selfUrl = pathToFileURL(selfPath).href;
+  const yes = { existsSync: () => true };
+
+  assert.equal(isMainEntry(selfPath, selfUrl, yes), true, "own path must fire");
+  assert.equal(
+    isMainEntry(path.join(engineRoot, "scripts", "postinstall.mjs"), selfUrl, yes),
+    false,
+    "a different existing script must not fire",
+  );
+  assert.equal(
+    isMainEntry(selfPath, selfUrl, { existsSync: () => false }),
+    false,
+    "a non-existent argv[1] must not fire",
+  );
+  // The arm the `??` guard existed for: no throw, and a false verdict.
+  assert.equal(isMainEntry(undefined, selfUrl, yes), false);
+  assert.equal(isMainEntry("", selfUrl, yes), false);
+});
+
+// T41 (TSPEC §5.2, PROP-PACK-7): `WORKFLOW_MODULE_URLS` became a function —
+// a resolved root, not a fixed frozen object — so `Object.entries(...)` on
+// the export ITSELF would now silently iterate zero entries (a function's
+// own enumerable properties), turning this into a zero-assertion pass at
+// exactly the moment vendoring makes it load-bearing. The non-zero member
+// count is asserted before the per-member equality for that reason.
 test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not just a file: URL (PROP-FORK-1)", () => {
   // Stronger than "starts with file://": each resolved specifier must equal
   // the repo-relative orchestrate-{dev,queue}.js path exactly, so a fork
   // sitting anywhere else under pdlc/workflows/ (or elsewhere) fails closed.
+  const checkoutRoot = path.join(repoRoot, "pdlc", "workflows");
+  const fs = { existsSync: (p) => p.startsWith(checkoutRoot) };
   const expected = {
     dev: path.join(repoRoot, "pdlc", "workflows", "orchestrate-dev.js"),
     queue: path.join(repoRoot, "pdlc", "workflows", "orchestrate-queue.js"),
   };
-  for (const [name, url] of Object.entries(WORKFLOW_MODULE_URLS)) {
+  const urls = WORKFLOW_MODULE_URLS({ fs });
+  const entries = Object.entries(urls);
+  // PROP-PACK-7: a lazily-computed shape must not turn this oracle into a
+  // zero-assertion pass.
+  assert.equal(entries.length, 2, "WORKFLOW_MODULE_URLS() must resolve both module URLs");
+  for (const [name, url] of entries) {
     assert.ok(url.startsWith("file://"), url);
     assert.equal(fileURLToPath(url), expected[name]);
   }
@@ -80,7 +334,7 @@ test("module URLs resolve to the exact repo-relative pdlc/workflows/ path, not j
 
 // ─── Rule 2: only the seams that MUST be overridden are passed ────────────────
 
-test("devInjection overrides exactly the seven runtime-only seams", () => {
+test("devInjection overrides exactly the eight runtime-only seams", () => {
   const keys = Object.keys(devInjection(fakeAdapter())).sort();
   assert.deepEqual(keys, [
     "_agent",
@@ -89,13 +343,14 @@ test("devInjection overrides exactly the seven runtime-only seams", () => {
     "_parallel",
     "_phase",
     "_pipeline",
+    "_provenance",
     "_runCommand",
   ]);
 });
 
-test("queueInjection overrides exactly the five seams the queue declares", () => {
+test("queueInjection overrides exactly the six seams the queue declares", () => {
   const keys = Object.keys(queueInjection(fakeAdapter(), async () => ({}))).sort();
-  assert.deepEqual(keys, ["_agent", "_git", "_log", "_phase", "_runPipeline"]);
+  assert.deepEqual(keys, ["_agent", "_git", "_log", "_phase", "_provenance", "_runPipeline"]);
 });
 
 // The branch guard tests seam IDENTITY, not behaviour: `branchGuardTransport`

@@ -224,3 +224,53 @@ test("BR-CLI-1 / AT-ENG-02: `--dry-run-skill name` and `--dry-run-skill=name` co
   assert.equal(equalsForm.status, 0, equalsForm.out);
   assert.equal(spaceForm.stdout, equalsForm.stdout);
 });
+
+// ─── AC-5.5 / TE CR v2 F-01: the entry on `PATH` reaches the LAUNCHER ────────
+//
+// `bin/pdlc.mjs:42` calls `mod.launch()`. Mutating it to `mod.main()` left the
+// whole suite green (measured, round 2): both symbols are exported, so the
+// mutant loads and runs, and what it silently loses is the entire resolution
+// ladder — a pinned repo runs whatever is installed and `launch`'s refusal arm
+// becomes unreachable, i.e. AC-5.5 fails open. `launch-wiring.test.js` drives
+// `launch()` as a module function; `cli.test.js` spawns the real binary. The
+// two suites met without overlapping on the one hop between them, which is
+// the same builder-not-wired shape one level up.
+//
+// This leg is the overlap. It picks the one command where `launch` and `main`
+// differ observably — a `dev` run in a repo pinned to a version that is not
+// installed — and asserts the refusal only `launch()` can produce. It is
+// hermetic by construction: the pin-missing arm refuses BEFORE any `exec`, so
+// no child is ever spawned, and `PDLC_HOME` points at an empty temp store so
+// the real store is never read. The plugin root is deliberately an empty
+// directory as well, so the mutant (`main()`) still dispatches nothing — it
+// fails the handshake instead, with different text and no refusal line.
+
+test("AC-5.5: the real `bin/pdlc.mjs` refuses a pinned-but-uninstalled version — the launcher, not main()", () => {
+  const emptyStore = mkdtempSync(path.join(os.tmpdir(), "pdlc-store-"));
+  const emptyPlugin = mkdtempSync(path.join(os.tmpdir(), "pdlc-noplugin-"));
+  const pinnedRepo = path.join(engineRoot, "__tests__", "fixtures", "launch-wiring", "pinned-to-9.9.9");
+  try {
+    const r = run(["dev", "docs/x/REQ-x.md", "--cwd", pinnedRepo, "--plugin-root", emptyPlugin], {
+      PDLC_HOME: emptyStore,
+      // Never inherit a marker a sibling in-process leg may have stamped on
+      // this runner's own env: presence alone suppresses resolution, which
+      // would make this leg pass under `main()` too.
+      PDLC_RESOLVED_ENGINE: "",
+    });
+
+    assert.equal(r.status, 1, r.out);
+    // The ladder's branch-4 refusal: names the pin AND what is installed.
+    assert.match(r.out, /engine\.version is pinned to "9\.9\.9" but that version is not installed/, r.out);
+    assert.match(r.out, /installed versions: none/, r.out);
+    // The launcher's own fail-closed line. `main()` cannot print it: the
+    // refusal arm lives in `launch()` (`bin/cli.mjs`), above `main()`.
+    assert.match(r.out, /refusing to run an unresolved engine version \(fail-closed\)/, r.out);
+    // And nothing ran: neither the pipeline nor the handshake refusal that a
+    // `main()`-dispatching mutant would reach instead.
+    assert.equal(/refuses to dispatch/.test(r.out), false, "the run must stop at the ladder, before the handshake");
+    assert.equal(/--- run report ---/.test(r.out), false);
+  } finally {
+    rmSync(emptyStore, { recursive: true, force: true });
+    rmSync(emptyPlugin, { recursive: true, force: true });
+  }
+});

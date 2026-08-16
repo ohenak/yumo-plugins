@@ -312,6 +312,11 @@ function evalRung4({ pluginRoot, dispatchableSkills, loadSkillFn, listInstalledS
  * @param {object} [opts.fs] Forwarded to `readLoginEvidence`.
  * @param {boolean} [opts.allowApiKeyBilling] Forwarded to `resolveAuthPosture`.
  * @param {Function} [opts.runProbe] Rung 4a's injectable probe (TSPEC §7.8).
+ * @param {object|null} [opts.versionDecision] §6.3's `resolveVersion()` return
+ *   (`{kind, version, root, announcement, refusal}`), precomputed by the
+ *   caller. When present and `kind !== "refuse"`, `announcement` is carried
+ *   into `result.banner` verbatim (AT-5.2). Default `null` (doctor/back-compat
+ *   callers that never resolve a version).
  * @returns {{ok: boolean, rungs: object[], banner: string[], pluginRoot: string|null,
  *   pluginVersion: string|null, versions: {engine: string, plugin: string|null},
  *   baseUrl: string|null, auth: {row: number, catalogueId: string}, reason: string|null}}
@@ -340,9 +345,12 @@ export function runStartupChecks({
   runProbe = defaultRunProbe,
   guardProbeFn = defaultGuardProbe,
   checkGuardCarrierFn = checkGuardCarrier,
+  versionDecision = null,
+  devDeclared = false,
 } = {}) {
   const rungs = [];
   const push = (id, name, state, detail) => rungs.push({ rung: id, name, state, detail });
+  let notices = [];
 
   // ── rung 0: args & cwd (gates every other rung) ──────────────────────────
   const r0 = evalRung0({ cwd, reqPath, isGitRepoFn, checkReqPathFn });
@@ -358,7 +366,14 @@ export function runStartupChecks({
   let pluginVersionResolved = null;
 
   if (chainAlive) {
-    const resolution = resolveFn({ override: pluginRoot, env });
+    // `devDeclared` is threaded, not defaulted here: AC-5.6 makes the
+    // `PDLC_PLUGIN_ROOT` branch a function of the invocation's own `--dev`
+    // declaration, and a `runStartupChecks` that never forwarded it left
+    // `resolvePluginRoot`'s gate permanently closed — the env var could then
+    // only ever be ignored, and the honouring half of DEC-EDIST-04 had no
+    // production path at all.
+    const resolution = resolveFn({ override: pluginRoot, env, devDeclared });
+    notices = resolution.notices || [];
     push(
       "1",
       "plugin resolved (AC-3.2)",
@@ -464,6 +479,14 @@ export function runStartupChecks({
     permissionMode,
   });
 
+  // §6.3's resolution announcement (AT-5.2): carried into the banner
+  // verbatim — the exact string `resolveVersion()` produced, never
+  // re-rendered here. A "refuse" decision has no announcement to show
+  // (its refusal is reported elsewhere), so it is deliberately skipped.
+  if (versionDecision && versionDecision.kind !== "refuse" && versionDecision.announcement) {
+    banner.push(versionDecision.announcement);
+  }
+
   const failed = rungs.filter((r) => r.state === "fail");
   const dryRunExcused = dryRun && failed.length > 0 && failed.every((r) => r.rung === "5");
   const ok = failed.length === 0 || dryRunExcused;
@@ -477,13 +500,27 @@ export function runStartupChecks({
     versions,
     baseUrl,
     auth,
+    notices,
     reason: ok ? null : failed.map((r) => `rung ${r.rung} (${r.name}): ${r.detail}`).join("\n"),
   };
 }
 
-/** Render `runStartupChecks`'s result as the operator-facing startup output. */
+/**
+ * Render `runStartupChecks`'s result as the operator-facing startup output.
+ *
+ * The notice lines are rendered HERE rather than at each CLI call site
+ * because that is what makes AC-5.6 true on every surface at once: `dev`,
+ * `queue`, `queue --loop`, both `--dry-run` surfaces and the refusal path
+ * all print through this one function, and a notice rendered at one call
+ * site would have been silently absent from the other five. `notices` is
+ * `resolvePluginRoot`'s `{id, text}` array (§6.5) — NOT `readEngineConfig`'s
+ * separate string array, which `tunablesFor` prints on its own path.
+ */
 export function formatStartup(result, { withChecks = false } = {}) {
   const lines = [...result.banner];
+  for (const notice of result.notices || []) {
+    lines.push(typeof notice === "string" ? notice : notice.text);
+  }
   if (withChecks) {
     lines.push("");
     for (const r of result.rungs) {
