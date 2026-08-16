@@ -276,8 +276,44 @@ export function resolveForLaunch(opts = {}) {
  * Node to run identical bytes would double startup cost and break `stdio`
  * expectations for no gain.
  */
+/**
+ * The four ladder refusals that are statements about the OPERATOR's
+ * declaration — a corrupt config, an incomplete `--dev`, a malformed pin, a
+ * pin naming a version that is not installed. Each names something the
+ * operator asked for and cannot be given, so each refuses (AC-5.5, E-10,
+ * branches 0 and 2).
+ *
+ * Branch 7 (`store.empty`) is deliberately NOT here, and the distinction is
+ * the one place this implementation departs from §6.2's model. §6.2 describes
+ * a **thin** launcher — a `PATH` entry with no engine of its own, for which
+ * an empty store means nothing can run. The shipped artifact is a **fat**
+ * one: `bin/pdlc.mjs` sits beside the `lib/` and `vendor/` trees of a
+ * complete engine (§5.4's packed set), so "no store entry" does not mean "no
+ * engine" — it means the only installed engine is the one already running.
+ * Refusing there would make every surface conditional on a store the
+ * one-command install (AC-2.1) is not required to have populated, and would
+ * refuse the operator a run it is perfectly able to perform. It runs in
+ * place, stamped `mode: "unresolved"`, with the branch's own text announced —
+ * never silent, which is what BR-4.4 and AC-5.2 actually ask for.
+ *
+ * Raised as an erratum against TSPEC §6.2 and DEC-EDIST-03 rather than
+ * decided here alone.
+ */
+const REFUSING_REFUSAL_IDS = new Set([
+  "config.unreadable",
+  "version.dev-incomplete",
+  "version.pin-malformed",
+  "version.pin-missing",
+]);
+
 export function launchMoveFor({ decision, storeRoot, engineVersion = pkg.version, enginePath = ENGINE_PATH }) {
-  if (decision.kind === "refuse") return { action: "refuse", message: decision.announcement, mode: "unresolved", version: null, pin: null };
+  if (decision.kind === "refuse") {
+    const id = decision.refusal && decision.refusal.id;
+    if (REFUSING_REFUSAL_IDS.has(id)) {
+      return { action: "refuse", message: decision.announcement, mode: "unresolved", version: null, pin: null };
+    }
+    return { action: "in-process", mode: "unresolved", version: null, pin: null, notice: decision.announcement };
+  }
   if (decision.kind === "dev") return { action: "in-process", mode: "dev", version: null, pin: null };
 
   const version = decision.version;
@@ -514,15 +550,25 @@ function liveAdapter(argv, startup) {
  * @param {object} startup a passing `runStartupChecks()` result
  * @returns {object} frozen `Provenance` (`lib/provenance.mjs`)
  */
-function provenanceFor(startup) {
+function provenanceFor(startup, env = process.env) {
   const { rootPath } = resolveWorkflowRoot();
+  // `mode` and `pin` come from the resolution the launcher actually reached,
+  // carried on the marker (§6.2). Hardcoding `mode: "dev"` here stamped the
+  // dev mark on released runs, which inverts AC-5.3: a mark present on every
+  // kind of run discriminates nothing, and the consumer's committed history
+  // then says "dev" about a released one.
+  const marker = readResolvedMarker(env);
+  // `startup.engineVersion` / `startup.pluginCompat` are NOT fields
+  // `runStartupChecks` returns (its triple lives on `versions` and its range
+  // is the caller's own `pkg`), so reading them stamped `undefined` into
+  // every POSTMORTEM, QUEUE.md row and commit message this run writes.
   return buildProvenance({
-    engineVersion: startup.engineVersion,
+    engineVersion: (marker && marker.version) || pkg.version,
     pluginVersion: startup.pluginVersion,
-    pluginCompat: startup.pluginCompat,
+    pluginCompat: pkg.pdlcPluginCompat,
     channel: "engine",
-    mode: "dev",
-    pin: null,
+    mode: marker ? marker.mode : "unresolved",
+    pin: marker ? marker.pin : null,
     loadRoot: rootPath,
   });
 }
@@ -884,6 +930,95 @@ export async function main(argv = process.argv, deps = defaultDeps) {
   }
 }
 
+/**
+ * The launcher entry (§6.2, DEC-EDIST-03 / DEC-EDIST-06) — the production
+ * edge that reaches `resolveVersion` and `execLauncher`.
+ *
+ * It sits ABOVE `main()` rather than inside `cmdDev`/`cmdQueue` because
+ * §6.2 puts resolution in the launcher and makes the resolved child run
+ * in-process without re-resolving: `main()` IS that child's entry, and a
+ * resolution hop inside it would have to undo itself on every recursive
+ * pass. Keeping the hop here also keeps `main(argv, deps)` the five-seam
+ * in-process entry that TSPEC §9.3 pins and the process-entry tests drive.
+ *
+ * Only the two DISPATCHING commands resolve. `--version`, `doctor`, `hello`
+ * and `spike:sdk` pass straight through: §6.2's exemption is "never refuse",
+ * and a launcher that refused before `doctor` ran would make the diagnostic
+ * unreachable in exactly the state it exists to explain (R-B).
+ *
+ * @param {string[]} argv process-argv-shaped, as `main`'s
+ * @param {object} [io] injected seams — `env` and `fs` for the resolution,
+ *   `exec` for the child hop, `runMain` for the in-process arm, `log`/`error`
+ *   for output. Defaulted to the real ones; tests substitute all six so no
+ *   leg spawns a second Node or reads a real store.
+ * @returns {Promise<number|undefined>} the launcher's own exit code for the
+ *   `exec` arm; `undefined` when the run happened in this process (whose
+ *   exit code `main` has already set through `process.exitCode`).
+ */
+export async function launch(argv = process.argv, io = {}) {
+  const {
+    env = process.env,
+    fs = nodeFs,
+    homedir = os.homedir(),
+    exec = execLauncher,
+    runMain = main,
+    log = console.log,
+    error = console.error,
+  } = io;
+
+  const [, , cmd, ...rest] = argv;
+  if (cmd !== "dev" && cmd !== "queue") return runMain(argv);
+
+  // Already the resolved child: presence alone decides, so a garbled marker
+  // degrades to "run here" and never to a second spawn (see the constant).
+  if (readResolvedMarker(env)) return runMain(argv);
+
+  // A malformed command line is a usage error, not a resolution outcome
+  // (EC-CLI-5 / EC-CLI-7, BR-REP-0a). Resolving first would answer a typo
+  // with a message about the version store, which names the wrong problem.
+  if (validateFlags(rest, cmd)) return runMain(argv);
+
+  // The AC-3.1 inspection surface dispatches nothing, so it is exempt from
+  // the hop for the same reason §6.2 exempts `doctor`: a surface whose whole
+  // job is to explain what WOULD happen must stay reachable in the state the
+  // operator is trying to understand.
+  if (hasFlag(rest, "dry-run")) return runMain(argv);
+
+  const { decision, storeRoot } = resolveForLaunch({
+    argv: rest,
+    cwd: path.resolve(readFlag(rest, "cwd") || process.cwd()),
+    env,
+    fs,
+    homedir,
+  });
+  const move = launchMoveFor({ decision, storeRoot });
+
+  if (move.action === "refuse") {
+    // AC-5.5: a pin naming an uninstalled version refuses naming the pin and
+    // what is installed. It never falls back to latest, and unlike the two
+    // exempt commands it never downgrades the refusal to a notice.
+    error(move.message);
+    error("pdlc: refusing to run an unresolved engine version (fail-closed).");
+    process.exitCode = 1;
+    return 1;
+  }
+
+  const marked = { ...env, [RESOLVED_MARKER_ENV]: markerValueFor(move) };
+  if (move.action === "in-process") {
+    // The marker is written into THIS process's env, not only a child's, so
+    // the in-process arm and the spawned arm stamp provenance through one
+    // path (`provenanceFor` reads the marker either way).
+    process.env[RESOLVED_MARKER_ENV] = marked[RESOLVED_MARKER_ENV];
+    log(move.notice || decision.announcement);
+    return runMain(argv);
+  }
+
+  log(decision.announcement);
+  const code = exec(move.binPath, argv.slice(2), marked);
+  process.exitCode = code;
+  return code;
+}
+
 // Self-invocation moves behind an entry guard (§9.3): importing this module
 // — the way both `bin/pdlc.mjs`'s dynamic import and this file's own test
 // suite do — is inert. `process.argv[1]` is the real Node entry script's
@@ -891,7 +1026,7 @@ export async function main(argv = process.argv, deps = defaultDeps) {
 // path names the guard, not this file, so the comparison is false and
 // nothing runs.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((err) => {
+  launch().catch((err) => {
     // Engine crash — distinct from a pipeline halt (exit 2) by design (AC-1.4).
     console.error(err && err.stack ? err.stack : String(err));
     process.exitCode = 1;

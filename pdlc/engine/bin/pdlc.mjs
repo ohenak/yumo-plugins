@@ -32,8 +32,14 @@ if (Number.isNaN(major) || major < 20) {
   console.error("pdlc requires Node >= 20; found " + process.versions.node);
   process.exit(1);
 }
+// `launch()`, not `main()`: this file is the entry on `PATH`, so it is the
+// launcher TSPEC §6.2 describes. `launch` resolves a version for the two
+// dispatching commands and either runs `main()` in place or `exec`s the
+// resolved store entry; every other command it forwards to `main()`
+// untouched. Calling `main()` here left the whole resolution ladder with no
+// production caller.
 import("./cli.mjs")
-  .then((mod) => mod.main())
+  .then((mod) => mod.launch())
   .catch((err) => {
     console.error(err && err.stack ? err.stack : String(err));
     process.exitCode = 1;
