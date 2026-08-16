@@ -73,9 +73,13 @@ jobs:
         # AFTER jest's summary and is not reflected in it, so this step must be judged by
         # npm's exit code — which it is, since bash `set -e` semantics apply per step.
         #
-        # `test:coverage` runs two stages: `c8 npm test` followed by `c8 report --check-coverage
-        # --per-file ...`, with the declared floor enforced in aggregate and branch ≥85%
-        # enforced per module. jest's own --coverage reports 0% for these modules because
+        # `test:coverage` runs two stages: `c8 npm test -- --runInBand` followed by
+        # `c8 report --check-coverage --per-file ...`, with the declared floor enforced in
+        # aggregate and branch ≥85% enforced per module. The coverage stage runs jest
+        # in-band deliberately: a force-exited worker never flushes NODE_V8_COVERAGE, so
+        # worker-parallel coverage under-reports nondeterministically on small runners;
+        # in-band, every evaluation lands in the one process c8 reads on clean exit.
+        # jest's own --coverage reports 0% for these modules because
         # under --experimental-vm-modules they are evaluated as ESM through jest's vm-module
         # path; c8 reads V8's coverage and sees them (CODE_REVIEW v1 §1-2).
         run: npm run test:coverage
