@@ -15,7 +15,13 @@ depends-on: [pdlc-headless-engine]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase R) | Claude | 0.11 | 2026-08-14 |
+| pdlc | Draft — in review (Phase R) | Claude | 0.12 | 2026-08-16 |
+
+*0.12 (2026-08-16, erratum round): **O-B** no longer states a fixed check count. The gloss said
+"five" while the FSPEC's §5.1 expected set now carries six rows; membership is restated as
+**trigger-derived** — whatever workflow files render a check on a PR, which this feature's own
+work adds to — with the 2026-08-13 five-check measurement kept as a dated observation and §5.1
+named as the authority on membership (SE). No other change.*
 
 *0.11 (2026-08-14, Phase F erratum round): **AC-1.3** re-worded to the ownership split the
 downstream documents actually hold — the FSPEC states the expected set's **classes and per-class
@@ -77,7 +83,7 @@ here by id so a later drift is a one-file correction, not a stale snapshot insid
 | # | Observation | Where |
 |---|---|---|
 | O-A | There is **no release automation of any kind**. `.github/workflows/` contains exactly one file, the PR-test gate. No tag trigger, no publish step, no marketplace step. | `.github/workflows/pr-tests.yml` |
-| O-B | The PR gate is **five** required checks — unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap, shell-script parse/index-mode — on **ubuntu-latest × Node 20 only**. The check names Phase PUB polls are measured in **M-ENG-10**, in both alphabets it distinguishes (authored `name:` vs rendered); T-7's expected set is seeded from that measurement, and the words here are a gloss on both. | M-ENG-10 |
+| O-B | The PR gate's membership is **trigger-derived, not a fixed count**: a required check is whatever a PR-triggered workflow file renders, so the count moves whenever such a file is added, removed, or re-triggered — including by this feature's own work. At the 2026-08-13 measurement that was one file, `pr-tests.yml`, carrying unit tests, **engine tests**, generated-artifact freshness, fresh-clone bootstrap and shell-script parse/index-mode, on **ubuntu-latest × Node 20 only**; no number stated here is authoritative. The check names Phase PUB polls are measured in **M-ENG-10**, in both alphabets it distinguishes (authored `name:` vs rendered); the expected set the FSPEC owns (§5.1) is seeded from that measurement and is the authority on membership (T-7), and the words here are a gloss on both. | M-ENG-10; FSPEC §5.1 |
 | O-C | **Two** version numbers exist: the plugin manifest's, which the build stamps into the distribution manifest, and the engine package's own, independent of it. Neither reads the other. Which one is "the version of record" for which purpose is settled at O-7. | M-ENG-11; `pdlc/workflows/build-runtime.mjs` |
 | O-D | The distribution manifest already establishes the packaging discipline this REQ inherits: a schema version, the version the bytes were built at, and one row per artifact carrying a path pair and a content hash, plus a retired-predecessor list. | `pdlc/workflows/dist/distribution-manifest.json` |
 | O-E | The prompt corpus is **15 `SKILL.md` files plus two `se-implement` language supplements**. (The brief's and upstream REQ's "14" is stale.) | `pdlc/skills/**` |
