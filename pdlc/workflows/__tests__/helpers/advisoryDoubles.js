@@ -210,7 +210,10 @@ export function makeFakeClock({ start = FIXED_NOW_MS, autoAdvanceMs = 0, sleepRe
     sleeps.push(ms);
     current += ms;
     if (sleepResolvesOnMacrotask) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => {
+        const timer = setTimeout(resolve, 0);
+        if (timer && typeof timer.unref === "function") timer.unref();
+      });
     }
   };
 

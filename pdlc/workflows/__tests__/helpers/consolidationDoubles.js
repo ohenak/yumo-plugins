@@ -81,7 +81,10 @@ export function fakeMakeTempDir(path) {
 // body, never at module scope — a late timer from a prior case must never be able to write into a
 // double a later case reads.
 export const asAsync = (fn) => (...args) =>
-  new Promise((resolve) => setTimeout(() => resolve(fn(...args)), 0));
+  new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fn(...args)), 0);
+    if (timer && typeof timer.unref === "function") timer.unref();
+  });
 
 // ─── buildConsolidationLog — the `.consolidation-log.md` fixture builder ───
 // (TSPEC §3, §7.1 `classifyCorpus`)
