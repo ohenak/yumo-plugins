@@ -27,13 +27,14 @@
 // inlined verbatim, no `pdlc:` namespace, no Skill-tool instruction — and it
 // dispatches nothing: the transport handed to the adapter throws if called.
 
-import { readFileSync } from "node:fs";
+import nodeFs, { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 
-import { PLUGIN_ROOT_ENV } from "../lib/skills.mjs";
+import { PLUGIN_ROOT_ENV, resolvePluginRoot } from "../lib/skills.mjs";
+import { listVersions, rootFor } from "../lib/store.mjs";
 import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
@@ -111,7 +112,7 @@ const VALUE_FLAGS_SET = new Set(VALUE_FLAGS);
  * carry no row here — `main()` never runs `validateFlags` against them.
  */
 const FLAGS_BY_COMMAND = {
-  dev: ["force-phases", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill"],
+  dev: ["force-phases", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill", "dev"],
   queue: [
     "queue-path",
     "loop",
@@ -121,8 +122,9 @@ const FLAGS_BY_COMMAND = {
     "allow-api-key-billing",
     "max-iterations",
     "dry-run-skill",
+    "dev",
   ],
-  doctor: ["plugin-root", "cwd", "allow-api-key-billing"],
+  doctor: ["plugin-root", "cwd", "allow-api-key-billing", "dev"],
 };
 
 /**
@@ -155,6 +157,121 @@ function validateFlags(argv, command) {
   return null;
 }
 
+// ─── the version store, this engine's location, the resolved-child marker ──
+//     (TSPEC §6.1–§6.3, DEC-EDIST-03 / DEC-EDIST-06)
+
+/** Absolute dir of the running engine — its own `lib/`'s parent (§6.3). */
+const ENGINE_PATH = path.join(__dirname, "..");
+
+/**
+ * The env marker the launcher sets on the resolved child (§6.2).
+ *
+ * Two separable jobs, deliberately not collapsed:
+ *
+ *   - Its **presence** is the loop guard. A child that finds the variable set
+ *     never runs the ladder again, so resolution happens exactly once per
+ *     invocation (BR-1.5's structural precondition) — and it holds even if
+ *     the value is garbage, which is why the guard reads presence and not
+ *     content.
+ *   - Its **content** carries the decision the parent actually reached, so
+ *     the child stamps the resolved `mode`/`pin` into provenance rather than
+ *     re-deriving them from a store it must not read a second time.
+ *
+ * An unparseable value therefore still suppresses re-resolution, and degrades
+ * to `mode: "unresolved"` rather than to a re-spawn.
+ */
+export const RESOLVED_MARKER_ENV = "PDLC_RESOLVED_ENGINE";
+
+/** TSPEC §6.1: `$PDLC_HOME/versions/`, default `~/.pdlc/versions/`. */
+export function storeRootFrom(env = process.env, homedir = os.homedir()) {
+  const declared = env && typeof env.PDLC_HOME === "string" ? env.PDLC_HOME.trim() : "";
+  return path.join(declared || path.join(homedir, ".pdlc"), "versions");
+}
+
+/** The remedy named by ladder branch 7's refusal and by `doctor` (§6.2, §11). */
+export const INSTALL_COMMAND = `npm install -g ${pkg.name}`;
+
+/**
+ * §6.3's `EngineLocation`, computed by walking up from the running engine
+ * for a `.git` entry. Injectable `fs` because branch 1/2's conjuncts are the
+ * one part of the ladder that is a fact about disk, and AC-5.4's "dev-mode is
+ * never inferred" needs a leg that fixes `isCheckout: true` without one.
+ */
+export function engineLocationFrom({ enginePath = ENGINE_PATH, pluginRoot = null, fs = nodeFs } = {}) {
+  let dir = path.resolve(enginePath);
+  let checkoutRoot = "";
+  for (;;) {
+    if (fs.existsSync(path.join(dir, ".git"))) {
+      checkoutRoot = dir;
+      break;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return { enginePath: path.resolve(enginePath), isCheckout: checkoutRoot !== "", checkoutRoot, pluginRoot: pluginRoot || null };
+}
+
+/** Read the marker. Malformed ⇒ `{mode: "unresolved"}`, never `null` (see above). */
+export function readResolvedMarker(env = process.env) {
+  const raw = env && env[RESOLVED_MARKER_ENV];
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { mode: "unresolved", version: null, pin: null };
+  }
+  if (!parsed || typeof parsed !== "object" || typeof parsed.mode !== "string") {
+    return { mode: "unresolved", version: null, pin: null };
+  }
+  return { mode: parsed.mode, version: parsed.version ?? null, pin: parsed.pin ?? null };
+}
+
+/**
+ * Run §6.3's ladder for THIS invocation, gathering its four impure inputs —
+ * the store listing, the consumer's config read, the `--dev` flag and the
+ * engine's location — and returning the decision alongside the facts
+ * `doctor` reports (§6.2).
+ */
+export function resolveForLaunch({ argv = [], cwd = process.cwd(), env = process.env, fs = nodeFs, homedir = os.homedir() } = {}) {
+  const storeRoot = storeRootFrom(env, homedir);
+  const { versions: listing } = listVersions(fs, storeRoot);
+  const configResult = readEngineConfig({ cwd });
+  const dev = hasFlag(argv, "dev");
+  const discovered = resolvePluginRoot({ devDeclared: dev, env, override: readFlag(argv, "plugin-root"), fs });
+  const location = engineLocationFrom({ pluginRoot: discovered.ok ? discovered.root : null, fs });
+  return { decision: resolveVersion({ listing, configResult, dev, env, location }), storeRoot, listing, location, configResult };
+}
+
+/**
+ * Turn a ladder decision into the launcher's next move (§6.2). Three
+ * outcomes and no fourth: refuse, run this process in place, or `exec` the
+ * resolved store entry's own `bin/pdlc.mjs`.
+ *
+ * The in-place case is not an optimisation — it is the common one. When the
+ * ladder resolves to the version this launcher already IS, spawning a second
+ * Node to run identical bytes would double startup cost and break `stdio`
+ * expectations for no gain.
+ */
+export function launchMoveFor({ decision, storeRoot, engineVersion = pkg.version, enginePath = ENGINE_PATH }) {
+  if (decision.kind === "refuse") return { action: "refuse", message: decision.announcement, mode: "unresolved", version: null, pin: null };
+  if (decision.kind === "dev") return { action: "in-process", mode: "dev", version: null, pin: null };
+
+  const version = decision.version;
+  const pin = decision.kind === "pin" ? version : null;
+  const entry = rootFor(storeRoot, version);
+  if (version === engineVersion || path.resolve(entry) === path.resolve(enginePath)) {
+    return { action: "in-process", mode: decision.kind, version, pin };
+  }
+  return { action: "exec", mode: decision.kind, version, pin, binPath: path.join(entry, "bin", "pdlc.mjs") };
+}
+
+/** The marker value a `move` hands to the process that will run the pipeline. */
+export function markerValueFor(move) {
+  return JSON.stringify({ mode: move.mode, version: move.version, pin: move.pin });
+}
+
 // ─── shared startup ────────────────────────────────────────────────────────
 
 function startupFor(argv) {
@@ -162,6 +279,7 @@ function startupFor(argv) {
     pluginRoot: readFlag(argv, "plugin-root"),
     engineVersion: pkg.version,
     engineCompat: pkg.pdlcPluginCompat,
+    devDeclared: hasFlag(argv, "dev"),
     apiKeyPolicy: hasFlag(argv, "allow-api-key-billing") ? ["none", "user", "project", "org", "temporary"] : ["none"],
   });
 }
