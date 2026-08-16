@@ -1325,10 +1325,22 @@ failure and one remedy.
   (FSPEC v0.8 BR-7.5, REQ v0.12's O-B): a new PR-gating workflow joins the expected set by
   existing, and `publish.yml`'s jobs are excluded because it is tag-triggered — a reason true
   of it and false of `fixture-machine.yml`. Step-level names are not members.
-- Separately from the rendered-name set, it asserts that **`publish.yml`'s gate jobs run the
-  same commands as `pr-tests.yml`'s five**, as a set-equality over the run commands. This is
-  what pays for §8.2's duplication: the two files are kept in step by a test, not by memory.
-  It is not part of the rendered-check-set membership, which is trigger-derived as above.
+- Separately from the rendered-name set, it asserts that **`publish.yml`'s gate job runs the
+  same commands as *every* PR-gate job in §5.1's trigger-derived set** — at HEAD
+  `pr-tests.yml`'s five **and `fixture-machine.yml`'s** — as a set-equality over the run
+  commands. The expected side is **derived, not a hand-maintained five**: it is built by
+  iterating the same file→job-id map the membership rule above derives from each file's `on:`
+  trigger (`ci-arrangement.test.js`, `PR_GATE_FILES` / `GATE_JOB_IDS` /
+  `FIXTURE_MACHINE_JOB_IDS`, and `T49: ci arrangement — publish.yml/PR-gate gate-command
+  set-equality`). **Answering TE Q-28 explicitly: derived.** A future PR-gating workflow is
+  therefore a **two-file** edit — the new workflow plus `publish.yml`'s gate job — and T49
+  goes red until the second lands, which is exactly the intent. Specifying the smaller
+  `pr-tests.yml`-only equality would re-author the defect CODE_REVIEW v1 §3-2 already found
+  and fixed: `fixture-machine.yml`'s legs carry AT-2.3…AT-2.6 (AC-2.2…AC-2.5), so a tag gated
+  without them is gated on strictly weaker evidence than the PR was, with the suite green.
+  This is what pays for §8.2's duplication: the files are kept in step by a test, not by
+  memory. It is not part of the rendered-check-set membership, which is trigger-derived as
+  above.
 - Renders by expanding **declared matrix axes only**, and the axes are read **per job**, not
   once for the file. V-18's "same matrix" compression is corrected in §2: `unit-tests`
   declares `os` **and** `node`, `engine-tests` declares `os` only, and `artifact-freshness`,
