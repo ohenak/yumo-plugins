@@ -79,7 +79,44 @@ the fifteen `pdlc/engine/lib/*.mjs` present at HEAD.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Round-2 Q-02 asked whether the `store.empty` departure should become its own `DEC-EDIST-` row. This round answered it in code but not in the record: branch 7 now has **two** operator-facing messages chosen by audience, which is a larger behaviour than "the launcher is fat, not thin". The TSPEC erratum below carries it. Does the operator want a `DEC-EDIST-` row as well, given the two-audience shape is now a standing design rule rather than a one-off? |
+| Q-02 | Unchanged from rounds 1 and 2, and still worth one shared fix rather than per-oracle defences: `documentOracles.test.js` walks untracked trees (skipping only `.git/` and `node_modules/`), so a local `.claude/pdlc-wave-state.json` or `.serena/` reddens the document oracle for a reason no diff explains. CI is green; a local-ergonomics item, not a finding — but it has now cost three rounds of "is this red real?" |
+
 ## Positive Observations
+
+- **The empty-store fix changed the message, not the guarantee.** The tempting
+  cheap close for F-02 was to soften branch 7's wording everywhere. Instead the
+  proceed variant is a *separate registered id* selected only on the arm that
+  proceeds, so `--version` and `doctor` keep the refusal wording where it is
+  still literally true. That is the distinction the finding was about, and the
+  fix preserves both audiences rather than averaging them.
+- **The new legs assert the arm before they assert the text.** `runMain.length
+  === 1` / `exec.length === 0` pins *which arm ran* by count, so the message
+  assertions that follow cannot pass against a run that took a different path.
+  This is the same shape that made round 2's AC-5.5 close credible, applied
+  again without being asked.
+- **`3eaf0e58` closes a real builder-not-wired hop with measured evidence.**
+  `launch-wiring.test.js` drove `launch()` as a module function and
+  `cli.test.js` spawned the binary, and the two suites met without overlapping
+  on the one hop between them — mutating `bin/pdlc.mjs`'s `launch()` to `main()`
+  left the suite green. The new leg spawns the real binary and asserts the
+  refusal only `launch()` can produce, with the negatives (`refuses to
+  dispatch`, `--- run report ---` absent) paired against positives on the same
+  path. Naming the measured mutant in the comment is what makes the leg
+  reviewable a year from now.
+- **The ledger reconciliation states its method and holds up to independent
+  re-derivation.** It could have flipped 53 rows on assertion; instead it names
+  the manifest, the suites and the two `[gate]` records it checked. I re-ran all
+  of it and found one stale number (F-01) and no wrongly-flipped row — which is
+  the outcome a stated method is supposed to produce.
+- **Two anti-patterns were fixed as anti-patterns, not as failures.**
+  `e2b5d188` and `3aad8836` both diagnose the *class* of defect in a comment
+  (expectation moving with the implementation; a scan wider than the contract)
+  and record the co-change obligation for the next author. The PF-4 comment
+  telling a future editor to change TSPEC §5.4 and FSPEC §5.2 *first* is
+  traceability maintaining itself.
 
 ## Recommendation
 
