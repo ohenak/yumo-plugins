@@ -277,21 +277,57 @@ test(
 // oracle: the module's behaviour is covered elsewhere, but the NAME the
 // workflow calls it by was covered nowhere.
 
-/** Every subcommand token `publish.yml` invokes this module with. */
+// Both parsers are scoped to the region that carries the contract (TE CR v2
+// F-05). Whole-file scans were green but wider than the contract: a second
+// `switch` in the module, or a commented-out `run:` line in the workflow,
+// would have reddened this oracle for a reason that is not a contract
+// violation, and a failure message that can mean something else is a failure
+// message a future reader will discount.
+
+/** Every subcommand token `publish.yml` invokes this module with, comments excluded. */
 function workflowSubcommandTokens(workflowText) {
   const tokens = new Set();
+  // A YAML comment cannot invoke anything. Only lines whose first non-space
+  // character is `#` are dropped; a `#` inside a `run:` line is shell, not
+  // YAML, and stripping those would narrow the scan below the contract.
+  const live = workflowText
+    .split("\n")
+    .filter((line) => !/^\s*#/.test(line))
+    .join("\n");
   const pattern = /publish-preflight\.mjs\s+([a-z][a-z0-9-]*)/g;
   let match;
-  while ((match = pattern.exec(workflowText)) !== null) tokens.add(match[1]);
+  while ((match = pattern.exec(live)) !== null) tokens.add(match[1]);
   return [...tokens].sort();
 }
 
-/** Every `case "<token>":` label `main()`'s switch dispatches on. */
+/**
+ * Every `case "<token>":` label `main()`'s switch dispatches on — read from
+ * that switch's body alone, so a `case` label belonging to any other switch in
+ * the module is not mistaken for a subcommand.
+ */
 function implementedSubcommands(moduleText) {
+  const switchStart = moduleText.indexOf("switch (command) {");
+  assert.ok(switchStart >= 0, "main()'s dispatch switch was not found — the parser, not the module, is stale");
+  // Balance braces from the switch's own `{` so the body ends where it ends.
+  let depth = 0;
+  let end = -1;
+  for (let i = moduleText.indexOf("{", switchStart); i < moduleText.length; i += 1) {
+    if (moduleText[i] === "{") depth += 1;
+    else if (moduleText[i] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  assert.ok(end > switchStart, "main()'s dispatch switch is unbalanced — the parser cannot scope the scan");
+  const body = moduleText.slice(switchStart, end);
+
   const labels = new Set();
   const pattern = /^\s*case "([a-z][a-z0-9-]*)":/gm;
   let match;
-  while ((match = pattern.exec(moduleText)) !== null) labels.add(match[1]);
+  while ((match = pattern.exec(body)) !== null) labels.add(match[1]);
   return [...labels].sort();
 }
 
