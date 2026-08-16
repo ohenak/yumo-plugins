@@ -173,6 +173,18 @@ Both dispositions are recorded in `docs/_queue/QUEUE.md` (O-3, 2026-08-13). Rows
 - **NG-5 — Changing any pipeline semantics.** Phase graph, review bars, completeness
   criteria, queue lifecycle, report shape (beyond *adding* the provenance fields of
   REQ-EDIST-04) are untouched. This feature moves bytes, not behaviour.
+  - **One recorded exception (2026-08-16, CODE_REVIEW v1 §3-3):** `pdlc/skills/se-implement/SKILL.md`
+    gained the red/green skip discipline (Step-1 items 5–7 and two DoD checklist rows). It is an
+    authoring-role instruction, not a phase graph, review bar, completeness criterion, queue
+    lifecycle or report-shape change, and it was forced by this feature's own Phase I: the wave
+    gate runs the full suite, so a task whose implementation belongs to a later task must leave
+    its test `.skip`ped rather than red. Recording it here rather than leaving it as an unowned
+    diff is the point of this note. **The plugin's version of record was bumped with it**
+    (`pdlc/.claude-plugin/plugin.json` 0.23.0 → 0.23.1, inside the engine's declared
+    `^0.23.0`), so changed plugin bytes never again ship under a version number that already
+    named different bytes — that skew is R-3's axis. The pairing already published in
+    `engine-v0.1.0` records `pluginVersionAtTag: 0.23.0` and is immutable; it remains an accurate
+    record of what the tag was cut against, and the next engine tag records 0.23.1.
 - **NG-6 — Consumer-side generated state.** The scope of this non-goal is **install and
   upgrade**, not every engine activity: install and upgrade neither create, sync, write,
   read nor version-check any file inside a consumer project, and consumer-owned config

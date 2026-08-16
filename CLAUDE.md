@@ -61,7 +61,10 @@ Every plugin follows this layout:
 - `pdlc/workflows/dist/pdlc-cli.mjs`
 - `pdlc/workflows/dist/distribution-manifest.json` — one row per artifact (id, plugin path, sha1, retired predecessors), plus the plugin version those bytes were built at
 
-These are the tracked, shipped outputs. The copy the workflow runtime actually loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
+These are the tracked, shipped outputs. **Which copy is loaded depends on the channel** (see *The engine channel* below) — there are two:
+
+- **Plugin channel (Claude Code workflow runtime).** The copy the runtime loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
+- **Engine channel (`pdlc/engine`).** The engine resolves its own root: the workflow modules **vendored inside the installed npm package** (`vendor/workflows/`), falling back to this repo's `pdlc/workflows/` when running from a dev checkout (`pdlc/engine/lib/run.mjs`'s two-root resolution). It never reads `.claude/workflows/`, and `sync-workflows.sh` is not part of its install (CODE_REVIEW v1 §3-4).
 
 All are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when an artifact under `pdlc/workflows/dist/` is stale, `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints, and `pdlc/hooks/scripts/sync-workflows.sh --check` exits non-zero when the consumer copy has drifted from the built artifacts.
 
@@ -201,6 +204,23 @@ Both `SessionStart` entries are registered in `hooks/hooks.json` as separate ent
 | `hooks/scripts/sync-workflows.sh` | Installs the untracked consumer copy from `pdlc/workflows/dist/`. `--check` classifies every row without copying any artifact — it still writes the drift-state record (and the directory that holds it, if missing); it emits a warning line only for a row that is `unverified`, `local-edit`, a write failure, or a degraded/unresolved baseline, so a tree that is only `stale`/`missing` can print nothing at all — a `stale` or `missing` row is signalled purely through the non-zero exit code, not through stdout/stderr text |
 | `hooks/scripts/check-workflow-drift.sh` | The `SessionStart` drift reporter above; a thin, advisory wrapper over the same comparison |
 | `hooks/scripts/lib/pdlc-drift.sh` | Shared, **sourced** library for the two scripts above — deliberately not executable |
+
+### The engine channel (`pdlc/engine`)
+
+`pdlc/engine/` is the **second** distribution channel for the same pipeline, published to npm as `@kaneho/pdlc-engine` (`pdlc/engine/package.json`). Everything above about `.claude/workflows/` describes the *plugin* channel only; a reader of this file alone used to be unable to learn that this channel exists (CODE_REVIEW v1 §3-4).
+
+| Fact | Where |
+|---|---|
+| One-command machine install, then `pdlc` on `PATH`; nothing is written into a consumer project | `pdlc/engine/scripts/postinstall.mjs`, `pdlc/README.md`'s install section |
+| Node floor is `>= 20`, refused by a dependency-free guard with a named message and no stack trace | `pdlc/engine/bin/pdlc.mjs` (the guard) / `bin/cli.mjs` (the body) |
+| Every pipeline command handshakes against an installed **plugin** first: the engine ships no `skills/`, and prompts are always read from the plugin's tree | `pdlc/engine/lib/handshake.mjs`, `lib/skills.mjs` |
+| Compatible-plugin range, declared by the engine and checked before publish | `pdlc/engine/package.json`'s `pdlcPluginCompat` |
+| Workflow modules are **vendored into the package** at pack time; the engine never loads `.claude/workflows/` | `pdlc/engine/scripts/prepack.mjs`, `lib/run.mjs` |
+| Publishing is tag-triggered (`engine-v*`), gated on the PR checks re-run at the tag, and records a `pdlcPairing` triple in the published manifest | `.github/workflows/publish.yml`, `pdlc/engine/scripts/publish-preflight.mjs` |
+| Engine and plugin versions are emitted into the run report and into committed halt artifacts | `pdlc/engine/lib/provenance.mjs`, `lib/report.mjs` |
+| Tests: `cd pdlc/engine && npm test` | `pdlc/engine/__tests__/` |
+
+Because the plugin's bytes are half of that published pairing, **changing anything under `pdlc/skills/`, `pdlc/hooks/` or `pdlc/workflows/` means bumping `pdlc/.claude-plugin/plugin.json`'s version** — plugin bytes that change under an unchanged version number are exactly the skew the pairing record exists to make visible.
 
 ### Artifact convention (for consuming repos)
 
