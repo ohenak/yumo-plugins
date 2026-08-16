@@ -65,6 +65,25 @@ already the *source* the items measure the PLAN against.
 
 ## 3. Upstream re-grounding
 
+Per DEC-ERR-03 this confirmation is scoped to the FSPEC measured against its upstream at that
+upstream's *current* version, not to the item list. The upstream named for this dispatch is the REQ
+at `sha256:44d0e188…`. That hash matches the REQ's bytes at HEAD (`shasum -a 256` on the working
+file) **and** matches the `UPSTREAM-STATE: REQ` line in the v10 approval anchor. The upstream has
+not moved since this document was last approved, so no re-derivation was forced; I re-read the
+load-bearing passages anyway.
+
+| FSPEC leans on | REQ v0.12 at HEAD says | Faithful? |
+|---|---|---|
+| §5.1's set is the membership authority, trigger-derived, count not fixed | `O-B` (`REQ:86`): "membership is **trigger-derived, not a fixed count** … the expected set the FSPEC owns (§5.1) … is the authority on membership (T-7), and the words here are a gloss"; `T-7` (`:269`) "an enumeration, not a count" | Yes — and §5.1's six rows plus BR-7.1's trigger-derived scope are exactly the shape O-B delegates |
+| BR-7.5's additive publish workflow, no member weakened/renamed | `C-5` (`:235-238`) verbatim | Yes |
+| BR-7.7's union-over-all-PR-gate-files | `C-6` (`:239-241`): "Publishing is gated on the same evidence a PR is. A tag whose commit does not pass **the full gate** publishes nothing" | Yes — "the full gate" is trigger-derived per O-B, so as soon as `fixture-machine.yml` became a PR-gate file, C-6 *entails* the union. BR-7.7 is the compression, not an addition |
+| §5.1's seed provenance | `M-ENG-10` measurement, dated 2026-08-13, cited by O-B and T-7 | Yes — BR-7.4 keeps it a dated, non-gating seed, matching "no number stated here is authoritative" |
+
+The REQ's own v0.12 changelog (`:20-25`) records that its erratum was raised because "the gloss said
+*five* while the FSPEC's §5.1 expected set now carries six rows". That is the same defect the routed
+items name — the REQ leg of it was already fixed at `20c87cd3`, and the FSPEC leg never existed.
+Only the PLAN leg remains open. This document remains a faithful compression of its upstream.
+
 ## 4. Findings
 
 ## 5. Questions
