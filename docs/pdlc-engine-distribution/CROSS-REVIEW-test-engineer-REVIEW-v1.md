@@ -36,7 +36,48 @@ techniques were used, and where a finding rests on one it is named in the row:
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-02's cheapest closure is a static one: read `.github/workflows/publish.yml`, extract every `publish-preflight.mjs <token>` invocation, and assert set-equality against the `switch` arms in `main()` — no spawn, no network, and it reddens on either a renamed case or a new workflow step naming a token the script does not implement. Is there a reason to prefer driving `main()` over `process.argv` instead, given `isMain` (`:512`) already makes the module importable without dispatching? |
+| Q-02 | `runPublishCommand` passes `sentinel: process.env.NODE_AUTH_TOKEN` (`:475`), i.e. in production the sentinel *is* the live credential. That is the right leak check, but `realPublishChannel.publish` throws `` `npm publish failed: ${result.stderr || result.stdout}` `` (`:447`) and that string is printed unscanned. If npm ever echoes the token into stderr, the guard that refuses to publish a token-bearing tarball does not cover the path that prints one. Should the failure path scan-and-redact before `reportFailure`? |
+| Q-03 | For F-03, is the intended remedy to raise coverage on the four modules, or to narrow `PROP-REGR-6`'s module list to those the hermetic suite can actually reach? Either is defensible, but the property as written asserts the first and the tree delivers neither, so the choice should be recorded rather than left to whoever next reads the number. |
+
 ## Positive Observations
+
+- **The anti-echo discipline is real, not claimed.** `packaging.test.js:43-66` transcribes
+  TSPEC §5.4's `PK-*` table as literal arrays (`LIB_MODULES_AT_HEAD`,
+  `LIB_MODULES_FROM_THIS_FEATURE`, `WORKFLOW_MEMBERS`) and never lists `lib/`;
+  `expectedMemberCount` (`:107-109`) hard-codes `4 + 15 + 3 + 1` rather than reading the
+  tarball's length; the conditional `LICENSE` member is read from the **decision record**
+  (`licenceRecorded()`, `:114-122`) rather than from the file's presence on disk, so
+  deleting `pdlc/engine/LICENSE` reddens the set instead of silently shrinking the
+  expectation. `assertPackedSetEquals` (`:194-206`) is set-equality in both directions with
+  a message naming TSPEC §5.4 as the expected side's source. This is the strongest oracle in
+  the feature.
+- **`npm pack` is real and hermetic.** `packRealTarball` (`:142-189`) runs a real
+  `npm pack` (never `--dry-run`) against a scratch copy of the package plus a sibling
+  `pdlc/workflows/`, precisely so `prepack`'s in-place `vendor/` rewrite cannot race the
+  checkout — the wave-12 defect is documented in place at `:129-141`. Good engineering,
+  and the comment tells the next reader why the indirection exists.
+- **BR-3.9's real-channel publish verified live, not taken on trust.** `npm view
+  @kaneho/pdlc-engine@0.1.0 pdlcPairing` returns
+  `{engineVersion: '0.1.0', pluginCompat: '^0.23.0', pluginVersionAtTag: '0.23.0',
+  tag: 'engine-v0.1.0', commit: '30773d0c…'}`, and `git cat-file -t 30773d0c…` resolves to
+  a commit on this branch. `EVIDENCE-BR-3.9.md` is an accurate record of a real event, and
+  AC-1.5's published pairing record (PROP-PUB-9) is genuinely observable on the channel.
+- **`PROP-REGR-1`'s five preservation floors all hold, measured.** `node --test` per file:
+  `engine-config` 16 (floor 9), `run` 22 (floor 21), `skills-composition` 33 (floor 32),
+  `ci-arrangement` `1..6` / `# tests 16` (floor 6 executed from 2 sites),
+  `seam-contract` 12 (floor 12). The two files a task rewrites in place —
+  `ci-arrangement.test.js` and `seam-contract.test.js` — did not silently shed assertions,
+  which is exactly the risk the floors were written to catch.
+- **Message-catalogue set-equality is enforced in both directions.**
+  `_assert-suite-wide.mjs:205` and `:210` push failures for an emitted-but-unregistered id
+  *and* a registered-but-never-emitted id, so registration cannot drift from emission.
+- **Un-skip discipline held.** No `test.skip(` or `describe.skip(` survives in
+  `pdlc/engine/__tests__/` or `pdlc/workflows/__tests__/` outside string literals and
+  fixtures under test. The committed-red-then-unskip convention was followed through to the
+  end, which is not the norm and is worth saying.
 
 ## Recommendation
 
