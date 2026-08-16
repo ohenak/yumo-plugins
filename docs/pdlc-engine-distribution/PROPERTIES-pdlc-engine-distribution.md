@@ -380,6 +380,23 @@ every PR; BR-3.9's real-channel publish (T52) is a dated record. This is inheren
 whose observation mutates a public registry, and it is recorded here so a DoD reader does not infer
 continuous coverage from a green `publish-channel.test.js`.
 
+**Declared gap 4 — BR-7.1's file-column set-equality is asserted in code but named by no property.**
+FSPEC v0.8 made §5.1's file scope **trigger-derived**: the `pull_request`-triggered files under
+`.github/workflows/` set-equal §5.1's file column, and a rendered-alphabet set-equality is taken
+**per PR-gate file**, not over `pr-tests.yml` alone (AT-3.4, BR-7.1/BR-7.5). Both are shipped and
+red-able today in T17's carrier — `pdlc/engine/__tests__/ci-arrangement.test.js` holds the
+trigger-derived `PR_GATE_FILES` membership check and "ci arrangement — rendered alphabet across
+PR-gate files equals §5.1 (BR-7.1)". What is missing is a **carrier row in §2**: PROP-PUB-6 is
+deliberately scoped to `pr-tests.yml`'s rows (that scoping is what lets PROP-GATE-5 discriminate row
+6, and widening it would destroy the discrimination), and PROP-GATE-5 observes row 6's membership at
+**Machine** level only. So the general, offline, unit-level rule has no named property. This is an
+unnamed carrier, **not an untested rule** — nothing here is unverified at HEAD. It is recorded rather
+than fixed because minting a property moves §4's row set and §7's counts, which this document is
+frozen against during Phase CR. **When the freeze lifts, this closes as one new `PROP-PUB-11` on
+T17**, traced to AT-3.4 and BR-7.1, alongside PM round-6 F-10's related correction (PROP-GATE-5's
+carrier cell should name `ci-arrangement.test.js` (T17) beside T50, since row 6's set-equality is
+asserted there).
+
 **Not gaps, but out of scope by declaration** (PLAN §1.2, TSPEC §14.3): N-1 (AC-6.2's bundle-side
 carrier), N-3 (BL-03), N-4 (range widening) and N-5 (M-ENG-10 change control) remain unbuilt. N-6
 (npm scope) and N-2 (licence) are **inside** this feature's done-ness — N-6 as a decision (T02), N-2
