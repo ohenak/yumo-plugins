@@ -116,6 +116,37 @@ the PLAN is what a later reader reconstructs intent from.
 
 ## 5. Questions
 
+| ID | Question |
+|----|----------|
+| Q-01 | The FSPEC's v10 approval anchor is unaffected by this round — the document's bytes did not move (`REVIEWED-COMMIT: 730aa0b6` is still the FSPEC's newest commit) and its recorded `UPSTREAM-STATE: REQ sha256:44d0e188…` still matches the REQ at HEAD. Should the orchestrator re-append an anchor for round 11 at all, or is the v10 anchor simply still live? I have written none, on the reading that an unmoved document with unmoved upstream has nothing to re-pin. |
+
 ## 6. Positive Observations
 
+- **The FSPEC was already ahead of its own downstream.** BR-7.7 and AT-3.4's union conjunct were
+  written in the round-8 delta and the carrier was built to match; the PLAN simply did not follow.
+  A spec that is *more* current than the plan derived from it is the healthy direction for this
+  kind of drift, and it is why these items are prose corrections rather than re-work.
+- **The trigger-derived membership rule did its job.** `ci-arrangement.test.js:558-560` asserts the
+  trigger-derived file set equals `PR_GATE_FILES`'s keys, so the addition of `fixture-machine.yml`
+  could not silently bypass §5.1. That mechanism — from CODE_REVIEW v1 §3-1 — is precisely what
+  turned this into a documentation-only defect instead of a release gated on weaker evidence.
+- **The REQ leg was already closed correctly.** REQ v0.12 (`20c87cd3`) removed the "five" gloss from
+  O-B and named §5.1 the authority rather than restating a count. The same fix applied to the PLAN
+  rows would close the last leg of one coherent erratum wave.
+
 ## 7. Recommendation
+
+**Approved with minor changes.** The FSPEC is unchanged, correct, and still a faithful compression
+of REQ v0.12 at `sha256:44d0e188…`. Nothing I previously approved is broken, because nothing moved.
+
+The routed items are **not resolved** — but they were never this document's to resolve. They are
+re-filed above as `ERRATUM: PLAN:` and `ERRATUM: TSPEC:` items. The correct next step is to route
+them to the PLAN's author, not to re-open the FSPEC.
+
+FINDING: Medium | delta | nonlocal | routing | Both routed items are anchored in PLAN (`:192`, `:222`), not in the FSPEC; no FSPEC edit landed and none could. Re-file against the PLAN — items restated as `ERRATUM: PLAN:` lines in §4.
+FINDING: Low | inherited | nonlocal | DEC-DOC-01 | Erratum item anchors were given bare (`:192`) without a file path, which is what let the mis-route survive to confirmation time.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
