@@ -84,3 +84,8 @@ VERDICT: Approved with minor changes
 FINDING: Medium | inherited | local | §5, BR-7.7 (`FSPEC:553`) | Residual two-file phrasing "so the two files stay in step" contradicts BR-7.7's own count-free union over `publish.yml` plus every PR-gate file; one-clause edit.
 FINDING: Medium | inherited | nonlocal | Routing (PLAN T17 `:192`, T49 `:222`) | Routed items are unlanded and belong to PLAN, not FSPEC; the two-file/five-job premise there contradicts BR-7.7, PROP-PUB-7 and the shipped carrier, and would false-green a tag gated without row 6's AT-2.3…AT-2.6 legs.
 
+
+APPROVAL-HASH: sha256:5ffc38a7f6ff1b19d31250a7d54dce32c3498941723cfb3f35102d2004027b06
+APPROVAL-HASH-NORMALIZED: sha256:99583385b0a12bf4e56d57a219427a65e3cfb8baee535777adf2453e90e6e43e
+REVIEWED-COMMIT: 98fb99a2a9864c4b8c191f0473679f79fe2666b9
+UPSTREAM-STATE: REQ sha256:44d0e18836f534cb68444f6e5a0b26eebf3d2aafe7f7630ce1f38fed78b1d00f
