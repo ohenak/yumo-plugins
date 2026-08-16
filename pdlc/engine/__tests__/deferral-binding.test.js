@@ -10,7 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -72,5 +72,78 @@ test("§3-1: the engine README's successor-tag caveat stays bound to a QUEUE.md 
     `${readmePath} still discloses the unbound successor-tag caveat, but ${checklistPath} no longer ` +
       `carries the engine-channel section naming the "engine-v0.2.0" tag cut (CODE_REVIEW v5 §3-1). ` +
       `Re-add the section, or update the README caveat once the tag is actually cut.`,
+  );
+});
+
+const CHECKLIST_PATH = "pdlc/RELEASE-CHECKLIST.md";
+
+/** The body of a `## N. …` heading in a markdown file, up to the next same-or-higher heading. */
+function markdownSection(text, headingRe) {
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => headingRe.test(l));
+  assert.notEqual(start, -1, `expected a heading matching ${headingRe}`);
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^#{1,2}\s/.test(lines[i])) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n");
+}
+
+// §3-2 (CODE_REVIEW v6): a binding is only as good as the act it names. Both binder documents
+// instruct an operator to verify a workflow file; a path that does not resolve sends that
+// operator looking for a file this repo does not have, and the two halves of one binding
+// disagreeing is worse than either being silent.
+test("§3-2: every workflow path the binder documents name resolves in this repo", () => {
+  for (const rel of [QUEUE_PATH, CHECKLIST_PATH]) {
+    const text = readFileSync(path.join(REPO_ROOT, rel), "utf8");
+    for (const m of text.matchAll(/`([\w./-]*\.github\/workflows\/[\w.-]+\.ya?ml)`/g)) {
+      assert.ok(
+        existsSync(path.join(REPO_ROOT, m[1])),
+        `${rel} names \`${m[1]}\`, which does not exist. Workflow files live at the repo root's ` +
+          `.github/workflows/ — an operator following this instruction would find nothing ` +
+          `(CODE_REVIEW v6 §3-2).`,
+      );
+    }
+  }
+});
+
+// §3-3 (CODE_REVIEW v6): the release-checklist section that discharges the successor-tag
+// deferral must schedule the whole act. `version-skew.test.js` harvests published versions from
+// tracked EVIDENCE-*.md files and requires HEAD's manifest to be strictly ahead of every one, so
+// recording the publish (BR-3.9/T52's precedent) without bumping the manifest in the same change
+// turns the engine suite red on the default branch. Both steps are named here or the ratchet is
+// discovered instead of planned.
+test("§3-3: RELEASE-CHECKLIST §7 schedules the publish evidence and the follow-on version bump", () => {
+  const readmeText = readFileSync(path.join(REPO_ROOT, "pdlc/README.md"), "utf8");
+  if (!readmeText.includes("successor tag is cut")) return; // deferral discharged — nothing to schedule
+
+  const checklistText = readFileSync(path.join(REPO_ROOT, CHECKLIST_PATH), "utf8");
+  const section = markdownSection(checklistText, /^##\s+7\.\s+Engine channel\b/);
+
+  assert.match(
+    section,
+    /EVIDENCE-[\w.-]+\.md/,
+    `${CHECKLIST_PATH} §7 must name the tracked EVIDENCE-*.md record for the publish, the way ` +
+      `engine-v0.1.0's was recorded (BR-3.9/T52). Cutting the tag without scheduling the ` +
+      `evidence leaves the publish unrecorded (CODE_REVIEW v6 §3-3).`,
+  );
+
+  // The bump target is derived from the manifest, never transcribed: whatever version this
+  // branch ships, the checklist must name the next one after it.
+  const manifest = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, "pdlc/engine/package.json"), "utf8"),
+  );
+  const [major, minor] = manifest.version.split(".").map(Number);
+  const nextVersion = `${major}.${minor + 1}.0`;
+  assert.ok(
+    section.includes(nextVersion),
+    `${CHECKLIST_PATH} §7 must name the follow-on bump to ${nextVersion} in the same change as ` +
+      `the publish evidence: version-skew.test.js requires the manifest version to be strictly ` +
+      `ahead of every published version harvested from EVIDENCE-*.md, so recording ` +
+      `${manifest.version}'s publish without bumping reds the engine suite on main ` +
+      `(CODE_REVIEW v6 §3-3).`,
   );
 });

@@ -82,7 +82,7 @@ and `TSPEC-pdlc-engine-distribution.md` all disclose that until a successor tag 
 — but named that successor tag nowhere binding (no queue row, no successor REQ; a `grep` for
 `engine-v0.2.0` across `docs/`, `pdlc/`, and `.github/` returned zero hits before this row). Evidence
 that discharges this row: post-merge, cut the `engine-v0.2.0` tag on the merge commit and verify
-`pdlc/.github/workflows/publish.yml` runs green and `npm view @kaneho/pdlc-engine version` resolves to
+`.github/workflows/publish.yml` runs green and `npm view @kaneho/pdlc-engine version` resolves to
 `0.2.0` — this is the act that discharges REQ AC-2.1/AC-2.2 (CODE_REVIEW v5 §2 rows 1–2), which stay
 narrowed-YES until the tag is cut. Status `blocked`, `Depends-On pdlc-engine-distribution`: the tag
 cannot be cut before that feature's branch merges. `REQ Path` reuses the feature's own REQ (the
