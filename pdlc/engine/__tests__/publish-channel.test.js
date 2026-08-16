@@ -262,6 +262,138 @@ test(
   },
 );
 
+// ─── The publish CLI layer's one contract (TE CR F-02) ───────────────────────
+//
+// `publish.yml` reaches this module only through `run:` lines naming a
+// subcommand token, and nothing tied those tokens to the `case` labels
+// `main()` dispatches on. Measured: renaming `case "verify-packed":` to
+// `case "verify-packed-MUTATED":` left the engine suite 725/725 green, and
+// the rename would have failed at tag time — inside the one workflow the PR
+// gate structurally cannot run — with `unknown command`.
+//
+// Set-equality in both directions, so a renamed case AND a workflow step
+// invoking a subcommand nobody implemented each fail. This is the whole
+// oracle: the module's behaviour is covered elsewhere, but the NAME the
+// workflow calls it by was covered nowhere.
+
+/** Every subcommand token `publish.yml` invokes this module with. */
+function workflowSubcommandTokens(workflowText) {
+  const tokens = new Set();
+  const pattern = /publish-preflight\.mjs\s+([a-z][a-z0-9-]*)/g;
+  let match;
+  while ((match = pattern.exec(workflowText)) !== null) tokens.add(match[1]);
+  return [...tokens].sort();
+}
+
+/** Every `case "<token>":` label `main()`'s switch dispatches on. */
+function implementedSubcommands(moduleText) {
+  const labels = new Set();
+  const pattern = /^\s*case "([a-z][a-z0-9-]*)":/gm;
+  let match;
+  while ((match = pattern.exec(moduleText)) !== null) labels.add(match[1]);
+  return [...labels].sort();
+}
+
+test(
+  "T49: the subcommand tokens publish.yml invokes are set-equal to the cases main() implements (§8.1, §8.4)",
+  async () => {
+    const workflowText = readFileSync(PUBLISH_WORKFLOW, "utf8");
+    const moduleText = readFileSync(PREFLIGHT_MODULE, "utf8");
+
+    const invoked = workflowSubcommandTokens(workflowText);
+    const implemented = implementedSubcommands(moduleText);
+
+    // Positive control first: an equality between two empty sets is
+    // satisfied by a parser that matched nothing, which is the failure mode
+    // this whole oracle exists to avoid.
+    assert.ok(invoked.length >= 5, `the workflow must invoke at least the five known subcommands, parsed: ${invoked}`);
+    assert.ok(implemented.length >= 5, `main() must implement at least five subcommands, parsed: ${implemented}`);
+
+    assert.deepEqual(
+      invoked,
+      implemented,
+      "every token publish.yml runs must be a case main() implements, and every case must be reachable from the workflow — " +
+        `workflow: [${invoked}] vs module: [${implemented}]`,
+    );
+  },
+);
+
+// ─── AT-3.5's falsifier: a POISONED tarball must redden (TE CR F-01) ──────────
+//
+// The leg above asserts the sentinel is absent from a tarball that never
+// contained it — true of any implementation, including one with no guard at
+// all. Measured: deleting the `Buffer.includes(sentinel)` branch in
+// `runPublish` left the whole engine suite 725/725 green, so AC-3.5's
+// absence half shipped unguarded. These two legs are a matched pair: the
+// same inputs publish when the bytes are clean and refuse when they are
+// poisoned, so the refusal is attributable to the guard and to nothing else.
+
+/** The one configuration under test, parameterised only by the artifact bytes. */
+function poisonProbeInputs(tarballBytes, channel, log) {
+  return {
+    gateConclusion: "success",
+    tag: "engine-v1.2.3",
+    packageVersion: "1.2.3",
+    pluginCompatRange: "^1.0.0",
+    pluginVersion: "1.4.0",
+    channel,
+    name: "pdlc-engine",
+    tarballBytes,
+    secretToken: "npm_fake-token-for-test",
+    sentinel: SENTINEL,
+    existingVersionMode: "fail",
+    log,
+  };
+}
+
+test(
+  "T49: publish channel — an artifact CARRYING the sentinel refuses and publishes nothing (AC-3.5, PROP-PUB-4)",
+  async () => {
+    const { runPublish } = await loadPreflight();
+    const channel = fakePublishChannel();
+    const log = [];
+    const poisoned = Buffer.from(`built-artifact-bytes ${SENTINEL} trailing-bytes`);
+
+    const result = await runPublish(poisonProbeInputs(poisoned, channel, log));
+
+    assert.equal(result.conclusion, "failure", "a poisoned artifact must not conclude success");
+    assert.equal(result.published, false, "nothing may be published");
+    assert.equal(
+      channel.calls.publish.length,
+      0,
+      "the channel must never be reached — refusing after publishing is not refusing",
+    );
+    assert.match(
+      result.message,
+      /sentinel|AC-3\.5/i,
+      `the failure must name what it refused for. Got: ${result.message}`,
+    );
+    assert.equal(
+      log.join("\n").includes(SENTINEL),
+      false,
+      "the refusal must not itself echo the credential it refused over",
+    );
+  },
+);
+
+test(
+  "T49: publish channel — the positive control: the SAME inputs with clean bytes do publish (AT-3.5)",
+  async () => {
+    const { runPublish } = await loadPreflight();
+    const channel = fakePublishChannel();
+    const log = [];
+    const clean = Buffer.from("built-artifact-bytes trailing-bytes");
+
+    const result = await runPublish(poisonProbeInputs(clean, channel, log));
+
+    // Without this control the leg above would also pass against an
+    // implementation that refuses everything.
+    assert.equal(result.conclusion, "success");
+    assert.equal(result.published, true);
+    assert.equal(channel.calls.publish.length, 1, "exactly one publish, so the difference is the sentinel alone");
+  },
+);
+
 for (const missingSecret of [undefined, ""]) {
   test(
     `T49: publish channel — secret ${JSON.stringify(missingSecret)} ⇒ named failure, nothing published (AT-3.5)`,
