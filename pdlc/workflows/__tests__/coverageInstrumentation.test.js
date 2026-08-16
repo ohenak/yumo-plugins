@@ -59,6 +59,43 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
     expect(pkg.c8.statements).toBeGreaterThanOrEqual(85);
   });
 
+  // CODE_REVIEW v2 §1-1. The `c8` block's thresholds are **global-aggregate**:
+  // `orchestrate-dev.js` is ~15k lines and dominates the aggregate, so a small
+  // module could sit well below the declared 85% branch floor without the gate
+  // noticing — the declared floor is not the enforced floor. The remedy is a
+  // second, per-file stage over the DoD-named criterion (branch ≥85%), added
+  // alongside the aggregate stage rather than replacing it: nothing the
+  // aggregate block declares is weakened, and the one floor DoD actually names
+  // is enforced per module.
+  test("test:coverage carries a per-file stage, so a small module cannot hide behind the aggregate", () => {
+    const script = pkg.scripts?.["test:coverage"] ?? "";
+    expect(script).toMatch(/--per-file\b/);
+    expect(script).toMatch(/--check-coverage\b/);
+  });
+
+  test("the per-file stage's branch floor is the DoD-named 85% or higher", () => {
+    const script = pkg.scripts?.["test:coverage"] ?? "";
+    const perFileStage = script
+      .split("&&")
+      .map((s) => s.trim())
+      .find((s) => /--per-file\b/.test(s));
+    expect(perFileStage).toBeDefined();
+    const branches = /--branches\s+(\d+(?:\.\d+)?)/.exec(perFileStage);
+    expect(branches).not.toBeNull();
+    expect(Number(branches[1])).toBeGreaterThanOrEqual(85);
+  });
+
+  test("the per-file stage runs in addition to the aggregate stage, not instead of it", () => {
+    // Both stages must survive: the `c8` block still declares 90%
+    // lines/functions/statements in aggregate, which the per-file stage's own
+    // relaxed non-branch numbers must not be able to replace.
+    const stages = (pkg.scripts?.["test:coverage"] ?? "").split("&&").map((s) => s.trim());
+    expect(stages.length).toBeGreaterThanOrEqual(2);
+    expect(/--per-file\b/.test(stages[0])).toBe(false);
+    expect(stages.some((s) => /--per-file\b/.test(s))).toBe(true);
+    expect(pkg.c8?.["check-coverage"]).toBe(true);
+  });
+
   test("dist/ and the test tree are excluded — generated and test bytes are not the subject", () => {
     const include = pkg.c8?.include ?? [];
     expect(include.some((p) => p.startsWith("dist/"))).toBe(false);
