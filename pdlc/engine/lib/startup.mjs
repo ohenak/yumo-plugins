@@ -346,6 +346,7 @@ export function runStartupChecks({
   guardProbeFn = defaultGuardProbe,
   checkGuardCarrierFn = checkGuardCarrier,
   versionDecision = null,
+  devDeclared = false,
 } = {}) {
   const rungs = [];
   const push = (id, name, state, detail) => rungs.push({ rung: id, name, state, detail });
@@ -365,7 +366,13 @@ export function runStartupChecks({
   let pluginVersionResolved = null;
 
   if (chainAlive) {
-    const resolution = resolveFn({ override: pluginRoot, env });
+    // `devDeclared` is threaded, not defaulted here: AC-5.6 makes the
+    // `PDLC_PLUGIN_ROOT` branch a function of the invocation's own `--dev`
+    // declaration, and a `runStartupChecks` that never forwarded it left
+    // `resolvePluginRoot`'s gate permanently closed — the env var could then
+    // only ever be ignored, and the honouring half of DEC-EDIST-04 had no
+    // production path at all.
+    const resolution = resolveFn({ override: pluginRoot, env, devDeclared });
     notices = resolution.notices || [];
     push(
       "1",
@@ -498,9 +505,22 @@ export function runStartupChecks({
   };
 }
 
-/** Render `runStartupChecks`'s result as the operator-facing startup output. */
+/**
+ * Render `runStartupChecks`'s result as the operator-facing startup output.
+ *
+ * The notice lines are rendered HERE rather than at each CLI call site
+ * because that is what makes AC-5.6 true on every surface at once: `dev`,
+ * `queue`, `queue --loop`, both `--dry-run` surfaces and the refusal path
+ * all print through this one function, and a notice rendered at one call
+ * site would have been silently absent from the other five. `notices` is
+ * `resolvePluginRoot`'s `{id, text}` array (§6.5) — NOT `readEngineConfig`'s
+ * separate string array, which `tunablesFor` prints on its own path.
+ */
 export function formatStartup(result, { withChecks = false } = {}) {
   const lines = [...result.banner];
+  for (const notice of result.notices || []) {
+    lines.push(typeof notice === "string" ? notice : notice.text);
+  }
   if (withChecks) {
     lines.push("");
     for (const r of result.rungs) {
