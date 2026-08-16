@@ -72,6 +72,20 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
+| 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |
+
+**Row 22 (`pdlc-halt-hardening-followups`) added 2026-08-16 to bind an unbound deferral
+(CODE_REVIEW v4 §3-3, `pdlc-engine-distribution`).** `docs/ideas/halt-hardening-followups.md`
+landed on `feat-pdlc-engine-distribution` (commit `75782278`) as self-declared "ideas only — not
+built" field findings from live 0.23.0 consumer runs: (1) an inverted/mislabeled qualifying
+ownership table poisoning `parsePlanOwnership`'s manifest union, and (2) the second item that
+file records. A prose backlog file is not a successor, so those two items were deferred work with
+no owner. This row is that owner, and the file is its input. `Order 22` because values are
+allocated and never reused and 21 is the highest ever issued. Status `blocked`, `Depends-On —`:
+nothing gates it but the REQ itself, whose `REQ Path` above is still a placeholder — no REQ exists
+at that path yet, and one must be authored before the row can be picked up (row 8's precedent).
+Mechanically guarded by `pdlc/engine/__tests__/deferral-binding.test.js`, which reds on any
+tracked `docs/ideas/*.md` file that no queue row and no REQ names.
 
 **Row 21 (`pdlc-learnings-injection`) added 2026-08-10 from consumer-run feedback.** The
 `regime-ledger` consumer completed a full end-to-end run of `wheel-paper-portfolio` (~40 review
