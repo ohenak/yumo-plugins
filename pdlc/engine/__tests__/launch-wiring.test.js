@@ -377,6 +377,23 @@ describe("PM F-02: the resolution hop is on the path `pdlc dev` takes", () => {
         "It will inherit its refusal wording there unless launchMoveFor gives it a " +
         "proceed variant (as store.empty-in-place does). Choose wording, then add it here.",
     );
+
+    // CR v4 TE F-02 — the other direction. The subtraction above reddens on
+    // an id the resolver declares and the refusing set omits; it says
+    // nothing about an id the refusing set carries and the resolver never
+    // declares. That member is inert rather than wrong, but it is dead
+    // config in a closed set whose only job is to partition an enumeration,
+    // and nothing else in the suite would name it. Set-equality in both
+    // directions is the standard the packed-set and catalogue oracles
+    // already hold themselves to.
+    const declaredSet = new Set(declared);
+    const orphaned = [...REFUSING_REFUSAL_IDS].filter((id) => !declaredSet.has(id)).sort();
+    assert.deepEqual(
+      orphaned,
+      [],
+      "REFUSING_REFUSAL_IDS carries an id no refuse(…) call site in lib/resolve-version.mjs " +
+        "produces. It is dead config: remove it, or restore the refusal that declared it.",
+    );
   });
 
   test("a usage error is answered as a usage error, not as a message about the version store", async () => {
