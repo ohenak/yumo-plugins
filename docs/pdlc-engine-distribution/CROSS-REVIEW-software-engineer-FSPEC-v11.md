@@ -86,6 +86,34 @@ Only the PLAN leg remains open. This document remains a faithful compression of 
 
 ## 4. Findings
 
+No finding against the FSPEC. Both findings are about where the erratum was sent, not about this
+document's content.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|-------------|
+| F-01 | Medium | Process | The erratum round was routed to the FSPEC, but both items are defects in `PLAN-pdlc-engine-distribution.md` (rows T17 `:192`, T49 `:222`) and the anchors given confirm it. No FSPEC edit could land them; none did. Re-file against the PLAN — see the `ERRATUM: PLAN:` lines below. Not High against *this* document, because re-opening the FSPEC would dispatch its author to edit text that is already correct (BR-7.7 `:548`, AT-3.4 `:784-786`), and the round budget would be spent producing churn | routing, not a section |
+| F-02 | Low | Process | The item text cites bare line anchors (`:192`, `:222`) with no filename. DEC-DOC-01 asks for a raw `file:line` anchor; a file-qualified anchor would have made the mis-route visible at dispatch time rather than one confirmation round later. Recommend erratum items always carry the file path, since the item travels to a *different* document than the one it was found in | DEC-DOC-01 |
+
+### Re-filed against the PLAN
+
+Batched in one pass rather than one per round, per the existing-code-claim convention — the two
+routed items plus two more instances of the same stale framing found while checking them, so the
+PLAN lands one fix instead of four:
+
+```
+ERRATUM: PLAN: T17's row (PLAN:192) describes the tag gate as a "`publish.yml`/`pr-tests.yml` gate-command set-equality". FSPEC BR-7.7 and the shipped carrier assert a union over ALL PR-gate files' gate jobs (ci-arrangement.test.js:686-695 iterates PR_GATE_FILES), which at HEAD is pr-tests.yml AND fixture-machine.yml. Restate as the union over §5.1's file column, trigger-derived, not a two-file pair. EXPECT-TOKEN: PR-gate files
+ERRATUM: PLAN: T49's row (PLAN:222) describes `gate` as "the five PR-gate job bodies duplicated". §5.1 carries six rows across two files since 2026-08-16; publish.yml's gate job duplicates every PR-gate job's body, not five. Drop the fixed count — REQ O-B (REQ:86) makes membership trigger-derived and states no number here is authoritative.
+ERRATUM: PLAN: Batch-safety rule 6 (PLAN:467) says "FSPEC §5.1 asserts set-equality over the five rendered job names in `.github/workflows/pr-tests.yml`". False at HEAD: §5.1's set-equality is over the union of all `on: pull_request` files' job names. The rule's actual content — that no task in §2 may add a job to pr-tests.yml — survives the correction; only its premise needs restating.
+ERRATUM: PLAN: DoD item 14 (PLAN:524) opens "its five rendered job names still satisfy FSPEC §5.1's set-equality". Five names alone no longer satisfy a six-member set-equality. The item's own tail already says the poll "sees six where it saw five", so the item contradicts itself internally; fix the opening clause to say pr-tests.yml's names remain its five CONTRIBUTIONS to the set.
+ERRATUM: PLAN: T50's row (PLAN:231) calls pr-tests.yml's "five rendered names ... BR-7.5's contract". BR-7.5's contract is trigger-membership, and fixture-machine.yml — the very file T50 creates — is now a member (§5.1 row 6), so the parenthetical describes the state T50 itself ends.
+ERRATUM: TSPEC: §12.1's sequencing note (TSPEC:1991) carries the same stale two-file framing — "the `publish.yml`/`pr-tests.yml` command equality". Same correction as PLAN T17: the equality is over the union of PR-gate files' gate-job commands (§8.5, BR-7.7).
+```
+
+None of these are implementation defects. `ci-arrangement.test.js`, `publish.yml` and
+`fixture-machine.yml` at HEAD already do the right thing, and both PLAN rows are marked `✅`. This
+is stale plan prose describing shipped work incorrectly — cheap to fix, but worth fixing, because
+the PLAN is what a later reader reconstructs intent from.
+
 ## 5. Questions
 
 ## 6. Positive Observations
