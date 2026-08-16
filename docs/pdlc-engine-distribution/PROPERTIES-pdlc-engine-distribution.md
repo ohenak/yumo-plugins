@@ -321,7 +321,10 @@ about, and AC-5.5's pin case is carried by PROP-VER-5 (`version.pin-missing`) wi
 -11 reinforcing it, not here. The state is
 nonetheless observed: it is PROP-LAUNCH-4's resolution state (b), where an empty store reports the
 launcher's own triple with `mode: "unresolved"` and carries this refusal text as a **notice**, and the
-triple it reports there is AT-1.6's. Neither AT-5.5's pin-missing fixture nor AT-1.3's two
+triple it reports there has the three members AT-1.6 pins (engine version, declared range, installed
+plugin version — FSPEC's **AT-1.6** *(AC-1.4)* entry). That is a statement about the triple's shape,
+not a second carrier claim: AT-1.6's carrier is **PROP-LAUNCH-5 alone**, per this section's AT-1.6
+row above. Neither AT-5.5's pin-missing fixture nor AT-1.3's two
 plugin-handshake refusal states is this property's observation site; PROP-PACK-12
 (licence atomicity) traces to N-2 / O-8 blocker 3 and PLAN DoD item 16; PROP-CAT-1, PROP-CAT-2 and
 PROP-CAT-4 trace to TSPEC §10.3 and constrain the *shape* of the work rather than a criterion;
