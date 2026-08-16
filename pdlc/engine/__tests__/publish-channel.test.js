@@ -435,6 +435,67 @@ test(
   },
 );
 
+// ─── T49-followup-2: runPublish must call channel.publish with the resolved on-disk tarball
+// path, not a name+version-synthesized filename (three real CI publish runs failed because
+// `runPublish` never received `tarballPath` and constructed `${name}-${version}.tgz` instead —
+// which does not match npm's scope-normalized on-disk filename, so `npm publish` silently
+// reinterpreted the nonexistent path as a registry spec, an E404 on the package name rather
+// than a file-not-found error). This mirrors T49-followup's scoped-report/normalized-disk
+// fixture, but asserts the *publish call's* first argument, not just `tarballPathFromPackResult`
+// in isolation — the earlier tests passed while this bug shipped three times.
+
+test(
+  "T49-followup-2: runPublish forwards the resolved on-disk tarball path (not a synthesized name) to channel.publish",
+  async () => {
+    const { runPublish, tarballPathFromPackResult } = await loadPreflight();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-tarball-runpublish-"));
+    try {
+      const onDiskName = "kaneho-pdlc-engine-1.2.3.tgz";
+      const onDiskPath = path.join(dir, onDiskName);
+      fs.writeFileSync(onDiskPath, "fake tarball bytes");
+      const packResultPath = path.join(dir, "pack-result.json");
+      // npm pack --json reports the scoped filename, which never exists on disk verbatim —
+      // exactly the shape that broke production.
+      fs.writeFileSync(
+        packResultPath,
+        JSON.stringify([{ filename: "@kaneho/pdlc-engine-1.2.3.tgz" }]),
+      );
+
+      const tarballPath = tarballPathFromPackResult(packResultPath);
+      assert.equal(tarballPath, onDiskPath, "sanity: resolves to the scope-normalized on-disk file");
+
+      const channel = fakePublishChannel();
+      const log = [];
+      const result = await runPublish({
+        gateConclusion: "success",
+        tag: "engine-v1.2.3",
+        packageVersion: "1.2.3",
+        pluginCompatRange: "^1.0.0",
+        pluginVersion: "1.4.0",
+        channel,
+        name: "pdlc-engine",
+        tarballPath,
+        tarballBytes: readFileSync(tarballPath),
+        secretToken: "npm_fake-token-for-test",
+        sentinel: SENTINEL,
+        existingVersionMode: "fail",
+        log,
+      });
+
+      assert.equal(result.conclusion, "success");
+      assert.equal(channel.calls.publish.length, 1, "exactly one publish call");
+      assert.equal(
+        channel.calls.publish[0].tarball,
+        onDiskPath,
+        "channel.publish must receive the real resolved on-disk tarball path, not a " +
+          "name+version-synthesized filename",
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
 // ─── fixture sanity: the S-5 stub itself, independent of the not-yet-created module above ──
 
 test("publish channel — fakePublishChannel records publish calls and reports existence (fixture sanity, T03 S-5)", async () => {
