@@ -58,7 +58,7 @@ jobs:
 
       - name: Unit tests
         working-directory: pdlc/workflows
-        run: npm test
+        run: npm run test:coverage
 
       - name: Install engine dependencies
         working-directory: pdlc/engine

@@ -72,7 +72,13 @@ jobs:
         # A `globalTeardown` failure (the run-wide capability-skip comparator) is reported
         # AFTER jest's summary and is not reflected in it, so this step must be judged by
         # npm's exit code — which it is, since bash `set -e` semantics apply per step.
-        run: npm test
+        #
+        # `test:coverage` is `c8 npm test`: the same suite, plus the check-coverage floor
+        # declared in pdlc/workflows/package.json. jest's own --coverage reports 0% for
+        # these modules because under --experimental-vm-modules they are evaluated as ESM
+        # through jest's vm-module path; c8 reads V8's coverage and sees them
+        # (CODE_REVIEW v1 §1-2).
+        run: npm run test:coverage
 
   engine-tests:
     name: Engine tests (${{ matrix.os }})

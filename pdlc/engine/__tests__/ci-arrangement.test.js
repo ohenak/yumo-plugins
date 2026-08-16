@@ -285,6 +285,28 @@ test("ci arrangement — pr-tests.yml", async (t) => {
     );
   });
 
+  await t.test("unit-tests runs the workflows suite under coverage (CODE_REVIEW v1 §1-2)", () => {
+    const unitBlock = blocks["unit-tests"];
+    assert.ok(unitBlock, "unit-tests job must exist");
+    assert.match(
+      unitBlock,
+      /working-directory:\s*pdlc\/workflows/,
+      "unit-tests must run with working-directory: pdlc/workflows"
+    );
+    // `npm test` alone reported no coverage at all for the workflows modules this
+    // feature edits, so "≥85% branch" could not be positively established for them
+    // (CODE_REVIEW v1 §1-2). `test:coverage` is `c8 npm test` with a check-coverage
+    // floor declared in pdlc/workflows/package.json: it runs the same suite and
+    // additionally fails the job when the floor is breached, so the instrumentation
+    // is a gate rather than a report nobody reads.
+    assert.match(
+      unitBlock,
+      /\bnpm run test:coverage\b/,
+      "unit-tests must run `npm run test:coverage`, not bare `npm test` — otherwise the " +
+        "declared coverage floor never runs anywhere and the numbers are a one-off measurement"
+    );
+  });
+
   await t.test("engine-tests job body is npm ci + npm test on pdlc/engine, nothing else", () => {
     const engineBlock = blocks["engine-tests"];
     assert.ok(engineBlock, "engine-tests job must exist");
