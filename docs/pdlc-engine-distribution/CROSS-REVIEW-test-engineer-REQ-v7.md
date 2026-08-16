@@ -105,3 +105,7 @@ DEFERRED: refresh FSPEC §5.2's and F-3 step 5's stale quotations of superseded 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 3, "low": 3}
+
+APPROVAL-HASH: sha256:6fc7a382654a530e553721e9995a94f4406248b813768cc18da1c4a3cabcf51a
+APPROVAL-HASH-NORMALIZED: sha256:e97455fbf92efb1c2793fbed9545b523a87d3a334cf1822fa48779a2bb4e9678
+REVIEWED-COMMIT: 3049958c693dff3f55922c2f9f4bfa1315309043
