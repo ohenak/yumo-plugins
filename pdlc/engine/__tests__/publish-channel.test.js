@@ -70,6 +70,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
+import * as fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -351,6 +353,85 @@ test(
     assert.equal(excluded.ok, false);
     assert.match(excluded.message, /\^1\.0\.0/, "names the declared range");
     assert.match(excluded.message, /2\.0\.0/, "names the plugin version (T-1b)");
+  },
+);
+
+// ─── tarballPathFromPackResult: scoped-tarball-filename drift (wave-16 CI failure) ──────────
+//
+// `npm publish` was handed `@kaneho/pdlc-engine-0.1.0.tgz`, a path that never existed on disk
+// (npm always writes the scope-normalized form, `kaneho-pdlc-engine-0.1.0.tgz`) — npm silently
+// reinterpreted the nonexistent path as a registry spec instead of a file, an E404 GET on the
+// package name, not a file-not-found error. `tarballPathFromPackResult` must resolve either
+// filename shape `npm pack --json` may report, verbatim or scope-normalized, whichever one is
+// actually on disk, and refuse loudly, naming both tried paths, when neither is.
+
+test(
+  "T49-followup: tarballPathFromPackResult resolves a scope-normalized on-disk tarball when npm pack --json reports the scoped filename",
+  async () => {
+    const { tarballPathFromPackResult } = await loadPreflight();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-tarball-scoped-"));
+    try {
+      const onDiskName = "kaneho-pdlc-engine-0.1.0.tgz";
+      fs.writeFileSync(path.join(dir, onDiskName), "fake tarball bytes");
+      const packResultPath = path.join(dir, "pack-result.json");
+      fs.writeFileSync(
+        packResultPath,
+        JSON.stringify([{ filename: "@kaneho/pdlc-engine-0.1.0.tgz" }]),
+      );
+
+      const resolved = tarballPathFromPackResult(packResultPath);
+      assert.equal(resolved, path.join(dir, onDiskName));
+      assert.equal(existsSync(resolved), true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  "T49-followup: tarballPathFromPackResult resolves an on-disk tarball when npm pack --json reports the filename verbatim",
+  async () => {
+    const { tarballPathFromPackResult } = await loadPreflight();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-tarball-verbatim-"));
+    try {
+      const onDiskName = "kaneho-pdlc-engine-0.1.0.tgz";
+      fs.writeFileSync(path.join(dir, onDiskName), "fake tarball bytes");
+      const packResultPath = path.join(dir, "pack-result.json");
+      fs.writeFileSync(packResultPath, JSON.stringify([{ filename: onDiskName }]));
+
+      const resolved = tarballPathFromPackResult(packResultPath);
+      assert.equal(resolved, path.join(dir, onDiskName));
+      assert.equal(existsSync(resolved), true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  "T49-followup: tarballPathFromPackResult fails loudly naming both tried paths when neither exists on disk",
+  async () => {
+    const { tarballPathFromPackResult } = await loadPreflight();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-tarball-missing-"));
+    try {
+      // No tarball written to `dir` at all — both candidate paths are absent.
+      const packResultPath = path.join(dir, "pack-result.json");
+      fs.writeFileSync(
+        packResultPath,
+        JSON.stringify([{ filename: "@kaneho/pdlc-engine-0.1.0.tgz" }]),
+      );
+
+      assert.throws(
+        () => tarballPathFromPackResult(packResultPath),
+        (err) => {
+          assert.match(err.message, /@kaneho\/pdlc-engine-0\.1\.0\.tgz/, "names the verbatim path tried");
+          assert.match(err.message, /kaneho-pdlc-engine-0\.1\.0\.tgz/, "names the scope-normalized path tried");
+          return true;
+        },
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   },
 );
 
