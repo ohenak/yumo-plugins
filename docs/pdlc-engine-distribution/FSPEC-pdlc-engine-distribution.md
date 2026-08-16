@@ -6,7 +6,7 @@ feature: pdlc-engine-distribution
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.11, `01c27ee4`, re-grounded 2026-08-14 erratum round); `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
+| Upstream | `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.12, `3605092b`; v0.11 re-grounded 2026-08-13, `01c27ee4`); `docs/_decisions/DECISIONS-plugin-distribution.md` (DEC-DIST-05); `docs/_constraints/pdlc-engine-baseline.md` (M-ENG-10…M-ENG-13) |
 | Downstream | TSPEC, PLAN, PROPERTIES for this feature; `pdlc-plugin-retirement` |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md` |
@@ -15,12 +15,11 @@ feature: pdlc-engine-distribution
 |---|---|---|---|---|
 | pdlc | Draft | Claude | 0.8 | 2026-08-16 |
 
-*0.8 (2026-08-16, CODE_REVIEW v1 §3-1/§3-2 + round-8): §5.1 gained row 6 (`fixture-machine.yml`),
-a file column, trigger-derived BR-7.1 scope, trigger-not-filename BR-7.5 and **BR-7.7**. Round-8:
-F-5 step 2 reads a path-filtered member's non-run (SE `F-01`); AT-3.4 names both new
-set-equalities (SE `F-02`/TE `F-04`); F-5's baseline sentence is dated (TE `F-02`); AT-1.6
-compares triple **values**, not banner text (SE `F-05`); `E-22`/`BR-8.2` say **Workflow members**
-(SE `F-07`/TE `F-02`).*
+*0.8 (2026-08-16, CODE_REVIEW v1 §3-1/§3-2, round-8): §5.1 gained row 6 (`fixture-machine.yml`), a
+file column, trigger-derived BR-7.1 scope, trigger-not-filename BR-7.5, **BR-7.7**. Round-8:
+F-5 step 2 reads a path-filtered non-run (SE `F-01`); AT-3.4 names both new
+set-equalities (SE `F-02`/TE `F-04`); F-5's baseline is dated (TE `F-02`); AT-1.6 compares
+values, not banner text (SE `F-05`); `E-22`/`BR-8.2` say **Workflow members**.*
 
 *0.7 (2026-08-14, round-6): carried-forward §5.2 items only. The CLI-entry and engine-module rows
 anchor `PK-4`/`PK-4b` and `PK-5`…`PK-19` (SE `F-03`); the CLI-entry note no longer calls its
@@ -256,18 +255,17 @@ taken is announced in the run's own output. Silence is never a permitted outcome
 
 The publish pipeline is **additive**: its own workflow file with its own trigger. It may reuse the
 PR gate's jobs but may not weaken, rename, make conditional, or re-render any member of §5.1
-(C-5), because Phase PUB polls those names literally. Nothing of this kind exists at HEAD:
-at feature start (`89babe8e`, 2026-08-13) `.github/workflows/` held exactly one file
+(C-5), because Phase PUB polls those names literally. Nothing of this kind existed at
+feature start (`89babe8e`, 2026-08-13): `.github/workflows/` held exactly one file
 (`pr-tests.yml`), so every step below is new work.
 
 1. **Trigger** (T-4): a pushed git tag naming an **engine** version. No other trigger publishes.
 2. **Gate check.** Every member of §5.1's expected set must be green on the tagged commit. If any
    member fails, or is absent, or did not run: **nothing is published and the publish workflow run
    is failed** (AC-3.2). "Absent" means a member that should have run and did not: a
-   **path-filtered** member (§5.1 row 6) that produced no check because a PR touched none of its
-   paths is not absent in this sense, and neither a PR poll nor a branch-protection rule may treat
-   it as pending. At a tag the question does not arise — `publish.yml`'s `gate` job runs that
-   member's commands directly (BR-7.7) rather than polling for its check.
+   **path-filtered** member (§5.1 row 6) a PR's paths never triggered is not absent, and no PR
+   poll or branch-protection rule may hold it pending; at a tag `publish.yml`'s `gate` job runs
+   its commands directly (BR-7.7).
    A skipped run and a green-but-inert run are both defects, because neither
    is distinguishable from success by a reader of the runs list.
 3. **Tag/engine-version agreement** (AC-3.6): the tag's version is compared against the **engine**
@@ -606,7 +604,7 @@ literal member list of **TSPEC §5.4's `PK-*` table**, read together with the cl
 above — never a listing of the shipped tree: an oracle that reads `pdlc/engine/lib/` for its
 expectation passes a deleted module, which is the defect this rule exists to catch.
 
-**BR-8.2** R-5/O-10's choice of how the workflow modules get inside the package may not leave
+**BR-8.2** R-5/O-10's choice of how the **Workflow members** get inside the package may not leave
 the anti-fork property (M-ENG-12) unstated. Whatever the TSPEC chooses, the anti-fork oracle is
 either preserved or deliberately restated to distinguish "vendored in the repo" from "vendored in
 a build artefact" — never silently dropped.
@@ -688,7 +686,7 @@ TSPEC's; **that** each item below is present and machine-checkable is fixed here
 | E-19 | A job `name:` interpolates something other than a declared matrix axis | §5.1's gate fails as "unexpandable name expression" — never skipped, never assumed literal | BR-7.3 |
 | E-20 | A required check is renamed, deleted, added, or re-rendered by a matrix edit | §5.1's set-equality fails on the affected alphabet | BR-7.1 |
 | E-21 | Packed tarball contains a `skills/` tree, a `SKILL*.md`, or the test corpus | AC-1.3's equality fails on the addition, not merely on a missing member | BR-8.1 |
-| E-22 | Workflow modules absent from the packed tarball | equality fails at build time, offline — never first observed at a consumer's first dispatch | BR-8.1 |
+| E-22 | Workflow members absent from the packed tarball | equality fails at build time, offline — never first observed at a consumer's first dispatch | BR-8.1 |
 | E-23 | Run halts before emitting a report | the halt artifacts still carry the pair (F-6 step 3); a run that emitted nothing at all fails F-7's conjunct (1) | BR-5.1, BR-6.2 |
 | E-24 | Consumer repo predates this feature | prior artifacts unchanged and un-back-filled; only files enumerated by the run report may differ | BR-5.2, BR-5.3 |
 | E-25 | Plugin version changes between two runs on one machine | the reported pair changes correspondingly; reverting restores it | BR-5.4 |
@@ -732,7 +730,8 @@ heading and is overridden per test where it differs; an unlabelled family is a d
 - **AT-1.6** *(AC-1.4)* **Given:** an installed package. **When:** the version query runs. **Then:**
   output carries all three of engine version, declared range, installed plugin version (the literal
   `not found` when none is installed),
-  and equals the triple in the same run's banner and report (BR-1.5).
+  and the triple's **values** equal those the same run's banner and report carry (BR-1.5),
+  as values, not rendered text (the banner prefixes each with `v`).
 
 ### AT-2 — Install and upgrade **[fixture]** — AT-2.1, AT-2.3, AT-2.4, AT-2.5 and AT-2.6 each run against a constructed machine fixture (clean container image, or `npm pack` into a temp prefix with `PATH` scoped to it), never the maintainer's own machine; AT-2.2 is **[auto]**
 
@@ -781,7 +780,10 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   output names N. Both branches are exercised, one per stub configuration.
 - **AT-3.4** *(AC-3.4, §5.1)* **Who:** verifier, offline. **Given:** the repo's workflow files.
   **When:** authored `name:` strings are read and declared matrix axes expanded locally. **Then:**
-  authored set equals §5.1's authored column and expanded set equals its rendered column;
+  authored set equals §5.1's authored column and expanded set equals its rendered column; the
+  `pull_request`-triggered files under `.github/workflows/` set-equal §5.1's file column (BR-7.1)
+  and the tag gate's commands set-equal those files' gate-job commands
+  (BR-7.7);
   mutations — rename, delete, add, matrix-axis edit — each fail **when applied to fixture copies
   of the workflow file**, never to the live one (BR-7.6); a `name:` interpolating a non-matrix
   expression fails as "unexpandable" (E-19); a step-level `name:` edit and a publish-workflow job
