@@ -54,7 +54,7 @@ export const WORKFLOW_MEMBERS = [
 
 export const TSPEC_SOURCE_NOTE =
   "expected set's source: TSPEC §5.4's literal `PK-*` table " +
-  "(docs/pdlc-engine-distribution/TSPEC-pdlc-engine-distribution.md §5.4) " +
+  "(docs/completed/pdlc-engine-distribution/TSPEC-pdlc-engine-distribution.md §5.4) " +
   "— never a listing of pdlc/engine/lib/ or the tarball itself";
 
 /**

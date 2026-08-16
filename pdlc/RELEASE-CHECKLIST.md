@@ -240,7 +240,7 @@ REQ/TSPEC both disclose this gap; this section is what discharges it.
 - [ ] Post-merge, on the merge commit, cut the `engine-v0.2.0` tag (`git tag engine-v0.2.0 <merge-sha> && git push origin engine-v0.2.0`).
 - [ ] Verify `.github/workflows/publish.yml` runs green for the tag push (re-runs the PR checks before publishing per `pdlc/engine/scripts/publish-preflight.mjs`).
 - [ ] Verify `npm view @kaneho/pdlc-engine version` resolves to `0.2.0` (and the published `pdlcPairing` field, per `pdlc/README.md`'s install section, reports the matching plugin pairing).
-- [ ] Record the publish as dated evidence in a tracked `EVIDENCE-*.md` under `docs/pdlc-engine-distribution/`, the way `EVIDENCE-BR-3.9.md` recorded `engine-v0.1.0` (BR-3.9/T52).
+- [ ] Record the publish as dated evidence in a tracked `EVIDENCE-*.md` under `docs/completed/pdlc-engine-distribution/`, the way `EVIDENCE-BR-3.9.md` recorded `engine-v0.1.0` (BR-3.9/T52).
 - [ ] **In the same change**, bump `pdlc/engine/package.json` to `0.3.0`. `version-skew.test.js` harvests published versions out of tracked `EVIDENCE-*.md` files and requires HEAD's manifest version to be strictly ahead of every one, so recording `0.2.0`'s publish without the bump turns the engine suite red on the default branch. The two steps are one commit, not two.
 - [ ] Owner: maintainer.
 

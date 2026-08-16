@@ -137,8 +137,8 @@ not yet authored — the REQ carries `ready: false` pending operator review.
 
 ## pdlc-engine-distribution
 
-Upstream: `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.9). Downstream:
-`docs/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` (`FSPEC-EDIST-01`, v0.1).
+Upstream: `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` (v0.9). Downstream:
+`docs/completed/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` (`FSPEC-EDIST-01`, v0.1).
 
 | User story | Requirements | FSPEC |
 |---|---|---|
