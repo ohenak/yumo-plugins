@@ -563,4 +563,62 @@ describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
     expect(commitCall).toBeDefined();
     expect(marked(commitCall[2])).toBe(true);
   });
+
+  // ─── Leg 5 — AGREEMENT, not presence (PM CR v2 F-04) ────────────────────
+  //
+  // Every leg above asks whether the mark APPEARS. That is the weaker half of
+  // AC-5.3: a placement that composed a literal, or that carried a stale
+  // provenance from an earlier run, would satisfy it. The engine-side
+  // agreement oracle exists (`pdlc/engine/__tests__/launch-wiring.test.js`,
+  // "provenance's mode and pin come from the resolution"); this leg makes the
+  // module side say the same thing about the same mark, so a future reader
+  // meeting the weaker oracle first is not told a weaker guarantee.
+  //
+  // Two provenance values differing ONLY in the resolved mode are driven
+  // through the same placement. Each run's message must carry its own mode's
+  // rendering and never the other's — which no literal, and no carried-over
+  // value, can satisfy.
+  it("T42: the mode a commit message carries is the mode that was resolved, not a literal", async () => {
+    const pinned = makePopulatedProvenance({
+      mode: "pin",
+      pin: "1.4.0",
+      line: "pdlc-engine 1.4.0 (plugin 0.9.2, pin 1.4.0)",
+    });
+    const latest = makePopulatedProvenance({
+      mode: "latest",
+      pin: null,
+      line: "pdlc-engine 1.4.0 (plugin 0.9.2, latest)",
+    });
+    // The two renderings must actually differ, or the discrimination below is
+    // vacuous — the same trap `producedKinds`'s positives exist to avoid.
+    expect(pinned.line).not.toBe(latest.line);
+
+    const messageFor = async (provenance) => {
+      const filePath = `${DOCS}/CROSS-REVIEW-software-engineer-REQ-v1.md`;
+      const { calls, _git } = makeRecordingGit({
+        diff: { ok: true, stdout: filePath, stderr: "" },
+      });
+      const disposition = await commitPaths({
+        paths: [filePath],
+        message: "chore(review): record approval anchor",
+        what: "approval anchor append",
+        provenance,
+        _git,
+        _sleep: async () => {},
+        emit: () => {},
+      });
+      expect(disposition).toBe("committed");
+      const commit = calls.find((argv) => argv[0] === "commit");
+      expect(commit).toBeDefined();
+      return commit[2];
+    };
+
+    const pinnedMessage = await messageFor(pinned);
+    const latestMessage = await messageFor(latest);
+
+    expect(pinnedMessage).toContain(pinned.line);
+    expect(pinnedMessage).not.toContain(latest.line);
+    expect(latestMessage).toContain(latest.line);
+    expect(latestMessage).not.toContain(pinned.line);
+  });
 });
