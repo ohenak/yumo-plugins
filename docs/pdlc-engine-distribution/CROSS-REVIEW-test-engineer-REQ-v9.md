@@ -1,57 +1,49 @@
-# Cross-Review: test-engineer — REQ (delta re-review, frozen round)
+# Cross-Review: test-engineer — REQ (delta re-review, round 9)
 
 **Reviewer:** test-engineer
 **Document reviewed:** docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md
 **Date:** 2026-08-16
 **Iteration:** 9
-**Scope:** Delta only. Diff `20c87cd3..HEAD` on the REQ is a single hunk, +11/-0, at
-`REQ:194-204` — a new NG-5 sub-bullet recording the engine's own version bump. Bytes
-approved at v8 are not re-litigated; this pass checks the new bullet's factual claims
-against HEAD and checks that no approved oracle was weakened.
+**Scope:** Delta only. Previously approved at `20c87cd3` (v8, all-clear). One commit has
+touched the REQ since: `3605092b`, +11 / -0, a single new bullet under NG-5 recording the
+engine-side version bump (0.1.0 → 0.2.0) and naming the test that guards it. Everything
+outside that bullet is unchanged approved bytes and was not re-litigated.
 
-## Routed items
+## Delta verification
 
-| Item | Landed? | Evidence |
-|---|---|---|
-| CODE_REVIEW v4 §3-1: HEAD claimed `0.1.0`, a number already published as immutable bytes; REQ should record the bump and the guard | **Yes** | `REQ:194-204` records `pdlc/engine/package.json` 0.1.0 → 0.2.0, names the guard test, and is explicit that this is *not* itself an NG-5 exception (version number, not pipeline semantics) |
-
-## Delta checks
-
-1. **Version claim true at HEAD.** `pdlc/engine/package.json:3` is `"version": "0.2.0"`.
-2. **Published-set claim true.** `docs/pdlc-engine-distribution/EVIDENCE-BR-3.9.md:7-8`
-   records `@kaneho/pdlc-engine@0.1.0` from tag `engine-v0.1.0` at commit
-   `30773d0cf5399b5c2191ea0d76a29851cb99e09f`. The bullet's assertion that the evidence
-   file is a dated record and was not edited holds: the diff touches only the REQ.
-3. **"Packed members changed after publish" is true, not asserted.**
-   `git log 30773d0c..HEAD -- pdlc/engine/bin pdlc/engine/lib pdlc/engine/scripts/postinstall.mjs`
-   returns ten commits including `1e910919` (T48), `6ae256b3` (T46), `10659774`, `57345f02`,
-   `2bf0efae`, `3605092b`. The named task ids are consistent with the log.
-4. **The guard exists and does what the sentence says.**
-   `pdlc/engine/__tests__/version-skew.test.js:78` asserts `!published.has(pkg.version)`
-   (the "equals" arm) and `:94` asserts `compareSemver(pkg.version, highest) === 1`
-   (the "fails to exceed" arm). Both arms are positive assertions on a named value, not
-   absence-only oracles: the failure messages name the offending version and the recorded
-   published set. Suite run at HEAD: 3/3 pass.
-5. **The guard is in the CI gate, not merely in-tree.** `pdlc/engine/package.json:21`
-   `"test": "node __tests__/_run-suite.mjs"`, and the runner spawns `node --test` over the
-   whole `__tests__/` directory (`_run-suite.mjs:50-52`) — directory discovery, so the new
-   file is collected by the `Engine tests (ubuntu-latest)` required check with no
-   registration step to forget. The REQ's word "mechanically" is earned.
-6. **No approved oracle weakened.** The hunk is purely additive inside NG-5's recorded-
-   exception list; AC-2.1/AC-2.2's testable surface is unchanged, and the sibling
-   plugin-side bullet (`REQ:184-193`, `plugin.json` 0.23.0 → 0.23.1, verified at
-   `pdlc/.claude-plugin/plugin.json:4`) still reads true, with `pdlcPluginCompat: "^0.23.0"`
-   (`pdlc/engine/package.json:18`) still containing it.
-7. **NG-5 scope claim is honest.** The bullet declines to call itself an exception and says
-   why. That is the correct reading: a manifest version is not phase graph, review bar,
-   completeness criterion, queue lifecycle or report shape. It does not widen NG-5.
-
-DEFERRED: `publishedVersions` harvests `engine-vX.Y.Z` from *any* tracked `EVIDENCE-*.md` prose, so a future evidence file that names a planned-but-unpublished tag would red the gate before that tag exists; consider narrowing the harvest to a declared field rather than free prose.
+1. **`pdlc/engine/package.json` really is 0.2.0.** `pdlc/engine/package.json:3`. The REQ's
+   "0.1.0 → 0.2.0" is a statement about HEAD, and HEAD agrees.
+2. **The stated cause is true of the repository, not just of the prose.** `engine-v0.1.0`
+   is the only engine tag on the branch, and `git diff engine-v0.1.0..HEAD` over the packed
+   members reports changed bytes in `pdlc/engine/bin/pdlc.mjs`, `lib/catalogue.mjs`,
+   `lib/startup.mjs` (and more) — so the pre-bump state genuinely was HEAD re-claiming a
+   published number. The named tasks exist and own those files: T41 (`PLAN:221`, workflow-root
+   resolver), T43 (`:223`), T45 (`:225`), T46 (`:226`), T48 (`:228`), T50 (`:229`), with the
+   file-ownership rows at `PLAN:350`–`:359` confirming the engine paths.
+3. **The evidence file says what the REQ says it says.** `EVIDENCE-BR-3.9.md:7-8` records
+   `@kaneho/pdlc-engine@0.1.0`, tag `engine-v0.1.0`, commit `30773d0c`. The REQ's "dated
+   record… is not edited" matches how the oracle consumes it (read-only, `git ls-files`).
+4. **The named guard exists and is honest about its own bar.** `version-skew.test.js` carries
+   two assertions matching the REQ sentence one-for-one: `!published.has(pkg.version)`
+   (the "equals" leg) and `compareSemver(pkg.version, highest) === 1` (the "fails to exceed"
+   leg). Both are positive-form oracles — the second asserts an exact comparison value, not
+   `!== -1`, so it cannot be satisfied by an accidental equal. The published set is harvested
+   only from registry-shaped tokens (`{name}@X.Y.Z`, `engine-vX.Y.Z`), with bare version
+   mentions in prose deliberately excluded, so the enumeration cannot be widened by unrelated
+   documentation text.
+5. **Mutation-checked, not just read.** Reverting `package.json` to `0.1.0` and re-running
+   the file takes it from 3 pass / 0 fail to 1 pass / 2 fail; both skew legs go red, and the
+   unrelated §3-2 README leg stays green. The guard the REQ advertises is falsifiable by the
+   exact defect it claims to close. `package.json` was restored; tree clean.
+6. **Nothing approved was weakened.** The bullet is additive, sits inside NG-5's recorded-
+   exception commentary, and states its own boundary ("a version number, not pipeline
+   semantics, so it is not itself an NG-5 exception"). It introduces no acceptance criterion,
+   retires none, and changes no testable surface. No AC, BR or AT text moved.
 
 ## Findings
 
 | ID | Severity | Scope | Finding | Section ref |
-|----|----------|-------|---------|------------|
+|----|----------|-------|---------|-------------|
 | — | — | — | None. | — |
 
 ## Questions
@@ -62,16 +54,16 @@ DEFERRED: `publishedVersions` harvests `engine-vX.Y.Z` from *any* tracked `EVIDE
 
 ## Positive Observations
 
-- The bullet does the thing this round exists to reward: it states a fact, then names the
-  test that keeps the fact from going stale silently. A prose-only "we bumped it" note
-  would have gone stale at the next publish; `version-skew.test.js` makes the next
-  recurrence red instead of unnoticed, and it does so hermetically (tracked evidence, no
-  registry call), so the gate stays deterministic per FSPEC §5.1's CI-determinism premise.
-- Both guard arms are needed and neither is redundant: equality catches re-claiming a
-  published number, ordering catches a downgrade where `@latest` would resolve to bytes
-  newer than HEAD. Testing the two separately means a regression names which one broke.
-- Declining to edit `EVIDENCE-BR-3.9.md` is the right call and is stated as such — the
-  evidence is a dated observation, and the oracle depends on it staying that way.
+- The bullet does the thing that makes version-skew notes durable rather than decorative: it
+  names a mechanical guard in the same breath as the fact. A future reader who doubts the
+  claim can run one file; a future contributor who re-introduces the skew is stopped by CI's
+  `Engine tests` job rather than by this paragraph.
+- Reading the evidence file rather than the registry keeps the oracle hermetic and offline,
+  and the comment block explains why a tag commit is not red on account of its own release —
+  the one false-positive an eager version of this check would have had.
+- The symmetry with the plugin-side note above it is stated explicitly ("the second half of
+  the same reasoning") instead of being left for the reader to infer, which is what keeps
+  NG-5 legible as one argument with two axes rather than two ad-hoc exceptions.
 
 ## Recommendation
 
