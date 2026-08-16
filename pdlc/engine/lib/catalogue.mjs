@@ -101,6 +101,20 @@ export const MESSAGES = Object.freeze({
       "no engine version is installed; run the documented install command to populate " +
       "the version store before running pdlc",
   },
+  // Branch 7's PROCEED variant (PM CR v2 F-02). Branch 7 has two audiences
+  // and they need opposite words. On `--version`/`doctor` nothing runs, so
+  // `store.empty`'s refusal wording ("before running pdlc") is exactly right.
+  // On `dev`/`queue` the shipped launcher is fat, not thin: it runs in place,
+  // stamped `mode: "unresolved"` (see `REFUSING_REFUSAL_IDS` in bin/cli.mjs),
+  // and announcing that run with the refusal's words told the operator the run
+  // was not happening while it happened. AC-5.2 asks for never-silent; it is
+  // this id that makes the announcement name the outcome it accompanies.
+  "store.empty-in-place": {
+    severity: "info",
+    template:
+      "no engine version is installed; running in place as {version} — " +
+      "run `{command}` to populate the version store if you want to pin a version",
+  },
   // TSPEC §6.3 ladder branch 4 / §11 / PROP-VER-5: names both the pinned
   // version and what is actually installed, never falls back.
   "version.pin-missing": {

@@ -288,6 +288,56 @@ describe("PM F-02: the resolution hop is on the path `pdlc dev` takes", () => {
     assert.equal(calls.runMain.length, 1);
   });
 
+  // ── CR v2 PM F-01/F-02: the empty store on a DISPATCHING command ──────
+  //
+  // Branch 7 is the one launcher outcome that departs from TSPEC §6.2's thin
+  // launcher (see `REFUSING_REFUSAL_IDS` in bin/cli.mjs — the shipped artifact
+  // is fat, so "no store entry" means "the only installed engine is the one
+  // already running"). It was also the one arm no leg observed: pin, latest,
+  // dev, refuse and marker were all covered, and the single arm that diverges
+  // from the approved spec was the single arm with no oracle. Errata against
+  // TSPEC §6.2 and DEC-EDIST-03 carry the record half; these two legs carry
+  // the behaviour.
+  test("an empty store on `pdlc dev` runs IN PROCESS, stamped mode: unresolved (AC-5.2, AC-5.5)", async () => {
+    const { calls, exitCode } = await runLaunch(["node", "pdlc", "dev", "docs/f/REQ-f.md", "--cwd", UNPINNED_REPO], {
+      versions: [],
+    });
+
+    // Arm first, by count: an empty store must neither refuse the operator a
+    // run this engine can perform nor spawn a child there is no entry for.
+    assert.equal(calls.runMain.length, 1, "the fat launcher runs in place when the store is empty");
+    assert.equal(calls.exec.length, 0, "there is no store entry to exec — a spawn here would be a bug");
+    assert.notEqual(exitCode, 1, "this arm proceeds; it is not one of the four operator-declaration refusals");
+
+    // The marker is stamped on THIS process before `main` runs, so provenance
+    // reports what actually happened rather than inheriting a stale mode.
+    assert.deepEqual(
+      JSON.parse(calls.runMain[0].marker),
+      { mode: "unresolved", version: null, pin: null },
+      "an unresolved run must say so in the marker both arms stamp provenance through"
+    );
+  });
+
+  test("the empty-store announcement names the run it accompanies, not a run being refused (AC-5.2)", async () => {
+    const { stdout } = await runLaunch(["node", "pdlc", "dev", "docs/f/REQ-f.md", "--cwd", UNPINNED_REPO], {
+      versions: [],
+    });
+
+    // Never silent — the positive half of AC-5.2.
+    assert.match(stdout, /no engine version is installed/, "the operator must be told the store was empty");
+    assert.match(stdout, /running in place as \d+\.\d+\.\d+/, "…and told what is running instead");
+    assert.match(stdout, /npm install -g/, "…and given the remedy that would let a version be pinned");
+
+    // The defect this leg exists to keep closed: branch 7's REFUSAL wording,
+    // reused verbatim on the arm that proceeds, told the operator the run was
+    // not happening while it happened.
+    assert.equal(
+      /before running pdlc/.test(stdout),
+      false,
+      `a proceed notice must not carry the refusal's "do this first" wording. Got:\n${stdout}`
+    );
+  });
+
   test("a usage error is answered as a usage error, not as a message about the version store", async () => {
     const { calls, stderr } = await runLaunch(["node", "pdlc", "dev", "--not-a-flag", "--cwd", UNPINNED_REPO], {
       versions: [],

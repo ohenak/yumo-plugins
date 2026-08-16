@@ -51,6 +51,7 @@ import { buildEngineBlock, stampReport } from "../lib/report.mjs";
 import { resolveVersion } from "../lib/resolve-version.mjs";
 import { readPluginVersion, checkCompat } from "../lib/handshake.mjs";
 import { buildProvenance } from "../lib/provenance.mjs";
+import { message } from "../lib/catalogue.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
@@ -312,7 +313,17 @@ export function launchMoveFor({ decision, storeRoot, engineVersion = pkg.version
     if (REFUSING_REFUSAL_IDS.has(id)) {
       return { action: "refuse", message: decision.announcement, mode: "unresolved", version: null, pin: null };
     }
-    return { action: "in-process", mode: "unresolved", version: null, pin: null, notice: decision.announcement };
+    // The announcement must name the outcome it accompanies (PM CR v2 F-02):
+    // this arm PROCEEDS, so branch 7's refusal wording ("…before running
+    // pdlc") would advise against the very thing being done. Every other
+    // non-refusing refusal keeps its own text — only `store.empty` has a
+    // proceed variant, because it is the only one whose refusal text names a
+    // remedy that must be performed first.
+    const notice =
+      id === "store.empty"
+        ? message("store.empty-in-place", { version: engineVersion, command: INSTALL_COMMAND })
+        : decision.announcement;
+    return { action: "in-process", mode: "unresolved", version: null, pin: null, notice };
   }
   if (decision.kind === "dev") return { action: "in-process", mode: "dev", version: null, pin: null };
 
