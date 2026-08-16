@@ -35,6 +35,16 @@ at `:176`, `pdlc/engine/LICENSE` is present, and `package.json:19` carries
 
 ## Round-2 disposition
 
+All four round-2 findings (0 High, 2 Medium, 2 Low) are resolved. None was
+closed by widening a test.
+
+| Round-2 ID | Sev | Status | Evidence checked at HEAD |
+|---|---|---|---|
+| F-01 | Medium | **Resolved** | The empty-store dispatching arm now has two legs (`launch-wiring.test.js:291-338`, commit `dd7eb185`). They assert the arm *by count* — `runMain` once, `exec` zero, so a spawn against a store with no entry is a bug the leg names — and assert `{mode:"unresolved",version:null,pin:null}` in the marker `runMain` stamps. This was the one launcher arm no oracle observed |
+| F-02 | Medium | **Resolved** | New catalogue id `store.empty-in-place` (`lib/catalogue.mjs:112-118`), selected in `launchMoveFor` only on the proceeding arm (`bin/cli.mjs:320-325`). `--version`/`doctor` keep the refusal wording where it is correct. Verified by running both. The oracle pairs positives (`running in place as \d+\.\d+\.\d+`, `npm install -g`) with the negative (`before running pdlc` absent) on the same path, so it is not absence-only |
+| F-03 | Medium | **Resolved** | `659f8ed2` flips 53 rows; the Status column is now **59 ✅ / 0 ⬚**. I re-derived the flip's evidence independently rather than trusting the changelog — see Method. The two `[gate]` rows are the ones most easily asserted without proof, and both hold |
+| F-04 | Low | **Resolved** | `devModeKinds.test.js` leg 5 (`de512cfe`) drives two provenance values differing *only* in resolved mode through the same placement and asserts each message carries its own rendering and never the other's. It first asserts the two renderings differ, so the discrimination cannot be vacuous. Runs green (6/6). The two suites now say the same thing about the mark |
+
 ## Findings
 
 ## Questions
