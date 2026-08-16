@@ -70,6 +70,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -636,4 +637,138 @@ test("publish channel — fakePublishChannel records publish calls and reports e
   await channel.publish("/tmp/pdlc-engine-1.2.3.tgz", { name: "pdlc-engine", version: "1.2.3" });
   assert.equal(await channel.exists("pdlc-engine", "1.2.3"), true);
   assert.equal(channel.calls.publish.length, 1);
+});
+
+// ─── PF-3 / PF-4 / PF-5: the three gate checks that had no legs at all ─────────────────────
+//
+// CR round-1 TE F-03 (PROP-REGR-6). `publish-preflight.mjs` sat at 81.58 % branch against the
+// 85 % floor, and the shortfall was not a rounding matter: `checkManifestPublishable` (PF-3),
+// `checkPackedSet` (PF-4) and `checkVendorManifest` (PF-5) — three of the five preflight
+// members `publish.yml` gates a release on — had no direct test of any kind. Only `runPublish`'s
+// happy path had ever driven them, and only in its green configuration, so every refusal arm
+// in all three was unexercised: a PF check stuck on `{ok: true}` would have shipped.
+
+test("PF-3: checkManifestPublishable accepts a publishable manifest and refuses each blocker (AT-3.x)", async () => {
+  const { checkManifestPublishable } = await loadPreflight();
+  // Read from the recorded decision, never a literal invented here (N-6): the production
+  // caller reads this same file, so a scope change moves both together or fails loudly.
+  const decisionsText = readFileSync(
+    path.join(REPO_ROOT, "docs", "_decisions", "DECISIONS-plugin-distribution.md"),
+    "utf8",
+  );
+  const scope = /^## DEC-DIST-06: The npm scope is `(@[a-z0-9-]+)`/m.exec(decisionsText)?.[1];
+  assert.ok(scope, "DECISIONS must record an npm scope for this oracle to mean anything");
+  const green = { name: `${scope}/pdlc-engine`, license: "MIT" };
+
+  assert.deepEqual(checkManifestPublishable(green, decisionsText), { ok: true, message: null });
+
+  // Each blocker in turn, asserted on the message naming its own cause — not merely on
+  // `ok === false`, which a check stuck on "always refuse" would also satisfy.
+  const privateResult = checkManifestPublishable({ ...green, private: true }, decisionsText);
+  assert.equal(privateResult.ok, false);
+  assert.match(privateResult.message, /private/);
+
+  for (const license of [undefined, "UNLICENSED"]) {
+    const r = checkManifestPublishable({ ...green, license }, decisionsText);
+    assert.equal(r.ok, false, `license ${String(license)} must be refused`);
+    assert.match(r.message, /SPDX/);
+  }
+
+  const noScope = checkManifestPublishable(green, "# a decisions file recording no scope\n");
+  assert.equal(noScope.ok, false);
+  assert.match(noScope.message, /scope/);
+
+  const wrongName = checkManifestPublishable({ ...green, name: "@someone-else/pdlc-engine" }, decisionsText);
+  assert.equal(wrongName.ok, false);
+  assert.match(wrongName.message, new RegExp(`${scope}/pdlc-engine`));
+  assert.match(wrongName.message, /someone-else/, "the message must name the offending value too");
+});
+
+test("PF-4: checkPackedSet is both-directions set-equality, and LICENSE is conditional on N-2", async () => {
+  const { checkPackedSet } = await loadPreflight();
+  const recorded = "**N-2 recorded:** yes\n";
+
+  // The expected set is recovered from the check's own refusal rather than restated here:
+  // duplicating TSPEC §5.4's member list in the test would make the oracle agree with itself
+  // by construction and stop noticing drift in the production list.
+  const emptyResult = checkPackedSet([], recorded);
+  assert.equal(emptyResult.ok, false);
+  const expected = JSON.parse(/Missing: (\[.*\])\./.exec(emptyResult.message)[1]);
+  assert.ok(expected.length > 5, `expected packed set looks degenerate: ${JSON.stringify(expected)}`);
+  assert.ok(expected.includes("package.json") && expected.includes("bin/pdlc.mjs"));
+
+  assert.deepEqual(checkPackedSet(expected, recorded), { ok: true, message: null });
+
+  // Direction 1: a missing member is named as missing.
+  const dropped = expected[expected.length - 1];
+  const missingResult = checkPackedSet(expected.filter((m) => m !== dropped), recorded);
+  assert.equal(missingResult.ok, false);
+  assert.match(missingResult.message, new RegExp(`Missing: .*${dropped.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+
+  // Direction 2: an extra member is named as unexpected. A one-directional check (superset
+  // test) would pass this and let a stray secret file ship.
+  const extraResult = checkPackedSet([...expected, ".npmrc"], recorded);
+  assert.equal(extraResult.ok, false);
+  assert.match(extraResult.message, /Unexpected: .*\.npmrc/);
+
+  // LICENSE is gated on the `**N-2 recorded:**` line, never on the file's presence in the
+  // tree (DECISIONS-plugin-distribution.md). The difference between the two expected sets
+  // must be exactly {LICENSE}, asserted as a set difference rather than a literal list.
+  const unrecorded = checkPackedSet([], "**N-2 recorded:** no\n");
+  const expectedWithout = JSON.parse(/Missing: (\[.*\])\./.exec(unrecorded.message)[1]);
+  assert.deepEqual(
+    expected.filter((m) => !expectedWithout.includes(m)),
+    ["LICENSE"],
+  );
+  assert.deepEqual(expectedWithout.filter((m) => !expected.includes(m)), []);
+});
+
+test("PF-5: checkVendorManifest verifies vendored bytes against the canonical sources (AF-2)", async () => {
+  const { checkVendorManifest } = await loadPreflight();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-pf5-"));
+  const vendorDir = path.join(root, "vendor");
+  const sourceDir = path.join(root, "source");
+  const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  const write = (dir, name, body) => {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name), body);
+  };
+  const manifest = (modules) =>
+    fs.writeFileSync(path.join(vendorDir, "VENDOR-MANIFEST.json"), JSON.stringify({ modules }));
+
+  try {
+    // Green: hashes agree with both the vendored copy and the canonical source.
+    const body = "export const x = 1;\n";
+    write(vendorDir, "orchestrate-dev.js", body);
+    write(sourceDir, "orchestrate-dev.js", body);
+    manifest([{ name: "orchestrate-dev.js", sha256: hash(body) }]);
+    assert.deepEqual(checkVendorManifest(vendorDir, sourceDir), { ok: true, message: null });
+
+    // No manifest at all — the "did prepack run?" arm.
+    fs.rmSync(path.join(vendorDir, "VENDOR-MANIFEST.json"));
+    const absent = checkVendorManifest(vendorDir, sourceDir);
+    assert.equal(absent.ok, false);
+    assert.match(absent.message, /prepack/);
+
+    // A manifest entry with no canonical source behind it.
+    manifest([{ name: "orchestrate-dev.js", sha256: hash(body) }, { name: "ghost.js", sha256: hash("") }]);
+    const ghost = checkVendorManifest(vendorDir, sourceDir);
+    assert.equal(ghost.ok, false);
+    assert.match(ghost.message, /ghost\.js/);
+
+    // Vendored copy drifted from the canonical source: the manifest still agrees with one
+    // side, so a check comparing only manifest-to-vendored would pass this.
+    write(sourceDir, "orchestrate-dev.js", "export const x = 2;\n");
+    manifest([{ name: "orchestrate-dev.js", sha256: hash(body) }]);
+    const drifted = checkVendorManifest(vendorDir, sourceDir);
+    assert.equal(drifted.ok, false);
+    assert.match(drifted.message, /disagrees/);
+
+    // Empty/absent `modules` is vacuously green by design (nothing claimed, nothing to
+    // verify) — recorded here so the vacuity is a decision on the record, not an accident.
+    manifest(undefined);
+    assert.deepEqual(checkVendorManifest(vendorDir, sourceDir), { ok: true, message: null });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
