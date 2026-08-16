@@ -121,3 +121,8 @@ FINDING: Low | delta | nonlocal | Front-matter upstream cell (`FSPEC:9`) | Re-gr
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:6c1414c1a97f1306b6bb7afecf9942b6bc0d1566f483a1f6de618e4472022dd4
+APPROVAL-HASH-NORMALIZED: sha256:e2e799b4df6c22afee2d7521fc59e0ab47731b0665dc715ce93d8ed97397e326
+REVIEWED-COMMIT: e63bcad0b32df8cde8a1d0a991bc771fb578fc54
+UPSTREAM-STATE: REQ sha256:04d2c39df40e7ef7092fb4081ac4bcf29df47ea23305ba88d2c4da567666157f
