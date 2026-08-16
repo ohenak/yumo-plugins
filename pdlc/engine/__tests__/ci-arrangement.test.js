@@ -296,10 +296,10 @@ test("ci arrangement — pr-tests.yml", async (t) => {
     );
     // `npm test` alone reported no coverage at all for the workflows modules this
     // feature edits, so "≥85% branch" could not be positively established for them
-    // (CODE_REVIEW v1 §1-2). `test:coverage` is `c8 npm test` with a check-coverage
-    // floor declared in pdlc/workflows/package.json: it runs the same suite and
-    // additionally fails the job when the floor is breached, so the instrumentation
-    // is a gate rather than a report nobody reads.
+    // (CODE_REVIEW v1 §1-2). `test:coverage` runs two stages with the declared floor
+    // enforced in aggregate and branch ≥85% enforced per module: it runs the suite
+    // and additionally verifies per-module coverage, so the instrumentation is a gate
+    // rather than a report nobody reads.
     assert.match(
       unitBlock,
       /\bnpm run test:coverage\b/,

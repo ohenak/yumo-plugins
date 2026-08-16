@@ -110,7 +110,7 @@ export async function runPublish({
     return { conclusion: "failure", published: false, version: null, message };
   };
 
-  // The five §5.1 gate jobs' combined result (re-run at the tag, §8.2).
+  // The §5.1 gate jobs' combined result (re-run at the tag, §8.2).
   if (gateConclusion !== "success") {
     return fail(`the PR-gate re-run did not succeed (gateConclusion: ${gateConclusion})`);
   }
