@@ -234,14 +234,36 @@ export function readResolvedMarker(env = process.env) {
  * engine's location — and returning the decision alongside the facts
  * `doctor` reports (§6.2).
  */
-export function resolveForLaunch({ argv = [], cwd = process.cwd(), env = process.env, fs = nodeFs, homedir = os.homedir() } = {}) {
+export function launchInputs({ argv = [], cwd = process.cwd(), env = process.env, fs = nodeFs, homedir = os.homedir() } = {}) {
   const storeRoot = storeRootFrom(env, homedir);
   const { versions: listing } = listVersions(fs, storeRoot);
-  const configResult = readEngineConfig({ cwd });
   const dev = hasFlag(argv, "dev");
   const discovered = resolvePluginRoot({ devDeclared: dev, env, override: readFlag(argv, "plugin-root"), fs });
-  const location = engineLocationFrom({ pluginRoot: discovered.ok ? discovered.root : null, fs });
-  return { decision: resolveVersion({ listing, configResult, dev, env, location }), storeRoot, listing, location, configResult };
+  return {
+    listing,
+    configResult: readEngineConfig({ cwd }),
+    dev,
+    storeRoot,
+    location: engineLocationFrom({ pluginRoot: discovered.ok ? discovered.root : null, fs }),
+  };
+}
+
+/**
+ * `launchInputs` plus the ladder run over them. Kept separate from
+ * `launchInputs` because §6.2's two exempt commands need the INPUTS but must
+ * NOT consume a decision from here: `runVersionDoctor` runs the ladder
+ * itself, and calling it twice would let the two answers drift.
+ */
+export function resolveForLaunch(opts = {}) {
+  const inputs = launchInputs(opts);
+  const decision = resolveVersion({
+    listing: inputs.listing,
+    configResult: inputs.configResult,
+    dev: inputs.dev,
+    env: opts.env || process.env,
+    location: inputs.location,
+  });
+  return { ...inputs, decision };
 }
 
 /**
@@ -344,9 +366,49 @@ async function cmdSpikeSdk() {
  * `pdlc doctor` — startup checks only. Dispatches NOTHING: no transport is
  * constructed and no model is contacted, so it is safe on a machine with no auth.
  */
+/**
+ * §6.2's resolve-but-never-refuse exemption, rendered. Shared by `--version`
+ * and `doctor`: ONE call into `runVersionDoctor`, whose own `command`
+ * argument decides whether the store-root/installed/install-command trio is
+ * appended. Never `exec`s and never exits non-zero on the thing it reports.
+ */
+function versionDoctorFor(argv, command) {
+  const inputs = launchInputs({ argv, cwd: path.resolve(readFlag(argv, "cwd") || process.cwd()) });
+  return runVersionDoctor({
+    command,
+    listing: inputs.listing,
+    configResult: inputs.configResult,
+    dev: inputs.dev,
+    env: process.env,
+    location: inputs.location,
+    storeRoot: inputs.storeRoot,
+    installCommand: INSTALL_COMMAND,
+    engineVersion: pkg.version,
+    pluginRoot: inputs.location.pluginRoot,
+    fs: nodeFs,
+    pluginCompat: pkg.pdlcPluginCompat,
+  });
+}
+
+/**
+ * `pdlc --version` (AC-1.4). Reports the resolved engine version, the
+ * declared compat range and the plugin version it finds — through the same
+ * builder `doctor` uses, so the two can never disagree.
+ */
+async function cmdVersion(argv) {
+  const out = versionDoctorFor(argv, "version");
+  for (const line of out.lines) console.log(line);
+  process.exitCode = out.exitCode;
+}
+
 async function cmdDoctor(argv) {
+  const version = versionDoctorFor(argv, "doctor");
+  for (const line of version.lines) console.log(line);
+  console.log("");
+
   const result = startupFor(argv);
   for (const line of result.banner) console.log(line);
+  for (const notice of result.notices || []) console.log(typeof notice === "string" ? notice : notice.text);
   console.log("");
   for (const r of result.rungs) {
     const label = r.state === "pass" ? "PASS" : r.state === "fail" ? "FAIL" : "SKIP";
@@ -358,7 +420,13 @@ async function cmdDoctor(argv) {
     console.log("doctor: all checks passed. No dispatch was performed.");
   } else {
     console.log(result.reason);
-    console.log(`Override the plugin root with --plugin-root <path> or ${PLUGIN_ROOT_ENV}=<path>.`);
+    // DEC-EDIST-04 makes the env var inert unless dev-mode is declared, so
+    // offering it unqualified sent a refused operator down a path that does
+    // nothing. Both remedies are stated with the condition each needs.
+    console.log(
+      `Override the plugin root with --plugin-root <path>, or with ${PLUGIN_ROOT_ENV}=<path> ` +
+        `together with --dev (the variable alone is ignored — DEC-EDIST-04).`
+    );
     process.exitCode = 1;
   }
 }
@@ -791,6 +859,14 @@ export async function main(argv = process.argv, deps = defaultDeps) {
     case "spike:sdk":
       // BR-CMD-1: exempt diagnostic, no flag-shape gate.
       await cmdSpikeSdk();
+      break;
+    case "--version":
+    case "-v":
+    case "version":
+      // BR-CMD-1's exemption shape: AC-1.4 is unconditional on an installed
+      // package, so the one command that reports the version cannot itself
+      // be gated behind a flag table.
+      await cmdVersion(rest);
       break;
     case "doctor":
       if (checkFlags(rest, "doctor")) await cmdDoctor(rest);
