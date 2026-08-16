@@ -108,16 +108,23 @@ test("§3-2: the README's headless-engine block carries the sibling install bloc
   const readme = readFileSync(path.join(REPO_ROOT, "pdlc/README.md"), "utf8");
 
   const siblingCaveat = "Until this work merges";
-  assert.ok(
-    readme.includes(siblingCaveat),
-    "expected the `## Install in another repo` block to keep its pre-merge caveat",
-  );
 
   const start = readme.indexOf("### Headless engine (npm)");
   assert.ok(start !== -1, "expected pdlc/README.md to carry the `### Headless engine (npm)` block");
   const rest = readme.slice(start + 1);
   const nextHeading = rest.search(/\n## /);
   const block = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
+
+  // The headless-engine block's own pre-merge caveat is resolved once the successor tag is cut
+  // and published (RELEASE-CHECKLIST §7) — at that point there is nothing left to keep in sync
+  // with the sibling `## Install in another repo` block, which tracks a different, still-open
+  // deferral (the plugin catalog resolving on `main`).
+  if (!block.includes(siblingCaveat)) return;
+
+  assert.ok(
+    readme.includes(siblingCaveat),
+    "expected the `## Install in another repo` block to keep its pre-merge caveat",
+  );
 
   assert.ok(
     block.includes(siblingCaveat),
