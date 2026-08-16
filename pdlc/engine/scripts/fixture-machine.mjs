@@ -731,18 +731,56 @@ function legVersionLadder() {
   return { name: "version-ladder", violations };
 }
 
+// `bin/pdlc.mjs`'s literal Node-floor guard message (AC-2.4, AC-2.5); kept
+// as one source of truth here rather than re-derived so a wording change in
+// the guard is a loud test/leg failure instead of a silent classifier
+// drift. Deliberately does not hardcode the found-version suffix — that
+// varies with the image's exact Node build (§9.3).
+const NODE_FLOOR_MESSAGE = "pdlc requires Node >= 20; found ";
+
+// A stack-trace frame marker (V8's "    at ..." lines, or Node's internal
+// module paths) — AT-2.5 requires the refusal to be a *named message*, not
+// an uncaught-exception dump.
+const STACK_TRACE_MARKER = /(^|\n)\s*at\s|node:internal/;
+
+/**
+ * Pure classifier for AT-2.5's container leg (TE-observed hazard: a
+ * throw-on-nonzero exec makes the *expected* refusal look like a tooling
+ * failure). The leg passes iff the guard actually refused (non-zero exit),
+ * named itself in the combined output, and printed no stack trace.
+ *
+ * @param {{status: number|null, stdout?: string, stderr?: string}} result
+ * @returns {string[]} violations; empty means pass
+ */
+export function checkContainerFloorRefusal(result) {
+  const violations = [];
+  const combined = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
+
+  if (!result || result.status === 0 || result.status === null || result.status === undefined) {
+    violations.push(`node:18-alpine leg did not refuse (exit status ${result?.status ?? "<none>"}); observed output: ${combined}`);
+    return violations;
+  }
+  if (!combined.includes(NODE_FLOOR_MESSAGE)) {
+    violations.push(`node:18-alpine leg refused (exit ${result.status}) but did not print the named floor message ${JSON.stringify(NODE_FLOOR_MESSAGE)}; observed output: ${combined}`);
+  }
+  if (STACK_TRACE_MARKER.test(combined)) {
+    violations.push(`node:18-alpine leg's refusal included a stack trace, not just a named message: ${combined}`);
+  }
+  return violations;
+}
+
 /** AT-2.5: the container leg — a below-floor Node runner refuses cleanly (§9.3). */
 function legContainer() {
-  const out = execFileSync(
+  // spawnSync (not execFileSync): a below-floor Node's non-zero exit here
+  // is the *expected* observation under test, not a tooling failure — a
+  // throw-on-nonzero exec would turn AT-2.5's pass case into an uncaught
+  // `Error: failed: docker run ...` for the whole workflow.
+  const result = spawnSync(
     "docker",
     ["run", "--rm", "-v", `${REPO_ROOT}:/repo:ro`, "node:18-alpine", "node", "/repo/pdlc/engine/bin/pdlc.mjs", "--version"],
     { encoding: "utf8" }
   );
-  const violations = [];
-  if (!/node/i.test(out) && !/floor|refus/i.test(out)) {
-    violations.push(`node:18-alpine leg produced unexpected output: ${out}`);
-  }
-  return { name: "node-18-alpine", violations };
+  return { name: "node-18-alpine", violations: checkContainerFloorRefusal(result) };
 }
 
 function runFixtureMachine() {

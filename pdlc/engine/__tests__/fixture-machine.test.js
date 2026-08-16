@@ -414,3 +414,53 @@ describe("SKIP_INVENTORY covers the AT-5 group FSPEC:802 marks [fixture] (PM CR 
     }
   });
 });
+
+// ─── container leg classifier (AT-2.5: named message, no stack trace) ─────
+
+describe("checkContainerFloorRefusal — AT-2.5's pass/fail classifier over an injected exec result", () => {
+  test("T50: a non-zero exit carrying the named floor message and no stack trace passes", async () => {
+    const { checkContainerFloorRefusal } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkContainerFloorRefusal({
+      status: 1,
+      stdout: "",
+      stderr: "pdlc requires Node >= 20; found v18.20.8\n",
+    });
+    assert.deepEqual(violations, []);
+  });
+
+  test("T50: a zero exit (guard failed to refuse) fails, even if the message text is present", async () => {
+    const { checkContainerFloorRefusal } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkContainerFloorRefusal({
+      status: 0,
+      stdout: "pdlc requires Node >= 20; found v18.20.8\n",
+      stderr: "",
+    });
+    assert.ok(violations.length > 0);
+    assert.match(violations[0], /did not refuse/);
+  });
+
+  test("T50: no readable status (spawn error) fails loudly, naming the observed status", async () => {
+    const { checkContainerFloorRefusal } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkContainerFloorRefusal({ status: null, stdout: "", stderr: "" });
+    assert.ok(violations.length > 0);
+    assert.match(violations[0], /did not refuse/);
+  });
+
+  test("T50: a refusal whose output carries a stack trace fails (not just a named message)", async () => {
+    const { checkContainerFloorRefusal } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkContainerFloorRefusal({
+      status: 1,
+      stdout: "",
+      stderr: "pdlc requires Node >= 20; found v18.20.8\n    at Object.<anonymous> (/repo/pdlc/engine/bin/pdlc.mjs:3:1)\n",
+    });
+    assert.ok(violations.length > 0);
+    assert.match(violations[0], /stack trace/);
+  });
+
+  test("T50: a refusal missing the named floor message fails, naming what was observed", async () => {
+    const { checkContainerFloorRefusal } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkContainerFloorRefusal({ status: 1, stdout: "", stderr: "some other error\n" });
+    assert.ok(violations.length > 0);
+    assert.match(violations[0], /did not print the named floor message/);
+  });
+});
