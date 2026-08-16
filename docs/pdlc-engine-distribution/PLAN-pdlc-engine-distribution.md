@@ -130,8 +130,13 @@ marked `[green] [standing guard]` and carries its own falsifier instead (§4 kin
 **Every `[red]` task writes its test blocks skipped** (operator decision, 2026-08-14). A `[red]`
 row and the `[green]` row that satisfies it sit in different waves by construction — the `Deps`
 edge rule 3 requires is exactly what separates them — and the engine gates every wave exit on
-`implementation.testCommand` unconditionally, so a wave carrying a genuinely red file can never
-pass. A `[red]` task therefore lands its assertions as `test.skip(…)` / `it.skip(…)` /
+`implementation.testCommand` (configured in this repo's `.claude/pdlc.config.json`; where it or
+the `_runCommand` transport is absent, `orchestrate-dev.js`'s `scriptGate` is false and the gate
+degrades to `evaluateBatchGate`'s self-reported results with a one-time notice), so a wave
+carrying a genuinely red file can never pass **here**, and the convention presumes that
+configuration. The convention's own safety does not rest on it: the `checkWaveUnskips` call sits
+**outside** the `if (scriptGate)` branch, so the un-skip guard fires even where the test gate has
+degraded. A `[red]` task therefore lands its assertions as `test.skip(…)` / `it.skip(…)` /
 `describe.skip(…)` in **statement position** (the un-skip guard `checkWaveUnskips` reads only a
 `.skip` token that opens its own statement, never one mid-expression), and every such block's
 title **begins with the id of the `[green]` task that satisfies it**, followed by `": "` — e.g.
@@ -140,9 +145,13 @@ title **begins with the id of the `[green]` task that satisfies it**, followed b
 mention of a second id silently widens ownership and is forbidden. **One carve-out:** a block
 that is already satisfiable at its `[red]` task's own wave — because it exercises only the test
 doubles that task creates, or the harness itself — stays un-skipped and running; that is why
-`provenance.test.js:124`'s recorder positive control and `resolve-version.test.js:397`'s
-seed-replay determinism check are correctly left running, since their negative counterparts go
-vacuous if the positives never execute. `describe.skip` is used only where every block inside it
+`provenance.test.js`'s `"PROP-PROV-1 positive control: the recorder observes calls a deliberately
+impure variant makes"` and `resolve-version.test.js`'s `"PROP-VER-16 is reproducible: replaying
+the same seed draws the same generated sequence"` are correctly left running, since their
+negative counterparts go vacuous if the positives never execute. (Both are named rather than
+line-anchored, per `DEC-DOC-01`: the earlier `resolve-version.test.js:397` anchor pointed at the
+`assert.equal(asserted, DRAWS)` hygiene assertion *inside* the skipped `T37:` block, which made a
+carve-out that says "left running" read as self-contradictory.) `describe.skip` is used only where every block inside it
 is satisfied by that same `[green]` task; otherwise the skip goes at the individual block level,
 because a `describe.skip` titled for one task but enclosing another task's assertions un-skips
 them too early and reddens that wave. Each `[green]` task's **first**
