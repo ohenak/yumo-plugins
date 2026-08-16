@@ -331,8 +331,22 @@ export function redactSecret(text, secret) {
   return value.split(secret).join("***REDACTED***");
 }
 
-function reportFailure(message) {
-  console.error(`::error::${redactSecret(message, process.env.NODE_AUTH_TOKEN)}`);
+/**
+ * The one printer for every failure this module reports, and therefore the
+ * one place npm's own stderr can reach a public Actions log. Exported for the
+ * same reason `isMainEntry` is: TE CR v2 F-02 measured that deleting the
+ * `redactSecret` call here left the suite green, because `redactSecret` was
+ * proven as a function and unproven as a control. A test can drive the call
+ * site only if it can reach it.
+ *
+ * The secret is read from the environment at call time rather than taken as a
+ * parameter, so no caller can forget to pass it — in production the sentinel
+ * IS the live token (`main`'s publish arm passes `process.env.NODE_AUTH_TOKEN`
+ * as `sentinel`), which is precisely why this is the call site that would
+ * print it.
+ */
+export function reportFailure(message, env = process.env) {
+  console.error(`::error::${redactSecret(message, env.NODE_AUTH_TOKEN)}`);
   process.exitCode = 1;
 }
 

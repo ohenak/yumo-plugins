@@ -801,3 +801,51 @@ test("T58: redactSecret is a no-op for an absent or empty secret, never a match 
   assert.equal(redactSecret(text, null), text);
   assert.equal(redactSecret(undefined, "tok"), "");
 });
+
+test("T58: reportFailure redacts the live token at the PRODUCTION call site, not only in the helper (TE CR v2 F-02)", async () => {
+  // The unit legs above prove `redactSecret` as a function. This one proves
+  // it as a CONTROL: measured in round 2, removing the call inside
+  // `reportFailure` left the whole suite green, and that call site is the one
+  // that prints npm's own stderr — where, in production, the sentinel is the
+  // live `NODE_AUTH_TOKEN`.
+  const { reportFailure } = await import("../scripts/publish-preflight.mjs");
+  const token = "npm_LIVEtoken111111111111111111111111";
+  const captured = [];
+  const originalError = console.error;
+  const exitCodeBefore = process.exitCode;
+  console.error = (...args) => captured.push(args.map(String).join(" "));
+  try {
+    reportFailure(`npm publish failed: 401 Unauthorized (auth ${token}) retrying with ${token}`, {
+      NODE_AUTH_TOKEN: token,
+    });
+  } finally {
+    console.error = originalError;
+    process.exitCode = exitCodeBefore;
+  }
+
+  assert.equal(captured.length, 1, `exactly one line must be printed. Got: ${JSON.stringify(captured)}`);
+  const line = captured[0];
+  assert.ok(!line.includes(token), `the credential reached the Actions log verbatim: ${line}`);
+  assert.equal(line.match(/\*\*\*REDACTED\*\*\*/g).length, 2, "every occurrence, not just the first");
+  // The rest of npm's diagnosis must survive: a redaction that ate the whole
+  // message would pass the assertion above and destroy the failure report.
+  assert.match(line, /^::error::npm publish failed: 401 Unauthorized/);
+  assert.match(line, /retrying with/);
+});
+
+test("T58: reportFailure is a no-op redaction when no token is set, and still reports the failure", async () => {
+  const { reportFailure } = await import("../scripts/publish-preflight.mjs");
+  const captured = [];
+  const originalError = console.error;
+  const exitCodeBefore = process.exitCode;
+  console.error = (...args) => captured.push(args.map(String).join(" "));
+  try {
+    reportFailure("PF-1 failed: tag v1.2.3 does not match package.json version 1.2.4", {});
+  } finally {
+    console.error = originalError;
+    process.exitCode = exitCodeBefore;
+  }
+  assert.deepEqual(captured, [
+    "::error::PF-1 failed: tag v1.2.3 does not match package.json version 1.2.4",
+  ]);
+});
