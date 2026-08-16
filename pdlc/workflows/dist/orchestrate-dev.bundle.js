@@ -8716,6 +8716,7 @@ async function main({
           _appendFile: appendFileFn,
           _git: gitFn,
           emit,
+          provenance,
         });
         const notice =
           `Phase ${phaseId}: ${docPath} RE-CONFIRMED at round v${round} against the edited ` +
@@ -9952,6 +9953,7 @@ async function main({
               _git: waveGit,
               _sleep: waveSleep,
               emit,
+              provenance,
             });
           }
 
@@ -9963,6 +9965,7 @@ async function main({
               _git: waveGit,
               _sleep: waveSleep,
               emit,
+              provenance,
             });
           }
 
@@ -10281,6 +10284,7 @@ async function main({
                 _git: gitFn,
                 _sleep: h2Sleep,
                 emit,
+                provenance,
               });
               await gitFn(["push", "origin", "HEAD"]);
             }
