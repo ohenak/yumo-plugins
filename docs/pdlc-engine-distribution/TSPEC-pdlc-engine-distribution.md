@@ -668,31 +668,59 @@ message ids, and neither one covers this row:
   not coverage of AC-5.6's trigger.
 
 So AC-5.6 gets its own **path-level oracle**, named here rather than left to the PLAN. Naming
-it means first saying *where the notice is observable*, which the shipped shape does not yet
-allow. At HEAD `resolvePluginRoot` returns `{ok, root, source, reason, tried}`
-(`pdlc/engine/lib/skills.mjs`, `resolvePluginRoot`'s JSDoc `@returns`, verified at HEAD):
-there is no notice channel on it at all. So the function's return is **extended, not
-replaced** — the same discipline §10.1 applies to S-2 — to
-`{ok, root, source, reason, tried, notices}`, where `notices` is an array of `{id, text}`
-records: the catalogue id (§10.3) plus the string `lib/catalogue.mjs`'s `message(id, params)`
-renderer produced for it. `notices` is empty on every row but the ignore branch.
+it means first saying *where the notice is observable*, which the pre-feature shape did not
+allow: `resolvePluginRoot` returned `{ok, root, source, reason, tried}` with no notice channel
+on it at all. So the function's return is **extended, not replaced** — the same discipline
+§10.1 applies to S-2 — to `{ok, root, source, reason, tried, notices}`, where `notices` is an
+array of `{id, text}` records: the catalogue id (§10.3) plus the string `lib/catalogue.mjs`'s
+`message(id, params)` renderer produced for it. `notices` is empty on every row but the ignore
+branch. (Verified landed at HEAD in that shape: `pdlc/engine/lib/skills.mjs`,
+`resolvePluginRoot`'s JSDoc `@returns` names the six keys and the `{id, text}` element type.)
+
+`notices` is **always an array, never `undefined`** — it is initialised once at entry and
+carried on *every* return, including the two refusal legs (the wrong-`--plugin-root` refusal
+and the exhausted-ladder one), not only the two success legs. So the three empty rows below are
+assertable as a deep equality against `[]` rather than as a truthiness check, and an
+implementer cannot satisfy the oracle by attaching `notices` to the success returns alone
+(TE Q-26, PM Q-01).
 
 **The resolver decides and renders; startup surfaces.** The branch lives in
 `resolvePluginRoot`, so the notice is decided and rendered there, which is what makes it
 assertable in one unit. `lib/startup.mjs`'s `runStartupChecks` already calls the resolver
 through its `resolveFn` seam (default `resolvePluginRoot`); it passes the returned `notices`
-into the run's notices without re-deriving or re-rendering them, exactly as `bin/pdlc.mjs`
-already drains `readEngineConfig`'s `notices` to the operator (`pdlc/engine/lib/run.mjs`,
-`readEngineConfig`'s `@returns {{config: object, notices: string[]}}`). §3.1's two rows and
-§10.1's S-7 say this same split, so no implementer has to choose it.
+through without re-deriving or re-rendering them.
+
+**The hop names both ends, and the two `notices` channels stay distinct.** The destination is
+not left to the implementer: `runStartupChecks`'s own return **gains a tenth key**, `notices`,
+carrying the resolver's `{id, text}` records verbatim — it does not fold them into `banner` and
+does not flatten them to strings on the way out. The flattening happens once, at the single
+render site: `lib/startup.mjs`'s `formatStartup` appends one line per notice, taking
+`notice.text` for a record (and the notice itself when it is already a string, so the key
+tolerates both shapes). Rendering there rather than at each CLI call site is what makes AC-5.6
+true on every operator surface at once — `dev`, `queue`, `queue --loop`, both `--dry-run`
+surfaces and the refusal path all print through `formatStartup`, so a notice rendered at one
+call site would have been silently absent from the others.
+
+This is a **different channel** from `readEngineConfig`'s, which must not be conflated with it:
+`readEngineConfig` returns `{config, notices, engine}` with `notices` a `string[]`
+(`pdlc/engine/lib/run.mjs`, its JSDoc `@returns`), and that array is drained on its own path by
+`bin/cli.mjs`'s `tunablesFor`, which prints each line directly. The resolver's channel is
+`{id, text}` records and reaches the operator through `formatStartup`. Two channels, two
+shapes, one render site each; §3.1's two rows and §10.1's S-7 say this same split, so no
+implementer has to choose it.
 
 The oracle is one unit test over `resolvePluginRoot` driving **all four rows** of the table
 above, falsifiable in both directions rather than only in the absence one:
 
-- **Honour direction**, `devDeclared: true` × variable set — the resolved root `===` the env
-  value, `source` is the unchanged `explicit override (PDLC_PLUGIN_ROOT)` string, and
-  `notices` is empty. Without this row an implementation that ignores the variable
-  unconditionally satisfies every other assertion here (DEC-EDIST-04's assertion 2).
+- **Honour direction**, `devDeclared: true` × variable set — the resolved root `===`
+  **`path.resolve(env value)`**, not the raw env string: the explicit leg resolves its candidate
+  before testing it (`pdlc/engine/lib/skills.mjs`, `resolvePluginRoot`'s explicit branch), so a
+  fixture passing a relative or non-normalised value makes a raw-string equality fail for a
+  reason AC-5.6 does not care about. Give the fixture an already-absolute root and the two
+  spellings coincide; the assertion is written against `path.resolve` either way. `source` is
+  the unchanged `explicit override (PDLC_PLUGIN_ROOT)` string, and `notices` is empty. Without
+  this row an implementation that ignores the variable unconditionally satisfies every other
+  assertion here (DEC-EDIST-04's assertion 2).
 - **Ignore direction**, `devDeclared: false` × variable set — discovery proceeded as if the
   variable were unset (the returned root is the discovered one, not the env value) **and**
   `notices` contains the entry **by catalogue id** (`env.plugin-root-ignored`) with its
