@@ -15,13 +15,12 @@ feature: pdlc-engine-distribution
 |---|---|---|---|---|
 | pdlc | Draft | Claude | 0.8 | 2026-08-16 |
 
-*0.8 (2026-08-16, CODE_REVIEW v1 §3-1/§3-2 + round-8): §5.1 gains row 6 (`fixture-machine.yml`)
-and a PR-gate **file** column; BR-7.1 derives its file scope from the `on:` trigger and set-equals
-it; BR-7.5 excludes on trigger, not filename; **BR-7.7** added (tag gate re-runs every PR-gate
-file's commands). Round-8 fixes: F-5 step 2 says how a path-filtered member's non-run is read
-(SE `F-01`); AT-3.4 names the two new set-equalities (SE `F-02`/TE `F-04`); §3's F-5 baseline
-sentence is dated (TE `F-02`); AT-1.6 compares triple **values**, not banner text (SE `F-05`);
-`E-22`/`BR-8.2` use the **Workflow members** class name (SE `F-07`/TE `F-02`).*
+*0.8 (2026-08-16, CODE_REVIEW v1 §3-1/§3-2 + round-8): §5.1 gained row 6 (`fixture-machine.yml`),
+a file column, trigger-derived BR-7.1 scope, trigger-not-filename BR-7.5 and **BR-7.7**. Round-8:
+F-5 step 2 reads a path-filtered member's non-run (SE `F-01`); AT-3.4 names both new
+set-equalities (SE `F-02`/TE `F-04`); F-5's baseline sentence is dated (TE `F-02`); AT-1.6
+compares triple **values**, not banner text (SE `F-05`); `E-22`/`BR-8.2` say **Workflow members**
+(SE `F-07`/TE `F-02`).*
 
 *0.7 (2026-08-14, round-6): carried-forward §5.2 items only. The CLI-entry and engine-module rows
 anchor `PK-4`/`PK-4b` and `PK-5`…`PK-19` (SE `F-03`); the CLI-entry note no longer calls its
@@ -259,8 +258,7 @@ The publish pipeline is **additive**: its own workflow file with its own trigger
 PR gate's jobs but may not weaken, rename, make conditional, or re-render any member of §5.1
 (C-5), because Phase PUB polls those names literally. Nothing of this kind exists at HEAD:
 at feature start (`89babe8e`, 2026-08-13) `.github/workflows/` held exactly one file
-(`pr-tests.yml`), so every step below is new work. (At HEAD the directory also holds this
-feature's own `fixture-machine.yml` and `publish.yml`; BR-7.1 enumerates it live.)
+(`pr-tests.yml`), so every step below is new work.
 
 1. **Trigger** (T-4): a pushed git tag naming an **engine** version. No other trigger publishes.
 2. **Gate check.** Every member of §5.1's expected set must be green on the tagged commit. If any
@@ -514,11 +512,11 @@ sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE rou
   `.github/workflows/` and set-equals the PR-triggered files against §5.1's file column, so a
   new PR-gating workflow file cannot enter the repo without entering this table (CODE_REVIEW v1
   §3-1's remedy, made mechanical rather than remembered). **Step-level `name:` strings are
-  not members** (that file carries ~16, e.g. `:46,53,66,70,92`, so an oracle over "the authored
-  `name:` strings" would be red before anyone edited anything), and **F-5's publish workflow is
-  outside the set**: its jobs are not PR checks (BR-7.5). The job-level authored keys equal the
-  authored column and their local expansions equal the rendered column. A deletion, a rename, a
-  matrix edit changing only the rendered set, and **any addition** to the PR-gate file all fail:
+  not members** (`pr-tests.yml` carries ~16, e.g. `:46,53,66,70,92`, so an oracle over "the
+  authored `name:` strings" would be red before anyone edited anything), and **F-5's publish
+  workflow is outside the set**: its jobs are not PR checks (BR-7.5). The job-level authored keys
+  equal the authored column and their local expansions equal the rendered column. A deletion, a
+  rename, a matrix edit changing only the rendered set, and **any addition** to either file fail:
   a PR check this feature adds lands in this table first.
 - **BR-7.2 — Decidable offline.** The carrier reads the named workflow file(s) and expands the
   declared matrix axes locally: no PR, no network, no credentials. Observing what GitHub reported
@@ -544,6 +542,11 @@ sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE rou
   trigger, not the filename** — a workflow file other than `pr-tests.yml` that declares
   `on: pull_request` *is* a PR gate and *is* in the set (row 6). Membership is decided by reading
   each file's trigger, so this rule can never again be stretched to cover a file it is false of.
+- **BR-7.6 — Mutation evidence runs over fixture copies, and this set owns the matrix.**
+  BR-7.1's mutations cannot be applied to the live `pr-tests.yml`, so they run against fixture
+  copies. `pdlc/engine/__tests__/ci-arrangement.test.js:44-60` already regex-asserts that file's
+  matrix and job set; on landing, **§5.1's carrier owns those assertions** and the older test's
+  overlapping ones are removed — one failure, one remedy (TE round-1 F-08).
 - **BR-7.7 — The tag gate re-runs every PR-gate job's commands, not one file's** (C-6,
   CODE_REVIEW v1 §3-2). BR-3.1 says publishing is gated on the same evidence a PR is; that is
   true only if `publish.yml`'s `gate` job's run-command set equals the union of **all** PR-gate
@@ -551,11 +554,6 @@ sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE rou
   AC-2.5), so a tag gated without them is a release gated on strictly weaker evidence than the PR
   was. The set-equality is asserted by the same offline carrier, so the two files stay in step by
   a test rather than by memory.
-- **BR-7.6 — Mutation evidence runs over fixture copies, and this set owns the matrix.**
-  BR-7.1's mutations cannot be applied to the live `pr-tests.yml`, so they run against fixture
-  copies. `pdlc/engine/__tests__/ci-arrangement.test.js:44-60` already regex-asserts that file's
-  matrix and job set; on landing, **§5.1's carrier owns those assertions** and the older test's
-  overlapping ones are removed — one failure, one remedy (TE round-1 F-08).
 
 ### 5.2 Expected packed-content set *(AC-1.3)*
 
