@@ -964,6 +964,12 @@ export async function launch(argv = process.argv, io = {}) {
     runMain = main,
     log = console.log,
     error = console.error,
+    // The running engine's own version, i.e. the one the in-process arm is
+    // able to be. Injectable so a leg can fix which arm a decision takes
+    // without depending on whatever this package happens to be versioned at
+    // today — a bare `pkg.version` read would make those legs fail on the
+    // next release rather than on a regression.
+    engineVersion = pkg.version,
   } = io;
 
   const [, , cmd, ...rest] = argv;
@@ -991,7 +997,7 @@ export async function launch(argv = process.argv, io = {}) {
     fs,
     homedir,
   });
-  const move = launchMoveFor({ decision, storeRoot });
+  const move = launchMoveFor({ decision, storeRoot, engineVersion });
 
   if (move.action === "refuse") {
     // AC-5.5: a pin naming an uninstalled version refuses naming the pin and
