@@ -9,7 +9,7 @@
 // the same regime-ledger ambiguity this feature exists to close, one axis over.
 //
 // The published set is read from the tracked, dated publish evidence under
-// `docs/pdlc-engine-distribution/` (EVIDENCE-BR-3.9.md and any successor), not
+// `docs/completed/pdlc-engine-distribution/` (EVIDENCE-BR-3.9.md and any successor), not
 // from the registry: the oracle is hermetic and offline, and the evidence file
 // is written *after* a publish, so a tag commit (where PF-1 pins tag ≡
 // `package.json` version) is never red on account of its own release.
@@ -30,7 +30,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ENGINE_ROOT = path.resolve(HERE, "..");
 const REPO_ROOT = path.resolve(ENGINE_ROOT, "..", "..");
 
-const EVIDENCE_PATHSPEC = "docs/pdlc-engine-distribution/EVIDENCE-*.md";
+const EVIDENCE_PATHSPEC = "docs/completed/pdlc-engine-distribution/EVIDENCE-*.md";
 
 function manifest() {
   return JSON.parse(readFileSync(path.join(ENGINE_ROOT, "package.json"), "utf8"));

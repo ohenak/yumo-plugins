@@ -61,10 +61,19 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > package name and pin mechanism. Its `REQ Path` is likewise still a placeholder: no REQ exists at
 > that path yet, and one must be authored before the row can be picked up. Decision: same, O-3.
 
+> **Row 4 (`pdlc-engine-distribution`) removed from this table on 2026-08-16.** Merged as
+> `a9885dc8` (#63, 2026-08-16) — per-feature docs moved to
+> `docs/completed/pdlc-engine-distribution/`, LEARNINGS included. `Order` value 4 stays
+> allocated, never reused. Rows still naming the feature in `Depends-On` (5, 8, 23) resolve
+> through Phase-0 readiness triage — the dependency is absent from the table but checked
+> against the base branch, exactly as the existing notes above describe for other retired
+> features. Row 23's `REQ Path` cell was updated to the new
+> `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` path; row 23's
+> prose note below still names the old REQ/TSPEC paths for historical context.
+
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 4 | in-progress | pdlc-engine-distribution | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-headless-engine |
 | 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |
@@ -73,7 +82,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |
-| 23 | blocked | pdlc-engine-v0.2.0-release | docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
+| 23 | blocked | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
 
 **Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
 (CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,

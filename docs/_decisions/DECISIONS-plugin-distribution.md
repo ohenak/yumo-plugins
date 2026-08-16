@@ -132,7 +132,7 @@ privacy a non-discriminator disappears.
 
 **Consequence:** publishing requires a licence. `pdlc/engine/package.json` says
 `"license": "UNLICENSED"` today, which is incompatible with public publication; settling it is an
-operator obligation (O-8 in `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`),
+operator obligation (O-8 in `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`),
 blocking the first publish and nothing earlier. Release automation for the package is queue row 8
 `pdlc-release-ci`, renarrowed for exactly this purpose.
 
@@ -145,7 +145,7 @@ blocking the first publish and nothing earlier. Release automation for the packa
 **Decision:** the scoped package DEC-DIST-05 chose publishes under the npm scope `@kaneho`,
 giving the published name `@kaneho/pdlc-engine`. This is an npm account the operator owns —
 DEC-DIST-05 decided *that* the package is scoped-public but named no scope, and O-8 blocker 2
-(`N-6` in `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) is exactly this gap:
+(`N-6` in `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) is exactly this gap:
 nothing on the registry catches a wrong or unregistered scope the way `npm publish` itself
 catches `"private": true`, so the choice has to be recorded before anything downstream can cite
 it as fact.
@@ -169,7 +169,7 @@ authored in the TSPEC or the test itself.
 ## DEC-DIST-07: The engine publishes under the MIT licence
 
 **Decision:** `pdlc/engine` publishes under the MIT licence (SPDX id `MIT`). This discharges
-O-8 blocker 3 (`N-2` in `docs/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) —
+O-8 blocker 3 (`N-2` in `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) —
 DEC-DIST-05 committed the package to public npm distribution but left the licence itself as an
 operator obligation, since a licence choice is a legal/policy decision no spec can invent.
 
