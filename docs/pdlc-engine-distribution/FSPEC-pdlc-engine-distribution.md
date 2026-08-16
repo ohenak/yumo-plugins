@@ -464,26 +464,41 @@ is a spec change that goes through review.
 
 ### 5.1 Expected required-check set *(T-7, AC-3.4, C-5)*
 
-Seeded from M-ENG-10's measurement (2026-08-13 at `89babe8e`, re-measured review round 2). Two
-alphabets, and **they are not the same set**: rows 1–2 differ between the columns, rows 3–5 are
-identical in both. The rendered column is what Phase PUB polls and what a branch protection rule
-names.
+Seeded from M-ENG-10's measurement (2026-08-13 at `89babe8e`, re-measured review round 2; **row 6
+added 2026-08-16** per CODE_REVIEW v1 §3-1). Two alphabets, and **they are not the same set**:
+rows 1–2 differ between the columns, rows 3–6 are identical in both. The rendered column is what
+Phase PUB polls and what a branch protection rule names.
 
-| # | Authored `name:` | Rendered check name |
-|---|---|---|
-| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `Unit tests (ubuntu-latest, node 20)` |
-| 2 | `Engine tests (${{ matrix.os }})` | `Engine tests (ubuntu-latest)` |
-| 3 | `Generated artifacts are in sync` | `Generated artifacts are in sync` |
-| 4 | `Fresh-clone bootstrap works` | `Fresh-clone bootstrap works` |
-| 5 | `Shell scripts parse` | `Shell scripts parse` |
+| # | PR-gate file | Authored `name:` | Rendered check name |
+|---|---|---|---|
+| 1 | `pr-tests.yml` | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `Unit tests (ubuntu-latest, node 20)` |
+| 2 | `pr-tests.yml` | `Engine tests (${{ matrix.os }})` | `Engine tests (ubuntu-latest)` |
+| 3 | `pr-tests.yml` | `Generated artifacts are in sync` | `Generated artifacts are in sync` |
+| 4 | `pr-tests.yml` | `Fresh-clone bootstrap works` | `Fresh-clone bootstrap works` |
+| 5 | `pr-tests.yml` | `Shell scripts parse` | `Shell scripts parse` |
+| 6 | `fixture-machine.yml` | `Fixture machine (install/upgrade, launcher, container, two-repo)` | `Fixture machine (install/upgrade, launcher, container, two-repo)` |
+
+Row 6 is this feature's own addition (PLAN T50). It was initially treated as outside the set on
+the strength of BR-7.5's "the publish workflow's jobs are not PR checks" — a reason true of
+`publish.yml` and **false** of `fixture-machine.yml`, which triggers `on: pull_request` and
+therefore renders as a check on every PR touching `pdlc/engine/**`. Leaving it out made its
+rename or deletion invisible to the very oracle AC-3.4 exists to provide (CODE_REVIEW v1 §3-1).
+Row 6 is **path-filtered** (`pdlc/engine/**`, `.github/workflows/fixture-machine.yml`): it is a
+required check on the PRs it runs on and absent from the others, which is a property of the
+trigger and not a weakening of BR-7.5.
 
 Rules governing this set. **They are numbered `BR-7.x` / `BR-8.x` / `BR-9.x`, in a namespace
 disjoint from §4's `BR-5` (Provenance)** — the former `BR-5.1.x` / `BR-5.2.x` numbering read as
 sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE round-1 F-03).
 
-- **BR-7.1 — Two set-equalities, one per alphabet, over job-level names of the PR-gate file.**
-  The oracle reads the **job-level `name:` keys** of the **PR-gate workflow file(s)** — at HEAD
-  exactly `.github/workflows/pr-tests.yml` — and nothing else. **Step-level `name:` strings are
+- **BR-7.1 — Two set-equalities, one per alphabet, over job-level names of the PR-gate files.**
+  The oracle reads the **job-level `name:` keys** of the **PR-gate workflow file(s)** — the files
+  whose top-level `on:` block declares a `pull_request` trigger, which at HEAD are exactly
+  `.github/workflows/pr-tests.yml` and `.github/workflows/fixture-machine.yml` — and nothing
+  else. **That file scope is itself derived, not listed:** the carrier enumerates
+  `.github/workflows/` and set-equals the PR-triggered files against §5.1's file column, so a
+  new PR-gating workflow file cannot enter the repo without entering this table (CODE_REVIEW v1
+  §3-1's remedy, made mechanical rather than remembered). **Step-level `name:` strings are
   not members** (that file carries ~16, e.g. `:46,53,66,70,92`, so an oracle over "the authored
   `name:` strings" would be red before anyone edited anything), and **F-5's publish workflow is
   outside the set**: its jobs are not PR checks (BR-7.5). The job-level authored keys equal the
@@ -510,7 +525,17 @@ sub-rules of provenance's BR-5.1 and would have mis-traced in PROPERTIES (SE rou
   2026-08-13. Re-confirm on the first PR run after any matrix edit.*
 - **BR-7.5 — Every member still runs on pull requests and still gates them.** The publish workflow
   is a separate, additively-added trigger (C-5) whose own jobs are **not** members of this set:
-  they gate no pull request, and Phase PUB does not poll them.
+  they gate no pull request, and Phase PUB does not poll them. **The exclusion reason is the
+  trigger, not the filename** — a workflow file other than `pr-tests.yml` that declares
+  `on: pull_request` *is* a PR gate and *is* in the set (row 6). Membership is decided by reading
+  each file's trigger, so this rule can never again be stretched to cover a file it is false of.
+- **BR-7.7 — The tag gate re-runs every PR-gate job's commands, not one file's** (C-6,
+  CODE_REVIEW v1 §3-2). BR-3.1 says publishing is gated on the same evidence a PR is; that is
+  true only if `publish.yml`'s `gate` job's run-command set equals the union of **all** PR-gate
+  files' gate jobs' run commands. Row 6's legs carry AT-2.3…AT-2.6 (AC-2.2, AC-2.3, AC-2.4,
+  AC-2.5), so a tag gated without them is a release gated on strictly weaker evidence than the PR
+  was. The set-equality is asserted by the same offline carrier, so the two files stay in step by
+  a test rather than by memory.
 - **BR-7.6 — Mutation evidence runs over fixture copies, and this set owns the matrix.**
   BR-7.1's mutations cannot be applied to the live `pr-tests.yml`, so they run against fixture
   copies. `pdlc/engine/__tests__/ci-arrangement.test.js:44-60` already regex-asserts that file's

@@ -148,6 +148,43 @@ jobs:
           check_mode 100644 pdlc/hooks/scripts/lib/pdlc-drift.sh
           exit "$status"
 
+      # fixture-machine.yml's leg, re-run at the tag (CODE_REVIEW v1 §3-2). That
+      # workflow is `on: pull_request`, so its job is a PR check and a §5.1
+      # member; it carries AT-2.3…AT-2.6 (AC-2.2, AC-2.3, AC-2.4, AC-2.5). A tag
+      # gated without it would be gated on strictly weaker evidence than the PR
+      # was, which is exactly what C-6 forbids. Kept command-for-command
+      # identical to the PR-gate job's by `ci-arrangement.test.js`'s
+      # gate-command set-equality, which now spans every PR-gate file.
+      - name: Record the environment under test (fixture-machine leg)
+        run: |
+          echo "node:    $(node -v)"
+          echo "npm:     $(npm -v)"
+          echo "docker:  $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo '(absent)')"
+
+      - name: Configure the skip sink
+        run: |
+          sink="${RUNNER_TEMP}/pdlc-fixture-skip-sink.jsonl"
+          : > "$sink"
+          echo "PDLC_FIXTURE_SKIP_SINK=$sink" >> "$GITHUB_ENV"
+
+      - name: Launcher real-spawn legs
+        working-directory: pdlc/engine
+        run: node --test __tests__/launcher.test.js
+
+      - name: Fixture-machine legs
+        working-directory: pdlc/engine
+        run: node scripts/fixture-machine.mjs
+
+      - name: Registered skips (if any)
+        if: always()
+        run: |
+          if [ -s "${PDLC_FIXTURE_SKIP_SINK}" ]; then
+            echo "::warning::fixture-machine recorded skip(s):"
+            cat "${PDLC_FIXTURE_SKIP_SINK}"
+          else
+            echo "no skips recorded — every gated leg's capability was present"
+          fi
+
   # Offline manifest and version checks (§8.3). Runs in parallel with `gate`:
   # it needs no network and no gate result. Neither job is `continue-on-error`
   # or conditional on anything but its own dependencies (BR-3.2) — `publish`

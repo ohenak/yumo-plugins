@@ -26,14 +26,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot));
 
-const workflowPath = path.join(repoRoot, ".github", "workflows", "pr-tests.yml");
-const publishWorkflowPath = path.join(repoRoot, ".github", "workflows", "publish.yml");
+const workflowsDir = path.join(repoRoot, ".github", "workflows");
+const workflowPath = path.join(workflowsDir, "pr-tests.yml");
+const publishWorkflowPath = path.join(workflowsDir, "publish.yml");
+const fixtureMachineWorkflowPath = path.join(workflowsDir, "fixture-machine.yml");
 const configPath = path.join(repoRoot, ".claude", "pdlc.config.example.json");
 
 const readText = (p) => readFileSync(p, "utf8");
@@ -50,13 +52,30 @@ const GATE_JOB_IDS = [
   "script-syntax",
 ];
 
-const EXPECTED_AUTHORED = [
-  "Unit tests (${{ matrix.os }}, node ${{ matrix.node }})",
-  "Engine tests (${{ matrix.os }})",
-  "Generated artifacts are in sync",
-  "Fresh-clone bootstrap works",
-  "Shell scripts parse",
-];
+const FIXTURE_MACHINE_JOB_IDS = ["fixture-machine"];
+
+/**
+ * §5.1's file scope (BR-7.1): every workflow file that gates pull requests, and the job ids it
+ * owns. `publish.yml` is absent because it is tag-triggered — a reason that is true of it and
+ * false of `fixture-machine.yml`, which is why the latter is a member (CODE_REVIEW v1 §3-1).
+ * The `§5.1's file scope` test below re-derives this key set from the files' own triggers, so a
+ * new PR-gating workflow cannot join the repo without joining §5.1.
+ */
+const PR_GATE_FILES = {
+  "pr-tests.yml": GATE_JOB_IDS,
+  "fixture-machine.yml": FIXTURE_MACHINE_JOB_IDS,
+};
+
+const EXPECTED_AUTHORED_BY_JOB = {
+  "unit-tests": "Unit tests (${{ matrix.os }}, node ${{ matrix.node }})",
+  "engine-tests": "Engine tests (${{ matrix.os }})",
+  "artifact-freshness": "Generated artifacts are in sync",
+  "fresh-clone-bootstrap": "Fresh-clone bootstrap works",
+  "script-syntax": "Shell scripts parse",
+  "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",
+};
+
+const EXPECTED_AUTHORED = GATE_JOB_IDS.map((id) => EXPECTED_AUTHORED_BY_JOB[id]);
 
 const EXPECTED_RENDERED_BY_JOB = {
   "unit-tests": "Unit tests (ubuntu-latest, node 20)",
@@ -64,7 +83,26 @@ const EXPECTED_RENDERED_BY_JOB = {
   "artifact-freshness": "Generated artifacts are in sync",
   "fresh-clone-bootstrap": "Fresh-clone bootstrap works",
   "script-syntax": "Shell scripts parse",
+  "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",
 };
+
+/**
+ * True when the workflow's top-level `on:` block declares a `pull_request` trigger. Read from
+ * the file's own text (BR-7.2, decidable offline): membership in §5.1 is a property of the
+ * trigger, not of anyone's memory. Only the top-level `on:` block is read — the word may appear
+ * in prose comments or in a step's `if:` and is not a trigger there.
+ */
+function isPullRequestTriggered(yamlText) {
+  const lines = yamlText.split("\n");
+  const onIdx = lines.findIndex((l) => /^on:\s*$/.test(l) || /^on:\s*\S/.test(l));
+  if (onIdx === -1) return false;
+  if (/^on:\s*\S/.test(lines[onIdx])) return /pull_request/.test(lines[onIdx]);
+  for (let i = onIdx + 1; i < lines.length; i++) {
+    if (/^\S/.test(lines[i])) break;
+    if (/^ {2}pull_request:?\s*$/.test(lines[i])) return true;
+  }
+  return false;
+}
 
 /**
  * Extract every top-level job block under `jobs:` as `{ [jobId]: bodyText }`, keyed by the
@@ -240,8 +278,10 @@ test("ci arrangement — pr-tests.yml", async (t) => {
     }
     assertSetEqual(
       renderedAll,
-      new Set(Object.values(EXPECTED_RENDERED_BY_JOB)),
-      "the rendered alphabet, taken across all five jobs, must set-equal FSPEC §5.1's rendered column"
+      new Set(GATE_JOB_IDS.map((id) => EXPECTED_RENDERED_BY_JOB[id])),
+      "the rendered alphabet, taken across this file's five jobs, must set-equal FSPEC §5.1's " +
+        "rendered rows for it; §5.1's sixth row belongs to fixture-machine.yml and is asserted " +
+        "by the cross-file test below"
     );
   });
 
@@ -416,14 +456,121 @@ test("ci arrangement — mutation evidence over fixture copies (AT-3.4, BR-7.6)"
 });
 
 // ---------------------------------------------------------------------------------------------
-// TSPEC §8.2/§8.5: publish.yml's gate job must set-equal pr-tests.yml's five gate jobs' commands
+// §5.1 row 6 / BR-7.1's "PR-gate workflow file(s)": fixture-machine.yml (CODE_REVIEW v1 §3-1)
+//
+// The set is over PR *checks*, not over one file. `fixture-machine.yml` triggers `on:
+// pull_request`, so its job renders as a check on a pull request and is a member; the previous
+// arrangement read `pr-tests.yml` alone, which left this job's rename or deletion invisible to
+// the very oracle AC-3.4 exists to provide. Membership is decided by the trigger, mechanically,
+// below — so a *future* PR-gating workflow file is caught the same way rather than depending on
+// anyone remembering to widen a list.
 // ---------------------------------------------------------------------------------------------
 
-test("T49: ci arrangement — publish.yml/pr-tests.yml gate-command set-equality (§8.2, §8.5)", () => {
+test("ci arrangement — fixture-machine.yml is a §5.1 member (BR-7.1, CODE_REVIEW v1 §3-1)", async (t) => {
+  assert.ok(
+    existsSync(fixtureMachineWorkflowPath),
+    ".github/workflows/fixture-machine.yml must exist (PLAN T50) — it is §5.1's sixth member"
+  );
+  const yamlText = readText(fixtureMachineWorkflowPath);
+  const blocks = extractAllJobBlocks(yamlText);
+
+  await t.test("it gates pull requests, which is what makes it a member (BR-7.5)", () => {
+    assert.ok(
+      isPullRequestTriggered(yamlText),
+      "fixture-machine.yml must keep its `on: pull_request` trigger — §5.1's membership rule is " +
+        "'renders as a check on a pull request', and dropping the trigger silently removes a gate"
+    );
+  });
+
+  await t.test("job set and authored name: keys equal §5.1's rows for this file (BR-7.1)", () => {
+    const ids = Object.keys(blocks);
+    assertSetEqual(
+      ids,
+      FIXTURE_MACHINE_JOB_IDS,
+      "fixture-machine.yml's job set must equal §5.1's rows for it — an added, renamed or " +
+        "removed job lands in the FSPEC table before it lands in the workflow"
+    );
+    assertSetEqual(
+      ids.map((id) => extractJobName(blocks[id])),
+      FIXTURE_MACHINE_JOB_IDS.map((id) => EXPECTED_AUTHORED_BY_JOB[id]),
+      "fixture-machine.yml's job-level `name:` keys must set-equal §5.1's authored column"
+    );
+  });
+
+  await t.test("rendered name equals §5.1's rendered column, expanded per job (§8.5)", () => {
+    for (const id of FIXTURE_MACHINE_JOB_IDS) {
+      const result = expandJobName(blocks[id]);
+      assert.ok(!result.unexpandable, `${id}: ${result.unexpandable}`);
+      assert.deepEqual(
+        result.rendered,
+        [EXPECTED_RENDERED_BY_JOB[id]],
+        `${id}'s rendered name must equal §5.1's row for it`
+      );
+    }
+  });
+
+  await t.test("a renamed job is caught over a fixture copy (BR-7.6)", () => {
+    const mutated = yamlText.replace(
+      "name: Fixture machine (install/upgrade, launcher, container, two-repo)",
+      "name: Fixture machine (install/upgrade, launcher, container)"
+    );
+    const authored = Object.keys(extractAllJobBlocks(mutated)).map((id) =>
+      extractJobName(extractAllJobBlocks(mutated)[id])
+    );
+    assert.notDeepEqual(
+      [...authored].sort(),
+      FIXTURE_MACHINE_JOB_IDS.map((id) => EXPECTED_AUTHORED_BY_JOB[id]).sort(),
+      "a renamed fixture-machine job must fail the authored-alphabet equality — the hole " +
+        "CODE_REVIEW v1 §3-1 named was precisely that this rename was invisible"
+    );
+  });
+});
+
+test("ci arrangement — §5.1's file scope equals the PR-triggered workflow files (BR-7.1)", () => {
+  const actual = readdirSync(workflowsDir)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .filter((f) => isPullRequestTriggered(readText(path.join(workflowsDir, f))));
+  assertSetEqual(
+    actual,
+    Object.keys(PR_GATE_FILES),
+    "every workflow file that triggers `on: pull_request` is a PR-gate file and its jobs are " +
+      "§5.1 members; adding one without widening §5.1 (and this oracle's scope) is the omission " +
+      "CODE_REVIEW v1 §3-1 found. `publish.yml` is excluded because it is tag-triggered and " +
+      "gates no pull request (BR-7.5) — that reason is true of it, and false of fixture-machine.yml"
+  );
+});
+
+test("ci arrangement — the rendered alphabet across all PR-gate files equals §5.1 (BR-7.1)", () => {
+  const rendered = new Set();
+  for (const [file, jobIds] of Object.entries(PR_GATE_FILES)) {
+    const blocks = extractAllJobBlocks(readText(path.join(workflowsDir, file)));
+    for (const id of jobIds) {
+      const result = expandJobName(blocks[id]);
+      assert.ok(!result.unexpandable, `${file}:${id}: ${result.unexpandable}`);
+      result.rendered.forEach((r) => rendered.add(r));
+    }
+  }
+  assertSetEqual(
+    rendered,
+    new Set(Object.values(EXPECTED_RENDERED_BY_JOB)),
+    "the rendered alphabet, taken across every PR-gate file, must set-equal §5.1's rendered " +
+      "column — six members, not five"
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// TSPEC §8.2/§8.5: publish.yml's gate job must set-equal EVERY PR-gate job's commands
+//
+// C-6 ("publishing is gated on the same evidence a PR is") is false if the tag gate re-runs only
+// `pr-tests.yml`: the fixture-machine legs carry AT-2.3…AT-2.6 (AC-2.2…AC-2.5), so a release cut
+// without them is gated on strictly weaker evidence than the PR was (CODE_REVIEW v1 §3-2).
+// ---------------------------------------------------------------------------------------------
+
+test("T49: ci arrangement — publish.yml/PR-gate gate-command set-equality (§8.2, §8.5)", () => {
   assert.ok(
     existsSync(publishWorkflowPath),
-    ".github/workflows/publish.yml must exist and carry its own copy of the five PR-gate jobs' " +
-      "bodies (TSPEC §8.2) — not yet created"
+    ".github/workflows/publish.yml must exist and carry its own copy of every PR-gate job's " +
+      "body (TSPEC §8.2) — not yet created"
   );
 
   const publishText = readText(publishWorkflowPath);
@@ -433,24 +580,27 @@ test("T49: ci arrangement — publish.yml/pr-tests.yml gate-command set-equality
   assert.doesNotMatch(
     gateBlock,
     /^ {4}uses:\s*\S/m,
-    "publish.yml's gate job must duplicate the five PR-gate jobs' bodies, never `uses:` a " +
+    "publish.yml's gate job must duplicate the PR-gate jobs' bodies, never `uses:` a " +
       "reusable workflow (§8.2 — the reusable-workflow extraction was rejected because it " +
       "silently renames rendered check names Phase PUB polls literally)"
   );
 
-  const prBlocks = extractAllJobBlocks(readText(workflowPath));
   const expectedCommands = new Set();
-  for (const id of GATE_JOB_IDS) {
-    for (const cmd of extractRunCommands(prBlocks[id])) expectedCommands.add(cmd);
+  for (const [file, jobIds] of Object.entries(PR_GATE_FILES)) {
+    const blocks = extractAllJobBlocks(readText(path.join(workflowsDir, file)));
+    for (const id of jobIds) {
+      for (const cmd of extractRunCommands(blocks[id])) expectedCommands.add(cmd);
+    }
   }
   const actualCommands = new Set(extractRunCommands(gateBlock));
 
   assertSetEqual(
     actualCommands,
     expectedCommands,
-    "publish.yml's gate job must run the same commands as pr-tests.yml's five gate jobs, as a " +
-      "set-equality over the run commands (§8.5) — this is what pays for §8.2's duplication: " +
-      "the two files are kept in step by a test, not by memory"
+    "publish.yml's gate job must run the same commands as EVERY PR-gate job — pr-tests.yml's " +
+      "five and fixture-machine.yml's — as a set-equality over the run commands (§8.5). This is " +
+      "what makes C-6 true: a tag gated on fewer commands than the PR was is a release gated on " +
+      "weaker evidence (CODE_REVIEW v1 §3-2)"
   );
 });
 
