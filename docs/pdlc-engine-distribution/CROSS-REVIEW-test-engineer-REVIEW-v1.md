@@ -81,4 +81,36 @@ techniques were used, and where a finding rests on one it is named in the row:
 
 ## Recommendation
 
+**Needs revision**
+
+Three High findings. None of them is a design problem — the specs get all three of these
+right, and the packaging oracle shows the team knows exactly how to write a falsifiable
+test. What is missing is coverage of the *publish* path specifically, which is also the one
+path the PR gate structurally cannot exercise, and that combination is why the gap survived
+eleven review rounds of documents.
+
+Exactly what would resolve each:
+
+1. **F-01** — add one leg to `publish-channel.test.js`: call `runPublish` with
+   `tarballBytes: Buffer.from("...".concat(SENTINEL, "..."))` and assert
+   `result.conclusion === "failure"`, `result.published === false`,
+   `channel.calls.publish.length === 0`, and `result.message` matching `/sentinel|AC-3.5/i`.
+   That is the positive conjunct PROP-PUB-4 already calls for, and it reddens the mutation
+   probe in F-01. The two existing tautological assertions at `:252-261` should stay only if
+   the poisoned-tarball leg lands alongside them; on their own they are padding.
+2. **F-02** — add a static coupling test (see Q-01): parse `.github/workflows/publish.yml`,
+   collect the subcommand token from every `publish-preflight.mjs <token>` `run:` line, and
+   `deepEqual` the sorted set against the sorted `case` labels in `main()`. Set-equality both
+   directions, so a renamed case *and* an unimplemented workflow step each fail. This is
+   cheap, hermetic, and it is the only thing standing between a rename and a broken release.
+3. **F-03** — either raise the four modules over the floor or narrow `PROP-REGR-6`'s module
+   list, and record which (Q-03). Closing F-01 and F-02 moves `publish-preflight.mjs`
+   substantially on its own, since the uncovered ranges those findings name are the bulk of
+   the module's shortfall.
+
+F-04 is worth a decision but not a blocker; F-05 and F-06 are records, not work.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 1, "low": 2}
