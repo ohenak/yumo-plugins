@@ -13,15 +13,23 @@ feature: pdlc-engine-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.7 | 2026-08-14 |
+| pdlc | Draft | Claude | 0.8 | 2026-08-16 |
+
+*0.8 (2026-08-16, CODE_REVIEW v1 §3-1/§3-2 + round-8): §5.1 gains row 6 (`fixture-machine.yml`)
+and a PR-gate **file** column; BR-7.1 derives its file scope from the `on:` trigger and set-equals
+it; BR-7.5 excludes on trigger, not filename; **BR-7.7** added (tag gate re-runs every PR-gate
+file's commands). Round-8 fixes: F-5 step 2 says how a path-filtered member's non-run is read
+(SE `F-01`); AT-3.4 names the two new set-equalities (SE `F-02`/TE `F-04`); §3's F-5 baseline
+sentence is dated (TE `F-02`); AT-1.6 compares triple **values**, not banner text (SE `F-05`);
+`E-22`/`BR-8.2` use the **Workflow members** class name (SE `F-07`/TE `F-02`).*
 
 *0.7 (2026-08-14, round-6): carried-forward §5.2 items only. The CLI-entry and engine-module rows
 anchor `PK-4`/`PK-4b` and `PK-5`…`PK-19` (SE `F-03`); the CLI-entry note no longer calls its
 cardinality a downstream-only choice, which contradicted the per-class count below (SE `F-04`);
 AT-3.8a's count conjunct is stated positively (SE `F-05`); the class is renamed **Workflow
 members**, since `PK-22` is a JSON manifest (SE `F-06`); §5.2 quotes REQ v0.11's AC-1.3 wording.
-No criterion, oracle or count changed. SE `F-01`/TE `F-02` are routed as errata on PLAN and
-PROPERTIES, which still name the deleted "none installed" message.*
+No criterion, oracle or count changed in 0.7. The PLAN/PROPERTIES errata it routed were
+discharged in `8980ffe7`.*
 
 *0.6 (2026-08-14, erratum round): the missing-plugin literal now matches the shipped value
 everywhere it is quoted. AT-1.6 read `"none"` and AT-1.1 read "states none is installed", but the
@@ -250,12 +258,19 @@ taken is announced in the run's own output. Silence is never a permitted outcome
 The publish pipeline is **additive**: its own workflow file with its own trigger. It may reuse the
 PR gate's jobs but may not weaken, rename, make conditional, or re-render any member of §5.1
 (C-5), because Phase PUB polls those names literally. Nothing of this kind exists at HEAD:
-`.github/workflows/` holds exactly one file (`pr-tests.yml`), so every step below is new work.
+at feature start (`89babe8e`, 2026-08-13) `.github/workflows/` held exactly one file
+(`pr-tests.yml`), so every step below is new work. (At HEAD the directory also holds this
+feature's own `fixture-machine.yml` and `publish.yml`; BR-7.1 enumerates it live.)
 
 1. **Trigger** (T-4): a pushed git tag naming an **engine** version. No other trigger publishes.
 2. **Gate check.** Every member of §5.1's expected set must be green on the tagged commit. If any
    member fails, or is absent, or did not run: **nothing is published and the publish workflow run
-   is failed** (AC-3.2). A skipped run and a green-but-inert run are both defects, because neither
+   is failed** (AC-3.2). "Absent" means a member that should have run and did not: a
+   **path-filtered** member (§5.1 row 6) that produced no check because a PR touched none of its
+   paths is not absent in this sense, and neither a PR poll nor a branch-protection rule may treat
+   it as pending. At a tag the question does not arise — `publish.yml`'s `gate` job runs that
+   member's commands directly (BR-7.7) rather than polling for its check.
+   A skipped run and a green-but-inert run are both defects, because neither
    is distinguishable from success by a reader of the runs list.
 3. **Tag/engine-version agreement** (AC-3.6): the tag's version is compared against the **engine**
    version of record (T-1a) at that commit, and never against the plugin's number. On disagreement
