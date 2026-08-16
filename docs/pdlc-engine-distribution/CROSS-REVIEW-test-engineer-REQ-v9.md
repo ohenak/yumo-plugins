@@ -73,3 +73,7 @@ outside that bullet is unchanged approved bytes and was not re-litigated.
 
 VERDICT: Approved
 {"high": 0, "medium": 0, "low": 0}
+
+APPROVAL-HASH: sha256:44d0e18836f534cb68444f6e5a0b26eebf3d2aafe7f7630ce1f38fed78b1d00f
+APPROVAL-HASH-NORMALIZED: sha256:ab2e8c4732037aa1ef69d5ec119cf9dcb44da2a6c869d43e79f4f9580c7a95cd
+REVIEWED-COMMIT: f02d51567739ce856fc6e7d577538517b539a46c
