@@ -57,9 +57,17 @@ export function runPrepack({
   return manifest;
 }
 
-const isMain = existsSync(process.argv[1] ?? "") &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+// Exported, and pure, so the process-entry guard itself is reachable from a
+// test: as an inline module-scope expression it was evaluated exactly once
+// per load, which left the `argv[1] === undefined` arm (an embedder, `node
+// -e`, or a REPL import, where `existsSync(undefined)` would otherwise
+// throw) with no way to be exercised at all (CR round-1 TE F-03).
+export function isMainEntry(argv1, moduleUrl, fs = { existsSync }) {
+  if (typeof argv1 !== "string" || argv1 === "") return false;
+  if (!fs.existsSync(argv1)) return false;
+  return path.resolve(argv1) === fileURLToPath(moduleUrl);
+}
 
-if (isMain) {
+if (isMainEntry(process.argv[1], import.meta.url)) {
   runPrepack();
 }

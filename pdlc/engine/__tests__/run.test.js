@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   WORKFLOW_MODULE_URLS,
@@ -20,7 +20,7 @@ import {
   runQueueLoop,
   loadDispatchableSkills,
 } from "../lib/run.mjs";
-import { runPrepack } from "../scripts/prepack.mjs";
+import { runPrepack, isMainEntry } from "../scripts/prepack.mjs";
 import { DISPATCHABLE_SKILLS as DEV_SKILLS } from "../../workflows/orchestrate-dev.js";
 import { DISPATCHABLE_SKILLS as QUEUE_SKILLS } from "../../workflows/orchestrate-queue.js";
 
@@ -147,6 +147,97 @@ test("prepack vendors the workflow modules byte-for-byte with a verifiable manif
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }
+});
+
+// CR round-1 TE F-03 (PROP-REGR-6). Every existing prepack leg passes
+// `engineVersion` explicitly, so `readEngineVersion()` — the default a real
+// `npm pack` actually takes, since npm passes no arguments — had no caller
+// under test. That is the same shape as the `provenanceFor` defect found in
+// this round: a stamped field read from a source that never runs in test,
+// free to stamp `undefined` in production. Asserted against the engine's own
+// package.json rather than a literal, so a version bump does not redden it,
+// and `undefined`/empty is rejected explicitly.
+test("prepack defaults engineVersion to the engine's own package.json version, never undefined (AF-2)", () => {
+  const tmpRoot = mkdtempSync(path.join(tmpdir(), "pdlc-run-prepack-default-"));
+  try {
+    const declared = JSON.parse(
+      readFileSync(path.join(engineRoot, "package.json"), "utf8"),
+    ).version;
+    assert.ok(declared, "engine package.json must declare a version for this oracle to mean anything");
+
+    const manifest = runPrepack({
+      sourceDir: path.join(repoRoot, "pdlc", "workflows"),
+      vendorDir: path.join(tmpRoot, "vendor", "workflows"),
+    });
+
+    assert.equal(manifest.engineVersion, declared);
+    assert.notEqual(manifest.engineVersion, undefined);
+    assert.ok(
+      !String(manifest.engineVersion).includes("undefined"),
+      `manifest stamped a non-version: ${manifest.engineVersion}`,
+    );
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+// CR round-1 TE F-03 (PROP-REGR-6, AF-2). `runPrepack` was exercised only as
+// an imported function; the production caller is npm's `prepack` lifecycle,
+// which runs the file as a **process**, taking the `isMain` guard and the
+// zero-argument call. A guard that never fired (or one that fired on import)
+// would leave `npm pack` shipping no vendor directory at all while every
+// unit leg above stayed green. The vendor directory is git-ignored build
+// output (§5.2), so it is removed again afterwards.
+test("prepack run as a process (npm's prepack lifecycle) vendors both modules (AF-2)", () => {
+  const vendorRoot = path.join(engineRoot, "vendor");
+  try {
+    rmSync(vendorRoot, { recursive: true, force: true });
+    const result = spawnSync(process.execPath, [path.join(engineRoot, "scripts", "prepack.mjs")], {
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+
+    const manifestPath = path.join(vendorRoot, "workflows", "VENDOR-MANIFEST.json");
+    assert.ok(existsSync(manifestPath), "process-entry prepack must write VENDOR-MANIFEST.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    assert.deepEqual(
+      manifest.modules.map((m) => m.name).sort(),
+      ["orchestrate-dev.js", "orchestrate-queue.js"],
+    );
+    for (const entry of manifest.modules) {
+      assert.ok(
+        existsSync(path.join(vendorRoot, "workflows", entry.name)),
+        `${entry.name} must exist beside the manifest`,
+      );
+    }
+  } finally {
+    rmSync(vendorRoot, { recursive: true, force: true });
+  }
+});
+
+// CR round-1 TE F-03 (PROP-REGR-6). The guard's own decision table, including
+// the arm that made it necessary: `argv[1]` absent (embedder / `node -e` /
+// REPL import), where an unguarded `existsSync(undefined)` throws. Both
+// polarities are asserted, so a guard stuck on either constant fails.
+test("prepack's process-entry guard fires only for its own file, and survives an absent argv[1]", () => {
+  const selfPath = path.join(engineRoot, "scripts", "prepack.mjs");
+  const selfUrl = pathToFileURL(selfPath).href;
+  const yes = { existsSync: () => true };
+
+  assert.equal(isMainEntry(selfPath, selfUrl, yes), true, "own path must fire");
+  assert.equal(
+    isMainEntry(path.join(engineRoot, "scripts", "postinstall.mjs"), selfUrl, yes),
+    false,
+    "a different existing script must not fire",
+  );
+  assert.equal(
+    isMainEntry(selfPath, selfUrl, { existsSync: () => false }),
+    false,
+    "a non-existent argv[1] must not fire",
+  );
+  // The arm the `??` guard existed for: no throw, and a false verdict.
+  assert.equal(isMainEntry(undefined, selfUrl, yes), false);
+  assert.equal(isMainEntry("", selfUrl, yes), false);
 });
 
 // T41 (TSPEC §5.2, PROP-PACK-7): `WORKFLOW_MODULE_URLS` became a function —
