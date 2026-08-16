@@ -31,6 +31,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import os from "node:os";
@@ -156,6 +157,15 @@ export const SKIP_INVENTORY = Object.freeze([
     name: "two-repo-upgrade",
     capability: "npm-pack",
     unverifiedInvariants: Object.freeze(["AT-2.3"]),
+  }),
+  // PM CR round-1 F-05: FSPEC:802 marks the AT-5 group [fixture], and this
+  // is the entry that makes that marking true — the pinning ladder observed
+  // through a real `pdlc` on `PATH`, real child processes and real exit
+  // codes, not through a fake resolver.
+  Object.freeze({
+    name: "version-ladder",
+    capability: "npm-pack",
+    unverifiedInvariants: Object.freeze(["AT-5.1", "AT-5.2", "AT-5.4", "AT-5.5"]),
   }),
 ]);
 
@@ -291,6 +301,83 @@ export function readSkipRecords(sinkPath) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line));
+}
+
+// ─── 4. Version-ladder observation (AT-5.1 / 5.2 / 5.4 / 5.5) ──────────────
+//
+// PM CR round-1 F-05: FSPEC:802 marks the whole AT-5 group **[fixture]**, but
+// the machine carried no AT-5 leg, so the pinning ladder was observed only by
+// unit tests over the pure resolver and by banner tests over a *fake* one —
+// which is exactly why F-01/F-02's unwired production path stayed green
+// through a full suite. The leg below drives the ladder through a real
+// `pdlc` on `PATH`, a real child process and real exit codes; only the
+// resolved engine at the far end is a stub, because what is under test is
+// which engine gets executed, not what that engine then does.
+
+/** The line a stubbed store entry prints so the leg can identify who ran. */
+export const LADDER_STUB_PREFIX = "FIXTURE-STUB-ENGINE";
+
+/**
+ * Reads one ladder observation out of a real child result: which stubbed
+ * store entry actually executed (or `null` when none did), and the mode/pin
+ * the launcher stamped into `PDLC_RESOLVED_ENGINE` for it. Pure over the
+ * spawn result so `fixture-machine.test.js` drives every branch with no
+ * spawn (T59's hermetic floor).
+ *
+ * @param {{status: number|null, stdout: string|null, stderr: string|null}} result
+ * @returns {{status: number|null, engineRan: string|null, mode: string|null, pin: string|null, output: string}}
+ */
+export function parseLadderObservation(result) {
+  const output = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
+  const line = new RegExp(`^${LADDER_STUB_PREFIX} (\\S+) mode=(\\S*) pin=(\\S*)$`, "m").exec(output);
+  return {
+    status: result?.status ?? null,
+    engineRan: line ? line[1] : null,
+    mode: line && line[2] !== "" ? line[2] : null,
+    pin: line && line[3] !== "" && line[3] !== "null" ? line[3] : null,
+    output,
+  };
+}
+
+/**
+ * Pure verdict over one `(expectation, observation)` pair. `expected.engine`
+ * is `null` for the refusal legs, which must run *nothing* — asserted
+ * positively rather than by the absence of a failure, so a leg whose child
+ * never started for an unrelated reason cannot pass as a refusal.
+ *
+ * @returns {string[]} violations; empty means the observation matched
+ */
+export function checkLadderObservation(expected, observed) {
+  const violations = [];
+  const label = expected.label;
+
+  if (observed.status !== expected.exitCode) {
+    violations.push(`${label}: exit code ${observed.status}, expected ${expected.exitCode}`);
+  }
+  if (expected.engine === null) {
+    if (observed.engineRan !== null) {
+      violations.push(`${label}: expected no engine to execute, but ${observed.engineRan} ran`);
+    }
+  } else if (observed.engineRan !== expected.engine) {
+    violations.push(`${label}: engine ${observed.engineRan ?? "<none>"} ran, expected ${expected.engine}`);
+  }
+  if (expected.mode !== undefined && observed.mode !== expected.mode) {
+    violations.push(`${label}: resolved mode ${observed.mode ?? "<none>"}, expected ${expected.mode}`);
+  }
+  if (expected.pin !== undefined && observed.pin !== expected.pin) {
+    violations.push(`${label}: stamped pin ${observed.pin ?? "<none>"}, expected ${expected.pin}`);
+  }
+  for (const needle of expected.mentions ?? []) {
+    if (!observed.output.includes(needle)) {
+      violations.push(`${label}: output never names ${JSON.stringify(needle)}`);
+    }
+  }
+  for (const needle of expected.forbids ?? []) {
+    if (observed.output.includes(needle)) {
+      violations.push(`${label}: output names ${JSON.stringify(needle)}, which it must not`);
+    }
+  }
+  return violations;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -543,6 +630,107 @@ function legPluginTreeHash() {
   return { name: "plugin-tree-hash", violations };
 }
 
+/**
+ * Writes a stub engine into `$PDLC_HOME/versions/<version>/bin/pdlc.mjs`
+ * (§6.1's store layout, `rootFor`). The stub prints one identifying line
+ * carrying the version it is and the mode/pin the launcher stamped into
+ * `PDLC_RESOLVED_ENGINE` for it, then exits 0 — so what the leg observes is
+ * *which engine the ladder executed*, which is the whole of AT-5.1/5.2/5.4,
+ * without depending on what a real resolved engine would then go on to do.
+ */
+function writeStubStoreEntry(pdlcHome, version) {
+  const binDir = path.join(pdlcHome, "versions", version, "bin");
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(
+    path.join(binDir, "pdlc.mjs"),
+    [
+      "const raw = process.env.PDLC_RESOLVED_ENGINE;",
+      "let marker = {};",
+      "try { marker = raw ? JSON.parse(raw) : {}; } catch {}",
+      `console.log("${LADDER_STUB_PREFIX} ${version} mode=" + (marker.mode ?? "") + " pin=" + (marker.pin ?? ""));`,
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+}
+
+/**
+ * AT-5.1 / AT-5.2 / AT-5.4 / AT-5.5 — the pinning ladder, executed.
+ *
+ * Three real invocations of the installed `pdlc`, each from a consumer repo
+ * whose `.claude/pdlc.config.json` declares a different `engine` section:
+ *
+ *   - pinned-and-installed  → the PINNED version executes, not the latest
+ *                             one, and the run is stamped `mode=pin`
+ *                             (AT-5.1, AT-5.2).
+ *   - no pin declared       → the highest installed version executes,
+ *                             stamped `mode=latest` (AT-5.4).
+ *   - pinned-and-missing    → nothing executes, exit 1, and the refusal
+ *                             names both the pin and what IS installed —
+ *                             never a silent fall back to latest (AT-5.5).
+ *
+ * The refusal leg asserts "no engine ran" positively (`expected.engine:
+ * null` in `checkLadderObservation`) rather than inferring it from the
+ * absence of a failure, so a child that never started for an unrelated
+ * reason cannot pass as a refusal.
+ */
+function legVersionLadder() {
+  const { env, pdlcHome } = setUpTempPrefixInstall();
+  const older = "9.9.8";
+  const newer = "9.9.9";
+  const absent = "9.9.7";
+  writeStubStoreEntry(pdlcHome, older);
+  writeStubStoreEntry(pdlcHome, newer);
+
+  const consumerRepo = mkdtempSync(path.join(tmpdir(), "pdlc-fixture-consumer-"));
+  mkdirSync(path.join(consumerRepo, ".claude"), { recursive: true });
+  const declare = (engineSection) => {
+    writeFileSync(
+      path.join(consumerRepo, ".claude", "pdlc.config.json"),
+      `${JSON.stringify(engineSection === null ? {} : { engine: engineSection }, null, 2)}\n`,
+      "utf8"
+    );
+  };
+  const runDev = () =>
+    spawnSync("pdlc", ["dev", "docs/x/REQ-x.md", "--cwd", consumerRepo], { env, encoding: "utf8" });
+
+  const expectations = [
+    {
+      declare: { version: older },
+      expected: {
+        label: "pinned-and-installed",
+        exitCode: 0,
+        engine: older,
+        mode: "pin",
+        pin: older,
+        forbids: [`${LADDER_STUB_PREFIX} ${newer}`],
+      },
+    },
+    {
+      declare: null,
+      expected: { label: "no-pin-latest", exitCode: 0, engine: newer, mode: "latest", pin: null },
+    },
+    {
+      declare: { version: absent },
+      expected: {
+        label: "pinned-and-missing",
+        exitCode: 1,
+        engine: null,
+        mentions: [absent, older, newer],
+        forbids: [LADDER_STUB_PREFIX],
+      },
+    },
+  ];
+
+  const violations = [];
+  for (const { declare: section, expected } of expectations) {
+    declare(section);
+    violations.push(...checkLadderObservation(expected, parseLadderObservation(runDev())));
+  }
+
+  return { name: "version-ladder", violations };
+}
+
 /** AT-2.5: the container leg — a below-floor Node runner refuses cleanly (§9.3). */
 function legContainer() {
   const out = execFileSync(
@@ -597,6 +785,16 @@ function runFixtureMachine() {
   });
   if (twoRepoGate.skip) appendSkipRecord(twoRepoGate.skip, skipSinkPath);
   else record(twoRepoGate.result);
+
+  const ladderGate = runGatedLeg({
+    name: "version-ladder",
+    capability: "npm-pack",
+    unverifiedInvariants: ["AT-5.1", "AT-5.2", "AT-5.4", "AT-5.5"],
+    probeResult: npmPackProbe,
+    leg: legVersionLadder,
+  });
+  if (ladderGate.skip) appendSkipRecord(ladderGate.skip, skipSinkPath);
+  else record(ladderGate.result);
 
   if (npmPackProbe && npmPackProbe.status === 0) {
     record(legPluginTreeHash());

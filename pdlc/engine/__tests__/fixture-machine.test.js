@@ -258,3 +258,159 @@ describe("runGatedLeg — all three arms asserted positively, as a partition (TE
     assert.equal(legRan, true);
   });
 });
+
+// ─── AT-5 ladder observation (PM CR round-1 F-05) ──────────────────────────
+//
+// The real leg (`legVersionLadder`) spawns a real `pdlc` against a real
+// store; these legs drive its two PURE halves — the observation parser and
+// the verdict comparator — with no spawn at all, which is what keeps
+// PROP-REGR-6's 85 % floor on this module reachable from T59 alone
+// (TE round-3 Q-01).
+
+describe("parseLadderObservation (which engine actually executed, and under what mark)", () => {
+  test("T50: reads the stub's version, mode and pin out of a real child's stdout", async () => {
+    const { parseLadderObservation, LADDER_STUB_PREFIX } = await import("../scripts/fixture-machine.mjs");
+    const observed = parseLadderObservation({
+      status: 0,
+      stdout: `resolved: using pinned engine 9.9.8\n${LADDER_STUB_PREFIX} 9.9.8 mode=pin pin=9.9.8\n`,
+      stderr: "",
+    });
+    assert.deepEqual(observed, {
+      status: 0,
+      engineRan: "9.9.8",
+      mode: "pin",
+      pin: "9.9.8",
+      output: observed.output,
+    });
+  });
+
+  test("T50: an unpinned run's empty pin field reads as null, not as the string \"null\"", async () => {
+    const { parseLadderObservation, LADDER_STUB_PREFIX } = await import("../scripts/fixture-machine.mjs");
+    const emptyField = parseLadderObservation({ status: 0, stdout: `${LADDER_STUB_PREFIX} 9.9.9 mode=latest pin=\n` });
+    assert.equal(emptyField.engineRan, "9.9.9");
+    assert.equal(emptyField.mode, "latest");
+    assert.equal(emptyField.pin, null);
+
+    const literalNull = parseLadderObservation({ status: 0, stdout: `${LADDER_STUB_PREFIX} 9.9.9 mode=latest pin=null\n` });
+    assert.equal(literalNull.pin, null);
+  });
+
+  test("T50: a refusal — no stub line anywhere, on either stream — reads as engineRan null", async () => {
+    const { parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    const observed = parseLadderObservation({
+      status: 1,
+      stdout: "",
+      stderr: "pdlc: pinned version 9.9.7 is not installed (installed: 9.9.8, 9.9.9)\n",
+    });
+    assert.equal(observed.status, 1);
+    assert.equal(observed.engineRan, null);
+    assert.equal(observed.mode, null);
+    // stderr is part of the scanned output, so `mentions` can assert on a
+    // refusal message the engine writes to stderr rather than stdout.
+    assert.match(observed.output, /9\.9\.7/);
+  });
+
+  test("T50: a child with no readable status at all still parses, reporting status null", async () => {
+    const { parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    assert.deepEqual(parseLadderObservation(null), {
+      status: null,
+      engineRan: null,
+      mode: null,
+      pin: null,
+      output: "",
+    });
+  });
+});
+
+describe("checkLadderObservation (the AT-5 falsifier: pin beats latest, missing pin refuses)", () => {
+  const stubLine = (version, mode, pin) => `FIXTURE-STUB-ENGINE ${version} mode=${mode} pin=${pin}`;
+
+  test("T50: AT-5.1/5.2 — the pinned engine executing under mode=pin yields no violations", async () => {
+    const { checkLadderObservation, parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkLadderObservation(
+      { label: "pinned-and-installed", exitCode: 0, engine: "9.9.8", mode: "pin", pin: "9.9.8", forbids: ["FIXTURE-STUB-ENGINE 9.9.9"] },
+      parseLadderObservation({ status: 0, stdout: `${stubLine("9.9.8", "pin", "9.9.8")}\n` })
+    );
+    assert.deepEqual(violations, []);
+  });
+
+  test("T50: the defect AT-5.2 exists for — latest silently winning over the pin — is caught", async () => {
+    const { checkLadderObservation, parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkLadderObservation(
+      { label: "pinned-and-installed", exitCode: 0, engine: "9.9.8", mode: "pin", pin: "9.9.8", forbids: ["FIXTURE-STUB-ENGINE 9.9.9"] },
+      parseLadderObservation({ status: 0, stdout: `${stubLine("9.9.9", "latest", "")}\n` })
+    );
+    assert.equal(violations.length, 4);
+    assert.ok(violations.some((v) => /engine 9\.9\.9 ran, expected 9\.9\.8/.test(v)));
+    assert.ok(violations.some((v) => /resolved mode latest, expected pin/.test(v)));
+    assert.ok(violations.some((v) => /stamped pin <none>, expected 9\.9\.8/.test(v)));
+    assert.ok(violations.some((v) => /names "FIXTURE-STUB-ENGINE 9\.9\.9", which it must not/.test(v)));
+  });
+
+  test("T50: AT-5.5 — a refusal that names the pin and what is installed, running nothing, passes", async () => {
+    const { checkLadderObservation, parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkLadderObservation(
+      {
+        label: "pinned-and-missing",
+        exitCode: 1,
+        engine: null,
+        mentions: ["9.9.7", "9.9.8", "9.9.9"],
+        forbids: ["FIXTURE-STUB-ENGINE"],
+      },
+      parseLadderObservation({ status: 1, stderr: "pinned version 9.9.7 is not installed (installed: 9.9.8, 9.9.9)\n" })
+    );
+    assert.deepEqual(violations, []);
+  });
+
+  test("T50: AT-5.5's real defect — falling back to latest instead of refusing — is caught on every conjunct", async () => {
+    const { checkLadderObservation, parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    const violations = checkLadderObservation(
+      {
+        label: "pinned-and-missing",
+        exitCode: 1,
+        engine: null,
+        mentions: ["9.9.7", "9.9.8", "9.9.9"],
+        forbids: ["FIXTURE-STUB-ENGINE"],
+      },
+      parseLadderObservation({ status: 0, stdout: `${stubLine("9.9.9", "latest", "")}\n` })
+    );
+    assert.ok(violations.some((v) => /exit code 0, expected 1/.test(v)));
+    assert.ok(violations.some((v) => /expected no engine to execute, but 9\.9\.9 ran/.test(v)));
+    assert.ok(violations.some((v) => /never names "9\.9\.7"/.test(v)));
+    assert.ok(violations.some((v) => /names "FIXTURE-STUB-ENGINE", which it must not/.test(v)));
+  });
+
+  test("T50: AT-5.4 — mode/pin are only checked when the expectation states them", async () => {
+    const { checkLadderObservation, parseLadderObservation } = await import("../scripts/fixture-machine.mjs");
+    // No `mode`/`pin` keys: an expectation that states neither must not
+    // manufacture a violation out of whatever the observation carried.
+    const violations = checkLadderObservation(
+      { label: "no-pin-latest", exitCode: 0, engine: "9.9.9" },
+      parseLadderObservation({ status: 0, stdout: `${stubLine("9.9.9", "latest", "")}\n` })
+    );
+    assert.deepEqual(violations, []);
+  });
+});
+
+describe("SKIP_INVENTORY covers the AT-5 group FSPEC:802 marks [fixture] (PM CR F-05)", () => {
+  test("T50: the version-ladder entry names AT-5.1, AT-5.2, AT-5.4 and AT-5.5", async () => {
+    const { SKIP_INVENTORY } = await import("../scripts/fixture-machine.mjs");
+    const entry = SKIP_INVENTORY.find((e) => e.name === "version-ladder");
+    assert.ok(entry, "SKIP_INVENTORY carries no version-ladder entry");
+    assert.equal(entry.capability, "npm-pack");
+    assert.deepEqual([...entry.unverifiedInvariants], ["AT-5.1", "AT-5.2", "AT-5.4", "AT-5.5"]);
+  });
+
+  test("T50: every AT id the machine claims to carry appears in exactly one entry", async () => {
+    const { SKIP_INVENTORY } = await import("../scripts/fixture-machine.mjs");
+    const counts = new Map();
+    for (const entry of SKIP_INVENTORY) {
+      for (const id of entry.unverifiedInvariants) counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    const duplicated = [...counts].filter(([, n]) => n > 1);
+    assert.deepEqual(duplicated, [], `AT ids claimed by more than one leg: ${JSON.stringify(duplicated)}`);
+    for (const id of ["AT-5.1", "AT-5.2", "AT-5.4", "AT-5.5", "AT-2.3", "AT-2.4", "AT-2.5"]) {
+      assert.ok(counts.has(id), `no SKIP_INVENTORY entry names ${id}`);
+    }
+  });
+});
