@@ -434,7 +434,7 @@ const WORKFLOW_MODULE_NAMES = ["orchestrate-dev.js", "orchestrate-queue.js"];
  * scratch tree. Caller is responsible for removing the returned
  * `buildRoot` once packing is done.
  */
-function buildScratchEnginePackTree() {
+function buildScratchEnginePackTree(versionOverride) {
   const buildRoot = mkdtempSync(path.join(tmpdir(), "pdlc-fixture-build-"));
   const buildEngineDir = path.join(buildRoot, "pdlc", "engine");
   const buildWorkflowsDir = path.join(buildRoot, "pdlc", "workflows");
@@ -452,7 +452,31 @@ function buildScratchEnginePackTree() {
       path.join(buildWorkflowsDir, name),
     );
   }
+  if (versionOverride) {
+    // The upgrade leg needs a second pack whose *manifest* version genuinely
+    // differs from the baseline pack's — otherwise `npm install --global`
+    // re-installs an identical package and AT-2.4's resolved-version/
+    // resolved-store-entry inequality can never be observed. Rewrite the
+    // scratch copy's package.json only; the real, git-tracked package.json
+    // under `ENGINE_ROOT` is never touched.
+    const manifestPath = path.join(buildEngineDir, "package.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.version = versionOverride;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
   return { buildRoot, buildEngineDir };
+}
+
+/**
+ * Derives a synthetic "next" version for the upgrade leg's second pack from
+ * the real engine package's own version: a `-fixture.<timestamp>` prerelease
+ * suffix appended to the real version, so `resolvedVersion` and
+ * `resolvedStoreEntry` (which is keyed off the version's store path)
+ * genuinely change between the baseline install and the upgrade, while the
+ * real checkout's `package.json` is never edited.
+ */
+function deriveUpgradeVersion(baseVersion) {
+  return `${baseVersion}-fixture.${Date.now()}`;
 }
 
 /**
@@ -482,6 +506,31 @@ function setUpTempPrefixInstall() {
   const [{ filename }] = JSON.parse(packOut);
   const tarball = path.join(packDir, filename);
 
+  // Build and pack a *second* scratch tree whose manifest version genuinely
+  // differs from the baseline pack's, so the upgrade leg installs a real,
+  // distinct version rather than reinstalling the same tarball (see
+  // `deriveUpgradeVersion`). Read the base version from the real,
+  // git-tracked manifest (never edited) — the scratch copy used for the
+  // baseline pack has already been removed by this point.
+  const baseManifest = JSON.parse(
+    readFileSync(path.join(ENGINE_ROOT, "package.json"), "utf8"),
+  );
+  const upgradeVersion = deriveUpgradeVersion(baseManifest.version);
+  const { buildRoot: upgradeBuildRoot, buildEngineDir: upgradeBuildEngineDir } =
+    buildScratchEnginePackTree(upgradeVersion);
+
+  let upgradePackOut;
+  try {
+    upgradePackOut = execFileSync("npm", ["pack", "--pack-destination", packDir, "--json"], {
+      cwd: upgradeBuildEngineDir,
+      encoding: "utf8",
+    });
+  } finally {
+    rmSync(upgradeBuildRoot, { recursive: true, force: true });
+  }
+  const [{ filename: upgradeFilename }] = JSON.parse(upgradePackOut);
+  const upgradeTarball = path.join(packDir, upgradeFilename);
+
   const env = {
     ...process.env,
     npm_config_prefix: prefix,
@@ -504,7 +553,7 @@ function setUpTempPrefixInstall() {
     };
   };
 
-  return { env, spawnFn, tarball, prefix, pdlcHome };
+  return { env, spawnFn, tarball, upgradeTarball, prefix, pdlcHome };
 }
 
 function upgradeInstall({ env, tarball }) {
@@ -524,9 +573,9 @@ function upgradeInstall({ env, tarball }) {
 function legInstallUpgrade() {
   const before = execFileSync("git", ["status", "--porcelain"], { cwd: REPO_ROOT, encoding: "utf8" });
 
-  const { env, spawnFn, tarball } = setUpTempPrefixInstall();
+  const { env, spawnFn, upgradeTarball } = setUpTempPrefixInstall();
   const pre = recordResolvedState(spawnFn);
-  upgradeInstall({ env, tarball });
+  upgradeInstall({ env, tarball: upgradeTarball });
   const post = recordResolvedState(spawnFn);
 
   const violations = compareLegRecords(pre, post);
@@ -551,7 +600,7 @@ function legInstallUpgrade() {
  * invocation.
  */
 function legTwoRepoUpgrade() {
-  const { env, spawnFn, tarball } = setUpTempPrefixInstall();
+  const { env, spawnFn, upgradeTarball } = setUpTempPrefixInstall();
 
   const repoA = mkdtempSync(path.join(tmpdir(), "pdlc-fixture-consumer-a-"));
   const repoB = mkdtempSync(path.join(tmpdir(), "pdlc-fixture-consumer-b-"));
@@ -569,7 +618,7 @@ function legTwoRepoUpgrade() {
   runInRepo(repoB, commandLogB, ["--version"]);
 
   // The one upgrade command runs on the machine, never inside either repo.
-  upgradeInstall({ env, tarball });
+  upgradeInstall({ env, tarball: upgradeTarball });
 
   const postA = recordResolvedState(spawnFn);
   runInRepo(repoA, commandLogA, ["--version"]);
@@ -616,8 +665,8 @@ function legPluginTreeHash() {
   };
 
   const before = hashTree();
-  const { env, tarball } = setUpTempPrefixInstall();
-  upgradeInstall({ env, tarball });
+  const { env, upgradeTarball } = setUpTempPrefixInstall();
+  upgradeInstall({ env, tarball: upgradeTarball });
   const after = hashTree();
 
   const violations = [];
