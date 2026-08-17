@@ -98,4 +98,48 @@ Every existing-behaviour claim in the REQ was checked against the tree at HEAD o
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+This is a strong REQ: the strategy is right, the dominant risk is correctly identified and gated on
+operator-judged evidence with declared thresholds, and the demolition is sequenced to be bisectable.
+The findings are not about strategy — they are about the inventory being incomplete and the blast
+radius crossing boundaries the document draws as closed.
+
+Seven High findings must be resolved before FSPEC authoring:
+
+1. **F-02 is the blocker to settle first**, because it can turn the retirement commit into an
+   outage. The plugin bump this feature forces (CLAUDE.md's rule, given changes under `skills/`,
+   `hooks/` and `workflows/`) can leave the plugin outside the installed engine's
+   `pdlcPluginCompat: "^0.23.0"` window, at which point C-10's handshake correctly refuses every
+   run. Decide the version story and, if it needs an engine republish, add the BL row that gates
+   the sweep on it — NG-5 currently disowns the change without naming an owner.
+2. **F-01, F-05, F-07 and F-13 all widen the blast radius across a boundary the REQ treats as
+   closed**: `publish.yml`'s tag-triggered gate (bound to `pr-tests.yml` by a set-equality
+   assertion), engine-side tests and fixtures, a surviving oracle test that requires the docs to
+   keep naming the deleted scripts, and the wave-gate config keys that this feature's own Phase I
+   runs under. Each is a red required check on the commit that ignores it, which is precisely what
+   C-7 forbids. Fold them into §1.2, AC-1.2/AC-1.4 and C-5's artifact-class list, and answer Q-03
+   and Q-04 on ownership and commit granularity.
+3. **F-03 and F-06 are factual corrections to enumerations that other criteria consume.** The
+   missing `consolidate-learnings.bundle.js` means AC-1.1's named set can pass on a tree that still
+   carries a retired bundle; O-7/BL-05's queue-row citations do not describe HEAD, and AC-2.3 gates
+   on them. Re-derive both from the tree and from `QUEUE.md` by feature name.
+4. **F-04 needs a decision, not just wording.** G-5 preserves the probe CLI while the sweep deletes
+   its only installer and its only caller. Either name the post-sweep consumer and delivery path in
+   O-3 and give AC-5.3 a concrete invocation, or amend NG-2 and retire M-9 with the rest.
+
+The Medium findings are mostly oracle-quality repairs that will pay for themselves at Phase PT:
+F-09 (a tautological count clause and an absence-only skip clause), F-14 (an unfalsifiable
+exemption set), F-11 (an observable that reads as failing at HEAD), F-15 (a baseline that must be
+captured before the deletions it is compared against). **F-10 deserves particular attention**: three
+of §6.3's six acceptance criteria are already satisfied at HEAD by shipped engine code, and this
+project has previously mistaken a pre-satisfied phase for a delivered one. Label them as regression
+guards with their HEAD citations so nobody reads that green as progress.
+
+Nothing here questions the decision to retire. Once the inventory is complete and the cross-channel
+dependents are owned, this is an executable sweep.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 7, "medium": 8, "low": 3}
