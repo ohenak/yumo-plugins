@@ -338,11 +338,14 @@ or from an observed run — none depends on an agent reporting success.
 - **AC-4.2** *Who:* the same operator. *Given* the cleanup has already run, *when* it is run
   again, *then* it succeeds, changes nothing, and says so (idempotence).
 - **AC-4.3** *Who:* the same operator. *Given* an unexpected or hand-modified file inside the
-  target directory, *when* the cleanup runs, *then* it refuses that file, leaves it in place,
-  names it in its output, and exits in a way that makes the refusal visible (C-9).
+  target directory, *when* the cleanup runs, *then* it leaves that file **byte-identical**,
+  names its path on stderr, and exits **non-zero** — the same convention the retired tooling
+  used, so the refusal is checkable without reading the implementation (C-9).
 - **AC-4.4** *Who:* a consumer repo owner who never adopts the cleanup. *Given* they do
-  nothing, *when* they run a feature through the engine, *then* the leftover files are inert
-  — nothing reads them and no warning about them is emitted.
+  nothing, *when* they run a feature through the engine, *then* the run reaches its
+  configured final phase and its report set-equals the report of the same run in a repo with
+  no leftovers, and neither the run's output nor its report mentions the leftover paths —
+  a positive outcome plus the absences, so an unrelated failure cannot satisfy it.
 
 ### 6.5 Nothing deleted was load-bearing (P0)
 
@@ -350,13 +353,16 @@ or from an observed run — none depends on an agent reporting success.
   feature is run end-to-end through the engine in this repo, *then* it completes through its
   configured final phase and produces the same artifact classes as before the sweep (spec
   files, cross-reviews with verdicts and anchors, queue-row writes, a final report).
-- **AC-5.2** *Who:* the operator. *Given* the same run, *when* the run report is compared
-  against a pre-sweep run report of the engine path, *then* the fields differ only in
-  feature-specific content — no field, phase or gate disappeared with the deleted machinery
-  (NG-3).
-- **AC-5.3** *Who:* the operator. *Given* HEAD after the sweep, *when* the probe CLI is
-  invoked in a consumer repo, *then* it answers exactly as it did before, and it is still
-  produced by a build step rather than maintained by hand (G-5).
+- **AC-5.2** *Who:* the operator. *Given* the same run, *when* its report is compared against
+  the pre-sweep baseline report committed under BL-08 (cited by path and commit), *then* the
+  two reports' **field sets are equal** — an added *or* removed field fails — and values
+  differ only within the enumerated allowed set (feature name, timestamps, ids, paths). No
+  field, phase or gate disappeared with the deleted machinery (NG-3).
+- **AC-5.3** *Who:* the operator. *Given* HEAD after the sweep, *when* they invoke the probe
+  CLI **at its surviving repo path, directly, in a checkout of the consuming project** — the
+  post-sweep delivery path, since the retired sync channel was its only installer and the
+  retired runtime adapter its only caller (O-3) — *then* it answers exactly as it did before,
+  and it is still produced by a build step rather than maintained by hand (G-5).
 
 ## 7. Risks
 
