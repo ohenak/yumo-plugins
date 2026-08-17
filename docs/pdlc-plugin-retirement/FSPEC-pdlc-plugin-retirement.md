@@ -632,3 +632,37 @@ committed transcript or from an observed run; none is satisfied by an agent repo
   answers exactly as before and is still produced by a build step rather than maintained by hand.
 
 ## 7. Open Questions
+
+Each row names where it is resolved and who owns it. A row with no owner would be a blocking gap,
+not a note.
+
+| # | Item | Owner / resolution |
+|---|---|---|
+| O-A | **BL-03's adoption evidence is not citable at HEAD.** No run report is tracked in the repo at `b3f24fc6`. C-1's four thresholds are operator-judged and the reports are operator-captured | **Operator**, before the first deletion commit. The report paths and commits are transcribed into this FSPEC at C-6 re-measurement time (REQ BL-03) |
+| O-B | **BL-08's pre-sweep report and gate transcript are not yet captured.** Both are uncapturable after the sweep starts | **Operator**, at §3.0 step 4; committed at fixed paths in `docs/pdlc-plugin-retirement/` and cited by path + commit here |
+| O-C | **Where the probe CLI lives after `dist/` retires**, and whether the manifest survives for that one row — which fixes AC-1.1's branch | **TSPEC** (REQ O-3). This FSPEC pins AC-1.3's literals only; see §1.2 and the erratum raised against the REQ below |
+| O-D | **Phase MERGE's self-modification guard paths** once `pdlc/workflows/` and `.claude/workflows/` change meaning or cease to exist | **TSPEC** (REQ O-4); if the resolution needs engine-side change it binds to a successor REQ under NG-5 |
+| O-E | **Which surviving modules host the re-homed queue-triage and hook-manifest assertions** (L-6's names) | **TSPEC** decides placement; the resulting module names are transcribed into L-6 at re-measurement time |
+| O-F | **BL-05's disposition of `QUEUE.md` row 8 (`pdlc-release-ci`)** | **Operator**, decided upstream per `pdlc-engine-distribution` O-3. AT-2.3 refuses to pass while the row still mandates the retired channel |
+| O-G | **Whether the sweep ships a `0.23.x` plugin version or waits on a widened engine release** (BR-VER-1) | **Operator** chooses; either branch satisfies BL-07, and the choice is recorded in the TSPEC before the first deletion commit |
+
+### 7.1 Assumptions
+
+| # | Assumption | Veto path |
+|---|---|---|
+| A-1 | The `fixture-machine.yml` check survives the sweep unchanged — it names no retired artifact at the base commit (verified by L-3's search over that file) | If a retired name lands in it before the sweep, L-7's post-sweep set and BR-DOC-1's count word change |
+| A-2 | Re-homed assertions land in modules that already exist, so L-5's post-sweep count is 119 − 22 = 97 | If the TSPEC creates a new module for them, L-5 is corrected at re-measurement, not loosened |
+| A-3 | The consumer cleanup ships as an operator-invoked step in the plugin's script surface; its exit convention follows the retired sync tooling (BR-CLN-4) | Its form and home are the TSPEC's; the behaviour of §3.5 and §4.5 binds whatever form is chosen |
+| A-4 | The delegator skills invoke the engine's installed CLI entrypoint (`pdlc`, `pdlc/engine/bin/pdlc.mjs` at the base commit); the resolution mechanism is the TSPEC's | If the engine's invocation surface changes, BR-DEL-1…4 still bind |
+
+### 7.2 Erratum raised against the upstream REQ
+
+One defect in `REQ-pdlc-plugin-retirement.md` v0.9 is reported rather than folded in here:
+**AC-1.1 requires M-6 (`distribution-manifest.json`) not to exist and the `dist/` entry set to
+set-equal `{M-9}`, while O-3 leaves open "whether the manifest survives for that one row" and
+routes that decision to the TSPEC.** If the TSPEC decides the manifest survives to describe the
+probe CLI, AC-1.1 as written fails on a file the REQ's own obligation kept. The two clauses
+cannot both hold; the REQ must decide which, since an FSPEC cannot pin AC-1.1's expectation
+around an upstream contradiction. Emitted as an `ERRATUM: REQ` item in this dispatch's final
+message. Until it is resolved, L-1's post-sweep expectation is stated as AC-1.1 reads today, with
+the O-3 branch flagged in O-C.
