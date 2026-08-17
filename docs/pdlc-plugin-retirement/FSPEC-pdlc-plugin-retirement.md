@@ -506,4 +506,129 @@ against the sweep's base commit (§3.0 step 3); a literal that moved is correcte
 
 ## 6. Acceptance Tests
 
+Each test names the REQ criterion it discharges. Every one is checkable from the tree, from a
+committed transcript or from an observed run; none is satisfied by an agent reporting success.
+
+### 6.1 Surface removal
+
+- **AT-1.1** (AC-1.1) *Who:* maintainer. *Given* HEAD after the sweep, *when* the tree is listed,
+  *then* M-1…M-6 and M-10 are not tracked files, and either the entry set of
+  `pdlc/workflows/dist/` set-equals `{pdlc-cli.mjs}` or that directory is absent and the probe CLI
+  exists at the single path the TSPEC names. A `dist/` entry outside L-1's post-sweep expectation
+  fails.
+- **AT-1.2** (AC-1.2) *Who:* maintainer. *Given* HEAD, *when* L-3's command is run and its output
+  is filtered by A-1's path globs, *then* the remaining output is **empty**. Companion check: the
+  command's term list set-equals L-2's seven terms — a run with a term added or removed does not
+  satisfy this test.
+- **AT-1.3** (AC-1.3) *Who:* maintainer. *Given* HEAD, *when* the workflow suite runs, *then* it
+  is green; it contains no skipped or pending test belonging to M-8; `*.test.js` under
+  `pdlc/workflows/__tests__/` counts exactly L-5's post-sweep literal; and each L-6 module is
+  present and passing, including the re-homed queue-triage and hook-manifest assertions.
+- **AT-1.4** (AC-1.4) *Who:* maintainer. *Given* HEAD, *when* CI runs on a pull request, *then*
+  `Generated artifacts are in sync` and `Fresh-clone bootstrap works` do not exist; the surviving
+  shell-script check asserts only surviving scripts (no deleted entrypoint, no deleted sourced
+  library); every remaining job is green; and, in **both** CLAUDE.md's `### Continuous
+  integration` section and `pdlc/OPERATIONS.md`'s `## Continuous integration` section, the
+  described rows set-equal L-7's post-sweep set, the prose count word equals its size, and the
+  named workflow files set-equal the files those checks are defined in.
+- **AT-1.4b** (AC-1.4b) *Who:* maintainer. *Given* HEAD, *when* `publish.yml`'s tag gate is read
+  and asserted against the surviving job set, *then* L-8 holds: no step invokes a deleted
+  artifact, and the release path still gates on L-7's surviving checks.
+- **AT-1.4c** (AC-1.4c) *Who:* maintainer. *Given* **each** commit of the sweep, *when* the engine
+  suite runs at that commit, *then* it is green — including the CI-arrangement oracle over the job
+  set and CLAUDE.md's CI section, table and prose count word, the drift-gate smoke cases and the
+  observation tests. Baseline: the same suite green at the pre-sweep base commit, per the BL-08
+  transcript.
+- **AT-1.5** (AC-1.5) *Who:* maintainer. *Given* HEAD, *when* `.worktreeinclude` and `.gitignore`
+  are inspected, *then* neither carries a row whose only purpose was the consumer runtime copy,
+  each removed row's comment block is gone with it, a file left with no rows is deleted rather
+  than empty, and the `.gitignore` row's fixture-addability effect is discharged by that fixture's
+  own disposition.
+- **AT-1.6** (AC-1.6) *Who:* maintainer. *Given* a clean tracked-files-only checkout at HEAD,
+  *when* the document-oracle suite runs, *then* the packaging and advertised-version checks over
+  the deleted bundles are gone with their tests, the drift scan carries no exemption for a tree
+  that no longer exists, the assertion requiring CLAUDE.md to contain the two retired script names
+  is gone together with the prose it guarded, and the remaining oracles pass.
+- **AT-1.7** (AC-1.7) *Who:* maintainer. *Given* HEAD, *when* `pdlc/hooks/hooks.json` is read,
+  *then* its registered entry set (by event and script name) set-equals L-4's post-sweep four
+  rows. Deleting the whole `SessionStart` event fails this test.
+- **AT-1.8** (AC-1.8, C-5, C-7) *Who:* maintainer. *Given* the sweep's commit range, *when* each
+  commit is checked out in turn and L-9's three commands are run at it, *then* every command
+  passes at every commit, and each commit's diff belongs to exactly one class of §3.1 (with the
+  BR-SWEEP-3 exception, which is one class covering its whole span). Evidence is the pasted replay
+  output.
+
+### 6.2 One documented story
+
+- **AT-2.1** (AC-2.1) *Who:* a reader new to the repo. *Given* HEAD, *when* they read the
+  instructional set of BR-DOC-2, *then* they find no instruction to build runtime bundles, sync,
+  force-sync, check drift, bootstrap a fresh clone's runtime artifacts or work around the
+  self-created-worktree gap — the sections are absent, not replaced by pointers — and exactly one
+  described way to run the pipeline unattended. Falsifiable by search over the retired concepts'
+  names and by the verbatim headings of M-11l.
+- **AT-2.2** (AC-2.2) *Who:* operator. *Given* HEAD, *when* `pdlc/RELEASE-CHECKLIST.md` is read,
+  *then* every row whose subject was the retired machinery is removed or rewritten against the
+  engine's release artifact, and no surviving row instructs a check that cannot be performed.
+- **AT-2.3** (AC-2.3) *Who:* operator. *Given* HEAD, *when* `docs/_decisions/` and
+  `docs/_queue/QUEUE.md` are read, *then* no live decision and no open queue row mandates the
+  retired copy channel — specifically, `QUEUE.md`'s `pdlc-release-ci` row no longer does — and
+  each superseded decision carries an explicit superseding entry.
+
+### 6.3 Plugin serves humans; engine cannot run without it
+
+- **AT-3.1** (AC-3.1) *Who:* operator in a consumer repo with plugin and engine installed.
+  *Given* a ready queue row, *when* they invoke `/pdlc:orchestrate-queue`, *then* the engine
+  executes the feature, the skill's response relays the engine's run report, and no pipeline
+  decision is made inside the plugin (BR-DEL-1, BR-DEL-2).
+- **AT-3.2** (AC-3.2 — regression guard, pre-satisfied at HEAD) *Who:* operator in a consumer repo
+  with the plugin **not** installed. *Given* a ready queue row, *when* they invoke the engine from
+  a terminal, *then* it refuses to dispatch any skill-driven phase and names the missing plugin as
+  the cause. Asserted **after** the sweep.
+- **AT-3.3** (AC-3.3) *Who:* a human in a Claude Code session. *Given* the plugin at HEAD, *when*
+  the set of `pdlc/skills/*/SKILL.md` is compared against L-10's listing, *then* the two
+  set-equal; each skill in the set loads and runs when invoked; and every hook in L-4's surviving
+  set fires — the harvest guard refuses a premature review-file deletion, the scope-field and
+  REQ-size warnings emit, and the consolidation nudge reaches the session.
+- **AT-3.4** (AC-3.4) *Who:* a Ptah-configured consumer. *Given* HEAD, *when* each configured
+  skill path is resolved, *then* every path exists.
+- **AT-3.5** (AC-3.5 — regression guard) *Who:* operator. *Given* the published engine of BL-07
+  and the **post-sweep** plugin version inside its declared range, *when* the engine dispatches a
+  skill, *then* it reads that skill from the installed plugin and the run report carries both
+  versions; no engine-side snapshot exists to skew against the plugin.
+- **AT-3.6** (AC-3.6 — regression guard) *Who:* operator. *Given* the plugin installed at a
+  version outside the engine's declared range, *when* they invoke the engine, *then* it refuses
+  before dispatching any skill, performs no pipeline action, and the invocation's terminal output
+  — banner plus refusal together — carries engine version, plugin version and expected range; the
+  run report carries the same three (BR-VER-3).
+
+### 6.4 Consumer cleanup
+
+- **AT-4.1** (AC-4.1) *Who:* operator in a repo that previously hosted the runtime copy. *Given* a
+  `.claude/workflows/` copy and a drift-state record, *when* the cleanup runs once, *then* both
+  are gone, the repo's tracked files are unchanged, and the step exits zero reporting what it
+  removed.
+- **AT-4.2** (AC-4.2) *Who:* same operator. *Given* the cleanup has already run, *when* it runs
+  again, *then* it succeeds, changes nothing and says so.
+- **AT-4.3** (AC-4.3) *Who:* same operator. *Given* an unexpected or hand-modified file inside the
+  target directory, *when* the cleanup runs, *then* every file in the directory is byte-identical
+  afterwards, each unexpected path is named on stderr, and the exit status is non-zero.
+- **AT-4.4** (AC-4.4) *Who:* a consumer repo owner who never adopts the cleanup. *Given* the
+  leftovers remain, *when* they run a feature through the engine, *then* the run reaches its
+  configured final phase, its report set-equals that of the same run in a repo with no leftovers,
+  and neither the output nor the report mentions the leftover paths.
+
+### 6.5 Nothing deleted was load-bearing
+
+- **AT-5.1** (AC-5.1) *Who:* operator. *Given* every deletion merged, *when* a real feature runs
+  end-to-end through the engine in this repo, *then* it completes through its configured final
+  phase and produces the same artifact classes as before — spec files, cross-reviews with verdicts
+  and anchors, queue-row writes and a final report.
+- **AT-5.2** (AC-5.2) *Who:* operator. *Given* that run's report and the pre-sweep baseline report
+  committed under BL-08 (cited by path and commit), *when* the two are compared, *then* their
+  field **sets** are equal — an added or removed field fails — and values differ only within the
+  enumerated allowed set (feature name, timestamps, ids, paths).
+- **AT-5.3** (AC-5.3, G-5) *Who:* operator. *Given* HEAD after the sweep, *when* the probe CLI is
+  invoked at its surviving repo path, directly, in a checkout of the consuming project, *then* it
+  answers exactly as before and is still produced by a build step rather than maintained by hand.
+
 ## 7. Open Questions
