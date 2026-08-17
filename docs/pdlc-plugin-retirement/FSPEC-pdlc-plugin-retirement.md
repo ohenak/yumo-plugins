@@ -366,6 +366,114 @@ against the sweep's base commit (§3.0 step 3); a literal that moved is correcte
   NG-1). Skill file locations do not move; if one ever did, every known `ptah.config.json`
   consumer is updated in the same change (REQ C-4).
 
+### 4.3 Documentation and CI rules
+
+- **L-7 — The required-check set.** At the base commit it is **six** checks across **two**
+  PR-triggered workflow files:
+
+  | Check name | File | Post-sweep |
+  |---|---|---|
+  | `Unit tests (ubuntu-latest, node 20)` | `pr-tests.yml` | survives |
+  | `Engine tests (ubuntu-latest)` | `pr-tests.yml` | survives |
+  | `Generated artifacts are in sync` | `pr-tests.yml` | **removed** (M-11a) |
+  | `Fresh-clone bootstrap works` | `pr-tests.yml` | **removed** (M-11a) |
+  | `Shell scripts parse` | `pr-tests.yml` | survives, **narrowed** — its executable-bit assertions name only surviving scripts |
+  | `Fixture machine (install/upgrade, launcher, container, two-repo)` | `fixture-machine.yml` | survives — it names no retired artifact |
+
+  **Post-sweep expectation: four checks across the same two workflow files.**
+- **BR-DOC-1 — Rows, count word and named files move together.** Wherever a tracked instructional
+  document describes the required-check set, its rows **set-equal** L-7's post-sweep set, its
+  prose **count word** equals that set's size (`four`), and the workflow files it names
+  **set-equal** the files those checks are defined in. This binds CLAUDE.md's
+  `### Continuous integration` section (oracle-covered) **and** `pdlc/OPERATIONS.md`'s
+  `## Continuous integration` section (no oracle — its count word reads "six checks" at
+  `OPERATIONS.md:59` today) with the same three-part assertion (REQ AC-1.4, M-11l).
+- **BR-DOC-2 — Removed, not deprecated.** In the tracked instructional set — CLAUDE.md,
+  `pdlc/OPERATIONS.md`, `README.md`, `pdlc/README.md`, `pdlc/RELEASE-CHECKLIST.md` and the three
+  `pdlc/skills/*/SKILL.md` files of M-11n — a reader who never saw the old path can find **no**
+  instruction to build runtime bundles, sync, force-sync, check drift, bootstrap a fresh clone's
+  runtime artifacts, or work around the self-created-worktree gap, and finds **exactly one**
+  described way to run the pipeline unattended (REQ G-3, AC-2.1). `pdlc/OPERATIONS.md`'s retired
+  sections are named by their verbatim headings in the baseline's M-11l row; its
+  `## The engine channel (\`pdlc/engine\`)` section is **not** retired.
+- **BR-DOC-3 — No live record still mandates the retired channel.** After the sweep, no live
+  decision in `docs/_decisions/` and no open row in `docs/_queue/QUEUE.md` mandates the retired
+  copy channel. A superseded decision carries an explicit superseding entry naming what it
+  supersedes — which is why `DECISIONS-plugin-distribution.md` legitimately still contains
+  retired names and is allow-listed by A-1 (REQ AC-2.3, BL-05, BL-06). `QUEUE.md` row 8
+  (`pdlc-release-ci`, `blocked`) is the one live row concerned; its disposition is decided
+  upstream and gates AC-2.3 (REQ O-7).
+- **L-8 — `publish.yml`'s tag gate, post-sweep.** No step of the tag-triggered `gate` job invokes
+  a deleted artifact: no build-and-check of the retired bundles, no rebuild-diff over them, no
+  two-command bootstrap, no sync invocation, and no executable-bit assertion naming a deleted
+  script. The release path still gates on L-7's surviving checks. Because a failure here surfaces
+  only at the next release tag, it is asserted before the sweep closes (REQ AC-1.4b, M-11b).
+- **BR-DOC-4 — Release-checklist rows are performable.** Every row whose subject was the retired
+  machinery is removed or rewritten against the engine's release artifact; no row survives
+  instructing a check that can no longer be performed (REQ AC-2.2).
+- **BR-DOC-5 — History is not rewritten.** `docs/completed/**`, `docs/discarded/**`, LEARNINGS
+  and post-mortems are not edited to drop retired names, and the two allow-listed files that must
+  survive carrying them — `DECISIONS-plugin-distribution.md` and the baseline itself — do
+  (REQ NG-4; baseline A-1).
+
+### 4.4 Delegator rules (REQ O-2, G-2)
+
+- **BR-DEL-1 — No pipeline logic in the plugin.** After the sweep the orchestration skills carry
+  no queue selection, readiness evaluation, phase dispatch, verdict parsing or queue-row write,
+  and no copy of the workflow code. Every pipeline decision is the engine's (REQ AC-3.1).
+- **BR-DEL-2 — Relay, don't summarise.** The skill relays the engine's run report substantially
+  as emitted. It may add the session-facing disposition line; it may not drop, rename or
+  re-compute a report field.
+- **BR-DEL-3 — A refusal is surfaced whole.** On an engine refusal the skill surfaces the
+  engine's startup banner **and** its refusal together — the banner is where the version triple
+  lives, so relaying the refusal line alone would hide the diagnosis (REQ AC-3.6). The skill does
+  not retry and does not fall back to any in-plugin execution path; there is none.
+- **BR-DEL-4 — The `/loop` habit is preserved.** One `/pdlc:orchestrate-queue` invocation
+  processes at most one ready feature and returns, exactly as before the sweep (REQ G-2).
+
+### 4.5 Consumer cleanup rules (REQ G-4, C-9, NG-6)
+
+- **BR-CLN-1 — Operator-invoked only.** Nothing invokes the cleanup automatically: not a hook,
+  not a session-start action, not the engine's startup path (REQ NG-6).
+- **BR-CLN-2 — Idempotent.** A second run over an already-cleaned repo changes nothing, says so
+  and exits zero (REQ AC-4.2).
+- **BR-CLN-3 — Refuse rather than delete broadly.** On encountering any entry it did not expect,
+  the step deletes **nothing at all** in that invocation — it is not a partial-progress tool.
+  Every file is left byte-identical (REQ AC-4.3, C-9).
+- **BR-CLN-4 — Refusal is checkable without reading the implementation.** A refusal names each
+  unexpected path on **stderr** and exits **non-zero**, following the convention the retired sync
+  tooling used, where an unexpected or hand-edited row exited `2`
+  (`pdlc/hooks/scripts/sync-workflows.sh`, its `local-edit`/`unverified` exit path) and a plain
+  mismatch exited `1`. The cleanup is at least as conservative as that tooling was.
+- **BR-CLN-5 — Tracked files are never touched.** The cleanup removes only untracked consumer
+  runtime state; a successful run leaves the repo's tracked files unchanged (REQ AC-4.1).
+- **BR-CLN-6 — Leftovers are inert.** A consumer that never runs the cleanup still runs features
+  to their configured final phase, with a report set-equal to the same run in a clean repo, and
+  neither output nor report mentions the leftover paths (REQ AC-4.4, R-6).
+
+### 4.6 Version-handshake rules (REQ C-10, BL-07, R-3)
+
+- **BR-VER-1 — The sweep's plugin version must stay inside the *published* engine's declared
+  range, or a new engine release must precede the first deletion commit.** Measured at the base
+  commit: the published `@kaneho/pdlc-engine@0.2.0` declares `pluginCompat: ^0.23.0`
+  (`docs/completed/pdlc-engine-distribution/EVIDENCE-ENGINE-V0.2.0.md` §2), the repo's engine
+  declares `pdlcPluginCompat: "^0.23.0"` (`pdlc/engine/package.json:18`), and the plugin is at
+  `0.23.1` (`pdlc/.claude-plugin/plugin.json`). Under the handshake's leftmost-non-zero caret
+  semantics (`pdlc/engine/lib/handshake.mjs`, `satisfiesRange`), `^0.23.0` admits `0.23.x` and
+  **not** `0.24.0`. So the sweep either ships a `0.23.x` plugin version, or BL-07's published
+  release with a widened declared range lands **before** the first deletion commit. Shipping a
+  `0.24.0` plugin against the published `^0.23.0` engine turns C-10's handshake into an outage on
+  the retirement commit (REQ R-3).
+- **BR-VER-2 — Widening the declared range is in scope; cutting the release is the operator's.**
+  Editing the engine's declared compatible-plugin range is explicitly carved into scope by REQ
+  NG-5; publishing the release that carries it is an operator step, and BL-07 gates the first
+  deletion commit on it.
+- **BR-VER-3 — Refusal is loud, and the version triple is observable.** A version mismatch or a
+  missing plugin refuses before any skill dispatch, performs no pipeline action, and the
+  invocation's terminal output — banner plus refusal together — carries the engine version, the
+  plugin version and the expected range; the run report carries the same three. The refusal
+  message's own wording is engine-side and out of scope here (REQ AC-3.6, NG-5).
+
 ## 5. Edge Cases and Error Scenarios
 
 ## 6. Acceptance Tests
