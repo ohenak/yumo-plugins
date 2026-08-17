@@ -1,0 +1,52 @@
+# Measured baseline — pdlc-plugin-retirement surface
+
+Measured at commit `5a7904ca`, 2026-08-17, on `feat-pdlc-plugin-retirement`. Cited by id from
+`REQ-pdlc-plugin-retirement.md` (§1.2) and re-derived, not trusted, before the first deletion
+commit (that REQ's C-6). Every row is re-derivable with the command in **How to re-measure**.
+
+## M-rows — artifacts that exist only to serve the workflow-runtime host
+
+| ID | Artifact | Measured (2026-08-17) | Disposition |
+|---|---|---|---|
+| M-1 | `pdlc/hooks/scripts/sync-workflows.sh` | 32,939 B / 725 lines | delete |
+| M-2 | `pdlc/hooks/scripts/lib/pdlc-drift.sh` (sourced library, non-executable by design) | 75,617 B / 1,955 lines | delete |
+| M-3 | `pdlc/hooks/scripts/check-workflow-drift.sh` | 19,240 B / 381 lines | delete |
+| M-4 | `pdlc/workflows/dist/orchestrate-dev.bundle.js` | 401,716 B | delete |
+| M-5 | `pdlc/workflows/dist/orchestrate-queue.bundle.js` | 401,020 B | delete |
+| M-6 | `pdlc/workflows/dist/distribution-manifest.json` | 1,464 B / 46 lines | delete |
+| M-7 | `pdlc/workflows/build-runtime.mjs` | 831 lines / 33,664 B | reduced — keeps emitting M-9 only |
+| M-8 | Candidate dedicated test modules (`bootstrap`, `drift*` ×16, `queueDriftGate`, `runtimeBundle`, `worktreeInclude`, `hookCompatibility`) | 22 files / 15,109 lines, of 119 `*.test.js` in `pdlc/workflows/__tests__/` | delete or re-home per REQ R-8 |
+| M-9 | `pdlc/workflows/dist/pdlc-cli.mjs` — the document-state probe CLI | 679,956 B | **survives** (REQ NG-2, G-5) |
+| M-10 | `pdlc/workflows/dist/consolidate-learnings.bundle.js` | 417,952 B | delete — a workflow-runtime bundle like M-4/M-5 |
+
+`pdlc/workflows/dist/` holds exactly these five files at the measured commit: M-4, M-5, M-6, M-9,
+M-10. That set-equality is what the REQ's AC-1.1 asserts against.
+
+## M-11 — named dependents outside the artifacts themselves
+
+| Sub-id | Dependent |
+|---|---|
+| M-11a | `.github/workflows/pr-tests.yml` jobs `artifact-freshness`, `fresh-clone-bootstrap`, and the index-mode assertions inside `script-syntax` |
+| M-11b | `.github/workflows/publish.yml`'s tag-triggered `gate` job — `build-runtime.mjs --check`, the rebuild-diff, the two-command bootstrap, `sync-workflows.sh --check`, and the executable-bit assertions naming all three scripts |
+| M-11c | `pdlc/engine/__tests__/ci-arrangement.test.js` — `GATE_JOB_IDS` (job-id set), the CLAUDE.md CI-table set-equality, its prose **count word**, and the `publish.yml`-gate command set-equality |
+| M-11d | `pdlc/engine/__tests__/smoke.test.js` — drift-gate blocking case and the `distribution.checkEnabled: false` clearances |
+| M-11e | Tracked fixture trees `pdlc/engine/__tests__/fixtures/consumer-ac12/.claude/workflows/` (5 files) and `pdlc/workflows/__tests__/fixtures/covered-violations/.claude/workflows/` (1 file) |
+| M-11f | `pdlc/workflows/__tests__/documentOracles.test.js` D-2 — asserts `CLAUDE.md` *contains* `check-workflow-drift.sh` and `sync-workflows.sh` |
+| M-11g | `lib/document-oracles.mjs` — packaging and advertised-version checks over `pdlc/workflows/dist/`, and the drift scan's generated-tree exemptions |
+| M-11h | `.claude/pdlc.config.example.json` — `implementation.postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and `implementation.postWavePathspecs` (`["pdlc/workflows/dist/"]`), documented in CLAUDE.md |
+| M-11i | Queue drift gate and its `distribution.checkEnabled` key in `orchestrate-queue.js`; the `SessionStart` drift-reporter entry in `pdlc/hooks/hooks.json` |
+| M-11j | `.worktreeinclude` (single row `.claude/workflows/`); `.gitignore`'s `/.claude/workflows/` row **and its 20-line rationale comment above it** |
+| M-11k | `pdlc/RELEASE-CHECKLIST.md` (≥4 sections), both READMEs, CLAUDE.md's bootstrap/sync/drift/worktree sections, header prose in the workflow modules |
+
+## How to re-measure
+
+```sh
+git rev-parse --short HEAD
+wc -c pdlc/hooks/scripts/sync-workflows.sh pdlc/hooks/scripts/lib/pdlc-drift.sh \
+      pdlc/hooks/scripts/check-workflow-drift.sh pdlc/workflows/dist/*
+wc -l pdlc/workflows/build-runtime.mjs
+ls pdlc/workflows/dist/                                   # M-row set-equality
+ls pdlc/workflows/__tests__/*.test.js | wc -l              # suite size
+grep -rln 'sync-workflows\|pdlc-drift\|check-workflow-drift\|\.bundle\.js\|distribution-manifest\|pdlc-drift-state\|distribution\.checkEnabled\|postWavePathspecs' \
+  $(git ls-files)                                          # dependent sweep
+```
