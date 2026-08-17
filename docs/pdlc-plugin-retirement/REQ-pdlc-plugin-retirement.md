@@ -15,7 +15,14 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.8 | 2026-08-17 |
+| pdlc | approved — ready | Claude | 0.9 | 2026-08-17 |
+
+*0.9 (2026-08-17): the revision prescribed by `POSTMORTEM-R-pdlc-plugin-retirement.md`
+§Recommendation (RESOLVED). AC-1.2 drops the survivor terms `build-runtime.mjs` and
+`pdlc/workflows/dist/` and states the term set as a **set-equality** the FSPEC transcribes
+literally with its expected-empty command (TE F-01 High, F-02, F-03); baseline round-5
+corrections carried through (SE F-29, F-30; TE F-04); the partition's pinned expectation is the
+empty remainder, not a total.*
 
 *0.8 (2026-08-17): round 4. C-6's exhaustive partition executed for the first time and closed in
 the baseline — 133 swept paths, 133 classified, remainder empty (SE F-27, TE F-01); M-11h scoped
@@ -81,9 +88,10 @@ are the artifacts (M-9, the probe CLI, is the one survivor; M-10 is the third ru
 `dist/consolidate-learnings.bundle.js`), and **M-11a**…**M-11p** are the dependents that name
 them from outside their own files (M-11l is the tracked deep-dive `pdlc/OPERATIONS.md`,
 M-11m the engine-side observation tests, M-11n the three `pdlc/skills/*/SKILL.md` files that
-instruct the retired path, M-11o the header banners inside the two surviving workflow source
-modules, M-11p the retired-artifact assertions held in six test modules M-8's regex does not
-reach; all were added at the 2026-08-17 re-measurements).
+instruct the retired path, M-11o two of the three surviving workflow modules' header banners
+(the third, `orchestrate-queue.js`'s, sits under M-11i), M-11p the
+retired-artifact assertions held in test modules M-8's regex does not reach; all were added at
+the 2026-08-17 re-measurements).
 That file carries each row's derivation command, its measured size and A-1, the allow-list
 AC-1.2 excludes, so C-6's re-measurement is reproducible.
 
@@ -94,16 +102,18 @@ docs. R-2 names the ones easiest to miss; O-5 carries the documentation share; C
 class into its own commit.
 
 **The M-11 rows are the inventory, and the sweep is the control on it — neither substitutes for
-the other.** C-6's partition was executed at `0e86f11a` and closed there: the baseline's
-**Partition** section records 133 swept paths, 133 classified, an empty unclassified remainder
-and no path with two owners. Two facts from that run bind the work downstream. First, the sweep
+the other.** C-6's partition closed at `0e86f11a` (133/133) and again at `b73fb4de` (136/136),
+each with an empty remainder and no path owned twice. The pinned expectation is that **empty
+remainder**, never the total: A-1's feature-directory glob grows by one file per cross-review, so
+the total moves while closure does not. Two facts from those runs bind the work downstream.
+First, the sweep
 is a **lower bound** on the dependent set, not its definition: M-11c (`ci-arrangement.test.js`)
 and `.worktreeinclude` are real dependents that return **zero** sweep hits, because they name job
 ids and a consumer directory rather than any retired artifact name — so an inventory row is still
 required for anything no search term reaches. Second, the PLAN sizes the sweep from the
 **partition's per-file dispositions**, not from M-11's row count: the row count is 16 and the
-classified path count is 133, and the three rows the partition corrected (M-8, M-11e, M-11h) each
-changed what their commit class costs.
+classified path count is in the low hundreds, and the rows the partition corrected (M-8, M-11e,
+M-11h, M-11i, M-11p) each changed what their commit class costs.
 
 Retirement is gated on evidence, not on the engine merely existing (C-1).
 
@@ -212,7 +222,7 @@ No work starts until every row below reads satisfied.
   engine-side coverage), CI jobs **in both `pr-tests.yml` and `publish.yml`'s tag gate**, the
   wave-gate config *values* (M-11h — the configured pathspec retires; the generic parser that
   reads it and that parser's tests do not), `.worktreeinclude`, the `.gitignore` row, document
-  oracles, the skill files (M-11n), the workflow modules' header banners (M-11o), the
+  oracles, the skill files (M-11n), the three workflow modules' header banners (M-11o, M-11i), the
   retired-artifact assertions inside surviving test modules (M-11p), docs — lands as its own commit, so a regression bisects to one artifact class. A single
   "delete everything" commit is disallowed even if the tree is green. Where C-7 and this
   constraint conflict — a class whose dependents span channels, such as the CI jobs bound to
@@ -276,18 +286,21 @@ observed run — none depends on an agent reporting success.
   path-glob allow-list **A-1** of `docs/_constraints/pdlc-retirement-baseline.md`, *then* the
   result is **empty**.
 
-  The search term is defined by construction, so it cannot quietly widen into a survivor: it
-  contains **only names of retired artifacts and the paths that hold them** — the three scripts,
-  the three bundles, the manifest, the drift-state record, the `distribution.checkEnabled` key,
-  and, for the wave-gate keys of M-11h, only the retired **configured value**
-  (`pdlc/workflows/dist/` as a `postWavePathspecs` entry, and the `build-runtime.mjs`
-  `postWaveCommand` in the form it takes before O-3's reduction). It **never** contains a
-  surviving identifier. In particular the bare key name `postWavePathspecs` is out of the term:
-  M-11h retires a value, not a mechanism, and `orchestrate-dev.js` keeps the generic parser
-  (`:168`, `:218`–`:245`, `:14416`) and `waveExecution.test.js` keeps its coverage. Were the key
-  name in the term, this criterion would demand deleting live code inside the module the engine
-  channel vendors as its source of truth — the exact failure the partition caught. Which values
-  the term carries follows the post-sweep build-step disposition resolved under O-3.
+  The term set is a **set-equality, not an upper bound**: it **is exactly** the names of the
+  retired artifacts and the records that hold them — the three retired scripts, the three retired
+  bundles, `distribution-manifest`, the drift-state record, and the `distribution.checkEnabled`
+  key. Adding a term fails this criterion and removing one fails it too, so it can be neither
+  widened into a survivor nor quietly narrowed by an implementer arguing a term away to green a
+  red search. The FSPEC transcribes at C-6 re-measurement time both the literal term list and the
+  literal expected-empty command carrying it, as AC-1.3's literal count already is. No surviving
+  identifier is a member: `build-runtime.mjs` and
+  `pdlc/workflows/dist/` are **not** terms (M-7 is reduced, not deleted, and AC-1.1 requires M-9
+  to survive, so either would red permanently on files this REQ keeps), and neither is the bare
+  key `postWavePathspecs` (M-11h retires a *value*; `orchestrate-dev.js`
+  keeps the generic parser at `:168`, `:218`–`:245`, `:14416` and `waveExecution.test.js` its
+  coverage). The retired wave-gate values are caught where the partition already catches them, as
+  M-11h edits with named per-file dispositions. The baseline's sweep recipe is a documented
+  **superset** of this set, its delta and that delta's owners named there.
 
   A-1 is complete over the tracked files carrying these names at the
   partition's measurement (`0e86f11a`), and its closing paragraph names the two that **must survive carrying
@@ -465,18 +478,19 @@ observed run — none depends on an agent reporting success.
   bundle path (M-11c, M-11d, M-11m), a *surviving* oracle test requiring CLAUDE.md to keep
   naming the two deleted scripts, so prose and test move together (M-11f), the wave-gate
   config values this feature's own implementation phase runs under (M-11h), the skill files
-  (M-11n), the banners inside two live workflow modules (M-11o), and six surviving test modules
-  asserting over the deleted `dist/` artifacts (M-11p). A partial sweep leaves a red oracle or a
-  job asserting a deleted file. The residual hazard is now shaped, not open: the partition ran at
-  `0e86f11a` and closed over 133 paths, so what remains hidden is only what **no search term can
+  (M-11n), the banners inside three live workflow modules (M-11o and M-11i), and the surviving
+  test modules asserting over the deleted `dist/` artifacts (M-11p). A partial sweep leaves a red
+  oracle or a job asserting a deleted file. The residual hazard is now shaped, not open: the
+  partition ran twice and closed both times, so what remains hidden is only what **no search term can
   reach** — M-11c and `.worktreeinclude` are the two measured instances, and both are in the
   inventory. *Control:*
   C-6's **exhaustive** re-measurement over the sweep, plus inventory rows for the dependents the
   sweep cannot see; AC-1.2's search with an enumerated allow-list,
   AC-1.4b/AC-1.4c, and a per-artifact reference sweep in the PLAN. **The PLAN sizes its tasks
   from the partition's per-file dispositions, not from the M-11 row count** — the corrected M-8
-  (27 files / 17,133 lines), M-11e (10 fixture files, two dispositions) and M-11p (6 modules)
-  are each larger than their row's one-line summary suggests.
+  (27 files / 17,133 lines), M-11e (10 fixture files, two dispositions) and M-11p (7 paths,
+  including the reduced `driftGenerators.js` it now solely owns) are each larger than their row
+  suggests.
 - **R-3 — Version skew between the plugin and the engine.** There is no engine-side snapshot
   of skill text to drift against — the engine reads every skill from the installed plugin at
   dispatch time — so the hazard is narrow: an installed plugin version the engine does not
@@ -510,8 +524,8 @@ observed run — none depends on an agent reporting success.
   hook-manifest compatibility). The re-derived figure matters: the earlier ~15,000/21-file
   reading omitted the helper set, which no surviving module imports. One helper is the
   exception and must not be deleted with the class — `helpers/driftGenerators.js`, whose
-  `seeded`/`resolveSeed`/`shrink` primitives seven surviving property suites import; it is
-  reduced to those primitives instead. *Control:* C-8's no-skip rule plus an explicit PLAN step to
+  `seeded`/`resolveSeed`/`shrink` primitives eight surviving modules import; it is
+  reduced to those primitives instead, by a fresh consumer scan. *Control:* C-8's no-skip rule plus an explicit PLAN step to
   re-home any assertion about surviving behaviour before its host file is deleted.
 
 ## 8. Obligations / Open Questions
@@ -542,8 +556,8 @@ not a note.
 - **O-5 — Documentation sweep inventory.** The retired concepts appear in CLAUDE.md (asserted
   by M-11c and M-11f — prose and assertions move in
   one commit), `pdlc/OPERATIONS.md` (M-11l, whose CI section's count word and named workflow
-  files AC-1.4 now binds), the three skill files (M-11n), the two workflow modules' header
-  banners (M-11o), both READMEs,
+  files AC-1.4 now binds), the three skill files (M-11n), the three workflow modules' header
+  banners (M-11o and M-11i), both READMEs,
   `pdlc/RELEASE-CHECKLIST.md` (≥4 sections), decision docs and queue prose. The PLAN carries the enumerated list, derived at execution time per C-6, so
   AC-2.1's reader test has a checkable basis rather than a judgement call.
 - **O-6 — Stale operator notes.** Stored operator notes describe the workflow-launcher
