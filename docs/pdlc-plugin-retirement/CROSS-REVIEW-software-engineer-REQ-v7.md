@@ -60,3 +60,57 @@ own stated expectation (empty remainder) survives the move untouched.
 under `docs/pdlc-plugin-retirement/`, both new cross-reviews, zero code and zero
 constraint files. The engine-suite figure recorded in round 6 (842/840/0/2) has
 no diff that could disturb it.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-34 | Low | Local | **Inherited, unaddressed: one stale banner count survives in §2.** `REQ:100` still reads "the release checklist, the skills, **two** live workflow modules and the instructional docs", while `REQ:481` (R-2), `REQ:91`–`:92` (§1.2's M-11o gloss), C-5 (`REQ:226`) and O-5 (`REQ:559`–`:560`) all now say three. Three identical banners exist in the tree — `pdlc/workflows/orchestrate-queue.js:5`–`:6`, `orchestrate-dev.js:5`–`:6`, `consolidate-learnings.js:5`–`:6` — so "two" is the one uncorrected copy of a count the rest of the document already fixed. Fix: "three". | §2 (dependent-set paragraph, `REQ:100`) |
+| F-35 | Low | Local | **Inherited, unaddressed: M-11h names `CLAUDE.md` without the disambiguating clause it uses for `orchestrate-dev.js`.** `pdlc-retirement-baseline.md:63` still says the retired wave-gate literals are "documented in CLAUDE.md", while `:66` assigns `CLAUDE.md` to M-11k as one of its four swept paths. M-11h already carries the right sentence pattern for the other shared path — "`orchestrate-dev.js` is owned by **M-11o** … and named here only as the mechanism's location, so no path has two owners" (`:63`) — but no counterpart for `CLAUDE.md`. Measurement backs M-11k (per-row line `:115` gives M-11h 3, M-11k 4) and reports zero multi-owned paths, so this is prose only. Fix: one clause in M-11h saying `CLAUDE.md` is named as the values' documentation site and owned by M-11k. | `docs/_constraints/pdlc-retirement-baseline.md:63` / `:66` |
+| F-36 | Low | Local | **Inherited, unaddressed: AC-1.2's set-equality is stated over artifact names, the normative command over alternations, and the two do not map 1:1.** `REQ:289`–`:295` states the term set as nine named things (three retired scripts, three retired bundles, `distribution-manifest`, the drift-state record, `distribution.checkEnabled`), and requires the FSPEC to transcribe "both the literal term list and the literal expected-empty command". The command it must transcribe (`pdlc-retirement-baseline.md:182`) carries **seven** alternations, because the three bundles are reached by the single generic `\.bundle\.js`. An FSPEC author transcribing the prose literally as `orchestrate-dev.bundle.js\|orchestrate-queue.bundle.js\|consolidate-learnings.bundle.js` writes a nine-alternation command that is *not* the measured one, and the 134/empty result is only re-derivable under the seven-alternation form. Fix: one sentence in AC-1.2 saying the nine names are the set's *membership* and the seven alternations are its *expression*, the three bundles collapsing into `\.bundle\.js`. | AC-1.2 (`REQ:289`–`:303`) |
+
+FINDING: Low | inherited | nonlocal | §2 dependent-set paragraph (`REQ:100`) | "two live workflow modules" is the last uncorrected copy of a count the rest of the document moved to three; three identical banners exist at `orchestrate-{dev,queue}.js:5`–`:6` and `consolidate-learnings.js:5`–`:6`
+FINDING: Low | inherited | nonlocal | `pdlc-retirement-baseline.md:63` / `:66` | the per-row reassignment of `CLAUDE.md` from M-11h to M-11k landed in M-11k's text only; M-11h still names `CLAUDE.md` without the "named here only as the location" clause it already gives `orchestrate-dev.js`
+FINDING: Low | inherited | nonlocal | AC-1.2 (`REQ:289`–`:303`) | set-equality is stated over nine artifact names while the normative command carries seven alternations (three bundles → one `\.bundle\.js`), so a literal transcription of the prose yields a command that is not the measured one
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The REQ is unchanged since round 6 and carries no open High across two consecutive rounds. Is a further REQ review round intended, or should F-34/F-35/F-36 be routed as errata alongside FSPEC authoring, as round 6 recommended? |
+
+## Positive Observations
+
+- **The empty-remainder pin was tested by accident this round and held.** Two
+  cross-review commits pushed A-1's feature-directory glob from 12 files to 14
+  and the sweep total from 132 to 134. Every pinned *total* in the baseline is
+  now stale; the REQ's stated expectation is not, because `REQ:106`–`:108`
+  pinned the closure property rather than the number. That is the difference
+  between a criterion that survives its own review process and one that does not.
+- **The lower-bound framing keeps doing work.** §1.2's insistence that the sweep
+  is a lower bound, not the definition of the dependent set (`REQ:109`–`:113`),
+  is what makes a growing total harmless: M-11c and `.worktreeinclude` return
+  zero sweep hits and are still inventory rows, so the inventory does not track
+  the sweep's arithmetic in either direction.
+- **The superset-only band is stable.** The four paths the eight-alternation
+  recipe reaches and the seven-term set does not are the same four the baseline
+  names, unchanged across three rounds of measurement. Nothing has drifted into
+  the band where a retired *value* could be mistaken for a retired *name*.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The REQ did not change since round 6, and its measured claims re-derive at the
+moved HEAD: the seven-term search returns 134 with an empty remainder, the
+superset recipe returns 138 with the same four-path delta, and the two paths
+added since `fb6e58cf` are this feature's own round-6 cross-reviews, both owned
+by A-1. No High finding is open, and none has been open since round 5. The three
+Lows carried forward are one stale word, one missing disambiguating clause and
+one prose/command mapping — none blocks FSPEC authoring, and all three land more
+cheaply as errata than as another REQ round.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
