@@ -45,6 +45,31 @@ M-10. That set-equality is what the REQ's AC-1.1 asserts against.
 | M-11l | `pdlc/OPERATIONS.md` — tracked instructional deep-dive created at `a9b3e78a`: `## Workflow scripts`, `## sync skips a row: \`unverified\` and \`--force\``, `## Worktrees` (self-created-worktree caveat), `## Distribution scripts` (names M-1, M-2, M-3 and their roles), `## Engine channel` |
 | M-11m | `pdlc/engine/__tests__/fs-observation.test.js` — builds an `orchestrate-dev.bundle.js` path under the consumer workflows dir, and exercises the `distribution.checkEnabled: false` opt-out |
 
+## A-1 — retired-name allow-list (measured 2026-08-17 at `63166245`)
+
+The dependent sweep below (last command in **How to re-measure**) returns, besides the
+machinery's own files, the two fixture trees of M-11e, this feature's own artifacts and the
+delivered-feature archive and `docs/_queue/QUEUE.md`, exactly nine other tracked documents. They are historical or
+superseding records, not instructions, so they are excluded from the REQ's AC-1.2
+required-empty search by these path globs:
+
+| Glob | Why excluded | Files it covers today |
+|---|---|---|
+| `docs/completed/**` | delivered-feature archive | — |
+| `docs/discarded/**` | abandoned drafts, kept as record | 3 files |
+| `docs/_decisions/**` | decision record; a superseded decision must name what it supersedes | `DECISIONS-plugin-distribution.md` |
+| `docs/_constraints/pdlc-retirement-baseline.md` | this file — the measured inventory itself | this file |
+| `**/LEARNINGS-*.md`, `**/POSTMORTEM-*.md` | post-mortem record of work already done | — |
+| `docs/_queue/QUEUE.md` | queue prose, governed instead by the REQ's AC-2.3 | `QUEUE.md` |
+| `docs/pdlc-plugin-retirement/**` | this feature's own artifacts | — |
+| `docs/PLAN-*.md`, `docs/design/**`, `docs/{other feature}/PLAN-*.md` | planning documents of already-shipped features | `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/design/MASTER-PLAN-engineering-loop.md`, `docs/design/PROMPT-dev-orchestrate-dev-optimization.md`, `docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md` |
+
+**Two allow-listed files must survive still carrying the retired names**:
+`docs/_decisions/DECISIONS-plugin-distribution.md` (its superseding entry, required by the
+REQ's BL-06 and AC-2.3, necessarily names the channel it supersedes) and this file (the REQ's
+C-6 re-measurement and AC-1.3 depend on it). Without the allow-list those two obligations and
+the required-empty search could not both be satisfied.
+
 ## How to re-measure
 
 ```sh
