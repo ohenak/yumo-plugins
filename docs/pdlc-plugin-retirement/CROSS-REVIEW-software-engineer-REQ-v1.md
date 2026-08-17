@@ -61,11 +61,40 @@ Every existing-behaviour claim in the REQ was checked against the tree at HEAD o
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | What plugin version does the post-retirement plugin carry? The answer decides whether F-02 is a one-line bump or a coordinated engine republish + tag. If the answer is "`0.24.0` or beyond", which REQ owns widening `pdlcPluginCompat`, and does the sweep block on that engine being *published* or merely merged? |
+| Q-02 | After the sweep, who invokes the probe CLI, and how does it reach them? Today the answer is the runtime adapter reading `.claude/workflows/pdlc-cli.mjs`, installed by the sync script — both retiring. If the answer is "nobody yet", is G-5 preserving an artifact for a future consumer, and should that consumer be named? (F-04) |
+| Q-03 | Does NG-5 forbid editing engine **tests and fixtures**, or only engine **runtime capability**? `smoke.test.js`, `ci-arrangement.test.js` and the `consumer-ac12` fixture tree must change for the sweep to be green, and `Engine tests` is a gating check. (F-05) |
+| Q-04 | C-5 requires each artifact class to be its own independently-green commit, but the drift gate spans plugin modules *and* engine tests, and the CI job deletion spans `pr-tests.yml` *and* `publish.yml`. Is "artifact class" allowed to be a cross-channel commit when atomicity is what keeps CI green, or does C-7 win and C-5's granularity relax? |
+| Q-05 | `build-runtime.mjs` emits the retired bundles and the surviving probe CLI from **one shared loop** (`:775-799`) that also builds the manifest rows (`:789-798`), and `--check` (`:747`) plus `runtimeBundle.test.js:1387-1403` take `pdlc-cli.mjs` as a subject. Does M-7's retirement mean "delete the three bundle rows, keep the loop, the manifest and `--check`"? If the manifest survives for one artifact, does M-6 actually retire? (interacts with AC-1.1, AC-1.2) |
+| Q-06 | AC-4.4 requires the leftover consumer files to be "provably inert — nothing reads them and no warning about them is emitted". How is that proved, given the leftovers include a drift-state record whose only reader is being deleted? Is a grep for the paths across the surviving tree the intended oracle? |
+| Q-07 | Does the `Depends-On` edge on the queue row (`QUEUE.md:77`) still hold pickup, given both named features were removed from the table rather than marked `done`? If the queue resolves a missing row as unsatisfied, this REQ can never be picked up; if it resolves as satisfied, BL-01/BL-02 are not gates at all. (F-12) |
 
 ## Positive Observations
 
-_pending_
+- The evidence gate (C-1) is the right control for the dominant risk, and it is a **real threshold
+  declaration**: four thresholds, each with a default and a named owner, with the explicit note that
+  the pipeline never decides it. This is the shape a "configured threshold" should have.
+- C-5's per-artifact-class commits plus C-7's green-at-every-commit is a genuinely bisectable
+  demolition strategy, and the REQ correctly identifies that C-7 is what makes C-5's bisectability
+  real rather than decorative.
+- C-8's no-skip rule anticipates the failure mode this project has actually suffered — tests
+  retained as vacuous green against an empty directory. Naming "left asserting a vacuous truth
+  against an empty directory" as a prohibited outcome is precise.
+- §1.2's prose paragraph on breadth (CI jobs, index-mode assertions, oracles, `.gitignore`,
+  `.worktreeinclude`, hook wiring, both READMEs, CLAUDE.md, module header prose) is accurate against
+  HEAD and unusually complete for a first draft; every item I checked in it exists. F-01, F-07 and
+  F-13 extend that list rather than contradict it.
+- R-4 correctly identifies a non-obvious second-order hazard: the drift scan's *exemptions* are
+  load-bearing, and removing them changes what the oracle sees. Verified at
+  `document-oracles.mjs:50-55, 102-104, 117-119`.
+- R-5 and G-5 catch the orphaned-generated-artifact hazard that a wholesale `dist/` deletion would
+  create. F-04 sharpens it rather than disputing it.
+- NG-4's separation of *historical* from *instructional* documents is the correct distinction and
+  keeps G-3 from mandating history rewriting. It needs enumeration (F-14), not rethinking.
+- Every AC is stated Who/Given/When/Then and most are tree-checkable, which is what makes findings
+  like F-09 and F-11 diagnosable at all — an AC written vaguely would have hidden them.
 
 ## Recommendation
 
