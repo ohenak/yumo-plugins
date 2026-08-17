@@ -30,12 +30,36 @@ All existing-behaviour claims below were verified against the tree at HEAD on
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | Does `dist/consolidate-learnings.bundle.js` retire with M-4/M-5, or survive with M-9? `/pdlc:consolidate-learnings` is a live skill with a runtime bundle, so the answer decides whether AC-1.1's "M-9 alone" is the intended end state or a third survivor is owed a G-5-style clause (F-01). |
+| Q-02 | Is editing `pdlc/engine/__tests__/ci-arrangement.test.js` and the engine's fixture trees in scope, or does NG-5 ("Changing the engine") forbid it? The sweep cannot leave both the engine suite green and NG-5 untouched under the strict reading — one of the two needs a stated carve-out (F-02, F-04). |
+| Q-03 | Which repo and which commit produce AC-5.2's pre-sweep baseline report, and where is it committed? Naming it in the REQ is the difference between a checkable comparison and an unexecutable one (F-07). |
+| Q-04 | For AC-1.8, what command set constitutes "green" per commit — the PR gate's five checks, or a reduced local subset? The answer determines whether C-5's bisectability claim is testable at all (F-08). |
+| Q-05 | AC-4.1 says "the repo's tracked files are unchanged" after cleanup. In a repo where `.claude/workflows/` was tracked rather than ignored, is the cleanup expected to refuse (per C-9's conservatism) or to delete tracked files? The AC currently presumes the untracked case (F-09 adjacent). |
 
 ## Positive Observations
 
-_(filled below)_
+- **Every criterion is Who/Given/When/Then and tree-checkable.** §6's preamble states the bar — "none depends on an agent reporting success" — and the body largely honours it. That is the single most important testability property a demolition REQ can have, and it is present from the first draft.
+- **C-5's per-artifact-class commits plus C-7's per-commit greenness are a genuinely testable bisectability contract**, not a slogan. The pairing (one commit per class; each independently green) is what makes R-1's revert control real. F-08 asks only for the mechanism, not for the idea.
+- **C-8's no-skip rule is exactly right and rarely written down.** "Removed, never skipped, marked pending, or left asserting a vacuous truth against an empty directory" forecloses the three ways a deletion sweep normally launders lost coverage.
+- **R-8 anticipates test-corpus loss and prescribes re-homing surviving assertions before their host file is deleted.** That is the correct order of operations, and it is the finding I most expected to have to raise myself.
+- **G-5/AC-5.3/R-5 keep the probe CLI's *generation* a criterion, not just its existence** — "still produced by a build step rather than maintained by hand" is a falsifiable oracle, and it closes the exact failure mode where a generated artifact silently becomes a checked-in fossil.
+- **AC-4.2's idempotence criterion has three conjuncts** (succeeds, changes nothing, says so), which is the shape absence-only oracles usually lack. F-09's request is that AC-4.3 and AC-4.4 be brought up to this same standard.
+- **NG-3 states the inertness claim as provable on the engine path** rather than as an intention, which gives §6.5 something to actually assert against.
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision**
+
+Five High findings must be closed before this REQ is a sound basis for FSPEC authoring:
+
+1. **F-01** — add `dist/consolidate-learnings.bundle.js` to the inventory with a disposition, and restate AC-1.1 as a set-equality over `dist/`.
+2. **F-02** — add an acceptance criterion covering the **engine** test suite, and name `ci-arrangement.test.js` (job-id set, CLAUDE.md table, CLAUDE.md count word, `publish.yml` gate-command equality) in R-2.
+3. **F-03** — bring `.github/workflows/publish.yml` into the inventory and into a criterion; it calls `build-runtime.mjs` and `sync-workflows.sh` today and is currently invisible to the whole document.
+4. **F-04** — replace AC-1.2's judgement-based allow-list with an enumerated path-glob set, and decide the disposition of the two tracked fixture trees that already carry the retired names.
+5. **F-05** — replace AC-1.3's self-derived file-count conjunct with a literal transcribed at C-6 re-measurement time, plus a positive survivor conjunct.
+
+The Medium findings (F-06 … F-11) are what turn §6 from "checkable in principle" into "a test an engineer can write without asking a question" — F-07 and F-11 in particular decay with time: AC-5.2's baseline becomes uncapturable once the sweep starts, and BL-05's subject row is already gone.
+
+No upstream errata: this REQ is the root of its own document chain, and its cross-feature citations (`pdlc-engine-distribution` O-3/O-4/R-2, `pdlc-headless-engine` NG-4/C-5) resolve to real, live text.
