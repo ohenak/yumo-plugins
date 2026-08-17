@@ -218,27 +218,53 @@ or from an observed run — none depends on an agent reporting success.
 ### 6.1 The retirement surface is gone (P0)
 
 - **AC-1.1** *Who:* maintainer. *Given* the sweep is complete at HEAD, *when* the tree is
-  listed, *then* M-1, M-2, M-3, M-4, M-5 and M-6 do not exist as tracked files, and
-  `pdlc/workflows/dist/` contains M-9 alone or is itself gone with M-9 relocated (G-5).
-- **AC-1.2** *Who:* maintainer. *Given* HEAD, *when* the repo is searched for the retired
-  machinery's names (the three scripts, the two bundles, the manifest, the drift-state
-  record, the `distribution.checkEnabled` key), *then* the only surviving matches are
-  historical records permitted by NG-4 — no instructional document, script, workflow, config
-  schema, test or module comment references them.
+  listed, *then* M-1, M-2, M-3, M-4, M-5, M-6 and M-10 do not exist as tracked files, and the
+  entry set of `pdlc/workflows/dist/` **set-equals** `{M-9}` — or the directory is gone with
+  M-9 relocated to a single named surviving path (G-5). Set-equality, not containment: an
+  artifact added to `dist/` between now and the sweep fails this criterion rather than
+  slipping through.
+- **AC-1.2** *Who:* maintainer. *Given* HEAD, *when* the repo's tracked files are searched
+  for the retired machinery's names (the three scripts, the three bundles, the manifest, the
+  drift-state record, the `distribution.checkEnabled` key, and the wave-gate keys of M-11h)
+  **excluding** the path-glob allow-list `docs/completed/**`, `**/LEARNINGS-*.md`,
+  `**/POSTMORTEM-*.md`, `docs/_queue/QUEUE.md`, `docs/_decisions/.consolidation-log.md` and
+  `docs/{this feature}/**`, *then* the result is **empty**. The two tracked fixture trees that
+  carry these names today (M-11e) are not in the allow-list: each is deleted or re-fixtured by
+  the sweep, so the criterion is a search with an exclude list and a required-empty result,
+  not a per-hit judgement.
 - **AC-1.3** *Who:* maintainer. *Given* HEAD, *when* the workflow test suite runs, *then* it
-  is green, contains no skipped or pending test belonging to M-8, and its file count has
-  dropped by the number of dedicated test modules removed (C-8).
+  is green; it contains no skipped or pending test belonging to M-8; its `*.test.js` file
+  count equals the **literal** number transcribed into the FSPEC at C-6 re-measurement time;
+  and every test module named in that same FSPEC list as *retained* — including the re-homed
+  assertions R-8 requires (queue triage, hook-manifest compatibility) — is present and
+  passing.
 - **AC-1.4** *Who:* maintainer. *Given* HEAD, *when* CI runs on a pull request, *then* the
   `Generated artifacts are in sync` and `Fresh-clone bootstrap works` jobs no longer exist,
   the surviving shell-script job asserts only surviving scripts (no assertion naming a
   deleted entrypoint or the deleted sourced library), and every remaining job is green.
+- **AC-1.4b** *Who:* maintainer. *Given* HEAD, *when* `.github/workflows/publish.yml` is read
+  and its tag-triggered gate is exercised (or statically asserted against the surviving job
+  set), *then* no step invokes a deleted artifact — no build-and-check of the retired bundles,
+  no two-command bootstrap, no sync invocation, no executable-bit assertion naming a deleted
+  script — and the release path still gates on the surviving checks. A failure here surfaces
+  only at the next release tag, after merge, so it is asserted before the sweep closes.
+- **AC-1.4c** *Who:* maintainer. *Given* each commit of the sweep, *when* the **engine** test
+  suite runs, *then* it is green — including the arrangement oracle whose subject is the CI
+  job set, the CLAUDE.md CI table and its prose count word (M-11c), and the smoke cases whose
+  subject is the drift gate (M-11d).
 - **AC-1.5** *Who:* maintainer. *Given* HEAD, *when* `.worktreeinclude` and `.gitignore` are
-  inspected, *then* neither carries a row whose only purpose was the consumer runtime copy;
-  a file left with no remaining rows is deleted rather than left empty.
-- **AC-1.6** *Who:* maintainer. *Given* HEAD, *when* the document-oracle suite runs, *then*
-  the packaging and advertised-version checks that exist to police the deleted `dist/`
-  bundles are gone with their tests, the document-drift scan carries no exemption for a tree
-  that no longer exists, and the remaining oracles pass on this repo.
+  inspected, *then* neither carries a row whose only purpose was the consumer runtime copy,
+  each deleted row's explanatory comment block is deleted with it, and a file left with no
+  remaining rows is deleted rather than left empty. The `.gitignore` row's stated second
+  effect — keeping a nested fixture tree addable — is discharged by that fixture's own
+  disposition under AC-1.2, not left implicit.
+- **AC-1.6** *Who:* maintainer. *Given* HEAD, *when* the document-oracle suite runs **against
+  a clean tracked-files-only checkout** (untracked caches and editor backups change this
+  oracle's result independently of the diff), *then* the packaging and advertised-version
+  checks that exist to police the deleted `dist/` bundles are gone with their tests, the
+  document-drift scan carries no exemption for a tree that no longer exists, the surviving
+  assertion that requires CLAUDE.md to *contain* the two retired script names (M-11f) is gone
+  with the prose it guarded, and the remaining oracles pass.
 - **AC-1.7** *Who:* maintainer. *Given* HEAD, *when* the plugin's hook manifest is read,
   *then* it registers no drift-reporting `SessionStart` entry, and it still registers the
   harvest guard and both authoring-warning hooks (C-2, NG-1).
