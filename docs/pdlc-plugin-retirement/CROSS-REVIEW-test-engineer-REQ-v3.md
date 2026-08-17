@@ -56,3 +56,47 @@ New material in this round that I verified independently rather than accepting:
 |----|---------|
 | Q-01 | Does AC-1.8's replay command set (FSPEC-owned) state the engine-suite invocation precisely enough to survive a polluted shell? At HEAD, `npm test` in `pdlc/engine` runs **zero** test files and then fails the suite-wide assertion when `NODE_TEST_CONTEXT` is inherited — a replay that pastes that output would show a red the sweep did not cause. |
 | Q-02 | Which commit is "pre-sweep" for AC-1.7/AC-3.3/AC-5.2 — the branch point, or BL-08's report commit? BL-08 already pins a commit for the report; reusing it for every "pre-sweep" comparison would settle F-02 with no new machinery. |
+
+## Positive Observations
+
+- **The round-2 High was closed by measurement, not by argument.** Moving the allow-list into
+  A-1 with the derivation command beside it means I could falsify it in one shell command
+  rather than reason about glob coverage — and it reproduced exactly, nine documents, no
+  residue. That is the difference between an allow-list and an allow-list you can trust after
+  the tree moves.
+- **`baseline:67-71` states the co-satisfiability of AC-1.2 and AC-2.3 out loud.** The previous
+  round's High was really "these two criteria cannot both be green"; the fix does not just add
+  a glob, it names *why* two files must survive carrying the retired names. A future reader
+  deleting the allow-list will now see what breaks.
+- **C-7 stopped assuming its own premise.** "Stays green at every commit" is worthless without
+  a measured green start, and the new sentence supplies one with a date and a repair path. I
+  re-ran it: 842 tests, 0 failures. This is the rare case of a constraint that cites evidence
+  for its baseline rather than asserting an invariant into existence.
+- **AC-1.7 is now falsifiable in the way that matters.** The old wording ("registers no
+  drift-reporting `SessionStart` entry") passed if the whole `SessionStart` event were deleted,
+  taking the consolidation nudge with it — the exact regression US-04 exists to prevent. Set
+  equality minus exactly one named entry fails that mutation, and AC-3.3 was re-pointed at
+  AC-1.7's surviving set so the two cannot drift apart.
+- **AC-1.2's M-11h term now names only what must be gone.** A search term whose expected result
+  depends on an unresolved open question can neither pass nor fail honestly; scoping it to "the
+  keys the sweep retires, per O-3" makes the criterion determinate at TSPEC time instead of
+  ambiguous forever.
+
+## Recommendation
+
+**Approved with minor changes**
+
+All three round-2 findings are resolved, and the one High is resolved by evidence I could
+reproduce rather than by re-wording. Nothing in the delta broke a previously-approved
+criterion: the set-equalities of AC-1.1, AC-1.3, AC-3.3 and AC-5.2 survive intact and AC-1.7
+joined them. The four findings above are all inside material this round added — the
+OPERATIONS.md surface (F-01, F-04) and the "pre-sweep listing" phrase that the new AC-1.7
+wording introduces (F-02) — and none of them blocks FSPEC authoring; each is a transcription
+the FSPEC or the C-6 re-measurement can absorb. F-01 is the one I would not let slip past the
+FSPEC: an instructional file with no oracle over it is precisely how a sweep leaves one true
+story and one stale one.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
