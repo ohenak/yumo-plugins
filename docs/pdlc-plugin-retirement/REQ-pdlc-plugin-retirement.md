@@ -85,12 +85,14 @@ until every row below reads satisfied.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | `pdlc-headless-engine` delivered (queue row `done`) | Merged PR + queue row status | Must hold at HEAD before FSPEC authoring |
-| BL-02 | `pdlc-engine-distribution` delivered (queue row `done`) — the engine is installable and versioned | Merged PR + queue row status | Must hold at HEAD before FSPEC authoring |
+| BL-01 | `pdlc-headless-engine` delivered | `docs/completed/pdlc-headless-engine/` present, plus `QUEUE.md`'s removal note for that feature, cited by commit — this repo *removes* a delivered row rather than marking it `done` | Must hold at HEAD before FSPEC authoring |
+| BL-02 | `pdlc-engine-distribution` delivered — the engine is installable and versioned | Same form as BL-01 (`docs/completed/pdlc-engine-distribution/` + removal note, cited by commit) | Must hold at HEAD before FSPEC authoring |
 | BL-03 | Adoption evidence per C-1 (≥2 features end-to-end, ≥1 outside `yumo-plugins`, reports showing subscription auth and headroom routing) | Run reports cited by path/commit in this feature's FSPEC | Must hold before **any** deletion commit |
 | BL-04 | Guard parity on the engine path (`pdlc-headless-engine` C-5 / AC-5.1 demonstrated) | Passing engine test + one observed unattended run | Must hold before the plugin's hook wiring is treated as optional (C-2) |
-| BL-05 | Operator decision on the `pdlc-install-mechanism` and `pdlc-release-ci` queue rows, recorded per `pdlc-engine-distribution` O-3 | Queue prose + row status change | Must hold before AC-1.2 can be true — both rows describe the retired copy channel |
+| BL-05 | Operator decision on the `pdlc-release-ci` queue row (the one live row still describing the retired copy channel), recorded per `pdlc-engine-distribution` O-3. `pdlc-install-mechanism` is already discharged — removed from the table 2026-08-13, closed as superseded, not delivered | Queue prose + row status change | Must hold before AC-1.2 can be true |
 | BL-06 | `docs/_decisions/DECISIONS-plugin-distribution.md` reviewed for decisions that mandate the sync channel | Superseding entry in the same decision file | Must hold before AC-1.2 — a live decision doc outranks a deleted script |
+| BL-07 | An engine release is **published** whose declared compatible-plugin range admits the plugin version this sweep ships (the sweep changes skills, hooks and workflows, so the plugin's version moves and can leave the installed engine's declared window; C-10's handshake would then refuse every run). Widening that declaration is in scope here per NG-5; cutting and publishing the release is the operator's step | Published engine version + its declared range, cited by version and tag | Must hold before the **first** deletion commit is merged |
+| BL-08 | A pre-sweep engine-path run report captured and committed at a fixed path in this feature's directory, cited by path + commit | Committed report file | Must hold before the first deletion commit — AC-5.2's comparison is uncapturable afterwards |
 
 ## 3. Goals
 
