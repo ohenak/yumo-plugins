@@ -107,4 +107,22 @@ actually pins held, which is a confirmation rather than a finding.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High finding is open, old or new. The document did not change this round, so the question is
+whether the version approved at v6 still describes HEAD — and it does, measured rather than
+assumed: the partition still closes with an empty remainder after the tree grew by two paths,
+the recipe/term-set delta is still exactly its four owned paths, the engine suite still starts
+green at 842/840/0/2, and AC-1.1 still has real work to do against a five-entry `dist/`.
+
+The three carried items are inventory and transcription clauses, not testability gaps in the
+acceptance criteria themselves. F-01 and F-02 both want one sentence in an inventory row and
+both belong to the FSPEC/TSPEC/PLAN pass that follows; F-03 is a wording preference against a
+set-equality that is already two-sided and falsifiable. None of them would be better fixed by
+holding Phase R open for an eighth round — the REQ has converged, and the remaining work is
+downstream work.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
