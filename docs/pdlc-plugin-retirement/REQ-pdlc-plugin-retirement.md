@@ -269,8 +269,12 @@ or from an observed run — none depends on an agent reporting success.
   *then* it registers no drift-reporting `SessionStart` entry, and it still registers the
   harvest guard and both authoring-warning hooks (C-2, NG-1).
 - **AC-1.8** *Who:* maintainer. *Given* the history of the sweep, *when* the commits are
-  listed, *then* each artifact class of C-5 is its own commit and each of those commits is
-  independently green in CI (C-7).
+  listed, *then* each artifact class of C-5 is its own commit; and *when* the sweep range is
+  replayed commit-by-commit with the gate command set run at each one — the mechanism named,
+  because hosted CI runs on the PR head and never on intermediate commits — *then* every
+  commit passes. The FSPEC enumerates that command set (the workflow suite, the engine suite,
+  the shell-syntax sweep) and the criterion is satisfied by pasted output of that replay, not
+  by inspection (C-7).
 
 ### 6.2 Documentation tells one story (P0)
 
@@ -296,25 +300,34 @@ or from an observed run — none depends on an agent reporting success.
   engine installed. *Given* a ready queue row, *when* they invoke the queue orchestration
   skill, *then* the engine executes the feature and the skill's response relays the engine's
   run report, with no pipeline decision made inside the plugin.
-- **AC-3.2** *Who:* the operator in a consumer repo with the plugin **not** installed.
-  *Given* a ready queue row, *when* they invoke the engine directly from a terminal, *then*
-  the engine refuses to dispatch any skill-driven phase and names the missing plugin as the
-  cause — the plugin is demonstrably a hard runtime dependency, not optional (C-10, NG-1).
-- **AC-3.3** *Who:* a human in a Claude Code session. *Given* the plugin, *when* they invoke
-  each interactive skill, *then* each loads and runs, and the surviving hooks still fire
-  (harvest guard refuses a premature review-file deletion; the scope-field and REQ-size
-  warnings still emit).
+- **AC-3.2** *(pre-satisfied at HEAD — regression guard, not new work; C-10's handshake ships
+  today in the engine's handshake module, verified 2026-08-17)* *Who:* the operator in a
+  consumer repo with the plugin **not** installed. *Given* a ready queue row, *when* they
+  invoke the engine directly from a terminal, *then* the engine refuses to dispatch any
+  skill-driven phase and names the missing plugin as the cause — asserted **after** the
+  sweep, so the refusal is shown to survive the removal of the plugin's workflow machinery
+  (C-10, NG-1).
+- **AC-3.3** *Who:* a human in a Claude Code session. *Given* the plugin, *when* the set of
+  `pdlc/skills/*/SKILL.md` at HEAD is compared against the pre-sweep listing, *then* the two
+  **set-equal** (no skill lost to the sweep — NG-1), each skill in that set loads and runs
+  when invoked, and the surviving hooks still fire (harvest guard refuses a premature
+  review-file deletion; the scope-field and REQ-size warnings still emit).
 - **AC-3.4** *Who:* a Ptah-configured consumer. *Given* HEAD, *when* it resolves every
   configured skill path, *then* each path exists (C-4).
-- **AC-3.5** *Who:* the operator. *Given* an engine release and the plugin at a version
-  inside the engine's declared compatible range, *when* the engine dispatches a skill,
-  *then* it reads that skill from the installed plugin and the run report carries both the
-  engine's and the plugin's version — there is no separate engine-side snapshot that can
-  skew against the plugin (C-10, R-3).
-- **AC-3.6** *Who:* the operator. *Given* the plugin installed at a version outside the
-  engine's declared compatible range, *when* they invoke the engine, *then* it refuses
-  before dispatching any skill, names both versions and the expected range in its refusal,
-  and performs no pipeline action (C-10).
+- **AC-3.5** *(pre-satisfied at HEAD — regression guard, verified 2026-08-17)* *Who:* the
+  operator. *Given* the published engine of BL-07 and the post-sweep plugin version inside
+  its declared compatible range, *when* the engine dispatches a skill, *then* it reads that
+  skill from the installed plugin and the run report carries both the engine's and the
+  plugin's version — there is no separate engine-side snapshot that can skew against the
+  plugin (C-10, R-3). The post-sweep version pair is what makes this more than a re-assertion.
+- **AC-3.6** *(pre-satisfied at HEAD — regression guard, verified 2026-08-17)* *Who:* the
+  operator. *Given* the plugin installed at a version outside the engine's declared
+  compatible range, *when* they invoke the engine, *then* it refuses before dispatching any
+  skill and performs no pipeline action, and the **terminal output of that invocation** —
+  banner plus refusal, taken together, not the refusal line alone — carries the engine's
+  version, the plugin's version and the expected range; the emitted run report carries the
+  same three (C-10). Stated as the observable block rather than one string, because the
+  refusal message's own content is engine-side and out of scope under NG-5.
 
 ### 6.4 Consumer cleanup (P1)
 
