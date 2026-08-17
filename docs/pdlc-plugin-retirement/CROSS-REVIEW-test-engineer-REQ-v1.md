@@ -63,3 +63,8 @@ Five High findings must be closed before this REQ is a sound basis for FSPEC aut
 The Medium findings (F-06 … F-11) are what turn §6 from "checkable in principle" into "a test an engineer can write without asking a question" — F-07 and F-11 in particular decay with time: AC-5.2's baseline becomes uncapturable once the sweep starts, and BL-05's subject row is already gone.
 
 No upstream errata: this REQ is the root of its own document chain, and its cross-feature citations (`pdlc-engine-distribution` O-3/O-4/R-2, `pdlc-headless-engine` NG-4/C-5) resolve to real, live text.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 6, "low": 3}
