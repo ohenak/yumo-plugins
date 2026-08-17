@@ -476,6 +476,34 @@ against the sweep's base commit (§3.0 step 3); a literal that moved is correcte
 
 ## 5. Edge Cases and Error Scenarios
 
+| ID | Scenario | Expected behaviour |
+|---|---|---|
+| E-1 | The C-6 re-measurement finds a path the inventory does not claim | The sweep does not start. The path is classified into an M-row, an M-11 row or A-1 and the baseline is updated first; sweeps fail by omission, not excess (REQ C-6) |
+| E-2 | The partition's swept **total** differs from the baseline's recorded total | Not a failure by itself — A-1's feature-directory glob grows by one file per cross-review. Only a non-empty unclassified remainder, or a multi-owned path, blocks (BR-SWEEP-5) |
+| E-3 | A dependent exists that no search term reaches (e.g. a file naming a job id or a consumer directory) | The sweep cannot see it; it is carried as an inventory row and swept by reading. `ci-arrangement.test.js` and `.worktreeinclude` are the two measured instances |
+| E-4 | A commit's gate run is red mid-sweep | The commit is not made. The class boundary is corrected first; a red commit repaired by its successor violates C-7 and breaks C-5's bisectability |
+| E-5 | An assertion about surviving behaviour is discovered inside a file scheduled for deletion | It is re-homed into a surviving module in the same commit or earlier; the deletion does not proceed until it is (REQ R-8) |
+| E-6 | The document-oracle suite is red locally but green in CI | Untracked local files (tool caches, editor backups) change this oracle's result independently of the diff. It is judged against a **clean tracked-files-only checkout** before it is treated as a sweep regression (REQ AC-1.6) |
+| E-7 | Removing the drift scan's generated-tree exemptions reds the oracle on generated content elsewhere | The oracle must be **green on this repo** after the change, not merely compile. Surviving generated content is disposed of explicitly, not exempted by a leftover rule (REQ R-4) |
+| E-8 | The `.gitignore` row's second effect (keeping a nested fixture tree addable) would be lost with the row | The fixture's own disposition under AC-1.2 discharges that effect explicitly; it is never left implicit (REQ AC-1.5) |
+| E-9 | A file (`.worktreeinclude`) has no rows left after its retired row is removed | The file is deleted, not left empty; a deleted row's explanatory comment block goes with it (REQ AC-1.5) |
+| E-10 | The build step's reduction would orphan the probe CLI as a hand-maintained checked-in file | Not permitted: the CLI stays **generated** by a reduced build step and behaviourally unchanged (REQ G-5, R-5) |
+| E-11 | An entry appears in `dist/` between authoring and the sweep | AC-1.1's set-equality fails rather than admitting it. The entry is classified and disposed of before the sweep closes |
+| E-12 | An implementer proposes narrowing L-2's term set to green a red search | Refused: L-2 is a set-equality. A red search means an unswept dependent, not an over-wide term (REQ AC-1.2) |
+| E-13 | An implementer proposes adding `build-runtime.mjs`, `pdlc/workflows/dist/` or `postWavePathspecs` to L-2 | Refused: each names a surviving artifact or mechanism and would red permanently on files this feature keeps |
+| E-14 | The whole `SessionStart` event is dropped with the drift reporter | Fails L-4's set-equality: the consolidation nudge is a `SessionStart` survivor (REQ AC-1.7, US-04) |
+| E-15 | A consumer's config still carries `distribution.checkEnabled` after the sweep | Ignored silently. It never errors and never changes behaviour (BR-GATE-2) |
+| E-16 | The cleanup finds a hand-modified file in the target directory | Nothing is deleted in that invocation, every file stays byte-identical, each unexpected path is named on stderr, exit is non-zero (BR-CLN-3, BR-CLN-4) |
+| E-17 | The cleanup is run in a repo with no leftovers, or run twice | Succeeds, changes nothing, says so, exits zero (BR-CLN-2) |
+| E-18 | The cleanup's target directory holds a file the consumer tracks in git | Treated as unexpected: refuse per E-16. Tracked files are never touched (BR-CLN-5) |
+| E-19 | The sweep bumps the plugin to a version outside the published engine's declared range | The handshake refuses every run from that commit on. Prevented by BR-VER-1: either the version stays in `0.23.x`, or BL-07's widened published release lands first |
+| E-20 | The engine refuses (handshake, missing plugin, auth policy) during a delegated run | The skill surfaces banner **and** refusal together and reports the invocation as refused; no retry, no fallback path, no shortened message that drops a version (BR-DEL-3) |
+| E-21 | The post-sweep run report has a field the pre-sweep baseline lacks, or vice versa | AC-5.2 fails. Field **sets** must be equal; only the enumerated value classes (feature name, timestamps, ids, paths) may differ |
+| E-22 | The AC-5.1 verification run halts for an unrelated reason | AC-5.1 is unmet, not waived: it requires a positive completion through the configured final phase. A halt is investigated before the sweep is declared done |
+| E-23 | The pre-sweep gate transcript records a suite that ran zero tests and exited 0 | Not a green start. BL-08 requires each suite's summary counts, so a vacuous pass is visible and is repaired before the first deletion commit (REQ C-7, BL-08) |
+| E-24 | A Ptah consumer's configured skill path would move | Forbidden unless every known consumer config is updated in the same change (REQ C-4, AC-3.4) |
+| E-25 | An adjacent feature's PLAN or a new document re-introduces a retired name after the sweep | Not allow-listed: A-1's planning glob names specific shipped-feature paths, deliberately not a wildcard over future features' PLANs, so the search reds on it |
+
 ## 6. Acceptance Tests
 
 ## 7. Open Questions
