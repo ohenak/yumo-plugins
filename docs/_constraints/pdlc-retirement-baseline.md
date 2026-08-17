@@ -4,6 +4,11 @@ Measured at commit `5a7904ca`, 2026-08-17, on `feat-pdlc-plugin-retirement`. Cit
 `REQ-pdlc-plugin-retirement.md` (§1.2) and re-derived, not trusted, before the first deletion
 commit (that REQ's C-6). Every row is re-derivable with the command in **How to re-measure**.
 
+Corrections re-measured at commit `63166245`, 2026-08-17: M-8's file count (21, not 22 — the
+enumeration in its own cell lists 21), M-11k's documentation surface (CLAUDE.md's deep-dive prose
+moved to `pdlc/OPERATIONS.md` at `a9b3e78a`; its `### Continuous integration` section restored at
+`63166245`), plus new rows M-11l and M-11m. All other rows still re-derive exactly at that commit.
+
 ## M-rows — artifacts that exist only to serve the workflow-runtime host
 
 | ID | Artifact | Measured (2026-08-17) | Disposition |
@@ -15,7 +20,7 @@ commit (that REQ's C-6). Every row is re-derivable with the command in **How to 
 | M-5 | `pdlc/workflows/dist/orchestrate-queue.bundle.js` | 401,020 B | delete |
 | M-6 | `pdlc/workflows/dist/distribution-manifest.json` | 1,464 B / 46 lines | delete |
 | M-7 | `pdlc/workflows/build-runtime.mjs` | 831 lines / 33,664 B | reduced — keeps emitting M-9 only |
-| M-8 | Candidate dedicated test modules (`bootstrap`, `drift*` ×16, `queueDriftGate`, `runtimeBundle`, `worktreeInclude`, `hookCompatibility`) | 22 files / 15,109 lines, of 119 `*.test.js` in `pdlc/workflows/__tests__/` | delete or re-home per REQ R-8 |
+| M-8 | Candidate dedicated test modules (`bootstrap`, `drift*` ×16, `queueDriftGate`, `runtimeBundle`, `worktreeInclude`, `hookCompatibility`) | 21 files / 15,109 lines, of 119 `*.test.js` in `pdlc/workflows/__tests__/` | delete or re-home per REQ R-8 |
 | M-9 | `pdlc/workflows/dist/pdlc-cli.mjs` — the document-state probe CLI | 679,956 B | **survives** (REQ NG-2, G-5) |
 | M-10 | `pdlc/workflows/dist/consolidate-learnings.bundle.js` | 417,952 B | delete — a workflow-runtime bundle like M-4/M-5 |
 
@@ -36,7 +41,9 @@ M-10. That set-equality is what the REQ's AC-1.1 asserts against.
 | M-11h | `.claude/pdlc.config.example.json` — `implementation.postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and `implementation.postWavePathspecs` (`["pdlc/workflows/dist/"]`), documented in CLAUDE.md |
 | M-11i | Queue drift gate and its `distribution.checkEnabled` key in `orchestrate-queue.js`; the `SessionStart` drift-reporter entry in `pdlc/hooks/hooks.json` |
 | M-11j | `.worktreeinclude` (single row `.claude/workflows/`); `.gitignore`'s `/.claude/workflows/` row **and its 20-line rationale comment above it** |
-| M-11k | `pdlc/RELEASE-CHECKLIST.md` (≥4 sections), both READMEs, CLAUDE.md's bootstrap/sync/drift/worktree sections, header prose in the workflow modules |
+| M-11k | `pdlc/RELEASE-CHECKLIST.md` (≥4 sections), both READMEs, CLAUDE.md's bootstrap/sync/drift/worktree/distribution-channel prose and its `### Continuous integration` section, header prose in the workflow modules |
+| M-11l | `pdlc/OPERATIONS.md` — tracked instructional deep-dive created at `a9b3e78a`: `## Workflow scripts`, `## sync skips a row: \`unverified\` and \`--force\``, `## Worktrees` (self-created-worktree caveat), `## Distribution scripts` (names M-1, M-2, M-3 and their roles), `## Engine channel` |
+| M-11m | `pdlc/engine/__tests__/fs-observation.test.js` — builds an `orchestrate-dev.bundle.js` path under the consumer workflows dir, and exercises the `distribution.checkEnabled: false` opt-out |
 
 ## How to re-measure
 
@@ -47,6 +54,9 @@ wc -c pdlc/hooks/scripts/sync-workflows.sh pdlc/hooks/scripts/lib/pdlc-drift.sh 
 wc -l pdlc/workflows/build-runtime.mjs
 ls pdlc/workflows/dist/                                   # M-row set-equality
 ls pdlc/workflows/__tests__/*.test.js | wc -l              # suite size
+git ls-files pdlc/workflows/__tests__ \
+  | grep -E '/(bootstrap|drift[A-Za-z0-9]*|hookCompatibility|queueDriftGate|runtimeBundle|worktreeInclude)\.test\.js$' \
+  | xargs wc -l                                            # M-8 file count and line total
 grep -rln 'sync-workflows\|pdlc-drift\|check-workflow-drift\|\.bundle\.js\|distribution-manifest\|pdlc-drift-state\|distribution\.checkEnabled\|postWavePathspecs' \
   $(git ls-files)                                          # dependent sweep
 ```
