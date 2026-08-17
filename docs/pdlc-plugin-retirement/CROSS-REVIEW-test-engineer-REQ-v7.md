@@ -70,6 +70,16 @@ empty document delta. None of the three is gating.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **Carried forward from round-6 F-01, unchanged.** M-9 (`dist/pdlc-cli.mjs:16-17`) is the only swept, surviving, non-allow-listed path carrying AC-1.2 terms, and its clearance is derived rather than stated: it depends on the artifact being regenerated after M-11o's banner rewrite. No M-row or M-11 row says so. One clause in the M-9 or M-11o inventory row closes it; better placed in FSPEC than in a Phase-R reopen. | AC-1.2, AC-1.1, G-5, `baseline` M-9/M-11o rows |
+| F-02 | Medium | Local | **Carried forward from round-6 F-02, unchanged.** `pipelineWiring.test.js:543-548` is a third dependent that no AC-1.2 search term reaches and that no inventory row owns, and it fails *by throw* — not by assertion — when M-7's reduction removes `DEV_META`. §1.2 already commits the REQ to the rule that anything no search term reaches needs a row; this instance is the rule's own counterexample. Today it surfaces only as an AC-1.3 suite-green failure discovered mid-sweep, with no task sized for it. | §1.2, C-6, R-2, M-7, AC-1.3 |
+| F-03 | Low | Local | **Carried forward from round-6 F-03, unchanged.** AC-1.2's prose enumeration ("the three retired bundles") and the pinned command's `\.bundle\.js` shape are two transcriptions that a faithful FSPEC author could render differently. Name the pinned command as the normative term set and let the prose enumerate it. | AC-1.2, `baseline` §recipe-vs-term-set |
+
+No new finding. The document did not change, and the HEAD re-measurement surfaced no defect the
+previous rounds had not already recorded — the sweep totals moved, but the invariant the REQ
+actually pins held, which is a confirmation rather than a finding.
+
 ## Questions
 
 ## Positive Observations
