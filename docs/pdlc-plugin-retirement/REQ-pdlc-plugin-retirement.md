@@ -143,8 +143,13 @@ until every row below reads satisfied.
   LEARNINGS, post-mortems and queue prose that describe the retired machinery are historical
   records; they are not edited or erased. G-3's "one story" obligation covers *instructional*
   documents only.
-- **NG-5 — Changing the engine.** Any capability the plugin needs from the engine is
-  an engine-side change owned by `pdlc-headless-engine`'s successors, not authored here.
+- **NG-5 — Changing the engine's *runtime capability*.** Any new or altered engine behaviour
+  the plugin needs is owned by `pdlc-headless-engine`'s successors, not authored here.
+  Explicitly **carved out and in scope**, because the sweep cannot leave the engine's own
+  required check green otherwise: the engine's declared compatible-plugin range (BL-07), and
+  the engine-side tests and fixture trees whose subject is a retired artifact (M-11c, M-11d,
+  M-11e). Editing those changes no engine behaviour; leaving them unedited reds a required
+  check on the very commit that deletes their subject, which C-7 forbids.
 - **NG-6 — Consumer-side automation of the cleanup.** G-4's step is operator-invoked; no
   hook, session-start action or engine startup path deletes consumer files on its own.
 
@@ -168,21 +173,27 @@ until every row below reads satisfied.
   sessions keep the plugin's `PreToolUse` and `PostToolUse` hooks per NG-1; only the
   `SessionStart` drift reporter is removed, because the condition it reports ceases to exist.
 - **C-3 — The queue drift gate is removed, not bypassed.** The gate and its
-  `distribution.checkEnabled` config key leave the workflow modules and their tests together.
+  `distribution.checkEnabled` config key leave the workflow modules together with **all** their
+  coverage — including the engine-side share (M-11d), which NG-5's carve-out puts in scope.
   No dead flag, no permanently-true branch, and no config key that a consumer can set with no
   effect. A consumer config still carrying the key is ignored silently — it is not an error.
 - **C-4 — Ptah keeps working.** `ptah.config.json` consumers read `SKILL.md` files by
   filesystem path. Skill file locations must not move; if a location does move, every known
   consumer config is updated in the same change.
-- **C-5 — Deletion order is reversible per step.** Each removal — bundle emission + `dist/`
-  bundles, sync script, drift library, drift hook + its wiring, queue gate, CI jobs,
-  `.worktreeinclude`, `.gitignore` row, document oracles, docs — lands as its own commit, so
-  a regression bisects to one artifact class. A single "delete everything" commit is
-  disallowed even if the tree is green.
-- **C-6 — The inventory is re-measured, not trusted.** §1.2's table is a 2026-08-08
-  measurement. Before the first deletion commit the inventory is re-derived from the tree at
-  that time and any artifact that appeared since is added to the plan — deletion sweeps fail
-  by omission, not by excess.
+- **C-5 — Deletion order is reversible per step.** Each removal — bundle emission + the three
+  `dist/` bundles, sync script, drift library, drift hook + its wiring, queue gate (with its
+  engine-side coverage), CI jobs **in both `pr-tests.yml` and `publish.yml`'s tag gate**, the
+  wave-gate config keys (M-11h), `.worktreeinclude`, the `.gitignore` row, document oracles,
+  docs — lands as its own commit, so a regression bisects to one artifact class. A single
+  "delete everything" commit is disallowed even if the tree is green. Where C-7 and this
+  constraint conflict — a class whose dependents span channels, such as the CI jobs bound to
+  `publish.yml`'s gate by a set-equality assertion — **C-7 wins**: the commit covers the whole
+  class across channels rather than splitting into a red intermediate state.
+- **C-6 — The inventory is re-measured, not trusted.** The baseline cited in §1.2 is a
+  2026-08-17 measurement. Before the first deletion commit the inventory is re-derived with
+  that file's stated commands, the file is updated, and any artifact or dependent that
+  appeared since is added to the plan — deletion sweeps fail by omission, not by excess. The
+  same re-measurement transcribes AC-1.3's literal expected values.
 - **C-7 — Repo CI stays green at every commit**, not only at the end of the sweep. A commit
   that deletes a script and leaves a CI job asserting its existence is a broken commit even
   if the next commit fixes it (this is what makes C-5's bisectability real).
