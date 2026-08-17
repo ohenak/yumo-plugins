@@ -72,17 +72,17 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > prose note below still names the old REQ/TSPEC paths for historical context.
 
 
-| Order | Status | Feature | REQ Path | Depends-On |
-|-------|--------|---------|----------|------------|
-| 5 | pending | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution |
-| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |
-| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |
-| 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
-| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |
-| 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |
-| 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |
-| 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |
-| 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |
+| Order | Status | Feature | REQ Path | Depends-On | Engine |
+|-------|--------|---------|----------|------------| --- |
+| 5 | in-progress | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution | pdlc engine 0.2.1 / plugin 0.23.0 |
+| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
+| 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
+| 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
+| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |  |
+| 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
+| 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |  |
+| 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
+| 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |  |
 
 **Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
 (CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,
@@ -245,10 +245,10 @@ REQ in this table against the pm-author **REQ Size Budget** (target 300–500 li
 lines **or 60 KB**) then found two of them still over the ceiling on the *byte* half, which the
 line count had hidden:
 
-| REQ | Before | After | Remedy |
+| REQ | Before | After | Remedy |  |
 |---|---|---|---|
-| `pdlc-rcv-budget-stop` | 581 lines / 83 KB | 410 lines / 47 KB | split at the REQ-RCV-01 / REQ-RCV-02 seam → **row 17** `pdlc-rcv-fixed-point-stop` (424 lines / 41 KB), plus the shared-context extraction below |
-| `pdlc-rcv-panel-topology` | 489 lines / 64 KB | 491 lines / 59 KB | **no split** — 4% over, and its two requirements must ship together. Shared-context extraction plus removal of one duplicated narrative |
+| `pdlc-rcv-budget-stop` | 581 lines / 83 KB | 410 lines / 47 KB | split at the REQ-RCV-01 / REQ-RCV-02 seam → **row 17** `pdlc-rcv-fixed-point-stop` (424 lines / 41 KB), plus the shared-context extraction below |  |
+| `pdlc-rcv-panel-topology` | 489 lines / 64 KB | 491 lines / 59 KB | **no split** — 4% over, and its two requirements must ship together. Shared-context extraction plus removal of one duplicated narrative |  |
 
 The extraction is the skill's step 4: the family vocabulary, the closed catalogue `S-1 … S-17` and
 the run-report row schema now live once in `docs/_constraints/pdlc-rcv-catalogue.md`, and every
