@@ -5,7 +5,7 @@
 **Rounds used:** 5 of 5 (budget exhausted with one open High)
 **Document at halt:** `REQ-pdlc-plugin-retirement.md` v0.8 (`f89736fb`)
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Round history
 
