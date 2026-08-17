@@ -15,28 +15,32 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.6 | 2026-08-17 |
+| pdlc | approved — ready | Claude | 0.7 | 2026-08-17 |
 
-*0.6 (2026-08-17): REQ cross-review round 2. AC-1.2's allow-list completed and the two
-must-survive files named (TE F-01); `pdlc/OPERATIONS.md` added to the documentation surface
-(SE F-19, baseline M-11l); AC-1.7 restated as hook-set equality (SE F-20); C-7/AC-1.4c
-anchored to a measured green pre-sweep baseline (SE F-21); AC-1.1's branch and AC-1.2's
-wave-gate term pinned per C-6/O-3 (TE F-02, F-03).*
+*0.7 (2026-08-17): REQ cross-review round 3. The three `pdlc/skills/*/SKILL.md` files brought
+into the inventory as baseline M-11n, with `consolidate-learnings`' disposition stated
+(SE F-22); C-6 re-measurement made exhaustive — every swept path classified, remainder empty
+(SE F-23); AC-1.1's branch pinned to the TSPEC only (SE F-24); AC-1.7/AC-3.3 pinned to the
+sweep's base commit at C-6 time (TE F-02); AC-1.4 gains the instructional-doc check-set
+equality (TE F-01); BL-08 extended to C-7's green transcript (SE F-25).*
 
-*0.5 (2026-08-17): REQ cross-review round 1. Measured surface relocated to
-`docs/_constraints/pdlc-retirement-baseline.md` and re-measured (adds M-10 and the M-11 set);
+*0.6 (2026-08-17): round 2. AC-1.2's allow-list completed and the two must-survive files named;
+`pdlc/OPERATIONS.md` added to the documentation surface (M-11l); AC-1.7 restated as hook-set
+equality; C-7/AC-1.4c anchored to a measured green pre-sweep baseline; AC-1.1's branch and
+AC-1.2's wave-gate term pinned per C-6/O-3.*
+
+*0.5 (2026-08-17): round 1. Measured surface relocated to
+`docs/_constraints/pdlc-retirement-baseline.md` and re-measured (adds M-10, the M-11 set);
 NG-5 carved out for the engine's compat declaration and its tests/fixtures; BL-01/02/05/07/08
-re-derived or added; §6 criteria restated as set-equalities and literal counts.*
-
-*0.4 (2026-08-10): queue-row references repointed to feature names; ready flipped by operator
-review. 0.3 (2026-08-08): operator decision — the plugin is retained permanently, not slimmed
-to optional, as the engine's skills carrier and a hard runtime dependency behind a version
-handshake; only the workflow-execution machinery retires.*
+re-derived or added; §6 restated as set-equalities and literal counts. 0.4 (2026-08-10):
+queue-row references repointed to feature names; ready flipped by operator review. 0.3
+(2026-08-08): operator decision — the plugin is retained permanently as the engine's skills
+carrier and a hard runtime dependency behind a version handshake; only the workflow-execution
+machinery retires.*
 
 > **Scope in one line.** Once the headless engine is the proven execution path, retire the
-> machinery that existed only to serve the workflow-runtime host — runtime bundles, sync/drift
-> apparatus, queue drift gate — while the plugin stays installed permanently as the skills
-> carrier and a hard runtime dependency of the engine (G-1, G-2).
+> machinery that existed only to serve the workflow-runtime host, while the plugin stays
+> installed permanently as the engine's skills carrier (G-1, G-2).
 
 ## 1. Problem / Context
 
@@ -47,9 +51,8 @@ project directory. Remove that host and every part of it becomes dead weight sti
 tested, documented, released and reasoned about on every future pipeline change.
 
 Keeping both paths also re-creates the two-versions problem this family set out to kill
-(`pdlc-engine-distribution` R-3: two installable channels, two possible pipeline versions on
-one machine), and keeps the drift *detection* apparatus alive after the drift *cause* is
-gone.
+(`pdlc-engine-distribution` R-3), and keeps the drift *detection* apparatus alive after the
+drift *cause* is gone.
 
 ### 1.1 User stories
 
@@ -65,20 +68,19 @@ gone.
 The artifacts that exist *only* to serve the workflow-runtime host are measured once, into
 `docs/_constraints/pdlc-retirement-baseline.md`, and cited from here by id: **M-1**…**M-10**
 are the artifacts (M-9, the probe CLI, is the one survivor; M-10 is the third runtime bundle,
-`dist/consolidate-learnings.bundle.js`), and **M-11a**…**M-11m** are the dependents that name
+`dist/consolidate-learnings.bundle.js`), and **M-11a**…**M-11n** are the dependents that name
 them from outside their own files (M-11l is the tracked deep-dive `pdlc/OPERATIONS.md`,
-M-11m the engine-side observation tests; both were added at the 2026-08-17 re-measurement).
-That file also carries the commands each row was derived with and A-1, the measured
-allow-list AC-1.2 excludes, so C-6's re-measurement is reproducible; the sizes there are the
-basis of the "cost of keeping" claim above.
+M-11m the engine-side observation tests, M-11n the three `pdlc/skills/*/SKILL.md` files that
+instruct the retired path; all were added at the 2026-08-17 re-measurements).
+That file carries each row's derivation command, its measured size and A-1, the allow-list
+AC-1.2 excludes, so C-6's re-measurement is reproducible.
 
 The dependent set (M-11) is what makes this a sweep rather than a delete: it reaches both CI
 workflow files, the engine's suite and fixtures, a surviving oracle test, config, hooks,
-ignore files, the release checklist and the instructional docs. R-2 names the four easiest to
-miss; O-5 carries the documentation share; C-5 turns each class into its own commit.
+ignore files, the release checklist, the skills and the instructional docs. R-2 names the five
+easiest to miss; O-5 carries the documentation share; C-5 turns each class into its own commit.
 
-Retirement is gated on evidence, not on the engine merely existing (C-1); until this REQ
-completes the documented build/sync/drift paths remain authoritative and untouched.
+Retirement is gated on evidence, not on the engine merely existing (C-1).
 
 ## 2. Prerequisites
 
@@ -95,7 +97,7 @@ No work starts until every row below reads satisfied.
 | BL-05 | Operator decision on the `pdlc-release-ci` queue row (the one live row still describing the retired copy channel), recorded per `pdlc-engine-distribution` O-3. `pdlc-install-mechanism` is already discharged — removed from the table 2026-08-13, closed as superseded, not delivered | Queue prose + row status change | Must hold before AC-1.2 can be true |
 | BL-06 | `docs/_decisions/DECISIONS-plugin-distribution.md` reviewed for decisions that mandate the sync channel | Superseding entry in the same decision file | Must hold before AC-1.2 — a live decision doc outranks a deleted script |
 | BL-07 | An engine release is **published** whose declared compatible-plugin range admits the plugin version this sweep ships (the sweep moves the plugin's version, which can leave the installed engine's declared window, and C-10's handshake would then refuse every run). Widening that declaration is in scope per NG-5; cutting the release is the operator's step | Published engine version + its declared range, cited by version and tag | Must hold before the **first** deletion commit is merged |
-| BL-08 | A pre-sweep engine-path run report captured and committed at a fixed path in this feature's directory, cited by path + commit | Committed report file | Must hold before the first deletion commit — AC-5.2's comparison is uncapturable afterwards |
+| BL-08 | A pre-sweep engine-path run report **and** the transcript of C-7's green gate-command run, captured and committed at fixed paths in this feature's directory, cited by path + commit. The transcript records each suite's summary counts (tests run, passed, failed), because a run that executed zero tests and exited 0 is not a green start | Committed report + transcript files | Must hold before the first deletion commit — AC-5.2's comparison and C-7's green start are both uncapturable afterwards |
 
 ## 3. Goals
 
@@ -112,8 +114,7 @@ No work starts until every row below reads satisfied.
   delegators: run the engine, relay its report, preserving the `/loop run
   /pdlc:orchestrate-queue` habit with no plugin-resident pipeline logic and no copy of the
   workflow code. The engine reads every skill from the installed plugin at dispatch time
-  behind a version handshake (C-10) — the plugin is a hard runtime dependency, not an
-  optional front-door.
+  behind a version handshake (C-10).
 - **G-3 — Docs and CI tell one story.** CLAUDE.md, `pdlc/OPERATIONS.md`, both READMEs,
   `pdlc/RELEASE-CHECKLIST.md` and the CI workflow describe only the surviving path. Retired
   concepts — drift states, `--force`, `unverified`, the two-command bootstrap and its
@@ -125,12 +126,11 @@ No work starts until every row below reads satisfied.
   broadly.
 - **G-5 — The probe CLI survives the demolition intact.** `dist/pdlc-cli.mjs` (M-9) is
   emitted by the same build script that emits the retired bundles, so retirement must leave it
-  available, generated (not hand-maintained) and unchanged in behaviour — the one artifact in
-  `dist/` that outlives the directory's purpose.
+  available, generated (not hand-maintained) and unchanged in behaviour.
 
 ## 4. Non-Goals
 
-- **NG-1 — Removing the pdlc plugin, or any of its skills.** Firmly out of scope: the plugin
+- **NG-1 — Removing the pdlc plugin, or any of its skills.** The plugin
   is a **hard runtime dependency** of the engine, not an optional convenience. All skills —
   interactive and orchestration alike — and the human-facing hooks stay installed
   permanently. The engine reads `SKILL.md` sources from the installed plugin at dispatch time
@@ -186,7 +186,7 @@ No work starts until every row below reads satisfied.
   `dist/` bundles, sync script, drift library, drift hook + its wiring, queue gate (with its
   engine-side coverage), CI jobs **in both `pr-tests.yml` and `publish.yml`'s tag gate**, the
   wave-gate config keys (M-11h), `.worktreeinclude`, the `.gitignore` row, document oracles,
-  docs — lands as its own commit, so a regression bisects to one artifact class. A single
+  the skill files (M-11n), docs — lands as its own commit, so a regression bisects to one artifact class. A single
   "delete everything" commit is disallowed even if the tree is green. Where C-7 and this
   constraint conflict — a class whose dependents span channels, such as the CI jobs bound to
   `publish.yml`'s gate by a set-equality assertion — **C-7 wins**: the commit covers the whole
@@ -195,13 +195,19 @@ No work starts until every row below reads satisfied.
   2026-08-17 measurement. Before the first deletion commit the inventory is re-derived with
   that file's stated commands, the file is updated, and any artifact or dependent that
   appeared since is added to the plan — sweeps fail by omission, not excess. The same
-  re-measurement transcribes AC-1.3's literal expected values.
+  re-measurement transcribes the literal expected values of AC-1.3, AC-1.7 and AC-3.3, each
+  pinned to the sweep's base commit — "pre-sweep" means that commit, not whatever HEAD is
+  mid-sweep. It is also **exhaustive, not curated**: every path the dependent sweep returns is
+  classified into exactly one of an M-row, an M-11 row or an A-1 glob, with the unclassified
+  remainder empty. Three review rounds each found a file the curated inventory had missed
+  (M-10, `pdlc/OPERATIONS.md`, `pdlc/skills/**`); a set-equality over the sweep's whole output
+  fails on the next one instead of shipping it.
 - **C-7 — Repo CI stays green at every commit**, not only at the end of the sweep. A commit
   that deletes a script and leaves a CI job asserting its existence is a broken commit even
   if the next commit fixes it (this is what makes C-5's bisectability real). "Stays green"
-  presupposes a green start: the engine suite is green at pre-sweep HEAD as of 2026-08-17,
-  restored by returning CLAUDE.md's `### Continuous integration` section — the arrangement
-  oracle's subject — to that file after a brief relocation. Any inherited red is repaired
+  presupposes a green start: the engine suite is green at pre-sweep HEAD as of 2026-08-17
+  (measured; the transcript is captured under BL-08, since a suite that runs zero files also
+  exits 0). Any inherited red is repaired
   before the first deletion commit, so the first red the sweep sees is its own.
 - **C-8 — The engine path is the only path under test after the sweep.** Tests deleted with
   their subject (M-8) are removed, never skipped, marked pending or left asserting a vacuous
@@ -228,8 +234,8 @@ observed run — none depends on an agent reporting success.
   M-9 relocated to a single named surviving path (G-5). Set-equality, not containment: an
   artifact added to `dist/` between now and the sweep fails this criterion rather than
   slipping through. Which branch applies, and the surviving path if it is the second, is
-  pinned at C-6 re-measurement time where AC-1.3's literal count is — a test author never
-  chooses the branch.
+  pinned in this feature's **TSPEC**, where O-3 resolves it (AC-1.3's literal count stays
+  FSPEC-pinned) — a test author never chooses the branch.
 - **AC-1.2** *Who:* maintainer. *Given* HEAD, *when* the repo's tracked files are searched
   for the retired machinery's names (the three scripts, the three bundles, the manifest, the
   drift-state record, the `distribution.checkEnabled` key, and the wave-gate keys of M-11h
@@ -237,11 +243,12 @@ observed run — none depends on an agent reporting success.
   follows the post-sweep build-step disposition resolved under O-3) **excluding** the measured
   path-glob allow-list **A-1** of `docs/_constraints/pdlc-retirement-baseline.md`, *then* the
   result is **empty**. A-1 is complete over the tracked documents carrying these names at the
-  2026-08-17 measurement and names the two that **must survive carrying them** — the
-  superseding decision entry BL-06/AC-2.3 require, which necessarily names the channel it
-  supersedes, and the baseline itself, which C-6 and AC-1.3 depend on — so AC-1.2 and AC-2.3
-  are co-satisfiable, not mutually exclusive. The two tracked fixture trees (M-11e) are
-  **not** allow-listed: each is deleted or re-fixtured by the sweep, so this is a
+  2026-08-17 measurement, and its closing paragraph names the two that **must survive carrying
+  them**, so AC-1.2 and AC-2.3 are co-satisfiable, not mutually exclusive. The two tracked fixture trees (M-11e) are
+  **not** allow-listed: each is deleted or re-fixtured by the sweep. Neither are the three
+  skill files (M-11n): the sweep edits all three — the two orchestration skills as G-2's
+  delegators, and `consolidate-learnings/SKILL.md`, a human-invoked skill NG-1 keeps, by
+  rewriting its bundle reference to name the surviving execution path. So this is a
   search with an exclude list and a required-empty result, not a judgement call.
 - **AC-1.3** *Who:* maintainer. *Given* HEAD, *when* the workflow test suite runs, *then* it
   is green; it contains no skipped or pending test belonging to M-8; its `*.test.js` file
@@ -252,7 +259,11 @@ observed run — none depends on an agent reporting success.
 - **AC-1.4** *Who:* maintainer. *Given* HEAD, *when* CI runs on a pull request, *then* the
   `Generated artifacts are in sync` and `Fresh-clone bootstrap works` jobs no longer exist,
   the surviving shell-script job asserts only surviving scripts (none naming a deleted
-  entrypoint or the deleted sourced library), and every remaining job is green.
+  entrypoint or the deleted sourced library), and every remaining job is green; and the check
+  rows described in the tracked instructional docs — CLAUDE.md's `### Continuous integration`
+  section and `pdlc/OPERATIONS.md`'s `## Continuous integration` rationale (M-11l) —
+  **set-equal** the post-sweep required-check set, so a doc left describing a deleted job fails
+  here rather than surviving a name-based search.
 - **AC-1.4b** *Who:* maintainer. *Given* HEAD, *when* `.github/workflows/publish.yml` is read
   and its tag-triggered gate is exercised (or statically asserted against the surviving job
   set), *then* no step invokes a deleted artifact — no build-and-check of the retired bundles,
@@ -279,8 +290,9 @@ observed run — none depends on an agent reporting success.
   requiring CLAUDE.md to *contain* the two retired script names (M-11f) is gone with the prose
   it guarded, and the remaining oracles pass.
 - **AC-1.7** *Who:* maintainer. *Given* HEAD, *when* the plugin's hook manifest is read,
-  *then* its registered hook-entry set **set-equals** the pre-sweep listing minus exactly one
-  entry, the drift reporter (C-2, NG-1). Set-equality, not absence plus a partial positive:
+  *then* its registered hook-entry set **set-equals** the listing transcribed at C-6
+  re-measurement time from the sweep's base commit (each entry by event and script name), minus
+  exactly one entry, the drift reporter (C-2, NG-1). Set-equality, not absence plus a partial positive:
   a second `SessionStart` entry — the consolidation nudge — survives, so deleting the whole
   `SessionStart` event, or any other entry, fails instead of passing an absence check.
 - **AC-1.8** *Who:* maintainer. *Given* the history of the sweep, *when* the commits are
@@ -293,9 +305,9 @@ observed run — none depends on an agent reporting success.
 ### 6.2 Documentation tells one story (P0)
 
 - **AC-2.1** *Who:* a reader new to the repo. *Given* HEAD, *when* they read the tracked
-  instructional set — CLAUDE.md, `pdlc/OPERATIONS.md` (M-11l, which today carries the
-  `unverified`/`--force` rows, the worktree caveat and the three retired scripts), both
-  READMEs and `pdlc/RELEASE-CHECKLIST.md` — *then* they find no instruction to build runtime
+  instructional set — CLAUDE.md, `pdlc/OPERATIONS.md` (M-11l), both
+  READMEs, `pdlc/RELEASE-CHECKLIST.md` and the three `pdlc/skills/*/SKILL.md` files of M-11n
+  (skills are instructions a human reads, so G-3's bar binds them) — *then* they find no instruction to build runtime
   bundles, sync, force-sync, check drift, bootstrap a fresh clone's runtime artifacts, or work
   around the self-created-worktree gap; those sections are removed, not left behind a pointer
   (G-3); and they find exactly one described way to run the pipeline unattended.
@@ -323,7 +335,8 @@ observed run — none depends on an agent reporting success.
   sweep, so the refusal is shown to survive the removal of the plugin's workflow machinery
   (C-10, NG-1).
 - **AC-3.3** *Who:* a human in a Claude Code session. *Given* the plugin, *when* the set of
-  `pdlc/skills/*/SKILL.md` at HEAD is compared against the pre-sweep listing, *then* the two
+  `pdlc/skills/*/SKILL.md` at HEAD is compared against the skill-directory listing transcribed
+  at C-6 re-measurement time from the sweep's base commit, *then* the two
   **set-equal** (no skill lost to the sweep — NG-1), each skill in that set loads and runs
   when invoked, and every hook in AC-1.7's surviving set still fires (harvest guard refuses a
   premature review-file deletion; the scope-field and REQ-size warnings emit; the
@@ -334,7 +347,8 @@ observed run — none depends on an agent reporting success.
   operator. *Given* the published engine of BL-07 and the post-sweep plugin version inside
   its declared compatible range, *when* the engine dispatches a skill, *then* it reads that
   skill from the installed plugin and the run report carries both versions — there is no
-  separate engine-side snapshot that can skew against the plugin (C-10, R-3). The post-sweep version pair is what makes this more than a re-assertion.
+  separate engine-side snapshot that can skew against the plugin (C-10, R-3). The post-sweep
+  version pair is what makes this more than a re-assertion.
 - **AC-3.6** *(pre-satisfied at HEAD — regression guard, verified 2026-08-17)* *Who:* the
   operator. *Given* the plugin installed at a version outside the engine's declared
   compatible range, *when* they invoke the engine, *then* it refuses before dispatching any
@@ -374,8 +388,7 @@ observed run — none depends on an agent reporting success.
   phase or gate disappeared with the deleted machinery (NG-3).
 - **AC-5.3** *Who:* the operator. *Given* HEAD after the sweep, *when* they invoke the probe
   CLI **at its surviving repo path, directly, in a checkout of the consuming project** — the
-  post-sweep delivery path, since the retired sync channel was its only installer and the
-  retired adapter its only caller (O-3) — *then* it answers exactly as before, and is still
+  post-sweep delivery path settled under O-3 — *then* it answers exactly as before, and is still
   produced by a build step rather than maintained by hand (G-5).
 
 ## 7. Risks
@@ -385,15 +398,15 @@ observed run — none depends on an agent reporting success.
   C-1's evidence gate, judged by the operator, and C-5's per-step commits, which make a
   revert cheap and targeted.
 - **R-2 — Hidden dependents.** The retired machinery is referenced far outside its own files:
-  the whole M-11 set, of which four are easy to miss and each reds a required check on the
-  commit that ignores it — `publish.yml`'s tag-triggered gate, bound to the PR gate by a
-  set-equality assertion (M-11b); the engine-side oracles over CLAUDE.md's CI section, its
-  table **and its prose count word**, the drift gate and a bundle path (M-11c, M-11d, M-11m);
-  a *surviving* oracle test requiring CLAUDE.md to keep naming the two deleted scripts, so
-  prose and test move together (M-11f); and the wave-gate config keys this feature's own
-  implementation phase runs under (M-11h). A partial sweep leaves a red oracle or a job
-  asserting a deleted file. *Control:* C-6's re-measurement, AC-1.2's search with an
-  enumerated allow-list, AC-1.4b/AC-1.4c, and a per-artifact reference sweep in the PLAN.
+  the whole M-11 set, of which five are easy to miss and each reds a required check on the
+  commit that ignores it — `publish.yml`'s tag-triggered gate (M-11b), the engine-side oracles
+  over CLAUDE.md's CI section, its table **and its prose count word**, the drift gate and a
+  bundle path (M-11c, M-11d, M-11m), a *surviving* oracle test requiring CLAUDE.md to keep
+  naming the two deleted scripts, so prose and test move together (M-11f), the wave-gate
+  config keys this feature's own implementation phase runs under (M-11h), and the skill files
+  (M-11n). A partial sweep leaves a red oracle or a job asserting a deleted file. *Control:*
+  C-6's **exhaustive** re-measurement, AC-1.2's search with an enumerated allow-list,
+  AC-1.4b/AC-1.4c, and a per-artifact reference sweep in the PLAN.
 - **R-3 — Version skew between the plugin and the engine.** There is no engine-side snapshot
   of skill text to drift against — the engine reads every skill from the installed plugin at
   dispatch time — so the hazard is narrow: an installed plugin version the engine does not
@@ -435,9 +448,7 @@ not a note.
   hooks and the consolidation nudge (they serve interactive authoring, US-04); remove only the
   drift reporter. Resolved in this feature's FSPEC; asserted by AC-1.7 and AC-3.3.
 - **O-2 — How the delegator skills are authored.** Settled, not open: `orchestrate-dev` and
-  `orchestrate-queue` stay as thin delegators (G-2), preserving the `/loop` habit — the
-  plugin's hard-dependency role (C-10, NG-1) rules out moving the habit wholly to the
-  terminal. Open only is the delegator's exact shape (e.g. how it surfaces a C-10 refusal to
+  `orchestrate-queue` stay as thin delegators (G-2), preserving the `/loop` habit. Open only is the delegator's exact shape (e.g. how it surfaces a C-10 refusal to
   the human session). Resolved in this feature's FSPEC before authoring the delegators;
   AC-3.1 assumes delegation and does not depend on this row.
 - **O-3 — Where the probe CLI's build lives after `dist/` retires, and how it reaches its
@@ -453,20 +464,17 @@ not a note.
   must still cover whatever holds engine-adjacent code, or the guard silently stops guarding.
   Resolved in this feature's TSPEC; if the resolution requires engine-side changes it is bound
   to a successor REQ under NG-5 rather than authored here.
-- **O-5 — Documentation sweep inventory.** The retired concepts appear in CLAUDE.md (whose CI
-  table and prose count word are asserted by the engine's arrangement oracle, M-11c, and whose
-  script names are asserted by a surviving oracle test, M-11f — prose and assertions move in
-  one commit), `pdlc/OPERATIONS.md` (M-11l), both READMEs,
+- **O-5 — Documentation sweep inventory.** The retired concepts appear in CLAUDE.md (asserted
+  by M-11c and M-11f — prose and assertions move in
+  one commit), `pdlc/OPERATIONS.md` (M-11l), the three skill files (M-11n), both READMEs,
   `pdlc/RELEASE-CHECKLIST.md` (≥4 sections), decision docs and queue prose. The PLAN carries the enumerated list, derived at execution time per C-6, so
   AC-2.1's reader test has a checkable basis rather than a judgement call.
 - **O-6 — Stale operator notes.** Stored operator notes describe the workflow-launcher
   registry cache and sync behaviours that stop existing at retirement. Correcting them is
-  part of this feature's Phase H documentation step, not a follow-on — stale guidance about
-  a deleted mechanism is worse than none.
+  part of this feature's Phase H documentation step, not a follow-on.
 - **O-7 — The one live queue row that still describes the retired copy channel.** Re-derived
   from `QUEUE.md` at HEAD by feature name: it is `pdlc-release-ci` (status `blocked`,
   renarrowed 2026-08-13). `pdlc-install-mechanism` is discharged — removed from the table
-  2026-08-13, closed as superseded — and order 6 now holds `pdlc-engineering-loop`
-  (`pending`), unrelated to this channel. `pdlc-release-ci`'s disposition is decided upstream
+  2026-08-13, closed as superseded. `pdlc-release-ci`'s disposition is decided upstream
   (`pdlc-engine-distribution` O-3, tracked here as BL-05); this REQ does not decide it, but
   AC-2.3 refuses to pass while it still mandates the retired channel.
