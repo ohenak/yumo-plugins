@@ -55,6 +55,19 @@ to do and is not vacuously satisfied today — the check that matters for a surv
 
 ## Round-6 disposition
 
+Round 6 recorded no High. Its two Mediums and one Low were left open deliberately, as better
+addressed downstream than by reopening Phase R. The REQ did not change, so all three persist
+verbatim; I re-verified each still describes HEAD rather than carrying forward on trust.
+
+| Round-6 ID | Severity | Status | Evidence at HEAD |
+|---|---|---|---|
+| F-01 | Medium | **Open, unchanged** | `pdlc/workflows/dist/pdlc-cli.mjs:16-17` still reads `Built artifact: pdlc/workflows/dist/orchestrate-dev.bundle.js` and `Consumer runtime copy: installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh` — two AC-1.2 term hits (`\.bundle\.js`, `sync-workflows`) inside the one path AC-1.1 requires to survive, and not A-1-allow-listed. Clearance still depends on M-9 being regenerated after the M-11o banner rewrite, which no inventory row states. Carried to FSPEC/TSPEC. |
+| F-02 | Medium | **Open, unchanged** | `pdlc/workflows/__tests__/pipelineWiring.test.js:543-548` still reads `build-runtime.mjs` source and throws `DEV_META anchor not found in build-runtime.mjs` when `const DEV_META = \`` is absent. `DEV_META` stamps the retired `orchestrate-dev.bundle.js`; M-7's reduction deletes it. The file returns zero hits on the seven-term search and appears in no M-11 row, so it remains a third dependent that no search term reaches — the class §1.2's lower-bound doctrine says needs an inventory row. Carried to PLAN sizing. |
+| F-03 | Low | **Open, unchanged** | AC-1.2 (`REQ:289-292`) still enumerates "the three retired bundles" in prose while the pinned command at `baseline:182-183` carries the shape `\.bundle\.js`. Two faithful transcriptions can differ; the fix is one sentence naming the pinned command as *the* term set. Cosmetic against a set-equality that is otherwise correctly two-sided. |
+
+No round-6 finding regressed, and none was resolved — the expected outcome for a round with an
+empty document delta. None of the three is gating.
+
 ## Findings
 
 ## Questions
