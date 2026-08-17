@@ -123,6 +123,124 @@ without a REQ parent; no REQ acceptance criterion is left without a behavioural 
 
 ## 3. Behavioral Flow
 
+### 3.0 Entry gate (before any deletion commit)
+
+1. **Prerequisite check.** Every row of REQ §2 is read at HEAD and recorded as satisfied or not.
+   Any unsatisfied row stops the sweep — the flow does not start "and fix it later" (REQ §2:
+   "No work starts until every row below reads satisfied").
+2. **Re-measurement (C-6).** The commands in `docs/_constraints/pdlc-retirement-baseline.md`
+   §*How to re-measure* are re-run at the sweep's base commit; the baseline file is updated in
+   place; the partition is re-closed (every swept path in exactly one class of M-row / M-11 row /
+   A-1, unclassified remainder **empty**, no path owned twice).
+3. **Literal transcription.** The literals of §4.2 are re-transcribed into this FSPEC from that
+   same run, each labelled with the base commit. Transcription happens once, here; downstream
+   documents cite these literals rather than re-deriving them.
+4. **Green start (C-7).** The gate command set of L-9 is run at the base commit and its output —
+   including each suite's summary counts — is committed under BL-08 together with the pre-sweep
+   engine-path run report AC-5.2 compares against. A suite that executed zero tests and exited 0
+   is not a green start (REQ BL-08).
+
+Only when steps 1–4 are complete does the first deletion commit land.
+
+### 3.1 Commit classes and their order
+
+Each row below is **one commit** (REQ C-5). The order is *dependents before subjects*: a
+reference to an artifact is removed in the same commit as the artifact, or in an earlier one —
+never a later one, because that leaves a commit asserting a file that no longer exists (C-7).
+
+| # | Class | Covers | Ordering obligation |
+|---|---|---|---|
+| 1 | CI jobs | `pr-tests.yml`'s `artifact-freshness` and `fresh-clone-bootstrap` jobs and the index-mode assertions inside `script-syntax` (M-11a); `publish.yml`'s tag gate steps (M-11b); the engine's arrangement oracle over the job set and CLAUDE.md's CI section (M-11c); CLAUDE.md's `### Continuous integration` table, count word, and `pdlc/OPERATIONS.md`'s `## Continuous integration` count word and named files (M-11k, M-11l share) | First. Spans two workflow files and an oracle bound to both by set-equality — C-5 would split it and C-7 forbids the red intermediate, so **C-7 wins and the class lands whole** (REQ C-5) |
+| 2 | Engine-side drift coverage | `smoke.test.js` drift-gate and `checkEnabled` cases (M-11d); `fs-observation.test.js` (M-11m); the `consumer-ac12/` fixture tree deleted with its only consumer (M-11e first disposition) | Before class 6 |
+| 3 | Queue drift gate | The gate and its `distribution.checkEnabled` key in `orchestrate-queue.js` (M-11i (a)), with the gate's workflow-suite coverage | After class 2 |
+| 4 | Drift hook | `check-workflow-drift.sh` (M-3) and its `SessionStart` registration in `pdlc/hooks/hooks.json` (M-11i) | After classes 1–3 |
+| 5 | Drift library and sync script | `pdlc-drift.sh` (M-2), `sync-workflows.sh` (M-1) | After class 4 |
+| 6 | Test corpus | M-8's 21 `*.test.js` and its six dedicated helpers, deleted (never skipped); the re-homing of assertions about **surviving** behaviour (queue triage around the gate, hook-manifest compatibility) into surviving modules; M-11p's deletions and edits, including the reduction of `helpers/driftGenerators.js` to what its surviving importers use | Re-homing lands in the **same** commit as, or earlier than, the deletion of its host file (REQ R-8) |
+| 7 | Bundles and their emission | The three retired bundles (M-4, M-5, M-10) and the manifest (M-6, subject to the TSPEC's O-3 branch), and the reduction of the build step (M-7) to emitting the probe CLI only | After class 6, so no surviving test asserts over a deleted bundle |
+| 8 | Ignore/worktree rows | `.worktreeinclude`'s single row and `.gitignore`'s row **with its rationale comment block** (M-11j); a file left with no remaining rows is deleted, not left empty | Any time after class 7 |
+| 9 | Document oracles | The packaging and advertised-version checks over `dist/`, the drift scan's generated-tree exemptions (M-11g), the surviving `documentOracles` assertion that CLAUDE.md *contains* the two retired script names (M-11f), and the re-fixturing of the `covered-violations/` tree (M-11e second disposition) | Same commit as, or after, class 7; the CLAUDE.md prose it guards moves in this commit (M-11f) |
+| 10 | Wave-gate config values | `.claude/pdlc.config.example.json`'s retired `postWaveCommand` / `postWavePathspecs` **values**, their CLAUDE.md documentation, and the two literals asserted in `consolidationPreflight.test.js` (M-11h). The generic facility in `orchestrate-dev.js` and its `waveExecution` coverage are **not** touched | After class 7 (the retired value names a deleted output) |
+| 11 | Skills and banners | The two orchestration skills rewritten as delegators and `consolidate-learnings/SKILL.md`'s bundle reference rewritten (M-11n); the three workflow modules' header banners (M-11o, M-11i (b)); the surviving `orchestrateDevSkill` assertion that moves with `orchestrate-dev/SKILL.md` (M-11p) | Skill text and the assertion over it land together |
+| 12 | Documentation | CLAUDE.md's bootstrap/sync/drift/worktree/distribution-channel prose, `pdlc/OPERATIONS.md`'s retired sections, both READMEs, `pdlc/RELEASE-CHECKLIST.md`'s retired rows (M-11k, M-11l); the superseding entry in `DECISIONS-plugin-distribution.md`; stale operator notes (REQ O-6) | Last of the deletion classes |
+| 13 | Consumer cleanup | The operator-invoked cleanup step of §3.5 and the operator documentation that describes it | Independent; may land any time, but its documentation is part of the one story class 12 tells |
+
+### 3.2 Per-commit loop
+
+For every commit of §3.1, in order:
+
+1. Make the class's edits — the whole class, nothing from another class.
+2. Run the gate command set (L-9) locally.
+3. Green → commit. Red → the commit is not made; the class's boundary is wrong and is corrected
+   before anything is committed (a red commit "fixed by the next one" is forbidden by C-7).
+4. After the last class, replay the whole sweep range commit-by-commit, running L-9 at each
+   commit, and capture the output (AC-1.8) — hosted CI runs only on the PR head, so intermediate
+   commits are never otherwise exercised.
+
+### 3.3 Documentation sweep
+
+1. Enumerate, at re-measurement time, every instructional file naming a retired concept (REQ O-5;
+   the PLAN carries the per-file list).
+2. For each: **remove** the section, row or sentence. A retired concept is never left behind a
+   deprecation notice, a pointer or a "formerly" note (REQ G-3).
+3. Where a document describes the required-check set, update the rows, the **count word** and the
+   **named workflow files** together (§4.3).
+4. Rewrite, rather than delete, text whose subject survives — the release checklist rows that can
+   be restated against the engine's release artifact, and `consolidate-learnings/SKILL.md`'s
+   bundle reference.
+5. Correct stored operator notes describing the workflow-launcher registry cache and sync
+   behaviours (REQ O-6) as part of this feature's Phase H step.
+6. Leave historical records untouched: `docs/completed/**`, `docs/discarded/**`, LEARNINGS and
+   post-mortems are records, not instructions (REQ NG-4; A-1 allow-lists them).
+
+### 3.4 Delegator skills (resolves REQ O-2)
+
+After the sweep, `/pdlc:orchestrate-dev` and `/pdlc:orchestrate-queue` behave as thin
+delegators. On invocation:
+
+1. The skill resolves the engine's CLI entrypoint and invokes it for the requested work — a named
+   REQ path for `orchestrate-dev`, a queue pass (default `docs/_queue/QUEUE.md`) for
+   `orchestrate-queue`.
+2. The skill makes **no pipeline decision**: it does not pick a queue row, evaluate readiness,
+   dispatch a phase, parse a verdict or write a queue row. Every such decision is the engine's.
+3. When the engine finishes, the skill relays the engine's run report into the session
+   substantially as the engine emitted it, plus the engine's exit disposition in the session's own
+   words (finished / halted / refused).
+4. When the engine **refuses** — handshake mismatch, missing plugin, auth policy — the skill
+   relays the engine's banner and refusal together, unedited, and reports the invocation as
+   refused. It does not retry, does not fall back to any in-plugin path, and does not summarise
+   the refusal into a shorter message that drops a version (§4.4, §4.6).
+5. The `/loop run /pdlc:orchestrate-queue` habit is preserved: one invocation processes at most
+   one ready feature and returns.
+
+### 3.5 Consumer cleanup (G-4)
+
+The operator runs the documented cleanup step once, in a repo that previously hosted the runtime
+copy. The step never runs by itself — no hook, session start or engine startup path invokes it
+(REQ NG-6).
+
+1. It inspects the consumer's `.claude/workflows/` directory and the drift-state record.
+2. Every entry it finds is classified as *expected* (a file the retired sync channel itself
+   installed, matching what that channel would have written) or *unexpected* (anything else,
+   including a hand-modified copy).
+3. **All expected, nothing unexpected** → the expected entries and the drift-state record are
+   removed, a directory left empty by that removal is removed, the repo's tracked files are
+   untouched, the step reports what it removed and exits zero.
+4. **Nothing left to remove** → it changes nothing, says so and exits zero (idempotence).
+5. **Any unexpected entry** → it removes **nothing at all**, leaves every file byte-identical,
+   names each unexpected path on stderr and exits non-zero (§4.5).
+
+### 3.6 Post-sweep verification
+
+1. A real feature is run end-to-end through the engine in this repo; it reaches its configured
+   final phase and produces the same artifact classes as before (AC-5.1).
+2. That run's report is compared field-set-wise against the pre-sweep report committed under
+   BL-08 (AC-5.2).
+3. The probe CLI is invoked at its surviving path in a checkout of the consuming project and
+   answers as before (AC-5.3).
+4. The handshake regression guards (AC-3.2, AC-3.5, AC-3.6) are re-exercised **after** the sweep,
+   with the post-sweep plugin version, so the refusal and the matched path are both shown to
+   survive the removal.
+
 ## 4. Business Rules
 
 ## 5. Edge Cases and Error Scenarios
