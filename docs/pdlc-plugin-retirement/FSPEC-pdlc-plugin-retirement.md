@@ -72,6 +72,55 @@ first deletion commit rather than this document.
 
 ## 2. Linked Requirements
 
+Every behaviour below traces to `REQ-pdlc-plugin-retirement.md` v0.9. No FSPEC section exists
+without a REQ parent; no REQ acceptance criterion is left without a behavioural home.
+
+| REQ item | Where specified here |
+|---|---|
+| G-1 single execution path | §3.1 commit classes; §4.1 gate rules |
+| G-2 plugin keeps skills, gains delegator role | §3.4; §4.4; BR-DEL-1…4 |
+| G-3 docs tell one story | §3.3; §4.3; BR-DOC-1…3 |
+| G-4 guided consumer cleanup | §3.5; §4.5; BR-CLN-1…5 |
+| G-5 probe CLI survives | §4.1 (class 12); §6 AT-5.3 |
+| C-1 / BL-03 evidence gate | §3.0; §7 O-A |
+| C-2 guard parity, hook survivors | §4.2 (L-4); BR-HOOK-1 |
+| C-3 drift gate removed, not bypassed | §4.1 class 6; BR-GATE-1, BR-GATE-2 |
+| C-5 per-class commits; C-7 green at every commit | §3.1; BR-SWEEP-1…4 |
+| C-6 exhaustive re-measurement | §3.0; BR-SWEEP-5 |
+| C-8 tests removed, never skipped | BR-SWEEP-6 |
+| C-9 / NG-6 operator-invoked, conservative cleanup | §3.5; BR-CLN-3…5 |
+| C-10 version handshake | §4.6; BR-VER-1…3 |
+| AC-1.1 | §4.2 (L-1); AT-1.1 |
+| AC-1.2 | §4.2 (L-2, L-3); AT-1.2 |
+| AC-1.3 | §4.2 (L-5, L-6); AT-1.3 |
+| AC-1.4 / AC-1.4b / AC-1.4c | §4.3 (L-7, L-8); AT-1.4, AT-1.4b, AT-1.4c |
+| AC-1.5 | §4.1 class 8; AT-1.5 |
+| AC-1.6 | §4.1 class 9; §5 E-6; AT-1.6 |
+| AC-1.7 | §4.2 (L-4); AT-1.7 |
+| AC-1.8 | §4.2 (L-9); AT-1.8 |
+| AC-2.1 / AC-2.2 / AC-2.3 | §4.3; AT-2.1…AT-2.3 |
+| AC-3.1 | §3.4; AT-3.1 |
+| AC-3.2 / AC-3.5 / AC-3.6 | §4.6; AT-3.2, AT-3.5, AT-3.6 |
+| AC-3.3 / AC-3.4 | §4.2 (L-10); AT-3.3, AT-3.4 |
+| AC-4.1…AC-4.4 | §3.5; §4.5; AT-4.1…AT-4.4 |
+| AC-5.1…AC-5.3 | §3.6; AT-5.1…AT-5.3 |
+| O-1 hooks that survive | §4.2 (L-4) — **resolved here** |
+| O-2 delegator shape | §3.4, §4.4 — **resolved here** |
+| O-3 probe CLI home | routed to TSPEC (§1.2, §7 O-C) |
+| O-4 self-modification guard paths | routed to TSPEC (§7 O-D) |
+| O-5 documentation inventory | §4.3's instructional set; enumerated per file in the PLAN |
+| O-6 stale operator notes | §3.3 step 5 |
+| O-7 live queue row | §4.3 BR-DOC-3; AT-2.3 |
+
+### 2.1 User-story coverage
+
+| Story | Served by |
+|---|---|
+| US-01 one execution path | §3.1, §3.4, AT-5.1 |
+| US-02 sync/drift apparatus gone | §3.1 classes 1–3, 6–9, AT-1.2 |
+| US-03 documented consumer cleanup | §3.5, AT-4.1…AT-4.4 |
+| US-04 interactive skills and nudges keep working | §4.2 (L-4, L-10), AT-3.3 |
+
 ## 3. Behavioral Flow
 
 ## 4. Business Rules
