@@ -30,12 +30,74 @@ Observations**; only divergences and undecidable oracles are raised as findings.
 
 ## Questions
 
-_(filled in below)_
+| ID | Question |
+|----|---------|
+| Q-01 | The manifest's rows carry a `"retires": []` field — the sync channel already ships a mechanism for removing obsolete consumer paths. Was it considered as the shape for §3.5's classification (an entry is *expected* iff a shipped row ever claimed its `consumerPath`), and rejected? If it was rejected because the manifest dies with the sweep, that reasoning belongs in §4.5 next to BR-CLN-4, which already cites the sync tooling for the exit convention. |
+| Q-02 | §3.1 class 13 says the cleanup "may land any time". Given F-01, does it in fact have to land **before** class 7, so it can be authored and tested against a live manifest? If yes, that is an ordering obligation, not an independence. |
+| Q-03 | BR-GATE-2 requires a stale `distribution.checkEnabled` to be "ignored silently". After class 3 removes the key's reader, is there any config-schema validator in the engine or queue path that would reject an unknown key? If so, BR-GATE-2 needs a disposition row of its own; if not, saying so once makes the rule free. |
+| Q-04 | AT-1.4's CI half requires the sweep PR itself to be green. `Fixture machine (…)` is path-filtered over `pdlc/engine/**` (`pdlc/OPERATIONS.md:66`), so it is skipped-as-success on PRs touching neither. Class 2 does touch `pdlc/engine/__tests__/`, so the whole-sweep PR will run it — but is that intended to be relied on, or should L-7's post-sweep set be asserted from the workflow files' `on:` triggers rather than from an observed PR run? |
 
 ## Positive Observations
 
-_(filled in below)_
+Every pinned literal in this FSPEC checks out against the tree. That is unusual and worth
+recording, because most of the document's gates rest on them:
+
+- **L-1** — `pdlc/workflows/dist/` holds exactly the five named entries; no sixth.
+- **L-3** — the expected-empty command is **byte-identical** to
+  `docs/_constraints/pdlc-retirement-baseline.md:182`, and the eight-alternation sweep recipe at
+  `:157` is genuinely its superset. The "delta 4 paths at `b73fb4de`" claim matches the baseline's
+  own delta table (`:189`–`:193`).
+- **L-4** — `pdlc/hooks/hooks.json` registers exactly the five entries listed, with the matchers as
+  transcribed, including the two separate `SessionStart` entries. The insistence on set-equality
+  here (and E-14) is the right call: an absence check on the drift reporter alone really would
+  admit deleting the whole event.
+- **L-5** — `pdlc/workflows/__tests__/*.test.js` counts **119**; all 21 named M-8 modules and
+  `runtimeProvenanceWiring.test.js` exist as files; 119 − 22 = **97** is arithmetically sound, and
+  A-2 correctly names the one assumption that could move it.
+- **L-7** — the six check names render exactly as transcribed:
+  `pr-tests.yml:28` + matrix `os: [ubuntu-latest]` / `node: ['20']`, `pr-tests.yml:88` + matrix
+  `os: [ubuntu-latest]`, `pr-tests.yml:122`, `:148`, `:206`, and `fixture-machine.yml:44`.
+  `pdlc/OPERATIONS.md:59` does read "six checks", exactly where BR-DOC-1 says it does.
+- **L-10** — `pdlc/skills/*/SKILL.md` is exactly the fifteen named directories.
+- **BR-VER-1** — `pdlc/.claude-plugin/plugin.json:4` is `0.23.1`,
+  `pdlc/engine/package.json:18` is `"pdlcPluginCompat": "^0.23.0"`, and
+  `pdlc/engine/lib/handshake.mjs:93` `satisfiesRange` is real. The `0.24.0`-is-an-outage analysis
+  is correct and is the most valuable thing in §4.6.
+- **BR-CLN-4** — the cited exit convention is accurate:
+  `pdlc/hooks/scripts/sync-workflows.sh:718` exits `2` on any `local-edit`/`unverified` row and
+  `:722` exits `1` otherwise.
+- **BL-04** / **A-4** — `checkGuardCarrier` is at `pdlc/engine/lib/startup.mjs:149`, and
+  `pdlc/engine/bin/pdlc.mjs` exists.
+- **BR-SWEEP-5** is the sharpest rule in the document. "Empty remainder, never a total" plus the
+  explicit statement that an empty remainder proves no *unknown* swept path (not a complete
+  inventory) is exactly the right epistemics, and naming `ci-arrangement.test.js` and
+  `.worktreeinclude` as the two search-unreachable instances is honest about the method's limit.
+- **§7.2's erratum against the REQ is correct and I confirm it independently.** `REQ` AC-1.1
+  (`REQ-pdlc-plugin-retirement.md:276`–`283`) requires M-6 not to exist *and* `dist/` to set-equal
+  `{M-9}`, while O-3 (`:543`–`:550`) leaves open "whether the manifest survives for that one row".
+  Both cannot hold. Raising it rather than papering over it in L-1 was the right handling.
+- Routing O-3/O-4 to the TSPEC and keeping AC-1.3's literals here (§1.2) respects the altitude
+  boundary cleanly — this FSPEC states outcomes and declines to design seams.
 
 ## Recommendation
 
-_(filled in below)_
+**Needs revision**
+
+Four High findings. Concretely, the next revision must:
+
+1. Pin §3.5's expected/unexpected predicate to a source of truth that survives class 7, and say
+   what happens when the drift-state record is absent (F-01).
+2. Scope BR-SWEEP-4 to gate-relevant references, or move M-11f's oracle removal into class 4, so
+   BR-SWEEP-4 and BR-SWEEP-2 stop contradicting each other on `CLAUDE.md:104` (F-02).
+3. Give §3.1 a stated ownership rule per file and heading so AT-1.8's exactly-one-class oracle has
+   a decision procedure for CLAUDE.md and `pdlc/OPERATIONS.md` (F-03).
+4. Pin A-1's path-glob list with L-2's widening rule, so AC-1.2's gate cannot be greened by
+   growing the subtraction set (F-04).
+
+The Medium findings (F-05…F-09) are cheap and mostly editorial-with-teeth; F-06 and F-07 are the
+two that would otherwise ship a vacuous or unachievable acceptance test.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 5, "low": 2}
