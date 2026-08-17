@@ -82,9 +82,9 @@ authoritative and untouched.
 ## 2. Prerequisites
 
 Every row is a **hard** gate, checkable at Phase R time. The operator flipped this REQ to
-`ready: true` on 2026-08-10; what holds pickup until BL-01/BL-02 are satisfied is its queue
-row's `Depends-On` edge (`pdlc-headless-engine`, `pdlc-engine-distribution`). No work starts
-until every row below reads satisfied.
+`ready: true` on 2026-08-10; BL-01 and BL-02 are satisfied at HEAD in the form stated below
+(both features delivered and their rows removed from the table, 2026-08-12 and 2026-08-16).
+No work starts until every row below reads satisfied.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
@@ -100,7 +100,7 @@ until every row below reads satisfied.
 ## 3. Goals
 
 - **G-1 — Single execution path.** The headless engine is the only way the pipeline runs
-  unattended. The workflow-runtime bundles (M-4, M-5), their manifest (M-6), the bundle
+  unattended. The three workflow-runtime bundles (M-4, M-5, M-10), their manifest (M-6), the bundle
   emission in the build script (M-7), and the sync/drift apparatus (M-1, M-2, M-3) are
   deleted, along with the tests that exist solely to cover them (M-8) and the CI jobs that
   gate them.
@@ -400,8 +400,8 @@ or from an observed run — none depends on an agent reporting success.
   content survives elsewhere the oracle will start failing on it. *Control:* AC-1.6 requires
   the oracle suite green on this repo after the change, not merely compiled.
 - **R-5 — The probe CLI's build orphaned.** M-9 is produced by the same script whose other
-  outputs are being deleted. A sweep that removes the script wholesale silently turns a
-  generated 476 KB artifact into an unmaintained checked-in file. *Control:* G-5 and AC-5.3
+  outputs are being deleted. A sweep that removes the script wholesale silently turns the
+  largest generated artifact in the tree into an unmaintained checked-in file. *Control:* G-5 and AC-5.3
   make its continued generation a criterion.
 - **R-6 — Consumer repos left with stale generated state forever.** Cleanup (G-4) is
   operator-invoked by design (NG-6), so repos the operator forgets keep dead files.
