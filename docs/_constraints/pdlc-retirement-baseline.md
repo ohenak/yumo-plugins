@@ -9,6 +9,11 @@ enumeration in its own cell lists 21), M-11k's documentation surface (CLAUDE.md'
 moved to `pdlc/OPERATIONS.md` at `a9b3e78a`; its `### Continuous integration` section restored at
 `63166245`), plus new rows M-11l and M-11m. All other rows still re-derive exactly at that commit.
 
+Further corrections re-measured at commit `aaa84e3b`, 2026-08-17: new row **M-11n** (the three
+`pdlc/skills/*/SKILL.md` files carrying retired names), M-11l's headings re-quoted verbatim with
+`## Continuous integration` added, and A-1's "Files it covers today" column re-derived (it read
+"—" for two globs that in fact cover 39 archived documents).
+
 ## M-rows — artifacts that exist only to serve the workflow-runtime host
 
 | ID | Artifact | Measured (2026-08-17) | Disposition |
@@ -42,27 +47,29 @@ M-10. That set-equality is what the REQ's AC-1.1 asserts against.
 | M-11i | Queue drift gate and its `distribution.checkEnabled` key in `orchestrate-queue.js`; the `SessionStart` drift-reporter entry in `pdlc/hooks/hooks.json` |
 | M-11j | `.worktreeinclude` (single row `.claude/workflows/`); `.gitignore`'s `/.claude/workflows/` row **and its 20-line rationale comment above it** |
 | M-11k | `pdlc/RELEASE-CHECKLIST.md` (≥4 sections), both READMEs, CLAUDE.md's bootstrap/sync/drift/worktree/distribution-channel prose and its `### Continuous integration` section, header prose in the workflow modules |
-| M-11l | `pdlc/OPERATIONS.md` — tracked instructional deep-dive created at `a9b3e78a`: `## Workflow scripts`, `## sync skips a row: \`unverified\` and \`--force\``, `## Worktrees` (self-created-worktree caveat), `## Distribution scripts` (names M-1, M-2, M-3 and their roles), `## Engine channel` |
+| M-11l | `pdlc/OPERATIONS.md` — tracked instructional deep-dive created at `a9b3e78a`. Headings quoted verbatim as they read at HEAD, so a "those sections are gone" check keys on literals and fails on a rename rather than passing vacuously: `## Workflow scripts and the runtime build` (`:5`), `## Continuous integration` (`:57`, whose prose describes the required-check set and its two workflow files), `## When sync skips a row: \`unverified\` and \`--force\`` (`:72`), `## Worktrees` (`:85`, self-created-worktree caveat), `## Distribution scripts` (`:128`, names M-1, M-2, M-3 and their roles). `## The engine channel (\`pdlc/engine\`)` (`:136`) is deliberately **not** in the retired set — it describes the surviving path |
 | M-11m | `pdlc/engine/__tests__/fs-observation.test.js` — builds an `orchestrate-dev.bundle.js` path under the consumer workflows dir, and exercises the `distribution.checkEnabled: false` opt-out |
+| M-11n | The three tracked `pdlc/skills/*/SKILL.md` files that name retired machinery (added at the 2026-08-17 re-measurement, not allow-listed — each is edited by the sweep). `orchestrate-queue/SKILL.md`: the drift-gate section (`:142`, `:161`, `:165` — `check-workflow-drift`, `sync-workflows.sh`/`--force`, `distribution.checkEnabled: false`) and the artifact list (`:230`, `:231`, `:240`, `:241`). `orchestrate-dev/SKILL.md`: the artifact line (`:93`) and the build/sync paragraph (`:97`). `consolidate-learnings/SKILL.md`: the bundle reference at `:11` — this skill survives NG-1 and keeps running, so the reference is **rewritten** to name the surviving execution path, not allow-listed and not deleted with the skill |
 
 ## A-1 — retired-name allow-list (measured 2026-08-17 at `63166245`)
 
 The dependent sweep below (last command in **How to re-measure**) returns, besides the
-machinery's own files, the two fixture trees of M-11e, this feature's own artifacts and the
+machinery's own files, the two fixture trees of M-11e, the three skill files of M-11n, this
+feature's own artifacts and the
 delivered-feature archive and `docs/_queue/QUEUE.md`, exactly nine other tracked documents. They are historical or
 superseding records, not instructions, so they are excluded from the REQ's AC-1.2
 required-empty search by these path globs:
 
 | Glob | Why excluded | Files it covers today |
 |---|---|---|
-| `docs/completed/**` | delivered-feature archive | — |
+| `docs/completed/**` | delivered-feature archive | 39 files at 2026-08-17 |
 | `docs/discarded/**` | abandoned drafts, kept as record | 3 files |
 | `docs/_decisions/**` | decision record; a superseded decision must name what it supersedes | `DECISIONS-plugin-distribution.md` |
 | `docs/_constraints/pdlc-retirement-baseline.md` | this file — the measured inventory itself | this file |
-| `**/LEARNINGS-*.md`, `**/POSTMORTEM-*.md` | post-mortem record of work already done | — |
+| `**/LEARNINGS-*.md`, `**/POSTMORTEM-*.md` | post-mortem record of work already done | none beyond `docs/completed/**` at 2026-08-17 — the glob is kept for harvests landing outside the archive |
 | `docs/_queue/QUEUE.md` | queue prose, governed instead by the REQ's AC-2.3 | `QUEUE.md` |
-| `docs/pdlc-plugin-retirement/**` | this feature's own artifacts | — |
-| `docs/PLAN-*.md`, `docs/design/**`, `docs/{other feature}/PLAN-*.md` | planning documents of already-shipped features | `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/design/MASTER-PLAN-engineering-loop.md`, `docs/design/PROMPT-dev-orchestrate-dev-optimization.md`, `docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md` |
+| `docs/pdlc-plugin-retirement/**` | this feature's own artifacts | 7 files at 2026-08-17 |
+| `docs/PLAN-*.md`, `docs/design/**`, `docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md` | planning documents of already-shipped features; the third entry is that one file's literal path, deliberately not a `docs/*/PLAN-*.md` wildcard, which would also exempt a future feature's PLAN that re-introduces a retired name | `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/design/MASTER-PLAN-engineering-loop.md`, `docs/design/PROMPT-dev-orchestrate-dev-optimization.md`, `docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md` |
 
 **Two allow-listed files must survive still carrying the retired names**:
 `docs/_decisions/DECISIONS-plugin-distribution.md` (its superseding entry, required by the
