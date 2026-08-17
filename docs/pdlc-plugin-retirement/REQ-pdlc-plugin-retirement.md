@@ -54,36 +54,23 @@ the drift *cause* is gone — patching a symptom whose wound has healed.
 | US-03 | As a consumer repo owner, I want a documented one-time cleanup, so that a repo that once hosted the runtime copy does not keep stale generated state forever. |
 | US-04 | As a human working inside a Claude Code session, I want the interactive pdlc skills and their SessionStart nudges to keep working, so that retirement of the unattended host does not cost me the mid-session tools. |
 
-### 1.2 Measured retirement surface (HEAD, 2026-08-08)
+### 1.2 Measured retirement surface
 
-These are the artifacts that exist *only* to serve the workflow-runtime host. Sizes were
-measured at HEAD on 2026-08-08 and are the basis of the "cost of keeping" claim above; they
-are re-measured at execution time per C-6, because a stale inventory is how a deletion sweep
-misses a file.
+The artifacts that exist *only* to serve the workflow-runtime host are measured once, into
+`docs/_constraints/pdlc-retirement-baseline.md`, and cited from here by id: **M-1**…**M-10**
+are the artifacts (M-9, the probe CLI, is the one survivor; M-10 is the third runtime bundle,
+`dist/consolidate-learnings.bundle.js`), and **M-11a**…**M-11k** are the dependents that name
+them from outside their own files. That file also carries the commands each row was derived
+with, so C-6's re-measurement is reproducible rather than another hand count; the sizes there
+are the basis of the "cost of keeping" claim above.
 
-| ID | Artifact | Measured |
-|---|---|---|
-| M-1 | `pdlc/hooks/scripts/sync-workflows.sh` | 33 KB |
-| M-2 | `pdlc/hooks/scripts/lib/pdlc-drift.sh` (sourced library, non-executable by design) | 76 KB |
-| M-3 | `pdlc/hooks/scripts/check-workflow-drift.sh` | 19 KB |
-| M-4 | `pdlc/workflows/dist/orchestrate-dev.bundle.js` | 304 KB |
-| M-5 | `pdlc/workflows/dist/orchestrate-queue.bundle.js` | 303 KB |
-| M-6 | `pdlc/workflows/dist/distribution-manifest.json` | 1.1 KB |
-| M-7 | `pdlc/workflows/build-runtime.mjs` | 572 lines / 22.6 KB — emits M-4, M-5, M-6 **and** `dist/pdlc-cli.mjs` (see M-9) |
-| M-8 | Tests dedicated to the above (drift classification/backups/baseline/ladder/messages/ordering/record-shape/relpath/repo-root/sync/write-failure/fault/hook/helpers, bootstrap, worktree-include, queue drift gate, bundle freshness, hook compatibility) plus their helper modules | ≈17,800 lines, out of 83 test files in the suite |
-| M-9 | `pdlc/workflows/dist/pdlc-cli.mjs` — the document-state probe CLI | 476 KB — **survives** (NG-2), but is emitted by M-7 and travels through the same manifest/sync channel today |
-
-Beyond the files themselves, the same machinery is referenced by: the queue's drift gate and
-its `distribution.checkEnabled` config key; two CI jobs (`Generated artifacts are in sync`,
-`Fresh-clone bootstrap works`) plus index-mode assertions inside a third (`Shell scripts
-parse`) that name the two sync/drift entrypoints and the sourced library; the plugin's
-`SessionStart` drift-reporter hook entry; the repo-root `.worktreeinclude` (whose **only**
-row is `.claude/workflows/`); the `.gitignore` row that ignores the consumer copy; the
-document oracles that police `pdlc/workflows/dist/` (packaging completeness and the
-advertised-version check, plus the document-drift scan's exemptions for the two generated
-trees); four `pdlc/RELEASE-CHECKLIST.md` sections; both READMEs; CLAUDE.md's bootstrap,
-sync, drift and worktree sections; and header prose in the workflow modules themselves.
-R-2 and O-5 carry the consequences of that breadth.
+The dependent set (M-11) is what makes this a sweep rather than a delete: both PR-gate CI jobs
+**and** the tag-triggered `publish.yml` gate that re-runs them, engine-side tests and fixture
+trees that model the retired consumer copy, a *surviving* oracle test that requires CLAUDE.md
+to keep naming the two scripts, the wave-gate config keys this feature's own Phase I runs
+under, the queue drift gate, the drift-reporter hook, `.worktreeinclude`, `.gitignore` (row and
+rationale comment), the release checklist, both READMEs and CLAUDE.md. R-2 and O-5 carry the
+consequences of that breadth; C-5 turns each class into its own commit.
 
 Retirement is gated on evidence, not on the engine merely existing (C-1). Until this REQ
 completes, CLAUDE.md's documented paths (build, sync, drift gate, bootstrap) remain
