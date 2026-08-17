@@ -82,7 +82,28 @@ actually pins held, which is a confirmation rather than a finding.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Round-6's Q-01 stays open and is now the sharpest remaining testability question, so I restate it for the TSPEC rather than re-file it as a finding: after the reduced build step lands, which acceptance criterion asserts that *running* `build-runtime.mjs` emits `{M-9}` and nothing else? AC-1.1 asserts the tree's `dist/` entry set, which is equivalent only if the build is actually run in the same state; at HEAD `dist/` holds five entries, so the two are demonstrably not the same assertion today. AC-1.3's suite green would catch it only if a surviving module rebuilds and compares — and the two modules that do (`runtimeBundle.test.js`, `runtimeProvenanceWiring.test.js`) are themselves deleted by M-8/M-11p. One sentence in TSPEC's O-3 resolution naming the surviving test that re-runs the reduced build closes it. |
+
 ## Positive Observations
+
+- **The closure property was tested by events, not by argument, and it held.** Between the
+  partition's pin and this round the repo grew by exactly the paths the REQ said it would grow
+  by, the totals moved 136→138 and 132→134, and the remainder stayed empty because both new
+  paths landed inside an existing glob. A criterion that survives its own review loop generating
+  new inputs for it is a criterion an implementer can run in six months.
+- **Choosing the invariant over the number was the right call, and it is now provably so.** Had
+  the earlier total-pinning survived, AC-1.2 would be red at this very commit on two cross-review
+  files. The review loop produced a criterion that the review loop itself cannot break.
+- **The superset relation is stable under growth.** The recipe-minus-AC-1.2 delta is still
+  exactly the four `postWavePathspecs` paths after the tree moved, so the asymmetry documented at
+  `baseline:186-205` is structural rather than an artifact of one measurement.
+- **The prerequisite did not decay.** 842/840/0/2 in `pdlc/engine` at HEAD, unchanged across four
+  rounds — C-7's green start is a live fact, not a stale citation.
+- **Three open items, all correctly sized.** Two Mediums and a Low, each with a named file, a
+  named line range and a one-clause fix, each routed to the document that should carry it. Nothing
+  is being deferred vaguely.
 
 ## Recommendation
 
