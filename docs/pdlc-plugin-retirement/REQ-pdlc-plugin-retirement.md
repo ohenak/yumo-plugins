@@ -370,21 +370,27 @@ or from an observed run — none depends on an agent reporting success.
   the engine has absorbed a semantics-heavy release cycle, leaving no working host if the
   engine turns out to have a gap. *Control:* C-1's evidence gate, judged by the operator, and
   C-5's per-step commits, which make a revert cheap and targeted.
-- **R-2 — Hidden dependents.** The retired machinery is referenced far outside its own
-  files: CI jobs, index-mode assertions, the release checklist, the document oracles (whose
-  packaging and advertised-version checks take `pdlc/workflows/dist/` as their subject and
-  whose drift scan *exempts* the generated trees), `.gitignore`, `.worktreeinclude`, hook
-  wiring, both READMEs, CLAUDE.md, and header prose inside the workflow modules themselves.
-  A partial sweep leaves a red oracle or a job asserting a deleted file. *Control:* C-6's
-  re-measurement, AC-1.2's repo-wide search, and a per-artifact reference sweep recorded in
-  the PLAN.
+- **R-2 — Hidden dependents.** The retired machinery is referenced far outside its own files:
+  the whole M-11 set, of which four are easy to miss and each reds a required check on the
+  commit that ignores it — `publish.yml`'s tag-triggered gate, bound to the PR gate by a
+  set-equality assertion (M-11b, M-11c); the engine suite's arrangement oracle including its
+  CLAUDE.md table **and prose count word**, and the drift-gate smoke cases (M-11c, M-11d); a
+  *surviving* oracle test that requires CLAUDE.md to keep naming the two deleted scripts, so
+  the doc sweep and the test must move together (M-11f); and the wave-gate config keys this
+  feature's own implementation phase runs under (M-11h). A partial sweep leaves a red oracle
+  or a job asserting a deleted file. *Control:* C-6's re-measurement, AC-1.2's search with an
+  enumerated allow-list, AC-1.4b/AC-1.4c, and a per-artifact reference sweep in the PLAN.
 - **R-3 — Version skew between the plugin and the engine.** There is no engine-side snapshot
   of skill text to drift against — the engine reads every skill from the installed plugin at
   dispatch time — so the hazard is narrower than it once looked: an installed plugin version
   the engine does not declare compatible. *Control:* C-10's handshake refuses the run loudly
   and names both versions rather than letting a mismatched pair execute; AC-3.5 and AC-3.6
-  make the refusal and the matched-version path both checkable. `pdlc-engine-distribution`
-  R-2 tracks the companion hazard (declaring a range that is wrong) from the engine side.
+  make the refusal and the matched-version path both checkable. The sharp form of that hazard
+  is this feature's own: the sweep moves the plugin's version, which can land it outside the
+  installed engine's declared window and turn the handshake into an outage on the retirement
+  commit. *Control:* BL-07 gates the first deletion on a published engine whose range admits
+  the post-sweep plugin version. `pdlc-engine-distribution` R-2 tracks the companion hazard
+  (declaring a range that is wrong) from the engine side.
 - **R-4 — Deleting the drift scan's exemptions changes what the oracle sees.** The
   document-drift scan walks the whole tree and exempts the two generated directories.
   Removing those exemptions along with the directories is correct, but if any generated
@@ -401,7 +407,7 @@ or from an observed run — none depends on an agent reporting success.
   the least mechanical: prose about bootstrap ordering, `--force`, `unverified` rows and the
   worktree caveat lives in several documents at once. *Control:* AC-2.1's reader test states
   the bar as "cannot find instructions for the old path", which is falsifiable by search.
-- **R-8 — Test-corpus loss hides a regression.** ≈17,800 test lines leave the suite (M-8).
+- **R-8 — Test-corpus loss hides a regression.** M-8's ~15,000 test lines leave the suite.
   Some of those tests incidentally covered surviving behaviour (queue triage around the gate,
   hook-manifest compatibility). *Control:* C-8's no-skip rule plus an explicit PLAN step to
   re-home any assertion about surviving behaviour before its host file is deleted.
