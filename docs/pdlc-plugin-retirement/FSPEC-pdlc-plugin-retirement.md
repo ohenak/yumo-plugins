@@ -243,6 +243,129 @@ copy. The step never runs by itself — no hook, session start or engine startup
 
 ## 4. Business Rules
 
+### 4.1 Sweep rules
+
+- **BR-SWEEP-1 — One class, one commit.** A commit contains the edits of exactly one class of
+  §3.1. A commit mixing classes fails AC-1.8 even if the tree is green (REQ C-5).
+- **BR-SWEEP-2 — Green at every commit.** Every commit of the sweep passes the L-9 gate command
+  set when run at that commit. A commit that is red and repaired by its successor is a defect,
+  not an intermediate state (REQ C-7).
+- **BR-SWEEP-3 — C-7 outranks C-5 on conflict.** When a class cannot be split without producing a
+  red intermediate commit — the CI-jobs class, whose members are bound across two workflow files
+  and an oracle by set-equality — the class lands whole (REQ C-5's own conflict rule).
+- **BR-SWEEP-4 — Dependents never lag their subject.** A reference to a deleted artifact is
+  removed in the same commit as the artifact or earlier; never later.
+- **BR-SWEEP-5 — Inventory is re-measured, not trusted, and the sweep is a lower bound.** The
+  C-6 partition's pinned expectation is an **empty unclassified remainder**, never a path total:
+  the total grows by one file per cross-review through A-1's feature-directory glob. An empty
+  remainder proves no *unknown* swept path exists; it does not prove the inventory is complete. A
+  dependent no search term reaches — `pdlc/engine/__tests__/ci-arrangement.test.js` and
+  `.worktreeinclude` are the two measured instances — is added by reading, not by re-running the
+  command (REQ C-6, §1.2).
+- **BR-SWEEP-6 — Deleted, never skipped.** A test whose subject is deleted is removed with it. No
+  `skip`, no pending marker, no assertion left vacuously true against an empty directory (REQ
+  C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
+  file is re-homed into a surviving module before its host is deleted (REQ R-8).
+- **BR-SWEEP-7 — The sweep sizes from dispositions, not row counts.** The PLAN's task sizes come
+  from the partition's per-file dispositions in the baseline, not from the 16 M-11 rows (REQ R-2).
+- **BR-GATE-1 — The queue drift gate is removed, not disabled.** No dead flag, no
+  permanently-true branch and no config key a consumer can set with no effect survives (REQ C-3).
+- **BR-GATE-2 — A stale consumer key is ignored, not an error.** A consumer config still carrying
+  `distribution.checkEnabled` after the sweep is ignored silently; it never fails a run (REQ C-3).
+- **BR-HOOK-1 — Hook removal is exactly one entry.** Only the drift reporter leaves the manifest.
+  Interactive hooks stay, including the second `SessionStart` entry (REQ C-2, NG-1, O-1).
+
+### 4.2 Pinned literals
+
+Transcribed at base commit **`b3f24fc6`**, 2026-08-17. Re-transcribed at C-6 re-measurement time
+against the sweep's base commit (§3.0 step 3); a literal that moved is corrected here.
+
+- **L-1 — `pdlc/workflows/dist/` entries, pre-sweep (5):** `consolidate-learnings.bundle.js`,
+  `distribution-manifest.json`, `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`,
+  `pdlc-cli.mjs`. **Post-sweep expectation:** the entry set **set-equals** `{pdlc-cli.mjs}`, or
+  the directory is gone and the probe CLI lives at the single surviving path the **TSPEC** names
+  (REQ AC-1.1, O-3). Set-equality, not containment: an entry added to `dist/` between now and the
+  sweep fails rather than slipping through.
+- **L-2 — AC-1.2's term set (7 search terms, a set-equality).** Adding a term fails the criterion
+  and removing one fails it too.
+
+  | Term | Retired artifact(s) it names |
+  |---|---|
+  | `sync-workflows` | M-1, `pdlc/hooks/scripts/sync-workflows.sh` |
+  | `pdlc-drift` | M-2, `pdlc/hooks/scripts/lib/pdlc-drift.sh` |
+  | `check-workflow-drift` | M-3, `pdlc/hooks/scripts/check-workflow-drift.sh` |
+  | `\.bundle\.js` | M-4, M-5, M-10 — the three retired runtime bundles |
+  | `distribution-manifest` | M-6 |
+  | `pdlc-drift-state` | the consumer's drift-state record |
+  | `distribution\.checkEnabled` | the retired queue-gate config key |
+
+  **No surviving identifier is a member.** `build-runtime.mjs` and `pdlc/workflows/dist/` are not
+  terms (M-7 is reduced and AC-1.1 requires the probe CLI to survive, so either would red
+  permanently on files this feature keeps), and neither is the bare key `postWavePathspecs`
+  (M-11h retires a *value*; the generic facility in `orchestrate-dev.js` and its `waveExecution`
+  coverage survive). The retired wave-gate values are caught by M-11h's per-file dispositions,
+  not by a repo-wide term.
+
+- **L-3 — AC-1.2's expected-empty command,** transcribed literally from
+  `docs/_constraints/pdlc-retirement-baseline.md` §*The sweep recipe and AC-1.2's search term*:
+
+  ```sh
+  grep -rln 'sync-workflows\|pdlc-drift\|check-workflow-drift\|\.bundle\.js\|distribution-manifest\|pdlc-drift-state\|distribution\.checkEnabled' \
+    $(git ls-files)
+  ```
+
+  Post-sweep, its output minus A-1's path globs must be **empty**. The baseline's **sweep recipe**
+  is the same command plus `postWavePathspecs` — a documented superset whose delta (4 paths at
+  `b73fb4de`) is owned by M-11h and M-10. The two commands are not interchangeable: the recipe is
+  the inventory control, L-3 is the required-empty gate.
+
+- **L-4 — Registered hook entries at the base commit (5), by event and script name,** read from
+  `pdlc/hooks/hooks.json`:
+
+  | Event | Matcher | Script |
+  |---|---|---|
+  | `PreToolUse` | `Bash` | `guard-harvest-before-delete.sh` |
+  | `PostToolUse` | `Write\|Edit` | `check-scope-field.sh` |
+  | `PostToolUse` | `Write\|Edit` | `check-req-size.sh` |
+  | `SessionStart` | — | `nudge-consolidation.sh` |
+  | `SessionStart` | — | `check-workflow-drift.sh` ← **the only entry removed** |
+
+  **Post-sweep expectation:** the registered entry set **set-equals** the first four rows — an
+  absence check on `check-workflow-drift.sh` alone is not sufficient, because deleting the whole
+  `SessionStart` event would pass it while losing the consolidation nudge (REQ AC-1.7, O-1).
+
+- **L-5 — Workflow suite size.** `pdlc/workflows/__tests__/*.test.js` counts **119** at the base
+  commit. The sweep deletes **22**: M-8's 21 modules (`bootstrap`, `driftBackups`,
+  `driftBaseline`, `driftC1Absent`, `driftClassify`, `driftFault`, `driftHelpers`, `driftHook`,
+  `driftLadder`, `driftMessageSplit`, `driftMessages`, `driftOrdering`, `driftRecordShape`,
+  `driftRelpath`, `driftRepoRoot`, `driftSync`, `driftWriteFailure`, `hookCompatibility`,
+  `queueDriftGate`, `runtimeBundle`, `worktreeInclude`) plus M-11p's `runtimeProvenanceWiring`.
+  **Post-sweep expectation: 97**, on the rule that re-homed assertions land in modules that
+  already exist. If re-homing creates a new module, this literal is corrected at re-measurement
+  time — never reconciled by a test that counts loosely (REQ AC-1.3).
+- **L-6 — Retained modules that must be present and passing after re-homing:** the surviving
+  module carrying the queue-triage assertions re-homed from `queueDriftGate`, and the surviving
+  module carrying the hook-manifest compatibility assertions re-homed from `hookCompatibility`.
+  Their names are fixed at re-measurement time and transcribed here; the *placement* decision is
+  the TSPEC's (REQ AC-1.3, R-8).
+- **L-9 — The gate command set** run at every commit (§3.2, AC-1.8):
+
+  | # | Command | Working directory |
+  |---|---|---|
+  | 1 | `npm test` (the workflows jest suite) | `pdlc/workflows` |
+  | 2 | `npm ci && npm test` (the engine suite) | `pdlc/engine` |
+  | 3 | `bash -n` over every tracked `*.sh` (`git ls-files '*.sh'`) | repo root |
+
+  This set is the local stand-in for hosted CI at intermediate commits; hosted CI runs on the PR
+  head only. AC-1.8 is satisfied by pasted output of the replay, not by inspection.
+- **L-10 — Skill-directory listing at the base commit (15),** `pdlc/skills/*/SKILL.md`:
+  `consolidate-learnings`, `dod-verify`, `harvest-learnings`, `orchestrate-dev`,
+  `orchestrate-queue`, `pm-author`, `pm-review`, `se-author`, `se-implement`, `se-review`,
+  `ship-pr`, `te-author`, `te-review`, `tech-lead`, `tech-lead-python`. **Post-sweep expectation:
+  the set is unchanged** — the sweep edits three of these files and deletes none (REQ AC-3.3,
+  NG-1). Skill file locations do not move; if one ever did, every known `ptah.config.json`
+  consumer is updated in the same change (REQ C-4).
+
 ## 5. Edge Cases and Error Scenarios
 
 ## 6. Acceptance Tests
