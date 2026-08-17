@@ -8,14 +8,20 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Field | Value |
 |---|---|
-| Upstream | `pdlc-headless-engine`, `pdlc-engine-distribution`; adoption evidence per C-1 |
+| Upstream | `pdlc-headless-engine`, `pdlc-engine-distribution`; adoption evidence per C-1; measured surface in `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | — (terminal REQ of the family) |
 | Cross-Reviews | — |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.4 | 2026-08-10 |
+| pdlc | approved — ready | Claude | 0.5 | 2026-08-17 |
+
+*0.5 (2026-08-17): REQ cross-review round 1. Measured surface relocated to
+`docs/_constraints/pdlc-retirement-baseline.md` and re-measured (adds M-10, the third bundle,
+and the M-11 dependent set); NG-5 carved out for the engine's compat declaration and its
+tests/fixtures; BL-01/02/05/07/08 re-derived or added; §6 criteria restated as set-equalities,
+literal counts and named observables.*
 
 *0.4 (2026-08-10): queue-row references repointed to feature names (stale Order numbers from a
 pre-renumbering table draft); ready flipped by operator review 2026-08-10.*
@@ -64,13 +70,10 @@ them from outside their own files. That file also carries the commands each row 
 with, so C-6's re-measurement is reproducible rather than another hand count; the sizes there
 are the basis of the "cost of keeping" claim above.
 
-The dependent set (M-11) is what makes this a sweep rather than a delete: both PR-gate CI jobs
-**and** the tag-triggered `publish.yml` gate that re-runs them, engine-side tests and fixture
-trees that model the retired consumer copy, a *surviving* oracle test that requires CLAUDE.md
-to keep naming the two scripts, the wave-gate config keys this feature's own Phase I runs
-under, the queue drift gate, the drift-reporter hook, `.worktreeinclude`, `.gitignore` (row and
-rationale comment), the release checklist, both READMEs and CLAUDE.md. R-2 and O-5 carry the
-consequences of that breadth; C-5 turns each class into its own commit.
+The dependent set (M-11) is what makes this a sweep rather than a delete — it reaches CI in
+both workflow files, the engine's own suite and fixtures, a surviving oracle test, config,
+hooks, ignore files, the release checklist and both READMEs. R-2 names the four easiest to
+miss; O-5 carries the documentation share; C-5 turns each class into its own commit.
 
 Retirement is gated on evidence, not on the engine merely existing (C-1). Until this REQ
 completes, CLAUDE.md's documented paths (build, sync, drift gate, bootstrap) remain
