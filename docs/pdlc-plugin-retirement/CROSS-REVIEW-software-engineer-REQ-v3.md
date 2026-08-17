@@ -43,10 +43,54 @@ per-commit run driven from an agent session inherits this and can record a vacuo
 
 ## Delta tags
 
+```
+FINDING: High | delta | local | AC-1.2 / AC-2.1 / O-5 | the three surviving pdlc/skills/*/SKILL.md carry retired names; no M-11 row, allow-list glob or reader-set entry covers them, and consolidate-learnings/SKILL.md has no disposition at all
+FINDING: Medium | delta | local | C-6 / AC-1.2 | no clause requires the dependent sweep's output to be fully partitioned into M-rows, M-11 rows and A-1 globs, so the omission class recurs each round
+FINDING: Medium | delta | local | AC-1.1 / O-3 | FSPEC and TSPEC both named as the place AC-1.1's dist/ branch is pinned
+FINDING: Low | delta | local | C-7 / BL-08 | pre-sweep green asserted as a dated fact with no committed transcript, unlike BL-08's report
+FINDING: Low | delta | nonlocal | baseline A-1 | "Files it covers today" wrong for docs/completed/** and the LEARNINGS/POSTMORTEM globs; one entry is prose, not a glob
+```
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-10 | Does `consolidate-learnings/SKILL.md`'s bundle reference (`:11`) survive the sweep as a rewritten sentence (the skill still exists and still runs, just not from a bundle) or does the line go entirely? The answer decides whether F-22's repair is an M-11 row plus an AC-2.1 entry, or an A-1 allow-list entry — and they are opposite. |
+| Q-11 | Is the pre-sweep hook listing AC-1.7 set-equals against derived from git history at replay time, or captured into an artifact like BL-08's report? History is sufficient for a tracked manifest, but the criterion never says, and AC-3.3's skill-set comparison has the same gap. |
 
 ## Positive Observations
 
+- F-21's repair is the right shape: rather than writing around a red tree, `63166245` put the
+  oracle's subject back where the oracle looks (`CLAUDE.md:66`) and left `pdlc/OPERATIONS.md:59`
+  pointing at it as rationale-only prose. The engine suite re-derives green at HEAD, so C-7's
+  "stays green" now has a real starting point instead of a stated one.
+- AC-1.7's restatement closed the last absence-only oracle in §6.1 the way the siblings already
+  had — set-equality against a pre-sweep listing, with the surviving `SessionStart` sibling named
+  in the criterion itself so a whole-event deletion fails loudly rather than passing.
+- A-1's "two allow-listed files must survive still carrying the retired names" paragraph is the
+  strongest addition this round: it makes AC-1.2 and AC-2.3 provably co-satisfiable instead of
+  leaving a reader to discover the tension during implementation.
+- The `pdlc/OPERATIONS.md` repair went in at section granularity (M-11l enumerates the five
+  headings, `## The engine channel` deliberately excluded), which is what makes AC-2.1's reader
+  test checkable rather than a judgement about a whole file.
+
 ## Recommendation
 
+**Needs revision**
+
+All three round-2 Highs are genuinely closed, and two of them were closed by changing the tree,
+not the prose — the strongest signal this round. The strategy, sequencing and evidence gates are
+not in question and were not re-litigated.
+
+One High remains, and it is the same inventory-omission class for the third consecutive round:
+`pdlc/skills/**` carries the retired names, sits outside every M-11 row, allow-list glob and
+reader set, and `consolidate-learnings/SKILL.md` has no disposition at all — so AC-1.2 cannot
+pass as written and G-3 is already false on a tracked file. The edit is small (one M-11 row, one
+AC-2.1 entry or one A-1 glob, per Q-10) but it is not mechanical: which of the two it is depends
+on whether the line survives. F-23 is the durable half of the same story — adding a partition
+clause to C-6 turns the next omission into a failing check instead of a review finding.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
