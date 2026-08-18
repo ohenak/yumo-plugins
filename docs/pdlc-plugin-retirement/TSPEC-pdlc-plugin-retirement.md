@@ -969,6 +969,11 @@ stated parts, together, close it:
    which would mean a further `SKIP_INVENTORY` row for a purely mechanical guard. Throwing keeps the
    inventory out of the recursion problem entirely (TE Q-02: the exclusion route is preferred for
    exactly this reason).
+   The sentinel is read from the **child's env copy only**: the parent sets it on the spawn options,
+   and the spawn helper's throw fires on the value it is about to pass down, not on the parent's own
+   `process.env` (PM TSPEC v8 Q-01). A developer re-running a failed child by hand with the variable
+   exported therefore gets the named error in that shell, while the parent's outer run never reds for
+   a stray environment variable it did not set.
 3. **A compensating check over the host's own skips — paired, and itself falsifiable.** Excluding
    the host from the join would otherwise leave the one module this feature *writes from scratch*
    unchecked for bare skips. The host therefore carries a source-level scan of its own file: no
@@ -991,15 +996,23 @@ stated parts, together, close it:
 
 **The join is proven falsifiable, not merely stated.** A fixture module
 `__tests__/fixtures/skipJoinFalsifier.js` carries one bare `it.skip`. Two naming and
-configuration points make that construction actually run, and both are part of the oracle:
+configuration points make that construction actually run in the **red child** of part 1 — the green
+child never collects the fixture — and both are part of the oracle:
 
-- **The child must override `testPathIgnorePatterns`.** That key is config-level
+- **The red child must override `testPathIgnorePatterns`.** That key is config-level
   (`pdlc/workflows/package.json`: `/node_modules/`, `/__tests__/helpers/`, `/__tests__/fixtures/`),
   so it filters explicitly-passed paths too — pointing the child at the fixture without an override
   collects nothing and the red construction fails loudly rather than proving anything. The child is
   therefore invoked with `--testPathIgnorePatterns=/node_modules/` (dropping the `helpers/` and
-  `fixtures/` exclusions for the child only) plus the explicit file list of §5.5's carve-out rule.
+  `fixtures/` exclusions for the red child only) plus the explicit red-child file list of part 1.
   The outer run's config is untouched, so the fixture still costs the real suite nothing.
+
+**Cost of the join, stated so it stays visible.** Both children are invoked with `--runInBand` over
+their explicit file lists (six modules green, seven red), so the join's cost is two short in-band jest
+processes rather than two full worker pools (PM TSPEC v8 Q-02). The expectation recorded here is that
+the join stays in the order of the modules it names; a future module joining the swept surface adds
+its own runtime to both children, and that growth should be visible in review of this section rather
+than only in CI wall-clock.
 - **The fixture is deliberately not named `*.test.js`.** Jest's default `testMatch` collects any
   `.js` file under a `__tests__` directory, so the fixture would be collected by the child with or
   without a `.test.js` suffix; the suffix matters only for §4.4's count literal. AT-1.3's wording
