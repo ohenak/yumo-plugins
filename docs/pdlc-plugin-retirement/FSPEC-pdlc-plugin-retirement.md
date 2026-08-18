@@ -13,7 +13,7 @@ feature: pdlc-plugin-retirement
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.5 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.6 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -283,7 +283,11 @@ copy. The step never runs by itself — no hook, session start or engine startup
   `.worktreeinclude` are the two measured instances — is added by reading, not by re-running the
   command (REQ C-6, §1.2).
 - **BR-SWEEP-6 — Deleted, never skipped.** A test whose subject is deleted is removed with it. No
-  `skip`, no pending marker, no assertion left vacuously true against an empty directory (REQ
+  `skip` or pending marker **absent from the skip sink's inventory** — a skip registered through
+  `itOrSkip` with a `SKIP_INVENTORY` entry declaring its capability gap
+  (`helpers/driftCapabilities.js`; records land in `helpers/skipSink.js`) is a declared runner
+  limitation, not a sweep defect; a bare `it.skip` or unregistered pending marker still fails —
+  and no assertion left vacuously true against an empty directory (REQ
   C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
   file is re-homed into a surviving module before its host is deleted (REQ R-8).
 - **BR-SWEEP-7 — The sweep sizes from dispositions, not row counts.** The PLAN's task sizes come
@@ -612,8 +616,11 @@ committed transcript or from an observed run; none is satisfied by an agent repo
   3. **Term fidelity.** The command's term list set-equals L-2's seven terms — a run with a term
      added or removed does not satisfy this test.
 - **AT-1.3** (AC-1.3) *Who:* maintainer. *Given* HEAD, *when* the workflow suite runs, *then* it
-  is green; the suite contains **no skipped or pending test at all** (repo-wide, not only among
-  M-8's modules — a skip in a surviving module is the same defect and BR-SWEEP-6 forbids both);
+  is green; the suite contains **no skipped or pending test absent from the skip sink's
+  inventory** (repo-wide, not only among M-8's modules — an unregistered skip in a surviving
+  module is the same defect and BR-SWEEP-6 forbids both; a skip registered through `itOrSkip`
+  with a `SKIP_INVENTORY` entry declaring its capability gap is a declared runner limitation and
+  does not fail this test);
   `*.test.js` under `pdlc/workflows/__tests__/` counts exactly L-5's post-sweep literal; and, for
   each of L-6's two rows, the named module exists **and contains the named assertion titles**,
   each of which reds when the behaviour it re-homes is reverted. Module presence without the
@@ -820,3 +827,12 @@ No criterion was relaxed in the FSPEC to work around any of them.
 | 1 | AC-1.1 / O-3 — whether the manifest (M-6) survives for the probe CLI's build | O-3 states the manifest does **not** survive; AC-1.1's set-equality with `{M-9}` stands unopposed. Only *which* surviving directory holds the build is still open (O-C, TSPEC) |
 | 2 | AC-5.2 — allowed-difference set too narrow to be passable | AC-5.2 now enumerates the provenance fields **and** the report's eight run-variable collections, compared for presence, not content |
 | 3 | AC-4.3 — asked the cleanup to detect a *hand-modified* file no post-sweep artifact can decide | AC-4.3 keeps the unexpected-entry case, states the post-refusal directory state, and C-9 drops the hand-edited clause it contradicted |
+
+### 7.3 Downstream errata — accepted
+
+One erratum raised by the TSPEC against this FSPEC has been accepted and folded in (v0.6,
+2026-08-18). No other TSPEC §6.1 erratum edits this document.
+
+| # | Raised as | Edit made here |
+|---|---|---|
+| TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and `SKIP_INVENTORY` already carries `uid-nonroot` entries at HEAD, so the wider clause was already false on a root runner | AT-1.3 and BR-SWEEP-6 narrowed to "no skipped or pending test **absent from the skip sink's inventory**": a skip registered through `itOrSkip` with a `SKIP_INVENTORY` entry declaring its capability gap is a declared runner limitation; a bare `it.skip` or unregistered pending marker still fails. REQ AC-1.3 is narrower (M-8-scoped) and silent on registered skips, so it needs no edit to stay consistent |

@@ -5,7 +5,19 @@
 **Rounds used:** 5 of 5 — iteration cap reached, halted open
 **Document at halt:** `TSPEC-pdlc-plugin-retirement.md` v0.6 (`200068da`)
 
-RESOLVED: no
+RESOLVED: yes
+
+Resolution evidence (2026-08-18):
+- Round-5 findings PM F-01 (High), TE F-01/F-02 (High) and TE F-03 (Medium) were already
+  addressed in TSPEC v0.6 (`3b295554`, `0dbc7554`, `a36bd3bb`, `200068da`); the halt consumed
+  the confirmation round, not a disputed one (see Iterations table below).
+- The one cross-artifact open item — TSPEC §6.1 erratum 9's proposed narrowing of AT-1.3 /
+  BR-SWEEP-6 — is now **accepted upstream**: FSPEC v0.6 narrows both to "no skipped or pending
+  test absent from the skip sink's inventory" and records the acceptance in FSPEC §7.3. TE Q-01's
+  fallback (dropping TT-1b's root-conditional arm, leaving row 4b's exit status uncovered) was
+  not taken. REQ AC-1.3 is narrower and silent on registered skips; no REQ edit needed.
+- Non-gating lows PM F-02 (`a36bd3bb`) and TE F-04 (`0dbc7554`) were fixed in v0.6.
+- Remaining action per Recommendation: re-run Phase T for a single delta round on v0.6.
 
 ## Phase
 
@@ -121,3 +133,11 @@ v0.6**, not a Phase T restart:
 
 If the operator accepts, flip `RESOLVED: no` to `RESOLVED: yes` and re-run Phase T for a
 single delta round on v0.6.
+
+**Provenance**
+- Engine version: 0.2.0
+- Plugin version: 0.23.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: unresolved (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
