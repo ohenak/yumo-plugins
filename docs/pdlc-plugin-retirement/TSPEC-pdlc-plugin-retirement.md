@@ -926,7 +926,7 @@ before reporting (`helpers/skipSinkTeardown.js`, `readSkipRecords` then `rmSync`
 in `consumerCleanup.test.js` that **spawn a nested jest run** over the swept-surface files with
 `--json` and with `PDLC_SKIP_SINK` pointed at a fresh temp path, then read both outputs and compare.
 The env var is redirectable by design (`SKIP_SINK_ENV` in `helpers/skipSink.js`;
-`skipSinkTransport.test.js`'s `useSink` already redirects and restores it around each test), and the
+`skipSinkTransport.test.js`'s `useSink` already redirects and restores it around each test). For the child's own sink lifetime,
 the branch is pinned rather than left open (TE TSPEC v8 F-04): **the child is invoked with an
 explicit `--globalTeardown` override** pointing at a no-op module `__tests__/fixtures/skipJoinTeardown.js`
 (a new class-3 file, in `fixtures/` so no run collects it as a test), so the child neither runs the
@@ -945,11 +945,22 @@ the `describeOrSkip` / `itOrSkip` helpers and does not see this. That does not f
 the gate, and the first person to hit it would "fix" it by narrowing the file set silently. Three
 stated parts, together, close it:
 
-1. **Explicit file list, host excluded.** The child is invoked over an explicit list of
-   swept-surface paths *minus* `consumerCleanup.test.js` — post-sweep, `hookCompatibility.test.js`,
-   `consolidationBuild.test.js` and the falsifying fixture. The exclusion is part of the oracle, not
-   an implementation detail: it is asserted (the spawn argument list is compared to the derived
-   surface-minus-host set) so a later re-widening reds rather than hangs.
+1. **Two child invocations, host excluded from both, file sets stated separately.** The green child
+   is invoked over an explicit list that is the swept-surface table's post-sweep modules *minus* the
+   host: `hookCompatibility.test.js`, `consolidationBuild.test.js`, `pipelineWiring.test.js`,
+   `consolidationPreflight.test.js`, `documentOracles.test.js` and `orchestrateDevSkill.test.js`.
+   That is the invocation AT-1.3's pass reading uses, and its join must come out empty on both
+   directions on a clean tree. The **red child** of the falsifiability construction below is that
+   same list **∪ `__tests__/fixtures/skipJoinFalsifier.js`**; only that invocation is expected to
+   report a left ⊄ right violation, and the host asserts the violation names the fixture's leaf
+   title. The fixture is never a member of the green child's file set, so the green join is
+   satisfiable — the earlier single-list wording (PM TSPEC v8 F-01) made it unpassable.
+   The exclusion is part of the oracle, not an implementation detail, and it is asserted without an
+   implementation echo (TE TSPEC v8 F-03): the expected side is a **literal path list transcribed
+   from §5.5's table into the test source**, never a value re-derived by the code under test, and the
+   assertion is **set-equality** — not containment — against the argument vector actually handed to
+   `spawn`, once per invocation. A dropped member, an added member, or a re-widening that puts the
+   host back therefore reds rather than hangs.
 2. **A recursion sentinel that fails loudly rather than skipping.** The spawn sets
    `PDLC_SKIP_JOIN_NESTED=1` in the child's env, and the spawn helper **throws** if that variable is
    already set. If a later edit ever puts the host back into the child's file set, the child reds
@@ -958,11 +969,23 @@ stated parts, together, close it:
    which would mean a further `SKIP_INVENTORY` row for a purely mechanical guard. Throwing keeps the
    inventory out of the recursion problem entirely (TE Q-02: the exclusion route is preferred for
    exactly this reason).
-3. **A compensating check over the host's own skips.** Excluding the host from the join would
-   otherwise leave the one module this feature *writes from scratch* unchecked for bare skips. The
-   host therefore carries a source-level assertion over its own file: no `it.skip`, `test.skip`,
-   `describe.skip`, `it.todo` or `.skip.each` token appears in `consumerCleanup.test.js` outside
-   comments — a static check, not a run-observation, so it needs no nested run and cannot recurse.
+3. **A compensating check over the host's own skips — paired, and itself falsifiable.** Excluding
+   the host from the join would otherwise leave the one module this feature *writes from scratch*
+   unchecked for bare skips. The host therefore carries a source-level scan of its own file: no
+   pending-marker token appears in `consumerCleanup.test.js` outside comments, where the token set is
+   `it`/`test`/`describe` + `.skip`, `it` + `.todo`, and `.skip` + `.each`. Two properties make that
+   check honest rather than decorative:
+   - **The tokens are assembled at runtime from fragments, never written as literals** (e.g.
+     `["it", "test", "describe"].map((k) => k + ".skip")`, `"it" + ".todo"`, `".skip" + ".each"`).
+     The scanning code lives inside the file it scans, so literal tokens would match themselves and
+     the check would red on its first run (TE TSPEC v8 F-02).
+   - **The absence assertion is paired with two positive ones**, so a scanner that silently reads
+     nothing cannot pass forever (PM TSPEC v8 F-02): (a) the content read is non-empty and contains
+     a known marker of the real host file — TT-1b's `itOrSkip(` call site — proving the path
+     resolved and comment-stripping did not eat the file; and (b) the *same* scanner, pointed at
+     `__tests__/fixtures/skipJoinFalsifier.js`, **reports a hit** on that fixture's bare `it.skip`.
+     Construction (b) reuses the fixture the join's red child already needs, so the guard on the
+     sweep's only new test module has the same falsifiability standard as the join itself.
    TT-1b's root-conditional row goes through `itOrSkip`, which is a helper call and not one of those
    tokens, so the check passes with the registered skip in place.
 
