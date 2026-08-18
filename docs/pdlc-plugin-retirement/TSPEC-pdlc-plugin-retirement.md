@@ -854,6 +854,9 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    product ownership of a new operator-facing flag belongs upstream: either an AC-4.5 pinning
    the preview contract, or a REQ decision to drop `--dry-run`, in which case §3.2 row 5 and
    TT-2 go with it.
+   Amended in v0.3: the usage-error row is now **two** rows — 4a (argument-parse error: nothing
+   touched, exit `4`) and 4b (runtime failure: partial removal possible, exit `4`) — because only 4a
+   is assertable as "removes nothing". An upstream criterion should own the pair, not the merged row.
 
 
 ### 6.2 Successor work bound under REQ NG-5
