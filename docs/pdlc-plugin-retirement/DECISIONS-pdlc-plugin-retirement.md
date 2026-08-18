@@ -4,13 +4,14 @@
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md` |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-08-17 | Initial: DEC-01…DEC-09 extracted from TSPEC v0.10, re-verified at `2017c6f9`. |
 | 0.2 | 2026-08-17 | Iteration-1 cross-review response (PM F-01…F-07, TE F-01…F-08): new DEC-10 (`consolidate-learnings` host blocks classes 7/11 on erratum 3); rules 1–2 restated (runtime-behaviour carve-out, transcribe-don't-re-measure) and rule 4 added; owning-oracle column added to the Decision table; DEC-03/DEC-08/DEC-09 given named oracles; DEC-07 given a blocking clause; DEC-04 records `--dry-run` and the 4a/4b split; DEC-02 count corrected to five; DEC-06 citation arithmetic and test-line scope corrected. Re-verified at `2017c6f9`. |
+| 0.3 | 2026-08-18 | Iteration-2 cross-review response (PM F-01…F-03, TE F-01…F-04): DEC-10's gate restated as its transitive closure — classes 7, 8, 9, 10, 11 of FSPEC §3.1's **thirteen** (six gated counting DEC-07's class 6); DEC-01/DEC-02/DEC-09 oracle cells marked gated and DEC-10's cell now names PLAN's batch-DAG check as owner; DEC-09's oracle restated on `satisfiesRange(...).ok` with a `0.24.0` negative arm; new cross-cutting rule 5 (additive-and-conservative may ship ahead of criterion, subtractive may not); DEC-06's nine-citation count scoped, surviving-suite references noted. Re-verified at `1053b7fd`. |
 
 ## Context
 
@@ -231,6 +232,8 @@ NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the
 | `hookCompatibility.test.js` survives with fewer blocks than FSPEC M-8's count implies | DEC-07 | The deletion-set count is wrong until erratum 6 lands. Accepted over deleting passing `PROP-COMPAT-*` assertions to satisfy a literal |
 | Five of thirteen classes (7, 8, 9, 10, 11) cannot land on engineering's schedule | DEC-10 | The sweep's completion date is bound to an upstream product answer about `consolidate-learnings`'s host. Accepted over shipping a skill whose named execution path does not exist (NG-1, NG-3), which is the failure the surviving `nudge-consolidation` hook would advertise every session |
 | Class 6 cannot land before erratum 6 | DEC-07 | One suite-size literal is assertable at a time; between now and the erratum, an in-place reduction reds AC-1.3 correctly. Accepted over a re-measured expected value that greens by construction |
+
+**What a gated merge looks like.** Classes 1–5 are ungated and land on engineering's schedule; class 6 waits on erratum 6 (DEC-07) and classes 7–11 on erratum 3 (DEC-10). The intended interim outcome is a **partial merge held on the branch**, not a partial main: each ungated class is independently green per REQ C-7, but AC-1.1's `dist/` set-equality stays red while classes 7–11 are held, so the feature is not "done" and the branch does not merge on a green subset. PLAN carries that as the class-7 predecessor edge; PROPERTIES places the classes 7–11 ATs behind the same edge, and the assertion DEC-09 requires must be hosted in a module outside M-8's deletion set (`consolidationPreflight.test.js` or `consolidationRoute.test.js` both qualify, FSPEC:378), or it ships nothing.
 
 **Reversibility.**
 
