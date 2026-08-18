@@ -44,6 +44,37 @@ manifest disposition are byte-identical to the text the v9 approval was taken ag
 
 ## Does the FSPEC still hold?
 
+**Yes, with one wording tension recorded below.** Clause by clause, against the current upstream:
+
+- **BR-SWEEP-2 "Green at every commit"** (:264–266) compresses C-7 as *every commit passes the
+  L-9 gate command set when run at that commit*. The new subsection says exactly this and narrows
+  nothing: it separates gate-greenness-per-commit from criterion-satisfaction-at-completion. The
+  FSPEC never claimed a criterion is satisfied at every commit, so no clause is falsified.
+- **AT-1.1** (:602–606) is stated *"Given HEAD after the sweep"*. That is the same evaluation
+  point the REQ now makes explicit ("evaluated when the sweep is complete, AC-1.1's *given* says
+  so"). The oracle is unchanged and still black-box checkable: `dist/` entry set **set-equals**
+  `{pdlc-cli.mjs}`, or the directory is absent and the probe CLI exists at the single TSPEC path.
+- **AT-1.8** (:664–669) drives the per-commit oracle — each commit checked out in turn, L-9's
+  three commands run, each passes, each hunk belongs to one class. The addition endorses this
+  shape and adds no per-commit obligation the AT would now miss.
+- **§3.1's ordering column and BR-SWEEP-4** are precisely the mechanism the REQ now names as the
+  sanctioned resolution ("the check becomes live with the class it covers"). Class 9's document
+  oracles land *"same commit as, or after, class 7"*; class 7 lands after class 6; class 1 lands
+  first and whole. A check observing a held class 7–12 therefore cannot be live before its class,
+  which is what the new text requires — already spec'd, no edit needed.
+- **The held set is class-consistent.** The REQ changelog's "classes 7–12" maps onto §3.1's
+  numbering: AC-1.1's `dist/` set-equality is discharged by class 7 (bundles, manifest, the
+  reduced build step), so classes 7–12 held ⇒ AC-1.1 unsatisfied, exactly as the REQ says. No
+  renumbering is implied and no §3.1 row needs restating.
+- **No FSPEC clause promises a green-subset merge.** AT-5.1 is scoped *"Given every deletion
+  merged"*, and §2's BL rows gate the start of work, not a partial finish. The REQ's
+  "branch does not merge on a green subset" adds a constraint the FSPEC already respects.
+
+The one place where the new upstream prose and the FSPEC's wording pull against each other is
+BR-SWEEP-6's sink-record exemption — F-01 below. It is recorded as Medium, not High: on the
+paragraph's own framing the FSPEC's oracle remains the stricter one, and no acceptance test
+changes its verdict under either reading.
+
 ## Findings
 
 ## Questions
