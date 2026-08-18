@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.10 | 2026-08-17 |
+| pdlc | approved — ready | Claude | 0.11 | 2026-08-17 |
+
+*0.11 (2026-08-17) — erratum round, three corrections: AC-5.2's allowed-difference set is now the exhaustive eight run-variable collections, counted correctly; C-9 drops the hand-edited-file clause that contradicted AC-4.3 (decided in AC-4.3's favour, not reconciled); AC-4.3 states the post-refusal directory state.*
 
 *0.10 (2026-08-17) — erratum round. Three targeted corrections, nothing else: O-3 no longer leaves the manifest’s survival open — it does not survive, so AC-1.1’s set-equality with `{M-9}` stands unopposed (SE erratum 1); AC-5.2’s allowed-difference set now names the provenance version fields and the run-variable dispatch/outcome collections, which differ between two correct runs (SE erratum 2); AC-4.3 drops the hand-modified case, which no post-sweep artifact can detect, and keeps the unexpected-entry case (SE erratum 3).*
 
@@ -259,9 +261,10 @@ No work starts until every row below reads satisfied.
 - **C-8 — The engine path is the only path under test after the sweep.** Tests deleted with
   their subject (M-8) are removed, never skipped, marked pending or left asserting a vacuous
   truth against an empty directory.
-- **C-9 — No consumer file is deleted without operator invocation** (NG-6), and the cleanup
-  step is at least as conservative as the retired sync tooling was toward a hand-edited or
-  unattributable file.
+- **C-9 — No consumer file is deleted without operator invocation** (NG-6), and an entry the
+  cleanup's expected set does not name is refused rather than removed (AC-4.3). Conservatism
+  toward a *hand-modified expected* entry is deliberately outside the constraint: no post-sweep
+  artifact records the hashes that would let anything tell a modified copy from an original.
 - **C-10 — The plugin/engine version handshake is a hard gate, not a convenience.** The
   engine declares a compatible plugin version range and, before dispatching any skill, checks
   the installed plugin's version against it. A mismatch is a loud refusal — the run does not
@@ -443,10 +446,11 @@ observed run — none depends on an agent reporting success.
 - **AC-4.3** *Who:* the same operator. *Given* an **unexpected entry** inside the target
   directory — an entry the cleanup's own expected set does not name — *when* the cleanup runs,
   *then* it leaves that entry **byte-identical**, names its path on stderr and exits
-  **non-zero**, so the refusal is checkable without reading the implementation (C-9).
-  Hand-modification of an expected entry is deliberately **not** covered: no post-sweep
-  artifact records the hashes that would let the cleanup tell a modified copy from an original,
-  so the criterion would be untestable as written.
+  **non-zero**, so the refusal is checkable without reading the implementation (C-9). The
+  refusal deletes nothing at all: every expected entry the directory held before the run is
+  still present and byte-identical after it, so the post-refusal directory state is checkable
+  as a whole and not only for the unexpected entry. Hand-modification of an expected entry is
+  **not** covered (C-9).
 - **AC-4.4** *Who:* a consumer repo owner who never adopts the cleanup. *Given* they do
   nothing, *when* they run a feature through the engine, *then* the run reaches its configured
   final phase and its report set-equals that of the same run in a repo with no leftovers, and
@@ -462,11 +466,14 @@ observed run — none depends on an agent reporting success.
 - **AC-5.2** *Who:* the operator. *Given* the same run, *when* its report is compared against
   the pre-sweep baseline report committed under BL-08 (cited by path and commit), *then* the
   two reports' **field sets are equal** — an added *or* removed field fails — and values differ
-  only within the enumerated allowed set: feature name, timestamps, ids, paths, the recorded
-  engine-version and plugin-version provenance values, and the run-variable dispatch and
-  outcome collections. Those last three vary between two *correct* runs, so a criterion that
-  demanded their equality would fail on a good sweep; they are compared for presence, not for
-  content. No field, phase or gate disappeared with the deleted machinery (NG-3).
+  only within the enumerated allowed set, which is exhaustive — any field outside it must match
+  exactly. The set is: feature name, timestamps, ids, paths, the recorded engine-version and
+  plugin-version provenance values, and the report's eight run-variable collections — the
+  per-dispatch auth-source rows (`authSources`), the startup ladder (`startup`), the dispatch
+  counts (`dispatches`), the retry, pause and denial logs (`retries`, `pauses`, `denials`), the
+  loop record (`loop`) and the outcome counts (`outcomes`). Each of those eight varies between
+  two *correct* runs, so a criterion demanding its equality would fail on a good sweep; each is
+  compared for presence, not for content. No field, phase or gate disappeared with the deleted machinery (NG-3).
 - **AC-5.3** *Who:* the operator. *Given* HEAD after the sweep, *when* they invoke the probe
   CLI **at its surviving repo path, directly, in a checkout of the consuming project** — the
   post-sweep delivery path settled under O-3 — *then* it answers exactly as before, and is still
