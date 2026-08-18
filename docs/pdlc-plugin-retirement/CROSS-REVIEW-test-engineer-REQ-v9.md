@@ -62,3 +62,7 @@ FINDING: Low | inherited | nonlocal | §6.5 AC-5.2 | `engine.baseUrl` (`cli.mjs:
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 1}
+
+APPROVAL-HASH: sha256:1038b8166cc84cb48d069c3e364a2a8e9aa07daf612e2fc8d611c3100e584294
+APPROVAL-HASH-NORMALIZED: sha256:d96e2b061dd351d439d9edb7a33f650b6d067be38b1d6297689795b4dc6b7e06
+REVIEWED-COMMIT: 82431c7cf4b035b08a5bf4449b33aec7f738ac3c
