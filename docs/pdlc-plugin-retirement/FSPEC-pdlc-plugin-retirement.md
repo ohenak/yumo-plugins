@@ -191,8 +191,15 @@ For every commit of §3.1, in order:
 3. Where a document describes the required-check set, update the rows, the **count word** and the
    **named workflow files** together (§4.3).
 4. Rewrite, rather than delete, text whose subject survives — the release checklist rows that can
-   be restated against the engine's release artifact, and `consolidate-learnings/SKILL.md`'s
-   bundle reference.
+   be restated against the engine's release artifact. `consolidate-learnings/SKILL.md`'s bundle
+   reference is the exception: it is **deleted**, because after class 7 no execution host survives
+   for a rewrite to name (TSPEC §6.1 erratum 3).
+   **Disposition of the capability, decided here.** The bundle-hosted, unattended run of
+   `consolidate-learnings` retires with the sweep. The skill itself survives and stays
+   operator-invocable in session as `/pdlc:consolidate-learnings` — the way it is invoked today —
+   so no user-visible way of running consolidation is lost, and the SKILL.md must advertise no
+   host that no longer exists (REQ G-3, NG-1, NG-3). Re-hosting it as an engine command is
+   successor work under REQ NG-5, not this feature.
 5. Correct stored operator notes describing the workflow-launcher registry cache and sync
    behaviours (REQ O-6) as part of this feature's Phase H step.
 6. Leave historical records untouched: `docs/completed/**`, `docs/discarded/**`, LEARNINGS and
@@ -341,9 +348,8 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   **No surviving identifier is a member.** `build-runtime.mjs` and `pdlc/workflows/dist/` are not
   terms (M-7 is reduced and AC-1.1 requires the probe CLI to survive, so either would red
   permanently on files this feature keeps), and neither is the bare key `postWavePathspecs`
-  (M-11h retires a *value*; the generic facility in `orchestrate-dev.js` and its `waveExecution`
-  coverage survive). The retired wave-gate values are caught by M-11h's per-file dispositions,
-  not by a repo-wide term.
+  (M-11h is prose-only per §3.1 class 10 — both example values, the generic facility in
+  `orchestrate-dev.js` and its `waveExecution` coverage survive).
 
 - **L-3 — AC-1.2's expected-empty command,** transcribed literally from
   `docs/_constraints/pdlc-retirement-baseline.md` §*The sweep recipe and AC-1.2's search term*:
