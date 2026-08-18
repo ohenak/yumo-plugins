@@ -804,22 +804,34 @@ run, passed, failed), because a suite that executed zero tests also exits 0 (E-2
 ### 5.5 Deleted, never skipped
 
 No `skip`, no pending marker, no assertion left vacuously true over an empty directory (C-8,
-BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip introduced in a
-*surviving* module is the same defect as one left behind.
+BR-SWEEP-6). The prohibition is scoped to the **swept surface** — M-8's deleted modules plus the
+surviving modules that host R-8's re-homed assertions (`consumerCleanup.test.js`,
+`hookCompatibility.test.js`, `orchestrateQueue.test.js`, `consolidationBuild.test.js`; §4.4
+enumerates the re-homes) — not to the whole run: a skip introduced into a *surviving* module by
+this sweep is the same defect as one left behind, but a pending marker this feature never touched
+is pre-existing state it does not repair.
 
-**TT-1b collides with that rule as approved, and the collision is routed, not reinterpreted.**
-AT-1.3 as approved reads "the suite contains **no skipped or pending test at all** (repo-wide, not
-only among M-8's modules …)" (`FSPEC-pdlc-plugin-retirement.md`, AT-1.3), and BR-SWEEP-6 states the
-same flatly; REQ AC-1.3 is narrower ("no skipped or pending test belonging to M-8") and silent on
-registered skips. §5.2's TT-1b constructs an unreadable target (`chmod 000`), which cannot be
-constructed as root, so the row is root-conditional — on a root runner it skips, and AT-1.3 as
-written then fails. This TSPEC does **not** restate AT-1.3 as if it already tolerated that skip. It
-*proposes* narrowing the clause to "no skip or pending test absent from the skip sink's inventory",
-and routes the proposal upstream as §6.1 erratum 9, whose owner edits AT-1.3 and BR-SWEEP-6 (and,
-if AC-1.3 is to stay aligned, AC-1.3). Until that edit lands, the binding text is the wider one,
-and an implementer reading only this TSPEC must not treat TT-1b's registered skip as accepted.
+**TT-1b's registered skip is accepted upstream; erratum 9 landed.** §5.2's TT-1b constructs an
+unreadable target (`chmod 000`), which cannot be constructed as root, so the row is
+root-conditional — on a root runner it skips. Earlier drafts of this TSPEC read AT-1.3's then-current
+"no skipped or pending test at all" as binding and routed the collision upstream as §6.1 erratum 9
+rather than reinterpreting it TSPEC-side. **That edit has since landed.** FSPEC v0.7 (2026-08-18)
+records erratum 9 as accepted and folded in, and AT-1.3 and BR-SWEEP-6 now carry the narrowed
+clause directly: across the swept surface "no `skip` or pending marker survives **that does not
+reach the run's skip sink as a registered record**" (`FSPEC-pdlc-plugin-retirement.md`, BR-SWEEP-6;
+AT-1.3 states the same). TT-1b's skip goes through `itOrSkip` with a `SKIP_INVENTORY` capability
+entry and therefore reaches the sink as a registered record, so it **satisfies AT-1.3 as approved**.
+An implementer codes to the landed clause; no "until the edit lands" caveat remains.
 
-**The mechanism is unaffected by which wording lands.** The repo already owns it: `itOrSkip`
+**The exemption key is sink records at run time, not `SKIP_INVENTORY` membership.** FSPEC states the
+boundary and the reason: "the inventory is deliberately not closed over registered skips, so keying
+the exemption to it would fail correct skips" (BR-SWEEP-6), answering SE FSPEC v8 F-04 — a
+membership-only key would let the inventory be widened to buy a green gate with no skip ever firing.
+This TSPEC's own oracle below is already records-keyed; the wording here follows it. `skipSink.js`'s
+header states the same non-closure independently: closure is "deliberately NOT enforced", because
+suites legitimately gate fixtures on `uid-nonroot` outside TSPEC §1.3's table.
+
+**The mechanism is the one the landed clause names.** The repo already owns it: `itOrSkip`
 (`pdlc/workflows/__tests__/helpers/driftCapabilities.js`, exported alongside the frozen
 `SKIP_INVENTORY` ledger in the same module) is used this way by `skipSinkTransport.test.js` and
 `documentOracles.test.js`; the on-disk sink itself is `helpers/skipSink.js`, whose
