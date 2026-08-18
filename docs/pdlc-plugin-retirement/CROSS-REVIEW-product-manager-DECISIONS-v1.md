@@ -34,3 +34,16 @@
 - The Consequences section prices what got *worse* in four rows with named owners, and the Reversibility split (easy / hard / one-way: none) gives PLAN a real basis for commit ordering. The closing Downstream obligations paragraph — class-7 must land the DEC-01 deletion and DEC-02 reduction together or `--check` fails — is a concrete, testable hand-off rather than a platitude.
 
 ## Recommendation
+
+**Needs revision** (three High findings).
+
+Exactly what to change, in order:
+
+1. **F-01** — Add a decision row for `consolidate-learnings`'s execution host: options, prices, chosen option. If the answer is "blocked on TSPEC erratum 3", say so as the decision, with the class-7/class-11 landing order it implies (TSPEC T-5), so PLAN inherits the block rather than discovering it.
+2. **F-02** — Restate Decision rule 1 so it forbids engine *runtime behaviour* changes, not all writes under `pdlc/engine/`, and name NG-5's two carve-outs inline. Context `:22` already has the correct wording to reuse.
+3. **F-03** — Re-price DEC-09 option B on its true cost (engine release cut + BL-07 re-gating), not on NG-5. Keep option A if the cost still favours it.
+4. **F-04** — Correct DEC-02's "four artifacts" to five, and `:142`'s "one emitter instead of four" with it.
+5. **F-05** — Replace DEC-04's "verified: zero references today" with the AC-1.7 set-equality that actually keeps the script unregistered post-sweep.
+6. **F-06 / F-07** — Add `--dry-run` to DEC-04's recorded shape; fix DEC-06's four-plus-one citation count.
+
+Nothing in the set contradicts a promoted decision in `docs/_decisions/` or a standing `DOMAIN-CONSTRAINTS.md` row, and DEC-01/DEC-08's narrowing of `DECISIONS-plugin-distribution.md` is declared in place (`:27`) as it should be. All findings are `Local`: each is a defect in this document's record of a choice, not a constraint other features inherit.
