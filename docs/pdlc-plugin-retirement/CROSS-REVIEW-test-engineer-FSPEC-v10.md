@@ -77,10 +77,52 @@ changes its verdict under either reading.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **REQ v0.12's blanket "no register" sentence has a surface reading that revokes BR-SWEEP-6's sink-record exemption.** The new C-7 subsection states "There is no skip-list, no expected-failure inventory and no tolerated-red register in this feature: C-8 already forbids that shape, and a criterion that is allowed to be red by registration stops being a criterion." BR-SWEEP-6 (:285–294) and AT-1.3 (:622–632) exempt, inside the swept surface, a skip **that reaches the run's skip sink as a registered record** — an exemption keyed to registration. That is exactly the erratum FSPEC §7.3 (:843) closed *without* a REQ edit, on the ground that AC-1.3 and C-8 are M-8-scoped. Read literally and out of context, the new sentence now reaches that exemption and an implementer gets two incompatible oracles for one test: *any* registered pending marker fails (REQ reading) vs. a capability-gated registered skip passes and only bare/unregistered markers fail (FSPEC reading). Non-gating because the paragraph's own framing scopes it — "C-7 governs the repo's own CI checks at each commit", "a **criterion** allowed to be red by registration" — and a runner-capability skip in a surviving module is not a criterion held red by registration; the FSPEC oracle also remains the stricter of the two on every case it decides. Cheapest close: one scoping clause upstream ("this forbids registering a *criterion* as expected-red; it does not reach runner-capability skips recorded by the run's skip sink"), or a sentence in FSPEC §7.3 noting that REQ v0.12's sentence is criterion-scoped. No FSPEC behaviour changes either way. | §4.4 BR-SWEEP-6; §6.1 AT-1.3; §7.3; REQ C-7 *Held classes and the interim state* |
+| F-02 | Low | Process | **Upstream version pins are stale.** The header's Upstream field (:9) reads `REQ-pdlc-plugin-retirement.md (v0.11)` and §7.2 (:827) states "REQ v0.11 (2026-08-17) is the version this FSPEC now traces". Upstream is now v0.12 (2026-08-18). Nothing §7.2 claims is falsified — all three closed errata resolve identically in v0.12 — but the provenance trail names a version that is no longer HEAD, and a later reader diffing the pin against the REQ header sees a mismatch with no note explaining it. Refresh both pins to v0.12 and add a one-line §7.2 row (or §7.3 note) recording that v0.12's C-7 addition required no FSPEC edit. | :9; §7.2 (:827) |
+| F-03 | Low | Process | **Upstream now cites downstream numbering.** REQ v0.12's changelog line pins its held set as "classes 7–12", a partition defined only in FSPEC §3.1. The mapping is correct today (verified row by row), but the coupling runs upstream-to-downstream: a future FSPEC renumbering or class split silently invalidates a REQ sentence, and no oracle observes the pairing. Prefer naming the held artifacts (bundles, manifest, reduced build step and everything ordered after them) over the class indices, or note in §3.1 that the class numbering is now cited upstream and is not free to change. | §3.1; REQ v0.12 changelog |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does the held state have any operator-visible surface this feature owes a check — e.g. does anything record *which* classes are held while the branch sits unmerged? The REQ says the state is deliberately unregistered, which reads as "nothing to test", and the FSPEC accordingly specifies nothing. Confirming that reading is intended (rather than an omission) would close the last thing this delta could have implied for §6. |
+| Q-02 | Carried from v9, still open for the TSPEC round: does §7.3's SE-v8 F-04 routing oblige TSPEC §5.5 to answer whether the sink comparator pins a join, or may it close as "no join, C2 agreement suffices"? F-01 above makes the answer slightly more load-bearing, since the sink record is now the only thing standing between the two readings. |
 
 ## Positive Observations
 
+- **The delta strengthens the FSPEC rather than straining it.** The two rules the addition
+  endorses — ordering over registration, and gate-greenness measured per commit while criteria are
+  measured at completion — were already the FSPEC's §3.1 ordering column, BR-SWEEP-2 and
+  BR-SWEEP-4. The upstream caught up to the compression, not the reverse.
+- **AT-1.1's *given* survived contact with the change.** It was written "Given HEAD after the
+  sweep" long before the REQ made the evaluation point explicit; had it been written "at every
+  commit" this round would have been a High. The altitude discipline paid off.
+- **The held-class set is verifiable against §3.1 without interpretation.** Classes 7–12 are
+  exactly the classes downstream of the bundles/manifest, so the REQ's claim about AC-1.1 can be
+  checked mechanically against the ordering column rather than taken on trust.
+- **The addition is purely additive.** Every literal the FSPEC transcribes (L-1's five entries,
+  L-2's seven terms, AC-5.2's eight run-variable collections, O-3's manifest disposition) is
+  byte-identical to the approved upstream, so no pinned value needs re-transcription and the
+  document's citation surface is unaffected.
+- Carried and still non-gating from v9: AT-5.2 clause 2 / E-21's "presence" reading (closed by
+  TSPEC's non-empty oracle), and the Cross-Reviews field stopping at v4 — folded into F-02's
+  provenance refresh.
+
 ## Recommendation
 
+**Approved with minor changes.** The FSPEC still holds against REQ v0.12: no clause it compresses
+was reworded upstream, no citation points at text that no longer exists, and every acceptance test
+keeps the same verdict on the same evidence. F-01 is a wording tension worth one scoping clause,
+not a behavioural divergence; F-02 and F-03 are provenance hygiene. No High finding, so the v9
+approval carries forward and no revision round is owed.
+
+FINDING: Medium | delta | nonlocal | §4.4 BR-SWEEP-6 / §6.1 AT-1.3 / REQ C-7 held-classes subsection | REQ v0.12's "no skip-list, no expected-failure inventory and no tolerated-red register in this feature" reads, out of context, as revoking the sink-record exemption AT-1.3 and BR-SWEEP-6 rely on; criterion-scoping clause needed upstream or a §7.3 note downstream
+FINDING: Low | delta | nonlocal | :9 and §7.2 (:827) | Upstream version pins still read REQ v0.11; upstream is now v0.12 and no note records that the C-7 addition required no FSPEC edit
+FINDING: Low | delta | nonlocal | §3.1 / REQ v0.12 changelog | REQ now pins its held set to FSPEC §3.1's class numbering, so a downstream renumbering silently invalidates upstream text and no oracle observes the pairing
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
