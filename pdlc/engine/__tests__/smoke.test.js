@@ -699,3 +699,61 @@ test("corpus run v(b): an unparseable PLAN task table falls back to Haiku DAG ex
     assert.equal(records[0].corpusRun, "run-vb");
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// T05: engine-side drift coverage removed (PLAN T04/T05, class 2). Skipped under T05 — red
+// until the drift-channel legs of this file and `fs-observation.test.js` are deleted and
+// `pdlc/engine/__tests__/fixtures/consumer-ac12/` is untracked. This block asserts the
+// ABSENCE those deletions produce, by reading each file's own source text and the git index
+// rather than by importing anything (PLAN §1.3 skip-naming convention).
+// ---------------------------------------------------------------------------------------------
+
+test.skip("T05: no leg of the engine suite observes the consumer runtime copy via the drift gate", () => {
+  // Each target title below is built from two concatenated fragments so THIS
+  // assertion's own source text never contains it as one contiguous
+  // substring — otherwise a self-referential match would make this check
+  // permanently red, even after the real test it targets is deleted (T05).
+  const blockedTitle =
+    "pdlc queue is blocked by the drift gate" + " in a repo with no .claude/workflows";
+  const optedOutTitle =
+    "pdlc queue runs its own Phase-0 triage" + " once the drift gate is opted out";
+
+  const thisFileSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  assert.ok(
+    !thisFileSource.includes(blockedTitle),
+    "smoke.test.js must not carry the drift-gate-blocked leg once the drift-channel is removed"
+  );
+  assert.ok(
+    !thisFileSource.includes(optedOutTitle),
+    "smoke.test.js must not carry the drift-gate-opt-out leg once the drift-channel is removed"
+  );
+
+  const fsObservationPath = path.join(engineRoot, "__tests__", "fs-observation.test.js");
+  const fsObservationSource = readFileSync(fsObservationPath, "utf8");
+  assert.ok(
+    !fsObservationSource.includes(
+      "clause 3 holds on a recording with the opt-out's read-set (no drift-state read)"
+    ),
+    "fs-observation.test.js must not carry the PROP-READ-2/AT-ENG-48 opt-out-holds leg once removed"
+  );
+  assert.ok(
+    !fsObservationSource.includes(
+      "clause 3 fails on a recording with the no-opt-out read-set (drift-state read observed)"
+    ),
+    "fs-observation.test.js must not carry the PROP-READ-2/AT-ENG-48 no-opt-out-fails leg once removed"
+  );
+});
+
+test.skip("T05: pdlc/engine/__tests__/fixtures/consumer-ac12/ is not a tracked path", () => {
+  const tracked = execFileSync(
+    "git",
+    ["ls-files", "pdlc/engine/__tests__/fixtures/consumer-ac12/"],
+    { cwd: repoRoot, encoding: "utf8" }
+  ).trim();
+  assert.equal(
+    tracked,
+    "",
+    "no file under fixtures/consumer-ac12/ may remain tracked once its only consumer's " +
+      "retired cases are deleted with it (M-11e)"
+  );
+});
