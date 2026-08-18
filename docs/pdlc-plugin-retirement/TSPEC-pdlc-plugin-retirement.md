@@ -349,7 +349,7 @@ same predicate (E-16b).
 FSPEC BR-CLN-1…6 describe rows 1–3 only. The usage-error status is a convention transfer from
 `sync-workflows.sh` and costs nothing; `--dry-run` (row 5) is kept because a destructive operator
 tool without a preview is the worse default — but an untested safety flag is worse than no flag,
-so both rows carry oracles (§5.2, rows TT-1 and TT-2), and the surface is routed upstream for an
+so both rows carry oracles (§5.2, rows TT-1, TT-1b and TT-2), and the surface is routed upstream for an
 owning criterion (§6.1 erratum 7) rather than left as engineering-side scope.
 
 The split of the old single row 4 matters for the oracle: only **4a** is constructible and
@@ -357,7 +357,9 @@ fully assertable in a test, so **TT-1 is scoped to 4a** — its "removes nothing
 still present byte-identical" conjunct is true by construction there. Row **4b** shares the exit
 status but explicitly denies that conjunct (a partial `rm` may already have removed entries), so
 its stated expectation is the weaker one above — exit `4`, no further removal attempted, partial
-state reported — and it is not asserted by TT-1. Bundling the two under one row left the second
+state reported — and it is not asserted by TT-1. Its exit status is still asserted, by TT-1b over the
+one constructible arm (unreadable target); only the partial-`rm` arm stays oracle-free, and §5.2
+says why. Bundling the two under one row left the second
 arm with neither an oracle nor an expectation an implementer could code to.
 
 **Idempotence** is structural: after a successful row-2 run the directory is gone, so the next
