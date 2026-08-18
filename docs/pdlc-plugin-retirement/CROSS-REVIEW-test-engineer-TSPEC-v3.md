@@ -69,4 +69,21 @@ Unchanged sections already reviewed are not re-litigated.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both inside sections this round changed, both narrow. F-01 is arithmetic: the
+new set-equality companion in TT-3(b) is the right guard written against a four-name list where
+the tree yields five names post-sweep, so as specified it cannot pass — add `check-req-size.sh`
+and correct §4.4's "three hooks AC-3.3 names" to match this document's own AT-3.3, which already
+says four. F-02 is a citation that does not hold: `helpers/driftOrdering.js`'s deletion is
+correctly *measured* but is owned by no upstream row and discharged by an AT-1.3 reading REQ
+AC-1.3 does not contain — either route the helper into M-8 or give §5 a real no-orphan conjunct.
+Neither finding touches the architecture, the class map, the field-set rule, or the erratum
+routing, all of which improved again this round. The revision is one name added to an
+enumeration, one sentence corrected in §4.4, one clause re-grounded in §2.6, plus the three
+Medium/Low corrections in §3.2/§5.2. Every other v2 finding is resolved and verified in the tree.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 2}
