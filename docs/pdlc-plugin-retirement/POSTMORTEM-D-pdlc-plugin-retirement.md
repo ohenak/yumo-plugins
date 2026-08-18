@@ -110,7 +110,80 @@ Three recurring shapes:
 
 ## Best-Guess Root Cause
 
+**Proximate:** the erratum channel was used as if every routed item were downstream-only. Items
+arrived as TSPEC §6.1 errata addressed *to FSPEC*, and were discharged by editing FSPEC. But two
+of the four carried decisions whose contract lives in REQ and in the measured baseline as well,
+and the erratum protocol has no step that asks, before writing the fix, *which other documents
+assert the sentence I am about to reverse?* The author answered the item as posed rather than
+tracing the claim to every document that states it, so the round produced three-document
+disagreement out of one-document agreement. FSPEC §7.2's lead-in then compounded it by asserting
+"no criterion relaxed" — a completeness claim the same commit had falsified.
+
+**Contributing:** the erratum ledger's own bookkeeping encouraged this. §7.3's "three TSPEC §6.1
+errata folded in (v0.8); no other erratum edits this document" reads as a completeness assertion
+about the whole erratum surface, while TSPEC §6.1 item 10 (`TSPEC:1335`, landed `34215001`) was
+open against this document at the time. A ledger that says "folded in" for an item that actually
+needs to be *raised upstream* (TE F-07) makes the downstream-only habit look complete on paper.
+
+**Also contributing (process, not content):** the confirmation-round contract has one machine
+requirement — a parseable `FINDING:` line — and no lint enforces it at write time. TE emitted a
+well-formed findings table and no `FINDING:` lines, which the dispatcher can only treat as
+fail-closed. The role definition states the trailer rule for revision dispatches; the confirmation
+finding-line rule has no equivalent mechanical check.
+
+**Not the cause:** reviewer severity inflation (four Highs, all repo-verified, none withdrawn);
+scope creep (no finding reopens untouched sections — both reviewers state this); upstream churn
+(REQ v0.12 was stable through the round, and the erratum edit's own v0.12 re-pin landed in two of
+the three places it names, SE F-04). Nor was iteration budget the binding constraint: this halted
+on the first round of the phase, not the fifth.
+
 ## Recommendation
+
+Do **not** restart Phase F. The erratum substance is correct in every case — what is missing is
+the upstream half of two errata and three clause-level corrections. The cheapest correct path is
+one upstream erratum round followed by one FSPEC revision and one delta re-confirmation.
+
+1. **Raise the two upstream errata first (pm-author owns REQ and the baseline).**
+   - *Erratum 5 upstream:* amend REQ C-5 (`REQ:229`), REQ AC-1.2's term rationale
+     (`REQ:319`–`:321`) and baseline M-11h (`:63`) to state that `postWaveCommand` /
+     `postWavePathspecs` values survive because the reduced build step still emits M-9 into
+     `pdlc/workflows/dist/` under O-3; M-11h becomes a prose-and-assertion edit, not a value
+     retirement.
+   - *Erratum 3 upstream:* amend REQ §A-1 (`:332`) and baseline M-11n (`:69`) so the
+     `consolidate-learnings` disposition is a single decided outcome, not a rewrite-vs-delete
+     choice an implementer resolves by which document they read.
+   - Both must be answered as a **product decision**, not an engineering one: Q-01 in both
+     reviews asks whether losing the unattended, machinery-backed consolidation pass is accepted
+     capability loss under REQ NG-5, or whether re-hosting blocks retirement. FSPEC cannot decide
+     this; routing it back is the correct move and should happen before any FSPEC edit.
+
+2. **Then revise FSPEC once, addressing all seven remaining points in one pass.** SE F-01 and TE
+   F-02 become §7.2 *open* erratum rows (with §7.2's "no criterion relaxed" lead-in softened);
+   TE F-01/F-05 widen §3.3 step 4 to state what an in-session pass actually is and give the
+   capability claim a black-box oracle (post-sweep `SKILL.md` names a path that exists at HEAD and
+   no reference to a retired host — inspection only, no skill execution); TE F-03/F-04 re-point
+   the tightened pin at the tracked example file and leave the presence-gated consumer-config
+   assertion at containment, plus one clause naming the branch assumption; SE F-02 adds the open
+   row for TSPEC §6.1 erratum 10 and narrows §7.3's completeness sentence to "folded in *here*";
+   SE F-03 fixes the host-granularity clause; SE F-04/F-05/F-06 and TE F-06/F-07 are label sweeps
+   (two remaining v0.11 pins, the transitive-hold clause, the v10 cross-review range, the
+   contested-count flag on class 6, and the §7.3→§7.2 row move).
+
+3. **Re-run one delta confirmation on the result, scoped `1eccc97c..HEAD`.** Both reviewers named
+   the exact edits they want; the next round should be confirmation, not negotiation.
+
+4. **Two protocol fixes to carry beyond this feature** (candidates for
+   `/pdlc:consolidate-learnings`):
+   - *Erratum reach check.* Before writing an erratum fix, grep the claim being reversed across
+     REQ, FSPEC, TSPEC and `docs/_constraints/`; every document that asserts the old form is part
+     of the erratum, or the erratum is not done. A downstream-only landing of a multi-document
+     claim should be a self-caught defect, not a reviewer finding.
+   - *Confirmation lint.* A non-approving confirmation with no parseable `FINDING:` line should be
+     rejected at write time rather than fail-closed at dispatch time. The reviewer roles' output
+     contract needs the same mechanical treatment the revision trailer already has.
+
+If the operator accepts, flip `RESOLVED: no` to `RESOLVED: yes` once the upstream errata land, and
+re-run Phase D for a single delta round on the revised FSPEC.
 
 **Provenance**
 - Engine version: 0.2.0
