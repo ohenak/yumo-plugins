@@ -71,6 +71,38 @@ Each entry names the choice, the alternatives priced against `2017c6f9`, and the
 - **B — delete both skill directories.** Rejected: Ptah resolves agents by filesystem `skill_path` into `pdlc/skills/<name>/SKILL.md`, and the engine's own catalogue treats these ids as real (`OPERATOR_ONLY_SKILLS`, `pdlc/engine/lib/startup.mjs:52`). Deletion breaks both consumers and violates REQ C-4.
 - **C — leave the skill bodies as-is and let them go stale.** Rejected: the bodies would keep instructing a runtime that no longer exists (the queue's drift-gate section is the clearest case), which is exactly the "ships a skill that cannot run" failure REQ NG-1/NG-3 exist to prevent.
 
+### DEC-06 — `runtime-adapter.js` is left untouched by the sweep
+
+**Context.** `pdlc/workflows/runtime-adapter.js` (1,209 lines, 56,713 bytes) loses its only *code* consumer when the bundle rows go: the sole import site is `build-runtime.mjs:97` (`readFileSync(resolve(HERE, "runtime-adapter.js"), "utf8")`), fed to `QUEUE_SOURCES`/`DEV_SOURCES`/`CONS_SOURCES` (`:690`–`:692`). The engine did not port it — `pdlc/engine/lib/adapter.mjs:8` says so in as many words — and `prepack.mjs`'s `MODULE_NAMES` does not vendor it.
+
+- **A — leave the module and its tests (`__tests__/adapterProbe.test.js`, 306 lines; `__tests__/helpers/adapterHarness.js`, 203 lines) in place, and route the orphan upstream as erratum 2** (chosen).
+- **B — delete it in the sweep.** Rejected on two grounds, both verified rather than assumed. (i) *Unspecified deletion.* No FSPEC row owns it; deleting a 56 KB module that no upstream disposition names is the exact set-equality failure mode C-6 exists to prevent, and it would make the class-7 commit's inventory diverge from BR-SWEEP-5's. (ii) *Live citations survive it.* Four surviving modules cite the file by name in load-bearing explanatory comments — `orchestrate-dev.js:6743`, `orchestrate-queue.js:1259` and `:2259`, `consolidate-learnings.js:316`, plus `pdlc/engine/lib/adapter.mjs:15`/`:335`/`:521` — so deletion dangles documentation inside the engine carve-out the sweep is not allowed to rewrite.
+- **C — move it under `pdlc/engine/`.** Rejected: that is a port, not a sweep, and lands inside REQ NG-5.
+
+### DEC-07 — `hookCompatibility.test.js` is reduced, not deleted
+
+**Context.** FSPEC M-8's deletion set is stated to be 21 `*.test.js` modules; `pdlc/workflows/__tests__/hookCompatibility.test.js` (371 lines) is listed among them, but only its `C7` block depends on the retired drift hook.
+
+- **A — reduce the module in place, keeping the `PROP-COMPAT-*` assertions outside `C7`** (chosen), and raise the membership/count mismatch as erratum 6 rather than resolving it here.
+- **B — delete the whole module as M-8 literally says.** Rejected: it discards passing property assertions about hook compatibility that have nothing to do with the drift hook, to satisfy a count that C-6 requires us to re-measure anyway.
+- **C — delete it now, re-add the surviving assertions in a later commit.** Rejected: a delete-then-restore pair inside one sweep is churn that no criterion rewards, and it leaves the suite transiently thinner than any pinned literal describes.
+
+### DEC-08 — The post-wave build gate keeps its two config-example values
+
+**Context.** `.claude/pdlc.config.example.json` carries `"postWaveCommand": "node pdlc/workflows/build-runtime.mjs"` and `"postWavePathspecs": ["pdlc/workflows/dist/"]` (verified verbatim at `2017c6f9`).
+
+- **A — leave both values unchanged; edit only the surrounding prose that names retired bundles** (chosen).
+- **B — retire both values as part of the distribution sweep.** Rejected because the mechanism they drive survives DEC-01 and DEC-02: `dist/pdlc-cli.mjs` stays tracked, and its two inputs (`CLI_SOURCES`, `build-runtime.mjs:530`) are files later waves routinely edit. Dropping the post-wave regeneration would degrade AC-5.3's "produced by a build step" into hand-maintenance the first time a wave touches `orchestrate-dev.js` or `cli.mjs`.
+- **C — narrow `postWavePathspecs` to the single file.** Rejected as churn with no oracle behind it; the directory pathspec is already exactly the surviving artifact's parent after DEC-01.
+
+### DEC-09 — Post-sweep plugin version is a patch bump to `0.23.2`
+
+**Context.** `pdlc/.claude-plugin/plugin.json` declares `"version": "0.23.1"`; the engine declares `"pdlcPluginCompat": "^0.23.0"` (`pdlc/engine/package.json:18`) and refuses to dispatch against an out-of-range plugin (`pdlc/engine/lib/handshake.mjs`, "installed pdlc plugin version … is incompatible").
+
+- **A — bump to `0.23.2`** (chosen): stays inside the engine's declared window, so no engine change is needed to keep an installed pair working.
+- **B — bump the minor/major (`0.24.0` / `1.0.0`) to signal the retirement.** Rejected: `^0.23.0` does not admit `0.24.0`, so the bump alone would break the handshake and force an engine edit — REQ NG-5 again — turning a documentation-grade signal into a runtime-compatibility change.
+- **C — leave the version untouched.** Rejected: BR-VER-1 requires the sweep's user-visible surface change to be versioned, and an unchanged version makes installed-copy diagnosis ambiguous.
+
 ## Decision
 
 ## Consequences
