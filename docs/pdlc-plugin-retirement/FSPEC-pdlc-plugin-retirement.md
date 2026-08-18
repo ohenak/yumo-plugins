@@ -6,7 +6,7 @@ feature: pdlc-plugin-retirement
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
+| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.11); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md`, `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md`, `CROSS-REVIEW-software-engineer-FSPEC-v4.md`, `CROSS-REVIEW-test-engineer-FSPEC-v4.md` |
 | LEARNINGS | — |
@@ -72,7 +72,7 @@ first deletion commit rather than this document.
 
 ## 2. Linked Requirements
 
-Every behaviour below traces to `REQ-pdlc-plugin-retirement.md` v0.9. No FSPEC section exists
+Every behaviour below traces to `REQ-pdlc-plugin-retirement.md` v0.11. No FSPEC section exists
 without a REQ parent; no REQ acceptance criterion is left without a behavioural home.
 
 | REQ item | Where specified here |
@@ -156,7 +156,7 @@ never a later one, because that leaves a commit asserting a file that no longer 
 | 4 | Drift hook | `check-workflow-drift.sh` (M-3) and its `SessionStart` registration in `pdlc/hooks/hooks.json` (M-11i) | After classes 1–3 |
 | 5 | Drift library and sync script | `pdlc-drift.sh` (M-2), `sync-workflows.sh` (M-1) | After class 4 |
 | 6 | Test corpus | M-8's 21 `*.test.js` and its six dedicated helpers, deleted (never skipped); the re-homing of assertions about **surviving** behaviour (queue triage around the gate, hook-manifest compatibility) into surviving modules; M-11p's deletions and edits, including the reduction of `helpers/driftGenerators.js` to what its surviving importers use | Re-homing lands in the **same** commit as, or earlier than, the deletion of its host file (REQ R-8) |
-| 7 | Bundles and their emission | The three retired bundles (M-4, M-5, M-10) and the manifest (M-6, subject to the TSPEC's O-3 branch), and the reduction of the build step (M-7) to emitting the probe CLI only | After class 6, so no surviving test asserts over a deleted bundle |
+| 7 | Bundles and their emission | The three retired bundles (M-4, M-5, M-10) and the manifest (M-6, which REQ O-3 settles as not surviving), and the reduction of the build step (M-7) to emitting the probe CLI only | After class 6, so no surviving test asserts over a deleted bundle |
 | 8 | Ignore/worktree rows | `.worktreeinclude`'s single row and `.gitignore`'s row **with its rationale comment block** (M-11j); a file left with no remaining rows is deleted, not left empty | Any time after class 7 |
 | 9 | Document oracles | The packaging and advertised-version checks over `dist/`, the drift scan's generated-tree exemptions (M-11g), the surviving `documentOracles` assertion that CLAUDE.md *contains* the two retired script names (M-11f), and the re-fixturing of the `covered-violations/` tree (M-11e second disposition) | Same commit as, or after, class 7; the CLAUDE.md prose it guards moves in this commit (M-11f) |
 | 10 | Wave-gate config values | `.claude/pdlc.config.example.json`'s retired `postWaveCommand` / `postWavePathspecs` **values**, their CLAUDE.md documentation, and the two literals asserted in `consolidationPreflight.test.js` (M-11h). The generic facility in `orchestrate-dev.js` and its `waveExecution` coverage are **not** touched | After class 7 (the retired value names a deleted output) |
@@ -509,8 +509,8 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   step: not the manifest (deleted in class 7, and never installed consumer-side), not content. **Consequence, stated rather than left implicit:** a file with an
   expected *name* and hand-modified *content* is removed like any other expected entry, because no
   post-sweep artifact can distinguish it. Conservatism comes from the name predicate — one entry
-  the channel never installed refuses the whole invocation. REQ AC-4.3's "or hand-modified" clause
-  is raised as an erratum (§7.2), not reinterpreted here.
+  the channel never installed refuses the whole invocation. REQ AC-4.3 (v0.11) scopes the
+  criterion to the unexpected-entry case and states that hand-modification of an expected entry is **not** covered (REQ C-9) — the rule stated here, not a reinterpretation of it.
 - **BR-CLN-4 — Refusal is checkable without reading the implementation, and its status is a fixed
   value.** A refusal names each unexpected path on **stderr** and exits **`3`** — not merely
   "non-zero", which a missing interpreter (`127`) or an uncaught signal also satisfies, greening a
@@ -572,7 +572,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
 | E-14 | The whole `SessionStart` event is dropped with the drift reporter | Fails L-4's set-equality: the consolidation nudge is a `SessionStart` survivor (REQ AC-1.7, US-04) |
 | E-15 | A consumer's config still carries `distribution.checkEnabled` after the sweep | Ignored silently. It never errors and never changes behaviour (BR-GATE-2) |
 | E-16 | The cleanup finds an entry whose **name** the retired channel never installed | Nothing is deleted in that invocation, every file stays byte-identical, each unexpected path is named on stderr, exit is `3` (BR-CLN-3, BR-CLN-3a, BR-CLN-4) |
-| E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: no post-sweep artifact can detect the modification (BR-CLN-3a). The operator's protection is the report of what was removed, and §7.2's erratum against REQ AC-4.3 |
+| E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: no post-sweep artifact can detect the modification (BR-CLN-3a). The operator's protection is the report of what was removed, and REQ AC-4.3 and C-9 (v0.11), which place a hand-modified expected entry outside the refusal predicate |
 | E-16b | The cleanup finds a `.pdlc-tmp.*` file the retired channel left behind when a write was killed mid-rename | Treated as unexpected: refuse per E-16, even though the channel wrote the name — no post-sweep artifact proves the residue is junk rather than an operator's file. The stderr path tells the operator what to remove by hand before re-running (BR-CLN-3) |
 | E-17 | The cleanup is run in a repo with no leftovers, or run twice | Succeeds, changes nothing, says so, exits zero (BR-CLN-2) |
 | E-18 | The cleanup's target directory holds a file the consumer tracks in git | Treated as unexpected: refuse per E-16. Tracked files are never touched (BR-CLN-5) |
@@ -782,7 +782,7 @@ not a note.
 |---|---|---|
 | O-A | **BL-03's adoption evidence is not citable at HEAD.** No run report is tracked in the repo at `b3f24fc6`. C-1's four thresholds are operator-judged and the reports are operator-captured | **Operator**, before the first deletion commit. The report paths and commits are transcribed into this FSPEC at C-6 re-measurement time (REQ BL-03) |
 | O-B | **BL-08's pre-sweep report and gate transcript are not yet captured.** Both are uncapturable after the sweep starts | **Operator**, at §3.0 step 4; committed at fixed paths in `docs/pdlc-plugin-retirement/` and cited by path + commit here |
-| O-C | **Where the probe CLI lives after `dist/` retires**, and whether the manifest survives for that one row — which fixes AC-1.1's branch | **TSPEC** (REQ O-3). This FSPEC pins AC-1.3's literals only; see §1.2 and the erratum raised against the REQ below |
+| O-C | **Which surviving directory holds the probe CLI's build after `dist/` retires** | **TSPEC** (REQ O-3). REQ v0.11 settles the manifest branch: the manifest does not survive, so AC-1.1's set-equality of the `dist/` entry set with `{M-9}` holds without exception. This FSPEC pins AC-1.3's literals only; see §1.2 |
 | O-D | **Phase MERGE's self-modification guard paths** once `pdlc/workflows/` and `.claude/workflows/` change meaning or cease to exist | **TSPEC** (REQ O-4); if the resolution needs engine-side change it binds to a successor REQ under NG-5 |
 | O-E | **Which surviving modules host the re-homed queue-triage and hook-manifest assertions** (L-6's rows) | **TSPEC** decides placement; the module names **and the re-homed assertion titles** are transcribed into L-6 at re-measurement time |
 | O-F | **BL-05's disposition of `QUEUE.md` row 8 (`pdlc-release-ci`)** | **Operator**, decided upstream per `pdlc-engine-distribution` O-3. AT-2.3 refuses to pass while the row still mandates the retired channel |
@@ -800,35 +800,14 @@ allow-list (§4.2 preamble), never an assumption of this FSPEC.
 | ASM-3 | The consumer cleanup ships as an operator-invoked step in the plugin's script surface; its exit convention follows the retired sync tooling (BR-CLN-4) | Its form and home are the TSPEC's; the behaviour of §3.5 and §4.5 binds whatever form is chosen |
 | ASM-4 | The delegator skills invoke the engine's installed CLI entrypoint (`pdlc`, `pdlc/engine/bin/pdlc.mjs` at the base commit); the resolution mechanism is the TSPEC's | If the engine's invocation surface changes, BR-DEL-1…4 still bind |
 
-### 7.2 Errata raised against the upstream REQ
+### 7.2 Upstream errata — resolved
 
-Three defects in `REQ-pdlc-plugin-retirement.md` v0.9 are reported rather than folded in here.
-Each is emitted as an `ERRATUM: REQ` item in this dispatch's final message; none is worked around
-by relaxing a criterion in this FSPEC.
+The three defects this FSPEC raised against `REQ-pdlc-plugin-retirement.md` v0.9 were folded
+in upstream and are **closed**; REQ v0.11 (2026-08-17) is the version this FSPEC now traces.
+No criterion was relaxed in the FSPEC to work around any of them.
 
-**(1) AC-1.1 requires M-6 (`distribution-manifest.json`) not to exist and the `dist/` entry set to
-set-equal `{M-9}`, while O-3 leaves open "whether the manifest survives for that one row" and
-routes that decision to the TSPEC.** If the TSPEC decides the manifest survives to describe the
-probe CLI, AC-1.1 as written fails on a file the REQ's own obligation kept. The two clauses
-cannot both hold; the REQ must decide which, since an FSPEC cannot pin AC-1.1's expectation
-around an upstream contradiction. Until it is resolved, L-1's post-sweep expectation is stated as
-AC-1.1 reads today, with the O-3 branch flagged in O-C.
-
-**(2) AC-5.2's enumerated allowed-difference set (feature name, timestamps, ids, paths) makes the
-criterion unpassable.** The engine's run report carries fields that differ between any two correct
-runs and fall outside that set: the two version fields — BR-VER-1 permits the sweep to ship a
-`0.23.x` bump, and BL-07's other branch ships a new engine release — and the run-variable
-collections (dispatches, retries, pauses, denials, per-phase outcomes), whose members are
-constructed per run. Read literally, a test written to AC-5.2 fails on a correct sweep; read
-loosely, it is not a gate at all. The REQ should either enumerate those field names as
-allowed-to-differ or scope value comparison to a named stable subset, keeping set-equality over
-the whole field set. AT-5.2 states the second reading so this FSPEC pins no unpassable test; the
-REQ, not the FSPEC, owns the correction.
-
-**(3) AC-4.3 requires the cleanup to detect a *hand-modified* file, which no post-sweep artifact
-can decide.** The predicate would need the expected bytes, and the sweep deletes both the bundles
-and the manifest that recorded their hashes (class 7); a consumer that never enabled the drift
-hook has no drift-state record either. The only decidable predicate left is by name (BR-CLN-3a),
-under which a hand-modified file at an expected name is removed rather than refused. AC-4.3 should
-drop "or hand-modified" and keep the unexpected-entry case, which is checkable and is what
-delivers C-9's conservatism.
+| # | Raised against | Resolution in REQ HEAD |
+|---|---|---|
+| 1 | AC-1.1 / O-3 — whether the manifest (M-6) survives for the probe CLI's build | O-3 states the manifest does **not** survive; AC-1.1's set-equality with `{M-9}` stands unopposed. Only *which* surviving directory holds the build is still open (O-C, TSPEC) |
+| 2 | AC-5.2 — allowed-difference set too narrow to be passable | AC-5.2 now enumerates the provenance fields **and** the report's eight run-variable collections, compared for presence, not content |
+| 3 | AC-4.3 — asked the cleanup to detect a *hand-modified* file no post-sweep artifact can decide | AC-4.3 keeps the unexpected-entry case, states the post-refusal directory state, and C-9 drops the hand-edited clause it contradicted |
