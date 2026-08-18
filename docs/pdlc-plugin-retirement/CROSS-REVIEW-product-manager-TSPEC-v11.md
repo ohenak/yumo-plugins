@@ -86,3 +86,9 @@ carried into the next ordinary revision round rather than forcing one.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:90464289a6f32ed39f13ffe30aca693f7d033e96c0bc1a08311a53b964b876e4
+APPROVAL-HASH-NORMALIZED: sha256:42a25af6643c0533c9b567faece87bc60ece6effd00ae81667d22a4101c9dc90
+REVIEWED-COMMIT: f1b8be6652e665d4558c39e17d15bb713a8a386a
+UPSTREAM-STATE: REQ sha256:41fb21e82be8b5c5622da7638abde6694890703ec72bf257fbefa7f52dda9c51
+UPSTREAM-STATE: FSPEC sha256:dccb45d6fb253d197b7a197288a3381b330903fc4ac49efbf0c99b410c79ade0
