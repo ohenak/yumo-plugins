@@ -69,6 +69,21 @@ call, not a bookkeeping one:
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **Two sites call the held-class interim state "red"; the REQ now says in terms that it is not.** The gated-merge paragraph reads "each ungated class is independently green per REQ C-7, but AC-1.1's `dist/` set-equality stays red while classes 7–12 are held" (`DECISIONS:237`), and DEC-01's owning-oracle cell reads "**gated**: cannot go green before class 7 lands, and DEC-10's erratum-3 gate holds it red" (`:162`). REQ v0.12 now disposes of exactly this state: "AC-1.1 being unsatisfied is simply an incomplete feature on an unmerged branch — it is **not** a C-7 red, it is **not** registered anywhere as an expected or tolerated failure" (`REQ:267`–`:269`). The conclusions DECISIONS draws from its own sentence are still upstream-faithful (branch does not merge on a green subset; PROPERTIES places the 7–12 ATs behind the class-7 edge) — but the sentence now supports a second reading the erratum forbids, namely that AT-1.1 exists and fails on branch as a tolerated red. Because PROPERTIES authors AT placement from this document rather than from REQ §C-7, the ambiguity is live: if the red-on-branch reading lands in PROPERTIES it becomes a High there. Fix is a clause-level edit at two sites, no restructuring: say **unsatisfied / not yet assertable**, not "red", and add the erratum's positive rule — the check becomes live with the class it covers, ordering never registration (`REQ:272`–`:274`). | Gated-merge paragraph (`:237`), DEC-01 oracle cell (`:162`) |
+| F-02 | Low | Local | **The erratum's no-registration rule is nowhere transcribed, and DECISIONS never cites C-8.** REQ now states "There is no skip-list, no expected-failure inventory and no tolerated-red register in this feature: C-8 already forbids that shape, and a criterion that is allowed to be red by registration stops being a criterion" (`REQ:270`–`:272`). DECISIONS contains no reference to C-8 at all, and no prohibition on registration. Nothing in the document *violates* the rule — no gated oracle is registered anywhere, which is why this is Low, not a substantive conflict — but the document that PLAN and PROPERTIES read to place gated ATs is silent on the one shape they must not use. One transcribed clause in the gated-merge paragraph, quoted under cross-cutting rule 2, closes it. | Gated-merge paragraph (`:237`) |
+| F-03 | Medium | Local | **Inherited from v4 F-01 and still unfixed: the sentence PLAN mines for dependency edges states the narrow pair, not the closure.** "PLAN must also carry DEC-10's block (classes 7 and 11 gated on erratum 3) … as dependency edges, not prose notes" (`:281`). The authoritative closure is classes **7–12**, stated correctly at `:150`, in DEC-10's owning-oracle cell (`:171`), in the Consequences row (`:231`) and in the gated-merge paragraph (`:237`). I re-file rather than let it ride this round because the erratum makes ordering the *only* admissible resolution for a check that would otherwise run red (`REQ:272`–`:274`) — which promotes the edge set from bookkeeping to the mechanism the REQ now relies on. An understated edge set is now an upstream-criterion risk, not just a batch-column nit. Fix: `:281` reads 7–12. | PLAN/PROPERTIES obligation sentence (`:281`) |
+
+**Not a finding — DEC-07's use of "red" is upstream-faithful and must not be swept up in F-01's fix.**
+DEC-07's blocking clause says that until erratum 6 lands, the in-place reduction "reds AC-1.3 —
+correctly, because tree and spec disagree" (`:95`), echoed in the Consequences row (`:235`). That is
+a *landed* class producing a *repo CI* red at a commit, which is squarely what C-7 governs
+(`REQ:264`–`:265`), and DECISIONS' conclusion — "class 6 must not land until erratum 6 has landed
+upstream" — is verbatim the erratum's prescribed resolution ("the resolution is ordering … never
+registration", `REQ:272`–`:274`). Applying F-01's wording change here would erase a distinction the
+erratum was written to draw.
+
 ## Questions
 
 ## Positive Observations
