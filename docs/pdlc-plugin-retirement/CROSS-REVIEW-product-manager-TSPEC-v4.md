@@ -51,4 +51,25 @@ FINDING: Low | delta | local | §5.5 closing sentence | claims the post-sweep un
 
 ## Recommendation
 
+**Needs revision** — one High finding, narrow and mechanical. All three v3 findings are resolved;
+nothing previously approved reopened. Required changes:
+
+1. **F-01 (High)** — In §5.5, restate the orphan-freedom universal over both wiring channels: after
+   the sweep, every surviving file under `pdlc/workflows/__tests__/helpers/` is imported by at least
+   one surviving module **or referenced by the jest configuration in `pdlc/workflows/package.json`**
+   (`globalSetup` / `globalTeardown`, `:37`–`:38`). Widen the stated re-derivation to grep the
+   surviving `__tests__` tree *plus* `package.json`, so the set stays measured rather than
+   transcribed. Keep the positive-direction `freshClone.js` conjunct exactly as drafted.
+2. **F-02 (Low, lands with F-01)** — In §5.5's closing sentence, scope the claim to the survival
+   direction: the assertion makes "`driftCapabilities.js` / `skipSink.js` survive" checkable, while
+   "`driftOrdering.js` ends consumer-less" is a pre-sweep measurement (§2.6) that no post-sweep
+   oracle can re-check.
+
+Everything else in the round — §4.4's AC-3.3 correction, §5.2's five-member TT-3 and its
+one-directional carve-out, the AT-3.3 clause 2 rewrite, TT-1b, §6.1 erratum 8's ownership routing —
+checks out against HEAD and is not re-opened.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}

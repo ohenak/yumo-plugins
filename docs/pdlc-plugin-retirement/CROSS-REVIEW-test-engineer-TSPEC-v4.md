@@ -16,7 +16,28 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does the class-3 commit that lands the §5.5 helper oracle also intend to keep `helpers/bin/` in scope? Post-sweep the directory is empty (all three `*.sh` members are M-8 helpers), but the oracle says "every file under `helpers/`" and shell drivers are *spawned*, not imported. If a shell helper is ever added back, the oracle reds for a reason unrelated to orphan-freedom. A one-clause scope statement ("`*.js` modules under `helpers/`") would close it. |
+| Q-02 | v3's F-01 arithmetic now resolves — no answer needed on the `check-req-size.sh` re-home; §4.4 states it as a widening and TT-3(b) enumerates five. Remaining question is only whether the PLAN task that lands TT-3(b) is expected to touch `pdlc/hooks/hooks.json` at all (it should not: AC-1.7 owns registration and TT-3(b) is now explicitly one-directional). |
+
 ## Positive Observations
+
+- **v3 F-01 resolved and re-derived clean.** TT-3(b) now enumerates five members and the post-sweep tree agrees exactly: `git ls-files -s pdlc/hooks/scripts/` returns `100755` for `check-req-size.sh`, `check-scope-field.sh`, `check-workflow-drift.sh`, `guard-harvest-before-delete.sh`, `nudge-consolidation.sh`, `sync-workflows.sh` (`lib/pdlc-drift.sh` alone is `100644`); the sweep removes `check-workflow-drift.sh` (M-3) and `sync-workflows.sh` (M-1), leaving four survivors plus the new `cleanup-consumer-workflows.sh` — the five TT-3(b) lists. The set-equality companion can now pass.
+- **The re-home is stated as a widening rather than smuggled as a copy.** §4.4's correction holds against the tree: `bootstrap.test.js`'s `FIVE_SCRIPTS` (`:55`–`:61`) omits `check-req-size.sh`, which is nonetheless tracked `100755` and registered as the second `PostToolUse` command in `pdlc/hooks/hooks.json`. "Ships today with no mode-bit oracle at all" is exact, and the widening gains coverage the sweep did not previously have.
+- **The AC-3.3 / `FIVE_SCRIPTS` conflation is named and retired, not quietly edited.** The v0.3 phrase "the three hooks AC-3.3 names" is replaced by an explicit non-coextensiveness statement, and REQ AC-3.3's own enumeration (harvest guard, scope-field **and REQ-size** warnings, consolidation nudge) matches the four surviving behaviours.
+- **TT-3(b)'s directionality is now argued, not assumed.** The one-directional carve-out (tracked-executable ⇒ enumerated, silent on `hooks.json`) is correctly justified: REQ AC-1.7 already owns hook-set equality over the surviving manifest entries, and `cleanup-consumer-workflows.sh` is deliberately unregistered, so a converse clause would need to carve it out again.
+- **v3 F-03 resolved with a real oracle, and the unasserted arm is argued rather than dropped.** TT-1b asserts exit exactly `4` **plus** a diagnostic naming the failing path on stderr (a positive conjunct, not "no crash"), and the partial-`rm` arm's exemption is grounded in non-constructibility without a faked removal primitive the script does not inject.
+- **v3 F-04 and F-05 resolved exactly as measured.** AT-3.3's evidence column now records that `PROP-COMPAT-04` already asserts exit `0` (`hookCompatibility.test.js:100`, `expect(exitCode).toBe(0); // advisory hook never blocks`) and that only the parsed-JSON half is missing — no duplicate exit assertion is prescribed; and TT-3(b)'s `lib/` carve-out is gone with the reason stated (M-2 deletes the directory's only file).
+- **v3 F-02's citation problem is resolved at the root.** The AT-1.3 no-orphan reading is withdrawn in the same words REQ AC-1.3 actually supports, the M-8 membership gap is routed upstream as §6.1 erratum 8 (baseline names six helpers; `driftOrdering.js` is a seventh), and a TSPEC-side oracle is offered instead of prose. The oracle's *shape* is right — both directions, positive `freshClone.js` conjunct included — F-01 above is about its extension, not its design.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding, inside a section this round changed, and narrow. The v3 blockers are both discharged: TT-3(b)'s enumeration now matches the post-sweep tree, and the withdrawn AT-1.3 citation is replaced by a real oracle plus an upstream erratum. What the new oracle needs is its extension fixed: `helpers/skipSinkSetup.js` and `helpers/skipSinkTeardown.js` are consumed by Jest configuration, not by imports, so "every file under `helpers/` is imported by a surviving module" reds on green infrastructure. Adding the `globalSetup`/`globalTeardown` clause (F-01), matching import specifiers rather than bare names (F-02), and settling TT-1b's skip against §5.5's no-skip rule (F-03) closes the round.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
