@@ -8,12 +8,12 @@ feature: pdlc-plugin-retirement
 |---|---|
 | Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md`, `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.3 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.4 | 2026-08-17 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -224,13 +224,14 @@ copy. The step never runs by itself — no hook, session start or engine startup
    consumer that never enabled the drift hook has the copy but no record, and absence of the
    record is **not** an error and not an unexpected entry.
 2. Every entry it finds is classified **by name only**, against the fixed set of names the
-   retired channel installed there — L-1's pre-sweep entry names plus the drift-state record.
+   retired channel installed there — L-11's consumer-side installed-name set (§4.2).
    *Expected* means the name is in that set; *unexpected* means anything else. No content is
    compared and no repo artifact is consulted: the manifest and the bundles it described are
    deleted by the sweep (class 7), so a content predicate would be undecidable, not conservative.
    The name set travels with the cleanup step; where it is carried is the TSPEC's (BR-CLN-3a).
-3. **All expected, nothing unexpected** → the expected entries and the drift-state record are
-   removed, a directory left empty by that removal is removed, the repo's tracked files are
+3. **All expected, nothing unexpected** → every expected entry of L-11 that is present is
+   removed (the `.pdlc-backups/` directory with its contents), a directory left empty by that
+   removal is removed, the repo's tracked files are
    untouched, the step reports what it removed and exits zero.
 4. **Nothing left to remove** → it changes nothing, says so and exits zero (idempotence).
 5. **Any unexpected entry** → it removes **nothing at all**, leaves every file byte-identical,
@@ -400,6 +401,17 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   NG-1). Skill file locations do not move; if one ever did, every known `ptah.config.json`
   consumer is updated in the same change (REQ C-4).
 
+- **L-11 — `.claude/workflows/` installed names, pre-cleanup (7):** the four consumer paths the
+  retired channel wrote — `consolidate-learnings.bundle.js`, `orchestrate-dev.bundle.js`,
+  `orchestrate-queue.bundle.js`, `pdlc-cli.mjs` — plus the three state entries it created beside
+  them, `.pdlc-drift-state.json`, `.pdlc-sync-manifest.json` and the `.pdlc-backups/` directory.
+  Any of the three may be absent; absence is never an error (§3.5 step 1). This set is
+  **consumer-side and is not L-1**: `distribution-manifest.json` is a repo-side build artifact the
+  channel never installed, so a file of that name here is **unexpected** and refuses (E-16).
+  `.pdlc-backups/` is expected **as a whole directory**, removed with its contents; the
+  timestamped `.bak` files inside are never classified individually, their names being
+  unenumerable in advance.
+
 ### 4.3 Documentation and CI rules
 
 - **L-7 — The required-check set.** At the base commit it is **six** checks across **two**
@@ -490,9 +502,8 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   the step deletes **nothing at all** in that invocation — it is not a partial-progress tool.
   Every file is left byte-identical (REQ AC-4.3, C-9).
 - **BR-CLN-3a — Expectation is by name, and the name set is self-contained.** §3.5 step 2's
-  classification rests on the fixed installed-name set carried by the cleanup step: not the
-  manifest (deleted in class 7), not the drift-state record (a consumer that never enabled the
-  hook has none), not content. **Consequence, stated rather than left implicit:** a file with an
+  classification rests on **L-11's** consumer-side installed-name set, carried by the cleanup
+  step: not the manifest (deleted in class 7, and never installed consumer-side), not content. **Consequence, stated rather than left implicit:** a file with an
   expected *name* and hand-modified *content* is removed like any other expected entry, because no
   post-sweep artifact can distinguish it. Conservatism comes from the name predicate — one entry
   the channel never installed refuses the whole invocation. REQ AC-4.3's "or hand-modified" clause
@@ -502,8 +513,9 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   "non-zero", which a missing interpreter (`127`) or an uncaught signal also satisfies, greening a
   refusal test on a step that never ran. `3` is the status the retired sync tooling used for this
   case: an *unknown* row exited `3`, `local-edit`/`unverified` exited `2`, stale-or-missing exited
-  `1` (`pdlc/hooks/scripts/sync-workflows.sh`, its four terminal exit branches). A successful run
-  exits `0`.
+  `1`, and a successful run exited `0` (`pdlc/hooks/scripts/sync-workflows.sh`, **five** terminal
+  exit statuses). The fifth, `4`, was that tooling's usage-error and write-failure status; the
+  cleanup keeps `4` reserved for that class and never reuses it for refusal.
 - **BR-CLN-5 — Tracked files are never touched.** The cleanup removes only untracked consumer
   runtime state; a successful run leaves the repo's tracked files unchanged (REQ AC-4.1).
 - **BR-CLN-6 — Leftovers are inert.** A consumer that never runs the cleanup still runs features
@@ -661,7 +673,9 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 - **AT-3.1** (AC-3.1) *Who:* operator in a consumer repo with plugin and engine installed.
   *Given* a ready queue row, *when* they invoke `/pdlc:orchestrate-queue`, *then* all three of
   these are observable rather than asserted by the agent: the session transcript's tool-invocation
-  set for the skill **set-equals** {one engine CLI call}, which is discharged by counting; the
+  **sequence** for the skill has **length 1** and its single member is the engine CLI call, which
+  is discharged by counting — a sequence, not a set, so a second identical invocation reds rather
+  than collapsing into one member; the
   engine's run report carries a
   **non-empty dispatch record**, which is positive proof the phase decision was made engine-side;
   and the skill's response reproduces that report's fields without dropping, renaming or
@@ -703,8 +717,8 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 ### 6.4 Consumer cleanup
 
 - **AT-4.1** (AC-4.1) *Who:* operator in a repo that previously hosted the runtime copy. *Given* a
-  `.claude/workflows/` copy and the drift-state record at
-  `.claude/workflows/.pdlc-drift-state.json`, *when* the cleanup runs once, *then* both are gone,
+  `.claude/workflows/` holding **every** L-11 entry, its `.pdlc-backups/` directory non-empty,
+  *when* the cleanup runs once, *then* all seven are gone, backups directory with its contents,
   the directory left empty by that removal is gone, the repo's tracked files are unchanged, and
   the step exits `0` reporting each path it removed. Second construction, same expected outcome:
   the copy present with **no** drift-state record (a consumer that never enabled the hook) —
