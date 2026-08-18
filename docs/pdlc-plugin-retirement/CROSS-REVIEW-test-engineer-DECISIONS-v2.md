@@ -41,4 +41,26 @@ obligations). Unchanged prose already reviewed at v1 is not re-litigated.
 
 ## Recommendation
 
-_(section written below)_
+**Needs revision**
+
+Two High findings, both inside content added by this revision; all eight v1 findings are resolved,
+and none of the fixes broke a section that was previously sound. The remaining work is narrow:
+
+1. **F-01** — restate DEC-10's gate as its transitive closure (classes 7, 8, 9, 10, 11, per FSPEC's
+   ordering column), correct the price row, and mark the DEC-01/DEC-02/DEC-09 oracle cells as gated
+   so PLAN's dependency edges and PROPERTIES' AT placement derive an ordering that can go green.
+2. **F-02** — restate DEC-09's oracle against the shipped signature: assert
+   `satisfiesRange(version, pdlcPluginCompat).ok === true`, and add the negative arm (`0.24.0` →
+   `ok === false`, non-null `reason`) so the call exercises range semantics instead of resting on an
+   object that is truthy no matter what it says.
+
+F-03 (the "eleven classes" literal) travels with F-01's edit; F-04 is a one-cell wording change.
+
+An upstream item is routed separately rather than folded into this verdict: TSPEC §6.4's T-5 states
+the same blocked set as "classes 7 and 11", which is where DEC-10 inherited the understatement, so
+the erratum is raised against TSPEC as well as fixed here.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
