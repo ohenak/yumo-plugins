@@ -20,6 +20,17 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Re-evaluation trigger 1 (`:170`) says DEC-06 "is superseded by whatever the upstream document decides" about `runtime-adapter.js`. If the upstream **declines** erratum 2 and states no disposition, does DEC-06 A stand permanently, or does the sweep re-open it? The Consequences row (`:152`) accepts "reviewers will read it as dead weight **until** erratum 2 lands", which reads as if landing is assumed. |
+| Q-02 | DEC-08 keeps `postWaveCommand`/`postWavePathspecs` because later waves edit `CLI_SOURCES` (`build-runtime.mjs:530` — verified: `["orchestrate-dev.js", "cli.mjs"]`). Post-sweep, is the CLI's *behaviour* still exercised anywhere, or does AC-5.3's "answers exactly as before" rest solely on an operator invoking it by hand? A survivor whose only proof is manual invocation is the artifact most likely to rot next. |
+| Q-03 | DEC-05's thin delegators must surface a C-10 refusal to the human session (REQ O-2). Is the refusal's *user-visible wording* owned by the delegator (plugin, in scope) or by the engine banner (NG-5, out of scope)? AC-3.6 pins the terminal block; the delegator's relay of it is not obviously covered by either document. |
+
 ## Positive Observations
+
+- Every code claim I sampled verifies at HEAD, at the line cited: `MERGE_GUARD_DEFAULTS`' four frozen members (`pdlc/workflows/orchestrate-dev.js:48`), `MODULE_NAMES` vendoring only two modules (`pdlc/engine/scripts/prepack.mjs:20`), `OPERATOR_ONLY_SKILLS` (`pdlc/engine/lib/startup.mjs:52`), `OUT_DIR`/`CLI_SOURCES`/`cliArtifact`/`bundles`/`manifestRows` (`build-runtime.mjs:32`, `:530`, `:532`, `:694`, `:773`), the sole `runtime-adapter.js` import (`:97`), `pdlcPluginCompat` (`pdlc/engine/package.json:18`), and the two config-example values verbatim. Line counts check out too: 831 / 1,209 / 56,713 bytes / 97+250 = 347 / 371 / 306+203 = 509. A DECISIONS doc whose alternatives are priced against measured code rather than intuition is exactly what the task asked for, and it is rare.
+- DEC-01's rejection of option B is the strongest product argument in the set: trading AC-1.1's *measured* set-equality branch for a fresh TSPEC-named literal is a weaker oracle, and naming that as the deciding cost — rather than "we prefer `dist/`" — is the right currency. It also matches the branch TSPEC §2.2 pinned, so no downstream reader has to reconcile two pins.
+- DEC-07 refuses to delete passing `PROP-COMPAT-*` assertions to satisfy an inherited count, and routes the count as erratum 6 instead. That is C-6 applied in the direction that is easy to get wrong (deleting files until a number matches), and Decision rule 2 generalises it correctly.
+- The Consequences section prices what got *worse* in four rows with named owners, and the Reversibility split (easy / hard / one-way: none) gives PLAN a real basis for commit ordering. The closing Downstream obligations paragraph — class-7 must land the DEC-01 deletion and DEC-02 reduction together or `--check` fails — is a concrete, testable hand-off rather than a platitude.
 
 ## Recommendation
