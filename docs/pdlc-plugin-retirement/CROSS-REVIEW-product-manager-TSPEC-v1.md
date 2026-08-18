@@ -20,8 +20,37 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does F-01's resolution belong to A-1 (allow-list the cleanup script and its test module) or to BR-CLN-3a (permit the expected names to be assembled at runtime from fragments)? The first keeps the script readable and costs an upstream baseline + FSPEC L-3 edit; the second keeps AC-1.2's search literally empty but makes the refusal predicate harder for an operator to audit by reading, which BR-CLN-4's "checkable without reading the implementation" spirit argues against. Whichever is chosen, AC-1.2's set-equality means the choice cannot be left to the implementer. |
+| Q-02 | For F-02: was REQ C-5's "the configured pathspec retires" written on the assumption that `dist/` itself retires (the branch §2.2 has now closed the other way)? If so, the erratum belongs against REQ C-5 / M-11h rather than being absorbed as a class-10 deletion. |
+| Q-03 | AC-4.4 asks that a consumer who never cleans up still reaches the configured final phase with a set-equal report. §5.2's AT-4.4 says the leftovers are placed and an engine run compared — is that run the same run BL-08 captures pre-sweep, or an additional post-sweep pair? The obligation table (§6.3) budgets one operator-captured report, so the reviewer cannot tell whether AT-4.4 costs a second engine run. |
+
 ## Positive Observations
+
+- §1.1's routed-item table is the single best thing in this document: every FSPEC/REQ open item is answered in one row with the deciding section named, so a reader can check "did the TSPEC decide only what was routed to it" in one pass. §1.2's matching "what this document does not settle" closes the other half.
+- §2.2's decision to keep `pdlc/workflows/dist/pdlc-cli.mjs` is argued from what the criteria actually measure — AC-1.1's set-equality and AC-1.2's term set — rather than from taste, and the rejected alternative (`pdlc/workflows/bin/`) is named with its cost. That is exactly the shape a PM can check against G-5.
+- §4.5's comparison model is faithful to AC-5.2 and does not quietly widen it: the excluded set maps one-to-one onto REQ's allowed classes (provenance versions, paths, ids, timestamps, the eight run-variable collections), and the "value-compared, explicitly" list — including `engine.startupAuth.row` — turns AC-5.2's exhaustiveness clause into something a test can enforce. Verified against `pdlc/engine/lib/report.mjs:54`–`:95`: every key the model names exists, and `buildEngineBlock()` does default every field to a present value, so the "missing key is always a real difference" premise holds.
+- §4.3 transcribes L-11's nine names exactly, including the `.pdlc-backups/`-as-a-whole-directory rule and the deliberate exclusion of `distribution-manifest.json`, with the reason (E-16) preserved rather than paraphrased.
+- §4.6 resolves FSPEC O-G in the direction that keeps BL-07 satisfiable without a release on the critical path, and the `0.24.0`-is-an-outage reasoning is checked against the real handshake semantics rather than asserted.
+- §5.5 and §5.4 hold the line on C-8 and C-7 without softening: deleted-never-skipped is asserted repo-wide, and the replay loop makes AC-1.8's per-commit greenness something the operator pastes rather than claims.
+- §6.1's three errata are real, well-evidenced, and correctly left unfixed here rather than silently absorbed — erratum 3 in particular found a live-capability loss that three prior review rounds had not.
 
 ## Recommendation
 
+**Needs revision.**
+
+Exactly what to change:
+
+1. **F-01** — Resolve the AC-1.2 collision the cleanup step creates. Add a subsection under §4.3 stating either the A-1 extension to be routed upstream (naming `pdlc/hooks/scripts/cleanup-consumer-workflows.sh` and `pdlc/workflows/__tests__/consumerCleanup.test.js`) or the name-construction rule, and correct §4.2's claim, which is false as written.
+2. **F-02** — Reconcile §2.2 with class 10. Either keep `postWaveCommand` / `postWavePathspecs` (and route the erratum against REQ C-5 / M-11h), or name the surviving step that regenerates `dist/pdlc-cli.mjs` after a source edit, and record the consequence in §2.2 next to the `.gitignore` note.
+3. **F-03** — Add an obligation in §6.3 that blocks the class-7 and class-11 commits on erratum 3's upstream disposition, so a surviving skill with no execution host cannot ship unnoticed.
+4. **F-04** — Re-measure `driftGenerators.js`'s consumers and make §2.6 item 3, §4.7 and the baseline's count agree, or state which is authoritative.
+5. **F-05** — Drop `--dry-run` from §3.2 or route it upstream and give it an AT row in §5.2.
+6. **F-06** — Route `hookCompatibility`'s M-8 → class-6 reassignment as an upstream correction alongside §4.4's count correction.
+7. **F-07** — Note the unpublished `0.2.1` engine version in §4.6's table.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 3, "low": 1}
