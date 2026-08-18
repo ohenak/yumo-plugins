@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.9 | 2026-08-17 |
+| pdlc | approved — ready | Claude | 0.10 | 2026-08-17 |
+
+*0.10 (2026-08-17) — erratum round. Three targeted corrections, nothing else: O-3 no longer leaves the manifest’s survival open — it does not survive, so AC-1.1’s set-equality with `{M-9}` stands unopposed (SE erratum 1); AC-5.2’s allowed-difference set now names the provenance version fields and the run-variable dispatch/outcome collections, which differ between two correct runs (SE erratum 2); AC-4.3 drops the hand-modified case, which no post-sweep artifact can detect, and keeps the unexpected-entry case (SE erratum 3).*
 
 *0.9 (2026-08-17): the revision prescribed by `POSTMORTEM-R-pdlc-plugin-retirement.md`
 §Recommendation (RESOLVED). AC-1.2 drops the survivor terms `build-runtime.mjs` and
