@@ -32,7 +32,17 @@ No High findings. Neither Low finding changes a chosen option, a count, or a dow
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The gated-merge paragraph now says class 13 "is ungated too … though its documentation lands with class 12's story" (`:237`). Since class 12 is itself held on erratum 3, does the product intent allow class 13's *code* (the operator-invoked cleanup step of §3.5) to merge while its documentation waits behind class 12 — or is class 13 ungated only in principle and in practice held with 12? Either answer is fine for PLAN; it just needs to be the stated one, because it decides whether class 13 gets a `Deps` edge at all. |
+
 ## Positive Observations
+
+- **The closure extension was done by re-reading FSPEC, not by patching the count.** The cheap way to close my v3 F-01 was to change "five" to "six" and move on. Instead `:150` re-derives the whole chain from the ordering column, names the mechanism for each class (8, 9, 10 bound to 7; 12 as last-of-deletion-set; 13 as the single independent row), and states the blocked set once so the three downstream sites quote rather than recompute it. That is the transcribe-don't-re-measure rule applied to the document's own arithmetic.
+- **The FSPEC ordering cells are now quoted verbatim, and the quotes corrected a paraphrase of mine.** v0.3 (following my own v3 evidence) rendered class 8 as bound "at the same time as class 7". FSPEC `:160` actually reads "Any time after class 7" — a materially weaker binding. v0.4 quotes all three cells exactly, with `; quoted verbatim per rule 2` naming the discipline that forced the check. I re-read `FSPEC:160`–`:162` and the new quotes are exact. A revision that corrects the reviewer's paraphrase rather than inheriting it is the behaviour this loop exists to produce.
+- **Every anchor in the round holds.** `consolidationBuild.test.js:88`/`:95`/`:136`/`:141` are the four `readWorkflowSource("runtime-adapter.js")` sites; the two surviving `T12` describes are at `:86` (adapter prompt) and `:134` (`rtConsInjections`), matching DEC-06's new "two describes, four assertion sites" split exactly; `build-runtime.mjs` mentions the module at `17`, `97`, `668`, `690`–`692` and DEC-06 now cites all six. Nothing in the round was asserted without a checkable referent.
+- **DEC-06's added detail strengthens the rejection it serves.** Naming `rtConsInjections`'s key set alongside `rtWriteFile`'s prompt shows two *independent* surviving suites reading the orphan's source text, not one. Option B's price rises accordingly, and it rises on evidence.
+- **The M-8 host citation moved from a line anchor to a spec id.** `:237` now says "neither is named in FSPEC L-5's M-8 deletion list" in place of `FSPEC:378`. That is `DEC-DOC-01` applied without being told twice, and it makes the claim survive any renumbering of FSPEC.
 
 ## Recommendation
 
