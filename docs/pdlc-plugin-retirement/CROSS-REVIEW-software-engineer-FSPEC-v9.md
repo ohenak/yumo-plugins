@@ -89,3 +89,8 @@ findings are inherited and already routed to TSPEC. Nothing here blocks in a fro
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 3, "low": 4}
+
+APPROVAL-HASH: sha256:dccb45d6fb253d197b7a197288a3381b330903fc4ac49efbf0c99b410c79ade0
+APPROVAL-HASH-NORMALIZED: sha256:54914d4854399b94d6a52b3767306b0ccdb423babc23b1408fd2c38541279116
+REVIEWED-COMMIT: fe306b11077d632b4644738162f6b8811fd9e1ab
+UPSTREAM-STATE: REQ sha256:1038b8166cc84cb48d069c3e364a2a8e9aa07daf612e2fc8d611c3100e584294
