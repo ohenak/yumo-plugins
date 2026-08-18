@@ -826,6 +826,36 @@ edit-of-any-kind is the membership test, and the table below enumerates every mo
 | `consolidationPreflight.test.js` | class-7 BL-PREREQ correction (§2.8) and class-10 wave-gate source-text update (`:205`–`:208`) | yes |
 | `documentOracles.test.js` | class-9 edits: D-1/D-2 adjusted for the packaging/advertised-version exemptions | yes |
 | `orchestrateDevSkill.test.js` | class-11 edit: the delegator-banner expectation at `:93` (`expect(content).toContain(".claude/workflows/orchestrate-dev.bundle.js")`) is retargeted | yes |
+| `consolidationHookParity.test.js` | **edited** by this sweep: AT-3.3 clause 2's `nudge-consolidation.sh` stdout-JSON-plus-exit-`0` assertion is added here (§5.2), the sweep's one *addition*-shaped edit to a surviving module | yes — after the capability conversion below |
+| `skillFiles.test.js` | class-11 edit: `RLH-SKILL-08` (`skillFiles.test.js:196`) and `RLH-SKILL-09` (`:209`) assert delegator source text — `orchestrate-dev/SKILL.md`'s POSTMORTEM/`RESOLVED:` lifecycle and `orchestrate-queue/SKILL.md`'s committed `halted` row — which §2.4's rewrite deletes as pipeline logic; both are also AT-3.1's static-half host (§5.2) | yes |
+
+**The two admitted modules, and what admitting `consolidationHookParity.test.js` costs (PM/TE TSPEC
+v9 F-01, TE F-02).** Both were in-surface under the membership rule as written and simply missing from
+the enumeration; the table above is now the rule's full extension, and §2.9 carries a class row for each
+(class 6 for the parity module's hook assertion and capability conversion, class 11 for `skillFiles.test.js`).
+Admitting the parity module is not a free row. It carries four **hand-rolled capability ternaries** that
+never route through `itOrSkip` and therefore never reach the sink: `(canRunDifferential ? test : test.skip)`
+at `consolidationHookParity.test.js:203`, `:227` and `:343`, and `(hasBash ? test : test.skip)` at `:382`,
+gated on `const hasBash = bashAvailable()` (`:51`) and `const canRunDifferential = hasBash && !!PY_BIN`
+(`:73`, `PY_BIN` from the module-local `probePyBin()` at `:65`). On a runner without `bash` or without a
+Python binary the green child would report four pending entries and no sink records — a left ⊄ right
+violation in the passing invocation, i.e. exactly the capability-dependent flake the TE FSPEC v9 review
+recorded as DEFERRED. **The four sites are therefore converted, in the same commit as the AT-3.3 clause 2
+addition**, not exempted: an exemption would have to be written into the join's left set as four named leaf
+titles, which is a standing carve-out in an executable oracle and worse than the conversion it avoids.
+
+The conversion has one real cost, stated rather than discovered: `KNOWN_CAPABILITY_KEYS` today is
+`["bash", "git", "hash", "uid-nonroot"]` (`helpers/skipSink.js`, `KNOWN_CAPABILITY_KEYS`), so `:382`'s
+`hasBash` site converts against the existing `bash` key, while the three `canRunDifferential` sites need a
+**fifth key** — `python` — probed in `helpers/driftCapabilities.js` beside the existing probes and added to
+`KNOWN_CAPABILITY_KEYS`, plus four new `SKIP_INVENTORY` rows (one per converted site, `capability` being
+`bash` for `:382` and the `bash`+`python` conjunction for the other three). That widens the inventory past
+the four keys `skipSink.js`'s `WHAT IS NOT ENFORCED, AND WHY` paragraph describes as spec-derived, so that
+paragraph — already being restated in this sweep for TT-1b (§2.9 class 3) — restates the key set in the same
+edit. Answering **TE TSPEC v9 Q-01**: this makes `helpers/driftCapabilities.js` the target of a *third*
+serialised edit, and it is serialised, never batched — class 3's TT-1b row, then class 6's ten `"bash"`
+conversions, then this capability-key-plus-four-rows edit riding in the same class-6 commit as the parity
+module's new assertion, since both touch that module and that helper together.
 
 `orchestrateQueue.test.js` is **out of the surface**. §4.4's L-6 row 1 resolves to *no re-homed
 assertion*: its four queue-disposition titles are pre-existing assertions discharged by measurement,
