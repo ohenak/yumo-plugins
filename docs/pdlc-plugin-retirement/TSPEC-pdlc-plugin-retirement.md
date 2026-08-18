@@ -581,3 +581,68 @@ BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip 
 *surviving* module during the sweep is the same defect.
 
 ## 6. Open Questions
+
+### 6.1 Upstream errata raised (not folded in here)
+
+Three claims in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
+Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC.
+
+1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
+   `pipelineWiring.test.js`'s `devMeta()` reads the `DEV_META` template out of
+   `build-runtime.mjs` and its `RLH-CR-F1` / `RLH-CR-F7` assertions compare the two
+   hand-maintained `meta.inputs` copies; `consolidationPreflight.test.js`'s `T00 — BL-PREREQ:
+   build-runtime.mjs source-text presence` block requires `QUEUE_META`, `QUEUE_ENTRY` and
+   `bundles` to be declared there, and its sibling block requires two declarations *inside*
+   `runtimeBundle.test.js`, which class 6 deletes. Both red the sweep (class 7 and class 6
+   respectively) and neither is in M-11p or in the baseline's per-file dispositions.
+   Disposition pending that edit: §2.8.
+
+2. **FSPEC — `pdlc/workflows/runtime-adapter.js` is orphaned by the sweep and appears in no
+   row.** Its only consumer is `build-runtime.mjs`'s bundle emission (`const adapter =
+   readFileSync(… "runtime-adapter.js")`), which class 7 deletes; the engine does not port it
+   (`pdlc/engine/lib/adapter.mjs` says so explicitly) and `prepack.mjs`'s `MODULE_NAMES` vendors
+   only `orchestrate-dev.js` and `orchestrate-queue.js`. No L-2 term matches its name, so the
+   sweep command cannot see it — a third instance of E-3's "dependent no search term reaches",
+   beside the two the baseline names. Its test surface (`adapterProbe.test.js`,
+   `helpers/adapterHarness.js`) is likewise unrowed. This TSPEC leaves it untouched (§2.8).
+
+3. **FSPEC — `consolidate-learnings` has no surviving execution host, so M-11n's rewrite has
+   nothing to name.** Class 7 deletes `consolidate-learnings.bundle.js` (M-10), the module's only
+   host: it needs agent-backed seams (`rtConsInjections()` supplies `_agent`, `_readFile`,
+   `_writeFile`, … in `runtime-adapter.js`), so it cannot be run as plain Node; and the engine's
+   command surface is `dev`, `queue`, `doctor` only (`pdlc/engine/bin/cli.mjs`,
+   `FLAGS_BY_COMMAND`), with `consolidate-learnings` listed in `OPERATOR_ONLY_SKILLS` as a skill
+   *no workflow module dispatches*. FSPEC §3.1 class 11 and M-11n instruct rewriting
+   `consolidate-learnings/SKILL.md:11`'s bundle reference "to name the surviving execution path";
+   post-sweep there is none. This is a live capability the sweep would remove, which REQ NG-3
+   does not contemplate.
+
+### 6.2 Successor work bound under REQ NG-5
+
+| # | Item | Why it is not authored here |
+|---|---|---|
+| SUCC-1 | Phase MERGE's guard-path set does not cover `pdlc/engine/` (§2.7) | `MERGE_GUARD_DEFAULTS` lives in a module the engine vendors verbatim; changing it changes engine runtime behaviour |
+| SUCC-2 | A host for the consolidation pass (erratum 3) — the natural shape is a `pdlc consolidate` command reusing the engine's existing adapter | new engine capability, squarely NG-5 |
+
+### 6.3 Obligations carried into implementation
+
+| # | Obligation | Owner |
+|---|---|---|
+| O-A (FSPEC) | BL-03's adoption evidence captured and cited by path + commit | operator, before the first deletion commit |
+| O-B (FSPEC) | BL-08's pre-sweep report and gate transcript committed, with suite counts visible (E-23) | operator, before the first deletion commit |
+| T-1 | Re-run C-6's partition at the sweep's base commit and re-transcribe every FSPEC literal, including §4.4's corrected suite size | implementer, §3.0 entry gate |
+| T-2 | Re-derive `driftGenerators.js`'s surviving export set by a fresh consumer scan (§4.7) rather than trusting the transcription | implementer, class 6 |
+| T-3 | Enumerate the instructional-document per-file list for class 12 at re-measurement time (REQ O-5) | implementer, PLAN |
+
+### 6.4 Risks this design carries
+
+- **The class-1 commit is large and cannot be split** (BR-SWEEP-3). Its blast radius is three
+  workflow files, one engine oracle and two documents' count words. Control: it lands first, so
+  every later commit replays against a known-good CI arrangement.
+- **The retained `hookCompatibility.test.js` (§2.6) is a deviation from M-8's stated membership.**
+  If the re-measurement finds an assertion in it that *does* depend on the drift hook beyond the
+  `C7` block, the retention becomes a partial deletion instead. Control: the module is 300 lines
+  and self-contained; the disposition is re-checked at re-measurement.
+- **The cleanup script's name-only predicate cannot protect a hand-modified expected entry**
+  (BR-CLN-3a, C-9). Accepted upstream; stated here so no implementer adds a hash check that would
+  need a manifest the sweep deletes.
