@@ -49,3 +49,8 @@ All three round-6 High findings are resolved and verified against REQ v0.11 and 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 1}
+
+APPROVAL-HASH: sha256:8a883431c557b7d82eaecd7d00c39ca5add4f663f5f3a3990b87f016db3b7a04
+APPROVAL-HASH-NORMALIZED: sha256:f5a0030bf8d558a2f3f962b7ee6af7b3ff4ac5dc3b43507d29ab6b8551fc5141
+REVIEWED-COMMIT: b6f0516bdcdf7132e7f3cef045e925b7f0b94b7e
+UPSTREAM-STATE: REQ sha256:1038b8166cc84cb48d069c3e364a2a8e9aa07daf612e2fc8d611c3100e584294
