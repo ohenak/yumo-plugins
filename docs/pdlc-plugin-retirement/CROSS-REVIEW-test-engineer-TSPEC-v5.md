@@ -29,8 +29,37 @@ Unchanged sections are not re-litigated.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | If AT-1.3's narrowing (F-01) is not accepted upstream, is the fallback to drop TT-1b's root-conditional arm entirely and leave row 4b's runtime-failure exit status uncovered, or to keep the arm and pin the gate runner non-root? §5.5 rejects the runner pin explicitly; the first option should be costed in the same paragraph so the choice is not re-derived at implementation time. |
+| Q-02 | Q-01 of v4 is answered (`helpers/bin/` is scoped out, rule 3) and I verified the three `bin/*.sh` drivers are referenced only by `driftOrdering.test.js:395`, `driftFault.test.js:444` and the deleted `driftHelpers` rows — so post-sweep the directory is genuinely empty. Should §2.6 also state that the *directory* is removed, so a later reader does not read an empty tracked path as a survivor? |
+
+## Positive Observations
+
+- **F-01 of v4 is fixed at the level it was raised.** The two-channel oracle is not a hand-added exception for two files: channel (b) reads `globalSetup` / `globalTeardown` out of `package.json` at assertion time, so a future config-wired helper passes without editing the test, and one wired through neither channel still reds. I re-derived the post-sweep import graph mechanically and the universal comes out green — the round did not trade a false red for a false green.
+- **The pre-sweep/post-sweep asymmetry is stated honestly.** §5.5 now says outright that "`driftOrdering.js` ends consumer-less" is a *pre-sweep* measurement recorded in §2.6, because after deletion no post-sweep predicate can tell "correctly deleted" from "deleted by mistake". That is the right call — the alternative would have been an oracle that passes vacuously — and it is the kind of limit that usually goes unwritten.
+- **The positive direction survives the rewrite.** `helpers/freshClone.js` must be imported *by name*, so collateral sweeping reds rather than passing; I confirmed its only current importer is `bootstrap.test.js:40` (deleted), and that TT-3's fresh-clone half is what regains it.
+- **TT-1b's unasserted arm is still argued, not quietly dropped.** The partial-`rm` arm remains explicitly contract-text-not-oracle with the non-constructibility reason attached, and the added sentence widens the row without weakening that boundary.
+
 ## Positive Observations
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both inside §5.5 — the section this round rewrote — and both about the same
+sentence rather than about the round's main work. v4's three findings are discharged: the
+two-channel oracle is green-constructible against the live tree, specifier matching replaced the
+bare-name grep, and TT-1b's skip is routed through a real, extensible sink.
+
+What is left is that §5.5 settles TT-1b's collision by *restating what AT-1.3 asserts* instead of
+routing the change (F-01), and by leaning on a comparator direction `skipSink.js:185` does not
+enforce, with no stated join between jest's pending set and the sink (F-02). Adding a §6.1 erratum
+for the AT-1.3 wording, spelling the clause out as a set relation over (pending set, sink records
+validated against `SKIP_INVENTORY`) with the membership direction asserted locally, and naming the
+`driftCapabilities.js` entry edit in its commit class (F-03) closes the round.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
