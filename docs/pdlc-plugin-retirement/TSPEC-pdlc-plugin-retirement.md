@@ -964,7 +964,12 @@ The env var is redirectable by design (`SKIP_SINK_ENV` in `helpers/skipSink.js`;
 `skipSinkTransport.test.js`'s `useSink` already redirects and restores it around each test). For the child's own sink lifetime,
 the branch is pinned rather than left open (TE TSPEC v8 F-04): **the child is invoked with an
 explicit `--globalTeardown` override** pointing at a no-op module `__tests__/fixtures/skipJoinTeardown.js`
-(a new class-3 file, in `fixtures/` so no run collects it as a test), so the child neither runs the
+(a new class-3 file). What keeps that module out of every collection is the **explicit file list**: each
+child is invoked over a stated list of modules and the teardown is passed by `--globalTeardown`, never as
+a path in that list — the `fixtures/` location only keeps it out of the *outer* run, and cannot be the
+reason here, since the red child deliberately drops the `fixtures/` exclusion from
+`testPathIgnorePatterns` (TE TSPEC v9 F-03). A reader reconstructing the children's config must keep the
+explicit list, not just the directory. With the override in place the child neither runs the
 inherited comparator nor `rmSync`s the sink directory the host is about to read. The host owns the
 temp directory's lifetime and removes it in its own `afterAll`. The alternative — letting the child's
 inherited teardown run and copying the sink before the child exits — was rejected because the copy
@@ -1053,13 +1058,6 @@ child never collects the fixture — and both are part of the oracle:
   therefore invoked with `--testPathIgnorePatterns=/node_modules/` (dropping the `helpers/` and
   `fixtures/` exclusions for the red child only) plus the explicit red-child file list of part 1.
   The outer run's config is untouched, so the fixture still costs the real suite nothing.
-
-**Cost of the join, stated so it stays visible.** Both children are invoked with `--runInBand` over
-their explicit file lists (six modules green, seven red), so the join's cost is two short in-band jest
-processes rather than two full worker pools (PM TSPEC v8 Q-02). The expectation recorded here is that
-the join stays in the order of the modules it names; a future module joining the swept surface adds
-its own runtime to both children, and that growth should be visible in review of this section rather
-than only in CI wall-clock.
 - **The fixture is deliberately not named `*.test.js`.** Jest's default `testMatch` collects any
   `.js` file under a `__tests__` directory, so the fixture would be collected by the child with or
   without a `.test.js` suffix; the suffix matters only for §4.4's count literal. AT-1.3's wording
@@ -1067,6 +1065,15 @@ than only in CI wall-clock.
   rather than §4.4's 99. Naming the fixture `skipJoinFalsifier.js` keeps the two literals from
   diverging under either reading, and §4.4's measurement stays the top-level glob
   `pdlc/workflows/__tests__/*.test.js`.
+
+**Cost of the join, stated so it stays visible (PM/TE TSPEC v9 F-04).** Both children are invoked with
+`--runInBand` over their explicit file lists (eight modules green, nine red), so the join's cost is two
+short in-band jest processes rather than two full worker pools (PM TSPEC v8 Q-02). `--runInBand` is a
+spawn flag, so it is a member of the argument vector part 1 asserts by set-equality — the cost choice is
+pinned by the same oracle that pins the file lists, not left to the implementer. The expectation recorded
+here is that the join stays in the order of the modules it names; a future module joining the swept
+surface adds its own runtime to both children, and that growth should be visible in review of this
+section rather than only in CI wall-clock.
 
 Without this construction, an oracle that silently matched two empty sets would pass forever.
 
