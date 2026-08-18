@@ -22,12 +22,28 @@
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | If erratum 6 does not land before class 6 is implemented, does DEC-07 block the class or ship the reduction against FSPEC L-5's 97? One of the two must be written down; today rule 2 answers "re-measure", which is the answer that cannot fail. |
+| Q-02 | After class 9 edits the advertised-version check (M-11g), what remains that would go red if `pdlc/.claude-plugin/plugin.json` were left at `0.23.1`? |
+| Q-03 | Does DEC-04 intend `--dry-run` to ship? If yes it needs an upstream criterion (erratum 7's AC-4.5); if no, TSPEC §3.2 row 5 and TT-2 come out with it. |
+| Q-04 | DEC-03 rejects option B partly because the vendored engine copy must stay byte-identical. Is any test asserting that byte-identity, or is the property carried only by `prepack.mjs:20` reading the file at pack time? |
 
 ## Positive Observations
 
-_(filled below)_
+- Every code citation I re-measured at HEAD `65a23537` holds: `git ls-files pdlc/workflows/dist/` is exactly the five named entries; `build-runtime.mjs` is 831 lines with `OUT_DIR` at `:32`, `CLI_SOURCES = ["orchestrate-dev.js", "cli.mjs"]` at `:530`, the adapter read at `:97`, `QUEUE_SOURCES`/`DEV_SOURCES`/`CONS_SOURCES` at `:690`–`:692` and `bundles` at `:694`; `MERGE_GUARD_DEFAULTS` is the four-member frozen array at `orchestrate-dev.js:48` with no `pdlc/engine/` member; `prepack.mjs:20` and `startup.mjs:52` say what the document says they say; `runtime-adapter.js` is 1,209 lines / 56,713 bytes; the SKILL.md pair is 97 + 250; `hookCompatibility.test.js` is 371 lines and its only drift-hook-dependent block is `C7` (`:246`, `:251`), the other three being `PROP-COMPAT-04/05/06`; `plugin.json` is `0.23.1` and `pdlc/engine/package.json:18` is `^0.23.0`. A decisions document whose numbers all survive independent re-measurement is rare and made this review cheap.
+- Every spec id cited resolves in the named upstream document — no phantom-authority citations, a failure mode this repo has shipped before.
+- DEC-05 is the model the other rows should follow: the chosen option is stated as observable surface (unchanged frontmatter `name`/`description`, delegation statement, invocation contract, relay and refusal rules), and that surface is already pinned by `skillFiles.test.js`'s `RLH-SKILL-08`/`RLH-SKILL-09` and `orchestrateDevSkill.test.js`, so the decision arrives with a test that can fail.
+- Rejecting option B in DEC-01 on the ground that relocation trades a *measured* set-equality for a TSPEC literal no test asserts is exactly the right currency for comparing alternatives — oracle strength, not effort.
+- The Reversibility section's hard/easy split and the explicit "one-way door: none" are usable by PLAN as-is.
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision**
+
+Four High findings. Three of them (F-02, F-03, F-04) share one shape: the decision is load-bearing, and nothing in the tree or in the downstream contract can go red if implementation does the opposite. F-01 is the rule that makes that shape reproducible across the whole feature, so fix it first. Concretely, the next revision should: (1) restate cross-cutting rule 2 so specs' literals are transcribed and disagreements halt for an erratum; (2) give DEC-07 an explicit interim literal and a blocking condition on erratum 6; (3) name a surviving positive oracle for DEC-09's bump that outlives class 9's edit; (4) require a transcribed set-equality plus mutation check over `MERGE_GUARD_DEFAULTS`' four members. The Medium findings (F-05 erratum 5 citation and set-equality over `postWavePathspecs`, F-06 the mis-scoped 509 lines, F-07 DEC-04's missing `4a`/`4b`/`--dry-run` rows) are cheap edits in the same pass.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 3, "low": 1}
