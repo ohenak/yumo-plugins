@@ -6,14 +6,14 @@ feature: pdlc-plugin-retirement
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.11); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
+| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.12); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md`, `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md`, `CROSS-REVIEW-software-engineer-FSPEC-v4.md`, `CROSS-REVIEW-test-engineer-FSPEC-v4.md` |
+| Cross-Reviews | `CROSS-REVIEW-*-FSPEC-v*.md`: SE v1, v3–v5, v7–v9; TE v1–v9 |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.7 | 2026-08-18 |
+| pdlc | Draft | Claude | 0.8 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -159,16 +159,15 @@ never a later one, because that leaves a commit asserting a file that no longer 
 | 7 | Bundles and their emission | The three retired bundles (M-4, M-5, M-10) and the manifest (M-6, which REQ O-3 settles as not surviving), and the reduction of the build step (M-7) to emitting the probe CLI only | After class 6, so no surviving test asserts over a deleted bundle |
 | 8 | Ignore/worktree rows | `.worktreeinclude`'s single row and `.gitignore`'s row **with its rationale comment block** (M-11j); a file left with no remaining rows is deleted, not left empty | Any time after class 7 |
 | 9 | Document oracles | The packaging and advertised-version checks over `dist/`, the drift scan's generated-tree exemptions (M-11g), the surviving `documentOracles` assertion that CLAUDE.md *contains* the two retired script names (M-11f), and the re-fixturing of the `covered-violations/` tree (M-11e second disposition) | Same commit as, or after, class 7; the CLAUDE.md prose it guards moves in this commit (M-11f) |
-| 10 | Wave-gate config values | **Prose only** (TSPEC §6.1 erratum 5): `.claude/pdlc.config.example.json`'s `postWaveCommand` / `postWavePathspecs` **values stay** — they still regenerate the surviving probe CLI — and only their CLAUDE.md prose naming retired bundles is edited; `consolidationPreflight.test.js`'s two assertions (M-11h) survive, the `postWavePathspecs` one tightened from containment to set-equality over its one-element array (C-6). The generic facility in `orchestrate-dev.js` and its `waveExecution` coverage are **not** touched | After class 7 (the edited prose names deleted outputs) |
-| 11 | Skills and banners | The two orchestration skills rewritten as delegators and `consolidate-learnings/SKILL.md`'s bundle reference **deleted, not rewritten** — no execution host survives for it to name, and §3.3 step 4 states the capability's disposition (M-11n); the three workflow modules' header banners (M-11o, M-11i (b)); the surviving `orchestrateDevSkill` assertion that moves with `orchestrate-dev/SKILL.md` (M-11p) | Skill text and the assertion over it land together |
+| 10 | Wave-gate config values | **Prose only** (TSPEC §6.1 erratum 5): `.claude/pdlc.config.example.json`'s `postWaveCommand` / `postWavePathspecs` **values stay** (they still regenerate the surviving probe CLI); only their CLAUDE.md prose is edited; `consolidationPreflight.test.js`'s two assertions (M-11h) survive, with `postWavePathspecs` tightened from containment to set-equality (C-6). The generic facility in `orchestrate-dev.js` and its `waveExecution` coverage are **not** touched | After class 7 (the edited prose names deleted outputs) |
+| 11 | Skills and banners | The two orchestration skills rewritten as delegators and `consolidate-learnings/SKILL.md`'s bundle reference **deleted, not rewritten** (no host survives to name); §3.3 step 4 disposes the capability (M-11n); the three workflow modules' header banners (M-11o, M-11i (b)); the surviving `orchestrateDevSkill` assertion that moves with `orchestrate-dev/SKILL.md` (M-11p) | Skill text and the assertion over it land together |
 | 12 | Documentation | CLAUDE.md's bootstrap/sync/drift/worktree/distribution-channel prose, `pdlc/OPERATIONS.md`'s retired sections, both READMEs, `pdlc/RELEASE-CHECKLIST.md`'s retired rows (M-11k, M-11l); the superseding entry in `DECISIONS-plugin-distribution.md`; stale operator notes (REQ O-6) | Last of the deletion classes |
 | 13 | Consumer cleanup | The operator-invoked cleanup step of §3.5 and the operator documentation that describes it | Independent; may land any time, but its documentation is part of the one story class 12 tells |
 
-**Held classes.** Class 6 waits on TSPEC §6.1 erratum 6's membership correction; classes 7–12
-waited on erratum 3, whose product disposition §3.3 step 4 now states, releasing that hold. While
-any class is held, AC-1.1's set-equality is simply unsatisfied on an unmerged branch — **not** a
-C-7 red, and never registered anywhere as an expected or tolerated failure; ordering, never
-registration, is the resolution, and the branch does not merge on a green subset (REQ C-7, v0.12).
+**Held classes.** Class 6 waits on TSPEC §6.1 erratum 6; classes 7–12
+waited on erratum 3, disposed in §3.3 step 4, releasing that hold. A held class leaves AC-1.1
+unsatisfied on an unmerged branch — **not** a C-7 red, never registered as a tolerated
+failure (REQ C-7).
 
 ### 3.2 Per-commit loop
 
@@ -190,16 +189,14 @@ For every commit of §3.1, in order:
    deprecation notice, a pointer or a "formerly" note (REQ G-3).
 3. Where a document describes the required-check set, update the rows, the **count word** and the
    **named workflow files** together (§4.3).
-4. Rewrite, rather than delete, text whose subject survives — the release checklist rows that can
-   be restated against the engine's release artifact. `consolidate-learnings/SKILL.md`'s bundle
-   reference is the exception: it is **deleted**, because after class 7 no execution host survives
-   for a rewrite to name (TSPEC §6.1 erratum 3).
-   **Disposition of the capability, decided here.** The bundle-hosted, unattended run of
-   `consolidate-learnings` retires with the sweep. The skill itself survives and stays
-   operator-invocable in session as `/pdlc:consolidate-learnings` — the way it is invoked today —
-   so no user-visible way of running consolidation is lost, and the SKILL.md must advertise no
-   host that no longer exists (REQ G-3, NG-1, NG-3). Re-hosting it as an engine command is
-   successor work under REQ NG-5, not this feature.
+4. Rewrite, rather than delete, text whose subject survives — the release checklist rows restated
+   against the engine's release artifact. `consolidate-learnings/SKILL.md`'s bundle reference is
+   the exception: **deleted**, since after class 7 no host survives for a rewrite to name.
+   **Capability disposition, decided here (TSPEC §6.1 erratum 3):** the bundle-hosted unattended
+   run retires with the sweep; the skill survives, still operator-invocable in session as
+   `/pdlc:consolidate-learnings`, so no user-visible way to run
+   consolidation is lost and no SKILL.md advertises a dead host (REQ G-3, NG-1, NG-3). Re-hosting
+   it under the engine is successor work (REQ NG-5).
 5. Correct stored operator notes describing the workflow-launcher registry cache and sync
    behaviours (REQ O-6) as part of this feature's Phase H step.
 6. Leave historical records untouched: `docs/completed/**`, `docs/discarded/**`, LEARNINGS and
@@ -348,8 +345,8 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   **No surviving identifier is a member.** `build-runtime.mjs` and `pdlc/workflows/dist/` are not
   terms (M-7 is reduced and AC-1.1 requires the probe CLI to survive, so either would red
   permanently on files this feature keeps), and neither is the bare key `postWavePathspecs`
-  (M-11h is prose-only per §3.1 class 10 — both example values, the generic facility in
-  `orchestrate-dev.js` and its `waveExecution` coverage survive).
+  (M-11h is prose-only — the values, the facility in
+  `orchestrate-dev.js` and its `waveExecution` coverage all survive).
 
 - **L-3 — AC-1.2's expected-empty command,** transcribed literally from
   `docs/_constraints/pdlc-retirement-baseline.md` §*The sweep recipe and AC-1.2's search term*:
@@ -836,7 +833,7 @@ allow-list (§4.2 preamble), never an assumption of this FSPEC.
 ### 7.2 Upstream errata — resolved
 
 The three defects this FSPEC raised against `REQ-pdlc-plugin-retirement.md` v0.9 were folded
-in upstream and are **closed**; REQ v0.11 (2026-08-17) is the version this FSPEC now traces.
+in upstream and are **closed**; REQ v0.12 (2026-08-18) is the version this FSPEC now traces.
 No criterion was relaxed in the FSPEC to work around any of them.
 
 | # | Raised against | Resolution in REQ HEAD |
@@ -847,10 +844,12 @@ No criterion was relaxed in the FSPEC to work around any of them.
 
 ### 7.3 Downstream errata — accepted
 
-One erratum raised by the TSPEC against this FSPEC has been accepted and folded in, and its
-boundary corrected in v0.7 (2026-08-18). No other TSPEC §6.1 erratum edits this document.
+Three TSPEC §6.1 errata are folded in here (v0.8); no other erratum edits this
+document.
 
 | # | Raised as | Edit made here |
 |---|---|---|
-| TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and capability-gated skips already register on a root runner at HEAD, so the wider clause was already false | AT-1.3 and BR-SWEEP-6 now scope the prohibition to the **swept surface** (M-8's deleted modules and the hosts of R-8's re-homed assertions) and exempt a skip that reaches the run's **skip sink records**; the exemption is not keyed to `SKIP_INVENTORY` membership, because that inventory is deliberately not closed over registered skips. REQ AC-1.3 and C-8 are M-8-scoped; the FSPEC clause is now no wider than its upstream, so REQ needs no edit |
+| erratum 3 | `consolidate-learnings` loses its only execution host in class 7; M-11n's rewrite has nothing to name | Disposed in §3.3 step 4; class 11 amended |
+| erratum 5 | Class 10 listed the wave-gate config **values** as retired; both stay valid | Class 10 is now **prose only**; its assertion tightened to set-equality |
+| TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and capability-gated skips already register on a root runner at HEAD, so the wider clause was already false | AT-1.3 and BR-SWEEP-6 now scope the prohibition to the **swept surface** (M-8's deleted modules and the hosts of R-8's re-homed assertions) and exempt a skip that reaches the run's **skip sink records**; the exemption is not keyed to `SKIP_INVENTORY` membership, because that inventory is deliberately not closed over registered skips. REQ AC-1.3 and C-8 are M-8-scoped, so this clause is no wider than upstream's *skipped-test* conjunct; AC-1.3's separate "present and passing" conjunct still binds re-homed hosts (SE v9 F-01). REQ needs no edit |
 | SE FSPEC v8 F-04 | Membership-only exemption lets the inventory be widened to buy a green gate without any skip firing | Not folded in as written: HEAD's comparator deliberately does not close over inventory membership, so an inventory-join clause would fail correct skips. The exemption is keyed to sink records instead; whether the sink comparator additionally pins a join, and how, is routed to TSPEC §5.5 |
