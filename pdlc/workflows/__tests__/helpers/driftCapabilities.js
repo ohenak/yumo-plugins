@@ -1,13 +1,14 @@
 /**
  * driftCapabilities.js — Runner capability policy and skip-loudly vocabulary (TSPEC §1.3, §7.3).
  *
- * Four runner capabilities gate fixtures: `bash`, `git` (>= 2.7.0), a hash utility
- * (`shasum`|`sha1sum`|`openssl`), and non-root uid (`uid-nonroot`). A test whose fixture is
- * unconstructible on this runner skips loudly — it never silently passes and it never silently
- * disappears (TSPEC §1.3).
+ * Five runner capabilities gate fixtures: `bash`, `git` (>= 2.7.0), a hash utility
+ * (`shasum`|`sha1sum`|`openssl`), non-root uid (`uid-nonroot`), and a Python interpreter
+ * (`python3`|`python`|`py`, mirroring `nudge-consolidation.sh`'s own probe). A test whose
+ * fixture is unconstructible on this runner skips loudly — it never silently passes and it
+ * never silently disappears (TSPEC §1.3).
  *
  * Contract (TSPEC §1.3, normative):
- *   1. `capability` is one of the four keys above, or a `+`-joined conjunction of them. It is
+ *   1. `capability` is one of the five keys above, or a `+`-joined conjunction of them. It is
  *      probed once per file and memoised; probes are `execFileSync` with `stdio: "pipe"` inside
  *      try/catch, and `process.getuid` for uid (absent on Windows => treated as non-root).
  *   2. `unverifiedInvariants` is a non-empty array of strings. `describeOrSkip`/`itOrSkip` throw
@@ -19,7 +20,7 @@
  *      machine-readable inventory array.
  */
 
-import { execFileSync } from "child_process";
+import { execFileSync, spawnSync } from "child_process";
 import { appendSkipRecord } from "./skipSink.js";
 
 // ─── Printed skip reasons (TSPEC §7.3) ─────────────────────────────────────────────────
@@ -30,6 +31,8 @@ const PRINTED_REASONS = Object.freeze({
   hash: "no sha1 utility (shasum/sha1sum/openssl) on PATH; every managed row would classify unknown/hash-tool-absent",
   git: "git is not on PATH (or is older than 2.7.0), so `git worktree list --porcelain` is unavailable",
   bash: "bash is not available on this runner",
+  python:
+    "no usable Python interpreter (python3/python/py) on PATH, mirroring nudge-consolidation.sh's own probe",
 });
 
 const KNOWN_CAPABILITIES = Object.keys(PRINTED_REASONS);
@@ -199,6 +202,41 @@ export const SKIP_INVENTORY = Object.freeze([
       "PROP-COMPAT-06: check-req-size.sh's hard-limit message is unaffected by the soft-threshold change",
     ],
   }),
+  Object.freeze({
+    name: "T09 positive-identity fixture (nudge-consolidation.sh)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §7.1 pin (b): HEAD and the widened CORPUS_GLOBS enumerate the same set below the no-regression pair's identity fixture",
+    ],
+  }),
+  Object.freeze({
+    name: "T09 divergent-fixture (nudge-consolidation.sh)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §7.1 pin (b): HEAD and the widened CORPUS_GLOBS diverge above the no-regression pair's THRESHOLD fixture",
+    ],
+  }),
+  Object.freeze({
+    name: "T25 AT-P7 differential predicate harness (nudge-consolidation.sh)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §11.3(f): AT-P7's differential predicate harness rows over nudge-consolidation.sh",
+    ],
+  }),
+  Object.freeze({
+    name: "T25 pathspec semantics (nudge-consolidation.sh)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "TSPEC §7.1 pin (a): the hook's `git ls-files` pathspec argv, exercised through a real git repository",
+    ],
+  }),
+  Object.freeze({
+    name: "AT-3.3 clause 2 (nudge-consolidation.sh stdout-JSON-plus-exit-0)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §5.2 AT-3.3 clause 2: nudge-consolidation.sh exits 0 and its stdout parses as hookSpecificOutput.additionalContext JSON",
+    ],
+  }),
 ]);
 
 /**
@@ -263,11 +301,25 @@ function probeUidNonroot() {
   return process.getuid() !== 0;
 }
 
+/** Mirrors nudge-consolidation.sh's own probe (nudge-consolidation.sh:13-20). */
+function probePython() {
+  for (const cand of ["python3", "python", "py"]) {
+    try {
+      const r = spawnSync(cand, ["-c", "import sys"], { stdio: "pipe" });
+      if (r.status === 0) return true;
+    } catch {
+      // try next candidate
+    }
+  }
+  return false;
+}
+
 const PROBES = Object.freeze({
   bash: probeBash,
   git: probeGit,
   hash: probeHash,
   "uid-nonroot": probeUidNonroot,
+  python: probePython,
 });
 
 function isCapabilityAvailable(key) {
