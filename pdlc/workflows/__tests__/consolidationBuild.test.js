@@ -31,7 +31,7 @@
 
 import { execFileSync } from "child_process";
 import { readFileSync } from "fs";
-import { dirname, resolve } from "path";
+import { basename, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -260,19 +260,33 @@ describe("T08 — skill prompt (TSPEC §12.2, §12.3, FSPEC §8.3, §8.4)", () =
 // ---------------------------------------------------------------------------
 // T33 — CLAUDE.md ↔ manifest (TSPEC §12.2 — set-equality, §9.1 erratum 3)
 //
-// The artifact paths CLAUDE.md enumerates, minus the manifest itself,
-// set-equal in both directions to the manifest's rows[] pluginPaths (read
-// repo-relative), plus the BUNDLES axis. Never containment — a surplus
-// listed path is as much a drift signal as a missing one.
+// CLAUDE.md's "Workflow scripts and the runtime build" section no longer
+// spells out each `pdlc/workflows/dist/*.bundle.js` path individually — it
+// collapses them into the collective "the bundles" and names only the two
+// non-bundle artifacts verbatim: `pdlc-cli.mjs` and `distribution-manifest.json`.
+// The set-equal check now runs at that grain: the bare filenames the section
+// spells out must set-equal the manifest's non-bundle row basenames plus the
+// manifest's own filename, and the section must still say "the bundles" —
+// which is only true while the manifest actually has bundle rows. Never
+// containment — a surplus name is as much a drift signal as a missing one.
 // ---------------------------------------------------------------------------
 
 const RUNTIME_BUNDLE_TEST_PATH = "pdlc/workflows/__tests__/runtimeBundle.test.js";
 
-function extractClaudeMdArtifactPaths(claudeMd) {
-  // The bullet lines under "Workflow scripts and the runtime build" name
-  // tracked pdlc/workflows/dist/ paths as `pdlc/workflows/dist/...` inline
-  // code spans, one per line.
-  const matches = claudeMd.matchAll(/`(pdlc\/workflows\/dist\/[^`]+)`/g);
+function claudeMdRuntimeBuildSection(claudeMd) {
+  const heading = "### Workflow scripts and the runtime build";
+  const start = claudeMd.indexOf(heading);
+  expect(start).toBeGreaterThan(-1);
+  const rest = claudeMd.slice(start + heading.length);
+  const nextHeadingOffset = rest.search(/\n### /);
+  return nextHeadingOffset === -1 ? rest : rest.slice(0, nextHeadingOffset);
+}
+
+function extractClaudeMdBareArtifactFilenames(section) {
+  // A bare `name.ext` inline code span — no `/` — is a per-file name spelled
+  // out verbatim, as opposed to `pdlc/workflows/dist/` (a directory, named
+  // in prose) or a shell/command span (contains spaces).
+  const matches = section.matchAll(/`([A-Za-z0-9_-]+\.[A-Za-z0-9]+)`/g);
   return new Set([...matches].map((m) => m[1]));
 }
 
@@ -285,16 +299,29 @@ function extractBundlesConstant(runtimeBundleTestSrc) {
 }
 
 describe("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () => {
-  it("CLAUDE.md's enumerated artifact paths, minus the manifest, are set-equal to the manifest's rows", () => {
+  it("CLAUDE.md's workflow-build section names every non-bundle manifest artifact and the manifest file itself, verbatim", () => {
     const claudeMd = readRepo("CLAUDE.md");
     const manifest = JSON.parse(readDist("distribution-manifest.json"));
 
-    const claudePaths = extractClaudeMdArtifactPaths(claudeMd);
-    claudePaths.delete("pdlc/workflows/dist/distribution-manifest.json");
+    const section = claudeMdRuntimeBuildSection(claudeMd);
+    const claudeNames = extractClaudeMdBareArtifactFilenames(section);
 
-    const manifestPaths = new Set(manifest.rows.map((r) => `pdlc/${r.pluginPath}`));
+    const nonBundleRowNames = new Set(
+      manifest.rows.filter((r) => !r.pluginPath.endsWith(".bundle.js")).map((r) => basename(r.pluginPath))
+    );
+    nonBundleRowNames.add(basename(MANIFEST_PATH));
 
-    expect([...claudePaths].sort()).toEqual([...manifestPaths].sort());
+    expect([...claudeNames].sort()).toEqual([...nonBundleRowNames].sort());
+  });
+
+  it("CLAUDE.md's workflow-build section describes the manifest's remaining rows collectively as \"the bundles\"", () => {
+    const claudeMd = readRepo("CLAUDE.md");
+    const manifest = JSON.parse(readDist("distribution-manifest.json"));
+    const section = claudeMdRuntimeBuildSection(claudeMd);
+
+    const bundleRowCount = manifest.rows.filter((r) => r.pluginPath.endsWith(".bundle.js")).length;
+    expect(bundleRowCount).toBeGreaterThan(0);
+    expect(section).toMatch(/\bthe bundles\b/);
   });
 
   it("the manifest's bundle rows are set-equal to runtimeBundle.test.js's BUNDLES constant", () => {
