@@ -459,8 +459,11 @@ observed run — none depends on an agent reporting success.
 - **AC-5.2** *Who:* the operator. *Given* the same run, *when* its report is compared against
   the pre-sweep baseline report committed under BL-08 (cited by path and commit), *then* the
   two reports' **field sets are equal** — an added *or* removed field fails — and values differ
-  only within the enumerated allowed set (feature name, timestamps, ids, paths). No field,
-  phase or gate disappeared with the deleted machinery (NG-3).
+  only within the enumerated allowed set: feature name, timestamps, ids, paths, the recorded
+  engine-version and plugin-version provenance values, and the run-variable dispatch and
+  outcome collections. Those last three vary between two *correct* runs, so a criterion that
+  demanded their equality would fail on a good sweep; they are compared for presence, not for
+  content. No field, phase or gate disappeared with the deleted machinery (NG-3).
 - **AC-5.3** *Who:* the operator. *Given* HEAD after the sweep, *when* they invoke the probe
   CLI **at its surviving repo path, directly, in a checkout of the consuming project** — the
   post-sweep delivery path settled under O-3 — *then* it answers exactly as before, and is still
