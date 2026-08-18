@@ -269,11 +269,11 @@ carries in this repo, so the PLAN's task sizes come from dispositions rather tha
 | 3 | `orchestrate-queue.js` gate + `distribution.checkEnabled` parse, its workflow-suite coverage |
 | 4 | `check-workflow-drift.sh` + the second `SessionStart` entry in `hooks.json` |
 | 5 | `lib/pdlc-drift.sh`, `sync-workflows.sh` |
-| 6 | 20 `*.test.js` deletions + `runtimeProvenanceWiring.test.js` + 6 helpers + `hookCompatibility.test.js` reduction + `orchestrateQueue.test.js` re-home + `driftGenerators.js` reduction |
+| 6 | 20 of M-8's 21 `*.test.js` modules deleted (all but `hookCompatibility.test.js`, incl. `bootstrap.test.js`) + `runtimeProvenanceWiring.test.js` + 6 helpers + `hookCompatibility.test.js` reduction + `driftGenerators.js` reduction; **no assertion is re-homed out of `orchestrateQueue.test.js`** (§4.4) |
 | 7 | `build-runtime.mjs` reduction (§2.3), 3 bundles + manifest deleted, `pipelineWiring.test.js` / `consolidationPreflight.test.js` corrections (§2.8) |
 | 8 | `.worktreeinclude` (file deleted — single row), `.gitignore` row + ~20-line comment block |
 | 9 | `lib/document-oracles.mjs` packaging/advertised-version checks + exemptions, `documentOracles.test.js` D-1/D-2, `fixtures/covered-violations/` re-fixturing, CLAUDE.md prose those oracles guard |
-| 10 | `.claude/pdlc.config.example.json` two values, CLAUDE.md wave-gate prose, `consolidationPreflight.test.js:205`–`:208` |
+| 10 | CLAUDE.md wave-gate prose and `consolidationPreflight.test.js:205`–`:208`; `.claude/pdlc.config.example.json`'s two values are **unchanged** (§2.2) |
 | 11 | two delegator rewrites (§2.4), `consolidate-learnings/SKILL.md:11`, three module banners, `orchestrateDevSkill.test.js:93` |
 | 12 | CLAUDE.md, `pdlc/OPERATIONS.md`, both READMEs, `pdlc/RELEASE-CHECKLIST.md`, `DECISIONS-plugin-distribution.md`, `QUEUE.md`, stored operator notes |
 | 13 | `cleanup-consumer-workflows.sh` + its documentation and tests (§3.2) |
