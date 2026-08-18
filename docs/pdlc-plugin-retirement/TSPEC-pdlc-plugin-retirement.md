@@ -934,6 +934,14 @@ names the root/non-root distinction TT-1b turns on), and a **non-empty** list of
 its stderr diagnostic). C1/C3 require the call site to repeat that list verbatim, so the list is
 authored once in the inventory and copied into the `itOrSkip` call, not paraphrased.
 
+Two further edits ride the same ownership rule. The ten `hookCompatibility.test.js` conversions add
+ten `"bash"` rows to the same inventory; that module is an M-8 member reduced in place, so those
+rows are owned by its class-6 reduction, not by class 3 — but they land in `driftCapabilities.js`,
+so the two commits touch one file and must be serialised in the PLAN rather than batched together.
+The join oracle's falsifying fixture under `__tests__/fixtures/` is a **new** file matched by
+`testPathIgnorePatterns`, so it joins no test count L-5 fixes; it is owned by the class-3 commit
+that introduces the oracle.
+
 **Deleted, nothing left orphaned.** AT-1.3's field set does not reach non-`*.test.js` files (REQ
 AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get their
 own assertion, landing in `consumerCleanup.test.js` beside TT-3 in the class-3 commit: after the
