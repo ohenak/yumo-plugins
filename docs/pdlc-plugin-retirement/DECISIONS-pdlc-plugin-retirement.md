@@ -112,7 +112,7 @@ Each entry names the choice, the alternatives priced against `2017c6f9`, and the
 - **B — bump the minor/major (`0.24.0` / `1.0.0`) to signal the retirement.** Rejected — and the reason is **cost, not scope**. The caret arithmetic is real: `^0.23.0` (`pdlc/engine/package.json:18`) does not admit `0.24.0`, so a minor bump leaves the installed engine's declared window and `handshake.mjs` refuses every run until the engine's declaration is widened. But widening that declaration is **explicitly carved into scope** by REQ NG-5 ("the engine's declared compatible-plugin range (BL-07)"), so calling option B an NG-5 violation would be wrong and would teach downstream readers that the compat range is untouchable — mis-shaping PLAN's handling of BL-07, which is exactly the prerequisite that gates the sweep on a published engine whose window admits the shipped plugin version. The honest price of B is operator cost and release latency: a widened `pdlcPluginCompat`, a **new engine release cut and published**, and BL-07 re-gated against that release before the first deletion commit merges — for a signal that is documentation-grade. Option A buys the same diagnosability for a one-line version change inside an already-published window. A still wins; it wins on price.
 - **C — leave the version untouched.** Rejected: BR-VER-1 requires the sweep's user-visible surface change to be versioned, and an unchanged version makes installed-copy diagnosis ambiguous.
 
-### DEC-10 — `consolidate-learnings`'s execution host: classes 7 and 11 block on erratum 3
+### DEC-10 — `consolidate-learnings`'s execution host: capability loss accepted, bound to successor `pdlc-consolidation-rehost`
 
 **Context.** The sweep removes exactly one user-visible capability, and it is not one of the two
 delegator skills DEC-05 prices. `pdlc/skills/consolidate-learnings/SKILL.md` names its host in as
@@ -123,31 +123,55 @@ seams `rtConsInjections()` supplies. The engine does not host it either — its 
 `dev` / `queue` / `doctor`, and `consolidate-learnings` sits in `OPERATOR_ONLY_SKILLS`
 (`pdlc/engine/lib/startup.mjs:52`) as a skill *no workflow module dispatches*. Meanwhile the
 `nudge-consolidation` SessionStart hook survives by AC-1.7 and O-1, so post-sweep the pipeline
-keeps telling humans to run a pass that has no host. FSPEC class 11 (M-11n) instructs rewriting
-`SKILL.md:11`'s bundle reference "to name the surviving execution path"; there is none to name.
+keeps telling humans to run a pass whose unattended form has no host. FSPEC class 11 (M-11n, as
+corrected at REQ v0.14) now instructs a **two-part** edit: `SKILL.md:11`'s bundle reference is
+**deleted, not rewritten** (no host survives to name), and the delegation-contract prose naming the
+module the bundle shipped is restated so that after the sweep no sentence of the file names a host
+that no longer loads. Erratum 3's disposition — REQ O-8, bound to successor
+`pdlc-consolidation-rehost` at v0.14/v0.15 — settles *what* the capability loss is; this decision
+records the ordering choice that follows from it.
 
 - **A — block: classes 7 and 11 do not land until erratum 3 has an upstream disposition**
-  (chosen). TSPEC §6.1 erratum 3 raises the gap and §6.4 T-5 already marks it blocking; this
-  decision makes the block a recorded choice with a price rather than an inherited flag. Class 7
-  removes the host and class 11 is instructed to *name* it, so the two are the only commits that
-  can ship the loss — gating them is the narrowest possible gate. SUCC-2 (a `pdlc
-  consolidate-learnings` command on the engine's existing adapter) is the natural successor, and is
-  NG-5 work, not sweep work.
-- **B — rewrite `SKILL.md` to instruct an interactive, hand-run pass.** Rejected: the skill's own
-  body states that performing the pass by hand bypasses the machinery the skill exists to drive
-  (the `.consolidation-log.md` boundary, deterministic `failure-mode-id` derivation, NFR-4
-  duplicate suppression). Substituting a human ritual for a deterministic pass is a **product**
-  decision about what the capability is, priced against US-04 and NG-3 — it belongs in REQ, not in
-  a deletion sweep's DECISIONS. Choosing it here would also hand PROPERTIES an unfalsifiable
-  contract: no oracle distinguishes "the human did the pass" from "nobody did".
-- **C — accept the capability loss explicitly and ship.** Rejected: this is precisely the
-  "ships a skill that cannot run" failure REQ NG-1 and NG-3 exist to prevent, applied to the one
-  skill whose host the sweep removes. No REQ criterion authorises removing a capability, and the
-  surviving `nudge-consolidation` hook would keep advertising it. If the product side decides the
-  loss is acceptable, that is a REQ edit that makes C available; it is not a call engineering makes
-  inside the sweep.
+  (the original decision, since discharged). TSPEC §6.1 erratum 3 raised the gap and §6.4 T-5
+  marked it blocking; this was the recorded choice, with a price, while the disposition was still
+  open. **Erratum 3 has since landed a disposition — REQ O-8, bound v0.14/v0.15 — so the block
+  itself is discharged; per this document's own re-evaluation trigger 2a, that supersedes Option A
+  as the chosen option.**
+- **B — rewrite `SKILL.md` to instruct an interactive, hand-run pass.** Rejected, unchanged by the
+  disposition: the skill's own body states that performing the pass by hand bypasses the machinery
+  the skill exists to drive (the `.consolidation-log.md` boundary, deterministic `failure-mode-id`
+  derivation, NFR-4 duplicate suppression). Substituting a human ritual for a deterministic pass is
+  a **product** decision about what the capability is, priced against US-04 and NG-3 — REQ O-8 did
+  not choose this shape; it chose the accepted-loss-bound-to-successor shape below.
+- **C — accept the capability loss explicitly, ship, and bind the machinery-backed pass to a named
+  successor** (chosen — this is what REQ O-8 decided). What Option C's original rejection priced as
+  missing — "no REQ criterion authorises removing a capability" — is exactly what REQ O-8 supplies:
+  the product side decided the loss is acceptable (recorded operator direction of 2026-08-08,
+  NG-5's carve-out), so the REQ edit that makes C available has landed. Its shape: the unattended,
+  machinery-backed pass is retired; the in-session, human-performed pass continues under
+  `SKILL.md`'s rewritten delegation prose; the machinery-backed pass is bound to
+  `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md` (`docs/_queue/QUEUE.md`
+  Order 24), which carries `ready: false` so the operator's veto stays mechanically enforced
+  through the queue's draft-pickup gate, both raised before the first deletion commit. The
+  surviving `nudge-consolidation` hook keeps advertising the pass — that is priced below, not
+  silent, because the in-session pass remains real (rule 4).
 
-**Price of A, stated plainly — and it is transitive.** The gate names classes 7 and 11, but FSPEC's ordering column binds four further classes to class 7: class 8 lands "Any time after class 7", class 9 "Same commit as, or after, class 7", class 10 "After class 7 (the retired value names a deleted output)" (`FSPEC-pdlc-plugin-retirement.md:160`, `:161`, `:162`; quoted verbatim per rule 2). FSPEC binds one further class the same way a row below: class 12 (Documentation) reads "Last of the deletion classes" (`:164`), so it cannot land while 7–11 are held. Class 13 is the only genuinely independent row — "Independent; may land any time, but its documentation is part of the one story class 12 tells" (`:165`). Blocking class 7 therefore blocks **six of the thirteen classes FSPEC §3.1 enumerates — 7, 8, 9, 10, 11 and 12**; the blocked set is stated once here and reused wherever a count appears. Adding DEC-07's class-6 gate on erratum 6, **seven of thirteen classes are gated: 6 on erratum 6, and 7–12 on erratum 3.** The consequences are concrete for the decisions those classes carry: DEC-02's owning oracle rides class 7, DEC-09's positive version assertion rides class 9, and DEC-01's `dist/` set-equality (AC-1.1) cannot go green until class 7 lands, so each of those oracles is *gated*, not merely *pending*. The sweep cannot complete on engineering's own schedule: PLAN must carry the gate as a real dependency edge over class 7's predecessors — not a prose note — and PROPERTIES must place the ATs for classes 7–12 behind the same edge, so that the ordering is what makes them go green. That is the cost of not deciding a product question inside an engineering document.
+**What C actually costs, and what it does not.** Unlike Option A, C imposes no block on an external
+decision: classes 7 and 11 are free to land once their own ordering obligation is satisfied, and
+that obligation is narrower than the discharged block looked. REQ C-7, per TSPEC T-5, requires
+class 7 (bundle deletion) and class 11 (both halves of the skill rewrite) to land in the
+**same commit**, so `consolidate-learnings/SKILL.md` never sits on a branch naming a host that no
+longer loads; held together this way it is an incomplete feature on an unmerged branch, never a
+registered expected failure, not a C-7 red. That same-commit pairing is the one ordering edge this
+decision owns. The wider hold on classes 8 through 12 that the old Price-of-A paragraph priced
+against this decision does not come from DEC-10 at all: class 7's own ordering obligation now
+reads "After class 6, so no surviving test asserts over a deleted bundle" (FSPEC §3.1 class 7), and
+FSPEC's held-classes note (§3.1) says explicitly that classes 7–12 "stay blocked **transitively**
+behind class 6's own hold until erratum 6 is disposed, because class 7 lands after class 6 and
+classes 8–12 chain off class 7." That is DEC-07's gate (class 6, erratum 6), priced there, not
+here. DEC-02's owning oracle and DEC-01's `dist/` set-equality (AC-1.1) both still ride class 7, so
+they remain gated in effect — but by DEC-07's transitive hold, not by this decision, which is
+resolved.
 
 ## Decision
 
