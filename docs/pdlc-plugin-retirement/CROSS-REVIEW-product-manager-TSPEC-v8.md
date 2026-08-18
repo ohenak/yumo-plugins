@@ -80,3 +80,30 @@ FINDING: Low | delta | local | §6.1 lead sentence (TSPEC:1089) | says "Nine cla
 
 ## Recommendation
 
+**Needs revision** — two High findings, both inside the single block of new prose this round added
+(§5.5's nested-run design), both mechanical to close. Every v7 finding is resolved and no previously
+approved section is reopened; the round's substance — the swept-surface table, the erratum-10 route,
+the helper-doc disposition, the `itOrSkip` signature — is right and is not in question.
+
+Required to approve:
+
+1. **F-01 (High)** — Separate the two child invocations in §5.5. Green child = derived
+   surface-minus-host; red child = that set ∪ `__tests__/fixtures/skipJoinFalsifier.js`. Scope the
+   spawn-argument set-equality assertion to the green invocation, and state what the red invocation
+   asserts. As written the two clauses in part 1 contradict each other and the fixture-inclusive
+   reading makes the green join unpassable.
+2. **F-02 (High)** — Pair part 3's static check with a positive assertion on the same path: the
+   scanner's input is non-empty and contains a known marker, and the same scanner reports a hit when
+   pointed at the falsifier fixture. Otherwise the sweep's only new test module is guarded by an
+   oracle that cannot be shown to fail.
+
+Recommended, not gating:
+
+- **F-03 (Low)** — §6.1's lead count word: "Ten claims", nine open.
+- **Q-01 / Q-02** — one sentence each on the sentinel's parent-side behaviour and the join's runtime
+  cost; neither changes an acceptance criterion.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
