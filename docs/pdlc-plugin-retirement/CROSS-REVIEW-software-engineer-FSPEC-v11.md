@@ -43,6 +43,16 @@ re-read here against the current upstream rather than re-litigated.
 
 ## Routed-item ledger
 
+| Routed item | Landed? | Where |
+|---|---|---|
+| Class 11 — bundle reference **deleted**, not rewritten; capability disposition stated (erratum 3) | **Yes** | `FSPEC:163`, `FSPEC:192`–`:199` |
+| Class 10 — values stay, prose only (erratum 5) | **Yes**, downstream only | `FSPEC:162`; upstream unchanged — see F-01 |
+| `consolidationPreflight.test.js` assertion tightened containment → set-equality | **Yes** | `FSPEC:162`; matches HEAD's one-element `postWavePathspecs` (`.claude/pdlc.config.example.json`; `consolidationPreflight.test.js:205`–`:209`) |
+| Held-class set recorded over §3.1's thirteen classes | **Yes**, wider than TSPEC T-5 asked | `FSPEC:167`–`:170`: class 6 on erratum 6, classes 7–12 on erratum 3. TSPEC T-5 (`TSPEC:1376`) names classes 7 and 11; the transitive closure through §3.1's ordering is 8, 9, 10 and 12 as well, so 7–12 is the correct closure |
+
+All four routed items are on disk. The High below is not a missing routed item; it is what
+landing item 2 in this document alone did to the chain above it.
+
 ## Findings
 
 ## Questions
