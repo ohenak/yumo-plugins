@@ -8,12 +8,12 @@ feature: pdlc-plugin-retirement
 |---|---|
 | Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.2 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.3 | 2026-08-17 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -582,12 +582,15 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 - **AT-1.2** (AC-1.2) *Who:* maintainer. *Given* HEAD, *when* L-3's command is run, *then* three
   things hold together, because the first alone cannot fail for the right reason:
   1. **Positive control (the search ran).** The **unfiltered** output is **non-empty** and
-     set-equals the A-1-covered path set — at minimum
-     `docs/_decisions/DECISIONS-plugin-distribution.md` and
-     `docs/_constraints/pdlc-retirement-baseline.md`, the two allow-listed files that must survive
-     carrying retired names. An empty unfiltered output **fails**: it means the search did not
-     execute (word-split argument list, wrong working directory, `grep` exiting non-zero), which
-     an absence-only oracle would score as a pass.
+     **contains** both `docs/_decisions/DECISIONS-plugin-distribution.md` and
+     `docs/_constraints/pdlc-retirement-baseline.md` — the two allow-listed files that survive the
+     sweep still carrying retired names. Containment, not set-equality, is the checkable shape on
+     this side: A-1's glob coverage is an open set that grows with every cross-review landing under
+     BR-SWEEP-5's globs, and most covered files carry no retired term, so equality is measured
+     false today. Clause 2 supplies the matching upper bound; the two together are the control. An
+     empty unfiltered output **fails**: the search did not execute (word-split term list, wrong
+     working directory, `grep` exiting non-zero), which an absence-only oracle would score as a
+     pass.
   2. **The gate.** That output minus A-1's frozen glob list (§4.2, L-3) is **empty**.
   3. **Term fidelity.** The command's term list set-equals L-2's seven terms — a run with a term
      added or removed does not satisfy this test.
@@ -657,8 +660,9 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 
 - **AT-3.1** (AC-3.1) *Who:* operator in a consumer repo with plugin and engine installed.
   *Given* a ready queue row, *when* they invoke `/pdlc:orchestrate-queue`, *then* all three of
-  these are observable rather than asserted by the agent: the session transcript shows **exactly
-  one** engine CLI invocation and no other pipeline action; the engine's run report carries a
+  these are observable rather than asserted by the agent: the session transcript's tool-invocation
+  set for the skill **set-equals** {one engine CLI call}, which is discharged by counting; the
+  engine's run report carries a
   **non-empty dispatch record**, which is positive proof the phase decision was made engine-side;
   and the skill's response reproduces that report's fields without dropping, renaming or
   recomputing one. "No pipeline decision inside the plugin" is discharged by these positives plus
@@ -676,10 +680,14 @@ committed transcript or from an observed run; none is satisfied by an agent repo
      here — it has no observation short of running every skill, and AT-3.1 already exercises the
      dispatch path.
   2. **Hooks.** Each of L-4's four surviving entries is run against a synthetic payload and emits
-     its **named observable**: the harvest guard blocks the deletion and its refusal message names
-     the missing LEARNINGS file; the scope-field warning names the missing `Scope:` field; the
-     REQ-size warning names the exceeded budget; the consolidation nudge names the stale LEARNINGS
-     count. Exit status and message are both part of the assertion.
+     its **named observable on its own channel**: the harvest guard writes its refusal message,
+     naming the missing LEARNINGS file, to **stderr** and exits **2** (the PreToolUse blocking
+     payload); the scope-field warning and the REQ-size warning each arrive as the
+     `hookSpecificOutput.additionalContext` string of a **stdout JSON object** with exit **0**,
+     naming the missing `Scope:` field and the exceeded budget respectively; the consolidation
+     nudge arrives the same way as SessionStart context, naming the stale LEARNINGS count. Channel,
+     exit status and message text are all part of the assertion — a harness that expects a warning
+     on stderr with a non-zero exit fails three correct hooks.
 - **AT-3.4** (AC-3.4) *Who:* a Ptah-configured consumer. *Given* HEAD, *when* each configured
   skill path is resolved, *then* every path exists.
 - **AT-3.5** (AC-3.5 — regression guard) *Who:* operator. *Given* the published engine of BL-07
