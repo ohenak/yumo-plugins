@@ -129,6 +129,76 @@ export const SKIP_INVENTORY = Object.freeze([
     unverifiedInvariants: INVARIANTS_PROP_CLS_03_RSN_04_L3_L4,
   }),
   Object.freeze({ name: "TT-1b", capability: "uid-nonroot", unverifiedInvariants: INVARIANTS_TT_1B }),
+  Object.freeze({
+    name: "PROP-COMPAT-04 (CROSS-REVIEW missing Scope)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-04 (Scope already present)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-04: check-scope-field.sh's silent-exit-0 behaviour when Scope is already present",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-04 (CODE_REVIEW missing Scope)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour for CODE_REVIEW-*.md",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-05 (CROSS-REVIEW, no LEARNINGS)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CROSS-REVIEW-*.md",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-05 (LEARNINGS present)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-05: guard-harvest-before-delete.sh's allow-through behaviour when LEARNINGS-*.md exists",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-05 (CODE_REVIEW, no LEARNINGS)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CODE_REVIEW-*.md",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (below both soft thresholds)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's silent behaviour below both soft thresholds",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (soft line threshold)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's soft-line-threshold advisory",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (soft byte threshold)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's soft-byte-threshold advisory",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (hard-limit message unchanged)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's hard-limit message is unaffected by the soft-threshold change",
+    ],
+  }),
 ]);
 
 /**

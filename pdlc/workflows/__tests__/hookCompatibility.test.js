@@ -3,33 +3,20 @@
  * PROP-COMPAT-04: check-scope-field.sh exits non-zero when Scope: tag is absent.
  * PROP-COMPAT-05: guard-harvest-before-delete.sh exits non-zero when LEARNINGS-*.md is absent.
  *
- * These tests invoke the hook scripts directly as child processes.
- * Skipped on platforms where bash is not available.
+ * These tests invoke the hook scripts directly as child processes. Skipped loudly, via
+ * `itOrSkip`, on platforms where bash is not available (TSPEC §1.3, §7.3).
  */
 
-import { execSync, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { itOrSkip } from "./helpers/driftCapabilities.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// ─── Environment guard ────────────────────────────────────────────────────────
-
-/** Returns true if bash is available in this environment. */
-function bashAvailable() {
-  try {
-    execSync("bash --version", { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const hasBash = bashAvailable();
 
 // Paths to the hook scripts under test
 // __dirname = pdlc/workflows/__tests__; go up two levels to pdlc/, then into hooks/scripts/
@@ -85,8 +72,10 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
     }
   });
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "outputs advisory JSON when a CROSS-REVIEW-*.md file lacks a Scope tag",
+    "bash",
+    ["PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour"],
     () => {
       // check-scope-field.sh receives the tool_input as JSON on stdin
       const toolInput = JSON.stringify({
@@ -108,8 +97,10 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits 0 silently when the CROSS-REVIEW-*.md file already has a Scope tag",
+    "bash",
+    ["PROP-COMPAT-04: check-scope-field.sh's silent-exit-0 behaviour when Scope is already present"],
     () => {
       // Write a cross-review file WITH the Scope: tag
       writeFileSync(
@@ -133,8 +124,10 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "outputs advisory JSON when a CODE_REVIEW-*.md file lacks a Scope tag",
+    "bash",
+    ["PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour for CODE_REVIEW-*.md"],
     () => {
       const codeReviewFile = join(tmpDir, "CODE_REVIEW-my-feature-v1.md");
       writeFileSync(
@@ -177,8 +170,10 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
     }
   });
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits non-zero when trying to delete CROSS-REVIEW-*.md and no LEARNINGS-*.md exists",
+    "bash",
+    ["PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CROSS-REVIEW-*.md"],
     () => {
       const crossReviewPath = join(tmpDir, "CROSS-REVIEW-pm-review-TSPEC.md");
       // Simulate the Bash tool calling: rm <cross-review-path>
@@ -203,8 +198,10 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits 0 when LEARNINGS-*.md exists alongside the CROSS-REVIEW-*.md",
+    "bash",
+    ["PROP-COMPAT-05: guard-harvest-before-delete.sh's allow-through behaviour when LEARNINGS-*.md exists"],
     () => {
       // Create a LEARNINGS file in the same dir
       writeFileSync(
@@ -227,8 +224,10 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits non-zero when trying to delete CODE_REVIEW-*.md and no LEARNINGS-*.md exists",
+    "bash",
+    ["PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CODE_REVIEW-*.md"],
     () => {
       const codeReviewPath = join(tmpDir, "CODE_REVIEW-my-feature-v1.md");
       writeFileSync(codeReviewPath, "# Code Review\nDoD findings.\n");
@@ -245,48 +244,6 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
       expect(stderr).toContain("pdlc guard");
     }
   );
-});
-
-// ─── C7: hooks.json SessionStart registration for check-workflow-drift.sh ────
-// FSPEC §5.1 (BL-03): pdlc/hooks/hooks.json gains a SECOND SessionStart entry
-// invoking check-workflow-drift.sh through the same ${CLAUDE_PLUGIN_ROOT} form
-// the three shipped hooks use. The pre-existing nudge-consolidation.sh entry
-// is left unchanged. RED until L-04 registers the second entry.
-describe.skip("C7: hooks.json registers check-workflow-drift.sh as a second SessionStart hook — held under T16: registration removed by T10, block deleted by T16", () => {
-  // __dirname = pdlc/workflows/__tests__; go up two levels to pdlc/, then hooks.json
-  const HOOKS_JSON_PATH = resolve(__dirname, "../../hooks/hooks.json");
-
-  function readHooksJson() {
-    const raw = readFileSync(HOOKS_JSON_PATH, "utf8");
-    return JSON.parse(raw);
-  }
-
-  it("leaves the existing nudge-consolidation.sh SessionStart entry unchanged", () => {
-    const hooks = readHooksJson();
-    const sessionStart = hooks.hooks.SessionStart;
-    expect(Array.isArray(sessionStart)).toBe(true);
-    expect(sessionStart[0].hooks[0].command).toBe(
-      '"${CLAUDE_PLUGIN_ROOT}"/hooks/scripts/nudge-consolidation.sh'
-    );
-  });
-
-  it("registers a second SessionStart entry invoking check-workflow-drift.sh via the same ${CLAUDE_PLUGIN_ROOT} form", () => {
-    const hooks = readHooksJson();
-    const sessionStart = hooks.hooks.SessionStart;
-    expect(sessionStart.length).toBeGreaterThanOrEqual(2);
-
-    const driftEntry = sessionStart.find((entry) =>
-      entry.hooks.some((h) => h.command.includes("check-workflow-drift.sh"))
-    );
-    expect(driftEntry).toBeDefined();
-
-    const driftCommand = driftEntry.hooks.find((h) =>
-      h.command.includes("check-workflow-drift.sh")
-    ).command;
-    expect(driftCommand).toBe(
-      '"${CLAUDE_PLUGIN_ROOT}"/hooks/scripts/check-workflow-drift.sh'
-    );
-  });
 });
 
 // ─── PROP-COMPAT-06: check-req-size.sh soft threshold ────────────────────────
@@ -336,13 +293,18 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     return JSON.parse(stdout).hookSpecificOutput.additionalContext;
   }
 
-  (hasBash ? it : it.skip)("is silent below both soft thresholds", () => {
+  itOrSkip(
+    "is silent below both soft thresholds",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's silent behaviour below both soft thresholds"], () => {
     // 630 lines x 80 bytes = 50,400 bytes — exactly at the soft line threshold, under it in bytes.
     expect(advisoryFor(writeReq("REQ-under.md", 630, 80))).toBe("");
   });
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "warns and names docs/_constraints/ when the soft line threshold is exceeded",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's soft-line-threshold advisory"],
     () => {
       // 640 lines x 80 bytes = 51,200 bytes — over 630 lines, under both hard limits.
       const msg = advisoryFor(writeReq("REQ-softlines.md", 640, 80));
@@ -354,8 +316,10 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "warns when the soft byte threshold is exceeded even with few lines",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's soft-byte-threshold advisory"],
     () => {
       // 300 lines x 190 bytes = 57,000 bytes — over 55,296 bytes, under 61,440.
       const msg = advisoryFor(writeReq("REQ-softbytes.md", 300, 190));
@@ -365,7 +329,10 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     }
   );
 
-  (hasBash ? it : it.skip)("keeps the hard-limit message unchanged", () => {
+  itOrSkip(
+    "keeps the hard-limit message unchanged",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's hard-limit message is unaffected by the soft-threshold change"], () => {
     // 720 lines x 100 bytes = 72,000 bytes — over both hard limits.
     const msg = advisoryFor(writeReq("REQ-hard.md", 720, 100));
     expect(msg).toContain("over the REQ size budget");

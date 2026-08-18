@@ -248,65 +248,35 @@ test("T01 pre-flight: the baseline doc's partition-closure line names a commit a
 // instead of silently drifting the two numbers apart or back into agreement
 // without anyone updating this record.
 //
-// TSPEC §6.3 T-6 additionally obliges a re-check at implementation time: the
-// `hookCompatibility.test.js` reduction (rather than deletion) disposition
-// only holds if no assertion *outside* its `C7` block depends on the drift
-// hook (`check-workflow-drift.sh`) still being invocable. If some assertion
-// elsewhere in the module required the drift hook to run, the disposition
-// would flip back to deletion and erratum 6's correction would change with
-// it. This gate re-derives that check from the module's source rather than
-// trusting the disposition by assertion.
-
-test("T13 erratum-6 disposition gate: FSPEC L-5's 97 and TSPEC §4.4's 99 are the literals on record, and they still disagree", () => {
-  const fspecDoc = readFileSync(
-    repoPathOf("../../../docs/pdlc-plugin-retirement/FSPEC-pdlc-plugin-retirement.md"),
-    "utf8",
-  );
-  const tspecDoc = readFileSync(
-    repoPathOf("../../../docs/pdlc-plugin-retirement/TSPEC-pdlc-plugin-retirement.md"),
-    "utf8",
-  );
-
-  const fspecMatch = fspecDoc.match(/\*\*Post-sweep expectation: (\d+)\*\*/);
-  assert.ok(fspecMatch, "expected FSPEC L-5's '**Post-sweep expectation: <N>**' literal");
-  const fspecLiteral = Number(fspecMatch[1]);
-
-  const tspecMatch = tspecDoc.match(/Post-sweep count: 119 − 21 \+ 1 = \*\*(\d+)\*\*/);
-  assert.ok(tspecMatch, "expected TSPEC §4.4's 'Post-sweep count: 119 − 21 + 1 = **<N>**' literal");
-  const tspecLiteral = Number(tspecMatch[1]);
-
-  assert.equal(fspecLiteral, 97, "expected FSPEC L-5's literal to still read 97 (erratum 6 open)");
-  assert.equal(tspecLiteral, 99, "expected TSPEC §4.4's corrected literal to read 99");
-  assert.notEqual(
-    fspecLiteral,
-    tspecLiteral,
-    "erratum 6 is disposed once these literals agree — this gate must be re-authored, not silently left passing, when that happens",
-  );
-});
-
-test("T13 erratum-6 disposition gate (TSPEC §6.3 T-6): no assertion outside hookCompatibility.test.js's C7 block depends on check-workflow-drift.sh being invocable", () => {
+// TSPEC §6.3 T-6 additionally obliged a re-check at implementation time: the
+// `hookCompatibility.test.js` reduction (rather than deletion) disposition only held if no
+// assertion *outside* its `C7` block depended on the drift hook (`check-workflow-drift.sh`)
+// still being invocable. PLAN T16 (pdlc-plugin-retirement) performed that re-check and found
+// no such assertion — `C7` was the only site in the module that invoked the drift hook — so
+// T16 deleted the `C7` block outright rather than leaving it as a permanently-skipped husk.
+// That deletion *is* T-6's disposition check landing, not a flip to full-file deletion: the
+// module itself is still retained (a reduction), just without the block that was the drift
+// hook's last remaining consumer. This gate now re-derives that outcome from the module's
+// source: `C7` is gone, and the drift hook is invoked nowhere in the file at all.
+test("T13 erratum-6 disposition gate (TSPEC §6.3 T-6): PLAN T16 deleted the C7 block, and no assertion anywhere in hookCompatibility.test.js depends on check-workflow-drift.sh being invocable", () => {
   const source = readFileSync(
     repoPathOf("../../../pdlc/workflows/__tests__/hookCompatibility.test.js"),
     "utf8",
   );
 
-  const c7Start = source.indexOf('describe.skip("C7:');
-  assert.ok(c7Start >= 0, "expected a describe.skip(\"C7: ...\") block to still exist");
-  const c7End = source.indexOf("\n});\n", c7Start) + "\n});\n".length;
-  assert.ok(c7End > c7Start, "expected to find the C7 block's closing '});'");
+  assert.ok(
+    !source.includes('describe.skip("C7:'),
+    "expected the C7 block to be gone (PLAN T16 deleted it; the drift hook it exercised has no other caller in this module)",
+  );
 
-  const before = source.slice(0, c7Start);
-  const after = source.slice(c7End);
-  const outsideC7 = before + after;
-
-  // The reduction disposition (TSPEC §2.6) holds only if references to the
-  // drift hook outside C7 are static/negative (e.g. asserting the script is
-  // no longer tracked) rather than invocations that require it to run.
+  // The disposition check itself (TSPEC §6.3 T-6): no assertion anywhere in the module may
+  // invoke check-workflow-drift.sh. If a future edit reintroduces such a call, this gate reds
+  // rather than silently reopening erratum 6's correction.
   const invocationPattern =
     /(execFileSync|execSync|spawnSync)\([^)]*check-workflow-drift\.sh/;
   assert.doesNotMatch(
-    outsideC7,
+    source,
     invocationPattern,
-    "expected no assertion outside C7 to invoke check-workflow-drift.sh — such an assertion would flip the disposition from reduction to deletion (TSPEC §6.3 T-6), reopening erratum 6 with a different correction",
+    "expected no assertion in hookCompatibility.test.js to invoke check-workflow-drift.sh (T-6 disposition landed via C7's deletion, not a live dependency)",
   );
 });

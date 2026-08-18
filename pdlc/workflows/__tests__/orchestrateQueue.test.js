@@ -901,7 +901,7 @@ describe("RLH-19 continued — B2: the 7-argument evidence call vs. the 6-argume
 // ---------------------------------------------------------------------------------------------
 
 describe("PLAN T06/T08 — drift gate retirement (class 3)", () => {
-  it.skip("T08: orchestrate-queue.js exports no drift-gate symbol and parses no distribution.checkEnabled key — held under T15: a link-compat shim (DRIFT_STATE_PATH, validateDriftRecord, mapDriftState) lives on in orchestrate-queue.js until T15 deletes the five M-8 suites that still import it; T15 removes the shim and un-skips this assertion at full, unmodified strength", () => {
+  it("T08: orchestrate-queue.js exports no drift-gate symbol and parses no distribution.checkEnabled key", () => {
     const source = readFileSync(ORCHESTRATE_QUEUE_SOURCE_PATH, "utf8");
 
     // Split so this assertion's own source text never contains the searched-for fragments as one
