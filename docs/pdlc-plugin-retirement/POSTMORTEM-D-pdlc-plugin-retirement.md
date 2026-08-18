@@ -33,7 +33,41 @@ did not discharge, which is the failure this phase records.
 
 ## Iterations
 
+One. Phase D opened and halted on a single confirmation round; there was no author/review
+oscillation to trace.
+
+| Round | Document | SE verdict | TE verdict | Outcome |
+|---|---|---|---|---|
+| 11 | FSPEC v0.8 (`1eccc97c`) | Needs revision (1 High / 3 Medium / 2 Low) | Needs revision (3 High / 3 Medium / 1 Low) | Halt — non-approving confirmation |
+
+Context for the count: FSPEC had already consumed ten rounds (v1, v3–v5, v7–v11 SE; v1–v11 TE)
+and was approved at v0.7. The erratum round was expected to be a two-commit touch-up. It cost a
+fresh High-bearing round instead, and the four Highs raised are all *new* — none reopens a
+section the erratum did not touch, and both confirmers say so explicitly. That is the diagnostic
+signal: the halt is not review fatigue or re-litigation, it is the erratum edit itself creating
+contradictions that did not exist at v0.7.
+
 ## Reviewers
+
+| Reviewer | Lens | Round | Verdict |
+|---|---|---|---|
+| software-engineer | Feasibility, contract-chain consistency, delta-vs-approved-baseline | 11 | Needs revision (1H / 3M / 2L) |
+| test-engineer | Oracle falsifiability, testability of the delta's new claims | 11 | Needs revision (3H / 3M / 1L) |
+
+Both reviewers re-read upstream at HEAD per DEC-ERR-03 rather than against the version FSPEC was
+last approved against, and both grounded their Highs in repo facts they executed rather than in
+document prose — SE against `.claude/pdlc.config.example.json` and `TSPEC:742`, TE against
+`consolidationPreflight.test.js:197-210`, `pdlc/engine/scripts/publish-preflight.mjs:221-222`
+and `pdlc/skills/consolidate-learnings/SKILL.md:8-13`. No High was withdrawn or disputed.
+
+One process defect belongs to the round itself rather than to the document: **the te-review
+confirmation carried no parseable `FINDING:` line.** TE's seven findings live only in the
+findings table; SE emitted six machine-readable `FINDING:` lines alongside its table. The
+dispatcher fail-closed on the unparseable confirmation, recording a synthetic
+High / delta / nonlocal item. TE's substance was sound and independently gating (three genuine
+Highs), so the fail-closed default did not change the halt decision — but it would have masked
+an *approving* TE confirmation just as readily, and that is worth fixing before the next
+erratum round.
 
 ## Pattern of Disagreement
 
