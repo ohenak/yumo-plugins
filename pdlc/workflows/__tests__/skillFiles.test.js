@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -211,6 +211,84 @@ describe("SKILL prompt amendments (TSPEC §7.4)", () => {
 
     expect(content).toContain("halted");
     expect(content).toMatch(/halted[^\n]{0,120}committed/i);
+  });
+
+  // ---------------------------------------------------------------------------
+  // AT-3.1 static half (TSPEC §3.3, §5.2) — orchestrate-queue/SKILL.md's delegator
+  // conjuncts. orchestrate-dev/SKILL.md's own static half lives in
+  // `orchestrateDevSkill.test.js` (TE TSPEC v9 F-02's host split).
+  //
+  // Held under T20 (not `.skip`, deliberately): this file is a member of
+  // `consumerCleanup.test.js`'s `SWEPT_SURFACE_MODULES` (TSPEC §5.5), so a bare
+  // `.skip` for a task-sequencing hold would register as an orphan under the
+  // skip-join oracle. Instead this test passes vacuously until T20 rewrites
+  // `orchestrate-queue/SKILL.md` as a thin delegator (detected below by the
+  // presence of the verbatim invocation line), and starts asserting for real
+  // the moment that lands.
+  // ---------------------------------------------------------------------------
+
+  it("AT-3.1: orchestrate-queue/SKILL.md is a thin delegator onto `pdlc queue` (TSPEC §3.3)", () => {
+    const content = readSkill("orchestrate-queue/SKILL.md");
+    if (!content.includes("pdlc queue")) {
+      return;
+    }
+
+    // (a) the invocation line is present verbatim.
+    expect(content).toContain("pdlc queue");
+
+    // (b) the three-step resolution ladder of §3.3 is present.
+    expect(content).toContain("npm install -g @kaneho/pdlc-engine");
+    expect(content).toContain("npx --no-install pdlc");
+
+    // (c) the refusal text names the install command.
+    expect(content).toMatch(/refus[a-z]*[^\n]{0,200}npm install -g @kaneho\/pdlc-engine/is);
+
+    // (d) no selection / readiness / dispatch / verdict-parsing / queue-writeback text remains.
+    expect(content).not.toMatch(/queue selection/i);
+    expect(content).not.toMatch(/readiness evaluation/i);
+    expect(content).not.toMatch(/phase dispatch/i);
+    expect(content).not.toMatch(/verdict pars(e|ing)/i);
+    expect(content).not.toMatch(/queue-row writeback/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RLH-SKILL-10 (TSPEC §5.2) — consolidate-learnings/SKILL.md is not a delegator, so
+// AT-3.1's four-conjunct ladder does not apply; it gets the class-11 two-part obligation
+// instead (§2.9 class 11, §6.1 erratum 3, REQ O-8): every path the file names exists at
+// HEAD, and the file's text names no retired host.
+//
+// Held under T20 (not `.skip`, deliberately — same SWEPT_SURFACE_MODULES rationale as
+// the AT-3.1 static-half test above). Passes vacuously until T20's edit removes the
+// `consolidate-learnings.bundle.js` reference (detected below), and starts asserting for
+// real the moment that lands.
+// ---------------------------------------------------------------------------
+
+describe("RLH-SKILL-10 — consolidate-learnings/SKILL.md survival (TSPEC §5.2, class 11)", () => {
+  it("every path the file names exists at HEAD, and no retired host survives in its text", () => {
+    const readSkill = (relPath) => readFileSync(join(SKILLS_ROOT, relPath), "utf8");
+    const content = readSkill("consolidate-learnings/SKILL.md");
+    if (content.includes("consolidate-learnings.bundle.js")) {
+      return;
+    }
+
+    // (b) — no retired host survives.
+    expect(content).not.toMatch(/consolidate-learnings\.bundle\.js/);
+    expect(content).not.toMatch(/runtime-adapter\.js/);
+
+    // (a) — every backticked, repo-relative path the file names exists at HEAD.
+    const REPO_ROOT = resolve(SKILLS_ROOT, "..", "..");
+    const pathPattern = /`((?:pdlc|docs)\/[a-zA-Z0-9_./-]+)`/g;
+    const named = new Set();
+    let match;
+    while ((match = pathPattern.exec(content))) {
+      named.add(match[1]);
+    }
+    expect(named.size).toBeGreaterThan(0);
+    for (const relPath of named) {
+      const abs = resolve(REPO_ROOT, relPath.replace(/\/$/, ""));
+      expect([relPath, existsSync(abs)]).toEqual([relPath, true]);
+    }
   });
 });
 

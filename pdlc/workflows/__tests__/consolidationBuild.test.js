@@ -30,7 +30,17 @@
  */
 
 import { execFileSync } from "child_process";
-import { existsSync, readFileSync } from "fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
+import { tmpdir } from "os";
 import { basename, dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -43,6 +53,17 @@ const MANIFEST_PATH = resolve(DIST, "distribution-manifest.json");
 const readRepo = (relPath) => readFileSync(resolve(REPO_ROOT, relPath), "utf8");
 const readWorkflowSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
 const readDist = (file) => readFileSync(resolve(DIST, file), "utf8");
+
+/**
+ * True once T19 has reduced `build-runtime.mjs` to its single-row, `pdlc-cli.mjs`-only
+ * emission (DEC-02) — i.e. the committed `pdlc/workflows/dist/` already carries nothing but
+ * `pdlc-cli.mjs`. Used by TT-5's held assertions below (see the comment on that block for why
+ * a task-sequencing hold here is a vacuous pass, never a `.skip`).
+ */
+const builderIsReduced = () => {
+  const names = readdirSync(DIST);
+  return names.length === 1 && names[0] === "pdlc-cli.mjs";
+};
 
 // ---------------------------------------------------------------------------
 // T10 — gitignore text (TSPEC §3.3)
@@ -181,6 +202,93 @@ describe("T32 — the consolidation bundle (T-02, TSPEC §8.2, §8.3)", () => {
       .split("\n")
       .find((line) => line.trim() && !line.trim().startsWith("//"));
     expect(firstCode).toMatch(/^export const meta = \{/);
+  });
+
+  // -------------------------------------------------------------------------
+  // TT-5 (TSPEC §5.2, extending this block) — the reduced builder's emission
+  // contract (DEC-02, AC-1.1, FSPEC L-1).
+  //
+  // Held under T19 (not `.skip`, deliberately, same rationale as
+  // `consolidationPreflight.test.js`'s runtime-bundle hold above): this file
+  // is a member of `consumerCleanup.test.js`'s `SWEPT_SURFACE_MODULES`
+  // (TSPEC §5.5), whose entire skip surface is required to route through
+  // `describeOrSkip`/`itOrSkip` — a task-sequencing hold is not a
+  // runner-capability skip, so a bare `.skip` here would register as an
+  // orphan under the skip-join oracle. Instead both assertions below pass
+  // vacuously while the pre-reduction, multi-bundle builder is still in
+  // place (`pdlc/workflows/dist/` still carries bundle files and the
+  // manifest alongside `pdlc-cli.mjs`), and start asserting for real the
+  // moment T19 reduces `build-runtime.mjs` to its single-row,
+  // `pdlc-cli.mjs`-only emission — detected here by `builderIsReduced()`
+  // rather than by naming T19 directly, so the guard tracks the artifact
+  // shape it actually depends on.
+  //
+  // Both tests mutate the real `pdlc/workflows/dist/` (the builder's sole
+  // output directory, AC-6.1 — there is no output-directory override to
+  // redirect it to an isolated temp path), so each backs up and restores
+  // the directory's contents in a `finally`, leaving the working tree
+  // exactly as it found it either way.
+  // -------------------------------------------------------------------------
+
+  it("a clean run's emitted file set set-equals {pdlc-cli.mjs}, with exactly one wrote/in-sync stdout row", () => {
+    if (!builderIsReduced()) {
+      return;
+    }
+    const backup = mkdtempSync(join(tmpdir(), "pdlc-tt5-backup-"));
+    for (const name of readdirSync(DIST)) {
+      cpSync(join(DIST, name), join(backup, name));
+    }
+    try {
+      rmSync(DIST, { recursive: true, force: true });
+      mkdirSync(DIST, { recursive: true });
+
+      const stdout = execFileSync("node", [resolve(WORKFLOWS, "build-runtime.mjs")], {
+        cwd: REPO_ROOT,
+        stdio: "pipe",
+      }).toString();
+
+      const emitted = readdirSync(DIST);
+      expect(new Set(emitted)).toEqual(new Set(["pdlc-cli.mjs"]));
+
+      const rows = stdout
+        .split("\n")
+        .filter((line) => /^\s*(wrote|in-sync)\s+pdlc\/workflows\/dist\//.test(line));
+      expect(rows.length).toBe(1);
+    } finally {
+      rmSync(DIST, { recursive: true, force: true });
+      mkdirSync(DIST, { recursive: true });
+      for (const name of readdirSync(backup)) {
+        cpSync(join(backup, name), join(DIST, name));
+      }
+      rmSync(backup, { recursive: true, force: true });
+    }
+  });
+
+  it("mutating the emitted artifact makes --check print STALE on stderr and exit 1", () => {
+    if (!builderIsReduced()) {
+      return;
+    }
+    const target = resolve(DIST, "pdlc-cli.mjs");
+    const original = readFileSync(target, "utf8");
+    try {
+      writeFileSync(target, `${original}\n// TT-5 mutation\n`, "utf8");
+
+      let caught;
+      try {
+        execFileSync("node", [resolve(WORKFLOWS, "build-runtime.mjs"), "--check"], {
+          cwd: REPO_ROOT,
+          stdio: "pipe",
+        });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeDefined();
+      expect(caught.status).toBe(1);
+      expect(caught.stderr.toString()).toContain("STALE    pdlc/workflows/dist/pdlc-cli.mjs");
+    } finally {
+      writeFileSync(target, original, "utf8");
+    }
   });
 });
 
