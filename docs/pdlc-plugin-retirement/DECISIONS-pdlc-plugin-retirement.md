@@ -105,4 +105,35 @@ Each entry names the choice, the alternatives priced against `2017c6f9`, and the
 
 ## Decision
 
+The retirement lands as a **reduction, not an evacuation**: `pdlc/workflows/` keeps exactly the
+artifacts that a live execution host still reads, everything whose only consumer was the retired
+plugin runtime goes, and `pdlc/engine/**` is not edited at all (REQ NG-5). Each row below is the
+option selected in **Options Considered**; the alternatives and their rejection reasons stay there
+and are not restated.
+
+| Decision | Chosen option | Net effect on the tree |
+|---|---|---|
+| DEC-01 | A — leave the CLI at `pdlc/workflows/dist/pdlc-cli.mjs` | `git ls-files pdlc/workflows/dist/` goes from five entries to one; `OUT_DIR` in `build-runtime.mjs` needs no retarget |
+| DEC-02 | A — reduce `build-runtime.mjs` to a single-row builder | `bundles` keeps one row (`pdlc-cli`); bundling machinery, `RETIRES_BY_ID` and the manifest write go; `--check` keeps its shipped output shape |
+| DEC-03 | A — leave `MERGE_GUARD_DEFAULTS` exactly as shipped | No edit to `pdlc/workflows/orchestrate-dev.js`'s frozen four-member array, so the vendored engine copy stays byte-identical |
+| DEC-04 | A — operator-invoked, name-only, all-or-nothing cleanup script | New `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`; **no** entry added to `pdlc/hooks/hooks.json` (verified: zero references today) |
+| DEC-05 | A — rewrite the two delegator SKILL.md files thin | `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md` survive with unchanged frontmatter; Ptah `skill_path` and the engine's `OPERATOR_ONLY_SKILLS` catalogue keep resolving |
+| DEC-06 | A — leave `runtime-adapter.js` and its two test modules untouched | The orphan is routed upstream as erratum 2 rather than deleted inside the sweep |
+| DEC-07 | A — reduce `hookCompatibility.test.js` in place | The `C7` block goes, `PROP-COMPAT-*` assertions stay; FSPEC M-8's count is corrected by erratum 6 |
+| DEC-08 | A — leave both `.claude/pdlc.config.example.json` values as-is | Post-wave regeneration of `dist/` keeps working; only the surrounding prose naming retired bundles is edited |
+| DEC-09 | A — patch-bump the plugin to `0.23.2` | `pdlc/.claude-plugin/plugin.json` moves `0.23.1` → `0.23.2`, inside the engine's `^0.23.0` window, so `handshake.mjs` needs no change |
+
+Three cross-cutting rules follow from the set and bind implementation:
+
+1. **The engine carve-out is absolute.** No task in Phase P may write under `pdlc/engine/`. Where a
+   sweep-shaped change would require an engine edit (DEC-03, DEC-06, DEC-09 option B), the decision
+   is to *not* make the change rather than to widen the blast radius.
+2. **Set-equality claims are re-measured, never inherited.** REQ C-6 and FSPEC §3.0 counts are
+   re-derived from the tree at implementation time; DEC-07 exists precisely because an inherited
+   count was wrong. A count that disagrees with the tree is an erratum against the upstream
+   document, not a licence to delete files until the number matches.
+3. **Retirement is observable, not silent.** DEC-04's script reports its classification and DEC-09's
+   version bump makes an installed copy diagnosable; nothing in this set removes a consumer-visible
+   artifact without a signal the consumer can read.
+
 ## Consequences
