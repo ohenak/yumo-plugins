@@ -71,6 +71,43 @@ erratum round.
 
 ## Pattern of Disagreement
 
+Not author-versus-reviewer, and not reviewer-versus-reviewer. SE and TE agree on every point of
+overlap and their Highs interlock: SE F-01 (erratum 5 landed downstream only) and TE F-02
+(erratum 3 must travel to REQ §A-1 and baseline M-11n) are the same defect on two different
+errata, and SE F-03 and TE F-01 are the same defect on one claim. The disagreement is
+**author-versus-upstream**, mediated by reviewers who checked the chain.
+
+Three recurring shapes:
+
+1. **Downstream-only landing of a decision whose contract spans three documents.** Erratum 5
+   decided that `postWaveCommand` / `postWavePathspecs` *values* survive. FSPEC v0.8 says so;
+   REQ C-5 (`REQ:229`) still enumerates those values as retired, REQ AC-1.2's term rationale
+   (`REQ:319`–`:321`) still rests on their retirement, and the measured baseline's M-11h row
+   (`docs/_constraints/pdlc-retirement-baseline.md:63`) still records them as removals. The
+   substance is right — SE verified the reduced builder still emits into `pdlc/workflows/dist/`
+   — but a correction that lands on one of three documents leaves the chain worse than before
+   the erratum, because two documents now contradict a third that used to agree with them.
+   Erratum 3 has the identical shape against REQ §A-1 and baseline M-11n.
+
+2. **Prose disposition written at the wrong granularity.** Erratum 3's disposition rests on
+   "no host survives the rewrite to name" (`FSPEC:194`). True of *execution* hosts; false of
+   modules — `consolidate-learnings.js` survives as a module and only loses its execution host
+   (`TSPEC:70`), and the SKILL.md sentence being disposed of names the module *and* the bundle.
+   TE pushed the same observation further: the skill's own `:8-13` says the pass is performed
+   by the workflow script and that hand-running bypasses the log boundary, duplicate suppression
+   and the in-progress marker — so "still operator-invocable in session" is false at the
+   granularity the skill itself documents. A one-word granularity slip turned a bookkeeping
+   erratum into an undeclared capability retirement.
+
+3. **Assertion tightening that cannot fail where the gate runs.** Class 10's tightened
+   containment→set-equality edit names `.claude/pdlc.config.example.json`, but the test it
+   tightens (`consolidationPreflight.test.js:197-210`) reads the operator's untracked
+   `.claude/pdlc.config.json` behind an `existsSync` branch. In CI that arm never executes, so
+   the tightened oracle is unfalsifiable in the required-check set and its only live effect is
+   to red an operator machine that legitimately adds a pathspec the baseline permits. This is
+   the same "oracle stated in English, never executed against the tree" defect Phase T recorded
+   (POSTMORTEM-T, pattern 2), recurring inside an erratum round.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
