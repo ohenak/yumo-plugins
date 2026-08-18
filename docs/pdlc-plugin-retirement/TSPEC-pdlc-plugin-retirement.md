@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.5) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | — |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.1 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.2 | 2026-08-17 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
@@ -52,7 +52,7 @@ Every claim below cites the symbol or file it rests on, verified at `2cd0d6b1`:
 `MERGE_CONFIG_PATH`), `pdlc/engine/lib/report.mjs` (`buildEngineBlock`, `stampReport`),
 `pdlc/engine/lib/startup.mjs` (`OPERATOR_ONLY_SKILLS`), `pdlc/engine/bin/cli.mjs`
 (`FLAGS_BY_COMMAND`), `pdlc/engine/scripts/prepack.mjs` (`MODULE_NAMES`),
-`pdlc/hooks/hooks.json`, `pdlc/.claude-plugin/plugin.json`. Six claims the upstream documents
+`pdlc/hooks/hooks.json`, `pdlc/.claude-plugin/plugin.json`. Seven claims the upstream documents
 make do **not** survive that check; they are raised as errata rather than absorbed (§6.1).
 
 ## 2. Architecture
@@ -332,6 +332,13 @@ hand-modified file with an expected name is removed (REQ AC-4.3 scopes the crite
 *unexpected entries*, and C-9 excludes hand-modification); and a channel-written temp residue
 (`.pdlc-tmp.*`) refuses, because refusing on an unenumerable name is the conservative side of the
 same predicate (E-16b).
+
+**Rows 4 and 5 are surface this TSPEC introduces, not upstream criteria.** REQ AC-4.1…AC-4.4 and
+FSPEC BR-CLN-1…6 describe rows 1–3 only. The usage-error status (row 4) is a convention transfer
+from `sync-workflows.sh` and costs nothing; `--dry-run` (row 5) is kept because a destructive
+operator tool without a preview is the worse default — but an untested safety flag is worse than
+no flag, so both rows carry oracles (§5.2, rows TT-1 and TT-2), and the surface is routed
+upstream for an owning criterion (§6.1 erratum 7) rather than left as engineering-side scope.
 
 **Idempotence** is structural: after a successful row-2 run the directory is gone, so the next
 run takes row 1.
@@ -674,6 +681,13 @@ no release sits on the critical path.
 | AT-3.3 clause 2 | the **four** surviving `hooks.json` entries (`:9`, `:20`, `:24`, `:34`) each still behave to their own documented contract, asserted per hook rather than by one blanket shape: `nudge-consolidation.sh`, `check-scope-field.sh` and `check-req-size.sh` emit a `hookSpecificOutput.additionalContext` JSON object on stdout and exit `0`; `guard-harvest-before-delete.sh` is a **PreToolUse blocker** whose observable is a message on **stderr** with exit **2** on a blocked delete and exit `0` otherwise (`sys.stderr.write(...)`/`sys.exit(2)` in its embedded Python). Asserting `additionalContext`+`0` over the guard would be a false oracle | retained `hookCompatibility.test.js` (§2.6) for the three `PROP-COMPAT-*` hooks; `consolidationHookParity.test.js` (`:152`, `:215`, `:364`) already covers `nudge-consolidation.sh` and is cited rather than duplicated |
 | AT-1.8 | replay harness output | committed transcript under `docs/pdlc-plugin-retirement/` |
 
+AT-4.4 costs **one additional engine run**, not a reuse of BL-08's pre-sweep capture: both of its
+reports are post-sweep runs in the same session — one over a tree still holding leftovers, one
+over the cleaned tree — compared under §4.5's field-set rule. BL-08's pre-sweep report is
+consumed by AT-5.2 (behavioural equivalence across the sweep) and cannot double as the
+no-leftovers arm, because it predates the cleanup step entirely. §6.3's operator obligations
+budget accordingly: BL-08's one pre-sweep run, one post-sweep AC-5.1/5.2 run, and AT-4.4's pair.
+
 `consumerCleanup.test.js` is the one new `*.test.js` module the sweep adds, and it is already
 counted in §4.4's post-sweep literal (**99**), so the suite-size criterion stays an equality
 rather than a floor.
@@ -714,6 +728,12 @@ Two properties this buys, both required rather than nice: red-and-repaired-next-
 `(file, section)` pair, so a commit touching CLAUDE.md is checked against the sections its class
 owns).
 
+**The replay transcript is operator-read evidence, not a parsed artifact.** AT-1.8's oracle is
+the harness's exit status — the loop above fails on the first red commit — plus the human-checked
+`(file, section)` class claim. The committed transcript under `docs/pdlc-plugin-retirement/`
+records per-commit exit statuses and each suite's counts (E-23) for a reader; **no implementer
+builds a transcript parser**, and nothing downstream asserts its format.
+
 The pre-sweep green start is not assumed: BL-08's transcript must record the suites' counts (tests
 run, passed, failed), because a suite that executed zero tests also exits 0 (E-23).
 
@@ -727,7 +747,7 @@ BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip 
 
 ### 6.1 Upstream errata raised (not folded in here)
 
-Six claims in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
+Seven claims and open surfaces in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
 Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC.
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
@@ -788,6 +808,15 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    M-8's deletion set into class 6's *reduction* set, and the post-sweep suite literal becomes 99
    (§4.4). Membership and count are one correction, not two: correcting the number while leaving
    the module inside M-8 would leave AC-1.3 asserting a deletion the sweep does not perform.
+
+
+7. **REQ/FSPEC — the cleanup tool's usage-error and `--dry-run` rows have no owning criterion.**
+   §3.2's contract has five rows; AC-4.1…AC-4.4 and BR-CLN-1…6 cover three. Rows 4 (`exit 4` on
+   usage error) and 5 (`--dry-run` previews and removes nothing) are TSPEC-introduced operator
+   surface. This TSPEC covers them with tests (§5.2, TT-1/TT-2) rather than dropping them, but
+   product ownership of a new operator-facing flag belongs upstream: either an AC-4.5 pinning
+   the preview contract, or a REQ decision to drop `--dry-run`, in which case §3.2 row 5 and
+   TT-2 go with it.
 
 
 ### 6.2 Successor work bound under REQ NG-5
