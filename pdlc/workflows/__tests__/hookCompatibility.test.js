@@ -431,3 +431,35 @@ describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
     }
   );
 });
+
+// ---------------------------------------------------------------------------------------------
+// PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)
+//
+// L-9's third gate command (`bash -n` over tracked `*.sh`, discovered via `git ls-files '*.sh'`)
+// only ever sees scripts git still tracks. Once sync-workflows.sh (M-1) and lib/pdlc-drift.sh
+// (M-2) are untracked, that discovery set silently narrows to the surviving scripts with no
+// separate assertion needed on the gate command itself — this test asserts the narrowing input
+// directly: both paths are untracked, and neither is named by `git ls-files '*.sh'`.
+//
+// Committed skipped (red-verified) under T11; T12 deletes both files and un-skips this block,
+// per PLAN §1.3's skip-naming convention (title begins "T12: ").
+// ---------------------------------------------------------------------------------------------
+describe("PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)", () => {
+  it.skip(
+    "T12: sync-workflows.sh and lib/pdlc-drift.sh are untracked, and git ls-files '*.sh' names neither",
+    () => {
+      expect(isTracked("pdlc/hooks/scripts/sync-workflows.sh")).toBe(false);
+      expect(isTracked("pdlc/hooks/scripts/lib/pdlc-drift.sh")).toBe(false);
+
+      const shFiles = spawnSync("git", ["ls-files", "*.sh"], {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+      })
+        .stdout.split("\n")
+        .filter(Boolean);
+
+      expect(shFiles).not.toContain("pdlc/hooks/scripts/sync-workflows.sh");
+      expect(shFiles).not.toContain("pdlc/hooks/scripts/lib/pdlc-drift.sh");
+    }
+  );
+});
