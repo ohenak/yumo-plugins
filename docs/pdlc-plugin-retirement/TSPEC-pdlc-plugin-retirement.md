@@ -148,7 +148,10 @@ guards only `.bundle.js` rows; the three bundle rows of `bundles`; and the whole
 (`pluginManifest`/`pluginVersion`, `RETIRED_DIR`, `RETIRES_BY_ID`, `manifestRows`, `manifest`,
 `manifestContents`, the manifest write and its `--check` arm).
 
-The surviving `bundles` array becomes a single row (`file: "pdlc-cli.mjs"`), so the emission loop
+The surviving `bundles` array becomes a single row, `{ file: "pdlc-cli.mjs", contents: cliArtifact }`
+— the `id: "pdlc-cli"` key goes with the manifest tail, since `id` is read only by
+`manifestRows` (`build-runtime.mjs:773`); leaving dead data behind in the one file this class
+rewrites would invite an implementer to keep it. The emission loop
 and `--check` semantics are unchanged in shape — one row in, one `in-sync`/`wrote`/`STALE` line
 out. This keeps AC-5.3's "still produced by a build step" true by construction and keeps
 `build-runtime.mjs --check` a usable staleness gate for the one surviving artifact.
@@ -224,7 +227,7 @@ L-6's row 2 names a module that is not newly created.
 
 ### 2.7 Phase MERGE's guard paths (FSPEC O-D, REQ O-4)
 
-`MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48`–`:53`) is
+`MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:47`–`:53`; the declaration opens at `:47` with `export const MERGE_GUARD_DEFAULTS = Object.freeze([`) is
 `["pdlc/workflows/", "pdlc/skills/", "pdlc/hooks/", ".claude/workflows/"]`.
 
 **Decision: the sweep does not edit it.** Two grounds:
@@ -781,7 +784,7 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
   every later commit replays against a known-good CI arrangement.
 - **The retained `hookCompatibility.test.js` (§2.6) is a deviation from M-8's stated membership.**
   If the re-measurement finds an assertion in it that *does* depend on the drift hook beyond the
-  `C7` block, the retention becomes a partial deletion instead. Control: the module is 300 lines
+  `C7` block, the retention becomes a partial deletion instead. Control: the module is 371 lines (`wc -l`)
   and self-contained; the disposition is re-checked at re-measurement.
 - **The cleanup script's name-only predicate cannot protect a hand-modified expected entry**
   (BR-CLN-3a, C-9). Accepted upstream; stated here so no implementer adds a hash check that would
