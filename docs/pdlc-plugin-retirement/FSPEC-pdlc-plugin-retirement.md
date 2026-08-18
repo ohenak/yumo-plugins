@@ -285,13 +285,13 @@ copy. The step never runs by itself — no hook, session start or engine startup
 - **BR-SWEEP-6 — Deleted, never skipped.** A test whose subject is deleted is removed with it.
   Across the **swept surface** — M-8's deleted modules and the surviving modules that host R-8's
   re-homed assertions — no `skip` or pending marker survives **that does not reach the run's skip
-  sink as a registered record**: a capability-gated skip that registers itself into the sink is a
-  declared runner limitation, not a sweep defect; a bare `it.skip` or unregistered pending marker
+  sink as a registered record**: a capability-gated skip registering into
+  the sink is a declared runner limitation, not a sweep defect; a bare `it.skip` or unregistered pending marker
   in that surface still fails. The boundary is sink membership at run time, not `SKIP_INVENTORY`
   membership — the inventory is deliberately not closed over registered skips, so keying the
   exemption to it would fail correct skips. Pending markers outside the swept surface
-  (`guardMatrix.test.js`'s rows are the measured instance) are pre-existing state this feature
-  neither creates nor repairs. No assertion is left vacuously true against an empty directory
+  (`guardMatrix.test.js`'s rows are the measured instance) are pre-existing state
+  this feature does not repair. No assertion is left vacuously true against an empty directory
   (REQ C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
   file is re-homed into a surviving module before its host is deleted (REQ R-8).
 - **BR-SWEEP-7 — The sweep sizes from dispositions, not row counts.** The PLAN's task sizes come
@@ -841,4 +841,4 @@ boundary corrected in v0.7 (2026-08-18). No other TSPEC §6.1 erratum edits this
 | # | Raised as | Edit made here |
 |---|---|---|
 | TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and capability-gated skips already register on a root runner at HEAD, so the wider clause was already false | AT-1.3 and BR-SWEEP-6 now scope the prohibition to the **swept surface** (M-8's deleted modules and the hosts of R-8's re-homed assertions) and exempt a skip that reaches the run's **skip sink records**; the exemption is not keyed to `SKIP_INVENTORY` membership, because that inventory is deliberately not closed over registered skips. REQ AC-1.3 and C-8 are M-8-scoped; the FSPEC clause is now no wider than its upstream, so REQ needs no edit |
-| SE FSPEC v8 F-04 | Membership-only exemption lets the inventory be widened to buy a green gate without any skip firing | Not folded in as written: HEAD's comparator deliberately does not close over inventory membership, so an inventory-join clause would fail correct skips. The exemption is keyed to sink records instead; whether the sink comparator additionally pins a join, and how, is routed to TSPEC §5.5 as an implementation contract |
+| SE FSPEC v8 F-04 | Membership-only exemption lets the inventory be widened to buy a green gate without any skip firing | Not folded in as written: HEAD's comparator deliberately does not close over inventory membership, so an inventory-join clause would fail correct skips. The exemption is keyed to sink records instead; whether the sink comparator additionally pins a join, and how, is routed to TSPEC §5.5 |
