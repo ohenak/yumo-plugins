@@ -105,4 +105,33 @@ FINDING: Low | delta | local | §0 header (`FSPEC:11`) | Compressed cross-review
 
 ## Recommendation
 
+**Needs revision** — one High (F-01).
+
+The delta lands all four routed items and the erratum-3 disposition is clean. What it does not
+do is finish erratum 5. Keeping the wave-gate values is the correct call, but it is a decision
+about a **measured baseline row and a REQ criterion**, and both still say the opposite while
+§7.2 asserts nothing was relaxed. The document cannot be the only place the chain's answer
+lives.
+
+Exactly what to change:
+
+1. **F-01 (gating).** Raise an upstream erratum against REQ C-5 (`REQ:229`), REQ AC-1.2's
+   rationale (`REQ:319`–`:321`) and baseline M-11h
+   (`docs/_constraints/pdlc-retirement-baseline.md:63`): the `postWaveCommand` /
+   `postWavePathspecs` values survive because the reduced build step still emits M-9 into
+   `pdlc/workflows/dist/` under O-3, so M-11h is a prose-and-assertion edit rather than a value
+   retirement. Record it as an **open** row in §7.2 and soften §7.2's "no criterion was relaxed"
+   lead-in accordingly. No class-10 text needs to move.
+2. **F-02.** Add an open row for TSPEC §6.1 erratum 10, or scope §7.3's completeness sentence to
+   the errata folded in this round.
+3. **F-03.** One outcome clause in §3.3 step 4: after the sweep, `consolidate-learnings/SKILL.md`
+   states exactly one true performer of the pass and names no host nothing invokes.
+4. **F-04, F-05, F-06.** Label sweep for the three remaining v0.11 pins; one clause on the
+   transitive hold; extend the cross-review ranges. All mechanical.
+
+Items 2–4 are not gating and can ride along with item 1's edit.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
