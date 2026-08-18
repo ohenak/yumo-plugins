@@ -56,3 +56,37 @@ FINDING: Low | delta | local | §5.5 join oracle (TSPEC:852–854) | right⊄lef
 - **Scope rule 4 closes a hole the reviewer had not raised.** "Two helpers that import only each other are orphans, and a one-hop 'imported by some surviving `.js`' rule would pass them" — reachability rooted at test modules and config entry points, closing over helper-to-helper edges. The v5 version would have false-greened exactly that pair. Rule 3's addition that git tracks files rather than directories, so deleting `helpers/bin/`'s three drivers removes the path outright, is the same instinct applied to a reader's misreading rather than an oracle's.
 
 ## Recommendation
+
+**Needs revision** — two High findings, both mechanical, both from one cause: FSPEC moved to v0.7
+between this TSPEC's measurement and this review, accepting the very erratum §6.1 raised. Nothing
+previously approved is reopened, and no mechanism changes.
+
+Required changes:
+
+1. **F-01 (High)** — In §5.5 (TSPEC:819–820) and §6.1 erratum 9 (TSPEC:1030–1031), remove the
+   "until that edit lands, the binding text is the wider one" framing. FSPEC v0.7 accepted and
+   folded erratum 9 in (`FSPEC:838`, `:843`); AT-1.3 (`FSPEC:622`–`:628`) and BR-SWEEP-6
+   (`FSPEC:285`–`:291`) already carry the narrowed clause. Mark erratum 9 resolved-upstream and
+   state that TT-1b's registered skip satisfies AT-1.3 as approved.
+2. **F-02 (High)** — In §5.2's TT-1b (TSPEC:738), §5.5 (TSPEC:817) and §6.1 (TSPEC:1027–1029),
+   restate the exemption as "absent from the skip sink's **records for that run**", not "absent
+   from the skip sink's inventory". FSPEC rejected the membership key explicitly (`FSPEC:843`,
+   SE FSPEC v8 F-04) because an inventory row can be added without any skip firing. §5.5's own
+   join oracle is already records-keyed, so this aligns the prose with the mechanism.
+
+Recommended (F-03, Medium): scope §5.5's "AT-1.3 asserts this repo-wide" sentence (TSPEC:807–808)
+and the join oracle's left set (TSPEC:847) to the swept surface, per `FSPEC:622`–`:628`, so a
+pre-existing pending marker outside the sweep cannot red the gate.
+
+Optional (F-04, Low): note in §5.5 that right⊄left holds only while `skipSinkTransport.test.js`
+redirects the sink env var (`:63`–`:67`), since `itOrSkip`'s in-test branch registers without a
+pending test (`driftCapabilities.js:330`).
+
+§5.5's mechanism, the costed alternative, the comparator-is-not-an-oracle argument, the join's
+both-direction set equality, the `SKIP_INVENTORY` field spec, the four scope rules and §2.9's
+class-3 placement all check out against HEAD and are approved as written.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
