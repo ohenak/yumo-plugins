@@ -901,9 +901,11 @@ join**, and it is the landed clause's evaluation:
 
 - **Domain (the swept surface, not the run).** Both sets are restricted to the `*.test.js` files
   the swept-surface table above enumerates — post-sweep that is `consumerCleanup.test.js` (less the
-  recursion carve-out below), `hookCompatibility.test.js` and `consolidationBuild.test.js`, since
-  M-8's deleted modules are absent and contribute nothing. `orchestrateQueue.test.js` is out for the
-  reason given there. `guardMatrix.test.js` is **out of the domain** and stays
+  recursion carve-out below), `hookCompatibility.test.js`, `consolidationBuild.test.js`,
+  `pipelineWiring.test.js`, `consolidationPreflight.test.js`, `documentOracles.test.js` and
+  `orchestrateDevSkill.test.js`, since M-8's deleted modules are absent and contribute nothing.
+  `orchestrateQueue.test.js` is out for the reason given there, and `ci-arrangement.test.js` is out
+  of the package. `guardMatrix.test.js` is **out of the domain** and stays
   out: it is not an M-8 member, hosts no re-home, and its ~70 `it.skip.each(NON_BESPOKE_BLOCK)`
   rows (`guardMatrix.test.js`, `it.skip.each` at the `NON_BESPOKE_BLOCK` row, plus the per-row
   `isLive(...) ? it : it.skip` ternary) are pre-existing pending state AT-1.3 names explicitly as
@@ -925,9 +927,15 @@ in `consumerCleanup.test.js` that **spawn a nested jest run** over the swept-sur
 `--json` and with `PDLC_SKIP_SINK` pointed at a fresh temp path, then read both outputs and compare.
 The env var is redirectable by design (`SKIP_SINK_ENV` in `helpers/skipSink.js`;
 `skipSinkTransport.test.js`'s `useSink` already redirects and restores it around each test), and the
-nested run's own `globalTeardown` must be disabled or its sink copied before it deletes the file.
-Neither direction is inherited from `skipSink.js`, which asserts only that records that exist are
-well-formed.
+the branch is pinned rather than left open (TE TSPEC v8 F-04): **the child is invoked with an
+explicit `--globalTeardown` override** pointing at a no-op module `__tests__/fixtures/skipJoinTeardown.js`
+(a new class-3 file, in `fixtures/` so no run collects it as a test), so the child neither runs the
+inherited comparator nor `rmSync`s the sink directory the host is about to read. The host owns the
+temp directory's lifetime and removes it in its own `afterAll`. The alternative — letting the child's
+inherited teardown run and copying the sink before the child exits — was rejected because the copy
+would race the child's `rmSync` with no synchronisation point the host can observe. Note that the
+inherited teardown would not have caught the falsifier anyway: a bare `it.skip` writes no sink record,
+which is exactly the gap the join exists to close.
 
 **The host is carved out of the nested file set, or the suite spawns itself without bound.** The
 host of the join assertions, `consumerCleanup.test.js`, is itself a swept-surface member, so a
