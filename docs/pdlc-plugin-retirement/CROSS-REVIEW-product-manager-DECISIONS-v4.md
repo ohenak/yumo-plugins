@@ -46,4 +46,16 @@ No High findings. Neither Low finding changes a chosen option, a count, or a dow
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+All three v3 findings (one Medium, two Low) are resolved with verified evidence, no High finding appears anywhere in the document — changed or unchanged — and nothing blocks Phase D. Two Low items are recorded for the next revision; neither changes a chosen option, a count, or a downstream obligation:
+
+1. **F-01** — remove the two literal backslashes from the class-13 quote at `:237`, and consider quoting `FSPEC:165` in full as `:150` does.
+2. **F-02** — in DEC-10's owner cell (`:171`), separate class 12's "last of the deletion classes" edge (over classes 6–11) from the erratum-3 gate edge on class-7 predecessors, so PLAN's parser-checked DAG cannot order class 12 ahead of classes 8–11.
+
+No finding contradicts `docs/_constraints/DOMAIN-CONSTRAINTS.md` or any promoted decision in `docs/_decisions/`; DEC-08's relationship to `DECISIONS-plugin-distribution.md` is unchanged this round.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
