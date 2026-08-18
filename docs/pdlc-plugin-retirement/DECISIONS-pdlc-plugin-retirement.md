@@ -4,7 +4,7 @@
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md` |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Version | Date | Change |
@@ -12,6 +12,7 @@
 | 0.1 | 2026-08-17 | Initial: DEC-01…DEC-09 extracted from TSPEC v0.10, re-verified at `2017c6f9`. |
 | 0.2 | 2026-08-17 | Iteration-1 cross-review response (PM F-01…F-07, TE F-01…F-08): new DEC-10 (`consolidate-learnings` host blocks classes 7/11 on erratum 3); rules 1–2 restated (runtime-behaviour carve-out, transcribe-don't-re-measure) and rule 4 added; owning-oracle column added to the Decision table; DEC-03/DEC-08/DEC-09 given named oracles; DEC-07 given a blocking clause; DEC-04 records `--dry-run` and the 4a/4b split; DEC-02 count corrected to five; DEC-06 citation arithmetic and test-line scope corrected. Re-verified at `2017c6f9`. |
 | 0.3 | 2026-08-18 | Iteration-2 cross-review response (PM F-01…F-03, TE F-01…F-04): DEC-10's gate restated as its transitive closure — classes 7, 8, 9, 10, 11 of FSPEC §3.1's **thirteen** (six gated counting DEC-07's class 6); DEC-01/DEC-02/DEC-09 oracle cells marked gated and DEC-10's cell now names PLAN's batch-DAG check as owner; DEC-09's oracle restated on `satisfiesRange(...).ok` with a `0.24.0` negative arm; new cross-cutting rule 5 (additive-and-conservative may ship ahead of criterion, subtractive may not); DEC-06's nine-citation count scoped, surviving-suite references noted. Re-verified at `1053b7fd`. |
+| 0.4 | 2026-08-18 | Iteration-3 cross-review response (PM F-01…F-03, TE F-01…F-04): DEC-10's closure extended to class 12 (FSPEC `:164`, "Last of the deletion classes") — erratum 3 holds classes **7–12**, seven of thirteen gated counting DEC-07's class 6; Consequences row, gated-merge partition (class 13 named ungated) and the PLAN/PROPERTIES obligation restated at 7–12; "Four" → "Five cross-cutting rules"; FSPEC ordering cells quoted verbatim; DEC-09's negative-arm sentence un-spliced; DEC-06 anchors corrected (`consolidationBuild.test.js:95`, builder comment `:668`); M-8 host claim cited by FSPEC L-5 rather than a bare line anchor (DEC-DOC-01). Re-verified at HEAD. |
 
 ## Context
 
