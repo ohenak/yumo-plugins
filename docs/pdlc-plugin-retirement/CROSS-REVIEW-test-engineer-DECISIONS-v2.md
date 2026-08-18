@@ -24,7 +24,11 @@ obligations). Unchanged prose already reviewed at v1 is not re-litigated.
 
 ## Questions
 
-_(section written below)_
+| ID | Question |
+|----|---------|
+| Q-01 | With classes 7–11 gated by DEC-10, is any deletion commit landable before erratum 3? Classes 1–6 cover CI jobs, engine-side drift coverage, the queue gate, the drift hook, the drift library and the test corpus — and class 6 is itself gated on erratum 6 by DEC-07. If the answer is "classes 1–5 only", PLAN should say it, because that is the sweep's real first wave. |
+| Q-02 | Does the class-9 assertion DEC-09 requires live in a module that survives the sweep? The decision names the assertion but not its host file; `consolidationPreflight.test.js` and `consolidationRoute.test.js` are outside M-8's deletion set (`FSPEC:378`) and would qualify, but an assertion placed in a deleted module ships nothing. |
+| Q-03 | DEC-08 asks class 10 to tighten `postWavePathspecs` to `toEqual(["pdlc/workflows/dist/"])`. Class 10 lands *after* class 7, which is gated — does the tightening move earlier, or does the containment-shaped assertion (`consolidationPreflight.test.js:208`) stay shipped for the whole gated period? |
 
 ## Positive Observations
 
