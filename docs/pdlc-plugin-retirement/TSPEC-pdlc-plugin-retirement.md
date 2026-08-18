@@ -377,10 +377,21 @@ criterion permanently.
 
 ### 4.2 The retired-term set is closed to this document
 
-This TSPEC adds no member to FSPEC L-2's seven terms and removes none. Nothing it decides
-introduces a new retired identifier: the cleanup script's name
-(`cleanup-consumer-workflows.sh`) deliberately contains none of the seven, so the script's own
-source cannot red AT-1.2.
+This TSPEC adds no member to FSPEC L-2's seven terms and removes none. But two files this
+document creates **do** contain L-2 terms in their source text, and AC-1.2's expected-empty
+command (FSPEC L-3) searches `git ls-files`, not a term-owning subset:
+
+| File | L-2 terms present | Why unavoidable |
+|---|---|---|
+| `pdlc/hooks/scripts/cleanup-consumer-workflows.sh` | `\.bundle\.js` (three expected names of §4.3), `pdlc-drift-state` (`.pdlc-drift-state.json`) | the classifier matches **names**, and §4.3's expected-name set is transcribed literally so an operator can audit the refusal predicate without reading shell (BR-CLN-4) |
+| `pdlc/workflows/__tests__/consumerCleanup.test.js` | the same names, as fixture constructions | AT-4.1/AT-4.3 build a target directory holding those exact entries |
+
+The script's own *filename* contains none of the seven — the earlier claim — but a filename is
+not what L-3 greps. Left unaddressed, the cleanup step this TSPEC introduces reds AT-1.2
+permanently. Resolution is **not** to construct the names at runtime from fragments: that hides
+the refusal predicate from the operator audit BR-CLN-4 asks for, and moves the same literals
+into a less readable form. Resolution is an A-1 allow-list extension, routed upstream (§6.1
+erratum 4) and pinned in §4.3 below.
 
 ### 4.3 The cleanup step's expected-name set
 
@@ -402,6 +413,21 @@ names, matched **as names**, never as content:
 Any member may be absent, and absence is never an error. `distribution-manifest.json` is
 deliberately **not** a member: it is a repo-side build artifact the channel never installed
 consumer-side, so a file of that name in the target directory is unexpected and refuses (E-16).
+
+**A-1 allow-list extension (routed upstream, §6.1 erratum 4).** Because the nine names above are
+transcribed literally into two tracked files, AC-1.2's allow-list A-1
+(`docs/_constraints/pdlc-retirement-baseline.md`, §*A-1*) must gain exactly two rows, named
+here so the upstream edit is mechanical:
+
+| Path | Why allow-listed |
+|---|---|
+| `pdlc/hooks/scripts/cleanup-consumer-workflows.sh` | the sweep's own removal tool; its expected-name set is the retired vocabulary by construction (BR-CLN-3a) |
+| `pdlc/workflows/__tests__/consumerCleanup.test.js` | the tool's oracle; fixtures must reproduce the same names to be a test of it |
+
+The extension is **two named paths, not a glob** over `pdlc/hooks/scripts/` or
+`pdlc/workflows/__tests__/` — a glob would exempt files the sweep is supposed to empty. Until
+the upstream edit lands, AC-1.2 is red by construction and class 13 (§2.9) must not be judged
+against it; the obligation is tracked as T-4 (§6.3).
 
 ### 4.4 Suite-size and re-home literals (FSPEC L-5, L-6; REQ AC-1.3, R-8)
 
