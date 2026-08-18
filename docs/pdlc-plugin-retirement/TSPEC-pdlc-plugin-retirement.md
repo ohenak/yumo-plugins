@@ -227,7 +227,7 @@ L-6's row 2 names a module that is not newly created.
 
 ### 2.7 Phase MERGE's guard paths (FSPEC O-D, REQ O-4)
 
-`MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:47`–`:53`; the declaration opens at `:47` with `export const MERGE_GUARD_DEFAULTS = Object.freeze([`) is
+`MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js`, the frozen array declared by `export const MERGE_GUARD_DEFAULTS = Object.freeze([` — at `:48`, not `:47`; `:47` is the "no path may mutate the shipped default" comment line) is
 `["pdlc/workflows/", "pdlc/skills/", "pdlc/hooks/", ".claude/workflows/"]`.
 
 **Decision: the sweep does not edit it.** Two grounds:
@@ -317,7 +317,8 @@ The target is always `<repo-root>/.claude/workflows/`. Never registered as a hoo
 | 1 | target directory absent, or present and empty | nothing removed | stdout: "nothing to clean" naming the path | `0` |
 | 2 | every entry's **name** is in the expected set (§4.3) | each entry removed (`.pdlc-backups/` removed whole, with its contents); the emptied directory removed | stdout: one line per removed entry, then a summary count | `0` |
 | 3 | any entry's name is outside the expected set | **nothing removed at all** — classification completes over the whole directory before the first `rm` | stderr: one line per unexpected entry, each naming its full path | `3` |
-| 4 | usage error (unknown flag, unreadable target, `rm` failure) | nothing removed beyond what a partial `rm` already did, reported | stderr: diagnostic | `4` |
+| 4a | **argument-parse error** — unknown flag, or a second positional argument | **nothing touched**: parsing completes before any filesystem access | stderr: one usage line | `4` |
+| 4b | **runtime failure** — unreadable target, or an `rm` that fails partway | whatever the failing `rm` already removed stays removed; no further removal is attempted, and the partial state is reported | stderr: diagnostic naming the path that failed | `4` |
 | 5 | `--dry-run` | nothing removed under any condition | the lines rows 1–3 would print | `0` (rows 1–2) / `3` (row 3) |
 
 Exit `3` is fixed, not "non-zero", exactly as BR-CLN-4 requires: `127` (missing interpreter) and
@@ -333,12 +334,20 @@ hand-modified file with an expected name is removed (REQ AC-4.3 scopes the crite
 (`.pdlc-tmp.*`) refuses, because refusing on an unenumerable name is the conservative side of the
 same predicate (E-16b).
 
-**Rows 4 and 5 are surface this TSPEC introduces, not upstream criteria.** REQ AC-4.1…AC-4.4 and
-FSPEC BR-CLN-1…6 describe rows 1–3 only. The usage-error status (row 4) is a convention transfer
-from `sync-workflows.sh` and costs nothing; `--dry-run` (row 5) is kept because a destructive
-operator tool without a preview is the worse default — but an untested safety flag is worse than
-no flag, so both rows carry oracles (§5.2, rows TT-1 and TT-2), and the surface is routed
-upstream for an owning criterion (§6.1 erratum 7) rather than left as engineering-side scope.
+**Rows 4a/4b and 5 are surface this TSPEC introduces, not upstream criteria.** REQ AC-4.1…AC-4.4 and
+FSPEC BR-CLN-1…6 describe rows 1–3 only. The usage-error status is a convention transfer from
+`sync-workflows.sh` and costs nothing; `--dry-run` (row 5) is kept because a destructive operator
+tool without a preview is the worse default — but an untested safety flag is worse than no flag,
+so both rows carry oracles (§5.2, rows TT-1 and TT-2), and the surface is routed upstream for an
+owning criterion (§6.1 erratum 7) rather than left as engineering-side scope.
+
+The split of the old single row 4 matters for the oracle: only **4a** is constructible and
+fully assertable in a test, so **TT-1 is scoped to 4a** — its "removes nothing, every entry
+still present byte-identical" conjunct is true by construction there. Row **4b** shares the exit
+status but explicitly denies that conjunct (a partial `rm` may already have removed entries), so
+its stated expectation is the weaker one above — exit `4`, no further removal attempted, partial
+state reported — and it is not asserted by TT-1. Bundling the two under one row left the second
+arm with neither an oracle nor an expectation an implementer could code to.
 
 **Idempotence** is structural: after a successful row-2 run the directory is gone, so the next
 run takes row 1.
