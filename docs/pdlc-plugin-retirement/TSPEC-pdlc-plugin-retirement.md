@@ -497,4 +497,85 @@ explicitly non-exhaustive.
 
 ## 5. Test Strategy
 
+The sweep's tests are mostly *existing* tests that must stay green; the new test surface is small
+and concentrated on the two things this feature builds (the cleanup script, the delegators) and
+on the replay that proves per-commit greenness.
+
+### 5.1 Levels and doubles
+
+| Level | Subject | Doubles |
+|---|---|---|
+| Shell integration | `cleanup-consumer-workflows.sh` | real temp directories built by the test (`mkdtempSync`), no mocks — the script's whole contract is filesystem-observable. Pattern reused from `hookCompatibility.test.js`'s `runHookScript()` (`spawnSync("bash", …)`, `:46`) rather than a new harness |
+| Static/document | delegator skill files, docs, CI workflow files, `hooks.json` | source-text reads, the pattern the surviving oracles already use (`documentOracles.test.js`, `pdlc/engine/__tests__/ci-arrangement.test.js`) |
+| Node unit | reduced `build-runtime.mjs` | `execFileSync("node", [build-runtime.mjs, "--check"])` over a temp copy — the pattern `consolidationBuild.test.js` already uses (`:156`–`:159`) |
+| End-to-end | AC-5.1/AC-5.2 post-sweep run; AC-3.1 delegation; AC-3.2/3.5/3.6 handshake guards | a real engine run in this repo; the report artifact is the evidence, not an agent's summary |
+| Replay | AC-1.8 | a scripted loop over the sweep's commit range running FSPEC L-9's three commands at each commit, output pasted |
+
+No new test double library is introduced. Property-based tests reuse `driftGenerators.js`'s
+surviving primitives (§4.7) — the repo's one seeded-PRNG library — rather than declaring a second
+one.
+
+### 5.2 New tests, by criterion
+
+| AT | New test | Where |
+|---|---|---|
+| AT-4.1 | full-set cleanup: build a target holding all nine L-11 entries with a non-empty `.pdlc-backups/`, run once, assert directory gone, tracked files unchanged (`git status --porcelain` empty), exit `0` | new `pdlc/workflows/__tests__/consumerCleanup.test.js` |
+| AT-4.2 | second run over the cleaned tree: exit `0`, says nothing to clean, changes nothing | same |
+| AT-4.3 | two constructions — an operator-named file, and a `.pdlc-tmp.<pid>.<rand>` residue — each asserting all four clauses: every expected entry present **and byte-identical** (content compared before/after), the unexpected entry byte-identical, its path on **stderr**, exit **exactly `3`** | same |
+| AT-4.4 | leftovers-present engine run reaches its configured final phase; the written report is compared against the no-leftovers report by AT-5.2's field-set rule; neither output nor report names a leftover path | engine-run evidence + report diff |
+| AT-3.1 | delegation: tool-invocation sequence of length 1, non-empty dispatch record in the report, relayed fields intact; plus the static half — neither delegator file contains selection/readiness/dispatch/verdict/queue-write text | transcript evidence + a source-text assertion beside the surviving skill oracles |
+| AT-3.3 clause 2 | the three surviving hooks emit `hookSpecificOutput.additionalContext` on **stdout as a JSON object** and exit **0** | retained `hookCompatibility.test.js` (§2.6) |
+| AT-1.8 | replay harness output | committed transcript under `docs/pdlc-plugin-retirement/` |
+
+`consumerCleanup.test.js` is the one new `*.test.js` module. It is counted in §4.4's post-sweep
+literal correction, so the suite-size literal stays an equality: 119 − 21 deletions + 1 new
+module = **99**, transcribed at re-measurement. (This supersedes §4.4's 98, which counted the
+retention but not this module; the FSPEC transcribes the final number once, at re-measurement,
+from the tree — never from either estimate.)
+
+### 5.3 Tests that must keep passing, and how they are protected
+
+- **`pdlc/engine/__tests__/ci-arrangement.test.js`** derives its rows from FSPEC §5.1's
+  required-check set and asserts CLAUDE.md's CI table, its **count word** and `publish.yml`'s
+  gate command set. It reds on class 1 unless the workflow files, both documents' count words and
+  the oracle's own explanatory prose move in that one commit. This is the single largest
+  correctness hazard in the sweep and the reason C-7 outranks C-5 for class 1 (BR-SWEEP-3).
+- **`pipelineWiring.test.js`** and **`consolidationPreflight.test.js`** read
+  `build-runtime.mjs`'s source text (§2.8) — corrected in the commit that deletes the symbols
+  they name, never after.
+- **`documentOracles.test.js`** D-1/D-2 assert CLAUDE.md *contains* retired script names; prose
+  and oracle move together in class 9 (BR-SWEEP-4's prose exception).
+- **`coveredViolations`** (`pdlc/workflows/lib/document-oracles.mjs`) walks the whole tree
+  skipping only `.git/` and `node_modules/`, so an untracked local file can red it independently
+  of the diff. AT-1.6 is judged on a **clean tracked-files-only checkout** (E-6); the replay
+  harness therefore runs from `git worktree add` of each commit, not from the working tree.
+- **`orchestrateQueue.test.js`**'s four disposition assertions are the covering evidence for
+  L-6 row 1 (§4.4); they must not be edited by class 3, or the coverage claim that made the
+  re-home unnecessary becomes false.
+
+### 5.4 Per-commit gate and the replay
+
+Every commit runs FSPEC L-9's three commands — `npm test` in `pdlc/workflows`, `npm ci && npm
+test` in `pdlc/engine`, and `bash -n` over `git ls-files '*.sh'`. The replay is mechanical:
+
+```sh
+for c in $(git rev-list --reverse <base>..HEAD); do
+  git worktree add -d "$WT" "$c" && ( cd "$WT" && <L-9 commands> ) || exit 1
+done
+```
+
+Two properties this buys, both required rather than nice: red-and-repaired-next-commit is caught
+(BR-SWEEP-2), and the class claim per commit is auditable hunk by hunk (AT-1.8 judges the
+`(file, section)` pair, so a commit touching CLAUDE.md is checked against the sections its class
+owns).
+
+The pre-sweep green start is not assumed: BL-08's transcript must record the suites' counts (tests
+run, passed, failed), because a suite that executed zero tests also exits 0 (E-23).
+
+### 5.5 Deleted, never skipped
+
+No `skip`, no pending marker, no assertion left vacuously true over an empty directory (C-8,
+BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip introduced in a
+*surviving* module during the sweep is the same defect.
+
 ## 6. Open Questions
