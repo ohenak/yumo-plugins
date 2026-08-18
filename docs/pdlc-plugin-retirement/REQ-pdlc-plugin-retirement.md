@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.13 | 2026-08-18 |
+| pdlc | approved — ready | Claude | 0.14 | 2026-08-18 |
+
+*0.14 (2026-08-18) — upstream erratum round, one correction (Phase D erratum 3; SE FSPEC-v11 F-03, TE FSPEC-v11 F-01/F-02): §A-1 said the sweep **rewrites** `consolidate-learnings/SKILL.md`'s bundle reference "to name the surviving execution path"; no surviving host loads the consolidation module, so the reference is **deleted**, not rewritten, and the same is true of the skill's delegation prose. The capability that goes with it — the unattended, machinery-backed pass — is an operator decision this REQ cannot make alone, recorded as new O-8 with an unbound deferral flagged as a blocking gap. Baseline M-11n corrected with it.*
 
 *0.13 (2026-08-18) — upstream erratum round, one correction (Phase D erratum 5; SE FSPEC-v11 F-01): the wave-gate pair is **not** retired. C-5's commit-class entry and AC-1.2's term-set rationale said the configured `postWaveCommand`/`postWavePathspecs` values retire; they survive, because the reduced build step still emits M-9 into `pdlc/workflows/dist/` under O-3. M-11h is a prose-and-assertion edit class, and the measured baseline's M-11h row is corrected with it.*
 
@@ -333,8 +335,12 @@ observed run — none depends on an agent reporting success.
   and `covered-violations/` (4 hits, tree-wide) is re-fixtured because the `coveredViolations`
   oracle it serves survives. Neither are the three
   skill files (M-11n): the sweep edits all three — the two orchestration skills as G-2's
-  delegators, and `consolidate-learnings/SKILL.md`, a human-invoked skill NG-1 keeps, by
-  rewriting its bundle reference to name the surviving execution path. A-1 **does** allow-list
+  delegators, and `consolidate-learnings/SKILL.md`, a human-invoked skill NG-1 keeps, whose
+  retired-bundle reference is **deleted, not rewritten**: no surviving host loads the
+  consolidation module after the sweep, so there is no execution path for the reference to name.
+  That skill's delegation prose is edited on the same grounds, and what the pass then is —
+  human-performed in session, or re-hosted under the engine — is O-8, not a sweep decision.
+  A-1 **does** allow-list
   three fixture *corpora* documents (the two `CODE_REVIEW-pdlc-consolidation-agent-v{5,6}.md`
   and `planParse/plan-workflow-distribution.excerpt.md`): they are sample data parsed as input
   by surviving suites, and editing them would change what those parsers are proven against for a
@@ -605,3 +611,19 @@ not a note.
   2026-08-13, closed as superseded. `pdlc-release-ci`'s disposition is decided upstream
   (`pdlc-engine-distribution` O-3, tracked here as BL-05); this REQ does not decide it, but
   AC-2.3 refuses to pass while it still mandates the retired channel.
+- **O-8 — What the consolidation pass is after the sweep (operator decision, blocking).** The
+  `consolidate-learnings` skill survives under NG-1 and stays invocable, but the sweep leaves no
+  host that loads the consolidation module, so the *unattended, machinery-backed* pass — the one
+  the skill's own text says it delegates rather than performs, warning that hand-running it
+  bypasses the log boundary, duplicate suppression and the in-progress marker — stops being
+  available. This REQ cannot settle that alone and the FSPEC must not: it is a user-visible
+  capability change, so the operator decides between (a) **accepted loss** — the in-session pass
+  is human-performed, the skill's delegation prose is rewritten to say so honestly, and the
+  machinery-backed pass is bound to a successor: a queue row plus a named successor REQ file for
+  re-hosting under the engine, both raised **before the first deletion commit** (NG-5 carves the
+  engine-side work out of this feature, not out of the obligation to bind it); or (b) **blocking
+  predecessor** — re-hosting ships first and this feature gains a BL row for it. Until the
+  operator answers, (a) is the assumption of record and is vetoable; the deferral is **not yet
+  bound**, which is the one open blocking gap this REQ carries. AC-3.3's "loads and runs when
+  invoked" conjunct is read as the skill loading and running, never as the retired module being
+  invoked.
