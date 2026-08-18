@@ -808,10 +808,13 @@ BR-SWEEP-6). The prohibition is scoped to the **swept surface** — not to the w
 introduced into a *surviving* module by this sweep is the same defect as one left behind, but a
 pending marker this feature never touched is pre-existing state it does not repair.
 
-**The swept surface, enumerated against §4.4's measurements.** The membership rule is *modules this
-sweep creates, deletes, reduces in place, or adds assertions to*, plus any surviving host of an R-8
-re-home. Under §4.4's own resolutions that is a four-member set with three distinct reasons, and the
-reasons are stated because three of the four are **not** R-8 re-home hosts:
+**The swept surface, enumerated from §4.4's measurements and §2.9's class rows.** Membership is
+*every surviving `*.test.js` module under `pdlc/workflows/__tests__/` that this sweep edits at all*
+— creates, reduces in place, adds assertions to, or corrects an existing assertion in — plus M-8's
+deleted modules. TE TSPEC v8 Q-01 asked which direction resolves the earlier four-member table: the
+answer is the **wider list**, not a narrowed rule. A sweep edit that only *deletes* assertions is the
+single most likely place for an implementer to park a broken assertion behind a bare `it.skip`, so
+edit-of-any-kind is the membership test, and the table below enumerates every module the rule names:
 
 | Module | In-surface because | Contributes to the join |
 |---|---|---|
@@ -819,6 +822,10 @@ reasons are stated because three of the four are **not** R-8 re-home hosts:
 | `consumerCleanup.test.js` | created by §5.2; sole host of an R-8 re-home (§4.4's TT-3 mode-bit widening) | yes — and see the recursion guard below |
 | `hookCompatibility.test.js` | M-8 member **reduced in place** (§2.6, §4.4 class-6 reduction); loses the `C7` block | yes — its ten converted sites |
 | `consolidationBuild.test.js` | **edited** by this sweep: TT-5 extends §3.1's emission contract (§5.2) | yes |
+| `pipelineWiring.test.js` | class-7 correction (§2.8, §2.9): the `DEV_META` template assertions that `build-runtime.mjs`'s reduction invalidates are edited out | yes |
+| `consolidationPreflight.test.js` | class-7 BL-PREREQ correction (§2.8) and class-10 wave-gate source-text update (`:205`–`:208`) | yes |
+| `documentOracles.test.js` | class-9 edits: D-1/D-2 adjusted for the packaging/advertised-version exemptions | yes |
+| `orchestrateDevSkill.test.js` | class-11 edit: the delegator-banner expectation at `:93` (`expect(content).toContain(".claude/workflows/orchestrate-dev.bundle.js")`) is retargeted | yes |
 
 `orchestrateQueue.test.js` is **out of the surface**. §4.4's L-6 row 1 resolves to *no re-homed
 assertion*: its four queue-disposition titles are pre-existing assertions discharged by measurement,
@@ -834,8 +841,18 @@ M-8 member reduced in place nor a module carrying only new assertions. The widen
 a bare `it.skip` added to `consolidationBuild.test.js` by TT-5 is the same sweep defect AT-1.3 exists
 to catch — and it is routed upstream as an erratum on BR-SWEEP-6/AT-1.3's domain wording (with §6.1
 erratum 6's `hookCompatibility.test.js` membership correction), not decided silently here. Until
-that lands, the TSPEC-side surface is the four-member set above; it is a strict superset of FSPEC's,
+that lands, the TSPEC-side surface is the full edited-module set tabulated above; it is a strict superset of FSPEC's,
 so no approved obligation is lost by it.
+
+**What is out of the domain, and why (TE TSPEC v8 Q-02).** Two edited modules are deliberately
+outside the join's domain, and the reasons are structural rather than judgemental. `pdlc/engine/__tests__/ci-arrangement.test.js`
+(class 1) lives in the **`pdlc/engine` package**, outside `pdlc/workflows/__tests__/` and therefore
+outside both the outer run's `testMatch` and the child invocation's file list; its skip discipline is
+the engine suite's own gate, not this oracle's. `guardMatrix.test.js` stays out for the reason already
+given below: its ~70 pending rows are pre-existing state that AT-1.3 names out of scope. No other
+`*.test.js` module this sweep edits is out of the domain — if a later PLAN task edits one, the table
+above and the child's file list both grow, and the spawn-argument assertion (part 1 below) reds until
+they do.
 
 **TT-1b's registered skip is accepted upstream; erratum 9 landed.** §5.2's TT-1b constructs an
 unreadable target (`chmod 000`), which cannot be constructed as root, so the row is
