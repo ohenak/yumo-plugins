@@ -282,13 +282,17 @@ copy. The step never runs by itself — no hook, session start or engine startup
   dependent no search term reaches — `pdlc/engine/__tests__/ci-arrangement.test.js` and
   `.worktreeinclude` are the two measured instances — is added by reading, not by re-running the
   command (REQ C-6, §1.2).
-- **BR-SWEEP-6 — Deleted, never skipped.** A test whose subject is deleted is removed with it. No
-  `skip` or pending marker **absent from the skip sink's inventory** — a skip registered through
-  `itOrSkip` with a `SKIP_INVENTORY` entry declaring its capability gap
-  (`helpers/driftCapabilities.js`; records land in `helpers/skipSink.js`) is a declared runner
-  limitation, not a sweep defect; a bare `it.skip` or unregistered pending marker still fails —
-  and no assertion left vacuously true against an empty directory (REQ
-  C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
+- **BR-SWEEP-6 — Deleted, never skipped.** A test whose subject is deleted is removed with it.
+  Across the **swept surface** — M-8's deleted modules and the surviving modules that host R-8's
+  re-homed assertions — no `skip` or pending marker survives **that does not reach the run's skip
+  sink as a registered record** (`helpers/skipSink.js`): a capability-gated skip that registers
+  itself into the sink is a declared runner limitation, not a sweep defect, while a bare `it.skip`
+  or an unregistered pending marker in that surface still fails. The boundary is sink membership
+  at run time, not `SKIP_INVENTORY` membership: the inventory is deliberately not closed over
+  registered skips, so keying the exemption to it would fail correct skips. Pending markers in
+  modules outside the swept surface — `guardMatrix.test.js`'s pre-existing `it.skip.each` rows are
+  the measured instance — are pre-existing state this feature neither creates nor repairs.
+  No assertion is left vacuously true against an empty directory (REQ C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
   file is re-homed into a surviving module before its host is deleted (REQ R-8).
 - **BR-SWEEP-7 — The sweep sizes from dispositions, not row counts.** The PLAN's task sizes come
   from the partition's per-file dispositions in the baseline, not from the 16 M-11 rows (REQ R-2).
