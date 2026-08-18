@@ -874,15 +874,18 @@ erratum 6's `hookCompatibility.test.js` membership correction), not decided sile
 that lands, the TSPEC-side surface is the full edited-module set tabulated above; it is a strict superset of FSPEC's,
 so no approved obligation is lost by it.
 
-**What is out of the domain, and why (TE TSPEC v8 Q-02).** Two edited modules are deliberately
-outside the join's domain, and the reasons are structural rather than judgemental. `pdlc/engine/__tests__/ci-arrangement.test.js`
-(class 1) lives in the **`pdlc/engine` package**, outside `pdlc/workflows/__tests__/` and therefore
-outside both the outer run's `testMatch` and the child invocation's file list; its skip discipline is
-the engine suite's own gate, not this oracle's. `guardMatrix.test.js` stays out for the reason already
-given below: its ~70 pending rows are pre-existing state that AT-1.3 names out of scope. No other
-`*.test.js` module this sweep edits is out of the domain — if a later PLAN task edits one, the table
-above and the child's file list both grow, and the spawn-argument assertion (part 1 below) reds until
-they do.
+**What is out of the domain, and why (TE TSPEC v8 Q-02; PM TSPEC v9 F-03).** The exclusions are
+structural rather than judgemental, and the first is stated as a **package rule, not a file list**:
+every `*.test.js` module this sweep edits under the **`pdlc/engine` package** is out of the domain,
+because it lives outside `pdlc/workflows/__tests__/` and therefore outside both the outer run's
+`testMatch` and the child invocations' file lists; its skip discipline is the engine suite's own gate,
+not this oracle's. Three such modules are edited: `ci-arrangement.test.js` (class 1) and, under §2.9's
+class-2 row, `smoke.test.js` and `fs-observation.test.js` — all three excluded by the same rule, so
+naming them changes no obligation and only keeps this paragraph usable as a closure check.
+`guardMatrix.test.js` stays out for the reason already given below: its ~70 pending rows are
+pre-existing state that AT-1.3 names out of scope. No other `*.test.js` module this sweep edits is out
+of the domain — if a later PLAN task edits one, the table above and both children's file lists grow,
+and the spawn-argument assertion (part 1 below) reds until they do.
 
 **TT-1b's registered skip is accepted upstream; erratum 9 landed.** §5.2's TT-1b constructs an
 unreadable target (`chmod 000`), which cannot be constructed as root, so the row is
@@ -933,7 +936,9 @@ join**, and it is the landed clause's evaluation:
   the swept-surface table above enumerates — post-sweep that is `consumerCleanup.test.js` (less the
   recursion carve-out below), `hookCompatibility.test.js`, `consolidationBuild.test.js`,
   `pipelineWiring.test.js`, `consolidationPreflight.test.js`, `documentOracles.test.js` and
-  `orchestrateDevSkill.test.js`, since M-8's deleted modules are absent and contribute nothing.
+  `orchestrateDevSkill.test.js`, `consolidationHookParity.test.js` and `skillFiles.test.js`, since M-8's
+  deleted modules are absent and contribute nothing — nine post-sweep members, matching the table above
+  (the green child runs eight of them; the host is carved out below).
   `orchestrateQueue.test.js` is out for the reason given there, and `ci-arrangement.test.js` is out
   of the package. `guardMatrix.test.js` is **out of the domain** and stays
   out: it is not an M-8 member, hosts no re-home, and its ~70 `it.skip.each(NON_BESPOKE_BLOCK)`
