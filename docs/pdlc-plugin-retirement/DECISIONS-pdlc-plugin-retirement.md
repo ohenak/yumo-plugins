@@ -156,30 +156,49 @@ plugin runtime goes, and `pdlc/engine/**` is not edited at all (REQ NG-5). Each 
 option selected in **Options Considered**; the alternatives and their rejection reasons stay there
 and are not restated.
 
-| Decision | Chosen option | Net effect on the tree |
-|---|---|---|
-| DEC-01 | A — leave the CLI at `pdlc/workflows/dist/pdlc-cli.mjs` | `git ls-files pdlc/workflows/dist/` goes from five entries to one; `OUT_DIR` in `build-runtime.mjs` needs no retarget |
-| DEC-02 | A — reduce `build-runtime.mjs` to a single-row builder | `bundles` keeps one row (`pdlc-cli`); bundling machinery, `RETIRES_BY_ID` and the manifest write go; `--check` keeps its shipped output shape |
-| DEC-03 | A — leave `MERGE_GUARD_DEFAULTS` exactly as shipped | No edit to `pdlc/workflows/orchestrate-dev.js`'s frozen four-member array, so the vendored engine copy stays byte-identical |
-| DEC-04 | A — operator-invoked, name-only, all-or-nothing cleanup script | New `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`; **no** entry added to `pdlc/hooks/hooks.json` (verified: zero references today) |
-| DEC-05 | A — rewrite the two delegator SKILL.md files thin | `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md` survive with unchanged frontmatter; Ptah `skill_path` and the engine's `OPERATOR_ONLY_SKILLS` catalogue keep resolving |
-| DEC-06 | A — leave `runtime-adapter.js` and its two test modules untouched | The orphan is routed upstream as erratum 2 rather than deleted inside the sweep |
-| DEC-07 | A — reduce `hookCompatibility.test.js` in place | The `C7` block goes, `PROP-COMPAT-*` assertions stay; FSPEC M-8's count is corrected by erratum 6 |
-| DEC-08 | A — leave both `.claude/pdlc.config.example.json` values as-is | Post-wave regeneration of `dist/` keeps working; only the surrounding prose naming retired bundles is edited |
-| DEC-09 | A — patch-bump the plugin to `0.23.2` | `pdlc/.claude-plugin/plugin.json` moves `0.23.1` → `0.23.2`, inside the engine's `^0.23.0` window, so `handshake.mjs` needs no change |
+| Decision | Chosen option | Net effect on the tree | Owning oracle |
+|---|---|---|---|
+| DEC-01 | A — leave the CLI at `pdlc/workflows/dist/pdlc-cli.mjs` | `git ls-files pdlc/workflows/dist/` goes from five entries to one; `OUT_DIR` in `build-runtime.mjs` needs no retarget | AC-1.1's `dist/` set-equality branch (AT-1.1) |
+| DEC-02 | A — reduce `build-runtime.mjs` to a single-row builder | `bundles` keeps one row (`pdlc-cli`); bundling machinery, `RETIRES_BY_ID` and the manifest write go; `--check` keeps its shipped output shape | AC-5.3, plus `consolidationBuild.test.js`'s T32 `--check` assertion (surviving) |
+| DEC-03 | A — leave `MERGE_GUARD_DEFAULTS` exactly as shipped | No edit to `pdlc/workflows/orchestrate-dev.js`'s frozen four-member array, so the vendored engine copy stays byte-identical | `consolidationRoute.test.js` — `routeOf reads the IMPORTED constant` set-equals the four literal members (surviving) |
+| DEC-04 | A — operator-invoked, name-only, all-or-nothing cleanup script, `--dry-run` included | New `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`, never registered in `pdlc/hooks/hooks.json` — kept unregistered by AC-1.7's hook-entry set-equality, not by inspection | AC-4.1…AC-4.4 with TSPEC §5.2's `consumerCleanup.test.js` (TT-1/TT-2); NG-6 by AC-1.7's set-equality; **no criterion yet** owns `--dry-run` or the 4a/4b split (erratum 7) |
+| DEC-05 | A — rewrite the two delegator SKILL.md files thin | `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md` survive with unchanged frontmatter; Ptah `skill_path` and the engine's `OPERATOR_ONLY_SKILLS` catalogue keep resolving | `skillFiles.test.js`'s `RLH-SKILL-08`/`RLH-SKILL-09` and `orchestrateDevSkill.test.js` (both surviving) |
+| DEC-06 | A — leave `runtime-adapter.js` untouched | The orphan is routed upstream as erratum 2 rather than deleted inside the sweep; `adapterProbe.test.js` and `adapterHarness.js` survive on `pdlc-cli.mjs`'s account, not the adapter's | **None yet** — by construction: an unspecified module has no disposition to assert until erratum 2 lands one |
+| DEC-07 | A — reduce `hookCompatibility.test.js` in place | The `C7` block goes, `PROP-COMPAT-*` assertions stay; FSPEC M-8's count is corrected by erratum 6 | AC-1.3's suite-size literal — **97 until erratum 6 lands, 99 after**; class 6 blocks on it |
+| DEC-08 | A — leave both `.claude/pdlc.config.example.json` values as-is | Post-wave regeneration of `dist/` keeps working; only the surrounding prose naming retired bundles is edited | `consolidationPreflight.test.js`'s two config assertions, tightened by class 10 from containment to set-equality over `postWavePathspecs` |
+| DEC-09 | A — patch-bump the plugin to `0.23.2` | `pdlc/.claude-plugin/plugin.json` moves `0.23.1` → `0.23.2`, inside the engine's `^0.23.0` window, so `handshake.mjs` needs no change | **None yet** — class 9 must add the `version == 0.23.2` + `satisfiesRange(version, pdlcPluginCompat)` assertion; `advertisedVersionViolation()` skips on this commit |
+| DEC-10 | A — classes 7 and 11 block on erratum 3's upstream disposition of `consolidate-learnings`'s host | No sweep commit removes the pass's host until product answers; `SKILL.md`'s bundle reference is rewritten only once there is a surviving path to name | **None yet** — the gate is a PLAN dependency edge, not an assertion; the criterion arrives with erratum 3's disposition |
 
-Three cross-cutting rules follow from the set and bind implementation:
+Four cross-cutting rules follow from the set and bind implementation:
 
-1. **The engine carve-out is absolute.** No task in Phase P may write under `pdlc/engine/`. Where a
-   sweep-shaped change would require an engine edit (DEC-03, DEC-06, DEC-09 option B), the decision
-   is to *not* make the change rather than to widen the blast radius.
-2. **Set-equality claims are re-measured, never inherited.** REQ C-6 and FSPEC §3.0 counts are
-   re-derived from the tree at implementation time; DEC-07 exists precisely because an inherited
-   count was wrong. A count that disagrees with the tree is an erratum against the upstream
-   document, not a licence to delete files until the number matches.
+1. **What is forbidden is a change to engine *runtime behaviour* — not every write under
+   `pdlc/engine/`.** NG-5 carves two exceptions explicitly **into** scope, and the sweep must take
+   them or it leaves a required check red on the commit that deletes their subject, which REQ C-7
+   forbids: (a) the engine's declared compatible-plugin range (BL-07), and (b) the engine-side
+   tests and fixture trees whose subject is a retired artifact — `pdlc/engine/__tests__/smoke.test.js`'s
+   drift-gate expectations, `fs-observation.test.js`, and the `__tests__/fixtures/consumer-ac12/`
+   tree (M-11c, M-11d, M-11e, M-11m; FSPEC class 2). Editing those changes no engine behaviour.
+   What no task may do is alter what a published engine *does*: DEC-03's guard-array edits and
+   DEC-06 option C's port are rejected on that ground, and DEC-09 option B is rejected on cost, not
+   on this rule (see DEC-09). Stated as "no writes under `pdlc/engine/`", this rule would forbid
+   work the sweep is required to do.
+2. **Implementation asserts the spec's literal; re-measurement is erratum evidence, never an
+   oracle's input.** Every expected value in an AT is a literal transcribed from the owning
+   upstream document — never a value the test derives from the tree it is testing, which greens by
+   construction and would pass a sweep that deleted one file too many. When a transcribed literal
+   disagrees with the tree, **implementation halts and raises an erratum** against the owning
+   document; the re-measurement is the evidence attached to that erratum, and it reaches the
+   assertion only after the upstream edit lands. DEC-07 is the worked example: the tree says 99,
+   FSPEC L-5 says 97, so class 6 waits for erratum 6 rather than asserting whatever it counts.
+   REQ C-6's "re-measured, never loosened" governs *how a spec's literal is corrected*, not how a
+   test obtains its expected value — the two halves are not interchangeable, and PROPERTIES owns
+   this rule in the transcription direction only.
 3. **Retirement is observable, not silent.** DEC-04's script reports its classification and DEC-09's
    version bump makes an installed copy diagnosable; nothing in this set removes a consumer-visible
    artifact without a signal the consumer can read.
+4. **A capability is never removed by a landing order.** Where the sweep would delete the only host
+   of a live capability (DEC-10), the classes that do so block on an upstream disposition. Silence
+   plus a merge is not a decision to drop a capability; only REQ can make that decision.
 
 ## Consequences
 
