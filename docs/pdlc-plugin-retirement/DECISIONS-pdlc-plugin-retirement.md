@@ -160,7 +160,7 @@ and are not restated.
 | DEC-01 | A — leave the CLI at `pdlc/workflows/dist/pdlc-cli.mjs` | `git ls-files pdlc/workflows/dist/` goes from five entries to one; `OUT_DIR` in `build-runtime.mjs` needs no retarget | AC-1.1's `dist/` set-equality branch (AT-1.1) — **gated**: it cannot go green before class 7 lands, so DEC-10's erratum-3 gate holds it red |
 | DEC-02 | A — reduce `build-runtime.mjs` to a single-row builder | `bundles` keeps one row (`pdlc-cli`); bundling machinery, `RETIRES_BY_ID` and the manifest write go; `--check` keeps its shipped output shape | AC-5.3, plus `consolidationBuild.test.js`'s T32 `--check` assertion (surviving) — **gated**: the reduction rides class 7 |
 | DEC-03 | A — leave `MERGE_GUARD_DEFAULTS` exactly as shipped | No edit to `pdlc/workflows/orchestrate-dev.js`'s frozen four-member array, so the vendored engine copy stays byte-identical | `consolidationRoute.test.js` — `routeOf reads the IMPORTED constant` set-equals the four literal members (surviving) |
-| DEC-04 | A — operator-invoked, name-only, all-or-nothing cleanup script, `--dry-run` included | New `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`, never registered in `pdlc/hooks/hooks.json` — kept unregistered by AC-1.7's hook-entry set-equality, not by inspection | AC-4.1…AC-4.4 with TSPEC §5.2's `consumerCleanup.test.js` (TT-1/TT-2); NG-6 by AC-1.7's set-equality; **no criterion yet** owns `--dry-run` or the 4a/4b split (erratum 7) |
+| DEC-04 | A — operator-invoked, name-only, all-or-nothing cleanup script, `--dry-run` included | New `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`, never registered in `pdlc/hooks/hooks.json` — kept unregistered by AC-1.7's hook-entry set-equality, not by inspection | AC-4.1…AC-4.4 with TSPEC §5.2's `consumerCleanup.test.js` (TT-1/TT-2); NG-6 by AC-1.7's set-equality; TSPEC §5.2's TT-1 (row 4a) and TT-2 (`--dry-run`) own those arms, and **TT-1b owns row 4b's exit status only** — its partial-`rm` arm is deliberately oracle-free (not deterministically constructible without faking the removal primitive), so that arm is contract text, not an assertion; **no criterion yet** owns `--dry-run` or the 4a/4b split (erratum 7), which rule 5 permits because both are additive and conservative |
 | DEC-05 | A — rewrite the two delegator SKILL.md files thin | `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md` survive with unchanged frontmatter; Ptah `skill_path` and the engine's `OPERATOR_ONLY_SKILLS` catalogue keep resolving | `skillFiles.test.js`'s `RLH-SKILL-08`/`RLH-SKILL-09` and `orchestrateDevSkill.test.js` (both surviving) |
 | DEC-06 | A — leave `runtime-adapter.js` untouched | The orphan is routed upstream as erratum 2 rather than deleted inside the sweep; `adapterProbe.test.js` and `adapterHarness.js` survive on `pdlc-cli.mjs`'s account, not the adapter's | **None yet** — by construction: an unspecified module has no disposition to assert until erratum 2 lands one |
 | DEC-07 | A — reduce `hookCompatibility.test.js` in place | The `C7` block goes, `PROP-COMPAT-*` assertions stay; FSPEC M-8's count is corrected by erratum 6 | AC-1.3's suite-size literal — **97 until erratum 6 lands, 99 after**; class 6 blocks on it |
@@ -198,6 +198,19 @@ Four cross-cutting rules follow from the set and bind implementation:
 4. **A capability is never removed by a landing order.** Where the sweep would delete the only host
    of a live capability (DEC-10), the classes that do so block on an upstream disposition. Silence
    plus a merge is not a decision to drop a capability; only REQ can make that decision.
+
+5. **Additive-and-conservative surfaces may ship ahead of their criterion; subtractive ones may not.**
+   Rules 3 and 4 pull in opposite directions on the same page, and the distinguishing principle is
+   stated here so PLAN does not have to guess which precedent applies to the next unowned surface.
+   DEC-04 ships `--dry-run` and the 4a/4b exit split while REQ still owes AC-4.5 (TSPEC §6.1
+   erratum 7); DEC-07 and DEC-10 hold classes 6 and 7–11 until FSPEC and REQ answer. The difference is
+   direction of effect, not appetite for risk: an **additive** surface whose asserted behaviour is
+   "removes nothing" cannot make any existing criterion false, so the criterion can follow the code and
+   only ratifies a shape that is already safe. A **subtractive** change removes a capability or an
+   artifact other criteria rest on; once it lands there is no criterion left to fall back on, and the
+   only cheap moment to decide was before the merge. So: additive **and** conservative (the
+   conservative half matters — an additive surface that deleted on default would be gated) may ship
+   ahead of its criterion, with the gap routed as an erratum; subtractive may not.
 
 ## Consequences
 
