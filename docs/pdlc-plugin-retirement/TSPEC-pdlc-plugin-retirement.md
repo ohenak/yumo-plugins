@@ -527,10 +527,20 @@ always a real difference and never an "unknown value".
 The comparison has two halves, and the excluded set is exhaustive: anything not listed is
 value-compared.
 
-1. **Field sets.** Enumerate every key path of both reports (recursively; array members are
-   compared as the array's path, not per index) and require set-equality. An added *or* removed
-   path fails. This is the clause that discharges "no field, phase or gate disappeared with the
-   deleted machinery".
+1. **Field sets.** Enumerate every key path in both reports and require set-equality; an added
+   *or* removed path fails. Two boundary rules make the enumeration deterministic:
+   (a) array members are compared at the array's own path, not per index; (b) **enumeration
+   stops at the root of every excluded run-variable collection.** For `engine.authSources`,
+   `engine.startup`, `engine.dispatches`, `engine.retries`, `engine.pauses`, `engine.denials`,
+   `engine.loop` and `engine.outcomes`, the key path `engine.<name>` is enumerated and its
+   interior is not — `engine.dispatches.bySkill.<skill-name>` and
+   `engine.dispatches.byPhase.<phase>` are run-variable content (`buildEngineBlock()` seeds
+   `dispatches` as `{ bySkill: {}, byPhase: {} }`, `pdlc/engine/lib/report.mjs`), and a
+   pre-sweep run that dispatched a different skill set would otherwise fail clause 1 on a
+   correct sweep. AC-5.2's "compared for shape, never for content" therefore binds both halves:
+   the collection's *presence* is set-compared, everything beneath it is compared by neither
+   clause. This clause discharges "no field, no phase, no gate disappeared with the deleted
+   machinery".
 2. **Values**, over the complement of this excluded list:
 
 | Excluded key path | Why it differs between two correct runs |
@@ -555,6 +565,7 @@ auth-source row C-1's evidence gate is about, and it must not change under a del
 | Plugin version (`pdlc/.claude-plugin/plugin.json`) | `0.23.1` | **`0.23.2`** |
 | Repo engine's declared range (`pdlc/engine/package.json`, `pdlcPluginCompat`) | `^0.23.0` | unchanged by this feature |
 | Published engine | `@kaneho/pdlc-engine@0.2.0`, declaring `pluginCompat: ^0.23.0` | BL-07's release may widen it; not required by `0.23.2` |
+| Repo engine version (`pdlc/engine/package.json`, `version`) | `0.2.1` — **unpublished**; the newest tag is `engine-v0.2.0` | unchanged by this feature |
 
 Under the handshake's leftmost-non-zero caret semantics (`pdlc/engine/lib/handshake.mjs`,
 `satisfiesRange`), `^0.23.0` admits `0.23.x` and not `0.24.0`. Pinning the post-sweep version at
@@ -562,6 +573,13 @@ Under the handshake's leftmost-non-zero caret semantics (`pdlc/engine/lib/handsh
 sweep is not gated on a release it does not need — while leaving the operator free to publish one.
 A `0.24.0` bump is out of scope here precisely because it would turn C-10's handshake into an
 outage on the retirement commit (E-19).
+
+The published/repo split matters when the table is read at release time: BL-07's gate is
+satisfied by the **published** `@kaneho/pdlc-engine@0.2.0`'s `pluginCompat: ^0.23.0`, which
+admits `0.23.2`, so no release is on this sweep's critical path. The tree nonetheless carries an
+unreleased `0.2.1` in `pdlc/engine/package.json`; whoever cuts `engine-v0.2.1` ships the same
+`^0.23.0` range, so the gate reading is unchanged either way. Naming both versions keeps the
+"published range" citation unambiguous.
 
 ### 4.7 `helpers/driftGenerators.js`'s surviving export set
 
