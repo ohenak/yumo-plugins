@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.5) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.5 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.6 | 2026-08-17 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
@@ -920,7 +920,7 @@ the §2.6 measurement, not re-checked by this oracle.
 
 ### 6.1 Upstream errata raised (not folded in here)
 
-Eight claims and open surfaces in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
+Nine claims and open surfaces in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
 Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC.
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
@@ -1014,6 +1014,22 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    `helpers/skipSinkTeardown.js`. If instead M-8 gains `driftOrdering.js` as a seventh member, no
    AC-1.3 change is needed and §5.5's oracle stands unchanged. Either way the criterion and the
    test must not end up scoped differently.
+
+
+9. **FSPEC AT-1.3 / BR-SWEEP-6 (and REQ AC-1.3) — "no skipped or pending test at all" has no
+   satisfying runner once TT-1b exists.** AT-1.3 reads "the suite contains **no skipped or pending
+   test at all** (repo-wide …)" and BR-SWEEP-6 states the same flatly. TT-1b's unreadable-target
+   arm (`chmod 000`) cannot be constructed as root, so on a root runner the row skips and AT-1.3
+   fails as written; on a non-root runner nothing fires and the divergence is invisible. The
+   collision is not created by the sweep alone: `SKIP_INVENTORY` already carries ten `uid-nonroot`
+   entries (`helpers/driftCapabilities.js`), so the wider clause is already false on a root runner
+   at HEAD. Requested edit, owned by FSPEC: narrow AT-1.3's clause and BR-SWEEP-6 to "no skip or
+   pending test **absent from the skip sink's inventory**" — a registered `itOrSkip` skip carrying a
+   `SKIP_INVENTORY` row is a declared capability gap; a bare `it.skip` still fails. REQ AC-1.3
+   should take the same wording if it is to stay aligned (it is silent on registered skips today).
+   The alternative — pinning the gate runner to non-root — is costed and rejected in §5.5. Until
+   this edit lands, §5.5's join oracle exists but the binding acceptance wording is the wider one;
+   this TSPEC carries no clause FSPEC has not approved.
 
 
 ### 6.2 Successor work bound under REQ NG-5
