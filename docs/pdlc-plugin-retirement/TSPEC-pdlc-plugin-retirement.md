@@ -803,23 +803,71 @@ run, passed, failed), because a suite that executed zero tests also exits 0 (E-2
 
 ### 5.5 Deleted, never skipped
 
-No **unregistered** `skip`, no pending marker, no assertion left vacuously true over an empty
-directory (C-8, BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip
-introduced in a *surviving* module is the same defect as one left behind.
+No `skip`, no pending marker, no assertion left vacuously true over an empty directory (C-8,
+BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip introduced in a
+*surviving* module is the same defect as one left behind.
 
-**"Unregistered" reconciles this rule with TT-1b.** §5.2's TT-1b constructs an unreadable target
-(`chmod 000`), which cannot be constructed as root, so the row is root-conditional — and the module
-that hosts it (`consumerCleanup.test.js`) is one the sweep *introduces*, so a bare `it.skip` there
-would register exactly the marker AT-1.3 is written to catch. The repo already owns the mechanism
-that settles this: `itOrSkip` (`pdlc/workflows/__tests__/helpers/driftCapabilities.js`, exported
-alongside the frozen `SKIP_INVENTORY` ledger in the same module) is used this way by
-`skipSinkTransport.test.js` and `documentOracles.test.js`. TT-1b takes its skip through that sink
-with a `SKIP_INVENTORY` capability entry naming the root/`chmod 000` gap; the skip is then a
-*declared* capability gap carried on the ledger, not a silent pending marker. AT-1.3's clause reads
-"no skip absent from the skip sink's inventory", so a skip the sweep adds without a sink
-registration still fails it. Pinning the gate runner to non-root is not the alternative taken:
-capability, not the runner, decides, and a root CI runner must still report the gap rather than
-silently pass.
+**TT-1b collides with that rule as approved, and the collision is routed, not reinterpreted.**
+AT-1.3 as approved reads "the suite contains **no skipped or pending test at all** (repo-wide, not
+only among M-8's modules …)" (`FSPEC-pdlc-plugin-retirement.md`, AT-1.3), and BR-SWEEP-6 states the
+same flatly; REQ AC-1.3 is narrower ("no skipped or pending test belonging to M-8") and silent on
+registered skips. §5.2's TT-1b constructs an unreadable target (`chmod 000`), which cannot be
+constructed as root, so the row is root-conditional — on a root runner it skips, and AT-1.3 as
+written then fails. This TSPEC does **not** restate AT-1.3 as if it already tolerated that skip. It
+*proposes* narrowing the clause to "no skip or pending test absent from the skip sink's inventory",
+and routes the proposal upstream as §6.1 erratum 9, whose owner edits AT-1.3 and BR-SWEEP-6 (and,
+if AC-1.3 is to stay aligned, AC-1.3). Until that edit lands, the binding text is the wider one,
+and an implementer reading only this TSPEC must not treat TT-1b's registered skip as accepted.
+
+**The mechanism is unaffected by which wording lands.** The repo already owns it: `itOrSkip`
+(`pdlc/workflows/__tests__/helpers/driftCapabilities.js`, exported alongside the frozen
+`SKIP_INVENTORY` ledger in the same module) is used this way by `skipSinkTransport.test.js` and
+`documentOracles.test.js`; the on-disk sink itself is `helpers/skipSink.js`, whose
+`validateSkipRecords` is run by the `globalTeardown` half. TT-1b takes its skip through `itOrSkip`
+with a `SKIP_INVENTORY` capability entry naming the root/`chmod 000` gap, so the skip is a
+*declared* capability gap carried on the ledger rather than a silent pending marker.
+
+**The alternative — pinning the gate runner to non-root — was costed, not skipped over.** It is
+cheaper today (no inventory entry, no join oracle, no upstream erratum) and would keep AT-1.3's
+approved wording literally true on the pinned runner. It is rejected because it makes a green
+AT-1.3 an artefact of runner configuration: on any root runner (a container default, a future
+self-hosted image) the gap would go unreported rather than declared, and the pin lives in CI
+configuration this TSPEC's oracles cannot see. Capability, not the runner, decides. The cost of
+that choice is exactly erratum 9 plus the join oracle below.
+
+**The narrowed clause needs a stated evaluation mechanism; the sink comparator is not one.**
+`validateSkipRecords` (`helpers/skipSink.js`, clauses C1/C2/C3) checks only the *registered*
+direction: every record is well-formed, names a `KNOWN_CAPABILITY_KEYS` capability, and agrees
+verbatim with its `SKIP_INVENTORY` row. Nothing in it observes jest's pending list, so a bare
+`it.skip` added by the sweep produces no record and no violation — the comparator is silent, not
+green-with-evidence. A count-only test (`pendingCount === sinkRecords.length`) would be the cheapest
+passing thing and would not assert the property either. The oracle is therefore stated as a **set
+join**, and it is the AT-1.3 clause's evaluation:
+
+- **Left set:** jest's pending set for the run — `assertionResults` entries with
+  `status: "pending"`, taken from the run's `--json` output, keyed by their `title`.
+- **Right set:** the sink's records for the same run, keyed by `name`, after `validateSkipRecords`
+  returns zero violations against `SKIP_INVENTORY`.
+- **Join key:** the leaf title. This is sound because `itOrSkip(name, …)` passes the *same* `name`
+  to `it.skip(name, body)` and to `registerSkip(name, …)`, so a registered skip's jest title and its
+  record name are one string by construction.
+- **Assertion:** set **equality**, both directions, not containment. Left ⊄ right catches the bare
+  `it.skip` the rule exists to catch; right ⊄ left catches a record written for a test that did not
+  actually skip (a stale or hand-written entry).
+
+Both directions are new assertions in `consumerCleanup.test.js`; neither is inherited from
+`skipSink.js`, which asserts only that records that exist are well-formed and on the ledger.
+
+**The `SKIP_INVENTORY` entry is an edit to a surviving helper, and it belongs to class 3.**
+Registering TT-1b's gap means editing `helpers/driftCapabilities.js` — a file §2.6 disposes of as a
+*survivor with live consumers*, so it appears in no deletion class and would otherwise be an
+unowned edit under §5.4's per-commit replay. It is named in §2.9's class-3 row alongside
+`consumerCleanup.test.js`. The entry's fields are fixed by what the comparator enforces:
+`name` equal to TT-1b's leaf title, `capability: "uid-nonroot"` (the only member of
+`KNOWN_CAPABILITY_KEYS` that fits; the other is `"bash"`), and a **non-empty** list of
+`unverifiedInvariants` naming what goes unchecked when the arm skips (row 4b's exit-`4` status and
+its stderr diagnostic). C1/C3 require the call site to repeat that list verbatim, so the list is
+authored once in the inventory and copied into the `itOrSkip` call, not paraphrased.
 
 **Deleted, nothing left orphaned.** AT-1.3's field set does not reach non-`*.test.js` files (REQ
 AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get their
