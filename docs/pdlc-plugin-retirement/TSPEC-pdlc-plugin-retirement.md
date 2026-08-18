@@ -941,6 +941,15 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    cannot see it (a helper is not a `*.test.js` module). Either M-8 gains it as a seventh helper
    member, or AC-1.3 gains an orphan-freedom conjunct; §5.5 asserts the property either way, so
    this erratum is about ownership, not about coverage.
+   Routing note for whichever option the upstream owner takes (raised by PM/TE review v4): if the
+   AC-1.3 conjunct is chosen, it must be stated over **files under
+   `pdlc/workflows/__tests__/helpers/`**, not over `*.test.js` modules (AC-1.3's existing field set
+   cannot see a helper), and it must carry §5.5's **two wiring channels** — imported by a surviving
+   module **or** referenced by `globalSetup` / `globalTeardown` in `pdlc/workflows/package.json`.
+   A single-channel conjunct would be false at HEAD for `helpers/skipSinkSetup.js` and
+   `helpers/skipSinkTeardown.js`. If instead M-8 gains `driftOrdering.js` as a seventh member, no
+   AC-1.3 change is needed and §5.5's oracle stands unchanged. Either way the criterion and the
+   test must not end up scoped differently.
 
 
 ### 6.2 Successor work bound under REQ NG-5
