@@ -32,7 +32,16 @@ sections this round changed.
 
 ## Delta tags
 
+FINDING: High | delta | local | §5.5 part 1 / falsifiability paragraph (TSPEC:923–927, :944–946) | child file set stated both as surface-minus-host (asserted by set-equality) and as that set plus the bare-`it.skip` fixture; the two readings cannot both hold and the fixture-inclusive one can never pass green
+FINDING: High | delta | local | §5.5 part 3 compensating check (TSPEC:936–941) | absence-only static assertion, unpaired and with no falsifying construction, is the sole skip guard over `consumerCleanup.test.js` after part 1 carves the host out of the join domain
+FINDING: Low | delta | local | §6.1 lead sentence (TSPEC:1089) | says "Nine claims" while the list enumerates ten items after erratum 10 landed
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Part 2's sentinel throws when `PDLC_SKIP_JOIN_NESTED` is already set, which reds the child rather than the parent. If the parent's own environment ever carries that variable (a developer re-running a failed child by hand, or a future outer harness exporting it), the parent's spawn helper is the thing that throws — does the design intend the parent to red in that case too, or should the sentinel be read-then-set only on the child's env copy? One sentence either way; it does not change any acceptance criterion, but it decides whether a stray env var reds the gate for a reason unrelated to the sweep. |
+| Q-02 | The green child runs `hookCompatibility.test.js` and `consolidationBuild.test.js` in a nested jest process on every outer run of `consumerCleanup.test.js`. §4.4 pins suite size but nothing pins the join's runtime cost. Is that cost bounded enough for the gate as configured, or is it worth a stated expectation (e.g. the child is invoked `--runInBand` over two files) so a later module joining the swept surface makes the cost visible in review rather than in CI wall-clock? |
 
 ## Positive Observations
 
