@@ -137,3 +137,49 @@ Three cross-cutting rules follow from the set and bind implementation:
    artifact without a signal the consumer can read.
 
 ## Consequences
+
+**What gets easier.** After the sweep `pdlc/workflows/` has one tracked build output instead of
+five, and `build-runtime.mjs` has one emitter instead of four. A wave that touches
+`orchestrate-dev.js` or `cli.mjs` regenerates a single file, so post-wave diffs stop carrying three
+megabyte-scale bundle rewrites that no reviewer reads. The two delegator skills shrink from 347
+lines of duplicated pipeline logic to thin delegation, removing the standing drift risk that REQ
+NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the engine.
+
+**What gets harder, and the price we accepted.**
+
+| Consequence | Owner decision | Price |
+|---|---|---|
+| The repo keeps a 56 KB module (`runtime-adapter.js`) plus 509 lines of tests for it with no in-repo executor | DEC-06 | Reviewers will read it as dead weight until erratum 2 lands a disposition. Accepted over an unspecified deletion that would break four modules' explanatory comments and dangle citations inside `pdlc/engine/lib/adapter.mjs` |
+| `MERGE_GUARD_DEFAULTS` keeps a member (`.claude/workflows/`) naming a retired directory | DEC-03 | A cosmetically stale constant, shipped verbatim into the published engine. Editing it is an engine change (REQ NG-5); the staleness is inert because the guard only ever *widens* refusal |
+| Consumer `.claude/workflows/` copies are cleaned only when an operator runs the script | DEC-04 | Consumers who never run it keep stale files indefinitely. Accepted: NG-6 forbids the automatic path, and all-or-nothing classification keeps AT-4.3 inspectable |
+| `hookCompatibility.test.js` survives with fewer blocks than FSPEC M-8's count implies | DEC-07 | The deletion-set count is wrong until erratum 6 lands. Accepted over deleting passing `PROP-COMPAT-*` assertions to satisfy a literal |
+
+**Reversibility.**
+
+- **Easy to reverse:** DEC-01 (relocating the CLI later is a path change plus an `OUT_DIR` edit),
+  DEC-08 (config-example values are two JSON strings), DEC-09 (version bumps are monotonic and
+  cheap while `^0.23.0` holds).
+- **Hard to reverse:** DEC-02 and DEC-05. Re-growing the bundler or restoring fat delegator skills
+  means recovering deleted code from history and re-establishing the tests that pinned it; the
+  cost is why DEC-02 rejected leaving dead emitters in place as an invitation to re-grow them.
+- **One-way door:** none. Nothing here deletes a consumer's data, and every removal is recoverable
+  from the class-7 commit.
+
+**Re-evaluation triggers.**
+
+1. **Erratum 2 lands a `runtime-adapter.js` disposition** — DEC-06 is superseded by whatever the
+   upstream document decides; the module's fate stops being a sweep-local judgement call.
+2. **Erratum 6 corrects FSPEC M-8's membership and count** — DEC-07's in-place reduction should be
+   re-read against the corrected set before Phase P begins.
+3. **The engine carve-out is lifted** (a future REQ permits editing `pdlc/engine/**`) — DEC-03,
+   DEC-06 option C and DEC-09 option B all become live again, since each was rejected on carve-out
+   cost rather than on merit.
+4. **`pdlcPluginCompat` moves off `^0.23.0`** — DEC-09's patch-bump constraint dissolves, and a
+   minor bump becomes the honest signal for a retirement of this size.
+5. **A second consumer-cleanup need appears** (any other directory the plugin left behind) — revisit
+   DEC-04's name-only, single-directory shape before generalising the script.
+
+**Downstream obligations.** PLAN must order the class-7 commit so the DEC-02 builder reduction and
+the DEC-01 `dist/` deletion land together (a builder that still emits three retired bundles against
+a swept `dist/` fails `--check`), and PROPERTIES must own the re-measurement rule from Decision
+rule 2 rather than pinning REQ C-6's inherited literal.
