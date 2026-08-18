@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.5) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.4 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.5 | 2026-08-17 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
@@ -234,7 +234,14 @@ survive with live consumers. `helpers/freshClone.js` loses its only consumer
 (`bootstrap.test.js`) and **regains one** in TT-3's fresh-clone half (§5.2) — it must not be swept
 as collateral. `helpers/driftOrdering.js` is consumed only by `bootstrap.test.js` and
 `drift*.test.js` modules, so it ends the sweep consumer-less; it is deleted with them under class
-3 rather than left as dead code. **The AT-1.3 citation for this is withdrawn:** AC-1.3 has no
+3 rather than left as dead code. **Importer-count is not the whole rule** (PM/TE review v4, Q-01):
+`helpers/skipSinkSetup.js` and `helpers/skipSinkTeardown.js` are consumed by Jest configuration,
+not by imports — `pdlc/workflows/package.json` names them in `globalSetup` / `globalTeardown` — and
+`skipSinkTeardown.js`'s only `__tests__` mention is a comment inside `driftHelpers.test.js`, a
+module M-8 deletes. Applying "consumed only by modules the sweep deletes ⇒ delete" on import
+evidence alone would therefore sweep a live piece of the skip-sink transport. Both files survive,
+appear in no deletion class, and the config channel is the reason; §5.5's oracle asserts the same
+two channels. **The AT-1.3 citation for this is withdrawn:** AC-1.3 has no
 no-orphan reading — it asserts suite green, no skipped or pending test belonging to M-8, a
 `*.test.js` count equal to the FSPEC literal, and that every module named *retained* is present
 and passing (REQ AC-1.3). A helper is not a `*.test.js` file, so the count clause cannot see it,
