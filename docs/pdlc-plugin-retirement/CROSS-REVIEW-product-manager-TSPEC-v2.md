@@ -66,3 +66,6 @@ Two High findings, both introduced by this round and both narrow. Required chang
 Nothing else in the diff needs to change; the seven v1 findings are closed and the sections they touch verify against the tree.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
