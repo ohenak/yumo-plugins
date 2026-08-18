@@ -1,0 +1,58 @@
+# Cross-Review: software-engineer — FSPEC
+
+**Reviewer:** software-engineer
+**Document reviewed:** `docs/pdlc-plugin-retirement/FSPEC-pdlc-plugin-retirement.md`
+**Date:** 2026-08-17
+**Iteration:** 3
+**Scope:** delta re-review of the changes since `5244391b`, the commit carrying my v1 review
+
+## Delta basis
+
+No `CROSS-REVIEW-software-engineer-FSPEC-v2.md` exists on this branch: round 2 was a
+test-engineer round (`3f4e3cab`). My prior findings are therefore v1's, and the diff read is
+`git diff 5244391b HEAD -- docs/pdlc-plugin-retirement/FSPEC-pdlc-plugin-retirement.md`
+(224 insertions, 79 deletions). Unchanged sections already approved in v1 were not re-litigated.
+
+## Disposition of v1's four High findings
+
+| v1 | Subject | Status | Evidence checked this round |
+|----|---------|--------|------------------------------|
+| F-01 | Cleanup's expected/unexpected predicate had no surviving source of truth | **Resolved in principle, re-opened on the set's contents** — see F-01 below | §3.5 step 2 now classifies by name only and says why a content predicate is undecidable; BR-CLN-3a states the consequence rather than leaving it implicit; E-16a added; the REQ's "or hand-modified" clause is raised as erratum (3) instead of being reinterpreted |
+| F-02 | BR-SWEEP-4 in live conflict with BR-SWEEP-2 over CLAUDE.md prose | **Resolved** | BR-SWEEP-4 is now scoped to gate-read references; prose is routed to class 9 (with its oracle) or class 12. The conflict's factual basis re-verified: `pdlc/workflows/__tests__/documentOracles.test.js:747`–`:749` asserts `CLAUDE.md` *contains* both `check-workflow-drift.sh` and `sync-workflows.sh`, exactly the two names cited |
+| F-03 | AT-1.8's "exactly one class" undecidable — classes did not partition files | **Resolved** | BR-SWEEP-1 now partitions **edits**, the unit being a (file, section) pair, and names the four CLAUDE.md owners (1, 9, 10, 12) and OPERATIONS.md's two (1, 12). AT-1.8 judges per **hunk**. The claim that the baseline carries the section split checks out: `pdlc-retirement-baseline.md:58` (M-11c, CI table + count word), `:61` (M-11f, oracle-guarded script names), `:63` (M-11h, wave-gate values documented in CLAUDE.md), `:66` (M-11k/l, deep-dive prose) |
+| F-04 | A-1 could be widened to green a red search | **Resolved** | L-3 now freezes A-1's glob list at re-measurement and requires a per-file disposition for any later addition; AT-1.2 gains a positive control. Verified the two mandatory members are genuinely covered and genuinely non-empty: `pdlc-retirement-baseline.md:73`'s allow-list carries `docs/_decisions/**` and `docs/_constraints/pdlc-retirement-baseline.md`, and running L-3's command over `git ls-files` returns both `docs/_decisions/DECISIONS-plugin-distribution.md` and `docs/_constraints/pdlc-retirement-baseline.md` |
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **BR-CLN-3a's installed-name set is wrong in both directions, and the under-inclusion makes AC-4.1's success path unreachable on any real consumer.** §3.5 step 2 and BR-CLN-3a define the expected-name set as "L-1's pre-sweep entry names plus the drift-state record". L-1 is a **repo-side** literal — the five entries of `pdlc/workflows/dist/` — being reused as a **consumer-side** literal, and the two sets are not the same. (a) **Over-inclusion:** `distribution-manifest.json` is in L-1 but is never installed into `.claude/workflows/`; the manifest's four rows carry `consumerPath` values `.claude/workflows/{consolidate-learnings.bundle.js, orchestrate-dev.bundle.js, orchestrate-queue.bundle.js, pdlc-cli.mjs}` and no row for itself (`pdlc/workflows/dist/distribution-manifest.json:8,16,26,36`). A stray file at that name would be classified *expected* and **deleted**, which is the conservatism leak BR-CLN-3a exists to prevent. (b) **Under-inclusion, the blocking half:** the retired channel installs two further things into that directory that the set omits — `.pdlc-sync-manifest.json`, written and re-serialized on every run (`pdlc/hooks/scripts/sync-workflows.sh:464`), and the `.pdlc-backups/` directory created by the backup path (`pdlc/hooks/scripts/lib/pdlc-drift.sh:1710`, referenced at `sync-workflows.sh:612` and `check-workflow-drift.sh:348`). On any consumer that actually ran the sync channel, both are present, both fall outside the name set, and §3.5 step 5 therefore **refuses the whole invocation** — permanently, since nothing removes them. AT-4.1's "all expected, nothing unexpected" construction is unreachable in the field, and AC-4.1 becomes a criterion that only passes on a synthetic directory. Note the retired tooling already faced this and drew the line differently: its own report-only listing drops `.pdlc-*`-prefixed basenames (`sync-workflows.sh:299`). **Fix:** pin a separate consumer-side literal (e.g. L-11) enumerating what the channel installs — the manifest's four `consumerPath` basenames plus `.pdlc-drift-state.json`, `.pdlc-sync-manifest.json` and `.pdlc-backups/` — transcribed **before** class 7 deletes the manifest that records them, and have §3.5, BR-CLN-3a, E-16 and AT-4.1/AT-4.3 read that literal instead of L-1. AT-4.1's happy-path construction should include the sync manifest and a non-empty backups directory, or the test will pass on a directory no consumer has. | §3.5 (1–2); BR-CLN-3a; L-1; E-16; AT-4.1; AT-4.3 |
+| F-02 | Low | Local | **"Four terminal exit branches" undercounts `sync-workflows.sh` by one.** BR-CLN-4 cites the retired tooling's "four terminal exit branches" for statuses 3/2/1/0. The script also exits **4** on usage errors (`pdlc/hooks/scripts/sync-workflows.sh:84`, `:91`, `:687`, `:691`, documented at `:12`), so there are five. The substantive claims are all correct as verified — unknown row exits `3` (`:713`–`:714`), `local-edit`/`unverified` exits `2` (`:717`–`:718`), stale-or-missing exits `1` (`:722`), success exits `0` (`:725`) — only the count word is off. Worth correcting because ASM-3 makes the cleanup inherit this convention, and a cleanup that reuses `4` for a refusal would collide with the inherited usage-error slot. | BR-CLN-4; ASM-3 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does the cleanup own `.pdlc-backups/` **recursively**? Its contents are timestamped `.bak` files whose names are not enumerable in advance (`pdlc-drift.sh:1701`'s `{id}.{stamp}-{NN}.bak` grammar), so a name-only predicate cannot classify them individually. Either the directory is expected as a whole and removed with its contents, or every `.bak` inside it is unexpected and the cleanup refuses. F-01's fix has to say which; the grammar is checkable, so "matches the backup grammar" is a third viable predicate. |
+| Q-02 | AT-3.1 discharges "no pipeline decision inside the plugin" partly by set-equality over the session transcript's tool-invocation set. Is the transcript's tool-invocation record an artifact a maintainer can extract mechanically at review time, or does this clause quietly reintroduce the agent self-report §6's preamble forbids? The other two halves (non-empty dispatch record, static absence in the skill files) are clearly mechanical. |
+
+## Positive Observations
+
+- **Both count-word claims in BR-DOC-1a are exactly right, and the enumeration is complete.** I ran the oracle's own claim regex (`pdlc/engine/__tests__/ci-arrangement.test.js:703`) over the flattened comment headers of all three files it sweeps: it matches `fixture-machine.yml`'s "six PR-gate jobs" (`:8`) and `publish.yml`'s "six rendered check names" (`:5`), and nothing else. Notably `fixture-machine.yml:5`'s "five checks of its own" does **not** match — the alternation requires `rendered check names`/`PR-gate jobs`/`PR checks` — so the FSPEC is right to leave it out. This is the kind of enumeration that is usually one short.
+- **BR-DOC-1b's characterisation of the oracle is accurate.** `EXPECTED_RENDERED_BY_JOB` is a hardcoded constant in the test (`ci-arrangement.test.js:55`–`:86`); the oracle reads no `docs/completed/**` file. So the FSPEC is correct that the pointer to a completed feature's FSPEC §5.1 is *prose* and that CLAUDE.md's `### Continuous integration` section is the only oracle-covered carrier (`:615`, `:636`). Deleting two of the six rendered rows leaves four, which is consistent with L-7's post-sweep set and with the `four` the count words must become.
+- **AT-3.3's hook half now names the right channel and status for each of the four survivors, and all four check out.** Harvest guard: stderr + `sys.exit(2)` (`guard-harvest-before-delete.sh`, its blocked branch). Scope-field and REQ-size: stdout JSON `hookSpecificOutput.additionalContext` with exit `0` (`check-scope-field.sh:50`–`:51`; `check-req-size.sh:65`–`:66`, `:74`–`:75`). Consolidation nudge: same shape with `"hookEventName": "SessionStart"` (`nudge-consolidation.sh:85`–`:86`). The warning about a harness that expects stderr and non-zero failing three correct hooks is a real trap, correctly pre-empted. L-10's fifteen skills also re-verified (`ls pdlc/skills/*/SKILL.md` → 15).
+- **The three errata are all genuine and all correctly routed rather than absorbed.** (2) verified: the run report carries `engineVersion`/`pluginVersion` (`pdlc/engine/lib/provenance.mjs:11`–`:12`, `:72`–`:73`) and the `dispatches`/`outcomes` collections (`pdlc/engine/lib/report.mjs:21`), none of which fall inside REQ AC-5.2's enumerated allowed set (`REQ:459`–`:460`) — so AC-5.2 read literally is unpassable, exactly as claimed. (3) verified: REQ AC-4.3 (`:441`–`:444`) does require detecting a *hand-modified* file and does say "non-zero". Declining to relax the FSPEC around an upstream defect, and pinning a decidable predicate while flagging the gap, is the right handling in both cases.
+- **AT-1.2's positive control is the strongest addition in this round.** An empty unfiltered output failing the test closes precisely the absence-only hole that a word-split term list or a wrong working directory would otherwise green. Choosing containment on the positive side and set-equality on the gate side, with the reason stated (A-1's coverage is an open set), is honest about which shape is checkable where.
+- **AT-4.4 and AT-5.2 now agree.** v1's F-07 was not on my blocking list, but the round fixed it anyway: AT-4.4 no longer claims two whole reports are set-equal, and both criteria now say field-set equality over the whole report with value comparison scoped to a stable subset. AT-4.4's "two runs are required to falsify it, and both are part of the evidence" is the right explicitness.
+- **v1's F-05, F-09, F-10 and F-11 are all cleanly discharged** — `A-1`/`ASM-n` disambiguated with a statement of the rule at §4.2's head, the drift-state path pinned to `.claude/workflows/.pdlc-drift-state.json` (verified: `pdlc/hooks/scripts/lib/pdlc-drift.sh:1562`), L-7/L-8's location signposted, and the comment-block obligation moved from E-9 to E-8 where `.gitignore` actually carries it.
+
+## Recommendation
+
+**Needs revision**
+
+One High finding, and it is narrower than any of v1's four. The next revision needs one change: replace the consumer-side use of L-1 with a pinned consumer-side installed-name literal covering the manifest's four `consumerPath` basenames plus `.pdlc-drift-state.json`, `.pdlc-sync-manifest.json` and `.pdlc-backups/`, transcribed before class 7 deletes the manifest, and answer Q-01's recursion question for the backups directory. Everything else this round landed, and the four blocking findings from v1 are closed.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
