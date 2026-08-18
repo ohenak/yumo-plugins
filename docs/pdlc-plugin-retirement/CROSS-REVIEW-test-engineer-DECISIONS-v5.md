@@ -46,6 +46,27 @@ cites C-7 or the interim state, so the confirmation surface is those eight sites
 
 ## Options Considered
 
+Three dispositions were available for this confirmation, and the choice between them is a testing
+call, not a bookkeeping one:
+
+- **A — re-affirm unchanged.** The erratum adds no new criterion, deletes none, and changes no
+  literal, no count and no ordering fact. Every mechanical claim DECISIONS makes (class closure
+  7–12, the batch-DAG edge set, the FSPEC ordering quotes, the M-8 host claim for DEC-09's
+  assertion) survives the erratum untouched. Rejected as the whole answer: faithfulness is measured
+  against the upstream text as it now reads, not against the item list, and the erratum re-words
+  precisely the concept three DECISIONS sites lean on.
+- **B — treat the divergence as a fresh substantive conflict.** Rejected: DECISIONS' *conclusions*
+  are the erratum's conclusions. "The branch does not merge on a green subset" appears in both
+  documents in almost the same words (`REQ:274`, `DECISIONS:237`), and DECISIONS registers nothing
+  as an expected failure anywhere — the shape C-8 and the new paragraph forbid is absent from the
+  document. There is no decision to reopen.
+- **C — confirm the substance, file the transcription divergence (chosen).** DECISIONS says
+  "red" for a state the REQ now expressly says is **not** a red, and it nowhere carries the
+  erratum's positive rule (ordering, never registration; the check becomes live with the class it
+  covers). Under DECISIONS' own cross-cutting rule 2 — transcribe, don't re-measure — the wording
+  of a load-bearing upstream term is the contract, and PLAN/PROPERTIES author test rows from this
+  document, not from REQ §C-7.
+
 ## Findings
 
 ## Questions
