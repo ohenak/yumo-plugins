@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.5) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.2 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.3 | 2026-08-17 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
@@ -224,6 +224,17 @@ Three distinct operations, deliberately separated because they carry different r
 
 Queue-triage re-homing is §4.4's L-6 row 1; hook re-homing collapses to operation 2 above, so
 L-6's row 2 names a module that is not newly created.
+
+**Helper survivorship, stated rather than left implicit.** M-8 deletes three helpers
+(`helpers/drift{Fixtures,Harness,Probe}.js`); the sweep also deletes every `drift*.test.js`
+module, which changes the consumer count of helpers M-8 does *not* name. Measured at the base
+commit: `helpers/driftCapabilities.js` keeps `documentOracles.test.js` and
+`skipSinkTransport.test.js`, and `helpers/skipSink.js` keeps `skipSinkTransport.test.js`, so both
+survive with live consumers. `helpers/freshClone.js` loses its only consumer
+(`bootstrap.test.js`) and **regains one** in TT-3's fresh-clone half (§5.2) — it must not be swept
+as collateral. `helpers/driftOrdering.js` is consumed only by `bootstrap.test.js` and
+`drift*.test.js` modules, so it ends the sweep consumer-less; it is deleted with them under class
+3 rather than left as dead code, and AT-1.3's repo-wide no-orphan reading covers the check.
 
 ### 2.7 Phase MERGE's guard paths (FSPEC O-D, REQ O-4)
 
@@ -697,7 +708,7 @@ no release sits on the critical path.
 | AT-4.1 | full-set cleanup: build a target holding all nine L-11 entries with a non-empty `.pdlc-backups/`, run once, assert directory gone, tracked files unchanged (`git status --porcelain` empty), exit `0` | new `pdlc/workflows/__tests__/consumerCleanup.test.js` |
 | AT-4.2 | second run over the cleaned tree: exit `0`, says nothing to clean, changes nothing | same |
 | AT-4.3 | two constructions — an operator-named file, and a `.pdlc-tmp.<pid>.<rand>` residue — each asserting all four clauses: every expected entry present **and byte-identical** (content compared before/after), the unexpected entry byte-identical, its path on **stderr**, exit **exactly `3`** | same |
-| TT-1 (contract row 4) | usage error: an unknown flag (`--nope`) or a second positional argument exits **exactly `4`**, prints the usage line on stderr, and removes nothing — every entry of a fully-populated target still present and byte-identical | same |
+| TT-1 (contract row 4a) | usage error: an unknown flag (`--nope`) or a second positional argument exits **exactly `4`**, prints the usage line on stderr, and removes nothing — every entry of a fully-populated target still present and byte-identical | same |
 | TT-2 (contract row 5) | `--dry-run`, two constructions: over the full expected set it prints the same per-entry lines as a live run, exits `0`, and **every entry is still present and byte-identical afterwards** (positive conjunct, not merely "no error"); over a tree holding one unexpected entry it prints the refusing path on stderr, exits **exactly `3`**, and again removes nothing | same |
 | TT-3 (bare-path invocation and mode bits) | Two halves. **(a) Bare path, new script only:** `cleanup-consumer-workflows.sh` is spawned **by path with no interpreter** (`spawnSync(scriptPath, […])`, not `spawnSync("bash", [scriptPath])`); status is one of `0`/`3`/`4` and **never `126`**. **(b) Mode bits, over the whole post-sweep shipped-script set:** an `it.each` over the set-equal enumeration `{ pdlc/hooks/scripts/cleanup-consumer-workflows.sh, check-scope-field.sh, guard-harvest-before-delete.sh, nudge-consolidation.sh }` asserts index mode `100755` and an executable on-disk file in a fresh clone, and a companion assertion requires the enumeration to **set-equal** the executable scripts actually tracked under `pdlc/hooks/scripts/` (excluding the sourced, deliberately non-executable `lib/`), so a script added later without a mode bit fails rather than passes unlisted. Re-homes `bootstrap.test.js`'s §9.3 mode-bit block and its dedicated never-126 assertion, which the sweep deletes (§4.4). **Collaborators:** index mode is re-derived inline via `git ls-files -s` — `indexMode` lives in `helpers/driftHarness.js`, deleted by M-8 — while the fresh-clone half imports `makeFreshClone` from `helpers/freshClone.js`, which is **not** an M-8 member and survives; after the sweep `consumerCleanup.test.js` is that helper's sole consumer (today it is `bootstrap.test.js`'s), so the helper must not be swept as collateral | same |
 | TT-4 (classifier property) | property over the name-only classifier, seeded from `helpers/driftGenerators.js`'s surviving `seeded`/`resolveSeed`/`shrink` (§4.7): for a random subset of §4.3's nine expected names **plus at least one unexpected name**, the run removes **nothing** and exits `3`; for a random subset of the expected names **alone**, it removes exactly that subset and exits `0`. This is what makes §2.5's all-or-nothing claim checkable over more than three fixed constructions | same |
