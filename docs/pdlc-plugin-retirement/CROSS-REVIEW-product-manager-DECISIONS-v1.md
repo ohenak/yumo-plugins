@@ -47,3 +47,8 @@ Exactly what to change, in order:
 6. **F-06 / F-07** — Add `--dry-run` to DEC-04's recorded shape; fix DEC-06's four-plus-one citation count.
 
 Nothing in the set contradicts a promoted decision in `docs/_decisions/` or a standing `DOMAIN-CONSTRAINTS.md` row, and DEC-01/DEC-08's narrowing of `DECISIONS-plugin-distribution.md` is declared in place (`:27`) as it should be. All findings are `Local`: each is a defect in this document's record of a choice, not a constraint other features inherit.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 2, "low": 2}
