@@ -56,3 +56,9 @@ Both v9 High findings are resolved, the Medium and the Low are resolved, both v9
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:90464289a6f32ed39f13ffe30aca693f7d033e96c0bc1a08311a53b964b876e4
+APPROVAL-HASH-NORMALIZED: sha256:42a25af6643c0533c9b567faece87bc60ece6effd00ae81667d22a4101c9dc90
+REVIEWED-COMMIT: f66439152eed60d0c4b40cc914287add511e4b24
+UPSTREAM-STATE: REQ sha256:1038b8166cc84cb48d069c3e364a2a8e9aa07daf612e2fc8d611c3100e584294
+UPSTREAM-STATE: FSPEC sha256:dccb45d6fb253d197b7a197288a3381b330903fc4ac49efbf0c99b410c79ade0
