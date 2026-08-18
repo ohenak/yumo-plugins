@@ -445,7 +445,7 @@ describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
 // per PLAN §1.3's skip-naming convention (title begins "T12: ").
 // ---------------------------------------------------------------------------------------------
 describe("PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)", () => {
-  it.skip(
+  it(
     "T12: sync-workflows.sh and lib/pdlc-drift.sh are untracked, and git ls-files '*.sh' names neither",
     () => {
       expect(isTracked("pdlc/hooks/scripts/sync-workflows.sh")).toBe(false);

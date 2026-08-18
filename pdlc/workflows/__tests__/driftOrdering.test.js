@@ -122,7 +122,12 @@ function stripTimestamps(value) {
   return value;
 }
 
-describeOrSkip(
+describe.skip("driftOrdering — TSPEC §4.3, §14.1 PH-1, §4.4 — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "driftOrdering — TSPEC §4.3, §14.1 PH-1, §4.4",
   "hash",
   [
@@ -658,3 +663,4 @@ describeOrSkip(
     });
   }
 );
+});

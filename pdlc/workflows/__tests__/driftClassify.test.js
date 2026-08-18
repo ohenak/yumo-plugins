@@ -223,7 +223,12 @@ function probeClassifyRow({ consumer, plugin, rowIndex, phase, fault, toolNames 
 
 // ═══════════════════════════════════════ AT-1 ═══════════════════════════════════════
 
-describeOrSkip(
+describe.skip("AT-1 — fresh consumer, --check, every managed row is missing (FSPEC §12, §14) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "AT-1 — fresh consumer, --check, every managed row is missing (FSPEC §12, §14)",
   "hash",
   ["AC-1.1's missing rung; §4.3's classify-before-mkdir ordering oracle"],
@@ -254,10 +259,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ═══════════════════════════════════════ AT-6 ═══════════════════════════════════════
 
-describeOrSkip(
+describe.skip("AT-6 — equal bytes classify in-sync with no sync manifest at all (O-8/R-4) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "AT-6 — equal bytes classify in-sync with no sync manifest at all (O-8/R-4)",
   "hash",
   ["AC-1.6/O-8: byte-equality alone is sufficient for in-sync, independent of provenance"],
@@ -278,10 +289,17 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ═══════════════════════════════════════ AT-7 (PL-05: two conjuncts) ═══════════════════════════
 
-describe("AT-7 — unverifiedRow (PL-05: classification and --check exit are separate conjuncts)", () => {
+describe.skip("AT-7 — unverifiedRow (PL-05: classification and --check exit are separate conjuncts) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on classification behavior driven by the sync/hook entrypoints (removed by T12) via `runOn`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("AT-7 — unverifiedRow (PL-05: classification and --check exit are separate conjuncts)", () => {
   itOrSkip(
     "the classification conjunct: unverifiedRow classifies unverified (sourced probe, green from batch 8)",
     "hash",
@@ -319,10 +337,16 @@ describe("AT-7 — unverifiedRow (PL-05: classification and --check exit are sep
     }
   );
 });
+});
 
 // ═══════════════════════════════════════ AT-25 ═══════════════════════════════════════
 
-describeOrSkip(
+describe.skip("AT-25 — not-managed is reported, never touched, and absent from rows (FSPEC §3.5, AC-0.6) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "AT-25 — not-managed is reported, never touched, and absent from rows (FSPEC §3.5, AC-0.6)",
   "hash",
   ["AC-0.6/R-6: not-managed files are never read for comparison, overwritten, or deleted; the listing is LC_ALL=C-sorted and excludes .pdlc-* basenames"],
@@ -360,10 +384,17 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ═══════════════════════════════════════ AT-32(a) ═══════════════════════════════════════
 
-itOrSkip(
+describe.skip("AT-32(a) — an unlistable .claude/workflows/ emits N-6 once and changes no row state (AC-0.6) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this itOrSkip depends on classification behavior driven by the sync/hook entrypoints (removed by T12).
+  // The itOrSkip call below is byte-identical to its pre-hold form.
+  itOrSkip(
   "AT-32(a) — an unlistable .claude/workflows/ emits N-6 once and changes no row state (AC-0.6)",
   "uid-nonroot",
   INVARIANTS_AT_32A,
@@ -393,10 +424,17 @@ itOrSkip(
     }
   }
 );
+});
 
 // ═══════════════════════════════════════ AT-34 ═══════════════════════════════════════
 
-describe("AT-34 — three it()s, one per separately-run fixture (§14, TE F-09)", () => {
+describe.skip("AT-34 — three it()s, one per separately-run fixture (§14, TE F-09) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on classification behavior driven by the sync/hook entrypoints (removed by T12) via `runOn`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("AT-34 — three it()s, one per separately-run fixture (§14, TE F-09)", () => {
   itOrSkip(
     "(a) an unreadable sync manifest classifies the affected row unverified, and emits N-4 once",
     "uid-nonroot",
@@ -444,10 +482,16 @@ describe("AT-34 — three it()s, one per separately-run fixture (§14, TE F-09)"
     }
   });
 });
+});
 
 // ═══════════════════════════════════════ §14.1 V-4 ═══════════════════════════════════════
 
-describeOrSkip(
+describe.skip("V-4 — a row that is not in-sync carries both artifact-version keys (AC-5.3, partial — see R-12) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "V-4 — a row that is not in-sync carries both artifact-version keys (AC-5.3, partial — see R-12)",
   "hash",
   ["AC-5.3: pluginArtifactVersion/consumerArtifactVersion present (null permitted, absent not) whenever a row is not in-sync"],
@@ -477,10 +521,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ═══════════════════════════════════════ §2.5 touch-invariance ═══════════════════════════════
 
-describeOrSkip(
+describe.skip("§2.5 touch-invariance — mtime is never read (R-2) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "§2.5 touch-invariance — mtime is never read (R-2)",
   "hash",
   ["R-2: no rung of the classifier consults mtime, anywhere"],
@@ -518,6 +568,7 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ═══════════════ Plus (T-39) — the sourced-probe six-state ladder and four unknown reasons ═════
 //
@@ -526,7 +577,12 @@ describeOrSkip(
 // required at all — these are what makes AT-7's classification conjunct green four batches before
 // its exit conjunct.
 
-describeOrSkip(
+describe.skip("Plus (T-39) — the six-state ladder via pdlc_classify_row (FSPEC §3.3, TSPEC §2.2) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "Plus (T-39) — the six-state ladder via pdlc_classify_row (FSPEC §3.3, TSPEC §2.2)",
   "hash",
   ["AC-1.8: the classifier is total and single-valued over its declared six-state precedence"],
@@ -554,8 +610,15 @@ describeOrSkip(
     }
   }
 );
+});
 
-describe("Plus (T-39) — the four unknown reasons, with side attribution (FSPEC §3.3, TSPEC §5.2)", () => {
+describe.skip("Plus (T-39) — the four unknown reasons, with side attribution (FSPEC §3.3, TSPEC §5.2) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on classification behavior driven by the sync/hook entrypoints (removed by T12) via `runOn`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("Plus (T-39) — the four unknown reasons, with side attribution (FSPEC §3.3, TSPEC §5.2)", () => {
   test('hash-tool-absent: no hash utility on PATH classifies "unknown"/"hash-tool-absent"', () => {
     const { consumer, plugin } = buildFreshConsumer();
     try {
@@ -653,6 +716,7 @@ describe("Plus (T-39) — the four unknown reasons, with side attribution (FSPEC
       }
     }
   );
+});
 });
 
 // ═══════════ PLAN T-41 — PROPERTIES §3/§4/§9/§10 (PROP-CLS/-RSN/-DET/-NEG) ═══════════════════
@@ -761,7 +825,12 @@ function buildSoloLeafFixture(leafId) {
 
 // ─── PROP-CLS-01, -03, -04; PROP-RSN-01 (partial: L1/L2/L5), -02 ───────────────────────────
 
-describeOrSkip(
+describe.skip("PROP-CLS-01/-03/-04, PROP-RSN-01 (L1/L2/L5)/-02 — a packed 8-row fixture (PROPERTIES §3/§4) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-CLS-01/-03/-04, PROP-RSN-01 (L1/L2/L5)/-02 — a packed 8-row fixture (PROPERTIES §3/§4)",
   "hash",
   [
@@ -823,6 +892,7 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-CLS-01 leaf L3/L4, PROP-CLS-03/PROP-RSN-04 (L3/L4 half) — uid-nonroot only ───────
 //
@@ -830,7 +900,13 @@ describeOrSkip(
 // (T-01's mechanical "zero unexpected skips" comparator, TE F-10) — these three `itOrSkip`
 // call sites are the only place in this file that register these three names.
 
-itOrSkip(
+describe.skip("PROP-CLS-01 leaf L3 — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this itOrSkip depends on classification behavior driven by the sync/hook entrypoints (removed by T12).
+  // The itOrSkip call below is byte-identical to its pre-hold form.
+  itOrSkip(
   "PROP-CLS-01 leaf L3",
   "uid-nonroot",
   INVARIANTS_PROP_CLS_01_L3,
@@ -859,8 +935,15 @@ itOrSkip(
     }
   }
 );
+});
 
-itOrSkip(
+describe.skip("PROP-CLS-01 leaf L4 — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this itOrSkip depends on classification behavior driven by the sync/hook entrypoints (removed by T12).
+  // The itOrSkip call below is byte-identical to its pre-hold form.
+  itOrSkip(
   "PROP-CLS-01 leaf L4",
   "uid-nonroot",
   INVARIANTS_PROP_CLS_01_L4,
@@ -882,8 +965,15 @@ itOrSkip(
     }
   }
 );
+});
 
-itOrSkip(
+describe.skip("PROP-CLS-03, PROP-RSN-04 (L3/L4 half) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this itOrSkip depends on classification behavior driven by the sync/hook entrypoints (removed by T12).
+  // The itOrSkip call below is byte-identical to its pre-hold form.
+  itOrSkip(
   "PROP-CLS-03, PROP-RSN-04 (L3/L4 half)",
   "uid-nonroot",
   INVARIANTS_PROP_CLS_03_RSN_04_L3_L4,
@@ -915,10 +1005,16 @@ itOrSkip(
     }
   }
 );
+});
 
 // ─── PROP-CLS-02(a) — precedence co-holding: hash-tool-absent trumps every other rung ──────
 
-describeOrSkip(
+describe.skip("PROP-CLS-02(a) — hash-tool-absent co-holds with, and outranks, every other rung at once (PROPERTIES §3) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-CLS-02(a) — hash-tool-absent co-holds with, and outranks, every other rung at once (PROPERTIES §3)",
   "hash",
   [
@@ -947,10 +1043,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-CLS-05 — determinism of a repeated --check over an unchanged tree ────────────────
 
-describeOrSkip(
+describe.skip("PROP-CLS-05 — two consecutive --check runs over an unchanged packed fixture agree (PROPERTIES §3) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-CLS-05 — two consecutive --check runs over an unchanged packed fixture agree (PROPERTIES §3)",
   "hash",
   ["PROP-CLS-05: repeating --check with no change to either tree reproduces byte-identical output modulo generatedAtUtc"],
@@ -973,10 +1075,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-CLS-06 — row independence: a solo re-run per packable leaf matches the packed run ─
 
-describeOrSkip(
+describe.skip("PROP-CLS-06 — each packable leaf classifies identically whether packed with 7 others or run solo (PROPERTIES §3) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-CLS-06 — each packable leaf classifies identically whether packed with 7 others or run solo (PROPERTIES §3)",
   "hash",
   ["PROP-CLS-06: a row's classification depends only on its own inputs, never on sibling rows sharing the same manifest"],
@@ -1012,10 +1120,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-CLS-07 — the four sync-manifest-degradation sub-recipes classify identically ─────
 
-describeOrSkip(
+describe.skip("PROP-CLS-07 — unreadable/malformed/absent/present-without-this-id sync manifests all classify a differing row unverified (PROPERTIES §3, SE F-06) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-CLS-07 — unreadable/malformed/absent/present-without-this-id sync manifests all classify a differing row unverified (PROPERTIES §3, SE F-06)",
   "uid-nonroot",
   ["SE F-06: a well-formed manifest lacking this row's id degrades exactly like an absent manifest — no N-4 either"],
@@ -1064,10 +1178,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-CLS-08 / PROP-NEG-01 — not-managed listing over 0/1/3 extra files ────────────────
 
-describeOrSkip(
+describe.skip("PROP-CLS-08, PROP-NEG-01 — the not-managed listing tracks exactly the extra files present, never fewer or more (PROPERTIES §3/§10) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-CLS-08, PROP-NEG-01 — the not-managed listing tracks exactly the extra files present, never fewer or more (PROPERTIES §3/§10)",
   "hash",
   [
@@ -1132,10 +1252,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-RSN-03 — three co-holding pairs up the reason precedence ladder ──────────────────
 
-describeOrSkip(
+describe.skip("PROP-RSN-03 — three co-holding pairs prove the reason precedence ladder (PROPERTIES §4) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-RSN-03 — three co-holding pairs prove the reason precedence ladder (PROPERTIES §4)",
   "hash",
   [
@@ -1215,6 +1341,7 @@ describeOrSkip(
     );
   }
 );
+});
 
 // ─── PROP-RSN-05 — the row-reason and baseline-reason vocabularies never intersect ─────────
 
@@ -1236,7 +1363,12 @@ const ROW_REASONS_4 = Object.freeze([
   "consumer-artifact-unreadable",
 ]);
 
-describeOrSkip(
+describe.skip("PROP-RSN-05 — row reasons and baseline reasons are disjoint vocabularies (PROPERTIES §4/§5) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-RSN-05 — row reasons and baseline reasons are disjoint vocabularies (PROPERTIES §4/§5)",
   "hash",
   ["PROP-RSN-05: a row's reason is never one of the 8 baseline reasons, and baselineReason is never one of the 4 row reasons"],
@@ -1264,10 +1396,16 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-DET-01/-02/-04/-05, PROP-RSN-06 — determinism across clock/touch/order/locale ────
 
-describeOrSkip(
+describe.skip("PROP-DET-01/-02/-04/-05, PROP-RSN-06 — determinism across clock, one-sided touch, directory order, and locale (PROPERTIES §9) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROP-DET-01/-02/-04/-05, PROP-RSN-06 — determinism across clock, one-sided touch, directory order, and locale (PROPERTIES §9)",
   "hash",
   [
@@ -1400,6 +1538,7 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ─── PROP-NEG-05 — reporting-only sync-manifest fields never influence classification ──────
 //
@@ -1419,7 +1558,13 @@ describeOrSkip(
 // the perturbed value is still exactly the perturbed value, i.e. `--check` consumed it as live
 // input without silently rewriting or normalising it away before classification saw it.
 
-describe("PROP-NEG-05 — perturbing reporting-only sync-manifest fields never changes classification (PROPERTIES §10)", () => {
+describe.skip("PROP-NEG-05 — perturbing reporting-only sync-manifest fields never changes classification (PROPERTIES §10) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on classification behavior driven by the sync/hook entrypoints (removed by T12) via `runOn`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("PROP-NEG-05 — perturbing reporting-only sync-manifest fields never changes classification (PROPERTIES §10)", () => {
   function buildStaleAndLocalEditTree() {
     const plugin = makePluginTree();
     const consumer = makeConsumerTree({ git: true, claudeDir: true, workflowsDir: true, syncManifest: {} });
@@ -1497,16 +1642,30 @@ describe("PROP-NEG-05 — perturbing reporting-only sync-manifest fields never c
     }
   });
 });
+});
 
 // ═══════════════════════════════════════ coverage floors ═══════════════════════════════════════
 
-test("row-state meta-oracle: all six declared row states are observed at least once (FSPEC §3.3, TSPEC §1.4/O-11)", () => {
+describe.skip("row-state meta-oracle: all six declared row states are observed at least once (FSPEC §3.3, TSPEC §1.4/O-11) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this coverage-floor test asserts against ROW_STATES_SEEN, an accumulator populated only by now-held tests above.
+  // The test call below is byte-identical to its pre-hold form.
+  test("row-state meta-oracle: all six declared row states are observed at least once (FSPEC §3.3, TSPEC §1.4/O-11)", () => {
   expect(ROW_STATES_SEEN).toEqual(
     new Set(["unknown", "missing", "in-sync", "unverified", "stale", "local-edit"])
   );
 });
+});
 
-test("row-reason meta-oracle: all four declared unknown reasons are observed at least once (FSPEC §3.3, TSPEC §1.4/O-11)", () => {
+describe.skip("row-reason meta-oracle: all four declared unknown reasons are observed at least once (FSPEC §3.3, TSPEC §1.4/O-11) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this coverage-floor test asserts against ROW_REASONS_SEEN, an accumulator populated only by now-held tests above.
+  // The test call below is byte-identical to its pre-hold form.
+  test("row-reason meta-oracle: all four declared unknown reasons are observed at least once (FSPEC §3.3, TSPEC §1.4/O-11)", () => {
   expect(ROW_REASONS_SEEN).toEqual(
     new Set([
       "hash-tool-absent",
@@ -1515,4 +1674,5 @@ test("row-reason meta-oracle: all four declared unknown reasons are observed at 
       "consumer-artifact-unreadable",
     ])
   );
+});
 });

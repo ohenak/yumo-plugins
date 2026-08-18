@@ -692,7 +692,17 @@ function t48ObservablesOf(run, consumerRoot) {
  * Falsification subject: C1 (`pdlc/hooks/scripts/lib/pdlc-drift.sh`) — see the ledger fragment.
  */
 describe.skip("PROP-SEAM-01 — recognition equals the enumeration (§8.1) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
-  const tokens = readFaultTokens(); // oracle A: C1's runtime array (§8.0), never the file text
+  // T12 note: readFaultTokens() reads C1 (lib/pdlc-drift.sh), which T12 deletes. it.each needs
+  // its array synchronously (it cannot be deferred into beforeAll the way PROP-SEAM-02's
+  // describe-body setup was), so this falls back to [] when C1 is absent — describe.skip means
+  // the resulting zero generated its are inert either way. Mechanical consequence of the hold,
+  // not an edited assertion.
+  let tokens = [];
+  try {
+    tokens = readFaultTokens(); // oracle A: C1's runtime array (§8.0), never the file text
+  } catch {
+    // held: C1 no longer exists post-T12
+  }
 
   it.each(tokens.map((t) => [t]))(
     "(a) PDLC_FAULT=%s is recognised — no N-7 line at all",
@@ -845,8 +855,15 @@ describe.skip("PROP-SEAM-02 — the static call-site closure over the three ship
  * Falsification subject: C1's `_pdlc_fault_is_selector_bearing` / `_pdlc_fault_ensure_parsed`.
  */
 describe.skip("PROP-SEAM-03 — the 7 bearing / 9 non-bearing partition, read from TSPEC §5.1.1 — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
+  // T12 note: same fallback as PROP-SEAM-01 above — readFaultTokens() reads C1, which T12
+  // deletes; describe.skip keeps the resulting its inert regardless of the fallback value.
   const { bearing, nonBearing } = t48ReadSelectorPartitionFromTspec();
-  const enumerated = readFaultTokens();
+  let enumerated = [];
+  try {
+    enumerated = readFaultTokens();
+  } catch {
+    // held: C1 no longer exists post-T12
+  }
 
   it("TSPEC §5.1.1's table partitions the enumeration into 7 bearing and 9 non-bearing", () => {
     expect(bearing).toHaveLength(7);
@@ -1022,7 +1039,13 @@ describe.skip("PROP-SEAM-03 — the 7 bearing / 9 non-bearing partition, read fr
  * Falsification subject: C1's `_pdlc_fault_ensure_parsed` / `pdlc_fault_unrecognised_seen`.
  */
 describe.skip("PROP-SEAM-04 — a partially-recognised list injects its recognised members and still exits 4 — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
-  const tokens = readFaultTokens();
+  // T12 note: same fallback as PROP-SEAM-01 above.
+  let tokens = [];
+  try {
+    tokens = readFaultTokens();
+  } catch {
+    // held: C1 no longer exists post-T12
+  }
   /**
    * Each drawn list is FORCED to contain one token whose injection is observable on a
    * `syncedConsumer` `--check` run (PROPERTIES §6.2's "forced, not hoped for" rule, applied

@@ -207,7 +207,12 @@ function readBackupBytes(root, name) {
 
 // ───────────────────────────── the suite ─────────────────────────────
 
-describeOrSkip(
+describe.skip("driftSync — sync-workflows.sh (FSPEC §5, TSPEC §11/§13/§14/§14.1) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "driftSync — sync-workflows.sh (FSPEC §5, TSPEC §11/§13/§14/§14.1)",
   "hash",
   [
@@ -1327,3 +1332,4 @@ describeOrSkip(
     });
   }
 );
+});

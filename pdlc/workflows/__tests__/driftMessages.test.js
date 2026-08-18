@@ -183,7 +183,7 @@ function expectAllPairwiseDistinct(labelled) {
 
 const BACKUP_DIR_REL = [".claude", "workflows", ".pdlc-backups"];
 
-describe("driftMessages — AT-30 and §14.1 M-1 (TSPEC §7.2, §7.4; FSPEC §8)", () => {
+describe.skip("driftMessages — AT-30 and §14.1 M-1 (TSPEC §7.2, §7.4; FSPEC §8) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
   let pluginTree;
   let consumerTree;
   let env;

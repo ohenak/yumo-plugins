@@ -59,7 +59,12 @@ import {
 // (used both by `runProbe`'s own sandbox and by `runScript`'s) includes `shasum`/`sha1sum`, and
 // the exhaustion suite additionally needs one to classify the "stale" row at all (TSPEC §14
 // standing precondition).
-describeOrSkip(
+describe.skip("driftBackups — TSPEC §11.3, FSPEC §4.7/§5.6 — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "driftBackups — TSPEC §11.3, FSPEC §4.7/§5.6",
   "hash",
   ["O-18's retention/identity/exhaustion bindings (TSPEC §11.3 rows 2 and 4, §13.5)"],
@@ -278,6 +283,7 @@ describeOrSkip(
     });
   }
 );
+});
 
 // ═════════════════════════════════════════════════════════════════════════════════════════
 // PLAN T-49 — PROPERTIES §6, the backup-grammar property suite (PROP-BKP-01…13).
@@ -521,7 +527,13 @@ function buildParseCases(acceptedNames) {
 
 // ═════════════════════════ §6.3 — format/parse (PROP-BKP-01, -02, -03) ═════════════════════
 
-describe("PROPERTIES §6.3 — the backup-name grammar (PROP-BKP-01, -02, -03)", () => {
+describe.skip("PROPERTIES §6.3 — the backup-name grammar (PROP-BKP-01, -02, -03) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on `pdlc_prune_backups`/`pdlc_format_backup_name` (lib/pdlc-drift.sh, removed by T12) via `runGrammar` in `beforeAll`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("PROPERTIES §6.3 — the backup-name grammar (PROP-BKP-01, -02, -03)", () => {
   let sandbox;
   let scratchTmp;
   let formatCases;
@@ -708,6 +720,7 @@ describe("PROPERTIES §6.3 — the backup-name grammar (PROP-BKP-01, -02, -03)",
     expect(existsSync(join(sandbox, "backups", "canary.20260101T000000Z-01.bak"))).toBe(true);
   });
 });
+});
 
 // ═════════════════ §6.4 — order (PROP-BKP-05, -06, -07, -08) ═══════════════════════════════
 
@@ -748,7 +761,13 @@ function buildSortTree(rng) {
   return { dir, ids, byId };
 }
 
-describe("PROPERTIES §6.4 — order (PROP-BKP-05, -06, -07, -08)", () => {
+describe.skip("PROPERTIES §6.4 — order (PROP-BKP-05, -06, -07, -08) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on `pdlc_prune_backups` (lib/pdlc-drift.sh, removed by T12) via `runGrammar`/`runProbe` in `beforeAll`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("PROPERTIES §6.4 — order (PROP-BKP-05, -06, -07, -08)", () => {
   let tree;
   let survivors;
   let localeResults;
@@ -883,6 +902,7 @@ describe("PROPERTIES §6.4 — order (PROP-BKP-05, -06, -07, -08)", () => {
     }
   });
 });
+});
 
 // ═════════════════ §6.5 — prune clauses (a)–(d) (PROP-BKP-09…13) ═══════════════════════════
 
@@ -951,7 +971,13 @@ function setMtimes(dir, names, rankOf) {
   });
 }
 
-describe("PROPERTIES §6.5 — prune clauses (a)–(d) (PROP-BKP-09, -10, -11, -12, -13)", () => {
+describe.skip("PROPERTIES §6.5 — prune clauses (a)–(d) (PROP-BKP-09, -10, -11, -12, -13) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids —
+  // this describe depends on `pdlc_prune_backups` (lib/pdlc-drift.sh, removed by T12) via `runProbe` in `beforeAll`.
+  // The describe call below is byte-identical to its pre-hold form.
+  describe("PROPERTIES §6.5 — prune clauses (a)–(d) (PROP-BKP-09, -10, -11, -12, -13)", () => {
   let d;
   let dPrime;
   let before;
@@ -1071,10 +1097,16 @@ describe("PROPERTIES §6.5 — prune clauses (a)–(d) (PROP-BKP-09, -10, -11, -
     expect([...after3.keys()].some((n) => expectedRemove.has(n))).toBe(false);
   });
 });
+});
 
 // ═════════════════ §6.3's finiteness, made operator-visible (PROP-BKP-04) ═══════════════════
 
-describeOrSkip(
+describe.skip("PROPERTIES §6.3 — NN exhaustion is a write failure (PROP-BKP-04) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
+  // REQ C-7: this hold is feature-interim ORDERING (T15 deletes the suite outright), never a
+  // registered capability. Routing it through driftCapabilities/SKIP_INVENTORY would convert
+  // temporary sweep ordering into registered capability state, which C-7 forbids. The
+  // describeOrSkip call below is byte-identical to its pre-hold form.
+  describeOrSkip(
   "PROPERTIES §6.3 — NN exhaustion is a write failure (PROP-BKP-04)",
   "hash",
   ["PROP-BKP-04: `NN` exhaustion surfaces as `operation: backup`, exit 4, with the pre-existing backups byte-unchanged"],
@@ -1139,3 +1171,4 @@ describeOrSkip(
     }, 60000);
   }
 );
+});

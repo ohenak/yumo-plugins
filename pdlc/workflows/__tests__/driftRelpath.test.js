@@ -38,17 +38,26 @@ function extractShellFunction(source, name) {
   return source.slice(start, end + 3);
 }
 
-const RELPATH_DEF = extractShellFunction(readFileSync(SYNC_SCRIPT, "utf8"), "_pdlc_c3_relpath");
+// Held under T15 (sync-workflows.sh removed by T12): the extraction below is deferred to first
+// call, not evaluated eagerly at module-load time, so collection does not throw ENOENT while the
+// whole suite is skip-held — REQ C-7 precedent (driftFault.test.js's PROP-SEAM-02 hoist).
+let relpathDefCache;
+function getRelpathDef() {
+  if (relpathDefCache === undefined) {
+    relpathDefCache = extractShellFunction(readFileSync(SYNC_SCRIPT, "utf8"), "_pdlc_c3_relpath");
+  }
+  return relpathDefCache;
+}
 
 function relpath(repoRoot, path) {
   return execFileSync(
     "bash",
-    ["-c", `set -u\nPDLC_REPO_ROOT="$1"\n${RELPATH_DEF}\n_pdlc_c3_relpath "$2"`, "_", repoRoot, path],
+    ["-c", `set -u\nPDLC_REPO_ROOT="$1"\n${getRelpathDef()}\n_pdlc_c3_relpath "$2"`, "_", repoRoot, path],
     { encoding: "utf8" }
   );
 }
 
-describe("F-17 — _pdlc_c3_relpath strips the repo root literally, not as a glob pattern", () => {
+describe.skip("F-17 — _pdlc_c3_relpath strips the repo root literally, not as a glob pattern — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
   const ROOTS = [
     ["no metacharacters", "/tmp/pdlc-repo"],
     ["a star", "/tmp/pdlc*repo"],

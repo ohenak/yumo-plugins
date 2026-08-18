@@ -601,7 +601,7 @@ describe("T-01 clause (c) — trace/ordering contracts", () => {
 // ─── (d) Driver contracts (T-18's and T-39's gates — TE F-07(a)) ───────────────────────
 
 describe("T-01 clause (d) — driver contracts", () => {
-  describe("backup-grammar.sh (TSPEC §11.1, §11.2)", () => {
+  describe.skip("backup-grammar.sh (TSPEC §11.1, §11.2) — held under T15: sync scripts removed by T12, suite deleted by T15", () => {
     it("round-trips a format case through pdlc_backup_parse", () => {
       const id = "foo";
       const stamp = "20260101T000000Z";
