@@ -983,7 +983,8 @@ stated parts, together, close it:
 1. **Two child invocations, host excluded from both, file sets stated separately.** The green child
    is invoked over an explicit list that is the swept-surface table's post-sweep modules *minus* the
    host: `hookCompatibility.test.js`, `consolidationBuild.test.js`, `pipelineWiring.test.js`,
-   `consolidationPreflight.test.js`, `documentOracles.test.js` and `orchestrateDevSkill.test.js`.
+   `consolidationPreflight.test.js`, `documentOracles.test.js`, `orchestrateDevSkill.test.js`,
+   `consolidationHookParity.test.js` and `skillFiles.test.js` — eight modules.
    That is the invocation AT-1.3's pass reading uses, and its join must come out empty on both
    directions on a clean tree. The **red child** of the falsifiability construction below is that
    same list **∪ `__tests__/fixtures/skipJoinFalsifier.js`**; only that invocation is expected to
@@ -996,6 +997,17 @@ stated parts, together, close it:
    assertion is **set-equality** — not containment — against the argument vector actually handed to
    `spawn`, once per invocation. A dropped member, an added member, or a re-widening that puts the
    host back therefore reds rather than hangs.
+   **Arguments are not observations, so the child's own report is asserted too (PM TSPEC v9 F-02).**
+   The set-equality above pins what was *handed to* `spawn`; on its own it cannot tell an empty green
+   join from a child that collected nothing — a module renamed by a later PLAN task, a
+   `testPathIgnorePatterns` interaction, or a child exiting early on a config error all yield "no
+   pending entries, no sink records" and read as a pass. The host therefore also asserts, per
+   invocation, over the child's `--json` output: the set of `testResults` file paths **set-equals** the
+   same literal list transcribed from §5.5's table (set-equality, not containment, so a silently
+   uncollected module reds), and the child's exit status is the one expected for that invocation —
+   `0` for the green child, non-zero for the red child, whose violation message is matched on the
+   fixture's leaf title. Positive collection evidence and the argument-vector check are stated as one
+   obligation: either alone leaves the join provable-by-vacuity.
 2. **A recursion sentinel that fails loudly rather than skipping.** The spawn sets
    `PDLC_SKIP_JOIN_NESTED=1` in the child's env, and the spawn helper **throws** if that variable is
    already set. If a later edit ever puts the host back into the child's file set, the child reds
