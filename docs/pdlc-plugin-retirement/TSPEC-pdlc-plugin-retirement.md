@@ -864,7 +864,8 @@ Registering TT-1b's gap means editing `helpers/driftCapabilities.js` — a file 
 unowned edit under §5.4's per-commit replay. It is named in §2.9's class-3 row alongside
 `consumerCleanup.test.js`. The entry's fields are fixed by what the comparator enforces:
 `name` equal to TT-1b's leaf title, `capability: "uid-nonroot"` (the only member of
-`KNOWN_CAPABILITY_KEYS` that fits; the other is `"bash"`), and a **non-empty** list of
+`KNOWN_CAPABILITY_KEYS` — `["bash", "git", "hash", "uid-nonroot"]` in `helpers/skipSink.js` — that
+names the root/non-root distinction TT-1b turns on), and a **non-empty** list of
 `unverifiedInvariants` naming what goes unchecked when the arm skips (row 4b's exit-`4` status and
 its stderr diagnostic). C1/C3 require the call site to repeat that list verbatim, so the list is
 authored once in the inventory and copied into the `itOrSkip` call, not paraphrased.
