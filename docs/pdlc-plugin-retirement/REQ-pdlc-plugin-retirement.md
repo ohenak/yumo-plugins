@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.14 | 2026-08-18 |
+| pdlc | approved — ready | Claude | 0.15 | 2026-08-18 |
+
+*0.15 (2026-08-18) — bind O-8's successor obligation (operator direction, no product-scope change): the operator's option (a) — accepted in-session loss of the unattended, machinery-backed consolidation pass — is now bound, not merely assumed. `docs/_queue/QUEUE.md` carries Order 24 (`pdlc-consolidation-rehost`) and a named successor REQ exists at `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`, both raised before this feature's first deletion commit. The successor REQ ships `ready: false`, so the operator's veto stays mechanically enforced through the queue's draft-pickup gate. O-8 no longer describes an unbound deferral or an open blocking gap.*
 
 *0.14 (2026-08-18) — upstream erratum round, one correction (Phase D erratum 3; SE FSPEC-v11 F-03, TE FSPEC-v11 F-01/F-02): §A-1 said the sweep **rewrites** `consolidate-learnings/SKILL.md`'s bundle reference "to name the surviving execution path"; no surviving host loads the consolidation module, so the reference is **deleted**, not rewritten, and the same is true of the skill's delegation prose. The capability that goes with it — the unattended, machinery-backed pass — is an operator decision this REQ cannot make alone, recorded as new O-8 with an unbound deferral flagged as a blocking gap. Baseline M-11n corrected with it.*
 
@@ -611,19 +613,19 @@ not a note.
   2026-08-13, closed as superseded. `pdlc-release-ci`'s disposition is decided upstream
   (`pdlc-engine-distribution` O-3, tracked here as BL-05); this REQ does not decide it, but
   AC-2.3 refuses to pass while it still mandates the retired channel.
-- **O-8 — What the consolidation pass is after the sweep (operator decision, blocking).** The
+- **O-8 — What the consolidation pass is after the sweep (operator decision, bound).** The
   `consolidate-learnings` skill survives under NG-1 and stays invocable, but the sweep leaves no
   host that loads the consolidation module, so the *unattended, machinery-backed* pass — the one
   the skill's own text says it delegates rather than performs, warning that hand-running it
   bypasses the log boundary, duplicate suppression and the in-progress marker — stops being
-  available. This REQ cannot settle that alone and the FSPEC must not: it is a user-visible
-  capability change, so the operator decides between (a) **accepted loss** — the in-session pass
-  is human-performed, the skill's delegation prose is rewritten to say so honestly, and the
-  machinery-backed pass is bound to a successor: a queue row plus a named successor REQ file for
-  re-hosting under the engine, both raised **before the first deletion commit** (NG-5 carves the
-  engine-side work out of this feature, not out of the obligation to bind it); or (b) **blocking
-  predecessor** — re-hosting ships first and this feature gains a BL row for it. Until the
-  operator answers, (a) is the assumption of record and is vetoable; the deferral is **not yet
-  bound**, which is the one open blocking gap this REQ carries. AC-3.3's "loads and runs when
-  invoked" conjunct is read as the skill loading and running, never as the retired module being
-  invoked.
+  available. This REQ could not settle that alone and the FSPEC must not: it was a user-visible
+  capability change, so the operator chose option (a) **accepted loss** — the in-session pass is
+  human-performed, the skill's delegation prose is rewritten to say so honestly, and the
+  machinery-backed pass is bound to a successor: queue Order 24 (`pdlc-consolidation-rehost`) and
+  its named successor REQ, `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`, for
+  re-hosting under `@kaneho/pdlc-engine` (NG-5 carves the engine-side work out of this feature,
+  not out of the obligation to bind it), both raised **before the first deletion commit**. The
+  successor REQ carries `ready: false`; the queue will not pick it up until the operator reviews
+  and flips that flag, so the operator's decision stays vetoable even though the binding is now in
+  place. AC-3.3's "loads and runs when invoked" conjunct is read as the skill loading and running,
+  never as the retired module being invoked.

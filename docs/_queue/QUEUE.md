@@ -83,6 +83,17 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |  |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
 | 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |  |
+| 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
+
+**Row 24 (`pdlc-consolidation-rehost`) added 2026-08-18 to bind `pdlc-plugin-retirement`
+REQ O-8's successor obligation.** O-8 records the operator's choice of option (a) —
+accept the in-session loss of the unattended, machinery-backed consolidation pass, and
+bind its re-hosting under `@kaneho/pdlc-engine` to a queue row plus a named successor
+REQ, both raised before that feature's first deletion commit. This row and
+`docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md` are that binding. The
+REQ carries `ready: false` pending operator review, per this queue's draft rule (§ intro);
+nothing executes against it until the operator flips that flag, preserving the veto O-8
+describes. `Order` 24 is next free after 23.
 
 **Row 23 (`pdlc-engine-v0.2.0-release`) added 2026-08-16 to bind an unbound successor-tag deferral
 (CODE_REVIEW v5 §3-1, `pdlc-engine-distribution`).** `pdlc/README.md`, `REQ-pdlc-engine-distribution.md`,
