@@ -455,34 +455,66 @@ against it; the obligation is tracked as T-4 (§6.3).
 ### 4.4 Suite-size and re-home literals (FSPEC L-5, L-6; REQ AC-1.3, R-8)
 
 **Suite size.** `pdlc/workflows/__tests__/*.test.js` counts **119** at `2cd0d6b1` (measured).
-Two decisions here move the FSPEC's currently-pinned post-sweep literal of 97:
+Two decisions move FSPEC's currently-pinned post-sweep literal of 97:
 
-- §2.6 retains `hookCompatibility.test.js`, so the sweep deletes **21** modules — M-8's twenty
-  drift/bundle-dedicated modules plus `runtimeProvenanceWiring.test.js` — not 22;
+- FSPEC L-5 defines M-8 as **21** `*.test.js` modules (`bootstrap`, `drift*` ×16,
+  `queueDriftGate`, `runtimeBundle`, `worktreeInclude`, `hookCompatibility`), and L-5's own
+  arithmetic is 119 − 22 = 97 (M-8's 21 plus `runtimeProvenanceWiring.test.js`).
+- §2.6 **retains** `hookCompatibility.test.js` rather than deleting it, so the sweep deletes
+  **20** of M-8's 21 modules — the 21 less `hookCompatibility` — plus
+  `runtimeProvenanceWiring.test.js`: **21** deletions, not 22. `bootstrap.test.js` **is** among
+  the 20 deleted (see the mode-bit disposition below); no M-8 member is left undispositioned.
 - §5.2 adds **one** new module, `consumerCleanup.test.js`, for the step §3.2 introduces.
 
-Post-sweep count: 119 − 21 + 1 = **99**. Per ASM-2's veto path this is corrected in the FSPEC at
-C-6 re-measurement time, transcribed from the tree rather than from this arithmetic; it is never
-satisfied by a test that counts loosely.
+Post-sweep count: 119 − 21 + 1 = **99**. Per ASM-2's veto path this is corrected in FSPEC at
+C-6 re-measurement time and transcribed from the tree, never satisfied by counting loosely.
+The class of `hookCompatibility.test.js` moves with it: L-5 files it under M-8 (deletion,
+class 6 as *deletion*); this TSPEC reduces it in place, so it is a class-6 **reduction**, not a
+deletion. That membership correction is routed upstream alongside the count (§6.1 erratum 6),
+not decided silently here.
 
-**L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, by measurement.
-`queueDriftGate.test.js` imports exactly four symbols from `orchestrate-queue.js` —
+**`bootstrap.test.js`'s mode-bit coverage (M-8 member, deleted).** The module carries the §9.3
+mode-bit block — `it.each(FIVE_SCRIPTS)("index mode for %s is 100755 in the live repo")` and
+its on-disk-in-clone twin (`:265`–`:276`) — plus a dedicated bare-path assertion,
+`it("dedicated: bare-path invocation of sync-workflows.sh (no interpreter) does not exit 126")`
+(`:277`–`:301`). Four of the five shipped scripts it covers are deleted or unchanged by this
+sweep, but the *shape* of the coverage is exactly what the new
+`pdlc/hooks/scripts/cleanup-consumer-workflows.sh` needs, and CLAUDE.md's fresh-clone rule
+("invoked by bare path, no `bash`/`sh` prefix; a 126 means the mode bit was lost") is a live
+project constraint. §5.2 therefore re-homes the mode-bit and never-126 assertions for the
+surviving shipped scripts onto `consumerCleanup.test.js` (AT-4.5); deleting `bootstrap.test.js`
+must not remove that coverage without replacement.
+
+**L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, but the
+measurement is now pinned rather than asserted. `queueDriftGate.test.js` imports `main` plus
+exactly four named symbols from `orchestrate-queue.js` (`:51`–`:56`) —
 `validateDriftRecord`, `mapDriftState`, `readDriftStateSafely`,
-`parseDistributionCheckEnabledOptOut` — and every one of them is deleted with the gate (class 3);
-its `main()` cases assert the gate's placement and its interaction with the four queue
-dispositions. The surviving half of that interaction — that the queue returns a report for each
-disposition — is already asserted in `orchestrateQueue.test.js`, in four assertions covering
-`no-queue` (`:366`), `ran` (`:379`), `idle` (`:457`) and `halted` (`:496`). R-8's control is
-therefore discharged by measurement rather than by a move, and the FSPEC's L-6 row 1 is
-transcribed as empty with those four titles cited as the covering evidence.
+`parseDistributionCheckEnabledOptOut` — every one of them owned by the deleted drift gate
+(class 3); its `main()` assertions test the gate's placement and its interaction with the four
+queue dispositions. The surviving half of that interaction — the queue's own report disposition
+— is already asserted in `orchestrateQueue.test.js`, by four assertions whose titles are
+transcribed here so FSPEC L-6 row 1 can carry a checkable covering citation and AT-1.3 reds if
+one is renamed or deleted:
+
+| Title | Site | Disposition covered |
+|---|---|---|
+| `returns no-queue when the queue file is missing` | `:366` | `no-queue` |
+| `runs the pipeline for a ready entry and sets awaiting-merge` | `:379` | `ran` |
+| `skips a blocked entry per triage and reports idle when none are ready` | `:457` | `idle` |
+| `sets halted status when the pipeline halts` | `:496` | `halted` |
+
+R-8's control is therefore discharged by measurement rather than by a move, and §5.3 lists the
+four as protected: they are not edited in class 3, and if a later round does rename them, the
+covering claim must be re-derived rather than restated.
 
 **L-6 row 2 — hook-manifest / hook-behaviour assertions.** Host module:
 `pdlc/workflows/__tests__/hookCompatibility.test.js`, retained in place (§2.6). It keeps
 `PROP-COMPAT-04` (`check-scope-field.sh`), `PROP-COMPAT-05` (`guard-harvest-before-delete.sh`)
-and `PROP-COMPAT-06` (`check-req-size.sh`), and loses only its `C7` block, whose subject is the
-drift hook's `SessionStart` registration — which L-4's set-equality now asserts in full, so it is
-dropped rather than re-homed twice. Verbatim assertion titles are transcribed into the FSPEC at
-re-measurement time; the placement decision is this row.
+and `PROP-COMPAT-06` (`check-req-size.sh`), and loses only the `C7` block that asserts the
+second `SessionStart` entry. L-4's set-equality over `hooks.json` is unaffected: **four**
+entries survive (`pdlc/hooks/hooks.json:9,20,24,34`), one is deleted (`:42`). Nothing is
+re-homed for this row; FSPEC's L-6 row 2 is transcribed as "host module retained, no move" at
+C-6 re-measurement time.
 
 ### 4.5 The run-report comparison model (FSPEC AT-5.2, REQ AC-5.2)
 
