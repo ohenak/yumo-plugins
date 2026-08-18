@@ -169,7 +169,7 @@ and are not restated.
 | DEC-09 | A — patch-bump the plugin to `0.23.2` | `pdlc/.claude-plugin/plugin.json` moves `0.23.1` → `0.23.2`, inside the engine's `^0.23.0` window, so `handshake.mjs` needs no change | **None yet** — class 9 must add the `version == 0.23.2` + `satisfiesRange(...).ok === true` assertion **with its `0.24.0` negative arm** (DEC-09 A); `advertisedVersionViolation()` skips on this commit |
 | DEC-10 | A — classes 7 and 11 block on erratum 3's upstream disposition of `consolidate-learnings`'s host | No sweep commit removes the pass's host until product answers; `SKILL.md`'s bundle reference is rewritten only once there is a surviving path to name | **None yet** — PLAN's batch-DAG check over the class-7 predecessor edges owns the gate — a `Deps` edge on every class-7/8/9/10/11/12 task, which PLAN's parser re-derives, not a runtime assertion; a document-level criterion arrives only with erratum 3's disposition |
 
-Four cross-cutting rules follow from the set and bind implementation:
+Five cross-cutting rules follow from the set and bind implementation:
 
 1. **What is forbidden is a change to engine *runtime behaviour* — not every write under
    `pdlc/engine/`.** NG-5 carves two exceptions explicitly **into** scope, and the sweep must take
@@ -204,7 +204,7 @@ Four cross-cutting rules follow from the set and bind implementation:
    Rules 3 and 4 pull in opposite directions on the same page, and the distinguishing principle is
    stated here so PLAN does not have to guess which precedent applies to the next unowned surface.
    DEC-04 ships `--dry-run` and the 4a/4b exit split while REQ still owes AC-4.5 (TSPEC §6.1
-   erratum 7); DEC-07 and DEC-10 hold classes 6 and 7–11 until FSPEC and REQ answer. The difference is
+   erratum 7); DEC-07 and DEC-10 hold classes 6 and 7–12 until FSPEC and REQ answer. The difference is
    direction of effect, not appetite for risk: an **additive** surface whose asserted behaviour is
    "removes nothing" cannot make any existing criterion false, so the criterion can follow the code and
    only ratifies a shape that is already safe. A **subtractive** change removes a capability or an
@@ -230,10 +230,10 @@ NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the
 | `MERGE_GUARD_DEFAULTS` keeps a member (`.claude/workflows/`) naming a retired directory | DEC-03 | A cosmetically stale constant, shipped verbatim into the published engine. Editing it is an engine change (REQ NG-5); the staleness is inert because the guard only ever *widens* refusal |
 | Consumer `.claude/workflows/` copies are cleaned only when an operator runs the script | DEC-04 | Consumers who never run it keep stale files indefinitely. Accepted: NG-6 forbids the automatic path, and all-or-nothing classification keeps AT-4.3 inspectable |
 | `hookCompatibility.test.js` survives with fewer blocks than FSPEC M-8's count implies | DEC-07 | The deletion-set count is wrong until erratum 6 lands. Accepted over deleting passing `PROP-COMPAT-*` assertions to satisfy a literal |
-| Five of thirteen classes (7, 8, 9, 10, 11) cannot land on engineering's schedule | DEC-10 | The sweep's completion date is bound to an upstream product answer about `consolidate-learnings`'s host. Accepted over shipping a skill whose named execution path does not exist (NG-1, NG-3), which is the failure the surviving `nudge-consolidation` hook would advertise every session |
+| Six of thirteen classes (7, 8, 9, 10, 11, 12) cannot land on engineering's schedule | DEC-10 | The sweep's completion date is bound to an upstream product answer about `consolidate-learnings`'s host. Accepted over shipping a skill whose named execution path does not exist (NG-1, NG-3), which is the failure the surviving `nudge-consolidation` hook would advertise every session |
 | Class 6 cannot land before erratum 6 | DEC-07 | One suite-size literal is assertable at a time; between now and the erratum, an in-place reduction reds AC-1.3 correctly. Accepted over a re-measured expected value that greens by construction |
 
-**What a gated merge looks like.** Classes 1–5 are ungated and land on engineering's schedule; class 6 waits on erratum 6 (DEC-07) and classes 7–12 on erratum 3 (DEC-10). The intended interim outcome is a **partial merge held on the branch**, not a partial main: each ungated class is independently green per REQ C-7, but AC-1.1's `dist/` set-equality stays red while classes 7–11 are held, so the feature is not "done" and the branch does not merge on a green subset. PLAN carries that as the class-7 predecessor edge; PROPERTIES places the classes 7–11 ATs behind the same edge, and the assertion DEC-09 requires must be hosted in a module outside M-8's deletion set (`consolidationPreflight.test.js` or `consolidationRoute.test.js` both qualify, FSPEC:378), or it ships nothing.
+**What a gated merge looks like.** Classes 1–5 are ungated and land on engineering's schedule; class 13 is ungated too (FSPEC `:165`, \"Independent; may land any time\"), though its documentation lands with class 12's story; class 6 waits on erratum 6 (DEC-07) and classes 7–12 on erratum 3 (DEC-10). The intended interim outcome is a **partial merge held on the branch**, not a partial main: each ungated class is independently green per REQ C-7, but AC-1.1's `dist/` set-equality stays red while classes 7–12 are held, so the feature is not "done" and the branch does not merge on a green subset. PLAN carries that as the class-7 predecessor edge; PROPERTIES places the classes 7–12 ATs behind the same edge, and the assertion DEC-09 requires must be hosted in a module outside M-8's deletion set (`consolidationPreflight.test.js` or `consolidationRoute.test.js` both qualify — neither is named in FSPEC L-5's M-8 deletion list), or it ships nothing.
 
 **Reversibility.**
 
