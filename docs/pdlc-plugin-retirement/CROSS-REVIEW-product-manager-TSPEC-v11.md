@@ -53,3 +53,36 @@ still held — the one behaviour the new final sentence forbids. **The confirmat
 | ID | Question |
 |----|---------|
 | Q-01 | C-7 now says the branch "does not merge on a green subset: completion is all criteria satisfied at HEAD, held classes included." Classes 7 and 11 are held on erratum 3 (T-5) and class 13 on erratum 4 (T-4). Is a PLAN-time gate wanted that names those three holds as merge blockers, or is the TSPEC's per-obligation "blocking" wording plus the completion check at HEAD considered sufficient? This is a routing question for PLAN, not a TSPEC defect — the TSPEC states the holds; nothing in it claims a subset merge |
+
+## Positive Observations
+
+- **The erratum ratifies the TSPEC rather than moving under it.** The REQ's new "resolution is
+  ordering — the check becomes live with the class it covers — never registration" is a
+  restatement, at constraint level, of the rule the TSPEC already applies commit by commit
+  (BR-SWEEP-4, `TSPEC:282`–`:284`: a gate-read reference never lags its subject). An upstream
+  correction that a downstream document already satisfies without edits is the cheap kind, and
+  it is cheap here because the TSPEC chose ordering over registration on its own.
+- **The held classes were named as blocking obligations before the REQ had language for them.**
+  T-4 and T-5 already routed classes 7, 11 and 13 to upstream dispositions and forbade landing
+  them early. The erratum tells the implementer that this posture is completeness, not
+  violation — the two documents now agree in both directions.
+- **No acceptance criterion moved, so no traceability had to be re-derived.** AC-1.1's two
+  branches, AC-1.2's search-and-exclude shape and AC-1.3's M-8-scoped no-skip clause are
+  byte-identical to the versions the v10 approval was taken against; §2.2's pinning of AC-1.1's
+  first branch and §5.2's oracle placements need no revision.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The v10 approval carries forward. The TSPEC remains a faithful compression of REQ v0.12: every
+place it leans on C-7 still says what the TSPEC reports it says, and the erratum's one new
+obligation (ordering, never registration; no subset merge) is already the TSPEC's design. Both
+findings are Low and wording-level — one clause in T-4/T-5 and one sentence in §5.5 — and
+neither changes an acceptance criterion, an oracle, or an implementer obligation. They can be
+carried into the next ordinary revision round rather than forcing one.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
