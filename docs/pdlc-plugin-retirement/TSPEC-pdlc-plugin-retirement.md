@@ -482,7 +482,7 @@ sweep, but the *shape* of the coverage is exactly what the new
 `pdlc/hooks/scripts/cleanup-consumer-workflows.sh` needs, and CLAUDE.md's fresh-clone rule
 ("invoked by bare path, no `bash`/`sh` prefix; a 126 means the mode bit was lost") is a live
 project constraint. §5.2 therefore re-homes the mode-bit and never-126 assertions for the
-surviving shipped scripts onto `consumerCleanup.test.js` (AT-4.5); deleting `bootstrap.test.js`
+surviving shipped scripts onto `consumerCleanup.test.js` (§5.2, row TT-3); deleting `bootstrap.test.js`
 must not remove that coverage without replacement.
 
 **L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, but the
@@ -639,8 +639,20 @@ on the replay that proves per-commit greenness.
 | Replay | AC-1.8 | a scripted loop over the sweep's commit range running FSPEC L-9's three commands at each commit, output pasted |
 
 No new test double library is introduced. Property-based tests reuse `driftGenerators.js`'s
-surviving primitives (§4.7) — the repo's one seeded-PRNG library — rather than declaring a second
-one.
+surviving primitives (§4.7) — the repo's one seeded-PRNG library — rather than adding a second,
+and the feature's one parameterisable component gets a property rather than three fixed
+constructions: the cleanup script's classifier is a pure predicate over entry **names** (§3.2),
+so §5.2's row TT-4 draws random subsets of §4.3's nine expected names, with and without an
+unexpected name, and asserts the all-or-nothing behaviour §2.5 claims. Shrinking uses the
+shipped `shrink`; the seed is reported on failure per the repo's existing `PDLC_PROP_SEED`
+convention (`roundDerivation.test.js:231`).
+
+**Handshake guards at end-to-end level (AC-3.6).** AC-3.6 needs a plugin version *outside* the
+engine's declared range, and the post-sweep pair is inside it by construction (`0.23.2` against
+`^0.23.0`, §4.6). The test constructs the out-of-range case without publishing anything: copy
+the plugin root to a temp fixture, edit the copy's `.claude-plugin/plugin.json` `version` to
+`0.24.0`, and point the engine run at that fixture root. Nothing in the real tree is mutated and
+no release sits on the critical path.
 
 ### 5.2 New tests, by criterion
 
