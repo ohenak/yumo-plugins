@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.7) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6); `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (addressed in v0.7); `CROSS-REVIEW-product-manager-TSPEC-v7.md`, `CROSS-REVIEW-test-engineer-TSPEC-v7.md` (addressed in v0.8) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6); `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (addressed in v0.7); `CROSS-REVIEW-product-manager-TSPEC-v7.md`, `CROSS-REVIEW-test-engineer-TSPEC-v7.md` (addressed in v0.8); `CROSS-REVIEW-product-manager-TSPEC-v8.md`, `CROSS-REVIEW-test-engineer-TSPEC-v8.md` (addressed in v0.9) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.8 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.9 | 2026-08-17 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
@@ -293,7 +293,7 @@ carries in this repo, so the PLAN's task sizes come from dispositions rather tha
 |---|---|
 | 1 | `pr-tests.yml` (2 jobs + index-mode steps), `publish.yml` gate steps, `ci-arrangement.test.js`, CLAUDE.md `### Continuous integration`, `pdlc/OPERATIONS.md` `## Continuous integration` (count word + named files), the two workflow-file comment count words |
 | 2 | `pdlc/engine/__tests__/smoke.test.js`, `fs-observation.test.js`, `fixtures/consumer-ac12/` (6 files) |
-| 3 | `orchestrate-queue.js` gate + `distribution.checkEnabled` parse, its workflow-suite coverage; new `__tests__/consumerCleanup.test.js` (TT-1…TT-4, §5.5's orphan-freedom and skip-join oracles); one added `SKIP_INVENTORY` entry in the surviving `__tests__/helpers/driftCapabilities.js` for TT-1b's root/`chmod 000` gap; the derivation-rule paragraph in the surviving `__tests__/helpers/skipSink.js` (`WHAT IS NOT ENFORCED, AND WHY`) restated so the widened inventory does not contradict it; the join oracle's falsifying fixture `__tests__/fixtures/skipJoinFalsifier.js` (new file, deliberately not `*.test.js`) (§5.5) |
+| 3 | `orchestrate-queue.js` gate + `distribution.checkEnabled` parse, its workflow-suite coverage; new `__tests__/consumerCleanup.test.js` (TT-1…TT-4, §5.5's orphan-freedom and skip-join oracles); one added `SKIP_INVENTORY` entry in the surviving `__tests__/helpers/driftCapabilities.js` for TT-1b's root/`chmod 000` gap; the derivation-rule paragraph in the surviving `__tests__/helpers/skipSink.js` (`WHAT IS NOT ENFORCED, AND WHY`) restated so the widened inventory does not contradict it; the join oracle's falsifying fixture `__tests__/fixtures/skipJoinFalsifier.js` (new file, deliberately not `*.test.js`) and the child run's no-op `globalTeardown` module `__tests__/fixtures/skipJoinTeardown.js` (new file) (§5.5) |
 | 4 | `check-workflow-drift.sh` + the second `SessionStart` entry in `hooks.json` |
 | 5 | `lib/pdlc-drift.sh`, `sync-workflows.sh` |
 | 6 | 20 of M-8's 21 `*.test.js` modules deleted (all but `hookCompatibility.test.js`, incl. `bootstrap.test.js`) + `runtimeProvenanceWiring.test.js` + 6 helpers + `hookCompatibility.test.js` reduction (its ten `(hasBash ? it : it.skip)` sites converted to `itOrSkip`, adding **ten** `"bash"` `SKIP_INVENTORY` rows to `__tests__/helpers/driftCapabilities.js` — same file as the class-3 entry, so the two commits are serialised, never batched, §5.5) + `driftGenerators.js` reduction; **no assertion is re-homed out of `orchestrateQueue.test.js`** (§4.4) |
@@ -1147,7 +1147,7 @@ the §2.6 measurement, not re-checked by this oracle.
 
 ### 6.1 Upstream errata raised (not folded in here)
 
-Nine claims and open surfaces in the upstream documents did not survive a check against the tree at `2cd0d6b1`.
+Ten claims and open surfaces in the upstream documents did not survive a check against the tree at `2cd0d6b1`.
 Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC. **Nine remain
 open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage, not for action.**
 
@@ -1271,11 +1271,17 @@ open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage
     `hookCompatibility.test.js` (an M-8 member **reduced in place**, not deleted — the membership
     correction of item 6) nor `consolidationBuild.test.js` (edited only by TT-5's new assertions).
     A bare `it.skip` added to either by this sweep is the same defect AT-1.3 exists to catch, and
-    would be out of the approved domain. Requested edit: restate the limb as *modules this sweep
-    creates, deletes, reduces in place, or adds assertions to, plus surviving hosts of R-8
-    re-homes*, and keep the explicit exclusion of pre-existing pending state
-    (`guardMatrix.test.js`) unchanged. §5.5 already works to the wider set, which is a strict
-    superset of the approved one, so nothing approved is lost while the edit is pending.
+   outside the approved domain. Requested edit: restate the limb as *every surviving `*.test.js`
+   module under `pdlc/workflows/__tests__/` that the sweep edits at all — creates, reduces in place,
+   adds assertions to, or corrects an existing assertion in — plus M-8's deleted modules*, and keep
+   the explicit exclusion of pre-existing pending state (`guardMatrix.test.js`) unchanged. The wording
+   deliberately covers assertion-**deleting** edits too (§2.9's class-7, class-9 and class-11 rows
+   touch `pipelineWiring.test.js`, `consolidationPreflight.test.js`, `documentOracles.test.js` and
+   `orchestrateDevSkill.test.js`), because an assertion parked behind a bare `it.skip` during a
+   deletion is the defect AT-1.3 exists to catch; a narrower "adds assertions" reading would leave the
+   sweep's most edit-heavy surviving modules unwatched (TE TSPEC v8 F-01/Q-01). §5.5 already works to
+   this wider set, which is a strict superset of the approved one, so nothing approved is lost while
+   the edit is pending.
 
 ### 6.2 Successor work bound under REQ NG-5
 
