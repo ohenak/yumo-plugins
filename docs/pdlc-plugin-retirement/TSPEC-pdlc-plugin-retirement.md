@@ -483,17 +483,24 @@ class 6 as *deletion*); this TSPEC reduces it in place, so it is a class-6 **red
 deletion. That membership correction is routed upstream alongside the count (§6.1 erratum 6),
 not decided silently here.
 
-**`bootstrap.test.js`'s mode-bit coverage (M-8 member, deleted).** The module carries the §9.3
-mode-bit block — `it.each(FIVE_SCRIPTS)("index mode for %s is 100755 in the live repo")` and
-its on-disk-in-clone twin (`:265`–`:276`) — plus a dedicated bare-path assertion,
-`it("dedicated: bare-path invocation of sync-workflows.sh (no interpreter) does not exit 126")`
-(`:277`–`:301`). Four of the five shipped scripts it covers are deleted or unchanged by this
-sweep, but the *shape* of the coverage is exactly what the new
-`pdlc/hooks/scripts/cleanup-consumer-workflows.sh` needs, and CLAUDE.md's fresh-clone rule
-("invoked by bare path, no `bash`/`sh` prefix; a 126 means the mode bit was lost") is a live
-project constraint. §5.2 therefore re-homes the mode-bit and never-126 assertions for the
-surviving shipped scripts onto `consumerCleanup.test.js` (§5.2, row TT-3); deleting `bootstrap.test.js`
-must not remove that coverage without replacement.
+**`bootstrap.test.js`'s mode-bit coverage (M-8 member, deleted).** It carries the §9.3
+mode-bit block — `it.each(FIVE_SCRIPTS)("index mode … is 100755 in the live repo")`, its
+on-disk-in-clone twin, plus the dedicated bare-path assertion
+`it("dedicated: bare-path invocation of sync-workflows.sh (no interpreter) must not exit 126")`
+(`bootstrap.test.js`, `describe("§9.3: mode-bit …")`). The partition of `FIVE_SCRIPTS`
+(`bootstrap.test.js`, `const FIVE_SCRIPTS`) across this sweep is **2 deleted / 3 surviving**, not
+4 + 1: `check-workflow-drift.sh` (class 4) and `sync-workflows.sh` (class 5) go; and
+`check-scope-field.sh`, `guard-harvest-before-delete.sh` and `nudge-consolidation.sh` survive
+unchanged as the three hooks AC-3.3 names. Deleting the host module therefore drops the mode-bit
+oracle for **three still-shipped scripts**, not only for two retired ones — and
+`bootstrap.test.js` is the sole module in the repo asserting that constraint (`grep -rn "100755"
+pdlc/workflows/__tests__/*.test.js` returns it alone; the only other `126` reference,
+`driftOrdering.test.js`, is itself deleted in class 3). A lost mode bit ships silently and the
+hook simply stops firing, per CLAUDE.md's fresh-clone rule ("invoked by bare path, no
+`bash`/`sh` prefix; 126 means the mode bit was lost") — a live project constraint. §5.2's TT-3
+therefore re-homes the assertions over the **whole post-sweep shipped-script set** — the three
+surviving hook scripts plus the new `cleanup-consumer-workflows.sh` — enumerated set-equally, so
+that deleting `bootstrap.test.js` replaces the coverage rather than removing it.
 
 **L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, but the
 measurement is now pinned rather than asserted. `queueDriftGate.test.js` imports `main` plus
