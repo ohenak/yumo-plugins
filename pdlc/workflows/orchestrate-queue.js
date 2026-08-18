@@ -74,10 +74,6 @@ export const SKILL_TRIAGE = "se-author";
  */
 export const DISPATCHABLE_SKILLS = Object.freeze([SKILL_TRIAGE, ADVISORY_RUNG_SKILL].sort());
 
-// Location of the drift-state artifact the queue's gate reads (FSPEC §6.1). Written by the
-// sync hook / manual sync / manifest check — never by this module.
-export const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
-
 // MODEL-01: the queue driver's own agent work (the Phase-0 readiness triage) runs
 // on Sonnet — it is a bounded lookup against git/working-tree state, not deep
 // reasoning. The delegated pipeline (orchestrate-dev) pins its OWN models: Opus for
@@ -1253,58 +1249,6 @@ export default async function main({
   const agentFn = (skill, prompt, opts) =>
     rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
 
-  // ─── Drift gate (O-19, FSPEC §6.2/§6.4, TSPEC §12.3/§12.4) ───────────────
-  // Runs BEFORE the queue is even read, so a blocked drift state costs no queue
-  // work. `readDriftStateSafely` is the O-19(d) wrapper: the injected read is
-  // agent-mediated (rtReadFile, runtime-adapter.js:85-96), not a raw filesystem
-  // call, and that seam never throws in production — it maps a missing/unreadable
-  // file to `null` itself. The wrapper exists anyway (defence in depth, O-19(c)):
-  // if some future/alternate read implementation DID throw, propagating that
-  // exception here would abort the whole queue invocation instead of yielding a
-  // `blocked` verdict, which is the wrong failure mode for something that must
-  // fail closed onto row 1 (FSPEC §6.2 row 1 — "hook never ran").
-  phaseFn("Queue: Drift gate");
-  // Config-side opt-out FIRST (the fix): checked before the drift-state record is even read, so
-  // a consumer with no `.claude/workflows/` tree — and therefore no drift-state record ever
-  // written — can still reach the documented `distribution.checkEnabled: false` opt-out. A
-  // config that carries no opinion (absent, unparseable, wrong shape) changes nothing below;
-  // the record-based gate (rows 1-10, `mapDriftState`) runs exactly as it always has.
-  const distributionConfigRaw = await readAdvisoryConfigSafely(readFileFn, ADVISORY_CONFIG_PATH);
-  const driftGate = parseDistributionCheckEnabledOptOut(distributionConfigRaw)
-    ? distributionOptOutGate()
-    : mapDriftState(validateDriftRecord(await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH)));
-  if (driftGate.outcome === "blocked") {
-    emit(
-      `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
-    );
-    return buildQueueReport({
-      outcome: "blocked",
-      reason: `Drift gate row ${driftGate.row}: ${driftGate.reasons.join("; ")}`,
-      remaining: 0,
-      driftReport: driftGate.report,
-    });
-  }
-
-  // A PROCEEDING verdict is not necessarily a silent one. Row 9 is the trivial
-  // all-clear (empty `reasons`, empty report) and says nothing; every other
-  // proceeding row carries something the operator must still see:
-  //   • row 2 — the checkEnabled:false opt-out. AC-4.1 row 2 is "proceed; skip
-  //     noted in report", AC-4.3 is "skips state evaluation and notes the skip".
-  //     A queue that ran a stale tree without saying so would be exactly the
-  //     silent-degradation this feature exists to prevent.
-  //   • row 8 — local-edit / unverified rows. AC-4.1 row 8 is "proceed, rows
-  //     named in the run report".
-  // Both obligations are on the RETURNED QueueReport (and the run log), not on
-  // `mapDriftState`'s node output — so the notice is captured once here and
-  // `finish` is the single funnel every remaining exit path in this pass returns
-  // through, `runPicked`'s two included. Adding a new `return` below that calls
-  // `buildQueueReport` directly would silently reopen this gap.
-  const driftNotice = driftGate.row === 9 ? null : driftGate.report;
-  if (driftNotice) {
-    emit(
-      `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
-    );
-  }
   // Accumulates one entry per seam invocation this pass — `{...disposition, seam}` — so the
   // queue's own report can carry the same advisory summary the dev-side final report does
   // (TSPEC §9.4 S-5). Declared before `finish` is invoked (never before it is CLOSED OVER, which
@@ -1313,7 +1257,6 @@ export default async function main({
   const finish = (fields) =>
     buildQueueReport({
       ...fields,
-      driftReport: driftNotice,
       advisory:
         advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
           ? advisorySummaryRows(advisoryDispositions)
@@ -1906,10 +1849,6 @@ function uncommitted(result, queuePath) {
  * @property {string} [active]         - in-progress feature blocking pickup (if any)
  * @property {object} [pipelineReport] - the orchestrate-dev FinalReport (if a pipeline ran)
  * @property {Array}  [skipped]        - candidates skipped this pass with reasons
- * @property {{manifest:string[], row:string[], run:string[]}} [driftReport] - the drift gate's
- *   Manifest/Row/Run reasons (FSPEC §6.3). Present whenever the gate had something to say —
- *   on a `blocked` verdict, and on a proceeding verdict at any row other than 9's all-clear
- *   (AC-4.1 rows 2 and 8, AC-4.3). Absent exactly when the gate was silent.
  */
 function buildQueueReport({
   outcome,
@@ -1919,7 +1858,6 @@ function buildQueueReport({
   active,
   pipelineReport,
   skipped,
-  driftReport,
   advisory,
 }) {
   return {
@@ -1930,10 +1868,22 @@ function buildQueueReport({
     ...(active ? { active } : {}),
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
-    ...(driftReport ? { driftReport } : {}),
     ...(advisory ? { advisory } : {}),
   };
 }
+
+// ─── Link-compat shim (M-8 suites, T15 deletes) ──────────────────────────────
+//
+// PLAN T08 removed the drift gate's WIRING (the call site in main(), the config-side
+// opt-out, the O-19(d) read wrapper) but retains these two PURE, side-effect-free
+// functions and the path constant they were defined against, solely so the five
+// still-live M-8 suites (bootstrap.test.js, driftBaseline.test.js, driftHook.test.js,
+// driftLadder.test.js, driftRecordShape.test.js — PLAN T15's own file-ownership
+// manifest, §3) keep loading until T15 deletes them. Deliberately outside T08's own
+// §3 manifest — a second, targeted touch of this file by a later task, flagged for
+// CR/DoD review. Nothing below is called from main() or any other live code path in
+// this module; T15's deletion of the five suites is what retires this shim.
+export const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
 // ─── DRIFT-01: validateDriftRecord (TSPEC §12.1, FSPEC §1.3 / §6.2 row 1) ────
 //
@@ -2251,85 +2201,4 @@ export function mapDriftState(validated) {
   // argument — e.g. `resolved` with `rows: []`, which row 9 explicitly excludes).
   const reasons = ["drift state does not describe a recognised outcome"];
   return gate("blocked", 10, reasons, { manifest: reasons, row: [], run: [] });
-}
-
-// ─── T-13: readDriftStateSafely — the O-19(d) wrapper (TSPEC §12.3) ─────────
-//
-// O-19(c): the injected read this wraps (`_readFile`, production: `rtReadFile`,
-// runtime-adapter.js:85-96) is LLM-mediated — an agent turn that reads a file and
-// relays its contents as the agent's final message — not a raw filesystem call.
-// `rtReadFile` itself never throws today: it maps "file absent / unreadable" to a
-// returned `null`, the same as this module's own `defaultReadFile`. This wrapper's
-// `try`/`catch` is therefore defence in depth (O-19(d)), not dead code covering an
-// impossible path: it is what stands between a hypothetical throwing read (a
-// transport failure some other future/alternate injected implementation surfaces
-// as an exception rather than a `null`) and an *aborted* queue invocation. Without
-// it, that throw would propagate out of `main` entirely instead of mapping to
-// `mapDriftState`'s row 1 `blocked` verdict with a returned report — the fail-closed
-// behavior FSPEC §6.2 row 1 ("hook never ran") requires. The call site (`main`,
-// below) `await`s this — per CLAUDE.md's runtime rule, every injected IO call must
-// be awaited because the runtime adapter's implementations are async.
-//
-// @param {function} readFileFn - async (path) => string|null (or throws)
-// @param {string} path - DRIFT_STATE_PATH
-// @returns {Promise<unknown>} the raw read result, or `null` on any throw
-export async function readDriftStateSafely(readFileFn, path) {
-  try {
-    return await readFileFn(path);
-  } catch {
-    return null;
-  }
-}
-
-// ─── Config-side drift-gate opt-out (fix: the documented `.claude/pdlc.config.json` →
-// `distribution.checkEnabled: false` opt-out, CLAUDE.md's "Artifact convention" section) ────
-//
-// The gate's ONLY opt-out before this fix lived inside the drift-state RECORD
-// (`record.checkEnabled === false`, row 2 below) — a field a hook/sync/check run writes. A
-// consumer repo with no `.claude/workflows/` tree at all (the pdlc-headless-engine arrangement:
-// no hook has ever run there, so no record exists) could never reach that opt-out; it always
-// landed on row 1 (missing record) and blocked, with no way out short of fabricating a
-// `.claude/workflows/` directory the engine has no other reason to create. This reads the
-// config directly, BEFORE the drift-state record is even read, so that opt-out is reachable on
-// its own. Pure and total, mirroring `parseAdvisoryConfig`/`parseMergeConfig`'s independent,
-// fail-soft posture: a missing file, unparseable JSON, or any `distribution` shape other than a
-// plain object all mean "no opinion" — the record-based gate proceeds exactly as it did before
-// this fix. Only a STRICT boolean `false` at `distribution.checkEnabled` opts out.
-//
-// @param {string|null} raw - result of the injected read at ADVISORY_CONFIG_PATH (same file the
-//   record-based opt-out's config already shares with advisory/merge config — CLAUDE.md's
-//   `.claude/pdlc.config.json`)
-// @returns {boolean} true only for a strict `{"distribution":{"checkEnabled":false}}`
-export function parseDistributionCheckEnabledOptOut(raw) {
-  if (typeof raw !== "string") return false;
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return false;
-  }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
-  const distribution = parsed.distribution;
-  if (distribution === null || typeof distribution !== "object" || Array.isArray(distribution)) {
-    return false;
-  }
-  return distribution.checkEnabled === false;
-}
-
-// The config-side opt-out's own gate verdict — bypasses `mapDriftState`/`validateDriftRecord`
-// entirely (no drift-state record is read at all), but shares their `{outcome, row, reasons,
-// report}` shape so every downstream consumer (the `driftGate.row === 9 ? null : ...` notice
-// funnel, `finish`'s `driftReport` field) treats it exactly like a record-based proceeding row.
-// `row: 0` is deliberately outside `mapDriftState`'s 1-10 range: it names a distinct gate path
-// without colliding with any record-based row number.
-const DISTRIBUTION_OPT_OUT_NOTICE =
-  `drift check skipped by operator opt-out (${ADVISORY_CONFIG_PATH} distribution.checkEnabled: false)`;
-
-function distributionOptOutGate() {
-  return {
-    outcome: "proceed",
-    row: 0,
-    reasons: [DISTRIBUTION_OPT_OUT_NOTICE],
-    report: { manifest: [DISTRIBUTION_OPT_OUT_NOTICE], row: [], run: [] },
-  };
 }

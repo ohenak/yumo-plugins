@@ -10572,8 +10572,6 @@ const SKILL_TRIAGE = "se-author";
 
 const DISPATCHABLE_SKILLS = Object.freeze([SKILL_TRIAGE, ADVISORY_RUNG_SKILL].sort());
 
-const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
-
 const MODEL_QUEUE = "sonnet";
 
 const NO_PROVENANCE = Object.freeze({
@@ -11353,36 +11351,10 @@ async function main({
   const agentFn = (skill, prompt, opts) =>
     rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
 
-  phaseFn("Queue: Drift gate");
-
-  const distributionConfigRaw = await readAdvisoryConfigSafely(readFileFn, ADVISORY_CONFIG_PATH);
-  const driftGate = parseDistributionCheckEnabledOptOut(distributionConfigRaw)
-    ? distributionOptOutGate()
-    : mapDriftState(validateDriftRecord(await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH)));
-  if (driftGate.outcome === "blocked") {
-    emit(
-      `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
-    );
-    return buildQueueReport({
-      outcome: "blocked",
-      reason: `Drift gate row ${driftGate.row}: ${driftGate.reasons.join("; ")}`,
-      remaining: 0,
-      driftReport: driftGate.report,
-    });
-  }
-
-  const driftNotice = driftGate.row === 9 ? null : driftGate.report;
-  if (driftNotice) {
-    emit(
-      `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
-    );
-  }
-
   const advisoryDispositions = [];
   const finish = (fields) =>
     buildQueueReport({
       ...fields,
-      driftReport: driftNotice,
       advisory:
         advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
           ? advisorySummaryRows(advisoryDispositions)
@@ -11812,7 +11784,6 @@ function buildQueueReport({
   active,
   pipelineReport,
   skipped,
-  driftReport,
   advisory,
 }) {
   return {
@@ -11823,10 +11794,11 @@ function buildQueueReport({
     ...(active ? { active } : {}),
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
-    ...(driftReport ? { driftReport } : {}),
     ...(advisory ? { advisory } : {}),
   };
 }
+
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
 const DRIFT_CLOSED_ROW_STATES = ["in-sync", "missing", "stale", "local-edit", "unverified", "unknown"];
 
@@ -12051,42 +12023,6 @@ function mapDriftState(validated) {
 
   const reasons = ["drift state does not describe a recognised outcome"];
   return gate("blocked", 10, reasons, { manifest: reasons, row: [], run: [] });
-}
-
-async function readDriftStateSafely(readFileFn, path) {
-  try {
-    return await readFileFn(path);
-  } catch {
-    return null;
-  }
-}
-
-function parseDistributionCheckEnabledOptOut(raw) {
-  if (typeof raw !== "string") return false;
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return false;
-  }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
-  const distribution = parsed.distribution;
-  if (distribution === null || typeof distribution !== "object" || Array.isArray(distribution)) {
-    return false;
-  }
-  return distribution.checkEnabled === false;
-}
-
-const DISTRIBUTION_OPT_OUT_NOTICE =
-  `drift check skipped by operator opt-out (${ADVISORY_CONFIG_PATH} distribution.checkEnabled: false)`;
-
-function distributionOptOutGate() {
-  return {
-    outcome: "proceed",
-    row: 0,
-    reasons: [DISTRIBUTION_OPT_OUT_NOTICE],
-    report: { manifest: [DISTRIBUTION_OPT_OUT_NOTICE], row: [], run: [] },
-  };
 }
 
 return { main, meta, DEFAULT_QUEUE_PATH, rewriteStatus, updateQueueStatus };

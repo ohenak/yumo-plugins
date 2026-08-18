@@ -84,6 +84,13 @@ export const INVARIANTS_PROP_CLS_03_RSN_04_L3_L4 = Object.freeze([
   "totality side-attribution verified over nine leaves constructible on runner (L0, L1, L2, L5, L6, L7, L8, L9, L10); two existence-indeterminate leaves L3 and L4 are not",
 ]);
 
+// T08 (PLAN, TSPEC §3.2 row 4b) — the cleanup-consumer-workflows.sh contract's TT-1b: an
+// unreadable (`chmod 000`) target directory. Root always bypasses permission bits, so this
+// construction is unconstructible on a uid-0 runner.
+export const INVARIANTS_TT_1B = Object.freeze([
+  "TSPEC §3.2 row 4b: an unreadable target directory exits exactly 4 and names the failing path on stderr",
+]);
+
 /**
  * The named uid-0 skip inventory (TSPEC §1.3 ∪ PROPERTIES §11.1), as a frozen array of
  * `{name, capability, unverifiedInvariants}` records. `REGISTERED_SKIPS` below is checked
@@ -121,6 +128,7 @@ export const SKIP_INVENTORY = Object.freeze([
     capability: "uid-nonroot",
     unverifiedInvariants: INVARIANTS_PROP_CLS_03_RSN_04_L3_L4,
   }),
+  Object.freeze({ name: "TT-1b", capability: "uid-nonroot", unverifiedInvariants: INVARIANTS_TT_1B }),
 ]);
 
 /**

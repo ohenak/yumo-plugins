@@ -37,8 +37,9 @@
  * WHAT IS NOT ENFORCED, AND WHY
  * -----------------------------
  * Closure ("every registered uid-0 skip is a member of the inventory") is deliberately NOT
- * enforced. `SKIP_INVENTORY` is spec-derived — exactly TSPEC §1.3's table plus PROPERTIES
- * §11.1's two leaves — while several suites legitimately gate other fixtures on `uid-nonroot`
+ * enforced. `SKIP_INVENTORY` is spec-derived — TSPEC §1.3's table, PROPERTIES §11.1's two
+ * leaves, and (from T08) TSPEC §3.2 row 4b's TT-1b entry — while several suites legitimately
+ * gate other fixtures on `uid-nonroot`
  * with their own invariant strings (e.g. `driftFault`'s unreadable-file case, `driftLadder`'s
  * rungs, `driftHelpers`' `chmod 000` cleanup case). Asserting closure would fail the whole run
  * on any root runner for skips that are correct, so membership is enforced in the agreement
