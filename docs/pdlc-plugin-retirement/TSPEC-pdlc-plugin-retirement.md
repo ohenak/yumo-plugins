@@ -203,9 +203,14 @@ Three distinct operations, deliberately separated because they carry different r
    `:46`), so moving its bodies would be a pure-churn copy that risks dropping an assertion, and
    these three blocks are the **only** workflow-suite coverage of the three surviving hooks and
    therefore AT-3.3 clause 2's oracle.
-3. **Reduce** `helpers/driftGenerators.js` to the primitives surviving modules import. Measured
-   at `2cd0d6b1`: eleven `*.test.js` modules import it, of which seven survive the sweep, and the
-   surviving import set is exactly `seeded`, `resolveSeed`, `shrink` (plus
+3. **Reduce** `helpers/driftGenerators.js` to the primitives surviving modules import. Re-measured
+   at `2cd0d6b1` by `grep -rn "driftGenerators" pdlc/workflows/__tests__` (import sites only,
+   comment mentions discarded): **twelve** `*.test.js` modules import it statically, of which
+   **six** are deleted by the sweep (`driftBackups:46`, `driftBaseline:56`, `driftFault:37`,
+   `driftHook:69`, `driftOrdering:36`, `queueDriftGate:60`) and **six** survive
+   (`approvalHash:39`, `completeness:55`, `forcePhases:30`, `pacingWrapper:60`,
+   `roundDerivation:36`, `scanLines:28`); the surviving import set is exactly `seeded`,
+   `resolveSeed`, `shrink` (plus
    `consolidationPreflight.test.js:172`, which asserts `seeded`/`resolveSeed` are exported, and
    `helpers/mergeDoubles.js:14`, which imports `seeded`/`resolveSeed`). The named symbols the
    baseline lists for removal (`C1_PATH`, `MANIFEST_CHAIN_VECTORS`, `readFaultTokens`,
@@ -532,16 +537,40 @@ outage on the retirement commit (E-19).
 seeded, resolveSeed, shrink
 ```
 
-Measured at `2cd0d6b1`: eighteen `*.test.js` modules import the helper. Seven are deleted by the
-sweep (`driftBackups`, `driftBaseline`, `driftFault`, `driftHook`, `driftOrdering`,
-`driftRepoRoot`, `queueDriftGate`) and eleven survive (`advisoryConfig`, `advisoryEnvelope`,
-`advisoryEscalationLog`, `approvalHash`, `completeness`, `consolidationPreflight`,
-`consolidationProperties`, `forcePhases`, `pacingWrapper`, `roundDerivation`, `scanLines`), as
-does `helpers/mergeDoubles.js` (`seeded`, `resolveSeed`). `consolidationPreflight.test.js`
-additionally asserts that `seeded` and `resolveSeed` are exported. The set
-above is what those consumers name. The implementation re-derives it by a fresh consumer scan at
-sweep time rather than trusting this transcription, because the baseline's removal list is
-explicitly non-exhaustive.
+Re-measured at `2cd0d6b1` (`grep -rn "driftGenerators" pdlc/workflows/__tests__`, import sites
+only — comment mentions in `driftRepoRoot.test.js:417`/`:486`, `forcePhases.test.js:160`,
+`pacingWrapper.test.js:52`, `roundDerivation.test.js:24`, `completeness.test.js:22`,
+`scanLines.test.js:17` and `helpers/seams.js:24` are **not** consumers):
+
+| Consumer | Site | Post-sweep |
+|---|---|---|
+| `driftBackups.test.js` | `:46` (`seeded`, `resolveSeed`, `genId`, `genStamp`) | deleted |
+| `driftBaseline.test.js` | `:56` (`enumerateEvidenceVectors`) | deleted |
+| `driftFault.test.js` | `:37` (`readFaultTokens`, `seeded`, `resolveSeed`, `genId`) | deleted |
+| `driftHook.test.js` | `:69` (`seeded`, `resolveSeed`) | deleted |
+| `driftOrdering.test.js` | `:36` (`seeded`, `resolveSeed`) | deleted |
+| `queueDriftGate.test.js` | `:60` (`enumerateLeaves`) | deleted |
+| `approvalHash.test.js` | `:39` (`resolveSeed`, `seeded`, `shrink`) | survives |
+| `completeness.test.js` | `:55` (`seeded`, `resolveSeed`, `shrink`) | survives |
+| `forcePhases.test.js` | `:30` (`resolveSeed`, `seeded`) | survives |
+| `pacingWrapper.test.js` | `:60` (`resolveSeed`, `seeded`, `shrink`) | survives |
+| `roundDerivation.test.js` | `:36` (`seeded`, `resolveSeed`, `shrink`) | survives |
+| `scanLines.test.js` | `:28` (`seeded`, `resolveSeed`, `shrink`) | survives |
+| `helpers/mergeDoubles.js` | `:14` (`seeded`, `resolveSeed`) | survives |
+| `consolidationPreflight.test.js` | `:173`, dynamic `await import(...)`, asserts `seeded`/`resolveSeed` exported | survives |
+
+Twelve static `*.test.js` importers, six deleted and six surviving; plus the helper
+`mergeDoubles.js` and one dynamic import site. **Eight surviving consumers**, which is exactly
+the count and membership `docs/_constraints/pdlc-retirement-baseline.md` records for
+`driftGenerators.js` — the earlier "eighteen modules / seven deleted / eleven survive"
+statement was wrong in both directions (`driftRepoRoot` mentions the helper only in comments;
+`advisoryConfig`, `advisoryEnvelope`, `advisoryEscalationLog` and `consolidationProperties` do
+not consume it at all) and is withdrawn. §2.6 operation 3 now carries the same numbers.
+
+The **surviving export set is unchanged** by the correction: `seeded`, `resolveSeed`, `shrink`
+is the union of what the eight surviving consumers name. Implementation still re-derives the
+consumer set by a fresh scan at sweep time rather than trusting this transcription, and the
+baseline's removal list stays explicitly non-exhaustive (T-2, §6.3).
 
 ## 5. Test Strategy
 
