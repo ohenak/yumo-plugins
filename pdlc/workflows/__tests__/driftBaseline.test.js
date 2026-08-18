@@ -234,7 +234,7 @@ function buildDriftStateInvalidated() {
 
 // ───────────────────────────── AT-3 / B-1 / B-4 ─────────────────────────────
 
-describe("AT-3 / §14.1 B-1 / §14.1 B-4 — pre-manifest consumer baseline (manifest-absent)", () => {
+describe.skip("AT-3 / §14.1 B-1 / §14.1 B-4 — pre-manifest consumer baseline (manifest-absent) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("AT-3: hook warns manifest-absent, W-1 carries the pluginUpdate remediation (mustNotName SYNC_CMD)", () => {
     const { consumer, plugin } = buildPreManifestConsumer();
     try {
@@ -324,7 +324,7 @@ describe("AT-3 / §14.1 B-1 / §14.1 B-4 — pre-manifest consumer baseline (man
 
 // ───────────────────────────── M-3: one it() per baseline reason ─────────────────────────────
 
-describe("M-3 — one it() per baseline reason (8), reason -> remediation class (AC-2.5a)", () => {
+describe.skip("M-3 — one it() per baseline reason (8), reason -> remediation class (AC-2.5a) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("manifest-absent -> pluginUpdate, mustNotName SYNC_CMD", () => {
     const { consumer, plugin } = buildPreManifestConsumer();
     try {
@@ -517,7 +517,7 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
 
 // ───────────────────────────── the baseline-reason meta-oracle (§1.4 floor) ─────────────────
 
-describe("baseline-reason coverage floor (TSPEC §1.4 — a failing assertion, not a checklist)", () => {
+describe.skip("baseline-reason coverage floor (TSPEC §1.4 — a failing assertion, not a checklist) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("every one of the eight §2.8 baseline reasons was exercised by at least one case above", () => {
     expect(new Set(exercisedBaselineReasons)).toEqual(new Set(EIGHT_BASELINE_REASONS));
   });
@@ -531,7 +531,7 @@ describe("baseline-reason coverage floor (TSPEC §1.4 — a failing assertion, n
 // itself does not exist yet, so every one of these resolves `unknown-function` (T-39's own
 // header comment) — authored now so it goes green the instant T-31/T-32 land.
 
-describe("T-39 layer-2 sourced-probe: pdlc_load_manifest over the eight baseline fixtures", () => {
+describe.skip("T-39 layer-2 sourced-probe: pdlc_load_manifest over the eight baseline fixtures — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   function probeOneFixture(name, buildFixture) {
     it(`pdlc_load_manifest resolves ${name} baseline via the sourced probe`, () => {
       const built = buildFixture();
@@ -660,7 +660,7 @@ describe("T-39 layer-2 sourced-probe: pdlc_load_manifest over the eight baseline
 // second traversal. PROP-BSL-01 (totality) and PROP-BSL-02 (null-exactly biconditional) are the
 // two shape conjuncts asserted before the reason comparison on every iteration.
 
-describe("PROP-BSL-01/-02/-03/-04 — totality, null-biconditional, precedence, indeterminate-exclusion over the 20 evidence vectors", () => {
+describe.skip("PROP-BSL-01/-02/-03/-04 — totality, null-biconditional, precedence, indeterminate-exclusion over the 20 evidence vectors — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   // FSPEC §2.8's fixed 8-reason precedence, minus `drift-state-invalidated` (never a member of
   // `enumerateEvidenceVectors()`'s vector — PROPERTIES §5.1: "not an evidence axis").
   const PRECEDENCE = Object.freeze([
@@ -902,7 +902,7 @@ describe("PROP-BSL-01/-02/-03/-04 — totality, null-biconditional, precedence, 
 
 // ───────────────────────── T-42: PROP-BSL-08 (checkEnabled resolved on every path) ─────────────────────────
 
-describe("PROP-BSL-08 — checkEnabled is resolved on every path, including unresolved ones", () => {
+describe.skip("PROP-BSL-08 — checkEnabled is resolved on every path, including unresolved ones — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   // Five non-default config states (the sixth, file-absent, is the default already covered by
   // the 20-vector enumeration above) × two vectors (resolved; the first-release manifest-absent
   // vector) — FSPEC §2.7's table. `explicit-false` is the only state producing `false`; the other
@@ -993,7 +993,7 @@ describe("PROP-BSL-08 — checkEnabled is resolved on every path, including unre
 
 // ───────────────────────── T-42: PROP-DET-06 (process independence) ─────────────────────────
 
-describe("PROP-DET-06 — process independence: --check then hook over the same unchanged tree", () => {
+describe.skip("PROP-DET-06 — process independence: --check then hook over the same unchanged tree — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("identical rows and baselineReason across --check and hook, differing only in generatedBy/generatedAtUtc", () => {
     const consumer = makeConsumerTree({ git: true, claudeDir: true });
     const plugin = makePluginTree();
@@ -1031,7 +1031,7 @@ describe("PROP-DET-06 — process independence: --check then hook over the same 
 
 // ───────────────────────── T-42: PROP-MTM-02 (--check half) ─────────────────────────
 
-describe("PROP-MTM-02 (--check half) — the classify pass is as-found only, never a second pass", () => {
+describe.skip("PROP-MTM-02 (--check half) — the classify pass is as-found only, never a second pass — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("--check over a generated tree yields exactly one classify pass, labelled as-found (O-20(b))", () => {
     const consumer = makeConsumerTree({ git: true, claudeDir: true });
     const plugin = makePluginTree();
@@ -1066,7 +1066,7 @@ describe("PROP-MTM-02 (--check half) — the classify pass is as-found only, nev
 
 // ───────────────────────── T-42: PROP-NEG-07 (M10 half) ─────────────────────────
 
-describe("PROP-NEG-07 (M10 half) — a manifest row naming a path outside .claude/workflows/ is rejected, never followed", () => {
+describe.skip("PROP-NEG-07 (M10 half) — a manifest row naming a path outside .claude/workflows/ is rejected, never followed — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   // FSPEC §1.1 M10's three independently-falsifiable clauses (`pdlc-drift.sh`'s
   // `_pdlc_manifest_read` python validator): (1) missing the literal `.claude/workflows/` prefix,
   // (2) an empty or nested (`/`-containing) remainder, (3) a remainder starting with `.pdlc-`.

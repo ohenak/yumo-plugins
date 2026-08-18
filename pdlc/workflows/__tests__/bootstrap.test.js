@@ -94,7 +94,7 @@ function snapshotTree(root) {
   return entries;
 }
 
-describe("AT-24: fresh-clone bootstrap sequence (build-runtime -> sync -> check)", () => {
+describe.skip("AT-24: fresh-clone bootstrap sequence (build-runtime -> sync -> check) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   let clone;
   let homeBefore;
   let manifest;

@@ -214,7 +214,7 @@ const C1_CASES = [
   ["C1 almost complete (only pdlc_msg_w7 missing)", C1_ALMOST_COMPLETE_MISSING_W7, "pdlc_msg_w7"],
 ];
 
-describe("F-01 / AC-2.4 — the hook exits 0 when C1 is missing or corrupt", () => {
+describe.skip("F-01 / AC-2.4 — the hook exits 0 when C1 is missing or corrupt — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   for (const [label, libContent, firstMissing] of C1_CASES) {
     it(`exits 0 and says something useful — ${label}`, () => {
       const install = makeBrokenInstall(libContent);
@@ -235,7 +235,7 @@ describe("F-01 / AC-2.4 — the hook exits 0 when C1 is missing or corrupt", () 
   }
 });
 
-describe("F-02 / FSPEC §5.8 — sync never exits 1 when C1 is missing or corrupt", () => {
+describe.skip("F-02 / FSPEC §5.8 — sync never exits 1 when C1 is missing or corrupt — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   for (const [label, libContent, firstMissing] of C1_CASES) {
     for (const [entrypoint, args] of [
       ["--check", ["--check"]],
@@ -310,7 +310,7 @@ const C1_COMPLETE_BUT_BROKEN = [
   "",
 ].join("\n");
 
-describe("G-02 / AC-2.4 — the EXIT trap arm keeps the hook at exit 0 through a `set -u` fatal", () => {
+describe.skip("G-02 / AC-2.4 — the EXIT trap arm keeps the hook at exit 0 through a `set -u` fatal — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("exits 0 when a complete-but-broken C1 makes the hook die of an unbound variable", () => {
     const install = makeBrokenInstall(C1_COMPLETE_BUT_BROKEN);
     try {
@@ -341,7 +341,7 @@ describe("G-02 / AC-2.4 — the EXIT trap arm keeps the hook at exit 0 through a
 // `pdlc_msg_w7` would silently demote the witness to a mid-file probe, and the gate would quietly
 // stop detecting truncation past that new point. This turns the comment into a guard: it fails the
 // instant C1 gains a function definition after `pdlc_msg_w7` without the gate list being revisited.
-describe("G-05 — pdlc_msg_w7 is C1's last function definition (the gate's rationale)", () => {
+describe.skip("G-05 — pdlc_msg_w7 is C1's last function definition (the gate's rationale) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("the last `^pdlc_...()`-shaped definition in lib/pdlc-drift.sh is pdlc_msg_w7", () => {
     const c1Source = readFileSync(join(HOOKS_SCRIPTS_DIR, "lib", "pdlc-drift.sh"), "utf8");
     const definitions = [...c1Source.matchAll(/^pdlc_[a-z0-9_]*\(\)/gm)];

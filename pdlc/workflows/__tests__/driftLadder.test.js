@@ -140,7 +140,7 @@ afterEach(() => {
 
 // ───────────────────────────── AT-14 — T1, no interpreter, no pre-existing record ─────────────
 
-describe("AT-14 — json-tool-absent ladder entry (T1 emitter, TSPEC §6.5)", () => {
+describe.skip("AT-14 — json-tool-absent ladder entry (T1 emitter, TSPEC §6.5) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("writes a parseable record through the T1 printf emitter with no interpreter present", () => {
     const plugin = track(makePluginTree());
     const consumer = track(makeConsumerTree({ git: true, claudeDir: true }));
@@ -187,7 +187,7 @@ describe("AT-14 — json-tool-absent ladder entry (T1 emitter, TSPEC §6.5)", ()
 
 // ───────────────────────────── AT-14b — rung (i), the permission asymmetry ─────────────────────
 
-describe("AT-14b — rung (i) preserves checkEnabled:false (TSPEC §6.5, §13.1 unwritableParent)", () => {
+describe.skip("AT-14b — rung (i) preserves checkEnabled:false (TSPEC §6.5, §13.1 unwritableParent) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "check run: in-place write succeeds though the parent is unwritable — inode unchanged",
     "uid-nonroot",
@@ -271,7 +271,7 @@ describe("AT-14b — rung (i) preserves checkEnabled:false (TSPEC §6.5, §13.1 
 
 // ───────────────────────────── AT-15 — rung (ii) lands ─────────────────────────────────────────
 
-describe("AT-15 — rung (ii) lands: unlink + fresh write (TSPEC §5.3)", () => {
+describe.skip("AT-15 — rung (ii) lands: unlink + fresh write (TSPEC §5.3) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("inode changes; stderr names drift-state-replace and drift-state-invalidate, not -unlink", () => {
     const plugin = track(makePluginTree());
     const record = preExistingDriftStateRecord(plugin);
@@ -316,7 +316,7 @@ describe("AT-15 — rung (ii) lands: unlink + fresh write (TSPEC §5.3)", () => 
 
 // ───────────────────────────── AT-16 — rung (iii) residual ─────────────────────────────────────
 
-describe("AT-16 — rung (iii) residual (TSPEC §5.3, §6.1)", () => {
+describe.skip("AT-16 — rung (iii) residual (TSPEC §5.3, §6.1) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   // Primary — fault-injected, runs on EVERY runner (no permission fixture involved, §6.1 note 2:
   // `drift-state-unlink`'s permission form is not portable and is not used).
   it("--check: the pre-existing record is byte-unchanged, N-3 on stderr, exit 4 (fault form)", () => {
@@ -414,7 +414,7 @@ describe("AT-16 — rung (iii) residual (TSPEC §5.3, §6.1)", () => {
 
 // ───────────────────────────── §14.1 V-3 — AC-2.6 generatedAtUtc ───────────────────────────────
 
-describe("V-3 — AC-2.6: generatedAtUtc is present and ISO-8601 Z (§14.1)", () => {
+describe.skip("V-3 — AC-2.6: generatedAtUtc is present and ISO-8601 Z (§14.1) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("a green run's record carries generatedAtUtc, asserted once on a record not otherwise normalised", () => {
     const plugin = track(makePluginTree());
     const consumer = track(makeConsumerTree({ git: true, claudeDir: true }));

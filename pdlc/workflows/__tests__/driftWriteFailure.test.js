@@ -119,7 +119,7 @@ function preExistingDriftStateRecord(plugin, overrides = {}) {
 
 // ───────────────────────────── AT-17 — the both-failed message (O-6) ────────────────────────
 
-describe("AT-17 — a copy fails and the drift-state write fails, same sync run (O-6)", () => {
+describe.skip("AT-17 — a copy fails and the drift-state write fails, same sync run (O-6) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("prints both W-7 lines, drift-state line first, asserted by stderr index", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     const row = plugin.manifest.rows[0];
@@ -188,7 +188,7 @@ describe("AT-17 — a copy fails and the drift-state write fails, same sync run 
 
 // ───────────────────────────── AT-27 — backup-verify's negative (AC-2.9(4)) ──────────────────
 
-describe("AT-27 — a local-edit row under --force whose backup write does not land", () => {
+describe.skip("AT-27 — a local-edit row under --force whose backup write does not land — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("leaves the original consumer bytes untouched, reports the operation skipped, and exits 4", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     const row = plugin.manifest.rows[0];
@@ -233,7 +233,7 @@ describe("AT-27 — a local-edit row under --force whose backup write does not l
 
 // ───────────────────────────── AT-35 — artifact-copy-corrupt's two red directions ────────────
 
-describe("AT-35 — a copy lands corrupted (fault-injected re-read mismatch)", () => {
+describe.skip("AT-35 — a copy lands corrupted (fault-injected re-read mismatch) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("exits 4 (not 1) and the row measures unverified (not local-edit) post-run", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     const row = plugin.manifest.rows[0];
@@ -278,7 +278,7 @@ describe("AT-35 — a copy lands corrupted (fault-injected re-read mismatch)", (
 
 // ───────────────────────────── §6.3 — per-surface fail-open differences ─────────────────────
 
-describe("§6.3 — per-surface fail-open differences", () => {
+describe.skip("§6.3 — per-surface fail-open differences — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("hook: a drift-state write failure still exits 0, and the record + W-7 are still written", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     try {
@@ -382,7 +382,7 @@ function buildRemovalOnlySyncManifestFixture() {
   return { consumer, plugin };
 }
 
-describe("§6.4 — removalOnlySyncManifest: a whole-file replace whose written set is empty", () => {
+describe.skip("§6.4 — removalOnlySyncManifest: a whole-file replace whose written set is empty — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("assertions 1-4: A's entry is removed, B's entry survives byte-identical, A measures unverified, exit 4", () => {
     const { consumer, plugin } = buildRemovalOnlySyncManifestFixture();
     const rowA = plugin.manifest.rows.find((r) => r.id === "A");
@@ -475,7 +475,7 @@ describe("§6.4 — removalOnlySyncManifest: a whole-file replace whose written 
 // `writeFailures.operation` floor in THIS file — so each operation still needs at least one
 // exercise here, independent of which file tells its fuller story.
 
-describe("floor completion — backup (token 11, §4.7 step 1)", () => {
+describe.skip("floor completion — backup (token 11, §4.7 step 1) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("a local-edit row under --force whose backup copy itself fails to write", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     const row = plugin.manifest.rows[0];
@@ -515,7 +515,7 @@ describe("floor completion — backup (token 11, §4.7 step 1)", () => {
   });
 });
 
-describe("floor completion — retire-delete (token 13, §5.7)", () => {
+describe.skip("floor completion — retire-delete (token 13, §5.7) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("a retiring row's post-copy state is in-sync, its backup lands, but the delete itself fails", () => {
     const consumer = makeConsumerTree({
       git: true,
@@ -562,7 +562,7 @@ describe("floor completion — retire-delete (token 13, §5.7)", () => {
   });
 });
 
-describe("floor completion — the invalidation ladder's stderr-only operations (tokens 7, 8)", () => {
+describe.skip("floor completion — the invalidation ladder's stderr-only operations (tokens 7, 8) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("faulting drift-state-replace, drift-state-invalidate, and drift-state-unlink together exhausts the ladder", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     try {
@@ -613,7 +613,7 @@ describe("floor completion — the invalidation ladder's stderr-only operations 
 // local-edit/sync-force/backup) — the property still asserts its own claim independently over
 // all six, rather than inheriting theirs by reference, per §12's "a property is one it()" rule.
 
-describe("PROP-NEG-03 (converse half) — a failed/unverified backup destroys nothing, exit 4", () => {
+describe.skip("PROP-NEG-03 (converse half) — a failed/unverified backup destroys nothing, exit 4 — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const CASES = [
     { rowState: "stale", entrypoint: "sync", fault: "backup" },
     { rowState: "stale", entrypoint: "sync", fault: "backup-corrupt" },
@@ -684,7 +684,7 @@ describe("PROP-NEG-03 (converse half) — a failed/unverified backup destroys no
 // fully-successful run — the trace's absence of a `backup` record for this row is the oracle,
 // not a side effect of a failure this file otherwise tests.
 
-describe("PROP-NEG-03's missing-row exception — no backup record for a row that was missing", () => {
+describe.skip("PROP-NEG-03's missing-row exception — no backup record for a row that was missing — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("a missing row is copied with no backup record at all, and lands in-sync", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     const row = plugin.manifest.rows[0];
@@ -718,7 +718,7 @@ describe("PROP-NEG-03's missing-row exception — no backup record for a row tha
 
 // ───────────────────────────── §1.4 meta-oracle — the closing floor tests ────────────────────
 
-describe("§1.4 meta-oracle — writeFailures.operation floor (all 9 values)", () => {
+describe.skip("§1.4 meta-oracle — writeFailures.operation floor (all 9 values) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("every recordable operation was asserted present in writeFailures at least once", () => {
     expect(recordableCovered).toEqual(new Set(RECORDABLE_OPERATIONS));
   });

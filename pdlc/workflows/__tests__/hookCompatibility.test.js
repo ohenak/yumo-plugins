@@ -252,7 +252,7 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
 // invoking check-workflow-drift.sh through the same ${CLAUDE_PLUGIN_ROOT} form
 // the three shipped hooks use. The pre-existing nudge-consolidation.sh entry
 // is left unchanged. RED until L-04 registers the second entry.
-describe("C7: hooks.json registers check-workflow-drift.sh as a second SessionStart hook", () => {
+describe.skip("C7: hooks.json registers check-workflow-drift.sh as a second SessionStart hook — held under T16: registration removed by T10, block deleted by T16", () => {
   // __dirname = pdlc/workflows/__tests__; go up two levels to pdlc/, then hooks.json
   const HOOKS_JSON_PATH = resolve(__dirname, "../../hooks/hooks.json");
 
@@ -416,7 +416,7 @@ function isTracked(relPath) {
 }
 
 describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
-  it.skip(
+  it(
     "T10: pdlc/hooks/hooks.json registers exactly FSPEC L-4's four post-sweep {event, script} pairs, and check-workflow-drift.sh is untracked",
     () => {
       const EXPECTED_PAIRS = [

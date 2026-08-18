@@ -150,7 +150,7 @@ function buildPreManifestOptOut() {
 
 // ─── AT-5 — opt-out stays reachable while the hook/`--check` still surface drift ─────────
 
-describe("AT-5 — opt-out (checkEnabled:false) does not silence the hook or --check", () => {
+describe.skip("AT-5 — opt-out (checkEnabled:false) does not silence the hook or --check — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "AT-5(a) — the hook still warns despite checkEnabled:false",
     "hash",
@@ -198,7 +198,7 @@ describe("AT-5 — opt-out (checkEnabled:false) does not silence the hook or --c
 
 // ─── AT-11 (hook half) — retired-present warns independently of row states ────────────────
 
-describe("AT-11 — retired-present warns though all managed rows are in-sync", () => {
+describe.skip("AT-11 — retired-present warns though all managed rows are in-sync — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "AT-11 — W-6 is emitted for a retired path present on disk, independently of every row being in-sync (hook)",
     "hash",
@@ -227,7 +227,7 @@ describe("AT-11 — retired-present warns though all managed rows are in-sync", 
 
 // ─── AT-32(b) — a non-boolean checkEnabled fails closed to true, N-5 once ─────────────────
 
-describe("AT-32(b) — a non-boolean distribution.checkEnabled fails closed", () => {
+describe.skip("AT-32(b) — a non-boolean distribution.checkEnabled fails closed — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it('AT-32(b) — the string "false" resolves to checkEnabled:true, N-5 emitted exactly once', () => {
     const { consumer, plugin } = buildNonBooleanConfig();
     try {
@@ -249,7 +249,7 @@ describe("AT-32(b) — a non-boolean distribution.checkEnabled fails closed", ()
 
 // ─── §14.1 S-1 / S-2 — the hook-silence oracle, both directions ──────────────────────────
 
-describe("§14.1 S-1/S-2 — AC-2.2's hook-silence oracle (expectHookSilent)", () => {
+describe.skip("§14.1 S-1/S-2 — AC-2.2's hook-silence oracle (expectHookSilent) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "S-1 — a fully green tree produces a silent hook",
     "hash",
@@ -299,7 +299,7 @@ describe("§14.1 S-1/S-2 — AC-2.2's hook-silence oracle (expectHookSilent)", (
 
 // ─── §14.1 B-3 — the checkEnabled escape under manifest-absent (config, then hook) ────────
 
-describe("§14.1 B-3 — AC-0.3b: checkEnabled escape reachable under manifest-absent", () => {
+describe.skip("§14.1 B-3 — AC-0.3b: checkEnabled escape reachable under manifest-absent — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("B-3 — config then hook: checkEnabled:false + baselineReason manifest-absent maps to the row-2 opt-out", () => {
     const { consumer, pluginRoot } = buildPreManifestOptOut();
     try {
@@ -324,7 +324,7 @@ describe("§14.1 B-3 — AC-0.3b: checkEnabled escape reachable under manifest-a
 
 // ─── §14.1 V-2 — AC-3.9: retired-present exits 1 under --check even when all rows in-sync ─
 
-describe("§14.1 V-2 — AC-3.9: retired-present blocks --check independently of row states", () => {
+describe.skip("§14.1 V-2 — AC-3.9: retired-present blocks --check independently of row states — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "V-2 — an all-in-sync tree with a retired path present exits 1 under --check",
     "hash",
@@ -350,7 +350,7 @@ describe("§14.1 V-2 — AC-3.9: retired-present blocks --check independently of
 
 // ─── AC-2.4 — the hook exits 0 always, even on an internal write failure ──────────────────
 
-describe("AC-2.4 — the hook exits 0 always", () => {
+describe.skip("AC-2.4 — the hook exits 0 always — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "AC-2.4 — the hook exits 0 even when an internal drift-state write fails",
     "hash",
@@ -387,7 +387,7 @@ describe("AC-2.4 — the hook exits 0 always", () => {
 // (the distinct-phases check below) so this can never be mistaken for evidence that a SYNC
 // run also records as-found; it does not.
 
-describe("PROP-MTM-02 (hook half) — trace carries exactly one classify pass, labelled as-found", () => {
+describe.skip("PROP-MTM-02 (hook half) — trace carries exactly one classify pass, labelled as-found — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const ROW_STATES = ["in-sync", "stale", "missing", "local-edit", "unverified"];
   const rng = seeded(resolveSeed(0x4d544d02));
   const cases = [0, 1].map(() => ({
@@ -452,7 +452,7 @@ describe("PROP-MTM-02 (hook half) — trace carries exactly one classify pass, l
 // this same file — so `supersedingState` genuinely has to be read off the as-found pass
 // rather than defaulting to a value every row already carries.
 
-describe("PROP-MTM-04 (hook half) — conjunct 1: supersedingState is the as-found pass's measurement", () => {
+describe.skip("PROP-MTM-04 (hook half) — conjunct 1: supersedingState is the as-found pass's measurement — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "retiredPresent[].supersedingState equals R's as-found state, and no post-copy/post-run phase is fabricated",
     "hash",
@@ -518,7 +518,7 @@ describe("PROP-MTM-04 (hook half) — conjunct 1: supersedingState is the as-fou
 // falsifying — a hook that goes quiet under either condition would be wrong in a way the
 // queue's own `mapDriftState` tests (PROP-NEG-04's queue half, T-50) cannot see.
 
-describe("PROP-NEG-04 (hook half) — a degraded run is never silent, exceptions asserted explicitly", () => {
+describe.skip("PROP-NEG-04 (hook half) — a degraded run is never silent, exceptions asserted explicitly — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("generic degraded case (unresolved baseline, manifest-absent) — the hook emits a matched W-1 line", () => {
     const consumer = makeConsumerTree({ git: true, claudeDir: true });
     const pluginRoot = mkdtempSync(join(tmpdir(), "pdlc-empty-plugin-"));

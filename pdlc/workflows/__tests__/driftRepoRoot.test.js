@@ -112,7 +112,7 @@ function buildMaintainerMarkerRoot() {
   return consumer;
 }
 
-describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)", () => {
+describe.skip("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   // ─────────────────────── entrypoint-mediated cases (batch 11) ───────────────────────
 
   describe("AT-2 — non-git tree, no .claude/, reason repo-root-unresolved", () => {

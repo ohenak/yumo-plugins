@@ -124,7 +124,7 @@ function expectByteEquivalentRuns(faultedRun, faultedFixture, cleanRun, cleanFix
 
 // ───────────────────────────── AT-18a / AT-18b ─────────────────────────────
 
-describe("AT-18a — unrecognised token: N-7 once, nothing else on stderr, run not perturbed", () => {
+describe.skip("AT-18a — unrecognised token: N-7 once, nothing else on stderr, run not perturbed — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("prints N-7 exactly once with the token text, and is byte-equivalent to the seam-unset run", () => {
     const sharedPlugin = makePluginTree({});
     const faulted = buildSyncedConsumer(sharedPlugin);
@@ -158,7 +158,7 @@ describe("AT-18a — unrecognised token: N-7 once, nothing else on stderr, run n
   });
 });
 
-describe("AT-18b — the identical fixture under --check exits 4; record byte-identical to AT-18a's modulo generatedAtUtc", () => {
+describe.skip("AT-18b — the identical fixture under --check exits 4; record byte-identical to AT-18a's modulo generatedAtUtc — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it("exits 4 under --check and the drift-state record matches the hook run's", () => {
     const sharedPlugin = makePluginTree({});
     const hookFixture = buildSyncedConsumer(sharedPlugin);
@@ -192,7 +192,7 @@ describe("AT-18b — the identical fixture under --check exits 4; record byte-id
 
 // ───────────────────────────── §14.1 F-1 — malformed specs ─────────────────────────────
 
-describe("§14.1 F-1 — a malformed spec is unrecognised on the same footing as an unknown token (§5.1.1, §5.4 rule 4)", () => {
+describe.skip("§14.1 F-1 — a malformed spec is unrecognised on the same footing as an unknown token (§5.1.1, §5.4 rule 4) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it.each([
     ["mkdir:foo", "a selector on a non-selector-bearing token"],
     ["mkdir:", "an empty selector"],
@@ -224,7 +224,7 @@ describe("§14.1 F-1 — a malformed spec is unrecognised on the same footing as
 
 // ───────────────────────────── §14.1 F-2 — M6_ID_REGEX excludes both delimiters ─────────
 
-describe("§14.1 F-2 — M6_ID_REGEX excludes both seam delimiters (TE F-05(d), Q-03)", () => {
+describe.skip("§14.1 F-2 — M6_ID_REGEX excludes both seam delimiters (TE F-05(d), Q-03) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it.each([
     [",", "comma — this grammar's spec-list delimiter"],
     [":", "colon — this grammar's selector delimiter"],
@@ -243,7 +243,7 @@ describe("§14.1 F-2 — M6_ID_REGEX excludes both seam delimiters (TE F-05(d), 
 
 // ───────────────────────────── layer-1 sourced-probe cases (T-39) ─────────────────────────
 
-describe("layer-1 sourced-probe cases (T-39) — C1's fault/trace/hash/JSON primitives (§2.2, §11.2)", () => {
+describe.skip("layer-1 sourced-probe cases (T-39) — C1's fault/trace/hash/JSON primitives (§2.2, §11.2) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const PROBE_PATH_TOOLS = ["bash", "git", "python3", "shasum", "sha1sum", "mv", "rm", "date", "printf", "mkdir"];
 
   function probeEnvWith(extra = {}) {
@@ -691,7 +691,7 @@ function t48ObservablesOf(run, consumerRoot) {
  *     run.
  * Falsification subject: C1 (`pdlc/hooks/scripts/lib/pdlc-drift.sh`) — see the ledger fragment.
  */
-describe("PROP-SEAM-01 — recognition equals the enumeration (§8.1)", () => {
+describe.skip("PROP-SEAM-01 — recognition equals the enumeration (§8.1) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const tokens = readFaultTokens(); // oracle A: C1's runtime array (§8.0), never the file text
 
   it.each(tokens.map((t) => [t]))(
@@ -795,9 +795,19 @@ describe("PROP-SEAM-01 — recognition equals the enumeration (§8.1)", () => {
  *
  * The two oracles are independent by construction — see `t48ExtractGuardCallSites`'s header.
  */
-describe("PROP-SEAM-02 — the static call-site closure over the three shipped bash sources (§8.1)", () => {
-  const enumerated = readFaultTokens(); // oracle A — C1's runtime array
-  const sites = t48ExtractGuardCallSites(); // oracle B — the three files as text
+describe.skip("PROP-SEAM-02 — the static call-site closure over the three shipped bash sources (§8.1) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
+  // T10 note: hoisted from describe-body top-level into beforeAll — Jest still executes a
+  // describe callback's own body (to collect its children) even when the describe is `.skip`ed;
+  // only beforeAll/it bodies are actually skipped. `t48ExtractGuardCallSites()` reads
+  // check-workflow-drift.sh (T48_SHIPPED_BASH_SOURCES), which T10 deletes, so evaluating it eagerly
+  // here would throw ENOENT even while held. This is the minimal mechanical change needed to keep
+  // the hold inert; the assertions and their text are otherwise untouched.
+  let enumerated;
+  let sites;
+  beforeAll(() => {
+    enumerated = readFaultTokens(); // oracle A — C1's runtime array
+    sites = t48ExtractGuardCallSites(); // oracle B — the three files as text
+  });
 
   it("the extractor reached the subject: it found guard call sites in more than one shipped file", () => {
     // A silently-empty scan (renamed guard, wrong path, an over-eager heredoc/comment exclusion)
@@ -834,7 +844,7 @@ describe("PROP-SEAM-02 — the static call-site closure over the three shipped b
  * TSPEC §5.1.1 rather than hard-coded here, and TSPEC §5.1.1's malformed-selector exception.
  * Falsification subject: C1's `_pdlc_fault_is_selector_bearing` / `_pdlc_fault_ensure_parsed`.
  */
-describe("PROP-SEAM-03 — the 7 bearing / 9 non-bearing partition, read from TSPEC §5.1.1", () => {
+describe.skip("PROP-SEAM-03 — the 7 bearing / 9 non-bearing partition, read from TSPEC §5.1.1 — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const { bearing, nonBearing } = t48ReadSelectorPartitionFromTspec();
   const enumerated = readFaultTokens();
 
@@ -1011,7 +1021,7 @@ describe("PROP-SEAM-03 — the 7 bearing / 9 non-bearing partition, read from TS
  * the exit is the unrecognised-token exit (hook 0, `--check`/sync 4).
  * Falsification subject: C1's `_pdlc_fault_ensure_parsed` / `pdlc_fault_unrecognised_seen`.
  */
-describe("PROP-SEAM-04 — a partially-recognised list injects its recognised members and still exits 4", () => {
+describe.skip("PROP-SEAM-04 — a partially-recognised list injects its recognised members and still exits 4 — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const tokens = readFaultTokens();
   /**
    * Each drawn list is FORCED to contain one token whose injection is observable on a
@@ -1114,7 +1124,7 @@ describe("PROP-SEAM-04 — a partially-recognised list injects its recognised me
  * failure here localises to the fault seam and cannot be a trace-seam regression in disguise.
  * Falsification subject: C1's `_pdlc_fault_ensure_parsed`.
  */
-describe("PROP-SEAM-05 (fault half) — PDLC_FAULT unset and PDLC_FAULT=\"\" are the same run", () => {
+describe.skip("PROP-SEAM-05 (fault half) — PDLC_FAULT unset and PDLC_FAULT=\"\" are the same run — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   it(
     "three generated trees: every observable is identical whether PDLC_FAULT is absent or empty",
     () => {
@@ -1179,7 +1189,7 @@ describe("PROP-SEAM-05 (fault half) — PDLC_FAULT unset and PDLC_FAULT=\"\" are
  * Falsification subject: `pdlc/workflows/lib/document-oracles.mjs`'s `M6_ID_REGEX` (and, through
  * TSPEC §11.3 row 1's single-declaration rule, C1's `PDLC_M6_ID_REGEX`).
  */
-describe("PROP-SEAM-06 — M6_ID_REGEX excludes both seams' delimiters over generated members (§8.2)", () => {
+describe.skip("PROP-SEAM-06 — M6_ID_REGEX excludes both seams' delimiters over generated members (§8.2) — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   const DELIMITERS = Object.freeze([
     [",", "the PDLC_FAULT spec separator (TSPEC §5.1)"],
     [":", "the PDLC_FAULT selector separator (TSPEC §5.1)"],

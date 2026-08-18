@@ -39,7 +39,7 @@ function buildStaleRow() {
   return trees;
 }
 
-describe("F-04 — splitStderrLines classifies REAL MESSAGES lines, not a substring heuristic", () => {
+describe.skip("F-04 — splitStderrLines classifies REAL MESSAGES lines, not a substring heuristic — held under T15: drift machinery removed by T10, suite deleted by T15", () => {
   itOrSkip(
     "a hook run over an unrecognised PDLC_FAULT token: run.notices carries the real N-7 line",
     "hash",
