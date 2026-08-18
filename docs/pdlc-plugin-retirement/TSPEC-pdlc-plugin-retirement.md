@@ -359,6 +359,140 @@ inside the plugin" without an unbounded negative claim.
 
 ## 4. Data Model
 
+No runtime data structure is created by this feature. What follows is the *decided data* — the
+sets and literals the sweep is measured against. Each states where it is authoritative, so no
+downstream document has to re-derive it.
+
+### 4.1 Post-sweep `pdlc/workflows/dist/` entry set
+
+```
+{ pdlc-cli.mjs }
+```
+
+Tracked entries, set-equality (FSPEC L-1, AC-1.1's first branch, pinned here per REQ O-3). Today
+the same listing is five entries (`git ls-files pdlc/workflows/dist/` at `2cd0d6b1`): the three
+`*.bundle.js` files, `distribution-manifest.json` and `pdlc-cli.mjs`. The manifest does **not**
+survive for the probe CLI's row — it is an AC-1.2 term, so a surviving copy would red that
+criterion permanently.
+
+### 4.2 The retired-term set is closed to this document
+
+This TSPEC adds no member to FSPEC L-2's seven terms and removes none. Nothing it decides
+introduces a new retired identifier: the cleanup script's name
+(`cleanup-consumer-workflows.sh`) deliberately contains none of the seven, so the script's own
+source cannot red AT-1.2.
+
+### 4.3 The cleanup step's expected-name set
+
+Transcribed into `cleanup-consumer-workflows.sh` as a literal list (FSPEC L-11, BR-CLN-3a) — nine
+names, matched **as names**, never as content:
+
+| Name | What wrote it |
+|---|---|
+| `consolidate-learnings.bundle.js` | retired sync channel |
+| `orchestrate-dev.bundle.js` | retired sync channel |
+| `orchestrate-queue.bundle.js` | retired sync channel |
+| `pdlc-cli.mjs` | retired sync channel |
+| `orchestrate-dev.js` | pre-bundle path the same channel installed and later superseded |
+| `orchestrate-queue.js` | pre-bundle path, as above |
+| `.pdlc-drift-state.json` | the retired drift library (`pdlc/hooks/scripts/lib/pdlc-drift.sh`, `pdlc_write_drift_state`) |
+| `.pdlc-sync-manifest.json` | retired sync channel |
+| `.pdlc-backups/` | retired sync channel — expected **as a whole directory**, removed with its contents; the timestamped `.bak` files inside are never classified individually |
+
+Any member may be absent, and absence is never an error. `distribution-manifest.json` is
+deliberately **not** a member: it is a repo-side build artifact the channel never installed
+consumer-side, so a file of that name in the target directory is unexpected and refuses (E-16).
+
+### 4.4 Suite-size and re-home literals (FSPEC L-5, L-6; REQ AC-1.3, R-8)
+
+**Suite size.** `pdlc/workflows/__tests__/*.test.js` counts **119** at `2cd0d6b1` (measured).
+This TSPEC's §2.6 decision retains `hookCompatibility.test.js`, so the sweep deletes **21**
+modules — M-8's twenty drift/bundle-dedicated modules plus `runtimeProvenanceWiring.test.js` —
+and the post-sweep count is **98**, not the FSPEC's currently-pinned 97. Per ASM-2's veto path
+this is corrected in the FSPEC at C-6 re-measurement time; it is never satisfied here by a test
+that counts loosely.
+
+**L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, by measurement.
+`queueDriftGate.test.js` imports exactly four symbols from `orchestrate-queue.js` —
+`validateDriftRecord`, `mapDriftState`, `readDriftStateSafely`,
+`parseDistributionCheckEnabledOptOut` — and every one of them is deleted with the gate (class 3);
+its `main()` cases assert the gate's placement and its interaction with the four queue
+dispositions. The surviving half of that interaction — that the queue returns a report for each
+disposition — is already asserted in `orchestrateQueue.test.js`, in four assertions covering
+`no-queue` (`:366`), `ran` (`:379`), `idle` (`:457`) and `halted` (`:496`). R-8's control is
+therefore discharged by measurement rather than by a move, and the FSPEC's L-6 row 1 is
+transcribed as empty with those four titles cited as the covering evidence.
+
+**L-6 row 2 — hook-manifest / hook-behaviour assertions.** Host module:
+`pdlc/workflows/__tests__/hookCompatibility.test.js`, retained in place (§2.6). It keeps
+`PROP-COMPAT-04` (`check-scope-field.sh`), `PROP-COMPAT-05` (`guard-harvest-before-delete.sh`)
+and `PROP-COMPAT-06` (`check-req-size.sh`), and loses only its `C7` block, whose subject is the
+drift hook's `SessionStart` registration — which L-4's set-equality now asserts in full, so it is
+dropped rather than re-homed twice. Verbatim assertion titles are transcribed into the FSPEC at
+re-measurement time; the placement decision is this row.
+
+### 4.5 The run-report comparison model (FSPEC AT-5.2, REQ AC-5.2)
+
+The report compared is the engine-stamped report: the workflow module's own final report plus the
+`engine` block that `stampReport(report, engine)` adds
+(`pdlc/engine/lib/report.mjs`). `buildEngineBlock()` guarantees every field of that block is
+**present** — an unknown scalar is `null`, an unknown collection `[]` — so a missing key is
+always a real difference and never an "unknown value".
+
+The comparison has two halves, and the excluded set is exhaustive: anything not listed is
+value-compared.
+
+1. **Field sets.** Enumerate every key path of both reports (recursively; array members are
+   compared as the array's path, not per index) and require set-equality. An added *or* removed
+   path fails. This is the clause that discharges "no field, phase or gate disappeared with the
+   deleted machinery".
+2. **Values**, over the complement of this excluded list:
+
+| Excluded key path | Why it differs between two correct runs |
+|---|---|
+| `engine.engineVersion`, `engine.pluginVersion` | version provenance — BR-VER-1 bumps the plugin, BL-07 ships an engine release |
+| `engine.pluginRoot` | a path |
+| `engine.startupAuth.catalogueId` | an id |
+| `engine.authSources`, `engine.startup`, `engine.dispatches`, `engine.retries`, `engine.pauses`, `engine.denials`, `engine.loop`, `engine.outcomes` | REQ AC-5.2's eight run-variable collections — compared for **presence and shape**, never content |
+| `engine.startedAt`, `engine.finishedAt` | timestamps |
+| module-report feature name, any ISO-8601 timestamp field, any id field, any repo-relative path field | REQ AC-5.2's first four allowed classes |
+
+**Value-compared, explicitly**: `engine.transport`, `engine.baseUrl`, `engine.tunables`,
+`engine.permissionMode`, `engine.startupAuth.row`, and every module-report field outside the four
+allowed classes above (phase list and per-phase disposition, outcome, queue-row disposition,
+artifact lists, gate results). `engine.startupAuth.row` is value-compared on purpose: it is the
+auth-source row C-1's evidence gate is about, and it must not change under a deletion sweep.
+
+### 4.6 Version data (FSPEC BR-VER-1, REQ BL-07, C-10)
+
+| Fact | Value at `2cd0d6b1` | Post-sweep |
+|---|---|---|
+| Plugin version (`pdlc/.claude-plugin/plugin.json`) | `0.23.1` | **`0.23.2`** |
+| Repo engine's declared range (`pdlc/engine/package.json`, `pdlcPluginCompat`) | `^0.23.0` | unchanged by this feature |
+| Published engine | `@kaneho/pdlc-engine@0.2.0`, declaring `pluginCompat: ^0.23.0` | BL-07's release may widen it; not required by `0.23.2` |
+
+Under the handshake's leftmost-non-zero caret semantics (`pdlc/engine/lib/handshake.mjs`,
+`satisfiesRange`), `^0.23.0` admits `0.23.x` and not `0.24.0`. Pinning the post-sweep version at
+`0.23.2` therefore makes BL-07 satisfiable **without** a widened range having to land first — the
+sweep is not gated on a release it does not need — while leaving the operator free to publish one.
+A `0.24.0` bump is out of scope here precisely because it would turn C-10's handshake into an
+outage on the retirement commit (E-19).
+
+### 4.7 `helpers/driftGenerators.js`'s surviving export set
+
+```
+seeded, resolveSeed, shrink
+```
+
+Measured at `2cd0d6b1`: eleven `*.test.js` modules import the helper; seven survive the sweep
+(`advisoryConfig`, `advisoryEnvelope`, `advisoryEscalationLog`, `approvalHash`, `completeness`,
+`forcePhases`, `pacingWrapper`, `roundDerivation`, `scanLines` — of which the seeded-import
+subset is what matters), plus `helpers/mergeDoubles.js` (`seeded`, `resolveSeed`) and
+`consolidationPreflight.test.js`, which asserts `seeded` and `resolveSeed` are exported. The set
+above is what those consumers name. The implementation re-derives it by a fresh consumer scan at
+sweep time rather than trusting this transcription, because the baseline's removal list is
+explicitly non-exhaustive.
+
 ## 5. Test Strategy
 
 ## 6. Open Questions
