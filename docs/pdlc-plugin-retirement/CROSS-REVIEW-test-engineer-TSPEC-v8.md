@@ -30,8 +30,29 @@ recursion-guard and falsifiability paragraphs, §6.1 erratum 10. Unchanged secti
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: is the intended resolution the wider list (add `pipelineWiring.test.js`, `consolidationPreflight.test.js`, `documentOracles.test.js` to the table and to the child's file list), or a narrowed rule that reads "creates, deletes, reduces in place, **or adds assertions to**" as excluding edits that only *delete* assertions? If the latter, erratum 10's requested FSPEC wording needs the same narrowing in the same round, or FSPEC and TSPEC will land describing different surfaces. |
+| Q-02 | On F-01's tail: is `pdlc/engine/__tests__/ci-arrangement.test.js` out of the domain purely because the join's `--json` run is scoped to `pdlc/workflows/__tests__/`? If so, say it — AT-1.3's prohibition reads as a property of the sweep, not of one package, and a reader has to reconstruct the boundary. |
+
 ## Positive Observations
+
+- **The recursion fix is better than the one I asked for.** I offered a sentinel-that-skips or an exclusion; §5.5 took the exclusion *and* added a sentinel that throws, and then noticed the thing that made the skip route bad — a skipped child copy would need a registered `SKIP_INVENTORY` row for a purely mechanical guard, dragging the inventory into the recursion problem. Adding the compensating host-side check to cover what the carve-out gives up is the move that keeps the carve-out honest rather than merely quiet.
+- **§4.4 and §5.5 now agree, and the disagreement was resolved by re-reading the measurements rather than by editing the sentence that was easier to edit.** The three-reasons table makes the membership rule inspectable instead of asserting a list, and "the earlier reading that filed all four modules as hosts of R-8's re-homed assertions was wrong on three of them" is exactly the kind of correction that keeps the next reviewer from re-deriving it.
+- **Erratum 10 states the superset argument explicitly**, so the TSPEC can proceed against the wider surface without anyone having to decide whether an approved obligation was quietly dropped. Every code claim I spot-checked in the delta holds against the tree: the `itOrSkip` signature, `isInsideRunningTest()`'s two call sites, the three `testPathIgnorePatterns` entries, the absent `testMatch`, `skipSink.js`'s derivation sentences, and the ten `(hasBash ? it : it.skip)` sites in `hookCompatibility.test.js`.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding. Five of v7's six findings are cleanly resolved and the sixth (F-01) is resolved in
+principle — the membership rule §5.5 now states is the right rule. What remains is that the table
+under it enumerates four modules where the rule names at least seven, which leaves the sweep's
+most edit-heavy surviving test modules outside an oracle whose whole purpose is to watch modules this
+sweep edits. That is a mechanical fix to one table and one file list, not a redesign. F-02 and F-03
+are Medium and worth folding into the same pass, since both touch the same three paragraphs.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
