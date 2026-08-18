@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.15 | 2026-08-18 |
+| pdlc | approved — ready | Claude | 0.16 | 2026-08-18 |
+
+*0.16 (2026-08-18) — round-12 factual corrections (SE REQ-v12 F-01, F-02; no scope change): C-9's exclusion of hand-modified expected entries restated as a scope decision (presence, not provenance) rather than an impossibility claim; AC-4.1's removal target restated as the whole `.claude/workflows/` directory in whatever state the sync left it, replacing the two-artifact enumeration.*
 
 *0.15 (2026-08-18) — bind O-8's successor obligation (per the recorded 2026-08-08 operator direction and NG-5, not a fresh operator ruling; no product-scope change): option (a) — accepted in-session loss of the unattended, machinery-backed consolidation pass — is now bound, not merely assumed. `docs/_queue/QUEUE.md` carries Order 24 (`pdlc-consolidation-rehost`) and a named successor REQ exists at `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`, both raised before this feature's first deletion commit. The successor REQ ships `ready: false`, so the operator's veto stays mechanically enforced through the queue's draft-pickup gate. O-8 no longer describes an unbound deferral or an open blocking gap.*
 
@@ -285,8 +287,8 @@ No work starts until every row below reads satisfied.
   truth against an empty directory.
 - **C-9 — No consumer file is deleted without operator invocation** (NG-6), and an entry the
   cleanup's expected set does not name is refused rather than removed (AC-4.3). Conservatism
-  toward a *hand-modified expected* entry is deliberately outside the constraint: no post-sweep
-  artifact records the hashes that would let anything tell a modified copy from an original.
+  toward a *hand-modified expected* entry is deliberately outside the constraint by scope
+  decision: the cleanup judges presence, not provenance.
 - **C-10 — The plugin/engine version handshake is a hard gate, not a convenience.** The
   engine declares a compatible plugin version range and, before dispatching any skill, checks
   the installed plugin's version against it. A mismatch is a loud refusal — the run does not
@@ -466,8 +468,10 @@ observed run — none depends on an agent reporting success.
 ### 6.4 Consumer cleanup (P1)
 
 - **AC-4.1** *Who:* the operator in a repo that previously hosted the runtime copy. *Given* a
-  `.claude/workflows/` copy and a drift-state record present, *when* they run the documented
-  cleanup step once, *then* both are gone and the repo's tracked files are unchanged.
+  `.claude/workflows/` directory present in whatever state the sync last left it — every entry
+  the sync writes, bookkeeping and backups included, not two named artifacts — *when* they run
+  the documented cleanup step once, *then* the directory is gone in its entirety and the repo's
+  tracked files are unchanged.
 - **AC-4.2** *Who:* the same operator. *Given* the cleanup has already run, *when* it runs
   again, *then* it succeeds, changes nothing and says so (idempotence).
 - **AC-4.3** *Who:* the same operator. *Given* an **unexpected entry** inside the target
