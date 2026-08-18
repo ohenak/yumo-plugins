@@ -254,6 +254,109 @@ carries in this repo, so the PLAN's task sizes come from dispositions rather tha
 
 ## 3. Interfaces
 
+Three seams change or appear. Each is stated as a contract a test can hold, not as prose.
+
+### 3.1 The reduced build step
+
+```
+node pdlc/workflows/build-runtime.mjs            # emits pdlc/workflows/dist/pdlc-cli.mjs
+node pdlc/workflows/build-runtime.mjs --check     # exit 0 in sync; exit 1 + "STALE" line if not
+```
+
+| Aspect | Contract | Unchanged from today? |
+|---|---|---|
+| Inputs | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/cli.mjs` (`CLI_SOURCES`) | yes |
+| Output | exactly one file, `dist/pdlc-cli.mjs` | reduced from four + manifest |
+| Stdout | one `in-sync` / `wrote` line per emitted file, same wording | yes |
+| `--check` failure | `STALE    pdlc/workflows/dist/pdlc-cli.mjs` on stderr, exit 1 | yes (row wording preserved) |
+| Dependencies | none — dependency-free plain Node, runnable before `npm install` | yes |
+
+The dependency-free property is retained deliberately: it is what lets a fresh clone regenerate
+the surviving artifact, and it costs nothing now that the comment stripper (the only reason the
+file had hand-rolled machinery) is gone.
+
+### 3.2 `cleanup-consumer-workflows.sh` (FSPEC ASM-3, BR-CLN-1…6)
+
+```
+pdlc/hooks/scripts/cleanup-consumer-workflows.sh [--dry-run] [<repo-root>]
+```
+
+Invoked by an operator, from anywhere; `<repo-root>` defaults to the current working directory.
+The target is always `<repo-root>/.claude/workflows/`. Never registered as a hook (REQ NG-6).
+
+**Contract**
+
+| # | Condition | Effect | stdout / stderr | Exit |
+|---|---|---|---|---|
+| 1 | target directory absent, or present and empty | nothing removed | stdout: "nothing to clean" naming the path | `0` |
+| 2 | every entry's **name** is in the expected set (§4.3) | each entry removed (`.pdlc-backups/` removed whole, with its contents); the emptied directory removed | stdout: one line per removed entry, then a summary count | `0` |
+| 3 | any entry's name is outside the expected set | **nothing removed at all** — classification completes over the whole directory before the first `rm` | stderr: one line per unexpected entry, each naming its full path | `3` |
+| 4 | usage error (unknown flag, unreadable target, `rm` failure) | nothing removed beyond what a partial `rm` already did, reported | stderr: diagnostic | `4` |
+| 5 | `--dry-run` | nothing removed under any condition | the lines rows 1–3 would print | `0` (rows 1–2) / `3` (row 3) |
+
+Exit `3` is fixed, not "non-zero", exactly as BR-CLN-4 requires: `127` (missing interpreter) and
+`1` must not be able to green AT-4.3. `4` stays reserved for the tooling-usage class, mirroring
+the retired `sync-workflows.sh`'s five-status convention so an operator's existing expectation
+transfers.
+
+**Classification is by name only.** The expected set is a literal list inside the script (§4.3),
+not read from a manifest — the manifest is deleted in class 7, so no content-based predicate is
+decidable post-sweep (BR-CLN-3a). Two consequences stated rather than left implicit: a
+hand-modified file with an expected name is removed (REQ AC-4.3 scopes the criterion to
+*unexpected entries*, and C-9 excludes hand-modification); and a channel-written temp residue
+(`.pdlc-tmp.*`) refuses, because refusing on an unenumerable name is the conservative side of the
+same predicate (E-16b).
+
+**Idempotence** is structural: after a successful row-2 run the directory is gone, so the next
+run takes row 1.
+
+### 3.3 The delegator invocation contract (FSPEC ASM-4, BR-DEL-1…4)
+
+The delegator skills instruct the session to run the engine's installed CLI. The command surface
+is the engine's, verified at `2cd0d6b1` in `pdlc/engine/bin/cli.mjs`'s `FLAGS_BY_COMMAND`
+(`dev`, `queue`, `doctor`) and `pdlc/engine/package.json`'s `bin` entry (`pdlc` →
+`bin/pdlc.mjs`):
+
+| Skill | Command | Arguments |
+|---|---|---|
+| `/pdlc:orchestrate-dev` | `pdlc dev <req-path>` | the REQ path the human named; `--force-phases` only when the human asked for it |
+| `/pdlc:orchestrate-queue` | `pdlc queue` | `--queue-path <path>` only when the human named a queue other than the default `docs/_queue/QUEUE.md` |
+
+**Resolution order**, stated in the skill so the human sees the same ladder the engine does:
+
+1. `pdlc` on `PATH` (the published global install, `npm install -g @kaneho/pdlc-engine`);
+2. `npx --no-install pdlc` for a repo-local install;
+3. otherwise **refuse**, naming the install command. The skill never falls back to an in-plugin
+   execution path, because after the sweep there is none (BR-DEL-3).
+
+**Relay rules** (BR-DEL-2, BR-DEL-3):
+
+- The skill reproduces the engine's run-report fields as emitted — no dropping, renaming or
+  recomputation — and may add exactly one session-facing disposition line of its own.
+- On refusal the skill surfaces the engine's **startup banner and the refusal together**; the
+  banner is where the engine/plugin version pair and the expected range live
+  (`pdlc/engine/lib/handshake.mjs`, `satisfiesRange`; `pdlc/engine/lib/report.mjs`'s
+  `engineVersion`/`pluginVersion`), so relaying the refusal line alone would hide the diagnosis.
+- One `/pdlc:orchestrate-queue` invocation is one `pdlc queue` invocation, which processes at most
+  one ready feature and returns — the `/loop run /pdlc:orchestrate-queue` habit is preserved
+  because the loop stays outside, in the session, exactly as it is today (BR-DEL-4). `--loop` is
+  the engine's own flag and is not used by the delegator.
+
+**Static half of BR-DEL-1**: after the rewrite neither skill file contains queue selection,
+readiness evaluation, phase dispatch, verdict parsing or queue-row writeback text. That is a
+grep-checkable property of two files, which is why AT-3.1 can discharge "no pipeline decision
+inside the plugin" without an unbounded negative claim.
+
+### 3.4 Unchanged interfaces (stated so a reviewer can confirm nothing drifted)
+
+- **Skill frontmatter and paths.** All 15 `pdlc/skills/*/SKILL.md` keep their directory names, so
+  Ptah's `skill_path` and the engine's catalogue resolve unchanged (REQ C-4, AC-3.4).
+- **Hook manifest shape.** `pdlc/hooks/hooks.json` keeps its `${CLAUDE_PLUGIN_ROOT}` command form
+  for the four surviving entries; only the second `SessionStart` entry is removed.
+- **Probe CLI CLI surface.** `pdlc-cli.mjs`'s commands and its `usage: pdlc-cli …` line
+  (`pdlc/workflows/cli.mjs`) are untouched — AC-5.3 compares answers before and after.
+- **Engine CLI.** No new engine command is introduced by this feature (see §6.2, SUCC-2).
+
 ## 4. Data Model
 
 ## 5. Test Strategy
