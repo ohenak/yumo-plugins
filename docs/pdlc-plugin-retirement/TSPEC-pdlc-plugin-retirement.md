@@ -538,19 +538,29 @@ The comparison has two halves, and the excluded set is exhaustive: anything not 
 value-compared.
 
 1. **Field sets.** Enumerate every key path in both reports and require set-equality; an added
-   *or* removed path fails. Two boundary rules make the enumeration deterministic:
-   (a) array members are compared at the array's own path, not per index; (b) **enumeration
-   stops at the root of every excluded run-variable collection.** For `engine.authSources`,
-   `engine.startup`, `engine.dispatches`, `engine.retries`, `engine.pauses`, `engine.denials`,
-   `engine.loop` and `engine.outcomes`, the key path `engine.<name>` is enumerated and its
-   interior is not — `engine.dispatches.bySkill.<skill-name>` and
-   `engine.dispatches.byPhase.<phase>` are run-variable content (`buildEngineBlock()` seeds
-   `dispatches` as `{ bySkill: {}, byPhase: {} }`, `pdlc/engine/lib/report.mjs`), and a
-   pre-sweep run that dispatched a different skill set would otherwise fail clause 1 on a
-   correct sweep. AC-5.2's "compared for shape, never for content" therefore binds both halves:
-   the collection's *presence* is set-compared, everything beneath it is compared by neither
-   clause. This clause discharges "no field, no phase, no gate disappeared with the deleted
-   machinery".
+   or removed path fails. Two boundary rules keep the enumeration deterministic: (a) array
+   members are compared by their own path, not per index; (b) **enumeration stops at the
+   run-variable *key* level, not at the collection root.** Fixed-schema interiors are enumerated;
+   only run-variable keys are stopped at. Concretely:
+
+   | Path | Enumerated? | Why |
+   |---|---|---|
+   | `engine.dispatches.bySkill`, `engine.dispatches.byPhase` | yes | `buildEngineBlock()` seeds `dispatches` as `{ bySkill: {}, byPhase: {} }` — a fixed two-key schema (`pdlc/engine/lib/report.mjs`, `buildEngineBlock`) |
+   | `engine.dispatches.bySkill.<skill-name>`, `engine.dispatches.byPhase.<phase>` | **no** | the keys are the skills/phases a given run happened to dispatch |
+   | `engine.outcomes.{ran,halted,blocked,refused,"max-passes",idle}` | yes | seeded present-and-zero by `buildEngineBlock()`, whose contract is "zero-valued shape for `dispatches`/`outcomes`, never a missing key" |
+   | `engine.authSources`, `engine.startup`, `engine.retries`, `engine.pauses`, `engine.denials` (array-valued) | members by path, interior stopped | list-valued, length and element content are run-variable (`Array.isArray(...) ? ….slice() : []`) |
+   | `engine.loop` | yes at its own key | scalar-or-object, present by contract |
+
+   Stopping at the collection *root* — the shape v0.2 stated — was too shallow: it let
+   `engine.outcomes.blocked` or `engine.dispatches.byPhase` vanish in the sweep while clause 1
+   passed on set-equality and clause 2 skipped the same paths as excluded, so AC-5.2's single
+   behavioural-equivalence gate would no longer discharge "no field disappeared". At the
+   run-variable key level, a lost outcome kind or dispatch axis reds clause 1, while a pre-sweep
+   run that dispatched a different skill set still passes. AC-5.2's "compared for shape, never
+   for content" binds both halves: the fixed schema down to and including the run-variable
+   collection's own keys is set-compared, and the values beneath the run-variable keys are
+   compared under neither clause. So clause 1 discharges "no field, no phase, no gate quietly
+   disappeared with the deleted machinery".
 2. **Values**, over the complement of this excluded list:
 
 | Excluded key path | Why it differs between two correct runs |
