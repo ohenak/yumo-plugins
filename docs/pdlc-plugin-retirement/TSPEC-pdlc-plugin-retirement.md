@@ -406,11 +406,15 @@ consumer-side, so a file of that name in the target directory is unexpected and 
 ### 4.4 Suite-size and re-home literals (FSPEC L-5, L-6; REQ AC-1.3, R-8)
 
 **Suite size.** `pdlc/workflows/__tests__/*.test.js` counts **119** at `2cd0d6b1` (measured).
-This TSPEC's §2.6 decision retains `hookCompatibility.test.js`, so the sweep deletes **21**
-modules — M-8's twenty drift/bundle-dedicated modules plus `runtimeProvenanceWiring.test.js` —
-and the post-sweep count is **98**, not the FSPEC's currently-pinned 97. Per ASM-2's veto path
-this is corrected in the FSPEC at C-6 re-measurement time; it is never satisfied here by a test
-that counts loosely.
+Two decisions here move the FSPEC's currently-pinned post-sweep literal of 97:
+
+- §2.6 retains `hookCompatibility.test.js`, so the sweep deletes **21** modules — M-8's twenty
+  drift/bundle-dedicated modules plus `runtimeProvenanceWiring.test.js` — not 22;
+- §5.2 adds **one** new module, `consumerCleanup.test.js`, for the step §3.2 introduces.
+
+Post-sweep count: 119 − 21 + 1 = **99**. Per ASM-2's veto path this is corrected in the FSPEC at
+C-6 re-measurement time, transcribed from the tree rather than from this arithmetic; it is never
+satisfied by a test that counts loosely.
 
 **L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, by measurement.
 `queueDriftGate.test.js` imports exactly four symbols from `orchestrate-queue.js` —
@@ -527,11 +531,9 @@ one.
 | AT-3.3 clause 2 | the three surviving hooks emit `hookSpecificOutput.additionalContext` on **stdout as a JSON object** and exit **0** | retained `hookCompatibility.test.js` (§2.6) |
 | AT-1.8 | replay harness output | committed transcript under `docs/pdlc-plugin-retirement/` |
 
-`consumerCleanup.test.js` is the one new `*.test.js` module. It is counted in §4.4's post-sweep
-literal correction, so the suite-size literal stays an equality: 119 − 21 deletions + 1 new
-module = **99**, transcribed at re-measurement. (This supersedes §4.4's 98, which counted the
-retention but not this module; the FSPEC transcribes the final number once, at re-measurement,
-from the tree — never from either estimate.)
+`consumerCleanup.test.js` is the one new `*.test.js` module the sweep adds, and it is already
+counted in §4.4's post-sweep literal (**99**), so the suite-size criterion stays an equality
+rather than a floor.
 
 ### 5.3 Tests that must keep passing, and how they are protected
 
