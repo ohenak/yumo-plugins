@@ -27,9 +27,29 @@ Delta re-review. Base of comparison: `1053b7fd` (the commit reviewed at v2) → 
 
 ## Positive Observations
 
-- placeholder
+- **v2 F-02 is resolved, and resolved against the shipped signature rather than around it.** DEC-09 now names the field (`satisfiesRange(version, pdlcPluginCompat).ok === true`), states the return contract inline (`{ ok, reason }`, accept `{ ok: true, reason: null }`, reject `{ ok: false, reason }`), and ships a negative arm. I re-measured all of it: `satisfiesRange` at `pdlc/engine/lib/handshake.mjs:93` returns exactly those shapes, and the caret arithmetic the document asserts is right — for a `0.minor.patch` base the upper bound is `{0, minor+1, 0}` (`handshake.mjs:113`–`:118`), so `^0.23.0` (`pdlc/engine/package.json:18`) excludes `0.24.0` and the negative arm yields `ok === false` with a non-null `reason`. The document also says out loud why the arm is required — "a truthy-shaped check passes on any object the function could return, including `{ ok: false }` — an assertion that cannot fail is not an oracle". That is the falsifiability argument stated in the decision, where PROPERTIES can inherit it.
+- **v2 F-01's direction is right even though the count is still short (F-01 here).** The revision does the work the finding asked for: it walks FSPEC's ordering column rather than restating the gate's nominal extent, names the transitive edge explicitly, states the blocked set once and declares it the single source for every count, and — the part that matters most for testing — converts three Decision-table oracle cells from bare pointers to *gated* pointers (DEC-01's AT-1.1 "cannot go green before class 7 lands", DEC-02's "the reduction rides class 7", DEC-09's "with its `0.24.0` negative arm"). A reader of the table can now tell a missing oracle from a held one, which is exactly the distinction PLAN needs to decide whether a red is a defect or a schedule.
+- **v2 F-04 is resolved with a real owner, not a nominal one.** DEC-10's cell now names PLAN's batch-DAG check over the class-7 predecessor edges, and correctly says what kind of thing it is — "a `Deps` edge on every class-7/8/9/10/11 task, which PLAN's parser re-derives, not a runtime assertion". Naming a *mechanically re-derived* owner instead of inventing a document-level assertion is the honest answer; the only gap left is that the edge list omits class 12.
+- **The new gated-merge paragraph closes v2's Q-01 and Q-02 in one move.** It states the interim outcome as a partial merge held on the branch rather than a partial main, and it answers where DEC-09's assertion must live: outside M-8's deletion set, with `consolidationPreflight.test.js` or `consolidationRoute.test.js` named as qualifying hosts. I checked M-8's 21-module list at `FSPEC:377`–`:381` — neither module is in it, so both genuinely survive and the guidance is sound.
+- **DEC-04's oracle cell now admits an unassertable arm instead of implying coverage.** It maps TT-1 to row 4a, TT-2 to `--dry-run`, and says TT-1b owns row 4b's **exit status only**, with the partial-`rm` arm "deliberately oracle-free (not deterministically constructible without faking the removal primitive), so that arm is contract text, not an assertion". That matches TSPEC §5.2's TT-1b row verbatim in substance (`TSPEC-pdlc-plugin-retirement.md:738`), which reasons the same way and adds the registered-skip mechanism. An acknowledged coverage hole with a stated reason is worth more than a cell that reads as covered.
+- **Rule 5 gives PLAN a decision procedure where it previously had two conflicting precedents.** The additive-and-conservative versus subtractive split, with the conservative half called out explicitly ("an additive surface that deleted on default would be gated"), is the kind of rule a reviewer can apply mechanically to the next unowned surface instead of arguing precedent. The rule is also correctly *used*: DEC-04's cell cites it as the reason its criterion gap is tolerable.
+- **DEC-06's added scoping paragraph is right about the thing that matters even though its anchors drift (F-03).** Distinguishing "load-bearing prose citations in modules that survive unchanged" from the builder's own reads and from source-text-as-data suites is the correct partition, and I confirmed both excluded kinds exist at HEAD: `build-runtime.mjs:17` (header comment), `:97` (`readFileSync(... "runtime-adapter.js")`), and the three `*_SOURCES` arrays at `:690`–`:692`. The observation that the second kind *strengthens* option B's rejection — deletion reds a surviving suite, not merely a comment — is the sharpest sentence added in this revision.
 
 ## Recommendation
 
-placeholder
+**Needs revision**
 
+One High finding, and it is narrow. Three of my four v2 findings (F-02, F-03, F-04) are fully resolved, and v2 F-01 is resolved in shape and method but arrives one FSPEC row short of its own conclusion. Nothing in the revision broke a section that was previously sound; every code citation added in v0.3 re-measures true at HEAD, including the two that carried the most weight (`satisfiesRange`'s `{ok, reason}` contract and the caret upper bound).
+
+To reach Approved:
+
+1. **F-01** — extend DEC-10's closure to class 12 (`FSPEC:164`, "Last of the deletion classes"): the erratum-3 gate holds classes **7–12**, seven of thirteen counting DEC-07's class 6. Correct the price paragraph, the Consequences row, and the gated-merge paragraph's partition (class 12 is currently in no bucket), and extend the PLAN/PROPERTIES obligation to "classes 7–12" so the dependency edge and the AT placement cover the documentation class.
+
+F-02 (the "Four cross-cutting rules" literal) is a one-word fix that should travel with F-01's edit. F-03 and F-04 are citation-fidelity corrections in prose whose conclusions I verified independently and agree with.
+
+One upstream item is routed separately rather than folded into this verdict: TSPEC §6.4's T-5 still states the blocking set as "class 7 (bundle deletion) or class 11 (skill rewrites)" (`TSPEC-pdlc-plugin-retirement.md:1376`) with no transitive closure at all, so the understatement DEC-10 is correcting also lives upstream and will re-enter the tree from there if left.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
