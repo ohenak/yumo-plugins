@@ -664,8 +664,14 @@ describe("A-33 — disabled-tier equivalence", () => {
     });
 
     test("dist/*.bundle.js is never part of the scanned set (would double every hit)", () => {
-      // Documented as a non-scanned path — this is a assertion about scope, not a file read: the
-      // scan above reads only the two named module sources, never anything under `dist/`.
+      // Documented as a non-scanned path — this is an assertion about scope, not a file read: the
+      // scan above reads only the two named module sources, never anything under `dist/`. Since
+      // pdlc-plugin-retirement (DEC-02), `pdlc/workflows/dist/` no longer contains any
+      // `.bundle.js` artifact at all (the builder emits only `pdlc-cli.mjs`), so the historical
+      // "would double every hit" hazard this test named is gone by construction, not merely
+      // avoided by staying out of the scanned set. The assertion is kept as a scope pin rather
+      // than deleted: it still documents that the scan above is source-file-scoped, not
+      // directory-scoped, which stays true regardless of what does or doesn't live under `dist/`.
       expect(true).toBe(true);
     });
   });

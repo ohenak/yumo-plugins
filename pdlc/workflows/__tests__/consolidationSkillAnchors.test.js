@@ -344,19 +344,6 @@ const CLAIMS = [
     ],
   },
   {
-    id: "class11-bundle-reference",
-    skillContent: /^`pdlc\/workflows\/dist\/consolidate-learnings\.bundle\.js`\)\./,
-    sites: [
-      { doc: RETIREMENT_BASELINE, sentence: /^\| M-11n \|/ },
-      { doc: PLAN_RETIREMENT, sentence: /^\| T20 \| 11 \|/ },
-      { doc: TSPEC_RETIREMENT, sentence: /^\| 11 \| two delegator rewrites/ },
-      {
-        doc: DECISIONS_RETIREMENT,
-        sentence: /now instructs a \*\*two-part\*\* edit: `SKILL\.md:11`'s bundle reference is/,
-      },
-    ],
-  },
-  {
     id: "class11-hand-run-bypasses",
     skillContent: /^the pass by hand bypasses the machinery this skill exists to drive: the `\.consolidation-log\.md`$/,
     sites: [

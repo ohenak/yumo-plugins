@@ -24,15 +24,6 @@ const REPO_ROOT = join(__dirname, "..", "..", "..");
 const DEV_SOURCE = readFileSync(join(__dirname, "..", "orchestrate-dev.js"), "utf8");
 const ADAPTER_SOURCE = readFileSync(join(__dirname, "..", "runtime-adapter.js"), "utf8");
 const BUILD_SOURCE = readFileSync(join(__dirname, "..", "build-runtime.mjs"), "utf8");
-// PLAN T15 (pdlc-plugin-retirement) deleted runtimeBundle.test.js. The read below is guarded
-// (existsSync, lazy) rather than an unconditional top-level readFileSync so this whole module can
-// still load — held under T19: T19 rewrites the "T00 — BL-PREREQ: runtimeBundle.test.js scan
-// sets" describe block below (or its replacement citation) once the file's post-retirement home
-// is decided; until then BUNDLE_TEST_SOURCE is `null` and the block that reads it is skipped.
-const RUNTIME_BUNDLE_TEST_PATH = join(__dirname, "runtimeBundle.test.js");
-const BUNDLE_TEST_SOURCE = existsSync(RUNTIME_BUNDLE_TEST_PATH)
-  ? readFileSync(RUNTIME_BUNDLE_TEST_PATH, "utf8")
-  : null;
 const VOCAB_SOURCE = readFileSync(
   join(REPO_ROOT, "docs", "_constraints", "pdlc-consolidation-vocabularies.md"),
   "utf8"
@@ -99,15 +90,13 @@ describe("T00 — BL-PREREQ: runtime-adapter.js source-text presence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. build-runtime.mjs — five declarations, source-text presence.
+// 4. build-runtime.mjs — three declarations, source-text presence.
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: build-runtime.mjs source-text presence", () => {
   test.each([
     ["stripModuleSyntax", /\bfunction stripModuleSyntax\s*\(/],
     ["wrapModule", /\bfunction wrapModule\s*\(/],
-    ["QUEUE_META", /\bconst QUEUE_META\s*=/],
-    ["QUEUE_ENTRY", /\bconst QUEUE_ENTRY\s*=/],
     ["bundles", /\bconst bundles\s*=/],
   ])("%s is present in source", (_name, pattern) => {
     expect(BUILD_SOURCE).toMatch(pattern);
@@ -115,48 +104,7 @@ describe("T00 — BL-PREREQ: build-runtime.mjs source-text presence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. runtimeBundle.test.js — two frozen scan sets, source-text presence,
-//    plus the negative half T13 turns positive: neither set carries this
-//    feature's new members today.
-// ---------------------------------------------------------------------------
-
-// Held under T19 (not `.skip`, deliberately): this file is a member of consumerCleanup.test.js's
-// `SWEPT_SURFACE_MODULES` (TSPEC §5.5), whose entire skip surface is required to route through
-// `describeOrSkip`/`itOrSkip` — a task-sequencing hold is not a runner-capability skip, so a bare
-// `.skip` here would register as an orphan under the skip-join oracle. Every test below instead
-// passes vacuously while `BUNDLE_TEST_SOURCE` is `null` (PLAN T15 deleted runtimeBundle.test.js)
-// and resumes asserting real content the moment T17/T19 restores a file at that path.
-describe("T00 — BL-PREREQ: runtimeBundle.test.js scan sets", () => {
-  test("AT19_SEAM_NAMES is declared", () => {
-    if (BUNDLE_TEST_SOURCE === null) return;
-    expect(BUNDLE_TEST_SOURCE).toMatch(/\bconst AT19_SEAM_NAMES\s*=/);
-  });
-
-  test("AWAIT_SCAN_SOURCES is declared", () => {
-    if (BUNDLE_TEST_SOURCE === null) return;
-    expect(BUNDLE_TEST_SOURCE).toMatch(/\bconst AWAIT_SCAN_SOURCES\s*=/);
-  });
-
-  test("both scan sets now carry this feature's new members (T13's additions, applied)", () => {
-    if (BUNDLE_TEST_SOURCE === null) return;
-    // Was recorded here as the negative half, T00 (snapshot authoring day):
-    // neither scan set carried this feature's new members yet. T13 (wave 4)
-    // then legitimately added them alongside runtimeBundle.test.js's own
-    // scan-set changes.
-    //
-    // operator applied this assertion's inversion by hand on 2026-08-09 after
-    // the wave-4 gate halt. This assertion inverted to match what the tree
-    // now carries, not deleted: it still pins the members' presence, which is
-    // what BL-PREREQ is recording. T13 is now a partial no-op; the pipeline
-    // will re-verify.
-    expect(BUNDLE_TEST_SOURCE).toContain("consolidate-learnings.js");
-    expect(BUNDLE_TEST_SOURCE).toContain("_envPresent");
-    expect(BUNDLE_TEST_SOURCE).toContain("_makeTempDir");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 6. Shipped test-double helpers — imported, resolved by import.
+// 5. Shipped test-double helpers — imported, resolved by import.
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: shipped test-double helpers", () => {
@@ -191,7 +139,7 @@ describe("T00 — BL-PREREQ: shipped test-double helpers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. pdlc-consolidation-vocabularies.md — Version cell, read directly.
+// 6. pdlc-consolidation-vocabularies.md — Version cell, read directly.
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: pdlc-consolidation-vocabularies.md Version cell", () => {
@@ -201,7 +149,7 @@ describe("T00 — BL-PREREQ: pdlc-consolidation-vocabularies.md Version cell", (
 });
 
 // ---------------------------------------------------------------------------
-// 8. .claude/pdlc.config.json — branch on presence, positive assertion in
+// 7. .claude/pdlc.config.json — branch on presence, positive assertion in
 //    both arms (PLAN §3). Neither arm is vacuous and neither depends on the
 //    operator's tracking decision: this repo's CI matrix runs the absent
 //    arm (the file is untracked), the maintainer's tree runs the present

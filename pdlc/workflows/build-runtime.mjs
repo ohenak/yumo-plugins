@@ -1,32 +1,26 @@
 #!/usr/bin/env node
 /**
- * build-runtime.mjs — emit runtime-loadable bundles from the canonical modules.
+ * build-runtime.mjs — emit the pdlc-cli.mjs artifact from the canonical modules.
  *
- * The Claude Code workflow runtime imposes constraints the canonical sources
- * deliberately do not follow (they are ES modules so jest can import and inject
- * into them):
- *
- *   1. `export const meta = {...}` must be the FIRST statement.
- *   2. No `import` — static or dynamic. No other `export`.
- *   3. No `fs`, no `child_process`, no `process`.
- *   4. The script body itself is the entrypoint; nothing calls main() for you.
- *
- * This build satisfies all four without forking the logic: each module body is
- * stripped of its import/export syntax, wrapped in an IIFE (which also isolates
- * the two modules' identically-named helpers), and driven by an entrypoint that
- * injects the agent-backed adapters from runtime-adapter.js.
+ * pdlc-plugin-retirement (DEC-02): the workflow-runtime bundles this builder used to
+ * emit (`orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`,
+ * `consolidate-learnings.bundle.js`) are retired along with the Claude Code workflow
+ * runtime that loaded them — pipeline execution now lives in the published
+ * `@kaneho/pdlc-engine` package, invoked by the `orchestrate-dev` / `orchestrate-queue`
+ * SKILL.md delegators as `pdlc dev <req-path>` / `pdlc queue`. This builder now emits a
+ * single artifact: `pdlc-cli.mjs`, the document-state query CLI, which stays plain Node
+ * (real `fs`, its own imports) and is built by inlining `orchestrate-dev.js`'s stripped
+ * body into `cli.mjs`.
  *
  * Usage:  node pdlc/workflows/build-runtime.mjs [--check]
- *   --check  verify the emitted bundles are up to date; exit 1 if not (CI use).
+ *   --check  verify the emitted artifact is up to date; exit 1 if not (CI use).
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { createHash } from "crypto";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(HERE, "..", "..");
 // Sole output directory (AC-6.1) — the builder writes nothing outside pdlc/workflows/dist/.
 // The .claude/workflows/ consumer copy is produced by the maintainer sync step, not this script.
 const OUT_DIR = resolve(HERE, "dist");
@@ -35,12 +29,7 @@ const OUT_DIR = resolve(HERE, "dist");
  *
  * The banner is the one line of an artifact an operator reads before deciding
  * where to make a change, so naming sources the artifact was not built from
- * sends that edit to the wrong file. A single shared list did exactly that once
- * `consolidate-learnings.bundle.js` and `pdlc-cli.mjs` joined the build: neither
- * is built from `orchestrate-queue.js`, and the CLI is not built from the
- * adapter. Each row below passes its own source list; `runtimeBundle.test.js`
- * pins per-artifact provenance so a source added to a bundle without being added
- * to its banner is a red suite.
+ * sends that edit to the wrong file.
  */
 function banner(sources) {
   return [
@@ -48,7 +37,7 @@ function banner(sources) {
     "// Built by `node pdlc/workflows/build-runtime.mjs` from:",
     ...sources.map((s) => `//   pdlc/workflows/${s}`),
     "// Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this",
-    "// bundle exists (the workflow runtime allows no imports, exports past meta, or fs).",
+    "// artifact exists.",
   ].join("\n");
 }
 
@@ -92,408 +81,11 @@ export function moduleImportLines(source) {
 }
 
 const devSource = readFileSync(resolve(HERE, "orchestrate-dev.js"), "utf8");
-const queueSource = readFileSync(resolve(HERE, "orchestrate-queue.js"), "utf8");
-const consSource = readFileSync(resolve(HERE, "consolidate-learnings.js"), "utf8");
-const adapter = readFileSync(resolve(HERE, "runtime-adapter.js"), "utf8");
 
-const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
-  "main",
-  "meta",
-  "checkPrCi",
-  "mergeWorktree",
-  "checkFileNonEmpty",
-  "parsePlanTasks",
-  // The queue module's advisory imports (PLAN A-30) — republished so the
-  // queue IIFE's prelude can re-bind them as free identifiers.
-  "runAdvisorySeam",
-  "readAdvisoryConfigSafely",
-  "parseAdvisoryConfig",
-  "defaultAppendFile",
-  "ADVISORY_CONFIG_PATH",
-  "resolveAdvisoryRung",
-  "advisorySummaryRows",
-  "ADVISORY_DEFAULTS",
-  "commitPaths",
-  // orchestrate-queue.js's top-level DISPATCHABLE_SKILLS references this at
-  // module-load time, so it must be republished here (wave-16 defect: this
-  // name was missing from both this list and queueModule's prelude below,
-  // which produced a `ReferenceError: ADVISORY_RUNG_SKILL is not defined`
-  // the instant the queue bundle was evaluated, not just when a function
-  // ran). `assertDevImportsAreWired` below now catches this class at build
-  // time instead of at bundle-load time.
-  "ADVISORY_RUNG_SKILL",
-  // TSPEC §8.2 — reused by consModule's prelude below; resolveAdvisoryRung is
-  // already published above, so only three are new to the list.
-  "MERGE_GUARD_DEFAULTS",
-  "mergeCommandFor",
-  "gitWithLockRetry",
-  // consolidate-learnings.js imports this for its escalation-seam gate — same
-  // drift class as ADVISORY_RUNG_SKILL above (missing from consModule's
-  // prelude too until this fix).
-  "ADVISORY_SEAMS",
-  // FSPEC §8.4 — the consolidation-log record readers live here so both sides of the hand-off
-  // share one implementation; consSource imports them, so the bundle must republish them.
-  "parseLogRecords",
-  "jsonCommentRecords",
-  "openPromotionList",
-]);
-
-// ---------------------------------------------------------------------------
-// Build-time guard for the "hand-maintained republish/rebind lists drift from
-// a dependent module's real imports" defect class (wave-16 halt: the queue
-// bundle threw `ReferenceError: ADVISORY_RUNG_SKILL is not defined` the
-// instant it was loaded, because that name was covered by neither the
-// devModule export list above nor queueModule's prelude below — no existing
-// test loaded a built bundle, so the gate stayed green with the defect
-// shipped in dist/).
-//
-// This reads THIS FILE's own source from disk — never `devSource` /
-// `queueSource`, which do not carry these lists — and, for `label`'s
-// `import { ... } from "./orchestrate-dev.js";` statement, asserts every
-// named import both (a) appears as a quoted string inside the devModule
-// wrapModule() call above, and (b) is re-bound by a `const NAME =
-// __dev.NAME;` line inside `dependentCallAnchor`'s wrapModule() call. Reuses
-// advisoryBundle.test.js's own paren-balance extraction technique (masked
-// comments/strings, depth-counted walk) so a comment or a string literal
-// inside either call can never mislead the boundary. Throws loudly at build
-// time instead of failing silently at bundle-load time.
-function maskStringsAndCommentsForAudit(src) {
-  const out = src.split("");
-  const blank = (a, b) => {
-    for (let k = a; k < b && k < out.length; k++) {
-      if (out[k] !== "\n") out[k] = " ";
-    }
-  };
-  let i = 0;
-  while (i < src.length) {
-    const c = src[i];
-    if (c === "/" && src[i + 1] === "/") {
-      let j = i;
-      while (j < src.length && src[j] !== "\n") j++;
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    if (c === "/" && src[i + 1] === "*") {
-      const end = src.indexOf("*/", i + 2);
-      const j = end === -1 ? src.length : end + 2;
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      const quote = c;
-      let j = i + 1;
-      while (j < src.length) {
-        if (src[j] === "\\") {
-          j += 2;
-          continue;
-        }
-        if (src[j] === quote) {
-          j += 1;
-          break;
-        }
-        j += 1;
-      }
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    i += 1;
-  }
-  return out.join("");
-}
-
-function sliceBalancedCallForAudit(source, anchor) {
-  const anchorIdx = source.indexOf(anchor);
-  if (anchorIdx === -1) return null;
-  const openIdx = anchorIdx + anchor.length - 1;
-  if (source[openIdx] !== "(") return null;
-  const masked = maskStringsAndCommentsForAudit(source);
-  let depth = 0;
-  for (let i = openIdx; i < masked.length; i++) {
-    if (masked[i] === "(") depth += 1;
-    else if (masked[i] === ")") {
-      depth -= 1;
-      if (depth === 0) return source.slice(anchorIdx, i + 1);
-    }
-  }
-  return null;
-}
-
-function importedNamesFromOrchestrateDev(depSource, label) {
-  const importLine = depSource
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => /^import\s.+from\s+"\.\/orchestrate-dev\.js";$/.test(line));
-  if (!importLine) {
-    throw new Error(`${label}: expected an import from "./orchestrate-dev.js" but found none.`);
-  }
-  const namedClause = importLine.match(/\{([^}]*)\}/);
-  if (!namedClause) return [];
-  return namedClause[1]
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => entry.split(/\s+as\s+/).pop());
-}
-
-function assertDevImportsAreWired(label, depSource, dependentCallAnchor) {
-  const buildSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
-  const devCall = sliceBalancedCallForAudit(buildSource, "const devModule = wrapModule(");
-  const dependentCall = sliceBalancedCallForAudit(buildSource, dependentCallAnchor);
-  if (!devCall || !dependentCall) {
-    throw new Error(`${label}: could not locate the wrapModule() calls to audit — did they move or get renamed?`);
-  }
-  for (const name of importedNamesFromOrchestrateDev(depSource, label)) {
-    if (!new RegExp(`"${name}"`).test(devCall)) {
-      throw new Error(
-        `${label}: "${name}" is imported from orchestrate-dev.js but not published in devModule's export list.`
-      );
-    }
-    if (!new RegExp(`const\\s+${name}\\s*=\\s*__dev\\.${name}\\s*;`).test(dependentCall)) {
-      throw new Error(
-        `${label}: "${name}" is imported from orchestrate-dev.js but not re-bound in its bundle prelude.`
-      );
-    }
-  }
-}
-
-// §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
-// `_recordQueueRow` closure calls; without them on `__queue` it has nothing to call.
-const queueModule = wrapModule(
-  "__queue",
-  stripModuleSyntax(queueSource),
-  ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
-  [
-    "const realMain = __dev.main;",
-    "const runAdvisorySeam = __dev.runAdvisorySeam;",
-    "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;",
-    "const parseAdvisoryConfig = __dev.parseAdvisoryConfig;",
-    "const defaultAppendFile = __dev.defaultAppendFile;",
-    "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;",
-    "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
-    "const advisorySummaryRows = __dev.advisorySummaryRows;",
-    "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;",
-    "const commitPaths = __dev.commitPaths;",
-    "const ADVISORY_RUNG_SKILL = __dev.ADVISORY_RUNG_SKILL;",
-  ].join("\n")
-);
-assertDevImportsAreWired("orchestrate-queue.js", queueSource, "const queueModule = wrapModule(");
-
-// TSPEC §8.2 — the consolidation bundle's IIFE. The prelude re-binds the same
-// four reused symbols queueModule's does above, minus the ones queueModule
-// does not need: consSource imports these directly from orchestrate-dev.js,
-// and the import line is stripped, so they must be re-supplied here.
-const consModule = wrapModule(
-  "__cons",
-  stripModuleSyntax(consSource),
-  ["main", "meta"],
-  [
-    "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;",
-    "const MERGE_GUARD_DEFAULTS = __dev.MERGE_GUARD_DEFAULTS;",
-    "const mergeCommandFor = __dev.mergeCommandFor;",
-    "const gitWithLockRetry = __dev.gitWithLockRetry;",
-    "const parseLogRecords = __dev.parseLogRecords;",
-    "const jsonCommentRecords = __dev.jsonCommentRecords;",
-    "const openPromotionList = __dev.openPromotionList;",
-    "const ADVISORY_SEAMS = __dev.ADVISORY_SEAMS;",
-  ].join("\n")
-);
-assertDevImportsAreWired("consolidate-learnings.js", consSource, "const consModule = wrapModule(");
-
-
-// `meta` must be a pure literal and the first statement, so each bundle carries
-// its own hand-written copy rather than re-exporting the module's.
-const QUEUE_META = `export const meta = {
-  name: "orchestrate-queue",
-  description:
-    "Serial PDLC queue driver — picks the next ready REQ from docs/_queue/QUEUE.md and runs the orchestrate-dev pipeline for it.",
-  whenToUse:
-    "Driven by /loop to work a dependency-ordered feature queue one feature per invocation.",
-  phases: [
-    { title: "Queue: Load", detail: "read docs/_queue/QUEUE.md" },
-    { title: "Queue: Select", detail: "pick pending entries in order" },
-    { title: "Queue: Triage", detail: "Phase-0 readiness check (sonnet)" },
-    { title: "Queue: Run", detail: "delegate to the orchestrate-dev pipeline" },
-  ],
-};`;
-
-// TSPEC §8.2 — hand-written pure literal, first statement, for the same reason
-// QUEUE_META and DEV_META are: `meta` cannot be re-exported from consSource.
-const CONS_META = `export const meta = {
-  name: "consolidate-learnings",
-  description:
-    "Consolidation pass — clusters recurring failure modes across the LEARNINGS corpus and promotes durable patterns into DOMAIN-CONSTRAINTS.md, DECISIONS-*.md, or a guard-set PR.",
-  whenToUse:
-    "Run periodically (or on demand) to consolidate accumulated LEARNINGS into durable, project-level guidance.",
-  inputs: [
-    {
-      name: "direct",
-      description: "Optional manual entry point — forces a pass outside the cadence/volume trigger.",
-      type: "boolean",
-      required: false,
-    },
-  ],
-  phases: [
-    { title: "Enumerate", detail: "read the LEARNINGS corpus and the consolidation log" },
-    { title: "Trigger", detail: "decide whether this pass runs (cadence, volume, or direct)" },
-    { title: "Promote", detail: "cluster failure modes and route durable patterns" },
-    { title: "Report", detail: "render the report body and append log records" },
-  ],
-};`;
-
-const DEV_META = `export const meta = {
-  name: "orchestrate-dev",
-  description:
-    "Full PDLC pipeline for one REQ — spec authoring, reviews, TDD implementation, DoD, harvest, PR.",
-  whenToUse: "Run the pipeline for a single named REQ path.",
-  // CR F-1 — the module's own meta.inputs is dead in this artifact (it stays
-  // inside the __dev IIFE, where nothing reads it), so the operator's declared
-  // channel is this copy. Keep it in step with orchestrate-dev.js's meta.inputs:
-  // forcePhases' catalogue here is FORCE_PHASE_TOKENS + "all".
-  inputs: [
-    {
-      name: "reqPath",
-      description:
-        "Path to the approved REQ document, e.g. docs/{feature}/REQ-{feature}.md",
-      type: "string",
-      required: true,
-    },
-    {
-      name: "forcePhases",
-      description:
-        "Optional comma- or space-separated phases to re-run despite a recorded approval. Valid: R, F, T, P, D, PR, all.",
-      type: "string",
-      required: false,
-    },
-  ],
-  phases: [
-    { title: "Phase R", detail: "REQ review" },
-    { title: "Phase F", detail: "FSPEC author + review" },
-    { title: "Phase T", detail: "TSPEC author + review" },
-    { title: "Phase D", detail: "PLAN author + review" },
-    { title: "Phase P", detail: "PROPERTIES author + review" },
-    { title: "Phase I", detail: "implementation batches (sonnet)" },
-    { title: "Phase CR", detail: "final codebase review" },
-    { title: "Phase DOD", detail: "definition-of-done verify + remediate" },
-    { title: "Phase H", detail: "harvest learnings" },
-    { title: "Phase PUB", detail: "raise PR + verify CI" },
-    // TSPEC §11.2 — Phase MERGE runs immediately after Phase PUB. The
-    // module's own meta.phases is dead in this artifact (same reason
-    // meta.inputs is, above), so this hand-written copy is the only place
-    // the operator-visible phase list can carry the new row.
-    { title: "Phase MERGE", detail: "merge the PR + advance the queue row" },
-  ],
-};`;
-
-const QUEUE_ENTRY = `
-// ─── Entrypoint ───────────────────────────────────────────────────────────────
-const __devInjections = rtDevInjections(__dev);
-const __queuePath =
-  typeof args === "string" && args.trim()
-    ? args.trim()
-    : args && typeof args === "object" && args.queuePath
-      ? args.queuePath
-      : __queue.DEFAULT_QUEUE_PATH;
-
-return await __queue.main({
-  queuePath: __queuePath,
-  _agent: rtAgent,
-  _readFile: rtReadFile,
-  _writeFile: rtWriteFile,
-  _git: rtGit,
-  _log: rtLog,
-  _phase: rtPhase,
-  _runPipeline: ({ reqPath }) =>
-    __dev.main({
-      reqPath,
-      ...__devInjections,
-      // TSPEC §11.2 — the 7th (evidence) argument threads a merged run's
-      // Evidence cell through to the queue row (§8.3/§8.4); absent, it is
-      // undefined, and rewriteStatus treats that exactly as it does today.
-      // TSPEC §7.2 kind-3 carrier (K-3) — the 8th (provenance) argument threads
-      // a merged run's Provenance value through to the queue row's Engine
-      // column; absent, it is undefined, and rewriteStatus's own default
-      // (NO_PROVENANCE) applies exactly as it does today.
-      _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
-        __queue.rewriteStatus(
-          __queuePath,
-          feature,
-          status,
-          rtReadFile,
-          rtWriteFile,
-          rtGit,
-          evidence,
-          provenance
-        ),
-    }),
-});
-`;
-
-const DEV_ENTRY = `
-// ─── Entrypoint ───────────────────────────────────────────────────────────────
-const __reqPath =
-  typeof args === "string" && args.trim()
-    ? args.trim()
-    : args && typeof args === "object" && args.reqPath
-      ? args.reqPath
-      : null;
-
-// §7.2 edit 1 — the operator's phase override has no other channel into the bundle.
-const __forcePhases =
-  args && typeof args === "object" && args.forcePhases ? args.forcePhases : null;
-
-if (!__reqPath) {
-  return { outcome: "halted", haltReason: "No reqPath supplied — pass the REQ path as args." };
-}
-
-return await __dev.main({
-  reqPath: __reqPath,
-  forcePhases: __forcePhases,
-  ...rtDevInjections(__dev),
-  // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
-  // closes over __queue's row helpers at the default queue path. Absent this,
-  // the seam falls back to defaultRecordQueueRow's queueRow "none" no-op.
-  // TSPEC §11.2 — same evidence thread as QUEUE_ENTRY's closure (§7.2 edits
-  // 3 + 4): a direct run's own queue-row write also carries the merged
-  // Evidence cell when Phase MERGE produced one.
-  // TSPEC §7.2 kind-3 carrier (K-3) — same 8th (provenance) argument as
-  // QUEUE_ENTRY's closure above; absent, it is undefined and rewriteStatus's
-  // own default (NO_PROVENANCE) applies exactly as it does today.
-  _recordQueueRow: async ({ feature, status, evidence, provenance }) =>
-    __queue.rewriteStatus(
-      __queue.DEFAULT_QUEUE_PATH,
-      feature,
-      status,
-      rtReadFile,
-      rtWriteFile,
-      rtGit,
-      evidence,
-      provenance
-    ),
-});
-`;
-
-// TSPEC §8.2 — mirrors QUEUE_ENTRY: reads `args` (a bare string or an object)
-// into the one optional input, spreads rtConsInjections(), and returns
-// await __cons.main({...}).
-const CONS_ENTRY = `
-// ─── Entrypoint ─────────────────────────────────────────────────────────────
-const __direct =
-  args && typeof args === "object" && typeof args.direct === "boolean" ? args.direct : false;
-
-return await __cons.main({
-  direct: __direct,
-  ...rtConsInjections(),
-});
-`;
-
-// ─── dist/pdlc-cli.mjs — the document-state query CLI ────────────────────────
+// ───── dist/pdlc-cli.mjs — the document-state query CLI ─────────────────────
 //
 // Not a workflow bundle: plain Node, run as `node .../pdlc-cli.mjs <command>`,
-// so it keeps its imports and needs no `meta`. It ships through the same
-// manifest/sync channel as the bundles, which is why it is built here.
+// so it keeps its imports and needs no `meta`.
 //
 // The dev module's exports it reaches — the ONLY names `__dev` publishes for it.
 const CLI_DEV_EXPORTS = [
@@ -536,243 +128,19 @@ const cliArtifact = [
   cliBody,
 ].join("\n\n");
 
-// The workflow runtime rejects a script over 512 KiB, and the comment-dense
-// sources pushed the concatenated dev bundle past it. The two runtime bundles
-// are therefore emitted with comments stripped. The stripper is hand-rolled
-// and dependency-free ON PURPOSE: this builder runs on a fresh clone before
-// any `npm install` (the bootstrap contract, pinned by DOD-03's temp-tree
-// checks), so it may not require npm packages. `runtimeBundle.test.js`
-// re-parses the stripped bundles with the test environment's real parser, so
-// a stripper bug is a red suite, not a silently corrupt artifact. The banner
-// is re-prepended below because it must outlive stripping: it is the
-// "generated — never edit" warning an operator reads. pdlc-cli.mjs is plain
-// Node with no size ceiling and keeps its comments.
-const REGEX_PREFIX_WORDS = new Set([
-  "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
-  "throw", "case", "do", "else", "yield", "await",
-]);
-
-function stripJsComments(code) {
-  let out = "";
-  let i = 0;
-  const n = code.length;
-  // Mode stack: "code" (with its ${}-depth) nests inside "template" and back.
-  const stack = [{ mode: "code", braces: 0 }];
-  let prevCh = ""; // last significant char emitted in code mode
-  let prevWord = ""; // last identifier-ish word emitted in code mode
-
-  const top = () => stack[stack.length - 1];
-
-  while (i < n) {
-    const s = top();
-    const c = code[i];
-    const d = i + 1 < n ? code[i + 1] : "";
-
-    if (s.mode === "code") {
-      if (c === "/" && d === "/") {
-        while (i < n && code[i] !== "\n") i++;
-        continue; // the \n itself is emitted on the next pass
-      }
-      if (c === "/" && d === "*") {
-        const hadNewline = () => code.slice(start, i).includes("\n");
-        const start = i;
-        i += 2;
-        while (i < n && !(code[i] === "*" && code[i + 1] === "/")) i++;
-        i = Math.min(n, i + 2);
-        // Preserve line structure so a stripper bug stays diffable to a line.
-        if (hadNewline()) out += "\n";
-        continue;
-      }
-      if (c === "'" || c === '"') {
-        stack.push({ mode: "string", quote: c });
-        out += c; i++; prevCh = c; prevWord = "";
-        continue;
-      }
-      if (c === "`") {
-        stack.push({ mode: "template" });
-        out += c; i++; prevCh = c; prevWord = "";
-        continue;
-      }
-      if (c === "/") {
-        // Regex literal vs division, by what precedes it.
-        const regexish =
-          prevCh === "" || "(,=:[!&|?{};+-*%~^<>".includes(prevCh) ||
-          REGEX_PREFIX_WORDS.has(prevWord);
-        if (regexish) {
-          stack.push({ mode: "regex", inClass: false });
-        }
-        out += c; i++; prevCh = c; prevWord = "";
-        continue;
-      }
-      if (c === "{") { s.braces++; }
-      if (c === "}") {
-        if (s.braces === 0 && stack.length > 1) {
-          // End of a template's ${ … } hole.
-          stack.pop();
-          out += c; i++;
-          continue;
-        }
-        s.braces--;
-      }
-      out += c; i++;
-      if (!/\s/.test(c)) {
-        prevCh = c;
-        if (/[A-Za-z0-9_$]/.test(c)) prevWord += c;
-        else prevWord = "";
-      }
-      continue;
-    }
-
-    if (s.mode === "string") {
-      out += c;
-      if (c === "\\") { out += d; i += 2; continue; }
-      i++;
-      if (c === s.quote) stack.pop();
-      continue;
-    }
-
-    if (s.mode === "template") {
-      if (c === "\\") { out += c + d; i += 2; continue; }
-      if (c === "$" && d === "{") {
-        stack.push({ mode: "code", braces: 0 });
-        out += "${"; i += 2;
-        continue;
-      }
-      out += c; i++;
-      if (c === "`") stack.pop();
-      continue;
-    }
-
-    // regex
-    out += c;
-    if (c === "\\") { out += d; i += 2; continue; }
-    i++;
-    if (c === "[") s.inClass = true;
-    else if (c === "]") s.inClass = false;
-    else if (c === "/" && !s.inClass) { stack.pop(); prevCh = "/"; }
-    else if (c === "\n") stack.pop(); // never a real regex — bail conservatively
-  }
-  // Collapse the blank lines stripping leaves behind, but never touch content:
-  // only fully-empty (whitespace-only) line runs shrink.
-  return out.replace(/\n(?:[ \t]*\n)+/g, "\n\n");
-}
-
-/** Replace `await import("x")` with a rejecting expression carrying the same specifier.
- *
- * Constraint 2 in this file's header ("No `import` — static or dynamic") is a
- * LAUNCHER constraint, not merely a runtime one: the Workflow launcher parses
- * the script statically and refuses to start on any `import(` token, long
- * before any injection could happen. The canonical modules' Node-only seam
- * defaults (`defaultGit`, `defaultGhRun`, `defaultReadFile`, `defaultWriteFile`,
- * `checkPrCi`, `mergeWorktree`) each carry one, and each is overridden by
- * runtime-adapter.js — they are dead code inside the runtime, but a dead
- * `import(` still costs the whole pipeline its launch.
- *
- * The replacement is deliberately self-contained (no helper binding to place
- * relative to the `meta` first-statement rule), keeps the specifier verbatim so
- * the site stays greppable, and throws if a path this build believed dead ever
- * runs — a loud failure beats a silent fallback to a seam that isn't there.
- */
-export function neutralizeDynamicImports(code) {
-  return code.replace(
-    /\bawait\s+import\(\s*("[^"\n]*"|'[^'\n]*')\s*\)/g,
-    (_match, specifier) =>
-      `await Promise.reject(new Error("Node module " + ${specifier} + ` +
-      `" is unavailable in the workflow runtime; this seam must be injected"))`
-  );
-}
-
-function stripCommentsForRuntime(code, sources) {
-  return `${banner(sources)}\n${neutralizeDynamicImports(stripJsComments(code))}`;
-}
-
-// Per-artifact source lists, in the order the modules are concatenated below.
-const QUEUE_SOURCES = ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"];
-const DEV_SOURCES = ["runtime-adapter.js", "orchestrate-dev.js", "orchestrate-queue.js"];
-const CONS_SOURCES = ["runtime-adapter.js", "orchestrate-dev.js", "consolidate-learnings.js"];
-
 const bundles = [
   {
-    file: "orchestrate-queue.bundle.js",
-    contents: stripCommentsForRuntime(
-      [QUEUE_META, banner(QUEUE_SOURCES), adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n"),
-      QUEUE_SOURCES
-    ),
-  },
-  {
-    file: "orchestrate-dev.bundle.js",
-    // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
-    // `_recordQueueRow` closure can reach the queue's row helpers. ORDERING HAZARD:
-    // queueModule's prelude references `__dev.main`, so devModule must precede it.
-    // (That inlining is also why `orchestrate-queue.js` is a truthful source of
-    // THIS bundle, not only of the queue one.)
-    contents: stripCommentsForRuntime(
-      [DEV_META, banner(DEV_SOURCES), adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
-      DEV_SOURCES
-    ),
-  },
-  {
-    file: "consolidate-learnings.bundle.js",
-    // TSPEC §8.2 — consModule's prelude references __dev.* re-bindings, so
-    // devModule must precede it, same ordering hazard queueModule documents above.
-    contents: stripCommentsForRuntime(
-      [CONS_META, banner(CONS_SOURCES), adapter, devModule, consModule, CONS_ENTRY].join("\n\n"),
-      CONS_SOURCES
-    ),
-  },
-  {
     file: "pdlc-cli.mjs",
-    // Explicit: the id is not derivable from this filename by the `.bundle.js`
-    // rule the two rows above use.
-    id: "pdlc-cli",
     contents: cliArtifact,
   },
 ];
-
-// Self-enforcing gate on the constraint `neutralizeDynamicImports` exists to keep:
-// no `import(` token may survive in a runtime bundle, whatever produced it. Scoped
-// to the `.bundle.js` rows — pdlc-cli.mjs is plain Node and keeps its imports.
-for (const { file, contents } of bundles) {
-  if (!file.endsWith(".bundle.js")) continue;
-  const surviving = contents.match(/\bimport\s*\(/g) || [];
-  if (surviving.length) {
-    console.error(
-      `${file}: ${surviving.length} dynamic import(s) survived neutralization — ` +
-        `the workflow launcher rejects the script on sight. See neutralizeDynamicImports.`
-    );
-    process.exit(1);
-  }
-}
 
 const checkOnly = process.argv.includes("--check");
 let stale = false;
 
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
-// artifactVersion / pluginVersion (TSPEC §2.3 point 2, FSPEC M3/M4) — read once, at build time,
-// from the plugin manifest. Never encoded as a `meta` field: `meta` must stay a pure literal.
-const pluginManifest = JSON.parse(
-  readFileSync(resolve(REPO_ROOT, "pdlc", ".claude-plugin", "plugin.json"), "utf8")
-);
-const pluginVersion = pluginManifest.version;
-
-// id -> the retired pre-bundle source this artifact replaces, per FSPEC §1.1's example rows.
-//
-// The two retired paths are assembled from fragments because this file is itself scanned by
-// `coveredViolations` (pdlc/workflows/lib/document-oracles.mjs) and these exact strings are two
-// of the patterns it searches for — a contiguous literal here would report this file forever.
-// Assembly removes the self-reference without changing what is matched or what is emitted: the
-// assembled values are byte-identical to the former literals. Narrowing the patterns (R-10) and
-// widening EXEMPTIONS (TE F-10) are both barred, so fragment assembly is the available fix.
-const RETIRED_DIR = ".claude/" + "workflows/";
-const RETIRES_BY_ID = {
-  "orchestrate-dev": [`${RETIRED_DIR}orchestrate-dev.js`],
-  "orchestrate-queue": [`${RETIRED_DIR}orchestrate-queue.js`],
-};
-
-const manifestRows = [];
-
-for (const { file, contents, id: declaredId } of bundles) {
+for (const { file, contents } of bundles) {
   const path = resolve(OUT_DIR, file);
   const current = existsSync(path) ? readFileSync(path, "utf8") : null;
   if (current === contents) {
@@ -784,45 +152,6 @@ for (const { file, contents, id: declaredId } of bundles) {
     writeFileSync(path, contents, "utf8");
     console.log(`  wrote    pdlc/workflows/dist/${file}  (${contents.length} bytes)`);
   }
-
-  const id = declaredId ?? file.replace(/\.bundle\.js$/, "");
-  manifestRows.push({
-    id,
-    pluginPath: `workflows/dist/${file}`,
-    consumerPath: `.claude/workflows/${file}`,
-    artifactVersion: pluginVersion,
-    // Computed over the same in-memory `contents` string just written above — never re-read
-    // from disk — so it can never disagree with what was (or would have been) emitted.
-    pluginSha1: createHash("sha1").update(contents, "utf8").digest("hex"),
-    retires: RETIRES_BY_ID[id] ?? [],
-  });
-}
-
-manifestRows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-
-const retired = [...new Set(manifestRows.flatMap((row) => row.retires))].sort();
-
-const manifest = {
-  schemaVersion: 1,
-  pluginVersion,
-  rows: manifestRows,
-  retired,
-};
-
-const manifestContents = `${JSON.stringify(manifest, null, 2)}\n`;
-const manifestPath = resolve(OUT_DIR, "distribution-manifest.json");
-const manifestCurrent = existsSync(manifestPath) ? readFileSync(manifestPath, "utf8") : null;
-
-if (manifestCurrent === manifestContents) {
-  console.log("  in-sync  pdlc/workflows/dist/distribution-manifest.json");
-} else if (checkOnly) {
-  stale = true;
-  console.error("  STALE    pdlc/workflows/dist/distribution-manifest.json");
-} else {
-  writeFileSync(manifestPath, manifestContents, "utf8");
-  console.log(
-    `  wrote    pdlc/workflows/dist/distribution-manifest.json  (${manifestContents.length} bytes)`
-  );
 }
 
 if (stale) {

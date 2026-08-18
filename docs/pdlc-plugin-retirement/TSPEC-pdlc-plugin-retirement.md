@@ -310,7 +310,7 @@ carries in this repo, so the PLAN's task sizes come from dispositions rather tha
 | 8 | `.worktreeinclude` (file deleted — single row), `.gitignore` row + ~20-line comment block |
 | 9 | `lib/document-oracles.mjs` packaging/advertised-version checks + exemptions, `documentOracles.test.js` D-1/D-2, `fixtures/covered-violations/` re-fixturing, CLAUDE.md prose those oracles guard |
 | 10 | CLAUDE.md wave-gate prose and `consolidationPreflight.test.js:205`–`:208`; `.claude/pdlc.config.example.json`'s two values are **unchanged** (§2.2) |
-| 11 | two delegator rewrites (§2.4), `consolidate-learnings/SKILL.md` — **two obligations landing in the same commit**: the bundle reference at `:11` is deleted, not rewritten (no host survives to name), and the delegation-contract prose at `:8`–`:13` (the hand-off to a workflow module and the hand-running warning) is restated for what the pass now is, per REQ O-8's bound disposition (REQ v0.14/v0.15, FSPEC M-11n corrected, §6.1 item 3) — three module banners, `orchestrateDevSkill.test.js:93`; `skillFiles.test.js`'s `RLH-SKILL-08` (`:196`) and `RLH-SKILL-09` (`:209`), whose delegator source-text expectations the rewrite invalidates, retargeted onto AT-3.1's static half, **and** its new `RLH-SKILL-10`, which covers the `consolidate-learnings/SKILL.md` half (§5.2, §5.5) |
+| 11 | two delegator rewrites (§2.4), `consolidate-learnings/SKILL.md` — **two obligations landing in the same commit**: the bundle reference is deleted, not rewritten (no host survives to name), and the delegation-contract prose at `:8`–`:18` (the hand-off to a workflow module and the hand-running warning) is restated for what the pass now is, per REQ O-8's bound disposition (REQ v0.14/v0.15, FSPEC M-11n corrected, §6.1 item 3) — three module banners, `orchestrateDevSkill.test.js:93`; `skillFiles.test.js`'s `RLH-SKILL-08` (`:196`) and `RLH-SKILL-09` (`:209`), whose delegator source-text expectations the rewrite invalidates, retargeted onto AT-3.1's static half, **and** its new `RLH-SKILL-10`, which covers the `consolidate-learnings/SKILL.md` half (§5.2, §5.5) |
 | 12 | CLAUDE.md, `pdlc/OPERATIONS.md`, both READMEs, `pdlc/RELEASE-CHECKLIST.md`, `DECISIONS-plugin-distribution.md`, `QUEUE.md`, stored operator notes |
 | 13 | `cleanup-consumer-workflows.sh` + its documentation and tests (§3.2) |
 
@@ -1262,7 +1262,7 @@ and are retained here for lineage, not for action.**
    `dev`, `queue`, `doctor` only (`pdlc/engine/bin/cli.mjs`, `FLAGS_BY_COMMAND`), with
    `consolidate-learnings` listed in `OPERATOR_ONLY_SKILLS` as a skill *no workflow module
    dispatches*. FSPEC §3.1 class 11 and M-11n instructed rewriting
-   `consolidate-learnings/SKILL.md:11`'s bundle reference "to name the surviving execution path";
+   `consolidate-learnings/SKILL.md`'s bundle reference "to name the surviving execution path";
    post-sweep there is none. **REQ accepted the erratum and corrected it**: the bundle reference
    is now **deleted, not rewritten**, and the correction extends to the skill's delegation-contract
    prose (`:8`–`:13`) as well — the two-part edit FSPEC §3.1 class 11 states and this TSPEC's

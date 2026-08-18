@@ -121,6 +121,6 @@ test("BL-PREREQ: pdlc/workflows/orchestrate-dev.js exports runAdvisorySeam, impo
     fileURLToPath(new URL("../../workflows/orchestrate-queue.js", import.meta.url)),
     "utf8",
   );
-  const importLine = queueSource.split("\n")[40]; // orchestrate-queue.js:41
+  const importLine = queueSource.split("\n")[44]; // orchestrate-queue.js:45
   assert.match(importLine, /\brunAdvisorySeam\b/);
 });

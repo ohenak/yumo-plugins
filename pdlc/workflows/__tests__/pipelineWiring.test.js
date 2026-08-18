@@ -498,12 +498,11 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     const addedSeams = names.filter((n) => NEW_SEAMS.includes(n));
     expect(addedSeams).toHaveLength(5);
 
-    // meta gains a second inputs entry beside reqPath (TSPEC §3.1). Note this is
-    // NOT the operator-facing surface: in the built bundle this `meta` sits inside
-    // the `__dev` IIFE, where nothing reads it. The `inputs` the runtime actually
-    // offers are declared by `DEV_META` in build-runtime.mjs, which CR F-1 edited
-    // for exactly that reason. The two copies are hand-maintained; RLH-CR-F7 below
-    // asserts they agree.
+    // meta gains a second inputs entry beside reqPath (TSPEC §3.1). Prior to
+    // pdlc-plugin-retirement (T19, DEC-02) the built `orchestrate-dev.bundle.js`
+    // carried its own hand-maintained `DEV_META` copy of this surface (CR F-1);
+    // that bundle and its copy are now retired build output — this module's own
+    // `meta` is the sole surviving surface. RLH-CR-F7 below asserts it directly.
     const inputNames = meta.inputs.map((input) => input.name);
     expect(inputNames).toContain("reqPath");
     expect(inputNames).toContain("forcePhases");
@@ -523,62 +522,28 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
   });
 });
 
-// ─── RLH-CR-F7: the two hand-maintained `meta.inputs` copies agree ────────────
+// ─── RLH-CR-F7: the module's meta declares both inputs (retargeted, T19) ─────
 // Phase CR finding F-7. TSPEC Q-07 declined to declare `forcePhases` in
 // `DEV_META` precisely because "adding one creates a second declaration to keep
-// in sync". CR F-1 reversed that decision — correctly, since Q-07's premise was
-// false: the module's own `meta.inputs` is dead in the built artifact (it stays
-// inside the `__dev` IIFE, read by nothing), so it is not the operator-facing
-// surface and `DEV_META` had to declare the channel itself.
-//
-// The reversal is right and the duplication is therefore real. Q-07's stated
-// cost is what this suite pays down: nothing previously compared the two copies
-// (RLH-CR-F1 reads only DEV_META; RLH-WIRE-01 reads only the module's `meta`),
-// so they could diverge silently. Here they are compared directly, from source
-// text on both sides, so an edit to either copy alone reds.
-//
-// The TSPEC is an approved artifact and is not amended here; the Q-07 reversal
-// is carried to LEARNINGS §3 at harvest.
-
-/** The `DEV_META` template literal in build-runtime.mjs, evaluated. */
-function devMeta() {
-  const src = readFileSync(resolve(__dirname, "../build-runtime.mjs"), "utf8");
-  const anchor = "const DEV_META = `";
-  const start = src.indexOf(anchor);
-  if (start < 0) throw new Error("DEV_META anchor not found in build-runtime.mjs");
-  if (src.indexOf(anchor, start + 1) >= 0) {
-    throw new Error("DEV_META anchor occurs more than once");
-  }
-
-  const bodyStart = start + anchor.length;
-  // The literal carries no backticks by construction (a backtick would terminate
-  // it and break the build), so the first one after the anchor closes it.
-  const end = src.indexOf("`", bodyStart);
-  if (end < 0) throw new Error("DEV_META literal is unterminated");
-
-  const literal = src.slice(bodyStart, end).replace("export const meta = ", "");
-  // eslint-disable-next-line no-new-func
-  return Function(`"use strict"; return (${literal.replace(/;\s*$/, "")});`)();
-}
-
-describe("RLH-CR-F7: DEV_META and the module's meta declare the same inputs", () => {
-  it("RLH-CR-F7: the two meta.inputs copies are deep-equal", () => {
-    const shipped = devMeta();
-    expect(Array.isArray(shipped.inputs)).toBe(true);
-    expect(shipped.inputs.length).toBeGreaterThan(0);
-
-    // Order included: the runtime presents inputs in declaration order, so a
-    // reorder in one copy alone is a divergence worth reding on.
-    expect(shipped.inputs).toEqual(meta.inputs);
+// in sync". CR F-1 reversed that decision, and pdlc-plugin-retirement (T19,
+// DEC-02) has since deleted `DEV_META` and the bundle it fed entirely — Q-07's
+// original premise now holds again for a different reason: there is exactly one
+// copy of this surface, this module's own `meta`, so there is nothing left to
+// compare it against. This block asserts that sole copy directly rather than a
+// cross-copy agreement that no longer has a second side.
+describe("RLH-CR-F7: the module's meta declares both inputs (single surviving copy)", () => {
+  it("RLH-CR-F7: meta.inputs is a non-empty array naming reqPath and forcePhases, in that order", () => {
+    expect(Array.isArray(meta.inputs)).toBe(true);
+    expect(meta.inputs.length).toBeGreaterThan(0);
+    expect(meta.inputs.map((i) => i.name)).toEqual(["reqPath", "forcePhases"]);
   });
 
-  it("RLH-CR-F7: both copies name the same inputs with the same required-ness", () => {
-    const byName = (m) =>
-      Object.fromEntries(m.inputs.map((i) => [i.name, { type: i.type, required: i.required }]));
-
-    expect(byName(devMeta())).toEqual(byName(meta));
+  it("RLH-CR-F7: forcePhases is typed string and optional; the input-name set is exactly {reqPath, forcePhases}", () => {
+    const forceInput = meta.inputs.find((i) => i.name === "forcePhases");
+    expect(forceInput.type).toBe("string");
+    expect(forceInput.required).toBe(false);
     // Anchored so a copy that loses `forcePhases` entirely — the pre-F-1 state —
-    // cannot satisfy this suite by both copies being equally wrong.
+    // cannot satisfy this suite.
     expect(meta.inputs.map((i) => i.name).sort()).toEqual(["forcePhases", "reqPath"]);
   });
 });

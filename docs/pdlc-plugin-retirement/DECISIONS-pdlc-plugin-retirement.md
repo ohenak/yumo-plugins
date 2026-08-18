@@ -125,7 +125,7 @@ seams `rtConsInjections()` supplies. The engine does not host it either — its 
 (`pdlc/engine/lib/startup.mjs:52`) as a skill *no workflow module dispatches*. Meanwhile the
 `nudge-consolidation` SessionStart hook survives by AC-1.7 and O-1, so post-sweep the pipeline
 keeps telling humans to run a pass whose unattended form has no host. FSPEC class 11 (M-11n, as
-corrected at REQ v0.14) now instructs a **two-part** edit: `SKILL.md:11`'s bundle reference is
+corrected at REQ v0.14) now instructs a **two-part** edit: the bundle reference is
 **deleted, not rewritten** (no host survives to name), and the delegation-contract prose naming the
 module the bundle shipped is restated so that after the sweep no sentence of the file names a host
 that no longer loads. Erratum 3's disposition — REQ O-8, bound to successor
@@ -193,7 +193,7 @@ and are not restated.
 | DEC-07 | A — reduce `hookCompatibility.test.js` in place | The `C7` block goes, `PROP-COMPAT-*` assertions stay; FSPEC M-8's count is corrected by erratum 6 | AC-1.3's suite-size literal — **97 until erratum 6 lands, 99 after**; class 6 blocks on it |
 | DEC-08 | A — leave both `.claude/pdlc.config.example.json` values as-is | Post-wave regeneration of `dist/` keeps working; only the surrounding prose naming retired bundles is edited | `consolidationPreflight.test.js`'s two config assertions, tightened by class 10 from containment to set-equality over `postWavePathspecs` |
 | DEC-09 | A — patch-bump the plugin to `0.23.2` | `pdlc/.claude-plugin/plugin.json` moves `0.23.1` → `0.23.2`, inside the engine's `^0.23.0` window, so `handshake.mjs` needs no change | **None yet** — class 9 must add the `version == 0.23.2` + `satisfiesRange(...).ok === true` assertion **with its `0.24.0` negative arm** (DEC-09 A); `advertisedVersionViolation()` skips on this commit |
-| DEC-10 | C — accept the capability loss, ship, bind the machinery-backed pass to successor `pdlc-consolidation-rehost` | The unattended, machinery-backed pass is retired; the in-session, human-performed pass continues under rewritten delegation prose; `SKILL.md:11`'s bundle reference is deleted, not rewritten; the machinery-backed pass is bound to queue Order 24, `ready: false` | `RLH-SKILL-10` (`skillFiles.test.js`, TSPEC §5.2) owns the two-part `SKILL.md` edit (bundle deleted + delegation prose restated); PLAN's batch-DAG check owns the class-7/class-11 same-commit ordering edge — a `Deps` edge, not a runtime assertion |
+| DEC-10 | C — accept the capability loss, ship, bind the machinery-backed pass to successor `pdlc-consolidation-rehost` | The unattended, machinery-backed pass is retired; the in-session, human-performed pass continues under rewritten delegation prose; the bundle reference is deleted, not rewritten; the machinery-backed pass is bound to queue Order 24, `ready: false` | `RLH-SKILL-10` (`skillFiles.test.js`, TSPEC §5.2) owns the two-part `SKILL.md` edit (bundle deleted + delegation prose restated); PLAN's batch-DAG check owns the class-7/class-11 same-commit ordering edge — a `Deps` edge, not a runtime assertion |
 
 Five cross-cutting rules follow from the set and bind implementation:
 

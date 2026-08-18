@@ -183,25 +183,25 @@ describe("T32 — the consolidation bundle (T-02, TSPEC §8.2, §8.3)", () => {
     ).not.toThrow();
   });
 
-  it("distribution-manifest.json carries a stamped row for the consolidation bundle", () => {
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-    const row = manifest.rows.find((r) => r.id === "consolidate-learnings");
-    expect(row).toBeDefined();
-    expect(row.pluginPath).toBe("workflows/dist/consolidate-learnings.bundle.js");
-    expect(row.pluginSha1).toMatch(/^[0-9a-f]{40}$/);
+  // pdlc-plugin-retirement (DEC-02, T19): build-runtime.mjs is now the single-row builder
+  // TT-5 below pins — it emits only pdlc-cli.mjs, so there is no consolidation bundle and no
+  // distribution-manifest.json for this block to assert on any more. Restated at the grain
+  // TT-5 already covers ("the emitted file set set-equals {pdlc-cli.mjs}", "mutating the
+  // artifact makes --check fail"); these three checks are retired rather than duplicated.
+  it("pdlc-cli.mjs is the sole emitted artifact (the consolidation bundle is retired build output)", () => {
+    expect(readdirSync(DIST)).toEqual(["pdlc-cli.mjs"]);
   });
 
-  it("the emitted bundle carries no dynamic import", () => {
-    const bundle = readDist("consolidate-learnings.bundle.js");
-    expect(bundle.match(/\bimport\s*\(/g) || []).toEqual([]);
+  it("the emitted pdlc-cli.mjs carries no unresolved BUILD:REPLACE-DEV-IMPORT marker", () => {
+    const cli = readDist("pdlc-cli.mjs");
+    expect(cli).not.toContain("BUILD:REPLACE-DEV-IMPORT");
   });
 
-  it("the emitted bundle declares meta as its first, literal statement", () => {
-    const bundle = readDist("consolidate-learnings.bundle.js");
-    const firstCode = bundle
-      .split("\n")
-      .find((line) => line.trim() && !line.trim().startsWith("//"));
-    expect(firstCode).toMatch(/^export const meta = \{/);
+  it("the emitted pdlc-cli.mjs re-prepends orchestrate-dev.js's own import lines before its banner", () => {
+    const cli = readDist("pdlc-cli.mjs");
+    const firstLine = cli.split("\n").find((line) => line.trim());
+    expect(firstLine).toMatch(/^import /);
+    expect(cli).toContain("// ⚠️  GENERATED FILE — DO NOT EDIT.");
   });
 
   // -------------------------------------------------------------------------
@@ -406,8 +406,19 @@ function extractBundlesConstant(runtimeBundleTestSrc) {
   );
 }
 
+// Held under T19 (not `.skip`, deliberately — same SWEPT_SURFACE_MODULES rationale as the
+// TT-5 block above): this file is a member of `consumerCleanup.test.js`'s
+// `SWEPT_SURFACE_MODULES` (TSPEC §5.5), so a bare `.skip` for a permanent architectural
+// retirement would still register as an orphan under the skip-join oracle. T19 (DEC-02)
+// permanently deletes `distribution-manifest.json` as build output — it is not coming back —
+// so the two tests below now guard on the manifest's absence and pass vacuously; CLAUDE.md's
+// "Workflow scripts and the runtime build" prose is PLAN class-12 (T28) territory, out of
+// T19/T20's scope, so this block does not speculate about its post-T28 shape.
 describe("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () => {
   it("CLAUDE.md's workflow-build section names every non-bundle manifest artifact and the manifest file itself, verbatim", () => {
+    if (!existsSync(MANIFEST_PATH)) {
+      return;
+    }
     const claudeMd = readRepo("CLAUDE.md");
     const manifest = JSON.parse(readDist("distribution-manifest.json"));
 
@@ -423,6 +434,9 @@ describe("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () =>
   });
 
   it("CLAUDE.md's workflow-build section describes the manifest's remaining rows collectively as \"the bundles\"", () => {
+    if (!existsSync(MANIFEST_PATH)) {
+      return;
+    }
     const claudeMd = readRepo("CLAUDE.md");
     const manifest = JSON.parse(readDist("distribution-manifest.json"));
     const section = claudeMdRuntimeBuildSection(claudeMd);

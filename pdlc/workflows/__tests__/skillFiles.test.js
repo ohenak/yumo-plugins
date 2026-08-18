@@ -191,27 +191,18 @@ describe("SKILL prompt amendments (TSPEC §7.4)", () => {
     expect(content).toMatch(/copy, never recompute/i);
   });
 
-  // TSPEC §7.4 row 4 — orchestrate-dev: document the POSTMORTEM lifecycle and the `RESOLVED:`
-  // marker, which §5.8 states is human-written only. AC-5.3.
-  it("RLH-SKILL-08: orchestrate-dev/SKILL.md documents the POSTMORTEM lifecycle and the human-written `RESOLVED:` marker", () => {
-    const content = readSkill("orchestrate-dev/SKILL.md");
-
-    expect(content).toContain("POSTMORTEM");
-    expect(content).toContain("RESOLVED:");
-    expect(content).toMatch(/RESOLVED: yes/);
-    expect(content).toMatch(/RESOLVED: no/);
-
-    // §5.8: no agent and no script ever writes `yes`.
-    expect(content).toMatch(/human-written only/i);
-  });
-
-  // TSPEC §7.4 row 5 — orchestrate-queue: document that a `halted` row is committed. AC-5.4.
-  it("RLH-SKILL-09: orchestrate-queue/SKILL.md documents that a `halted` row is committed", () => {
-    const content = readSkill("orchestrate-queue/SKILL.md");
-
-    expect(content).toContain("halted");
-    expect(content).toMatch(/halted[^\n]{0,120}committed/i);
-  });
+  // TSPEC §7.4 row 4 / row 5 — RLH-SKILL-08 (orchestrate-dev: POSTMORTEM lifecycle and the
+  // `RESOLVED:` marker) and RLH-SKILL-09 (orchestrate-queue: a `halted` row is committed)
+  // formerly lived here as their own assertions. PLAN T20 (pdlc-plugin-retirement, class 11)
+  // rewrites both SKILL.md files as thin delegators onto `pdlc dev <req-path>` / `pdlc queue`,
+  // moving the runbook mechanics both assertions pinned (POSTMORTEM/`RESOLVED:` lifecycle,
+  // `halted`-row commit) out of the SKILL.md files entirely and into `@kaneho/pdlc-engine`. TSPEC
+  // §5.5/§7.4 retargets both obligations onto AT-3.1's static half rather than restating them
+  // against text that no longer exists on either file: RLH-SKILL-08's successor is
+  // `orchestrateDevSkill.test.js:93`'s AT-3.1-style static-half test for `orchestrate-dev/
+  // SKILL.md`; RLH-SKILL-09's successor is the `AT-3.1` test immediately below, which already
+  // covers `orchestrate-queue/SKILL.md`'s four delegator conjuncts. Neither id is reused — both
+  // obligations are live elsewhere, not dropped.
 
   // ---------------------------------------------------------------------------
   // AT-3.1 static half (TSPEC §3.3, §5.2) — orchestrate-queue/SKILL.md's delegator

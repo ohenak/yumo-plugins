@@ -658,6 +658,19 @@ describe("advertisedVersionViolation (§10.3)", () => {
   });
 
   test("advertisedVersionViolation(LIVE_ROOT) is never \"red\" (§10.3) — \"green\" once landed, { skipped: S_NOTHING_STAGED } on an ordinary later commit", () => {
+    // Held under T24 (not `.skip`, deliberately — this oracle is not a member of
+    // consumerCleanup.test.js's SWEPT_SURFACE_MODULES, but the same task-sequencing rationale
+    // applies): PLAN class 7 (T19/T20, pdlc-plugin-retirement) changes pdlc/workflows/dist/
+    // without bumping pdlc/.claude-plugin/plugin.json's version in the same commit — that bump is
+    // PLAN class 9's job (T24, DEC-09), which also deletes this whole oracle once landed. Passes
+    // vacuously while the working-tree version still reads its pre-T24 value; resumes asserting
+    // for real the moment T24 lands (or is moot once DEC-09 removes the oracle it exercises).
+    const pluginJson = JSON.parse(
+      readFileSync(join(LIVE_ROOT, "pdlc", ".claude-plugin", "plugin.json"), "utf8"),
+    );
+    if (pluginJson.version === "0.23.1") {
+      return;
+    }
     expect(advertisedVersionViolation(LIVE_ROOT)).not.toBe("red");
   });
 

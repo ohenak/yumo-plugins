@@ -7,9 +7,14 @@ description: Consolidation ritual. Reads every feature-level LEARNINGS file prod
 
 This skill delegates to a workflow script. It does not run the pass itself.
 
-The pass is performed in code by `pdlc/workflows/consolidate-learnings.js` (shipped as
-`pdlc/workflows/dist/consolidate-learnings.bundle.js`). Everything below is the **contract that
-module implements** — a description of what it does, not a runbook for you to execute. Performing
+The pass is performed in code by `pdlc/workflows/consolidate-learnings.js`. pdlc-plugin-retirement
+(REQ O-8) retired the workflow-runtime host that loaded that module as a bundle — no surviving
+host runs it today — so until the pass is re-hosted under `@kaneho/pdlc-engine` (tracked as the
+successor `pdlc-consolidation-rehost` feature, `docs/_queue/QUEUE.md` Order 24), the delegation
+above is performed **in-session, by hand**, against the module's contract. Everything below is the
+**contract that module implements** — a description of what it does, not a runbook for you to
+execute in the ordinary case, and the runbook you follow directly while no host is loading it.
+Performing
 the pass by hand bypasses the machinery this skill exists to drive: the `.consolidation-log.md`
 boundary, deterministic `failure-mode-id` derivation (AC-5.1), NFR-4 duplicate suppression, the
 AC-3.1 guard-set PR route, and the AC-1.3 in-progress marker.

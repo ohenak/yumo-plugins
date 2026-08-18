@@ -86,10 +86,35 @@ describe("orchestrate-dev SKILL.md rewrite — TSPEC-SKILL-02", () => {
     expect(content).toMatch(/CLAUDE\.md|artifact.*convention/i);
   });
 
-  // PROP-SKILL-05 section 7: Workflow script path
-  // PROP-SKILL-08: references both canonical plugin source and consumer runtime copy
-  it("PROP-SKILL-05/08: references both plugin source and consumer runtime copy paths", () => {
-    expect(content).toContain("pdlc/workflows/orchestrate-dev.js");
-    expect(content).toContain(".claude/workflows/orchestrate-dev.bundle.js");
+  // PROP-SKILL-05 section 7 / PROP-SKILL-08, retargeted by PLAN T20 (pdlc-plugin-retirement,
+  // class 11): the "workflow script path" obligation used to pin the plugin-source /
+  // consumer-runtime-copy pair the old bundler produced (`pdlc/workflows/orchestrate-dev.js` +
+  // `.claude/workflows/orchestrate-dev.bundle.js`). DEC-02 retired that bundling path outright —
+  // pipeline execution now runs through the published `@kaneho/pdlc-engine` package, invoked as
+  // `pdlc dev <req-path>` — so this test now asserts AT-3.1's static-half conjuncts for
+  // `orchestrate-dev/SKILL.md`, the same four conjuncts `skillFiles.test.js`'s `AT-3.1` test
+  // asserts for `orchestrate-queue/SKILL.md` (TSPEC §3.3, §5.5's host split).
+  it("AT-3.1: orchestrate-dev/SKILL.md is a thin delegator onto `pdlc dev <req-path>` (TSPEC §3.3)", () => {
+    // (a) the invocation line is present verbatim.
+    expect(content).toContain("pdlc dev <req-path>");
+
+    // (b) the three-step resolution ladder of §3.3 is present.
+    expect(content).toContain("npm install -g @kaneho/pdlc-engine");
+    expect(content).toContain("npx --no-install pdlc");
+
+    // (c) the refusal text names the install command.
+    expect(content).toMatch(/refus[a-z]*[^\n]{0,200}npm install -g @kaneho\/pdlc-engine/is);
+
+    // (d) no POSTMORTEM/RESOLVED/model-selection/DOD/reviewer-dispatch runbook mechanics remain —
+    // that text moved into the engine, not into this delegator. The Artifact Conventions section
+    // legitimately names `POSTMORTEM-*` as a file-naming convention, so the negative checks target
+    // the lifecycle mechanics (a heading, or the human-written marker's two literal values) rather
+    // than the bare word.
+    expect(content).not.toMatch(/POSTMORTEM Lifecycle/i);
+    expect(content).not.toMatch(/RESOLVED: yes/);
+    expect(content).not.toMatch(/RESOLVED: no/);
+    expect(content).not.toMatch(/[Mm]odel [Ss]election/);
+    expect(content).not.toMatch(/## Definition of Done Verification/i);
+    expect(content).not.toMatch(/Agent 1 — se-review:/);
   });
 });

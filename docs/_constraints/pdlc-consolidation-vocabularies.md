@@ -165,7 +165,7 @@ ordinal of that pass on that calendar date — so two same-day passes never coll
 
 | Thing | Name |
 |---|---|
-| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, the name the skill states at `pdlc/skills/consolidate-learnings/SKILL.md:70` (it superseded a `{date}`-only name, which no longer appears in that file) |
+| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, the name the skill states at `pdlc/skills/consolidate-learnings/SKILL.md:75` (it superseded a `{date}`-only name, which no longer appears in that file) |
 | Promotion branch | `consolidation/{passId}` |
 
 The PR body carries exactly three trailers, and each promotion commit carries one:
