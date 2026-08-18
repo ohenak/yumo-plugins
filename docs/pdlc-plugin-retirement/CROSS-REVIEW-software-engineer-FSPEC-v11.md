@@ -73,7 +73,35 @@ FINDING: Low | delta | local | §0 header (`FSPEC:11`) | Compressed cross-review
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | With class 10 reduced to prose plus one assertion tightening, is it still a **deletion** class under REQ C-5's "each removal lands as its own commit"? If nothing is removed, C-5's enumerated wave-gate removal has no commit, and class 10's ordering obligation ("after class 7, the edited prose names deleted outputs") is the only thing still tying it to the sweep. Answering this is part of F-01's upstream erratum, not a separate ask. |
+| Q-02 | §3.3 step 4 says consolidation stays "operator-invocable in session as `/pdlc:consolidate-learnings`". After the bundle retires, is the pass performed by the agent following SKILL.md's contract, or is `consolidate-learnings.js` still expected to run somehow? The six surviving `consolidation*.test.js` modules keep asserting over the module (`TSPEC:70`), so the module is not dead code — but nothing invokes it in session. F-03's clause would answer this; flagging it here because the *tests* are the reason the module survives, which is a different justification than the skill. |
+
 ## Positive Observations
+
+- **The erratum-5 substance is correct and I verified it against HEAD, not against the doc.**
+  `.claude/pdlc.config.example.json` carries exactly `node pdlc/workflows/build-runtime.mjs`
+  and `["pdlc/workflows/dist/"]`; `consolidationPreflight.test.js:208`–`:209` asserts them with
+  `toContain` and `toBe`; TSPEC TT-5 (`TSPEC:742`) pins the reduced builder's emission at
+  `pdlc/workflows/dist/pdlc-cli.mjs`. The values do keep naming live outputs after the sweep, and
+  AT-1.1's `dist/`-survives branch is the one TSPEC took. The correction is right; only its reach
+  is short (F-01).
+- **The set-equality tightening is the right shape and is satisfiable today.** `postWavePathspecs`
+  is a one-element array at HEAD, so containment → set-equality is a strict strengthening that
+  passes now and reds if a second pathspec is silently added — the same argument AT-1.4 makes for
+  the check set. This is the kind of edit an erratum should produce.
+- **The held-class note answers REQ v0.12's C-7 paragraph directly.** "A held class leaves AC-1.1
+  unsatisfied on an unmerged branch — **not** a C-7 red, never registered as a tolerated failure"
+  (`FSPEC:168`–`:170`) is exactly the distinction the new REQ paragraph draws, and it lands the
+  half of my v10 F-02 that mattered most: the document now says in text that a held class is not a
+  registered expected failure.
+- **The closure over §3.1 is wider than TSPEC T-5 asked for, and correctly so.** T-5 holds classes
+  7 and 11; the note holds 7–12. Computing the closure through the ordering column rather than
+  transcribing the TSPEC's two class numbers is the difference between a ledger and a copy.
+- **The erratum-9 row now carries the SE v9 F-01 conjunct.** `FSPEC:855` records that AC-1.3's
+  separate "present and passing" conjunct still binds re-homed hosts, closing the last open item
+  from that round without widening the clause.
 
 ## Recommendation
 
