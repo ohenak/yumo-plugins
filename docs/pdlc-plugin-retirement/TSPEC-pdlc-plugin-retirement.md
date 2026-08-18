@@ -4,16 +4,25 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.7) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6); `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (addressed in v0.7); `CROSS-REVIEW-product-manager-TSPEC-v7.md`, `CROSS-REVIEW-test-engineer-TSPEC-v7.md` (addressed in v0.8); `CROSS-REVIEW-product-manager-TSPEC-v8.md`, `CROSS-REVIEW-test-engineer-TSPEC-v8.md` (addressed in v0.9) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6); `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (addressed in v0.7); `CROSS-REVIEW-product-manager-TSPEC-v7.md`, `CROSS-REVIEW-test-engineer-TSPEC-v7.md` (addressed in v0.8); `CROSS-REVIEW-product-manager-TSPEC-v8.md`, `CROSS-REVIEW-test-engineer-TSPEC-v8.md` (addressed in v0.9); `CROSS-REVIEW-test-engineer-TSPEC-v12.md`, `CROSS-REVIEW-product-manager-TSPEC-v12.md` (addressed in v0.11) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.10 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.11 | 2026-08-18 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
 literals are re-transcribed at C-6 re-measurement time, not here.*
+
+*0.11 (2026-08-18) — round-12 upstream-cascade delta (TE TSPEC-v12 F-01/F-02, PM TSPEC-v12
+F-01/F-02/F-03): §2.9's class-11 row and §5.2's AT-3.1 gain a new oracle, `RLH-SKILL-10`, covering
+the delegation-contract-prose half of `consolidate-learnings/SKILL.md`'s class-11 edit that REQ
+v0.14/v0.15 and FSPEC v0.10 added alongside the bundle-reference deletion; §6.1 item 3 is marked
+RESOLVED UPSTREAM; §6.2 SUCC-2 names the bound successor `pdlc-consolidation-rehost`; §6.3 T-5 is
+restated as an ordering obligation now that erratum 3's disposition has landed, and both T-4 and
+T-5 adopt REQ C-7's settled held-class vocabulary; §3.2's BR-CLN-3a text is reworded to REQ v0.16's
+presence-not-provenance framing of C-9, replacing the earlier impossibility-claim phrasing.*
 
 ## 1. Overview
 
@@ -301,7 +310,7 @@ carries in this repo, so the PLAN's task sizes come from dispositions rather tha
 | 8 | `.worktreeinclude` (file deleted — single row), `.gitignore` row + ~20-line comment block |
 | 9 | `lib/document-oracles.mjs` packaging/advertised-version checks + exemptions, `documentOracles.test.js` D-1/D-2, `fixtures/covered-violations/` re-fixturing, CLAUDE.md prose those oracles guard |
 | 10 | CLAUDE.md wave-gate prose and `consolidationPreflight.test.js:205`–`:208`; `.claude/pdlc.config.example.json`'s two values are **unchanged** (§2.2) |
-| 11 | two delegator rewrites (§2.4), `consolidate-learnings/SKILL.md:11`, three module banners, `orchestrateDevSkill.test.js:93`; `skillFiles.test.js`'s `RLH-SKILL-08` (`:196`) and `RLH-SKILL-09` (`:209`), whose delegator source-text expectations the rewrite invalidates, retargeted onto AT-3.1's static half (§5.2, §5.5) |
+| 11 | two delegator rewrites (§2.4), `consolidate-learnings/SKILL.md` — **two obligations landing in the same commit**: the bundle reference at `:11` is deleted, not rewritten (no host survives to name), and the delegation-contract prose at `:8`–`:13` (the hand-off to a workflow module and the hand-running warning) is restated for what the pass now is, per REQ O-8's bound disposition (REQ v0.14/v0.15, FSPEC M-11n corrected, §6.1 item 3) — three module banners, `orchestrateDevSkill.test.js:93`; `skillFiles.test.js`'s `RLH-SKILL-08` (`:196`) and `RLH-SKILL-09` (`:209`), whose delegator source-text expectations the rewrite invalidates, retargeted onto AT-3.1's static half, **and** its new `RLH-SKILL-10`, which covers the `consolidate-learnings/SKILL.md` half (§5.2, §5.5) |
 | 12 | CLAUDE.md, `pdlc/OPERATIONS.md`, both READMEs, `pdlc/RELEASE-CHECKLIST.md`, `DECISIONS-plugin-distribution.md`, `QUEUE.md`, stored operator notes |
 | 13 | `cleanup-consumer-workflows.sh` + its documentation and tests (§3.2) |
 
@@ -354,12 +363,15 @@ the retired `sync-workflows.sh`'s five-status convention so an operator's existi
 transfers.
 
 **Classification is by name only.** The expected set is a literal list inside the script (§4.3),
-not read from a manifest — the manifest is deleted in class 7, so no content-based predicate is
-decidable post-sweep (BR-CLN-3a). Two consequences stated rather than left implicit: a
-hand-modified file with an expected name is removed (REQ AC-4.3 scopes the criterion to
-*unexpected entries*, and C-9 excludes hand-modification); and a channel-written temp residue
+not read from a manifest — the manifest is deleted in class 7, so a content-based predicate is
+not read post-sweep (BR-CLN-3a). This is the scope decision REQ C-9 states: the criterion judges
+**presence, not provenance** (REQ v0.16 restates C-9's hand-modified-entry exclusion this way,
+correcting an earlier framing as an impossibility claim), not the absence of any decidable
+predicate at all. Two consequences stated rather than left implicit: a hand-modified file with an
+expected name is removed (REQ AC-4.3 scopes the criterion to *unexpected entries*, and C-9
+excludes hand-modification on presence grounds); and a channel-written temp residue
 (`.pdlc-tmp.*`) refuses, because refusing on an unenumerable name is the conservative side of the
-same predicate (E-16b).
+same by-name predicate (E-16b).
 
 **Rows 4a/4b and 5 are surface this TSPEC introduces, not upstream criteria.** REQ AC-4.1…AC-4.4 and
 FSPEC BR-CLN-1…6 describe rows 1–3 only. The usage-error status is a convention transfer from
@@ -742,6 +754,7 @@ no release sits on the critical path.
 | TT-5 (reduced builder emission) | run the reduced `build-runtime.mjs` against a clean temp `dist/`: the emitted file set **set-equals `{pdlc-cli.mjs}`** (a surviving bundle or a silently-emitted manifest fails), stdout carries exactly one `wrote`/`in-sync` row, and after mutating the artifact `--check` prints `STALE pdlc/workflows/dist/pdlc-cli.mjs` on stderr and exits `1`. §3.1's emission contract is otherwise asserted only by construction (§2.3), which is not an oracle | extends `consolidationBuild.test.js`'s T32 block |
 | AT-4.4 | leftovers-present engine run reaches its configured final phase; the written report is compared against the no-leftovers report by AT-5.2's field-set rule; neither output nor report names a leftover path | engine-run evidence + report diff |
 | AT-3.1 | delegation: tool-invocation sequence has length 1, a non-empty dispatch record in the report, relayed fields intact; static half is **conjunctive, not absence-only** — for each of the two delegator files assert (a) the invocation line is present verbatim (`pdlc dev <req-path>` / `pdlc queue`), (b) the three-step resolution ladder of §3.3 is present, (c) the refusal text names the install command, **and** (d) no selection / readiness / dispatch / verdict-parsing / queue-writeback text remains. An empty or truncated file fails (a)–(c) instead of passing (d) vacuously | transcript evidence + source-text assertions. **Host, named (TE TSPEC v9 F-02):** the static half's four conjuncts live in `orchestrateDevSkill.test.js` for `orchestrate-dev/SKILL.md` and, for `orchestrate-queue/SKILL.md`, in `skillFiles.test.js` beside its existing delegator assertions (`RLH-SKILL-08` at `:196`, `RLH-SKILL-09` at `:209`, both of which §2.4's rewrite invalidates and this sweep therefore edits). Both modules are tabulated in §5.5's swept surface and appear in both children's file lists, so no row of that table is left to a description |
+| `RLH-SKILL-10` (consolidate-learnings survival) | `consolidate-learnings/SKILL.md` is not a delegator, so AT-3.1's four-conjunct ladder does not apply to it; it gets the different, black-box oracle FSPEC §3.3 step 4 states for the class-11 edit's two-part obligation (§2.9 class 11, §6.1 item 3, REQ O-8): post-sweep, **(a)** every path the file names exists at HEAD, and **(b)** the file's text names no retired host (no reference to `consolidate-learnings.bundle.js` or to `runtime-adapter.js` survives). Both conjuncts are decidable by reading the file and the tree, so neither requires running the skill — consistent with AT-3.3's "loads and runs when invoked" exclusion, which stands unchanged | new assertion in `skillFiles.test.js`, beside `RLH-SKILL-08`/`RLH-SKILL-09`; source-text only, no skill execution |
 | AT-3.3 clause 2 | The **four** surviving `hooks.json` entries still own their documented contract, asserted per hook rather than as one blanket shape: `nudge-consolidation.sh`, `check-scope-field.sh` and `check-req-size.sh` each emit a `hookSpecificOutput.additionalContext` JSON object on stdout **and** exit `0`; `guard-harvest-before-delete.sh` is a **PreToolUse blocker** whose observable message is on **stderr** with exit **2** on a blocked delete and `0` otherwise (`sys.stderr.write(…)`/`sys.exit(2)` in its embedded Python). Asserting `additionalContext`+`0` over the guard would be a false oracle | Two host modules, one per conjunct. `check-scope-field.sh`'s strengthening lands in the retained `hookCompatibility.test.js` (§2.6) in class 6's reduction commit: `PROP-COMPAT-04` already asserts the exit status (`expect(exitCode).toBe(0); // advisory hook never blocks`, `hookCompatibility.test.js`, the `PROP-COMPAT-04` block) but only `stdout` *containment* of the strings `hookSpecificOutput` and `Scope`, so what is missing is the parsed-JSON half alone — it is strengthened to `PROP-COMPAT-06`'s shape, `JSON.parse(stdout).hookSpecificOutput.additionalContext`, giving the clause equal strength per hook, and the exit assertion is **not** duplicated. `nudge-consolidation.sh`'s new assertion lands in `consolidationHookParity.test.js`, beside the parity corpus that already spawns it, because that hook has **no** exit-status oracle at all — `consolidationHookParity.test.js` asserts `additionalContextOf(…)` parity over a corpus, and its `expect(result.status).toBe(0)` is a `git ls-files` call, not the hook's exit — so a new stdout-JSON-plus-exit-`0` assertion for it is added there (v0.2's citation of that file as already covering the conjunct is withdrawn). `PROP-COMPAT-05` already carries the guard's stderr/non-zero form |
 | AT-1.8 | replay harness output | committed transcript under `docs/pdlc-plugin-retirement/` |
 
@@ -827,7 +840,7 @@ edit-of-any-kind is the membership test, and the table below enumerates every mo
 | `documentOracles.test.js` | class-9 edits: D-1/D-2 adjusted for the packaging/advertised-version exemptions | yes |
 | `orchestrateDevSkill.test.js` | class-11 edit: the delegator-banner expectation at `:93` (`expect(content).toContain(".claude/workflows/orchestrate-dev.bundle.js")`) is retargeted | yes |
 | `consolidationHookParity.test.js` | **edited** by this sweep: AT-3.3 clause 2's `nudge-consolidation.sh` stdout-JSON-plus-exit-`0` assertion is added here (§5.2), the sweep's one *addition*-shaped edit to a surviving module | yes — after the capability conversion below |
-| `skillFiles.test.js` | class-11 edit: `RLH-SKILL-08` (`skillFiles.test.js:196`) and `RLH-SKILL-09` (`:209`) assert delegator source text — `orchestrate-dev/SKILL.md`'s POSTMORTEM/`RESOLVED:` lifecycle and `orchestrate-queue/SKILL.md`'s committed `halted` row — which §2.4's rewrite deletes as pipeline logic; both are also AT-3.1's static-half host (§5.2) | yes |
+| `skillFiles.test.js` | class-11 edit: `RLH-SKILL-08` (`skillFiles.test.js:196`) and `RLH-SKILL-09` (`:209`) assert delegator source text — `orchestrate-dev/SKILL.md`'s POSTMORTEM/`RESOLVED:` lifecycle and `orchestrate-queue/SKILL.md`'s committed `halted` row — which §2.4's rewrite deletes as pipeline logic; both are also AT-3.1's static-half host, and the same module hosts the new `RLH-SKILL-10` (§5.2) for `consolidate-learnings/SKILL.md`'s two-part edit (bundle reference deleted, delegation-contract prose restated) | yes |
 
 **The two admitted modules, and what admitting `consolidationHookParity.test.js` costs (PM/TE TSPEC
 v9 F-01, TE F-02).** Both were in-surface under the membership rule as written and simply missing from
@@ -1218,8 +1231,9 @@ the §2.6 measurement, not re-checked by this oracle.
 ### 6.1 Upstream errata raised (not folded in here)
 
 Ten claims and open surfaces in the upstream documents did not survive a check against the tree at `2cd0d6b1`.
-Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC. **Nine remain
-open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage, not for action.**
+Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC. **Eight remain
+open; items 3 and 9 are resolved upstream — item 3 in REQ v0.14/v0.15 and FSPEC v0.10, item 9 in FSPEC v0.7 —
+and are retained here for lineage, not for action.**
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
    `pipelineWiring.test.js`'s `devMeta()` reads the `DEV_META` template out of
@@ -1241,15 +1255,21 @@ open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage
    `helpers/adapterHarness.js`) is likewise unrowed. This TSPEC leaves it untouched (§2.8).
 
 3. **FSPEC — `consolidate-learnings` has no surviving execution host, so M-11n's rewrite has
-   nothing to name.** Class 7 deletes `consolidate-learnings.bundle.js` (M-10), the module's only
-   host: it needs agent-backed seams (`rtConsInjections()` supplies `_agent`, `_readFile`,
-   `_writeFile`, … in `runtime-adapter.js`), so it cannot be run as plain Node; and the engine's
-   command surface is `dev`, `queue`, `doctor` only (`pdlc/engine/bin/cli.mjs`,
-   `FLAGS_BY_COMMAND`), with `consolidate-learnings` listed in `OPERATOR_ONLY_SKILLS` as a skill
-   *no workflow module dispatches*. FSPEC §3.1 class 11 and M-11n instruct rewriting
+   nothing to name. — RESOLVED UPSTREAM, REQ v0.14/v0.15, FSPEC v0.10 (2026-08-18).** As raised:
+   class 7 deletes `consolidate-learnings.bundle.js` (M-10), the module's only host: it needs
+   agent-backed seams (`rtConsInjections()` supplies `_agent`, `_readFile`, `_writeFile`, … in
+   `runtime-adapter.js`), so it cannot be run as plain Node; and the engine's command surface is
+   `dev`, `queue`, `doctor` only (`pdlc/engine/bin/cli.mjs`, `FLAGS_BY_COMMAND`), with
+   `consolidate-learnings` listed in `OPERATOR_ONLY_SKILLS` as a skill *no workflow module
+   dispatches*. FSPEC §3.1 class 11 and M-11n instructed rewriting
    `consolidate-learnings/SKILL.md:11`'s bundle reference "to name the surviving execution path";
-   post-sweep there is none. This is a live capability the sweep would remove, which REQ NG-3
-   does not contemplate.
+   post-sweep there is none. **REQ accepted the erratum and corrected it**: the bundle reference
+   is now **deleted, not rewritten**, and the correction extends to the skill's delegation-contract
+   prose (`:8`–`:13`) as well — the two-part edit FSPEC §3.1 class 11 states and this TSPEC's
+   §2.9 class-11 row and §5.2's `RLH-SKILL-10` now cover. The capability question the erratum
+   raised is answered too: REQ O-8 accepts the loss of the unattended, machinery-backed pass and
+   **binds** it to a named successor, `pdlc-consolidation-rehost` (§6.2 SUCC-2). No action is
+   outstanding on this item; it is retained for lineage.
 
 4. **REQ/baseline — A-1's allow-list does not cover the two files this TSPEC creates.** The
    cleanup script (`pdlc/hooks/scripts/cleanup-consumer-workflows.sh`) and its oracle
@@ -1361,7 +1381,7 @@ open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage
 | # | Item | Why it is not authored here |
 |---|---|---|
 | SUCC-1 | Phase MERGE's guard-path set does not cover `pdlc/engine/` (§2.7) | `MERGE_GUARD_DEFAULTS` lives in a module the engine vendors verbatim; changing it changes engine runtime behaviour |
-| SUCC-2 | A host for the consolidation pass (erratum 3) — the natural shape is a `pdlc consolidate` command reusing the engine's existing adapter | new engine capability, squarely NG-5 |
+| SUCC-2 | A host for the consolidation pass (erratum 3, §6.1 item 3) — **bound**, REQ O-8, to `pdlc-consolidation-rehost` (`docs/_queue/QUEUE.md` Order 24, `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`), raised before this feature's first deletion commit and shipped `ready: false` so the operator veto stays enforced; the natural shape is a `pdlc consolidate` command reusing the engine's existing adapter | new engine capability, squarely NG-5 |
 
 ### 6.3 Obligations carried into implementation
 
@@ -1372,8 +1392,8 @@ open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage
 | T-1 | Re-run C-6's partition at the sweep's base commit and re-transcribe every FSPEC literal, including §4.4's corrected suite size | implementer, §3.0 entry gate |
 | T-2 | Re-derive `driftGenerators.js`'s surviving export set by a fresh consumer scan (§4.7) rather than trusting the transcription | implementer, class 6 |
 | T-3 | Enumerate the instructional-document per-file list for class 12 at re-measurement time (REQ O-5) | implementer, PLAN |
-| T-4 | **Blocking:** do not land class 13 (`cleanup-consumer-workflows.sh`) or its test module until erratum 4's A-1 allow-list rows are on the branch. Until then AC-1.2 is red by construction and the class-13 commit cannot pass the per-commit gate (§5.4) | implementer, before class 13 |
-| T-5 | **Blocking:** do not land class 7 (bundle deletion) or class 11 (skill rewrites) until erratum 3 has an upstream disposition — either a named surviving execution host for `consolidate-learnings`, or an explicit REQ decision that the skill ships without one. Class 7 removes the only host and class 11 is instructed to *name* it; landing either first ships a skill that cannot run and hides the loss (REQ NG-1, NG-3) | implementer, before classes 7 and 11 |
+| T-4 | **Held class, not a C-7 red:** class 13 (`cleanup-consumer-workflows.sh`) and its test module stay off the branch until erratum 4's A-1 allow-list rows land. Per REQ C-7's settled held-class discipline this is an incomplete feature on an unmerged branch, never a registered expected failure — ordering, not registration, is what keeps AC-1.2 from running red before its class lands (§5.4) | implementer, before class 13 |
+| T-5 | **Resolved upstream, ordering obligation remains:** erratum 3 now has its disposition (REQ O-8, §6.1 item 3) — the bundle reference is deleted and the delegation-contract prose is restated in the same commit, with the capability loss bound to `pdlc-consolidation-rehost` (§6.2 SUCC-2). What REQ C-7 still requires is ordering: class 7 (bundle deletion) and class 11 (both halves of the skill rewrite) land together, so `consolidate-learnings/SKILL.md` never sits on the branch naming a host that no longer loads. Held together this way it is an incomplete feature on an unmerged branch, never a registered expected failure, not a C-7 red (REQ NG-1, NG-3) | implementer, classes 7 and 11 land together |
 | T-6 | Re-check `hookCompatibility.test.js`'s retention at re-measurement: if any assertion outside the `C7` block depends on the drift hook, the disposition flips from reduction back to deletion and erratum 6's correction changes with it | implementer, class 6 |
 
 ### 6.4 Risks this design carries
