@@ -15,10 +15,18 @@
 // Neither half asserts anything about argument lists, return shapes, or
 // behaviour: a later task changing a symbol's shape is that task's business,
 // not this gate's.
+//
+// (c) Pre-flight over the measured baseline (PLAN T01, REQ C-6): every path
+//     named in M-1…M-6, M-9, M-10 and the six M-8 helper paths of
+//     `docs/_constraints/pdlc-retirement-baseline.md` exists at HEAD
+//     (existence only, no shape claim), and that doc's partition-closure
+//     line names a commit that is an ancestor of HEAD with swept =
+//     classified and remainder = 0.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // ─── (a) exported half ──────────────────────────────────────────────────────
@@ -112,4 +120,72 @@ test("BL-PREREQ (b): orchestrate-queue.js declares module-internal writeEvidence
   const source = sourceOf("../../workflows/orchestrate-queue.js");
   assert.match(source, /\bfunction writeEvidenceCarryingRow\b/);
   assert.doesNotMatch(source, /export\s+(async\s+)?function writeEvidenceCarryingRow\b/);
+});
+
+// ─── (c) pre-flight over the measured baseline (PLAN T01, REQ C-6) ─────────
+
+function repoPathOf(relativeToThisFile) {
+  return fileURLToPath(new URL(relativeToThisFile, import.meta.url));
+}
+
+// M-1…M-6, M-9, M-10: the single-file baseline rows (docs/_constraints/
+// pdlc-retirement-baseline.md), each a one-file artifact. Existence only.
+const BASELINE_M_ROW_PATHS = [
+  "../../hooks/scripts/sync-workflows.sh", // M-1
+  "../../hooks/scripts/lib/pdlc-drift.sh", // M-2
+  "../../hooks/scripts/check-workflow-drift.sh", // M-3
+  "../../workflows/dist/orchestrate-dev.bundle.js", // M-4
+  "../../workflows/dist/orchestrate-queue.bundle.js", // M-5
+  "../../workflows/dist/distribution-manifest.json", // M-6
+  "../../workflows/dist/pdlc-cli.mjs", // M-9
+  "../../workflows/dist/consolidate-learnings.bundle.js", // M-10
+];
+
+// M-8's six dedicated helper paths (the ones that exist only to serve M-8's
+// candidate test modules — NOT `driftGenerators.js`, `driftCapabilities.js`,
+// or `driftOrdering.js`, which the baseline doc excludes from the six).
+const BASELINE_M8_HELPER_PATHS = [
+  "../../workflows/__tests__/helpers/driftFixtures.js",
+  "../../workflows/__tests__/helpers/driftHarness.js",
+  "../../workflows/__tests__/helpers/driftProbe.js",
+  "../../workflows/__tests__/helpers/bin/backup-grammar.sh",
+  "../../workflows/__tests__/helpers/bin/lib-probe.sh",
+  "../../workflows/__tests__/helpers/bin/percent-encode-driver.sh",
+];
+
+test("T01 pre-flight: every M-1…M-6, M-9, M-10 and M-8-helper path in the measured baseline exists at HEAD", () => {
+  for (const relativePath of [...BASELINE_M_ROW_PATHS, ...BASELINE_M8_HELPER_PATHS]) {
+    const absolutePath = repoPathOf(relativePath);
+    assert.ok(existsSync(absolutePath), `expected baseline path to exist: ${relativePath}`);
+  }
+});
+
+test("T01 pre-flight: the baseline doc's partition-closure line names a commit ancestor of HEAD with swept = classified and remainder = 0", () => {
+  const baselineDoc = readFileSync(
+    repoPathOf("../../../docs/_constraints/pdlc-retirement-baseline.md"),
+    "utf8",
+  );
+
+  const closureMatch = baselineDoc.match(
+    /\*\*Partition closed at commit `([0-9a-f]+)`, [0-9-]+\.\*\*/,
+  );
+  assert.ok(closureMatch, "expected a '**Partition closed at commit `<sha>`...**' line");
+  const closureCommit = closureMatch[1];
+
+  // The named commit must be an ancestor of HEAD (T-1, REQ C-6): the sweep
+  // that closed the partition must have run at or before this checkout.
+  assert.doesNotThrow(
+    () =>
+      execFileSync("git", ["merge-base", "--is-ancestor", closureCommit, "HEAD"], {
+        cwd: repoPathOf("../../.."),
+      }),
+    `expected ${closureCommit} to be an ancestor of HEAD`,
+  );
+
+  const countsMatch = baselineDoc.match(
+    /(\d+) swept paths, (\d+) classified, remainder empty/,
+  );
+  assert.ok(countsMatch, "expected a '<N> swept paths, <N> classified, remainder empty' line");
+  const [, sweptCount, classifiedCount] = countsMatch;
+  assert.equal(sweptCount, classifiedCount, "swept must equal classified");
 });
