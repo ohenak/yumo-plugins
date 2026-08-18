@@ -912,11 +912,55 @@ nested run's own `globalTeardown` must be disabled or its sink copied before it 
 Neither direction is inherited from `skipSink.js`, which asserts only that records that exist are
 well-formed.
 
-**The join is proven falsifiable, not merely stated.** A fixture module under
-`__tests__/fixtures/` — excluded from the outer run by `testPathIgnorePatterns`, so it costs the
-real suite nothing — carries one bare `it.skip`. The oracle's own red construction points the nested
-run at that fixture and asserts the join fails; without it, an oracle that silently matched two
-empty sets would pass forever.
+**The host is carved out of the nested file set, or the suite spawns itself without bound.** The
+host of the join assertions, `consumerCleanup.test.js`, is itself a swept-surface member, so a
+nested run over the surface as written would collect the host, run the join test again in the child,
+spawn a grandchild, and so on — `isInsideRunningTest()` (`helpers/driftCapabilities.js`) gates only
+the `describeOrSkip` / `itOrSkip` helpers and does not see this. That does not false-green; it hangs
+the gate, and the first person to hit it would "fix" it by narrowing the file set silently. Three
+stated parts, together, close it:
+
+1. **Explicit file list, host excluded.** The child is invoked over an explicit list of
+   swept-surface paths *minus* `consumerCleanup.test.js` — post-sweep, `hookCompatibility.test.js`,
+   `consolidationBuild.test.js` and the falsifying fixture. The exclusion is part of the oracle, not
+   an implementation detail: it is asserted (the spawn argument list is compared to the derived
+   surface-minus-host set) so a later re-widening reds rather than hangs.
+2. **A recursion sentinel that fails loudly rather than skipping.** The spawn sets
+   `PDLC_SKIP_JOIN_NESTED=1` in the child's env, and the spawn helper **throws** if that variable is
+   already set. If a later edit ever puts the host back into the child's file set, the child reds
+   with a named error instead of recursing. The guard deliberately does not skip the child's copy of
+   the join test: a skip there would have to be a *registered* one (or the oracle reds on itself),
+   which would mean a further `SKIP_INVENTORY` row for a purely mechanical guard. Throwing keeps the
+   inventory out of the recursion problem entirely (TE Q-02: the exclusion route is preferred for
+   exactly this reason).
+3. **A compensating check over the host's own skips.** Excluding the host from the join would
+   otherwise leave the one module this feature *writes from scratch* unchecked for bare skips. The
+   host therefore carries a source-level assertion over its own file: no `it.skip`, `test.skip`,
+   `describe.skip`, `it.todo` or `.skip.each` token appears in `consumerCleanup.test.js` outside
+   comments — a static check, not a run-observation, so it needs no nested run and cannot recurse.
+   TT-1b's root-conditional row goes through `itOrSkip`, which is a helper call and not one of those
+   tokens, so the check passes with the registered skip in place.
+
+**The join is proven falsifiable, not merely stated.** A fixture module
+`__tests__/fixtures/skipJoinFalsifier.js` carries one bare `it.skip`. Two naming and
+configuration points make that construction actually run, and both are part of the oracle:
+
+- **The child must override `testPathIgnorePatterns`.** That key is config-level
+  (`pdlc/workflows/package.json`: `/node_modules/`, `/__tests__/helpers/`, `/__tests__/fixtures/`),
+  so it filters explicitly-passed paths too — pointing the child at the fixture without an override
+  collects nothing and the red construction fails loudly rather than proving anything. The child is
+  therefore invoked with `--testPathIgnorePatterns=/node_modules/` (dropping the `helpers/` and
+  `fixtures/` exclusions for the child only) plus the explicit file list of §5.5's carve-out rule.
+  The outer run's config is untouched, so the fixture still costs the real suite nothing.
+- **The fixture is deliberately not named `*.test.js`.** Jest's default `testMatch` collects any
+  `.js` file under a `__tests__` directory, so the fixture would be collected by the child with or
+  without a `.test.js` suffix; the suffix matters only for §4.4's count literal. AT-1.3's wording
+  reads `*.test.js` "under `pdlc/workflows/__tests__/`", which a recursive reading turns into 100
+  rather than §4.4's 99. Naming the fixture `skipJoinFalsifier.js` keeps the two literals from
+  diverging under either reading, and §4.4's measurement stays the top-level glob
+  `pdlc/workflows/__tests__/*.test.js`.
+
+Without this construction, an oracle that silently matched two empty sets would pass forever.
 
 **Both directions, and what each catches.** Left ⊄ right catches a bare `it.skip` or unregistered
 pending marker introduced into the swept surface — the sweep defect AT-1.3 exists to catch. Right ⊄
