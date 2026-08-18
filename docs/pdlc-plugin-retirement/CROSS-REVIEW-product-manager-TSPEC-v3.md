@@ -37,7 +37,49 @@ FINDING: Low | delta | local | §5.2 AT-3.3 clause 2 row | host module for the n
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | TT-3's set-equality companion is scoped to executables under `pdlc/hooks/scripts/`. Should it also pin the *converse* direction that matters to AC-1.7 — that every enumerated script is still registered in `pdlc/hooks/hooks.json`, `cleanup-consumer-workflows.sh` excepted as the deliberate non-hook (§3.2, "Never registered as a hook")? Without it, a hook could keep its mode bit while losing its manifest entry and TT-3 would stay green; AC-1.7's own hook-set equality covers that today, so this may be redundant by design — worth one sentence either way so the next reader does not add it twice. |
+| Q-02 | §2.6's new helper-survivorship paragraph resolves `helpers/freshClone.js` as surviving with `consumerCleanup.test.js` as its sole post-sweep consumer. Verified against the tree (`grep -rln "helpers/freshClone"` returns `bootstrap.test.js` alone today). Is that survivorship pinned anywhere an implementer would trip over it — a class-3 exclusion note in the PLAN task, say — or does it rely on the sweeper reading §2.6? The same paragraph's `helpers/driftOrdering.js` deletion is the mirror case and is easier to get wrong in the other direction. |
+
 ## Positive Observations
+
+- **§4.5's clause 1(b) rewrite is the model fix for a spec-level oracle defect.** It did not merely
+  restate the rule: it replaced prose with a five-row table that says, per path, enumerated or not
+  and why, transcribes the six `outcomes` keys in the code's own spelling (quoted `"max-passes"`
+  included, matching `pdlc/engine/lib/report.mjs:71` exactly), and then states in plain terms what
+  the old shape let through ("it let `engine.outcomes.blocked` or `engine.dispatches.byPhase` vanish
+  in the sweep while clause 1 passed on set-equality and clause 2 skipped the same paths as
+  excluded"). Naming the false-green the previous version admitted is what lets a reviewer check the
+  fix instead of trusting it.
+- **§3.2's 4a/4b split is a genuine spec improvement, not a bookkeeping response.** The v2 row 4
+  bundled an argument-parse error with a mid-`rm` runtime failure under one expectation, and TT-1
+  asserted "removes nothing" over both — true only of the first. The revision splits the row, scopes
+  TT-1 to 4a where the conjunct is true by construction, and gives 4b a weaker but *codeable*
+  expectation (exit `4`, no further removal attempted, partial state reported). The reasoning is
+  stated: "Bundling the two under one row left the second arm with neither an oracle nor an
+  expectation an implementer could code to." That is the right instinct — an oracle that cannot be
+  true is worse than an honest weaker one — and §6.1 erratum 7 was amended to route the pair
+  upstream rather than annexing the product decision here.
+- **§2.7's anchor correction is exactly the DEC-DOC-01 discipline.** The document corrected its own
+  `:47` to `:48` and said what `:47` actually is (the "no code path can mutate a shipped default"
+  comment). Verified: `pdlc/workflows/orchestrate-dev.js:47` is that comment line and `:48` opens
+  `export const MERGE_GUARD_DEFAULTS = Object.freeze([`. Elsewhere in the same round the document
+  moved *away* from line anchors toward symbol anchors (`const FIVE_SCRIPTS`, `describe("§9.3: …")`),
+  which is the more durable citation form for a doc whose subject file is being deleted.
+- **§4.4's withdrawal of the v0.2 `consolidationHookParity.test.js` citation is honest and correct.**
+  The row now states that file's `expect(result.status).toBe(0)` is a `git ls-files` call, not the
+  hook's exit. Verified at `consolidationHookParity.test.js:414` — the assertion sits directly under
+  a `git ls-files --cached --others --exclude-standard` invocation, and `grep -n "exitCode"` over that
+  module returns only the helper's construction site at `:148`, never an assertion. A citation that
+  turned out not to cover what it was cited for was withdrawn in writing rather than quietly dropped.
+- **§2.6's helper survivorship paragraph closes a collateral-damage gap nobody asked about.** Each of
+  the four claims checks out at HEAD: `driftCapabilities.js` keeps `documentOracles.test.js` and
+  `skipSinkTransport.test.js`; `skipSink.js` keeps `skipSinkTransport.test.js`; `freshClone.js`'s only
+  consumer today is `bootstrap.test.js` and TT-3 regains it; `driftOrdering.js` is consumed only by
+  `bootstrap.test.js` and `drift*.test.js` modules, all of which the sweep deletes. Stating
+  survivorship rather than leaving it implicit is what keeps a "delete the drift helpers" task from
+  taking a surviving helper with it.
 
 ## Recommendation
 
