@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.11 | 2026-08-17 |
+| pdlc | approved — ready | Claude | 0.12 | 2026-08-18 |
+
+*0.12 (2026-08-18) — erratum round, one correction: C-7 now dispositions the held-branch interim state (SE erratum) — AC-1.1's unsatisfied set-equality while classes 7–12 are held is an incomplete feature on an unmerged branch, not a C-7 red and not a registered expected failure; ordering, never registration, is the resolution where a check would otherwise run red before its class lands.*
 
 *0.11 (2026-08-17) — erratum round, three corrections: AC-5.2's allowed-difference set is now the exhaustive eight run-variable collections, counted correctly; C-9 drops the hand-edited-file clause that contradicted AC-4.3 (decided in AC-4.3's favour, not reconciled); AC-4.3 states the post-refusal directory state.*
 
@@ -258,6 +260,19 @@ No work starts until every row below reads satisfied.
   (measured; the transcript is captured under BL-08, since a suite that runs zero files also
   exits 0). Any inherited red is repaired
   before the first deletion commit, so the first red the sweep sees is its own.
+
+  **Held classes and the interim state.** C-7 governs the repo's own CI checks at each commit.
+  It does not govern this REQ's completion criteria, which are evaluated when the sweep is
+  complete (AC-1.1's *given* says so). So while a deletion class is held pending an upstream
+  disposition, AC-1.1 being unsatisfied is simply an incomplete feature on an unmerged branch —
+  it is **not** a C-7 red, it is **not** registered anywhere as an expected or tolerated failure,
+  and it does not forbid the ungated classes from landing as their own commits. There is no
+  skip-list, no expected-failure inventory and no tolerated-red register in this feature: C-8
+  already forbids that shape, and a criterion that is allowed to be red by registration stops
+  being a criterion. Where a check that observes a held class would otherwise run red in repo CI
+  before that class lands, the resolution is ordering — the check becomes live with the class it
+  covers — never registration. The branch does not merge on a green subset: completion is all
+  criteria satisfied at HEAD, held classes included.
 - **C-8 — The engine path is the only path under test after the sweep.** Tests deleted with
   their subject (M-8) are removed, never skipped, marked pending or left asserting a vacuous
   truth against an empty directory.
