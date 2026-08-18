@@ -28,6 +28,49 @@ Project-level context read before authoring: `docs/_decisions/DECISIONS-plugin-d
 
 ## Options Considered
 
+Each entry names the choice, the alternatives priced against `2017c6f9`, and the reason each was rejected. The chosen option and its consequences are restated in **Decision** and **Consequences**.
+
+### DEC-01 — Home of the surviving probe CLI
+
+**Context.** After the sweep, `pdlc/workflows/dist/` holds exactly one tracked entry. Today it holds five: `pdlc-cli.mjs`, `distribution-manifest.json`, and three `*.bundle.js` files (`git ls-files pdlc/workflows/dist/`). AC-1.1 accepts either a surviving `dist/` whose tracked set equals `{pdlc-cli.mjs}` **or** a relocation.
+
+- **A — leave the CLI at `pdlc/workflows/dist/pdlc-cli.mjs`** (chosen).
+- **B — relocate to `pdlc/workflows/bin/pdlc-cli.mjs`.** Rejected. It buys nothing a criterion measures: `pdlc/workflows/dist/` is deliberately *not* an AC-1.2 search term, so no retired-term grep improves. It costs a moved build target (`OUT_DIR = resolve(HERE, "dist")`, `build-runtime.mjs:32`), a `.gitignore` review, and — the deciding cost — it trades AC-1.1's *measured set-equality* branch for a fresh TSPEC-named literal that no existing test asserts. Under C-6 that is a strictly weaker oracle.
+- **C — retire `dist/` entirely and hand-maintain the CLI.** Rejected: it contradicts AC-5.3 ("still produced by a build step rather than maintained by hand") and would strand `.claude/pdlc.config.example.json`'s post-wave regeneration step (see DEC-08).
+
+### DEC-02 — Reduce `build-runtime.mjs` rather than delete it
+
+**Context.** `build-runtime.mjs` is 831 lines and emits four artifacts: three bundles (`bundles`, `:694`) plus the hand-written-source CLI (`cliArtifact`, `:532`, built from `CLI_SOURCES = ["orchestrate-dev.js", "cli.mjs"]`, `:530`) and a manifest (`manifestRows`, `:773`).
+
+- **A — reduce it to a single-row emitter** (chosen): `bundles` keeps one row (`{ id: "pdlc-cli", file: "pdlc-cli.mjs", contents: cliArtifact }`), the bundling machinery (`*_META`, `*_ENTRY`, import-rewriting, `RETIRES_BY_ID`, manifest write) goes, and `--check` keeps its exact shape — one `in-sync`/`wrote` line in the success path, `STALE …` + exit 1 otherwise.
+- **B — delete the builder and check in `pdlc-cli.mjs` by hand.** Rejected: AC-5.3 goes red by construction, and the file's two inputs (`orchestrate-dev.js`, `cli.mjs`) both remain live, so the artifact would silently drift on the first later wave that touches either.
+- **C — keep the builder untouched, deleting only the three bundle rows' *outputs*.** Rejected: dead emitters left in a file that a class-7 commit is already rewriting invite the next implementer to re-grow them, and the manifest would keep advertising retired ids.
+
+### DEC-03 — `MERGE_GUARD_DEFAULTS` is not edited by the sweep
+
+**Context.** The frozen guard array (`pdlc/workflows/orchestrate-dev.js:48`) still lists `.claude/workflows/` — a directory the sweep retires — and does **not** list `pdlc/engine/`, where the surviving execution host lives (verified at `2017c6f9`).
+
+- **A — leave the array exactly as shipped** (chosen).
+- **B — drop the stale `.claude/workflows/` member.** Rejected on cost and scope: `orchestrate-dev.js` is vendored verbatim into the published engine (`MODULE_NAMES = ["orchestrate-dev.js", "orchestrate-queue.js"]`, `pdlc/engine/scripts/prepack.mjs:20`), so editing the default set changes what a published engine refuses to merge — REQ NG-5 territory. The stale member is inert, not harmful: it is not an L-2 retired term, so AT-1.2 stays green, and a prefix that matches no post-sweep diff denies nothing.
+- **C — add `pdlc/engine/` while we are here.** Rejected for the same NG-5 reason, and it is the more consequential of the two edits: it would start refusing merges that succeed today. Routed to successor work (SUCC-1) rather than smuggled into a deletion sweep.
+
+### DEC-04 — Consumer cleanup is an operator-invoked, all-or-nothing script
+
+**Context.** REQ G-4/C-9 want consumers' `.claude/workflows/` removable; REQ NG-6 forbids doing it from a hook.
+
+- **A — `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`, operator-invoked, name-only classification against a frozen expected-name set, deleting all-or-nothing: exit `0` (nothing to do / removed), `3` (unexpected entry — nothing deleted), `4` (usage or runtime failure)** (chosen). NG-6 is discharged *structurally* — the script has no entry in `pdlc/hooks/hooks.json` — rather than by a runtime self-check.
+- **B — register it as a `SessionStart` hook.** Rejected: directly violates NG-6, and it would delete consumer files on session open with no operator intent.
+- **C — content-hash classification (delete only byte-identical copies).** Rejected as more code for a weaker guarantee: the sweep must also remove entries the consumer *modified* only by refusing to touch them, and a hash check makes AT-4.3's "an expected entry left on disk is still byte-identical" untestable by reading the implementation. Name-only classification (BR-CLN-3a, C-9) keeps that property inspectable.
+- **D — best-effort partial deletion.** Rejected: partial removal leaves a consumer in a state neither AC-4.x nor the operator can describe. All-or-nothing means the classification pass completes over the whole directory before any unlink.
+
+### DEC-05 — Delegator skills are rewritten thin, not deleted
+
+**Context.** `pdlc/skills/orchestrate-dev/SKILL.md` (97 lines) and `pdlc/skills/orchestrate-queue/SKILL.md` (250 lines) carry pipeline logic that now lives in the engine (`pdlc/engine/lib/run.mjs`).
+
+- **A — rewrite both as thin delegators** (chosen): unchanged frontmatter `name`/`description`, a statement that the pass runs in the engine, the invocation contract, a relay rule and a refusal rule.
+- **B — delete both skill directories.** Rejected: Ptah resolves agents by filesystem `skill_path` into `pdlc/skills/<name>/SKILL.md`, and the engine's own catalogue treats these ids as real (`OPERATOR_ONLY_SKILLS`, `pdlc/engine/lib/startup.mjs:52`). Deletion breaks both consumers and violates REQ C-4.
+- **C — leave the skill bodies as-is and let them go stale.** Rejected: the bodies would keep instructing a runtime that no longer exists (the queue's drift-gate section is the clearest case), which is exactly the "ships a skill that cannot run" failure REQ NG-1/NG-3 exist to prevent.
+
 ## Decision
 
 ## Consequences
