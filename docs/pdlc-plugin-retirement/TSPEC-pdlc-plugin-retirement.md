@@ -234,7 +234,16 @@ survive with live consumers. `helpers/freshClone.js` loses its only consumer
 (`bootstrap.test.js`) and **regains one** in TT-3's fresh-clone half (§5.2) — it must not be swept
 as collateral. `helpers/driftOrdering.js` is consumed only by `bootstrap.test.js` and
 `drift*.test.js` modules, so it ends the sweep consumer-less; it is deleted with them under class
-3 rather than left as dead code, and AT-1.3's repo-wide no-orphan reading covers the check.
+3 rather than left as dead code. **The AT-1.3 citation for this is withdrawn:** AC-1.3 has no
+no-orphan reading — it asserts suite green, no skipped or pending test belonging to M-8, a
+`*.test.js` count equal to the FSPEC literal, and that every module named *retained* is present
+and passing (REQ AC-1.3). A helper is not a `*.test.js` file, so the count clause cannot see it,
+and nothing else upstream asserts orphan-freedom. The deletion is also unowned upstream: the
+baseline's M-8 names exactly six helper files (`helpers/drift{Fixtures,Harness,Probe}.js` and
+`helpers/bin/*.sh`) and `driftOrdering.js` is not among them. Two consequences, stated rather than
+assumed: the membership gap is routed upstream (§6.1 erratum 8), and §5.5 gives the disposition a
+real TSPEC-side oracle covering both directions — no importer-less file left under `helpers/`, and
+`freshClone.js` still imported.
 
 ### 2.7 Phase MERGE's guard paths (FSPEC O-D, REQ O-4)
 
@@ -791,11 +800,21 @@ No `skip`, no pending marker, no assertion left vacuously true over an empty dir
 BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip introduced in a
 *surviving* module during the sweep is the same defect.
 
+**Deleted, and nothing left orphaned.** AT-1.3's field set does not reach non-`*.test.js` files
+(REQ AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get
+their own assertion, landing in `consumerCleanup.test.js` beside TT-3 in the class-3 commit: after
+the sweep, **every** file under `pdlc/workflows/__tests__/helpers/` is imported by at least one
+surviving module (re-derived by grepping the surviving `__tests__` tree, not from a transcribed
+list), and `helpers/freshClone.js` is imported by name — the positive direction, so that sweeping
+it as collateral reds rather than passing vacuously. This is what makes "`driftOrdering.js` is
+deleted because it ends consumer-less" and "`driftCapabilities.js` / `skipSink.js` survive because
+they do not" checkable rather than prose.
+
 ## 6. Open Questions
 
 ### 6.1 Upstream errata raised (not folded in here)
 
-Seven claims and open surfaces in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
+Eight claims and open surfaces in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
 Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC.
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
@@ -868,6 +887,18 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    Amended in v0.3: the usage-error row is now **two** rows — 4a (argument-parse error: nothing
    touched, exit `4`) and 4b (runtime failure: partial removal possible, exit `4`) — because only 4a
    is assertable as "removes nothing". An upstream criterion should own the pair, not the merged row.
+
+
+8. **FSPEC / baseline M-8 — `helpers/driftOrdering.js` is swept but belongs to no disposition.**
+   M-8 names six helper files (`helpers/drift{Fixtures,Harness,Probe}.js`,
+   `helpers/bin/{backup-grammar,lib-probe,percent-encode-driver}.sh`) and the baseline's own note
+   asserts that every importer of the helper modules is inside M-8's 21. `helpers/driftOrdering.js`
+   is a seventh: measured at the base commit its only importers are `bootstrap.test.js` and
+   `drift*.test.js` modules, all of which the sweep deletes, so it ends the sweep consumer-less.
+   §2.6 deletes it under class 3, but no upstream row owns that deletion and AC-1.3's field set
+   cannot see it (a helper is not a `*.test.js` module). Either M-8 gains it as a seventh helper
+   member, or AC-1.3 gains an orphan-freedom conjunct; §5.5 asserts the property either way, so
+   this erratum is about ownership, not about coverage.
 
 
 ### 6.2 Successor work bound under REQ NG-5
