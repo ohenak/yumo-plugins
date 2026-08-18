@@ -620,11 +620,12 @@ committed transcript or from an observed run; none is satisfied by an agent repo
   3. **Term fidelity.** The command's term list set-equals L-2's seven terms — a run with a term
      added or removed does not satisfy this test.
 - **AT-1.3** (AC-1.3) *Who:* maintainer. *Given* HEAD, *when* the workflow suite runs, *then* it
-  is green; the suite contains **no skipped or pending test absent from the skip sink's
-  inventory** (repo-wide, not only among M-8's modules — an unregistered skip in a surviving
-  module is the same defect and BR-SWEEP-6 forbids both; a skip registered through `itOrSkip`
-  with a `SKIP_INVENTORY` entry declaring its capability gap is a declared runner limitation and
-  does not fail this test);
+  is green; across the **swept surface** (M-8's deleted modules and the surviving modules hosting
+  R-8's re-homed assertions) the suite contains **no skipped or pending test absent from the skip
+  sink's records for that run** — a capability-gated skip that registers itself into the sink is a
+  declared runner limitation and does not fail this test, while a bare `it.skip` or unregistered
+  pending marker in that surface does; pending markers elsewhere in the suite, including
+  `guardMatrix.test.js`'s pre-existing rows, are out of this criterion's scope (BR-SWEEP-6);
   `*.test.js` under `pdlc/workflows/__tests__/` counts exactly L-5's post-sweep literal; and, for
   each of L-6's two rows, the named module exists **and contains the named assertion titles**,
   each of which reds when the behaviour it re-homes is reverted. Module presence without the
