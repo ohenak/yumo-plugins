@@ -21,6 +21,15 @@ All three v3 findings are resolved with evidence. No previously approved section
 
 ## Findings
 
+Scanned: only the diff's changed regions — the cross-review lineage row, the v0.4 changelog row, DEC-06's excluded-reference list, DEC-09's negative-arm sentence, DEC-10's price paragraph, DEC-10's owner cell, the "Four" → "Five cross-cutting rules" line, rule 5's gated-class range, the Consequences row, and the gated-merge paragraph.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **The class-13 quote at `:237` ships with literal backslashes, so the one place a reader checks the "is class 13 really ungated?" question renders as `\"Independent; may land any time\"`.** The escape survives in the bytes: `cat -A` on line 237 shows `\"Independent;·may·land·any·time\"`, while the same quote one paragraph up (`:150`) is written with plain quotes and correctly reproduces the full FSPEC text. This is cosmetic, but it lands on the sentence that closes F-01's partition — the one PLAN reads to decide that class 13 needs no gate edge — and rule 2's transcribe-don't-re-measure discipline is about quotes being trustworthy on sight. Fix: drop the two backslashes; optionally quote `:165` in full as `:150` does, since the truncated form silently drops the "but its documentation is part of the one story class 12 tells" half that the very next clause then paraphrases. | FSPEC §3.1 `:165`; DEC-10 |
+| F-02 | Low | Local | **DEC-10's owner cell books class 12 on a class-7 predecessor edge, but FSPEC binds class 12 to *all* deletion classes, so the `Deps` edge PLAN derives from this cell is weaker than the ordering it is meant to enforce.** `:171` now reads "a `Deps` edge on every class-7/8/9/10/11/12 task", extending the same class-7-predecessor construction to class 12. That is sound as a *gate* — class 12 cannot precede class 7 — but it is not FSPEC's actual constraint: class 12's ordering cell is "Last of the deletion classes" (`FSPEC:164`), i.e. it succeeds classes 6–11 as a set, not class 7 alone. A PLAN that mechanically derives edges from this cell can produce a batch DAG in which class 12 is orderable immediately after class 7 and ahead of classes 8–11, which the FSPEC row forbids. The gate arithmetic in `:150` is unaffected (12 is still blocked), so this is not a counting error; it is an under-specified edge that the parser-checked mechanism DEC-10 is proud of will not catch. Fix: in the owner cell, distinguish the erratum-3 gate edge (class-7 predecessors, classes 7–12) from class 12's own last-of-set edge over classes 6–11. | FSPEC §3.1 `:164`; REQ C-6; DEC-10 |
+
+No High findings. Neither Low finding changes a chosen option, a count, or a downstream obligation's scope.
+
 ## Questions
 
 ## Positive Observations
