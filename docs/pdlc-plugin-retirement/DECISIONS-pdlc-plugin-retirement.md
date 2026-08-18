@@ -4,12 +4,13 @@
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | _none yet_ |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md` |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-08-17 | Initial: DEC-01…DEC-09 extracted from TSPEC v0.10, re-verified at `2017c6f9`. |
+| 0.2 | 2026-08-17 | Iteration-1 cross-review response (PM F-01…F-07, TE F-01…F-08): new DEC-10 (`consolidate-learnings` host blocks classes 7/11 on erratum 3); rules 1–2 restated (runtime-behaviour carve-out, transcribe-don't-re-measure) and rule 4 added; owning-oracle column added to the Decision table; DEC-03/DEC-08/DEC-09 given named oracles; DEC-07 given a blocking clause; DEC-04 records `--dry-run` and the 4a/4b split; DEC-02 count corrected to five; DEC-06 citation arithmetic and test-line scope corrected. Re-verified at `2017c6f9`. |
 
 ## Context
 
@@ -203,7 +204,7 @@ Four cross-cutting rules follow from the set and bind implementation:
 ## Consequences
 
 **What gets easier.** After the sweep `pdlc/workflows/` has one tracked build output instead of
-five, and `build-runtime.mjs` has one emitter instead of four. A wave that touches
+five, and `build-runtime.mjs` has one emitter instead of five. A wave that touches
 `orchestrate-dev.js` or `cli.mjs` regenerates a single file, so post-wave diffs stop carrying three
 megabyte-scale bundle rewrites that no reviewer reads. The two delegator skills shrink from 347
 lines of duplicated pipeline logic to thin delegation, removing the standing drift risk that REQ
@@ -213,10 +214,12 @@ NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the
 
 | Consequence | Owner decision | Price |
 |---|---|---|
-| The repo keeps a 56 KB module (`runtime-adapter.js`) plus 509 lines of tests for it with no in-repo executor | DEC-06 | Reviewers will read it as dead weight until erratum 2 lands a disposition. Accepted over an unspecified deletion that would break four modules' explanatory comments and dangle citations inside `pdlc/engine/lib/adapter.mjs` |
+| The repo keeps a 1,209-line / 56,713-byte module (`runtime-adapter.js`) with no in-repo executor | DEC-06 | Reviewers will read it as dead weight until erratum 2 lands a disposition. Accepted over an unspecified deletion that would break nine cite sites across four surviving modules and dangle citations inside `pdlc/engine/lib/adapter.mjs`. The 509 lines of `adapterProbe.test.js` + `adapterHarness.js` are **not** part of this price: their subject is `pdlc-cli.mjs`'s probe transport, which DEC-01 keeps |
 | `MERGE_GUARD_DEFAULTS` keeps a member (`.claude/workflows/`) naming a retired directory | DEC-03 | A cosmetically stale constant, shipped verbatim into the published engine. Editing it is an engine change (REQ NG-5); the staleness is inert because the guard only ever *widens* refusal |
 | Consumer `.claude/workflows/` copies are cleaned only when an operator runs the script | DEC-04 | Consumers who never run it keep stale files indefinitely. Accepted: NG-6 forbids the automatic path, and all-or-nothing classification keeps AT-4.3 inspectable |
 | `hookCompatibility.test.js` survives with fewer blocks than FSPEC M-8's count implies | DEC-07 | The deletion-set count is wrong until erratum 6 lands. Accepted over deleting passing `PROP-COMPAT-*` assertions to satisfy a literal |
+| Two of eleven classes (7 and 11) cannot land on engineering's schedule | DEC-10 | The sweep's completion date is bound to an upstream product answer about `consolidate-learnings`'s host. Accepted over shipping a skill whose named execution path does not exist (NG-1, NG-3), which is the failure the surviving `nudge-consolidation` hook would advertise every session |
+| Class 6 cannot land before erratum 6 | DEC-07 | One suite-size literal is assertable at a time; between now and the erratum, an in-place reduction reds AC-1.3 correctly. Accepted over a re-measured expected value that greens by construction |
 
 **Reversibility.**
 
@@ -234,7 +237,19 @@ NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the
 1. **Erratum 2 lands a `runtime-adapter.js` disposition** — DEC-06 is superseded by whatever the
    upstream document decides; the module's fate stops being a sweep-local judgement call.
 2. **Erratum 6 corrects FSPEC M-8's membership and count** — DEC-07's in-place reduction should be
-   re-read against the corrected set before Phase P begins.
+   re-read against the corrected set before Phase P begins, and its blocking clause dissolves: the
+   assertable suite-size literal moves from 97 to 99 and class 6 unblocks.
+2a. **Erratum 3 lands a disposition for `consolidate-learnings`'s execution host** — DEC-10's block
+   on classes 7 and 11 lifts, and the option the disposition chooses (a successor `pdlc
+   consolidate-learnings` command per SUCC-2, an interactive rewrite, or an explicit accepted
+   loss) supersedes DEC-10 entirely.
+2b. **Erratum 5 is ratified upstream (FSPEC M-11h corrected to "prose only")** — DEC-08 stops being
+   a sweep-local reading of class 10 and becomes the upstream disposition; if instead upstream
+   confirms both config values retire, DEC-08 must be re-opened together with AC-5.3's
+   "produced by a build step" claim.
+2c. **An AC-4.5 lands for the cleanup tool's `--dry-run` and 4a/4b exit split** (erratum 7) —
+   DEC-04's operator surface gains an owning criterion, and TSPEC §3.2 rows 4a/4b/5 stop being
+   engineering-owned product surface.
 3. **The engine carve-out is lifted** (a future REQ permits editing `pdlc/engine/**`) — DEC-03,
    DEC-06 option C and DEC-09 option B all become live again, since each was rejected on carve-out
    cost rather than on merit.
@@ -245,5 +260,9 @@ NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the
 
 **Downstream obligations.** PLAN must order the class-7 commit so the DEC-02 builder reduction and
 the DEC-01 `dist/` deletion land together (a builder that still emits three retired bundles against
-a swept `dist/` fails `--check`), and PROPERTIES must own the re-measurement rule from Decision
-rule 2 rather than pinning REQ C-6's inherited literal.
+a swept `dist/` fails `--check`), and PROPERTIES must own Decision rule 2 in its transcription
+direction: every expected value is a literal from the owning upstream document, a disagreement
+with the tree halts to an erratum, and no property derives its expected value from the tree under
+test. PLAN must also carry DEC-10's block (classes 7 and 11 gated on erratum 3) and DEC-07's
+(class 6 gated on erratum 6) as real dependency edges, not prose notes, and must add the class-9
+positive version assertion DEC-09 names — the one decision in this set with no oracle at HEAD.
