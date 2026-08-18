@@ -873,7 +873,8 @@ authored once in the inventory and copied into the `itOrSkip` call, not paraphra
 AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get their
 own assertion, landing in `consumerCleanup.test.js` beside TT-3 in the class-3 commit: after the
 sweep, **every** surviving `*.js` file directly under `pdlc/workflows/__tests__/helpers/` is either
-(a) imported by at least one surviving test module or helper, **or** (b) referenced by Jest
+(a) reachable, through import edges, from at least one surviving `*.test.js` module — directly or
+through other surviving helpers — **or** (b) referenced by Jest
 configuration in `pdlc/workflows/package.json` — the `globalSetup` / `globalTeardown` keys, which
 today name `__tests__/helpers/skipSinkSetup.js` and `__tests__/helpers/skipSinkTeardown.js`. Both
 channels are real wiring: neither setup file has an importer under `__tests__/*.test.js` today
@@ -881,7 +882,7 @@ channels are real wiring: neither setup file has an importer under `__tests__/*.
 yet both are load-bearing for the skip sink and both survive the sweep. A single-channel universal
 would therefore go red against green infrastructure.
 
-Three scope rules keep the assertion set-derived rather than a transcribed exception list:
+Four scope rules keep the assertion set-derived rather than a transcribed exception list:
 
 1. **Both channels are re-derived, not transcribed.** Channel (a) greps the *surviving* `__tests__`
    tree; channel (b) reads the `globalSetup` / `globalTeardown` values out of
@@ -895,7 +896,15 @@ Three scope rules keep the assertion set-derived rather than a transcribed excep
    `helpers/bin/*.sh` drivers, leaving that directory empty post-sweep; shell drivers are *spawned*,
    not imported, so an import-graph oracle cannot judge them. Scoping the universal to `*.js` files
    at the top level of `helpers/` keeps a later re-added shell driver from reddening the oracle for
-   a reason unrelated to orphan-freedom.
+   a reason unrelated to orphan-freedom. Git tracks files, not directories, so deleting the three
+   drivers removes `helpers/bin/` from the tree outright; no empty tracked path is left for a later
+   reader to mistake for a survivor.
+4. **Channel (a) is reachability, not one hop.** Two helpers that import only each other are
+   orphans, and a one-hop "imported by some surviving `.js`" rule would pass them. The traversal
+   therefore roots at surviving `*.test.js` modules and at channel (b)'s configured entry points,
+   and closes over helper-to-helper edges; `helpers/skipSink.js`, whose importers are other helpers
+   plus `skipSinkTransport.test.js`, is reachable either way, while a mutually-importing pair with
+   no test-module or config root reds.
 
 The assertion is written in the positive direction on purpose — `helpers/freshClone.js` must be
 imported by name — so that a sweep taking collateral files with it reds instead of passing
