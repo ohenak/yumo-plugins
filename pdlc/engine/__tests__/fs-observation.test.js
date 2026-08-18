@@ -194,33 +194,6 @@ test("PROP-READ-7: clause 3 is scoped to .claude/workflows/ only — consumer do
   );
 });
 
-// --- AT-ENG-48: opt-out posture changes whether a drift-state read is observable ---
-//
-// "a `pdlc queue` run with the opt-out configured opens no path under
-// `.claude/workflows/`; without it, the run is blocked by the module's gate."
-// A full `pdlc queue` run is T46's populated-fixture concern; this file's
-// unit-level slice pins the clause-3 matcher's verdict on the two shapes of
-// recording that opt-out posture produces, per PROP-READ-2.
-
-test("PROP-READ-2/AT-ENG-48: clause 3 holds on a recording with the opt-out's read-set (no drift-state read)", () => {
-  const { consumerRoot } = makeScratchRoots();
-  // Opt-out configured (`distribution.checkEnabled: false`): the drift-state
-  // read under .claude/workflows/ never happens (TSPEC §7.7, `orchestrate-
-  // queue.js:1071-1072`'s short-circuit) — simulated here as an empty window.
-  const records = [];
-  assert.equal(clause3WorkflowsAbsence(records, consumerRoot), true);
-});
-
-test("PROP-READ-2/AT-ENG-48: clause 3 fails on a recording with the no-opt-out read-set (drift-state read observed)", () => {
-  const { consumerRoot, workflowsFile } = makeScratchRoots();
-  // No opt-out: the module's gate reads the drift-state file under
-  // `.claude/workflows/` before the run proceeds — that read must be
-  // observable, and the matcher must catch it (same clause-3 logic as the
-  // deliberate-read control above, not a separate code path).
-  const records = [workflowsFile];
-  assert.equal(clause3WorkflowsAbsence(records, consumerRoot), false);
-});
-
 // --- AT-ENG-50/PROP-READ-6/PROP-REP-3: no engine-owned file is created under the consumer ---
 //
 // "no engine-owned file is created under a consumer repo across a full

@@ -324,69 +324,6 @@ test("a bad REQ path is refused by the module, not by the engine", async (t) => 
   assert.equal(calls.length, 0, "a rejected REQ path costs no dispatch");
 });
 
-// ─── the queue entry, same offline arrangement ───────────────────────────────
-
-test("pdlc queue is blocked by the drift gate in a repo with no .claude/workflows", async (t) => {
-  // A consumer repo of the kind this feature exists to enable — no
-  // `.claude/workflows/` at all — has no drift-state record, so
-  // orchestrate-queue's gate maps to row 1 and blocks BEFORE reading QUEUE.md.
-  // Documented here because it is a real contract mismatch, not a test artifact.
-  const root = makeConsumerRepo({
-    files: {
-      "docs/_queue/QUEUE.md": [
-        "| Order | Status | Feature | REQ Path | Depends-On |",
-        "|---|---|---|---|---|",
-        `| 1 | pending | ${FEATURE} | ${REQ_PATH} | - |`,
-        "",
-      ].join("\n"),
-    },
-  });
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-
-  const { transport, calls } = scriptedTransport(root);
-  const { report } = await runQueue({
-    cwd: root,
-    adapter: smokeAdapter(root, transport),
-    startup: { ok: true, reason: null },
-  });
-
-  assert.equal(report.outcome, "blocked");
-  assert.match(report.reason, /Drift gate row 1/);
-  assert.equal(calls.length, 0, "a blocked gate costs no dispatch");
-});
-
-test("pdlc queue runs its own Phase-0 triage once the drift gate is opted out", async (t) => {
-  // The opt-out the gate honours here lives in `.claude/pdlc.config.json`'s
-  // `distribution.checkEnabled: false` (CLAUDE.md's documented consumer opt-out) — the
-  // config-side gate added to reach exactly this arrangement: an engine-only consumer with
-  // no `.claude/workflows/` tree at all, and therefore no drift-state record ever written,
-  // could not previously reach ANY opt-out (the record-based one requires the record to
-  // exist). The config read is checked before the drift-state record is even attempted.
-  const root = makeConsumerRepo({
-    files: {
-      ".claude/pdlc.config.json": JSON.stringify({
-        distribution: { checkEnabled: false },
-      }),
-      "docs/_queue/QUEUE.md": [
-        "| Order | Status | Feature | REQ Path | Depends-On |",
-        "|---|---|---|---|---|",
-        "",
-      ].join("\n"),
-    },
-  });
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-
-  const { transport } = scriptedTransport(root);
-  const { report } = await runQueue({
-    cwd: root,
-    adapter: smokeAdapter(root, transport),
-    startup: { ok: true, reason: null },
-  });
-
-  // No rows at all → the module's own idle exit, which is what `--loop` stops on.
-  assert.ok(["idle", "no-queue"].includes(report.outcome), JSON.stringify(report));
-});
-
 // ─── the T48 corpus: five configurations, seven M-ENG-07 model-map rows ──────
 //
 // Every run below dispatches through the REAL adapter and the REAL
@@ -708,7 +645,7 @@ test("corpus run v(b): an unparseable PLAN task table falls back to Haiku DAG ex
 // rather than by importing anything (PLAN §1.3 skip-naming convention).
 // ---------------------------------------------------------------------------------------------
 
-test.skip("T05: no leg of the engine suite observes the consumer runtime copy via the drift gate", () => {
+test("T05: no leg of the engine suite observes the consumer runtime copy via the drift gate", () => {
   // Each target title below is built from two concatenated fragments so THIS
   // assertion's own source text never contains it as one contiguous
   // substring — otherwise a self-referential match would make this check
@@ -744,7 +681,7 @@ test.skip("T05: no leg of the engine suite observes the consumer runtime copy vi
   );
 });
 
-test.skip("T05: pdlc/engine/__tests__/fixtures/consumer-ac12/ is not a tracked path", () => {
+test("T05: pdlc/engine/__tests__/fixtures/consumer-ac12/ is not a tracked path", () => {
   const tracked = execFileSync(
     "git",
     ["ls-files", "pdlc/engine/__tests__/fixtures/consumer-ac12/"],
