@@ -6,7 +6,20 @@
 **Document at halt:** `FSPEC-pdlc-plugin-retirement.md` v0.8 (`1eccc97c`)
 **Non-approving confirmers:** se-review, te-review
 
-RESOLVED: no
+RESOLVED: yes
+
+*Resolution evidence (2026-08-18).* Recommendation item 1 landed as `76591d1e` (upstream
+erratum 5 — REQ v0.13 C-5/AC-1.2 + baseline M-11h now state the postWave values survive) and
+`134fec23` (upstream erratum 3 — REQ v0.14 §A-1 + baseline M-11n: reference deleted, not
+rewritten; capability question routed to new O-8). O-8's deferral was then bound as
+`0a5e6a15` + `a5cb6322`: successor `pdlc-consolidation-rehost` raised (queue Order 24,
+`ready: false` draft REQ) per the recorded 2026-08-08 operator direction and NG-5, REQ v0.15.
+Item 2 landed as `c14048ed` (FSPEC v0.9): SE F-01–F-06 and TE F-01–F-07 each addressed —
+§7.2 rows 4–5 for the upstream errata, §3.3 step 4 rewritten at host granularity with the
+black-box oracle, class-10 pin re-pointed to the tracked example file, erratum-10 open row,
+label sweeps. Item 3 (delta re-confirmation scoped `1eccc97c..HEAD`) is the re-run this
+marker clears. Item 4's two protocol fixes (erratum reach check, fail-closed `FINDING:`
+lint) are deferred to `/pdlc:consolidate-learnings` as the postmortem proposed.
 
 ## Phase
 
