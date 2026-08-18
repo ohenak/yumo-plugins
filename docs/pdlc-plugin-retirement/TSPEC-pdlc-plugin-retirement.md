@@ -849,26 +849,78 @@ that choice is exactly erratum 9 plus the join oracle below.
 
 **The narrowed clause needs a stated evaluation mechanism; the sink comparator is not one.**
 `validateSkipRecords` (`helpers/skipSink.js`, clauses C1/C2/C3) checks only the *registered*
-direction: every record is well-formed, names a `KNOWN_CAPABILITY_KEYS` capability, and agrees
-verbatim with its `SKIP_INVENTORY` row. Nothing in it observes jest's pending list, so a bare
-`it.skip` added by the sweep produces no record and no violation — the comparator is silent, not
-green-with-evidence. A count-only test (`pendingCount === sinkRecords.length`) would be the cheapest
-passing thing and would not assert the property either. The oracle is therefore stated as a **set
-join**, and it is the AT-1.3 clause's evaluation:
+direction: a record is well-formed, names a `KNOWN_CAPABILITY_KEYS` capability, and agrees verbatim
+with its `SKIP_INVENTORY` row. Nothing in it observes jest's pending list, so a bare `it.skip` added
+by the sweep produces no record and no violation — the comparator is silent, not
+green-with-evidence. A count-only test (`pendingCount === sinkRecords.length`) is the cheapest
+passing thing that does not assert the property either. The oracle is therefore a stated **set
+join**, and it is the landed clause's evaluation:
 
-- **Left set:** jest's pending set for the run — `assertionResults` entries with
-  `status: "pending"`, taken from the run's `--json` output, keyed by their `title`.
-- **Right set:** the sink's records for the same run, keyed by `name`, after `validateSkipRecords`
-  returns zero violations against `SKIP_INVENTORY`.
-- **Join key:** the leaf title. This is sound because `itOrSkip(name, …)` passes the *same* `name`
-  to `it.skip(name, body)` and to `registerSkip(name, …)`, so a registered skip's jest title and its
-  record name are one string by construction.
-- **Assertion:** set **equality**, both directions, not containment. Left ⊄ right catches the bare
-  `it.skip` the rule exists to catch; right ⊄ left catches a record written for a test that did not
-  actually skip (a stale or hand-written entry).
+- **Domain (the swept surface, not the run).** Both sets are restricted to the `*.test.js` files
+  §4.4 enumerates as swept: M-8's deleted modules (absent post-sweep, so contributing nothing) plus
+  the surviving hosts of R-8's re-homes. `guardMatrix.test.js` is **out of the domain** and stays
+  out: it is not an M-8 member, hosts no re-home, and its ~70 `it.skip.each(NON_BESPOKE_BLOCK)`
+  rows (`guardMatrix.test.js`, `it.skip.each` at the `NON_BESPOKE_BLOCK` row, plus the per-row
+  `isLive(...) ? it : it.skip` ternary) are pre-existing pending state AT-1.3 names explicitly as
+  out of scope. `skipSink.js`'s own header already excludes them from the comparator's domain for
+  the same reason. A later reader must not re-widen the left set to the whole run: doing so reds the
+  gate on a defect this sweep did not introduce.
+- **Left set:** the pending set of a run over that domain — `assertionResults` entries with
+  `status: "pending"` from the run's `--json` output, keyed by `title`.
+- **Right set:** that same run's sink records, keyed by `name`, after `validateSkipRecords` has
+  passed them against `SKIP_INVENTORY`.
 
-Both directions are new assertions in `consumerCleanup.test.js`; neither is inherited from
-`skipSink.js`, which asserts only that records that exist are well-formed and on the ledger.
+**Where the join runs: a nested jest run, not the outer one.** A test inside a run cannot observe
+its own run's pending set or its final sink — `--json` output exists only after the run ends, and
+the sink is append-only per worker until `globalTeardown` reads it once and `rmSync`s the directory
+before reporting (`helpers/skipSinkTeardown.js`, `readSkipRecords` then `rmSync`). Extending
+`skipSinkTeardown.js` is likewise not available: jest's `globalTeardown` receives config only, never
+`assertionResults`, so the left set is not in scope there. The join therefore runs as new assertions
+in `consumerCleanup.test.js` that **spawn a nested jest run** over the swept-surface files with
+`--json` and with `PDLC_SKIP_SINK` pointed at a fresh temp path, then read both outputs and compare.
+The env var is redirectable by design (`SKIP_SINK_ENV` in `helpers/skipSink.js`;
+`skipSinkTransport.test.js`'s `useSink` already redirects and restores it around each test), and the
+nested run's own `globalTeardown` must be disabled or its sink copied before it deletes the file.
+Neither direction is inherited from `skipSink.js`, which asserts only that records that exist are
+well-formed.
+
+**The join is proven falsifiable, not merely stated.** A fixture module under
+`__tests__/fixtures/` — excluded from the outer run by `testPathIgnorePatterns`, so it costs the
+real suite nothing — carries one bare `it.skip`. The oracle's own red construction points the nested
+run at that fixture and asserts the join fails; without it, an oracle that silently matched two
+empty sets would pass forever.
+
+**Both directions, and what each catches.** Left ⊄ right catches a bare `it.skip` or unregistered
+pending marker introduced into the swept surface — the sweep defect AT-1.3 exists to catch. Right ⊄
+left catches a record written for a test that did not actually skip (a stale or hand-written entry).
+Two restrictions make the join key sound, and both are stated because they hold by construction
+today rather than by guarantee:
+
+- **`itOrSkip` only, no `describeOrSkip`, in the swept surface.** `itOrSkip` passes the same `name`
+  to both `it.skip` and `registerSkip` (`helpers/driftCapabilities.js`), so one record pairs with
+  one pending leaf. `describeOrSkip` registers **one** record but `describe.skip` yields one pending
+  entry per leaf under it — N pending vs 1 record reds the right⊄left direction spuriously. No
+  surviving module uses `describeOrSkip` today (every caller is a `drift*` module M-8 deletes), so
+  the restriction holds; it is stated so a later re-home does not break the oracle by accident. If a
+  `describeOrSkip` call ever enters the swept surface, the join key must move to `fullName` and the
+  cardinality rule must change with it.
+- **The in-test registration branch produces records with no pending entry.** Both helpers return
+  early when `isInsideRunningTest()` — registration happens, but `it.skip` is never called, so a
+  record exists with no jest pending entry: exactly the right⊄left shape. `skipSinkTransport.test.js`
+  uses this idiom deliberately and is harmless only because `useSink` repoints `PDLC_SKIP_SINK` at a
+  temp path per test and restores it afterwards, so those records never reach the authoritative
+  sink. The oracle's right⊄left direction depends on that redirection staying in place; a future
+  edit that drops it would red the join for a reason unrelated to the sweep.
+
+**`hookCompatibility.test.js`'s ten bare `it.skip` fallbacks are in the surface and are converted.**
+The module is an M-8 member reduced in place (§2.6, §4.4 class-6 reduction) and hosts R-8 re-homes,
+so it is inside the swept surface and its ten `(hasBash ? it : it.skip)(…)` call sites are bare,
+unregistered, and invisible to the sink — the left⊄right direction reds on a bash-less runner unless
+they are dispositioned. They are converted to `itOrSkip("bash", …)` with matching `SKIP_INVENTORY`
+entries. `"bash"` is already a `KNOWN_CAPABILITY_KEYS` member, so this needs no new capability; it
+does widen `SKIP_INVENTORY` by ten rows, and that widening is part of class-6's reduction scope for
+this module, not a separate unowned edit. On a bash-capable runner (the gate's configuration) none
+of the ten fires and the inventory rows are inert but still C3-checked.
 
 **The `SKIP_INVENTORY` entry is an edit to a surviving helper, and it belongs to class 3.**
 Registering TT-1b's gap means editing `helpers/driftCapabilities.js` — a file §2.6 disposes of as a
