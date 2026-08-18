@@ -15,7 +15,9 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved — ready | Claude | 0.12 | 2026-08-18 |
+| pdlc | approved — ready | Claude | 0.13 | 2026-08-18 |
+
+*0.13 (2026-08-18) — upstream erratum round, one correction (Phase D erratum 5; SE FSPEC-v11 F-01): the wave-gate pair is **not** retired. C-5's commit-class entry and AC-1.2's term-set rationale said the configured `postWaveCommand`/`postWavePathspecs` values retire; they survive, because the reduced build step still emits M-9 into `pdlc/workflows/dist/` under O-3. M-11h is a prose-and-assertion edit class, and the measured baseline's M-11h row is corrected with it.*
 
 *0.12 (2026-08-18) — erratum round, one correction: C-7 now dispositions the held-branch interim state (SE erratum) — AC-1.1's unsatisfied set-equality while classes 7–12 are held is an incomplete feature on an unmerged branch, not a C-7 red and not a registered expected failure; ordering, never registration, is the resolution where a check would otherwise run red before its class lands.*
 
@@ -226,8 +228,9 @@ No work starts until every row below reads satisfied.
 - **C-5 — Deletion order is reversible per step.** Each removal — bundle emission + the three
   `dist/` bundles, sync script, drift library, drift hook + its wiring, queue gate (with its
   engine-side coverage), CI jobs **in both `pr-tests.yml` and `publish.yml`'s tag gate**, the
-  wave-gate config *values* (M-11h — the configured pathspec retires; the generic parser that
-  reads it and that parser's tests do not), `.worktreeinclude`, the `.gitignore` row, document
+  wave-gate class (M-11h — a prose-and-assertion edit, not a value retirement: the configured
+  post-wave command and pathspec both survive, because the reduced build step still emits M-9
+  into `pdlc/workflows/dist/` under O-3), `.worktreeinclude`, the `.gitignore` row, document
   oracles, the skill files (M-11n), the three workflow modules' header banners (M-11o, M-11i), the
   retired-artifact assertions inside surviving test modules (M-11p), docs — lands as its own commit, so a regression bisects to one artifact class. A single
   "delete everything" commit is disallowed even if the tree is green. Where C-7 and this
@@ -316,10 +319,11 @@ observed run — none depends on an agent reporting success.
   identifier is a member: `build-runtime.mjs` and
   `pdlc/workflows/dist/` are **not** terms (M-7 is reduced, not deleted, and AC-1.1 requires M-9
   to survive, so either would red permanently on files this REQ keeps), and neither is the bare
-  key `postWavePathspecs` (M-11h retires a *value*; `orchestrate-dev.js`
-  keeps the generic parser at `:168`, `:218`–`:245`, `:14416` and `waveExecution.test.js` its
-  coverage). The retired wave-gate values are caught where the partition already catches them, as
-  M-11h edits with named per-file dispositions. The baseline's sweep recipe is a documented
+  key `postWavePathspecs` (M-11h retires neither the key nor its configured value: the reduced
+  build step still emits M-9 into `pdlc/workflows/dist/` under O-3, so the configured post-wave
+  command and pathspec keep naming live outputs, `orchestrate-dev.js` keeps the generic parser
+  and `waveExecution.test.js` keeps its coverage). M-11h's per-file dispositions are therefore
+  prose-and-assertion edits about that pair, not removals of it. The baseline's sweep recipe is a documented
   **superset** of this set, its delta and that delta's owners named there.
 
   A-1 is complete over the tracked files carrying these names at the
