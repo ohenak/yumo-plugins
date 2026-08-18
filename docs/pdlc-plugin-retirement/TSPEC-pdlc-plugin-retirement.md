@@ -484,11 +484,13 @@ outage on the retirement commit (E-19).
 seeded, resolveSeed, shrink
 ```
 
-Measured at `2cd0d6b1`: eleven `*.test.js` modules import the helper; seven survive the sweep
-(`advisoryConfig`, `advisoryEnvelope`, `advisoryEscalationLog`, `approvalHash`, `completeness`,
-`forcePhases`, `pacingWrapper`, `roundDerivation`, `scanLines` — of which the seeded-import
-subset is what matters), plus `helpers/mergeDoubles.js` (`seeded`, `resolveSeed`) and
-`consolidationPreflight.test.js`, which asserts `seeded` and `resolveSeed` are exported. The set
+Measured at `2cd0d6b1`: eighteen `*.test.js` modules import the helper. Seven are deleted by the
+sweep (`driftBackups`, `driftBaseline`, `driftFault`, `driftHook`, `driftOrdering`,
+`driftRepoRoot`, `queueDriftGate`) and eleven survive (`advisoryConfig`, `advisoryEnvelope`,
+`advisoryEscalationLog`, `approvalHash`, `completeness`, `consolidationPreflight`,
+`consolidationProperties`, `forcePhases`, `pacingWrapper`, `roundDerivation`, `scanLines`), as
+does `helpers/mergeDoubles.js` (`seeded`, `resolveSeed`). `consolidationPreflight.test.js`
+additionally asserts that `seeded` and `resolveSeed` are exported. The set
 above is what those consumers name. The implementation re-derives it by a fresh consumer scan at
 sweep time rather than trusting this transcription, because the baseline's removal list is
 explicitly non-exhaustive.
