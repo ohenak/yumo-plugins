@@ -778,3 +778,42 @@ describe("§6.3 document-correction oracles (D-1, D-2, D-3) — red from this ba
     expect(badLine).toBe(false);
   });
 });
+
+// PLAN T14 — AT-1.3's mechanical half (FSPEC L-6, TSPEC §4.4) — red from this batch until
+// T15 (PLAN §1.3 skip-naming convention would apply a bare `it.skip`/`describe.skip`, but
+// this module is a `SWEPT_SURFACE_MODULES` member for the skip-join orphan-freedom oracle
+// (TSPEC §5.5, `consumerCleanup.test.js`), which requires every `pending` assertion in its
+// domain to be registered through `describeOrSkip`/`itOrSkip` — a capability-gated
+// mechanism this task-sequencing skip does not fit. `hookCompatibility.test.js` is the one
+// module excluded from that domain for exactly this reason (see its own comment); this
+// module is not excluded, so the red-until-later-task convention here is a plain failing
+// `test(...)`, the same pattern the `§6.3 document-correction oracles` block above uses
+// ("red from this batch until L-06"). The post-sweep *.test.js literal only holds once
+// class 6 (T15's deletions: 19 M-8 modules plus runtimeProvenanceWiring.test.js) lands.
+describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
+  test("post-sweep pdlc/workflows/__tests__/*.test.js count equals TSPEC §4.4's corrected literal of 99", () => {
+    const testDir = resolve(WORKFLOWS, "__tests__");
+    const count = readdirSync(testDir).filter((name) => name.endsWith(".test.js")).length;
+    expect(count).toBe(99);
+  });
+
+  test("L-6 row 1: orchestrateQueue.test.js carries all four re-homed queue-triage assertion titles", () => {
+    const source = readFileSync(resolve(WORKFLOWS, "__tests__", "orchestrateQueue.test.js"), "utf8");
+    const protectedTitles = [
+      "returns no-queue when the queue file is missing",
+      "runs the pipeline for a ready entry and sets awaiting-merge",
+      "skips a blocked entry per triage and reports idle when none are ready",
+      "sets halted status when the pipeline halts",
+    ];
+    for (const title of protectedTitles) {
+      expect(source).toContain(`it("${title}"`);
+    }
+  });
+
+  test("L-6 row 2: hookCompatibility.test.js still carries PROP-COMPAT-04, PROP-COMPAT-05, PROP-COMPAT-06", () => {
+    const source = readFileSync(resolve(WORKFLOWS, "__tests__", "hookCompatibility.test.js"), "utf8");
+    for (const propCompat of ["PROP-COMPAT-04", "PROP-COMPAT-05", "PROP-COMPAT-06"]) {
+      expect(source).toContain(propCompat);
+    }
+  });
+});
