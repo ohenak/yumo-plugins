@@ -578,7 +578,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
 | E-18 | The cleanup's target directory holds a file the consumer tracks in git | Treated as unexpected: refuse per E-16. Tracked files are never touched (BR-CLN-5) |
 | E-19 | The sweep bumps the plugin to a version outside the published engine's declared range | The handshake refuses every run from that commit on. Prevented by BR-VER-1: either the version stays in `0.23.x`, or BL-07's widened published release lands first |
 | E-20 | The engine refuses (handshake, missing plugin, auth policy) during a delegated run | The skill surfaces banner **and** refusal together and reports the invocation as refused; no retry, no fallback path, no shortened message that drops a version (BR-DEL-3) |
-| E-21 | The post-sweep run report has a field the pre-sweep baseline lacks, or vice versa | AC-5.2 fails. Field **sets** must be equal over the whole report. Value comparison is scoped to AT-5.2's stable field subset: version fields and the run-variable collections (dispatches, retries, pauses, denials, outcomes) differ between any two runs and are compared for **presence and shape**, never for value |
+| E-21 | The post-sweep run report has a field the pre-sweep baseline lacks, or vice versa | AC-5.2 fails. Field **sets** must be equal over the whole report. Value comparison is scoped to AT-5.2's stable field subset: the two version-provenance fields and the eight run-variable collections REQ AC-5.2 enumerates exhaustively — `authSources`, `startup`, `dispatches`, `retries`, `pauses`, `denials`, `loop`, `outcomes` — differ between any two correct runs and are compared for **presence and shape**, never for value |
 | E-22 | The AC-5.1 verification run halts for an unrelated reason | AC-5.1 is unmet, not waived: it requires a positive completion through the configured final phase. A halt is investigated before the sweep is declared done |
 | E-23 | The pre-sweep gate transcript records a suite that ran zero tests and exited 0 | Not a green start. BL-08 requires each suite's summary counts, so a vacuous pass is visible and is repaired before the first deletion commit (REQ C-7, BL-08) |
 | E-24 | A Ptah consumer's configured skill path would move | Forbidden unless every known consumer config is updated in the same change (REQ C-4, AC-3.4) |
@@ -730,14 +730,20 @@ committed transcript or from an observed run; none is satisfied by an agent repo
   the missing record is not an unexpected entry and does not trigger a refusal (§3.5 step 1).
 - **AT-4.2** (AC-4.2) *Who:* same operator. *Given* the cleanup has already run, *when* it runs
   again, *then* it succeeds, changes nothing and says so.
-- **AT-4.3** (AC-4.3) *Who:* same operator. *Given* a file inside the target directory whose name
-  the retired channel never installed — a name outside every L-11 member, so neither
-  `orchestrate-dev.js` nor `orchestrate-queue.js`, which the channel did install — *when* the
-  cleanup runs, *then* every file in the directory
-  is byte-identical afterwards (compared by content, before and after), each unexpected path is
-  named on **stderr**, and the exit status is exactly **`3`** — the value BR-CLN-4 fixes. "Non-zero"
-  is not the oracle: `127` from a missing interpreter would satisfy it while proving the step never
-  ran.
+- **AT-4.3** (AC-4.3) *Who:* the same operator. *Given* the target directory built as AT-4.1
+  builds it — holding **every** L-11 entry — **plus** one unexpected file, a name the retired
+  channel never installed and no L-11 member, neither `orchestrate-dev.js` nor
+  `orchestrate-queue.js` — *when* the cleanup runs, *then* all four hold: (a) **every L-11 entry
+  is still present** and byte-identical (compared by content, before and after), so a run that
+  deleted some expected entry before refusing reds this test; (b) the unexpected file is still
+  present and byte-identical; (c) its path is named on **stderr**; (d) the exit status is exactly
+  **`3`** — the value BR-CLN-4 fixes. "Non-zero" is not the oracle: `127` for a missing
+  interpreter would satisfy it while proving the step never ran. Presence of the survivors is
+  asserted positively, not inferred from the absence of a diff, because a directory holding only
+  the unexpected entry passes a not-modified check vacuously. Second construction, same expected
+  outcome: the unexpected entry is a `.pdlc-tmp.<pid>.<rand>` residue the retired channel itself
+  left behind when a write was killed mid-rename (E-16b) — it is refused on the same four clauses,
+  so the refusal class covers channel-written junk as well as operator files.
 - **AT-4.4** (AC-4.4) *Who:* a consumer repo owner who never adopts the cleanup. *Given* the
   leftovers remain, *when* they run a feature through the engine, *then* the run reaches its
   configured final phase; the **artifact compared** is the engine's run report as written at its
@@ -758,17 +764,20 @@ committed transcript or from an observed run; none is satisfied by an agent repo
   1. their **field sets are equal** over the whole report — an added or removed field fails, and
      this is the clause that discharges "no field, phase or gate disappeared with the deleted
      machinery"; and
-  2. **values** are compared over the **stable field subset only**, named in the TSPEC's
-     comparison list. Fields excluded from value comparison, because they differ between any two
-     correct runs: the feature name, timestamps, ids and paths already enumerated upstream, the
-     two **version** fields (BR-VER-1 permits a `0.23.x` bump, and BL-07's branch ships a new
-     engine release), and the **run-variable collections** — dispatches, retries, pauses, denials
-     and per-phase outcomes — which are compared for presence and shape, never for value.
+  2. **values** are compared over a **stable field subset only**, named in the TSPEC's
+     comparison list. Excluded from value comparison, because they differ between any two
+     *correct* runs: the feature name, timestamps, ids and paths already enumerated upstream, the
+     two **version-provenance** fields (BR-VER-1 permits a `0.23.x` bump, and BL-07's branch ships a
+     new engine release), and the report's **eight run-variable collections** as REQ AC-5.2
+     enumerates them exhaustively — the per-dispatch auth-source rows (`authSources`), the startup
+     ladder (`startup`), the dispatch counts (`dispatches`), the retry, pause and denial logs
+     (`retries`, `pauses`, `denials`), the loop record (`loop`) and the outcome counts
+     (`outcomes`) — each compared for presence and shape, never for value.
 
   Stated this way because whole-report value equality is unachievable by construction: a test
-  written to it fails on a correct sweep, which is a gate that cannot pass rather than a strict
-  one. REQ AC-5.2's enumerated allowed set does not cover the version and run-variable fields; the
-  gap is raised as an erratum (§7.2) rather than silently widened here.
+  written for it fails on a correct sweep, so the gate could not pass rather than being a strict
+  one. The excluded set here is exactly REQ AC-5.2's enumerated allowed-difference set at v0.11 —
+  no field is exempted here that the REQ does not exempt, and none it exempts is value-compared here.
 - **AT-5.3** (AC-5.3, G-5) *Who:* operator. *Given* HEAD after the sweep, *when* the probe CLI is
   invoked at its surviving repo path, directly, in a checkout of the consuming project, *then* it
   answers exactly as before and is still produced by a build step rather than maintained by hand.
