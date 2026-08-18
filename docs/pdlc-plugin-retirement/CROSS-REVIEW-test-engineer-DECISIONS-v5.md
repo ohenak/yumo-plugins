@@ -73,7 +73,7 @@ call, not a bookkeeping one:
 |----|----------|-------|---------|------------|
 | F-01 | Medium | Local | **Two sites call the held-class interim state "red"; the REQ now says in terms that it is not.** The gated-merge paragraph reads "each ungated class is independently green per REQ C-7, but AC-1.1's `dist/` set-equality stays red while classes 7–12 are held" (`DECISIONS:237`), and DEC-01's owning-oracle cell reads "**gated**: cannot go green before class 7 lands, and DEC-10's erratum-3 gate holds it red" (`:162`). REQ v0.12 now disposes of exactly this state: "AC-1.1 being unsatisfied is simply an incomplete feature on an unmerged branch — it is **not** a C-7 red, it is **not** registered anywhere as an expected or tolerated failure" (`REQ:267`–`:269`). The conclusions DECISIONS draws from its own sentence are still upstream-faithful (branch does not merge on a green subset; PROPERTIES places the 7–12 ATs behind the class-7 edge) — but the sentence now supports a second reading the erratum forbids, namely that AT-1.1 exists and fails on branch as a tolerated red. Because PROPERTIES authors AT placement from this document rather than from REQ §C-7, the ambiguity is live: if the red-on-branch reading lands in PROPERTIES it becomes a High there. Fix is a clause-level edit at two sites, no restructuring: say **unsatisfied / not yet assertable**, not "red", and add the erratum's positive rule — the check becomes live with the class it covers, ordering never registration (`REQ:272`–`:274`). | Gated-merge paragraph (`:237`), DEC-01 oracle cell (`:162`) |
 | F-02 | Low | Local | **The erratum's no-registration rule is nowhere transcribed, and DECISIONS never cites C-8.** REQ now states "There is no skip-list, no expected-failure inventory and no tolerated-red register in this feature: C-8 already forbids that shape, and a criterion that is allowed to be red by registration stops being a criterion" (`REQ:270`–`:272`). DECISIONS contains no reference to C-8 at all, and no prohibition on registration. Nothing in the document *violates* the rule — no gated oracle is registered anywhere, which is why this is Low, not a substantive conflict — but the document that PLAN and PROPERTIES read to place gated ATs is silent on the one shape they must not use. One transcribed clause in the gated-merge paragraph, quoted under cross-cutting rule 2, closes it. | Gated-merge paragraph (`:237`) |
-| F-03 | Medium | Local | **Inherited from v4 F-01 and still unfixed: the sentence PLAN mines for dependency edges states the narrow pair, not the closure.** "PLAN must also carry DEC-10's block (classes 7 and 11 gated on erratum 3) … as dependency edges, not prose notes" (`:281`). The authoritative closure is classes **7–12**, stated correctly at `:150`, in DEC-10's owning-oracle cell (`:171`), in the Consequences row (`:231`) and in the gated-merge paragraph (`:237`). I re-file rather than let it ride this round because the erratum makes ordering the *only* admissible resolution for a check that would otherwise run red (`REQ:272`–`:274`) — which promotes the edge set from bookkeeping to the mechanism the REQ now relies on. An understated edge set is now an upstream-criterion risk, not just a batch-column nit. Fix: `:281` reads 7–12. | PLAN/PROPERTIES obligation sentence (`:281`) |
+| F-03 | Medium | Local | **Inherited from v4 F-01 and still unfixed: the sentence PLAN mines for dependency edges states the narrow pair, not the closure.** "PLAN must also carry DEC-10's block (classes 7 and 11 gated on erratum 3) … as dependency edges, not prose notes" (`:281`). The authoritative closure is classes **7–12**, stated correctly at `:150`, in DEC-10's owning-oracle cell (`:171`), in the Consequences row (`:234`) and in the gated-merge paragraph (`:237`). I re-file rather than let it ride this round because the erratum makes ordering the *only* admissible resolution for a check that would otherwise run red (`REQ:272`–`:274`) — which promotes the edge set from bookkeeping to the mechanism the REQ now relies on. An understated edge set is now an upstream-criterion risk, not just a batch-column nit. Fix: `:281` reads 7–12. | PLAN/PROPERTIES obligation sentence (`:281`) |
 
 **Not a finding — DEC-07's use of "red" is upstream-faithful and must not be swept up in F-01's fix.**
 DEC-07's blocking clause says that until erratum 6 lands, the in-place reduction "reds AC-1.3 —
@@ -86,7 +86,40 @@ erratum was written to draw.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | v4's Q-02 is now answered upstream — the gated ATs are authored to become live with their class, never registered. Does that answer reach PROPERTIES as an authoring rule, or only as an ordering fact? Concretely: is AT-1.1 written once and gated by PLAN's class-7 edge (so it never executes on branch before class 7), or written and expected to fail until class 7? The erratum admits only the first. DECISIONS' `:150`/`:237` obligation sentences are consistent with the first reading; F-01's wording is the only thing pulling the other way. |
+| Q-02 | The erratum says the resolution is ordering "where a check that observes a held class would otherwise run red **in repo CI**" (`REQ:272`–`:273`). AT-1.1 is a PROPERTIES-level acceptance test, not a repo CI job. Are the feature's own ATs in scope of that clause, or does it bind only the `pr-tests.yml`/`fixture-machine.yml` gate set? DECISIONS is where that distinction would land for PLAN; today neither document draws it, and the two answers imply different PLAN rows (a gated task versus a gated *and* CI-registered task). |
+
 ## Positive Observations
+
+- **The erratum's central conclusion was already in DECISIONS, in almost the same words.** REQ now
+  reads "The branch does not merge on a green subset: completion is all criteria satisfied at HEAD,
+  held classes included" (`REQ:274`–`:275`); DECISIONS reads "the feature is not 'done' and the
+  branch does not merge on a green subset" (`:237`). The compression was faithful before the
+  erratum was written and stays faithful after it. This is the reason the round is a confirmation
+  and not a reopening.
+- **The erratum's positive licence for ungated classes is already carried, with the partition
+  named.** "It does not forbid the ungated classes from landing as their own commits"
+  (`REQ:269`) is DECISIONS' "Classes 1–5 are ungated and land on engineering's schedule; class 13
+  is ungated too" (`:237`). The class-13 partition, added in v0.4 in response to my v3 finding, now
+  turns out to be exactly the granularity the erratum needs.
+- **No registered-failure shape exists anywhere in DECISIONS to be invalidated.** I searched the
+  document for skip, pending, tolerated-red and expected-failure shapes: DEC-07 rejects "a
+  re-measured expected value that greens by construction" (`:235`), cross-cutting rule 2 forbids
+  deriving expected values from the tree, and no oracle cell registers a failure. The document is
+  compliant with `REQ:270`–`:272` in substance even though it never cites C-8 (F-02).
+- **Every mechanical claim I checked in v4 survives the erratum untouched.** The erratum changes no
+  class ordering, no literal, no count and no criterion. The closure argument (FSPEC `:160`–`:165`),
+  DEC-10's six-task edge set (`:171`), the M-8 host claim for DEC-09's surviving assertion, and the
+  DEC-06 citation arithmetic all rest on FSPEC and on source anchors that this REQ edit does not
+  touch. Nothing in the v4 approval's evidence base needed re-measuring for this round, and I did
+  not re-litigate it.
+- **The erratum improves testability rather than only clarifying prose.** Before it, "AC-1.1 stays
+  red while classes are held" was a state with no named oracle disposition — the shape that
+  produces a registered expected failure by default. The erratum converts it into an ordering
+  constraint PLAN can express as a dependency edge and PROPERTIES can express as an AT that only
+  ever runs green. That is a strictly more falsifiable arrangement.
 
 ## Decision
 
