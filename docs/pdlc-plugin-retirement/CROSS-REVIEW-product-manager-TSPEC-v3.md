@@ -83,4 +83,30 @@ FINDING: Low | delta | local | §5.2 AT-3.3 clause 2 row | host module for the n
 
 ## Recommendation
 
+**Needs revision** — one High finding, narrow and mechanical.
+
+Required changes:
+
+1. **F-01 (High)** — Add `pdlc/hooks/scripts/check-req-size.sh` to §5.2 TT-3 half (b)'s enumeration,
+   so the set-equal list is the five post-sweep executables (`cleanup-consumer-workflows.sh`,
+   `check-req-size.sh`, `check-scope-field.sh`, `guard-harvest-before-delete.sh`,
+   `nudge-consolidation.sh`). Keep the companion tracked-executable set-equality assertion exactly as
+   drafted — with the fifth member present it holds, and it is what keeps a later-added script from
+   shipping unlisted without a mode bit.
+2. **F-02 (Low, lands with F-01)** — In §4.4, replace "the three hooks AC-3.3 names" with a statement
+   that three of `FIVE_SCRIPTS`'s members survive and that `FIVE_SCRIPTS` never covered AC-3.3's
+   fourth hook, `check-req-size.sh` — which is why the re-homed set is wider than the surviving
+   subset of `FIVE_SCRIPTS`.
+3. **F-03 (Low)** — In §5.2's AT-3.3 clause 2 row, name one host module for the new
+   `nudge-consolidation.sh` stdout-JSON-plus-exit-`0` assertion, and narrow "neither is covered today"
+   to the parsed-JSON conjunct, since `PROP-COMPAT-04` already asserts exit `0`
+   (`hookCompatibility.test.js:100`).
+
+Nothing else in this round's diff needs change. §4.5 clause 1(b) is closed against the code, §3.2's
+row split and §6.1 erratum 7's amendment are sound, §2.6's survivorship claims and §2.7's anchor
+correction verify at HEAD, and no unchanged section was re-opened.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
