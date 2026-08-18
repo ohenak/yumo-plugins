@@ -123,6 +123,50 @@ erratum was written to draw.
 
 ## Decision
 
+**Approved with minor changes.** DECISIONS v0.4 still holds against REQ v0.12. The erratum does not
+overturn any decision, invalidate any owning oracle, change any gated class set, or contradict any
+conclusion the document draws; its central holdings ("no merge on a green subset", "ungated classes
+may land as their own commits") are already present in DECISIONS in near-identical words. No High
+finding, so no revision round is owed.
+
+What is owed is a clause-level edit at three anchors, cheap enough to ride the next edit this
+document takes for any reason:
+
+1. `:237` and `:162` — replace the "red"/"holds it red" framing for the *held-class* state with
+   **unsatisfied / not yet assertable**, and add the erratum's ordering rule (the check becomes live
+   with the class it covers, never registration) as a transcribed clause under rule 2 (F-01).
+2. `:237` — transcribe the no-registration prohibition and cite C-8 (F-02).
+3. `:281` — state the closure 7–12, not the narrow pair 7 and 11 (F-03, inherited from v4).
+
+Do **not** apply (1) to DEC-07's `:95`/`:235`, where "reds AC-1.3" describes a landed class's repo
+CI red and is upstream-faithful as written.
+
 ## Consequences
 
+- **PLAN may proceed on this document as it stands.** The edges PLAN needs are stated correctly at
+  `:150`, `:171`, `:234` and `:237`; only `:281`'s restatement is narrow (F-03), and a PLAN author
+  who re-derives the batch column from the authoritative sites gets the right graph. If PLAN is
+  authored before the edit lands, the batch-DAG check must be re-derived against the 7–12 closure,
+  not against `:281`.
+- **PROPERTIES carries the residual risk.** F-01 is Medium here precisely because its cost is
+  deferred: a PROPERTIES author who reads `:237` as licensing a red-on-branch AT-1.1 would author
+  the one shape `REQ:267`–`:274` forbids, and that would be a High in the PROPERTIES review. The
+  cheapest insurance is landing F-01's clause edit before PROPERTIES is authored rather than
+  catching it downstream.
+- **Three v4 residuals remain open and are not re-filed here.** v4 F-01 is re-filed as this round's
+  F-03 because the erratum raised its stakes. v4 F-02 (escaped quotes at `:237`) and v4 F-03 (class
+  9's unmarked quote prefix at `:150`) are untouched by the erratum and stay non-gating; they should
+  ride the same edit as F-01/F-02/F-03, since all six sites sit in two paragraphs.
+- **Approval anchors must be re-cut.** The v4 anchors record `UPSTREAM-STATE: REQ
+  sha256:1038b816…`, which no longer describes HEAD. This round's approval should record REQ
+  sha256:41fb21e8…, FSPEC and TSPEC unchanged, so the next cascade check measures against the right
+  baseline.
+
 ## Verdict
+
+FINDING: Medium | delta | local | Gated-merge paragraph (`:237`) and DEC-01 oracle cell (`:162`) | Held-class state called "red"; REQ v0.12 says it is not a C-7 red — reword to unsatisfied/not-yet-assertable and add the ordering-never-registration rule
+FINDING: Low | delta | local | Gated-merge paragraph (`:237`) | Erratum's no-skip-list / no-expected-failure-register rule not transcribed; DECISIONS never cites C-8
+FINDING: Medium | inherited | nonlocal | PLAN/PROPERTIES obligation sentence (`:281`) | States the narrow pair (classes 7 and 11) where the authoritative closure is 7–12; the erratum makes the edge set load-bearing for an upstream criterion
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
