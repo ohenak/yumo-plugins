@@ -804,12 +804,38 @@ run, passed, failed), because a suite that executed zero tests also exits 0 (E-2
 ### 5.5 Deleted, never skipped
 
 No `skip`, no pending marker, no assertion left vacuously true over an empty directory (C-8,
-BR-SWEEP-6). The prohibition is scoped to the **swept surface** — M-8's deleted modules plus the
-surviving modules that host R-8's re-homed assertions (`consumerCleanup.test.js`,
-`hookCompatibility.test.js`, `orchestrateQueue.test.js`, `consolidationBuild.test.js`; §4.4
-enumerates the re-homes) — not to the whole run: a skip introduced into a *surviving* module by
-this sweep is the same defect as one left behind, but a pending marker this feature never touched
-is pre-existing state it does not repair.
+BR-SWEEP-6). The prohibition is scoped to the **swept surface** — not to the whole run: a skip
+introduced into a *surviving* module by this sweep is the same defect as one left behind, but a
+pending marker this feature never touched is pre-existing state it does not repair.
+
+**The swept surface, enumerated against §4.4's measurements.** The membership rule is *modules this
+sweep creates, deletes, reduces in place, or adds assertions to*, plus any surviving host of an R-8
+re-home. Under §4.4's own resolutions that is a four-member set with three distinct reasons, and the
+reasons are stated because three of the four are **not** R-8 re-home hosts:
+
+| Module | In-surface because | Contributes to the join |
+|---|---|---|
+| M-8's 20 deleted `*.test.js` modules + `runtimeProvenanceWiring.test.js` | deleted by this sweep | nothing post-sweep (absent) |
+| `consumerCleanup.test.js` | created by §5.2; sole host of an R-8 re-home (§4.4's TT-3 mode-bit widening) | yes — and see the recursion guard below |
+| `hookCompatibility.test.js` | M-8 member **reduced in place** (§2.6, §4.4 class-6 reduction); loses the `C7` block | yes — its ten converted sites |
+| `consolidationBuild.test.js` | **edited** by this sweep: TT-5 extends §3.1's emission contract (§5.2) | yes |
+
+`orchestrateQueue.test.js` is **out of the surface**. §4.4's L-6 row 1 resolves to *no re-homed
+assertion*: its four queue-disposition titles are pre-existing assertions discharged by measurement,
+and §5.3 lists them as protected — this sweep does not edit that module, so it is neither created,
+deleted, reduced, nor edited, and including it would widen the left set onto pre-existing state,
+exactly what the **Domain** bullet below forbids. The earlier reading that filed all four modules as
+"hosts of R-8's re-homed assertions" was wrong on three of them; only `consumerCleanup.test.js`
+hosts a re-home.
+
+This set is **wider than FSPEC's approved domain limb**, which reads "M-8's deleted modules plus the
+surviving modules that host R-8's re-homed assertions" (BR-SWEEP-6, AT-1.3) and covers neither an
+M-8 member reduced in place nor a module carrying only new assertions. The widening is deliberate —
+a bare `it.skip` added to `consolidationBuild.test.js` by TT-5 is the same sweep defect AT-1.3 exists
+to catch — and it is routed upstream as an erratum on BR-SWEEP-6/AT-1.3's domain wording (with §6.1
+erratum 6's `hookCompatibility.test.js` membership correction), not decided silently here. Until
+that lands, the TSPEC-side surface is the four-member set above; it is a strict superset of FSPEC's,
+so no approved obligation is lost by it.
 
 **TT-1b's registered skip is accepted upstream; erratum 9 landed.** §5.2's TT-1b constructs an
 unreadable target (`chmod 000`), which cannot be constructed as root, so the row is
@@ -857,8 +883,10 @@ passing thing that does not assert the property either. The oracle is therefore 
 join**, and it is the landed clause's evaluation:
 
 - **Domain (the swept surface, not the run).** Both sets are restricted to the `*.test.js` files
-  §4.4 enumerates as swept: M-8's deleted modules (absent post-sweep, so contributing nothing) plus
-  the surviving hosts of R-8's re-homes. `guardMatrix.test.js` is **out of the domain** and stays
+  the swept-surface table above enumerates — post-sweep that is `consumerCleanup.test.js` (less the
+  recursion carve-out below), `hookCompatibility.test.js` and `consolidationBuild.test.js`, since
+  M-8's deleted modules are absent and contribute nothing. `orchestrateQueue.test.js` is out for the
+  reason given there. `guardMatrix.test.js` is **out of the domain** and stays
   out: it is not an M-8 member, hosts no re-home, and its ~70 `it.skip.each(NON_BESPOKE_BLOCK)`
   rows (`guardMatrix.test.js`, `it.skip.each` at the `NON_BESPOKE_BLOCK` row, plus the per-row
   `isLive(...) ? it : it.skip` ternary) are pre-existing pending state AT-1.3 names explicitly as
