@@ -17,7 +17,7 @@ depends-on: [pdlc-headless-engine, pdlc-engine-distribution]
 |---|---|---|---|---|
 | pdlc | approved — ready | Claude | 0.15 | 2026-08-18 |
 
-*0.15 (2026-08-18) — bind O-8's successor obligation (operator direction, no product-scope change): the operator's option (a) — accepted in-session loss of the unattended, machinery-backed consolidation pass — is now bound, not merely assumed. `docs/_queue/QUEUE.md` carries Order 24 (`pdlc-consolidation-rehost`) and a named successor REQ exists at `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`, both raised before this feature's first deletion commit. The successor REQ ships `ready: false`, so the operator's veto stays mechanically enforced through the queue's draft-pickup gate. O-8 no longer describes an unbound deferral or an open blocking gap.*
+*0.15 (2026-08-18) — bind O-8's successor obligation (per the recorded 2026-08-08 operator direction and NG-5, not a fresh operator ruling; no product-scope change): option (a) — accepted in-session loss of the unattended, machinery-backed consolidation pass — is now bound, not merely assumed. `docs/_queue/QUEUE.md` carries Order 24 (`pdlc-consolidation-rehost`) and a named successor REQ exists at `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`, both raised before this feature's first deletion commit. The successor REQ ships `ready: false`, so the operator's veto stays mechanically enforced through the queue's draft-pickup gate. O-8 no longer describes an unbound deferral or an open blocking gap.*
 
 *0.14 (2026-08-18) — upstream erratum round, one correction (Phase D erratum 3; SE FSPEC-v11 F-03, TE FSPEC-v11 F-01/F-02): §A-1 said the sweep **rewrites** `consolidate-learnings/SKILL.md`'s bundle reference "to name the surviving execution path"; no surviving host loads the consolidation module, so the reference is **deleted**, not rewritten, and the same is true of the skill's delegation prose. The capability that goes with it — the unattended, machinery-backed pass — is an operator decision this REQ cannot make alone, recorded as new O-8 with an unbound deferral flagged as a blocking gap. Baseline M-11n corrected with it.*
 
@@ -619,7 +619,9 @@ not a note.
   the skill's own text says it delegates rather than performs, warning that hand-running it
   bypasses the log boundary, duplicate suppression and the in-progress marker — stops being
   available. This REQ could not settle that alone and the FSPEC must not: it was a user-visible
-  capability change, so the operator chose option (a) **accepted loss** — the in-session pass is
+  capability change, resolved as option (a) **accepted loss** per the recorded operator
+  direction of 2026-08-08 (engine is the primary execution path; the plugin keeps its
+  skills) and NG-5's carve-out — not a fresh operator ruling, and vetoable as below — the in-session pass is
   human-performed, the skill's delegation prose is rewritten to say so honestly, and the
   machinery-backed pass is bound to a successor: queue Order 24 (`pdlc-consolidation-rehost`) and
   its named successor REQ, `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`, for
