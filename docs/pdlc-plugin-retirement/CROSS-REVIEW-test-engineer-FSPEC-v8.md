@@ -32,3 +32,35 @@ arise from the delta itself.
 
 FINDING: High | delta | local | §6.1 AT-1.3 / §4.4 BR-SWEEP-6 | repo-wide bare-`it.skip` clause is falsified by surviving `guardMatrix.test.js:325`/`:334` pending rows; AT-1.3 cannot be green post-sweep
 FINDING: High | delta | local | §6.1 AT-1.3 / §4.4 BR-SWEEP-6 | exemption keyed to `SKIP_INVENTORY` membership contradicts `skipSink.js:38–47` non-closure and TSPEC §5.5's sink-records join; `documentOracles.test.js:572`/`:340` are off-inventory registered skips in a survivor
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v3–v7, still open at TSPEC level, recorded not re-raised: AT-3.3's consolidation-nudge entry does not name the stale-LEARNINGS count at which the nudge fires. `pdlc/hooks/scripts/nudge-consolidation.sh:25` sets `THRESHOLD=5` and `:81` gates on `n >= THRESHOLD`, so a four-file fixture yields silence and an absence-shaped false green. Fixture construction is the TSPEC's lens; flagged so it is not lost. |
+| Q-02 | Does the sweep intend to leave `guardMatrix.test.js`'s pending block untouched? If yes, F-01's fix is a scoping sentence; if the block is expected to be flipped live by the guard rewrite before this sweep lands, AT-1.3 acquires an unstated dependency on another feature and should say so. |
+
+## Positive Observations
+
+- **§7.3 is the right instrument, and the acceptance is recorded where a reader will find it.** The row states what was raised, what edit was made here, and why REQ AC-1.3 needs no matching edit — and that last claim checks out: `REQ-…:325–330` scopes AC-1.3 to "no skipped test belonging to M-8" and is silent on registered skips, so the FSPEC narrowing does not contradict its upstream.
+- **The erratum's premise is true at HEAD.** `SKIP_INVENTORY` does already carry `uid-nonroot` entries (`helpers/driftCapabilities.js:94–121`, ten of them), so the pre-delta "no skipped or pending test at all" was indeed already false on a root runner. The delta identified a real defect; the disagreement below is only over where the new boundary was drawn.
+- **`itOrSkip` / `SKIP_INVENTORY` / `skipSink.js` are all real at HEAD and cited accurately** (`driftCapabilities.js:324`, `:93`; `skipSink.js`), so the mechanism the FSPEC now leans on exists and needs no new infrastructure.
+
+## Recommendation
+
+**Needs revision**
+
+Two High findings. Both sit inside the text this delta wrote, and both are contradictions with the
+repository at HEAD rather than matters of preference: `guardMatrix.test.js:325`/`:334` survive the
+sweep carrying pending rows the new bare-`it.skip` clause forbids (F-01), and the exemption is
+keyed to `SKIP_INVENTORY` membership where `skipSink.js:38–47` and TSPEC §5.5 both key it to the
+sink's records, with `documentOracles.test.js:572`/`:340` already off-inventory in a surviving
+module (F-02). Left as written, AT-1.3 is a gate no post-sweep run can pass, which converts the
+suite's own green into an unreachable target. Both are one-sentence edits: scope the bare-skip half
+to the swept surface, and word the exemption as "absent from the skip sink's records for that run".
+F-03 and F-04 are carried, non-gating, and cheap to fold into the same edit.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
