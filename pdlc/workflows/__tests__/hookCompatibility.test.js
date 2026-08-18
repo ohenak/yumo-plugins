@@ -37,6 +37,10 @@ const HOOKS_DIR = resolve(__dirname, "../../hooks/scripts");
 const CHECK_SCOPE_SCRIPT = join(HOOKS_DIR, "check-scope-field.sh");
 const GUARD_HARVEST_SCRIPT = join(HOOKS_DIR, "guard-harvest-before-delete.sh");
 
+// __dirname is pdlc/workflows/__tests__, so three levels up is the repo root.
+const REPO_ROOT = resolve(__dirname, "../../..");
+const HOOKS_JSON_PATH = resolve(__dirname, "../../hooks/hooks.json");
+
 /**
  * Run a hook script with stdin as the provided input string.
  * @param {string} scriptPath
@@ -368,4 +372,62 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     expect(msg).toContain("Split it into phased REQs");
     expect(msg).not.toContain("90%");
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4, TSPEC §4.4/§5.3).
+//
+// L-4's post-sweep expectation: pdlc/hooks/hooks.json's registered {event, script} pairs
+// set-equal exactly four rows once check-workflow-drift.sh (M-3) is retired — a set-equality,
+// not a mere "still contains the survivors" subset check, so deleting the whole SessionStart
+// event (and silently losing the consolidation-nudge hook with it, REQ AC-1.7/O-1) fails this
+// test exactly as loudly as leaving check-workflow-drift.sh in place would.
+//
+// Committed skipped (red-verified) under T09; T10 deletes the script and its hooks.json entry
+// and un-skips this block, per PLAN §1.3's skip-naming convention (title begins "T10: ").
+// ---------------------------------------------------------------------------------------------
+
+/** Every {event, script} pair currently registered in pdlc/hooks/hooks.json. */
+function registeredHookPairs() {
+  const manifest = JSON.parse(readFileSync(HOOKS_JSON_PATH, "utf8"));
+  const pairs = [];
+  for (const [event, entries] of Object.entries(manifest.hooks || {})) {
+    for (const entry of entries) {
+      for (const hook of entry.hooks || []) {
+        const script = String(hook.command || "").split("/").pop();
+        pairs.push(`${event}:${script}`);
+      }
+    }
+  }
+  return pairs.sort();
+}
+
+/** True if `relPath` (repo-root-relative) is tracked by git; false if untracked/absent. */
+function isTracked(relPath) {
+  try {
+    const out = spawnSync("git", ["ls-files", "--error-unmatch", relPath], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
+    return out.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
+  it.skip(
+    "T10: pdlc/hooks/hooks.json registers exactly FSPEC L-4's four post-sweep {event, script} pairs, and check-workflow-drift.sh is untracked",
+    () => {
+      const EXPECTED_PAIRS = [
+        "PreToolUse:guard-harvest-before-delete.sh",
+        "PostToolUse:check-scope-field.sh",
+        "PostToolUse:check-req-size.sh",
+        "SessionStart:nudge-consolidation.sh",
+      ].sort();
+
+      expect(registeredHookPairs()).toEqual(EXPECTED_PAIRS);
+      expect(isTracked("pdlc/hooks/scripts/check-workflow-drift.sh")).toBe(false);
+    }
+  );
 });
