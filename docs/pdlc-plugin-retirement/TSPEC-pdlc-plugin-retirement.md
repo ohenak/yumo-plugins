@@ -988,11 +988,13 @@ today rather than by guarantee:
 The module is an M-8 member reduced in place (§2.6, §4.4 class-6 reduction) and hosts R-8 re-homes,
 so it is inside the swept surface and its ten `(hasBash ? it : it.skip)(…)` call sites are bare,
 unregistered, and invisible to the sink — the left⊄right direction reds on a bash-less runner unless
-they are dispositioned. They are converted to `itOrSkip("bash", …)` with matching `SKIP_INVENTORY`
-entries. `"bash"` is already a `KNOWN_CAPABILITY_KEYS` member, so this needs no new capability; it
-does widen `SKIP_INVENTORY` by ten rows, and that widening is part of class-6's reduction scope for
-this module, not a separate unowned edit. On a bash-capable runner (the gate's configuration) none
-of the ten fires and the inventory rows are inert but still C3-checked.
+they are dispositioned. They are converted to `itOrSkip(<leaf title>, "bash", <invariants>, fn)` —
+name first, capability second, per the exported signature in `helpers/driftCapabilities.js` — with
+matching `SKIP_INVENTORY` entries. `"bash"` is already a `KNOWN_CAPABILITY_KEYS` member, so this
+needs no new capability; it does widen `SKIP_INVENTORY` by ten rows, and that widening is part of
+class-6's reduction scope for this module, not a separate unowned edit. On a bash-capable runner
+(the gate's configuration) none of the ten fires and the inventory rows are inert but still
+C3-checked.
 
 **The `SKIP_INVENTORY` entry is an edit to a surviving helper, and it belongs to class 3.**
 Registering TT-1b's gap means editing `helpers/driftCapabilities.js` — a file §2.6 disposes of as a
@@ -1006,13 +1008,32 @@ names the root/non-root distinction TT-1b turns on), and a **non-empty** list of
 its stderr diagnostic). C1/C3 require the call site to repeat that list verbatim, so the list is
 authored once in the inventory and copied into the `itOrSkip` call, not paraphrased.
 
+**The widened inventory needs its derivation rule restated, and that edit is named.**
+`helpers/skipSink.js`'s header today states a narrower rule than this feature leaves true:
+"`SKIP_INVENTORY` is spec-derived — exactly TSPEC §1.3's table plus PROPERTIES §11.1's two leaves",
+and, one sentence later, "widening the inventory past the spec to close the gap would misrepresent
+TSPEC §1.3 and is a spec change, not a test change" (`helpers/skipSink.js`, `WHAT IS NOT ENFORCED,
+AND WHY`). Eleven rows land that the paragraph as written would reject: TT-1b's `uid-nonroot` row
+and the ten `"bash"` rows above are derived from *this* TSPEC, not from §1.3's table. Leaving the
+paragraph unedited ships a surviving helper whose load-bearing comment contradicts the code beside
+it, and gives the next maintainer a written basis for refusing a correct registration. The header is
+therefore edited in the same sweep to state the rule this feature actually leaves in force:
+`SKIP_INVENTORY` = the spec-derived rows (TSPEC §1.3's table ∪ PROPERTIES §11.1's two leaves) **∪
+registered capability gaps that a named TSPEC section owns** — today §1.3, §11.1, and this §5.5.
+What the paragraph must keep saying, because C2-not-closure still depends on it, is that closure is
+not enforced and that widening the inventory *to buy a green gate without a named owner* remains a
+spec change. That edit is to a surviving helper with live consumers, so by the same rule as
+`driftCapabilities.js` below it belongs to **class 3** and is named in §2.9's class-3 row — not to
+class 6, even though ten of the eleven rows it licenses are class-6 work.
+
 Two further edits ride the same ownership rule. The ten `hookCompatibility.test.js` conversions add
 ten `"bash"` rows to the same inventory; that module is an M-8 member reduced in place, so those
 rows are owned by its class-6 reduction, not by class 3 — but they land in `driftCapabilities.js`,
 so the two commits touch one file and must be serialised in the PLAN rather than batched together.
-The join oracle's falsifying fixture under `__tests__/fixtures/` is a **new** file matched by
-`testPathIgnorePatterns`, so it joins no test count L-5 fixes; it is owned by the class-3 commit
-that introduces the oracle.
+The join oracle's falsifying fixture, `__tests__/fixtures/skipJoinFalsifier.js`, is a **new** file
+excluded from the outer run by `testPathIgnorePatterns` and named away from `*.test.js`, so it joins
+neither §4.4's top-level count nor any recursive reading of L-5's literal; it is owned by the class-3
+commit that introduces the oracle.
 
 **Deleted, nothing left orphaned.** AT-1.3's field set does not reach non-`*.test.js` files (REQ
 AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get their
