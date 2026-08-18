@@ -513,16 +513,24 @@ on-disk-in-clone twin, plus the dedicated bare-path assertion
 (`bootstrap.test.js`, `const FIVE_SCRIPTS`) across this sweep is **2 deleted / 3 surviving**, not
 4 + 1: `check-workflow-drift.sh` (class 4) and `sync-workflows.sh` (class 5) go; and
 `check-scope-field.sh`, `guard-harvest-before-delete.sh` and `nudge-consolidation.sh` survive
-unchanged as the three hooks AC-3.3 names. Deleting the host module therefore drops the mode-bit
+unchanged — three of `FIVE_SCRIPTS`'s five members, **not** "the hooks AC-3.3 names". AC-3.3 names
+four surviving behaviours (harvest guard, scope-field **and REQ-size** warnings, consolidation
+nudge), and `FIVE_SCRIPTS` was never coextensive with that set: it omits `check-req-size.sh`,
+which is tracked `100755` and registered at `pdlc/hooks/hooks.json` (second `PostToolUse`
+command, alongside `check-scope-field.sh`). The re-home in §5.2's TT-3 is therefore a **widening**,
+not a copy — the post-sweep enumeration is five scripts, `FIVE_SCRIPTS`'s three survivors plus
+`check-req-size.sh` (which ships today with no mode-bit oracle at all) plus the new
+`cleanup-consumer-workflows.sh`. Deleting the host module drops the mode-bit
 oracle for **three still-shipped scripts**, not only for two retired ones — and
 `bootstrap.test.js` is the sole module in the repo asserting that constraint (`grep -rn "100755"
 pdlc/workflows/__tests__/*.test.js` returns it alone; the only other `126` reference,
 `driftOrdering.test.js`, is itself deleted in class 3). A lost mode bit ships silently and the
 hook simply stops firing, per CLAUDE.md's fresh-clone rule ("invoked by bare path, no
 `bash`/`sh` prefix; 126 means the mode bit was lost") — a live project constraint. §5.2's TT-3
-therefore re-homes the assertions over the **whole post-sweep shipped-script set** — the three
+therefore re-homes the assertions over the **whole post-sweep shipped-script set** — the four
 surviving hook scripts plus the new `cleanup-consumer-workflows.sh` — enumerated set-equally, so
-that deleting `bootstrap.test.js` replaces the coverage rather than removing it.
+that deleting `bootstrap.test.js` replaces the coverage rather than removing it, and so that the
+one AC-3.3 hook that never had the oracle gains it.
 
 **L-6 row 1 — queue-triage assertions.** Resolves to **no re-homed assertion**, but the
 measurement is now pinned rather than asserted. `queueDriftGate.test.js` imports `main` plus
