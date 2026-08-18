@@ -145,9 +145,7 @@ keeps telling humans to run a pass that has no host. FSPEC class 11 (M-11n) inst
   loss is acceptable, that is a REQ edit that makes C available; it is not a call engineering makes
   inside the sweep.
 
-**Price of A, stated plainly.** The sweep cannot complete on engineering's own schedule: two of
-eleven classes wait on an upstream answer, and PLAN must carry the gate as a real dependency edge
-rather than a note. That is the cost of not deciding a product question in an engineering document.
+**Price of A, stated plainly — and it is transitive.** The gate names classes 7 and 11, but FSPEC's ordering column binds three further classes to class 7: class 8 lands "at the same time as class 7", class 9 "in the same commit as class 7", class 10 after class 7 (`FSPEC-pdlc-plugin-retirement.md:160`, `:161`, `:162`). Blocking class 7 therefore blocks **five of the thirteen classes FSPEC §3.1 enumerates — 7, 8, 9, 10 and 11**; the blocked set is stated once here and reused wherever a count appears. Adding DEC-07's class-6 gate on erratum 6, **six of thirteen classes are gated: 6 on erratum 6, and 7–11 on erratum 3.** The consequences are concrete for the decisions those classes carry: DEC-02's owning oracle rides class 7, DEC-09's positive version assertion rides class 9, and DEC-01's `dist/` set-equality (AC-1.1) cannot go green until class 7 lands, so each of those oracles is *gated*, not merely *pending*. The sweep cannot complete on engineering's own schedule: PLAN must carry the gate as a real dependency edge over class 7's predecessors — not a prose note — and PROPERTIES must place the ATs for classes 7–11 behind the same edge, so that the ordering is what makes them go green. That is the cost of not deciding a product question inside an engineering document.
 
 ## Decision
 
@@ -218,7 +216,7 @@ NG-1/NG-3 name: there is one description of how a pass runs, and it lives in the
 | `MERGE_GUARD_DEFAULTS` keeps a member (`.claude/workflows/`) naming a retired directory | DEC-03 | A cosmetically stale constant, shipped verbatim into the published engine. Editing it is an engine change (REQ NG-5); the staleness is inert because the guard only ever *widens* refusal |
 | Consumer `.claude/workflows/` copies are cleaned only when an operator runs the script | DEC-04 | Consumers who never run it keep stale files indefinitely. Accepted: NG-6 forbids the automatic path, and all-or-nothing classification keeps AT-4.3 inspectable |
 | `hookCompatibility.test.js` survives with fewer blocks than FSPEC M-8's count implies | DEC-07 | The deletion-set count is wrong until erratum 6 lands. Accepted over deleting passing `PROP-COMPAT-*` assertions to satisfy a literal |
-| Two of eleven classes (7 and 11) cannot land on engineering's schedule | DEC-10 | The sweep's completion date is bound to an upstream product answer about `consolidate-learnings`'s host. Accepted over shipping a skill whose named execution path does not exist (NG-1, NG-3), which is the failure the surviving `nudge-consolidation` hook would advertise every session |
+| Five of thirteen classes (7, 8, 9, 10, 11) cannot land on engineering's schedule | DEC-10 | The sweep's completion date is bound to an upstream product answer about `consolidate-learnings`'s host. Accepted over shipping a skill whose named execution path does not exist (NG-1, NG-3), which is the failure the surviving `nudge-consolidation` hook would advertise every session |
 | Class 6 cannot land before erratum 6 | DEC-07 | One suite-size literal is assertable at a time; between now and the erratum, an in-place reduction reds AC-1.3 correctly. Accepted over a re-measured expected value that greens by construction |
 
 **Reversibility.**
