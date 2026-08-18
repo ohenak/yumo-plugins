@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ-pdlc-plugin-retirement.md` (v0.11) → `FSPEC-pdlc-plugin-retirement.md` (v0.7) → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6); `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (addressed in v0.7) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (addressed in v0.2); `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (addressed in v0.3); `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (addressed in v0.4); `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` (addressed in v0.5); `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (addressed in v0.6); `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` (addressed in v0.7); `CROSS-REVIEW-product-manager-TSPEC-v7.md`, `CROSS-REVIEW-test-engineer-TSPEC-v7.md` (addressed in v0.8) |
 | LEARNINGS | `docs/pdlc-plugin-retirement/LEARNINGS-pdlc-plugin-retirement.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.7 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.8 | 2026-08-17 |
 
 *Measured at `2cd0d6b1` (2026-08-17, `feat-pdlc-plugin-retirement`). Every file/symbol claim below
 was verified against the tree at that commit; the FSPEC's own base commit is `b3f24fc6` and its
@@ -1087,7 +1087,7 @@ the §2.6 measurement, not re-checked by this oracle.
 ### 6.1 Upstream errata raised (not folded in here)
 
 Nine claims and open surfaces in the upstream documents did not survive a check against the tree at `2cd0d6b1`.
-Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC. **Eight remain
+Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC. **Nine remain
 open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage, not for action.**
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
@@ -1200,6 +1200,21 @@ open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage
    is outstanding on this item; it is retained for lineage. (REQ AC-1.3 stays silent on registered
    skips and is narrower than AT-1.3 in the same direction, so it does not conflict.)
 
+
+10. **FSPEC AT-1.3 / BR-SWEEP-6 — the swept-surface domain limb names only deleted modules and
+    R-8 re-home hosts, which is narrower than the surface this sweep actually edits.** The landed
+    clause scopes the prohibition to "M-8's deleted modules plus the surviving modules that host
+    R-8's re-homed assertions". Under §4.4's own resolutions exactly one surviving module hosts an
+    R-8 re-home (`consumerCleanup.test.js`, TT-3's mode-bit widening); L-6 row 1 resolves to *no*
+    re-home and L-6 row 2 to "host module retained, no move". So the landed limb covers neither
+    `hookCompatibility.test.js` (an M-8 member **reduced in place**, not deleted — the membership
+    correction of item 6) nor `consolidationBuild.test.js` (edited only by TT-5's new assertions).
+    A bare `it.skip` added to either by this sweep is the same defect AT-1.3 exists to catch, and
+    would be out of the approved domain. Requested edit: restate the limb as *modules this sweep
+    creates, deletes, reduces in place, or adds assertions to, plus surviving hosts of R-8
+    re-homes*, and keep the explicit exclusion of pre-existing pending state
+    (`guardMatrix.test.js`) unchanged. §5.5 already works to the wider set, which is a strict
+    superset of the approved one, so nothing approved is lost while the edit is pending.
 
 ### 6.2 Successor work bound under REQ NG-5
 
