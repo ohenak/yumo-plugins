@@ -109,6 +109,24 @@ Consequence for `.gitignore`: the `/.claude/workflows/` row and its rationale bl
 and no new ignore row is needed — `pdlc/workflows/dist/pdlc-cli.mjs` stays **tracked**, exactly
 as it is today.
 
+**Consequence for the wave gate (class 10).** `.claude/pdlc.config.example.json` today carries
+`implementation.postWaveCommand = "node pdlc/workflows/build-runtime.mjs"` and
+`implementation.postWavePathspecs = ["pdlc/workflows/dist/"]` (verified at `2cd0d6b1`). Both
+values **survive the sweep unchanged**, and that is a decision, not an omission: `dist/` survives
+with `pdlc-cli.mjs` in it (above), the builder survives reduced (§2.3), and the regeneration step
+stays load-bearing. `consolidationBuild.test.js`'s T32 block asserts `build-runtime.mjs --check`
+is clean and stays in the surviving workflow suite (§5.3), so any later wave that edits
+`pdlc/workflows/cli.mjs` or `pdlc/workflows/orchestrate-dev.js` — the two `CLI_SOURCES` inputs —
+leaves the tracked artifact stale and reds that assertion unless something regenerates it.
+`postWaveCommand` is that something. Retiring the two values would degrade AC-5.3's "still
+produced by a build step rather than maintained by hand" into hand-maintenance in practice.
+
+Class 10 therefore edits the wave-gate **prose** (CLAUDE.md's distribution paragraphs and
+`consolidationPreflight.test.js:205`–`:208`'s source-text expectations, where they name retired
+bundles) and leaves the two config-example values as they stand. If FSPEC M-11h or REQ C-5
+assumed those rows retire with `dist/`, the assumption is corrected upstream (§6.1 erratum 5),
+not silently here.
+
 ### 2.3 The reduced build step (M-7)
 
 `build-runtime.mjs` is 831 lines today and emits four artifacts plus a manifest. The reduction
