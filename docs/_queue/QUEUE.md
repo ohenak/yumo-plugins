@@ -74,7 +74,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 
 | Order | Status | Feature | REQ Path | Depends-On | Engine |
 |-------|--------|---------|----------|------------| --- |
-| 5 | in-progress | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution | pdlc engine 0.2.0 / plugin 0.23.0 |
+| 5 | halted | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution | pdlc engine 0.2.0 / plugin 0.23.0 |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
