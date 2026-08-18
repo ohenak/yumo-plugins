@@ -23,6 +23,8 @@ Unchanged sections already reviewed are not re-litigated.
 
 | ID | Question |
 |----|---------|
+| Q-01 | With `check-req-size.sh` added to TT-3(b) per F-01, the re-homed block covers a script that has **no** mode-bit oracle today — `grep -rn "100755" pdlc/workflows/__tests__/*.test.js` returns only `bootstrap.test.js:267`–`:268`, over `FIVE_SCRIPTS`, which never listed it. Is closing that pre-existing gap in this sweep intended, or should it be split so the sweep's own commit stays a pure re-home? I read it as intended (the set-equality companion exists precisely to make the set self-maintaining), but the PLAN's task sizing should know. |
+| Q-02 | v2's Q-02 asked how the three surviving `drift*` helpers are dispositioned; §2.6 now answers for all three, and the two "survive with live consumers" claims verify (`helpers/driftCapabilities.js` keeps `documentOracles.test.js` and `skipSinkTransport.test.js`; `helpers/skipSink.js` keeps `skipSinkTransport.test.js` — every other importer of both is a `drift*.test.js` module the sweep deletes). The remaining question is only F-02's: who *owns* the `driftOrdering.js` deletion. No further measurement needed. |
 
 ## Positive Observations
 
