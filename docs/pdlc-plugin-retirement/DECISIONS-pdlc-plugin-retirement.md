@@ -81,15 +81,15 @@ Each entry names the choice, the alternatives priced against `2017c6f9`, and the
 
 **Context.** `pdlc/workflows/runtime-adapter.js` (1,209 lines, 56,713 bytes) loses its only *code* consumer when the bundle rows go: the sole import site is `build-runtime.mjs:97` (`readFileSync(resolve(HERE, "runtime-adapter.js"), "utf8")`), fed to `QUEUE_SOURCES`/`DEV_SOURCES`/`CONS_SOURCES` (`:690`–`:692`). The engine did not port it — `pdlc/engine/lib/adapter.mjs:8` says so in as many words — and `prepack.mjs`'s `MODULE_NAMES` does not vendor it.
 
-- **A — leave the module and its tests (`__tests__/adapterProbe.test.js`, 306 lines; `__tests__/helpers/adapterHarness.js`, 203 lines) in place, and route the orphan upstream as erratum 2** (chosen).
-- **B — delete it in the sweep.** Rejected on two grounds, both verified rather than assumed. (i) *Unspecified deletion.* No FSPEC row owns it; deleting a 56 KB module that no upstream disposition names is the exact set-equality failure mode C-6 exists to prevent, and it would make the class-7 commit's inventory diverge from BR-SWEEP-5's. (ii) *Live citations survive it.* Four surviving modules cite the file by name in load-bearing explanatory comments — `orchestrate-dev.js:6743`, `orchestrate-queue.js:1259` and `:2259`, `consolidate-learnings.js:316`, plus `pdlc/engine/lib/adapter.mjs:15`/`:335`/`:521` — so deletion dangles documentation inside the engine carve-out the sweep is not allowed to rewrite.
+- **A — leave the module in place and route the orphan upstream as erratum 2** (chosen). Scope note, corrected here: `__tests__/adapterProbe.test.js` (306 lines) and `__tests__/helpers/adapterHarness.js` (203 lines) are **not** `runtime-adapter.js`'s coverage and are not part of this decision's price. Their subject is the probe transport of `pdlc-cli.mjs` — the module header states it in as many words ("the `pdlc-cli.mjs` probe transport (`rtCliQuery`) and the three seams built on it") — and `pdlc-cli.mjs` is exactly the artifact DEC-01 keeps. Those 509 lines stay because their subject survives, for reasons that have nothing to do with the orphan. What DEC-06 actually prices is the 1,209-line, 56,713-byte module itself, with no in-repo executor until erratum 2 lands a disposition.
+- **B — delete it in the sweep.** Rejected on two grounds, both verified rather than assumed. (i) *Unspecified deletion.* No FSPEC row owns it; deleting a 56 KB module that no upstream disposition names is the exact set-equality failure mode C-6 exists to prevent, and it would make the class-7 commit's inventory diverge from BR-SWEEP-5's. (ii) *Live citations survive it.* **Four surviving modules — three under `pdlc/workflows/`, plus the engine's adapter — cite the file by name** in load-bearing explanatory comments: `orchestrate-dev.js:6743`; `orchestrate-queue.js:1259` and `:2259`; `consolidate-learnings.js:316` and `:1331` (the latter citing `runtime-adapter.js:915` / `:929-931` for `rtListFiles`'s reply validator); and `pdlc/engine/lib/adapter.mjs:8`, `:15`, `:335`, `:521`. Nine cite sites across four modules, re-measured at `2017c6f9`. Deletion dangles documentation inside the engine carve-out the sweep is not allowed to rewrite.
 - **C — move it under `pdlc/engine/`.** Rejected: that is a port, not a sweep, and lands inside REQ NG-5.
 
 ### DEC-07 — `hookCompatibility.test.js` is reduced, not deleted
 
 **Context.** FSPEC M-8's deletion set is stated to be 21 `*.test.js` modules; `pdlc/workflows/__tests__/hookCompatibility.test.js` (371 lines) is listed among them, but only its `C7` block depends on the retired drift hook.
 
-- **A — reduce the module in place, keeping the `PROP-COMPAT-*` assertions outside `C7`** (chosen), and raise the membership/count mismatch as erratum 6 rather than resolving it here.
+- **A — reduce the module in place, keeping the `PROP-COMPAT-*` assertions outside `C7`** (chosen), and raise the membership/count mismatch as erratum 6 rather than resolving it here. **Blocking clause — exactly one suite-size literal is assertable at any moment.** FSPEC L-5 pins the post-sweep `pdlc/workflows/__tests__/*.test.js` count at **97** (119 − 22, on the premise that `hookCompatibility` is deleted); TSPEC §6.1 erratum 6 corrects it to **99** (the module survives, and `runtimeProvenanceWiring`'s and the module's dispositions move with it). Therefore: **class 6 does not land until erratum 6 has landed upstream.** Until it does, the assertable literal is L-5's 97 and an in-place reduction reds AC-1.3 — correctly, because the tree and the spec disagree. After it lands, the assertable literal is 99. Decision rule 2 does not resolve this and must not be read as licence to re-measure the tree and assert whatever it contains; the whole point of the clause is that no moment exists where a green suite proves nothing. This blocking edge is the same one TSPEC §6.4 T-6 flags, restated here as a PLAN ordering constraint.
 - **B — delete the whole module as M-8 literally says.** Rejected: it discards passing property assertions about hook compatibility that have nothing to do with the drift hook, to satisfy a count that C-6 requires us to re-measure anyway.
 - **C — delete it now, re-add the surviving assertions in a later commit.** Rejected: a delete-then-restore pair inside one sweep is churn that no criterion rewards, and it leaves the suite transiently thinner than any pinned literal describes.
 
@@ -97,7 +97,7 @@ Each entry names the choice, the alternatives priced against `2017c6f9`, and the
 
 **Context.** `.claude/pdlc.config.example.json` carries `"postWaveCommand": "node pdlc/workflows/build-runtime.mjs"` and `"postWavePathspecs": ["pdlc/workflows/dist/"]` (verified verbatim at `2017c6f9`).
 
-- **A — leave both values unchanged; edit only the surrounding prose that names retired bundles** (chosen).
+- **A — leave both values unchanged; edit only the surrounding prose that names retired bundles** (chosen). This is not a sweep-local reversal of FSPEC class 10: FSPEC line 162 lists the two **values** among class 10's retired surface, and **TSPEC §6.1 erratum 5 already routes that correction upstream** ("the wave-gate config values do not retire with `dist/` … if M-11h's per-file disposition assumed both values retire, it should be corrected to 'prose only'"). DEC-08 records the choice erratum 5 asks upstream to ratify; class 10 is scoped accordingly and the erratum is carried as a re-evaluation trigger below, so the item is not left without a named successor surface (DC-08). **Oracle shape.** The surviving assertion is `consolidationPreflight.test.js`'s `expect(postWavePathspecs).toContain("pdlc/workflows/dist/")` — containment over what is contractually a one-element array, so it stays green if a second, wrong pathspec is added. Class 10's edit should tighten it to **set-equality** over the array (`toEqual(["pdlc/workflows/dist/"])`), keeping `postWaveCommand`'s existing `toBe` equality as-is. C-6's rule is set-equality, not containment, and this is the one place in the config surface where the shipped assertion is weaker than the rule.
 - **B — retire both values as part of the distribution sweep.** Rejected because the mechanism they drive survives DEC-01 and DEC-02: `dist/pdlc-cli.mjs` stays tracked, and its two inputs (`CLI_SOURCES`, `build-runtime.mjs:530`) are files later waves routinely edit. Dropping the post-wave regeneration would degrade AC-5.3's "produced by a build step" into hand-maintenance the first time a wave touches `orchestrate-dev.js` or `cli.mjs`.
 - **C — narrow `postWavePathspecs` to the single file.** Rejected as churn with no oracle behind it; the directory pathspec is already exactly the surviving artifact's parent after DEC-01.
 
@@ -105,9 +105,48 @@ Each entry names the choice, the alternatives priced against `2017c6f9`, and the
 
 **Context.** `pdlc/.claude-plugin/plugin.json` declares `"version": "0.23.1"`; the engine declares `"pdlcPluginCompat": "^0.23.0"` (`pdlc/engine/package.json:18`) and refuses to dispatch against an out-of-range plugin (`pdlc/engine/lib/handshake.mjs`, "installed pdlc plugin version … is incompatible").
 
-- **A — bump to `0.23.2`** (chosen): stays inside the engine's declared window, so no engine change is needed to keep an installed pair working.
-- **B — bump the minor/major (`0.24.0` / `1.0.0`) to signal the retirement.** Rejected: `^0.23.0` does not admit `0.24.0`, so the bump alone would break the handshake and force an engine edit — REQ NG-5 again — turning a documentation-grade signal into a runtime-compatibility change.
+- **A — bump to `0.23.2`** (chosen): stays inside the engine's declared window, so no engine change is needed to keep an installed pair working. **Positive oracle required.** The only mechanical version check in the tree, `advertisedVersionViolation()` (`pdlc/workflows/lib/document-oracles.mjs`), cannot witness this: it compares the working tree against HEAD and returns `{ skipped: S_NOTHING_STAGED }` when `git status --porcelain -- pdlc/workflows/dist/` is clean, so it verifies nothing on the commit that lands the bump; and FSPEC class 9 (M-11g) puts that very check inside the sweep's own edit set, making the sweep its own witness. Class 9 therefore adds a **surviving positive assertion**: `pdlc/.claude-plugin/plugin.json`'s `version` equals the literal `0.23.2` **and** `satisfiesRange(version, pdlcPluginCompat)` returns true, calling the shipped `satisfiesRange` (`pdlc/engine/lib/handshake.mjs:93`) against `pdlc/engine/package.json`'s declared range rather than transcribing the comparison. The literal alone is a dead-config assertion; the `satisfiesRange` call is what exercises the range semantics BR-VER-1's user-visible signal depends on, so a bump that silently leaves the handshake window reds instead of shipping (DC-03).
+- **B — bump the minor/major (`0.24.0` / `1.0.0`) to signal the retirement.** Rejected — and the reason is **cost, not scope**. The caret arithmetic is real: `^0.23.0` (`pdlc/engine/package.json:18`) does not admit `0.24.0`, so a minor bump leaves the installed engine's declared window and `handshake.mjs` refuses every run until the engine's declaration is widened. But widening that declaration is **explicitly carved into scope** by REQ NG-5 ("the engine's declared compatible-plugin range (BL-07)"), so calling option B an NG-5 violation would be wrong and would teach downstream readers that the compat range is untouchable — mis-shaping PLAN's handling of BL-07, which is exactly the prerequisite that gates the sweep on a published engine whose window admits the shipped plugin version. The honest price of B is operator cost and release latency: a widened `pdlcPluginCompat`, a **new engine release cut and published**, and BL-07 re-gated against that release before the first deletion commit merges — for a signal that is documentation-grade. Option A buys the same diagnosability for a one-line version change inside an already-published window. A still wins; it wins on price.
 - **C — leave the version untouched.** Rejected: BR-VER-1 requires the sweep's user-visible surface change to be versioned, and an unchanged version makes installed-copy diagnosis ambiguous.
+
+### DEC-10 — `consolidate-learnings`'s execution host: classes 7 and 11 block on erratum 3
+
+**Context.** The sweep removes exactly one user-visible capability, and it is not one of the two
+delegator skills DEC-05 prices. `pdlc/skills/consolidate-learnings/SKILL.md` names its host in as
+many words — "The pass is performed in code by `pdlc/workflows/consolidate-learnings.js` (shipped as
+`pdlc/workflows/dist/consolidate-learnings.bundle.js`)" — and class 7 deletes that bundle (M-10).
+Nothing replaces it. The module survives but cannot run as plain Node: it needs the agent-backed
+seams `rtConsInjections()` supplies. The engine does not host it either — its command surface is
+`dev` / `queue` / `doctor`, and `consolidate-learnings` sits in `OPERATOR_ONLY_SKILLS`
+(`pdlc/engine/lib/startup.mjs:52`) as a skill *no workflow module dispatches*. Meanwhile the
+`nudge-consolidation` SessionStart hook survives by AC-1.7 and O-1, so post-sweep the pipeline
+keeps telling humans to run a pass that has no host. FSPEC class 11 (M-11n) instructs rewriting
+`SKILL.md:11`'s bundle reference "to name the surviving execution path"; there is none to name.
+
+- **A — block: classes 7 and 11 do not land until erratum 3 has an upstream disposition**
+  (chosen). TSPEC §6.1 erratum 3 raises the gap and §6.4 T-5 already marks it blocking; this
+  decision makes the block a recorded choice with a price rather than an inherited flag. Class 7
+  removes the host and class 11 is instructed to *name* it, so the two are the only commits that
+  can ship the loss — gating them is the narrowest possible gate. SUCC-2 (a `pdlc
+  consolidate-learnings` command on the engine's existing adapter) is the natural successor, and is
+  NG-5 work, not sweep work.
+- **B — rewrite `SKILL.md` to instruct an interactive, hand-run pass.** Rejected: the skill's own
+  body states that performing the pass by hand bypasses the machinery the skill exists to drive
+  (the `.consolidation-log.md` boundary, deterministic `failure-mode-id` derivation, NFR-4
+  duplicate suppression). Substituting a human ritual for a deterministic pass is a **product**
+  decision about what the capability is, priced against US-04 and NG-3 — it belongs in REQ, not in
+  a deletion sweep's DECISIONS. Choosing it here would also hand PROPERTIES an unfalsifiable
+  contract: no oracle distinguishes "the human did the pass" from "nobody did".
+- **C — accept the capability loss explicitly and ship.** Rejected: this is precisely the
+  "ships a skill that cannot run" failure REQ NG-1 and NG-3 exist to prevent, applied to the one
+  skill whose host the sweep removes. No REQ criterion authorises removing a capability, and the
+  surviving `nudge-consolidation` hook would keep advertising it. If the product side decides the
+  loss is acceptable, that is a REQ edit that makes C available; it is not a call engineering makes
+  inside the sweep.
+
+**Price of A, stated plainly.** The sweep cannot complete on engineering's own schedule: two of
+eleven classes wait on an upstream answer, and PLAN must carry the gate as a real dependency edge
+rather than a note. That is the cost of not deciding a product question in an engineering document.
 
 ## Decision
 
