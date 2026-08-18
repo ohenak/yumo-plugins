@@ -52,7 +52,7 @@ Every claim below cites the symbol or file it rests on, verified at `2cd0d6b1`:
 `MERGE_CONFIG_PATH`), `pdlc/engine/lib/report.mjs` (`buildEngineBlock`, `stampReport`),
 `pdlc/engine/lib/startup.mjs` (`OPERATOR_ONLY_SKILLS`), `pdlc/engine/bin/cli.mjs`
 (`FLAGS_BY_COMMAND`), `pdlc/engine/scripts/prepack.mjs` (`MODULE_NAMES`),
-`pdlc/hooks/hooks.json`, `pdlc/.claude-plugin/plugin.json`. Three claims the upstream documents
+`pdlc/hooks/hooks.json`, `pdlc/.claude-plugin/plugin.json`. Six claims the upstream documents
 make do **not** survive that check; they are raised as errata rather than absorbed (§6.1).
 
 ## 2. Architecture
@@ -727,7 +727,7 @@ BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip 
 
 ### 6.1 Upstream errata raised (not folded in here)
 
-Three claims in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
+Six claims in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
 Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC.
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
@@ -760,6 +760,36 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    post-sweep there is none. This is a live capability the sweep would remove, which REQ NG-3
    does not contemplate.
 
+4. **REQ/baseline — A-1's allow-list does not cover the two files this TSPEC creates.** The
+   cleanup script (`pdlc/hooks/scripts/cleanup-consumer-workflows.sh`) and its oracle
+   (`pdlc/workflows/__tests__/consumerCleanup.test.js`) must transcribe §4.3's nine expected
+   names literally, and three of those names match L-2 terms verbatim (`\.bundle\.js` ×3,
+   `pdlc-drift-state`). Both files are tracked, and L-3's expected-empty command greps
+   `git ls-files`, so AC-1.2 reds permanently unless A-1 gains the two named rows. A-1 today
+   covers `docs/completed/**`, `docs/discarded/**`, `docs/_decisions/**`, the baseline file,
+   `**/LEARNINGS-*.md` / `**/POSTMORTEM-*.md`, two test-fixture corpora and `QUEUE.md` — nothing
+   under `pdlc/hooks/scripts/`. Requested edit: two path rows, not a glob (§4.3). Owning
+   documents: `docs/_constraints/pdlc-retirement-baseline.md` §A-1 and FSPEC L-3's transcription
+   of it.
+
+5. **REQ C-5 / FSPEC M-11h — the wave-gate config values do not retire with `dist/`.**
+   `.claude/pdlc.config.example.json`'s `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`)
+   and `postWavePathspecs` (`["pdlc/workflows/dist/"]`) both stay valid and load-bearing after
+   the sweep (§2.2): `dist/pdlc-cli.mjs` remains tracked and `consolidationBuild.test.js`'s T32
+   `--check` assertion survives, so without the post-wave regeneration a later wave that edits a
+   `CLI_SOURCES` input leaves the artifact stale and reds the suite. If M-11h's per-file
+   disposition assumed both values retire, it should be corrected to "prose only"; class 10
+   (§2.9) is scoped accordingly.
+
+6. **FSPEC L-5 — `hookCompatibility.test.js`'s M-8 membership is a reduction, not a deletion.**
+   L-5 defines M-8 as 21 modules and derives 119 − 22 = 97 by deleting all of them;
+   §2.6 retains `hookCompatibility.test.js` in place because its three `PROP-COMPAT-*` blocks are
+   the only workflow-suite coverage of three surviving hooks. The module therefore moves out of
+   M-8's deletion set into class 6's *reduction* set, and the post-sweep suite literal becomes 99
+   (§4.4). Membership and count are one correction, not two: correcting the number while leaving
+   the module inside M-8 would leave AC-1.3 asserting a deletion the sweep does not perform.
+
+
 ### 6.2 Successor work bound under REQ NG-5
 
 | # | Item | Why it is not authored here |
@@ -776,6 +806,9 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
 | T-1 | Re-run C-6's partition at the sweep's base commit and re-transcribe every FSPEC literal, including §4.4's corrected suite size | implementer, §3.0 entry gate |
 | T-2 | Re-derive `driftGenerators.js`'s surviving export set by a fresh consumer scan (§4.7) rather than trusting the transcription | implementer, class 6 |
 | T-3 | Enumerate the instructional-document per-file list for class 12 at re-measurement time (REQ O-5) | implementer, PLAN |
+| T-4 | **Blocking:** do not land class 13 (`cleanup-consumer-workflows.sh`) or its test module until erratum 4's A-1 allow-list rows are on the branch. Until then AC-1.2 is red by construction and the class-13 commit cannot pass the per-commit gate (§5.4) | implementer, before class 13 |
+| T-5 | **Blocking:** do not land class 7 (bundle deletion) or class 11 (skill rewrites) until erratum 3 has an upstream disposition — either a named surviving execution host for `consolidate-learnings`, or an explicit REQ decision that the skill ships without one. Class 7 removes the only host and class 11 is instructed to *name* it; landing either first ships a skill that cannot run and hides the loss (REQ NG-1, NG-3) | implementer, before classes 7 and 11 |
+| T-6 | Re-check `hookCompatibility.test.js`'s retention at re-measurement: if any assertion outside the `C7` block depends on the drift hook, the disposition flips from reduction back to deletion and erratum 6's correction changes with it | implementer, class 6 |
 
 ### 6.4 Risks this design carries
 
