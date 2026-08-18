@@ -440,10 +440,13 @@ observed run — none depends on an agent reporting success.
   cleanup step once, *then* both are gone and the repo's tracked files are unchanged.
 - **AC-4.2** *Who:* the same operator. *Given* the cleanup has already run, *when* it runs
   again, *then* it succeeds, changes nothing and says so (idempotence).
-- **AC-4.3** *Who:* the same operator. *Given* an unexpected or hand-modified file inside the
-  target directory, *when* the cleanup runs, *then* it leaves that file **byte-identical**,
-  names its path on stderr and exits **non-zero** — the convention the retired tooling used,
-  so the refusal is checkable without reading the implementation (C-9).
+- **AC-4.3** *Who:* the same operator. *Given* an **unexpected entry** inside the target
+  directory — an entry the cleanup's own expected set does not name — *when* the cleanup runs,
+  *then* it leaves that entry **byte-identical**, names its path on stderr and exits
+  **non-zero**, so the refusal is checkable without reading the implementation (C-9).
+  Hand-modification of an expected entry is deliberately **not** covered: no post-sweep
+  artifact records the hashes that would let the cleanup tell a modified copy from an original,
+  so the criterion would be untestable as written.
 - **AC-4.4** *Who:* a consumer repo owner who never adopts the cleanup. *Given* they do
   nothing, *when* they run a feature through the engine, *then* the run reaches its configured
   final phase and its report set-equals that of the same run in a repo with no leftovers, and
