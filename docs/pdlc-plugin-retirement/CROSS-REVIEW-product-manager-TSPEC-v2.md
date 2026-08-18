@@ -39,8 +39,30 @@ FINDING: Low | delta | local | §4.4 bootstrap paragraph | "four of the five shi
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01's widened TT-3: should the surviving shipped-script set be enumerated **literally** in `consumerCleanup.test.js`, or derived from `pdlc/hooks/hooks.json`'s four surviving `command` paths plus the cleanup script? The derived form keeps the enumeration set-equal to what the plugin actually ships (a hook added without a mode bit fails), but couples the mode-bit oracle to the hooks manifest that L-4's set-equality already pins. A literal list is simpler and matches `FIVE_SCRIPTS`'s current shape, at the cost of going stale silently. |
+| Q-02 | §5.2 cites `consolidationHookParity.test.js` (`:152`, `:215`, `:364`) as already covering `nudge-consolidation.sh` "rather than duplicated". Verified the file's subject is that hook (`HOOK_PATH`, `:36`), but the three anchors are a helper docstring, a helper body and one assertion — not the three named oracles a reader expects. Should the row cite the covering **assertion titles** instead, as §4.4's L-6 row 1 table now does for `orchestrateQueue.test.js`? That table is the better pattern and would make AT-3.3 clause 2 red on a rename rather than silently uncovered. |
+
 ## Positive Observations
 
+- **§4.7's correction is exemplary practice.** The withdrawn claim is stated as withdrawn, with the reason each of the five mistaken members was mistaken (`driftRepoRoot` comment-only; four advisory/properties modules not consumers at all), the measurement command is given so a reader can re-run it, and the conclusion is checked against the baseline it previously contradicted — eight surviving consumers, set-equal to `pdlc-retirement-baseline.md:45`. It also names what did **not** change (the surviving export set) so no downstream reader over-corrects.
+- **§5.2's AT-3.1 rewrite fixes an absence-only oracle without being asked.** The static half is now conjunctive — invocation line present verbatim, resolution ladder present, refusal text names the install command, **and** no selection/dispatch/verdict text remains — with the failure mode spelled out: "An empty or truncated file fails (a)–(c) instead of passing (d) vacuously". That is the right instinct applied to the exact shape of test that false-greens.
+- **TT-5 is set-equality, not containment.** "the emitted file set **set-equals `{pdlc-cli.mjs}`** (a surviving bundle or a silently-emitted manifest fails)" closes the gap where §3.1's emission contract was asserted only by construction. The paired positive (`wrote`/`in-sync` row) and negative (`STALE` + exit 1) arms make it an oracle rather than a smoke test.
+- **§4.4's L-6 row 1 table converts a claim into a citation.** Transcribing the four `orchestrateQueue.test.js` titles with their sites means R-8's "discharged by measurement" can be re-checked by a reader and reds if one is renamed — and §5.3 lists them as protected, which closes the loop the v1 text left open.
+- **T-4 and T-5 are the right kind of obligation.** Both are stated as *blocking a specific class from landing*, with the failure they prevent named (AC-1.2 red by construction; a skill shipping with no execution host). An obligation an implementer can act on beats a risk paragraph, and §6.3 now reads as a gate rather than a list of worries.
+- **§3.2's honesty about its own scope.** Declaring rows 4 and 5 "surface this TSPEC introduces, not upstream criteria", covering them with tests anyway ("an untested safety flag is worse than no flag"), and routing product ownership upstream is exactly the disposition a PM wants for engineering-side scope — neither dropped nor quietly annexed.
+
 ## Recommendation
+
+**Needs revision**
+
+Two High findings, both introduced by this round and both narrow. Required changes:
+
+1. **F-01** — Scope §5.2's TT-3 to the **surviving** shipped-script set (the three AC-3.3 hooks plus `cleanup-consumer-workflows.sh`), enumerated set-equally, so `bootstrap.test.js`'s deletion replaces as much coverage as it removes.
+2. **F-02** — Restate §4.5 clause 1(b)'s stop at the run-variable **key** level: enumerate `engine.outcomes`'s six fixed keys and `engine.dispatches.{bySkill,byPhase}`, stop below the dynamic skill/phase names, so AC-5.2 still fails when a phase or gate disappears.
+3. **F-03** (non-gating, lands with F-01) — Correct §4.4's five-scripts split to 2 deleted / 3 surviving.
+
+Nothing else in the diff needs to change; the seven v1 findings are closed and the sections they touch verify against the tree.
 
 ## Verdict
