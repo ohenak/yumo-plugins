@@ -735,7 +735,7 @@ no release sits on the critical path.
 | AT-4.2 | second run over the cleaned tree: exit `0`, says nothing to clean, changes nothing | same |
 | AT-4.3 | two constructions — an operator-named file, and a `.pdlc-tmp.<pid>.<rand>` residue — each asserting all four clauses: every expected entry present **and byte-identical** (content compared before/after), the unexpected entry byte-identical, its path on **stderr**, exit **exactly `3`** | same |
 | TT-1 (contract row 4a) | usage error: an unknown flag (`--nope`) or a second positional argument exits **exactly `4`**, prints the usage line on stderr, and removes nothing — every entry of a fully-populated target still present and byte-identical | same |
-| TT-1b (contract row 4b) | runtime failure: a target directory made unreadable (`chmod 000`, skipped when the test runs as root) exits **exactly `4`** and prints a diagnostic naming the failing path on stderr. Only these two conjuncts are asserted — the partial-`rm` arm of row 4b is deliberately unasserted, because failing one `rm` mid-loop is not constructible deterministically without faking the removal primitive, which the script does not inject; row 4b's "partial state reported" clause is therefore contract text an implementer codes to, not an oracle. The unreadable-target arm is asserted because it is cheap and would otherwise leave row 4b's **exit status** — shared with 4a but reached by a different path — with no coverage at all The root-conditional skip is **registered**, not bare: the row uses `itOrSkip` with a `SKIP_INVENTORY` capability entry, both from the registration API `helpers/driftCapabilities.js` (used this way by `skipSinkTransport.test.js` and `documentOracles.test.js`); the on-disk sink those records land in is `helpers/skipSink.js`. AT-1.3 as approved forbids a skip of any kind, so this row is reconciled by §6.1 erratum 9's proposed narrowing to skips absent from the skip sink's inventory, not by TSPEC-side reinterpretation (§5.5). | same |
+| TT-1b (contract row 4b) | runtime failure: a target directory made unreadable (`chmod 000`, skipped when the test runs as root) exits **exactly `4`** and prints a diagnostic naming the failing path on stderr. Only these two conjuncts are asserted — the partial-`rm` arm of row 4b is deliberately unasserted, because failing one `rm` mid-loop is not constructible deterministically without faking the removal primitive, which the script does not inject; row 4b's "partial state reported" clause is therefore contract text an implementer codes to, not an oracle. The unreadable-target arm is asserted because it is cheap and would otherwise leave row 4b's **exit status** — shared with 4a but reached by a different path — with no coverage at all The root-conditional skip is **registered**, not bare: the row uses `itOrSkip` with a `SKIP_INVENTORY` capability entry, both from the registration API `helpers/driftCapabilities.js` (used this way by `skipSinkTransport.test.js` and `documentOracles.test.js`); the on-disk sink those records land in is `helpers/skipSink.js`. AT-1.3 as approved (FSPEC v0.7, folding in §6.1 erratum 9) exempts a skip that reaches **the run's skip sink as a registered record**, so this row satisfies AT-1.3 as written rather than needing reconciliation; the exemption is keyed on sink records at run time, not on `SKIP_INVENTORY` membership (§5.5). | same |
 | TT-2 (contract row 5) | `--dry-run`, two constructions: over the full expected set it prints the same per-entry lines as a live run, exits `0`, and **every entry is still present and byte-identical afterwards** (positive conjunct, not merely "no error"); over a tree holding one unexpected entry it prints the refusing path on stderr, exits **exactly `3`**, and again removes nothing | same |
 | TT-3 (bare-path invocation and mode bits) | Two halves. **(a) Bare path, new script only:** `cleanup-consumer-workflows.sh` is spawned **by path with no interpreter** (`spawnSync(scriptPath, […])`, not `spawnSync("bash", [scriptPath])`); status is one of `0`/`3`/`4` and **never `126`**. **(b) Mode bits, over the whole post-sweep shipped-script set:** an `it.each` over the set-equal enumeration `{ pdlc/hooks/scripts/cleanup-consumer-workflows.sh, check-req-size.sh, check-scope-field.sh, guard-harvest-before-delete.sh, nudge-consolidation.sh }` — **five** members post-sweep — asserts index mode `100755` and an executable on-disk file in a fresh clone, and a companion assertion requires the enumeration to **set-equal** the executable scripts actually tracked under `pdlc/hooks/scripts/` (re-derived inline from `git ls-files -s`), so a script added later without a mode bit fails rather than passes unlisted. `check-req-size.sh` is in the enumeration because it is tracked `100755` today, is registered in `pdlc/hooks/hooks.json` as the second `PostToolUse` command, and is one of the behaviours AC-3.3 names (REQ-size warnings) — it was never a `FIVE_SCRIPTS` member, so the re-home widens the set rather than copying it (§4.4). No `lib/` carve-out is stated: `lib/pdlc-drift.sh` is the only file there and M-2 deletes it, so post-sweep the directory is gone and an exclusion would read as a live constraint over an empty set. The companion assertion is deliberately **one-directional** — tracked-executable ⇒ enumerated — and says nothing about `hooks.json` registration: AC-1.7's own hook-set equality over the four surviving manifest entries owns that direction, and `cleanup-consumer-workflows.sh` is deliberately never registered (§3.2), so a converse clause here would either be redundant with AC-1.7 or would have to carve that script out again. Re-homes `bootstrap.test.js`'s §9.3 mode-bit block and its dedicated never-126 assertion, which the sweep deletes (§4.4). **Collaborators:** index mode is re-derived inline via `git ls-files -s` — `indexMode` lives in `helpers/driftHarness.js`, deleted by M-8 — while the fresh-clone half imports `makeFreshClone` from `helpers/freshClone.js`, which is **not** an M-8 member and survives; after the sweep `consumerCleanup.test.js` is that helper's sole consumer (today it is `bootstrap.test.js`'s), so the helper must not be swept as collateral | same |
 | TT-4 (classifier property) | property over the name-only classifier, seeded from `helpers/driftGenerators.js`'s surviving `seeded`/`resolveSeed`/`shrink` (§4.7): for a random subset of §4.3's nine expected names **plus at least one unexpected name**, the run removes **nothing** and exits `3`; for a random subset of the expected names **alone**, it removes exactly that subset and exits `0`. This is what makes §2.5's all-or-nothing claim checkable over more than three fixed constructions | same |
@@ -985,8 +985,9 @@ the §2.6 measurement, not re-checked by this oracle.
 
 ### 6.1 Upstream errata raised (not folded in here)
 
-Nine claims and open surfaces in the upstream documents do not survive a check against the tree at `2cd0d6b1`.
-Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC.
+Nine claims and open surfaces in the upstream documents did not survive a check against the tree at `2cd0d6b1`.
+Each is raised for the owning document's targeted versioned edit; none is fixed by this TSPEC. **Eight remain
+open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage, not for action.**
 
 1. **FSPEC — M-11p's dependent set is missing two gate-read dependents of the build step.**
    `pipelineWiring.test.js`'s `devMeta()` reads the `DEV_META` template out of
@@ -1081,20 +1082,22 @@ Each is raised for the owning document's targeted versioned edit; none is fixed 
    test must not end up scoped differently.
 
 
-9. **FSPEC AT-1.3 / BR-SWEEP-6 (and REQ AC-1.3) — "no skipped or pending test at all" has no
-   satisfying runner once TT-1b exists.** AT-1.3 reads "the suite contains **no skipped or pending
-   test at all** (repo-wide …)" and BR-SWEEP-6 states the same flatly. TT-1b's unreadable-target
-   arm (`chmod 000`) cannot be constructed as root, so on a root runner the row skips and AT-1.3
-   fails as written; on a non-root runner nothing fires and the divergence is invisible. The
-   collision is not created by the sweep alone: `SKIP_INVENTORY` already carries ten `uid-nonroot`
-   entries (`helpers/driftCapabilities.js`), so the wider clause is already false on a root runner
-   at HEAD. Requested edit, owned by FSPEC: narrow AT-1.3's clause and BR-SWEEP-6 to "no skip or
-   pending test **absent from the skip sink's inventory**" — a registered `itOrSkip` skip carrying a
-   `SKIP_INVENTORY` row is a declared capability gap; a bare `it.skip` still fails. REQ AC-1.3
-   should take the same wording if it is to stay aligned (it is silent on registered skips today).
-   The alternative — pinning the gate runner to non-root — is costed and rejected in §5.5. Until
-   this edit lands, §5.5's join oracle exists but the binding acceptance wording is the wider one;
-   this TSPEC carries no clause FSPEC has not approved.
+9. **FSPEC AT-1.3 / BR-SWEEP-6 (and REQ AC-1.3) — "no skipped or pending test at all" had no
+   satisfying runner once TT-1b exists. — RESOLVED UPSTREAM, FSPEC v0.7 (2026-08-18).** As raised:
+   AT-1.3 read "the suite contains **no skipped or pending test at all** (repo-wide …)" and
+   BR-SWEEP-6 stated the same flatly. TT-1b's unreadable-target arm (`chmod 000`) cannot be
+   constructed as root, so on a root runner the row skips and AT-1.3 failed as written; the
+   collision was not created by the sweep alone, since `SKIP_INVENTORY` already carries ten
+   `uid-nonroot` entries (`helpers/driftCapabilities.js`), making the wider clause already false on
+   a root runner at HEAD. **FSPEC accepted the erratum and folded it in**: AT-1.3 and BR-SWEEP-6 now
+   scope the prohibition to the **swept surface** and exempt a skip that reaches "the run's skip
+   sink as a registered record" — deliberately **not** keyed to `SKIP_INVENTORY` membership, since
+   the inventory is not closed over registered skips and a membership key would both fail correct
+   skips and let the inventory be widened to buy a green gate. A bare `it.skip` or unregistered
+   pending marker in that surface still fails. §5.5 is re-derived from the landed text; the
+   alternative — pinning the gate runner to non-root — remains costed and rejected there. No action
+   is outstanding on this item; it is retained for lineage. (REQ AC-1.3 stays silent on registered
+   skips and is narrower than AT-1.3 in the same direction, so it does not conflict.)
 
 
 ### 6.2 Successor work bound under REQ NG-5
