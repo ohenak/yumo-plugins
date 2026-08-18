@@ -13,7 +13,7 @@ feature: pdlc-plugin-retirement
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.6 | 2026-08-18 |
+| pdlc | Draft | Claude | 0.7 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -285,14 +285,14 @@ copy. The step never runs by itself — no hook, session start or engine startup
 - **BR-SWEEP-6 — Deleted, never skipped.** A test whose subject is deleted is removed with it.
   Across the **swept surface** — M-8's deleted modules and the surviving modules that host R-8's
   re-homed assertions — no `skip` or pending marker survives **that does not reach the run's skip
-  sink as a registered record** (`helpers/skipSink.js`): a capability-gated skip that registers
-  itself into the sink is a declared runner limitation, not a sweep defect, while a bare `it.skip`
-  or an unregistered pending marker in that surface still fails. The boundary is sink membership
-  at run time, not `SKIP_INVENTORY` membership: the inventory is deliberately not closed over
-  registered skips, so keying the exemption to it would fail correct skips. Pending markers in
-  modules outside the swept surface — `guardMatrix.test.js`'s pre-existing `it.skip.each` rows are
-  the measured instance — are pre-existing state this feature neither creates nor repairs.
-  No assertion is left vacuously true against an empty directory (REQ C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
+  sink as a registered record**: a capability-gated skip that registers itself into the sink is a
+  declared runner limitation, not a sweep defect; a bare `it.skip` or unregistered pending marker
+  in that surface still fails. The boundary is sink membership at run time, not `SKIP_INVENTORY`
+  membership — the inventory is deliberately not closed over registered skips, so keying the
+  exemption to it would fail correct skips. Pending markers outside the swept surface
+  (`guardMatrix.test.js`'s rows are the measured instance) are pre-existing state this feature
+  neither creates nor repairs. No assertion is left vacuously true against an empty directory
+  (REQ C-8). Conversely, an assertion about **surviving** behaviour that happens to live in a deleted
   file is re-homed into a surviving module before its host is deleted (REQ R-8).
 - **BR-SWEEP-7 — The sweep sizes from dispositions, not row counts.** The PLAN's task sizes come
   from the partition's per-file dispositions in the baseline, not from the 16 M-11 rows (REQ R-2).
@@ -623,9 +623,9 @@ committed transcript or from an observed run; none is satisfied by an agent repo
   is green; across the **swept surface** (M-8's deleted modules and the surviving modules hosting
   R-8's re-homed assertions) the suite contains **no skipped or pending test absent from the skip
   sink's records for that run** — a capability-gated skip that registers itself into the sink is a
-  declared runner limitation and does not fail this test, while a bare `it.skip` or unregistered
-  pending marker in that surface does; pending markers elsewhere in the suite, including
-  `guardMatrix.test.js`'s pre-existing rows, are out of this criterion's scope (BR-SWEEP-6);
+  declared runner limitation and does not fail this test, a bare `it.skip` or unregistered pending
+  marker in that surface does, and pending markers elsewhere in the suite are out of scope
+  (BR-SWEEP-6);
   `*.test.js` under `pdlc/workflows/__tests__/` counts exactly L-5's post-sweep literal; and, for
   each of L-6's two rows, the named module exists **and contains the named assertion titles**,
   each of which reds when the behaviour it re-homes is reverted. Module presence without the
@@ -835,9 +835,10 @@ No criterion was relaxed in the FSPEC to work around any of them.
 
 ### 7.3 Downstream errata — accepted
 
-One erratum raised by the TSPEC against this FSPEC has been accepted and folded in (v0.6,
-2026-08-18). No other TSPEC §6.1 erratum edits this document.
+One erratum raised by the TSPEC against this FSPEC has been accepted and folded in, and its
+boundary corrected in v0.7 (2026-08-18). No other TSPEC §6.1 erratum edits this document.
 
 | # | Raised as | Edit made here |
 |---|---|---|
-| TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and `SKIP_INVENTORY` already carries `uid-nonroot` entries at HEAD, so the wider clause was already false on a root runner | AT-1.3 and BR-SWEEP-6 narrowed to "no skipped or pending test **absent from the skip sink's inventory**": a skip registered through `itOrSkip` with a `SKIP_INVENTORY` entry declaring its capability gap is a declared runner limitation; a bare `it.skip` or unregistered pending marker still fails. REQ AC-1.3 is narrower (M-8-scoped) and silent on registered skips, so it needs no edit to stay consistent |
+| TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and capability-gated skips already register on a root runner at HEAD, so the wider clause was already false | AT-1.3 and BR-SWEEP-6 now scope the prohibition to the **swept surface** (M-8's deleted modules and the hosts of R-8's re-homed assertions) and exempt a skip that reaches the run's **skip sink records**; the exemption is not keyed to `SKIP_INVENTORY` membership, because that inventory is deliberately not closed over registered skips. REQ AC-1.3 and C-8 are M-8-scoped; the FSPEC clause is now no wider than its upstream, so REQ needs no edit |
+| SE FSPEC v8 F-04 | Membership-only exemption lets the inventory be widened to buy a green gate without any skip firing | Not folded in as written: HEAD's comparator deliberately does not close over inventory membership, so an inventory-join clause would fail correct skips. The exemption is keyed to sink records instead; whether the sink comparator additionally pins a join, and how, is routed to TSPEC §5.5 as an implementation contract |
