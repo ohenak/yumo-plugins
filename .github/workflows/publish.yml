@@ -2,7 +2,7 @@ name: Publish
 
 # Tag-triggered publish pipeline for pdlc/engine (TSPEC §8). A NEW, additive
 # workflow file: it adds no job to pr-tests.yml and edits no `name:` key in
-# it (C-5, BR-7.5), so V-18's six rendered check names stay untouched and
+# it (C-5, BR-7.5), so V-18's four rendered check names stay untouched and
 # Phase PUB's literal polling keeps working.
 #
 # `engine-v*` is a new convention this feature establishes (TSPEC §8.1): the
@@ -73,52 +73,6 @@ jobs:
         working-directory: pdlc/engine
         run: npm test
 
-      - name: dist/ is not stale
-        run: node pdlc/workflows/build-runtime.mjs --check
-
-      - name: Rebuilding produces no diff
-        run: |
-          node pdlc/workflows/build-runtime.mjs
-          git diff --exit-code -- pdlc/workflows/dist/
-
-      - name: No consumer copy exists yet
-        run: |
-          if [ -e .claude/workflows ]; then
-            echo "::error::.claude/workflows exists in a fresh checkout; it must be untracked"
-            exit 1
-          fi
-          echo "confirmed: no .claude/workflows in a fresh checkout"
-
-      - name: Step 1 — build the runtime artifacts
-        run: node pdlc/workflows/build-runtime.mjs
-
-      - name: Step 2 — sync them into the consumer copy
-        run: |
-          set +e
-          pdlc/hooks/scripts/sync-workflows.sh
-          rc=$?
-          set -e
-          if [ "$rc" -eq 126 ]; then
-            echo "::error::sync-workflows.sh exited 126 — the execute bit was lost (expected mode 100755)"
-            exit 1
-          fi
-          if [ "$rc" -ne 0 ]; then
-            echo "::error::sync-workflows.sh exited $rc on a fresh clone; the documented bootstrap should succeed"
-            exit 1
-          fi
-
-      - name: Bootstrapped tree reports in sync
-        run: pdlc/hooks/scripts/sync-workflows.sh --check
-
-      - name: Consumer copy stayed untracked
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::bootstrap dirtied the working tree:"
-            git status --porcelain
-            exit 1
-          fi
-          echo "confirmed: bootstrap left the index clean"
-
       - name: bash -n every shipped script
         run: |
           status=0
@@ -130,27 +84,6 @@ jobs:
               status=1
             fi
           done < <(git ls-files '*.sh')
-          exit "$status"
-
-      - name: Executable bits are as shipped
-        run: |
-          status=0
-          check_mode() {
-            local want="$1" path="$2" got
-            got=$(git ls-files --stage -- "$path" | awk '{print $1}')
-            if [ -z "$got" ]; then
-              echo "::error::$path is not tracked"
-              status=1
-            elif [ "$got" != "$want" ]; then
-              echo "::error file=$path::index mode is $got, expected $want"
-              status=1
-            else
-              echo "ok    $path ($got)"
-            fi
-          }
-          check_mode 100755 pdlc/hooks/scripts/sync-workflows.sh
-          check_mode 100755 pdlc/hooks/scripts/check-workflow-drift.sh
-          check_mode 100644 pdlc/hooks/scripts/lib/pdlc-drift.sh
           exit "$status"
 
       # fixture-machine.yml's leg, re-run at the tag (CODE_REVIEW v1 §3-2). That

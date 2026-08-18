@@ -65,15 +65,13 @@ Debugging note: `coveredViolations` (`pdlc/workflows/lib/document-oracles.mjs`) 
 
 ### Continuous integration
 
-The gate Phase PUB polls spans **two** PR-triggered workflow files — `.github/workflows/pr-tests.yml` and `.github/workflows/fixture-machine.yml`. Membership is decided by the file's `on:` trigger, not its name: `publish.yml` is excluded because it is tag-triggered and gates no pull request. **Six checks** must pass:
+The gate Phase PUB polls spans **two** PR-triggered workflow files — `.github/workflows/pr-tests.yml` and `.github/workflows/fixture-machine.yml`. Membership is decided by the file's `on:` trigger, not its name: `publish.yml` is excluded because it is tag-triggered and gates no pull request. **Four checks** must pass:
 
 | Check | What it asserts |
 |---|---|
 | `Unit tests (ubuntu-latest, node 20)` | `npm run test:coverage` — the workflows suite under c8 on Linux CI |
 | `Engine tests (ubuntu-latest)` | `npm ci` + `npm test` in `pdlc/engine` |
-| `Generated artifacts are in sync` | `build-runtime.mjs --check`, then a rebuild that must produce no diff |
-| `Fresh-clone bootstrap works` | executes the two documented bootstrap commands as written, by bare path |
-| `Shell scripts parse` | `bash -n` over every tracked `*.sh`, plus index-mode assertions |
+| `Shell scripts parse` | `bash -n` over every tracked `*.sh` |
 | `Fixture machine (install/upgrade, launcher, container, two-repo)` | `fixture-machine.yml` — install/upgrade, launcher, container and two-repo legs over `pdlc/engine/**` |
 
 This table is the human-facing citation of FSPEC §5.1's required-check set, and it is oracle-covered: `pdlc/engine/__tests__/ci-arrangement.test.js` derives the rows and the count word from §5.1 itself, so a check added to the gate without being added here goes red. `pdlc/OPERATIONS.md` carries the per-check rationale and the determinism rule; `pdlc/RELEASE-CHECKLIST.md` carries the pre-release commitments CI cannot check mechanically.
