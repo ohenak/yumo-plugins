@@ -9,13 +9,14 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft (Phase T) | te-author | 0.1 | 2026-08-18 |
+| pdlc | Draft (Phase T) | te-author | 0.2 | 2026-08-18 |
 
 **Changelog**
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-08-18 | Initial draft. 75 properties across twelve domains, derived from REQ v0.16, FSPEC v0.10, TSPEC v0.11 and PLAN v0.1. Every property carries a PLAN task and a PLAN-owned file; §4's `AT-` row set set-equals FSPEC §6's twenty-six acceptance tests and PLAN §2.1's traceability table. |
+| 0.2 | 2026-08-18 | Round-1 fixes addressing PM/SE CROSS-REVIEW-*-PROPERTIES-v1 (2 High, 1 Medium each). PROP-COMMIT-2/-3/-5 corrected from `T31 → preflight-baseline.test.js` to `T01/T13 → preflight-baseline.test.js` (T31 owns only `REPLAY-*.md`; T01/T13 own `preflight-baseline.test.js` per PLAN §3). PROP-COMMIT-4 corrected from `T11/T12/T13 → hookCompatibility.test.js` to `T11/T12 → hookCompatibility.test.js` (T13 does not own that file). PROP-COMMIT-6 corrected from `T13 → hookCompatibility.test.js` to `T13 → preflight-baseline.test.js` (its only owned file). PROP-CLEAN-6's carrier corrected to attribute `helpers/driftCapabilities.js` to T16, not T07/T30, found during the full mechanical carrier-cell audit requested by PM F-03. §4's AT-1.8 task list updated from `T01, T31` to `T01, T13` to match. §7's test-level table corrected from 31/34/10 to the actual 50 Unit / 16 Integration / 8 Manual (+1 Manual+Unit for PROP-BUILD-5) — the old figures did not match any three-way split of the 75 properties. §1 rule 5 amended to name PROP-BUILD-5 as the sole documented `Manual + Unit` exception, resolving SE F-03. Document-wide self-claims re-verified unchanged: still 75 property ids, still 26 `AT-` rows in §4, still 26 ACs in §5. |
 
 ---
 
@@ -49,6 +50,12 @@ is restated at the property that leans on it.
 5. **Test level** is one of Unit, Integration, Manual. **Manual** means the evidence is a
    committed transcript or report under `docs/pdlc-plugin-retirement/` produced by PLAN's
    three `[manual]` rows (T31, T32, T33); no executable oracle exists and none is implied.
+   One documented exception: **PROP-BUILD-5** pairs a Unit-tested build-parity conjunct
+   (`--check` exits `0`) with a Manual field-comparison conjunct (T33's pre/post CLI-answer
+   diff); its Level cell reads `Manual + Unit` and its carrier lists both T17/T19 and T33
+   accordingly. This is the sole multi-level row in the catalogue; no other property may
+   silently repeat it — a second occurrence needs its own documented exception here, not a
+   quiet copy of this one.
 6. **Carrier cells name PLAN tasks and PLAN-owned files only.** A `red → green` pair is
    written `T14/T15`; a `[gate]` row is written `T01 [gate]`. Every file named in a carrier
    cell appears in PLAN §3's ownership manifest under that task.
@@ -205,7 +212,7 @@ batch 6, T15 in batch 14.
 | PROP-CLEAN-3 | **One unexpected entry must refuse the whole invocation, with four conjuncts.** Given the AT-4.1 target **plus** one entry whose name is in no L-11 row: (a) **every** L-11 entry is still present and **byte-identical**, compared by content against a recorded, **non-empty** pre-state — not by "the directory is not empty", which a directory holding only the unexpected entry satisfies vacuously; (b) the unexpected entry is itself byte-identical; (c) its path is named on **stderr**; (d) the exit status is **exactly `3`**. "Non-zero" is explicitly rejected: `127` from a missing interpreter would green a step that never ran. Two constructions, same four clauses: an operator-created file, and a `.pdlc-tmp.<pid>.<rand>` residue the retired channel itself left behind when a write was killed mid-rename (E-16b). | Error Handling | Integration | AC-4.3, C-9, FSPEC BR-CLN-3, BR-CLN-3a, BR-CLN-4, E-16, E-16b, AT-4.3 | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js` |
 | PROP-CLEAN-4 | **A `distribution-manifest.json` inside the consumer's `.claude/workflows/` must refuse.** It is a repo-side build artifact the retired channel never installed, so it is **not** an L-11 member however familiar the name looks — the property exists because L-1 and L-11 are different sets and the confusion is the plausible implementer error. Same four conjuncts as PROP-CLEAN-3. | Error Handling | Integration | AC-4.3, FSPEC L-11, E-16 | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js` |
 | PROP-CLEAN-5 | **A usage error must exit exactly `4` and remove nothing.** An unrecognised argument (`--nope`) over a fully-populated target: exit `4`, and every entry still present byte-identical against a non-empty pre-state. `4` stays reserved for the tooling-usage class and is never reused for refusal, mirroring the retired `sync-workflows.sh`'s five-status convention so the operator's existing expectation transfers. | Error Handling | Integration | FSPEC BR-CLN-4, TSPEC §3.2 row 4a, §6.1 erratum 7 | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js` |
-| PROP-CLEAN-6 | **An unreadable target must exit exactly `4` and print a diagnostic naming the failing path on stderr.** Constructed with `chmod 000`, which cannot be constructed as root, so the row is root-conditional — and the skip is **registered**, not bare: it goes through `itOrSkip` with a `SKIP_INVENTORY` capability entry keyed `uid-nonroot`, reaching the run's skip sink as a record and therefore satisfying PROP-SUITE-4 as written. Only two conjuncts are asserted; the partial-`rm` arm of contract row 4b is deliberately oracle-free (§9 gap G-1). | Error Handling | Integration | FSPEC BR-CLN-4, TSPEC §3.2 row 4b, §5.2 TT-1b | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js`, `pdlc/workflows/__tests__/helpers/driftCapabilities.js` |
+| PROP-CLEAN-6 | **An unreadable target must exit exactly `4` and print a diagnostic naming the failing path on stderr.** Constructed with `chmod 000`, which cannot be constructed as root, so the row is root-conditional — and the skip is **registered**, not bare: it goes through `itOrSkip` with a `SKIP_INVENTORY` capability entry keyed `uid-nonroot`, reaching the run's skip sink as a record and therefore satisfying PROP-SUITE-4 as written. Only two conjuncts are asserted; the partial-`rm` arm of contract row 4b is deliberately oracle-free (§9 gap G-1). | Error Handling | Integration | FSPEC BR-CLN-4, TSPEC §3.2 row 4b, §5.2 TT-1b | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js`; T16 → `pdlc/workflows/__tests__/helpers/driftCapabilities.js` |
 | PROP-CLEAN-7 | **`--dry-run` must preview without removing, on both outcomes.** Over the full set: the per-entry lines a live run would print appear, exit `0`, and **every entry is still present byte-identical afterwards** — a positive conjunct, not merely "no error". Over a tree holding one unexpected entry: the refusing path is printed on stderr, exit is **exactly `3`**, and nothing is removed. | Contract | Integration | TSPEC §3.2 row 5, §5.2 TT-2 | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js` |
 | PROP-CLEAN-8 | **All-or-nothing must hold over arbitrary subsets of the expected-name set, not only over the three hand-built fixtures.** Property-based: draw a subset of §4.3's nine expected names; with no unexpected name added, every drawn entry is removed and the exit status is `0`; with at least one unexpected name added, **nothing at all** is removed and the exit status is `3`. This is the one parameterisable component in the feature, and the property is what proves the classifier is a predicate over names rather than a hard-coded match on the fixtures. | Functional | Integration | AC-4.1, AC-4.3, C-9, FSPEC BR-CLN-3a, TSPEC §5.2 TT-4 | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js` |
 | PROP-CLEAN-9 | **A file the consumer tracks in git, found inside the target directory, must be treated as unexpected and must refuse.** Tracked files are never touched (BR-CLN-5); the property is separate from PROP-CLEAN-3 because the entry's *name* may legitimately be an L-11 member while its tracked-ness makes deletion the wrong act — the refusal path, not the removal path, owns this case (E-18). | Security / Data Integrity | Integration | AC-4.1, C-9, FSPEC BR-CLN-5, E-18 | T07/T30 → `pdlc/workflows/__tests__/consumerCleanup.test.js` |
@@ -245,11 +252,11 @@ extension honest — it must carry per-file dispositions, not merely widen the f
 | Id | Property | Category | Level | Traces | Carrier (task → file) |
 |---|---|---|---|---|---|
 | PROP-COMMIT-1 | **A pre-flight baseline must record, on the tip before class 1 lands, that L-9's three gate commands are green — and the record must be replayable.** The baseline stores each command with its status, so a later red can be attributed rather than argued about. Without it, a command that was already red at branch point looks like sweep damage, and the sweep gets blamed or, worse, the gate gets widened to hide it. | Data Integrity | Unit | AC-1.8, C-5, FSPEC L-9, TSPEC §6.3 T-1 | T01 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
-| PROP-COMMIT-2 | **Every commit in the sweep must leave the three gate commands green.** Judged per commit, not only at branch tip: a batch that reds T14 and greens again at T20 has shipped commits no bisect can cross, and PLAN's batch-safety rules exist precisely to keep each batch self-consistent. | Contract | Unit | AC-1.8, C-5, FSPEC L-9, BR-SWEEP-3 | T01/T31 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
-| PROP-COMMIT-3 | **Classes 7 and 11 must land in the same commit.** Class 7 removes the manifest that class 11's CLI reads; either alone is a red tip. The property is asserted as a same-commit membership check over the two tasks' owned paths (T19, T20 — PLAN batch 16), not as "both are on the branch". | Contract | Unit | DEC-10, TSPEC §6.3 T-5, PLAN §4 | T31 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
-| PROP-COMMIT-4 | **The suite-count literal is judged on `(file, section)`, and a disagreement between the owning document and any other is red.** FSPEC L-5 says the post-sweep count is **97**; TSPEC §4.4 says **99** because `hookCompatibility.test.js` is reduced in place rather than deleted. Erratum-6 (DEC-07) records that the two are stated about different things; this property forbids a downstream document from restating either number in its own voice. PROP-SUITE-1 asserts the owning document's literal; this one asserts that no other document contradicts it. Reconciling by editing both to match would defeat both properties. | Data Integrity | Unit | FSPEC L-5, TSPEC §4.4, §6.1 erratum 6, DEC-07 | T11/T12/T13 → `pdlc/workflows/__tests__/hookCompatibility.test.js` |
-| PROP-COMMIT-5 | **Every tracked `*.sh` must parse.** `bash -n` over `git ls-files '*.sh'` — a set-valued source, so a script added by class 13 is covered without editing the test. Cheap, and it catches the class of damage a wholesale-deletion sweep most plausibly causes: a heredoc or `if` fence left unbalanced by a removed block. | Contract | Unit | C-5, FSPEC L-9, BR-SWEEP-6 | T31 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
-| PROP-COMMIT-6 | **The T13 erratum gate must fail loudly if the reduction leaves the count at neither 97 nor 99.** A third number means the reduction removed something the errata did not account for; the gate names both accounted-for values and the observed one, so the operator can tell an unplanned deletion from a re-homing. | Error Handling | Unit | TSPEC §6.1 erratum 6, §6.3 T-3, DEC-07 | T13 → `pdlc/workflows/__tests__/hookCompatibility.test.js` |
+| PROP-COMMIT-2 | **Every commit in the sweep must leave the three gate commands green.** Judged per commit, not only at branch tip: a batch that reds T14 and greens again at T20 has shipped commits no bisect can cross, and PLAN's batch-safety rules exist precisely to keep each batch self-consistent. | Contract | Unit | AC-1.8, C-5, FSPEC L-9, BR-SWEEP-3 | T01/T13 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
+| PROP-COMMIT-3 | **Classes 7 and 11 must land in the same commit.** Class 7 removes the manifest that class 11's CLI reads; either alone is a red tip. The property is asserted as a same-commit membership check over the two tasks' owned paths (T19, T20 — PLAN batch 16), not as "both are on the branch". | Contract | Unit | DEC-10, TSPEC §6.3 T-5, PLAN §4 | T01/T13 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
+| PROP-COMMIT-4 | **The suite-count literal is judged on `(file, section)`, and a disagreement between the owning document and any other is red.** FSPEC L-5 says the post-sweep count is **97**; TSPEC §4.4 says **99** because `hookCompatibility.test.js` is reduced in place rather than deleted. Erratum-6 (DEC-07) records that the two are stated about different things; this property forbids a downstream document from restating either number in its own voice. PROP-SUITE-1 asserts the owning document's literal; this one asserts that no other document contradicts it. Reconciling by editing both to match would defeat both properties. | Data Integrity | Unit | FSPEC L-5, TSPEC §4.4, §6.1 erratum 6, DEC-07 | T11/T12 → `pdlc/workflows/__tests__/hookCompatibility.test.js` |
+| PROP-COMMIT-5 | **Every tracked `*.sh` must parse.** `bash -n` over `git ls-files '*.sh'` — a set-valued source, so a script added by class 13 is covered without editing the test. Cheap, and it catches the class of damage a wholesale-deletion sweep most plausibly causes: a heredoc or `if` fence left unbalanced by a removed block. | Contract | Unit | C-5, FSPEC L-9, BR-SWEEP-6 | T01/T13 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
+| PROP-COMMIT-6 | **The T13 erratum gate must fail loudly if the reduction leaves the count at neither 97 nor 99.** A third number means the reduction removed something the errata did not account for; the gate names both accounted-for values and the observed one, so the operator can tell an unplanned deletion from a re-homing. | Error Handling | Unit | TSPEC §6.1 erratum 6, §6.3 T-3, DEC-07 | T13 → `pdlc/engine/__tests__/preflight-baseline.test.js` |
 
 ## 3. Negative properties — what must *not* happen
 
@@ -289,7 +296,7 @@ task that carries it, so a reader can go from acceptance test to property to com
 | AT-1.5 | PROP-SWEEP-4, PROP-SWEEP-5 | T02–T06 |
 | AT-1.6 | PROP-BUILD-1…4 | T19, T20 |
 | AT-1.7 | PROP-HOOK-1…4 | T15–T18 |
-| AT-1.8 | PROP-COMMIT-1, PROP-COMMIT-2, PROP-COMMIT-5 | T01, T31 |
+| AT-1.8 | PROP-COMMIT-1, PROP-COMMIT-2, PROP-COMMIT-5 | T01, T13 |
 | AT-2.1 | PROP-DOC-1, PROP-DOC-2, PROP-DOC-3, PROP-DOC-7 | T27, T28 |
 | AT-2.2 | PROP-DOC-2…5 | T27, T28 |
 | AT-2.3 | PROP-DOC-6, PROP-DOC-8 | T28 |
@@ -366,14 +373,16 @@ and needs no audit.
 
 | Level | Count | Where |
 |---|---|---|
-| Unit | 31 | `pdlc/workflows/__tests__/`, `pdlc/engine/__tests__/` — index reads, document oracles, count literals, `bash -n` |
-| Integration | 34 | `consumerCleanup.test.js`, skip-join host/child pairs, build and CLI post-wave checks, handshake fixtures |
-| Manual | 10 | T32, T33 — evidenced in `POSTSWEEP-RUN-*.md` and `OPERATOR-OBSERVATIONS-*.md` |
+| Unit | 50 | `pdlc/workflows/__tests__/`, `pdlc/engine/__tests__/` — index reads, document oracles, count literals, `bash -n` |
+| Integration | 16 | `consumerCleanup.test.js`, skip-join host/child pairs, handshake fixtures |
+| Manual | 8 | T32, T33 — evidenced in `POSTSWEEP-RUN-*.md` and `OPERATOR-OBSERVATIONS-*.md` |
+| Manual + Unit | 1 | PROP-BUILD-5 only — the §1 rule 5 documented exception; its automated conjunct is Unit (`consolidationBuild.test.js`), its operator conjunct is Manual (`OPERATOR-OBSERVATIONS-*.md`) |
 
-The ten manual rows are all in PROP-VER (3), PROP-DEL (1), PROP-CLEAN (1) and PROP-RUN
-(3), plus PROP-DEL-7 and PROP-VER-2's operator halves. Each names the artefact its
-evidence lands in; a manual property with no named artefact is not evidence, and DoD
-treats a missing artefact as a missing test.
+50 + 16 + 8 + 1 = 75, matching §2's property count. The eight pure-manual rows are
+PROP-DEL-6, PROP-DEL-7 (2), PROP-VER-3, PROP-VER-4 (2), PROP-CLEAN-10 (1), and
+PROP-RUN-1, PROP-RUN-2, PROP-RUN-3 (3). Each names the artefact its evidence lands
+in; a manual property with no named artefact is not evidence, and DoD treats a
+missing artefact as a missing test.
 
 ## 8. Fixtures
 
